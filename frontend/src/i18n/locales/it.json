@@ -662,6 +662,47 @@
     },
     "data": {
       "title": "Dati"
+    },
+    "exportFieldPicker": {
+      "title": "Esporta contatti — scegli i campi",
+      "description": "Scegli quali campi includere. Nome e UID vengono sempre esportati.",
+      "format": "Formato",
+      "formats": {
+        "vcf4": "vCard 4.0 (.vcf)",
+        "vcf3": "vCard 3.0 (.vcf)",
+        "jscontact": "JSContact (.json)"
+      },
+      "fields": "Campi da includere",
+      "sections": {
+        "emails": "Email",
+        "phones": "Telefoni",
+        "addresses": "Indirizzi",
+        "organizations": "Organizzazioni",
+        "anniversaries": "Anniversari",
+        "media": "Foto",
+        "online_services": "Servizi online",
+        "links": "Link",
+        "notes": "Note",
+        "keywords": "Tag",
+        "related_to": "Relazioni",
+        "personal_info": "Informazioni personali",
+        "speak_to_as": "Pronomi e appellativi",
+        "members": "Membri del gruppo",
+        "languages": "Lingue preferite",
+        "custom_fields": "Campi personalizzati"
+      },
+      "lockedHint": "Sblocca per selezionare i campi sensibili",
+      "revealButton": "Mostra i campi sensibili",
+      "revealTitle": "Includere dati sensibili?",
+      "revealConfirm": "Alcuni di questi campi possono contenere informazioni private o sensibili, come relazioni private o campi personalizzati. Rimangono esclusi a meno che non li includa qui deliberatamente.",
+      "revealCancel": "Annulla",
+      "revealConfirmButton": "Mostra",
+      "revealedHint": "I campi sensibili sono ora sbloccati. Selezionarne uno includerà i suoi dati privati o sensibili in questa esportazione.",
+      "exportButton": "Esporta",
+      "exporting": "Esportazione in corso...",
+      "exportError": "Esportazione contatti fallita. Riprova.",
+      "customExportButton": "Esportazione personalizzata...",
+      "success": "I tuoi contatti sono stati esportati con successo."
     }
   },
   "pages": {

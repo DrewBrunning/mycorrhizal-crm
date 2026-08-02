@@ -27,7 +27,7 @@ dependency → pre/post-alpha risk → usefulness rating → size.
 | [10](10-T20a-preferences.md) | T20a · Preferences migration | 3 | M | **DONE** |
 | [11](11-T6-custom-fields-api.md) | T6 · Custom fields v2 — API | 3 | M | **DONE** |
 | [12](12-T7-custom-fields-frontend.md) | T7 · Custom fields v2 — frontend + retire v1 | 3 | L | **DONE** |
-| [13](13-T9-selective-export.md) | T9 · Selective field export + sensitivity gating | 3 | L |
+| [13](13-T9-selective-export.md) | T9 · Selective field export + sensitivity gating | 3 | L | **DONE** |
 | [14](14-T12a-etag-primitives.md) | T12a · Activity/LifeEvent ETag primitives | 2\* | S |
 | [15](15-T24-test-coverage.md) | T24 · Non-critical test-coverage expansion | 2 | M |
 | [16](16-T8-openapi.md) | T8 · OpenAPI coverage + drift test | 2\* | M |

@@ -737,3 +737,111 @@ func TestExportContactsAsJSContact_PhotoBridging(t *testing.T) {
 	}
 	assert.True(t, found, "expected a media entry with kind=photo and the actual embedded photo data, got media=%v", media)
 }
+
+// --- WP-97 / T9 selective export (sections= + include_sensitive=) ---
+
+// The ?sections= field picker must actually narrow a vCard export, and an
+// absent param must preserve the pre-T9 all-sections behavior.
+func TestExportContactsAsVCF_SectionsFilter(t *testing.T) {
+	db, router := setupRouter()
+	registerVCFRoute(router, "")
+
+	var user models.User
+	db.First(&user)
+	db.Create(&models.Contact{UserID: user.ID, Firstname: "Alice", Lastname: "Anderson", Email: "alice@example.com", Phone: "555-0100"})
+
+	// No sections param -> everything (backward compat).
+	req, _ := http.NewRequest("GET", "/export/vcf", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "EMAIL")
+	assert.Contains(t, w.Body.String(), "TEL")
+
+	// sections=emails -> EMAIL kept, TEL dropped.
+	req, _ = http.NewRequest("GET", "/export/vcf?sections=emails", nil)
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+	body := w.Body.String()
+	assert.Contains(t, body, "EMAIL")
+	assert.NotContains(t, body, "TEL", "deselected phones must be omitted from the vCard")
+	assert.Contains(t, body, "Alice", "identity data is always exported")
+}
+
+// An unknown section token is an explicit 400, not a silent narrowing.
+func TestExportContactsAsVCF_UnknownSection_BadRequest(t *testing.T) {
+	db, router := setupRouter()
+	registerVCFRoute(router, "")
+
+	var user models.User
+	db.First(&user)
+	db.Create(&models.Contact{UserID: user.ID, Firstname: "Alice", Lastname: "Anderson"})
+
+	req, _ := http.NewRequest("GET", "/export/vcf?sections=emails,bogus_section", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+// The §91.13 opt-in override flows through the HTTP surface: a secret edge is
+// absent by default and present only with ?include_sensitive=true.
+func TestExportContactsAsVCF_IncludeSensitiveOptIn(t *testing.T) {
+	db, router := setupRouter()
+	registerVCFRoute(router, "")
+
+	var user models.User
+	db.First(&user)
+	alice := models.Contact{UserID: user.ID, Firstname: "Alice", Lastname: "Anderson"}
+	bob := models.Contact{UserID: user.ID, Firstname: "Bob", Lastname: "Brown"}
+	db.Create(&alice)
+	db.Create(&bob)
+	require.NoError(t, db.Create(&models.RelationshipEdge{
+		UserID:      user.ID,
+		SourceID:    alice.VCardUID,
+		TargetID:    bob.VCardUID,
+		Type:        "spouse_of",
+		Source:      models.RelationshipSourceUserConfirmed,
+		Confidence:  1.0,
+		Status:      models.RelationshipStatusConfirmed,
+		Sensitivity: models.RelationshipSensitivitySecret,
+	}).Error)
+
+	// Default (even with related_to selected): secret edge stays out.
+	req, _ := http.NewRequest("GET", "/export/vcf?sections=related_to", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.NotContains(t, w.Body.String(), "RELATED", "checking a section is not enough to export a sensitive edge")
+
+	// Explicit opt-in: the edge projects.
+	req, _ = http.NewRequest("GET", "/export/vcf?sections=related_to&include_sensitive=true", nil)
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "RELATED", "include_sensitive=true must project the secret edge")
+}
+
+// The same picker applies to the JSContact export handler.
+func TestExportContactsAsJSContact_SectionsFilter(t *testing.T) {
+	db, router := setupRouter()
+	registerJSContactRoute(router, "")
+
+	var user models.User
+	db.First(&user)
+	db.Create(&models.Contact{UserID: user.ID, Firstname: "Alice", Lastname: "Anderson", Email: "alice@example.com", Phone: "555-0100"})
+
+	req, _ := http.NewRequest("GET", "/export/jscontact?sections=emails", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var cards []map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &cards))
+	require.Len(t, cards, 1)
+	assert.Contains(t, cards[0], "emails")
+	_, phonesPresent := cards[0]["phones"]
+	assert.False(t, phonesPresent, "deselected phones must be omitted from the JSContact export")
+	_, namePresent := cards[0]["name"]
+	assert.True(t, namePresent, "identity name is always exported")
+}

@@ -662,6 +662,47 @@
     },
     "data": {
       "title": "Daten"
+    },
+    "exportFieldPicker": {
+      "title": "Kontakte exportieren — Felder auswählen",
+      "description": "Wählen Sie aus, welche Felder enthalten sein sollen. Name und UID werden immer exportiert.",
+      "format": "Format",
+      "formats": {
+        "vcf4": "vCard 4.0 (.vcf)",
+        "vcf3": "vCard 3.0 (.vcf)",
+        "jscontact": "JSContact (.json)"
+      },
+      "fields": "Enthaltene Felder",
+      "sections": {
+        "emails": "E-Mail-Adressen",
+        "phones": "Telefonnummern",
+        "addresses": "Adressen",
+        "organizations": "Organisationen",
+        "anniversaries": "Jahrestage",
+        "media": "Fotos",
+        "online_services": "Online-Dienste",
+        "links": "Links",
+        "notes": "Notizen",
+        "keywords": "Tags",
+        "related_to": "Beziehungen",
+        "personal_info": "Persönliche Informationen",
+        "speak_to_as": "Pronomen & Anrede",
+        "members": "Gruppenmitglieder",
+        "languages": "Bevorzugte Sprachen",
+        "custom_fields": "Benutzerdefinierte Felder"
+      },
+      "lockedHint": "Entsperren, um sensible Felder auszuwählen",
+      "revealButton": "Sensible Felder anzeigen",
+      "revealTitle": "Sensible Daten einbeziehen?",
+      "revealConfirm": "Einige dieser Felder können private oder sensible Informationen enthalten, z. B. private Beziehungen oder benutzerdefinierte Felder. Sie bleiben ausgeschlossen, es sei denn, Sie beziehen sie hier bewusst ein.",
+      "revealCancel": "Abbrechen",
+      "revealConfirmButton": "Anzeigen",
+      "revealedHint": "Sensible Felder sind jetzt entsperrt. Durch Auswahl eines Felds werden dessen private oder sensible Daten in diesen Export einbezogen.",
+      "exportButton": "Exportieren",
+      "exporting": "Exportiere...",
+      "exportError": "Kontakte konnten nicht exportiert werden. Bitte versuchen Sie es erneut.",
+      "customExportButton": "Benutzerdefinierter Export...",
+      "success": "Ihre Kontakte wurden erfolgreich exportiert."
     }
   },
   "pages": {
