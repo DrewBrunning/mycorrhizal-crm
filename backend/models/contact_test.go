@@ -3,12 +3,20 @@ package models
 import (
 	"bytes"
 	"encoding/base64"
+	"fmt"
 	"image"
 	"image/jpeg"
+	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"mycorrhizal/contactmodel"
+
+	"github.com/glebarez/sqlite"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 // testJPEGDataURL returns a "data:image/jpeg;base64,..." URI wrapping a
@@ -461,5 +469,96 @@ func TestRoundTrip_ProjectionStable(t *testing.T) {
 		if firstProj != secondProj {
 			t.Errorf("projection for %q drifted across a second pass: first=%+v second=%+v", c.Firstname, firstProj, secondProj)
 		}
+	}
+}
+
+// setupContactETagTestDB creates an in-memory SQLite DB with the tables the
+// Contact ETag tests need. AutoMigrate derives the schema from the same Go
+// struct tags the application code uses, so these tests verify hook behavior
+// (generate, refresh, no-loop, zero-value guard) but cannot catch a GORM
+// column-tag mismatch against the real migration SQL — etag_real_db_test.go
+// covers that with a database.InitDB-migrated DB.
+func setupContactETagTestDB(t *testing.T) *gorm.DB {
+	t.Helper()
+
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	sqlDB.SetMaxOpenConns(1)
+
+	require.NoError(t, db.AutoMigrate(&User{}, &Contact{}))
+	return db
+}
+
+func TestContactETagGeneratedOnCreateAndPersists(t *testing.T) {
+	db := setupContactETagTestDB(t)
+	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	contact := Contact{UserID: user.ID, Firstname: "Alice", Email: "alice@example.com"}
+	require.NoError(t, db.Create(&contact).Error)
+
+	require.NotEmpty(t, contact.ETag)
+	assert.Regexp(t, regexp.MustCompile(`^e-\d+-\d+$`), contact.ETag)
+	assert.Equal(t, fmt.Sprintf("e-%d-%d", contact.ID, contact.UpdatedAt.Unix()), contact.ETag)
+
+	var reloaded Contact
+	require.NoError(t, db.First(&reloaded, contact.ID).Error)
+	assert.Equal(t, contact.ETag, reloaded.ETag, "ETag must be persisted, not just set in memory")
+}
+
+func TestContactETagChangesOnUpdate(t *testing.T) {
+	db := setupContactETagTestDB(t)
+	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	contact := Contact{UserID: user.ID, Firstname: "Alice", Email: "alice@example.com"}
+	require.NoError(t, db.Create(&contact).Error)
+	firstETag := contact.ETag
+
+	future := time.Now().Add(10 * time.Second)
+	require.NoError(t, db.Model(&contact).Updates(map[string]any{"firstname": "Alicia", "updated_at": future}).Error)
+
+	assert.NotEqual(t, firstETag, contact.ETag, "updating a Contact must change its ETag")
+	assert.Equal(t, fmt.Sprintf("e-%d-%d", contact.ID, future.Unix()), contact.ETag)
+}
+
+func TestContactETagSaveDoesNotLoop(t *testing.T) {
+	db := setupContactETagTestDB(t)
+	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	contact := Contact{UserID: user.ID, Firstname: "Alice", Email: "alice@example.com"}
+	require.NoError(t, db.Create(&contact).Error)
+	etag := contact.ETag
+
+	require.NoError(t, db.Save(&contact).Error)
+	require.NoError(t, db.Save(&contact).Error)
+
+	assert.Equal(t, etag, contact.ETag, "a save that does not change UpdatedAt must not rewrite the ETag")
+}
+
+func TestContactETagBulkUpdateOnZeroValueReceiverDoesNotCorrupt(t *testing.T) {
+	db := setupContactETagTestDB(t)
+	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	one := Contact{UserID: user.ID, Firstname: "Alice", Email: "alice@example.com"}
+	two := Contact{UserID: user.ID, Firstname: "Bob", Email: "bob@example.com"}
+	require.NoError(t, db.Create(&one).Error)
+	require.NoError(t, db.Create(&two).Error)
+
+	require.NoError(t, db.Model(&Contact{}).Where("user_id = ?", user.ID).
+		Update("firstname", "Renamed").Error)
+
+	var rows []Contact
+	require.NoError(t, db.Order("id").Find(&rows).Error)
+	require.Len(t, rows, 2)
+	for _, r := range rows {
+		require.NotEmpty(t, r.ETag)
+		assert.Regexp(t, regexp.MustCompile(`^e-\d+-\d+$`), r.ETag, "bulk update must not rewrite ETags from an empty ID")
+		assert.Equal(t, fmt.Sprintf("e-%d-%d", r.ID, r.UpdatedAt.Unix()), r.ETag, "ETag must survive the bulk update unchanged")
 	}
 }
