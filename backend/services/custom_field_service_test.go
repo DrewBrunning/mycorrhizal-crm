@@ -41,6 +41,7 @@ func TestValidateFieldValue_Number(t *testing.T) {
 	assert.Error(t, ValidateFieldValue(def, raw(t, 11)), "above max")
 	assert.Error(t, ValidateFieldValue(def, raw(t, -1)), "below min")
 	assert.Error(t, ValidateFieldValue(def, raw(t, "not a number")))
+	assert.Error(t, ValidateFieldValue(def, raw(t, nil)), "JSON null is explicitly rejected, not silently cast to 0")
 }
 
 func TestValidateFieldValue_Boolean(t *testing.T) {

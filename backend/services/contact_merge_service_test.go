@@ -89,17 +89,6 @@ func TestComputeContactMergeResolution_CirclesUnionCaseInsensitive(t *testing.T)
 	assert.Equal(t, []string{"Friends", "Work"}, res.Circles)
 }
 
-func TestComputeContactMergeResolution_CustomFieldsUnionKeeperWinsCollision(t *testing.T) {
-	keeper := &models.Contact{CustomFields: map[string]string{"shared": "keeper-value", "keeper-only": "k"}}
-	loser := &models.Contact{CustomFields: map[string]string{"shared": "loser-value", "loser-only": "l"}}
-
-	res := ComputeContactMergeResolution(keeper, loser)
-
-	assert.Equal(t, "keeper-value", res.CustomFields["shared"])
-	assert.Equal(t, "k", res.CustomFields["keeper-only"])
-	assert.Equal(t, "l", res.CustomFields["loser-only"])
-}
-
 func TestApplyContactMergeResolution_MissingResolutionErrors(t *testing.T) {
 	keeper := &models.Contact{Firstname: "Alice"}
 	loser := &models.Contact{Firstname: "Robert"}

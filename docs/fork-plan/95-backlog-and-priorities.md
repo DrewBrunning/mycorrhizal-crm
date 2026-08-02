@@ -188,8 +188,8 @@ each side — so a high rating does not by itself pull a ticket before alpha, an
 | 8b | **T26** Delete semantics — purge job + constraint fixes | 3 | M | — | new (design, 2026-07-30) |
 | 9 | **T1** Household CRUD + suggestion trigger + review wiring | 3 | M | — | WP-83, §3d WP3 |
 | 10 | **T20a** Preferences — migrate `FoodPreference`, project `hobby` | 3 | M | — | `92.6`, `91.9` |
-| 11 | **T6** Custom fields v2 — API surface | 3 | M | — | WP-84b, `94` |
-| 12 | **T7** Custom fields v2 — frontend, backfill, retire v1 | 3 | L | T6 | WP-84b, `94.6` |
+ | 11 | **T6** Custom fields v2 — API surface — **DONE** (`d82f2c5`) | 3 | M | — | WP-84b, `94` |
+ | 12 | **T7** Custom fields v2 — frontend, backfill, retire v1 — **DONE** (`b25a613`, `c609c32`) | 3 | L | T6 | WP-84b, `94.6` |
 | 13 | **T9** WP-97 selective field export + sensitivity gating | 3 | L | — | `92.6b` |
 | 14 | **T12a** Activity/LifeEvent sync primitives (ETag) | 2 | S | — | `92.3` prereq |
 | 15 | **T24** Non-critical test-coverage expansion | 2 | M | — | Tier 6, `45` |

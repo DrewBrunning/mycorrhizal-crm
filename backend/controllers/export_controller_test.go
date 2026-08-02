@@ -198,6 +198,92 @@ func TestExportData(t *testing.T) {
 	assert.Contains(t, body, "yearly")
 }
 
+// T7: the CSV export's custom-field columns now source from the v2 system
+// (FieldDefinition + FieldValue), not the retired untyped v1. Every definition becomes a header column (the header
+// row is user-authored, so csvSafe still neutralizes it), and each contact's
+// row carries its value for that definition -- including the Multi join and
+// the empty-when-absent case.
+func TestExportData_CustomFieldsV2(t *testing.T) {
+	db, router := setupRouter()
+	router.GET("/export", ExportData)
+
+	var user models.User
+	db.First(&user)
+
+	contact := models.Contact{UserID: user.ID, Firstname: "Alice", Lastname: "Johnson"}
+	db.Create(&contact)
+
+	enumDef := models.FieldDefinition{
+		UserID:      user.ID,
+		Label:       "Pronouns",
+		Key:         "pronouns",
+		Target:      models.FieldDefinitionTargetContact,
+		Type:        models.FieldTypeEnum,
+		Constraints: models.FieldConstraints{Values: []string{"she/her", "he/him", "they/them"}, Multi: true},
+		Projection:  "internal-only",
+		Sensitivity: models.RelationshipSensitivityNormal,
+	}
+	stringDef := models.FieldDefinition{
+		UserID:      user.ID,
+		Label:       "Internal Note",
+		Key:         "internal_note",
+		Target:      models.FieldDefinitionTargetContact,
+		Type:        models.FieldTypeString,
+		Projection:  "internal-only",
+		Sensitivity: models.RelationshipSensitivityNormal,
+	}
+	db.Create(&enumDef)
+	db.Create(&stringDef)
+
+	// Multi value serializes as "; "-joined; the absent string value stays empty.
+	db.Create(&models.FieldValue{
+		FieldDefinitionID: enumDef.ID,
+		UserID:            user.ID,
+		EntityID:          contact.VCardUID,
+		Value:             json.RawMessage(`["she/her","they/them"]`),
+	})
+
+	req, _ := http.NewRequest("GET", "/export", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	body := w.Body.String()
+
+	// Both definition labels appear as header columns, and the value appears
+	// on the contact's row (Multi joined with "; ").
+	assert.Contains(t, body, "Pronouns")
+	assert.Contains(t, body, "Internal Note")
+	assert.Contains(t, body, "she/her; they/them")
+}
+
+func TestSerializeFieldValueForCSV(t *testing.T) {
+	tests := []struct {
+		name string
+		raw  json.RawMessage
+		want string
+	}{
+		{"empty bytes", json.RawMessage{}, ""},
+		{"json null", json.RawMessage(`null`), ""},
+		{"plain string", json.RawMessage(`"hello"`), "hello"},
+		{"empty string", json.RawMessage(`""`), ""},
+		{"integer number", json.RawMessage(`42`), "42"},
+		{"float number", json.RawMessage(`3.14`), "3.14"},
+		{"boolean true", json.RawMessage(`true`), "true"},
+		{"boolean false", json.RawMessage(`false`), "false"},
+		{"multi empty array", json.RawMessage(`[]`), ""},
+		{"multi string array", json.RawMessage(`["she/her","they/them"]`), "she/her; they/them"},
+		{"multi nested mixed", json.RawMessage(`["ok",42,true]`), "ok; 42; true"},
+		{"unexpected object falls back to raw", json.RawMessage(`{"x":1}`), `{"x":1}`},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := serializeFieldValueForCSV(tc.raw)
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}
+
 func TestExportDataEmpty(t *testing.T) {
 	_, router := setupRouter()
 
@@ -650,4 +736,195 @@ func TestExportContactsAsJSContact_PhotoBridging(t *testing.T) {
 		}
 	}
 	assert.True(t, found, "expected a media entry with kind=photo and the actual embedded photo data, got media=%v", media)
+}
+
+// --- WP-97 / T9 selective export (sections= + include_sensitive=) ---
+
+// The ?sections= field picker must actually narrow a vCard export, and an
+// absent param must preserve the pre-T9 all-sections behavior.
+func TestExportContactsAsVCF_SectionsFilter(t *testing.T) {
+	db, router := setupRouter()
+	registerVCFRoute(router, "")
+
+	var user models.User
+	db.First(&user)
+	db.Create(&models.Contact{UserID: user.ID, Firstname: "Alice", Lastname: "Anderson", Email: "alice@example.com", Phone: "555-0100"})
+
+	// No sections param -> everything (backward compat).
+	req, _ := http.NewRequest("GET", "/export/vcf", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "EMAIL")
+	assert.Contains(t, w.Body.String(), "TEL")
+
+	// sections=emails -> EMAIL kept, TEL dropped.
+	req, _ = http.NewRequest("GET", "/export/vcf?sections=emails", nil)
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+	body := w.Body.String()
+	assert.Contains(t, body, "EMAIL")
+	assert.NotContains(t, body, "TEL", "deselected phones must be omitted from the vCard")
+	assert.Contains(t, body, "Alice", "identity data is always exported")
+}
+
+// An unknown section token is an explicit 400, not a silent narrowing.
+func TestExportContactsAsVCF_UnknownSection_BadRequest(t *testing.T) {
+	db, router := setupRouter()
+	registerVCFRoute(router, "")
+
+	var user models.User
+	db.First(&user)
+	db.Create(&models.Contact{UserID: user.ID, Firstname: "Alice", Lastname: "Anderson"})
+
+	req, _ := http.NewRequest("GET", "/export/vcf?sections=emails,bogus_section", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+// The §91.13 opt-in override flows through the HTTP surface: a secret edge is
+// absent by default and present only with ?include_sensitive=true.
+func TestExportContactsAsVCF_IncludeSensitiveOptIn(t *testing.T) {
+	db, router := setupRouter()
+	registerVCFRoute(router, "")
+
+	var user models.User
+	db.First(&user)
+	alice := models.Contact{UserID: user.ID, Firstname: "Alice", Lastname: "Anderson"}
+	bob := models.Contact{UserID: user.ID, Firstname: "Bob", Lastname: "Brown"}
+	db.Create(&alice)
+	db.Create(&bob)
+	require.NoError(t, db.Create(&models.RelationshipEdge{
+		UserID:      user.ID,
+		SourceID:    alice.VCardUID,
+		TargetID:    bob.VCardUID,
+		Type:        "spouse_of",
+		Source:      models.RelationshipSourceUserConfirmed,
+		Confidence:  1.0,
+		Status:      models.RelationshipStatusConfirmed,
+		Sensitivity: models.RelationshipSensitivitySecret,
+	}).Error)
+
+	// Default (even with related_to selected): secret edge stays out.
+	req, _ := http.NewRequest("GET", "/export/vcf?sections=related_to", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.NotContains(t, w.Body.String(), "RELATED", "checking a section is not enough to export a sensitive edge")
+
+	// Explicit opt-in: the edge projects.
+	req, _ = http.NewRequest("GET", "/export/vcf?sections=related_to&include_sensitive=true", nil)
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "RELATED", "include_sensitive=true must project the secret edge")
+}
+
+// The same picker applies to the JSContact export handler.
+func TestExportContactsAsJSContact_SectionsFilter(t *testing.T) {
+	db, router := setupRouter()
+	registerJSContactRoute(router, "")
+
+	var user models.User
+	db.First(&user)
+	db.Create(&models.Contact{UserID: user.ID, Firstname: "Alice", Lastname: "Anderson", Email: "alice@example.com", Phone: "555-0100"})
+
+	req, _ := http.NewRequest("GET", "/export/jscontact?sections=emails", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var cards []map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &cards))
+	require.Len(t, cards, 1)
+	assert.Contains(t, cards[0], "emails")
+	_, phonesPresent := cards[0]["phones"]
+	assert.False(t, phonesPresent, "deselected phones must be omitted from the JSContact export")
+	_, namePresent := cards[0]["name"]
+	assert.True(t, namePresent, "identity name is always exported")
+}
+
+// parseExportFieldSelection accepts include_sensitive=1 as the numeric
+// equivalent of true — a single-character concession that matches the
+// "true"/"1" pair already used by the boolean-flag endpoints elsewhere in
+// the codebase (e.g. reminder "by_mail").
+func TestExportContactsAsVCF_IncludeSensitive_OneIsTrue(t *testing.T) {
+	db, router := setupRouter()
+	registerVCFRoute(router, "")
+
+	var user models.User
+	db.First(&user)
+	alice := models.Contact{UserID: user.ID, Firstname: "Alice", Lastname: "Anderson"}
+	bob := models.Contact{UserID: user.ID, Firstname: "Bob", Lastname: "Brown"}
+	db.Create(&alice)
+	db.Create(&bob)
+	require.NoError(t, db.Create(&models.RelationshipEdge{
+		UserID:      user.ID,
+		SourceID:    alice.VCardUID,
+		TargetID:    bob.VCardUID,
+		Type:        "spouse_of",
+		Source:      models.RelationshipSourceUserConfirmed,
+		Confidence:  1.0,
+		Status:      models.RelationshipStatusConfirmed,
+		Sensitivity: models.RelationshipSensitivitySecret,
+	}).Error)
+
+	req, _ := http.NewRequest("GET", "/export/vcf?sections=related_to&include_sensitive=1", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "RELATED", "include_sensitive=1 must project the secret edge")
+}
+
+// include_sensitive=true on its own (no ?sections=) implies all sections, and
+// the sensitive opt-in is still respected.
+func TestExportContactsAsVCF_IncludeSensitive_WithoutSectionsParam(t *testing.T) {
+	db, router := setupRouter()
+	registerVCFRoute(router, "")
+
+	var user models.User
+	db.First(&user)
+	alice := models.Contact{UserID: user.ID, Firstname: "Alice", Lastname: "Anderson", Email: "alice@example.com", Phone: "555-0100"}
+	bob := models.Contact{UserID: user.ID, Firstname: "Bob", Lastname: "Brown"}
+	db.Create(&alice)
+	db.Create(&bob)
+	require.NoError(t, db.Create(&models.RelationshipEdge{
+		UserID:      user.ID,
+		SourceID:    alice.VCardUID,
+		TargetID:    bob.VCardUID,
+		Type:        "spouse_of",
+		Source:      models.RelationshipSourceUserConfirmed,
+		Confidence:  1.0,
+		Status:      models.RelationshipStatusConfirmed,
+		Sensitivity: models.RelationshipSensitivitySecret,
+	}).Error)
+
+	req, _ := http.NewRequest("GET", "/export/vcf?include_sensitive=true", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "RELATED", "include_sensitive=true without sections= must project the secret edge")
+	assert.Contains(t, w.Body.String(), "EMAIL", "absent sections= must default to all sections")
+	assert.Contains(t, w.Body.String(), "TEL")
+}
+
+// An empty ?sections= value is treated identically to the absent param,
+// preserving the pre-T9 all-sections default.
+func TestExportContactsAsVCF_EmptySectionsParam_AllFields(t *testing.T) {
+	db, router := setupRouter()
+	registerVCFRoute(router, "")
+
+	var user models.User
+	db.First(&user)
+	db.Create(&models.Contact{UserID: user.ID, Firstname: "Alice", Lastname: "Anderson", Email: "alice@example.com", Phone: "555-0100"})
+
+	req, _ := http.NewRequest("GET", "/export/vcf?sections=", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "EMAIL", "empty sections= must default to all sections")
+	assert.Contains(t, w.Body.String(), "TEL")
+	assert.Contains(t, w.Body.String(), "Alice", "identity data is always exported")
 }

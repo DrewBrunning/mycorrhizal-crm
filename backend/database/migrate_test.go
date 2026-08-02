@@ -1,10 +1,13 @@
 package database
 
 import (
+	"database/sql"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -135,4 +138,83 @@ func TestOpenDSN_PragmasArePresent(t *testing.T) {
 		"openDSN must include the foreign_keys pragma")
 	assert.True(t, strings.HasPrefix(dsn, "/path/to/db.sqlite?"),
 		"openDSN must preserve the db path as the DSN prefix")
+}
+
+// newMigrateForTest wires a golang-migrate instance over the same embed.FS
+// and driver RunMigrations uses, so a test can stop the chain partway
+// (m.Migrate(40)) to insert rows exactly as they existed before a
+// migration, then resume (m.Up()).
+func newMigrateForTest(t *testing.T, dbPath string) (*migrate.Migrate, *sql.DB) {
+	t.Helper()
+
+	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, sqlDB.Close()) })
+
+	driver, err := withInstance(sqlDB, &sqliteConfig{})
+	require.NoError(t, err)
+
+	sourceDriver, err := iofs.New(migrationsFS, "migrations")
+	require.NoError(t, err)
+
+	m, err := migrate.NewWithInstance("iofs", sourceDriver, "sqlite", driver)
+	require.NoError(t, err)
+	return m, sqlDB
+}
+
+// TestMigration000041_BackfillsETag is the regression test for T12a's
+// backfill requirement (docs/fork-plan/tickets/14-T12a-etag-primitives.md),
+// mirroring 000030's own backfill precedent for activities.uuid: a row that
+// predates the migration (here simulated by stopping the chain at 000040,
+// inserting rows, then resuming) must come out of the migration with an
+// ETag derived from its own id + updated_at — not wait for its next write —
+// or CalDAV clients (T12b) cannot cache pre-existing resources.
+func TestMigration000041_BackfillsETag(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "etag-backfill.db")
+	m, sqlDB := newMigrateForTest(t, dbPath)
+
+	// Apply everything through 000040 so the rows below are inserted into
+	// tables that have not yet seen the etag columns.
+	require.NoError(t, m.Migrate(40))
+
+	_, err := sqlDB.Exec(
+		"INSERT INTO users (created_at, updated_at, username, email, password) VALUES (datetime('now'), datetime('now'), 'u', 'u@example.com', 'x')",
+	)
+	require.NoError(t, err)
+	var userID int64
+	require.NoError(t, sqlDB.QueryRow("SELECT id FROM users WHERE username = 'u'").Scan(&userID))
+
+	// Pre-migration rows with fixed updated_at timestamps (the backfill must
+	// key each ETag off its own row, not a shared value).
+	_, err = sqlDB.Exec(
+		"INSERT INTO activities (created_at, updated_at, title, date, user_id) VALUES ('2026-01-01 09:00:00', '2026-01-02 15:04:05', 'Coffee', '2026-01-02 15:00:00', ?)",
+		userID,
+	)
+	require.NoError(t, err)
+	var activityID int64
+	require.NoError(t, sqlDB.QueryRow("SELECT id FROM activities WHERE title = 'Coffee'").Scan(&activityID))
+
+	_, err = sqlDB.Exec(
+		"INSERT INTO life_events (id, created_at, updated_at, user_id, entity_id, type) VALUES ('evt-1', '2026-01-01 09:00:00', '2026-01-03 10:11:12', ?, 'entity-1', 'graduated')",
+		userID,
+	)
+	require.NoError(t, err)
+
+	// Resume the chain: 000041 adds the columns and backfills them.
+	require.NoError(t, m.Up())
+
+	// The backfill's output must equal the same 'e-{id}-{updated_at_unix}'
+	// derivation the migration itself ran and the model's AfterCreate/
+	// AfterSave hooks produce, computed against the same stored updated_at.
+	var activityETag, activityExpected string
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT etag, 'e-' || id || '-' || CAST(strftime('%s', updated_at) AS TEXT) FROM activities WHERE id = ?", activityID,
+	).Scan(&activityETag, &activityExpected))
+	assert.Equal(t, activityExpected, activityETag, "a pre-existing Activity must come out of the migration backfilled")
+
+	var eventETag, eventExpected string
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT etag, 'e-' || id || '-' || CAST(strftime('%s', updated_at) AS TEXT) FROM life_events WHERE id = 'evt-1'",
+	).Scan(&eventETag, &eventExpected))
+	assert.Equal(t, eventExpected, eventETag, "a pre-existing LifeEvent (UUID PK) must come out of the migration backfilled")
 }

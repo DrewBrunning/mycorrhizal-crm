@@ -115,9 +115,6 @@ type Contact struct {
 	VCardExtra string `gorm:"column:vcard_extra" json:"-"`     // JSON for unmapped vCard properties
 	ETag       string `gorm:"column:etag" json:"-"`            // Sync conflict detection
 
-	// Custom fields (user-defined string fields)
-	CustomFields map[string]string `gorm:"type:text;serializer:json" json:"custom_fields"`
-
 	Archived bool `gorm:"default:false" json:"archived"`
 
 	// Neutral RFC 9553/9554/9555 representation (WP-70, P1 — see
@@ -266,6 +263,9 @@ func (c *Contact) AfterCreate(tx *gorm.DB) error {
 }
 
 func (c *Contact) AfterSave(tx *gorm.DB) error {
+	if c.ID == 0 {
+		return nil
+	}
 	newETag := fmt.Sprintf("e-%d-%d", c.ID, c.UpdatedAt.Unix())
 	if newETag != c.ETag {
 		c.ETag = newETag

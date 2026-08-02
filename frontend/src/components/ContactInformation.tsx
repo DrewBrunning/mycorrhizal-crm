@@ -11,7 +11,6 @@ import BadgeIcon from '@mui/icons-material/Badge';
 import LanguageIcon from '@mui/icons-material/Language';
 import ChatIcon from '@mui/icons-material/Chat';
 import NotesIcon from '@mui/icons-material/Notes';
-import ClearAllIcon from '@mui/icons-material/ClearAll';
 import PeopleIcon from '@mui/icons-material/People';
 import AddIcon from '@mui/icons-material/Add';
 import { useTranslation } from 'react-i18next';
@@ -22,9 +21,11 @@ import AddressFields from './AddressFields';
 import RelationshipEdgeList from './RelationshipEdgeList';
 import LifeEventList from './LifeEventList';
 import PreferenceList from './PreferenceList';
+import CustomFieldValueRow from './CustomFieldValueRow';
 import { RelationshipEdge } from '../api/relationshipEdges';
 import { LifeEvent } from '../api/lifeEvents';
 import { Preference } from '../api/preferences';
+import { FieldDefinition } from '../api/fieldDefinitions';
 import {
   Card as CardModel,
   CRMEnvelope,
@@ -81,8 +82,10 @@ interface ContactInformationProps {
   onAddPreference?: () => void;
   onEditPreference?: (preference: Preference) => void;
   onDeletePreference?: (id: string) => void;
-  // Custom fields
-  customFieldNames?: string[];
+  // Custom fields (v2, T6/T7)
+  fieldDefinitions?: FieldDefinition[];
+  fieldValuesByDefinition?: Map<string, unknown>;
+  onSaveFieldValue?: (definitionId: string, value: unknown) => Promise<void>;
 }
 
 const iconSx = { mr: 1, color: 'text.secondary', fontSize: '1.2rem' };
@@ -118,7 +121,9 @@ export default function ContactInformation({
   onAddPreference,
   onEditPreference,
   onDeletePreference,
-  customFieldNames = [],
+  fieldDefinitions = [],
+  fieldValuesByDefinition,
+  onSaveFieldValue,
 }: ContactInformationProps) {
   const { t } = useTranslation();
   const { formatBirthday, getBirthdayPlaceholder, calculateAge } = useDateFormat();
@@ -402,22 +407,14 @@ export default function ContactInformation({
               />
             )}
 
-            {/* Custom Fields */}
-            {customFieldNames.map((fieldName) => (
-              <EditableField
-                key={`custom_field_${fieldName}`}
-                icon={<ClearAllIcon sx={{ ...iconSx, mt: 0.5 }} />}
-                label={fieldName}
-                field={`custom_field_${fieldName}`}
-                value={crm.custom_fields?.[fieldName] || ''}
-                multiline
-                isEditing={editingField === `custom_field_${fieldName}`}
-                editValue={editValue}
-                validationError={validationError}
-                onEditStart={onEditStart}
-                onEditCancel={onEditCancel}
-                onEditSave={onEditSave}
-                onEditValueChange={onEditValueChange}
+            {/* Custom Fields (v2, T6/T7): one row per FieldDefinition, rendered
+                per type by CustomFieldValueRow. */}
+            {fieldDefinitions.map((definition) => (
+              <CustomFieldValueRow
+                key={definition.id}
+                definition={definition}
+                value={fieldValuesByDefinition?.get(definition.id)}
+                onSave={onSaveFieldValue || (() => Promise.resolve())}
               />
             ))}
           </Stack>

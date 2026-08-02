@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Box,
@@ -6,11 +6,10 @@ import {
   CardContent,
   Typography,
   Divider,
-  TextField,
   Button,
   Stack,
   Alert,
-  IconButton,
+  Chip,
   List,
   ListItem,
   ListItemText,
@@ -22,106 +21,63 @@ import {
 } from '@mui/material';
 import TuneIcon from '@mui/icons-material/Tune';
 import AddIcon from '@mui/icons-material/Add';
+import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
-import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
-import { getCustomFieldNames, updateCustomFieldNames } from '../api/users';
+import { useSnackbar } from '../context/SnackbarContext';
+import { useFieldDefinitions } from '../hooks/useFieldDefinitions';
+import { FieldDefinition, FieldDefinitionInput } from '../api/fieldDefinitions';
+import FieldDefinitionDialog from './FieldDefinitionDialog';
 
+// T7's replacement for the v1 CustomFieldsSettings (which edited a plain list
+// of names via /users/custom-fields). v2 definitions carry a type,
+// constraints, sensitivity, and standards-projection target, so this is now a
+// typed-definition manager: create/edit/delete a FieldDefinition.
 export default function CustomFieldsSettings() {
   const { t } = useTranslation();
-  const [fieldNames, setFieldNames] = useState<string[]>([]);
-  const [newFieldName, setNewFieldName] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [fieldToDelete, setFieldToDelete] = useState<number | null>(null);
+  const { showSuccess } = useSnackbar();
+  const { definitions, loading, error, handleCreate, handleUpdate, handleDelete } = useFieldDefinitions();
 
-  useEffect(() => {
-    const loadCustomFieldNames = async () => {
-      try {
-        setLoading(true);
-        const names = await getCustomFieldNames();
-        setFieldNames(names);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : t('settings.customFields.loadError'));
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadCustomFieldNames();
-  }, [t]);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingDefinition, setEditingDefinition] = useState<FieldDefinition | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<FieldDefinition | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
-  const saveFields = async (newNames: string[]) => {
-    try {
-      setSaving(true);
-      setError('');
-      const savedNames = await updateCustomFieldNames(newNames);
-      setFieldNames(savedNames);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('settings.customFields.saveError'));
-    } finally {
-      setSaving(false);
-    }
+  const openCreate = () => {
+    setEditingDefinition(null);
+    setDialogOpen(true);
   };
 
-  const handleAddField = async () => {
-    const trimmedName = newFieldName.trim();
-    if (!trimmedName) return;
-
-    // Check for duplicates (case-insensitive)
-    if (fieldNames.some(name => name.toLowerCase() === trimmedName.toLowerCase())) {
-      setError(t('settings.customFields.duplicateError'));
-      return;
-    }
-
-    const newNames = [...fieldNames, trimmedName];
-    setFieldNames(newNames);
-    setNewFieldName('');
-    setError('');
-    await saveFields(newNames);
+  const openEdit = (def: FieldDefinition) => {
+    setEditingDefinition(def);
+    setDialogOpen(true);
   };
 
-  const handleDeleteClick = (index: number) => {
-    setFieldToDelete(index);
-    setDeleteDialogOpen(true);
+  const handleSave = async (input: FieldDefinitionInput) => {
+    if (editingDefinition) {
+      await handleUpdate(editingDefinition.id, input);
+      showSuccess(t('customFields.updateSuccess'));
+    } else {
+      await handleCreate(input);
+      showSuccess(t('customFields.createSuccess'));
+    }
   };
 
   const handleDeleteConfirm = async () => {
-    if (fieldToDelete !== null) {
-      const newNames = fieldNames.filter((_, i) => i !== fieldToDelete);
-      setFieldNames(newNames);
-      setDeleteDialogOpen(false);
-      setFieldToDelete(null);
-      await saveFields(newNames);
-    } else {
-      setDeleteDialogOpen(false);
-      setFieldToDelete(null);
+    if (!deleteTarget) return;
+    setDeleteBusy(true);
+    try {
+      await handleDelete(deleteTarget.id);
+      showSuccess(t('customFields.deleteSuccess'));
+      setDeleteTarget(null);
+    } catch (err) {
+      // error surfaced by the hook's notifier path; keep the dialog open
+      setDeleteTarget(null);
+    } finally {
+      setDeleteBusy(false);
     }
   };
 
-  const handleMoveUp = async (index: number) => {
-    if (index === 0) return;
-    const newNames = [...fieldNames];
-    [newNames[index - 1], newNames[index]] = [newNames[index], newNames[index - 1]];
-    setFieldNames(newNames);
-    await saveFields(newNames);
-  };
-
-  const handleMoveDown = async (index: number) => {
-    if (index === fieldNames.length - 1) return;
-    const newNames = [...fieldNames];
-    [newNames[index], newNames[index + 1]] = [newNames[index + 1], newNames[index]];
-    setFieldNames(newNames);
-    await saveFields(newNames);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleAddField();
-    }
-  };
+  const sensitivityColor = (s: string) => (s === 'secret' ? 'error' : s === 'private' ? 'warning' : 'default');
 
   return (
     <>
@@ -148,43 +104,52 @@ export default function CustomFieldsSettings() {
               </Typography>
             ) : (
               <>
-                {fieldNames.length > 0 ? (
+                {definitions.length > 0 ? (
                   <List dense sx={{ py: 0 }}>
-                    {fieldNames.map((name, index) => (
+                    {definitions.map((def) => (
                       <ListItem
-                        key={index}
+                        key={def.id}
                         sx={{ px: 0 }}
                         secondaryAction={
                           <>
-                            <IconButton
+                            <Button
                               size="small"
-                              onClick={() => handleMoveUp(index)}
-                              disabled={saving || index === 0}
-                              aria-label={t('settings.customFields.moveUp')}
+                              startIcon={<EditIcon fontSize="small" />}
+                              onClick={() => openEdit(def)}
                             >
-                              <ArrowUpwardIcon fontSize="small" />
-                            </IconButton>
-                            <IconButton
+                              {t('common.edit')}
+                            </Button>
+                            <Button
                               size="small"
-                              onClick={() => handleMoveDown(index)}
-                              disabled={saving || index === fieldNames.length - 1}
-                              aria-label={t('settings.customFields.moveDown')}
-                            >
-                              <ArrowDownwardIcon fontSize="small" />
-                            </IconButton>
-                            <IconButton
-                              size="small"
-                              onClick={() => handleDeleteClick(index)}
-                              disabled={saving}
-                              aria-label={t('settings.customFields.delete')}
                               color="error"
+                              startIcon={<DeleteIcon fontSize="small" />}
+                              onClick={() => setDeleteTarget(def)}
                             >
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
+                              {t('common.delete')}
+                            </Button>
                           </>
                         }
                       >
-                        <ListItemText primary={name} />
+                        <ListItemText
+                          primary={def.label}
+                          secondary={
+                            <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mt: 0.5 }}>
+                              <Chip label={t(`customFields.types.${def.type}`)} size="small" variant="outlined" />
+                              {def.constraints?.multi && (
+                                <Chip label={t('customFields.multiShort')} size="small" variant="outlined" />
+                              )}
+                              <Chip
+                                label={t(`customFields.sensitivity${def.sensitivity.charAt(0).toUpperCase()}${def.sensitivity.slice(1)}`)}
+                                size="small"
+                                color={sensitivityColor(def.sensitivity)}
+                                variant="outlined"
+                              />
+                              {def.projection !== 'internal-only' && (
+                                <Chip label={def.projection} size="small" variant="outlined" />
+                              )}
+                            </Box>
+                          }
+                        />
                       </ListItem>
                     ))}
                   </List>
@@ -194,24 +159,8 @@ export default function CustomFieldsSettings() {
                   </Typography>
                 )}
 
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <TextField
-                    size="small"
-                    placeholder={t('settings.customFields.newFieldPlaceholder')}
-                    value={newFieldName}
-                    onChange={(e) => setNewFieldName(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    disabled={saving}
-                    sx={{ flexGrow: 1 }}
-                    slotProps={{ htmlInput: { maxLength: 100 } }}
-                  />
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    startIcon={<AddIcon />}
-                    onClick={handleAddField}
-                    disabled={saving || !newFieldName.trim()}
-                  >
+                <Box>
+                  <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={openCreate}>
                     {t('settings.customFields.add')}
                   </Button>
                 </Box>
@@ -221,20 +170,27 @@ export default function CustomFieldsSettings() {
         </CardContent>
       </Card>
 
-      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+      <FieldDefinitionDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        onSave={handleSave}
+        definition={editingDefinition}
+      />
+
+      <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)}>
         <DialogTitle>{t('settings.customFields.deleteDialog.title')}</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            {t('settings.customFields.deleteDialog.message', { 
-              fieldName: fieldToDelete !== null ? fieldNames[fieldToDelete] : '' 
+            {t('settings.customFields.deleteDialog.message', {
+              fieldName: deleteTarget?.label || '',
             })}
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>
+          <Button onClick={() => setDeleteTarget(null)} disabled={deleteBusy}>
             {t('settings.customFields.deleteDialog.cancel')}
           </Button>
-          <Button onClick={handleDeleteConfirm} color="error" autoFocus>
+          <Button onClick={handleDeleteConfirm} color="error" disabled={deleteBusy} autoFocus>
             {t('settings.customFields.deleteDialog.confirm')}
           </Button>
         </DialogActions>

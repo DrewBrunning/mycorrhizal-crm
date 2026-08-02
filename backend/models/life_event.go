@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"time"
 
 	"mycorrhizal/contactmodel"
@@ -78,6 +79,14 @@ type LifeEvent struct {
 	// generation (T5b). Only meaningful when Date has month/day — year-only
 	// events have nothing to anchor a yearly recurrence to.
 	Remind bool `gorm:"default:false" json:"remind,omitempty"`
+
+	// ETag is the CalDAV sync-conflict token for this LifeEvent (T12a), same
+	// role Contact.ETag plays for vCards. Explicit gorm column tag is
+	// mandatory: without it GORM derives `e_tag` while migration 000041 names
+	// the column `etag` — the exact silent mismatch that shipped broken for
+	// ContactSyncLink.ETag and killed CardDAV incremental sync. Generated in
+	// AfterCreate/AfterSave from the UUID string PK + UpdatedAt (see below).
+	ETag string `gorm:"column:etag" json:"-"`
 }
 
 // BeforeCreate generates a UUID for new LifeEvents, mirroring Household's own
@@ -85,6 +94,39 @@ type LifeEvent struct {
 func (l *LifeEvent) BeforeCreate(tx *gorm.DB) error {
 	if l.ID == "" {
 		l.ID = uuid.New().String()
+	}
+	return nil
+}
+
+// AfterCreate assigns the initial ETag now that ID/UpdatedAt are persisted,
+// mirroring Contact.AfterCreate (contact.go). LifeEvent's PK is a UUID
+// string (not gorm.Model's uint), so the ETag is derived from that ID.
+// UpdateColumn bypasses GORM's update hooks, so this cannot recursively
+// trigger AfterSave.
+func (l *LifeEvent) AfterCreate(tx *gorm.DB) error {
+	l.ETag = fmt.Sprintf("e-%s-%d", l.ID, l.UpdatedAt.Unix())
+	return tx.Model(l).UpdateColumn("etag", l.ETag).Error
+}
+
+// AfterSave refreshes the ETag on a real change only, exactly like
+// Contact.AfterSave: recompute the would-be value from the persisted
+// ID/UpdatedAt, and only write it back via UpdateColumn (no hook loop) when
+// it actually differs from what's stored.
+//
+// Guard: a zero-value ID means this hook fired on a bulk
+// Model(&LifeEvent{}).Where(...).Update/Updates call, not on a real row —
+// e.g. contact merge's entity_id repoint (contact_merge_service.go). The
+// receiver has no primary key, so UpdateColumn would widen to every row in
+// the table. Never derive/write an ETag in that case (the caller is
+// responsible for load-then-save updates that should refresh ETags).
+func (l *LifeEvent) AfterSave(tx *gorm.DB) error {
+	if l.ID == "" {
+		return nil
+	}
+	newETag := fmt.Sprintf("e-%s-%d", l.ID, l.UpdatedAt.Unix())
+	if newETag != l.ETag {
+		l.ETag = newETag
+		return tx.Model(l).UpdateColumn("etag", l.ETag).Error
 	}
 	return nil
 }

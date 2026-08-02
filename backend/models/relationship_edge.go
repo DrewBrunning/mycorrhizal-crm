@@ -88,7 +88,7 @@ type RelationshipEdge struct {
 	// mechanism that lets a small, stable Type vocabulary express real-world
 	// variety without a new token per nuance. First map[string]interface{}
 	// JSON column in this codebase; uses the same gorm serializer mechanism
-	// as the first typed one, Contact.CustomFields (models/contact.go).
+	// as FieldConstraints (models/field_definition.go).
 	Metadata map[string]interface{} `gorm:"type:text;serializer:json" json:"metadata,omitempty"`
 
 	// Source is provenance: how this edge came to exist. Confidence is 0-1;
