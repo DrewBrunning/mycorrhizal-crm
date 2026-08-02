@@ -3,6 +3,7 @@ package photostore
 import (
 	"bytes"
 	"encoding/base64"
+	"image"
 	"image/jpeg"
 	"net/url"
 	"os"
@@ -278,5 +279,214 @@ func TestFetchPhotoFromURL_RejectsUnparsableURL(t *testing.T) {
 	}
 	if _, _, err := FetchPhotoFromURL("http://\x7f"); err == nil {
 		t.Error("expected an unparsable URL to be rejected")
+	}
+}
+
+// --- DecodePhotoURI ---
+
+func TestDecodePhotoURI_EmptyValue(t *testing.T) {
+	data, mediaType, url := DecodePhotoURI("", "")
+	if data != nil || mediaType != "" || url != "" {
+		t.Errorf("DecodePhotoURI(\"\") = (%v, %q, %q), want all zero", data, mediaType, url)
+	}
+}
+
+func TestDecodePhotoURI_HTTPURLWithMediaTypeHint(t *testing.T) {
+	data, mediaType, photoURL := DecodePhotoURI("https://example.com/photo.jpg", "image/jpeg")
+	if data != nil {
+		t.Error("expected nil data for an HTTP URL")
+	}
+	if photoURL != "https://example.com/photo.jpg" {
+		t.Errorf("photoURL = %q, want https://example.com/photo.jpg", photoURL)
+	}
+	if mediaType != "image/jpeg" {
+		t.Errorf("mediaType = %q, want image/jpeg (media type hint passed through)", mediaType)
+	}
+}
+
+func TestDecodePhotoURI_HTTPURLWithWhitespaceStripping(t *testing.T) {
+	// Simulates Google VCF format with embedded whitespace.
+	dirty := "https://example.com/pho\r\nto.jpg"
+	data, _, photoURL := DecodePhotoURI(dirty, "")
+	if data != nil {
+		t.Error("expected nil data for a whitespace-cleaned HTTP URL")
+	}
+	if photoURL != "https://example.com/photo.jpg" {
+		t.Errorf("photoURL = %q, want whitespace-stripped https://example.com/photo.jpg", photoURL)
+	}
+}
+
+func TestDecodePhotoURI_RawBase64WithMediaTypeHint(t *testing.T) {
+	pngData := decodeTestPNG(t)
+	b64 := base64.StdEncoding.EncodeToString(pngData)
+
+	data, mediaType, photoURL := DecodePhotoURI(b64, "image/png")
+	if photoURL != "" {
+		t.Errorf("photoURL = %q, want empty for raw base64", photoURL)
+	}
+	if mediaType != "image/png" {
+		t.Errorf("mediaType = %q, want image/png from mediaTypeHint", mediaType)
+	}
+	if !bytes.Equal(data, pngData) {
+		t.Error("decoded data does not match the original PNG bytes")
+	}
+}
+
+func TestDecodePhotoURI_DataURIWithMediaTypeExtraction(t *testing.T) {
+	pngData := decodeTestPNG(t)
+	uri := "data:image/png;base64," + base64.StdEncoding.EncodeToString(pngData)
+
+	data, mediaType, photoURL := DecodePhotoURI(uri, "")
+	if photoURL != "" {
+		t.Errorf("photoURL = %q, want empty for data: URI", photoURL)
+	}
+	if mediaType != "image/png" {
+		t.Errorf("mediaType = %q, want image/png from data: URI prefix", mediaType)
+	}
+	if !bytes.Equal(data, pngData) {
+		t.Error("decoded data does not match original bytes embedded in data: URI")
+	}
+}
+
+func TestDecodePhotoURI_DataURIPrefersMediaTypeHintOverEmbedded(t *testing.T) {
+	pngData := decodeTestPNG(t)
+	uri := "data:image/png;base64," + base64.StdEncoding.EncodeToString(pngData)
+
+	// When mediaTypeHint is provided, it should take precedence over the
+	// data URI's embedded media type.
+	data, mediaType, _ := DecodePhotoURI(uri, "image/jpeg")
+	if mediaType != "image/jpeg" {
+		t.Errorf("mediaType = %q, want image/jpeg from hint (takes precedence)", mediaType)
+	}
+	if !bytes.Equal(data, pngData) {
+		t.Error("decoded data does not match original bytes")
+	}
+}
+
+func TestDecodePhotoURI_InvalidBase64(t *testing.T) {
+	// Raw string that is not valid base64 — must return nil data, not an error.
+	data, mediaType, photoURL := DecodePhotoURI("!!!not-valid-base64!!!", "image/png")
+	if data != nil {
+		t.Errorf("expected nil data for invalid base64, got %v", data)
+	}
+	if mediaType != "" || photoURL != "" {
+		t.Errorf("expected empty mediaType/photoURL for invalid base64, got (%q, %q)", mediaType, photoURL)
+	}
+}
+
+func TestDecodePhotoURI_MalformedDataURI(t *testing.T) {
+	// A data: URI with no comma separator — SplitN returns one part.
+	data, _, _ := DecodePhotoURI("data:bare-no-comma", "")
+	if data != nil {
+		t.Error("expected nil data for a data URI with no comma separator")
+	}
+}
+
+// --- cropToSquare ---
+
+func TestCropToSquare_AlreadySquare(t *testing.T) {
+	img := image.NewRGBA(image.Rect(0, 0, 100, 100))
+	result := cropToSquare(img)
+	bounds := result.Bounds()
+	if bounds.Dx() != 100 || bounds.Dy() != 100 {
+		t.Errorf("cropToSquare(square) = %dx%d, want 100x100", bounds.Dx(), bounds.Dy())
+	}
+}
+
+func TestCropToSquare_WiderThanTall(t *testing.T) {
+	// 200x100 — should crop to 100x100 centered horizontally.
+	img := image.NewRGBA(image.Rect(0, 0, 200, 100))
+	result := cropToSquare(img)
+	bounds := result.Bounds()
+	if bounds.Dx() != 100 || bounds.Dy() != 100 {
+		t.Errorf("cropToSquare(200x100) = %dx%d, want 100x100", bounds.Dx(), bounds.Dy())
+	}
+}
+
+func TestCropToSquare_TallerThanWide(t *testing.T) {
+	// 100x200 — should crop to 100x100 centered vertically.
+	img := image.NewRGBA(image.Rect(0, 0, 100, 200))
+	result := cropToSquare(img)
+	bounds := result.Bounds()
+	if bounds.Dx() != 100 || bounds.Dy() != 100 {
+		t.Errorf("cropToSquare(100x200) = %dx%d, want 100x100", bounds.Dx(), bounds.Dy())
+	}
+}
+
+// --- SaveContactPhoto: JPEG input and downscale path ---
+
+func TestSaveContactPhoto_JPEGInput(t *testing.T) {
+	dir := t.TempDir()
+
+	var buf bytes.Buffer
+	img := image.NewRGBA(image.Rect(0, 0, 16, 16))
+	if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 85}); err != nil {
+		t.Fatalf("failed to encode test JPEG: %v", err)
+	}
+
+	photoPath, thumbnail, err := SaveContactPhoto(buf.Bytes(), "image/jpeg", dir)
+	if err != nil {
+		t.Fatalf("SaveContactPhoto(jpeg) returned error: %v", err)
+	}
+	if photoPath == "" {
+		t.Fatal("expected a non-empty photo path")
+	}
+	if !strings.HasPrefix(thumbnail, "data:image/jpeg;base64,") {
+		t.Errorf("thumbnail = %q, want a data:image/jpeg;base64, prefix", thumbnail)
+	}
+}
+
+func TestSaveContactPhoto_DownscaleWhenLargerThanMax(t *testing.T) {
+	dir := t.TempDir()
+
+	img := image.NewRGBA(image.Rect(0, 0, 500, 500))
+	var buf bytes.Buffer
+	if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 85}); err != nil {
+		t.Fatalf("failed to encode test JPEG: %v", err)
+	}
+
+	photoPath, _, err := SaveContactPhoto(buf.Bytes(), "image/jpeg", dir)
+	if err != nil {
+		t.Fatalf("SaveContactPhoto(large) returned error: %v", err)
+	}
+
+	fullPath := filepath.Join(dir, photoPath)
+	fileBytes, err := os.ReadFile(fullPath)
+	if err != nil {
+		t.Fatalf("photo was not written to disk: %v", err)
+	}
+	decoded, err := jpeg.Decode(bytes.NewReader(fileBytes))
+	if err != nil {
+		t.Fatalf("saved photo is not a valid JPEG: %v", err)
+	}
+	bounds := decoded.Bounds()
+	if bounds.Dx() > 400 || bounds.Dy() > 400 {
+		t.Errorf("downscaled photo is %dx%d, want at most 400 on each side", bounds.Dx(), bounds.Dy())
+	}
+}
+
+// --- ExtractPhotoData: edge cases ---
+
+func TestExtractPhotoData_EmptyValue(t *testing.T) {
+	field := &vcard.Field{Value: ""}
+	data, mediaType, photoURL := ExtractPhotoData(field)
+	if data != nil || mediaType != "" || photoURL != "" {
+		t.Errorf("ExtractPhotoData with empty Value = (%v, %q, %q), want all zero", data, mediaType, photoURL)
+	}
+}
+
+func TestExtractPhotoData_MEDIATYPEParam(t *testing.T) {
+	data := decodeTestPNG(t)
+	field := &vcard.Field{
+		Value:  base64.StdEncoding.EncodeToString(data),
+		Params: vcard.Params{"MEDIATYPE": []string{"image/png"}},
+	}
+
+	got, mediaType, _ := ExtractPhotoData(field)
+	if mediaType != "image/png" {
+		t.Errorf("mediaType = %q, want image/png (from MEDIATYPE vCard 4 param)", mediaType)
+	}
+	if !bytes.Equal(got, data) {
+		t.Error("decoded photo bytes do not match original PNG data")
 	}
 }

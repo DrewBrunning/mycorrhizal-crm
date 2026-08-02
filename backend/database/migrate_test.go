@@ -3,6 +3,7 @@ package database
 import (
 	"database/sql"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -123,6 +124,20 @@ func TestForeignKeyCascadeDeletesOrphanedChildRows(t *testing.T) {
 	var remaining int64
 	require.NoError(t, db.Table("circle_members").Where("circle_id = 'circle-1'").Count(&remaining).Error)
 	assert.Zero(t, remaining, "circle_members should be auto-cascaded when its parent circle is deleted")
+}
+
+// TestOpenDSN_PragmasArePresent verifies that openDSN appends the two pragmas
+// the app requires for correctness:
+//   - journal_mode(WAL): persisted once set, needed for safe hot-backup.
+//   - foreign_keys(1): per-connection, needed for FK enforcement (Tier 3c item 8).
+func TestOpenDSN_PragmasArePresent(t *testing.T) {
+	dsn := openDSN("/path/to/db.sqlite")
+	assert.True(t, strings.Contains(dsn, "_pragma=journal_mode(WAL)"),
+		"openDSN must include the WAL journal pragma")
+	assert.True(t, strings.Contains(dsn, "_pragma=foreign_keys(1)"),
+		"openDSN must include the foreign_keys pragma")
+	assert.True(t, strings.HasPrefix(dsn, "/path/to/db.sqlite?"),
+		"openDSN must preserve the db path as the DSN prefix")
 }
 
 // newMigrateForTest wires a golang-migrate instance over the same embed.FS
