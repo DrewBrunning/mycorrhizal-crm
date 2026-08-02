@@ -67,6 +67,9 @@ import { useLifeEvents } from './hooks/useLifeEvents';
 import { usePreferences } from './hooks/usePreferences';
 import { useCircles } from './hooks/useCircles';
 import { useTags } from './hooks/useTags';
+import { useFieldDefinitions } from './hooks/useFieldDefinitions';
+import { useContactFieldValues } from './hooks/useFieldDefinitions';
+import { FieldValueInput } from './api/fieldDefinitions';
 import { addCircleMember, removeCircleMember } from './api/circles';
 import { addContactTag, removeContactTag } from './api/tags';
 import { Circle } from './api/circles';
@@ -166,9 +169,6 @@ export default function ContactDetailPage() {
   // Contact merge dialog state (ticket N1)
   const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
 
-  // Custom field names
-  const [customFieldNames, setCustomFieldNames] = useState<string[]>([]);
-
   // Enabled extended contact fields (UI visibility)
   const [enabledFields, setEnabledFields] = useState<Set<ContactFieldKey>>(() => resolveEnabledFields(null));
 
@@ -264,6 +264,29 @@ export default function ContactDetailPage() {
     handleSave: handleSavePreference,
     handleDelete: handleDeletePreference,
   } = usePreferences(record?.uid, { showError });
+
+  // Custom field definitions (user-wide) + this contact's values (T7).
+  const { definitions: fieldDefinitions } = useFieldDefinitions();
+  const {
+    valuesByDefinition: fieldValuesByDefinition,
+    refresh: refreshFieldValues,
+    save: saveFieldValues,
+  } = useContactFieldValues(record?.id);
+
+  const handleSaveFieldValue = async (definitionId: string, value: unknown) => {
+    if (!record) return;
+    const next = new Map(fieldValuesByDefinition);
+    if (value === null || value === undefined) {
+      next.delete(definitionId);
+    } else {
+      next.set(definitionId, value);
+    }
+    const inputs: FieldValueInput[] = [];
+    for (const [defId, v] of next) {
+      if (v !== null && v !== undefined) inputs.push({ field_definition_id: defId, value: v });
+    }
+    await saveFieldValues(inputs);
+  };
 
   const [preferenceDialogOpen, setPreferenceDialogOpen] = useState(false);
   const [editingPreference, setEditingPreference] = useState<Preference | null>(null);
@@ -398,7 +421,6 @@ export default function ContactDetailPage() {
         setNotes(notesData.notes || []);
         setActivities(activitiesData.activities || []);
         setCompletions(completionsData || []);
-        setCustomFieldNames(user?.custom_field_names ?? []);
         setEnabledFields(resolveEnabledFields(user?.enabled_contact_fields ?? null));
 
         // Second batch: refresh reminders and relationship edges in
@@ -411,6 +433,7 @@ export default function ContactDetailPage() {
           refreshReminders(),
           refreshRelationshipEdges(recordData.uid),
           refreshLifeEvents(recordData.uid),
+          refreshFieldValues(recordData.id),
         ]);
 
         // Only fetch profile picture if contact has one (avoid unnecessary 404)
@@ -513,7 +536,6 @@ export default function ContactDetailPage() {
   // which only the current `record` has.
   const buildRecordPatch = (field: string, value: string): { card?: Partial<CardModel>; crm?: Partial<CRMEnvelope> } => {
     const card = record?.card || {};
-    const crm = record?.crm || {};
     switch (field) {
       case 'birthday':
         return { card: { anniversaries: withAnniversary(card.anniversaries, 'birth', value) } };
@@ -542,10 +564,6 @@ export default function ContactDetailPage() {
       case 'contact_information':
         return { crm: { contact_information: value } };
       default:
-        if (field.startsWith('custom_field_')) {
-          const name = field.replace('custom_field_', '');
-          return { crm: { custom_fields: { ...crm.custom_fields, [name]: value } } };
-        }
         return {};
     }
   };
@@ -855,7 +873,9 @@ export default function ContactDetailPage() {
           onAddPreference={handleAddPreference}
           onEditPreference={handleEditPreference}
           onDeletePreference={handlePreferenceDelete}
-          customFieldNames={customFieldNames}
+          fieldDefinitions={fieldDefinitions}
+          fieldValuesByDefinition={fieldValuesByDefinition}
+          onSaveFieldValue={handleSaveFieldValue}
         />
 
         {/* Timeline and Reminders Tabs */}

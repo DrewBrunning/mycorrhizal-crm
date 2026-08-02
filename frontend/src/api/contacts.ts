@@ -49,7 +49,6 @@ export interface Contact {
   work_information?: string;
   contact_information?: string;
   photo_thumbnail?: string;
-  custom_fields?: Record<string, string>;
   archived?: boolean;
   // Multi-valued vCard fields
   emails?: ContactValue[];
@@ -177,7 +176,6 @@ export interface CRMEnvelope {
   how_we_met?: string;
   work_information?: string;
   contact_information?: string;
-  custom_fields?: Record<string, string>;
 }
 
 export interface ContactRecordInput {
@@ -440,7 +438,6 @@ export function toContactRecordInput(data: Partial<Contact>): ContactRecordInput
       how_we_met: data.how_we_met,
       work_information: data.work_information,
       contact_information: data.contact_information,
-      custom_fields: data.custom_fields,
     },
   };
 }

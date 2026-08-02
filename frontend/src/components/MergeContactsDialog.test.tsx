@@ -87,7 +87,6 @@ test('selecting a target with no conflicts shows the no-conflicts message and en
       merge_id: 1,
       resolution: {
         emails: [], phones: [], addresses: [], urls: [], impps: [], circles: [],
-        custom_fields: {}, resolved_scalars: {}, conflicts: [], field_value_conflicts: [],
       },
       association_counts: emptyAssociationCounts,
     }),
@@ -114,7 +113,6 @@ test('handles a real backend response where empty Go slices serialize as null, n
       merge_id: 1,
       resolution: {
         emails: null, phones: null, addresses: null, urls: null, impps: null, circles: null,
-        custom_fields: null, resolved_scalars: null, conflicts: null, field_value_conflicts: null,
       },
       association_counts: emptyAssociationCounts,
     }),
@@ -135,7 +133,6 @@ test('a scalar conflict keeps merge disabled until resolved', async () => {
       merge_id: 1,
       resolution: {
         emails: [], phones: [], addresses: [], urls: [], impps: [], circles: [],
-        custom_fields: {}, resolved_scalars: {},
         conflicts: [{ field: 'firstname', label: 'First Name', keeper_value: 'Bob', loser_value: 'Robert' }],
         field_value_conflicts: [],
       },
