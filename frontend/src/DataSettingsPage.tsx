@@ -12,10 +12,12 @@ import {
   CircularProgress,
 } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
-import { exportDataAsCsv, exportContactsAsVcf } from './api/export';
+import TuneIcon from '@mui/icons-material/Tune';
+import { exportContacts, exportDataAsCsv, exportContactsAsVcf, ExportFormat, ExportSelection } from './api/export';
 import CustomFieldsSettings from './components/CustomFieldsSettings';
 import ContactFieldSettings from './components/ContactFieldSettings';
 import CalendarSyncSettings from './components/CalendarSyncSettings';
+import ExportFieldPickerDialog from './components/ExportFieldPickerDialog';
 
 export default function DataSettingsPage() {
   const { t } = useTranslation();
@@ -25,6 +27,10 @@ export default function DataSettingsPage() {
   const [exportingVcf, setExportingVcf] = useState(false);
   const [exportVcfError, setExportVcfError] = useState('');
   const [exportVcfSuccess, setExportVcfSuccess] = useState('');
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [customExporting, setCustomExporting] = useState(false);
+  const [customExportError, setCustomExportError] = useState('');
+  const [customExportSuccess, setCustomExportSuccess] = useState('');
 
   const handleExportData = async () => {
     setExportError('');
@@ -55,6 +61,21 @@ export default function DataSettingsPage() {
       setExportVcfError(errorMessage);
     } finally {
       setExportingVcf(false);
+    }
+  };
+
+  const handleCustomExport = async (format: ExportFormat, selection: ExportSelection) => {
+    setCustomExportError('');
+    setCustomExportSuccess('');
+    setCustomExporting(true);
+    try {
+      await exportContacts(format, selection);
+      setCustomExportSuccess(t('settings.exportFieldPicker.success'));
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : t('settings.exportFieldPicker.exportError');
+      setCustomExportError(errorMessage);
+    } finally {
+      setCustomExporting(false);
     }
   };
 
@@ -115,18 +136,37 @@ export default function DataSettingsPage() {
             </Typography>
             {exportVcfError && <Alert severity="error" sx={{ py: 0 }}>{exportVcfError}</Alert>}
             {exportVcfSuccess && <Alert severity="success" sx={{ py: 0 }}>{exportVcfSuccess}</Alert>}
-            <Button
-              variant="contained"
-              size="small"
-              startIcon={exportingVcf ? <CircularProgress size={16} color="inherit" /> : <DownloadIcon />}
-              onClick={handleExportVcf}
-              disabled={exportingVcf}
-            >
-              {exportingVcf ? t('settings.exportVcf.exporting') : t('settings.exportVcf.downloadButton')}
-            </Button>
+            <Stack direction="row" spacing={1}>
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={exportingVcf ? <CircularProgress size={16} color="inherit" /> : <DownloadIcon />}
+                onClick={handleExportVcf}
+                disabled={exportingVcf}
+              >
+                {exportingVcf ? t('settings.exportVcf.exporting') : t('settings.exportVcf.downloadButton')}
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<TuneIcon />}
+                onClick={() => setPickerOpen(true)}
+                disabled={customExporting}
+              >
+                {t('settings.exportFieldPicker.customExportButton')}
+              </Button>
+            </Stack>
+            {customExportError && <Alert severity="error" sx={{ py: 0 }}>{customExportError}</Alert>}
+            {customExportSuccess && <Alert severity="success" sx={{ py: 0 }}>{customExportSuccess}</Alert>}
           </Stack>
         </CardContent>
       </Card>
+
+      <ExportFieldPickerDialog
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onExport={handleCustomExport}
+      />
     </Box>
   );
 }

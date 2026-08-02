@@ -72,12 +72,11 @@ func ComputeContactMergeResolution(keeper, loser *models.Contact) *models.Contac
 	res.URLs = unionURLs(keeper.URLs, loser.URLs)
 	res.IMPPs = unionIMPPs(keeper.IMPPs, loser.IMPPs)
 	res.Circles = unionCircles(keeper.Circles, loser.Circles)
-	res.CustomFields = unionCustomFields(keeper.CustomFields, loser.CustomFields)
 	return res
 }
 
 // ApplyContactMergeResolution mutates keeper in place: every auto-resolved
-// scalar, every unioned multi-valued/Circles/CustomFields field from res,
+// scalar, every unioned multi-valued/Circles field from res,
 // plus (for the conflict set) the caller-supplied resolutions. Does not call
 // db.Save -- the caller does that, inside its own transaction. Returns an
 // error naming the first unresolved conflict field; the controller is
@@ -106,7 +105,6 @@ func ApplyContactMergeResolution(keeper *models.Contact, res *models.ContactMerg
 	keeper.URLs = res.URLs
 	keeper.IMPPs = res.IMPPs
 	keeper.Circles = res.Circles
-	keeper.CustomFields = res.CustomFields
 	return nil
 }
 
@@ -241,22 +239,6 @@ func unionCircles(a, b []string) []string {
 	}
 	for _, s := range b {
 		add(s)
-	}
-	return out
-}
-
-// unionCustomFields unions the map; keeper wins on key collision (loser's
-// map is copied first, then keeper's overwrites it).
-func unionCustomFields(keeper, loser map[string]string) map[string]string {
-	if len(keeper) == 0 && len(loser) == 0 {
-		return nil
-	}
-	out := make(map[string]string, len(keeper)+len(loser))
-	for k, v := range loser {
-		out[k] = v
-	}
-	for k, v := range keeper {
-		out[k] = v
 	}
 	return out
 }

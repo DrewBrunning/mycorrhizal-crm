@@ -306,7 +306,6 @@ func fullCRMEnvelope() CRMEnvelope {
 		HowWeMet:           "University",
 		WorkInformation:    "Mathematician",
 		ContactInformation: "Prefers email",
-		CustomFields:       map[string]string{"favorite_color": "blue"},
 	}
 }
 

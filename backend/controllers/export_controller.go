@@ -13,6 +13,7 @@ import (
 	"mycorrhizal/vcard3"
 	"mycorrhizal/vcard4"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -55,6 +56,84 @@ func csvSafeRecord(record []string) []string {
 	return record
 }
 
+// serializeFieldValueForCSV renders one FieldValue's raw JSON payload as the
+// single string a CSV cell holds (docs/fork-plan/94-custom-fields.md §94.4):
+// a scalar keeps its text form (strings verbatim, numbers/bools stringified)
+// and a Multi field joins its elements with "; " — the same separator the
+// export uses for Circles and food preferences. String-first parsing is the
+// right degradation for every FieldDefinition.Type (an enum or phone value is
+// a JSON string, so it lands on the first branch; a number or boolean value
+// isn't and falls through to its branch), and a value that fails all shapes
+// degrades to its raw bytes rather than failing the whole export.
+func serializeFieldValueForCSV(raw json.RawMessage) string {
+	if len(raw) == 0 || string(raw) == "null" {
+		return ""
+	}
+	var s string
+	if err := json.Unmarshal(raw, &s); err == nil {
+		return s
+	}
+	var n float64
+	if err := json.Unmarshal(raw, &n); err == nil {
+		return strconv.FormatFloat(n, 'f', -1, 64)
+	}
+	var b bool
+	if err := json.Unmarshal(raw, &b); err == nil {
+		return strconv.FormatBool(b)
+	}
+	var arr []json.RawMessage
+	if err := json.Unmarshal(raw, &arr); err == nil {
+		parts := make([]string, 0, len(arr))
+		for _, el := range arr {
+			parts = append(parts, serializeFieldValueForCSV(el))
+		}
+		return strings.Join(parts, "; ")
+	}
+	return string(raw)
+}
+
+// parseExportFieldSelection reads the ?sections= and ?include_sensitive=
+// query params accepted by the vCard/JSContact export handlers (WP-97 / T9,
+// docs/fork-plan/tickets/13-T9-selective-export.md). sections is a
+// comma-separated list of field-selection section tokens
+// (models.FieldSections); identity data (name/uid/...) is always included.
+//
+// An absent sections param means "all sections" — the pre-T9 behavior,
+// preserved so existing export links/URLs keep working. An unknown token is
+// an explicit 400 rather than a silent narrowing, so a typo can't silently
+// drop fields from an export. include_sensitive accepts true/1 as the
+// explicit §91.13 opt-in override (never implied by any section selection).
+//
+// The second return is false when the caller should abort (an error has
+// already been written to the response).
+func parseExportFieldSelection(c *gin.Context) (*models.FieldSelection, bool) {
+	raw := c.Query("sections")
+	var sel *models.FieldSelection
+	if raw == "" {
+		sel = models.FieldSelectionAll()
+	} else {
+		sel = models.NewFieldSelection()
+		for _, token := range strings.Split(raw, ",") {
+			token = strings.TrimSpace(token)
+			if token == "" {
+				continue
+			}
+			if err := sel.Enable(token); err != nil {
+				apperrors.AbortWithError(c, apperrors.ErrValidation(err.Error()))
+				return nil, false
+			}
+		}
+		if len(sel.Sections) == 0 {
+			sel = models.FieldSelectionAll()
+		}
+	}
+	switch c.Query("include_sensitive") {
+	case "true", "1":
+		sel.IncludeSensitive = true
+	}
+	return sel, true
+}
+
 // ExportData exports all user data as CSV files in a combined format
 func ExportData(c *gin.Context) {
 	db := c.MustGet("db").(*gorm.DB)
@@ -65,16 +144,17 @@ func ExportData(c *gin.Context) {
 		return
 	}
 
-	// Fetch user to get custom field names
-	var user models.User
-	if err := db.First(&user, userID).Error; err != nil {
-		log.Error().Err(err).Msg("Failed to fetch user for export")
-		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to fetch user"))
+	// T7 (docs/fork-plan/tickets/12-T7-custom-fields-frontend.md): the CSV
+	// export's custom-field columns now source from the v2 system
+	// (FieldDefinition + FieldValue) instead of the retired untyped v1. Every
+	// definition the user has becomes a header column -- like the v1 names
+	// they replace -- and each contact's row carries the matching FieldValue,
+	// if any.
+	var definitions []models.FieldDefinition
+	if err := db.Where("user_id = ?", userID).Order("label ASC").Find(&definitions).Error; err != nil {
+		log.Error().Err(err).Msg("Failed to fetch field definitions for export")
+		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to fetch field definitions"))
 		return
-	}
-	customFieldNames := user.CustomFieldNames
-	if customFieldNames == nil {
-		customFieldNames = []string{}
 	}
 
 	// Fetch all user data
@@ -85,6 +165,26 @@ func ExportData(c *gin.Context) {
 		log.Error().Err(err).Msg("Failed to fetch contacts for export")
 		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to fetch contacts"))
 		return
+	}
+
+	// FieldValues are keyed by Contact.VCardUID (the graph invariant), so
+	// one user-wide query + a two-level map beats N+1 lookups per contact.
+	// This is the user's own full personal-data backup, so every sensitivity
+	// is included -- the same choice the relationships section documents
+	// below (it is not a share to another party, unlike vCard/JSContact
+	// export, which filters non-normal in projectCustomFields' query).
+	var fieldValues []models.FieldValue
+	if err := db.Where("user_id = ?", userID).Find(&fieldValues).Error; err != nil {
+		log.Error().Err(err).Msg("Failed to fetch field values for export")
+		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to fetch field values"))
+		return
+	}
+	valueByContactAndDef := make(map[string]map[string]json.RawMessage, len(fieldValues))
+	for _, fv := range fieldValues {
+		if valueByContactAndDef[fv.EntityID] == nil {
+			valueByContactAndDef[fv.EntityID] = make(map[string]json.RawMessage)
+		}
+		valueByContactAndDef[fv.EntityID][fv.FieldDefinitionID] = fv.Value
 	}
 
 	// §3d WP4: relationships now come from RelationshipEdge, not the legacy
@@ -171,9 +271,12 @@ func ExportData(c *gin.Context) {
 		"Birthday", "Address", "How We Met", "Food Preference", "Work Information",
 		"Contact Information", "Circles", "Created At", "Updated At",
 	}
-	// Add custom field names as additional headers. These are user-defined, so
-	// the header row needs the same treatment as the data rows.
-	contactHeaders = append(contactHeaders, customFieldNames...)
+	// Custom-field headers come from the v2 definitions' Labels (user-
+	// authored, so the header row gets the same csvSafe treatment as the data
+	// rows -- the Tier 1 formula-injection finding stays closed).
+	for _, def := range definitions {
+		contactHeaders = append(contactHeaders, def.Label)
+	}
 	if err := writer.Write(csvSafeRecord(contactHeaders)); err != nil {
 		log.Error().Err(err).Msg("Failed to write contact headers")
 		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to generate export"))
@@ -199,13 +302,11 @@ func ExportData(c *gin.Context) {
 			contact.CreatedAt.Format(time.RFC3339),
 			contact.UpdatedAt.Format(time.RFC3339),
 		}
-		// Add custom field values
-		for _, fieldName := range customFieldNames {
-			value := ""
-			if contact.CustomFields != nil {
-				value = contact.CustomFields[fieldName]
-			}
-			record = append(record, value)
+		// Custom-field values: one column per definition, empty when the
+		// contact has no value for it.
+		values := valueByContactAndDef[contact.VCardUID]
+		for _, def := range definitions {
+			record = append(record, serializeFieldValueForCSV(values[def.ID]))
 		}
 		if err := writer.Write(csvSafeRecord(record)); err != nil {
 			log.Error().Err(err).Msg("Failed to write contact record")
@@ -454,6 +555,15 @@ func ExportContactsAsVCF(c *gin.Context, photoDir string) {
 		return
 	}
 
+	// WP-97 / T9: the ?sections= field picker and ?include_sensitive= opt-in
+	// override apply here (the shared Card filter runs before the adapter) —
+	// NOT to ExportData, which is the user's own full CSV backup and
+	// deliberately includes everything (§92.6b's trap).
+	sel, ok := parseExportFieldSelection(c)
+	if !ok {
+		return
+	}
+
 	// Fetch all user contacts
 	var contacts []models.Contact
 	if err := db.Where("user_id = ?", userID).
@@ -475,7 +585,7 @@ func ExportContactsAsVCF(c *gin.Context, photoDir string) {
 	// (the standard shape for a multi-contact .vcf file).
 	var buf bytes.Buffer
 	for _, contact := range contacts {
-		record := models.RecordForContact(&contact, photoDir, db)
+		record := models.RecordForContactFiltered(&contact, photoDir, db, sel)
 		data, diags, err := exporter.Export(record)
 		if err != nil {
 			log.Error().Err(err).Uint("contact_id", contact.ID).Msg("Failed to encode contact as vCard")
@@ -526,6 +636,13 @@ func ExportContactsAsJSContact(c *gin.Context) {
 		return
 	}
 
+	// Same WP-97 / T9 field-picker query params as ExportContactsAsVCF; never
+	// applied to ExportData (the user's own full CSV backup).
+	sel, ok := parseExportFieldSelection(c)
+	if !ok {
+		return
+	}
+
 	var contacts []models.Contact
 	if err := db.Where("user_id = ?", userID).
 		Order("firstname ASC, lastname ASC").
@@ -538,7 +655,7 @@ func ExportContactsAsJSContact(c *gin.Context) {
 	adapter := jscontact.Adapter{}
 	cards := make([]json.RawMessage, 0, len(contacts))
 	for _, contact := range contacts {
-		record := models.RecordForContact(&contact, photoDir, db)
+		record := models.RecordForContactFiltered(&contact, photoDir, db, sel)
 		data, diags, err := adapter.Export(record)
 		if err != nil {
 			log.Error().Err(err).Uint("contact_id", contact.ID).Msg("Failed to encode contact as JSContact")

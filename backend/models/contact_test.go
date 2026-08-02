@@ -71,7 +71,6 @@ func fullyPopulatedContact() *Contact {
 		WorkInformation:    "Remote",
 		ContactInformation: "Prefers email",
 		Circles:            []string{"friends", "work"},
-		CustomFields:       map[string]string{"favorite_color": "blue"},
 		VCardUID:           "uid-1234",
 		VCardExtra:         `{"properties":{"X-CUSTOM":[{"Value":"keep","Params":{"TYPE":["home"]},"Group":""}]}}`,
 		PhotoThumbnail:     testJPEGDataURL(),
@@ -230,13 +229,10 @@ func TestRecordFromContact_FullyPopulated(t *testing.T) {
 	env := record.Envelope
 	if env.HowWeMet != "Conference" ||
 		env.WorkInformation != "Remote" || env.ContactInformation != "Prefers email" {
-		t.Errorf("Record.Envelope text fields = %+v, want the CustomFields set on the Contact", env)
+		t.Errorf("Record.Envelope text fields = %+v, want the values set on the Contact", env)
 	}
 	if len(env.Circles) != 2 || env.Circles[0] != "friends" || env.Circles[1] != "work" {
 		t.Errorf("Record.Envelope.Circles = %+v, want [friends work]", env.Circles)
-	}
-	if env.CustomFields["favorite_color"] != "blue" {
-		t.Errorf("Record.Envelope.CustomFields = %+v, want favorite_color=blue", env.CustomFields)
 	}
 
 	// WP-73 photo-bridging prerequisite: Contact.PhotoThumbnail (there is no

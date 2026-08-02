@@ -144,6 +144,9 @@ func validateStringConstraints(c models.FieldConstraints, raw json.RawMessage) e
 }
 
 func validateNumber(c models.FieldConstraints, raw json.RawMessage) error {
+	if string(raw) == "null" {
+		return fmt.Errorf("expected a number value")
+	}
 	var n float64
 	if err := json.Unmarshal(raw, &n); err != nil {
 		return fmt.Errorf("expected a number value")

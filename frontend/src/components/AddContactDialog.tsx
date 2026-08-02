@@ -17,6 +17,7 @@ import {
 import AppDialog from './AppDialog';
 import MultiValueField from './MultiValueField';
 import AddressFields from './AddressFields';
+import FieldValueEditor from './FieldValueEditor';
 import {
   createContactRecord,
   ContactValue,
@@ -31,6 +32,15 @@ import {
   withOrganization,
   withTitles,
 } from '../api/contacts';
+import {
+  FieldDefinition,
+  FieldValueEditorState,
+  FieldValueInput,
+  emptyEditorValue,
+  editorToWireValue,
+  isEditorValueEmpty,
+} from '../api/fieldDefinitions';
+import { replaceContactFieldValues } from '../api/fieldDefinitions';
 import { Circle } from '../api/circles';
 import { addCircleMember, createCircle } from '../api/circles';
 import { createReminder } from '../api/reminders';
@@ -44,7 +54,7 @@ interface AddContactDialogProps {
   onClose: () => void;
   onContactAdded: (contactId: number) => void;
   availableCircles: Circle[];
-  customFieldNames?: string[];
+  fieldDefinitions?: FieldDefinition[];
   enabledFields?: Set<ContactFieldKey>;
 }
 
@@ -72,7 +82,7 @@ export default function AddContactDialog({
   onClose,
   onContactAdded,
   availableCircles,
-  customFieldNames = [],
+  fieldDefinitions = [],
   enabledFields
 }: AddContactDialogProps) {
   const { t } = useTranslation();
@@ -87,12 +97,21 @@ export default function AddContactDialog({
   const [addresses, setAddresses] = useState<ContactAddress[]>([]);
   const [urls, setUrls] = useState<ContactValue[]>([]);
   const [impps, setImpps] = useState<ContactValue[]>([]);
-  const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
+  // Custom field values, keyed by FieldDefinition.ID; the editor state is
+  // initialized per-definition on first render (see editorFor below).
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, FieldValueEditorState>>({});
   const [selectedCircles, setSelectedCircles] = useState<Circle[]>([]);
   const [newCircle, setNewCircle] = useState('');
   const [createBirthdayReminder, setCreateBirthdayReminder] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const editorFor = (definition: FieldDefinition): FieldValueEditorState =>
+    customFieldValues[definition.id] ?? emptyEditorValue(definition);
+
+  const handleCustomFieldChange = (definition: FieldDefinition) => (next: FieldValueEditorState) => {
+    setCustomFieldValues((prev) => ({ ...prev, [definition.id]: next }));
+  };
 
   const handleChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
     if (field === 'birthday') {
@@ -102,10 +121,6 @@ export default function AddContactDialog({
     } else {
       setFormData({ ...formData, [field]: event.target.value });
     }
-  };
-
-  const handleCustomFieldChange = (fieldName: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
-    setCustomFieldValues({ ...customFieldValues, [fieldName]: event.target.value });
   };
 
   const handleAddCircle = () => {
@@ -151,13 +166,6 @@ export default function AddContactDialog({
     setError('');
 
     try {
-      const filteredCustomFields: Record<string, string> = {};
-      for (const [key, value] of Object.entries(customFieldValues)) {
-        if (value.trim()) {
-          filteredCustomFields[key] = value;
-        }
-      }
-
       const nameComponents: NameComponent[] = [];
       if (formData.prefix.trim()) nameComponents.push({ kind: 'title', value: formData.prefix.trim() });
       nameComponents.push({ kind: 'given', value: formData.firstname.trim() });
@@ -192,9 +200,25 @@ export default function AddContactDialog({
           how_we_met: formData.how_we_met,
           work_information: formData.work_information,
           contact_information: formData.contact_information,
-          custom_fields: Object.keys(filteredCustomFields).length > 0 ? filteredCustomFields : undefined,
         },
       });
+
+      // Custom field values (v2): the contact must exist before values can
+      // attach to it, so they are set after creation via the nested
+      // full-replace endpoint.
+      const fieldValueInputs: FieldValueInput[] = [];
+      for (const definition of fieldDefinitions) {
+        const editor = customFieldValues[definition.id] ?? emptyEditorValue(definition);
+        if (!isEditorValueEmpty(definition, editor)) {
+          fieldValueInputs.push({
+            field_definition_id: definition.id,
+            value: editorToWireValue(definition, editor),
+          });
+        }
+      }
+      if (fieldValueInputs.length > 0) {
+        await replaceContactFieldValues(newRecord.id, fieldValueInputs);
+      }
 
       if (createBirthdayReminder && birthdayISO) {
         let day: number | undefined;
@@ -430,17 +454,18 @@ export default function AddContactDialog({
             />
           )}
 
-          {/* Custom Fields */}
-          {customFieldNames.map((fieldName) => (
-            <TextField
-              key={fieldName}
-              label={fieldName}
-              fullWidth
-              multiline
-              rows={2}
-              value={customFieldValues[fieldName] || ''}
-              onChange={handleCustomFieldChange(fieldName)}
-            />
+          {/* Custom Fields (v2): one per-type editor per definition */}
+          {fieldDefinitions.map((definition) => (
+            <Box key={definition.id}>
+              <Typography variant="subtitle2" gutterBottom>
+                {definition.label}
+              </Typography>
+              <FieldValueEditor
+                definition={definition}
+                value={editorFor(definition)}
+                onChange={handleCustomFieldChange(definition)}
+              />
+            </Box>
           ))}
           <Box>
             <Typography variant="subtitle2" gutterBottom>

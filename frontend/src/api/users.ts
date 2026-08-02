@@ -24,27 +24,6 @@ export async function updateDateFormat(dateFormat: string): Promise<string> {
   return data?.message || 'Date format updated successfully.';
 }
 
-export async function getCustomFieldNames(): Promise<string[]> {
-  const response = await apiFetch(`${API_BASE_URL}/users/custom-fields`, {
-    method: 'GET',
-    headers: getAuthHeaders(),
-  });
-
-  const data = await handleResponse(response, 'Unable to get custom field names.');
-  return data?.custom_field_names || [];
-}
-
-export async function updateCustomFieldNames(names: string[]): Promise<string[]> {
-  const response = await apiFetch(`${API_BASE_URL}/users/custom-fields`, {
-    method: 'PATCH',
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ names }),
-  });
-
-  const data = await handleResponse(response, 'Unable to update custom field names.');
-  return data?.custom_field_names || names;
-}
-
 // Returns the user's enabled extended contact fields, or null if never configured
 // (in which case the caller should apply DEFAULT_ENABLED_CONTACT_FIELDS).
 export async function getEnabledContactFields(): Promise<string[] | null> {

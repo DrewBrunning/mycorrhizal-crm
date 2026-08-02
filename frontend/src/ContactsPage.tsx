@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useContacts } from './hooks/useContacts';
 import { useCircles } from './hooks/useCircles';
+import { useFieldDefinitions } from './hooks/useFieldDefinitions';
 import { getCurrentUser } from './api/admin';
 import { resolveEnabledFields, ContactFieldKey } from './contactFields';
 import AddContactDialog from './components/AddContactDialog';
@@ -41,7 +42,6 @@ export default function ContactsPage() {
   });
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
-  const [customFieldNames, setCustomFieldNames] = useState<string[]>([]);
   const [enabledFields, setEnabledFields] = useState<Set<ContactFieldKey>>(() => resolveEnabledFields(null));
   const [showArchived, setShowArchived] = useState(false);
   const pageSize = 10;
@@ -81,15 +81,18 @@ export default function ContactsPage() {
   // Use custom hook for fetching contacts
   const { contacts, total: totalContacts, loading, refetch } = useContacts(contactParams);
 
-  // Fetch custom field names
+  // Custom field definitions (T7): the add-contact dialog needs the typed
+  // definitions to render per-type value editors.
+  const { definitions: fieldDefinitions } = useFieldDefinitions();
+
+  // Fetch enabled contact fields
   useEffect(() => {
     const fetchData = async () => {
       try {
         const user = await getCurrentUser();
-        setCustomFieldNames(user.custom_field_names ?? []);
         setEnabledFields(resolveEnabledFields(user.enabled_contact_fields));
       } catch (err) {
-        console.error('Error fetching custom field names:', err);
+        console.error('Error fetching enabled contact fields:', err);
       }
     };
     fetchData();
@@ -284,7 +287,7 @@ export default function ContactsPage() {
         onClose={() => setAddDialogOpen(false)}
         onContactAdded={handleContactAdded}
         availableCircles={circles}
-        customFieldNames={customFieldNames}
+        fieldDefinitions={fieldDefinitions}
         enabledFields={enabledFields}
       />
       <ImportContactsDialog
