@@ -91,9 +91,6 @@ func TestApplyRecordToContact_RoundTrip(t *testing.T) {
 	if !reflect.DeepEqual(got.Circles, original.Circles) {
 		t.Errorf("Circles = %+v, want %+v", got.Circles, original.Circles)
 	}
-	if !reflect.DeepEqual(got.CustomFields, original.CustomFields) {
-		t.Errorf("CustomFields = %+v, want %+v", got.CustomFields, original.CustomFields)
-	}
 	if got.VCardUID != original.VCardUID {
 		t.Errorf("VCardUID = %q, want %q", got.VCardUID, original.VCardUID)
 	}

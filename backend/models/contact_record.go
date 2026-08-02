@@ -357,7 +357,6 @@ func RecordFromContact(c *Contact, photoDir string) *contactmodel.Record {
 		HowWeMet:           c.HowWeMet,
 		WorkInformation:    c.WorkInformation,
 		ContactInformation: c.ContactInformation,
-		CustomFields:       c.CustomFields,
 	}
 
 	// Gender (c.Gender) is deliberately NOT mapped into Record. This is a

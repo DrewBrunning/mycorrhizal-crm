@@ -199,11 +199,6 @@ type NoteInput struct {
 	ContactID *uint     `json:"contact_id" validate:"omitempty,gt=0"`
 }
 
-// CustomFieldNamesInput represents the DTO for updating user's custom field definitions
-type CustomFieldNamesInput struct {
-	Names []string `json:"names" validate:"dive,max=100"`
-}
-
 // represents the DTO for updating which extended contact fields are visible in the UI. A nil/absent list means "use the default set"
 type EnabledContactFieldsInput struct {
 	Fields []string `json:"fields" validate:"dive,max=50"`
@@ -323,10 +318,9 @@ type AdminUserResponse struct {
 	UpdatedAt  time.Time `json:"updated_at"`
 }
 
-// /users/me payload: standard user fields plus caller's UI preferences (custom field names and enabled contact fields)
+// /users/me payload: standard user fields plus caller's UI preferences (enabled contact fields)
 type CurrentUserResponse struct {
 	AdminUserResponse
-	CustomFieldNames     []string `json:"custom_field_names"`
 	EnabledContactFields []string `json:"enabled_contact_fields"`
 }
 

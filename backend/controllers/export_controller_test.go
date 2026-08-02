@@ -198,6 +198,65 @@ func TestExportData(t *testing.T) {
 	assert.Contains(t, body, "yearly")
 }
 
+// T7: the CSV export's custom-field columns now source from the v2 system
+// (FieldDefinition + FieldValue), not the retired untyped v1. Every definition becomes a header column (the header
+// row is user-authored, so csvSafe still neutralizes it), and each contact's
+// row carries its value for that definition -- including the Multi join and
+// the empty-when-absent case.
+func TestExportData_CustomFieldsV2(t *testing.T) {
+	db, router := setupRouter()
+	router.GET("/export", ExportData)
+
+	var user models.User
+	db.First(&user)
+
+	contact := models.Contact{UserID: user.ID, Firstname: "Alice", Lastname: "Johnson"}
+	db.Create(&contact)
+
+	enumDef := models.FieldDefinition{
+		UserID:      user.ID,
+		Label:       "Pronouns",
+		Key:         "pronouns",
+		Target:      models.FieldDefinitionTargetContact,
+		Type:        models.FieldTypeEnum,
+		Constraints: models.FieldConstraints{Values: []string{"she/her", "he/him", "they/them"}, Multi: true},
+		Projection:  "internal-only",
+		Sensitivity: models.RelationshipSensitivityNormal,
+	}
+	stringDef := models.FieldDefinition{
+		UserID:      user.ID,
+		Label:       "Internal Note",
+		Key:         "internal_note",
+		Target:      models.FieldDefinitionTargetContact,
+		Type:        models.FieldTypeString,
+		Projection:  "internal-only",
+		Sensitivity: models.RelationshipSensitivityNormal,
+	}
+	db.Create(&enumDef)
+	db.Create(&stringDef)
+
+	// Multi value serializes as "; "-joined; the absent string value stays empty.
+	db.Create(&models.FieldValue{
+		FieldDefinitionID: enumDef.ID,
+		UserID:            user.ID,
+		EntityID:          contact.VCardUID,
+		Value:             json.RawMessage(`["she/her","they/them"]`),
+	})
+
+	req, _ := http.NewRequest("GET", "/export", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	body := w.Body.String()
+
+	// Both definition labels appear as header columns, and the value appears
+	// on the contact's row (Multi joined with "; ").
+	assert.Contains(t, body, "Pronouns")
+	assert.Contains(t, body, "Internal Note")
+	assert.Contains(t, body, "she/her; they/them")
+}
+
 func TestExportDataEmpty(t *testing.T) {
 	_, router := setupRouter()
 

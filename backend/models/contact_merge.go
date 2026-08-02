@@ -24,13 +24,12 @@ type ContactMergeFieldConflict struct {
 // and shared verbatim by the preview and commit endpoints so they can never
 // compute a different answer for the same pair.
 type ContactMergeResolution struct {
-	Emails       []ContactEmail    `json:"emails"`
-	Phones       []ContactPhone    `json:"phones"`
-	Addresses    []ContactAddress  `json:"addresses"`
-	URLs         []ContactURL      `json:"urls"`
-	IMPPs        []ContactIMPP     `json:"impps"`
-	Circles      []string          `json:"circles"`
-	CustomFields map[string]string `json:"custom_fields"`
+	Emails    []ContactEmail   `json:"emails"`
+	Phones    []ContactPhone   `json:"phones"`
+	Addresses []ContactAddress `json:"addresses"`
+	URLs      []ContactURL     `json:"urls"`
+	IMPPs     []ContactIMPP    `json:"impps"`
+	Circles   []string         `json:"circles"`
 
 	// ResolvedScalars holds every scalar field's outcome that did NOT need a
 	// user decision: keyed same as Conflicts[i].Field. Includes fields where

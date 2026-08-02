@@ -135,7 +135,6 @@ func TestGetCurrentUser_Success(t *testing.T) {
 
 	var user models.User
 	require.NoError(t, db.First(&user).Error)
-	user.CustomFieldNames = []string{"maiden_name"}
 	user.EnabledContactFields = []string{"phone"}
 	require.NoError(t, db.Save(&user).Error)
 
@@ -152,7 +151,6 @@ func TestGetCurrentUser_Success(t *testing.T) {
 	assert.Equal(t, user.ID, resp.ID)
 	assert.Equal(t, user.Username, resp.Username)
 	assert.Equal(t, user.Email, resp.Email)
-	assert.Equal(t, []string{"maiden_name"}, resp.CustomFieldNames)
 	assert.Equal(t, []string{"phone"}, resp.EnabledContactFields)
 
 	// The response DTO must never carry the password hash, regardless of

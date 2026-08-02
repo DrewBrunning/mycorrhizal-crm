@@ -57,7 +57,7 @@ type FieldConstraints struct {
 // FieldDefinition is the schema half of WP-84b's custom-fields system
 // (docs/fork-plan/94-custom-fields.md §94.3) -- a user-defined, typed,
 // optionally validated and standards-projected property, generalizing the
-// existing untyped v1 (User.CustomFieldNames, user.go). Distinct from native
+// retired untyped v1. Distinct from native
 // contactmodel.Card fields: this is the user's escape hatch for concepts the
 // standards don't define, not a reimplementation of ones they do (§94.2).
 //

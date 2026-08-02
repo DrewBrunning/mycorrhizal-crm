@@ -11,12 +11,11 @@ type CRMEnvelope struct {
 	// and every other CRMEnvelope field: unrecognized values are accepted
 	// and preserved, not rejected (see controllers/
 	// contact_controller_validation_test.go's header for why).
-	Kind               string            `json:"kind,omitempty"`
-	Circles            []string          `json:"circles,omitempty"`
-	HowWeMet           string            `json:"how_we_met,omitempty"`
-	WorkInformation    string            `json:"work_information,omitempty"`
-	ContactInformation string            `json:"contact_information,omitempty"`
-	CustomFields       map[string]string `json:"custom_fields,omitempty"`
+	Kind               string   `json:"kind,omitempty"`
+	Circles            []string `json:"circles,omitempty"`
+	HowWeMet           string   `json:"how_we_met,omitempty"`
+	WorkInformation    string   `json:"work_information,omitempty"`
+	ContactInformation string   `json:"contact_information,omitempty"`
 	// Reminders/Activities/Relationships remain separate GORM tables keyed by contact ID;
 	// they are NOT embedded here.
 }

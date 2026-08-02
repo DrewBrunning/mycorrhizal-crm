@@ -78,7 +78,6 @@ func ApplyRecordToContact(c *Contact, r *contactmodel.Record, photoDir string) {
 	c.HowWeMet = env.HowWeMet
 	c.WorkInformation = env.WorkInformation
 	c.ContactInformation = env.ContactInformation
-	c.CustomFields = env.CustomFields
 
 	// "uid" row, inverse direction: Card.UID -> VCardUID. Only overwrite when
 	// the incoming Card actually carries a UID (e.g. a client PUT that omits
