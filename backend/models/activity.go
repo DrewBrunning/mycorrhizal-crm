@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -54,6 +55,14 @@ type Activity struct {
 	// no FK: the referenced tables belong to different, not-yet-built or
 	// separately-owned subsystems.
 	ExternalRef string `json:"external_ref,omitempty"`
+
+	// ETag is the CalDAV sync-conflict token for this Interaction (T12a),
+	// same role Contact.ETag plays for vCards. Explicit gorm column tag is
+	// mandatory: without it GORM derives `e_tag` while migration 000041 names
+	// the column `etag` — the exact silent mismatch that shipped broken for
+	// ContactSyncLink.ETag and killed CardDAV incremental sync. Generated in
+	// AfterCreate/AfterSave from ID + UpdatedAt (see below).
+	ETag string `gorm:"column:etag" json:"-"`
 }
 
 // BeforeCreate generates a UUID for new Activities/Interactions, mirroring
@@ -62,6 +71,36 @@ type Activity struct {
 func (a *Activity) BeforeCreate(tx *gorm.DB) error {
 	if a.UUID == "" {
 		a.UUID = uuid.New().String()
+	}
+	return nil
+}
+
+// AfterCreate assigns the initial ETag now that ID/UpdatedAt are persisted,
+// mirroring Contact.AfterCreate (contact.go). UpdateColumn bypasses GORM's
+// update hooks, so this cannot recursively trigger AfterSave.
+func (a *Activity) AfterCreate(tx *gorm.DB) error {
+	a.ETag = fmt.Sprintf("e-%d-%d", a.ID, a.UpdatedAt.Unix())
+	return tx.Model(a).UpdateColumn("etag", a.ETag).Error
+}
+
+// AfterSave refreshes the ETag on a real change only, exactly like
+// Contact.AfterSave: recompute the would-be value from the persisted
+// ID/UpdatedAt, and only write it back via UpdateColumn (no hook loop) when
+// it actually differs from what's stored.
+//
+// Guard: a zero-value ID means this hook fired on a bulk
+// Model(&Activity{}).Where(...).Update/Updates call, not on a real row — the
+// receiver has no primary key, so UpdateColumn would widen to every row in
+// the table. Never derive/write an ETag in that case (the caller is
+// responsible for load-then-save updates that should refresh ETags).
+func (a *Activity) AfterSave(tx *gorm.DB) error {
+	if a.ID == 0 {
+		return nil
+	}
+	newETag := fmt.Sprintf("e-%d-%d", a.ID, a.UpdatedAt.Unix())
+	if newETag != a.ETag {
+		a.ETag = newETag
+		return tx.Model(a).UpdateColumn("etag", a.ETag).Error
 	}
 	return nil
 }
