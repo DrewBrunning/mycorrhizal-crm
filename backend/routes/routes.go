@@ -154,6 +154,19 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.POST("/tags/:id/contacts", middleware.ValidateJSONMiddleware(&models.ContactTagInput{}), controllers.AddContactTag)
 			protected.DELETE("/tags/:id/contacts/:vcard_uid", controllers.RemoveContactTag)
 
+			// Custom field definition routes (T6 — docs/fork-plan/tickets/
+			// 11-T6-custom-fields-api.md). FieldValue routes are nested under
+			// the contact (GET/PUT /contacts/:id/field-values) per the
+			// endpoint-shape decision documented in
+			// field_definition_controller.go.
+			protected.POST("/field-definitions", middleware.ValidateJSONMiddleware(&models.FieldDefinitionInput{}), controllers.CreateFieldDefinition)
+			protected.GET("/field-definitions", controllers.ListFieldDefinitions)
+			protected.GET("/field-definitions/:id", controllers.GetFieldDefinition)
+			protected.PUT("/field-definitions/:id", middleware.ValidateJSONMiddleware(&models.FieldDefinitionInput{}), controllers.UpdateFieldDefinition)
+			protected.DELETE("/field-definitions/:id", controllers.DeleteFieldDefinition)
+			protected.GET("/contacts/:id/field-values", controllers.ListContactFieldValues)
+			protected.PUT("/contacts/:id/field-values", middleware.ValidateJSONMiddleware(&models.ContactFieldValuesInput{}), controllers.ReplaceContactFieldValues)
+
 			// LifeEvent routes (WP-84c)
 			protected.POST("/life-events", middleware.ValidateJSONMiddleware(&models.LifeEventInput{}), controllers.CreateLifeEvent)
 			protected.GET("/life-events", controllers.ListLifeEvents)
