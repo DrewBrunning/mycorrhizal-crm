@@ -146,6 +146,26 @@ paths:
           in: query
           description: vCard version to export. Defaults to 4.0.
           schema: { type: string, enum: ["4", "4.0", "3", "3.0"], default: "4" }
+        - name: sections
+          in: query
+          description: >
+            Comma-separated field sections to include (WP-97/T9 selective
+            export). One of: emails, phones, addresses, organizations,
+            anniversaries, media, online_services, links, notes, keywords,
+            related_to, personal_info, speak_to_as, members, languages,
+            custom_fields. Absent means all sections. Identity (name/UID) is
+            always included.
+          schema:
+            type: string
+            example: "emails,phones,addresses"
+        - name: include_sensitive
+          in: query
+          description: >
+            Explicit opt-in override (91.13): when true, private/secret
+            items in the selected sensitivity-bearing sections (related_to,
+            personal_info, custom_fields) are included in this one export.
+            Defaults to false.
+          schema: { type: boolean, default: false }
       responses:
         "200":
           description: A .vcf file (one or more concatenated vCard blocks).
@@ -156,6 +176,27 @@ paths:
     get:
       summary: Export all contacts as a JSContact (RFC 9553) JSON document
       description: A JSON array of JSContact Card objects, one per contact.
+      parameters:
+        - name: sections
+          in: query
+          description: >
+            Comma-separated field sections to include (WP-97/T9 selective
+            export). One of: emails, phones, addresses, organizations,
+            anniversaries, media, online_services, links, notes, keywords,
+            related_to, personal_info, speak_to_as, members, languages,
+            custom_fields. Absent means all sections. Identity (name/UID) is
+            always included.
+          schema:
+            type: string
+            example: "emails,phones,addresses"
+        - name: include_sensitive
+          in: query
+          description: >
+            Explicit opt-in override (91.13): when true, private/secret
+            items in the selected sensitivity-bearing sections (related_to,
+            personal_info, custom_fields) are included in this one export.
+            Defaults to false.
+          schema: { type: boolean, default: false }
       responses:
         "200":
           description: A JSON array of JSContact Card documents.

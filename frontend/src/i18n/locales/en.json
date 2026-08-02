@@ -689,6 +689,47 @@
     },
     "data": {
       "title": "Data"
+    },
+    "exportFieldPicker": {
+      "title": "Export Contacts — Choose Fields",
+      "description": "Choose which fields to include. Name and UID are always exported.",
+      "format": "Format",
+      "formats": {
+        "vcf4": "vCard 4.0 (.vcf)",
+        "vcf3": "vCard 3.0 (.vcf)",
+        "jscontact": "JSContact (.json)"
+      },
+      "fields": "Fields to include",
+      "sections": {
+        "emails": "Emails",
+        "phones": "Phones",
+        "addresses": "Addresses",
+        "organizations": "Organizations",
+        "anniversaries": "Anniversaries",
+        "media": "Photos",
+        "online_services": "Online services",
+        "links": "Links",
+        "notes": "Notes",
+        "keywords": "Tags",
+        "related_to": "Relationships",
+        "personal_info": "Personal info",
+        "speak_to_as": "Pronouns & addressing",
+        "members": "Group members",
+        "languages": "Preferred languages",
+        "custom_fields": "Custom fields"
+      },
+      "lockedHint": "Unlock to select sensitive fields",
+      "revealButton": "Reveal sensitive fields",
+      "revealTitle": "Include sensitive data?",
+      "revealConfirm": "Some of these fields may contain private or sensitive information, such as private relationships or custom fields. They stay excluded unless you include them here deliberately.",
+      "revealCancel": "Cancel",
+      "revealConfirmButton": "Reveal",
+      "revealedHint": "Sensitive fields are now unlocked. Selecting one will include its private or sensitive data in this export.",
+      "exportButton": "Export",
+      "exporting": "Exporting...",
+      "exportError": "Failed to export contacts. Please try again.",
+      "customExportButton": "Custom export...",
+      "success": "Your contacts have been exported successfully."
     }
   },
   "pages": {

@@ -662,6 +662,47 @@
     },
     "data": {
       "title": "Datos"
+    },
+    "exportFieldPicker": {
+      "title": "Exportar contactos — elegir campos",
+      "description": "Elige qué campos incluir. El nombre y el UID siempre se exportan.",
+      "format": "Formato",
+      "formats": {
+        "vcf4": "vCard 4.0 (.vcf)",
+        "vcf3": "vCard 3.0 (.vcf)",
+        "jscontact": "JSContact (.json)"
+      },
+      "fields": "Campos a incluir",
+      "sections": {
+        "emails": "Correos electrónicos",
+        "phones": "Teléfonos",
+        "addresses": "Direcciones",
+        "organizations": "Organizaciones",
+        "anniversaries": "Aniversarios",
+        "media": "Fotos",
+        "online_services": "Servicios en línea",
+        "links": "Enlaces",
+        "notes": "Notas",
+        "keywords": "Etiquetas",
+        "related_to": "Relaciones",
+        "personal_info": "Información personal",
+        "speak_to_as": "Pronombres y tratamiento",
+        "members": "Miembros del grupo",
+        "languages": "Idiomas preferidos",
+        "custom_fields": "Campos personalizados"
+      },
+      "lockedHint": "Desbloquear para seleccionar campos sensibles",
+      "revealButton": "Revelar campos sensibles",
+      "revealTitle": "¿Incluir datos sensibles?",
+      "revealConfirm": "Algunos de estos campos pueden contener información privada o sensible, como relaciones privadas o campos personalizados. Permanecen excluidos a menos que los incluyas aquí deliberadamente.",
+      "revealCancel": "Cancelar",
+      "revealConfirmButton": "Revelar",
+      "revealedHint": "Los campos sensibles ahora están desbloqueados. Seleccionar uno incluirá sus datos privados o sensibles en esta exportación.",
+      "exportButton": "Exportar",
+      "exporting": "Exportando...",
+      "exportError": "Error al exportar los contactos. Inténtalo de nuevo.",
+      "customExportButton": "Exportación personalizada...",
+      "success": "Tus contactos han sido exportados exitosamente."
     }
   },
   "pages": {

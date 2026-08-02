@@ -92,6 +92,48 @@ func serializeFieldValueForCSV(raw json.RawMessage) string {
 	return string(raw)
 }
 
+// parseExportFieldSelection reads the ?sections= and ?include_sensitive=
+// query params accepted by the vCard/JSContact export handlers (WP-97 / T9,
+// docs/fork-plan/tickets/13-T9-selective-export.md). sections is a
+// comma-separated list of field-selection section tokens
+// (models.FieldSections); identity data (name/uid/...) is always included.
+//
+// An absent sections param means "all sections" — the pre-T9 behavior,
+// preserved so existing export links/URLs keep working. An unknown token is
+// an explicit 400 rather than a silent narrowing, so a typo can't silently
+// drop fields from an export. include_sensitive accepts true/1 as the
+// explicit §91.13 opt-in override (never implied by any section selection).
+//
+// The second return is false when the caller should abort (an error has
+// already been written to the response).
+func parseExportFieldSelection(c *gin.Context) (*models.FieldSelection, bool) {
+	raw := c.Query("sections")
+	var sel *models.FieldSelection
+	if raw == "" {
+		sel = models.FieldSelectionAll()
+	} else {
+		sel = models.NewFieldSelection()
+		for _, token := range strings.Split(raw, ",") {
+			token = strings.TrimSpace(token)
+			if token == "" {
+				continue
+			}
+			if err := sel.Enable(token); err != nil {
+				apperrors.AbortWithError(c, apperrors.ErrValidation(err.Error()))
+				return nil, false
+			}
+		}
+		if len(sel.Sections) == 0 {
+			sel = models.FieldSelectionAll()
+		}
+	}
+	switch c.Query("include_sensitive") {
+	case "true", "1":
+		sel.IncludeSensitive = true
+	}
+	return sel, true
+}
+
 // ExportData exports all user data as CSV files in a combined format
 func ExportData(c *gin.Context) {
 	db := c.MustGet("db").(*gorm.DB)
@@ -513,6 +555,15 @@ func ExportContactsAsVCF(c *gin.Context, photoDir string) {
 		return
 	}
 
+	// WP-97 / T9: the ?sections= field picker and ?include_sensitive= opt-in
+	// override apply here (the shared Card filter runs before the adapter) —
+	// NOT to ExportData, which is the user's own full CSV backup and
+	// deliberately includes everything (§92.6b's trap).
+	sel, ok := parseExportFieldSelection(c)
+	if !ok {
+		return
+	}
+
 	// Fetch all user contacts
 	var contacts []models.Contact
 	if err := db.Where("user_id = ?", userID).
@@ -534,7 +585,7 @@ func ExportContactsAsVCF(c *gin.Context, photoDir string) {
 	// (the standard shape for a multi-contact .vcf file).
 	var buf bytes.Buffer
 	for _, contact := range contacts {
-		record := models.RecordForContact(&contact, photoDir, db)
+		record := models.RecordForContactFiltered(&contact, photoDir, db, sel)
 		data, diags, err := exporter.Export(record)
 		if err != nil {
 			log.Error().Err(err).Uint("contact_id", contact.ID).Msg("Failed to encode contact as vCard")
@@ -585,6 +636,13 @@ func ExportContactsAsJSContact(c *gin.Context) {
 		return
 	}
 
+	// Same WP-97 / T9 field-picker query params as ExportContactsAsVCF; never
+	// applied to ExportData (the user's own full CSV backup).
+	sel, ok := parseExportFieldSelection(c)
+	if !ok {
+		return
+	}
+
 	var contacts []models.Contact
 	if err := db.Where("user_id = ?", userID).
 		Order("firstname ASC, lastname ASC").
@@ -597,7 +655,7 @@ func ExportContactsAsJSContact(c *gin.Context) {
 	adapter := jscontact.Adapter{}
 	cards := make([]json.RawMessage, 0, len(contacts))
 	for _, contact := range contacts {
-		record := models.RecordForContact(&contact, photoDir, db)
+		record := models.RecordForContactFiltered(&contact, photoDir, db, sel)
 		data, diags, err := adapter.Export(record)
 		if err != nil {
 			log.Error().Err(err).Uint("contact_id", contact.ID).Msg("Failed to encode contact as JSContact")

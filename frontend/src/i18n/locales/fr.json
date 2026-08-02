@@ -662,6 +662,47 @@
     },
     "data": {
       "title": "Données"
+    },
+    "exportFieldPicker": {
+      "title": "Exporter les contacts — choisir les champs",
+      "description": "Choisissez les champs à inclure. Le nom et l'UID sont toujours exportés.",
+      "format": "Format",
+      "formats": {
+        "vcf4": "vCard 4.0 (.vcf)",
+        "vcf3": "vCard 3.0 (.vcf)",
+        "jscontact": "JSContact (.json)"
+      },
+      "fields": "Champs à inclure",
+      "sections": {
+        "emails": "E-mails",
+        "phones": "Téléphones",
+        "addresses": "Adresses",
+        "organizations": "Organisations",
+        "anniversaries": "Anniversaires",
+        "media": "Photos",
+        "online_services": "Services en ligne",
+        "links": "Liens",
+        "notes": "Notes",
+        "keywords": "Étiquettes",
+        "related_to": "Relations",
+        "personal_info": "Informations personnelles",
+        "speak_to_as": "Pronoms et appellation",
+        "members": "Membres du groupe",
+        "languages": "Langues préférées",
+        "custom_fields": "Champs personnalisés"
+      },
+      "lockedHint": "Déverrouiller pour sélectionner les champs sensibles",
+      "revealButton": "Révéler les champs sensibles",
+      "revealTitle": "Inclure des données sensibles ?",
+      "revealConfirm": "Certains de ces champs peuvent contenir des informations privées ou sensibles, comme des relations privées ou des champs personnalisés. Ils restent exclus sauf si vous les incluez ici délibérément.",
+      "revealCancel": "Annuler",
+      "revealConfirmButton": "Révéler",
+      "revealedHint": "Les champs sensibles sont maintenant déverrouillés. En sélectionner un, ses données privées ou sensibles seront incluses dans cette exportation.",
+      "exportButton": "Exporter",
+      "exporting": "Exportation en cours...",
+      "exportError": "Échec de l'exportation des contacts. Veuillez réessayer.",
+      "customExportButton": "Export personnalisé...",
+      "success": "Vos contacts ont été exportés avec succès."
     }
   },
   "pages": {
