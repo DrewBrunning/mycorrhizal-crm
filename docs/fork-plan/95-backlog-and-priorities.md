@@ -193,7 +193,7 @@ each side — so a high rating does not by itself pull a ticket before alpha, an
 | 13 | **T9** WP-97 selective field export + sensitivity gating | 3 | L | — | `92.6b` |
 | 14 | **T12a** Activity/LifeEvent sync primitives (ETag) | 2 | S | — | `92.3` prereq |
 | 15 | **T24** Non-critical test-coverage expansion | 2 | M | — | Tier 6, `45` |
-| 16 | **T8** OpenAPI coverage + spec/route drift test | 2\* | M | T1–T7 | `92.9` |
+| 16 | **T8** OpenAPI coverage + spec/route drift test — **DONE** | 2\* | M | T1–T7 | `92.9` |
 | 17 | **T17** WP-92 change feeds + cursor pagination | 2\* | M | T8 | `92.5` |
 | 18 | **T23** UI polish — typography, icons, strings | 4 | M | *(soft: all UI done)* | Tier 6 |
 | 19 | **T22** Legacy / dead-code audit + migration squash | 3 | L | all above | Tier 6 |
