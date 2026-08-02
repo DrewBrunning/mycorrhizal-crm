@@ -445,3 +445,52 @@ func TestListContactFieldValues_ContactNotFound(t *testing.T) {
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
+
+func TestReplaceContactFieldValues_EmptyPayloadClearsAll(t *testing.T) {
+	db, router, user, contact, _ := setupFieldValueRoutes(t)
+
+	// Pre-seed two values.
+	def1 := createTestDefinition(t, db, user.ID, "field_a")
+	def2 := createTestDefinition(t, db, user.ID, "field_b")
+	require.NoError(t, db.Create(&def1).Error)
+	require.NoError(t, db.Create(&def2).Error)
+	for _, def := range []models.FieldDefinition{def1, def2} {
+		require.NoError(t, db.Create(&models.FieldValue{
+			FieldDefinitionID: def.ID,
+			UserID:            user.ID,
+			EntityID:          contact.VCardUID,
+			Value:             json.RawMessage(`"x"`),
+		}).Error)
+	}
+
+	// Send an empty payload: both values must be deleted.
+	payload := models.ContactFieldValuesInput{FieldValues: []models.FieldValueInput{}}
+	jsonValue, _ := json.Marshal(payload)
+	req, _ := http.NewRequest("PUT", "/contacts/"+strconv.Itoa(int(contact.ID))+"/field-values", bytes.NewBuffer(jsonValue))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var saved []models.FieldValue
+	require.NoError(t, db.Where("entity_id = ? AND user_id = ?", contact.VCardUID, user.ID).Find(&saved).Error)
+	assert.Len(t, saved, 0, "empty payload must delete every existing value")
+}
+
+func TestReplaceContactFieldValues_ContactNotFound(t *testing.T) {
+	_, router, _, _, def := setupFieldValueRoutes(t)
+
+	payload := models.ContactFieldValuesInput{
+		FieldValues: []models.FieldValueInput{
+			{FieldDefinitionID: def.ID, Value: json.RawMessage(`"v"`)},
+		},
+	}
+	jsonValue, _ := json.Marshal(payload)
+	req, _ := http.NewRequest("PUT", "/contacts/999999/field-values", bytes.NewBuffer(jsonValue))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}

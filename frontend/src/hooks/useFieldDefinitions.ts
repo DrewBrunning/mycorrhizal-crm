@@ -89,7 +89,7 @@ export function useFieldDefinitions(notifier?: ErrorNotifier) {
 // contactId is the numeric contact ID the nested /contacts/:id/field-values
 // routes use; a value for a definition the contact has none of is absent from
 // valuesByDefinition rather than present with a null value.
-export function useContactFieldValues(contactId: string | number | undefined) {
+export function useContactFieldValues(contactId: string | number | undefined, notifier?: ErrorNotifier) {
   const [values, setValues] = useState<FieldValue[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -106,11 +106,13 @@ export function useContactFieldValues(contactId: string | number | undefined) {
     try {
       setValues(await getContactFieldValues(id));
     } catch (err) {
-      setError(handleFetchError(err, 'fetching custom field values'));
+      const msg = handleFetchError(err, 'fetching custom field values');
+      setError(msg);
+      handleError(err, { operation: 'fetching custom field values' }, notifier);
     } finally {
       setLoading(false);
     }
-  }, [contactId]);
+  }, [contactId, notifier]);
 
   const valuesByDefinition = useMemo(() => {
     const map = new Map<string, unknown>();
@@ -124,11 +126,11 @@ export function useContactFieldValues(contactId: string | number | undefined) {
       try {
         setValues(await replaceContactFieldValues(contactId, fieldValues));
       } catch (err) {
-        handleError(err, { operation: 'saving custom field values' });
+        handleError(err, { operation: 'saving custom field values' }, notifier);
         throw err;
       }
     },
-    [contactId]
+    [contactId, notifier]
   );
 
   return {

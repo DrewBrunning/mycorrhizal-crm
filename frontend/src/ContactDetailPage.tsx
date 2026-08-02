@@ -271,7 +271,7 @@ export default function ContactDetailPage() {
     valuesByDefinition: fieldValuesByDefinition,
     refresh: refreshFieldValues,
     save: saveFieldValues,
-  } = useContactFieldValues(record?.id);
+  } = useContactFieldValues(record?.id, { showError });
 
   const handleSaveFieldValue = async (definitionId: string, value: unknown) => {
     if (!record) return;

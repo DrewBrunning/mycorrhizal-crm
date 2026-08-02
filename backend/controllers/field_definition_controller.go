@@ -317,17 +317,26 @@ func ReplaceContactFieldValues(c *gin.Context) {
 	}
 
 	txErr := db.Transaction(func(tx *gorm.DB) error {
-		// Remove values whose definition is no longer in the payload. The
-		// uniqueIndex is (field_definition_id, entity_id), so an out-of-set
-		// row would otherwise collide or linger; delete-then-upsert inside
-		// the transaction keeps the set consistent without trusting the
-		// unique index for application logic.
-		if err := tx.Where(
-			"entity_id = ? AND user_id = ? AND field_definition_id NOT IN ?",
-			contact.VCardUID, userID,
-			incomingDefIDs(incoming),
-		).Delete(&models.FieldValue{}).Error; err != nil {
-			return err
+		// Remove values whose definition is no longer in the payload. When
+		// the payload is empty, every existing value is out-of-set, so
+		// delete all values for the contact — the explicit WHERE catches
+		// this case rather than relying on NOT IN () semantics, which GORM
+		// does not support (it replaces empty slices with NULL).
+		if len(incoming) == 0 {
+			if err := tx.Where(
+				"entity_id = ? AND user_id = ?",
+				contact.VCardUID, userID,
+			).Delete(&models.FieldValue{}).Error; err != nil {
+				return err
+			}
+		} else {
+			if err := tx.Where(
+				"entity_id = ? AND user_id = ? AND field_definition_id NOT IN ?",
+				contact.VCardUID, userID,
+				incomingDefIDs(incoming),
+			).Delete(&models.FieldValue{}).Error; err != nil {
+				return err
+			}
 		}
 
 		for _, fv := range incoming {

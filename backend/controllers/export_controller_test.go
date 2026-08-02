@@ -257,6 +257,33 @@ func TestExportData_CustomFieldsV2(t *testing.T) {
 	assert.Contains(t, body, "she/her; they/them")
 }
 
+func TestSerializeFieldValueForCSV(t *testing.T) {
+	tests := []struct {
+		name string
+		raw  json.RawMessage
+		want string
+	}{
+		{"empty bytes", json.RawMessage{}, ""},
+		{"json null", json.RawMessage(`null`), ""},
+		{"plain string", json.RawMessage(`"hello"`), "hello"},
+		{"empty string", json.RawMessage(`""`), ""},
+		{"integer number", json.RawMessage(`42`), "42"},
+		{"float number", json.RawMessage(`3.14`), "3.14"},
+		{"boolean true", json.RawMessage(`true`), "true"},
+		{"boolean false", json.RawMessage(`false`), "false"},
+		{"multi empty array", json.RawMessage(`[]`), ""},
+		{"multi string array", json.RawMessage(`["she/her","they/them"]`), "she/her; they/them"},
+		{"multi nested mixed", json.RawMessage(`["ok",42,true]`), "ok; 42; true"},
+		{"unexpected object falls back to raw", json.RawMessage(`{"x":1}`), `{"x":1}`},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := serializeFieldValueForCSV(tc.raw)
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}
+
 func TestExportDataEmpty(t *testing.T) {
 	_, router := setupRouter()
 
