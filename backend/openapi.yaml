@@ -9,13 +9,460 @@ info:
     ContactSummary per item; GET/POST/PUT /contacts/{id} exchange the full
     Card/CRM shape (ContactRecordResponse / ContactRecordInput) — a
     symmetric read/write contract.
+
+
+    T8 (docs/fork-plan/tickets/16-T8-openapi.md) extended this spec to cover
+    the whole REST surface: every route registered by
+    backend/routes/routes.go under /api/v1 plus the unversioned /health. The
+    drift test (backend/openapi_test.go) enumerates the live Gin router and
+    fails on any registered route with no spec entry, so this file cannot go
+    stale again.
+
+    Coverage notes:
+
+    - **Auth:** every path under /api/v1 except the public auth group
+      (register, login, logout, check-password-strength, password-reset,
+      auth/oidc/config) requires a session cookie (`auth_token`, set by login
+      and OIDC callback) or an `Authorization: Bearer <token>` header. API
+      tokens (mycorrhizal_…) are accepted on the general REST path only when
+      their scope is `full`; a `carddav`-scoped token is rejected with 403.
+      API tokens cannot access the admin paths at all.
+    - **OIDC:** `/auth/oidc/login` and `/auth/oidc/callback` are registered
+      only when OIDC is enabled at server startup (`OIDC_ENABLED=true`); they
+      are documented here for completeness but 404 on a non-OIDC build.
+      `/auth/oidc/config` is always present.
+    - **CardDAV:** the CardDAV surface (`.well-known/carddav`,
+      `/carddav/*`) is a WebDAV/XML protocol, not JSON REST, and is out of
+      scope for this spec by design. It is enabled separately via
+      `CARDDAV_ENABLED`.
+    - **Deliberate omissions (not bugs):** `fields=` on GET /contacts is
+      gone (WP-71 Gap 3) and is silently ignored if sent;
+      `includes=relationships` was removed in §3d WP4 and is likewise a no-op
+      rather than an error. The only Redocly lint warnings left are on
+      genuinely-public endpoints that return no 4xx by design — /health
+      (200/503), /auth/oidc/config (200), the OIDC login/callback redirects
+      (302), and /logout (200) — do not add fake 4xx responses to silence
+      them.
+    - **Pagination:** every list endpoint returns the offset-shaped envelope
+      `{ <items>: [...], "total", "page", "limit" }` documented below. T17
+      (docs/fork-plan/tickets/17-T17-change-feeds.md) will replace this with
+      cursor-based pagination pre-alpha; when that lands, every paginated
+      response in this spec must be revised together (the drift test keeps the
+      route surface honest, not the envelope).
+    - **Response-envelope asymmetry is real and intentional:** several create
+      endpoints wrap their object (`{"note": …}`, `{"circle": …}`) while their
+      update/single-GET siblings return it raw. Each operation documents what
+      it actually returns; the RelationshipEdge asymmetry
+      (create wraps `{"relationship_edge": …}`, update/accept return raw) has
+      already burned a frontend once.
   version: "1.0.0"
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
 servers:
   - url: /api/v1
+security:
+  - sessionCookie: []
+  - bearerAuth: []
 paths:
+  # Unversioned health endpoint (registered outside /api/v1 in routes.go —
+  # served at the app root, hence the path-level server override).
+  /health:
+    servers:
+      - url: /
+    get:
+      summary: Health check
+      operationId: getHealth
+      security: []
+      responses:
+        "200":
+          description: The service is healthy.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+        "503":
+          description: The database is unreachable (same body shape, status unhealthy).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  # --- OIDC (public) ---
+  /auth/oidc/config:
+    get:
+      summary: OIDC availability/config
+      operationId: getOIDCConfig
+      security: []
+      description: Always registered, whether or not OIDC is enabled.
+      responses:
+        "200":
+          description: Whether OIDC login is enabled and the provider name.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OIDCConfigResponse"
+  /auth/oidc/login:
+    get:
+      summary: Start an OIDC login (only present when OIDC is enabled)
+      operationId: oidcLogin
+      security: []
+      description: >
+        Only registered when OIDC_ENABLED=true. Sets three httpOnly cookies
+        (oidc_state, oidc_nonce, oidc_pkce) and 302-redirects to the
+        provider's authorization endpoint.
+      responses:
+        "302":
+          description: Redirect to the provider's authorization URL.
+        "500":
+          description: Failed to generate state/nonce.
+  /auth/oidc/callback:
+    get:
+      summary: OIDC callback (only present when OIDC is enabled)
+      operationId: oidcCallback
+      security: []
+      description: >
+        Only registered when OIDC_ENABLED=true. Exchanges the code, verifies
+        the ID token, provisions/finds the user and 302-redirects to / (or to
+        /login?error=… on any failure). Sets the auth_token and id_token
+        cookies on success.
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema: { type: string }
+        - name: state
+          in: query
+          required: true
+          schema: { type: string }
+        - name: error
+          in: query
+          schema: { type: string }
+      responses:
+        "302":
+          description: Redirect to / (success) or /login?error=… (failure).
+
+  # --- Public auth ---
+  /register:
+    post:
+      summary: Register a new user account
+      operationId: registerUser
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserRegistrationInput"
+      responses:
+        "201":
+          description: Account created. The first account ever is made admin.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Validation failed (weak password, bad email, etc.).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Registration is disabled (REGISTRATION_ENABLED=false).
+        "409":
+          description: Email or username already in use.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /login:
+    post:
+      summary: Log in with username or email
+      operationId: login
+      security: []
+      description: >
+        Sets the httpOnly auth_token cookie on success; the token is never in
+        the response body. Accepts either `identifier` (username or email) or
+        the legacy `email` alias.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Logged in; auth_token cookie set.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  language: { type: string }
+                  date_format: { type: string }
+        "400":
+          description: Missing identifier/password or malformed JSON.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Invalid credentials (deliberately identical for unknown user vs wrong password).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          description: Account temporarily locked after repeated failures.
+  /logout:
+    post:
+      summary: Log out (clears session cookies)
+      operationId: logout
+      security: []
+      description: >
+        Always clears auth_token and id_token cookies. When the session used
+        OIDC and the provider advertises an end-session endpoint, the response
+        also carries a redirect_url for RP-Initiated Logout.
+      responses:
+        "200":
+          description: Logged out.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogoutResponse"
+  /check-password-strength:
+    post:
+      summary: Evaluate a password's strength without changing it
+      operationId: checkPasswordStrength
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password: { type: string }
+      responses:
+        "200":
+          description: Strength evaluation.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PasswordStrength"
+        "400":
+          description: Missing password.
+  /password-reset/request:
+    post:
+      summary: Request a password reset email
+      operationId: requestPasswordReset
+      security: []
+      description: Always returns the same response whether or not the email exists (anti-enumeration).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PasswordResetRequestInput"
+      responses:
+        "200":
+          description: Instructions sent (or would have been).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Password changes are disabled in demo mode.
+        "502":
+          description: The reset email could not be sent.
+  /password-reset/confirm:
+    post:
+      summary: Complete a password reset with the emailed token
+      operationId: confirmPasswordReset
+      security: []
+      description: Bumps the user's token_version, invalidating all existing sessions.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PasswordResetConfirmInput"
+      responses:
+        "200":
+          description: Password reset.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Invalid/expired token or weak new password.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Password changes are disabled in demo mode.
+
+  # --- Current user (protected) ---
+  /users/change-password:
+    post:
+      summary: Rotate the authenticated user's password
+      operationId: changePassword
+      description: Bumps token_version (kills other sessions) and, for cookie sessions, re-issues a fresh auth_token cookie.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordInput"
+      responses:
+        "200":
+          description: Password updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Wrong current password, or new password equals current.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Password changes are disabled in demo mode.
+  /users/language:
+    patch:
+      summary: Update the authenticated user's UI language
+      operationId: updateLanguage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLanguageInput"
+      responses:
+        "200":
+          description: Language updated (normalized to lowercase).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  language: { type: string }
+        "400":
+          description: Unsupported language or malformed JSON.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /users/date-format:
+    patch:
+      summary: Update the authenticated user's date format
+      operationId: updateDateFormat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDateFormatInput"
+      responses:
+        "200":
+          description: Date format updated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  date_format: { type: string }
+        "400":
+          description: Unsupported date format or malformed JSON.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /users/enabled-contact-fields:
+    get:
+      summary: Get the user's enabled (visible) contact fields
+      operationId: getEnabledContactFields
+      description: enabled_contact_fields is null when the user has never configured it (the client then applies its default set).
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: The enabled contact fields.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  enabled_contact_fields:
+                    type: array
+                    items: { type: string }
+                    nullable: true
+    patch:
+      summary: Set the user's enabled (visible) contact fields
+      operationId: updateEnabledContactFields
+      description: A nil/absent fields list means "reset to the default set".
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnabledContactFieldsInput"
+      responses:
+        "200":
+          description: Fields updated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  enabled_contact_fields:
+                    type: array
+                    items: { type: string }
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /users/me:
+    get:
+      summary: Get the authenticated user
+      operationId: getCurrentUser
+      responses:
+        "200":
+          description: The current user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentUserResponse"
+        "404":
+          description: User not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # --- Contacts ---
   /contacts:
     get:
       summary: List contacts (slim projection)
+      operationId: listContacts
       description: >
         Returns a page of ContactSummary items — never the full Card, so a
         mobile contact-list screen doesn't have to fetch every contact's
@@ -30,7 +477,7 @@ paths:
           schema: { type: integer, minimum: 1, default: 1 }
         - name: limit
           in: query
-          schema: { type: integer, minimum: 1, default: 20 }
+          schema: { type: integer, minimum: 1, default: 25 }
         - name: search
           in: query
           description: Free-text search across name/nickname/email/phone (including secondary array entries).
@@ -51,14 +498,36 @@ paths:
         - name: circle
           in: query
           schema: { type: string }
+        - name: circle_legacy
+          in: query
+          description: >
+            Temporary T2-migration shim that filters against the legacy flat
+            contacts.circles JSON column. Remove once the migration is
+            complete; do not build on it.
+          schema: { type: string }
+        - name: vcard_uid
+          in: query
+          description: >
+            Repeatable batch by-VCardUID lookup (e.g. ?vcard_uid=a&vcard_uid=b).
+            Bypasses pagination/search/sort entirely and returns only the
+            requested contacts (the RelationshipEdge frontend uses this to
+            resolve VCardUID references). Respects include_archived.
+          schema: { type: string }
         - name: includes
           in: query
           description: >
-            Comma-separated subset of notes,activities,relationships,reminders.
-            When set, each item is a ContactSummaryWithRelations instead of a
-            plain ContactSummary.
+            Comma-separated subset of notes,activities,reminders. When set,
+            each item is a ContactSummaryWithRelations instead of a plain
+            ContactSummary. includes=relationships was removed in §3d WP4 and
+            is a no-op (not an error).
           schema: { type: string }
       responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "200":
           description: A page of contacts.
           content:
@@ -69,12 +538,15 @@ paths:
                   contacts:
                     type: array
                     items:
-                      $ref: "#/components/schemas/ContactSummary"
+                      anyOf:
+                        - $ref: "#/components/schemas/ContactSummary"
+                        - $ref: "#/components/schemas/ContactSummaryWithRelations"
                   total: { type: integer }
                   page: { type: integer }
                   limit: { type: integer }
     post:
       summary: Create a contact
+      operationId: createContact
       description: >
         Accepts the full neutral Card/CRM shape (ContactRecordInput), not the
         legacy flat DTO. At least one name component (kind=given) or
@@ -98,14 +570,157 @@ paths:
                     $ref: "#/components/schemas/ContactRecordResponse"
         "400":
           description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /contacts/circles:
+    get:
+      summary: List the user's circle names
+      operationId: listCircleNames
+      description: >
+        Returns a bare JSON array of circle names (the same Circle entities
+        listed by /circles, projected to names only). ?legacy=true reads the
+        legacy flat contacts.circles JSON column instead (T2 triage shim).
+      parameters:
+        - name: legacy
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: Circle names.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: string }
+  /contacts/random:
+    get:
+      summary: List five random, non-archived contacts
+      operationId: getRandomContacts
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: Random contacts (raw Contact rows plus photo_thumbnail).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  contacts:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ContactResponse"
+  /contacts/birthdays:
+    get:
+      summary: List upcoming birthdays
+      operationId: getUpcomingBirthdays
+      description: Up to 5 results, extended to include all birthdays within two weeks.
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: Upcoming birthdays.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  birthdays:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Birthday"
+  /contacts/merge/preview:
+    post:
+      summary: Preview merging two contacts
+      operationId: previewContactMerge
+      description: Computes the field union, conflicts, and per-association counts without mutating anything.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactMergeRequest"
+      responses:
+        "200":
+          description: Merge preview.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactMergePreviewResponse"
+        "400":
+          description: keep_id equals merge_id, or validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: One of the two contacts not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /contacts/merge:
+    post:
+      summary: Merge two contacts (keep_id survives, merge_id is absorbed)
+      operationId: commitContactMerge
+      description: >
+        Every field conflict must be resolved in the resolutions map or the
+        request fails with 400. The loser is soft-deleted; an audit note is
+        attached to the keeper.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactMergeRequest"
+      responses:
+        "200":
+          description: Merge committed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Contacts merged" }
+                  contact:
+                    $ref: "#/components/schemas/ContactRecordResponse"
+        "400":
+          description: keep_id equals merge_id, unresolved conflicts, or validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: One of the two contacts not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /contacts/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
     get:
       summary: Get a contact (full neutral Record/Card)
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema: { type: integer }
+      operationId: getContact
       responses:
         "200":
           description: The contact.
@@ -115,14 +730,14 @@ paths:
                 $ref: "#/components/schemas/ContactRecordResponse"
         "404":
           description: Contact not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
     put:
       summary: Update a contact
+      operationId: updateContact
       description: Same request/response shape as POST /contacts (symmetric read/write contract).
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema: { type: integer }
       requestBody:
         required: true
         content:
@@ -136,11 +751,2353 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ContactRecordResponse"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Contact not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete a contact
+      operationId: deleteContact
+      description: Soft-deletes the contact and cascade-deletes all its associations (notes, activities links, reminders, edges, memberships, life events, field values, sync links).
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Contact not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /contacts/{id}/archive:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    post:
+      summary: Archive a contact (and delete its reminders)
+      operationId: archiveContact
+      responses:
+        "200":
+          description: The archived contact (raw Contact JSON).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactFlat"
+        "404":
+          description: Contact not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /contacts/{id}/unarchive:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    post:
+      summary: Unarchive a contact
+      operationId: unarchiveContact
+      responses:
+        "200":
+          description: The unarchived contact (raw Contact JSON).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactFlat"
+        "404":
+          description: Contact not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # --- Contact import (CSV / VCF / JSContact) ---
+  /contacts/import/upload:
+    post:
+      summary: Upload a CSV file to start a contact import (step 1 of 3)
+      operationId: uploadCsvImport
+      description: >
+        Parses the CSV's headers and suggests column-to-field mappings.
+        Returns a session_id used by POST /contacts/import/preview and
+        /contacts/import/confirm. The session (and any prior expired ones)
+        is cleaned up opportunistically on each upload call.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary, description: "A .csv file." }
+      responses:
+        "200":
+          description: Parsed headers, suggested mappings, and a sample of rows.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportUploadResponse"
+        "400":
+          description: Missing file, wrong extension, oversized file, or malformed CSV.
+  /contacts/import/vcf/upload:
+    post:
+      summary: Upload a VCF (vCard 3.0/4.0) file to start a contact import
+      operationId: uploadVcfImport
+      description: >
+        No column mapping needed (vCard is self-describing): parses directly
+        into a preview with duplicate detection. Confirm via
+        POST /contacts/import/vcf/confirm.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary, description: "A .vcf file (one or more concatenated vCards)." }
+      responses:
+        "200":
+          description: Parsed rows with duplicate detection and per-row diagnostics.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportPreviewResponse"
+        "400":
+          description: Missing file, wrong extension, oversized file, or malformed VCF.
+  /contacts/import/jscontact/upload:
+    post:
+      summary: Upload a JSContact (RFC 9553) JSON file to start a contact import
+      operationId: uploadJscontactImport
+      description: >
+        Mirrors /contacts/import/vcf/upload — the resulting session is
+        format-agnostic (same underlying VCFContactData shape), so confirm
+        via the same POST /contacts/import/vcf/confirm endpoint.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary, description: "A JSContact .json file (single Card or an array of Cards)." }
+      responses:
+        "200":
+          description: Parsed rows with duplicate detection and per-row diagnostics.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportPreviewResponse"
+        "400":
+          description: Missing file, wrong extension, oversized file, or malformed JSON.
+  /contacts/import/preview:
+    post:
+      summary: Apply column mappings to a CSV import session and get a preview (step 2 of 3)
+      operationId: previewCsvImport
+      description: CSV-only — VCF/JSContact sessions already have their preview from the upload step.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportPreviewRequest"
+      responses:
+        "200":
+          description: Row-by-row preview with duplicate detection.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportPreviewResponse"
+        "400":
+          description: Unknown/expired session, or session owned by another user.
+  /contacts/import/confirm:
+    post:
+      summary: Execute a CSV import with the caller's per-row actions (step 3 of 3)
+      operationId: confirmCsvImport
+      description: >
+        One bad row's error does not abort the batch — other rows in the
+        same request still commit. The session is deleted on completion.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportConfirmRequest"
+      responses:
+        "200":
+          description: Import result summary.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportResult"
+        "400":
+          description: No prior preview cached, or unknown/expired/foreign session.
+  /contacts/import/vcf/confirm:
+    post:
+      summary: Execute a VCF or JSContact import with the caller's per-row actions
+      operationId: confirmVcfImport
+      description: >
+        Same contract as /contacts/import/confirm, plus photo processing:
+        embedded or URL-referenced photos are saved after the row commits
+        (an incoming photo never overwrites a contact that already has one
+        on "update").
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportConfirmRequest"
+      responses:
+        "200":
+          description: Import result summary.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportResult"
+        "400":
+          description: A CSV-sourced session ID was sent here, no prior preview cached, or unknown/expired/foreign session.
+
+  # --- Relationship edges ---
+  /relationship-edges:
+    get:
+      summary: List relationship edges
+      operationId: listRelationshipEdges
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, default: 25 }
+        - name: contact_id
+          in: query
+          description: Filter to edges where this Contact.VCardUID is either endpoint.
+          schema: { type: string, format: uuid }
+        - name: status
+          in: query
+          description: Filter by status (confirmed or suggested).
+          schema: { type: string, enum: [confirmed, suggested] }
+        - name: type
+          in: query
+          description: Filter by relationship type token (e.g. parent_of).
+          schema: { type: string }
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: A page of edges.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  relationship_edges:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/RelationshipEdge"
+                  total: { type: integer }
+                  page: { type: integer }
+                  limit: { type: integer }
+    post:
+      summary: Create a relationship edge
+      operationId: createRelationshipEdge
+      description: >
+        Each endpoint is either an existing contact (source_id/target_id, a
+        Contact.VCardUID) or a not-yet-existing "thin" contact described
+        inline (source_thin/target_thin) — exactly one of the pair per
+        endpoint. The server always sets Source=user-confirmed,
+        Confidence=1.0, Status=confirmed. **Response is wrapped in a
+        `relationship_edge` key** (unlike the update/accept endpoints, which
+        return the raw object — a real asymmetry that has burned a frontend
+        once).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RelationshipEdgeInput"
+      responses:
+        "201":
+          description: Edge created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  relationship_edge:
+                    $ref: "#/components/schemas/RelationshipEdge"
+        "400":
+          description: Validation failed, both/neither endpoint given, or source_id == target_id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: An existing endpoint contact was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /relationship-edges/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get a relationship edge
+      operationId: getRelationshipEdge
+      responses:
+        "200":
+          description: The edge (raw, not wrapped).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RelationshipEdge"
+        "404":
+          description: Edge not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      summary: Update a relationship edge (full replace)
+      operationId: updateRelationshipEdge
+      description: Status/Source/Confidence are server-derived and never changed by an update.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RelationshipEdgeInput"
+      responses:
+        "200":
+          description: The updated edge (raw, not wrapped).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RelationshipEdge"
+        "400":
+          description: Validation failed or endpoint resolution failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Edge or endpoint contact not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete a relationship edge
+      operationId: deleteRelationshipEdge
+      description: Hard delete. Doubles as "reject" for suggested edges.
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Edge not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /relationship-edges/{id}/accept:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      summary: Accept a suggested relationship edge
+      operationId: acceptRelationshipEdge
+      description: Only valid when the edge's status is "suggested". Returns the raw updated edge.
+      responses:
+        "200":
+          description: Edge accepted (status now confirmed).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RelationshipEdge"
+        "404":
+          description: Edge not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Edge is not a pending suggestion.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # --- Profile pictures ---
+  /contacts/{id}/profile_picture:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    post:
+      summary: Set a contact's profile picture
+      operationId: uploadProfilePicture
+      description: >
+        Multipart upload (field name `photo`). JPEG/PNG/HEIC/HEIF only, max
+        10 MB. The image is center-cropped to a square, downscaled to at most
+        400x400 and stored as JPEG; a base64 thumbnail is generated. An absent
+        `photo` field is accepted and just re-saves the contact.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                photo: { type: string, format: binary }
+      responses:
+        "200":
+          description: The updated contact (raw Contact JSON).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactFlat"
+        "400":
+          description: Invalid contact id, oversized file, or unsupported format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Profile-picture changes are disabled in demo mode.
+        "404":
+          description: Contact not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    get:
+      summary: Get a contact's profile picture
+      operationId: getProfilePicture
+      description: >
+        Without query params serves the stored photo file directly (binary).
+        With thumbnail=true serves the base64 thumbnail as a JPEG.
+      parameters:
+        - name: thumbnail
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        "200":
+          description: The image bytes (Content-Type image/jpeg, or the source image type).
+          content:
+            image/jpeg:
+              schema: { type: string, format: binary }
+        "400":
+          description: Invalid contact id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Contact, photo, or thumbnail not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # --- Image proxy ---
+  /proxy/image:
+    get:
+      summary: Fetch and proxy an external image (SSRF-guarded)
+      operationId: proxyImage
+      description: >
+        Fetches the image at the given URL with SSRF guards (no private/
+        loopback/link-local hosts), a 10 MB cap, and an image/ content-type
+        requirement. SVG is rejected outright (XSS defense).
+      parameters:
+        - name: url
+          in: query
+          required: true
+          schema: { type: string, format: uri }
+      responses:
+        "200":
+          description: The image bytes with the upstream Content-Type.
+          content:
+            image/*:
+              schema: { type: string, format: binary }
+        "400":
+          description: Missing url, or SVG images are not supported.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "502":
+          description: The upstream fetch failed or was blocked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # --- Notes ---
+  /contacts/{id}/notes:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      summary: List a contact's notes
+      operationId: listContactNotes
+      responses:
+        "200":
+          description: The contact's notes.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  notes:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Note"
+        "404":
+          description: Contact not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      summary: Create a note on a contact
+      operationId: createContactNote
+      description: The contact_id from the URL overrides any body contact_id.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NoteInput"
+      responses:
+        "200":
+          description: Note created (200, not 201).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Note created successfully" }
+                  note:
+                    $ref: "#/components/schemas/Note"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Contact not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /notes:
+    get:
+      summary: List the user's unassigned notes (no contact)
+      operationId: listUnassignedNotes
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, default: 25 }
+        - name: search
+          in: query
+          description: Free-text search on note content.
+          schema: { type: string }
+        - name: fromDate
+          in: query
+          description: Inclusive YYYY-MM-DD lower bound on note date.
+          schema: { type: string, format: date }
+        - name: toDate
+          in: query
+          description: Inclusive YYYY-MM-DD upper bound on note date.
+          schema: { type: string, format: date }
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: A page of unassigned notes.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  notes:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Note"
+                  total: { type: integer }
+                  page: { type: integer }
+                  limit: { type: integer }
+    post:
+      summary: Create an unassigned note
+      operationId: createUnassignedNote
+      description: A body contact_id is honored here (unlike the contact-nested route).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NoteInput"
+      responses:
+        "200":
+          description: Note created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Note created successfully" }
+                  note:
+                    $ref: "#/components/schemas/Note"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: The referenced contact (if any) was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /notes/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      summary: Get a note
+      operationId: getNote
+      responses:
+        "200":
+          description: The note (raw, not wrapped).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Note"
+        "404":
+          description: Note not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      summary: Update a note
+      operationId: updateNote
+      description: Setting contact_id to null clears the assignment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NoteInput"
+      responses:
+        "200":
+          description: Note updated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Note updated successfully" }
+                  note:
+                    $ref: "#/components/schemas/Note"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Note (or referenced contact) not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete a note (soft delete)
+      operationId: deleteNote
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Note not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # --- Activities / Interactions ---
+  /contacts/{id}/activities:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      summary: List a contact's activities
+      operationId: listContactActivities
+      responses:
+        "200":
+          description: The contact's activities.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  activities:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Activity"
+        "404":
+          description: Contact not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /activities:
+    get:
+      summary: List the user's activities
+      operationId: listActivities
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, default: 25 }
+        - name: include
+          in: query
+          description: 'When "contacts", each activity carries its participant contacts.'
+          schema: { type: string, enum: [contacts] }
+        - name: search
+          in: query
+          description: Free-text search across title/description/location and participant names.
+          schema: { type: string }
+        - name: fromDate
+          in: query
+          description: Inclusive YYYY-MM-DD lower bound on activity date.
+          schema: { type: string, format: date }
+        - name: toDate
+          in: query
+          description: Inclusive YYYY-MM-DD upper bound on activity date.
+          schema: { type: string, format: date }
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: A page of activities.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  activities:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Activity"
+                  total: { type: integer }
+                  page: { type: integer }
+                  limit: { type: integer }
+    post:
+      summary: Create an activity
+      operationId: createActivity
+      description: All contact_ids must belong to the caller (else 404).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActivityInput"
+      responses:
+        "200":
+          description: Activity created (200, not 201).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Activity created successfully" }
+                  activity:
+                    $ref: "#/components/schemas/Activity"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: One or more referenced contacts not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /activities/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      summary: Get an activity
+      operationId: getActivity
+      responses:
+        "200":
+          description: The activity (raw, with participant contacts).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Activity"
+        "404":
+          description: Activity not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      summary: Update an activity
+      operationId: updateActivity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActivityInput"
+      responses:
+        "200":
+          description: The updated activity (raw).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Activity"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Activity (or referenced contact) not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete an activity (soft delete)
+      operationId: deleteActivity
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Activity not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # --- Circles ---
+  /circles:
+    get:
+      summary: List circles
+      operationId: listCircles
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, default: 25 }
+        - name: include_members
+          in: query
+          description: When true, also returns a members array (all circle_members join rows for the page's circles).
+          schema: { type: boolean, default: false }
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: A page of circles.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  circles:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Circle"
+                  total: { type: integer }
+                  page: { type: integer }
+                  limit: { type: integer }
+                  members:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/CircleMember"
+    post:
+      summary: Create a circle
+      operationId: createCircle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CircleInput"
+      responses:
+        "200":
+          description: Circle created (200, not 201).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Circle created successfully" }
+                  circle:
+                    $ref: "#/components/schemas/Circle"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /circles/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get a circle with its members
+      operationId: getCircle
+      responses:
+        "200":
+          description: The circle and its membership join rows.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  circle:
+                    $ref: "#/components/schemas/Circle"
+                  members:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/CircleMember"
+        "404":
+          description: Circle not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      summary: Update a circle
+      operationId: updateCircle
+      description: Only name is editable; membership lives in the member endpoints.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CircleInput"
+      responses:
+        "200":
+          description: The updated circle (raw, not wrapped).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Circle"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Circle not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete a circle (hard delete; members cascade)
+      operationId: deleteCircle
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Circle not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /circles/{id}/members:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Add a member to a circle
+      operationId: addCircleMember
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CircleMemberInput"
+      responses:
+        "200":
+          description: Member added.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Member added" }
+                  member:
+                    $ref: "#/components/schemas/CircleMember"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Circle or contact not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: The contact is already a member of this circle.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /circles/{id}/members/{vcard_uid}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: vcard_uid
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      summary: Remove a member from a circle
+      operationId: removeCircleMember
+      responses:
+        "200":
+          description: Member removed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Circle or membership not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # --- Households ---
+  /households:
+    get:
+      summary: List households
+      operationId: listHouseholds
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, default: 25 }
+        - name: include_members
+          in: query
+          description: When true, also returns a members array for the page's households.
+          schema: { type: boolean, default: false }
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: A page of households.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  households:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Household"
+                  total: { type: integer }
+                  page: { type: integer }
+                  limit: { type: integer }
+                  members:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/HouseholdMember"
+    post:
+      summary: Create a household
+      operationId: createHousehold
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HouseholdInput"
+      responses:
+        "200":
+          description: Household created (200, not 201).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Household created successfully" }
+                  household:
+                    $ref: "#/components/schemas/Household"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /households/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get a household with its members
+      operationId: getHousehold
+      responses:
+        "200":
+          description: The household and its membership rows.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  household:
+                    $ref: "#/components/schemas/Household"
+                  members:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/HouseholdMember"
+        "404":
+          description: Household not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      summary: Update a household
+      operationId: updateHousehold
+      description: Only name, type, and address are editable; membership lives in the member endpoints.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HouseholdInput"
+      responses:
+        "200":
+          description: The updated household (raw, not wrapped).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Household"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Household not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete a household (members cascade)
+      operationId: deleteHousehold
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Household not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /households/{id}/members:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Add a member to a household
+      operationId: addHouseholdMember
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HouseholdMemberInput"
+      responses:
+        "200":
+          description: Member added.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Member added" }
+                  member:
+                    $ref: "#/components/schemas/HouseholdMember"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Household or contact not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: The contact is already a member of this household.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /households/{id}/members/{vcard_uid}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: vcard_uid
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      summary: Remove a member from a household
+      operationId: removeHouseholdMember
+      responses:
+        "200":
+          description: Member removed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Household or membership not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    patch:
+      summary: Update a household member's role
+      operationId: updateHouseholdMember
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role: { type: string }
+      responses:
+        "200":
+          description: Member updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Household or member not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /households/{id}/suggest-relationships:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Generate suggested relationship edges from a household
+      operationId: suggestHouseholdRelationships
+      description: >
+        Re-scans the household's current membership and idempotently creates
+        suggested (status=suggested) edges for every applicable pair. Only the
+        newly created edges are returned.
+      responses:
+        "200":
+          description: Suggested edges generated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Relationship suggestions generated" }
+                  household_id: { type: string, format: uuid }
+                  suggested_edges:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/RelationshipEdge"
+                  total: { type: integer }
+        "404":
+          description: Household not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # --- Tags ---
+  /tags:
+    get:
+      summary: List tags
+      operationId: listTags
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, default: 25 }
+        - name: include_contacts
+          in: query
+          description: When true, also returns a contacts array (all contact_tags join rows for the page's tags).
+          schema: { type: boolean, default: false }
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: A page of tags.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tags:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Tag"
+                  total: { type: integer }
+                  page: { type: integer }
+                  limit: { type: integer }
+                  contacts:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ContactTag"
+    post:
+      summary: Create a tag
+      operationId: createTag
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TagInput"
+      responses:
+        "200":
+          description: Tag created (200, not 201).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Tag created successfully" }
+                  tag:
+                    $ref: "#/components/schemas/Tag"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /tags/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get a tag with its contacts
+      operationId: getTag
+      responses:
+        "200":
+          description: The tag and its tagging join rows.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tag:
+                    $ref: "#/components/schemas/Tag"
+                  contacts:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ContactTag"
+        "404":
+          description: Tag not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      summary: Update a tag
+      operationId: updateTag
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TagInput"
+      responses:
+        "200":
+          description: The updated tag (raw, not wrapped).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tag"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Tag not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete a tag (tagging cascade)
+      operationId: deleteTag
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Tag not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /tags/{id}/contacts:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Tag a contact
+      operationId: addContactTag
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactTagInput"
+      responses:
+        "200":
+          description: Contact tagged.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Contact tagged" }
+                  tagging:
+                    $ref: "#/components/schemas/ContactTag"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Tag or contact not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: The contact is already tagged with this tag.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /tags/{id}/contacts/{vcard_uid}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: vcard_uid
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      summary: Remove a tag from a contact
+      operationId: removeContactTag
+      responses:
+        "200":
+          description: Tagging removed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Tag or tagging not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # --- Custom field definitions ---
+  /field-definitions:
+    get:
+      summary: List field definitions
+      operationId: listFieldDefinitions
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, default: 25 }
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: A page of field definitions.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  field_definitions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/FieldDefinition"
+                  total: { type: integer }
+                  page: { type: integer }
+                  limit: { type: integer }
+    post:
+      summary: Create a field definition
+      operationId: createFieldDefinition
+      description: The key is unique per user; a duplicate key is a 409.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FieldDefinitionInput"
+      responses:
+        "201":
+          description: Field definition created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Field definition created successfully" }
+                  field_definition:
+                    $ref: "#/components/schemas/FieldDefinition"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: A field definition with this key already exists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /field-definitions/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get a field definition
+      operationId: getFieldDefinition
+      responses:
+        "200":
+          description: The field definition (raw).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FieldDefinition"
+        "404":
+          description: Field definition not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      summary: Update a field definition
+      operationId: updateFieldDefinition
+      description: The key is immutable after creation and is not updated.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FieldDefinitionInput"
+      responses:
+        "200":
+          description: The updated field definition (raw).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FieldDefinition"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Field definition not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete a field definition (values cascade)
+      operationId: deleteFieldDefinition
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Field definition not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /contacts/{id}/field-values:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      summary: List a contact's custom field values
+      operationId: listContactFieldValues
+      description: All sensitivities are returned here (the contact owner sees everything).
+      responses:
+        "200":
+          description: The contact's field values.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  field_values:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/FieldValue"
+        "404":
+          description: Contact not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      summary: Replace a contact's custom field values (full replace)
+      operationId: replaceContactFieldValues
+      description: An empty field_values array clears every value on the contact.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactFieldValuesInput"
+      responses:
+        "200":
+          description: Field values saved.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Field values saved successfully" }
+                  field_values:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/FieldValue"
+        "400":
+          description: Unknown/unowned field_definition_id, or a value fails the definition's type/constraint validation.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Contact not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # --- Life events ---
+  /life-events:
+    get:
+      summary: List life events
+      operationId: listLifeEvents
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, default: 25 }
+        - name: entity_id
+          in: query
+          description: Filter to life events whose subject contact is this Contact.VCardUID.
+          schema: { type: string, format: uuid }
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: A page of life events.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  life_events:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/LifeEvent"
+                  total: { type: integer }
+                  page: { type: integer }
+                  limit: { type: integer }
+    post:
+      summary: Create a life event
+      operationId: createLifeEvent
+      description: When remind is true and the date has a month/day, a yearly reminder is materialized.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LifeEventInput"
+      responses:
+        "201":
+          description: Life event created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Life event created successfully" }
+                  life_event:
+                    $ref: "#/components/schemas/LifeEvent"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: The subject contact was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /life-events/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get a life event
+      operationId: getLifeEvent
+      responses:
+        "200":
+          description: The life event (raw).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LifeEvent"
+        "404":
+          description: Life event not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      summary: Update a life event (full replace)
+      operationId: updateLifeEvent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LifeEventInput"
+      responses:
+        "200":
+          description: The updated life event (raw).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LifeEvent"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Life event (or subject contact) not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete a life event (soft delete; its materialized reminder hard-deletes)
+      operationId: deleteLifeEvent
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Life event not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # --- Preferences ---
+  /preferences:
+    get:
+      summary: List preferences
+      operationId: listPreferences
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, default: 25 }
+        - name: entity_id
+          in: query
+          description: Filter to preferences whose subject contact is this Contact.VCardUID.
+          schema: { type: string, format: uuid }
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: A page of preferences.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  preferences:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Preference"
+                  total: { type: integer }
+                  page: { type: integer }
+                  limit: { type: integer }
+    post:
+      summary: Create a preference
+      operationId: createPreference
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PreferenceInput"
+      responses:
+        "201":
+          description: Preference created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Preference created successfully" }
+                  preference:
+                    $ref: "#/components/schemas/Preference"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: The subject contact was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /preferences/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get a preference
+      operationId: getPreference
+      responses:
+        "200":
+          description: The preference (raw).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Preference"
+        "404":
+          description: Preference not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      summary: Update a preference (full replace)
+      operationId: updatePreference
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PreferenceInput"
+      responses:
+        "200":
+          description: The updated preference (raw).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Preference"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Preference (or subject contact) not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete a preference (soft delete)
+      operationId: deletePreference
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Preference not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # --- Reminders ---
+  /reminders:
+    get:
+      summary: List all reminders
+      operationId: listAllReminders
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: The user's reminders (no pagination).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reminders:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Reminder"
+  /reminders/upcoming:
+    get:
+      summary: List upcoming (next 7 days) reminders
+      operationId: listUpcomingReminders
+      description: Up to 5 incomplete reminders, or the next 5 incomplete overall.
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: Upcoming reminders.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reminders:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Reminder"
+  /reminders/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      summary: Get a reminder
+      operationId: getReminder
+      responses:
+        "200":
+          description: The reminder (raw).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reminder"
+        "404":
+          description: Reminder not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      summary: Update a reminder
+      operationId: updateReminder
+      description: The Reminder model doubles as the request body — required fields (message, remind_at, recurrence, contact_id) must be re-sent.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Reminder"
+      responses:
+        "200":
+          description: Reminder updated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Reminder updated successfully" }
+                  reminder:
+                    $ref: "#/components/schemas/Reminder"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Reminder (or referenced contact) not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete a reminder (soft delete)
+      operationId: deleteReminder
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Reminder not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /reminders/{id}/complete:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    post:
+      summary: Complete a reminder
+      operationId: completeReminder
+      description: >
+        Marks the reminder complete. With ?skip=true the timeline completion
+        record is skipped. Recurring reminders are rescheduled (and return the
+        reminder); once reminders are hard-deleted (message-only response).
+      parameters:
+        - name: skip
+          in: query
+          description: Skip writing the ReminderCompletion timeline record.
+          schema: { type: boolean, default: false }
+      responses:
+        "200":
+          description: Completed (and rescheduled if recurring).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReminderCompleteResponse"
+        "404":
+          description: Reminder not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /contacts/{id}/reminders:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      summary: List a contact's reminders
+      operationId: listContactReminders
+      responses:
+        "200":
+          description: The contact's reminders.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reminders:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Reminder"
+        "404":
+          description: Contact not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      summary: Create a reminder for a contact
+      operationId: createReminder
+      description: >
+        The contact_id from the URL overrides any body contact_id, but the
+        field is still required in the body by validation (the Reminder model
+        is the request schema). remind_at's time-of-day is zeroed server-side.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Reminder"
+      responses:
+        "200":
+          description: Reminder created (200, not 201).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Reminder created successfully" }
+                  reminder:
+                    $ref: "#/components/schemas/Reminder"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Contact not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /contacts/{id}/reminder-completions:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      summary: List a contact's reminder completions (timeline)
+      operationId: listContactReminderCompletions
+      responses:
+        "200":
+          description: The contact's completions, newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  completions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ReminderCompletion"
+        "404":
+          description: Contact not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /reminder-completions/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    delete:
+      summary: Delete a reminder completion record
+      operationId: deleteReminderCompletion
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Completion record not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # --- Export ---
+  /export:
+    get:
+      summary: Export all personal data as CSV
+      operationId: exportDataCsv
+      description: >
+        The full per-user backup as a single CSV file with section banner
+        rows (CONTACTS/RELATIONSHIPS/ACTIVITIES/NOTES/REMINDERS) and header
+        rows per section. Values are formula-injection-neutralized. This
+        endpoint does not take sections/include_sensitive params — those
+        apply only to the vCard/JSContact exports.
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: A CSV file.
+          content:
+            text/csv:
+              schema: { type: string, format: binary }
   /export/vcf:
     get:
       summary: Export all contacts as a vCard (.vcf) file
+      operationId: exportContactsVcf
       parameters:
         - name: version
           in: query
@@ -154,7 +3111,7 @@ paths:
             anniversaries, media, online_services, links, notes, keywords,
             related_to, personal_info, speak_to_as, members, languages,
             custom_fields. Absent means all sections. Identity (name/UID) is
-            always included.
+            always included. An unknown token is a 400.
           schema:
             type: string
             example: "emails,phones,addresses"
@@ -172,9 +3129,12 @@ paths:
           content:
             text/vcard:
               schema: { type: string, format: binary }
+        "400":
+          description: An unknown sections token was supplied.
   /export/jscontact:
     get:
       summary: Export all contacts as a JSContact (RFC 9553) JSON document
+      operationId: exportContactsJscontact
       description: A JSON array of JSContact Card objects, one per contact.
       parameters:
         - name: sections
@@ -207,149 +3167,486 @@ paths:
                 items:
                   type: object
                   description: An RFC 9553 JSContact Card document.
-  /contacts/import/upload:
-    post:
-      summary: Upload a CSV file to start a contact import (step 1 of 3)
+        "400":
+          description: An unknown sections token was supplied.
+
+  # --- Graph ---
+  /graph:
+    get:
+      summary: Get the network graph (contacts + confirmed edges + activities)
+      operationId: getGraph
       description: >
-        Parses the CSV's headers and suggests column-to-field mappings.
-        Returns a session_id used by POST /contacts/import/preview and
-        /contacts/import/confirm. The session (and any prior expired ones)
-        is cleaned up opportunistically on each upload call.
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              required: [file]
-              properties:
-                file: { type: string, format: binary, description: "A .csv file." }
+        Contact nodes (all non-archived contacts), activity nodes (only
+        activities with 2+ participants), relationship edges (only status=confirmed),
+        and activity star-edges. Error responses on this endpoint use a plain
+        {"error": "..."} body, not the standard Error envelope.
       responses:
-        "200":
-          description: Parsed headers, suggested mappings, and a sample of rows.
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ImportUploadResponse"
-        "400":
-          description: Missing file, wrong extension, oversized file, or malformed CSV.
-  /contacts/import/vcf/upload:
-    post:
-      summary: Upload a VCF (vCard 3.0/4.0) file to start a contact import
-      description: >
-        No column mapping needed (vCard is self-describing): parses directly
-        into a preview with duplicate detection. Confirm via
-        POST /contacts/import/vcf/confirm.
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              required: [file]
-              properties:
-                file: { type: string, format: binary, description: "A .vcf file (one or more concatenated vCards)." }
-      responses:
+                $ref: "#/components/schemas/Error"
         "200":
-          description: Parsed rows with duplicate detection and per-row diagnostics.
+          description: The graph.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ImportPreviewResponse"
-        "400":
-          description: Missing file, wrong extension, oversized file, or malformed VCF.
-  /contacts/import/jscontact/upload:
-    post:
-      summary: Upload a JSContact (RFC 9553) JSON file to start a contact import
-      description: >
-        Mirrors /contacts/import/vcf/upload — the resulting session is
-        format-agnostic (same underlying VCFContactData shape), so confirm
-        via the same POST /contacts/import/vcf/confirm endpoint.
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              required: [file]
-              properties:
-                file: { type: string, format: binary, description: "A JSContact .json file (single Card or an array of Cards)." }
-      responses:
-        "200":
-          description: Parsed rows with duplicate detection and per-row diagnostics.
+                $ref: "#/components/schemas/GraphResponse"
+        "500":
+          description: Failed to fetch contacts/edges/activities.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ImportPreviewResponse"
-        "400":
-          description: Missing file, wrong extension, oversized file, or malformed JSON.
-  /contacts/import/preview:
+                type: object
+                properties:
+                  error: { type: string }
+
+  # --- API tokens ---
+  /api-tokens:
+    get:
+      summary: List the user's API tokens
+      operationId: listApiTokens
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: The user's tokens (no pagination).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tokens:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ApiTokenResponse"
     post:
-      summary: Apply column mappings to a CSV import session and get a preview (step 2 of 3)
-      description: CSV-only — VCF/JSContact sessions already have their preview from the upload step.
+      summary: Create an API token
+      operationId: createApiToken
+      description: The plaintext token is returned only here, once.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ImportPreviewRequest"
+              $ref: "#/components/schemas/ApiTokenInput"
       responses:
-        "200":
-          description: Row-by-row preview with duplicate detection.
+        "201":
+          description: Token created (raw response, not wrapped).
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ImportPreviewResponse"
+                $ref: "#/components/schemas/ApiTokenCreateResponse"
         "400":
-          description: Unknown/expired session, or session owned by another user.
-  /contacts/import/confirm:
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api-tokens/{id}:
+    delete:
+      summary: Revoke an API token
+      operationId: revokeApiToken
+      description: Soft-revoke (sets revoked_at).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Token revoked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Non-integer id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Token not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # --- Webhooks ---
+  /webhooks:
+    get:
+      summary: List the user's webhooks
+      operationId: listWebhooks
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: The user's webhooks (no pagination).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  webhooks:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/WebhookResponse"
     post:
-      summary: Execute a CSV import with the caller's per-row actions (step 3 of 3)
-      description: >
-        One bad row's error does not abort the batch — other rows in the
-        same request still commit. The session is deleted on completion.
+      summary: Create a webhook
+      operationId: createWebhook
+      description: The signing secret is returned only here, once.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ImportConfirmRequest"
+              $ref: "#/components/schemas/WebhookInput"
       responses:
-        "200":
-          description: Import result summary.
+        "201":
+          description: Webhook created (raw response, not wrapped).
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ImportResult"
+                $ref: "#/components/schemas/WebhookCreateResponse"
         "400":
-          description: No prior preview cached, or unknown/expired/foreign session.
-  /contacts/import/vcf/confirm:
-    post:
-      summary: Execute a VCF or JSContact import with the caller's per-row actions
-      description: >
-        Same contract as /contacts/import/confirm, plus photo processing:
-        embedded or URL-referenced photos are saved after the row commits
-        (an incoming photo never overwrites a contact that already has one
-        on "update").
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: The per-user cap (20 webhooks) is reached.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /webhooks/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      summary: Get a webhook
+      operationId: getWebhook
+      responses:
+        "200":
+          description: The webhook (no secret).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookResponse"
+        "400":
+          description: Non-integer id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Webhook not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      summary: Update a webhook
+      operationId: updateWebhook
+      description: The secret is not changed on update.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ImportConfirmRequest"
+              $ref: "#/components/schemas/WebhookInput"
       responses:
         "200":
-          description: Import result summary.
+          description: The updated webhook (no secret).
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ImportResult"
+                $ref: "#/components/schemas/WebhookResponse"
         "400":
-          description: A CSV-sourced session ID was sent here, no prior preview cached, or unknown/expired/foreign session.
+          description: Non-integer id or validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Webhook not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete a webhook (soft delete)
+      operationId: deleteWebhook
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Non-integer id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Webhook not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /webhooks/{id}/test:
+    post:
+      summary: Deliver a test webhook synchronously
+      operationId: testWebhook
+      description: Sends a test payload (event type "test") regardless of the configured event subscriptions.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: The delivery attempt.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  delivery:
+                    $ref: "#/components/schemas/WebhookDeliveryResponse"
+        "400":
+          description: Non-integer id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Webhook not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /webhooks/{id}/deliveries:
+    get:
+      summary: List a webhook's delivery history
+      operationId: listWebhookDeliveries
+      description: Hard-limited to the 50 most recent deliveries (no pagination params).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: The deliveries.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deliveries:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/WebhookDeliveryResponse"
+        "400":
+          description: Non-integer id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Webhook not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # --- Calendar subscriptions ---
+  /calendars:
+    get:
+      summary: List the user's calendar subscriptions
+      operationId: listCalendarSubscriptions
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: The user's subscriptions (no pagination).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  calendars:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/CalendarSubscriptionResponse"
+    post:
+      summary: Add an iCal/CalDAV calendar to import activities from
+      operationId: createCalendarSubscription
+      description: Capped at 10 subscriptions per user.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CalendarSubscriptionInput"
+      responses:
+        "201":
+          description: Subscription created (raw response, not wrapped).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalendarSubscriptionResponse"
+        "400":
+          description: Invalid URL, or validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: The per-user cap (10 subscriptions) is reached.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /calendars/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    put:
+      summary: Update a calendar subscription
+      operationId: updateCalendarSubscription
+      description: Changing the URL resets the sync token (full resync on next sync); clear_password removes stored credentials; an empty password leaves the existing credential untouched.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CalendarSubscriptionInput"
+      responses:
+        "200":
+          description: Updated subscription (raw).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalendarSubscriptionResponse"
+        "400":
+          description: Non-integer id, invalid URL, or validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Subscription not found (or not owned by the caller).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete a calendar subscription
+      operationId: deleteCalendarSubscription
+      description: Imported activities are kept; only the subscription and its event-link bookkeeping are removed.
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Non-integer id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Subscription not found (or not owned by the caller).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /calendars/{id}/sync:
+    post:
+      summary: Trigger an immediate sync of one calendar subscription
+      operationId: syncCalendarSubscription
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Sync completed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  created: { type: integer }
+                  updated: { type: integer }
+                  skipped: { type: integer }
+        "400":
+          description: Non-integer id or invalid calendar URL.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Subscription not found (or not owned by the caller).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: Sync failed for an unclassified reason.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: >
+            The remote server rejected the request, was unreachable, returned
+            unparsable or oversized data, or resolved to a blocked private
+            address.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # --- Contact (CardDAV) subscriptions ---
   /contact-subscriptions:
     get:
       summary: List the caller's CardDAV contact subscriptions
+      operationId: listContactSubscriptions
       responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "200":
           description: The caller's subscriptions.
           content:
@@ -363,6 +3660,7 @@ paths:
                       $ref: "#/components/schemas/ContactSubscriptionResponse"
     post:
       summary: Add a CardDAV address book to sync contacts in from
+      operationId: createContactSubscription
       description: Capped at 10 subscriptions per user (mirrors the calendar subscription cap).
       requestBody:
         required: true
@@ -372,27 +3670,36 @@ paths:
               $ref: "#/components/schemas/ContactSubscriptionInput"
       responses:
         "201":
-          description: Subscription created.
+          description: Subscription created (raw response, not wrapped).
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ContactSubscriptionResponse"
         "400":
           description: Invalid URL, or validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "409":
           description: Subscription cap (10) reached.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /contact-subscriptions/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
     put:
       summary: Update a contact subscription
+      operationId: updateContactSubscription
       description: >
         Changing the URL resets the stored sync token (the next sync will be
         a full resync). clear_password removes stored credentials; an empty
         password field leaves the existing credential untouched.
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema: { type: integer }
       requestBody:
         required: true
         content:
@@ -406,24 +3713,45 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ContactSubscriptionResponse"
+        "400":
+          description: Non-integer id, invalid URL, or validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Subscription not found (or not owned by the caller).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
     delete:
       summary: Delete a contact subscription
+      operationId: deleteContactSubscription
       description: Synced Contact rows are kept; only the subscription and its sync-link bookkeeping are removed.
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema: { type: integer }
       responses:
         "200":
           description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Non-integer id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Subscription not found (or not owned by the caller).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /contact-subscriptions/{id}/sync:
     post:
       summary: Trigger an immediate sync of one contact subscription
+      operationId: syncContactSubscription
       parameters:
         - name: id
           in: path
@@ -442,15 +3770,366 @@ paths:
                   updated: { type: integer }
                   archived: { type: integer }
                   skipped: { type: integer }
+        "400":
+          description: Non-integer id or invalid subscription URL.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Subscription not found (or not owned by the caller).
-        "502":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: Sync failed for an unclassified reason.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
           description: >
             The remote CardDAV server rejected the request, was unreachable,
-            returned unparsable data, or resolved to a blocked private
-            address.
+            returned unparsable or oversized data, or resolved to a blocked
+            private address.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # --- Admin ---
+  /admin/users:
+    get:
+      summary: List all users (admin)
+      operationId: adminListUsers
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, default: 25 }
+      responses:
+        "200":
+          description: A page of users.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUsersListResponse"
+        "401":
+          description: Not authenticated (cookie or full-scope bearer token required).
+        "403":
+          description: Not an admin, or an API token was used on an admin path.
+  /admin/users/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      summary: Get a user (admin)
+      operationId: adminGetUser
+      responses:
+        "200":
+          description: The user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUserResponse"
+        "400":
+          description: Non-integer id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: User not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    patch:
+      summary: Update a user (admin)
+      operationId: adminUpdateUser
+      description: Setting a password bumps the user's token_version (kills their sessions). You cannot remove your own admin status or demote the last admin.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminUserUpdateInput"
+      responses:
+        "200":
+          description: The updated user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUserResponse"
+        "400":
+          description: Non-integer id or validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Cannot remove your own admin status or the last admin.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: User not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Username or email already in use.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete a user and all their data (admin)
+      operationId: adminDeleteUser
+      description: Hard-deletes the user and every dependent table in a transaction. Cannot delete your own account or the last admin.
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Non-integer id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Cannot delete your own account or the last admin.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: User not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /admin/trigger-reminders:
+    post:
+      summary: Trigger the reminder email job now (admin)
+      operationId: adminTriggerReminders
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Not an admin.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: Job ran.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: The job failed.
+  /admin/trigger-purge:
+    post:
+      summary: Trigger the soft-delete purge job now (admin)
+      operationId: adminTriggerPurge
+      description: Best-effort; always reports success.
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Not an admin.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: Purge ran.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
 components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: auth_token
+      description: The httpOnly session cookie set by POST /login and the OIDC callback.
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: >
+        A JWT or a `mycorrhizal_…` API token. On the general REST path a
+        carddav-scoped token is rejected with 403 (only `full`-scope tokens
+        work); API tokens are rejected on every /admin path entirely.
   schemas:
+    # --- Common ---
+    Error:
+      type: object
+      description: The standard error envelope produced by apperrors.AbortWithError.
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string }
+            message: { type: string }
+            details:
+              type: object
+              additionalProperties: true
+        request_id: { type: string }
+        timestamp: { type: string, format: date-time }
+    MessageResponse:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }
+      additionalProperties: true
+    LogoutResponse:
+      type: object
+      properties:
+        message: { type: string }
+        redirect_url: { type: string, description: "Present only for OIDC sessions whose provider advertises an end-session endpoint." }
+    HealthResponse:
+      type: object
+      properties:
+        status: { type: string, enum: [healthy, unhealthy] }
+        timestamp: { type: string, format: date-time }
+        database:
+          type: object
+          properties:
+            status: { type: string, enum: [healthy, unhealthy] }
+            response_time_ms: { type: number }
+        version: { type: string, example: "0.1.0" }
+
+    # --- Auth & users ---
+    UserRegistrationInput:
+      type: object
+      required: [username, email, password]
+      properties:
+        username: { type: string, minLength: 1, maxLength: 50 }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+        language: { type: string, enum: [en, de, it, es, fr] }
+    LoginInput:
+      type: object
+      properties:
+        identifier: { type: string, description: "Username or email." }
+        email: { type: string, description: "Legacy alias for identifier." }
+        password: { type: string }
+    PasswordResetRequestInput:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email }
+    PasswordResetConfirmInput:
+      type: object
+      required: [token, password]
+      properties:
+        token: { type: string, minLength: 16 }
+        password: { type: string, minLength: 8 }
+    ChangePasswordInput:
+      type: object
+      required: [current_password, new_password]
+      properties:
+        current_password: { type: string }
+        new_password: { type: string, minLength: 8 }
+    UpdateLanguageInput:
+      type: object
+      required: [language]
+      properties:
+        language: { type: string, enum: [en, de, it, es, fr] }
+    UpdateDateFormatInput:
+      type: object
+      required: [date_format]
+      properties:
+        date_format: { type: string, enum: [eu, us, iso] }
+    EnabledContactFieldsInput:
+      type: object
+      properties:
+        fields:
+          type: array
+          items: { type: string, maxLength: 50 }
+          description: "Nil/absent resets to the client default set."
+    PasswordStrength:
+      type: object
+      properties:
+        is_valid: { type: boolean }
+        entropy: { type: number }
+        score: { type: integer, description: "0-4 (weak..very strong)." }
+        feedback: { type: string }
+        min_entropy: { type: number }
+        char_set_size: { type: integer }
+        length: { type: integer }
+    OIDCConfigResponse:
+      type: object
+      required: [enabled]
+      properties:
+        enabled: { type: boolean }
+        provider_name: { type: string, description: "Present only when enabled." }
+    AdminUserResponse:
+      type: object
+      description: A user as seen by admins (and by /users/me, which adds enabled_contact_fields).
+      properties:
+        id: { type: integer }
+        username: { type: string }
+        email: { type: string }
+        language: { type: string }
+        date_format: { type: string }
+        is_admin: { type: boolean }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    CurrentUserResponse:
+      allOf:
+        - $ref: "#/components/schemas/AdminUserResponse"
+        - type: object
+          properties:
+            enabled_contact_fields:
+              type: array
+              items: { type: string }
+              nullable: true
+    AdminUsersListResponse:
+      type: object
+      properties:
+        users:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminUserResponse"
+        total: { type: integer }
+        page: { type: integer }
+        limit: { type: integer }
+        total_pages: { type: integer }
+    AdminUserUpdateInput:
+      type: object
+      description: All fields optional; only supplied fields are changed.
+      properties:
+        username: { type: string, minLength: 1, maxLength: 50 }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+        is_admin: { type: boolean }
+
+    # --- Contacts ---
     ContactSummary:
       type: object
       description: >
@@ -469,7 +4148,11 @@ components:
         org: { type: string }
         photo: { type: string }
         photo_thumbnail: { type: string, description: "Base64 data URL of the thumbnail." }
-        circles: { type: array, items: { type: string } }
+        circles:
+          type: array
+          items: { type: string }
+          nullable: true
+          description: "The list query does not select this column, so it is typically null unless the backend changes; do not rely on it being populated."
         archived: { type: boolean }
     ContactSummaryWithRelations:
       description: ContactSummary extended with the sub-resource arrays requested via includes=.
@@ -479,7 +4162,6 @@ components:
           properties:
             notes: { type: array, items: { type: object } }
             activities: { type: array, items: { type: object } }
-            relationships: { type: array, items: { type: object } }
             reminders: { type: array, items: { type: object } }
     ContactRecordInput:
       type: object
@@ -517,8 +4199,803 @@ components:
         archived: { type: boolean }
         notes: { type: array, items: { type: object } }
         activities: { type: array, items: { type: object } }
-        relationships: { type: array, items: { type: object } }
         reminders: { type: array, items: { type: object } }
+    ContactFlat:
+      type: object
+      description: >
+        The raw serialization of models.Contact (legacy flat DTO) returned by
+        the archive/unarchive, random, and profile-picture endpoints. Because
+        Contact embeds gorm.Model (which has no JSON tags), identity/timestamp
+        keys serialize in PascalCase.
+      properties:
+        ID: { type: integer }
+        CreatedAt: { type: string, format: date-time }
+        UpdatedAt: { type: string, format: date-time }
+        DeletedAt: { type: string, format: date-time, nullable: true }
+        firstname: { type: string }
+        lastname: { type: string }
+        nickname: { type: string }
+        gender: { type: string }
+        email: { type: string }
+        phone: { type: string }
+        birthday: { type: string }
+        photo: { type: string }
+        address: { type: string }
+        how_we_met: { type: string }
+        work_information: { type: string }
+        contact_information: { type: string }
+        circles:
+          type: array
+          items: { type: string }
+        emails:
+          type: array
+          items: { $ref: "#/components/schemas/ContactEmail" }
+        phones:
+          type: array
+          items: { $ref: "#/components/schemas/ContactPhone" }
+        addresses:
+          type: array
+          items: { $ref: "#/components/schemas/ContactAddress" }
+        urls:
+          type: array
+          items: { $ref: "#/components/schemas/ContactURL" }
+        impps:
+          type: array
+          items: { $ref: "#/components/schemas/ContactIMPP" }
+        prefix: { type: string }
+        middle_name: { type: string }
+        suffix: { type: string }
+        organization: { type: string }
+        department: { type: string }
+        job_title: { type: string }
+        role: { type: string }
+        anniversary: { type: string }
+        archived: { type: boolean }
+        activities:
+          type: array
+          items: { $ref: "#/components/schemas/Activity" }
+        notes:
+          type: array
+          items: { $ref: "#/components/schemas/Note" }
+        reminders:
+          type: array
+          items: { $ref: "#/components/schemas/Reminder" }
+    ContactResponse:
+      description: ContactFlat plus the always-present photo_thumbnail, as returned by GET /contacts/random.
+      allOf:
+        - $ref: "#/components/schemas/ContactFlat"
+        - type: object
+          properties:
+            photo_thumbnail: { type: string }
+    ContactEmail:
+      type: object
+      properties:
+        type: { type: string, maxLength: 30 }
+        value: { type: string, format: email }
+    ContactPhone:
+      type: object
+      properties:
+        type: { type: string, maxLength: 30 }
+        value: { type: string }
+    ContactURL:
+      type: object
+      properties:
+        type: { type: string, maxLength: 30 }
+        value: { type: string, format: uri, maxLength: 500 }
+    ContactIMPP:
+      type: object
+      properties:
+        type: { type: string, maxLength: 30 }
+        value: { type: string, maxLength: 200 }
+    ContactAddress:
+      type: object
+      properties:
+        type: { type: string, maxLength: 30 }
+        street: { type: string, maxLength: 500 }
+        city: { type: string, maxLength: 200 }
+        region: { type: string, maxLength: 200 }
+        postal: { type: string, maxLength: 30 }
+        country: { type: string, maxLength: 100 }
+    Birthday:
+      type: object
+      description: One upcoming contact birthday.
+      properties:
+        type: { type: string, example: "contact" }
+        name: { type: string }
+        birthday: { type: string, description: "ISO YYYY-MM-DD." }
+        photo_thumbnail: { type: string }
+        contact_id: { type: integer }
+
+    # --- Contact merge ---
+    ContactMergeRequest:
+      type: object
+      required: [keep_id, merge_id]
+      properties:
+        keep_id: { type: integer, minimum: 1 }
+        merge_id: { type: integer, minimum: 1 }
+        resolutions:
+          type: object
+          additionalProperties: { type: string }
+          description: "Required on commit for every conflicting field; ignored on preview. Keyed by scalar field name or FieldDefinition.ID."
+    ContactMergePreviewResponse:
+      type: object
+      properties:
+        keep_id: { type: integer }
+        merge_id: { type: integer }
+        resolution:
+          $ref: "#/components/schemas/ContactMergeResolution"
+        association_counts:
+          $ref: "#/components/schemas/ContactMergeAssociationCounts"
+    ContactMergeResolution:
+      type: object
+      properties:
+        emails:
+          type: array
+          items: { $ref: "#/components/schemas/ContactEmail" }
+        phones:
+          type: array
+          items: { $ref: "#/components/schemas/ContactPhone" }
+        addresses:
+          type: array
+          items: { $ref: "#/components/schemas/ContactAddress" }
+        urls:
+          type: array
+          items: { $ref: "#/components/schemas/ContactURL" }
+        impps:
+          type: array
+          items: { $ref: "#/components/schemas/ContactIMPP" }
+        circles:
+          type: array
+          items: { type: string }
+        resolved_scalars:
+          type: object
+          additionalProperties: { type: string }
+          description: Complete post-merge value of every scalar field, including agreed ones.
+        conflicts:
+          type: array
+          items: { $ref: "#/components/schemas/ContactMergeFieldConflict" }
+        field_value_conflicts:
+          type: array
+          items: { $ref: "#/components/schemas/ContactMergeFieldConflict" }
+    ContactMergeFieldConflict:
+      type: object
+      properties:
+        field: { type: string }
+        label: { type: string }
+        keeper_value: { type: string }
+        loser_value: { type: string }
+    ContactMergeAssociationCounts:
+      type: object
+      properties:
+        notes: { type: integer }
+        activities: { type: integer }
+        reminders: { type: integer }
+        reminder_completions: { type: integer }
+        relationship_edges: { type: integer }
+        household_memberships: { type: integer }
+        circle_memberships: { type: integer }
+        tags: { type: integer }
+        life_events: { type: integer }
+        life_event_references: { type: integer }
+        field_values: { type: integer }
+        contact_sync_links: { type: integer }
+
+    # --- Notes / Activities / Reminders (gorm.Model PascalCase identity) ---
+    Note:
+      type: object
+      description: >
+        A note. Emits gorm.Model identity/timestamps in PascalCase and always
+        includes a nested contact object (struct value, never omitted).
+      properties:
+        ID: { type: integer }
+        CreatedAt: { type: string, format: date-time }
+        UpdatedAt: { type: string, format: date-time }
+        DeletedAt: { type: string, format: date-time, nullable: true }
+        content: { type: string, maxLength: 5000 }
+        date: { type: string, format: date-time }
+        contact_id: { type: integer, nullable: true }
+        contact:
+          $ref: "#/components/schemas/ContactFlat"
+    NoteInput:
+      type: object
+      required: [content, date]
+      properties:
+        content: { type: string, minLength: 1, maxLength: 5000 }
+        date: { type: string, format: date-time }
+        contact_id: { type: integer, minimum: 1, nullable: true }
+    Activity:
+      type: object
+      description: >
+        An activity/Interaction. gorm.Model identity keys in PascalCase.
+        Type is a conventional, open classifier (call, visit, meal, message,
+        gift, photo, ...).
+      properties:
+        ID: { type: integer }
+        CreatedAt: { type: string, format: date-time }
+        UpdatedAt: { type: string, format: date-time }
+        DeletedAt: { type: string, format: date-time, nullable: true }
+        uuid: { type: string }
+        title: { type: string, maxLength: 200 }
+        description: { type: string, maxLength: 2000 }
+        location: { type: string, maxLength: 300 }
+        date: { type: string, format: date-time }
+        contacts:
+          type: array
+          items: { $ref: "#/components/schemas/ContactFlat" }
+        type: { type: string }
+        external_ref: { type: string }
+    ActivityInput:
+      type: object
+      required: [title, date]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 2000 }
+        location: { type: string, maxLength: 300 }
+        date: { type: string, format: date-time }
+        contact_ids:
+          type: array
+          items: { type: integer }
+        type: { type: string }
+        external_ref: { type: string }
+    Reminder:
+      type: object
+      description: >
+        A reminder. Doubles as the request body for create/update, so the
+        required fields (message, remind_at, recurrence, contact_id) must be
+        present on every write.
+      properties:
+        ID: { type: integer }
+        CreatedAt: { type: string, format: date-time }
+        UpdatedAt: { type: string, format: date-time }
+        DeletedAt: { type: string, format: date-time, nullable: true }
+        message: { type: string, minLength: 1, maxLength: 500 }
+        by_mail: { type: boolean, nullable: true }
+        remind_at: { type: string, format: date-time }
+        recurrence: { type: string, enum: [once, weekly, monthly, quarterly, six-months, yearly] }
+        reoccur_from_completion: { type: boolean, nullable: true }
+        completed: { type: boolean }
+        email_sent: { type: boolean }
+        last_sent: { type: string, format: date-time, nullable: true }
+        contact_id: { type: integer, nullable: true }
+        life_event_id: { type: string }
+        contact:
+          $ref: "#/components/schemas/ContactFlat"
+    ReminderCompleteResponse:
+      type: object
+      description: "Recurring reminders return reminder + message; once reminders are soft-deleted and return only a message."
+      properties:
+        message: { type: string }
+        reminder:
+          $ref: "#/components/schemas/Reminder"
+    ReminderCompletion:
+      type: object
+      description: A timeline entry recording that a reminder was completed.
+      properties:
+        ID: { type: integer }
+        CreatedAt: { type: string, format: date-time }
+        UpdatedAt: { type: string, format: date-time }
+        DeletedAt: { type: string, format: date-time, nullable: true }
+        reminder_id: { type: integer, nullable: true }
+        contact_id: { type: integer }
+        message: { type: string }
+        completed_at: { type: string, format: date-time }
+
+    # --- Circles / Households / Tags ---
+    Circle:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        name: { type: string }
+    CircleInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+    CircleMember:
+      type: object
+      description: A circle membership join row.
+      properties:
+        id: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        circle_id: { type: string, format: uuid }
+        member_vcard_uid: { type: string, format: uuid }
+    CircleMemberInput:
+      type: object
+      required: [member_vcard_uid]
+      properties:
+        member_vcard_uid: { type: string, format: uuid }
+    Household:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        name: { type: string }
+        type: { type: string, enum: [family_unit, roommates, other] }
+        address:
+          $ref: "#/components/schemas/Address"
+    HouseholdInput:
+      type: object
+      required: [name, type]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        type: { type: string, enum: [family_unit, roommates, other] }
+        address:
+          $ref: "#/components/schemas/Address"
+    HouseholdMember:
+      type: object
+      description: A household membership join row.
+      properties:
+        id: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        household_id: { type: string, format: uuid }
+        member_vcard_uid: { type: string, format: uuid }
+        role: { type: string }
+        since: { type: string }
+        until: { type: string }
+    HouseholdMemberInput:
+      type: object
+      required: [member_vcard_uid]
+      properties:
+        member_vcard_uid: { type: string, format: uuid }
+        role: { type: string }
+        since: { type: string }
+        until: { type: string }
+    Tag:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        name: { type: string }
+    TagInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+    ContactTag:
+      type: object
+      description: A tagging join row (contact x tag).
+      properties:
+        id: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        tag_id: { type: string, format: uuid }
+        contact_vcard_uid: { type: string, format: uuid }
+    ContactTagInput:
+      type: object
+      required: [contact_vcard_uid]
+      properties:
+        contact_vcard_uid: { type: string, format: uuid }
+
+    # --- Relationship edges ---
+    RelationshipEdge:
+      type: object
+      description: >
+        A directed edge in the relationship graph; Type describes the source's
+        role relative to the target. Only status=confirmed edges are fact;
+        suggested edges await review.
+      properties:
+        id: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        source_id: { type: string, format: uuid }
+        target_id: { type: string, format: uuid }
+        type: { type: string }
+        directional: { type: boolean }
+        metadata:
+          type: object
+          additionalProperties: true
+        source: { type: string, enum: [user-confirmed, household-inferred, imported, ai-suggested] }
+        confidence: { type: number }
+        status: { type: string, enum: [confirmed, suggested] }
+        sensitivity: { type: string, enum: [normal, private, secret] }
+    RelationshipEdgeInput:
+      type: object
+      required: [type]
+      description: >
+        Exactly one of source_id/source_thin and one of target_id/target_thin
+        per endpoint, enforced by the controller. Source/Confidence/Status are
+        server-derived and cannot be set by a client.
+      properties:
+        source_id: { type: string, format: uuid }
+        source_thin:
+          $ref: "#/components/schemas/ThinContactInput"
+        target_id: { type: string, format: uuid }
+        target_thin:
+          $ref: "#/components/schemas/ThinContactInput"
+        type: { type: string }
+        sensitivity: { type: string, enum: [normal, private, secret] }
+        metadata:
+          type: object
+          additionalProperties: true
+    ThinContactInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        gender: { type: string, enum: [male, female, other, prefer_not_to_say] }
+        birthday: { type: string, description: "ISO YYYY-MM-DD or year-less --MM-DD." }
+
+    # --- Life events ---
+    LifeEvent:
+      type: object
+      description: A permanent fact about an entity's life. remind=false is omitted on the wire (omitempty).
+      properties:
+        id: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        entity_id: { type: string, format: uuid }
+        type: { type: string }
+        date:
+          $ref: "#/components/schemas/PartialDate"
+        description: { type: string, maxLength: 2000 }
+        source: { type: string, enum: [user, imported, ai-suggested] }
+        related_entity_ids:
+          type: array
+          items: { type: string, format: uuid }
+        remind: { type: boolean }
+    LifeEventInput:
+      type: object
+      required: [entity_id]
+      properties:
+        entity_id: { type: string, format: uuid }
+        type: { type: string }
+        date:
+          $ref: "#/components/schemas/PartialDate"
+        description: { type: string, maxLength: 2000 }
+        source: { type: string, enum: [user, imported, ai-suggested] }
+        related_entity_ids:
+          type: array
+          items: { type: string, format: uuid }
+        remind: { type: boolean }
+
+    # --- Preferences ---
+    Preference:
+      type: object
+      description: One structured personal fact about an entity (category/key/value + provenance).
+      properties:
+        id: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        entity_id: { type: string, format: uuid }
+        category: { type: string, maxLength: 100 }
+        key: { type: string, maxLength: 100 }
+        value: { type: string, maxLength: 1000 }
+        source: { type: string, enum: [conversation_note, user, ai-suggested, external] }
+        confidence: { type: number, nullable: true }
+        last_confirmed: { type: string, format: date-time, nullable: true }
+        sensitivity: { type: string, enum: [normal, private, secret] }
+    PreferenceInput:
+      type: object
+      required: [entity_id, category, value]
+      properties:
+        entity_id: { type: string, format: uuid }
+        category: { type: string, maxLength: 100 }
+        key: { type: string, maxLength: 100 }
+        value: { type: string, maxLength: 1000 }
+        source: { type: string, enum: [conversation_note, user, ai-suggested, external] }
+        confidence: { type: number, nullable: true }
+        last_confirmed: { type: string, format: date-time, nullable: true }
+        sensitivity: { type: string, enum: [normal, private, secret] }
+
+    # --- Custom fields ---
+    FieldDefinition:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        label: { type: string, maxLength: 200 }
+        key: { type: string, maxLength: 100 }
+        target: { type: string, enum: [contact] }
+        type: { type: string, enum: [string, text, number, boolean, date, datetime, uri, email, phone, enum] }
+        constraints:
+          $ref: "#/components/schemas/FieldConstraints"
+        projection: { type: string, description: "internal-only, or vcard:X-<NAME>." }
+        sensitivity: { type: string, enum: [normal, private, secret] }
+    FieldDefinitionInput:
+      type: object
+      required: [label, key, type]
+      properties:
+        label: { type: string, maxLength: 200 }
+        key: { type: string, maxLength: 100 }
+        target: { type: string, enum: [contact] }
+        type: { type: string, enum: [string, text, number, boolean, date, datetime, uri, email, phone, enum] }
+        constraints:
+          $ref: "#/components/schemas/FieldConstraints"
+        projection: { type: string }
+        sensitivity: { type: string, enum: [normal, private, secret] }
+    FieldConstraints:
+      type: object
+      properties:
+        min: { type: number, nullable: true }
+        max: { type: number, nullable: true }
+        maxLength: { type: integer, nullable: true }
+        pattern: { type: string }
+        values:
+          type: array
+          items: { type: string }
+        multi: { type: boolean }
+    FieldValue:
+      type: object
+      description: One value of a FieldDefinition for one contact.
+      properties:
+        id: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        field_definition_id: { type: string, format: uuid }
+        entity_id: { type: string, format: uuid }
+        value:
+          description: "The raw JSON payload — a scalar (string/number/boolean) or, for multi fields, an array."
+    FieldValueInput:
+      type: object
+      required: [field_definition_id, value]
+      properties:
+        field_definition_id: { type: string, format: uuid }
+        value: {}
+    ContactFieldValuesInput:
+      type: object
+      required: [field_values]
+      properties:
+        field_values:
+          type: array
+          items:
+            $ref: "#/components/schemas/FieldValueInput"
+
+    # --- Calendar / contact subscriptions, tokens, webhooks ---
+    CalendarSubscriptionInput:
+      type: object
+      required: [name, url]
+      description: Credentials are optional. On update, an empty password keeps the stored one; clear_password removes it.
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        url: { type: string, format: uri, maxLength: 2048 }
+        username: { type: string, maxLength: 200 }
+        password: { type: string, maxLength: 500 }
+        clear_password: { type: boolean }
+        sync_enabled: { type: boolean, nullable: true }
+        past_days: { type: integer, minimum: 0, maximum: 3650 }
+        future_days: { type: integer, minimum: 0, maximum: 3650 }
+    CalendarSubscriptionResponse:
+      type: object
+      description: Never includes the password.
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        url: { type: string }
+        username: { type: string }
+        has_password: { type: boolean }
+        sync_enabled: { type: boolean }
+        past_days: { type: integer }
+        future_days: { type: integer }
+        last_synced_at: { type: string, format: date-time, nullable: true }
+        last_sync_status: { type: string }
+        last_sync_error: { type: string }
+        created_at: { type: string, format: date-time }
+    ContactSubscriptionInput:
+      type: object
+      required: [name, url]
+      description: Credentials are optional. On update, an empty password keeps the stored one; clear_password removes it.
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        url: { type: string, format: uri, maxLength: 2048 }
+        username: { type: string, maxLength: 200 }
+        password:
+          type: string
+          maxLength: 500
+          description: Encrypted at rest. On update, an empty value leaves the existing credential untouched.
+        clear_password: { type: boolean, description: "On update, removes any stored credential." }
+        sync_enabled: { type: boolean, nullable: true, description: "Defaults to true if omitted on create." }
+    ContactSubscriptionResponse:
+      type: object
+      description: Never includes the password or sync token.
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        url: { type: string }
+        username: { type: string }
+        has_password: { type: boolean }
+        sync_enabled: { type: boolean }
+        last_synced_at: { type: string, format: date-time, nullable: true }
+        last_sync_status: { type: string }
+        last_sync_error: { type: string }
+        created_at: { type: string, format: date-time }
+    ApiTokenInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        expires_in_days: { type: integer, minimum: 1, maximum: 365, description: "Defaults to 90." }
+        scope: { type: string, enum: [full, carddav], description: "Defaults to full. carddav tokens are rejected by the REST API." }
+    ApiTokenResponse:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        created_at: { type: string, format: date-time }
+        last_used_at: { type: string, format: date-time, nullable: true }
+        revoked_at: { type: string, format: date-time, nullable: true }
+        expires_at: { type: string, format: date-time, nullable: true }
+        scope: { type: string }
+    ApiTokenCreateResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiTokenResponse"
+        - type: object
+          properties:
+            token: { type: string, description: "The plaintext token, shown only once." }
+    WebhookInput:
+      type: object
+      required: [name, url, events]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        url: { type: string, format: uri }
+        events:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            enum: [contact.created, contact.updated, contact.deleted, note.created, note.updated, note.deleted, activity.created, activity.updated, activity.deleted, reminder.triggered, birthday.occurred]
+        is_active: { type: boolean }
+    WebhookResponse:
+      type: object
+      description: Never includes the signing secret.
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        url: { type: string }
+        events:
+          type: array
+          items: { type: string }
+        is_active: { type: boolean }
+        created_at: { type: string, format: date-time }
+    WebhookCreateResponse:
+      allOf:
+        - $ref: "#/components/schemas/WebhookResponse"
+        - type: object
+          properties:
+            secret: { type: string, description: "The signing secret, shown only once." }
+    WebhookDeliveryResponse:
+      type: object
+      properties:
+        id: { type: integer }
+        webhook_id: { type: integer }
+        event_type: { type: string }
+        status_code: { type: integer, nullable: true }
+        error: { type: string, nullable: true }
+        attempts: { type: integer }
+        next_retry_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+
+    # --- Graph ---
+    GraphResponse:
+      type: object
+      properties:
+        nodes:
+          type: array
+          items:
+            $ref: "#/components/schemas/GraphNode"
+        edges:
+          type: array
+          items:
+            $ref: "#/components/schemas/GraphEdge"
+    GraphNode:
+      type: object
+      properties:
+        id: { type: string, description: '"c-<contactID>" or "a-<activityID>".' }
+        type: { type: string, enum: [contact, activity] }
+        label: { type: string }
+        photo_thumbnail: { type: string }
+        circles:
+          type: array
+          items: { type: string }
+    GraphEdge:
+      type: object
+      properties:
+        id: { type: string }
+        source: { type: string }
+        target: { type: string }
+        type: { type: string, enum: [relationship, activity] }
+        label: { type: string }
+
+    # --- Import (preserved from WP-73b) ---
+    ColumnMapping:
+      type: object
+      required: [csv_column]
+      properties:
+        csv_column: { type: string }
+        contact_field: { type: string, description: "Empty means \"ignore this column\"." }
+        group: { type: integer, description: "Multi-value entry index (0-based); ties value+label/parts of one entry together." }
+    ImportUploadResponse:
+      type: object
+      description: Returned by POST /contacts/import/upload (CSV).
+      properties:
+        session_id: { type: string }
+        headers: { type: array, items: { type: string } }
+        suggested_mappings:
+          type: array
+          items: { $ref: "#/components/schemas/ColumnMapping" }
+        row_count: { type: integer }
+        sample_data:
+          type: array
+          items: { type: array, items: { type: string } }
+    ImportPreviewRequest:
+      type: object
+      required: [session_id, mappings]
+      properties:
+        session_id: { type: string }
+        mappings:
+          type: array
+          items: { $ref: "#/components/schemas/ColumnMapping" }
+    DuplicateMatch:
+      type: object
+      description: Describes a potential duplicate contact found via email/name/phone matching.
+      properties:
+        existing_contact_id: { type: integer }
+        existing_firstname: { type: string }
+        existing_lastname: { type: string }
+        existing_email: { type: string }
+        existing_phone: { type: string }
+        match_reason: { type: string, enum: [email, name, phone] }
+    ImportRowPreview:
+      type: object
+      properties:
+        row_index: { type: integer }
+        parsed_contact:
+          type: object
+          additionalProperties: true
+        validation_errors: { type: array, items: { type: string } }
+        duplicate_match:
+          $ref: "#/components/schemas/DuplicateMatch"
+        suggested_action: { type: string, enum: [add, skip, update] }
+        diagnostics:
+          type: array
+          items: { type: string }
+          description: >
+            Degradation-policy diagnostics from the vcard4/vcard3/jscontact
+            adapter that parsed this row (empty for CSV-import rows, which
+            don't go through an adapter).
+    ImportPreviewResponse:
+      type: object
+      description: Returned by the VCF/JSContact upload endpoints and by POST /contacts/import/preview (CSV).
+      properties:
+        session_id: { type: string }
+        rows:
+          type: array
+          items: { $ref: "#/components/schemas/ImportRowPreview" }
+        total_rows: { type: integer }
+        valid_rows: { type: integer }
+        duplicate_count: { type: integer }
+        error_count: { type: integer }
+    RowImportAction:
+      type: object
+      required: [action]
+      properties:
+        row_index: { type: integer, minimum: 0 }
+        action: { type: string, enum: [skip, add, update] }
+    ImportConfirmRequest:
+      type: object
+      required: [session_id, actions]
+      properties:
+        session_id: { type: string }
+        actions:
+          type: array
+          items: { $ref: "#/components/schemas/RowImportAction" }
+    ImportResult:
+      type: object
+      description: Returned by POST /contacts/import/confirm and /contacts/import/vcf/confirm.
+      properties:
+        total_processed: { type: integer }
+        created: { type: integer }
+        updated: { type: integer }
+        skipped: { type: integer }
+        errors: { type: array, items: { type: string } }
+
+    # --- Neutral RFC 9553 contact model (preserved from WP-71) ---
     CRMEnvelope:
       type: object
       description: Mycorrhizal-specific data outside any contact-exchange standard.
@@ -867,122 +5344,3 @@ components:
         localizations:
           type: object
           additionalProperties: true
-    ColumnMapping:
-      type: object
-      required: [csv_column]
-      properties:
-        csv_column: { type: string }
-        contact_field: { type: string, description: "Empty means \"ignore this column\"." }
-        group: { type: integer, description: "Multi-value entry index (0-based); ties value+label/parts of one entry together." }
-    ImportUploadResponse:
-      type: object
-      description: Returned by POST /contacts/import/upload (CSV).
-      properties:
-        session_id: { type: string }
-        headers: { type: array, items: { type: string } }
-        suggested_mappings:
-          type: array
-          items: { $ref: "#/components/schemas/ColumnMapping" }
-        row_count: { type: integer }
-        sample_data:
-          type: array
-          items: { type: array, items: { type: string } }
-    ImportPreviewRequest:
-      type: object
-      required: [session_id, mappings]
-      properties:
-        session_id: { type: string }
-        mappings:
-          type: array
-          items: { $ref: "#/components/schemas/ColumnMapping" }
-    DuplicateMatch:
-      type: object
-      description: Describes a potential duplicate contact found via email/name/phone matching.
-      properties:
-        existing_contact_id: { type: integer }
-        existing_firstname: { type: string }
-        existing_lastname: { type: string }
-        existing_email: { type: string }
-        existing_phone: { type: string }
-        match_reason: { type: string, enum: [email, name, phone] }
-    ImportRowPreview:
-      type: object
-      properties:
-        row_index: { type: integer }
-        parsed_contact:
-          type: object
-          additionalProperties: true
-        validation_errors: { type: array, items: { type: string } }
-        duplicate_match:
-          $ref: "#/components/schemas/DuplicateMatch"
-        suggested_action: { type: string, enum: [add, skip, update] }
-        diagnostics:
-          type: array
-          items: { type: string }
-          description: >
-            Degradation-policy diagnostics from the vcard4/vcard3/jscontact
-            adapter that parsed this row (empty for CSV-import rows, which
-            don't go through an adapter).
-    ImportPreviewResponse:
-      type: object
-      description: Returned by the VCF/JSContact upload endpoints and by POST /contacts/import/preview (CSV).
-      properties:
-        session_id: { type: string }
-        rows:
-          type: array
-          items: { $ref: "#/components/schemas/ImportRowPreview" }
-        total_rows: { type: integer }
-        valid_rows: { type: integer }
-        duplicate_count: { type: integer }
-        error_count: { type: integer }
-    RowImportAction:
-      type: object
-      required: [action]
-      properties:
-        row_index: { type: integer, minimum: 0 }
-        action: { type: string, enum: [skip, add, update] }
-    ImportConfirmRequest:
-      type: object
-      required: [session_id, actions]
-      properties:
-        session_id: { type: string }
-        actions:
-          type: array
-          items: { $ref: "#/components/schemas/RowImportAction" }
-    ImportResult:
-      type: object
-      description: Returned by POST /contacts/import/confirm and /contacts/import/vcf/confirm.
-      properties:
-        total_processed: { type: integer }
-        created: { type: integer }
-        updated: { type: integer }
-        skipped: { type: integer }
-        errors: { type: array, items: { type: string } }
-    ContactSubscriptionInput:
-      type: object
-      required: [name, url]
-      description: Request body for POST /contact-subscriptions and PUT /contact-subscriptions/{id}.
-      properties:
-        name: { type: string, minLength: 1, maxLength: 100 }
-        url: { type: string, format: uri, maxLength: 2048 }
-        username: { type: string, maxLength: 200 }
-        password:
-          type: string
-          maxLength: 500
-          description: Encrypted at rest. On update, an empty value leaves the existing credential untouched.
-        clear_password: { type: boolean, description: "On update, removes any stored credential." }
-        sync_enabled: { type: boolean, nullable: true, description: "Defaults to true if omitted on create." }
-    ContactSubscriptionResponse:
-      type: object
-      description: Never includes the password or sync token.
-      properties:
-        id: { type: integer }
-        name: { type: string }
-        url: { type: string }
-        username: { type: string }
-        has_password: { type: boolean }
-        sync_enabled: { type: boolean }
-        last_synced_at: { type: string, format: date-time, nullable: true }
-        last_sync_status: { type: string }
-        last_sync_error: { type: string }
-        created_at: { type: string, format: date-time }
