@@ -68,7 +68,6 @@ func GetCurrentUser(c *gin.Context) {
 			CreatedAt:  user.CreatedAt,
 			UpdatedAt:  user.UpdatedAt,
 		},
-		CustomFieldNames:     user.CustomFieldNames,
 		EnabledContactFields: user.EnabledContactFields,
 	})
 }

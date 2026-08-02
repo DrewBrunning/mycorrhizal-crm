@@ -486,9 +486,6 @@ components:
         how_we_met: { type: string }
         work_information: { type: string }
         contact_information: { type: string }
-        custom_fields:
-          type: object
-          additionalProperties: { type: string }
     Passthrough:
       type: object
       description: Unmapped data preserved verbatim (docs/fork-plan/00-overview.md §0.5).

@@ -19,7 +19,6 @@ export interface ContactMergeResolution {
   addresses: ContactAddress[];
   urls: ContactValue[];
   impps: ContactValue[];
-  custom_fields: Record<string, string>;
   resolved_scalars: Record<string, string>;
   conflicts: ContactMergeFieldConflict[];
   field_value_conflicts: ContactMergeFieldConflict[];

@@ -1,6 +1,8 @@
 package models
 
 import (
+	"encoding/json"
+
 	"mycorrhizal/contactmodel"
 	"time"
 )
@@ -73,6 +75,45 @@ type LifeEventInput struct {
 	Source           string                    `json:"source,omitempty" validate:"omitempty,oneof=user imported ai-suggested"`
 	RelatedEntityIDs []string                  `json:"related_entity_ids,omitempty"`
 	Remind           bool                      `json:"remind,omitempty"`
+}
+
+// FieldDefinitionInput is the DTO for creating/updating a FieldDefinition
+// (field_definition.go, docs/fork-plan/94-custom-fields.md §94.3). Label is
+// display; Key is the stable machine name and — unlike every other field —
+// is immutable after creation (see UpdateFieldDefinition's doc comment in
+// field_definition_controller.go). Target/Type/Projection/Sensitivity each
+// default server-side when omitted (contact / the model's own default
+// values), mirroring PreferenceInput's defaults-not-required convention.
+// Constraints carries the type-dependent validation rules and is validated
+// indirectly at FieldValue-write time by services.ValidateFieldValue, not
+// here.
+type FieldDefinitionInput struct {
+	Label       string           `json:"label" validate:"required,max=200"`
+	Key         string           `json:"key" validate:"required,max=100"`
+	Target      string           `json:"target,omitempty" validate:"omitempty,oneof=contact"`
+	Type        string           `json:"type" validate:"required,oneof=string text number boolean date datetime uri email phone enum"`
+	Constraints FieldConstraints `json:"constraints,omitempty"`
+	Projection  string           `json:"projection,omitempty" validate:"omitempty,fielddefprojection"`
+	Sensitivity string           `json:"sensitivity,omitempty" validate:"omitempty,oneof=normal private secret"`
+}
+
+// FieldValueInput is one element of ContactFieldValuesInput — a
+// FieldValue to write for one FieldDefinition of one contact.
+// Value is the raw JSON payload (§94.4): a Multi field is a JSON array,
+// a scalar is a bare JSON value (string/number/boolean). It is validated
+// against the definition's Type+Constraints in the controller via
+// services.ValidateFieldValue — a type mismatch is a 400, not a 500.
+type FieldValueInput struct {
+	FieldDefinitionID string          `json:"field_definition_id" validate:"required"`
+	Value             json.RawMessage `json:"value" validate:"required"`
+}
+
+// ContactFieldValuesInput is the request body for PUT
+// /contacts/:id/field-values — the full-replace value set for one contact
+// (see ReplaceContactFieldValues' doc comment). An empty array clears every
+// value on the contact.
+type ContactFieldValuesInput struct {
+	FieldValues []FieldValueInput `json:"field_values" validate:"dive"`
 }
 
 // PreferenceInput is the DTO for creating/updating a Preference
@@ -156,11 +197,6 @@ type NoteInput struct {
 	Content   string    `json:"content" validate:"required,min=1,max=5000"`
 	Date      time.Time `json:"date" validate:"required"`
 	ContactID *uint     `json:"contact_id" validate:"omitempty,gt=0"`
-}
-
-// CustomFieldNamesInput represents the DTO for updating user's custom field definitions
-type CustomFieldNamesInput struct {
-	Names []string `json:"names" validate:"dive,max=100"`
 }
 
 // represents the DTO for updating which extended contact fields are visible in the UI. A nil/absent list means "use the default set"
@@ -282,10 +318,9 @@ type AdminUserResponse struct {
 	UpdatedAt  time.Time `json:"updated_at"`
 }
 
-// /users/me payload: standard user fields plus caller's UI preferences (custom field names and enabled contact fields)
+// /users/me payload: standard user fields plus caller's UI preferences (enabled contact fields)
 type CurrentUserResponse struct {
 	AdminUserResponse
-	CustomFieldNames     []string `json:"custom_field_names"`
 	EnabledContactFields []string `json:"enabled_contact_fields"`
 }
 
