@@ -967,5 +967,40 @@
       "valueRequired": "El valor es obligatorio",
       "saveFailed": "No se pudo guardar la preferencia"
     }
+  },
+  "cadence": {
+    "title": "Cadencia",
+    "add": "Añadir cadencia",
+    "createTitle": "Añadir cadencia",
+    "editTitle": "Editar cadencia",
+    "interval": "Mantener el contacto",
+    "intervalValue": "cada {{days}} días",
+    "intervalDays": "Intervalo (días)",
+    "intervalHint": "Con qué frecuencia quieres mantener el contacto.",
+    "intervalRequired": "Introduce un número positivo de días.",
+    "qualifyingTypes": "Interacciones que cuentan",
+    "qualifyingHint": "Qué tipos de interacción restablecen esta cadencia. Si no marcas ninguno, cuentan todas excepto las fotos pasivas.",
+    "types": {
+      "call": "Llamada",
+      "video_call": "Videollamada",
+      "visit": "Visita",
+      "meal": "Comida",
+      "gift": "Regalo",
+      "photo": "Foto",
+      "message": "Mensaje",
+      "shared_activity": "Actividad compartida"
+    },
+    "noPolicy": "No hay cadencia establecida para este contacto.",
+    "noInteractionsYet": "Aún no hay interacciones que cuenten: la cadencia empieza al registrar la primera.",
+    "onTrack": "Al día",
+    "overdueBy": "{{days}} días de retraso",
+    "nextDue": "Próximo vencimiento: {{date}}",
+    "lastInteraction": "Última interacción: {{date}}",
+    "dueOn": "Vence el {{date}}",
+    "confirmDelete": "¿Eliminar esta cadencia?",
+    "loading": "Cargando cadencia...",
+    "overdueTitle": "Relaciones vencidas",
+    "noOverdue": "Nada vencido. Todo al día.",
+    "unknownContact": "Contacto desconocido"
   }
 }

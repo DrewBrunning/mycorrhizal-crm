@@ -21,10 +21,12 @@ import AddressFields from './AddressFields';
 import RelationshipEdgeList from './RelationshipEdgeList';
 import LifeEventList from './LifeEventList';
 import PreferenceList from './PreferenceList';
+import CadencePanel from './CadencePanel';
 import CustomFieldValueRow from './CustomFieldValueRow';
 import { RelationshipEdge } from '../api/relationshipEdges';
 import { LifeEvent } from '../api/lifeEvents';
 import { Preference } from '../api/preferences';
+import { CadencePolicy } from '../api/cadencePolicies';
 import { FieldDefinition } from '../api/fieldDefinitions';
 import {
   Card as CardModel,
@@ -82,6 +84,12 @@ interface ContactInformationProps {
   onAddPreference?: () => void;
   onEditPreference?: (preference: Preference) => void;
   onDeletePreference?: (id: string) => void;
+  // Cadence props (T19)
+  cadencePolicy?: CadencePolicy | null;
+  cadenceLoading?: boolean;
+  onAddCadence?: () => void;
+  onEditCadence?: (policy: CadencePolicy) => void;
+  onDeleteCadence?: (id: string) => void;
   // Custom fields (v2, T6/T7)
   fieldDefinitions?: FieldDefinition[];
   fieldValuesByDefinition?: Map<string, unknown>;
@@ -121,6 +129,11 @@ export default function ContactInformation({
   onAddPreference,
   onEditPreference,
   onDeletePreference,
+  cadencePolicy = null,
+  cadenceLoading = false,
+  onAddCadence,
+  onEditCadence,
+  onDeleteCadence,
   fieldDefinitions = [],
   fieldValuesByDefinition,
   onSaveFieldValue,
@@ -192,6 +205,7 @@ export default function ContactInformation({
           <MenuItem value={1}>{t('relationships.title')}</MenuItem>
           <MenuItem value={2}>{t('lifeEvent.title')}</MenuItem>
           <MenuItem value={3}>{t('preference.title')}</MenuItem>
+          <MenuItem value={4}>{t('cadence.title')}</MenuItem>
         </TextField>
       ) : (
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
@@ -200,6 +214,7 @@ export default function ContactInformation({
             <Tab label={t('relationships.title')} />
             <Tab label={t('lifeEvent.title')} />
             <Tab label={t('preference.title')} />
+            <Tab label={t('cadence.title')} />
           </Tabs>
         </Box>
       )}
@@ -510,6 +525,19 @@ export default function ContactInformation({
             preferences={preferences}
             onEdit={onEditPreference || (() => {})}
             onDelete={onDeletePreference || (() => {})}
+          />
+        </CardContent>
+      )}
+
+      {/* Cadence Tab (T19) */}
+      {activeTab === 4 && (
+        <CardContent sx={{ py: 2 }}>
+          <CadencePanel
+            policy={cadencePolicy}
+            loading={cadenceLoading}
+            onAdd={onAddCadence || (() => {})}
+            onEdit={onEditCadence || (() => {})}
+            onDelete={onDeleteCadence || (() => {})}
           />
         </CardContent>
       )}

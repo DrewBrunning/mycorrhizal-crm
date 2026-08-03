@@ -26,6 +26,8 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { Contact, Birthday, getRandomContacts, getUpcomingBirthdays, getContactRecord, nameComponentValue } from './api/contacts';
 import { useCircles } from './hooks/useCircles';
 import { Reminder, getUpcomingReminders, completeReminder, skipReminder } from './api/reminders';
+import { getOverdueCadences, OverdueCadence } from './api/cadencePolicies';
+import OverdueCadenceList from './components/OverdueCadenceList';
 import { ContactListSkeleton } from './components/LoadingSkeletons';
 import { handleFetchError, handleError } from './utils/errorHandler';
 import { useDateFormat } from './DateFormatProvider';
@@ -37,6 +39,7 @@ function DashboardPage() {
   const [birthdays, setBirthdays] = useState<Birthday[]>([]);
   const [randomContacts, setRandomContacts] = useState<Contact[]>([]);
   const [upcomingReminders, setUpcomingReminders] = useState<Reminder[]>([]);
+  const [overdueCadences, setOverdueCadences] = useState<OverdueCadence[]>([]);
   const [contactsMap, setContactsMap] = useState<Record<number, Contact>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,15 +54,17 @@ function DashboardPage() {
       setLoading(true);
       setError(null);
 
-      const [birthdayData, random, reminders] = await Promise.all([
+      const [birthdayData, random, reminders, overdue] = await Promise.all([
         getUpcomingBirthdays(),
         getRandomContacts(),
-        getUpcomingReminders()
+        getUpcomingReminders(),
+        getOverdueCadences()
       ]);
 
       setBirthdays(birthdayData);
       setRandomContacts(random);
       setUpcomingReminders(reminders);
+      setOverdueCadences(overdue.overdue || []);
 
       // Build contact map from random contacts
       const newContactsMap: Record<number, Contact> = {};
@@ -218,6 +223,15 @@ function DashboardPage() {
       <Typography variant="h5" gutterBottom sx={{ mb: 2 }}>
         {t('dashboard.title')}
       </Typography>
+
+      {/* Overdue cadences (T19) — the screen people actually live in. Only
+          rendered when there is something to show; an all-clear dashboard
+          stays clean. */}
+      {overdueCadences.length > 0 && (
+        <Box sx={{ mb: 3 }}>
+          <OverdueCadenceList overdue={overdueCadences} loading={loading} error={null} />
+        </Box>
+      )}
 
       <Box sx={{
         display: 'grid',

@@ -122,6 +122,28 @@ func TestForeignKeyCascadeDeletesOrphanedChildRows(t *testing.T) {
 	assert.Zero(t, remaining, "circle_members should be auto-cascaded when its parent circle is deleted")
 }
 
+// TestMigrationsAddCadencePolicies pins the T19 migration's shape: the
+// cadence_policies table must carry the partial unique index on
+// (user_id, entity_id) WHERE deleted_at IS NULL, so a soft-deleted policy
+// never blocks re-creating a cadence for the same contact (the same T26
+// pattern as idx_contacts_vcard_uid_user).
+func TestMigrationsAddCadencePolicies(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "cadence-policies.db")
+	db, err := InitDB(dbPath)
+	require.NoError(t, err)
+
+	assert.True(t, columnExists(t, dbPath, "cadence_policies", "target_interval_days"))
+	assert.True(t, columnExists(t, dbPath, "cadence_policies", "qualifying_types"))
+
+	var sql string
+	require.NoError(t, db.Raw(
+		"SELECT sql FROM sqlite_master WHERE type = 'index' AND name = 'idx_cadence_policies_user_entity'",
+	).Scan(&sql).Error)
+	assert.NotEmpty(t, sql)
+	assert.Contains(t, sql, "WHERE deleted_at IS NULL",
+		"T19 partial unique index must not block re-creating a cadence after soft delete")
+}
+
 // TestSquashedSchemaHasNoLegacyFoodPreference verifies the squashed baseline
 // (T22) excludes the legacy contacts.food_preference column — it was retired
 // by T20a and removed from the baseline during the migration squash.

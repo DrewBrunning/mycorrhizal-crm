@@ -967,5 +967,40 @@
       "valueRequired": "Il valore è obbligatorio",
       "saveFailed": "Salvataggio della preferenza non riuscito"
     }
+  },
+  "cadence": {
+    "title": "Cadenza",
+    "add": "Aggiungi cadenza",
+    "createTitle": "Aggiungi cadenza",
+    "editTitle": "Modifica cadenza",
+    "interval": "Rimanere in contatto",
+    "intervalValue": "ogni {{days}} giorni",
+    "intervalDays": "Intervallo (giorni)",
+    "intervalHint": "Con quale frequenza vuoi rimanere in contatto.",
+    "intervalRequired": "Inserisci un numero positivo di giorni.",
+    "qualifyingTypes": "Interazioni qualificanti",
+    "qualifyingHint": "Quali tipi di interazione azzerano questa cadenza. Nessuna selezione significa che contano tutte le interazioni, tranne le foto passive.",
+    "types": {
+      "call": "Chiamata",
+      "video_call": "Videochiamata",
+      "visit": "Visita",
+      "meal": "Pasto",
+      "gift": "Regalo",
+      "photo": "Foto",
+      "message": "Messaggio",
+      "shared_activity": "Attività condivisa"
+    },
+    "noPolicy": "Nessuna cadenza impostata per questo contatto.",
+    "noInteractionsYet": "Ancora nessuna interazione qualificante: la cadenza parte quando ne registri una.",
+    "onTrack": "Nei tempi",
+    "overdueBy": "{{days}} giorni di ritardo",
+    "nextDue": "Prossima scadenza: {{date}}",
+    "lastInteraction": "Ultima interazione: {{date}}",
+    "dueOn": "Scadenza il {{date}}",
+    "confirmDelete": "Rimuovere questa cadenza?",
+    "loading": "Caricamento cadenza...",
+    "overdueTitle": "Relazioni in ritardo",
+    "noOverdue": "Nessun ritardo. Tutto in ordine.",
+    "unknownContact": "Contatto sconosciuto"
   }
 }

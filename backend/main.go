@@ -112,6 +112,15 @@ func main() {
 		services.PurgeDeletedRows(db, *cfg)
 	})
 
+	// Emit overdue-cadence webhooks daily (T19). Job-lock guarded so a
+	// multi-instance deploy does not double-fire.
+	s.Every(24).Hours().Do(func() {
+		services.ProcessOverdueCadences(db, *cfg)
+	})
+	go safeGo("cadence-overdue-initial-run", func() {
+		services.ProcessOverdueCadences(db, *cfg)
+	})
+
 	go s.StartBlocking()
 
 	r := gin.Default()

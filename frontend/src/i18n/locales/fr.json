@@ -967,5 +967,40 @@
       "valueRequired": "La valeur est obligatoire",
       "saveFailed": "Échec de l'enregistrement de la préférence"
     }
+  },
+  "cadence": {
+    "title": "Cadence",
+    "add": "Ajouter une cadence",
+    "createTitle": "Ajouter une cadence",
+    "editTitle": "Modifier la cadence",
+    "interval": "Rester en contact",
+    "intervalValue": "tous les {{days}} jours",
+    "intervalDays": "Intervalle (jours)",
+    "intervalHint": "À quelle fréquence vous souhaitez rester en contact.",
+    "intervalRequired": "Saisissez un nombre de jours positif.",
+    "qualifyingTypes": "Interactions prises en compte",
+    "qualifyingHint": "Quels types d'interaction réinitialisent cette cadence. Aucune sélection signifie que toutes les interactions comptent, sauf les photos passives.",
+    "types": {
+      "call": "Appel",
+      "video_call": "Appel vidéo",
+      "visit": "Visite",
+      "meal": "Repas",
+      "gift": "Cadeau",
+      "photo": "Photo",
+      "message": "Message",
+      "shared_activity": "Activité partagée"
+    },
+    "noPolicy": "Aucune cadence définie pour ce contact.",
+    "noInteractionsYet": "Aucune interaction prise en compte pour l'instant — la cadence démarre dès la première.",
+    "onTrack": "Dans les temps",
+    "overdueBy": "{{days}} jours de retard",
+    "nextDue": "Prochaine échéance : {{date}}",
+    "lastInteraction": "Dernière interaction : {{date}}",
+    "dueOn": "Échéance le {{date}}",
+    "confirmDelete": "Supprimer cette cadence ?",
+    "loading": "Chargement de la cadence...",
+    "overdueTitle": "Relations en retard",
+    "noOverdue": "Rien en retard. Vous êtes à jour.",
+    "unknownContact": "Contact inconnu"
   }
 }
