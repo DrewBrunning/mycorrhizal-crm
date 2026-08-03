@@ -31,7 +31,7 @@ dependency → pre/post-alpha risk → usefulness rating → size.
 | [14](14-T12a-etag-primitives.md) | T12a · Activity/LifeEvent ETag primitives | 2\* | S | **DONE** |
 | [15](15-T24-test-coverage.md) | T24 · Non-critical test-coverage expansion | 2 | M | **DONE** |
 | [16](16-T8-openapi.md) | T8 · OpenAPI coverage + drift test | 2\* | M | **DONE** |
-| [17](17-T17-change-feeds.md) | T17 · Change feeds + cursor pagination | 2\* | M |
+| [17](17-T17-change-feeds.md) | T17 · Change feeds + cursor pagination | 2\* | M | **DONE** |
 | [18](18-T23-ui-polish.md) | T23 · UI polish | 4 | M |
 | [19](19-T22-legacy-audit.md) | T22 · Legacy/dead-code audit + migration squash | 3 | L |
 
