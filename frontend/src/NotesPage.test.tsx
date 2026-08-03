@@ -59,7 +59,7 @@ test('renders empty inbox when no notes exist', async () => {
   renderPage();
 
   await waitFor(() => {
-    expect(screen.getByText('Capture')).toBeDefined();
+    expect(screen.getByText('Notes')).toBeDefined();
   });
 
   expect(screen.getByText('0')).toBeDefined();
@@ -92,7 +92,7 @@ test('inbox is empty when all notes are filed', async () => {
   renderPage();
 
   await waitFor(() => {
-    expect(screen.getByText('Capture')).toBeDefined();
+    expect(screen.getByText('Notes')).toBeDefined();
   });
 
   expect(screen.getByText('0')).toBeDefined();
@@ -143,7 +143,7 @@ test('renders the Add Note button', async () => {
   renderPage();
 
   await waitFor(() => {
-    expect(screen.getByText('Capture')).toBeDefined();
+    expect(screen.getByText('Notes')).toBeDefined();
   });
 
   expect(screen.getByText('Add Note')).toBeDefined();
@@ -155,7 +155,7 @@ test('renders the filter and search bar', async () => {
   renderPage();
 
   await waitFor(() => {
-    expect(screen.getByText('Capture')).toBeDefined();
+    expect(screen.getByText('Notes')).toBeDefined();
   });
 
   // Filter inputs exist

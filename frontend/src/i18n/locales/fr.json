@@ -8,12 +8,12 @@
     "dashboard": "Tableau de bord",
     "contacts": "Contacts",
     "activities": "Activités",
-    "notes": "Capture",
+    "notes": "Notes",
     "network": "Réseau",
     "households": "Foyers",
     "reminders": "Rappels",
     "settings": "Paramètres",
-    "profile": "Général",
+    "profile": "Paramètres",
     "users": "Utilisateurs",
     "apiTokens": "Jetons API",
     "integrations": "Intégrations",
@@ -376,7 +376,7 @@
     "allContactsInfo": "Cette page répertorie toutes les activités de tous les contacts."
   },
   "inbox": {
-    "title": "Capture",
+    "title": "Notes",
     "addNote": "Ajouter une note",
     "search": "Rechercher…",
     "noNotes": "Aucune note non classée",

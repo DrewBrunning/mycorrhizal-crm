@@ -8,12 +8,12 @@
     "dashboard": "Cruscotto",
     "contacts": "Contatti",
     "activities": "Attività",
-    "notes": "Capture",
+    "notes": "Note",
     "network": "Rete",
     "households": "Nuclei",
     "reminders": "Promemoria",
     "settings": "Impostazioni",
-    "profile": "Generale",
+    "profile": "Impostazioni",
     "users": "Utenti",
     "apiTokens": "Token API",
     "integrations": "Integrazioni",
@@ -376,7 +376,7 @@
     "allContactsInfo": "Questa pagina elenca tutte le attività di tutti i contatti."
   },
   "inbox": {
-    "title": "Capture",
+    "title": "Notes",
     "addNote": "Aggiungi Nota",
     "search": "Cerca…",
     "noNotes": "Nessuna nota da archiviare",

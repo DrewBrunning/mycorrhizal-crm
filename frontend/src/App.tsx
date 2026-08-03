@@ -7,7 +7,6 @@ import DashboardPage from './DashboardPage';
 import SettingsPage from './SettingsPage';
 import NetworkPage from './NetworkPage';
 import UsersPage from './UsersPage';
-import ApiTokensPage from './ApiTokensPage';
 import CircleTagTriagePage from './CircleTagTriagePage';
 import DataSettingsPage from './DataSettingsPage';
 import HouseholdsPage from './HouseholdsPage';
@@ -37,7 +36,7 @@ import {
   InputAdornment,
   SvgIcon
 } from '@mui/material';
-import { mdiGraphOutline, mdiNoteMultipleOutline } from '@mdi/js';
+import { mdiGraphOutline, mdiNotebookOutline } from '@mdi/js';
 import BrandLogo from './components/BrandLogo';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
@@ -49,7 +48,6 @@ import EventNoteIcon from '@mui/icons-material/EventNote';
 import SettingsIcon from '@mui/icons-material/Settings';
 import PeopleIcon from '@mui/icons-material/People';
 import HomeWorkIcon from '@mui/icons-material/HomeWork';
-import TokenIcon from '@mui/icons-material/Token';
 import StorageIcon from '@mui/icons-material/Storage';
 import LogoutIcon from '@mui/icons-material/Logout';
 import './App.css';
@@ -126,20 +124,17 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
       { text: t('nav.dashboard'), icon: <DashboardIcon />, path: '/' },
       { text: t('nav.contacts'), icon: <ContactsIcon />, path: '/contacts' },
       { text: t('nav.activities'), icon: <EventNoteIcon />, path: '/activities' },
-      { text: t('nav.notes'), icon: <SvgIcon><path d={mdiNoteMultipleOutline} /></SvgIcon>, path: '/notes' },
+      { text: t('nav.notes'), icon: <SvgIcon><path d={mdiNotebookOutline} /></SvgIcon>, path: '/notes' },
       { text: t('nav.network'), icon: <SvgIcon><path d={mdiGraphOutline} /></SvgIcon>, path: '/network' },
       { text: t('nav.households'), icon: <HomeWorkIcon />, path: '/households' },
-      { text: t('nav.profile'), icon: <SettingsIcon />, path: '/settings' },
       { text: t('nav.data'), icon: <StorageIcon />, path: '/settings/data' },
-      { text: t('nav.integrations'), icon: <TokenIcon />, path: '/api-tokens' },
+      { text: t('nav.profile'), icon: <SettingsIcon />, path: '/settings' },
     ];
     if (userIsAdmin) {
       items.push({ text: t('nav.users'), icon: <PeopleIcon />, path: '/users' });
     }
     return items;
   }, [t, userIsAdmin]);
-
-  // Check if current path matches the nav item (handle exact match for "/" and prefix match for others)
 
   const drawerContent = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -383,7 +378,7 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
           <Route path="/network" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><NetworkPage /></Suspense>} />
           <Route path="/households" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><HouseholdsPage /></Suspense>} />
           <Route path="/users" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><UsersPage /></Suspense>} />
-          <Route path="/api-tokens" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><ApiTokensPage /></Suspense>} />
+          <Route path="/api-tokens" element={<Navigate to="/settings" replace />} />
           <Route path="/circle-tag-triage" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><CircleTagTriagePage /></Suspense>} />
           <Route path="/reminders" element={<div>{t('pages.reminders')}</div>} />
           <Route path="/" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><DashboardPage /></Suspense>} />

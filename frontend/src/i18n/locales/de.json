@@ -8,12 +8,12 @@
     "dashboard": "Dashboard",
     "contacts": "Kontakte",
     "activities": "Aktivitäten",
-    "notes": "Capture",
+    "notes": "Notizen",
     "network": "Netzwerk",
     "households": "Haushalte",
     "reminders": "Erinnerungen",
     "settings": "Einstellungen",
-    "profile": "Allgemein",
+    "profile": "Einstellungen",
     "users": "Benutzer",
     "apiTokens": "API-Tokens",
     "integrations": "Integration",
@@ -376,7 +376,7 @@
     "allContactsInfo": "Diese Seite zeigt alle Aktivitäten aus allen Kontakten."
   },
   "inbox": {
-    "title": "Capture",
+    "title": "Notes",
     "addNote": "Notiz hinzufügen",
     "search": "Suchen…",
     "noNotes": "Keine nicht zugewiesenen Notizen",
