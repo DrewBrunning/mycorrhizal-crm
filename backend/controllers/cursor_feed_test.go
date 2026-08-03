@@ -35,7 +35,7 @@ func setupRouterWithRetention(retentionDays int) (*gorm.DB, *gin.Engine) {
 	sqlDB, _ := db.DB()
 	sqlDB.SetMaxOpenConns(1)
 
-	db.AutoMigrate(&models.Contact{}, &models.Activity{}, &models.Note{}, models.Reminder{}, models.User{}, models.Webhook{}, models.WebhookDelivery{}, models.ContactSubscription{}, models.ContactSyncLink{}, models.RelationshipEdge{}, models.Circle{}, models.CircleMember{}, models.Tag{}, models.ContactTag{}, models.LifeEvent{}, models.Household{}, models.HouseholdMember{}, models.FieldDefinition{}, models.FieldValue{}, models.CardDAVSync{}, models.ApiToken{}, models.ReminderCompletion{}, models.CalendarSubscription{}, models.CalendarEventLink{}, models.Preference{}, models.CadencePolicy{})
+	db.AutoMigrate(&models.Contact{}, &models.Activity{}, &models.Note{}, models.Reminder{}, models.User{}, models.Webhook{}, models.WebhookDelivery{}, models.ContactSubscription{}, models.ContactSyncLink{}, models.RelationshipEdge{}, models.Circle{}, models.CircleMember{}, models.Tag{}, models.ContactTag{}, models.LifeEvent{}, models.Household{}, models.HouseholdMember{}, models.FieldDefinition{}, models.FieldValue{}, models.CardDAVSync{}, models.ApiToken{}, models.ReminderCompletion{}, models.CalendarSubscription{}, models.CalendarEventLink{}, models.Preference{}, models.CadencePolicy{}, models.ConversationAgenda{})
 
 	user := models.User{Username: "tester", Password: "password123", Email: "tester@example.com"}
 	if err := db.Create(&user).Error; err != nil {
@@ -434,6 +434,51 @@ func TestChangeFeedPreferencesTombstones(t *testing.T) {
 	assert.Equal(t, true, prefs2[0].(map[string]any)["deleted"], "soft-deleted preferences must be returned with deleted:true")
 }
 
+// TestChangeFeedConversationAgendaTombstones covers the tombstone trap for the
+// conversation-agenda feed: a soft-deleted ConversationAgenda must surface via
+// ?since= as deleted:true (ConversationAgenda.AfterDelete bumps updated_at so
+// the cursor sees it).
+func TestChangeFeedConversationAgendaTombstones(t *testing.T) {
+	db, router := setupRouterWithRetention(30)
+	var user models.User
+	db.First(&user)
+	router.GET("/conversation-agenda", ListConversationAgenda)
+
+	subject := models.Contact{UserID: user.ID, Firstname: "Subject"}
+	require.NoError(t, db.Create(&subject).Error)
+
+	a1 := models.ConversationAgenda{UserID: user.ID, EntityID: subject.VCardUID, Content: "Ask about the garden"}
+	a2 := models.ConversationAgenda{UserID: user.ID, EntityID: subject.VCardUID, Content: "Ask about the new job"}
+	require.NoError(t, db.Create(&a1).Error)
+	require.NoError(t, db.Create(&a2).Error)
+
+	afterOne := EncodeCursor(a1.UpdatedAt, a1.ID)
+
+	req := func(query string) map[string]any {
+		t.Helper()
+		r, _ := http.NewRequest("GET", "/conversation-agenda?"+query, nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, r)
+		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+		var body map[string]any
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+		return body
+	}
+
+	feed := req("since=" + afterOne + "&limit=10")
+	items := feed["conversation_agenda"].([]any)
+	require.Len(t, items, 1, "only the agenda item after the cursor should appear")
+	assert.Equal(t, "Ask about the new job", items[0].(map[string]any)["content"])
+	assert.Equal(t, "incremental", feed["sync"].(map[string]any)["mode"])
+
+	require.NoError(t, db.Delete(&a2).Error)
+	feed2 := req("since=" + afterOne + "&limit=10")
+	items2 := feed2["conversation_agenda"].([]any)
+	require.Len(t, items2, 1)
+	assert.Equal(t, "Ask about the new job", items2[0].(map[string]any)["content"])
+	assert.Equal(t, true, items2[0].(map[string]any)["deleted"], "soft-deleted agenda items must be returned with deleted:true")
+}
+
 // TestAfterDeleteBumpsUpdatedAt proves every soft-delete entity's AfterDelete
 // hook advances updated_at so the T17 change feed sees the tombstone. GORM's
 // soft-delete UPDATE only writes deleted_at, leaving updated_at at its
@@ -507,6 +552,17 @@ func TestAfterDeleteBumpsUpdatedAt(t *testing.T) {
 		var reloaded models.Preference
 		require.NoError(t, db.Unscoped().First(&reloaded, "id = ?", p.ID).Error)
 		requireAfter(t, reloaded.UpdatedAt, "Preference")
+	})
+
+	// ConversationAgenda (UUID string PK, explicit DeletedAt)
+	t.Run("ConversationAgenda", func(t *testing.T) {
+		a := models.ConversationAgenda{UserID: user.ID, EntityID: subject.VCardUID, Content: "Ask about the trip"}
+		require.NoError(t, db.Create(&a).Error)
+		require.NoError(t, db.Model(&a).UpdateColumn("updated_at", past).Error)
+		require.NoError(t, db.Delete(&a).Error)
+		var reloaded models.ConversationAgenda
+		require.NoError(t, db.Unscoped().First(&reloaded, "id = ?", a.ID).Error)
+		requireAfter(t, reloaded.UpdatedAt, "ConversationAgenda")
 	})
 }
 
@@ -598,6 +654,20 @@ func TestAfterDeleteSkipsBulkDelete(t *testing.T) {
 		require.NoError(t, db.Unscoped().First(&reloaded, "id = ?", p1.ID).Error)
 		assert.Equal(t, past.Format(time.RFC3339Nano), reloaded.UpdatedAt.Format(time.RFC3339Nano), "Preference bulk delete must not bump updated_at")
 	})
+
+	// ConversationAgenda: same pattern (UUID string PK).
+	t.Run("ConversationAgenda", func(t *testing.T) {
+		a1 := models.ConversationAgenda{UserID: user.ID, EntityID: subject.VCardUID, Content: "bulk1"}
+		a2 := models.ConversationAgenda{UserID: user.ID, EntityID: subject.VCardUID, Content: "bulk2"}
+		require.NoError(t, db.Create(&a1).Error)
+		require.NoError(t, db.Create(&a2).Error)
+		require.NoError(t, db.Model(&a1).UpdateColumn("updated_at", past).Error)
+		require.NoError(t, db.Model(&a2).UpdateColumn("updated_at", past).Error)
+		require.NoError(t, db.Where("content IN ? AND user_id = ?", []string{"bulk1", "bulk2"}, user.ID).Delete(&models.ConversationAgenda{}).Error)
+		var reloaded models.ConversationAgenda
+		require.NoError(t, db.Unscoped().First(&reloaded, "id = ?", a1.ID).Error)
+		assert.Equal(t, past.Format(time.RFC3339Nano), reloaded.UpdatedAt.Format(time.RFC3339Nano), "ConversationAgenda bulk delete must not bump updated_at")
+	})
 }
 
 // TestFeedIndexesExistInMigratedSchema is the real-DB check for migration
@@ -612,6 +682,7 @@ func TestFeedIndexesExistInMigratedSchema(t *testing.T) {
 	for _, table := range []string{
 		"contacts", "notes", "activities", "life_events", "preferences",
 		"circles", "households", "tags", "relationship_edges", "field_definitions",
+		"conversation_agenda",
 	} {
 		var count int64
 		err := db.Raw(

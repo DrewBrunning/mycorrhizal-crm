@@ -68,3 +68,13 @@ test('hides the activity dropdown when there are no activities (marking stays va
   renderDialog({ activities: [] });
   expect(screen.queryByLabelText('Recorded in (optional)')).not.toBeInTheDocument();
 });
+
+test('shows error message when onConfirm rejects', async () => {
+  const onConfirm = vi.fn().mockRejectedValue(new Error('Network error'));
+  renderDialog({ onConfirm });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Mark as discussed' }));
+
+  await vi.waitFor(() => screen.getByText(/Failed to mark as discussed/i));
+  expect(onConfirm).toHaveBeenCalledTimes(1);
+});
