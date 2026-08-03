@@ -281,3 +281,32 @@ func TestListOverdueCadences_SortsMostOverdueFirst(t *testing.T) {
 	assert.Equal(t, "Mildly", overdue[1].ContactName)
 	assert.Equal(t, "Fresh", overdue[2].ContactName)
 }
+
+// TestComputeCadenceHealth_TimezoneNormalisation verifies that deriveHealth
+// (and therefore ComputeCadenceHealth) normalises the activity date to
+// midnight in the user's timezone before computing next_due. Without this, an
+// activity stored in UTC whose wall-clock date differs from the local date
+// (e.g. 20:00 UTC on Dec 31 = 09:00 Jan 01 in NZ) would carry the wrong
+// next_due, and overdue_by would be off by one.
+func TestComputeCadenceHealth_TimezoneNormalisation(t *testing.T) {
+	db, user, contact := setupCadenceServiceTestDB(t)
+
+	// Activity stored as 2025-12-31 20:00 UTC, which in NZ (+13) is
+	// 2026-01-01 09:00 — a different wall-clock date. next_due must be
+	// computed from Jan 01 NZ, not Dec 31 UTC.
+	nz, err := time.LoadLocation("Pacific/Auckland")
+	require.NoError(t, err)
+
+	seedActivity(t, db, user, contact, models.InteractionTypeCall,
+		time.Date(2025, 12, 31, 20, 0, 0, 0, time.UTC))
+
+	policy := models.CadencePolicy{UserID: user.ID, EntityID: contact.VCardUID, TargetIntervalDays: 30}
+	now := time.Date(2026, 2, 1, 12, 0, 0, 0, nz) // Feb 01 NZ, 30 days past Jan 01
+
+	health, err := ComputeCadenceHealth(db, user.ID, &policy, now)
+	require.NoError(t, err)
+	require.NotNil(t, health.NextDue)
+	assert.Equal(t, "2026-01-31", health.NextDue.Format("2006-01-02"),
+		"next_due anchored to NZ Jan 01 (not UTC Dec 31) + 30 = NZ Jan 31")
+	assert.Equal(t, 1, health.OverdueBy, "Feb 01 is 1 day past Jan 31 due in NZ")
+}

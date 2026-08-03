@@ -72,6 +72,16 @@ func (p *CadencePolicy) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
+// AfterDelete advances updated_at on a soft delete so T17 change feeds see
+// the tombstone (see Note.AfterDelete's doc comment for the full rationale).
+// Hard deletes and bulk deletes are skipped via the DeletedAt guard.
+func (p *CadencePolicy) AfterDelete(tx *gorm.DB) error {
+	if !p.DeletedAt.Valid {
+		return nil
+	}
+	return tx.Model(&CadencePolicy{}).Unscoped().Where("id = ?", p.ID).UpdateColumn("updated_at", time.Now()).Error
+}
+
 // Qualifies reports whether the given Activity counts as a cadence-resetting
 // interaction for this policy. Two gates, both required:
 //

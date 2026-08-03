@@ -306,7 +306,7 @@ export default function ContactDetailPage() {
     await handleSaveCadence(input);
   };
 
-  const handleCadenceDelete = async () => {
+  const handleCadenceDelete = async (_id: string) => {
     if (!window.confirm(t('cadence.confirmDelete'))) return;
     await handleDeleteCadence();
   };

@@ -94,6 +94,30 @@ func TestGetCadencePolicyNotFound(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
+func TestGetCadencePolicyHappyPath(t *testing.T) {
+	db, router := setupRouter()
+	router.GET("/cadence-policies/:id", GetCadencePolicy)
+
+	var user models.User
+	db.First(&user)
+	contact := models.Contact{UserID: user.ID, Firstname: "Alice"}
+	db.Create(&contact)
+	policy := models.CadencePolicy{
+		UserID: user.ID, EntityID: contact.VCardUID, TargetIntervalDays: 30,
+		QualifyingTypes: []string{models.InteractionTypeCall},
+	}
+	db.Create(&policy)
+
+	w := doCadenceJSON(t, router, "GET", "/cadence-policies/"+policy.ID, nil)
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var resp cadencePolicyWithHealth
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Equal(t, policy.ID, resp.ID)
+	assert.Equal(t, 30, resp.TargetIntervalDays)
+	assert.False(t, resp.Health.HasQualifyingInteraction)
+}
+
 func TestGetCadencePolicyScopedToOwner(t *testing.T) {
 	db, router := setupRouter()
 	router.GET("/cadence-policies/:id", GetCadencePolicy)
@@ -137,6 +161,56 @@ func TestListCadencePoliciesByEntity(t *testing.T) {
 	assert.Equal(t, 1, resp.Total)
 }
 
+func TestListCadencePoliciesUnfiltered(t *testing.T) {
+	db, router := setupRouter()
+	router.GET("/cadence-policies", ListCadencePolicies)
+
+	var user models.User
+	db.First(&user)
+	contact := models.Contact{UserID: user.ID, Firstname: "Alice"}
+	db.Create(&contact)
+	db.Create(&models.CadencePolicy{UserID: user.ID, EntityID: contact.VCardUID, TargetIntervalDays: 30})
+	db.Create(&models.CadencePolicy{UserID: user.ID, EntityID: contact.VCardUID + "-extra", TargetIntervalDays: 60})
+
+	// Without entity_id, all policies should be returned.
+	w := doCadenceJSON(t, router, "GET", "/cadence-policies", nil)
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var resp struct {
+		CadencePolicies []cadencePolicyWithHealth `json:"cadence_policies"`
+		Total           int                       `json:"total"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Len(t, resp.CadencePolicies, 2, "unfiltered list must include all policies")
+	assert.EqualValues(t, 2, resp.Total)
+	// Both must carry embedded health, even when undefined.
+	for _, p := range resp.CadencePolicies {
+		assert.False(t, p.Health.HasQualifyingInteraction)
+	}
+}
+
+func TestListCadencePoliciesScopedToUser(t *testing.T) {
+	db, router := setupRouter()
+	router.GET("/cadence-policies", ListCadencePolicies)
+
+	var user models.User
+	db.First(&user)
+	otherUser := models.User{Username: "other", Password: "x", Email: "other@example.com"}
+	require.NoError(t, db.Create(&otherUser).Error)
+	contact := models.Contact{UserID: otherUser.ID, Firstname: "Not Yours"}
+	db.Create(&contact)
+	db.Create(&models.CadencePolicy{UserID: otherUser.ID, EntityID: contact.VCardUID, TargetIntervalDays: 30})
+
+	w := doCadenceJSON(t, router, "GET", "/cadence-policies", nil)
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var resp struct {
+		CadencePolicies []cadencePolicyWithHealth `json:"cadence_policies"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Empty(t, resp.CadencePolicies, "another user's policies must not leak into the list")
+}
+
 func TestUpdateCadencePolicy(t *testing.T) {
 	db, router := setupRouter()
 	router.PUT("/cadence-policies/:id", withValidated(func() any { return &models.CadencePolicyInput{} }), UpdateCadencePolicy)
@@ -176,6 +250,29 @@ func TestUpdateCadencePolicyScopedToOwner(t *testing.T) {
 		EntityID: contact.VCardUID, TargetIntervalDays: 90,
 	})
 	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestUpdateCadencePolicyRejectsEntityChangeToExisting(t *testing.T) {
+	db, router := setupRouter()
+	router.PUT("/cadence-policies/:id", withValidated(func() any { return &models.CadencePolicyInput{} }), UpdateCadencePolicy)
+
+	var user models.User
+	db.First(&user)
+	alice := models.Contact{UserID: user.ID, Firstname: "Alice"}
+	bob := models.Contact{UserID: user.ID, Firstname: "Bob"}
+	db.Create(&alice)
+	db.Create(&bob)
+
+	// Two contacts, each with a policy. Changing one policy's entity to
+	// the other contact must 409.
+	db.Create(&models.CadencePolicy{UserID: user.ID, EntityID: alice.VCardUID, TargetIntervalDays: 30})
+	policyB := models.CadencePolicy{UserID: user.ID, EntityID: bob.VCardUID, TargetIntervalDays: 60}
+	db.Create(&policyB)
+
+	w := doCadenceJSON(t, router, "PUT", "/cadence-policies/"+policyB.ID, models.CadencePolicyInput{
+		EntityID: alice.VCardUID, TargetIntervalDays: 90,
+	})
+	assert.Equal(t, http.StatusConflict, w.Code, w.Body.String())
 }
 
 func TestDeleteCadencePolicySoftDeletesAndAllowsRecreate(t *testing.T) {
@@ -261,6 +358,42 @@ func TestGetOverdueCadencesEmptyIsNullSafe(t *testing.T) {
 	w := doCadenceJSON(t, router, "GET", "/cadence-policies/overdue", nil)
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Body.String(), `"overdue":[]`, "an empty overdue list must serialize as [] not null (frontend crash guard)")
+}
+
+// TestListCadencePoliciesSinceFeedTombstoneAtOriginalPosition proves the
+// AfterDelete hook advances updated_at correctly: a cursor at the policy's
+// ORIGINAL (pre-delete) position must still surface the tombstone, because
+// the AfterDelete hook has bumped it forward. Without the hook the tombstone
+// sits at the old position and any cursor >= that position misses it forever.
+func TestListCadencePoliciesSinceFeedTombstoneAtOriginalPosition(t *testing.T) {
+	db, router := setupRouterWithRetention(30)
+	router.GET("/cadence-policies", ListCadencePolicies)
+	router.DELETE("/cadence-policies/:id", DeleteCadencePolicy)
+
+	var user models.User
+	db.First(&user)
+	contact := models.Contact{UserID: user.ID, Firstname: "Alice"}
+	db.Create(&contact)
+	policy := models.CadencePolicy{UserID: user.ID, EntityID: contact.VCardUID, TargetIntervalDays: 30}
+	db.Create(&policy)
+
+	// Cursor at the policy's exact position — not before it. Without the
+	// AfterDelete hook this cursor would miss the tombstone.
+	cursor := EncodeCursor(policy.UpdatedAt, policy.ID)
+
+	w := doCadenceJSON(t, router, "DELETE", "/cadence-policies/"+policy.ID, nil)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	w2 := doCadenceJSON(t, router, "GET", "/cadence-policies?since="+cursor, nil)
+	require.Equal(t, http.StatusOK, w2.Code, w2.Body.String())
+	var feed struct {
+		CadencePolicies []models.CadencePolicy `json:"cadence_policies"`
+	}
+	require.NoError(t, json.Unmarshal(w2.Body.Bytes(), &feed))
+	require.Len(t, feed.CadencePolicies, 1)
+	assert.Equal(t, policy.ID, feed.CadencePolicies[0].ID)
+	assert.True(t, feed.CadencePolicies[0].Deleted,
+		"AfterDelete must advance updated_at so a cursor at the original position still surfaces the tombstone")
 }
 
 // TestListCadencePoliciesSinceFeed pins the T17 incremental contract: cadence

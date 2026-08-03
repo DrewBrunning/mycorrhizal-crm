@@ -85,20 +85,18 @@ func lastQualifyingInteraction(db *gorm.DB, userID uint, policy *models.CadenceP
 	return nil, nil
 }
 
-// ComputeCadenceHealth derives the health read-model for one policy against
-// the real timeline. Pure — performs no writes. `now` anchors the "today"
-// boundary; callers should pass a timezone-appropriate now (the reminder
-// location) so the day boundary matches the user's clock.
-func ComputeCadenceHealth(db *gorm.DB, userID uint, policy *models.CadencePolicy, now time.Time) (CadenceHealth, error) {
-	last, err := lastQualifyingInteraction(db, userID, policy)
-	if err != nil {
-		return CadenceHealth{}, err
-	}
+// deriveHealth completes the health read-model from an already-resolved last
+// qualifying interaction date. Shared between ComputeCadenceHealth (single-
+// policy, live query) and the batch path (fetchLastInteractionDates +
+// per-policy deriveHealth).
+func deriveHealth(last *time.Time, intervalDays int, now time.Time) CadenceHealth {
 	if last == nil {
-		return CadenceHealth{HasQualifyingInteraction: false}, nil
+		return CadenceHealth{HasQualifyingInteraction: false}
 	}
-
-	nextDue := last.AddDate(0, 0, policy.TargetIntervalDays)
+	loc := now.Location()
+	lastLocal := last.In(loc)
+	lastMidnight := time.Date(lastLocal.Year(), lastLocal.Month(), lastLocal.Day(), 0, 0, 0, 0, loc)
+	nextDue := lastMidnight.AddDate(0, 0, intervalDays)
 	health := CadenceHealth{
 		HasQualifyingInteraction: true,
 		LastInteraction:          last,
@@ -107,10 +105,104 @@ func ComputeCadenceHealth(db *gorm.DB, userID uint, policy *models.CadencePolicy
 	if overdue := -calendarDaysBetween(now, nextDue); overdue > 0 {
 		health.OverdueBy = overdue
 	}
-	return health, nil
+	return health
 }
 
-// OverdueCadence is one overdue policy joined with its contact's display
+// ComputeCadenceHealth derives the health read-model for one policy against
+// the real timeline. Pure — performs no writes. `now` anchors the "today"
+// boundary; callers should pass a timezone-appropriate now (the reminder
+// location) so the day boundary matches the user's clock.
+//
+// The derivation normalises the last qualifying interaction to midnight in
+// the user's timezone. Without this, an activity time stored in UTC that
+// crosses the user's midnight (e.g. 20:00 UTC = 09:00 next day NZ) would
+// carry the wrong wall-clock date, and overdue_by would be off by one day.
+func ComputeCadenceHealth(db *gorm.DB, userID uint, policy *models.CadencePolicy, now time.Time) (CadenceHealth, error) {
+	last, err := lastQualifyingInteraction(db, userID, policy)
+	if err != nil {
+		return CadenceHealth{}, err
+	}
+	return deriveHealth(last, policy.TargetIntervalDays, now), nil
+}
+
+// activityDateRow is the light scan target for the batch activity pre-fetch.
+// The VCardUID column tag is mandatory: without it GORM derives v_card_uid
+// from the Go field name while the SQL alias is the raw column name vcard_uid.
+type activityDateRow struct {
+	Date     time.Time
+	Type     string
+	VCardUID string `gorm:"column:vcard_uid"`
+}
+
+// fetchLastInteractionDates loads the most recent qualifying interaction date
+// for every policy (all must share the same userID) in a single query,
+// replacing the N+1 pattern of calling lastQualifyingInteraction per policy.
+// Returns a map of policy ID → most recent qualifying date (nil when none).
+//
+// The qualifying_types filter is pushed into SQL when every policy has a
+// non-empty list (union of all listed types). If any policy uses the
+// empty-list default ("every default-qualifying type counts"), the SQL filter
+// is skipped and the Go-level Qualifies gate handles the filtering.
+func fetchLastInteractionDates(db *gorm.DB, userID uint, policies []models.CadencePolicy) (map[string]*time.Time, error) {
+	if len(policies) == 0 {
+		return nil, nil
+	}
+
+	uids := make([]string, 0, len(policies))
+	seen := make(map[string]bool)
+	hasEmptyFilter := false
+	allTypes := make(map[string]bool)
+	for _, p := range policies {
+		if !seen[p.EntityID] {
+			uids = append(uids, p.EntityID)
+			seen[p.EntityID] = true
+		}
+		if len(p.QualifyingTypes) == 0 {
+			hasEmptyFilter = true
+		}
+		for _, t := range p.QualifyingTypes {
+			allTypes[t] = true
+		}
+	}
+
+	query := db.Table("activities").
+		Select("activities.date, activities.type, c.vcard_uid").
+		Joins("JOIN activity_contacts ac ON ac.activity_id = activities.id").
+		Joins("JOIN contacts c ON c.id = ac.contact_id").
+		Where("c.vcard_uid IN ? AND c.user_id = ? AND activities.user_id = ? AND activities.deleted_at IS NULL",
+			uids, userID, userID)
+
+	if !hasEmptyFilter && len(allTypes) > 0 {
+		typeList := make([]string, 0, len(allTypes))
+		for t := range allTypes {
+			typeList = append(typeList, t)
+		}
+		query = query.Where("activities.type IN ?", typeList)
+	}
+
+	var rows []activityDateRow
+	if err := query.Order("activities.date DESC").Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	result := make(map[string]*time.Time, len(policies))
+	for _, p := range policies {
+		result[p.ID] = nil
+		for i := range rows {
+			if rows[i].VCardUID != p.EntityID {
+				continue
+			}
+			candidate := &models.Activity{Type: rows[i].Type, Date: rows[i].Date}
+			if p.Qualifies(candidate) {
+				t := rows[i].Date
+				result[p.ID] = &t
+				break
+			}
+		}
+	}
+	return result, nil
+}
+
 // identity — the payload for the overdue list ("the screen people will
 // actually live in") and the webhook job.
 type OverdueCadence struct {
@@ -126,6 +218,10 @@ type OverdueCadence struct {
 // contact's numeric ID and display name (the frontend links to
 // /contacts/<numeric id>). Overdue means derived OverdueBy > 0 — a policy
 // with no qualifying interaction ever can never be overdue.
+//
+// Activities are pre-fetched in a single query (fetchLastInteractionDates)
+// rather than N per-policy queries, since a personal-CRM user may have a
+// policy on every contact and N round-trips would be wasteful.
 func ListOverdueCadences(db *gorm.DB, userID uint, now time.Time) ([]OverdueCadence, error) {
 	var policies []models.CadencePolicy
 	if err := db.Where("user_id = ?", userID).Find(&policies).Error; err != nil {
@@ -133,6 +229,11 @@ func ListOverdueCadences(db *gorm.DB, userID uint, now time.Time) ([]OverdueCade
 	}
 	if len(policies) == 0 {
 		return nil, nil
+	}
+
+	lastByPolicy, err := fetchLastInteractionDates(db, userID, policies)
+	if err != nil {
+		return nil, err
 	}
 
 	// Resolve all referenced contacts in one query for the display fields.
@@ -155,10 +256,7 @@ func ListOverdueCadences(db *gorm.DB, userID uint, now time.Time) ([]OverdueCade
 
 	var overdue []OverdueCadence
 	for i := range policies {
-		health, err := ComputeCadenceHealth(db, userID, &policies[i], now)
-		if err != nil {
-			return nil, err
-		}
+		health := deriveHealth(lastByPolicy[policies[i].ID], policies[i].TargetIntervalDays, now)
 		if health.OverdueBy <= 0 {
 			continue
 		}
@@ -180,10 +278,7 @@ func ListOverdueCadences(db *gorm.DB, userID uint, now time.Time) ([]OverdueCade
 // relationship is first — the top of the screen people live in.
 func sortOverdueByMostOverdue(overdue []OverdueCadence) {
 	slices.SortFunc(overdue, func(a, b OverdueCadence) int {
-		if a.Health.OverdueBy != b.Health.OverdueBy {
-			return b.Health.OverdueBy - a.Health.OverdueBy
-		}
-		return 0
+		return b.Health.OverdueBy - a.Health.OverdueBy
 	})
 }
 
@@ -202,6 +297,11 @@ const cadenceOverdueMinInterval = 23 * time.Hour
 // manager is expected to idempotently handle the repeat (the spec says the
 // webhook MAY emit a task). Completing such a task is deliberately NOT a
 // reset signal; only recording a qualifying interaction resets cadence.
+//
+// The initial load scans every cadence_policies row across all users. In a
+// single-user personal CRM this is harmless; in a multi-tenant instance it
+// would be an unbounded scan once per day. At that scale the loop should be
+// driven by iterating users rather than loading every policy at once.
 func ProcessOverdueCadences(db *gorm.DB, cfg config.Config) {
 	acquired, err := acquireJobLock(db, models.JobNameCadenceOverdue, cadenceOverdueMinInterval)
 	if err != nil {
@@ -220,8 +320,6 @@ func ProcessOverdueCadences(db *gorm.DB, cfg config.Config) {
 
 	now := time.Now().In(cfg.GetReminderLocation())
 
-	// All users at once: overdue policies carry their own UserID, and
-	// TriggerWebhooks scopes the subscription lookup per user.
 	var policies []models.CadencePolicy
 	if err := db.Find(&policies).Error; err != nil {
 		logger.Error().Err(err).Msg("cadence: failed to load policies for overdue webhooks")
@@ -231,21 +329,34 @@ func ProcessOverdueCadences(db *gorm.DB, cfg config.Config) {
 		return
 	}
 
-	// Index policies per (user, entity) so the per-user health computation
-	// can be driven by the same contact-lookup pass below.
+	// Group policies by UserID so the batch activity pre-fetch runs once
+	// per user (at personal-CRM scale this is exactly one user).
+	byUser := make(map[uint][]models.CadencePolicy)
+	for _, p := range policies {
+		byUser[p.UserID] = append(byUser[p.UserID], p)
+	}
+
+	// Resolve every referenced contact's numeric ID per user for the
+	// webhook payload. Runs alongside the activity pre-fetch, not before it.
 	type key struct {
 		userID uint
 		uid    string
 	}
-	uidByUser := make(map[uint][]string)
-	for _, p := range policies {
-		uidByUser[p.UserID] = append(uidByUser[p.UserID], p.EntityID)
-	}
-
-	// Resolve every referenced contact's numeric ID (needed for the payload)
-	// and cache it per (user, vcard_uid).
 	contactID := make(map[key]uint)
-	for userID, uids := range uidByUser {
+
+	emitted := 0
+	for userID, userPolicies := range byUser {
+		lastByPolicy, err := fetchLastInteractionDates(db, userID, userPolicies)
+		if err != nil {
+			logger.Error().Err(err).Uint("user_id", userID).Msg("cadence: failed to pre-fetch activities for webhooks")
+			continue
+		}
+
+		// Resolve contacts for this user.
+		uids := make([]string, len(userPolicies))
+		for i, p := range userPolicies {
+			uids[i] = p.EntityID
+		}
 		var contacts []models.Contact
 		if err := db.Where("user_id = ? AND vcard_uid IN ?", userID, uids).Find(&contacts).Error; err != nil {
 			logger.Error().Err(err).Uint("user_id", userID).Msg("cadence: failed to resolve contacts for webhook payload")
@@ -254,22 +365,17 @@ func ProcessOverdueCadences(db *gorm.DB, cfg config.Config) {
 		for _, c := range contacts {
 			contactID[key{userID, c.VCardUID}] = c.ID
 		}
-	}
 
-	emitted := 0
-	for i := range policies {
-		p := policies[i]
-		health, err := ComputeCadenceHealth(db, p.UserID, &p, now)
-		if err != nil {
-			logger.Error().Err(err).Str("policy_id", p.ID).Msg("cadence: failed to compute health for webhook")
-			continue
+		for i := range userPolicies {
+			p := userPolicies[i]
+			health := deriveHealth(lastByPolicy[p.ID], p.TargetIntervalDays, now)
+			if health.OverdueBy <= 0 {
+				continue
+			}
+			payload := buildOverduePayload(p, health, contactID[key{p.UserID, p.EntityID}])
+			go TriggerWebhooks(db, cfg, p.UserID, "cadence.overdue", payload)
+			emitted++
 		}
-		if health.OverdueBy <= 0 {
-			continue
-		}
-		payload := ginHForCadence(p, health, contactID[key{p.UserID, p.EntityID}])
-		go TriggerWebhooks(db, cfg, p.UserID, "cadence.overdue", payload)
-		emitted++
 	}
 
 	if emitted > 0 {
@@ -277,8 +383,9 @@ func ProcessOverdueCadences(db *gorm.DB, cfg config.Config) {
 	}
 }
 
-// ginHForCadence builds the `cadence.overdue` webhook payload.
-func ginHForCadence(p models.CadencePolicy, health CadenceHealth, contactID uint) map[string]interface{} {
+// buildOverduePayload constructs the `cadence.overdue` webhook payload from
+// a policy and its derived health.
+func buildOverduePayload(p models.CadencePolicy, health CadenceHealth, contactID uint) map[string]interface{} {
 	return map[string]interface{}{
 		"cadence_policy_id":           p.ID,
 		"entity_id":                   p.EntityID,
