@@ -554,6 +554,12 @@ func deleteContactAssociations(tx *gorm.DB, contact models.Contact, userID uint)
 		return err
 	}
 
+	// Delete this contact's conversation agenda items (user-authored content,
+	// soft delete — T21)
+	if err := tx.Where("entity_id = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.ConversationAgenda{}).Error; err != nil {
+		return err
+	}
+
 	// Delete this contact's cadence policy (user-authored content, soft
 	// delete — T19)
 	if err := tx.Where("entity_id = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.CadencePolicy{}).Error; err != nil {

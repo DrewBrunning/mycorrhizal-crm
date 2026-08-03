@@ -1002,5 +1002,32 @@
     "overdueTitle": "Relazioni in ritardo",
     "noOverdue": "Nessun ritardo. Tutto in ordine.",
     "unknownContact": "Contatto sconosciuto"
+  },
+  "conversationAgenda": {
+    "title": "Agenda di conversazione",
+    "placeholder": "Cose da tirare fuori la prossima volta…",
+    "add": "Aggiungi",
+    "markDiscussed": "Segna come discusso",
+    "discussedSection": "Discuss",
+    "discussedOn": "Discusso il {{date}}",
+    "empty": "Niente in agenda per ora. Aggiungi qualcosa da tirare fuori la prossima volta che parlate.",
+    "deleteMessage": "Eliminare questo elemento dell'agenda?",
+    "cancel": "Annulla",
+    "save": "Salva",
+    "editTitle": "Modifica elemento dell'agenda",
+    "content": "Cosa tirare fuori",
+    "referenceUrl": "Link (facoltativo)",
+    "referenceUrlHint": "Link facoltativo all'argomento in questione.",
+    "discussTitle": "Segna come discusso",
+    "discussActivity": "Registrato in (facoltativo)",
+    "discussActivityHint": "Collega l'interazione che lo ha coperto, così alimenta la cronologia.",
+    "noActivity": "Nessuna interazione",
+    "discussConfirm": "Segna come discusso",
+    "validation": {
+      "contentRequired": "Indica cosa vuoi tirare fuori.",
+      "addFailed": "Impossibile aggiungere l'elemento.",
+      "saveFailed": "Impossibile salvare l'elemento.",
+      "discussFailed": "Impossibile segnare come discusso."
+    }
   }
 }

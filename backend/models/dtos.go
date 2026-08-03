@@ -77,6 +77,25 @@ type LifeEventInput struct {
 	Remind           bool                      `json:"remind,omitempty"`
 }
 
+// ConversationAgendaInput is the DTO for creating/updating a ConversationAgenda
+// (conversation_agenda.go, §91.11). Only content fields; the resolved state
+// (discussed_at / activity_id) is mutated by PATCH /:id/discuss, never by
+// create/update — updating an item's content must not silently re-open or
+// re-close it.
+type ConversationAgendaInput struct {
+	EntityID     string `json:"entity_id" validate:"required,uuid4"`
+	Content      string `json:"content" validate:"required,min=1,max=2000"`
+	ReferenceURL string `json:"reference_url,omitempty" validate:"omitempty,safeurl,max=2000"`
+}
+
+// ConversationAgendaDiscussInput is the DTO for PATCH /conversation-agenda/:id/
+// discuss. ActivityID is optional: when present, the interaction that covered
+// the item is linked to it (feeding the timeline); when absent, the item is
+// marked discussed without a link.
+type ConversationAgendaDiscussInput struct {
+	ActivityID *uint `json:"activity_id,omitempty"`
+}
+
 // CadencePolicyInput is the DTO for creating/updating a CadencePolicy
 // (cadence_policy.go, §91.10). QualifyingTypes is deliberately not
 // `oneof`-validated: Activity.Type is an open classifier, so a policy may

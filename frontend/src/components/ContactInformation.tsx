@@ -22,11 +22,13 @@ import RelationshipEdgeList from './RelationshipEdgeList';
 import LifeEventList from './LifeEventList';
 import PreferenceList from './PreferenceList';
 import CadencePanel from './CadencePanel';
+import ConversationAgendaList from './ConversationAgendaList';
 import CustomFieldValueRow from './CustomFieldValueRow';
 import { RelationshipEdge } from '../api/relationshipEdges';
 import { LifeEvent } from '../api/lifeEvents';
 import { Preference } from '../api/preferences';
 import { CadencePolicy } from '../api/cadencePolicies';
+import { ConversationAgenda } from '../api/conversationAgenda';
 import { FieldDefinition } from '../api/fieldDefinitions';
 import {
   Card as CardModel,
@@ -90,6 +92,12 @@ interface ContactInformationProps {
   onAddCadence?: () => void;
   onEditCadence?: (policy: CadencePolicy) => void;
   onDeleteCadence?: (id: string) => void;
+  // Conversation agenda props (T21)
+  agendaItems?: ConversationAgenda[];
+  onAddAgenda?: (content: string) => Promise<void>;
+  onEditAgenda?: (item: ConversationAgenda) => void;
+  onDiscussAgenda?: (item: ConversationAgenda) => void;
+  onDeleteAgenda?: (id: string) => void;
   // Custom fields (v2, T6/T7)
   fieldDefinitions?: FieldDefinition[];
   fieldValuesByDefinition?: Map<string, unknown>;
@@ -134,6 +142,11 @@ export default function ContactInformation({
   onAddCadence,
   onEditCadence,
   onDeleteCadence,
+  agendaItems = [],
+  onAddAgenda,
+  onEditAgenda,
+  onDiscussAgenda,
+  onDeleteAgenda,
   fieldDefinitions = [],
   fieldValuesByDefinition,
   onSaveFieldValue,
@@ -206,6 +219,7 @@ export default function ContactInformation({
           <MenuItem value={2}>{t('lifeEvent.title')}</MenuItem>
           <MenuItem value={3}>{t('preference.title')}</MenuItem>
           <MenuItem value={4}>{t('cadence.title')}</MenuItem>
+          <MenuItem value={5}>{t('conversationAgenda.title')}</MenuItem>
         </TextField>
       ) : (
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
@@ -215,6 +229,7 @@ export default function ContactInformation({
             <Tab label={t('lifeEvent.title')} />
             <Tab label={t('preference.title')} />
             <Tab label={t('cadence.title')} />
+            <Tab label={t('conversationAgenda.title')} />
           </Tabs>
         </Box>
       )}
@@ -538,6 +553,21 @@ export default function ContactInformation({
             onAdd={onAddCadence || (() => {})}
             onEdit={onEditCadence || (() => {})}
             onDelete={onDeleteCadence || (() => {})}
+          />
+        </CardContent>
+      )}
+
+      {/* Conversation Agenda Tab (T21) — always-visible list with a single
+          inline input; no modal for adding, per the ticket's low-friction
+          requirement. */}
+      {activeTab === 5 && (
+        <CardContent sx={{ py: 2 }}>
+          <ConversationAgendaList
+            items={agendaItems}
+            onAdd={onAddAgenda || (() => Promise.resolve())}
+            onEdit={onEditAgenda || (() => {})}
+            onDiscuss={onDiscussAgenda || (() => {})}
+            onDelete={onDeleteAgenda || (() => {})}
           />
         </CardContent>
       )}

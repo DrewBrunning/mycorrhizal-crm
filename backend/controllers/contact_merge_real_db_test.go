@@ -120,6 +120,11 @@ func TestContactMerge_RealMigratedSchema(t *testing.T) {
 	carolLifeEvent := models.LifeEvent{UserID: user.ID, EntityID: carol.VCardUID, Type: "married", RelatedEntityIDs: []string{bob.VCardUID}}
 	require.NoError(t, db.Create(&carolLifeEvent).Error)
 
+	// A conversation agenda item keyed to Bob (must be repointed, not
+	// deleted, on merge).
+	bobAgendaItem := models.ConversationAgenda{UserID: user.ID, EntityID: bob.VCardUID, Content: "Ask about the move"}
+	require.NoError(t, db.Create(&bobAgendaItem).Error)
+
 	// ContactSyncLink on Bob (must be discarded, not repointed).
 	subscription := models.ContactSubscription{UserID: user.ID, Name: "Test CardDAV", URL: "https://example.com/dav"}
 	require.NoError(t, db.Create(&subscription).Error)
@@ -177,6 +182,7 @@ func TestContactMerge_RealMigratedSchema(t *testing.T) {
 	assert.EqualValues(t, 1, counts.CircleMemberships)
 	assert.EqualValues(t, 1, counts.Tags)
 	assert.EqualValues(t, 1, counts.LifeEvents)
+	assert.EqualValues(t, 1, counts.ConversationAgendaItems)
 	assert.EqualValues(t, 1, counts.LifeEventReferences)
 	assert.EqualValues(t, 2, counts.FieldValues)
 	assert.EqualValues(t, 1, counts.ContactSyncLinks)
@@ -282,6 +288,12 @@ func TestContactMerge_RealMigratedSchema(t *testing.T) {
 	var reloadedCarolEvent models.LifeEvent
 	require.NoError(t, db.Where("id = ?", carolLifeEvent.ID).First(&reloadedCarolEvent).Error)
 	assert.Equal(t, []string{alice.VCardUID}, reloadedCarolEvent.RelatedEntityIDs)
+
+	// ConversationAgenda: Bob's item follows the surviving contact, not
+	// deleted with the loser.
+	var repointedAgenda models.ConversationAgenda
+	require.NoError(t, db.Where("id = ?", bobAgendaItem.ID).First(&repointedAgenda).Error)
+	assert.Equal(t, alice.VCardUID, repointedAgenda.EntityID)
 
 	// RelationshipEdge: self-loop dropped entirely; of the inverse pair,
 	// exactly one survives -- and per the tie-break (higher Confidence /

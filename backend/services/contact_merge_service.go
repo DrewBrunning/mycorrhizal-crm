@@ -322,6 +322,7 @@ func ComputeContactMergeAssociationCounts(db *gorm.DB, userID uint, loserID uint
 			"user_id = ? AND related_entity_ids IS NOT NULL AND EXISTS "+
 				"(SELECT 1 FROM json_each(life_events.related_entity_ids) WHERE json_each.value = ?)",
 			userID, loserVCardUID)},
+		{&c.ConversationAgendaItems, db.Model(&models.ConversationAgenda{}).Where("entity_id = ? AND user_id = ?", loserVCardUID, userID)},
 		{&c.FieldValues, db.Model(&models.FieldValue{}).Where("entity_id = ? AND user_id = ?", loserVCardUID, userID)},
 		{&c.ContactSyncLinks, db.Model(&models.ContactSyncLink{}).Where("contact_id = ? AND user_id = ?", loserID, userID)},
 	}
@@ -472,6 +473,14 @@ func RepointContactAssociations(
 	// part (2)'s self-reference check below also catches rows whose
 	// EntityID was just re-pointed in this same transaction.
 	if err := tx.Model(&models.LifeEvent{}).Where("entity_id = ? AND user_id = ?", loser.VCardUID, userID).
+		Update("entity_id", keeper.VCardUID).Error; err != nil {
+		return 0, err
+	}
+
+	// ConversationAgenda items are keyed by the same EntityID convention
+	// (Contact.VCardUID) as LifeEvents, with no unique constraint -- a
+	// plain bulk repoint, so agenda items follow the surviving contact.
+	if err := tx.Model(&models.ConversationAgenda{}).Where("entity_id = ? AND user_id = ?", loser.VCardUID, userID).
 		Update("entity_id", keeper.VCardUID).Error; err != nil {
 		return 0, err
 	}

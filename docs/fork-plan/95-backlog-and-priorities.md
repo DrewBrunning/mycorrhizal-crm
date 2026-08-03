@@ -107,6 +107,16 @@
 > cadences emit `cadence.overdue` webhooks daily, job-lock guarded (multi-instance safe). Qualifying
 > interactions reset cadence; non-qualifying ones and task completion do not — the webhook is only a
 > passive notification to an external task manager (Vikunja), and the CRM owns the state.
+>
+> **T21 done** (2026-08-03) — WP-96 ConversationAgenda (§91.11): "things to bring up next time I see
+> them", surfaced on the contact page's new Agenda tab. Explicitly **not date-scheduled** — the model
+> carries no due-date column at all (a pinned migration test asserts `remind_at` does not exist); items
+> are resolved by marking them discussed (`PATCH /conversation-agenda/:id/discuss`), optionally linking
+> the interaction (`activity_id`) that covered them, which feeds the timeline. Soft-delete (user-authored
+> content, T26). Frontend: inline single-input add (no modal — the ticket's low-friction requirement),
+> one-click mark-discussed, discussed items stay visible in a resolved state with their date. Agenda
+> items repoint to the keeper on contact merge (like LifeEvents); added to the DeleteContact / DeleteUser
+> cascades and the T26 purge. N2 (prep view) now has its dependency.
 
 ## How to read this
 

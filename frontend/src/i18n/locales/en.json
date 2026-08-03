@@ -1001,5 +1001,32 @@
     "overdueTitle": "Overdue Relationships",
     "noOverdue": "Nothing overdue. You're all caught up.",
     "unknownContact": "Unknown contact"
+  },
+  "conversationAgenda": {
+    "title": "Conversation Agenda",
+    "placeholder": "Things to bring up next time…",
+    "add": "Add",
+    "markDiscussed": "Mark as discussed",
+    "discussedSection": "Discussed",
+    "discussedOn": "Discussed {{date}}",
+    "empty": "Nothing on the agenda yet. Add a thing to bring up next time you talk.",
+    "deleteMessage": "Delete this agenda item?",
+    "cancel": "Cancel",
+    "save": "Save",
+    "editTitle": "Edit Agenda Item",
+    "content": "What to bring up",
+    "referenceUrl": "Link (optional)",
+    "referenceUrlHint": "Optional link to whatever this is about.",
+    "discussTitle": "Mark as discussed",
+    "discussActivity": "Recorded in (optional)",
+    "discussActivityHint": "Attach the interaction that covered this, so it feeds the timeline.",
+    "noActivity": "No interaction",
+    "discussConfirm": "Mark as discussed",
+    "validation": {
+      "contentRequired": "Enter what you want to bring up.",
+      "addFailed": "Failed to add agenda item.",
+      "saveFailed": "Failed to save agenda item.",
+      "discussFailed": "Failed to mark as discussed."
+    }
   }
 }

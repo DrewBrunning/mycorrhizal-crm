@@ -46,21 +46,21 @@ questions in `../95-backlog-and-priorities.md`.
 
 | # | Ticket | R | Size | Status |
 |---|---|---|---|---|
-| [22](20-T19-cadence.md) | T19 · CadencePolicy + relationship health | 5 | L |
-| [23](21-T21-conversation-agenda.md) | T21 · ConversationAgenda | 4 | M |
-| [24](22-N2-prep-view.md) | N2 · Prep view / person briefing | 5 | M |
-| [25](23-T10-graph-traversal.md) | T10 · Graph traversal + multi-hop | 2 | M–L |
-| [26](24-T11-search-fts5.md) | T11 · Search synonyms, household scope, FTS5 | 5 | L |
-| [27](25-N8-2fa.md) | N8 · 2FA / TOTP | 3 | M |
-| [28](26-N6-backup-restore.md) | N6 · Full backup restore | 3 | M |
-| [29](27-N5-bulk-operations.md) | N5 · Bulk operations | 3 | M |
-| [30](28-T20b-gift-tracking.md) | T20b · Gift tracking | 3 | M |
-| [31](29-N7-attachments.md) | N7 · File / document attachments | 3 | M |
-| [32](30-N9-notification-channels.md) | N9 · Notification channels beyond email | 3 | M |
-| [33](31-P1-contact-sharing.md) | P1 · Contact sharing — one-time copy | 3 | M |
-| [34](32-T14-external-link-substrate.md) | T14 · External-link substrate | 2 | M |
-| [35](33-T15-T16-immich.md) | T15/T16 · Immich level 1 + 2 | 3 | M each |
-| [36](34-T18-audit-trail.md) | T18 · Event history / audit trail | 2 | L |
-| [37](35-T12b-caldav-serve.md) | T12b · Serve Interactions/LifeEvents as CalDAV | 2 | L |
-| [38](36-T13-two-way-calendar.md) | T13 · Two-way calendar sync ⚠ | 2 | M–L |
-| [39](37-deferred.md) | P1b, P2, P3, P4 · Deferred — need design passes | 1–2 | — |
+| [22](20-T19-cadence.md) | T19 · CadencePolicy + relationship health | 5 | L | **DONE** |
+| [23](21-T21-conversation-agenda.md) | T21 · ConversationAgenda | 4 | M | **DONE** |
+| [24](22-N2-prep-view.md) | N2 · Prep view / person briefing | 5 | M | |
+| [25](23-T10-graph-traversal.md) | T10 · Graph traversal + multi-hop | 2 | M–L | |
+| [26](24-T11-search-fts5.md) | T11 · Search synonyms, household scope, FTS5 | 5 | L | |
+| [27](25-N8-2fa.md) | N8 · 2FA / TOTP | 3 | M | |
+| [28](26-N6-backup-restore.md) | N6 · Full backup restore | 3 | M | |
+| [29](27-N5-bulk-operations.md) | N5 · Bulk operations | 3 | M | |
+| [30](28-T20b-gift-tracking.md) | T20b · Gift tracking | 3 | M | |
+| [31](29-N7-attachments.md) | N7 · File / document attachments | 3 | M | |
+| [32](30-N9-notification-channels.md) | N9 · Notification channels beyond email | 3 | M | |
+| [33](31-P1-contact-sharing.md) | P1 · Contact sharing — one-time copy | 3 | M | |
+| [34](32-T14-external-link-substrate.md) | T14 · External-link substrate | 2 | M | |
+| [35](33-T15-T16-immich.md) | T15/T16 · Immich level 1 + 2 | 3 | M each | |
+| [36](34-T18-audit-trail.md) | T18 · Event history / audit trail | 2 | L | |
+| [37](35-T12b-caldav-serve.md) | T12b · Serve Interactions/LifeEvents as CalDAV | 2 | L | |
+| [38](36-T13-two-way-calendar.md) | T13 · Two-way calendar sync ⚠ | 2 | M–L | |
+| [39](37-deferred.md) | P1b, P2, P3, P4 · Deferred — need design passes | 1–2 | - | Permanently deferred |

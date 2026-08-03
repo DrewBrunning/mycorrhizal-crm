@@ -71,6 +71,7 @@ import { useRelationshipEdges } from './hooks/useRelationshipEdges';
 import { useLifeEvents } from './hooks/useLifeEvents';
 import { usePreferences } from './hooks/usePreferences';
 import { useCadencePolicy } from './hooks/useCadencePolicy';
+import { useConversationAgenda } from './hooks/useConversationAgenda';
 import { useCircles } from './hooks/useCircles';
 import { useTags } from './hooks/useTags';
 import { useFieldDefinitions } from './hooks/useFieldDefinitions';
@@ -84,12 +85,15 @@ import RelationshipEdgeDialog from './components/RelationshipEdgeDialog';
 import LifeEventDialog from './components/LifeEventDialog';
 import PreferenceDialog, { toPreferenceInput, PreferenceFormData } from './components/PreferenceDialog';
 import CadenceDialog from './components/CadenceDialog';
+import ConversationAgendaDialog, { ConversationAgendaFormData } from './components/ConversationAgendaDialog';
+import MarkDiscussedDialog from './components/MarkDiscussedDialog';
 import { CadencePolicy, CadencePolicyInput } from './api/cadencePolicies';
 import { Preference } from './api/preferences';
 import { LifeEventFormData } from './components/LifeEventDialog';
 import { getOtherPartyId } from './api/relationshipEdges';
 import { LifeEvent } from './api/lifeEvents';
 import { PartialDate } from './api/lifeEvents';
+import { ConversationAgenda } from './api/conversationAgenda';
 import { useSnackbar } from './context/SnackbarContext';
 import { ApiError } from './api/client';
 import { handleFetchError } from './utils/errorHandler';
@@ -311,6 +315,52 @@ export default function ContactDetailPage() {
     await handleDeleteCadence();
   };
 
+  // Conversation agenda (T21): contextual memory for this contact, resolved by
+  // marking items discussed — never date-scheduled.
+  const {
+    items: agendaItems,
+    refresh: refreshAgenda,
+    handleCreate: handleCreateAgenda,
+    handleUpdate: handleUpdateAgenda,
+    handleDiscuss: handleDiscussAgenda,
+    handleDelete: handleDeleteAgenda,
+  } = useConversationAgenda(record?.uid);
+
+  const [agendaEditDialogOpen, setAgendaEditDialogOpen] = useState(false);
+  const [editingAgendaItem, setEditingAgendaItem] = useState<ConversationAgenda | null>(null);
+  const [agendaDiscussDialogOpen, setAgendaDiscussDialogOpen] = useState(false);
+  const [discussingAgendaItem, setDiscussingAgendaItem] = useState<ConversationAgenda | null>(null);
+
+  const handleAddAgendaItem = async (content: string) => {
+    if (!record?.uid) return;
+    await handleCreateAgenda({ entity_id: record.uid, content });
+  };
+
+  const handleEditAgendaItem = (item: ConversationAgenda) => {
+    setEditingAgendaItem(item);
+    setAgendaEditDialogOpen(true);
+  };
+
+  const handleSaveAgendaItem = async (data: ConversationAgendaFormData) => {
+    if (!record?.uid || !editingAgendaItem) return;
+    await handleUpdateAgenda(editingAgendaItem.id, { entity_id: record.uid, ...data });
+  };
+
+  const handleDiscussAgendaItem = (item: ConversationAgenda) => {
+    setDiscussingAgendaItem(item);
+    setAgendaDiscussDialogOpen(true);
+  };
+
+  const handleConfirmDiscussAgendaItem = async (activityId?: number) => {
+    if (!discussingAgendaItem) return;
+    await handleDiscussAgenda(discussingAgendaItem.id, activityId);
+  };
+
+  // Confirmation lives in ConversationAgendaList (the reusable component owns
+  // its delete confirm, like RelationshipEdgeList); the page just wires the
+  // hook's delete through.
+  const handleDeleteAgendaItem = handleDeleteAgenda;
+
   // Custom field definitions (user-wide) + this contact's values (T7).
   const { definitions: fieldDefinitions } = useFieldDefinitions();
   const {
@@ -479,6 +529,7 @@ export default function ContactDetailPage() {
           refreshReminders(),
           refreshRelationshipEdges(recordData.uid),
           refreshLifeEvents(recordData.uid),
+          refreshAgenda(recordData.uid),
           refreshFieldValues(recordData.id),
         ]);
 
@@ -513,7 +564,7 @@ export default function ContactDetailPage() {
         URL.revokeObjectURL(currentBlobUrl);
       }
     };
-  }, [id, refreshReminders, refreshRelationshipEdges, refreshLifeEvents]);
+  }, [id, refreshReminders, refreshRelationshipEdges, refreshLifeEvents, refreshAgenda]);
 
   // Combine and sort notes, activities, completions, and life events for timeline
   const timelineItems: Array<{ type: 'note' | 'activity' | 'completion' | 'life_event'; data: Note | Activity | ReminderCompletion | LifeEvent; date: string }> = [
@@ -935,6 +986,11 @@ export default function ContactDetailPage() {
           onAddCadence={handleAddCadence}
           onEditCadence={handleEditCadence}
           onDeleteCadence={handleCadenceDelete}
+          agendaItems={agendaItems}
+          onAddAgenda={handleAddAgendaItem}
+          onEditAgenda={handleEditAgendaItem}
+          onDiscussAgenda={handleDiscussAgendaItem}
+          onDeleteAgenda={handleDeleteAgendaItem}
           fieldDefinitions={fieldDefinitions}
           fieldValuesByDefinition={fieldValuesByDefinition}
           onSaveFieldValue={handleSaveFieldValue}
@@ -1131,6 +1187,27 @@ export default function ContactDetailPage() {
         onSave={handleSaveCadenceSubmit}
         entityId={record?.uid || ''}
         policy={editingCadence}
+      />
+
+      <ConversationAgendaDialog
+        open={agendaEditDialogOpen}
+        onClose={() => {
+          setAgendaEditDialogOpen(false);
+          setEditingAgendaItem(null);
+        }}
+        onSave={handleSaveAgendaItem}
+        item={editingAgendaItem}
+      />
+
+      <MarkDiscussedDialog
+        open={agendaDiscussDialogOpen}
+        onClose={() => {
+          setAgendaDiscussDialogOpen(false);
+          setDiscussingAgendaItem(null);
+        }}
+        onConfirm={handleConfirmDiscussAgendaItem}
+        item={discussingAgendaItem}
+        activities={activities}
       />
     </Box>
   );
