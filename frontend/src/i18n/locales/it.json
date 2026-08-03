@@ -1029,5 +1029,46 @@
       "saveFailed": "Impossibile salvare l'elemento.",
       "discussFailed": "Impossibile segnare come discusso."
     }
+  },
+  "gifts": {
+    "title": "Regali",
+    "placeholder": "Registra un'idea regalo…",
+    "add": "Aggiungi",
+    "markGiven": "Segna come regalato",
+    "ideasSection": "Idee",
+    "resolvedSection": "Regalati e ricevuti",
+    "empty": "Ancora nessuna idea o registrazione di regalo. Aggiungine una quando noti qualcosa che potrebbe piacergli.",
+    "deleteMessage": "Eliminare questo regalo?",
+    "status": {
+      "idea": "Idea",
+      "purchased": "Acquistato",
+      "given": "Regalato",
+      "received": "Ricevuto"
+    },
+    "forLifeEvent": "per {{event}}",
+    "linkedLifeEvent": "Collegato a un evento di vita",
+    "forActivity": "durante {{title}}",
+    "createTitle": "Aggiungi regalo",
+    "editTitle": "Modifica regalo",
+    "description": "Cos'è il regalo",
+    "occasion": "Occasione (facoltativa)",
+    "occasionHint": "compleanno, festività, inaugurazione casa, …",
+    "date": "Data",
+    "amount": "Importo (facoltativo)",
+    "currency": "Valuta",
+    "lifeEvent": "Si riferisce a un evento di vita (facoltativo)",
+    "lifeEventHint": "L'occasione per cui è questo regalo, se è uno dei suoi eventi di vita.",
+    "noLifeEvent": "Nessun evento di vita",
+    "activity": "Si riferisce a un'interazione (facoltativo)",
+    "activityHint": "L'interazione in cui è stato regalato o menzionato.",
+    "noActivity": "Nessuna interazione",
+    "validation": {
+      "descriptionRequired": "Descrivi il regalo o l'idea.",
+      "invalidAmount": "Inserisci un importo valido.",
+      "currencyRequired": "È richiesta una valuta quando è impostato un importo.",
+      "addFailed": "Impossibile aggiungere il regalo.",
+      "saveFailed": "Impossibile salvare il regalo."
+    },
+    "statusLabel": "Stato"
   }
 }

@@ -3039,6 +3039,170 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  # --- Gifts ---
+  /gifts:
+    get:
+      summary: List gift records
+      operationId: listGifts
+      parameters:
+        - name: cursor
+          in: query
+          description: Opaque resume token from the previous page's next_cursor. Ignored when since is present.
+          schema: { type: string }
+        - name: since
+          in: query
+          description: >
+            Change-feed cursor: return every gift changed after this
+            position — including soft-deleted ones (deleted:true) — ordered
+            forward, ignoring entity_id. A cursor older than
+            DELETED_RETENTION_DAYS returns 410 Gone.
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, default: 25 }
+        - name: order
+          in: query
+          description: Direction for the (updated_at, id) cursor order. since forces asc.
+          schema: { type: string, enum: [asc, desc], default: desc }
+        - name: entity_id
+          in: query
+          description: Filter to gifts whose subject contact is this Contact.VCardUID.
+          schema: { type: string, format: uuid }
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "410":
+          description: The ?since= cursor is older than DELETED_RETENTION_DAYS — full resync required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: A page of gift records.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  gifts:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Gift"
+                  next_cursor:
+                    type: string
+                    description: Resume token for the next page; empty when there are no more rows.
+                  limit: { type: integer }
+                  sync:
+                    $ref: "#/components/schemas/SyncInfo"
+    post:
+      summary: Create a gift record
+      operationId: createGift
+      description: >
+        "What did I give them last year?" (§91.11) against a contact. Covers an
+        idea captured opportunistically (status defaults to idea), the
+        offered/given gift with its date, and a received gift. Any value must
+        carry an explicit ISO 4217 currency. Optionally links the LifeEvent or
+        Activity it relates to.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GiftInput"
+      responses:
+        "201":
+          description: Gift record created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Gift created successfully" }
+                  gift:
+                    $ref: "#/components/schemas/Gift"
+        "400":
+          description: Validation failed (including a value without an explicit currency).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: The subject contact, linked life event, or linked activity was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /gifts/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get a gift record
+      operationId: getGift
+      responses:
+        "200":
+          description: The gift record (raw).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Gift"
+        "404":
+          description: Gift record not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      summary: Update a gift record (full replace)
+      operationId: updateGift
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GiftInput"
+      responses:
+        "200":
+          description: The updated gift record (raw).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Gift"
+        "400":
+          description: Validation failed (including a value without an explicit currency).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Gift record (or subject contact / linked entity) not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete a gift record (soft delete)
+      operationId: deleteGift
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Gift record not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   # --- Preferences ---
   /preferences:
     get:
@@ -4604,7 +4768,7 @@ components:
         incremental:
           type: array
           items: { type: string }
-          description: "Collections that sync incrementally via ?since=: contacts, notes, activities, life_events, preferences, cadence_policies, conversation_agenda."
+          description: "Collections that sync incrementally via ?since=: contacts, notes, activities, life_events, preferences, cadence_policies, conversation_agenda, gifts."
         full_resync:
           type: array
           items: { type: string }
@@ -5319,6 +5483,61 @@ components:
     ConversationAgendaDiscussInput:
       type: object
       properties:
+        activity_id: { type: integer, nullable: true }
+
+    # --- Gifts (T20b) ---
+    Gift:
+      type: object
+      description: >
+        "What did I give them last year?" (§91.11) against a contact — an idea
+        captured opportunistically, the offered/given gift, or a received gift.
+        Status defaults to idea; any value carries an explicit ISO 4217
+        currency.
+      properties:
+        id: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        entity_id: { type: string, format: uuid }
+        status: { type: string, enum: [idea, purchased, given, received] }
+        occasion: { type: string, maxLength: 200 }
+        description: { type: string, maxLength: 2000 }
+        date:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the gift was given/received. An idea may have no date.
+        value_cents:
+          type: integer
+          description: Optional value in the currency's minor unit; must pair with currency.
+        currency:
+          type: string
+          maxLength: 3
+          description: ISO 4217 code, explicit whenever a value is set.
+        life_event_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: The LifeEvent this gift relates to, if any.
+        activity_id:
+          type: integer
+          nullable: true
+          description: The Activity (interaction) this gift relates to, if any.
+        deleted:
+          type: boolean
+          description: "Change-feed tombstone marker (T17): true only via ?since= for a soft-deleted gift."
+          default: false
+    GiftInput:
+      type: object
+      required: [entity_id, description]
+      properties:
+        entity_id: { type: string, format: uuid }
+        status: { type: string, enum: [idea, purchased, given, received] }
+        occasion: { type: string, maxLength: 200 }
+        description: { type: string, minLength: 1, maxLength: 2000 }
+        date: { type: string, format: date-time, nullable: true }
+        value_cents: { type: integer }
+        currency: { type: string, maxLength: 3 }
+        life_event_id: { type: string, format: uuid }
         activity_id: { type: integer, nullable: true }
 
     # --- Preferences ---

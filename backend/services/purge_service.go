@@ -43,6 +43,7 @@ func PurgeSoftDeletedRows(db *gorm.DB, cfg config.Config) {
 		&models.Preference{},
 		&models.CadencePolicy{},
 		&models.ConversationAgenda{},
+		&models.Gift{},
 	} {
 		if err := db.Unscoped().Where("deleted_at IS NOT NULL AND deleted_at < ?", cutoff).Delete(model).Error; err != nil {
 			logger.Error().Err(err).Msg("purge: failed to delete soft-deleted rows")
@@ -79,6 +80,10 @@ func PurgeSoftDeletedRows(db *gorm.DB, cfg config.Config) {
 		{
 			"DELETE FROM conversation_agenda WHERE entity_id IN (SELECT vcard_uid FROM contacts WHERE deleted_at IS NOT NULL AND deleted_at < ?)",
 			[]interface{}{cutoff}, "conversation_agenda",
+		},
+		{
+			"DELETE FROM gifts WHERE entity_id IN (SELECT vcard_uid FROM contacts WHERE deleted_at IS NOT NULL AND deleted_at < ?)",
+			[]interface{}{cutoff}, "gifts",
 		},
 		{
 			"DELETE FROM cadence_policies WHERE entity_id IN (SELECT vcard_uid FROM contacts WHERE deleted_at IS NOT NULL AND deleted_at < ?)",

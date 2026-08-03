@@ -1028,5 +1028,46 @@
       "saveFailed": "Failed to save agenda item.",
       "discussFailed": "Failed to mark as discussed."
     }
+  },
+  "gifts": {
+    "title": "Gifts",
+    "placeholder": "Record a gift idea…",
+    "add": "Add",
+    "markGiven": "Mark as given",
+    "ideasSection": "Ideas",
+    "resolvedSection": "Given & received",
+    "empty": "No gift ideas or records yet. Add one when you notice something they'd like.",
+    "deleteMessage": "Delete this gift?",
+    "status": {
+      "idea": "Idea",
+      "purchased": "Purchased",
+      "given": "Given",
+      "received": "Received"
+    },
+    "forLifeEvent": "for {{event}}",
+    "linkedLifeEvent": "Linked to a life event",
+    "forActivity": "during {{title}}",
+    "createTitle": "Add a gift",
+    "editTitle": "Edit gift",
+    "description": "What the gift is",
+    "occasion": "Occasion (optional)",
+    "occasionHint": "birthday, holiday, housewarming, …",
+    "date": "Date",
+    "amount": "Amount (optional)",
+    "currency": "Currency",
+    "lifeEvent": "Relates to a life event (optional)",
+    "lifeEventHint": "The occasion this gift is for, if it is one of their life events.",
+    "noLifeEvent": "No life event",
+    "activity": "Relates to an interaction (optional)",
+    "activityHint": "The interaction where this was given or mentioned.",
+    "noActivity": "No interaction",
+    "validation": {
+      "descriptionRequired": "Describe the gift or idea.",
+      "invalidAmount": "Enter a valid amount.",
+      "currencyRequired": "A currency is required when an amount is set.",
+      "addFailed": "Failed to add gift.",
+      "saveFailed": "Failed to save gift."
+    },
+    "statusLabel": "Status"
   }
 }

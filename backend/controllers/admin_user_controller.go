@@ -433,6 +433,11 @@ func DeleteUser(c *gin.Context) {
 			return err
 		}
 
+		// Delete gift records (hard)
+		if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.Gift{}).Error; err != nil {
+			return err
+		}
+
 		// Delete contacts (hard)
 		if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.Contact{}).Error; err != nil {
 			return err

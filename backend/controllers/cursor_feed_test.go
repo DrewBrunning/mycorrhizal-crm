@@ -35,7 +35,7 @@ func setupRouterWithRetention(retentionDays int) (*gorm.DB, *gin.Engine) {
 	sqlDB, _ := db.DB()
 	sqlDB.SetMaxOpenConns(1)
 
-	db.AutoMigrate(&models.Contact{}, &models.Activity{}, &models.Note{}, models.Reminder{}, models.User{}, models.Webhook{}, models.WebhookDelivery{}, models.ContactSubscription{}, models.ContactSyncLink{}, models.RelationshipEdge{}, models.Circle{}, models.CircleMember{}, models.Tag{}, models.ContactTag{}, models.LifeEvent{}, models.Household{}, models.HouseholdMember{}, models.FieldDefinition{}, models.FieldValue{}, models.CardDAVSync{}, models.ApiToken{}, models.ReminderCompletion{}, models.CalendarSubscription{}, models.CalendarEventLink{}, models.Preference{}, models.CadencePolicy{}, models.ConversationAgenda{})
+	db.AutoMigrate(&models.Contact{}, &models.Activity{}, &models.Note{}, models.Reminder{}, models.User{}, models.Webhook{}, models.WebhookDelivery{}, models.ContactSubscription{}, models.ContactSyncLink{}, models.RelationshipEdge{}, models.Circle{}, models.CircleMember{}, models.Tag{}, models.ContactTag{}, models.LifeEvent{}, models.Household{}, models.HouseholdMember{}, models.FieldDefinition{}, models.FieldValue{}, models.CardDAVSync{}, models.ApiToken{}, models.ReminderCompletion{}, models.CalendarSubscription{}, models.CalendarEventLink{}, models.Preference{}, models.CadencePolicy{}, models.ConversationAgenda{}, models.Gift{})
 
 	user := models.User{Username: "tester", Password: "password123", Email: "tester@example.com"}
 	if err := db.Create(&user).Error; err != nil {
@@ -479,6 +479,50 @@ func TestChangeFeedConversationAgendaTombstones(t *testing.T) {
 	assert.Equal(t, true, items2[0].(map[string]any)["deleted"], "soft-deleted agenda items must be returned with deleted:true")
 }
 
+// TestChangeFeedGiftTombstones covers the tombstone trap for the gifts feed:
+// a soft-deleted Gift must surface via ?since= as deleted:true (Gift.AfterDelete
+// bumps updated_at so the cursor sees it), exactly like the agenda items above.
+func TestChangeFeedGiftTombstones(t *testing.T) {
+	db, router := setupRouterWithRetention(30)
+	var user models.User
+	db.First(&user)
+	router.GET("/gifts", ListGifts)
+
+	subject := models.Contact{UserID: user.ID, Firstname: "Subject"}
+	require.NoError(t, db.Create(&subject).Error)
+
+	g1 := models.Gift{UserID: user.ID, EntityID: subject.VCardUID, Description: "Idea one"}
+	g2 := models.Gift{UserID: user.ID, EntityID: subject.VCardUID, Description: "Idea two"}
+	require.NoError(t, db.Create(&g1).Error)
+	require.NoError(t, db.Create(&g2).Error)
+
+	afterOne := EncodeCursor(g1.UpdatedAt, g1.ID)
+
+	req := func(query string) map[string]any {
+		t.Helper()
+		r, _ := http.NewRequest("GET", "/gifts?"+query, nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, r)
+		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+		var body map[string]any
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+		return body
+	}
+
+	feed := req("since=" + afterOne + "&limit=10")
+	items := feed["gifts"].([]any)
+	require.Len(t, items, 1, "only the gift after the cursor should appear")
+	assert.Equal(t, "Idea two", items[0].(map[string]any)["description"])
+	assert.Equal(t, "incremental", feed["sync"].(map[string]any)["mode"])
+
+	require.NoError(t, db.Delete(&g2).Error)
+	feed2 := req("since=" + afterOne + "&limit=10")
+	items2 := feed2["gifts"].([]any)
+	require.Len(t, items2, 1)
+	assert.Equal(t, "Idea two", items2[0].(map[string]any)["description"])
+	assert.Equal(t, true, items2[0].(map[string]any)["deleted"], "soft-deleted gifts must be returned with deleted:true")
+}
+
 // TestAfterDeleteBumpsUpdatedAt proves every soft-delete entity's AfterDelete
 // hook advances updated_at so the T17 change feed sees the tombstone. GORM's
 // soft-delete UPDATE only writes deleted_at, leaving updated_at at its
@@ -563,6 +607,17 @@ func TestAfterDeleteBumpsUpdatedAt(t *testing.T) {
 		var reloaded models.ConversationAgenda
 		require.NoError(t, db.Unscoped().First(&reloaded, "id = ?", a.ID).Error)
 		requireAfter(t, reloaded.UpdatedAt, "ConversationAgenda")
+	})
+
+	// Gift (UUID string PK, explicit DeletedAt)
+	t.Run("Gift", func(t *testing.T) {
+		g := models.Gift{UserID: user.ID, EntityID: subject.VCardUID, Description: "A nice book"}
+		require.NoError(t, db.Create(&g).Error)
+		require.NoError(t, db.Model(&g).UpdateColumn("updated_at", past).Error)
+		require.NoError(t, db.Delete(&g).Error)
+		var reloaded models.Gift
+		require.NoError(t, db.Unscoped().First(&reloaded, "id = ?", g.ID).Error)
+		requireAfter(t, reloaded.UpdatedAt, "Gift")
 	})
 }
 

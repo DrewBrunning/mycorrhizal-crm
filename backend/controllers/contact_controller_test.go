@@ -826,6 +826,8 @@ func TestDeleteContact_CleansUpReferencingRows(t *testing.T) {
 
 	require.NoError(t, db.Create(&models.ReminderCompletion{UserID: user.ID, ContactID: contact.ID, Message: "done", CompletedAt: time.Now()}).Error)
 
+	require.NoError(t, db.Create(&models.Gift{UserID: user.ID, EntityID: contact.VCardUID, Description: "A gift idea"}).Error)
+
 	router.DELETE("/contacts/:id", DeleteContact)
 
 	req, _ := http.NewRequest("DELETE", "/contacts/"+strconv.Itoa(int(contact.ID)), nil)
@@ -847,6 +849,7 @@ func TestDeleteContact_CleansUpReferencingRows(t *testing.T) {
 	assertCount("CircleMember", &models.CircleMember{}, 0, "user_id = ?", user.ID)
 	assertCount("ContactTag", &models.ContactTag{}, 0, "user_id = ?", user.ID)
 	assertCount("FieldValue", &models.FieldValue{}, 0, "user_id = ?", user.ID)
+	assertCount("Gift", &models.Gift{}, 0, "user_id = ?", user.ID)
 	assertCount("ContactSyncLink", &models.ContactSyncLink{}, 0, "user_id = ?", user.ID)
 	assertCount("ReminderCompletion", &models.ReminderCompletion{}, 0, "user_id = ?", user.ID)
 

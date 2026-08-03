@@ -1029,5 +1029,46 @@
       "saveFailed": "No se pudo guardar el elemento.",
       "discussFailed": "No se pudo marcar como hablado."
     }
+  },
+  "gifts": {
+    "title": "Regalos",
+    "placeholder": "Anota una idea de regalo…",
+    "add": "Añadir",
+    "markGiven": "Marcar como regalado",
+    "ideasSection": "Ideas",
+    "resolvedSection": "Regalados y recibidos",
+    "empty": "Aún no hay ideas ni registros de regalos. Añade uno cuando notes algo que le gustaría.",
+    "deleteMessage": "¿Eliminar este regalo?",
+    "status": {
+      "idea": "Idea",
+      "purchased": "Comprado",
+      "given": "Regalado",
+      "received": "Recibido"
+    },
+    "forLifeEvent": "para {{event}}",
+    "linkedLifeEvent": "Vinculado a un acontecimiento vital",
+    "forActivity": "durante {{title}}",
+    "createTitle": "Añadir regalo",
+    "editTitle": "Editar regalo",
+    "description": "Qué es el regalo",
+    "occasion": "Ocasión (opcional)",
+    "occasionHint": "cumpleaños, festividad, estreno de casa, …",
+    "date": "Fecha",
+    "amount": "Importe (opcional)",
+    "currency": "Moneda",
+    "lifeEvent": "Se relaciona con un acontecimiento vital (opcional)",
+    "lifeEventHint": "La ocasión para la que es este regalo, si es uno de sus acontecimientos vitales.",
+    "noLifeEvent": "Sin acontecimiento vital",
+    "activity": "Se relaciona con una interacción (opcional)",
+    "activityHint": "La interacción en la que se regaló o mencionó.",
+    "noActivity": "Sin interacción",
+    "validation": {
+      "descriptionRequired": "Describe el regalo o la idea.",
+      "invalidAmount": "Introduce un importe válido.",
+      "currencyRequired": "Se requiere una moneda cuando se establece un importe.",
+      "addFailed": "No se pudo añadir el regalo.",
+      "saveFailed": "No se pudo guardar el regalo."
+    },
+    "statusLabel": "Estado"
   }
 }

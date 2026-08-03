@@ -1029,5 +1029,46 @@
       "saveFailed": "Échec de l'enregistrement de l'élément.",
       "discussFailed": "Échec du marquage comme évoqué."
     }
+  },
+  "gifts": {
+    "title": "Cadeaux",
+    "placeholder": "Noter une idée de cadeau…",
+    "add": "Ajouter",
+    "markGiven": "Marquer comme offert",
+    "ideasSection": "Idées",
+    "resolvedSection": "Offerts et reçus",
+    "empty": "Aucune idée ni aucun enregistrement de cadeau pour l'instant. Ajoutez-en un dès que vous remarquez ce qui pourrait lui plaire.",
+    "deleteMessage": "Supprimer ce cadeau ?",
+    "status": {
+      "idea": "Idée",
+      "purchased": "Acheté",
+      "given": "Offert",
+      "received": "Reçu"
+    },
+    "forLifeEvent": "pour {{event}}",
+    "linkedLifeEvent": "Lié à un événement de vie",
+    "forActivity": "pendant {{title}}",
+    "createTitle": "Ajouter un cadeau",
+    "editTitle": "Modifier le cadeau",
+    "description": "Ce qu'est le cadeau",
+    "occasion": "Occasion (facultatif)",
+    "occasionHint": "anniversaire, fête, pendaison de crémaillère, …",
+    "date": "Date",
+    "amount": "Montant (facultatif)",
+    "currency": "Devise",
+    "lifeEvent": "Se rapporte à un événement de vie (facultatif)",
+    "lifeEventHint": "L'occasion pour laquelle est ce cadeau, s'il s'agit d'un de ses événements de vie.",
+    "noLifeEvent": "Aucun événement de vie",
+    "activity": "Se rapporte à une interaction (facultatif)",
+    "activityHint": "L'interaction lors de laquelle ce cadeau a été offert ou mentionné.",
+    "noActivity": "Aucune interaction",
+    "validation": {
+      "descriptionRequired": "Décrivez le cadeau ou l'idée.",
+      "invalidAmount": "Saisissez un montant valide.",
+      "currencyRequired": "Une devise est requise lorsqu'un montant est défini.",
+      "addFailed": "Échec de l'ajout du cadeau.",
+      "saveFailed": "Échec de l'enregistrement du cadeau."
+    },
+    "statusLabel": "Statut"
   }
 }

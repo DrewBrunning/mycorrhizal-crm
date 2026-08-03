@@ -54,7 +54,7 @@ questions in `../95-backlog-and-priorities.md`.
 | [27](25-N8-2fa.md) | N8 · 2FA / TOTP | 3 | M | |
 | [28](26-N6-backup-restore.md) | N6 · Full backup restore | 3 | M | |
 | [29](27-N5-bulk-operations.md) | N5 · Bulk operations | 3 | M | |
-| [30](28-T20b-gift-tracking.md) | T20b · Gift tracking | 3 | M | |
+| [30](28-T20b-gift-tracking.md) | T20b · Gift tracking | 3 | M | **DONE** |
 | [31](29-N7-attachments.md) | N7 · File / document attachments | 3 | M | |
 | [32](30-N9-notification-channels.md) | N9 · Notification channels beyond email | 3 | M | |
 | [33](31-P1-contact-sharing.md) | P1 · Contact sharing — one-time copy | 3 | M | |
