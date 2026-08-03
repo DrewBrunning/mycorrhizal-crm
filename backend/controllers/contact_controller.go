@@ -560,6 +560,12 @@ func deleteContactAssociations(tx *gorm.DB, contact models.Contact, userID uint)
 		return err
 	}
 
+	// Delete this contact's gift records (user-authored content, soft delete —
+	// T20b)
+	if err := tx.Where("entity_id = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.Gift{}).Error; err != nil {
+		return err
+	}
+
 	// Delete this contact's cadence policy (user-authored content, soft
 	// delete — T19)
 	if err := tx.Where("entity_id = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.CadencePolicy{}).Error; err != nil {

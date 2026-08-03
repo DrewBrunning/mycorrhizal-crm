@@ -183,6 +183,13 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.PATCH("/conversation-agenda/:id/discuss", middleware.ValidateJSONMiddleware(&models.ConversationAgendaDiscussInput{}), controllers.DiscussConversationAgenda)
 			protected.DELETE("/conversation-agenda/:id", controllers.DeleteConversationAgenda)
 
+			// Gift routes (T20b — docs/fork-plan/tickets/28-T20b-gift-tracking.md)
+			protected.POST("/gifts", middleware.ValidateJSONMiddleware(&models.GiftInput{}), controllers.CreateGift)
+			protected.GET("/gifts", controllers.ListGifts)
+			protected.GET("/gifts/:id", controllers.GetGift)
+			protected.PUT("/gifts/:id", middleware.ValidateJSONMiddleware(&models.GiftInput{}), controllers.UpdateGift)
+			protected.DELETE("/gifts/:id", controllers.DeleteGift)
+
 			// Preference routes (T20a — docs/fork-plan/tickets/10-T20a-preferences.md)
 			protected.POST("/preferences", middleware.ValidateJSONMiddleware(&models.PreferenceInput{}), controllers.CreatePreference)
 			protected.GET("/preferences", controllers.ListPreferences)

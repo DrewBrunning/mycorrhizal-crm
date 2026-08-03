@@ -323,6 +323,7 @@ func ComputeContactMergeAssociationCounts(db *gorm.DB, userID uint, loserID uint
 				"(SELECT 1 FROM json_each(life_events.related_entity_ids) WHERE json_each.value = ?)",
 			userID, loserVCardUID)},
 		{&c.ConversationAgendaItems, db.Model(&models.ConversationAgenda{}).Where("entity_id = ? AND user_id = ?", loserVCardUID, userID)},
+		{&c.GiftItems, db.Model(&models.Gift{}).Where("entity_id = ? AND user_id = ?", loserVCardUID, userID)},
 		{&c.FieldValues, db.Model(&models.FieldValue{}).Where("entity_id = ? AND user_id = ?", loserVCardUID, userID)},
 		{&c.ContactSyncLinks, db.Model(&models.ContactSyncLink{}).Where("contact_id = ? AND user_id = ?", loserID, userID)},
 	}
@@ -481,6 +482,16 @@ func RepointContactAssociations(
 	// (Contact.VCardUID) as LifeEvents, with no unique constraint -- a
 	// plain bulk repoint, so agenda items follow the surviving contact.
 	if err := tx.Model(&models.ConversationAgenda{}).Where("entity_id = ? AND user_id = ?", loser.VCardUID, userID).
+		Update("entity_id", keeper.VCardUID).Error; err != nil {
+		return 0, err
+	}
+
+	// Gift records are keyed by the same EntityID convention, with no unique
+	// constraint -- a plain bulk repoint, so gifts follow the surviving
+	// contact. Any linked LifeEventID reference keeps pointing at the same
+	// LifeEvent row, which itself has been (or is being) re-pointed to the
+	// keeper just above, so the link stays consistent.
+	if err := tx.Model(&models.Gift{}).Where("entity_id = ? AND user_id = ?", loser.VCardUID, userID).
 		Update("entity_id", keeper.VCardUID).Error; err != nil {
 		return 0, err
 	}

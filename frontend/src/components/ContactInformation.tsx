@@ -23,12 +23,15 @@ import LifeEventList from './LifeEventList';
 import PreferenceList from './PreferenceList';
 import CadencePanel from './CadencePanel';
 import ConversationAgendaList from './ConversationAgendaList';
+import GiftList from './GiftList';
 import CustomFieldValueRow from './CustomFieldValueRow';
 import { RelationshipEdge } from '../api/relationshipEdges';
 import { LifeEvent } from '../api/lifeEvents';
 import { Preference } from '../api/preferences';
 import { CadencePolicy } from '../api/cadencePolicies';
 import { ConversationAgenda } from '../api/conversationAgenda';
+import { Gift } from '../api/gifts';
+import { Activity } from '../api/activities';
 import { FieldDefinition } from '../api/fieldDefinitions';
 import {
   Card as CardModel,
@@ -98,6 +101,13 @@ interface ContactInformationProps {
   onEditAgenda?: (item: ConversationAgenda) => void;
   onDiscussAgenda?: (item: ConversationAgenda) => void;
   onDeleteAgenda?: (id: string) => void;
+  // Gift props (T20b)
+  gifts?: Gift[];
+  activities?: Activity[];
+  onAddGift?: (description: string) => Promise<void>;
+  onEditGift?: (gift: Gift) => void;
+  onMarkGivenGift?: (gift: Gift) => Promise<void>;
+  onDeleteGift?: (id: string) => void;
   // Custom fields (v2, T6/T7)
   fieldDefinitions?: FieldDefinition[];
   fieldValuesByDefinition?: Map<string, unknown>;
@@ -147,6 +157,12 @@ export default function ContactInformation({
   onEditAgenda,
   onDiscussAgenda,
   onDeleteAgenda,
+  gifts = [],
+  activities = [],
+  onAddGift,
+  onEditGift,
+  onMarkGivenGift,
+  onDeleteGift,
   fieldDefinitions = [],
   fieldValuesByDefinition,
   onSaveFieldValue,
@@ -220,6 +236,7 @@ export default function ContactInformation({
           <MenuItem value={3}>{t('preference.title')}</MenuItem>
           <MenuItem value={4}>{t('cadence.title')}</MenuItem>
           <MenuItem value={5}>{t('conversationAgenda.title')}</MenuItem>
+          <MenuItem value={6}>{t('gifts.title')}</MenuItem>
         </TextField>
       ) : (
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
@@ -230,6 +247,7 @@ export default function ContactInformation({
             <Tab label={t('preference.title')} />
             <Tab label={t('cadence.title')} />
             <Tab label={t('conversationAgenda.title')} />
+            <Tab label={t('gifts.title')} />
           </Tabs>
         </Box>
       )}
@@ -568,6 +586,22 @@ export default function ContactInformation({
             onEdit={onEditAgenda || (() => {})}
             onDiscuss={onDiscussAgenda || (() => {})}
             onDelete={onDeleteAgenda || (() => {})}
+          />
+        </CardContent>
+      )}
+
+      {/* Gifts Tab (T20b) — inline idea capture at the top, then open ideas
+          and the resolved given/received records. */}
+      {activeTab === 6 && (
+        <CardContent sx={{ py: 2 }}>
+          <GiftList
+            items={gifts}
+            lifeEvents={lifeEvents}
+            activities={activities}
+            onAdd={onAddGift || (() => Promise.resolve())}
+            onEdit={onEditGift || (() => {})}
+            onMarkGiven={onMarkGivenGift || (() => Promise.resolve())}
+            onDelete={onDeleteGift || (() => {})}
           />
         </CardContent>
       )}

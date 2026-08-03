@@ -96,6 +96,24 @@ type ConversationAgendaDiscussInput struct {
 	ActivityID *uint `json:"activity_id,omitempty"`
 }
 
+// GiftInput is the DTO for creating/updating a Gift (§91.11, T20b). Status
+// defaults to "idea" server-side when omitted — a gift idea is captured
+// opportunistically without choosing a state. ValueCents/Currency must be set
+// together (explicit-currency rule, enforced in the controller since this
+// codebase has no cross-field validator). LifeEventID/ActivityID are optional
+// soft references verified to belong to the user.
+type GiftInput struct {
+	EntityID    string     `json:"entity_id" validate:"required,uuid4"`
+	Status      string     `json:"status,omitempty" validate:"omitempty,oneof=idea purchased given received"`
+	Occasion    string     `json:"occasion,omitempty" validate:"max=200"`
+	Description string     `json:"description" validate:"required,min=1,max=2000"`
+	Date        *time.Time `json:"date,omitempty"`
+	ValueCents  int64      `json:"value_cents,omitempty"`
+	Currency    string     `json:"currency,omitempty" validate:"omitempty,len=3"`
+	LifeEventID string     `json:"life_event_id,omitempty" validate:"omitempty,uuid4"`
+	ActivityID  *uint      `json:"activity_id,omitempty"`
+}
+
 // CadencePolicyInput is the DTO for creating/updating a CadencePolicy
 // (cadence_policy.go, §91.10). QualifyingTypes is deliberately not
 // `oneof`-validated: Activity.Type is an open classifier, so a policy may

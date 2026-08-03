@@ -72,6 +72,7 @@ import { useLifeEvents } from './hooks/useLifeEvents';
 import { usePreferences } from './hooks/usePreferences';
 import { useCadencePolicy } from './hooks/useCadencePolicy';
 import { useConversationAgenda } from './hooks/useConversationAgenda';
+import { useGifts } from './hooks/useGifts';
 import { useCircles } from './hooks/useCircles';
 import { useTags } from './hooks/useTags';
 import { useFieldDefinitions } from './hooks/useFieldDefinitions';
@@ -87,6 +88,7 @@ import PreferenceDialog, { toPreferenceInput, PreferenceFormData } from './compo
 import CadenceDialog from './components/CadenceDialog';
 import ConversationAgendaDialog, { ConversationAgendaFormData } from './components/ConversationAgendaDialog';
 import MarkDiscussedDialog from './components/MarkDiscussedDialog';
+import GiftDialog, { GiftFormData } from './components/GiftDialog';
 import { CadencePolicy, CadencePolicyInput } from './api/cadencePolicies';
 import { Preference } from './api/preferences';
 import { LifeEventFormData } from './components/LifeEventDialog';
@@ -94,6 +96,7 @@ import { getOtherPartyId } from './api/relationshipEdges';
 import { LifeEvent } from './api/lifeEvents';
 import { PartialDate } from './api/lifeEvents';
 import { ConversationAgenda } from './api/conversationAgenda';
+import { Gift, GiftInput } from './api/gifts';
 import { useSnackbar } from './context/SnackbarContext';
 import { ApiError } from './api/client';
 import { handleFetchError } from './utils/errorHandler';
@@ -361,6 +364,63 @@ export default function ContactDetailPage() {
   // hook's delete through.
   const handleDeleteAgendaItem = handleDeleteAgenda;
 
+  // Gifts (T20b): "what did I give them last year?" — inline idea capture,
+  // one-click mark-given, and a full edit dialog for the details.
+  const {
+    items: gifts,
+    refresh: refreshGifts,
+    handleCreate: handleCreateGift,
+    handleUpdate: handleUpdateGift,
+    handleDelete: handleDeleteGift,
+  } = useGifts(record?.uid);
+
+  const [giftDialogOpen, setGiftDialogOpen] = useState(false);
+  const [editingGift, setEditingGift] = useState<Gift | null>(null);
+
+  const handleAddGiftItem = async (description: string) => {
+    if (!record?.uid) return;
+    await handleCreateGift({ entity_id: record.uid, description });
+  };
+
+  const handleEditGift = (gift: Gift) => {
+    setEditingGift(gift);
+    setGiftDialogOpen(true);
+  };
+
+  // One-click "mark it given" (T20b's Done-when flow): the gift record is the
+  // durable object — status flips to given, the date defaults to now when the
+  // idea had none. All other fields are preserved.
+  const handleMarkGivenGift = async (gift: Gift) => {
+    if (!record?.uid) return;
+    try {
+      await handleUpdateGift(gift.id, {
+        entity_id: record.uid,
+        status: 'given',
+        description: gift.description,
+        occasion: gift.occasion,
+        date: gift.date ?? new Date().toISOString(),
+        value_cents: gift.value_cents,
+        currency: gift.currency,
+        life_event_id: gift.life_event_id,
+        activity_id: gift.activity_id ?? null,
+      });
+    } catch {
+      showError(t('gifts.validation.saveFailed'));
+    }
+  };
+
+  const handleSaveGift = async (data: GiftFormData) => {
+    if (!record?.uid) return;
+    const input: GiftInput = { entity_id: record.uid, ...data };
+    if (editingGift) {
+      await handleUpdateGift(editingGift.id, input);
+    } else {
+      await handleCreateGift(input);
+    }
+  };
+
+  const handleDeleteGiftItem = handleDeleteGift;
+
   // Custom field definitions (user-wide) + this contact's values (T7).
   const { definitions: fieldDefinitions } = useFieldDefinitions();
   const {
@@ -530,6 +590,7 @@ export default function ContactDetailPage() {
           refreshRelationshipEdges(recordData.uid),
           refreshLifeEvents(recordData.uid),
           refreshAgenda(recordData.uid),
+          refreshGifts(recordData.uid),
           refreshFieldValues(recordData.id),
         ]);
 
@@ -564,7 +625,7 @@ export default function ContactDetailPage() {
         URL.revokeObjectURL(currentBlobUrl);
       }
     };
-  }, [id, refreshReminders, refreshRelationshipEdges, refreshLifeEvents, refreshAgenda]);
+  }, [id, refreshReminders, refreshRelationshipEdges, refreshLifeEvents, refreshAgenda, refreshGifts]);
 
   // Combine and sort notes, activities, completions, and life events for timeline
   const timelineItems: Array<{ type: 'note' | 'activity' | 'completion' | 'life_event'; data: Note | Activity | ReminderCompletion | LifeEvent; date: string }> = [
@@ -991,6 +1052,12 @@ export default function ContactDetailPage() {
           onEditAgenda={handleEditAgendaItem}
           onDiscussAgenda={handleDiscussAgendaItem}
           onDeleteAgenda={handleDeleteAgendaItem}
+          gifts={gifts}
+          activities={activities}
+          onAddGift={handleAddGiftItem}
+          onEditGift={handleEditGift}
+          onMarkGivenGift={handleMarkGivenGift}
+          onDeleteGift={handleDeleteGiftItem}
           fieldDefinitions={fieldDefinitions}
           fieldValuesByDefinition={fieldValuesByDefinition}
           onSaveFieldValue={handleSaveFieldValue}
@@ -1207,6 +1274,18 @@ export default function ContactDetailPage() {
         }}
         onConfirm={handleConfirmDiscussAgendaItem}
         item={discussingAgendaItem}
+        activities={activities}
+      />
+
+      <GiftDialog
+        open={giftDialogOpen}
+        onClose={() => {
+          setGiftDialogOpen(false);
+          setEditingGift(null);
+        }}
+        onSave={handleSaveGift}
+        gift={editingGift}
+        lifeEvents={lifeEvents}
         activities={activities}
       />
     </Box>

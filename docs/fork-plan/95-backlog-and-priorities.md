@@ -237,7 +237,7 @@ happens, T17 in particular is pre-alpha work buying nothing. See the open questi
 | 27 | **N8** 2FA / TOTP enrollment | 3 | M | — | new (gap) |
 | 28 | **N6** Full backup **restore** (export exists; import is contacts-only) | 3 | M | — | new (gap) |
 | 29 | **N5** Bulk operations (tag / circle / archive / delete) | 3 | M | T4 | new (gap) |
-| 30 | **T20b** WP-95 Gift tracking | 3 | M | T5 | `92.6`, `91.11` |
+| 30 | **T20b** WP-95 Gift tracking — **DONE** (implemented; commit pending) | 3 | M | T5 | `92.6`, `91.11` |
 | 31 | **N7** File / document attachments per contact | 3 | M | — | new (gap) |
 | 32 | **N9** Notification channels beyond email (ntfy/Gotify/push) | 3 | M | — | new (gap) |
 | 33 | **P1** Contact sharing — one-time filtered copy | 3 | M | T9 | Tier 5 |

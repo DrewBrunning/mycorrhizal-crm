@@ -66,6 +66,7 @@ type ContactMergeAssociationCounts struct {
 	LifeEvents              int64 `json:"life_events"`               // loser is the subject (entity_id)
 	LifeEventReferences     int64 `json:"life_event_references"`     // loser appears in someone else's RelatedEntityIDs
 	ConversationAgendaItems int64 `json:"conversation_agenda_items"` // agenda items keyed to the loser (entity_id)
+	GiftItems               int64 `json:"gift_items"`                // gift records keyed to the loser (entity_id)
 	FieldValues             int64 `json:"field_values"`
 	ContactSyncLinks        int64 `json:"contact_sync_links"` // discarded, not re-pointed
 }

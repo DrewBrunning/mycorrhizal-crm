@@ -1029,5 +1029,46 @@
       "saveFailed": "Agenda-Punkt konnte nicht gespeichert werden.",
       "discussFailed": "Als besprochen konnte nicht markiert werden."
     }
+  },
+  "gifts": {
+    "title": "Geschenke",
+    "placeholder": "Geschenkidee notieren…",
+    "add": "Hinzufügen",
+    "markGiven": "Als verschenkt markieren",
+    "ideasSection": "Ideen",
+    "resolvedSection": "Verschenkt & erhalten",
+    "empty": "Noch keine Geschenkideen oder -einträge. Füge eine hinzu, wenn dir auffällt, was ihnen gefallen könnte.",
+    "deleteMessage": "Dieses Geschenk löschen?",
+    "status": {
+      "idea": "Idee",
+      "purchased": "Gekauft",
+      "given": "Verschenkt",
+      "received": "Erhalten"
+    },
+    "forLifeEvent": "für {{event}}",
+    "linkedLifeEvent": "Mit einem Lebensereignis verknüpft",
+    "forActivity": "während {{title}}",
+    "createTitle": "Geschenk hinzufügen",
+    "editTitle": "Geschenk bearbeiten",
+    "description": "Was das Geschenk ist",
+    "occasion": "Anlass (optional)",
+    "occasionHint": "Geburtstag, Feiertag, Einweihung, …",
+    "date": "Datum",
+    "amount": "Betrag (optional)",
+    "currency": "Währung",
+    "lifeEvent": "Bezieht sich auf ein Lebensereignis (optional)",
+    "lifeEventHint": "Der Anlass, für den dieses Geschenk ist, falls es eines ihrer Lebensereignisse ist.",
+    "noLifeEvent": "Kein Lebensereignis",
+    "activity": "Bezieht sich auf eine Interaktion (optional)",
+    "activityHint": "Die Interaktion, bei der dies verschenkt oder erwähnt wurde.",
+    "noActivity": "Keine Interaktion",
+    "validation": {
+      "descriptionRequired": "Beschreibe das Geschenk oder die Idee.",
+      "invalidAmount": "Gib einen gültigen Betrag ein.",
+      "currencyRequired": "Bei einem Betrag ist eine Währung erforderlich.",
+      "addFailed": "Geschenk konnte nicht hinzugefügt werden.",
+      "saveFailed": "Geschenk konnte nicht gespeichert werden."
+    },
+    "statusLabel": "Status"
   }
 }

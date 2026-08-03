@@ -169,6 +169,33 @@ func TestMigrationsAddConversationAgenda(t *testing.T) {
 	assert.NotEmpty(t, sql)
 }
 
+// TestMigrationsAddGifts pins the T20b migration's shape: the gifts table must
+// carry the three-state status column, the occasion, the explicit
+// value/currency pair (value_cents + ISO-4217 currency), and the optional
+// LifeEvent/Activity references — keyed to the subject contact by entity_id
+// (Contact.VCardUID), never by a numeric ID.
+func TestMigrationsAddGifts(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "gifts.db")
+	db, err := InitDB(dbPath)
+	require.NoError(t, err)
+
+	assert.True(t, columnExists(t, dbPath, "gifts", "entity_id"))
+	assert.True(t, columnExists(t, dbPath, "gifts", "status"))
+	assert.True(t, columnExists(t, dbPath, "gifts", "occasion"))
+	assert.True(t, columnExists(t, dbPath, "gifts", "description"))
+	assert.True(t, columnExists(t, dbPath, "gifts", "date"))
+	assert.True(t, columnExists(t, dbPath, "gifts", "value_cents"))
+	assert.True(t, columnExists(t, dbPath, "gifts", "currency"))
+	assert.True(t, columnExists(t, dbPath, "gifts", "life_event_id"))
+	assert.True(t, columnExists(t, dbPath, "gifts", "activity_id"))
+
+	var sql string
+	require.NoError(t, db.Raw(
+		"SELECT sql FROM sqlite_master WHERE type = 'index' AND name = 'idx_gifts_entity_id'",
+	).Scan(&sql).Error)
+	assert.NotEmpty(t, sql)
+}
+
 // TestSquashedSchemaHasNoLegacyFoodPreference verifies the squashed baseline
 // (T22) excludes the legacy contacts.food_preference column — it was retired
 // by T20a and removed from the baseline during the migration squash.

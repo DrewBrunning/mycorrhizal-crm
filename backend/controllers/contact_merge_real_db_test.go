@@ -125,6 +125,10 @@ func TestContactMerge_RealMigratedSchema(t *testing.T) {
 	bobAgendaItem := models.ConversationAgenda{UserID: user.ID, EntityID: bob.VCardUID, Content: "Ask about the move"}
 	require.NoError(t, db.Create(&bobAgendaItem).Error)
 
+	// A gift record keyed to Bob (must be repointed, not deleted, on merge).
+	bobGift := models.Gift{UserID: user.ID, EntityID: bob.VCardUID, Description: "A gift idea for Bob"}
+	require.NoError(t, db.Create(&bobGift).Error)
+
 	// ContactSyncLink on Bob (must be discarded, not repointed).
 	subscription := models.ContactSubscription{UserID: user.ID, Name: "Test CardDAV", URL: "https://example.com/dav"}
 	require.NoError(t, db.Create(&subscription).Error)
@@ -183,6 +187,7 @@ func TestContactMerge_RealMigratedSchema(t *testing.T) {
 	assert.EqualValues(t, 1, counts.Tags)
 	assert.EqualValues(t, 1, counts.LifeEvents)
 	assert.EqualValues(t, 1, counts.ConversationAgendaItems)
+	assert.EqualValues(t, 1, counts.GiftItems)
 	assert.EqualValues(t, 1, counts.LifeEventReferences)
 	assert.EqualValues(t, 2, counts.FieldValues)
 	assert.EqualValues(t, 1, counts.ContactSyncLinks)
@@ -236,6 +241,7 @@ func TestContactMerge_RealMigratedSchema(t *testing.T) {
 	assertZero(&models.ContactTag{}, "contact_vcard_uid = ?", bob.VCardUID)
 	assertZero(&models.FieldValue{}, "entity_id = ?", bob.VCardUID)
 	assertZero(&models.LifeEvent{}, "entity_id = ?", bob.VCardUID)
+	assertZero(&models.Gift{}, "entity_id = ?", bob.VCardUID)
 	assertZero(&models.ContactSyncLink{}, "contact_id = ?", bob.ID)
 	assertZero(&models.RelationshipEdge{}, "source_id = ? OR target_id = ?", bob.VCardUID, bob.VCardUID)
 
@@ -294,6 +300,12 @@ func TestContactMerge_RealMigratedSchema(t *testing.T) {
 	var repointedAgenda models.ConversationAgenda
 	require.NoError(t, db.Where("id = ?", bobAgendaItem.ID).First(&repointedAgenda).Error)
 	assert.Equal(t, alice.VCardUID, repointedAgenda.EntityID)
+
+	// Gift: Bob's record follows the surviving contact, not deleted with the
+	// loser.
+	var repointedGift models.Gift
+	require.NoError(t, db.Where("id = ?", bobGift.ID).First(&repointedGift).Error)
+	assert.Equal(t, alice.VCardUID, repointedGift.EntityID)
 
 	// RelationshipEdge: self-loop dropped entirely; of the inverse pair,
 	// exactly one survives -- and per the tie-break (higher Confidence /
