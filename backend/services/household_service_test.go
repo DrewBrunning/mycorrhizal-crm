@@ -92,8 +92,7 @@ func TestGenerateHouseholdSuggestions_FamilyUnit(t *testing.T) {
 	adult1 := createHouseholdTestContact(t, db, user.ID, "Alice", "")
 	adult2 := createHouseholdTestContact(t, db, user.ID, "Bob", "")
 	child := createHouseholdTestContact(t, db, user.ID, "Charlie", "")
-	pet := createHouseholdTestContact(t, db, user.ID, "Fluffy", "pet")
-
+	pet := createHouseholdTestContact(t, db, user.ID, "Fluffy", "animal")
 	addHouseholdMember(t, db, household.ID, user.ID, adult1, models.HouseholdRoleAdult)
 	addHouseholdMember(t, db, household.ID, user.ID, adult2, models.HouseholdRoleAdult)
 	addHouseholdMember(t, db, household.ID, user.ID, child, models.HouseholdRoleChild)
@@ -137,8 +136,7 @@ func TestGenerateHouseholdSuggestions_Roommates(t *testing.T) {
 
 	a := createHouseholdTestContact(t, db, user.ID, "Dana", "")
 	b := createHouseholdTestContact(t, db, user.ID, "Erin", "")
-	petC := createHouseholdTestContact(t, db, user.ID, "Whiskers", "pet")
-
+	petC := createHouseholdTestContact(t, db, user.ID, "Whiskers", "animal")
 	addHouseholdMember(t, db, household.ID, user.ID, a, models.HouseholdRoleRoommate)
 	addHouseholdMember(t, db, household.ID, user.ID, b, models.HouseholdRoleRoommate)
 	addHouseholdMember(t, db, household.ID, user.ID, petC, models.HouseholdRolePet)
@@ -247,7 +245,7 @@ func TestGenerateHouseholdSuggestions_DoesNotDuplicateExistingConfirmedEdge(t *t
 
 // Pet classification must come from Contact.CRM.Kind, not Role — a member
 // whose Role happens to be unset (or anything other than "pet") but whose
-// Contact.CRM.Kind is "pet" must still be classified as a pet.
+// Contact.CRM.Kind is "animal" must still be classified as a pet.
 func TestGenerateHouseholdSuggestions_ClassifiesByKindNotRole(t *testing.T) {
 	db := setupHouseholdServiceTestDB(t)
 	user := createHouseholdTestUser(t, db)

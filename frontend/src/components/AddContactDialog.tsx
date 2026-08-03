@@ -70,9 +70,9 @@ const emptyForm = {
   suffix: '',
   nickname: '',
   gender: '',
-  // CRMEnvelope.Kind (T27): individual|pet|animal. Defaults to individual —
+  // CRMEnvelope.Kind (T27): human|animal. Defaults to human —
   // the suggestion engine treats it the same as an unset kind (classAdult).
-  kind: 'individual',
+  kind: 'human',
   birthday: '',
   anniversary: '',
   organization: '',
@@ -378,8 +378,7 @@ export default function AddContactDialog({
             value={formData.kind}
             onChange={handleChange('kind')}
           >
-            <MenuItem value="individual">{t('contacts.individual')}</MenuItem>
-            <MenuItem value="pet">{t('contacts.pet')}</MenuItem>
+            <MenuItem value="human">{t('contacts.human')}</MenuItem>
             <MenuItem value="animal">{t('contacts.animal')}</MenuItem>
           </TextField>
           {isOn('middle_name') && (
@@ -396,6 +395,7 @@ export default function AddContactDialog({
             )}
             {isOn('gender') && (
               <Autocomplete
+                fullWidth
                 freeSolo
                 options={['male', 'female', 'other', 'prefer_not_to_say']}
                 getOptionLabel={(v) => ['male', 'female', 'other', 'prefer_not_to_say'].includes(v) ? t(`contacts.${v}`) : (v || '')}

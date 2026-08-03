@@ -26,7 +26,7 @@ export interface ProfileValues {
   suffix: string;
   nickname: string;
   gender: string;
-  // CRMEnvelope.Kind (T27): individual|pet|animal.
+  // CRMEnvelope.Kind (T27): human|animal.
   kind: string;
 }
 
@@ -231,8 +231,7 @@ export default function ContactHeader({
                   onChange={(e) => onProfileValueChange({ ...profileValues, kind: e.target.value })}
                   size="small"
                 >
-                  <MenuItem value="individual">{t('contactDetail.individual')}</MenuItem>
-                  <MenuItem value="pet">{t('contactDetail.pet')}</MenuItem>
+                  <MenuItem value="human">{t('contactDetail.human')}</MenuItem>
                   <MenuItem value="animal">{t('contactDetail.animal')}</MenuItem>
                 </TextField>
                 <Box sx={{ display: 'flex', gap: 1, justifyContent: 'space-between' }}>
@@ -372,7 +371,7 @@ export default function ContactHeader({
                     {['male', 'female', 'other', 'prefer_not_to_say'].includes(gender) ? t(`contactDetail.${gender}`) : gender}
                   </Typography>
                 )}
-                {['pet', 'animal'].includes(kind) && (
+                {kind === 'animal' && (
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
                     {t(`contactDetail.${kind}`)}
                   </Typography>

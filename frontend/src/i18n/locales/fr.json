@@ -327,7 +327,7 @@
     "prefer_not_to_say": "Je préfère ne pas dire",
     "kind": "Type",
     "individual": "Particulier",
-    "pet": "Animal de compagnie",
+    "human": "Humain",
     "animal": "Animal",
     "deleteContact": "Supprimer le contact",
     "confirmDeleteContact": "Êtes-vous sûr de vouloir supprimer {{name}} ? Cette action est irréversible et supprimera également toutes les notes, activités et rappels associés à ce contact.",

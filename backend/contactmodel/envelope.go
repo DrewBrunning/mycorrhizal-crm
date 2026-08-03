@@ -3,8 +3,8 @@ package contactmodel
 // CRMEnvelope holds Mycorrhizal-specific data that is NOT part of any contact-exchange
 // standard. Format adapters MUST ignore it entirely.
 type CRMEnvelope struct {
-	// Kind is the envelope-side entity kind: conventionally individual|pet|
-	// animal. Distinct from Card.Kind (model.go — the standard vCard/
+	// Kind is the envelope-side entity kind: human|animal.
+	// Distinct from Card.Kind (model.go — the standard vCard/
 	// JSContact KIND: individual|group|org|location|application|device,
 	// which has no pet/animal value) — WP-82, docs/fork-plan/91-envelope-
 	// data-model.md §91.1. Unenforced at the API boundary, same as Card.Kind

@@ -238,7 +238,7 @@ type ChangePasswordInput struct {
 // mapping's origin).
 type ThinContactInput struct {
 	Name     string `json:"name" validate:"required,min=1,max=100"`
-	Gender   string `json:"gender" validate:"omitempty,oneof=male female other prefer_not_to_say"`
+	Gender   string `json:"gender" validate:"omitempty,max=100"`
 	Birthday string `json:"birthday" validate:"omitempty,birthday"`
 }
 

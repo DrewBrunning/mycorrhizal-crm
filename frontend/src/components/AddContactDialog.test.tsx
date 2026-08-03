@@ -41,7 +41,7 @@ test('shows the Kind dropdown near the top of the form', () => {
   expect(screen.getByLabelText('Kind')).toBeInTheDocument();
 });
 
-test('defaults the Kind selection to individual', async () => {
+test('defaults the Kind selection to human', async () => {
   const mocked = vi.mocked(createContactRecord).mockResolvedValue({
     id: 1,
     uid: 'uid-1',
@@ -55,26 +55,7 @@ test('defaults the Kind selection to individual', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Create' }));
 
   await waitFor(() => expect(mocked).toHaveBeenCalled());
-  expect(mocked.mock.calls[0][0].crm.kind).toBe('individual');
-});
-
-test('submits crm.kind = pet when Pet is selected (T27)', async () => {
-  const mocked = vi.mocked(createContactRecord).mockResolvedValue({
-    id: 2,
-    uid: 'uid-2',
-    etag: '',
-    card: {},
-    crm: { kind: 'pet' },
-  });
-  renderDialog();
-
-  fireEvent.change(screen.getByLabelText('First Name *'), { target: { value: 'Fluffy' } });
-  fireEvent.mouseDown(screen.getByLabelText('Kind'));
-  fireEvent.click(await screen.findByText('Pet'));
-  fireEvent.click(screen.getByRole('button', { name: 'Create' }));
-
-  await waitFor(() => expect(mocked).toHaveBeenCalled());
-  expect(mocked.mock.calls[0][0].crm.kind).toBe('pet');
+  expect(mocked.mock.calls[0][0].crm.kind).toBe('human');
 });
 
 test('submits crm.kind = animal when Animal is selected (T27)', async () => {

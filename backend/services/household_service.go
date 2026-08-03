@@ -28,7 +28,7 @@ const (
 // this switch doesn't know about) defaults to adult, so the engine never
 // blocks on an unrecognized or missing Role.
 func classifyMember(role string, contact models.Contact) memberClass {
-	if contact.CRM.Kind == "pet" || contact.CRM.Kind == "animal" {
+	if contact.CRM.Kind == "animal" {
 		return classPet
 	}
 	if role == models.HouseholdRoleChild {
