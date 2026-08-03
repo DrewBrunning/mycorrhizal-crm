@@ -1243,5 +1243,40 @@
       "saveFailed": "Impossibile salvare il regalo."
     },
     "statusLabel": "Stato"
+  },
+  "prep": {
+    "title": "Vista di preparazione",
+    "subtitle": "Tutto da ricordare prima di vederli",
+    "unknownContact": "Sconosciuto",
+    "notFound": "Contatto non trovato",
+    "view": "Vedi",
+    "cadence": {
+      "title": "Stato della relazione"
+    },
+    "agenda": {
+      "title": "Argomenti da affrontare"
+    },
+    "lastInteraction": {
+      "title": "Ultima interazione",
+      "none": "Nessuna interazione registrata"
+    },
+    "recentNotes": {
+      "title": "Note recenti"
+    },
+    "relationships": {
+      "title": "Persone intorno a loro"
+    },
+    "lifeEvents": {
+      "title": "Eventi di vita"
+    },
+    "reminders": {
+      "title": "Promemoria imminenti"
+    },
+    "upcomingDates": {
+      "title": "Date imminenti",
+      "birthday": "Compleanno",
+      "anniversary": "Anniversario",
+      "inDays": "in {{days}} giorno/i"
+    }
   }
 }

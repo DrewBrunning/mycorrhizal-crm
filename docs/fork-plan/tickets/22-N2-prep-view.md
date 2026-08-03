@@ -7,6 +7,7 @@
 | **Depends on** | [T5](03-T5-lifeevent-frontend.md), [T19](20-T19-cadence.md), [T21](21-T21-conversation-agenda.md) |
 | **Alpha** | after (by dependency, not by value) |
 | **Source** | New (gap found in the 2026-07-30 product review) |
+| **Status** | **DONE** — see board #24 |
 
 ## Why this exists
 
@@ -102,3 +103,39 @@ tables, the scope has drifted.
 - `gorm:"column:xxx"` tag is mandatory for acronyms/compound words — GORM silently derives wrong names
 - New entities: decide soft vs hard delete per T26's rule (user-authored content → soft, edge/join rows → hard)
 - Delete cascade: add new entities to `deleteContactAssociations` in `contact_controller.go` and `DeleteUser` in `admin_user_controller.go`
+
+## Landing notes (2026-08-03)
+
+Implemented as a dedicated prep mode (the ticket's option 2), matching the recommendation. No new
+tables, no new entities — a pure read-side composition.
+
+**Backend — `GET /contacts/:id/briefing`** (`backend/models/briefing.go` +
+`backend/controllers/briefing_controller.go`): composes the full briefing in one response:
+last activity (via the activity_contacts join, double-sided user scoping), recent notes, cadence
+health (via `services.ComputeCadenceHealth`, never stored), open agenda items (T21, `discussed_at
+IS NULL`), confirmed relationship edges resolved with the other party's name/ID/display token,
+life events, upcoming reminders, and upcoming birthday/anniversary dates with days-until.
+
+**Sensitivity decision (91.13):** only `secret` relationships are excluded in the query — a
+secret relationship must not surface on a screen likely to be open in front of the person it
+concerns. `private` relationships stay: the briefing is the user's own screen, and private gates
+sharing/exposure (exports, sync, shared views), none of which this endpoint is. Only
+`status: confirmed` edges are included (suggested edges are never fact).
+
+**Frontend:** new `PrepViewPage.tsx` at `/contacts/:id/prep`, entered from a "Prep view" button
+in the contact header (desktop + compact menu). Read-only; every block renders its empty state
+when the source is empty. `api/briefings.ts` mirrors the wire shape. Relationship display tokens
+are translated via the existing `relationships.types.*` labels; other-party links use the numeric
+contact ID (the detail route is numeric-ID-addressed).
+
+**OpenAPI:** route + `ContactBriefing`/`Briefing*` schemas documented; `TestOpenAPIRouteCoverage`
+(T8 drift test) green.
+
+**Tests:** 6 backend tests (compose-all-blocks, graceful degradation, owner scoping 404,
+secret/suggested exclusion + private inclusion, display-token inversion both directions,
+404) + 2 frontend tests (PrepViewPage full + empty rendering, error state) + 1 API test. Full
+suites green: 19 backend packages, 279 frontend tests, `tsc --noEmit` clean.
+
+**Not in this landing:** the optional "upcoming list" (everyone you're due to see soon) from the
+ticket's item 4, and the FoodPreferences/custom-field block (T20a not yet shipped) — the endpoint
+is composable by design, so both are additive follow-ups.

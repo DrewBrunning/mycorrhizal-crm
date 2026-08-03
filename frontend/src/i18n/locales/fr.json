@@ -1243,5 +1243,40 @@
       "saveFailed": "Échec de l'enregistrement du cadeau."
     },
     "statusLabel": "Statut"
+  },
+  "prep": {
+    "title": "Vue de préparation",
+    "subtitle": "Tout à retenir avant de les voir",
+    "unknownContact": "Inconnu",
+    "notFound": "Contact introuvable",
+    "view": "Voir",
+    "cadence": {
+      "title": "Santé de la relation"
+    },
+    "agenda": {
+      "title": "Sujets à aborder"
+    },
+    "lastInteraction": {
+      "title": "Dernière interaction",
+      "none": "Aucune interaction enregistrée"
+    },
+    "recentNotes": {
+      "title": "Notes récentes"
+    },
+    "relationships": {
+      "title": "Personnes autour d'eux"
+    },
+    "lifeEvents": {
+      "title": "Événements de vie"
+    },
+    "reminders": {
+      "title": "Rappels à venir"
+    },
+    "upcomingDates": {
+      "title": "Dates à venir",
+      "birthday": "Anniversaire",
+      "anniversary": "Anniversaire de mariage",
+      "inDays": "dans {{days}} jour(s)"
+    }
   }
 }

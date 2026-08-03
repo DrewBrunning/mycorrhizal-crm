@@ -1065,6 +1065,7 @@ export default function ContactDetailPage() {
         onArchiveContact={record.archived ? undefined : handleArchiveContact}
         onUnarchiveContact={record.archived ? handleUnarchiveContact : undefined}
         onMergeContact={() => setMergeDialogOpen(true)}
+        onPrepView={() => navigate(`/contacts/${record.id}/prep`)}
         onExportContact={(format) => {
           if (record?.uid) {
             exportContact(format as 'vcf3' | 'vcf4' | 'jscontact', record.uid).catch(() => showError(t('contactDetail.deleteContactError')));

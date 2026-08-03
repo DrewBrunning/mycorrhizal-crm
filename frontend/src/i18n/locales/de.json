@@ -1243,5 +1243,40 @@
       "saveFailed": "Geschenk konnte nicht gespeichert werden."
     },
     "statusLabel": "Status"
+  },
+  "prep": {
+    "title": "Briefing",
+    "subtitle": "Alles, was du vor dem Treffen wissen solltest",
+    "unknownContact": "Unbekannt",
+    "notFound": "Kontakt nicht gefunden",
+    "view": "Ansehen",
+    "cadence": {
+      "title": "Beziehungszustand"
+    },
+    "agenda": {
+      "title": "Gesprächsthemen"
+    },
+    "lastInteraction": {
+      "title": "Letzte Interaktion",
+      "none": "Noch keine Interaktionen erfasst"
+    },
+    "recentNotes": {
+      "title": "Letzte Notizen"
+    },
+    "relationships": {
+      "title": "Menschen um sie/ihn"
+    },
+    "lifeEvents": {
+      "title": "Lebensereignisse"
+    },
+    "reminders": {
+      "title": "Anstehende Erinnerungen"
+    },
+    "upcomingDates": {
+      "title": "Anstehende Daten",
+      "birthday": "Geburtstag",
+      "anniversary": "Jahrestag",
+      "inDays": "in {{days}} Tag(en)"
+    }
   }
 }

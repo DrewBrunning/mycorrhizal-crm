@@ -12,7 +12,7 @@ import AutoModeIcon from '@mui/icons-material/AutoMode';
 import ArchiveIcon from '@mui/icons-material/Archive';
 import UnarchiveIcon from '@mui/icons-material/Unarchive';
 import MergeIcon from '@mui/icons-material/MergeType';
-import { mdiDownloadOutline } from '@mdi/js';
+import { mdiDownloadOutline, mdiNoteMultipleOutline } from '@mdi/js';
 import { useTranslation } from 'react-i18next';
 import { ContactFieldKey, resolveEnabledFields } from '../contactFields';
 import { ContactRecordResponse, nameComponentValue } from '../api/contacts';
@@ -59,6 +59,7 @@ interface ContactHeaderProps {
   onArchiveContact?: () => void;
   onUnarchiveContact?: () => void;
   onMergeContact?: () => void;
+  onPrepView?: () => void;
   onExportContact: (format: string) => void;
 }
 
@@ -86,6 +87,7 @@ export default function ContactHeader({
   onArchiveContact,
   onUnarchiveContact,
   onMergeContact,
+  onPrepView,
   onExportContact
 }: ContactHeaderProps) {
   const { t } = useTranslation();
@@ -369,6 +371,12 @@ export default function ContactHeader({
                                   <ListItemText>{t('contactMerge.mergeButton')}</ListItemText>
                                 </MenuItem>
                               ),
+                              onPrepView && (
+                                <MenuItem key="prep" onClick={() => { setActionsMenuAnchor(null); onPrepView(); }}>
+                                  <ListItemIcon><SvgIcon fontSize="small"><path d={mdiNoteMultipleOutline} /></SvgIcon></ListItemIcon>
+                                  <ListItemText>{t('prep.title')}</ListItemText>
+                                </MenuItem>
+                              ),
                               <MenuItem key="vcf4" onClick={() => { setActionsMenuAnchor(null); onExportContact('vcf4'); }}>
                                 <ListItemIcon><SvgIcon fontSize="small"><path d={mdiDownloadOutline} /></SvgIcon></ListItemIcon>
                                 <ListItemText>vCard 4.0</ListItemText>
@@ -424,6 +432,16 @@ export default function ContactHeader({
                               onClick={onMergeContact}
                             >
                               {t('contactMerge.mergeButton')}
+                            </Button>
+                          )}
+                          {onPrepView && (
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              startIcon={<SvgIcon><path d={mdiNoteMultipleOutline} /></SvgIcon>}
+                              onClick={onPrepView}
+                            >
+                              {t('prep.title')}
                             </Button>
                           )}
                           <Button

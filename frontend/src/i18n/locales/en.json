@@ -1243,5 +1243,40 @@
       "saveFailed": "Failed to save gift."
     },
     "statusLabel": "Status"
+  },
+  "prep": {
+    "title": "Prep view",
+    "subtitle": "Everything to remember before you see them",
+    "unknownContact": "Unknown",
+    "notFound": "Contact not found",
+    "view": "View",
+    "cadence": {
+      "title": "Relationship health"
+    },
+    "agenda": {
+      "title": "Things to bring up"
+    },
+    "lastInteraction": {
+      "title": "Last interaction",
+      "none": "No interactions recorded yet"
+    },
+    "recentNotes": {
+      "title": "Recent notes"
+    },
+    "relationships": {
+      "title": "People around them"
+    },
+    "lifeEvents": {
+      "title": "Life events"
+    },
+    "reminders": {
+      "title": "Upcoming reminders"
+    },
+    "upcomingDates": {
+      "title": "Upcoming dates",
+      "birthday": "Birthday",
+      "anniversary": "Anniversary",
+      "inDays": "in {{days}} day(s)"
+    }
   }
 }

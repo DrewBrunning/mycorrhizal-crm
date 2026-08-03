@@ -268,7 +268,7 @@ happens, T17 in particular is pre-alpha work buying nothing. See the open questi
 |---|---|---|---|---|---|---|
 | 22 | **T19** WP-94 CadencePolicy + relationship health — **DONE** (`cb88826`) | **5** | L | T5 | `92.6`, `91.10` |
 | 23 | **T21** WP-96 ConversationAgenda | 4 | M | T5 | `92.6`, `91.11` |
-| 24 | **N2** Prep view / person briefing screen | **5** | M | T5, T19, T21 | new (gap) |
+| 24 | **N2** Prep view / person briefing screen — **DONE** | **5** | M | T5, T19, T21 | new (gap) |
 | 25 | **T10** WP-85 graph traversal + multi-hop chains — **DONE** | 2 | M–L | — | `92.2` |
 | 26 | **T11** WP-86 search synonyms, household scope, FTS5 — **DONE** | **5** | L | T10, T1 | `92.2` |
 | 27 | **N8** 2FA / TOTP enrollment | 3 | M | — | new (gap) |
