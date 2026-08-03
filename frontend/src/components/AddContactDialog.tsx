@@ -70,6 +70,9 @@ const emptyForm = {
   suffix: '',
   nickname: '',
   gender: '',
+  // CRMEnvelope.Kind (T27): individual|pet|animal. Defaults to individual —
+  // the suggestion engine treats it the same as an unset kind (classAdult).
+  kind: 'individual',
   birthday: '',
   anniversary: '',
   organization: '',
@@ -216,6 +219,7 @@ export default function AddContactDialog({
           titles: titles.length > 0 ? titles : undefined,
         },
         crm: {
+          kind: formData.kind,
           how_we_met: formData.how_we_met,
           work_information: formData.work_information,
           contact_information: formData.contact_information,
@@ -367,6 +371,17 @@ export default function AddContactDialog({
               onChange={handleChange('lastname')}
             />
           </Stack>
+          <TextField
+            select
+            label={t('contacts.kind')}
+            fullWidth
+            value={formData.kind}
+            onChange={handleChange('kind')}
+          >
+            <MenuItem value="individual">{t('contacts.individual')}</MenuItem>
+            <MenuItem value="pet">{t('contacts.pet')}</MenuItem>
+            <MenuItem value="animal">{t('contacts.animal')}</MenuItem>
+          </TextField>
           {isOn('middle_name') && (
             <TextField label={t('contacts.middleName')} fullWidth value={formData.middle_name} onChange={handleChange('middle_name')} />
           )}

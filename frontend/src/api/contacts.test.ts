@@ -245,6 +245,16 @@ describe('toContactRecordInput', () => {
     expect(input.card.titles).toEqual([{ name: 'Professor', kind: 'title' }, { name: 'Nobel Laureate', kind: 'role' }]);
     expect(input.card.anniversaries).toEqual([{ kind: 'birth', date: { partial: { year: 1867, month: 11, day: 7 } } }]);
   });
+
+  test('maps kind (T27) into crm.kind when set', () => {
+    const input = toContactRecordInput({ firstname: 'Fluffy', kind: 'pet' });
+    expect(input.crm.kind).toBe('pet');
+  });
+
+  test('omits kind from crm when not set', () => {
+    const input = toContactRecordInput({ firstname: 'Marie' });
+    expect(input.crm.kind).toBeUndefined();
+  });
 });
 
 describe('getContactsByUid', () => {

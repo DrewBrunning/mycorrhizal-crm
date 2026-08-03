@@ -26,6 +26,8 @@ export interface ProfileValues {
   suffix: string;
   nickname: string;
   gender: string;
+  // CRMEnvelope.Kind (T27): individual|pet|animal.
+  kind: string;
 }
 
 interface ContactHeaderProps {
@@ -95,6 +97,7 @@ export default function ContactHeader({
   const suffix = nameComponentValue(card.name?.components, 'generation');
   const nickname = card.nicknames?.[0]?.name;
   const gender = record.gender;
+  const kind = record.crm?.kind || '';
   const archived = record.archived;
 
   // Circle/tag editing state
@@ -221,6 +224,17 @@ export default function ContactHeader({
                     <TextField {...params} label={t('contactDetail.gender')} fullWidth />
                   )}
                 />
+                <TextField
+                  select
+                  label={t('contactDetail.kind')}
+                  value={profileValues.kind}
+                  onChange={(e) => onProfileValueChange({ ...profileValues, kind: e.target.value })}
+                  size="small"
+                >
+                  <MenuItem value="individual">{t('contactDetail.individual')}</MenuItem>
+                  <MenuItem value="pet">{t('contactDetail.pet')}</MenuItem>
+                  <MenuItem value="animal">{t('contactDetail.animal')}</MenuItem>
+                </TextField>
                 <Box sx={{ display: 'flex', gap: 1, justifyContent: 'space-between' }}>
                   <IconButton
                     size="small"
@@ -356,6 +370,11 @@ export default function ContactHeader({
                 {gender && (
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
                     {['male', 'female', 'other', 'prefer_not_to_say'].includes(gender) ? t(`contactDetail.${gender}`) : gender}
+                  </Typography>
+                )}
+                {['pet', 'animal'].includes(kind) && (
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
+                    {t(`contactDetail.${kind}`)}
                   </Typography>
                 )}
               </>

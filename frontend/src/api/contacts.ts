@@ -48,6 +48,9 @@ export interface Contact {
   how_we_met?: string;
   work_information?: string;
   contact_information?: string;
+  // CRMEnvelope.Kind (T27): individual|pet|animal. Survives on the flat
+  // shape solely for toContactRecordInput's flat->nested mapping.
+  kind?: string;
   photo_thumbnail?: string;
   archived?: boolean;
   // Multi-valued vCard fields
@@ -172,7 +175,14 @@ export interface Card {
   links?: CardResource[];
 }
 
+// CRMEnvelope mirrors the backend's contactmodel.CRMEnvelope. kind is the
+// envelope-side entity kind (individual|pet|animal, T27): it drives the
+// household suggestion engine's pet/animal classification
+// (services/household_service.go's classifyMember), so it must stay in sync
+// with the backend's accepted tokens — there is no dynamic type-list endpoint
+// (see CLAUDE.md frontend trap #4).
 export interface CRMEnvelope {
+  kind?: string;
   how_we_met?: string;
   work_information?: string;
   contact_information?: string;
@@ -435,6 +445,7 @@ export function toContactRecordInput(data: Partial<Contact>): ContactRecordInput
       titles: titles.length > 0 ? titles : undefined,
     },
     crm: {
+      kind: data.kind || undefined,
       how_we_met: data.how_we_met,
       work_information: data.work_information,
       contact_information: data.contact_information,

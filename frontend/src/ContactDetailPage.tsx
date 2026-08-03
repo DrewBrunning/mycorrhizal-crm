@@ -131,7 +131,11 @@ export default function ContactDetailPage() {
     lastname: '',
     suffix: '',
     nickname: '',
-    gender: ''
+    gender: '',
+    // CRMEnvelope.Kind (T27): individual|pet|animal. Defaults to individual
+    // so the header's select always has a valid selection — the suggestion
+    // engine treats it the same as an unset kind (classAdult).
+    kind: 'individual'
   });
 
   // Circle/Tag state (T4 — real entities instead of flat strings)
@@ -640,14 +644,15 @@ export default function ContactDetailPage() {
       lastname: nameComponentValue(components, 'surname') || '',
       suffix: nameComponentValue(components, 'generation') || '',
       nickname: record.card?.nicknames?.[0]?.name || '',
-      gender: record.gender ? record.gender.toLowerCase() : ''
+      gender: record.gender ? record.gender.toLowerCase() : '',
+      kind: record.crm?.kind || 'individual'
     });
     setEditingProfile(true);
   };
 
   const handleCancelEditProfile = () => {
     setEditingProfile(false);
-    setProfileValues({ prefix: '', firstname: '', middle_name: '', lastname: '', suffix: '', nickname: '', gender: '' });
+    setProfileValues({ prefix: '', firstname: '', middle_name: '', lastname: '', suffix: '', nickname: '', gender: '', kind: 'individual' });
   };
 
   const handleSaveProfile = async () => {
@@ -671,7 +676,10 @@ export default function ContactDetailPage() {
           name: { components: nameComponents },
           nicknames: profileValues.nickname.trim() ? [{ name: profileValues.nickname.trim() }] : undefined,
         },
-        crm: record.crm,
+        crm: {
+          ...record.crm,
+          kind: profileValues.kind,
+        },
       });
       setRecord(updated);
       setEditingProfile(false);
