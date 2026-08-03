@@ -28,6 +28,8 @@ function profileValues(kind: string) {
     nickname: '',
     gender: '',
     kind,
+    cardKind: '',
+    language: '',
   };
 }
 

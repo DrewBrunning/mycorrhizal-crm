@@ -29,6 +29,10 @@ export interface ProfileValues {
   gender: string;
   // CRMEnvelope.Kind (T27): human|animal.
   kind: string;
+  // Card.Kind (WP13, T29): individual|group|org|location|application|device.
+  cardKind: string;
+  // Card.Language (WP4, T29): default language tag.
+  language: string;
 }
 
 interface ContactHeaderProps {
@@ -243,6 +247,33 @@ export default function ContactHeader({
                   <MenuItem value="human">{t('contactDetail.human')}</MenuItem>
                   <MenuItem value="animal">{t('contactDetail.animal')}</MenuItem>
                 </TextField>
+                {isOn('cardKind') && (
+                  <TextField
+                    select
+                    label={t('contacts.cardKindLabel')}
+                    value={profileValues.cardKind}
+                    onChange={(e) => onProfileValueChange({ ...profileValues, cardKind: e.target.value })}
+                    size="small"
+                  >
+                    <MenuItem value="">
+                      <em>{t('common.none')}</em>
+                    </MenuItem>
+                    {(['individual', 'group', 'org', 'location', 'application', 'device'] as const).map((opt) => (
+                      <MenuItem key={opt} value={opt}>
+                        {t(`contacts.cardKind.${opt}`)}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                )}
+                {isOn('language') && (
+                  <TextField
+                    label={t('contacts.language')}
+                    value={profileValues.language}
+                    onChange={(e) => onProfileValueChange({ ...profileValues, language: e.target.value })}
+                    size="small"
+                    placeholder="en"
+                  />
+                )}
                 <Box sx={{ display: 'flex', gap: 1, justifyContent: 'space-between' }}>
                   <IconButton
                     size="small"

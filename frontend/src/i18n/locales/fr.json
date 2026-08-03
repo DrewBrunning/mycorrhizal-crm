@@ -288,7 +288,105 @@
       "region": "État / Région",
       "postal": "Code postal",
       "country": "Pays"
-    }
+    },
+    "anniversaries": "Anniversaires",
+    "socialProfiles": "Profils sociaux",
+    "otherOnlineServices": "Autres services en ligne",
+    "speakToAs": {
+      "pronouns": "Pronoms",
+      "contexts": "Contextes",
+      "grammaticalGender": "Genre grammatical",
+      "language": "Langue",
+      "gramGender": {
+        "animate": "animé",
+        "common": "commun",
+        "feminine": "féminin",
+        "inanimate": "inanimé",
+        "masculine": "masculin",
+        "neuter": "neutre"
+      }
+    },
+    "personalInfo": {
+      "kindOptions": {
+        "expertise": "Compétence",
+        "hobby": "Loisir",
+        "interest": "Intérêt"
+      },
+      "value": "Valeur",
+      "level": "Niveau",
+      "levelNone": "Aucun niveau",
+      "levelOptions": {
+        "high": "Élevé",
+        "medium": "Moyen",
+        "low": "Faible"
+      },
+      "label": "Libellé"
+    },
+    "keywords": {
+      "placeholder": "Saisissez un mot-clé puis Entrée"
+    },
+    "cardNotes": {
+      "note": "Note",
+      "createdOn": "Créé {{date}}"
+    },
+    "preferredLanguages": {
+      "language": "Langue",
+      "contexts": "Contextes"
+    },
+    "cardKind": {
+      "individual": "Personne",
+      "group": "Groupe",
+      "org": "Organisation",
+      "location": "Lieu",
+      "application": "Application",
+      "device": "Appareil"
+    },
+    "language": "Langue",
+    "anniversaryFields": {
+      "kindLabel": "Type",
+      "kindOptions": {
+        "birth": "Anniversaire",
+        "death": "Date de décès",
+        "wedding": "Anniversaire de mariage"
+      },
+      "date": "Date"
+    },
+    "contexts": {
+      "private": "Privé",
+      "work": "Travail",
+      "school": "École",
+      "billing": "Facturation",
+      "delivery": "Livraison"
+    },
+    "onlineServices": {
+      "service": "Service",
+      "uri": "URI",
+      "impp": "Adresse",
+      "user": "Utilisateur",
+      "contexts": "Contextes",
+      "label": "Libellé"
+    },
+    "importedResources": {
+      "title": "Ressources importées",
+      "media": "Médias",
+      "calendars": "Calendriers (CALURI)",
+      "freeBusyUrls": "URLs libre/occupé (FBURL)",
+      "schedulingAddresses": "Adresses de planification (CALADRURI)",
+      "cryptoKeys": "Clés cryptographiques (KEY)",
+      "directories": "Répertoires",
+      "contactUris": "URIs de contact"
+    },
+    "relatedToMembers": {
+      "title": "Entités liées",
+      "relatedTo": "Lié à",
+      "members": "Membres"
+    },
+    "cardKindLabel": "Type de contact",
+    "speakToAsLabel": "Pronoms et genre grammatical",
+    "personalInfoLabel": "Informations personnelles (compétences / loisirs / intérêts)",
+    "keywordsLabel": "Mots-clés",
+    "cardNotesLabel": "Notes (vCard)",
+    "preferredLanguagesLabel": "Langues préférées"
   },
   "timeline": {
     "reminderCompleted": "Rappel terminé",
@@ -481,7 +579,8 @@
     "back": "Retour",
     "continue": "Continuer",
     "add": "Ajouter",
-    "loadMore": "Charger plus"
+    "loadMore": "Charger plus",
+    "none": "Aucun"
   },
   "externalLinks": {
     "title": "Liens externes",
@@ -544,7 +643,6 @@
       "unlinkFailed": "Impossible de dissocier la personne."
     }
   },
-
   "profilePicture": {
     "title": "Télécharger une photo de profil",
     "selectImage": "Sélectionner une image",

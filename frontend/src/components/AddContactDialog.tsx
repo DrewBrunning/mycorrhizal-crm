@@ -19,11 +19,15 @@ import AppDialog from './AppDialog';
 import MultiValueField from './MultiValueField';
 import AddressFields from './AddressFields';
 import FieldValueEditor from './FieldValueEditor';
+import SpeakToAsEditor from './SpeakToAsEditor';
+import PersonalInfoEditor from './PersonalInfoEditor';
 import {
   createContactRecord,
   ContactValue,
   ContactAddress,
   NameComponent,
+  CardSpeakToAs,
+  CardPersonalInfo,
   valuesToCardEmails,
   valuesToCardPhones,
   valuesToCardLinks,
@@ -73,6 +77,10 @@ const emptyForm = {
   // CRMEnvelope.Kind (T27): human|animal. Defaults to human —
   // the suggestion engine treats it the same as an unset kind (classAdult).
   kind: 'human',
+  // Card.Kind (WP13, T29): individual|group|org|location|application|device.
+  cardKind: '',
+  // Card.Language (WP4, T29): default language tag.
+  language: '',
   birthday: '',
   anniversary: '',
   organization: '',
@@ -105,6 +113,8 @@ export default function AddContactDialog({
   const [addresses, setAddresses] = useState<ContactAddress[]>([]);
   const [urls, setUrls] = useState<ContactValue[]>([]);
   const [impps, setImpps] = useState<ContactValue[]>([]);
+  const [speakToAs, setSpeakToAs] = useState<CardSpeakToAs>({ grammaticalGenders: [], pronouns: [] });
+  const [personalInfo, setPersonalInfo] = useState<CardPersonalInfo[]>([]);
   // Custom field values, keyed by FieldDefinition.ID; the editor state is
   // initialized per-definition on first render (see editorFor below).
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, FieldValueEditorState>>({});
@@ -207,6 +217,8 @@ export default function AddContactDialog({
       const newRecord = await createContactRecord({
         gender: formData.gender,
         card: {
+          kind: formData.cardKind || undefined,
+          language: formData.language || undefined,
           name: { components: nameComponents },
           nicknames: formData.nickname.trim() ? [{ name: formData.nickname.trim() }] : undefined,
           emails: cardEmails.length > 0 ? cardEmails : undefined,
@@ -215,6 +227,11 @@ export default function AddContactDialog({
           imppAddresses: cardImpp.length > 0 ? cardImpp : undefined,
           addresses: cardAddresses.length > 0 ? cardAddresses : undefined,
           anniversaries: anniversaries.length > 0 ? anniversaries : undefined,
+          speakToAs:
+            speakToAs.pronouns?.length || speakToAs.grammaticalGenders?.length
+              ? speakToAs
+              : undefined,
+          personalInfo: personalInfo.length > 0 ? personalInfo : undefined,
           organizations: organizations.length > 0 ? organizations : undefined,
           titles: titles.length > 0 ? titles : undefined,
         },
@@ -326,6 +343,8 @@ export default function AddContactDialog({
     setAddresses([]);
     setUrls([]);
     setImpps([]);
+    setSpeakToAs({ grammaticalGenders: [], pronouns: [] });
+    setPersonalInfo([]);
     setCustomFieldValues({});
     setSelectedCircles([]);
     setNewCircle('');
@@ -381,6 +400,33 @@ export default function AddContactDialog({
             <MenuItem value="human">{t('contacts.human')}</MenuItem>
             <MenuItem value="animal">{t('contacts.animal')}</MenuItem>
           </TextField>
+          {isOn('cardKind') && (
+            <TextField
+              select
+              label={t('contacts.cardKindLabel')}
+              fullWidth
+              value={formData.cardKind}
+              onChange={handleChange('cardKind')}
+            >
+              <MenuItem value="">
+                <em>{t('common.none')}</em>
+              </MenuItem>
+              {(['individual', 'group', 'org', 'location', 'application', 'device'] as const).map((opt) => (
+                <MenuItem key={opt} value={opt}>
+                  {t(`contacts.cardKind.${opt}`)}
+                </MenuItem>
+              ))}
+            </TextField>
+          )}
+          {isOn('language') && (
+            <TextField
+              label={t('contacts.language')}
+              fullWidth
+              value={formData.language}
+              onChange={handleChange('language')}
+              placeholder="en"
+            />
+          )}
           {isOn('middle_name') && (
             <TextField label={t('contacts.middleName')} fullWidth value={formData.middle_name} onChange={handleChange('middle_name')} />
           )}
@@ -457,6 +503,13 @@ export default function AddContactDialog({
               placeholder={getBirthdayPlaceholder()}
               helperText={t('contacts.birthdayFormat')}
             />
+          )}
+
+          {isOn('speakToAs') && (
+            <SpeakToAsEditor label={t('contacts.speakToAsLabel')} value={speakToAs} onChange={setSpeakToAs} />
+          )}
+          {isOn('personalInfo') && (
+            <PersonalInfoEditor label={t('contacts.personalInfoLabel')} value={personalInfo} onChange={setPersonalInfo} />
           )}
 
           {isOn('organizations') && (

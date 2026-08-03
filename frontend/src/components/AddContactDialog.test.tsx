@@ -5,6 +5,7 @@ import AddContactDialog from './AddContactDialog';
 import { SnackbarProvider } from '../context/SnackbarContext';
 import { DateFormatProvider } from '../DateFormatProvider';
 import { createContactRecord } from '../api/contacts';
+import { resolveEnabledFields } from '../contactFields';
 
 // Mock only the network call; keep every Card/CRM conversion helper real so
 // the test asserts on the actual shape the dialog submits.
@@ -75,4 +76,77 @@ test('submits crm.kind = animal when Animal is selected (T27)', async () => {
 
   await waitFor(() => expect(mocked).toHaveBeenCalled());
   expect(mocked.mock.calls[0][0].crm.kind).toBe('animal');
+});
+
+test('submits card.kind = group and card.language when set (WP13/WP4)', async () => {
+  const mocked = vi.mocked(createContactRecord).mockResolvedValue({
+    id: 4,
+    uid: 'uid-4',
+    etag: '',
+    card: {},
+    crm: {},
+  });
+  render(
+    <DateFormatProvider>
+      <SnackbarProvider>
+        <AddContactDialog
+          open
+          onClose={vi.fn()}
+          onContactAdded={vi.fn()}
+          availableCircles={[]}
+          availableTags={[]}
+          enabledFields={resolveEnabledFields(['cardKind', 'language'])}
+        />
+      </SnackbarProvider>
+    </DateFormatProvider>
+  );
+
+  fireEvent.change(screen.getByLabelText('First Name *'), { target: { value: 'Orchestra' } });
+  fireEvent.mouseDown(screen.getByLabelText('Contact Kind'));
+  fireEvent.click(await screen.findByText('Group'));
+  fireEvent.change(screen.getByLabelText('Language'), { target: { value: 'de' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+
+  await waitFor(() => expect(mocked).toHaveBeenCalled());
+  expect(mocked.mock.calls[0][0].card.kind).toBe('group');
+  expect(mocked.mock.calls[0][0].card.language).toBe('de');
+});
+
+test('submits speakToAs pronouns and personalInfo when filled (WP1/WP2)', async () => {
+  const mocked = vi.mocked(createContactRecord).mockResolvedValue({
+    id: 5,
+    uid: 'uid-5',
+    etag: '',
+    card: {},
+    crm: {},
+  });
+  render(
+    <DateFormatProvider>
+      <SnackbarProvider>
+        <AddContactDialog
+          open
+          onClose={vi.fn()}
+          onContactAdded={vi.fn()}
+          availableCircles={[]}
+          availableTags={[]}
+          enabledFields={resolveEnabledFields(['speakToAs', 'personalInfo'])}
+        />
+      </SnackbarProvider>
+    </DateFormatProvider>
+  );
+
+  fireEvent.change(screen.getByLabelText('First Name *'), { target: { value: 'Ada' } });
+  // Add a pronoun row (first Add button in the SpeakToAs editor) and a
+  // personal-info row (first Add button in the PersonalInfo editor), then
+  // fill each row's labeled input.
+  const addButtons = screen.getAllByRole('button', { name: 'Add' });
+  fireEvent.click(addButtons[0]);
+  fireEvent.change(screen.getByLabelText('Pronouns'), { target: { value: 'she/her' } });
+  fireEvent.click(addButtons[2]);
+  fireEvent.change(screen.getByLabelText('Value'), { target: { value: 'math' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+
+  await waitFor(() => expect(mocked).toHaveBeenCalled());
+  expect(mocked.mock.calls[0][0].card.speakToAs?.pronouns?.[0]?.pronouns).toBe('she/her');
+  expect(mocked.mock.calls[0][0].card.personalInfo?.[0]?.value).toBe('math');
 });

@@ -26,10 +26,13 @@ export type ContactFieldKey =
   | 'addresses'
   | 'links'
   | 'imppAddresses'
+  | 'socialProfiles'
+  | 'otherOnlineServices'
   | 'nickname'
   | 'gender'
   | 'birthday'
   | 'anniversary'
+  | 'anniversaries'
   | 'prefix'
   | 'middle_name'
   | 'suffix'
@@ -37,7 +40,14 @@ export type ContactFieldKey =
   | 'titles'
   | 'how_we_met'
   | 'work_information'
-  | 'contact_information';
+  | 'contact_information'
+  | 'speakToAs'
+  | 'personalInfo'
+  | 'keywords'
+  | 'cardNotes'
+  | 'preferredLanguages'
+  | 'cardKind'
+  | 'language';
 
 export interface ContactFieldDef {
   key: ContactFieldKey;
@@ -55,6 +65,8 @@ export const CONTACT_FIELDS: ContactFieldDef[] = [
   { key: 'addresses', labelKey: 'contacts.address', group: 'communication', multiValue: true },
   { key: 'links', labelKey: 'contacts.urls', group: 'communication', multiValue: true },
   { key: 'imppAddresses', labelKey: 'contacts.impps', group: 'communication', multiValue: true },
+  { key: 'socialProfiles', labelKey: 'contacts.socialProfiles', group: 'communication', multiValue: true },
+  { key: 'otherOnlineServices', labelKey: 'contacts.otherOnlineServices', group: 'communication', multiValue: true },
 
   { key: 'prefix', labelKey: 'contacts.prefix', group: 'name', multiValue: false },
   { key: 'middle_name', labelKey: 'contacts.middleName', group: 'name', multiValue: false },
@@ -68,6 +80,14 @@ export const CONTACT_FIELDS: ContactFieldDef[] = [
   { key: 'gender', labelKey: 'contacts.gender', group: 'personal', multiValue: false },
   { key: 'birthday', labelKey: 'contacts.birthday', group: 'personal', multiValue: false },
   { key: 'anniversary', labelKey: 'contacts.anniversary', group: 'personal', multiValue: false },
+  { key: 'anniversaries', labelKey: 'contacts.anniversaries', group: 'personal', multiValue: true },
+  { key: 'speakToAs', labelKey: 'contacts.speakToAsLabel', group: 'personal', multiValue: true },
+  { key: 'personalInfo', labelKey: 'contacts.personalInfoLabel', group: 'personal', multiValue: true },
+  { key: 'keywords', labelKey: 'contacts.keywordsLabel', group: 'personal', multiValue: true },
+  { key: 'cardNotes', labelKey: 'contacts.cardNotesLabel', group: 'personal', multiValue: true },
+  { key: 'preferredLanguages', labelKey: 'contacts.preferredLanguagesLabel', group: 'personal', multiValue: true },
+  { key: 'cardKind', labelKey: 'contacts.cardKindLabel', group: 'personal', multiValue: false },
+  { key: 'language', labelKey: 'contacts.language', group: 'personal', multiValue: false },
 
   { key: 'how_we_met', labelKey: 'contacts.howWeMet', group: 'mycorrhizal', multiValue: false },
   { key: 'contact_information', labelKey: 'contacts.contactInformation', group: 'mycorrhizal', multiValue: false },
@@ -82,8 +102,12 @@ export const CONTACT_FIELD_GROUPS: ContactFieldDef['group'][] = [
 ];
 
 // Default-enabled set = the fields shown today, so existing users see no change.
-// New vCard fields (prefix/middle/suffix, org/dept/title/role, urls, impps, anniversary)
-// are opt-in via Settings.
+// New vCard fields (prefix/middle/suffix, org/dept/title/role, urls, impps,
+// anniversary, keywords, card notes, preferred languages) are opt-in via
+// Settings. Pronouns/grammatical gender and personal info are enabled by
+// default because they are the highest-impact gaps the field-gap audit found
+// (T29) — pronouns and interests are table-stakes in a personal CRM, while the
+// rest are niche vCard extensions.
 export const DEFAULT_ENABLED_CONTACT_FIELDS: ContactFieldKey[] = [
   'emails',
   'phones',
@@ -91,6 +115,8 @@ export const DEFAULT_ENABLED_CONTACT_FIELDS: ContactFieldKey[] = [
   'nickname',
   'gender',
   'birthday',
+  'speakToAs',
+  'personalInfo',
   'how_we_met',
   'work_information',
   'contact_information',
@@ -98,6 +124,49 @@ export const DEFAULT_ENABLED_CONTACT_FIELDS: ContactFieldKey[] = [
 
 // vCard TYPE options for typed multi-value fields (emails/phones/addresses/urls).
 export const CONTACT_TYPE_OPTIONS = ['home', 'work', 'cell', 'fax', 'other'] as const;
+
+// vCard CONTEXT options (RFC 9554 §4.1.2): the standard usage contexts shared
+// by the neutral model's contexts arrays on emails/phones/addresses/online
+// services/nicknames/languages.
+export const CONTEXT_OPTIONS = ['private', 'work', 'school', 'billing', 'delivery'] as const;
+
+// Grammatical-gender values (RFC 9554 §3.2 GRAMGENDER).
+export const GRAMMATICAL_GENDER_OPTIONS = [
+  'animate',
+  'common',
+  'feminine',
+  'inanimate',
+  'masculine',
+  'neuter',
+] as const;
+
+// PersonalInfo kinds (JSContact personalInfo / vCard EXPERTISE/HOBBY/INTEREST).
+export const PERSONAL_INFO_KIND_OPTIONS = ['expertise', 'hobby', 'interest'] as const;
+
+// PersonalInfo levels (RFC 9555 §2.8 personalInfo.level).
+export const PERSONAL_INFO_LEVEL_OPTIONS = ['high', 'medium', 'low'] as const;
+
+// Card.Kind values (RFC 9553 §2.1.4 kind — distinct from CRMEnvelope.Kind).
+export const CARD_KIND_OPTIONS = [
+  'individual',
+  'group',
+  'org',
+  'location',
+  'application',
+  'device',
+] as const;
+
+// Phone feature tokens (RFC 9554 §6.4.1 TEL TYPE).
+export const PHONE_FEATURE_OPTIONS = [
+  'voice',
+  'fax',
+  'cell',
+  'video',
+  'pager',
+  'text',
+  'textphone',
+  'main-number',
+] as const;
 
 // Resolves the stored setting (null/undefined => defaults) into a concrete enabled set.
 export function resolveEnabledFields(stored: string[] | null | undefined): Set<ContactFieldKey> {

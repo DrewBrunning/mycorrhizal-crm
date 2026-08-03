@@ -1,0 +1,52 @@
+import { useTranslation } from 'react-i18next';
+import { Box, Typography, Stack, Divider } from '@mui/material';
+import { Card } from '../api/contacts';
+
+interface RelatedToMembersSectionProps {
+  card: Card;
+}
+
+export default function RelatedToMembersSection({ card }: RelatedToMembersSectionProps) {
+  const { t } = useTranslation();
+
+  const relatedTo = card.relatedTo || [];
+  const members = card.members || [];
+
+  if (relatedTo.length === 0 && members.length === 0) return null;
+
+  return (
+    <Box sx={{ mt: 2 }}>
+      <Divider sx={{ my: 1 }} />
+      <Typography variant="subtitle2" gutterBottom>
+        {t('contacts.relatedToMembers.title')}
+      </Typography>
+      <Stack spacing={1}>
+        {relatedTo.length > 0 && (
+          <Box>
+            <Typography variant="caption" color="text.secondary">
+              {t('contacts.relatedToMembers.relatedTo')}
+            </Typography>
+            {relatedTo.map((r, i) => (
+              <Typography key={i} variant="body2" sx={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
+                {r.target}
+                {r.relations?.length ? ` (${r.relations.join(', ')})` : ''}
+              </Typography>
+            ))}
+          </Box>
+        )}
+        {members.length > 0 && (
+          <Box>
+            <Typography variant="caption" color="text.secondary">
+              {t('contacts.relatedToMembers.members')}
+            </Typography>
+            {members.map((m, i) => (
+              <Typography key={i} variant="body2" sx={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
+                {m}
+              </Typography>
+            ))}
+          </Box>
+        )}
+      </Stack>
+    </Box>
+  );
+}

@@ -151,7 +151,10 @@ export default function ContactDetailPage() {
     gender: '',
     // CRMEnvelope.Kind (T27): human|animal. Defaults to human so the
     // header's Kind select always has a valid selection.
-    kind: 'human'
+    kind: 'human',
+    // Card.Kind (WP13, T29) + Card.Language (WP4, T29).
+    cardKind: '',
+    language: '',
   });
 
   // Circle/Tag state (T4 — real entities instead of flat strings)
@@ -865,14 +868,16 @@ export default function ContactDetailPage() {
       suffix: nameComponentValue(components, 'generation') || '',
       nickname: record.card?.nicknames?.[0]?.name || '',
       gender: record.gender ? record.gender.toLowerCase() : '',
-      kind: record.crm?.kind || 'human'
+      kind: record.crm?.kind || 'human',
+      cardKind: record.card?.kind || '',
+      language: record.card?.language || '',
     });
     setEditingProfile(true);
   };
 
   const handleCancelEditProfile = () => {
     setEditingProfile(false);
-    setProfileValues({ prefix: '', firstname: '', middle_name: '', lastname: '', suffix: '', nickname: '', gender: '', kind: 'human' });
+    setProfileValues({ prefix: '', firstname: '', middle_name: '', lastname: '', suffix: '', nickname: '', gender: '', kind: 'human', cardKind: '', language: '' });
   };
 
   const handleSaveProfile = async () => {
@@ -881,20 +886,35 @@ export default function ContactDetailPage() {
       return;
     }
 
+    // Preserve the existing name's rich metadata (sortAs, phonetic system,
+    // separators) and each component's phonetic value so an imported contact
+    // never loses them on a UI edit-and-save (WP10, T29).
+    const existingName = record.card?.name;
+    const existingComps = existingName?.components || [];
+    const phoneticFor = (kind: string) => existingComps.find((c) => c.kind === kind)?.phonetic;
+
     const nameComponents: NameComponent[] = [];
-    if (profileValues.prefix.trim()) nameComponents.push({ kind: 'title', value: profileValues.prefix.trim() });
-    nameComponents.push({ kind: 'given', value: profileValues.firstname.trim() });
-    if (profileValues.middle_name.trim()) nameComponents.push({ kind: 'given2', value: profileValues.middle_name.trim() });
-    nameComponents.push({ kind: 'surname', value: profileValues.lastname.trim() });
-    if (profileValues.suffix.trim()) nameComponents.push({ kind: 'generation', value: profileValues.suffix.trim() });
+    const push = (kind: NameComponent['kind'], value: string) => {
+      if (value.trim()) nameComponents.push({ kind, value: value.trim(), phonetic: phoneticFor(kind) });
+    };
+    push('title', profileValues.prefix);
+    push('given', profileValues.firstname);
+    push('given2', profileValues.middle_name);
+    push('surname', profileValues.lastname);
+    push('generation', profileValues.suffix);
 
     try {
       const updated = await updateContactRecord(id!, {
         gender: profileValues.gender,
         card: {
           ...record.card,
-          name: { components: nameComponents },
+          name: {
+            ...(existingName || {}),
+            components: nameComponents,
+          },
           nicknames: profileValues.nickname.trim() ? [{ name: profileValues.nickname.trim() }] : undefined,
+          kind: profileValues.cardKind || undefined,
+          language: profileValues.language || undefined,
         },
         crm: {
           ...record.crm,

@@ -288,7 +288,7 @@ happens, T17 in particular is pre-alpha work buying nothing. See the open questi
 | 41 | **P2** Other integrations (Dawarich, Jellyfin, Paperless-ngx, …) | 2 | — | T14 | `92.7` |
 | 42 | **P3** AI / Ollama layer | 1 | — | most of the above | `92.7`, `90` D1 |
 | 43 | **P4** Local-model code-gen pilot | 1 | — | mobile client work | `80` |
-| 44 | **T29** Contact field gaps — neutral-model richness not yet in frontend UI (→ v0.2.0) | **5** | L | — | new (field-gap audit) |
+| 44 | **T29** Contact field gaps — neutral-model richness not yet in frontend UI — **DONE** | **5** | L | — | new (field-gap audit) |
 
 ### ⚠ The ordering rules produce an alpha with no rating-5 capability in it
 

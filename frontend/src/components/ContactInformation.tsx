@@ -43,6 +43,12 @@ import {
   Contact,
   ContactValue,
   ContactAddress,
+  CardOnlineService,
+  CardPersonalInfo,
+  CardNote,
+  CardLanguagePref,
+  CardSpeakToAs,
+  CardAnniversary,
   cardEmailsToValues,
   valuesToCardEmails,
   cardPhonesToValues,
@@ -54,11 +60,21 @@ import {
   cardAddressesToValues,
   valuesToCardAddresses,
   getAnniversaryField,
+  formatAnniversaryDate,
   getOrganizationFields,
   getTitleField,
 } from '../api/contacts';
 import { ContactFieldKey, resolveEnabledFields } from '../contactFields';
 import { useDateFormat } from '../DateFormatProvider';
+import OnlineServiceEditor from './OnlineServiceEditor';
+import SpeakToAsEditor from './SpeakToAsEditor';
+import PersonalInfoEditor from './PersonalInfoEditor';
+import KeywordsEditor from './KeywordsEditor';
+import CardNotesEditor from './CardNotesEditor';
+import PreferredLanguagesEditor from './PreferredLanguagesEditor';
+import AnniversariesEditor from './AnniversariesEditor';
+import ImportedResourcesSection from './ImportedResourcesSection';
+import RelatedToMembersSection from './RelatedToMembersSection';
 
 interface ContactInformationProps {
   card: CardModel;
@@ -245,6 +261,100 @@ export default function ContactInformation({
     );
   };
 
+  const renderOnlineServices = (rows: CardOnlineService[] | undefined) => {
+    if (!rows || rows.length === 0) return <Typography variant="body2" color="text.disabled">—</Typography>;
+    return (
+      <Stack spacing={0.5}>
+        {rows.map((s, i) => (
+          <Typography key={i} variant="body2">
+            {s.service ? `${s.service}: ` : ''}{s.uri || s.user || ''}
+            {s.contexts?.length ? ` (${s.contexts.join(', ')})` : ''}
+          </Typography>
+        ))}
+      </Stack>
+    );
+  };
+
+  const renderPersonalInfo = (rows: CardPersonalInfo[] | undefined) => {
+    if (!rows || rows.length === 0) return <Typography variant="body2" color="text.disabled">—</Typography>;
+    return (
+      <Stack spacing={0.5}>
+        {rows.map((p, i) => (
+          <Typography key={i} variant="body2">
+            {p.value}
+            {p.kind ? ` (${t(`contacts.personalInfo.kindOptions.${p.kind}`, p.kind)})` : ''}
+            {p.level ? ` · ${t(`contacts.personalInfo.levelOptions.${p.level}`, p.level)}` : ''}
+          </Typography>
+        ))}
+      </Stack>
+    );
+  };
+
+  const renderKeywords = (rows: string[] | undefined) => {
+    if (!rows || rows.length === 0) return <Typography variant="body2" color="text.disabled">—</Typography>;
+    return (
+      <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap' }}>
+        {rows.map((k, i) => (
+          <Typography key={i} variant="body2">#{k}</Typography>
+        ))}
+      </Stack>
+    );
+  };
+
+  const renderCardNotes = (rows: CardNote[] | undefined) => {
+    if (!rows || rows.length === 0) return <Typography variant="body2" color="text.disabled">—</Typography>;
+    return (
+      <Stack spacing={0.5}>
+        {rows.map((n, i) => (
+          <Typography key={i} variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{n.note}</Typography>
+        ))}
+      </Stack>
+    );
+  };
+
+  const renderPreferredLanguages = (rows: CardLanguagePref[] | undefined) => {
+    if (!rows || rows.length === 0) return <Typography variant="body2" color="text.disabled">—</Typography>;
+    return (
+      <Stack spacing={0.5}>
+        {rows.map((l, i) => (
+          <Typography key={i} variant="body2">
+            {l.language}
+            {l.contexts?.length ? ` (${l.contexts.join(', ')})` : ''}
+          </Typography>
+        ))}
+      </Stack>
+    );
+  };
+
+  const renderSpeakToAs = (s: CardSpeakToAs | undefined) => {
+    if (!s || (!s.pronouns?.length && !s.grammaticalGenders?.length)) {
+      return <Typography variant="body2" color="text.disabled">—</Typography>;
+    }
+    const parts: string[] = [];
+    if (s.pronouns?.length) parts.push(s.pronouns.map((p) => p.pronouns).join(', '));
+    if (s.grammaticalGenders?.length) {
+      parts.push(s.grammaticalGenders.map((g) => t(`contacts.speakToAs.gramGender.${g.value}`, g.value)).join(', '));
+    }
+    return <Typography variant="body2">{parts.join(' · ')}</Typography>;
+  };
+
+  const renderAnniversaries = (rows: CardAnniversary[] | undefined) => {
+    if (!rows || rows.length === 0) return <Typography variant="body2" color="text.disabled">—</Typography>;
+    return (
+      <Stack spacing={0.5}>
+        {rows.map((a, i) => {
+          const date = formatAnniversaryDate(a.date);
+          return (
+            <Typography key={i} variant="body2">
+              {date ? date : '—'}
+              {` (${t(`contacts.anniversaryFields.kindOptions.${a.kind}`, a.kind)})`}
+            </Typography>
+          );
+        })}
+      </Stack>
+    );
+  };
+
   return (
     <Card sx={{ flex: 1, minWidth: 0 }}>
       {compactTabs ? (
@@ -356,6 +466,44 @@ export default function ContactInformation({
               />
             )}
 
+            {isOn('socialProfiles') && (
+              <EditableArrayField<CardOnlineService[]>
+                icon={<LanguageIcon sx={iconSx} />}
+                label={t('contacts.socialProfiles')}
+                value={card.socialProfiles || []}
+                cloneValue={(v) => v.map((x) => ({ ...x }))}
+                renderDisplay={renderOnlineServices}
+                renderEditor={(draft, setDraft) => (
+                  <OnlineServiceEditor
+                    label={t('contacts.socialProfiles')}
+                    value={draft}
+                    onChange={setDraft}
+                    showService
+                  />
+                )}
+                onSave={(draft) => onUpdateCard({ socialProfiles: draft.length ? draft : undefined })}
+              />
+            )}
+
+            {isOn('otherOnlineServices') && (
+              <EditableArrayField<CardOnlineService[]>
+                icon={<LanguageIcon sx={iconSx} />}
+                label={t('contacts.otherOnlineServices')}
+                value={card.otherOnlineServices || []}
+                cloneValue={(v) => v.map((x) => ({ ...x }))}
+                renderDisplay={renderOnlineServices}
+                renderEditor={(draft, setDraft) => (
+                  <OnlineServiceEditor
+                    label={t('contacts.otherOnlineServices')}
+                    value={draft}
+                    onChange={setDraft}
+                    showService
+                  />
+                )}
+                onSave={(draft) => onUpdateCard({ otherOnlineServices: draft.length ? draft : undefined })}
+              />
+            )}
+
             {isOn('birthday') && (
               <EditableField
                 icon={<CakeIcon sx={iconSx} />}
@@ -390,6 +538,95 @@ export default function ContactInformation({
                 onEditCancel={onEditCancel}
                 onEditSave={onEditSave}
                 onEditValueChange={onEditValueChange}
+              />
+            )}
+
+            {isOn('speakToAs') && (
+              <EditableArrayField<CardSpeakToAs>
+                icon={<BadgeIcon sx={iconSx} />}
+                label={t('contacts.speakToAsLabel')}
+                value={card.speakToAs || { grammaticalGenders: [], pronouns: [] }}
+                cloneValue={(v) => ({
+                  grammaticalGenders: (v.grammaticalGenders || []).map((g) => ({ ...g })),
+                  pronouns: (v.pronouns || []).map((p) => ({ ...p })),
+                })}
+                renderDisplay={renderSpeakToAs}
+                renderEditor={(draft, setDraft) => (
+                  <SpeakToAsEditor label={t('contacts.speakToAsLabel')} value={draft} onChange={setDraft} />
+                )}
+                onSave={(draft) => onUpdateCard({
+                  speakToAs: draft.pronouns?.length || draft.grammaticalGenders?.length ? draft : undefined,
+                })}
+              />
+            )}
+
+            {isOn('personalInfo') && (
+              <EditableArrayField<CardPersonalInfo[]>
+                icon={<WorkIcon sx={iconSx} />}
+                label={t('contacts.personalInfoLabel')}
+                value={card.personalInfo || []}
+                cloneValue={(v) => v.map((x) => ({ ...x }))}
+                renderDisplay={renderPersonalInfo}
+                renderEditor={(draft, setDraft) => (
+                  <PersonalInfoEditor label={t('contacts.personalInfoLabel')} value={draft} onChange={setDraft} />
+                )}
+                onSave={(draft) => onUpdateCard({ personalInfo: draft.length ? draft : undefined })}
+              />
+            )}
+
+            {isOn('keywords') && (
+              <EditableArrayField<string[]>
+                icon={<BadgeIcon sx={iconSx} />}
+                label={t('contacts.keywordsLabel')}
+                value={card.keywords || []}
+                cloneValue={(v) => [...v]}
+                renderDisplay={renderKeywords}
+                renderEditor={(draft, setDraft) => (
+                  <KeywordsEditor label={t('contacts.keywordsLabel')} value={draft} onChange={setDraft} />
+                )}
+                onSave={(draft) => onUpdateCard({ keywords: draft.length ? draft : undefined })}
+              />
+            )}
+
+            {isOn('cardNotes') && (
+              <EditableArrayField<CardNote[]>
+                icon={<SvgIcon sx={iconSx}><path d={mdiNoteMultipleOutline} /></SvgIcon>}
+                label={t('contacts.cardNotesLabel')}
+                value={card.notes || []}
+                cloneValue={(v) => v.map((x) => ({ ...x, author: x.author ? { ...x.author } : undefined }))}
+                renderDisplay={renderCardNotes}
+                renderEditor={(draft, setDraft) => (
+                  <CardNotesEditor label={t('contacts.cardNotesLabel')} value={draft} onChange={setDraft} />
+                )}
+                onSave={(draft) => onUpdateCard({ notes: draft.length ? draft : undefined })}
+              />
+            )}
+
+            {isOn('preferredLanguages') && (
+              <EditableArrayField<CardLanguagePref[]>
+                icon={<LanguageIcon sx={iconSx} />}
+                label={t('contacts.preferredLanguagesLabel')}
+                value={card.preferredLanguages || []}
+                cloneValue={(v) => v.map((x) => ({ ...x }))}
+                renderDisplay={renderPreferredLanguages}
+                renderEditor={(draft, setDraft) => (
+                  <PreferredLanguagesEditor label={t('contacts.preferredLanguagesLabel')} value={draft} onChange={setDraft} />
+                )}
+                onSave={(draft) => onUpdateCard({ preferredLanguages: draft.length ? draft : undefined })}
+              />
+            )}
+
+            {isOn('anniversaries') && (
+              <EditableArrayField<CardAnniversary[]>
+                icon={<CelebrationIcon sx={iconSx} />}
+                label={t('contacts.anniversaries')}
+                value={card.anniversaries || []}
+                cloneValue={(v) => v.map((x) => ({ ...x, date: { ...x.date, partial: x.date.partial ? { ...x.date.partial } : undefined } }))}
+                renderDisplay={renderAnniversaries}
+                renderEditor={(draft, setDraft) => (
+                  <AnniversariesEditor label={t('contacts.anniversaries')} value={draft} onChange={setDraft} />
+                )}
+                onSave={(draft) => onUpdateCard({ anniversaries: draft.length ? draft : undefined })}
               />
             )}
 
@@ -516,6 +753,12 @@ export default function ContactInformation({
                 onSave={onSaveFieldValue || (() => Promise.resolve())}
               />
             ))}
+
+            {/* Read-only imported-resource + relatedTo/members sections (WP7/WP8):
+                present to prevent silent data loss and to make imported data
+                visible, not editable — full editing UI is T29b. */}
+            <ImportedResourcesSection card={card} />
+            <RelatedToMembersSection card={card} />
           </Stack>
         </CardContent>
       )}

@@ -288,7 +288,105 @@
       "region": "Regione",
       "postal": "CAP",
       "country": "Paese"
-    }
+    },
+    "anniversaries": "Anniversari",
+    "socialProfiles": "Profil social",
+    "otherOnlineServices": "Altri servizi online",
+    "speakToAs": {
+      "pronouns": "Pronomi",
+      "contexts": "Contesti",
+      "grammaticalGender": "Genere grammaticale",
+      "language": "Lingua",
+      "gramGender": {
+        "animate": "animato",
+        "common": "comune",
+        "feminine": "femminile",
+        "inanimate": "inanimato",
+        "masculine": "maschile",
+        "neuter": "neutro"
+      }
+    },
+    "personalInfo": {
+      "kindOptions": {
+        "expertise": "Competenza",
+        "hobby": "Hobby",
+        "interest": "Interesse"
+      },
+      "value": "Valore",
+      "level": "Livello",
+      "levelNone": "Nessun livello",
+      "levelOptions": {
+        "high": "Alto",
+        "medium": "Medio",
+        "low": "Basso"
+      },
+      "label": "Etichetta"
+    },
+    "keywords": {
+      "placeholder": "Digita una parola chiave e premi Invio"
+    },
+    "cardNotes": {
+      "note": "Nota",
+      "createdOn": "Creato {{date}}"
+    },
+    "preferredLanguages": {
+      "language": "Lingua",
+      "contexts": "Contesti"
+    },
+    "cardKind": {
+      "individual": "Persona",
+      "group": "Gruppo",
+      "org": "Organizzazione",
+      "location": "Luogo",
+      "application": "Applicazione",
+      "device": "Dispositivo"
+    },
+    "language": "Lingua",
+    "anniversaryFields": {
+      "kindLabel": "Tipo",
+      "kindOptions": {
+        "birth": "Compleanno",
+        "death": "Data di morte",
+        "wedding": "Anniversario di matrimonio"
+      },
+      "date": "Data"
+    },
+    "contexts": {
+      "private": "Privato",
+      "work": "Lavoro",
+      "school": "Scuola",
+      "billing": "Fatturazione",
+      "delivery": "Consegna"
+    },
+    "onlineServices": {
+      "service": "Servizio",
+      "uri": "URI",
+      "impp": "Indirizzo",
+      "user": "Utente",
+      "contexts": "Contesti",
+      "label": "Etichetta"
+    },
+    "importedResources": {
+      "title": "Risorse importate",
+      "media": "Media",
+      "calendars": "Calendari (CALURI)",
+      "freeBusyUrls": "URL libero/occupato (FBURL)",
+      "schedulingAddresses": "Indirizzi di pianificazione (CALADRURI)",
+      "cryptoKeys": "Chiavi crittografiche (KEY)",
+      "directories": "Directory",
+      "contactUris": "URI di contatto"
+    },
+    "relatedToMembers": {
+      "title": "Entità correlate",
+      "relatedTo": "Correlato a",
+      "members": "Membri"
+    },
+    "cardKindLabel": "Tipo di contatto",
+    "speakToAsLabel": "Pronomi e genere grammaticale",
+    "personalInfoLabel": "Informazioni personali (competenze / hobby / interessi)",
+    "keywordsLabel": "Parole chiave",
+    "cardNotesLabel": "Note (vCard)",
+    "preferredLanguagesLabel": "Lingue preferite"
   },
   "timeline": {
     "reminderCompleted": "Promemoria Completato",
@@ -481,7 +579,8 @@
     "back": "Indietro",
     "continue": "Continua",
     "add": "Aggiungi",
-    "loadMore": "Carica altri"
+    "loadMore": "Carica altri",
+    "none": "Nessuno"
   },
   "externalLinks": {
     "title": "Collegamenti esterni",
@@ -544,7 +643,6 @@
       "unlinkFailed": "Impossibile scollegare la persona."
     }
   },
-
   "profilePicture": {
     "title": "Carica Foto Profilo",
     "selectImage": "Seleziona un'immagine",

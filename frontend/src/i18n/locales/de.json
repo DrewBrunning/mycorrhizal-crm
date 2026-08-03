@@ -288,7 +288,105 @@
       "region": "Bundesland / Region",
       "postal": "Postleitzahl",
       "country": "Land"
-    }
+    },
+    "anniversaries": "Jahrestage",
+    "socialProfiles": "Soziale Profile",
+    "otherOnlineServices": "Andere Online-Dienste",
+    "speakToAs": {
+      "pronouns": "Pronomen",
+      "contexts": "Kontexte",
+      "grammaticalGender": "Grammatikalisches Geschlecht",
+      "language": "Sprache",
+      "gramGender": {
+        "animate": "belebt",
+        "common": "allgemein",
+        "feminine": "weiblich",
+        "inanimate": "unbelebt",
+        "masculine": "männlich",
+        "neuter": "sächlich"
+      }
+    },
+    "personalInfo": {
+      "kindOptions": {
+        "expertise": "Expertise",
+        "hobby": "Hobby",
+        "interest": "Interesse"
+      },
+      "value": "Wert",
+      "level": "Stufe",
+      "levelNone": "Keine Stufe",
+      "levelOptions": {
+        "high": "Hoch",
+        "medium": "Mittel",
+        "low": "Niedrig"
+      },
+      "label": "Bezeichnung"
+    },
+    "keywords": {
+      "placeholder": "Schlagwort eingeben und Enter drücken"
+    },
+    "cardNotes": {
+      "note": "Notiz",
+      "createdOn": "Erstellt {{date}}"
+    },
+    "preferredLanguages": {
+      "language": "Sprache",
+      "contexts": "Kontexte"
+    },
+    "cardKind": {
+      "individual": "Einzelperson",
+      "group": "Gruppe",
+      "org": "Organisation",
+      "location": "Ort",
+      "application": "Anwendung",
+      "device": "Gerät"
+    },
+    "language": "Sprache",
+    "anniversaryFields": {
+      "kindLabel": "Art",
+      "kindOptions": {
+        "birth": "Geburtstag",
+        "death": "Sterbedatum",
+        "wedding": "Hochzeitstag"
+      },
+      "date": "Datum"
+    },
+    "contexts": {
+      "private": "Privat",
+      "work": "Arbeit",
+      "school": "Schule",
+      "billing": "Rechnungsstellung",
+      "delivery": "Lieferung"
+    },
+    "onlineServices": {
+      "service": "Dienst",
+      "uri": "URI",
+      "impp": "Adresse",
+      "user": "Benutzername",
+      "contexts": "Kontexte",
+      "label": "Bezeichnung"
+    },
+    "importedResources": {
+      "title": "Importierte Ressourcen",
+      "media": "Medien",
+      "calendars": "Kalender (CALURI)",
+      "freeBusyUrls": "Frei/Gebucht-URLs (FBURL)",
+      "schedulingAddresses": "Planungsadressen (CALADRURI)",
+      "cryptoKeys": "Kryptoschlüssel (KEY)",
+      "directories": "Verzeichnisse",
+      "contactUris": "Kontakt-URIs"
+    },
+    "relatedToMembers": {
+      "title": "Verwandte Entitäten",
+      "relatedTo": "Verwandt mit",
+      "members": "Mitglieder"
+    },
+    "cardKindLabel": "Kontaktart",
+    "speakToAsLabel": "Pronomen & grammatikalisches Geschlecht",
+    "personalInfoLabel": "Persönliche Angaben (Expertise / Hobbys / Interessen)",
+    "keywordsLabel": "Schlagwörter",
+    "cardNotesLabel": "Notizen (vCard)",
+    "preferredLanguagesLabel": "Bevorzugte Sprachen"
   },
   "timeline": {
     "reminderCompleted": "Erinnerung erledigt",
@@ -481,7 +579,8 @@
     "back": "Zurück",
     "continue": "Weiter",
     "add": "Hinzufügen",
-    "loadMore": "Mehr laden"
+    "loadMore": "Mehr laden",
+    "none": "Keine"
   },
   "externalLinks": {
     "title": "Externe Verknüpfungen",
@@ -544,7 +643,6 @@
       "unlinkFailed": "Die Person konnte nicht gelöst werden."
     }
   },
-
   "profilePicture": {
     "title": "Profilbild hochladen",
     "selectImage": "Bild auswählen",

@@ -19,6 +19,8 @@ import {
   getContactsByUid,
   getContacts,
   getAllContacts,
+  onlineServicesToRows,
+  rowsToOnlineServices,
 } from './contacts';
 
 describe('email conversion', () => {
@@ -28,8 +30,8 @@ describe('email conversion', () => {
       { address: 'home@example.com', contexts: ['home'] },
     ]);
     expect(values).toEqual([
-      { type: 'work', value: 'work@example.com' },
-      { type: 'home', value: 'home@example.com' },
+      { type: 'work', value: 'work@example.com', contexts: ['work'] },
+      { type: 'home', value: 'home@example.com', contexts: ['home'] },
     ]);
     expect(valuesToCardEmails(values)).toEqual([
       { address: 'work@example.com', contexts: ['work'] },
@@ -46,18 +48,27 @@ describe('email conversion', () => {
   test('handles an empty/undefined array', () => {
     expect(cardEmailsToValues(undefined)).toEqual([]);
   });
+
+  test('preserves pref and label through the round trip (WP11)', () => {
+    const card = [{ address: 'work@example.com', contexts: ['work', 'private'], pref: 1, label: 'Main' }];
+    const values = cardEmailsToValues(card);
+    expect(values[0].pref).toBe(1);
+    expect(values[0].label).toBe('Main');
+    expect(values[0].contexts).toEqual(['work', 'private']);
+    expect(valuesToCardEmails(values)).toEqual(card);
+  });
 });
 
 describe('phone conversion', () => {
   test('display prefers features over contexts (vCard feature tokens like cell/fax)', () => {
     expect(cardPhonesToValues([{ number: '555-1234', features: ['cell'], contexts: ['work'] }])).toEqual([
-      { type: 'cell', value: '555-1234' },
+      { type: 'cell', value: '555-1234', features: ['cell'], contexts: ['work'] },
     ]);
   });
 
   test('falls back to contexts when no features are set', () => {
     expect(cardPhonesToValues([{ number: '555-1234', contexts: ['work'] }])).toEqual([
-      { type: 'work', value: '555-1234' },
+      { type: 'work', value: '555-1234', contexts: ['work'] },
     ]);
   });
 
@@ -65,6 +76,15 @@ describe('phone conversion', () => {
     expect(valuesToCardPhones([{ type: 'cell', value: '555-1234' }])).toEqual([
       { number: '555-1234', contexts: ['cell'] },
     ]);
+  });
+
+  test('preserves features and pref through the round trip (WP11)', () => {
+    const card = [{ number: '555-1234', features: ['cell', 'text'], contexts: ['work'], pref: 2, label: 'Work cell' }];
+    const values = cardPhonesToValues(card);
+    expect(values[0].features).toEqual(['cell', 'text']);
+    expect(values[0].pref).toBe(2);
+    expect(values[0].label).toBe('Work cell');
+    expect(valuesToCardPhones(values)).toEqual(card);
   });
 });
 
@@ -127,6 +147,51 @@ describe('address conversion', () => {
 
   test('drops an address with every field blank', () => {
     expect(valuesToCardAddresses([{ type: 'home', street: '', city: '', region: '', postal: '', country: '' }])).toEqual([]);
+  });
+
+  test('preserves coordinates, timeZone, pref and full through the round trip (WP11)', () => {
+    const card = [
+      {
+        components: [
+          { kind: 'name', value: '123 Main St' },
+          { kind: 'locality', value: 'Springfield' },
+        ],
+        contexts: ['home'],
+        coordinates: 'geo:37.2,-93.3',
+        timeZone: 'America/Chicago',
+        pref: 1,
+        full: '123 Main St\nSpringfield',
+      },
+    ];
+    const values = cardAddressesToValues(card);
+    expect(values[0].coordinates).toBe('geo:37.2,-93.3');
+    expect(values[0].timeZone).toBe('America/Chicago');
+    expect(values[0].pref).toBe(1);
+    expect(valuesToCardAddresses(values)).toEqual(card);
+  });
+});
+
+describe('online service conversion (WP3)', () => {
+  test('round-trips social profile rows with service/uri/user', () => {
+    const rows = onlineServicesToRows([
+      { service: 'Mastodon', uri: 'https://mastodon.social/@ada', user: '@ada', contexts: ['work'], pref: 1, label: 'Work' },
+    ]);
+    expect(rows).toEqual([
+      { service: 'Mastodon', uri: 'https://mastodon.social/@ada', user: '@ada', contexts: ['work'], pref: 1, label: 'Work' },
+    ]);
+    expect(rowsToOnlineServices(rows)).toEqual([
+      { service: 'Mastodon', uri: 'https://mastodon.social/@ada', user: '@ada', contexts: ['work'], pref: 1, label: 'Work' },
+    ]);
+  });
+
+  test('drops empty rows', () => {
+    expect(rowsToOnlineServices([{ service: '', uri: '', user: '', label: '', contexts: [] }])).toEqual([]);
+  });
+
+  test('omits blank fields', () => {
+    expect(rowsToOnlineServices([{ service: 'GitHub', uri: '', user: '', label: '', contexts: [] }])).toEqual([
+      { service: 'GitHub' },
+    ]);
   });
 });
 

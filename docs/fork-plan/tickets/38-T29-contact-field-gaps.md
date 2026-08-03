@@ -7,6 +7,7 @@
 | **Depends on** | — |
 | **Alpha** | after (→ v0.2.0) |
 | **Source** | Field-gap audit, 2026-08-03 |
+| **Status** | **DONE** — all 13 WPs landed (see board #44) |
 
 ## Why this exists
 
@@ -455,3 +456,54 @@ data, Preferences for CRM-specific data). Decide during WP2 implementation.
   phone number through the UI and saves.
 - WP10 specifically: an address imported via CardDAV with `apartment` and `floor` components
   does not lose them on UI edit-and-save (closes T25's primary item).
+
+## Landing notes (2026-08-03)
+
+Implemented end to end on the frontend; the backend already round-tripped every field through
+`contactmodel.Card` / `ApplyRecordToContact` (verified: `go build`, `go vet`, `gofmt -l`,
+`go test ./...` all green; no backend changes required).
+
+**New editor components** (all in `frontend/src/components/`):
+- `SpeakToAsEditor.tsx` — WP1: pronouns list + language-scoped grammatical-gender list
+- `PersonalInfoEditor.tsx` — WP2: expertise/hobby/interest rows with level/label
+- `OnlineServiceEditor.tsx` — WP3: shared service/uri/user/contexts/label editor for
+  `socialProfiles`, `otherOnlineServices` (and reusable for IMPP upgrade)
+- `PreferredLanguagesEditor.tsx` — WP4: preferred-languages rows; Card.Language added to the
+  header + create form
+- `KeywordsEditor.tsx` — WP5: chip-based CATEGORIES editor
+- `CardNotesEditor.tsx` — WP6: vCard NOTE list with read-only author/created
+- `AnniversariesEditor.tsx` — WP12: multi-entry anniversaries with kind/date
+- `ImportedResourcesSection.tsx` — WP7: read-only resource groups (media/calendars/freeBusy/
+  scheduling/cryptoKeys/directories/contactUris)
+- `RelatedToMembersSection.tsx` — WP8: read-only relatedTo + members
+
+**Adapter preservation (WP7/WP9/WP11):** `frontend/src/api/contacts.ts`'s Card types now mirror
+the full `contactmodel.Card` (all Resource arrays, speakToAs, personalInfo, notes, keywords,
+preferredLanguages, relatedTo, members, localizations, rich name/address fields). The flat
+editing shapes (`ContactValue`, `ContactAddress`) gained passthrough fields for
+`pref`/`label`/`features`/extra `contexts`/`coordinates`/`timeZone`/`full`, re-emitted on save —
+so an edit-and-save never drops rich data. Because every save path in `ContactDetailPage`
+spreads `...record.card` before patching, imported resources are preserved even when the user
+only edits a phone number. Profile save now preserves name-component `phonetic` and name
+`sortAs`/`phoneticSystem` metadata (WP10).
+
+**WP13:** `Card.Kind` full enum + `Card.Language` added to `ContactHeader` profile edit and
+`AddContactDialog`; `Members` remains read-only (WP8 display section).
+
+**Field toggles:** `contactFields.ts` gained opt-in keys for `socialProfiles`,
+`otherOnlineServices`, `keywords`, `cardNotes`, `preferredLanguages`, `cardKind`, `language`,
+`anniversaries`; `speakToAs` and `personalInfo` are enabled by default (highest-impact gaps per
+the ticket's ordering).
+
+**i18n:** real translations for all new strings across all 5 locales (`en/de/es/fr/it`).
+
+**Tests:** 275 frontend tests green (was 263); `npx tsc --noEmit` clean. New pinning tests:
+`onlineServicesToRows`/`rowsToOnlineServices` round-trip, `cardEmailsToValues`/`cardPhonesToValues`
+pref/label/features preservation, address coordinates/timeZone/pref preservation, `SpeakToAsEditor`
+add/remove behavior, `ImportedResourcesSection`/`RelatedToMembersSection` rendering, and
+`AddContactDialog` submission of cardKind/language/speakToAs/personalInfo.
+
+**Not in this landing (deliberately):** full editing UI for resource types (→ T29b), editable
+`Members` for group cards (WP8 kept read-only), and rich name phonetic *input* fields (WP10
+preserves imported phonetics but exposes no new input UI — the ContactHeader name edit remains
+flat).

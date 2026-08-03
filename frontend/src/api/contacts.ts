@@ -4,6 +4,14 @@ import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './cl
 export interface ContactValue {
   type: string;
   value: string;
+  // Rich-field passthrough (WP11, T29): the flat editing shape only exposes
+  // type+value, so pref/label/features/extra-contexts are carried alongside
+  // and re-emitted on save rather than silently dropped (the same pattern
+  // ContactAddress.passthrough uses for non-standard address components).
+  pref?: number | null;
+  label?: string;
+  contexts?: string[];
+  features?: string[];
 }
 
 export interface ContactAddress {
@@ -18,6 +26,12 @@ export interface ContactAddress {
   // landmark, etc.) so they survive an edit-and-save cycle through the flat
   // editing shape (T25).
   passthrough?: CardAddressComponent[];
+  // Rich-field passthrough (WP11, T29): coordinates/timeZone/pref/full etc.
+  // are carried alongside and re-emitted on save rather than dropped.
+  coordinates?: string;
+  timeZone?: string;
+  pref?: number | null;
+  full?: string;
 }
 
 // Contact is the flat shape every existing component (ContactDetailPage,
@@ -83,71 +97,109 @@ export interface Contact {
 export interface NameComponent {
   kind: 'title' | 'given' | 'given2' | 'surname' | 'surname2' | 'credential' | 'generation' | 'separator';
   value: string;
+  phonetic?: string;
 }
 
 export interface CardName {
   components?: NameComponent[];
   full?: string;
+  sortAs?: Record<string, string>;
+  isOrdered?: boolean;
+  defaultSeparator?: string;
+  phoneticSystem?: string;
+  phoneticScript?: string;
 }
 
 export interface CardNickname {
+  id?: string;
   name: string;
+  contexts?: string[];
+  pref?: number | null;
 }
 
 export interface CardOrgUnit {
   name: string;
+  sortAs?: string;
 }
 
 export interface CardOrganization {
   id?: string;
   name?: string;
   units?: CardOrgUnit[];
+  sortAs?: string;
 }
 
 export interface CardTitle {
+  id?: string;
   name: string;
   kind?: 'title' | 'role';
+  organizationId?: string;
 }
 
 export interface CardEmail {
+  id?: string;
   address: string;
   contexts?: string[];
+  pref?: number | null;
+  label?: string;
 }
 
 export interface CardPhone {
+  id?: string;
   number: string;
   features?: string[];
   contexts?: string[];
+  pref?: number | null;
+  label?: string;
 }
 
 export interface CardOnlineService {
+  id?: string;
   uri?: string;
   service?: string;
+  user?: string;
   contexts?: string[];
+  pref?: number | null;
+  label?: string;
 }
 
 export interface CardResource {
+  id?: string;
   uri: string;
   kind?: string;
   mediaType?: string;
+  label?: string;
   contexts?: string[];
+  pref?: number | null;
+  listAs?: number | null;
 }
 
 export interface CardAddressComponent {
   kind: string;
   value: string;
+  phonetic?: string;
 }
 
 export interface CardAddress {
+  id?: string;
   components?: CardAddressComponent[];
   countryCode?: string;
+  coordinates?: string;
+  timeZone?: string;
   contexts?: string[];
+  pref?: number | null;
+  full?: string;
+  isOrdered?: boolean;
+  defaultSeparator?: string;
+  phoneticSystem?: string;
+  phoneticScript?: string;
 }
 
 export interface CardPartialDate {
   year?: number | null;
   month?: number | null;
   day?: number | null;
+  calendarScale?: string;
 }
 
 export interface CardAnniversaryDate {
@@ -156,11 +208,70 @@ export interface CardAnniversaryDate {
 }
 
 export interface CardAnniversary {
+  id?: string;
   kind: 'birth' | 'death' | 'wedding';
   date: CardAnniversaryDate;
+  place?: CardAddress;
+}
+
+export interface CardGrammaticalGender {
+  id?: string;
+  value: string;
+  language?: string;
+}
+
+export interface CardPronouns {
+  id?: string;
+  pronouns: string;
+  contexts?: string[];
+  pref?: number | null;
+}
+
+export interface CardSpeakToAs {
+  grammaticalGenders?: CardGrammaticalGender[];
+  pronouns?: CardPronouns[];
+}
+
+export interface CardPersonalInfo {
+  id?: string;
+  kind: string;
+  value: string;
+  level?: string;
+  listAs?: number | null;
+  label?: string;
+}
+
+export interface CardAuthor {
+  name?: string;
+  uri?: string;
+}
+
+export interface CardNote {
+  id?: string;
+  note: string;
+  author?: CardAuthor;
+  created?: { utc: string };
+}
+
+export interface CardLanguagePref {
+  id?: string;
+  language: string;
+  contexts?: string[];
+  pref?: number | null;
+}
+
+export interface CardRelation {
+  target: string;
+  relations?: string[];
 }
 
 export interface Card {
+  uid?: string;
+  kind?: string;
+  language?: string;
+  prodId?: string;
+  created?: { utc: string };
+  updated?: { utc: string };
   name?: CardName;
   nicknames?: CardNickname[];
   organizations?: CardOrganization[];
@@ -168,11 +279,26 @@ export interface Card {
   emails?: CardEmail[];
   phones?: CardPhone[];
   imppAddresses?: CardOnlineService[];
+  socialProfiles?: CardOnlineService[];
+  otherOnlineServices?: CardOnlineService[];
   addresses?: CardAddress[];
   anniversaries?: CardAnniversary[];
+  speakToAs?: CardSpeakToAs;
+  personalInfo?: CardPersonalInfo[];
+  notes?: CardNote[];
   keywords?: string[];
   media?: CardResource[];
+  calendars?: CardResource[];
+  freeBusyUrls?: CardResource[];
+  schedulingAddresses?: CardResource[];
+  cryptoKeys?: CardResource[];
+  directories?: CardResource[];
   links?: CardResource[];
+  contactUris?: CardResource[];
+  preferredLanguages?: CardLanguagePref[];
+  relatedTo?: CardRelation[];
+  members?: string[];
+  localizations?: Record<string, unknown>;
 }
 
 // CRMEnvelope mirrors the backend's contactmodel.CRMEnvelope. kind is the
@@ -278,31 +404,120 @@ export function parseAnniversaryDate(value: string): CardAnniversaryDate {
 // ---------------------------------------------------------------------------
 
 export function cardEmailsToValues(emails: CardEmail[] | undefined): ContactValue[] {
-  return (emails || []).map((e) => ({ type: e.contexts?.[0] || '', value: e.address }));
+  return (emails || []).map((e) => ({
+    type: e.contexts?.[0] || '',
+    value: e.address,
+    pref: e.pref ?? undefined,
+    label: e.label || undefined,
+    contexts: e.contexts,
+  }));
 }
 export function valuesToCardEmails(values: ContactValue[]): CardEmail[] {
-  return values.filter((e) => e.value.trim()).map((e) => ({ address: e.value, contexts: e.type ? [e.type] : undefined }));
+  return values.filter((e) => e.value.trim()).map((e) => ({
+    address: e.value,
+    contexts: e.contexts?.length ? e.contexts : e.type ? [e.type] : undefined,
+    pref: e.pref,
+    label: e.label || undefined,
+  }));
 }
 
 export function cardPhonesToValues(phones: CardPhone[] | undefined): ContactValue[] {
-  return (phones || []).map((p) => ({ type: p.features?.[0] || p.contexts?.[0] || '', value: p.number }));
+  return (phones || []).map((p) => ({
+    type: p.features?.[0] || p.contexts?.[0] || '',
+    value: p.number,
+    pref: p.pref ?? undefined,
+    label: p.label || undefined,
+    contexts: p.contexts,
+    features: p.features,
+  }));
 }
 export function valuesToCardPhones(values: ContactValue[]): CardPhone[] {
-  return values.filter((p) => p.value.trim()).map((p) => ({ number: p.value, contexts: p.type ? [p.type] : undefined }));
+  return values.filter((p) => p.value.trim()).map((p) => ({
+    number: p.value,
+    features: p.features?.length ? p.features : undefined,
+    contexts: p.contexts?.length ? p.contexts : p.type ? [p.type] : undefined,
+    pref: p.pref ?? undefined,
+    label: p.label || undefined,
+  }));
 }
 
 export function cardLinksToValues(links: CardResource[] | undefined): ContactValue[] {
-  return (links || []).map((l) => ({ type: l.contexts?.[0] || '', value: l.uri }));
+  return (links || []).map((l) => ({
+    type: l.contexts?.[0] || '',
+    value: l.uri,
+    pref: l.pref ?? undefined,
+    label: l.label || undefined,
+    contexts: l.contexts,
+  }));
 }
 export function valuesToCardLinks(values: ContactValue[]): CardResource[] {
-  return values.filter((u) => u.value.trim()).map((u) => ({ uri: u.value, contexts: u.type ? [u.type] : undefined }));
+  return values.filter((u) => u.value.trim()).map((u) => ({
+    uri: u.value,
+    contexts: u.contexts?.length ? u.contexts : u.type ? [u.type] : undefined,
+    pref: u.pref,
+    label: u.label || undefined,
+  }));
 }
 
 export function cardImppToValues(impps: CardOnlineService[] | undefined): ContactValue[] {
-  return (impps || []).map((i) => ({ type: i.contexts?.[0] || '', value: i.uri || '' }));
+  return (impps || []).map((i) => ({
+    type: i.contexts?.[0] || '',
+    value: i.uri || '',
+    pref: i.pref ?? undefined,
+    label: i.label || undefined,
+    contexts: i.contexts,
+  }));
 }
 export function valuesToCardImpp(values: ContactValue[]): CardOnlineService[] {
-  return values.filter((i) => i.value.trim()).map((i) => ({ uri: i.value, contexts: i.type ? [i.type] : undefined }));
+  return values.filter((i) => i.value.trim()).map((i) => ({
+    uri: i.value,
+    contexts: i.contexts?.length ? i.contexts : i.type ? [i.type] : undefined,
+    pref: i.pref,
+    label: i.label || undefined,
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// OnlineService helpers (WP3). Shared by SocialProfiles, OtherOnlineServices
+// and the upgraded IMPP editor. The rich struct carries service/user/uri and
+// full context/pref/label; only uri+service are surfaced as direct inputs —
+// everything else is preserved through the round trip by the nested editors.
+// ---------------------------------------------------------------------------
+
+export interface OnlineServiceRow {
+  id?: string;
+  service: string;
+  uri: string;
+  user: string;
+  label: string;
+  contexts: string[];
+  pref?: number | null;
+}
+
+export function onlineServicesToRows(services: CardOnlineService[] | undefined): OnlineServiceRow[] {
+  return (services || []).map((s) => ({
+    id: s.id,
+    service: s.service || '',
+    uri: s.uri || '',
+    user: s.user || '',
+    label: s.label || '',
+    contexts: s.contexts || [],
+    pref: s.pref,
+  }));
+}
+
+export function rowsToOnlineServices(rows: OnlineServiceRow[]): CardOnlineService[] {
+  return rows
+    .filter((r) => r.uri.trim() || r.service.trim() || r.user.trim())
+    .map((r) => ({
+      id: r.id,
+      uri: r.uri.trim() || undefined,
+      service: r.service.trim() || undefined,
+      user: r.user.trim() || undefined,
+      label: r.label.trim() || undefined,
+      contexts: r.contexts.length > 0 ? r.contexts : undefined,
+      pref: r.pref,
+    }));
 }
 
 export function cardAddressesToValues(addresses: CardAddress[] | undefined): ContactAddress[] {
@@ -321,6 +536,10 @@ export function cardAddressesToValues(addresses: CardAddress[] | undefined): Con
       postal: find('postcode'),
       country: find('country') || a.countryCode || '',
       passthrough: passthrough.length > 0 ? passthrough : undefined,
+      coordinates: a.coordinates,
+      timeZone: a.timeZone,
+      pref: a.pref,
+      full: a.full,
     };
   });
 }
@@ -336,7 +555,14 @@ export function valuesToCardAddresses(values: ContactAddress[]): CardAddress[] {
       if (a.country) components.push({ kind: 'country', value: a.country });
       // Re-emit passthrough components that were preserved from the original address
       if (a.passthrough) components.push(...a.passthrough);
-      return { components, contexts: a.type ? [a.type] : undefined };
+      return {
+        components,
+        contexts: a.type ? [a.type] : undefined,
+        coordinates: a.coordinates,
+        timeZone: a.timeZone,
+        pref: a.pref,
+        full: a.full,
+      };
     });
 }
 
