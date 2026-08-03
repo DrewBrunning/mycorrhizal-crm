@@ -3955,6 +3955,111 @@ paths:
                 properties:
                   error: { type: string }
 
+  /graph/connections:
+    get:
+      summary: Traverse the relationship graph from a contact (multi-hop chains)
+      operationId: getGraphConnections
+      description: >
+        Graph traversal + multi-hop chains (T10/WP-85). From a starting contact
+        (?from, a Contact.VCardUID), list every reachable contact within
+        ?depth hops, each with the chain of relation steps describing how it
+        is related to the anchor ("John's sister's husband"). Inferred
+        relations (a grandparent from two parent_of edges) are computed, never
+        stored. Only status=confirmed, sensitivity!=secret edges participate;
+        direction is applied via the relation-type registry's inverse. The
+        optional ?relation param accepts a canonical token OR a registry
+        synonym ("brother" -> sibling_of) and returns only chains containing a
+        matching step.
+      parameters:
+        - name: from
+          in: query
+          required: true
+          description: The starting contact's VCardUID.
+          schema: { type: string, format: uuid }
+        - name: depth
+          in: query
+          description: Maximum hops (1..5, default 3).
+          schema: { type: integer, minimum: 1, maximum: 5, default: 3 }
+        - name: relation
+          in: query
+          description: Canonical relation token or registry synonym to filter chains by.
+          schema: { type: string }
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: The reachable chains.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GraphConnectionsResponse"
+        "400":
+          description: Missing/invalid from, or depth out of range.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: The from contact was not found (or is not owned by the caller).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /search:
+    get:
+      summary: Full-text search across contacts, notes, and interactions
+      operationId: searchAll
+      description: >
+        FTS5-backed search (T11/WP-86) over the caller's contacts, notes, and
+        interactions (activities), grouped into three sections. User-scoped
+        (never crosses users); soft-deleted and secret items are excluded. When
+        the whole query is a relation-type synonym ("brother"), resolved_relation
+        echoes the canonical token ("sibling_of").
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: The search term (>= 2 characters).
+          schema: { type: string }
+        - name: limit
+          in: query
+          description: Max results per section (default 10, max 50).
+          schema: { type: integer, minimum: 1, maximum: 50, default: 10 }
+        - name: household_id
+          in: query
+          description: Restrict contact results to members of this household (T11's "everyone in the Smith household"). The household must belong to the caller.
+          schema: { type: string, format: uuid }
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: Grouped search results.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResult"
+        "400":
+          description: Missing q or invalid limit.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Search query failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   # --- API tokens ---
   /api-tokens:
     get:
@@ -5268,6 +5373,33 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MessageResponse"
+  /admin/search/rebuild:
+    post:
+      summary: Rebuild the FTS search index (admin)
+      operationId: adminRebuildSearchIndex
+      description: >
+        Rebuilds the FTS5 full-text index from the live base tables (T11).
+        Idempotent; run after a bulk import or raw-SQL change that bypassed
+        the FTS triggers.
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Not an admin.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: Index rebuilt.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
 
 components:
   securitySchemes:
@@ -6502,6 +6634,97 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/GraphEdge"
+    GraphConnectionsResponse:
+      type: object
+      description: The result of a multi-hop traversal from a starting contact.
+      properties:
+        from_vcard_uid: { type: string, format: uuid }
+        from_name: { type: string }
+        depth: { type: integer }
+        chains:
+          type: array
+          items:
+            $ref: "#/components/schemas/GraphChain"
+    GraphChain:
+      type: object
+      description: >
+        One reachable contact and the chain describing how it relates to the
+        anchor. Steps[0] is the first hop away from the anchor; each step's
+        relation is what the NEXT contact is to the PREVIOUS.
+      properties:
+        target_vcard_uid: { type: string, format: uuid }
+        target_name: { type: string }
+        depth: { type: integer }
+        steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/GraphChainStep"
+    GraphChainStep:
+      type: object
+      properties:
+        contact_vcard_uid: { type: string, format: uuid }
+        contact_name: { type: string }
+        relation: { type: string, description: "Display relation token (inverse already applied when the hop walked against the stored edge direction)." }
+    SearchResult:
+      type: object
+      description: Grouped full-text search results (T11).
+      properties:
+        query: { type: string }
+        resolved_relation:
+          type: string
+          description: "Canonical relation token when the whole query is a registry synonym (brother -> sibling_of)."
+        contacts:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchContactHit"
+        notes:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchNoteHit"
+        activities:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchActivityHit"
+    SearchContactHit:
+      type: object
+      description: A matched contact (the slim ContactSummary shape) plus a snippet.
+      properties:
+        id: { type: integer }
+        uid: { type: string, format: uuid }
+        firstname: { type: string }
+        lastname: { type: string }
+        nickname: { type: string }
+        fn: { type: string }
+        primary_email: { type: string }
+        primary_phone: { type: string }
+        birthday: { type: string }
+        org: { type: string }
+        photo: { type: string }
+        photo_thumbnail: { type: string }
+        archived: { type: boolean }
+        snippet: { type: string }
+    SearchNoteHit:
+      type: object
+      description: A matched note with its owning contact's name and a snippet.
+      properties:
+        id: { type: integer }
+        content: { type: string }
+        date: { type: string, format: date-time }
+        contact_id: { type: integer, nullable: true }
+        contact_name: { type: string }
+        snippet: { type: string }
+    SearchActivityHit:
+      type: object
+      description: A matched interaction (activity) plus a snippet.
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        description: { type: string }
+        location: { type: string }
+        date: { type: string, format: date-time }
+        type: { type: string }
+        uuid: { type: string }
+        snippet: { type: string }
     GraphNode:
       type: object
       properties:

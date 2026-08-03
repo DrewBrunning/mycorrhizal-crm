@@ -4,6 +4,8 @@ import (
 	"errors"
 	"mycorrhizal/config"
 	"mycorrhizal/models"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -156,6 +158,25 @@ func TestImmichClient_Thumbnail(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []byte{0xff, 0xd8, 0xff}, body)
 	assert.Equal(t, "image/jpeg", contentType)
+}
+
+// TestImmichClient_ThumbnailRejectsNonImageContentType pins the
+// defense-in-depth hardening added during review: the Immich client's
+// Thumbnail method must reject Content-Types that don't start with "image/"
+// before the body reaches the controller, matching httputil.FetchImageFromURL.
+func TestImmichClient_ThumbnailRejectsNonImageContentType(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte("<script>alert(1)</script>"))
+	}))
+	defer server.Close()
+
+	client, err := NewImmichClient(server.URL, "", false)
+	require.NoError(t, err)
+
+	_, _, err = client.Thumbnail("p1")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "non-image content type")
 }
 
 func TestSyncImmichForUser_WritesActivitiesAndDedups(t *testing.T) {

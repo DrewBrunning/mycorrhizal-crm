@@ -6,6 +6,7 @@
   "nav": {
     "dashboard": "Tableau de bord",
     "contacts": "Contacts",
+    "search": "Recherche",
     "activities": "Activités",
     "notes": "Notes",
     "network": "Réseau",
@@ -121,6 +122,18 @@
     "registering": "Inscription en cours...",
     "registrationFailed": "Échec de l'inscription",
     "registrationSuccess": "Inscription réussie ! Vous pouvez maintenant vous connecter."
+  },
+  "search": {
+    "title": "Recherche",
+    "placeholder": "Rechercher contacts, notes, interactions…",
+    "clear": "Effacer",
+    "contacts": "Contacts ({{count}})",
+    "notes": "Notes ({{count}})",
+    "activities": "Interactions ({{count}})",
+    "noResults": "Aucun résultat pour \"{{query}}\".",
+    "unfiled": "Non classé",
+    "resolvedRelation": "Relation correspondante : {{relation}}",
+    "minLengthHint": "Saisissez au moins deux caractères pour rechercher."
   },
   "contacts": {
     "title": "Contacts",
@@ -478,6 +491,18 @@
       "unknown": "Événement externe : {{type}}",
       "fromSystem": "{{name}} (via {{system}})"
     }
+  },
+  "connections": {
+    "title": "Connexions",
+    "depth": "Profondeur",
+    "relationFilter": "Filtre de relation",
+    "relationPlaceholder": "p. ex. frère ou sœur",
+    "apply": "Appliquer",
+    "depthLabel": "{{depth}} sauts",
+    "results": "{{count}} connexions",
+    "empty": "Aucune connexion trouvée à cette profondeur.",
+    "noRelationMatches": "Aucune connexion ne correspond à \"{{relation}}\".",
+    "notAvailable": "Indisponible."
   },
   "immich": {
     "settings": {

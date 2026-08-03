@@ -6,6 +6,7 @@
   "nav": {
     "dashboard": "Dashboard",
     "contacts": "Kontakte",
+    "search": "Suche",
     "activities": "Aktivitäten",
     "notes": "Notizen",
     "network": "Netzwerk",
@@ -121,6 +122,18 @@
     "registering": "Registrierung läuft...",
     "registrationFailed": "Registrierung fehlgeschlagen",
     "registrationSuccess": "Registrierung erfolgreich! Sie können sich jetzt anmelden."
+  },
+  "search": {
+    "title": "Suche",
+    "placeholder": "Kontakte, Notizen, Interaktionen durchsuchen…",
+    "clear": "Löschen",
+    "contacts": "Kontakte ({{count}})",
+    "notes": "Notizen ({{count}})",
+    "activities": "Interaktionen ({{count}})",
+    "noResults": "Keine Ergebnisse für \"{{query}}\".",
+    "unfiled": "Nicht zugeordnet",
+    "resolvedRelation": "Übereinstimmende Beziehung: {{relation}}",
+    "minLengthHint": "Gib mindestens zwei Zeichen ein, um zu suchen."
   },
   "contacts": {
     "title": "Kontakte",
@@ -478,6 +491,18 @@
       "unknown": "Externes Ereignis: {{type}}",
       "fromSystem": "{{name}} (über {{system}})"
     }
+  },
+  "connections": {
+    "title": "Verbindungen",
+    "depth": "Tiefe",
+    "relationFilter": "Beziehungsfilter",
+    "relationPlaceholder": "z. B. Bruder oder Schwester",
+    "apply": "Anwenden",
+    "depthLabel": "{{depth}} Hops",
+    "results": "{{count}} Verbindungen",
+    "empty": "Keine Verbindungen in dieser Tiefe gefunden.",
+    "noRelationMatches": "Keine Verbindungen passen zu \"{{relation}}\".",
+    "notAvailable": "Nicht verfügbar."
   },
   "immich": {
     "settings": {

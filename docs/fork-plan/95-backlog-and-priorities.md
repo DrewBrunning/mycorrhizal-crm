@@ -136,6 +136,24 @@
 > substrate's genericity is pinned by a test: Paperless-ngx uses the same routes with zero schema
 > change. Immich level 3 (bidirectional) stays deferred — it needs an upstream Immich "external
 > links" capability, a dependency not a scheduling choice.
+>
+> **T10 + T11 done together on one branch** (2026-08-03) — WP-85 graph traversal and WP-86 search,
+> implemented together because T11's synonym half genuinely rides on T10's traversal. T10 adds
+> `GET /graph/connections`: multi-hop chains via a recursive CTE over `relationship_edges`, computed
+> not stored, with a per-branch visited set (cycles terminate) + explicit depth cap, only
+> `status:confirmed`, `sensitivity!=secret` edges (a secret edge never leaks into a derived chain;
+> private stays visible like the graph display), and — the highest-risk logic — direction applied via
+> the registry's inverse (a `parent_of` edge walked Parent→Child displays `child_of`; walked
+> Child→Parent displays `parent_of`), hand-verified and pinned in both directions. T11 adds FTS5
+> full-text search over contacts/notes/interactions (migration `000007_search_fts5`, virtual tables +
+> triggers; the pure-Go SQLite driver's FTS5 `'delete'` special command turned out broken, so the
+> triggers use regular `DELETE ... WHERE rowid` — verified), `GET /search` (user-scoped, soft-deleted
+> and secret items excluded, grouped contacts/notes/activities), an idempotent `RebuildSearchIndex`
+> + admin endpoint + `cmd/backfill-search-index` CLI, and the synonym consumer: the whole query is
+> resolved through the relation-type registry (`brother` → `sibling_of`) and echoed as
+> `resolved_relation`, plus the traversal `relation=` filter accepts tokens or synonyms. Frontend:
+> a Connections panel on the contact page (depth control + relation filter) and a global `/search`
+> page (AppBar search now routes there) that surfaces note and interaction hits, not just contacts.
 
 ## How to read this
 
@@ -239,7 +257,7 @@ each side — so a high rating does not by itself pull a ticket before alpha, an
 | 19 | **T22** Legacy / dead-code audit + migration squash — **DONE** | 3 | L | all above | Tier 6 |
 | 20 | **T27** Contact CRM.Kind UI — pet/individual/animal dropdown — **DONE** (`826aca7`) | 3 | S | — | T22 audit finding |
 | 21 | **T28** Mobile contact view layout — scrollable tabs, action collapsing, 360px min-width — **DONE** | **5** | M | — | T23 polish |
-| | **→ ALPHA — real data begins here** | | | | |
+| | **→ ALPHA v0.1.0 — shipped** | | | | |
 
 \* T8/T12a/T17 are rated on user-visible value. **If a mobile client is real they are 4s**; if it never
 happens, T17 in particular is pre-alpha work buying nothing. See the open question below.
@@ -247,12 +265,12 @@ happens, T17 in particular is pre-alpha work buying nothing. See the open questi
 ### After alpha
 
 | # | Ticket | R | Size | Depends on | Source |
-|---|---|---|---|---|---|
+|---|---|---|---|---|---|---|
 | 22 | **T19** WP-94 CadencePolicy + relationship health — **DONE** (`cb88826`) | **5** | L | T5 | `92.6`, `91.10` |
 | 23 | **T21** WP-96 ConversationAgenda | 4 | M | T5 | `92.6`, `91.11` |
 | 24 | **N2** Prep view / person briefing screen | **5** | M | T5, T19, T21 | new (gap) |
-| 25 | **T10** WP-85 graph traversal + multi-hop chains | 2 | M–L | — | `92.2` |
-| 26 | **T11** WP-86 search synonyms, household scope, FTS5 | **5** | L | T10, T1 | `92.2` |
+| 25 | **T10** WP-85 graph traversal + multi-hop chains — **DONE** | 2 | M–L | — | `92.2` |
+| 26 | **T11** WP-86 search synonyms, household scope, FTS5 — **DONE** | **5** | L | T10, T1 | `92.2` |
 | 27 | **N8** 2FA / TOTP enrollment | 3 | M | — | new (gap) |
 | 28 | **N6** Full backup **restore** (export exists; import is contacts-only) | 3 | M | — | new (gap) |
 | 29 | **N5** Bulk operations (tag / circle / archive / delete) | 3 | M | T4 | new (gap) |
@@ -270,6 +288,7 @@ happens, T17 in particular is pre-alpha work buying nothing. See the open questi
 | 41 | **P2** Other integrations (Dawarich, Jellyfin, Paperless-ngx, …) | 2 | — | T14 | `92.7` |
 | 42 | **P3** AI / Ollama layer | 1 | — | most of the above | `92.7`, `90` D1 |
 | 43 | **P4** Local-model code-gen pilot | 1 | — | mobile client work | `80` |
+| 44 | **T29** Contact field gaps — neutral-model richness not yet in frontend UI (→ v0.2.0) | **5** | L | — | new (field-gap audit) |
 
 ### ⚠ The ordering rules produce an alpha with no rating-5 capability in it
 
