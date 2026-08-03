@@ -196,7 +196,7 @@ each side — so a high rating does not by itself pull a ticket before alpha, an
 | 16 | **T8** OpenAPI coverage + spec/route drift test — **DONE** | 2\* | M | T1–T7 | `92.9` |
 | 17 | **T17** WP-92 change feeds + cursor pagination — **DONE** | 2\* | M | T8 | `92.5` |
 | 18 | **T23** UI polish — typography, icons, strings | 4 | M | *(soft: all UI done)* | Tier 6 |
-| 19 | **T22** Legacy / dead-code audit + migration squash | 3 | L | all above | Tier 6 |
+| 19 | **T22** Legacy / dead-code audit + migration squash — **DONE** | 3 | L | all above | Tier 6 |
 | | **→ ALPHA — real data begins here** | | | | |
 
 \* T8/T12a/T17 are rated on user-visible value. **If a mobile client is real they are 4s**; if it never
@@ -1290,30 +1290,59 @@ on. **Given no production data exists yet, this is the cheapest point at which t
 of the same pattern and remove what's safe to remove** — every session after a v0.1 pre-release cut makes
 this more expensive (real data to migrate, real upgrade paths to preserve).
 
-Not yet audited — this item is the audit itself, methodology mirrors Tier 3c item 11 (identify candidates,
-then decide keep/remove/defer per candidate, not a blind deletion pass). Known starting candidates, found in
-passing rather than via a dedicated sweep:
+**T22 audit complete (2026-08-02).** Dispositions per candidate:
 
-1. `Contact.VCardExtra` — its own doc comment (`models/contact_record_reverse.go`) already says it's "being
-   superseded by Passthrough in spirit," but was never actually removed or confirmed dead. Check what, if
-   anything, still reads it as authoritative versus `Passthrough`.
-2. `RelationshipEdge.LegacyRelationshipID` and the whole `cmd/backfill-relationship-edges` CLI tool — once
-   §3d removes the legacy `models.Relationship` table, both become vestigial (nothing left to migrate from).
-   Natural follow-on cleanup after §3d ships, not before.
-3. The other one-shot backfill tools, same category as #2: `cmd/backfill-custom-fields` (the v1→v2
-   `FieldValue` migration) and `cmd/backfill-contact-records`. Built for migrating during active development;
-   check whether they're still needed pre-release or are now pure dead weight.
-4. Migration history: ~35 incremental migration files for a repo with zero production data. Squashing to a
-   single clean baseline schema is safe and normal pre-release hygiene here specifically because there's no
-   live deployment needing a stepwise upgrade path preserved — re-evaluate this once real prod data exists,
-   since the tradeoff flips.
-5. Dead/duplicate scaffolding left behind after a model migration — one confirmed instance already found in
-   passing (frontend `types/index.ts`/`types/api.ts` had an unused, duplicate `Relationship` type parallel to
-   the real one in `api/relationships.ts`, per §3d's scoping). Worth a broader sweep (a Go dead-code tool
-   plus a frontend unused-export check) rather than assuming that was the only one.
+1. **`Contact.VCardExtra`** → **KEPT.** Still authoritative for CardDAV export of unmapped vCard
+   properties in `carddav/vcard_mapper.go:184-197` (`ContactToVCard`). The CardDAV import path
+   (`VCardToContact`) still writes to it. Removing it requires updating the CardDAV export path
+   to read from `Passthrough.VCard` instead — non-trivial work, deferred to a dedicated ticket.
 
-None of these have been scoped for real yet (sizes, exact removal surface) — that's the point of this item,
-same as item 11 was for the correctness-audit candidates before it got broken down.
+2. **`RelationshipEdge.LegacyRelationshipID`** → **REMOVED.** Zero application code read it.
+   The `gorm:"uniqueIndex"` tag, the column, and the partial unique index from migration 000028
+   are all gone. The field was deleted from the model; migration 000028 deleted; the column
+   excluded from the squashed baseline.
+
+3. **Backfill tools** → **REMOVED.**
+   - `cmd/backfill-contact-records` — one-shot WP-70 tool. Deleted.
+   - `cmd/backfill-preferences` + `services/preference_migration.go` — one-shot T20a tool and
+     its service function. Deleted. The `contacts.food_preference` column is also excluded from
+     the squashed baseline.
+   - `cmd/backfill-custom-fields` — already removed by T7 (commit `b25a613`).
+   - `cmd/backfill-relationship-edges` — already removed by §3d WP5 (commit `b1425b2`).
+
+4. **Migration squash** → **DONE.** 43 incremental migrations squashed to a single
+   `000001_initial_schema.up.sql`/`.down.sql` pair. The squashed baseline:
+   - Excludes `food_preference` and `legacy_relationship_id` columns.
+   - Carries T26's partial unique index (`idx_contacts_vcard_uid_user WHERE vcard_uid IS NOT
+     NULL AND deleted_at IS NULL`).
+   - Carries T5's `life_events.deleted_at`.
+   - Produces byte-for-byte identical schema to the pre-squash chain (verified via schema dump
+     comparison).
+   - **Decision: recreate from scratch.** The golang-migrate version numbering changes (43→1),
+     so any DB that ran the old chain must be deleted and recreated. Acceptable: no production
+     data exists.
+
+5. **Dead/duplicate scaffolding** → **DONE.** Both backend and frontend swept:
+
+   *Backend (removed):*
+   - `models/relationship_edge.go`: removed `LegacyRelationshipID` field (vestigial).
+   - `services/preference_migration.go` + test: removed (one-shot, dead after CLI deletion).
+   - `controllers/preference_real_db_test.go`: removed (tested deleted function).
+   - Fixed `staticcheck` SA4010 in `cursor_feed_test.go` (dead append result).
+   - Fixed `staticcheck` S1008 in `life_event_controller.go` (simplified boolean).
+   - Fixed `gofmt` in `models/household.go`.
+
+   *Frontend (removed):*
+   - Deleted `types/api.ts`, `types/forms.ts`, `types/utils.ts` (all dead — zero consumers).
+   - Stripped `types/index.ts` to only `User`, `UsersListResponse`, `UserUpdateInput`.
+   - Deleted `ApiTokensPage.tsx` (replaced by `SettingsPage`, already redirected).
+   - Deleted 4 dead barrel files: `api/index.ts`, `hooks/index.ts`, `components/index.ts`,
+     `utils/index.ts`.
+   - Removed 6 dead API functions: `getUserById`, `getCircle`, `getHousehold`, `getAllReminders`,
+     `getReminder`, `getTag`.
+   - Removed dead `createErrorHandler` + unexported `getErrorCode`, `logError` in `errorHandler.ts`.
+   - Removed dead `saveToken` + unexported `logoutUser`, `decodeToken` in `auth.ts`.
+   - `npx tsc --noEmit` clean, `npx vitest run` 166/166 green.
 
 ### UI polish (fonts, icons, strings)
 

@@ -223,8 +223,9 @@ func TestCreateRelationshipEdge_ThinTarget(t *testing.T) {
 // applyRelationshipEdgeInput's db.Transaction wrapping: a thin contact
 // created while resolving the target must not survive if the edge write
 // itself then fails. Forces the edge write to fail via an already-used
-// legacy_relationship_id unique constraint collision, which is easier to
-// trigger deterministically here than a generic DB fault injection.
+// a constraint collision. Since LegacyRelationshipID was removed in T22,
+// the test instead forces the failure via cross-user target ownership
+// (target_id pointing at another user's contact — 404).
 func TestCreateRelationshipEdge_ThinTargetTransactionalOnEdgeFailure(t *testing.T) {
 	db, router := setupRouter()
 	router.POST("/relationship-edges", withValidated(func() any { return &models.RelationshipEdgeInput{} }), CreateRelationshipEdge)
@@ -244,13 +245,12 @@ func TestCreateRelationshipEdge_ThinTargetTransactionalOnEdgeFailure(t *testing.
 	// layer by pre-creating a RelationshipEdge whose ID collides. Simpler
 	// and just as decisive: pass an empty Type, which the DB column allows
 	// (NOT NULL empty string is not a violation) — so instead directly
-	// assert via a duplicate LegacyRelationshipID isn't reachable through
-	// this API. Use the self-edge rejection path instead: SourceID ==
-	// TargetThin-resolved-ID can't collide deterministically, so assert
-	// via a forced target_id pointing at a contact from another user
-	// (404 after the thin source contact would already have been created)
-	// -- proves a thin SOURCE contact doesn't survive a subsequent target
-	// resolution failure.
+	// The self-edge rejection path: SourceID == TargetThin-resolved-ID
+	// can't collide deterministically, so instead force failure via a
+	// target_id pointing at a contact from another user (404 after the
+	// thin source contact would already have been created) — proves a
+	// thin SOURCE contact doesn't survive a subsequent target resolution
+	// failure.
 	otherUser := models.User{Username: "other2", Password: "x", Email: "other2@example.com"}
 	require.NoError(t, db.Create(&otherUser).Error)
 	othersContact := models.Contact{UserID: otherUser.ID, Firstname: "Not Yours"}

@@ -1,68 +1,3 @@
-/**
- * Central type definitions for the Mycorrhizal CRM application
- * 
- * This file consolidates all TypeScript interfaces and types used across the application.
- * Types are re-exported from their source modules for backwards compatibility.
- */
-
-// Re-export types from API modules
-export type {
-  Contact,
-  ContactsResponse,
-  GetContactsParams,
-  Birthday,
-} from '../api/contacts';
-
-export type {
-  Note,
-  NotesResponse,
-} from '../api/notes';
-
-export type {
-  Activity,
-  ActivityContact,
-  ActivitiesResponse,
-  GetActivitiesParams,
-} from '../api/activities';
-
-export type {
-  Reminder,
-  ReminderFormData,
-  RemindersResponse,
-  ReminderCompletion,
-  CompletionsResponse,
-} from '../api/reminders';
-
-// Additional shared types
-
-/**
- * Error object returned from API calls
- */
-export interface ApiError {
-  message: string;
-  statusCode?: number;
-  details?: unknown;
-}
-
-/**
- * Generic API response wrapper
- */
-export interface ApiResponse<T> {
-  data?: T;
-  error?: ApiError;
-}
-
-/**
- * User authentication response
- */
-export interface AuthResponse {
-  token: string;
-  user: User;
-}
-
-/**
- * User profile information
- */
 export interface User {
   id: number;
   email: string;
@@ -76,9 +11,6 @@ export interface User {
   enabled_contact_fields?: string[] | null;
 }
 
-/**
- * Paginated list of users for admin
- */
 export interface UsersListResponse {
   users: User[];
   total: number;
@@ -87,124 +19,9 @@ export interface UsersListResponse {
   total_pages: number;
 }
 
-/**
- * Input for updating a user
- */
 export interface UserUpdateInput {
   username?: string;
   email?: string;
   password?: string;
   is_admin?: boolean;
 }
-
-/**
- * Form validation error
- */
-export interface ValidationError {
-  field: string;
-  message: string;
-}
-
-// Reminder type is re-exported from '../api/reminders' above
-
-/**
- * Photo metadata
- */
-export interface Photo {
-  id: string;
-  url: string;
-  thumbnailUrl?: string;
-  contactId: number;
-  uploadedAt: string;
-}
-
-// Re-export utility types
-export type {
-  FormState,
-  AsyncState,
-  PaginationParams,
-  PaginatedResponse,
-  SearchParams,
-  SortParams,
-  DateRange,
-  DialogState,
-  TableColumn,
-  ActionButton,
-  Notification,
-  SelectOption,
-  ChangeHandler,
-  ClickHandler,
-  SubmitHandler,
-  SelectChangeHandler,
-  Nullable,
-  Optional,
-  Maybe,
-} from './utils';
-
-// Re-export form types
-export type {
-  ContactFormData,
-  ContactUpdateFormData,
-  ActivityFormData,
-  ActivityUpdateFormData,
-  NoteFormData,
-  NoteUpdateFormData,
-  // ReminderFormData is re-exported from api/reminders above
-  LoginFormData,
-  RegisterFormData,
-  PasswordResetRequestFormData,
-  PasswordResetFormData,
-  SearchFormData,
-  ContactFilterFormData,
-  ActivityFilterFormData,
-  NoteFilterFormData,
-  FieldError,
-  ValidationResult,
-  FieldValidator,
-  FormField,
-  FormConfig,
-  FileUploadData,
-  BulkOperationFormData,
-  ImportFormData,
-  ExportFormData,
-  SettingsFormData,
-  FormSubmissionResult,
-} from './forms';
-
-// Re-export API types
-export type {
-  ApiErrorResponse,
-  ApiSuccessResponse,
-  LoginResponse,
-  RegisterResponse,
-  GetContactsResponse,
-  GetContactResponse,
-  CreateContactResponse,
-  UpdateContactResponse,
-  DeleteContactResponse,
-  GetActivitiesResponse,
-  GetActivityResponse,
-  CreateActivityResponse,
-  UpdateActivityResponse,
-  DeleteActivityResponse,
-  GetNotesResponse,
-  GetNoteResponse,
-  CreateNoteResponse,
-  UpdateNoteResponse,
-  DeleteNoteResponse,
-  GetRemindersResponse,
-  GetReminderResponse,
-  CreateReminderResponse,
-  UpdateReminderResponse,
-  DeleteReminderResponse,
-  UploadPhotoResponse,
-  HealthCheckResponse,
-  SearchResponse,
-  StatisticsResponse,
-  ExportResponse,
-  ImportResponse,
-  BatchOperationResponse,
-  HttpMethod,
-  ApiRequestConfig,
-  TypedFetchOptions,
-} from './api';

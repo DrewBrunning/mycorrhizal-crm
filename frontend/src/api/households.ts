@@ -97,15 +97,6 @@ export async function createHousehold(input: HouseholdInput): Promise<Household>
   return result.household;
 }
 
-// GET /households/:id
-export async function getHousehold(id: string): Promise<HouseholdWithMembers> {
-  const response = await apiFetch(`${API_BASE_URL}/households/${id}`, {
-    headers: getAuthHeaders(),
-  });
-  if (!response.ok) throw await parseErrorResponse(response);
-  return response.json();
-}
-
 // PUT /households/:id
 export async function updateHousehold(id: string, input: HouseholdInput): Promise<Household> {
   const response = await apiFetch(`${API_BASE_URL}/households/${id}`, {

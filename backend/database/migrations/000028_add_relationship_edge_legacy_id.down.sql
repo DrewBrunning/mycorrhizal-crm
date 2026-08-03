@@ -1,2 +1,0 @@
-DROP INDEX IF EXISTS idx_relationship_edges_legacy_relationship_id;
-ALTER TABLE relationship_edges DROP COLUMN legacy_relationship_id;
