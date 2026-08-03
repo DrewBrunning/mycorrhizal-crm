@@ -6,7 +6,7 @@ interface BrandLogoProps {
   width?: number | string;
 }
 
-export default function BrandLogo({ height = 'auto', width = '100%' }: BrandLogoProps) {
+export default function BrandLogo({ height = 'auto', width = 'auto' }: BrandLogoProps) {
   const { mode } = useThemePreference();
   const src = mode === 'dark' ? '/mycorrhizal-logo-dark_512.png' : '/mycorrhizal-logo-light_512.png';
 
