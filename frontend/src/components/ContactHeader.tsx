@@ -1,4 +1,4 @@
-import { Box, Card, CardContent, Avatar, Typography, Chip, IconButton, Stack, TextField, Autocomplete, Button, SvgIcon } from '@mui/material';
+import { Box, Card, CardContent, Avatar, Typography, Chip, IconButton, Stack, TextField, Autocomplete, Button, SvgIcon, Menu, MenuItem, ListItemText } from '@mui/material';
 import { useState } from 'react';
 import GroupIcon from '@mui/icons-material/Group';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
@@ -52,7 +52,7 @@ interface ContactHeaderProps {
   onArchiveContact?: () => void;
   onUnarchiveContact?: () => void;
   onMergeContact?: () => void;
-  onExportContact: () => void;
+  onExportContact: (format: string) => void;
 }
 
 export default function ContactHeader({
@@ -83,6 +83,8 @@ export default function ContactHeader({
 }: ContactHeaderProps) {
   const { t } = useTranslation();
   const enabled = enabledFields ?? resolveEnabledFields(null);
+  const [exportMenuAnchor, setExportMenuAnchor] = useState<HTMLElement | null>(null);
+  const exportMenuOpen = Boolean(exportMenuAnchor);
   const isOn = (key: ContactFieldKey) => enabled.has(key);
 
   const card = record.card || {};
@@ -317,10 +319,25 @@ export default function ContactHeader({
                           variant="outlined"
                           size="small"
                           startIcon={<SvgIcon><path d={mdiDownloadOutline} /></SvgIcon>}
-                          onClick={onExportContact}
+                          onClick={(e) => setExportMenuAnchor(e.currentTarget)}
                         >
                           {t('contactDetail.exportVCard')}
                         </Button>
+                        <Menu
+                          anchorEl={exportMenuAnchor}
+                          open={exportMenuOpen}
+                          onClose={() => setExportMenuAnchor(null)}
+                        >
+                          <MenuItem onClick={() => { setExportMenuAnchor(null); onExportContact('vcf4'); }}>
+                            <ListItemText>vCard 4.0</ListItemText>
+                          </MenuItem>
+                          <MenuItem onClick={() => { setExportMenuAnchor(null); onExportContact('vcf3'); }}>
+                            <ListItemText>vCard 3.0</ListItemText>
+                          </MenuItem>
+                          <MenuItem onClick={() => { setExportMenuAnchor(null); onExportContact('jscontact'); }}>
+                            <ListItemText>JSContact</ListItemText>
+                          </MenuItem>
+                        </Menu>
                         {onArchiveContact && (
                           <Button
                             variant="outlined"
