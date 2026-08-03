@@ -327,7 +327,7 @@
     "prefer_not_to_say": "Keine Angabe",
     "kind": "Art",
     "individual": "Einzelperson",
-    "pet": "Haustier",
+    "human": "Mensch",
     "animal": "Tier",
     "deleteContact": "Kontakt löschen",
     "confirmDeleteContact": "Möchten Sie {{name}} wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden und löscht auch alle Notizen, Aktivitäten und Erinnerungen, die mit diesem Kontakt verbunden sind.",

@@ -39,7 +39,7 @@ func TestHouseholdSuggestions_RealMigratedSchema(t *testing.T) {
 	adult1 := createHouseholdTestContact(t, db, user.ID, "Alice", "")
 	adult2 := createHouseholdTestContact(t, db, user.ID, "Bob", "")
 	child := createHouseholdTestContact(t, db, user.ID, "Charlie", "")
-	pet := createHouseholdTestContact(t, db, user.ID, "Fluffy", "pet")
+	pet := createHouseholdTestContact(t, db, user.ID, "Fluffy", "animal")
 
 	household := models.Household{UserID: user.ID, Name: "Smith Family", Type: models.HouseholdTypeFamilyUnit}
 	require.NoError(t, db.Create(&household).Error)

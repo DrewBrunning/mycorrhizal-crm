@@ -327,7 +327,7 @@
     "prefer_not_to_say": "Prefer not to say",
     "kind": "Kind",
     "individual": "Individual",
-    "pet": "Pet",
+    "human": "Human",
     "animal": "Animal",
     "deleteContact": "Delete Contact",
     "confirmDeleteContact": "Are you sure you want to delete {{name}}? This action cannot be undone and will also delete all notes, activities, and reminders associated with this contact.",

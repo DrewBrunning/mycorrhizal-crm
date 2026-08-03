@@ -12,7 +12,7 @@ package controllers
 //
 // Per ContactRecordInput's own doc comment (models/contact_summary.go),
 // Card/CRM/Passthrough deliberately carry NO validate tags — only Gender
-// does (`validate:"omitempty,oneof=male female other prefer_not_to_say"`).
+// does (`validate:"omitempty,max=100"`).
 // That is a degradation-policy design choice: unrecognized nested enum
 // values (NameComponent.Kind, PersonalInfo.Kind, ...) must be accepted, not
 // rejected. TestCreateContact_RealValidation_UnusualNestedDataAccepted below
@@ -31,6 +31,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -71,11 +72,12 @@ func baseValidCardJSON() contactmodel.Card {
 	}
 }
 
-func TestCreateContact_RealValidation_InvalidGender(t *testing.T) {
+func TestCreateContact_RealValidation_GenderTooLong(t *testing.T) {
 	_, router := newValidatedContactRouter()
 
+	longGender := strings.Repeat("a", 101)
 	input := models.ContactRecordInput{
-		Gender: "unspecified", // not in male|female|other|prefer_not_to_say
+		Gender: longGender,
 		Card:   baseValidCardJSON(),
 	}
 	body, _ := json.Marshal(input)
@@ -88,6 +90,25 @@ func TestCreateContact_RealValidation_InvalidGender(t *testing.T) {
 	assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 	assert.Equal(t, "VALIDATION_ERROR", resp.Error.Code)
 	assert.Contains(t, resp.Error.Details, "Gender")
+}
+
+func TestCreateContact_RealValidation_FreeTextGenderAccepted(t *testing.T) {
+	_, router := newValidatedContactRouter()
+
+	input := models.ContactRecordInput{
+		Gender: "Non-binary",
+		Card:   baseValidCardJSON(),
+	}
+	body, _ := json.Marshal(input)
+
+	w := doJSONRequest(router, "POST", "/contacts", body)
+
+	assert.Equal(t, http.StatusCreated, w.Code)
+
+	var respBody map[string]any
+	assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &respBody))
+	contact := respBody["contact"].(map[string]any)
+	assert.Equal(t, "Non-binary", contact["gender"])
 }
 
 func TestCreateContact_RealValidation_ValidGenderValues(t *testing.T) {

@@ -327,7 +327,7 @@
     "prefer_not_to_say": "Preferisco non dirlo",
     "kind": "Tipo",
     "individual": "Individuale",
-    "pet": "Animale domestico",
+    "human": "Umano",
     "animal": "Animale",
     "deleteContact": "Elimina Contatto",
     "confirmDeleteContact": "Sei sicuro di voler eliminare {{name}}? Questa azione non può essere annullata ed eliminerà anche tutte le note, attività e promemoria associati a questo contatto.",

@@ -128,7 +128,7 @@ func NewContactSummaryWithRelations(c *Contact) ContactSummaryWithRelations {
 // component present" is not expressible as a simple field-level validator on
 // a nested slice.
 type ContactRecordInput struct {
-	Gender      string                   `json:"gender" validate:"omitempty,oneof=male female other prefer_not_to_say"`
+	Gender      string                   `json:"gender" validate:"omitempty,max=100"`
 	Card        contactmodel.Card        `json:"card"`
 	CRM         contactmodel.CRMEnvelope `json:"crm"`
 	Passthrough contactmodel.Passthrough `json:"passthrough"`

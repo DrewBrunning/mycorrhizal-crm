@@ -664,7 +664,9 @@ func IsValidPhone(phone string) bool {
 	return len(cleaned) >= 5 && len(cleaned) <= 20
 }
 
-// NormalizeGender converts various gender inputs to valid enum values
+// NormalizeGender canonicalizes common gender inputs to their standard form
+// for consistent display. Unrecognized values are passed through unchanged
+// (gender is free-text in this project).
 func NormalizeGender(input string) string {
 	lower := strings.ToLower(strings.TrimSpace(input))
 	switch lower {
@@ -677,7 +679,7 @@ func NormalizeGender(input string) string {
 	case "prefer not to say", "prefer_not_to_say", "keine angabe":
 		return "other"
 	default:
-		return ""
+		return input
 	}
 }
 

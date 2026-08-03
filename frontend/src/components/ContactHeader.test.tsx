@@ -12,7 +12,7 @@ function baseRecord(overrides: Partial<ContactRecordResponse> = {}): ContactReco
     uid: 'uid-1',
     etag: '',
     card: { name: { components: [{ kind: 'given', value: 'Fluffy' }] } },
-    crm: { kind: 'pet' },
+    crm: { kind: 'animal' },
     ...overrides,
   };
 }
@@ -35,7 +35,7 @@ function renderHeader(props: Partial<React.ComponentProps<typeof ContactHeader>>
     record: baseRecord(),
     profilePic: '',
     editingProfile: false,
-    profileValues: profileValues('pet'),
+    profileValues: profileValues('animal'),
     contactCircles: [],
     contactTags: [],
     allCircles: [],
@@ -58,15 +58,15 @@ function renderHeader(props: Partial<React.ComponentProps<typeof ContactHeader>>
 
 test('view mode labels the contact by its CRM kind (T27)', () => {
   renderHeader();
-  expect(screen.getByText('Pet')).toBeInTheDocument();
+  expect(screen.getByText('Animal')).toBeInTheDocument();
 });
 
-test('view mode does not label an individual-kind contact', () => {
+test('view mode does not label a human-kind contact', () => {
   renderHeader({
-    record: baseRecord({ crm: { kind: 'individual' } }),
-    profileValues: profileValues('individual'),
+    record: baseRecord({ crm: { kind: 'human' } }),
+    profileValues: profileValues('human'),
   });
-  expect(screen.queryByText('Individual')).not.toBeInTheDocument();
+  expect(screen.queryByText('Human')).not.toBeInTheDocument();
 });
 
 test('edit mode shows the Kind dropdown pre-filled with the contact kind', () => {
@@ -79,7 +79,7 @@ test('changing the Kind in edit mode reports the new value upward', async () => 
   renderHeader({ editingProfile: true, onProfileValueChange });
 
   fireEvent.mouseDown(screen.getByLabelText('Kind'));
-  fireEvent.click(await screen.findByText('Animal'));
+  fireEvent.click(await screen.findByText('Human'));
 
-  expect(onProfileValueChange).toHaveBeenCalledWith(expect.objectContaining({ kind: 'animal' }));
+  expect(onProfileValueChange).toHaveBeenCalledWith(expect.objectContaining({ kind: 'human' }));
 });

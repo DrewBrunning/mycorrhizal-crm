@@ -242,14 +242,11 @@ func TestNormalizeGender_PreferNotToSayMapsToOther(t *testing.T) {
 	}
 }
 
-// TestNormalizeGender_UnrecognizedFallsBackGracefully asserts the
-// degradation-policy-required behavior for unrecognized gender text: no
-// error/panic, just an empty string (caller code only calls NormalizeGender
-// when v != "", so the field is simply left blank rather than the import
-// hard-failing).
-func TestNormalizeGender_UnrecognizedFallsBackGracefully(t *testing.T) {
-	assert.Equal(t, "", NormalizeGender("nonbinary"))
-	assert.Equal(t, "", NormalizeGender("xyz123"))
+// TestNormalizeGender_UnrecognizedPassedThrough asserts that
+// unrecognized gender values are preserved as-is (gender is free-text).
+func TestNormalizeGender_UnrecognizedPassedThrough(t *testing.T) {
+	assert.Equal(t, "Non-binary", NormalizeGender("Non-binary"))
+	assert.Equal(t, "xyz123", NormalizeGender("xyz123"))
 	assert.Equal(t, "", NormalizeGender(""))
 }
 

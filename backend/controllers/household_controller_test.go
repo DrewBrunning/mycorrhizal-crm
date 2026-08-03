@@ -348,7 +348,7 @@ func TestSuggestHouseholdRelationships(t *testing.T) {
 	db.First(&user)
 	adult1 := createHouseholdTestContact(t, db, user.ID, "Alice", "")
 	adult2 := createHouseholdTestContact(t, db, user.ID, "Bob", "")
-	pet := createHouseholdTestContact(t, db, user.ID, "Fluffy", "pet")
+	pet := createHouseholdTestContact(t, db, user.ID, "Fluffy", "animal")
 
 	household := models.Household{UserID: user.ID, Name: "Smith Family", Type: models.HouseholdTypeFamilyUnit}
 	require.NoError(t, db.Create(&household).Error)
