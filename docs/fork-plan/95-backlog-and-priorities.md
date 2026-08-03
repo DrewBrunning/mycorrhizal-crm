@@ -198,7 +198,7 @@ each side — so a high rating does not by itself pull a ticket before alpha, an
 | 18 | **T23** UI polish — typography, icons, strings | 4 | M | *(soft: all UI done)* | Tier 6 |
 | 19 | **T22** Legacy / dead-code audit + migration squash — **DONE** | 3 | L | all above | Tier 6 |
 | 20 | **T27** Contact CRM.Kind UI — pet/individual/animal dropdown — **DONE** (`826aca7`) | 3 | S | — | T22 audit finding |
-| 21 | **T28** Mobile contact view layout — scrollable tabs, action collapsing, 360px min-width | **5** | M | — | T23 polish |
+| 21 | **T28** Mobile contact view layout — scrollable tabs, action collapsing, 360px min-width — **DONE** | **5** | M | — | T23 polish |
 | | **→ ALPHA — real data begins here** | | | | |
 
 \* T8/T12a/T17 are rated on user-visible value. **If a mobile client is real they are 4s**; if it never

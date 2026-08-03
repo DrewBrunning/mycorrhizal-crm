@@ -1,5 +1,6 @@
-import { Box, Card, CardContent, Avatar, Typography, Chip, IconButton, Stack, TextField, Autocomplete, Button, SvgIcon, Menu, MenuItem, ListItemText } from '@mui/material';
+import { Box, Card, CardContent, Avatar, Typography, Chip, IconButton, Stack, TextField, Autocomplete, Button, SvgIcon, Menu, MenuItem, ListItemText, ListItemIcon, useTheme, useMediaQuery } from '@mui/material';
 import { useState } from 'react';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 import GroupIcon from '@mui/icons-material/Group';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import EditIcon from '@mui/icons-material/Edit';
@@ -87,6 +88,14 @@ export default function ContactHeader({
   const enabled = enabledFields ?? resolveEnabledFields(null);
   const [exportMenuAnchor, setExportMenuAnchor] = useState<HTMLElement | null>(null);
   const exportMenuOpen = Boolean(exportMenuAnchor);
+  // Overflow menu for the header action buttons on narrow viewports (T28).
+  const [actionsMenuAnchor, setActionsMenuAnchor] = useState<HTMLElement | null>(null);
+  const actionsMenuOpen = Boolean(actionsMenuAnchor);
+  // Collapse the text buttons (stay in touch / merge / export / archive) into
+  // a single overflow menu at phone widths where they cannot fit beside the
+  // name. The edit pencil stays visible at every size.
+  const theme = useTheme();
+  const compactActions = useMediaQuery(theme.breakpoints.down('sm'));
   const isOn = (key: ContactFieldKey) => enabled.has(key);
 
   const card = record.card || {};
@@ -277,7 +286,7 @@ export default function ContactHeader({
                   }}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Typography variant="h5" sx={{ fontWeight: 500, lineHeight: 1.2 }}>
+                    <Typography variant="h5" sx={{ fontWeight: 500, lineHeight: 1.2, overflowWrap: 'anywhere' }}>
                       {displayName}
                     </Typography>
                     <IconButton
@@ -294,75 +303,134 @@ export default function ContactHeader({
                     </IconButton>
                   </Box>
                   <Box sx={{ display: 'flex', gap: 1 }}>
-                    {archived ? (
-                      onUnarchiveContact && (
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          color="success"
-                          startIcon={<UnarchiveIcon />}
-                          onClick={onUnarchiveContact}
-                        >
-                          {t('contactDetail.unarchive')}
-                        </Button>
-                      )
-                    ) : (
+                    {compactActions ? (
                       <>
-                        {onStayInTouch && (
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            startIcon={<AutoModeIcon />}
-                            onClick={onStayInTouch}
-                          >
-                            {t('contactDetail.stayInTouch')}
-                          </Button>
-                        )}
-                        {onMergeContact && (
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            startIcon={<MergeIcon />}
-                            onClick={onMergeContact}
-                          >
-                            {t('contactMerge.mergeButton')}
-                          </Button>
-                        )}
-                        <Button
-                          variant="outlined"
+                        <IconButton
                           size="small"
-                          startIcon={<SvgIcon><path d={mdiDownloadOutline} /></SvgIcon>}
-                          onClick={(e) => setExportMenuAnchor(e.currentTarget)}
+                          aria-label={t('contactDetail.actions')}
+                          onClick={(e) => setActionsMenuAnchor(e.currentTarget)}
                         >
-                          {t('contactDetail.exportVCard')}
-                        </Button>
+                          <MoreVertIcon />
+                        </IconButton>
                         <Menu
-                          anchorEl={exportMenuAnchor}
-                          open={exportMenuOpen}
-                          onClose={() => setExportMenuAnchor(null)}
+                          anchorEl={actionsMenuAnchor}
+                          open={actionsMenuOpen}
+                          onClose={() => setActionsMenuAnchor(null)}
                         >
-                          <MenuItem onClick={() => { setExportMenuAnchor(null); onExportContact('vcf4'); }}>
-                            <ListItemText>vCard 4.0</ListItemText>
-                          </MenuItem>
-                          <MenuItem onClick={() => { setExportMenuAnchor(null); onExportContact('vcf3'); }}>
-                            <ListItemText>vCard 3.0</ListItemText>
-                          </MenuItem>
-                          <MenuItem onClick={() => { setExportMenuAnchor(null); onExportContact('jscontact'); }}>
-                            <ListItemText>JSContact</ListItemText>
-                          </MenuItem>
+                          {archived ? (
+                            onUnarchiveContact && (
+                              <MenuItem key="unarchive" onClick={() => { setActionsMenuAnchor(null); onUnarchiveContact(); }}>
+                                <ListItemIcon><UnarchiveIcon fontSize="small" /></ListItemIcon>
+                                <ListItemText>{t('contactDetail.unarchive')}</ListItemText>
+                              </MenuItem>
+                            )
+                          ) : (
+                            [
+                              onStayInTouch && (
+                                <MenuItem key="stay-in-touch" onClick={() => { setActionsMenuAnchor(null); onStayInTouch(); }}>
+                                  <ListItemIcon><AutoModeIcon fontSize="small" /></ListItemIcon>
+                                  <ListItemText>{t('contactDetail.stayInTouch')}</ListItemText>
+                                </MenuItem>
+                              ),
+                              onMergeContact && (
+                                <MenuItem key="merge" onClick={() => { setActionsMenuAnchor(null); onMergeContact(); }}>
+                                  <ListItemIcon><MergeIcon fontSize="small" /></ListItemIcon>
+                                  <ListItemText>{t('contactMerge.mergeButton')}</ListItemText>
+                                </MenuItem>
+                              ),
+                              <MenuItem key="vcf4" onClick={() => { setActionsMenuAnchor(null); onExportContact('vcf4'); }}>
+                                <ListItemIcon><SvgIcon fontSize="small"><path d={mdiDownloadOutline} /></SvgIcon></ListItemIcon>
+                                <ListItemText>vCard 4.0</ListItemText>
+                              </MenuItem>,
+                              <MenuItem key="vcf3" onClick={() => { setActionsMenuAnchor(null); onExportContact('vcf3'); }}>
+                                <ListItemIcon><SvgIcon fontSize="small"><path d={mdiDownloadOutline} /></SvgIcon></ListItemIcon>
+                                <ListItemText>vCard 3.0</ListItemText>
+                              </MenuItem>,
+                              <MenuItem key="jscontact" onClick={() => { setActionsMenuAnchor(null); onExportContact('jscontact'); }}>
+                                <ListItemIcon><SvgIcon fontSize="small"><path d={mdiDownloadOutline} /></SvgIcon></ListItemIcon>
+                                <ListItemText>JSContact</ListItemText>
+                              </MenuItem>,
+                              onArchiveContact && (
+                                <MenuItem key="archive" onClick={() => { setActionsMenuAnchor(null); onArchiveContact(); }}>
+                                  <ListItemIcon><ArchiveIcon fontSize="small" /></ListItemIcon>
+                                  <ListItemText>{t('contactDetail.archive')}</ListItemText>
+                                </MenuItem>
+                              ),
+                            ]
+                          )}
                         </Menu>
-                        {onArchiveContact && (
+                      </>
+                    ) : (
+                      archived ? (
+                        onUnarchiveContact && (
                           <Button
                             variant="outlined"
                             size="small"
-                            color="warning"
-                            startIcon={<ArchiveIcon />}
-                            onClick={onArchiveContact}
+                            color="success"
+                            startIcon={<UnarchiveIcon />}
+                            onClick={onUnarchiveContact}
                           >
-                            {t('contactDetail.archive')}
+                            {t('contactDetail.unarchive')}
                           </Button>
-                        )}
-                      </>
+                        )
+                      ) : (
+                        <>
+                          {onStayInTouch && (
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              startIcon={<AutoModeIcon />}
+                              onClick={onStayInTouch}
+                            >
+                              {t('contactDetail.stayInTouch')}
+                            </Button>
+                          )}
+                          {onMergeContact && (
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              startIcon={<MergeIcon />}
+                              onClick={onMergeContact}
+                            >
+                              {t('contactMerge.mergeButton')}
+                            </Button>
+                          )}
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            startIcon={<SvgIcon><path d={mdiDownloadOutline} /></SvgIcon>}
+                            onClick={(e) => setExportMenuAnchor(e.currentTarget)}
+                          >
+                            {t('contactDetail.exportVCard')}
+                          </Button>
+                          <Menu
+                            anchorEl={exportMenuAnchor}
+                            open={exportMenuOpen}
+                            onClose={() => setExportMenuAnchor(null)}
+                          >
+                            <MenuItem onClick={() => { setExportMenuAnchor(null); onExportContact('vcf4'); }}>
+                              <ListItemText>vCard 4.0</ListItemText>
+                            </MenuItem>
+                            <MenuItem onClick={() => { setExportMenuAnchor(null); onExportContact('vcf3'); }}>
+                              <ListItemText>vCard 3.0</ListItemText>
+                            </MenuItem>
+                            <MenuItem onClick={() => { setExportMenuAnchor(null); onExportContact('jscontact'); }}>
+                              <ListItemText>JSContact</ListItemText>
+                            </MenuItem>
+                          </Menu>
+                          {onArchiveContact && (
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              color="warning"
+                              startIcon={<ArchiveIcon />}
+                              onClick={onArchiveContact}
+                            >
+                              {t('contactDetail.archive')}
+                            </Button>
+                          )}
+                        </>
+                      )
                     )}
                   </Box>
                 </Box>

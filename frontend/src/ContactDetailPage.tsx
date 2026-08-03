@@ -45,6 +45,10 @@ import {
   Tab,
   Typography,
   SvgIcon,
+  TextField,
+  MenuItem,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import { ContactDetailHeaderSkeleton, TimelineSkeleton } from './components/LoadingSkeletons';
 import { mdiNotePlusOutline, mdiCalendarPlus } from '@mdi/js';
@@ -132,10 +136,9 @@ export default function ContactDetailPage() {
     suffix: '',
     nickname: '',
     gender: '',
-    // CRMEnvelope.Kind (T27): individual|pet|animal. Defaults to individual
-    // so the header's select always has a valid selection — the suggestion
-    // engine treats it the same as an unset kind (classAdult).
-    kind: 'individual'
+    // CRMEnvelope.Kind (T27): human|animal. Defaults to human so the
+    // header's Kind select always has a valid selection.
+    kind: 'human'
   });
 
   // Circle/Tag state (T4 — real entities instead of flat strings)
@@ -167,6 +170,11 @@ export default function ContactDetailPage() {
 
   // Tab state
   const [activeTab, setActiveTab] = useState(0);
+  // On viewports ≤600px, swap the horizontal tab bar for a dropdown
+  // Select so tabs never get cut off and always accept touch selection
+  // (T28).
+  const theme = useTheme();
+  const compactTabs = useMediaQuery(theme.breakpoints.down('sm'));
 
   // Profile picture upload state
   const [profilePictureDialogOpen, setProfilePictureDialogOpen] = useState(false);
@@ -645,14 +653,14 @@ export default function ContactDetailPage() {
       suffix: nameComponentValue(components, 'generation') || '',
       nickname: record.card?.nicknames?.[0]?.name || '',
       gender: record.gender ? record.gender.toLowerCase() : '',
-      kind: record.crm?.kind || 'individual'
+      kind: record.crm?.kind || 'human'
     });
     setEditingProfile(true);
   };
 
   const handleCancelEditProfile = () => {
     setEditingProfile(false);
-    setProfileValues({ prefix: '', firstname: '', middle_name: '', lastname: '', suffix: '', nickname: '', gender: '', kind: 'individual' });
+    setProfileValues({ prefix: '', firstname: '', middle_name: '', lastname: '', suffix: '', nickname: '', gender: '', kind: 'human' });
   };
 
   const handleSaveProfile = async () => {
@@ -843,10 +851,12 @@ export default function ContactDetailPage() {
         />
       )}
 
-      {/* General Information and Timeline - Two Column Layout */}
+      {/* General Information and Timeline — two columns at `lg`+ only so
+          tablets and phones always get a full-width single-column layout
+          where no content gets squeezed (T28). */}
       <Box sx={{ 
         display: 'flex', 
-        flexDirection: { xs: 'column', md: 'row' }, 
+        flexDirection: { xs: 'column', lg: 'row' }, 
         gap: 2 
       }}>
         {/* General Information */}
@@ -893,13 +903,27 @@ export default function ContactDetailPage() {
         />
 
         {/* Timeline and Reminders Tabs */}
-        <Card sx={{ flex: 1 }}>
-          <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-            <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)} aria-label="timeline and reminders tabs">
-              <Tab label={t('contactDetail.timeline')} />
-              <Tab label={t('reminders.title')} />
-            </Tabs>
-          </Box>
+        <Card sx={{ flex: 1, minWidth: 0 }}>
+          {compactTabs ? (
+            <TextField
+              select
+              size="small"
+              value={activeTab}
+              onChange={(e) => setActiveTab(Number(e.target.value))}
+              sx={{ m: 1, minWidth: 160 }}
+              aria-label="timeline and reminders sections"
+            >
+              <MenuItem value={0}>{t('contactDetail.timeline')}</MenuItem>
+              <MenuItem value={1}>{t('reminders.title')}</MenuItem>
+            </TextField>
+          ) : (
+            <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+              <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)} aria-label="timeline and reminders tabs">
+                <Tab label={t('contactDetail.timeline')} />
+                <Tab label={t('reminders.title')} />
+              </Tabs>
+            </Box>
+          )}
 
           {/* Tab Panel 0: Timeline - Notes and Activities */}
           {activeTab === 0 && (

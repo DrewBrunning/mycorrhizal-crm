@@ -135,8 +135,8 @@ export default function AddNoteDialog({ open, onClose, onSave, noteContactId, no
               renderInput={(params) => (
                 <TextField
                   {...params}
-                  label={t('inbox.assignContact')}
-                  placeholder={t('inbox.searchContacts')}
+                  label={t('notes.assignContact')}
+                  placeholder={t('notes.searchContacts')}
                   InputProps={{
                     ...params.InputProps,
                     endAdornment: (
@@ -149,7 +149,7 @@ export default function AddNoteDialog({ open, onClose, onSave, noteContactId, no
                 />
               )}
               isOptionEqualToValue={(option, value) => option.ID === value.ID}
-              noOptionsText={searchInput ? t('inbox.noContactsFound') : t('inbox.typeToSearch')}
+              noOptionsText={searchInput ? t('notes.noContactsFound') : t('notes.typeToSearch')}
             />
           )}
           <TextField

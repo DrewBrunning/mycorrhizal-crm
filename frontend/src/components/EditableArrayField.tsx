@@ -83,7 +83,7 @@ export default function EditableArrayField<T>({
         <Typography variant="caption" color="text.secondary">
           {label}
         </Typography>
-        <Box sx={{ wordBreak: 'break-word' }}>{renderDisplay(value)}</Box>
+        <Box sx={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{renderDisplay(value)}</Box>
       </Box>
       <IconButton
         className="edit-button"

@@ -110,7 +110,7 @@ export default function ReminderList({
             <CardContent>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <Box sx={{ flexGrow: 1 }}>
-                  <Typography variant="body1" gutterBottom>
+                  <Typography variant="body1" gutterBottom sx={{ overflowWrap: 'anywhere' }}>
                     {reminder.message}
                   </Typography>
                   

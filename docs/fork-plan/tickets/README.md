@@ -34,8 +34,8 @@ dependency → pre/post-alpha risk → usefulness rating → size.
 | [17](17-T17-change-feeds.md) | T17 · Change feeds + cursor pagination | 2\* | M | **DONE** |
 | [18](18-T23-ui-polish.md) | T23 · UI polish | 4 | M | **DONE** |
 | [19](19-T22-legacy-audit.md) | T22 · Legacy/dead-code audit + migration squash | 3 | L | **DONE** |
-| [20](20-T27-crm-kind-ui.md) | T27 · Contact CRM.Kind UI (individual/pet/animal) | 3 | S | |
-| [21](21-T28-mobile-contact-layout.md) | T28 · Mobile contact view layout fixes | 5 | M | |
+| [20](20-T27-crm-kind-ui.md) | T27 · Contact CRM.Kind UI (individual/pet/animal) | 3 | S | **DONE** |
+| [21](21-T28-mobile-contact-layout.md) | T28 · Mobile contact view layout fixes | 5 | M | **DONE** |
 
 **→ ALPHA — real data begins here**
 

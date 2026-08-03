@@ -49,7 +49,7 @@ export default function PreferenceList({ preferences, onEdit, onDelete }: Prefer
                   />
                 )}
               </Box>
-              <Typography variant="body1">{pref.value}</Typography>
+              <Typography variant="body1" sx={{ overflowWrap: 'anywhere' }}>{pref.value}</Typography>
               {pref.key && (
                 <Typography variant="caption" color="text.secondary">
                   {pref.key}
