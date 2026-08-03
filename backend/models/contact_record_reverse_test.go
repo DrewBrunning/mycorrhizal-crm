@@ -229,6 +229,46 @@ func TestApplyRecordToContact_PreservesUnmappedCardData(t *testing.T) {
 	}
 }
 
+// TestApplyRecordToContact_PreservesCRMKind pins T27's contract: the CRM
+// envelope-side Kind (individual|pet|animal, contactmodel/envelope.go) is
+// set via ApplyRecordToContact exactly like every other CRMEnvelope field,
+// survives a save (it lives only in the crm JSON column — there is no flat
+// scalar home for it, so the cardSetDirectly guard is what keeps it), and
+// round-trips back out through RecordForContact (the read path that reads
+// what is actually persisted). The suggestion engine (services/
+// household_service.go's classifyMember) depends on Contact.CRM.Kind, so a
+// regression here silently reclassifies every pet as an adult.
+func TestApplyRecordToContact_PreservesCRMKind(t *testing.T) {
+	record := &contactmodel.Record{
+		Card: contactmodel.Card{
+			Name: &contactmodel.Name{Components: []contactmodel.NameComponent{{Kind: "given", Value: "Fluffy"}}},
+		},
+		Envelope: contactmodel.CRMEnvelope{Kind: "pet"},
+	}
+
+	c := &Contact{}
+	ApplyRecordToContact(c, record, "")
+
+	if c.CRM.Kind != "pet" {
+		t.Fatalf("c.CRM.Kind = %q, want %q after ApplyRecordToContact", c.CRM.Kind, "pet")
+	}
+
+	// BeforeSave must not re-derive CRM from the (Kind-less) flat fields and
+	// wipe it out — the cardSetDirectly guard's whole job.
+	if err := c.BeforeSave(nil); err != nil {
+		t.Fatalf("BeforeSave returned error: %v", err)
+	}
+	if c.CRM.Kind != "pet" {
+		t.Errorf("c.CRM.Kind after BeforeSave = %q, want %q preserved", c.CRM.Kind, "pet")
+	}
+
+	// RecordForContact (the real read path) must surface it back.
+	got := RecordForContact(c, "", nil)
+	if got == nil || got.Envelope.Kind != "pet" {
+		t.Errorf("RecordForContact.Envelope.Kind = %+v, want %q", got.Envelope.Kind, "pet")
+	}
+}
+
 // TestApplyRecordToContact_ClearsPhoneScalarWhenPhonesRemoved is the
 // regression guard for a real bug found by Tier 3c item 11a's audit
 // (docs/fork-plan/95-backlog-and-priorities.md): applyPhones cleared
