@@ -1,4 +1,4 @@
-import { Box, Card, CardContent, Avatar, Typography, Chip, IconButton, Stack, TextField, Autocomplete, Button } from '@mui/material';
+import { Box, Card, CardContent, Avatar, Typography, Chip, IconButton, Stack, TextField, Autocomplete, Button, SvgIcon, Menu, MenuItem, ListItemText } from '@mui/material';
 import { useState } from 'react';
 import GroupIcon from '@mui/icons-material/Group';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
@@ -11,6 +11,7 @@ import AutoModeIcon from '@mui/icons-material/AutoMode';
 import ArchiveIcon from '@mui/icons-material/Archive';
 import UnarchiveIcon from '@mui/icons-material/Unarchive';
 import MergeIcon from '@mui/icons-material/MergeType';
+import { mdiDownloadOutline } from '@mdi/js';
 import { useTranslation } from 'react-i18next';
 import { ContactFieldKey, resolveEnabledFields } from '../contactFields';
 import { ContactRecordResponse, nameComponentValue } from '../api/contacts';
@@ -51,6 +52,7 @@ interface ContactHeaderProps {
   onArchiveContact?: () => void;
   onUnarchiveContact?: () => void;
   onMergeContact?: () => void;
+  onExportContact: (format: string) => void;
 }
 
 export default function ContactHeader({
@@ -76,10 +78,13 @@ export default function ContactHeader({
   onStayInTouch,
   onArchiveContact,
   onUnarchiveContact,
-  onMergeContact
+  onMergeContact,
+  onExportContact
 }: ContactHeaderProps) {
   const { t } = useTranslation();
   const enabled = enabledFields ?? resolveEnabledFields(null);
+  const [exportMenuAnchor, setExportMenuAnchor] = useState<HTMLElement | null>(null);
+  const exportMenuOpen = Boolean(exportMenuAnchor);
   const isOn = (key: ContactFieldKey) => enabled.has(key);
 
   const card = record.card || {};
@@ -204,19 +209,18 @@ export default function ContactHeader({
                   onChange={(e) => onProfileValueChange({ ...profileValues, nickname: e.target.value })}
                   size="small"
                 />
-                <TextField
-                  select
-                  label={t('contactDetail.gender')}
-                  value={profileValues.gender}
-                  onChange={(e) => onProfileValueChange({ ...profileValues, gender: e.target.value })}
+                <Autocomplete
+                  freeSolo
+                  options={['male', 'female', 'other', 'prefer_not_to_say']}
+                  getOptionLabel={(v) => ['male', 'female', 'other', 'prefer_not_to_say'].includes(v) ? t(`contactDetail.${v}`) : (v || '')}
+                  value={profileValues.gender || null}
+                  onChange={(_, v) => onProfileValueChange({ ...profileValues, gender: v || '' })}
+                  onInputChange={(_, v) => onProfileValueChange({ ...profileValues, gender: v })}
                   size="small"
-                  SelectProps={{ native: true }}
-                >
-                  <option value=""></option>
-                  <option value="male">{t('contactDetail.male')}</option>
-                  <option value="female">{t('contactDetail.female')}</option>
-                  <option value="other">{t('contactDetail.other')}</option>
-                </TextField>
+                  renderInput={(params) => (
+                    <TextField {...params} label={t('contactDetail.gender')} fullWidth />
+                  )}
+                />
                 <Box sx={{ display: 'flex', gap: 1, justifyContent: 'space-between' }}>
                   <IconButton
                     size="small"
@@ -311,6 +315,29 @@ export default function ContactHeader({
                             {t('contactMerge.mergeButton')}
                           </Button>
                         )}
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<SvgIcon><path d={mdiDownloadOutline} /></SvgIcon>}
+                          onClick={(e) => setExportMenuAnchor(e.currentTarget)}
+                        >
+                          {t('contactDetail.exportVCard')}
+                        </Button>
+                        <Menu
+                          anchorEl={exportMenuAnchor}
+                          open={exportMenuOpen}
+                          onClose={() => setExportMenuAnchor(null)}
+                        >
+                          <MenuItem onClick={() => { setExportMenuAnchor(null); onExportContact('vcf4'); }}>
+                            <ListItemText>vCard 4.0</ListItemText>
+                          </MenuItem>
+                          <MenuItem onClick={() => { setExportMenuAnchor(null); onExportContact('vcf3'); }}>
+                            <ListItemText>vCard 3.0</ListItemText>
+                          </MenuItem>
+                          <MenuItem onClick={() => { setExportMenuAnchor(null); onExportContact('jscontact'); }}>
+                            <ListItemText>JSContact</ListItemText>
+                          </MenuItem>
+                        </Menu>
                         {onArchiveContact && (
                           <Button
                             variant="outlined"
@@ -328,7 +355,7 @@ export default function ContactHeader({
                 </Box>
                 {gender && (
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
-                    {t(`contactDetail.${gender}`)}
+                    {['male', 'female', 'other', 'prefer_not_to_say'].includes(gender) ? t(`contactDetail.${gender}`) : gender}
                   </Typography>
                 )}
               </>

@@ -43,11 +43,11 @@ import {
   Button,
   Tabs,
   Tab,
-  Typography
+  Typography,
+  SvgIcon,
 } from '@mui/material';
 import { ContactDetailHeaderSkeleton, TimelineSkeleton } from './components/LoadingSkeletons';
-import NoteIcon from '@mui/icons-material/Note';
-import EventIcon from '@mui/icons-material/Event';
+import { mdiNotePlusOutline, mdiCalendarPlus } from '@mdi/js';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import AddNoteDialog from './components/AddNoteDialog';
 import AddActivityDialog from './components/AddActivityDialog';
@@ -60,6 +60,7 @@ import ContactInformation from './components/ContactInformation';
 import ContactTimeline from './components/ContactTimeline';
 import ProfilePictureUploadDialog from './components/ProfilePictureUploadDialog';
 import { useContactDialogs } from './hooks/useContactDialogs';
+import { exportContact } from './api/export';
 import { useTimelineEditing } from './hooks/useTimelineEditing';
 import { useReminderManagement } from './hooks/useReminderManagement';
 import { useRelationshipEdges } from './hooks/useRelationshipEdges';
@@ -816,6 +817,11 @@ export default function ContactDetailPage() {
         onArchiveContact={record.archived ? undefined : handleArchiveContact}
         onUnarchiveContact={record.archived ? handleUnarchiveContact : undefined}
         onMergeContact={() => setMergeDialogOpen(true)}
+        onExportContact={(format) => {
+          if (record?.uid) {
+            exportContact(format as 'vcf3' | 'vcf4' | 'jscontact', record.uid).catch(() => showError(t('contactDetail.deleteContactError')));
+          }
+        }}
       />
 
       {record && (
@@ -892,7 +898,7 @@ export default function ContactDetailPage() {
             <CardContent sx={{ py: 2 }}>
               <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mb: 1.5, gap: 0.5 }}>
                 <Button 
-                  startIcon={<NoteIcon />} 
+                  startIcon={<SvgIcon><path d={mdiNotePlusOutline} /></SvgIcon>} 
                   onClick={() => setNoteDialogOpen(true)}
                   variant="outlined"
                   size="small"
@@ -900,7 +906,7 @@ export default function ContactDetailPage() {
                   {t('contactDetail.addNote')}
                 </Button>
                 <Button 
-                  startIcon={<EventIcon />} 
+                  startIcon={<SvgIcon><path d={mdiCalendarPlus} /></SvgIcon>} 
                   onClick={() => setActivityDialogOpen(true)}
                   variant="outlined"
                   size="small"
@@ -948,6 +954,8 @@ export default function ContactDetailPage() {
         open={noteDialogOpen}
         onClose={() => setNoteDialogOpen(false)}
         onSave={handleSaveNote}
+        noteContactId={id ? parseInt(id) : undefined}
+        noteContactName={`${firstname}${lastname ? ' ' + lastname : ''}`}
       />
       
       <AddActivityDialog

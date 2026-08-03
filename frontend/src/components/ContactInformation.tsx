@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Card, CardContent, Divider, Stack, Box, Tabs, Tab, Button, Typography } from '@mui/material';
+import { Card, CardContent, Divider, Stack, Box, Tabs, Tab, Button, Typography, SvgIcon } from '@mui/material';
 import EmailIcon from '@mui/icons-material/Email';
 import PhoneIcon from '@mui/icons-material/Phone';
 import CakeIcon from '@mui/icons-material/Cake';
@@ -10,7 +10,7 @@ import BusinessIcon from '@mui/icons-material/Business';
 import BadgeIcon from '@mui/icons-material/Badge';
 import LanguageIcon from '@mui/icons-material/Language';
 import ChatIcon from '@mui/icons-material/Chat';
-import NotesIcon from '@mui/icons-material/Notes';
+import { mdiNoteMultipleOutline } from '@mdi/js';
 import PeopleIcon from '@mui/icons-material/People';
 import AddIcon from '@mui/icons-material/Add';
 import { useTranslation } from 'react-i18next';
@@ -392,7 +392,7 @@ export default function ContactInformation({
 
             {isOn('contact_information') && (
               <EditableField
-                icon={<NotesIcon sx={{ ...iconSx, mt: 0.5 }} />}
+                icon={<SvgIcon sx={{ ...iconSx, mt: 0.5 }}><path d={mdiNoteMultipleOutline} /></SvgIcon>}
                 label={t('contactDetail.additionalInfo')}
                 field="contact_information"
                 value={crm.contact_information || ''}

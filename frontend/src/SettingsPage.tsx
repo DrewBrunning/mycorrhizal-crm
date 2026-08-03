@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Box,
@@ -13,32 +13,145 @@ import {
   TextField,
   Button,
   Stack,
-  Alert
+  Alert,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  IconButton,
+  Chip,
+  CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Tooltip,
 } from '@mui/material';
+import AppDialog from './components/AppDialog';
 import { SelectChangeEvent } from '@mui/material/Select';
 import LanguageIcon from '@mui/icons-material/Language';
 import LockResetIcon from '@mui/icons-material/LockReset';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
-import InfoIcon from '@mui/icons-material/Info';
-import GitHubIcon from '@mui/icons-material/GitHub';
-import Link from '@mui/material/Link';
-import BrandLogo from './components/BrandLogo';
+import KeyIcon from '@mui/icons-material/Key';
+import AddIcon from '@mui/icons-material/Add';
+import BlockIcon from '@mui/icons-material/Block';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { changePassword } from './api/auth';
 import { updateLanguage, updateDateFormat } from './api/users';
 import { ThemePreference, useThemePreference } from './AppThemeProvider';
 import { DateFormat, useDateFormat } from './DateFormatProvider';
+import {
+  getApiTokens,
+  createApiToken,
+  revokeApiToken,
+  ApiToken,
+  ApiTokenScope,
+  ApiTokenCreateResponse,
+  API_TOKEN_EXPIRY_OPTIONS,
+  DEFAULT_API_TOKEN_EXPIRY_DAYS,
+  DEFAULT_API_TOKEN_SCOPE,
+} from './api/apiTokens';
+import { useSnackbar } from './context/SnackbarContext';
+import WebhooksSettings from './components/WebhooksSettings';
 
 export default function SettingsPage() {
   const { t, i18n } = useTranslation();
   const { preference: themePreference, setPreference: setThemePreference } = useThemePreference();
   const { dateFormat, setDateFormat } = useDateFormat();
+  const { showSuccess, showError } = useSnackbar();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
   const [changingPassword, setChangingPassword] = useState(false);
+
+  // API tokens
+  const [tokens, setTokens] = useState<ApiToken[]>([]);
+  const [tokensLoading, setTokensLoading] = useState(true);
+  const [tokensError, setTokensError] = useState('');
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [newTokenName, setNewTokenName] = useState('');
+  const [newTokenExpiryDays, setNewTokenExpiryDays] = useState<number>(DEFAULT_API_TOKEN_EXPIRY_DAYS);
+  const [newTokenScope, setNewTokenScope] = useState<ApiTokenScope>(DEFAULT_API_TOKEN_SCOPE);
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createdToken, setCreatedToken] = useState<ApiTokenCreateResponse | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
+  const [revokingToken, setRevokingToken] = useState<ApiToken | null>(null);
+  const [revokeLoading, setRevokeLoading] = useState(false);
+
+  const fetchTokens = useCallback(async () => {
+    setTokensLoading(true);
+    setTokensError('');
+    try {
+      const response = await getApiTokens();
+      setTokens(response.tokens);
+    } catch (err) {
+      setTokensError(err instanceof Error ? err.message : t('apiTokens.loadError'));
+    } finally {
+      setTokensLoading(false);
+    }
+  }, [t]);
+
+  useEffect(() => {
+    fetchTokens();
+  }, [fetchTokens]);
+
+  const handleCreateToken = async () => {
+    if (!newTokenName.trim()) return;
+    setCreateLoading(true);
+    try {
+      const result = await createApiToken(newTokenName.trim(), newTokenExpiryDays, newTokenScope);
+      setCreateDialogOpen(false);
+      setNewTokenName('');
+      setNewTokenExpiryDays(DEFAULT_API_TOKEN_EXPIRY_DAYS);
+      setNewTokenScope(DEFAULT_API_TOKEN_SCOPE);
+      setCreatedToken(result);
+      setCopied(false);
+      await fetchTokens();
+    } catch (err) {
+      showError(err instanceof Error ? err.message : t('apiTokens.createError'));
+    } finally {
+      setCreateLoading(false);
+    }
+  };
+
+  const handleCopy = () => {
+    if (createdToken) {
+      navigator.clipboard.writeText(createdToken.token);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleRevoke = async () => {
+    if (!revokingToken) return;
+    setRevokeLoading(true);
+    try {
+      await revokeApiToken(revokingToken.id);
+      setRevokeDialogOpen(false);
+      setRevokingToken(null);
+      showSuccess(t('apiTokens.revokeSuccess'));
+      await fetchTokens();
+    } catch (err) {
+      showError(err instanceof Error ? err.message : t('apiTokens.revokeError'));
+    } finally {
+      setRevokeLoading(false);
+    }
+  };
+
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return t('apiTokens.neverUsed');
+    return new Date(dateStr).toLocaleString();
+  };
+
+  const isExpired = (token: ApiToken) =>
+    token.expires_at !== null && new Date(token.expires_at) <= new Date();
 
   const handleLanguageChange = async (event: SelectChangeEvent) => {
     const newLang = event.target.value;
@@ -105,41 +218,6 @@ export default function SettingsPage() {
       <Typography variant="h5" gutterBottom sx={{ mb: 1.5 }}>
         {t('settings.title')}
       </Typography>
-
-      <Card sx={{ mb: 2 }}>
-        <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-            <InfoIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }} />
-            <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-              {t('settings.about.title')}
-            </Typography>
-          </Box>
-          <Divider sx={{ mb: 1.5 }} />
-
-          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-            <BrandLogo height={100} />
-            <Stack spacing={1}>
-              <Typography variant="body2" color="text.secondary">
-                {t('settings.about.description')}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {t('settings.about.contribute')}
-              </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
-                <GitHubIcon sx={{ mr: 1, fontSize: 18, color: 'text.secondary' }} />
-                <Link
-                  href="https://github.com/DrewBrunning/mycorrhizal-crm"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  underline="hover"
-                >
-                  github.com/DrewBrunning/mycorrhizal-crm
-                </Link>
-              </Box>
-            </Stack>
-          </Box>
-        </CardContent>
-      </Card>
 
       <Card sx={{ mb: 2 }}>
         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
@@ -290,6 +368,202 @@ export default function SettingsPage() {
           </form>
         </CardContent>
       </Card>
+
+      <WebhooksSettings />
+
+      <Card sx={{ mb: 2 }}>
+        <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <KeyIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }} />
+              <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                {t('apiTokens.title')}
+              </Typography>
+            </Box>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<AddIcon />}
+              onClick={() => setCreateDialogOpen(true)}
+            >
+              {t('apiTokens.createButton')}
+            </Button>
+          </Box>
+          <Divider sx={{ mb: 1.5 }} />
+          {tokensLoading && <CircularProgress />}
+          {tokensError && <Alert severity="error">{tokensError}</Alert>}
+          {!tokensLoading && !tokensError && (
+            <TableContainer component={Paper} variant="outlined">
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>{t('apiTokens.columns.name')}</TableCell>
+                    <TableCell>{t('apiTokens.columns.scope')}</TableCell>
+                    <TableCell>{t('apiTokens.columns.created')}</TableCell>
+                    <TableCell>{t('apiTokens.columns.lastUsed')}</TableCell>
+                    <TableCell>{t('apiTokens.columns.expires')}</TableCell>
+                    <TableCell>{t('apiTokens.columns.status')}</TableCell>
+                    <TableCell>{t('apiTokens.columns.actions')}</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {tokens.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} align="center">
+                        <Typography color="text.secondary">{t('apiTokens.noTokens')}</Typography>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    tokens.map((token) => (
+                      <TableRow key={token.id}>
+                        <TableCell>{token.name}</TableCell>
+                        <TableCell>
+                          <Chip
+                            label={
+                              token.scope === 'carddav'
+                                ? t('apiTokens.createDialog.scopeCardDAV')
+                                : t('apiTokens.createDialog.scopeFull')
+                            }
+                            size="small"
+                            variant="outlined"
+                          />
+                        </TableCell>
+                        <TableCell>{new Date(token.created_at).toLocaleString()}</TableCell>
+                        <TableCell>{formatDate(token.last_used_at)}</TableCell>
+                        <TableCell>{formatDate(token.expires_at)}</TableCell>
+                        <TableCell>
+                          {token.revoked_at ? (
+                            <Chip label={t('apiTokens.revoked')} color="error" size="small" />
+                          ) : isExpired(token) ? (
+                            <Chip label={t('apiTokens.expired')} color="warning" size="small" />
+                          ) : (
+                            <Chip label={t('apiTokens.active')} color="success" size="small" />
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {!token.revoked_at && !isExpired(token) && (
+                            <Tooltip title={t('apiTokens.revokeDialog.title')}>
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => { setRevokingToken(token); setRevokeDialogOpen(true); }}
+                              >
+                                <BlockIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Create token dialog */}
+      <AppDialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>{t('apiTokens.createDialog.title')}</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            label={t('apiTokens.createDialog.nameLabel')}
+            value={newTokenName}
+            onChange={(e) => setNewTokenName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleCreateToken(); }}
+            fullWidth
+            margin="normal"
+            inputProps={{ maxLength: 100 }}
+          />
+          <TextField
+            select
+            label={t('apiTokens.createDialog.expiryLabel')}
+            value={newTokenExpiryDays}
+            onChange={(e) => setNewTokenExpiryDays(Number(e.target.value))}
+            fullWidth
+            margin="normal"
+          >
+            {API_TOKEN_EXPIRY_OPTIONS.map((days) => (
+              <MenuItem key={days} value={days}>
+                {t('apiTokens.createDialog.expiryDays', { days })}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            label={t('apiTokens.createDialog.scopeLabel')}
+            value={newTokenScope}
+            onChange={(e) => setNewTokenScope(e.target.value as ApiTokenScope)}
+            helperText={
+              newTokenScope === 'carddav'
+                ? t('apiTokens.createDialog.scopeCardDAVHelp')
+                : t('apiTokens.createDialog.scopeFullHelp')
+            }
+            fullWidth
+            margin="normal"
+          >
+            <MenuItem value="full">{t('apiTokens.createDialog.scopeFull')}</MenuItem>
+            <MenuItem value="carddav">{t('apiTokens.createDialog.scopeCardDAV')}</MenuItem>
+          </TextField>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCreateDialogOpen(false)} disabled={createLoading}>
+            {t('common.cancel')}
+          </Button>
+          <Button variant="contained" onClick={handleCreateToken} disabled={createLoading || !newTokenName.trim()}>
+            {t('apiTokens.createDialog.createButton')}
+          </Button>
+        </DialogActions>
+      </AppDialog>
+
+      {/* Token created dialog */}
+      <Dialog open={!!createdToken} onClose={() => setCreatedToken(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>{t('apiTokens.createdDialog.title')}</DialogTitle>
+        <DialogContent>
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            {t('apiTokens.createdDialog.warning')}
+          </Alert>
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <TextField
+              value={createdToken?.token || ''}
+              InputProps={{ readOnly: true }}
+              fullWidth
+              size="small"
+              inputProps={{ style: { fontFamily: 'monospace', fontSize: '0.85rem' } }}
+            />
+            <Tooltip title={copied ? t('apiTokens.createdDialog.copied') : t('apiTokens.createdDialog.copy')}>
+              <IconButton onClick={handleCopy} color={copied ? 'success' : 'default'}>
+                <ContentCopyIcon />
+              </IconButton>
+            </Tooltip>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button variant="contained" onClick={() => setCreatedToken(null)}>
+            {t('apiTokens.createdDialog.done')}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Revoke confirmation dialog */}
+      <Dialog open={revokeDialogOpen} onClose={() => setRevokeDialogOpen(false)}>
+        <DialogTitle>{t('apiTokens.revokeDialog.title')}</DialogTitle>
+        <DialogContent>
+          <Typography>
+            {t('apiTokens.revokeDialog.message', { name: revokingToken?.name || '' })}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRevokeDialogOpen(false)} disabled={revokeLoading}>
+            {t('common.cancel')}
+          </Button>
+          <Button variant="contained" color="error" onClick={handleRevoke} disabled={revokeLoading}>
+            {t('apiTokens.revokeDialog.confirm')}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

@@ -320,15 +320,17 @@ export default function RelationshipEdgeDialog({
           </FormControl>
 
           {!isEditing && entryMode === 'manual' && (
-            <FormControl fullWidth>
-              <InputLabel>{t('contacts.gender')}</InputLabel>
-              <Select value={gender} label={t('contacts.gender')} onChange={(e) => setGender(e.target.value)}>
-                <MenuItem value="">{t('contacts.selectGender')}</MenuItem>
-                <MenuItem value="male">{t('contacts.male')}</MenuItem>
-                <MenuItem value="female">{t('contacts.female')}</MenuItem>
-                <MenuItem value="other">{t('contacts.other')}</MenuItem>
-              </Select>
-            </FormControl>
+            <Autocomplete
+              freeSolo
+              options={['male', 'female', 'other', 'prefer_not_to_say']}
+              getOptionLabel={(v) => ['male', 'female', 'other', 'prefer_not_to_say'].includes(v) ? t(`contacts.${v}`) : (v || '')}
+              value={gender || null}
+              onChange={(_, v) => setGender(v || '')}
+              onInputChange={(_, v) => setGender(v)}
+              renderInput={(params) => (
+                <TextField {...params} label={t('contacts.gender')} fullWidth />
+              )}
+            />
           )}
 
           {!isEditing && entryMode === 'manual' && (

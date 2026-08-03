@@ -9,6 +9,7 @@ import {
   IconButton,
   Popover,
   Chip,
+  SvgIcon,
 } from '@mui/material';
 import {
   Timeline,
@@ -19,7 +20,7 @@ import {
   TimelineDot,
   TimelineOppositeContent,
 } from '@mui/lab';
-import NoteIcon from '@mui/icons-material/Note';
+import { mdiNotePlusOutline, mdiNoteOutline } from '@mdi/js';
 import EditIcon from '@mui/icons-material/Edit';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { ListSkeleton } from './components/LoadingSkeletons';
@@ -172,7 +173,7 @@ const NotesPage: React.FC = () => {
             <InfoOutlinedIcon fontSize="small" />
           </IconButton>
         </Box>
-        <Button variant="outlined" startIcon={<NoteIcon />} onClick={handleAddNote}>
+        <Button variant="outlined" startIcon={<SvgIcon><path d={mdiNotePlusOutline} /></SvgIcon>} onClick={handleAddNote}>
           {t('inbox.addNote')}
         </Button>
       </Box>
@@ -240,7 +241,7 @@ const NotesPage: React.FC = () => {
               </TimelineOppositeContent>
               <TimelineSeparator>
                 <TimelineDot color="primary">
-                  <NoteIcon />
+                  <SvgIcon><path d={mdiNoteOutline} /></SvgIcon>
                 </TimelineDot>
                 {index < notes.length - 1 && <TimelineConnector />}
               </TimelineSeparator>

@@ -564,9 +564,13 @@ func ExportContactsAsVCF(c *gin.Context, photoDir string) {
 		return
 	}
 
-	// Fetch all user contacts
+	// Fetch all user contacts, optionally scoped to a single VCardUID.
+	query := db.Where("user_id = ?", userID)
+	if vcardUID := strings.TrimSpace(c.Query("vcard_uid")); vcardUID != "" {
+		query = query.Where("vcard_uid = ?", vcardUID)
+	}
 	var contacts []models.Contact
-	if err := db.Where("user_id = ?", userID).
+	if err := query.
 		Order("firstname ASC, lastname ASC").
 		Find(&contacts).Error; err != nil {
 		log.Error().Err(err).Msg("Failed to fetch contacts for VCF export")

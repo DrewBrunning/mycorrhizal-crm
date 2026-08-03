@@ -12,7 +12,7 @@ export const HOUSEHOLD_TYPES: HouseholdType[] = ['family_unit', 'roommates', 'ot
 
 // Conventional (not enforced) role tokens, mirroring backend/models/
 // household.go's HouseholdRole* constants.
-export const HOUSEHOLD_ROLES = ['head', 'child', 'pet', 'roommate'] as const;
+export const HOUSEHOLD_ROLES = ['adult', 'child', 'pet', 'roommate'] as const;
 export type HouseholdRole = (typeof HOUSEHOLD_ROLES)[number];
 
 export interface Household {

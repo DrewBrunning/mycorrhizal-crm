@@ -89,7 +89,7 @@ func TestGetHouseholdIncludesMembers(t *testing.T) {
 	db.Create(&contact)
 	household := models.Household{UserID: user.ID, Name: "Smith Family", Type: models.HouseholdTypeFamilyUnit}
 	db.Create(&household)
-	db.Create(&models.HouseholdMember{HouseholdID: household.ID, UserID: user.ID, MemberVCardUID: contact.VCardUID, Role: models.HouseholdRoleHead})
+	db.Create(&models.HouseholdMember{HouseholdID: household.ID, UserID: user.ID, MemberVCardUID: contact.VCardUID, Role: models.HouseholdRoleAdult})
 
 	req, _ := http.NewRequest("GET", "/households/"+household.ID, nil)
 	w := httptest.NewRecorder()
@@ -215,7 +215,7 @@ func TestAddHouseholdMember(t *testing.T) {
 	household := models.Household{UserID: user.ID, Name: "Smith Family", Type: models.HouseholdTypeFamilyUnit}
 	db.Create(&household)
 
-	payload := models.HouseholdMemberInput{MemberVCardUID: contact.VCardUID, Role: models.HouseholdRoleHead}
+	payload := models.HouseholdMemberInput{MemberVCardUID: contact.VCardUID, Role: models.HouseholdRoleAdult}
 	jsonValue, _ := json.Marshal(payload)
 	req, _ := http.NewRequest("POST", "/households/"+household.ID+"/members", bytes.NewBuffer(jsonValue))
 	req.Header.Set("Content-Type", "application/json")
@@ -226,7 +226,7 @@ func TestAddHouseholdMember(t *testing.T) {
 
 	var member models.HouseholdMember
 	require.NoError(t, db.First(&member, "household_id = ?", household.ID).Error)
-	assert.Equal(t, models.HouseholdRoleHead, member.Role)
+	assert.Equal(t, models.HouseholdRoleAdult, member.Role)
 }
 
 func TestAddHouseholdMemberRejectsDuplicate(t *testing.T) {
@@ -352,8 +352,8 @@ func TestSuggestHouseholdRelationships(t *testing.T) {
 
 	household := models.Household{UserID: user.ID, Name: "Smith Family", Type: models.HouseholdTypeFamilyUnit}
 	require.NoError(t, db.Create(&household).Error)
-	db.Create(&models.HouseholdMember{HouseholdID: household.ID, UserID: user.ID, MemberVCardUID: adult1.VCardUID, Role: models.HouseholdRoleHead})
-	db.Create(&models.HouseholdMember{HouseholdID: household.ID, UserID: user.ID, MemberVCardUID: adult2.VCardUID, Role: models.HouseholdRoleHead})
+	db.Create(&models.HouseholdMember{HouseholdID: household.ID, UserID: user.ID, MemberVCardUID: adult1.VCardUID, Role: models.HouseholdRoleAdult})
+	db.Create(&models.HouseholdMember{HouseholdID: household.ID, UserID: user.ID, MemberVCardUID: adult2.VCardUID, Role: models.HouseholdRoleAdult})
 	db.Create(&models.HouseholdMember{HouseholdID: household.ID, UserID: user.ID, MemberVCardUID: pet.VCardUID, Role: models.HouseholdRolePet})
 
 	req, _ := http.NewRequest("POST", "/households/"+household.ID+"/suggest-relationships", nil)

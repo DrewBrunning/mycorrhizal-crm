@@ -16,7 +16,7 @@ const household: Household = {
 };
 
 const members: HouseholdMember[] = [
-  { id: 1, household_id: 'h1', member_vcard_uid: 'alice-uid', role: 'head' },
+  { id: 1, household_id: 'h1', member_vcard_uid: 'alice-uid', role: 'adult' },
   { id: 2, household_id: 'h1', member_vcard_uid: 'bob-uid', role: 'child' },
 ];
 

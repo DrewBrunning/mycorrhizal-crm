@@ -8,6 +8,7 @@ import {
   Box,
   Autocomplete,
   CircularProgress,
+  Chip,
 } from '@mui/material';
 import AppDialog from './AppDialog';
 import { useTranslation } from 'react-i18next';
@@ -36,14 +37,18 @@ interface AddNoteDialogProps {
   open: boolean;
   onClose: () => void;
   onSave: (content: string, date: string, contactId?: number) => Promise<void>;
+  noteContactId?: number;
+  noteContactName?: string;
 }
 
-export default function AddNoteDialog({ open, onClose, onSave }: AddNoteDialogProps) {
+export default function AddNoteDialog({ open, onClose, onSave, noteContactId, noteContactName }: AddNoteDialogProps) {
   const { t } = useTranslation();
   const [content, setContent] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+
+  const lockedContact = noteContactId != null;
 
   const [contacts, setContacts] = useState<ContactBrief[]>([]);
   const [contactsLoading, setContactsLoading] = useState(false);
@@ -87,7 +92,7 @@ export default function AddNoteDialog({ open, onClose, onSave }: AddNoteDialogPr
       await onSave(
         content,
         date,
-        selectedContact?.ID
+        lockedContact ? noteContactId : selectedContact?.ID
       );
       handleClose();
     } catch (err) {
@@ -112,35 +117,41 @@ export default function AddNoteDialog({ open, onClose, onSave }: AddNoteDialogPr
       <DialogTitle>{t('noteDialog.title')}</DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <Autocomplete
-            options={contacts}
-            getOptionLabel={contactLabel}
-            value={selectedContact}
-            onChange={(_, value) => setSelectedContact(value)}
-            onInputChange={(_, value, reason) => {
-              if (reason === 'input') setSearchInput(value);
-            }}
-            loading={contactsLoading}
-            filterOptions={(x) => x}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label={t('inbox.assignContact')}
-                placeholder={t('inbox.searchContacts')}
-                InputProps={{
-                  ...params.InputProps,
-                  endAdornment: (
-                    <>
-                      {contactsLoading ? <CircularProgress color="inherit" size={20} /> : null}
-                      {params.InputProps.endAdornment}
-                    </>
-                  ),
-                }}
-              />
-            )}
-            isOptionEqualToValue={(option, value) => option.ID === value.ID}
-            noOptionsText={searchInput ? t('inbox.noContactsFound') : t('inbox.typeToSearch')}
-          />
+          {lockedContact ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Chip label={noteContactName} size="small" color="primary" />
+            </Box>
+          ) : (
+            <Autocomplete
+              options={contacts}
+              getOptionLabel={contactLabel}
+              value={selectedContact}
+              onChange={(_, value) => setSelectedContact(value)}
+              onInputChange={(_, value, reason) => {
+                if (reason === 'input') setSearchInput(value);
+              }}
+              loading={contactsLoading}
+              filterOptions={(x) => x}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label={t('inbox.assignContact')}
+                  placeholder={t('inbox.searchContacts')}
+                  InputProps={{
+                    ...params.InputProps,
+                    endAdornment: (
+                      <>
+                        {contactsLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                        {params.InputProps.endAdornment}
+                      </>
+                    ),
+                  }}
+                />
+              )}
+              isOptionEqualToValue={(option, value) => option.ID === value.ID}
+              noOptionsText={searchInput ? t('inbox.noContactsFound') : t('inbox.typeToSearch')}
+            />
+          )}
           <TextField
             label={t('noteDialog.content')}
             placeholder={t('noteDialog.contentPlaceholder')}

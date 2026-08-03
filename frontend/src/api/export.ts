@@ -128,6 +128,49 @@ export async function exportContacts(format: ExportFormat, selection: ExportSele
 }
 
 /**
+ * Export a single contact in the given format. Adds ?vcard_uid= to scope the
+ * export to one contact, then delegates to the existing export endpoint.
+ */
+export async function exportContact(format: ExportFormat, vcardUID: string, selection?: ExportSelection): Promise<void> {
+  const sections = selection?.sections ?? EXPORT_FIELD_SECTIONS.map((s) => s.token);
+  const includeSensitive = selection?.includeSensitive ?? false;
+
+  const params = new URLSearchParams();
+  params.set('vcard_uid', vcardUID);
+  sections.forEach((s) => params.append('sections', s));
+  if (includeSensitive) {
+    params.set('include_sensitive', 'true');
+  }
+
+  let endpoint: string;
+  let defaultFilename: string;
+  if (format === 'jscontact') {
+    endpoint = `${API_BASE_URL}/export/jscontact`;
+    defaultFilename = `${vcardUID}.json`;
+  } else {
+    endpoint = `${API_BASE_URL}/export/vcf`;
+    if (format === 'vcf3') {
+      params.set('version', '3');
+      defaultFilename = `${vcardUID}.vcf`;
+    } else {
+      defaultFilename = `${vcardUID}.vcf`;
+    }
+  }
+
+  const response = await apiFetch(`${endpoint}?${params.toString()}`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    const error = await parseErrorResponse(response);
+    throw error;
+  }
+
+  await downloadFileFromResponse(response, defaultFilename);
+}
+
+/**
  * Export all contacts as VCF (vCard 4.0), all sections included
  * Downloads a VCF file containing all contacts with their photos. Sends every
  * section token (the pre-T9 "no selection" default), with sensitivity items
