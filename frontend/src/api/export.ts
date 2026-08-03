@@ -128,12 +128,26 @@ export async function exportContacts(format: ExportFormat, selection: ExportSele
 }
 
 /**
- * Export all contacts as VCF (vCard 4.0), all sections included
- * Downloads a VCF file containing all contacts with their photos. Sends every
- * section token (the pre-T9 "no selection" default), with sensitivity items
- * still opt-out: the backend's §91.13 default-exclude keeps private/secret
- * data out unless include_sensitive is explicitly sent.
+ * Export a single contact as VCF (vCard 4.0), all sections included.
+ * Identical to exportContactsAsVcf but scoped to one VCardUID.
  */
+export async function exportContactAsVcf(vcardUID: string): Promise<void> {
+  const params = new URLSearchParams();
+  params.set('vcard_uid', vcardUID);
+  EXPORT_FIELD_SECTIONS.forEach((s) => params.append('sections', s.token));
+
+  const response = await apiFetch(`${API_BASE_URL}/export/vcf?${params.toString()}`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    const error = await parseErrorResponse(response);
+    throw error;
+  }
+
+  await downloadFileFromResponse(response, `contact-${vcardUID}.vcf`);
+}
 export async function exportContactsAsVcf(): Promise<void> {
   await exportContacts('vcf4', {
     sections: EXPORT_FIELD_SECTIONS.map((s) => s.token),

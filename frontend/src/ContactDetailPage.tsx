@@ -60,6 +60,7 @@ import ContactInformation from './components/ContactInformation';
 import ContactTimeline from './components/ContactTimeline';
 import ProfilePictureUploadDialog from './components/ProfilePictureUploadDialog';
 import { useContactDialogs } from './hooks/useContactDialogs';
+import { exportContactAsVcf } from './api/export';
 import { useTimelineEditing } from './hooks/useTimelineEditing';
 import { useReminderManagement } from './hooks/useReminderManagement';
 import { useRelationshipEdges } from './hooks/useRelationshipEdges';
@@ -816,6 +817,11 @@ export default function ContactDetailPage() {
         onArchiveContact={record.archived ? undefined : handleArchiveContact}
         onUnarchiveContact={record.archived ? handleUnarchiveContact : undefined}
         onMergeContact={() => setMergeDialogOpen(true)}
+        onExportContact={() => {
+          if (record?.uid) {
+            exportContactAsVcf(record.uid).catch(() => showError(t('contactDetail.deleteContactError')));
+          }
+        }}
       />
 
       {record && (

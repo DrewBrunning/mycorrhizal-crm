@@ -1,4 +1,4 @@
-import { Box, Card, CardContent, Avatar, Typography, Chip, IconButton, Stack, TextField, Autocomplete, Button } from '@mui/material';
+import { Box, Card, CardContent, Avatar, Typography, Chip, IconButton, Stack, TextField, Autocomplete, Button, SvgIcon } from '@mui/material';
 import { useState } from 'react';
 import GroupIcon from '@mui/icons-material/Group';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
@@ -11,6 +11,7 @@ import AutoModeIcon from '@mui/icons-material/AutoMode';
 import ArchiveIcon from '@mui/icons-material/Archive';
 import UnarchiveIcon from '@mui/icons-material/Unarchive';
 import MergeIcon from '@mui/icons-material/MergeType';
+import { mdiDownloadOutline } from '@mdi/js';
 import { useTranslation } from 'react-i18next';
 import { ContactFieldKey, resolveEnabledFields } from '../contactFields';
 import { ContactRecordResponse, nameComponentValue } from '../api/contacts';
@@ -51,6 +52,7 @@ interface ContactHeaderProps {
   onArchiveContact?: () => void;
   onUnarchiveContact?: () => void;
   onMergeContact?: () => void;
+  onExportContact: () => void;
 }
 
 export default function ContactHeader({
@@ -76,7 +78,8 @@ export default function ContactHeader({
   onStayInTouch,
   onArchiveContact,
   onUnarchiveContact,
-  onMergeContact
+  onMergeContact,
+  onExportContact
 }: ContactHeaderProps) {
   const { t } = useTranslation();
   const enabled = enabledFields ?? resolveEnabledFields(null);
@@ -310,6 +313,14 @@ export default function ContactHeader({
                             {t('contactMerge.mergeButton')}
                           </Button>
                         )}
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<SvgIcon><path d={mdiDownloadOutline} /></SvgIcon>}
+                          onClick={onExportContact}
+                        >
+                          {t('contactDetail.exportVCard')}
+                        </Button>
                         {onArchiveContact && (
                           <Button
                             variant="outlined"
