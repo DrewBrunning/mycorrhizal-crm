@@ -4551,6 +4551,553 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  # --- ExternalIdentity / ExternalActivity (T14 substrate) ---
+  /external-identities:
+    get:
+      summary: List external identities
+      operationId: listExternalIdentities
+      description: >
+        Cursor-paginated (T17). The generic integration substrate's identity
+        links (this contact IS this thing in that system), filterable by
+        contact (contact_id, a Contact.VCardUID) and system. Hard-delete
+        collection — sync.mode is full_resync.
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, default: 25 }
+        - name: order
+          in: query
+          schema: { type: string, enum: [asc, desc], default: desc }
+        - name: contact_id
+          in: query
+          description: Filter to identities for this Contact.VCardUID.
+          schema: { type: string, format: uuid }
+        - name: system
+          in: query
+          description: Filter by integration system token (e.g. immich).
+          schema: { type: string }
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: A page of identities.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  external_identities:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ExternalIdentity"
+                  total: { type: integer }
+                  next_cursor:
+                    type: string
+                  limit: { type: integer }
+                  sync:
+                    $ref: "#/components/schemas/SyncInfo"
+    post:
+      summary: Create an external identity (link a contact into an external system)
+      operationId: createExternalIdentity
+      description: >
+        The L1 "linking" write of the integration substrate. System + ExternalID
+        are the natural key: creating a duplicate pair is a 409. Response is
+        wrapped in an `external_identity` key.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExternalIdentityInput"
+      responses:
+        "201":
+          description: Identity created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  external_identity:
+                    $ref: "#/components/schemas/ExternalIdentity"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: The entity_id contact was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: The (system, external_id) pair is already linked for this user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /external-identities/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get an external identity
+      operationId: getExternalIdentity
+      responses:
+        "200":
+          description: The identity (raw, not wrapped).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExternalIdentity"
+        "404":
+          description: Identity not found (or not owned by the caller).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      summary: Update an external identity (full replace)
+      operationId: updateExternalIdentity
+      description: Changing the natural key is allowed but collision-checked (409 on clash).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExternalIdentityInput"
+      responses:
+        "200":
+          description: The updated identity (raw, not wrapped).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExternalIdentity"
+        "404":
+          description: Identity or entity_id contact not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: The new natural key collides with another identity.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete an external identity
+      operationId: deleteExternalIdentity
+      description: Hard delete — a re-link must be possible without a unique-index ghost.
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Identity not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /external-activities:
+    get:
+      summary: List external activities
+      operationId: listExternalActivities
+      description: >
+        Cursor-paginated (T17). Enrichment events contributed by external
+        systems, filterable by contact (contact_id — this is what attaches an
+        ExternalActivity into a contact's timeline) and system. Hard-delete
+        collection — sync.mode is full_resync.
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, default: 25 }
+        - name: order
+          in: query
+          schema: { type: string, enum: [asc, desc], default: desc }
+        - name: contact_id
+          in: query
+          description: Filter to events for this Contact.VCardUID.
+          schema: { type: string, format: uuid }
+        - name: system
+          in: query
+          description: Filter by integration system token (e.g. immich).
+          schema: { type: string }
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: A page of activities.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  external_activities:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ExternalActivity"
+                  total: { type: integer }
+                  next_cursor:
+                    type: string
+                  limit: { type: integer }
+                  sync:
+                    $ref: "#/components/schemas/SyncInfo"
+    post:
+      summary: Create an external activity
+      operationId: createExternalActivity
+      description: >
+        The L2 "enrichment" write of the integration substrate: an event that
+        happened in an external system, linkable into the contact's timeline.
+        SourceSystem + ExternalID form the natural key (409 on duplicate).
+        Response is wrapped in an `external_activity` key.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExternalActivityInput"
+      responses:
+        "201":
+          description: Activity created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  external_activity:
+                    $ref: "#/components/schemas/ExternalActivity"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: The entity_id contact was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: The (source_system, external_id) pair already exists for this user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /external-activities/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get an external activity
+      operationId: getExternalActivity
+      responses:
+        "200":
+          description: The activity (raw, not wrapped).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExternalActivity"
+        "404":
+          description: Activity not found (or not owned by the caller).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      summary: Update an external activity (full replace)
+      operationId: updateExternalActivity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExternalActivityInput"
+      responses:
+        "200":
+          description: The updated activity (raw, not wrapped).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExternalActivity"
+        "404":
+          description: Activity or entity_id contact not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: The new natural key collides with another activity.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete an external activity
+      operationId: deleteExternalActivity
+      description: Hard delete — a re-sync can recreate it.
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Activity not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # --- Immich integration (T15/T16) ---
+  /immich/config:
+    get:
+      summary: Get the current user's Immich connection config
+      operationId: getImmichConfig
+      description: >
+        Returns an empty default when not configured (200, not 404). The API
+        key is never returned — only whether one is stored (has_api_key).
+      responses:
+        "200":
+          description: The config (without the API key).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImmichConfigResponse"
+    put:
+      summary: Create or update the current user's Immich connection
+      operationId: saveImmichConfig
+      description: >
+        The API key is encrypted at rest (derived from JWT_SECRET_KEY). An
+        empty api_key on update keeps the stored key; a first-time connect
+        requires one.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImmichConfigInput"
+      responses:
+        "200":
+          description: The updated config (without the API key).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImmichConfigResponse"
+        "400":
+          description: Validation failed, or a first-time connect omitted the API key.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Remove the current user's Immich connection
+      operationId: deleteImmichConfig
+      description: Linked ExternalIdentity/ExternalActivity rows are kept.
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+  /immich/people:
+    get:
+      summary: Browse the user's Immich people (L1 picker)
+      operationId: listImmichPeople
+      description: >
+        Lists every person in the user's Immich instance so the frontend can
+        search by name. Requires a configured connection.
+      responses:
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: The people list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  people:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ImmichPerson"
+        "503":
+          description: Immich unreachable, or the API key is invalid/expired.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /immich/sync:
+    post:
+      summary: Trigger the Immich enrichment sync for the current user
+      operationId: syncImmichNow
+      description: >
+        Runs the same enrichment sync the scheduler runs (T16): pull recent
+        appearances into ExternalActivity rows so they land on contacts'
+        timelines.
+      responses:
+        "200":
+          description: Sync completed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "503":
+          description: Immich unreachable, or the API key is invalid/expired.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /immich/contacts/{vcard_uid}/link:
+    parameters:
+      - name: vcard_uid
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Link an Immich person to a contact
+      operationId: linkImmichContact
+      description: >
+        Persists the link as an ExternalIdentity with system "immich" — never a
+        column on Contact. Body: {person_id, person_name}. 409 on a duplicate
+        link.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                person_id: { type: string }
+                person_name: { type: string }
+      responses:
+        "201":
+          description: Linked.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  external_identity:
+                    $ref: "#/components/schemas/ExternalIdentity"
+        "404":
+          description: Contact not found (or not owned by the caller).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: The person is already linked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Unlink the Immich person from a contact
+      operationId: unlinkImmichContact
+      description: Keeps the contact's ExternalActivity timeline entries.
+      responses:
+        "200":
+          description: Unlinked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: No Immich link for this contact.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /immich/contacts/{vcard_uid}/summary:
+    parameters:
+      - name: vcard_uid
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get a contact's Immich link summary
+      operationId: getImmichContactSummary
+      description: >
+        Photo count + latest appearance for a contact's linked Immich person.
+        No link → summary is null. An unreachable instance degrades to cached
+        metadata rather than erroring the page.
+      responses:
+        "200":
+          description: The summary (or null when no link exists).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  summary:
+                    $ref: "#/components/schemas/ImmichPersonSummary"
+        "503":
+          description: Immich unreachable, or the API key is invalid/expired.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /immich/contacts/{vcard_uid}/thumbnail:
+    parameters:
+      - name: vcard_uid
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Proxy a contact's Immich person thumbnail
+      operationId: getImmichThumbnail
+      description: >
+        Serves the linked person's thumbnail through the same hardening as
+        /proxy/image (SVG rejected, Content-Disposition set).
+      responses:
+        "200":
+          description: The image bytes.
+          content:
+            image/jpeg:
+              schema: { type: string, format: binary }
+        "404":
+          description: No Immich link for this contact.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: Immich unreachable, or the API key is invalid/expired.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   # --- Admin ---
   /admin/users:
     get:
@@ -5408,6 +5955,116 @@ components:
         name: { type: string, minLength: 1, maxLength: 100 }
         gender: { type: string, enum: [male, female, other, prefer_not_to_say] }
         birthday: { type: string, description: "ISO YYYY-MM-DD or year-less --MM-DD." }
+
+    # --- External identity / activity substrate (T14) ---
+    ExternalIdentity:
+      type: object
+      description: >
+        "This contact IS this thing in that external system." Keyed by
+        entity_id (a Contact.VCardUID), never the numeric ID. System-specific
+        data lives in metadata (JSON), never in a per-system column.
+      properties:
+        id: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        entity_id: { type: string, format: uuid }
+        system: { type: string, description: "Integration token, e.g. immich, paperless." }
+        external_id: { type: string }
+        url: { type: string }
+        metadata:
+          type: object
+          additionalProperties: true
+        sync_status: { type: string, enum: [idle, syncing, synced, error] }
+        last_synced_at:
+          type: string
+          format: date-time
+          nullable: true
+    ExternalIdentityInput:
+      type: object
+      required: [entity_id, system, external_id]
+      properties:
+        entity_id: { type: string, format: uuid }
+        system: { type: string }
+        external_id: { type: string }
+        url: { type: string }
+        metadata:
+          type: object
+          additionalProperties: true
+        sync_status: { type: string, enum: [idle, syncing, synced, error] }
+    ExternalActivity:
+      type: object
+      description: >
+        An event contributed by an external system, linkable into a contact's
+        timeline. The CRM stores a reference + timeline entry; the source data
+        stays in the external system.
+      properties:
+        id: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        entity_id: { type: string, format: uuid }
+        source_system: { type: string }
+        external_id: { type: string }
+        type: { type: string, description: "Open classifier, e.g. photo-appearance." }
+        occurred_at: { type: string, format: date-time }
+        payload:
+          type: object
+          additionalProperties: true
+        provenance: { type: string, enum: [external, user] }
+        sync_state: { type: string, enum: [synced, pending] }
+    ExternalActivityInput:
+      type: object
+      required: [entity_id, source_system, external_id, type, occurred_at]
+      properties:
+        entity_id: { type: string, format: uuid }
+        source_system: { type: string }
+        external_id: { type: string }
+        type: { type: string }
+        occurred_at: { type: string, format: date-time }
+        payload:
+          type: object
+          additionalProperties: true
+        provenance: { type: string, enum: [external, user] }
+        sync_state: { type: string, enum: [synced, pending] }
+
+    # --- Immich integration (T15/T16) ---
+    ImmichConfigResponse:
+      type: object
+      description: The API-visible shape of a user's Immich connection. The API key is never exposed.
+      properties:
+        base_url: { type: string }
+        has_api_key: { type: boolean }
+        sync_enabled: { type: boolean }
+        last_synced_at:
+          type: string
+          format: date-time
+          nullable: true
+        last_sync_status: { type: string }
+        last_sync_error: { type: string }
+    ImmichConfigInput:
+      type: object
+      required: [base_url]
+      properties:
+        base_url: { type: string }
+        api_key: { type: string, description: "Write-only: empty on update keeps the stored key; required on first connect." }
+        sync_enabled: { type: boolean }
+    ImmichPerson:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+    ImmichPersonSummary:
+      type: object
+      description: A contact's Immich link plus live (or cached, on failure) person info.
+      properties:
+        identity:
+          $ref: "#/components/schemas/ExternalIdentity"
+        person_name: { type: string }
+        photo_count: { type: integer }
+        latest_asset_id: { type: string }
+        latest_at:
+          type: string
+          format: date-time
+          nullable: true
 
     # --- Life events ---
     LifeEvent:

@@ -259,6 +259,41 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.PUT("/contact-subscriptions/:id", middleware.ValidateJSONMiddleware(&models.ContactSubscriptionInput{}), controllers.UpdateContactSubscription)
 			protected.DELETE("/contact-subscriptions/:id", controllers.DeleteContactSubscription)
 			protected.POST("/contact-subscriptions/:id/sync", controllers.SyncContactSubscription)
+
+			// ExternalIdentity routes (T14 — docs/fork-plan/tickets/
+			// 32-T14-external-link-substrate.md): the generic integration
+			// substrate's link/enrichment CRUD. System-agnostic — no
+			// integration-specific route lives here.
+			protected.POST("/external-identities", middleware.ValidateJSONMiddleware(&models.ExternalIdentityInput{}), controllers.CreateExternalIdentity)
+			protected.GET("/external-identities", controllers.ListExternalIdentities)
+			protected.GET("/external-identities/:id", controllers.GetExternalIdentity)
+			protected.PUT("/external-identities/:id", middleware.ValidateJSONMiddleware(&models.ExternalIdentityInput{}), controllers.UpdateExternalIdentity)
+			protected.DELETE("/external-identities/:id", controllers.DeleteExternalIdentity)
+
+			// ExternalActivity routes (T14): generic enrichment events,
+			// linkable into a contact's timeline via ?contact_id=.
+			protected.POST("/external-activities", middleware.ValidateJSONMiddleware(&models.ExternalActivityInput{}), controllers.CreateExternalActivity)
+			protected.GET("/external-activities", controllers.ListExternalActivities)
+			protected.GET("/external-activities/:id", controllers.GetExternalActivity)
+			protected.PUT("/external-activities/:id", middleware.ValidateJSONMiddleware(&models.ExternalActivityInput{}), controllers.UpdateExternalActivity)
+			protected.DELETE("/external-activities/:id", controllers.DeleteExternalActivity)
+
+			// Immich routes (T15/T16 — docs/fork-plan/tickets/
+			// 33-T15-T16-immich.md): the first concrete integration on the
+			// generic substrate. Config is per-user-global; links are written
+			// as ExternalIdentity (system: "immich"), enrichment as
+			// ExternalActivity. /contacts/:vcard_uid/thumbnail is the hardened
+			// person-thumbnail proxy (same SVG rejection + Content-Disposition
+			// as /proxy/image).
+			protected.GET("/immich/config", controllers.GetImmichConfig)
+			protected.PUT("/immich/config", middleware.ValidateJSONMiddleware(&models.ImmichConfigInput{}), controllers.SaveImmichConfig)
+			protected.DELETE("/immich/config", controllers.DeleteImmichConfig)
+			protected.GET("/immich/people", controllers.ListImmichPeople)
+			protected.POST("/immich/sync", controllers.SyncImmichNow)
+			protected.POST("/immich/contacts/:vcard_uid/link", controllers.LinkImmichContact)
+			protected.DELETE("/immich/contacts/:vcard_uid/link", controllers.UnlinkImmichContact)
+			protected.GET("/immich/contacts/:vcard_uid/summary", controllers.GetImmichContactSummary)
+			protected.GET("/immich/contacts/:vcard_uid/thumbnail", controllers.GetImmichThumbnail)
 		}
 
 		// Admin routes (admin authentication required)

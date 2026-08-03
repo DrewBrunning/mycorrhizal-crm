@@ -36,4 +36,8 @@ const (
 	// JobNameCadenceOverdue is the job name for the daily overdue-cadence
 	// webhook emission job (T19).
 	JobNameCadenceOverdue = "cadence_overdue"
+
+	// JobNameImmichSync is the job name for the scheduled Immich enrichment
+	// sync job (T16).
+	JobNameImmichSync = "immich_sync"
 )

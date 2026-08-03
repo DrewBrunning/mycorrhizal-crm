@@ -470,6 +470,56 @@
     "add": "Hinzufügen",
     "loadMore": "Mehr laden"
   },
+  "externalLinks": {
+    "title": "Externe Verknüpfungen",
+    "otherLinks": "Andere Integrationen",
+    "activity": {
+      "photoAppearance": "Foto-Auftritt",
+      "unknown": "Externes Ereignis: {{type}}",
+      "fromSystem": "{{name}} (über {{system}})"
+    }
+  },
+  "immich": {
+    "settings": {
+      "title": "Immich",
+      "description": "Verbinde eine selbst gehostete Immich-Instanz, um Kontakte mit ihren erkannten Personen zu verknüpfen und Foto-Auftritte auf der Zeitleiste anzuzeigen. Der API-Schlüssel wird verschlüsselt gespeichert und nur zum Lesen von deinem eigenen Server verwendet.",
+      "baseUrl": "Basis-URL",
+      "apiKey": "API-Schlüssel",
+      "apiKeyHintNew": "Füge den Immich-API-Schlüssel aus deinen Kontoeinstellungen ein (Admin → API-Schlüssel).",
+      "apiKeyHintExisting": "Ein Schlüssel ist bereits gespeichert. Lasse das Feld leer, um ihn zu behalten.",
+      "syncEnabled": "Foto-Auftritte automatisch synchronisieren",
+      "saveButton": "Verbindung speichern",
+      "removeButton": "Verbindung entfernen",
+      "removeConfirm": "Immich-Verbindung entfernen? Verknüpfte Kontakte behalten ihre bestehende Foto-Historie.",
+      "baseUrlRequired": "Basis-URL ist erforderlich.",
+      "saved": "Immich-Verbindung gespeichert",
+      "removed": "Immich-Verbindung entfernt",
+      "saveFailed": "Fehler beim Speichern der Immich-Verbindung",
+      "lastSyncError": "Letzte Synchronisierung fehlgeschlagen."
+    },
+    "search": {
+      "title": "Immich-Person verknüpfen",
+      "placeholder": "Personen nach Name suchen…",
+      "loadFailed": "Personen konnten nicht von Immich geladen werden. Ist die Verbindung konfiguriert und erreichbar?",
+      "linkFailed": "Diese Person konnte nicht verknüpft werden.",
+      "noMatches": "Keine passenden Personen. Versuche einen anderen Namen oder prüfe, ob Immich die Gesichtserkennung abgeschlossen hat.",
+      "unnamed": "(unbenannte Person)"
+    },
+    "panel": {
+      "notLinkedTitle": "Immich",
+      "notLinkedHint": "Verknüpfe diesen Kontakt mit einer Person, die dein Immich-Server erkannt hat, um ihre Fotos hier zu sehen.",
+      "linkButton": "Person verknüpfen",
+      "linkedPerson": "Verknüpfte Person",
+      "openInImmich": "In Immich öffnen",
+      "photoCount": "{{count}} Fotos",
+      "latestAppearance": "Letzter Auftritt: {{date}}",
+      "syncNow": "Jetzt synchronisieren",
+      "unlink": "Verknüpfung lösen",
+      "unlinkConfirm": "Person vom Kontakt lösen? Die Foto-Zeitleisten-Einträge bleiben erhalten.",
+      "unlinkFailed": "Die Person konnte nicht gelöst werden."
+    }
+  },
+
   "profilePicture": {
     "title": "Profilbild hochladen",
     "selectImage": "Bild auswählen",

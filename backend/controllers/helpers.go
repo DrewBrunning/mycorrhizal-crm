@@ -112,6 +112,7 @@ var (
 	}
 	FullResyncSyncCollections = []string{
 		"circles", "households", "tags", "relationship_edges", "field_definitions",
+		"external_identities", "external_activities",
 	}
 )
 

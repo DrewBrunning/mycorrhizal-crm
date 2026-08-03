@@ -438,6 +438,20 @@ func DeleteUser(c *gin.Context) {
 			return err
 		}
 
+		// Delete external integration links and enrichment events (T14 —
+		// hard delete, edge/join-shaped)
+		if err := tx.Where("user_id = ?", userID).Delete(&models.ExternalIdentity{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("user_id = ?", userID).Delete(&models.ExternalActivity{}).Error; err != nil {
+			return err
+		}
+
+		// Delete the user's Immich connection config (T15/T16)
+		if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.ImmichConfig{}).Error; err != nil {
+			return err
+		}
+
 		// Delete contacts (hard)
 		if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.Contact{}).Error; err != nil {
 			return err

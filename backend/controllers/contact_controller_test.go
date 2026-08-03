@@ -828,6 +828,9 @@ func TestDeleteContact_CleansUpReferencingRows(t *testing.T) {
 
 	require.NoError(t, db.Create(&models.Gift{UserID: user.ID, EntityID: contact.VCardUID, Description: "A gift idea"}).Error)
 
+	require.NoError(t, db.Create(&models.ExternalIdentity{UserID: user.ID, EntityID: contact.VCardUID, System: "immich", ExternalID: "p-1"}).Error)
+	require.NoError(t, db.Create(&models.ExternalActivity{UserID: user.ID, EntityID: contact.VCardUID, SourceSystem: "immich", ExternalID: "a-1", Type: "photo-appearance", OccurredAt: time.Now()}).Error)
+
 	router.DELETE("/contacts/:id", DeleteContact)
 
 	req, _ := http.NewRequest("DELETE", "/contacts/"+strconv.Itoa(int(contact.ID)), nil)
@@ -850,6 +853,8 @@ func TestDeleteContact_CleansUpReferencingRows(t *testing.T) {
 	assertCount("ContactTag", &models.ContactTag{}, 0, "user_id = ?", user.ID)
 	assertCount("FieldValue", &models.FieldValue{}, 0, "user_id = ?", user.ID)
 	assertCount("Gift", &models.Gift{}, 0, "user_id = ?", user.ID)
+	assertCount("ExternalIdentity", &models.ExternalIdentity{}, 0, "user_id = ?", user.ID)
+	assertCount("ExternalActivity", &models.ExternalActivity{}, 0, "user_id = ?", user.ID)
 	assertCount("ContactSyncLink", &models.ContactSyncLink{}, 0, "user_id = ?", user.ID)
 	assertCount("ReminderCompletion", &models.ReminderCompletion{}, 0, "user_id = ?", user.ID)
 

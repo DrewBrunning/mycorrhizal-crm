@@ -121,6 +121,14 @@ func main() {
 		services.ProcessOverdueCadences(db, *cfg)
 	})
 
+	// Sync Immich enrichment regularly (T16). Job-lock guarded so a
+	// multi-instance deploy does not double-sync.
+	immichSyncTask := func() {
+		services.SyncImmichWithRateLimit(db, *cfg)
+	}
+	s.Every(cfg.ImmichSyncIntervalHours).Hours().Do(immichSyncTask)
+	go safeGo("immich-sync-initial-run", immichSyncTask)
+
 	go s.StartBlocking()
 
 	r := gin.Default()

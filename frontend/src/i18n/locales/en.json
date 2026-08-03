@@ -496,6 +496,55 @@
     "add": "Add",
     "loadMore": "Load more"
   },
+  "externalLinks": {
+    "title": "External Links",
+    "otherLinks": "Other integrations",
+    "activity": {
+      "photoAppearance": "Photo appearance",
+      "unknown": "External event: {{type}}",
+      "fromSystem": "{{name}} (via {{system}})"
+    }
+  },
+  "immich": {
+    "settings": {
+      "title": "Immich",
+      "description": "Connect a self-hosted Immich instance to link contacts to their recognized people and surface photo appearances on their timeline. The API key is stored encrypted and is only used to read from your own server.",
+      "baseUrl": "Base URL",
+      "apiKey": "API Key",
+      "apiKeyHintNew": "Paste the Immich API key from your account settings (Admin → API Keys).",
+      "apiKeyHintExisting": "A key is already stored. Leave the field empty to keep it.",
+      "syncEnabled": "Automatically sync photo appearances",
+      "saveButton": "Save connection",
+      "removeButton": "Remove connection",
+      "removeConfirm": "Remove the Immich connection? Linked contacts keep their existing photo history.",
+      "baseUrlRequired": "Base URL is required.",
+      "saved": "Immich connection saved",
+      "removed": "Immich connection removed",
+      "saveFailed": "Failed to save the Immich connection",
+      "lastSyncError": "Last sync failed."
+    },
+    "search": {
+      "title": "Link an Immich person",
+      "placeholder": "Search people by name…",
+      "loadFailed": "Could not load people from Immich. Is the connection configured and reachable?",
+      "linkFailed": "Could not link this person.",
+      "noMatches": "No people match. Try a different name, or check that Immich has finished face recognition.",
+      "unnamed": "(unnamed person)"
+    },
+    "panel": {
+      "notLinkedTitle": "Immich",
+      "notLinkedHint": "Link this contact to a person recognized by your Immich server to see their photos here.",
+      "linkButton": "Link a person",
+      "linkedPerson": "Linked person",
+      "openInImmich": "Open in Immich",
+      "photoCount": "{{count}} photos",
+      "latestAppearance": "Last appearance: {{date}}",
+      "syncNow": "Sync now",
+      "unlink": "Unlink",
+      "unlinkConfirm": "Unlink this person from the contact? The photo timeline entries are kept.",
+      "unlinkFailed": "Could not unlink the person."
+    }
+  },
   "profilePicture": {
     "title": "Upload Profile Picture",
     "selectImage": "Select an image",
