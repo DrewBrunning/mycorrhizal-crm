@@ -967,5 +967,40 @@
       "valueRequired": "Wert ist erforderlich",
       "saveFailed": "Speichern der Vorliebe fehlgeschlagen"
     }
+  },
+  "cadence": {
+    "title": "Kadenz",
+    "add": "Kadenz hinzufügen",
+    "createTitle": "Kadenz hinzufügen",
+    "editTitle": "Kadenz bearbeiten",
+    "interval": "In Kontakt bleiben",
+    "intervalValue": "alle {{days}} Tage",
+    "intervalDays": "Intervall (Tage)",
+    "intervalHint": "Wie oft du in Kontakt bleiben möchtest.",
+    "intervalRequired": "Gib eine positive Anzahl von Tagen ein.",
+    "qualifyingTypes": "Qualifizierende Interaktionen",
+    "qualifyingHint": "Welche Interaktionsarten diese Kadenz zurücksetzen. Keine Auswahl bedeutet: alle Interaktionsarten außer passiven Foto-Beiträgen zählen.",
+    "types": {
+      "call": "Anruf",
+      "video_call": "Videoanruf",
+      "visit": "Besuch",
+      "meal": "Essen",
+      "gift": "Geschenk",
+      "photo": "Foto",
+      "message": "Nachricht",
+      "shared_activity": "Gemeinsame Aktivität"
+    },
+    "noPolicy": "Für diesen Kontakt ist keine Kadenz festgelegt.",
+    "noInteractionsYet": "Noch keine qualifizierenden Interaktionen – die Kadenz beginnt mit der ersten.",
+    "onTrack": "Im Zeitplan",
+    "overdueBy": "{{days}} Tage überfällig",
+    "nextDue": "Nächster Termin: {{date}}",
+    "lastInteraction": "Letzte Interaktion: {{date}}",
+    "dueOn": "Fällig am {{date}}",
+    "confirmDelete": "Diese Kadenz entfernen?",
+    "loading": "Kadenz wird geladen...",
+    "overdueTitle": "Überfällige Beziehungen",
+    "noOverdue": "Nichts überfällig. Alles im Zeitplan.",
+    "unknownContact": "Unbekannter Kontakt"
   }
 }

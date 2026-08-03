@@ -70,6 +70,7 @@ import { useReminderManagement } from './hooks/useReminderManagement';
 import { useRelationshipEdges } from './hooks/useRelationshipEdges';
 import { useLifeEvents } from './hooks/useLifeEvents';
 import { usePreferences } from './hooks/usePreferences';
+import { useCadencePolicy } from './hooks/useCadencePolicy';
 import { useCircles } from './hooks/useCircles';
 import { useTags } from './hooks/useTags';
 import { useFieldDefinitions } from './hooks/useFieldDefinitions';
@@ -82,6 +83,8 @@ import { Tag } from './api/tags';
 import RelationshipEdgeDialog from './components/RelationshipEdgeDialog';
 import LifeEventDialog from './components/LifeEventDialog';
 import PreferenceDialog, { toPreferenceInput, PreferenceFormData } from './components/PreferenceDialog';
+import CadenceDialog from './components/CadenceDialog';
+import { CadencePolicy, CadencePolicyInput } from './api/cadencePolicies';
 import { Preference } from './api/preferences';
 import { LifeEventFormData } from './components/LifeEventDialog';
 import { getOtherPartyId } from './api/relationshipEdges';
@@ -277,6 +280,36 @@ export default function ContactDetailPage() {
     handleSave: handleSavePreference,
     handleDelete: handleDeletePreference,
   } = usePreferences(record?.uid, { showError });
+
+  const {
+    policy: cadencePolicy,
+    loading: cadenceLoading,
+    handleSave: handleSaveCadence,
+    handleDelete: handleDeleteCadence,
+  } = useCadencePolicy(record?.uid, { showError });
+
+  const [cadenceDialogOpen, setCadenceDialogOpen] = useState(false);
+  const [editingCadence, setEditingCadence] = useState<CadencePolicy | null>(null);
+
+  const handleAddCadence = () => {
+    setEditingCadence(null);
+    setCadenceDialogOpen(true);
+  };
+
+  const handleEditCadence = (policy: CadencePolicy) => {
+    setEditingCadence(policy);
+    setCadenceDialogOpen(true);
+  };
+
+  const handleSaveCadenceSubmit = async (input: CadencePolicyInput) => {
+    if (!record?.uid) return;
+    await handleSaveCadence(input);
+  };
+
+  const handleCadenceDelete = async (_id: string) => {
+    if (!window.confirm(t('cadence.confirmDelete'))) return;
+    await handleDeleteCadence();
+  };
 
   // Custom field definitions (user-wide) + this contact's values (T7).
   const { definitions: fieldDefinitions } = useFieldDefinitions();
@@ -897,6 +930,11 @@ export default function ContactDetailPage() {
           onAddPreference={handleAddPreference}
           onEditPreference={handleEditPreference}
           onDeletePreference={handlePreferenceDelete}
+          cadencePolicy={cadencePolicy}
+          cadenceLoading={cadenceLoading}
+          onAddCadence={handleAddCadence}
+          onEditCadence={handleEditCadence}
+          onDeleteCadence={handleCadenceDelete}
           fieldDefinitions={fieldDefinitions}
           fieldValuesByDefinition={fieldValuesByDefinition}
           onSaveFieldValue={handleSaveFieldValue}
@@ -1082,6 +1120,17 @@ export default function ContactDetailPage() {
         }}
         onSave={handleSavePreferenceSubmit}
         preference={editingPreference}
+      />
+
+      <CadenceDialog
+        open={cadenceDialogOpen}
+        onClose={() => {
+          setCadenceDialogOpen(false);
+          setEditingCadence(null);
+        }}
+        onSave={handleSaveCadenceSubmit}
+        entityId={record?.uid || ''}
+        policy={editingCadence}
       />
     </Box>
   );

@@ -2996,6 +2996,207 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  # --- CadencePolicies (T19) ---
+  /cadence-policies/overdue:
+    get:
+      summary: List overdue cadence policies
+      operationId: listOverdueCadences
+      description: >
+        Every cadence policy that is currently overdue, most-overdue first,
+        joined with the contact's numeric ID and display name. Health is
+        derived from the timeline (never stored); a policy with no qualifying
+        interaction ever can never be overdue.
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: The overdue list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  overdue:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/OverdueCadence"
+  /cadence-policies:
+    get:
+      summary: List cadence policies
+      operationId: listCadencePolicies
+      parameters:
+        - name: cursor
+          in: query
+          description: Opaque resume token from the previous page's next_cursor. Ignored when since is present.
+          schema: { type: string }
+        - name: since
+          in: query
+          description: >
+            Change-feed cursor: return every cadence policy changed after this
+            position — including soft-deleted ones (deleted:true) — ordered
+            forward, ignoring entity_id. A cursor older than
+            DELETED_RETENTION_DAYS returns 410 Gone.
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, default: 25 }
+        - name: order
+          in: query
+          description: Direction for the (updated_at, id) cursor order. since forces asc.
+          schema: { type: string, enum: [asc, desc], default: desc }
+        - name: entity_id
+          in: query
+          description: Filter to the cadence policy whose subject contact is this Contact.VCardUID (the contact-page query).
+          schema: { type: string, format: uuid }
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "410":
+          description: The ?since= cursor is older than DELETED_RETENTION_DAYS — full resync required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: A page of cadence policies, each with its derived health (browse mode; ?since= feed mode omits health and total).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cadence_policies:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/CadencePolicyWithHealth"
+                  total: { type: integer }
+                  next_cursor:
+                    type: string
+                    description: Resume token for the next page; empty when there are no more rows.
+                  limit: { type: integer }
+                  sync:
+                    $ref: "#/components/schemas/SyncInfo"
+    post:
+      summary: Create a cadence policy
+      operationId: createCadencePolicy
+      description: >
+        One policy per contact: an existing non-deleted policy for the same
+        entity is a 409.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CadencePolicyInput"
+      responses:
+        "201":
+          description: Cadence policy created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Cadence policy created" }
+                  cadence_policy:
+                    $ref: "#/components/schemas/CadencePolicyWithHealth"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: The subject contact was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: A cadence policy already exists for this contact.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /cadence-policies/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get a cadence policy
+      operationId: getCadencePolicy
+      responses:
+        "200":
+          description: The cadence policy with its derived health (raw, embedded).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CadencePolicyWithHealth"
+        "404":
+          description: Cadence policy not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      summary: Update a cadence policy (full replace)
+      operationId: updateCadencePolicy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CadencePolicyInput"
+      responses:
+        "200":
+          description: The updated cadence policy with its derived health.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CadencePolicyWithHealth"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Cadence policy (or subject contact) not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Another cadence policy already exists for the new subject contact.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete a cadence policy (soft delete)
+      operationId: deleteCadencePolicy
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Cadence policy not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   # --- Reminders ---
   /reminders:
     get:
@@ -4201,7 +4402,7 @@ components:
         incremental:
           type: array
           items: { type: string }
-          description: "Collections that sync incrementally via ?since=: contacts, notes, activities, life_events, preferences."
+          description: "Collections that sync incrementally via ?since=: contacts, notes, activities, life_events, preferences, cadence_policies."
         full_resync:
           type: array
           items: { type: string }
@@ -4911,6 +5112,78 @@ components:
         confidence: { type: number, nullable: true }
         last_confirmed: { type: string, format: date-time, nullable: true }
         sensitivity: { type: string, enum: [normal, private, secret] }
+
+    # --- CadencePolicies (T19) ---
+    CadencePolicy:
+      type: object
+      description: >
+        A relationship-maintenance rule — "stay in touch every N days"
+        (§91.10). Health is DERIVED (see CadenceHealth), never stored; this
+        entity carries only the rule itself.
+      properties:
+        id: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        entity_id:
+          type: string
+          format: uuid
+          description: The subject Contact's VCardUID.
+        target_interval_days: { type: integer, minimum: 1 }
+        qualifying_types:
+          type: array
+          items: { type: string }
+          description: >
+            Which Interaction types reset the cadence (call, visit, meal...);
+            empty means every default-qualifying type counts. The global
+            gate is always Activity.Qualifying() — a non-qualifying type
+            (photo) can never be re-admitted by listing it here.
+    CadenceHealth:
+      type: object
+      description: >
+        The DERIVED relationship-health read-model (§91.10) — computed from
+        the timeline, never persisted. Undefined (has_qualifying_interaction
+        false) until the contact has at least one qualifying interaction;
+        cadence does NOT count from the contact's creation date.
+      properties:
+        has_qualifying_interaction: { type: boolean }
+        last_interaction: { type: string, format: date-time, nullable: true }
+        next_due: { type: string, format: date-time, nullable: true }
+        overdue_by:
+          type: integer
+          description: >
+            Whole calendar days past due. 0 when due today, in the future, or
+            undefined. "Due today" is not overdue.
+    CadencePolicyWithHealth:
+      type: object
+      description: A cadence policy with its derived health embedded.
+      allOf:
+        - $ref: "#/components/schemas/CadencePolicy"
+        - type: object
+          properties:
+            health:
+              $ref: "#/components/schemas/CadenceHealth"
+    CadencePolicyInput:
+      type: object
+      required: [entity_id, target_interval_days]
+      properties:
+        entity_id: { type: string, format: uuid }
+        target_interval_days: { type: integer, minimum: 1 }
+        qualifying_types:
+          type: array
+          items: { type: string }
+    OverdueCadence:
+      type: object
+      description: An overdue cadence policy joined with its contact's display identity.
+      properties:
+        policy:
+          $ref: "#/components/schemas/CadencePolicy"
+        health:
+          $ref: "#/components/schemas/CadenceHealth"
+        contact_id:
+          type: integer
+          description: The contact's numeric ID (the /contacts/<id> URL component).
+        contact_name: { type: string }
+        photo_thumbnail: { type: string }
 
     # --- Custom fields ---
     FieldDefinition:

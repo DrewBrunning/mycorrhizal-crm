@@ -77,6 +77,17 @@ type LifeEventInput struct {
 	Remind           bool                      `json:"remind,omitempty"`
 }
 
+// CadencePolicyInput is the DTO for creating/updating a CadencePolicy
+// (cadence_policy.go, §91.10). QualifyingTypes is deliberately not
+// `oneof`-validated: Activity.Type is an open classifier, so a policy may
+// name types outside the current InteractionType* constants. An empty list
+// means every default-qualifying type counts (CadencePolicy.Qualifies).
+type CadencePolicyInput struct {
+	EntityID           string   `json:"entity_id" validate:"required,uuid4"`
+	TargetIntervalDays int      `json:"target_interval_days" validate:"required,gt=0,lte=3650"`
+	QualifyingTypes    []string `json:"qualifying_types,omitempty" validate:"dive,max=100"`
+}
+
 // FieldDefinitionInput is the DTO for creating/updating a FieldDefinition
 // (field_definition.go, docs/fork-plan/94-custom-fields.md §94.3). Label is
 // display; Key is the stable machine name and — unlike every other field —

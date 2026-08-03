@@ -423,6 +423,11 @@ func DeleteUser(c *gin.Context) {
 			return err
 		}
 
+		// Delete cadence policies (hard)
+		if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.CadencePolicy{}).Error; err != nil {
+			return err
+		}
+
 		// Delete contacts (hard)
 		if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.Contact{}).Error; err != nil {
 			return err

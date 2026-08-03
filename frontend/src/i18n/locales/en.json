@@ -966,5 +966,40 @@
       "valueRequired": "Value is required",
       "saveFailed": "Failed to save preference"
     }
+  },
+  "cadence": {
+    "title": "Cadence",
+    "add": "Add Cadence",
+    "createTitle": "Add Cadence",
+    "editTitle": "Edit Cadence",
+    "interval": "Stay in touch",
+    "intervalValue": "every {{days}} days",
+    "intervalDays": "Interval (days)",
+    "intervalHint": "How often you want to stay in touch.",
+    "intervalRequired": "Enter a positive number of days.",
+    "qualifyingTypes": "Qualifying interactions",
+    "qualifyingHint": "Which interaction types reset this cadence. Leave everything unchecked for every interaction type (except passive photo shares) to count.",
+    "types": {
+      "call": "Call",
+      "video_call": "Video call",
+      "visit": "Visit",
+      "meal": "Meal",
+      "gift": "Gift",
+      "photo": "Photo",
+      "message": "Message",
+      "shared_activity": "Shared activity"
+    },
+    "noPolicy": "No cadence set for this contact.",
+    "noInteractionsYet": "No qualifying interactions yet — cadence starts once you record one.",
+    "onTrack": "On track",
+    "overdueBy": "{{days}} days overdue",
+    "nextDue": "Next due: {{date}}",
+    "lastInteraction": "Last interaction: {{date}}",
+    "dueOn": "Due on {{date}}",
+    "confirmDelete": "Remove this cadence policy?",
+    "loading": "Loading cadence...",
+    "overdueTitle": "Overdue Relationships",
+    "noOverdue": "Nothing overdue. You're all caught up.",
+    "unknownContact": "Unknown contact"
   }
 }

@@ -108,6 +108,7 @@ const (
 var (
 	IncrementalSyncCollections = []string{
 		"contacts", "notes", "activities", "life_events", "preferences",
+		"cadence_policies",
 	}
 	FullResyncSyncCollections = []string{
 		"circles", "households", "tags", "relationship_edges", "field_definitions",

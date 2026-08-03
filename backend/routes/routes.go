@@ -179,6 +179,16 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.PUT("/preferences/:id", middleware.ValidateJSONMiddleware(&models.PreferenceInput{}), controllers.UpdatePreference)
 			protected.DELETE("/preferences/:id", controllers.DeletePreference)
 
+			// CadencePolicy routes (T19 — docs/fork-plan/tickets/20-T19-cadence.md).
+			// /overdue is registered before /:id so the literal path is never
+			// captured as a policy ID.
+			protected.GET("/cadence-policies/overdue", controllers.GetOverdueCadences)
+			protected.POST("/cadence-policies", middleware.ValidateJSONMiddleware(&models.CadencePolicyInput{}), controllers.CreateCadencePolicy)
+			protected.GET("/cadence-policies", controllers.ListCadencePolicies)
+			protected.GET("/cadence-policies/:id", controllers.GetCadencePolicy)
+			protected.PUT("/cadence-policies/:id", middleware.ValidateJSONMiddleware(&models.CadencePolicyInput{}), controllers.UpdateCadencePolicy)
+			protected.DELETE("/cadence-policies/:id", controllers.DeleteCadencePolicy)
+
 			// Reminder routes
 			protected.GET("/reminders", controllers.GetAllReminders)
 			protected.GET("/reminders/upcoming", controllers.GetUpcomingReminders)

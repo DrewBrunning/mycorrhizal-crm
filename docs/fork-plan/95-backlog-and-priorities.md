@@ -96,6 +96,17 @@
 >
 > **N1 done** (2026-07-30, `c7b7e25`) — contact merge/dedupe, the only R5 inside alpha. **Next up is N4**
 > (notes: dead-end journal → capture inbox).
+>
+> **T19 done** (2026-08-03, `cb88826`) — WP-94 CadencePolicy + derived relationship health, pulled
+> forward per the standing pre-alpha recommendation above (its only dependency T5 shipped pre-alpha and
+> its value is immediate). One `CadencePolicy` per contact (soft-deleted; partial unique index so a
+> deleted policy never blocks re-creating it), `qualifying_types` JSON column. Health (`next_due` /
+> `overdue_by`) is derived from the timeline via `Activity.Qualifying()` and never stored. Decided: a
+> contact with no qualifying interaction ever has **undefined** health (cadence does not count from
+> creation); an empty `qualifying_types` list means every default-qualifying type counts; overdue
+> cadences emit `cadence.overdue` webhooks daily, job-lock guarded (multi-instance safe). Qualifying
+> interactions reset cadence; non-qualifying ones and task completion do not — the webhook is only a
+> passive notification to an external task manager (Vikunja), and the CRM owns the state.
 
 ## How to read this
 
@@ -208,7 +219,7 @@ happens, T17 in particular is pre-alpha work buying nothing. See the open questi
 
 | # | Ticket | R | Size | Depends on | Source |
 |---|---|---|---|---|---|
-| 22 | **T19** WP-94 CadencePolicy + relationship health | **5** | L | T5 | `92.6`, `91.10` |
+| 22 | **T19** WP-94 CadencePolicy + relationship health — **DONE** (`cb88826`) | **5** | L | T5 | `92.6`, `91.10` |
 | 23 | **T21** WP-96 ConversationAgenda | 4 | M | T5 | `92.6`, `91.11` |
 | 24 | **N2** Prep view / person briefing screen | **5** | M | T5, T19, T21 | new (gap) |
 | 25 | **T10** WP-85 graph traversal + multi-hop chains | 2 | M–L | — | `92.2` |
