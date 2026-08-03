@@ -2837,6 +2837,208 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  # --- Conversation agenda (T21) ---
+  /conversation-agenda:
+    get:
+      summary: List conversation agenda items
+      operationId: listConversationAgenda
+      parameters:
+        - name: cursor
+          in: query
+          description: Opaque resume token from the previous page's next_cursor. Ignored when since is present.
+          schema: { type: string }
+        - name: since
+          in: query
+          description: >
+            Change-feed cursor: return every conversation agenda item changed
+            after this position — including soft-deleted ones (deleted:true)
+            — ordered forward, ignoring entity_id. A cursor older than
+            DELETED_RETENTION_DAYS returns 410 Gone.
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, default: 25 }
+        - name: order
+          in: query
+          description: Direction for the (updated_at, id) cursor order. since forces asc.
+          schema: { type: string, enum: [asc, desc], default: desc }
+        - name: entity_id
+          in: query
+          description: Filter to agenda items whose subject contact is this Contact.VCardUID.
+          schema: { type: string, format: uuid }
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "410":
+          description: The ?since= cursor is older than DELETED_RETENTION_DAYS — full resync required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: A page of conversation agenda items.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conversation_agenda:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ConversationAgenda"
+                  next_cursor:
+                    type: string
+                    description: Resume token for the next page; empty when there are no more rows.
+                  limit: { type: integer }
+                  sync:
+                    $ref: "#/components/schemas/SyncInfo"
+    post:
+      summary: Create a conversation agenda item
+      operationId: createConversationAgenda
+      description: >
+        "Things to bring up next time I see them" — contextual memory for a
+        contact. Deliberately NOT date-scheduled; resolved by marking it
+        discussed (PATCH /conversation-agenda/{id}/discuss), never by a timer.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConversationAgendaInput"
+      responses:
+        "201":
+          description: Conversation agenda item created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Conversation agenda item created successfully" }
+                  conversation_agenda:
+                    $ref: "#/components/schemas/ConversationAgenda"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: The subject contact was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /conversation-agenda/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get a conversation agenda item
+      operationId: getConversationAgenda
+      responses:
+        "200":
+          description: The conversation agenda item (raw).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationAgenda"
+        "404":
+          description: Conversation agenda item not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      summary: Update a conversation agenda item (full replace of content fields)
+      operationId: updateConversationAgenda
+      description: The resolved state (discussed_at / activity_id) is never touched by update.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConversationAgendaInput"
+      responses:
+        "200":
+          description: The updated conversation agenda item (raw).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationAgenda"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Conversation agenda item (or subject contact) not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete a conversation agenda item (soft delete)
+      operationId: deleteConversationAgenda
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Conversation agenda item not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /conversation-agenda/{id}/discuss:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      summary: Mark a conversation agenda item as discussed
+      operationId: discussConversationAgenda
+      description: >
+        The agenda item's only resolution — it has no due date or completion
+        cron; it is resolved by the next conversation. Sets discussed_at to
+        now and, when activity_id is supplied, links the interaction that
+        covered it. The item stays visible in a resolved state.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConversationAgendaDiscussInput"
+      responses:
+        "200":
+          description: The updated conversation agenda item (raw).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationAgenda"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Conversation agenda item, or the linked activity, was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   # --- Preferences ---
   /preferences:
     get:
@@ -4402,7 +4604,7 @@ components:
         incremental:
           type: array
           items: { type: string }
-          description: "Collections that sync incrementally via ?since=: contacts, notes, activities, life_events, preferences, cadence_policies."
+          description: "Collections that sync incrementally via ?since=: contacts, notes, activities, life_events, preferences, cadence_policies, conversation_agenda."
         full_resync:
           type: array
           items: { type: string }
@@ -5079,6 +5281,45 @@ components:
           type: array
           items: { type: string, format: uuid }
         remind: { type: boolean }
+
+    # --- Conversation agenda (T21) ---
+    ConversationAgenda:
+      type: object
+      description: >
+        "Things to bring up next time I see them" (§91.11). Contextual memory
+        surfaced on the contact view, explicitly NOT date-scheduled. resolved
+        by discussed_at, never by a timer.
+      properties:
+        id: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        entity_id: { type: string, format: uuid }
+        content: { type: string, maxLength: 2000 }
+        reference_url: { type: string, maxLength: 2000 }
+        discussed_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the item was marked discussed; null means still open.
+        activity_id:
+          type: integer
+          nullable: true
+          description: The Activity that covered this item, if linked.
+        deleted:
+          type: boolean
+          description: "Change-feed tombstone marker (T17): true only via ?since= for a soft-deleted agenda item."
+          default: false
+    ConversationAgendaInput:
+      type: object
+      required: [entity_id, content]
+      properties:
+        entity_id: { type: string, format: uuid }
+        content: { type: string, minLength: 1, maxLength: 2000 }
+        reference_url: { type: string, maxLength: 2000 }
+    ConversationAgendaDiscussInput:
+      type: object
+      properties:
+        activity_id: { type: integer, nullable: true }
 
     # --- Preferences ---
     Preference:

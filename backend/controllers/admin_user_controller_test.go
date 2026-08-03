@@ -61,6 +61,7 @@ func TestDeleteUser_CleansUpAllOwnedRows(t *testing.T) {
 
 	require.NoError(t, db.Create(&models.RelationshipEdge{UserID: target.ID, SourceID: contact.VCardUID, TargetID: contact.VCardUID, Type: "related_to"}).Error)
 	require.NoError(t, db.Create(&models.LifeEvent{UserID: target.ID, EntityID: contact.VCardUID, Type: "custom"}).Error)
+	require.NoError(t, db.Create(&models.ConversationAgenda{UserID: target.ID, EntityID: contact.VCardUID, Content: "Ask about something"}).Error)
 
 	require.NoError(t, db.Create(&models.CardDAVSync{UserID: target.ID, SyncToken: "tok", LastModified: time.Now()}).Error)
 	require.NoError(t, db.Create(&models.ApiToken{UserID: target.ID, Name: "token", TokenHash: "hash"}).Error)
@@ -103,6 +104,7 @@ func TestDeleteUser_CleansUpAllOwnedRows(t *testing.T) {
 	assertGone("FieldValue", &models.FieldValue{}, "user_id = ?", target.ID)
 	assertGone("RelationshipEdge", &models.RelationshipEdge{}, "user_id = ?", target.ID)
 	assertGone("LifeEvent", &models.LifeEvent{}, "user_id = ?", target.ID)
+	assertGone("ConversationAgenda", &models.ConversationAgenda{}, "user_id = ?", target.ID)
 	assertGone("CardDAVSync", &models.CardDAVSync{}, "user_id = ?", target.ID)
 	assertGone("ApiToken", &models.ApiToken{}, "user_id = ?", target.ID)
 	assertGone("ReminderCompletion", &models.ReminderCompletion{}, "user_id = ?", target.ID)

@@ -87,6 +87,7 @@ func TestOpenAPISpecValidates(t *testing.T) {
 		"RelationshipEdge", "RelationshipEdgeInput", "ThinContactInput",
 		"LifeEvent", "LifeEventInput",
 		"Preference", "PreferenceInput",
+		"ConversationAgenda", "ConversationAgendaInput", "ConversationAgendaDiscussInput",
 		"FieldDefinition", "FieldDefinitionInput", "FieldConstraints",
 		"FieldValue", "FieldValueInput", "ContactFieldValuesInput",
 		"CalendarSubscriptionInput", "CalendarSubscriptionResponse",

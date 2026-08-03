@@ -144,6 +144,31 @@ func TestMigrationsAddCadencePolicies(t *testing.T) {
 		"T19 partial unique index must not block re-creating a cadence after soft delete")
 }
 
+// TestMigrationsAddConversationAgenda pins the T21 migration's shape: the
+// conversation_agenda table must carry the discussed/activity resolution
+// columns and be keyed to the subject contact by entity_id (Contact.VCardUID),
+// never by a date — the agenda is contextual, not scheduled.
+func TestMigrationsAddConversationAgenda(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "conversation-agenda.db")
+	db, err := InitDB(dbPath)
+	require.NoError(t, err)
+
+	assert.True(t, columnExists(t, dbPath, "conversation_agenda", "entity_id"))
+	assert.True(t, columnExists(t, dbPath, "conversation_agenda", "content"))
+	assert.True(t, columnExists(t, dbPath, "conversation_agenda", "reference_url"))
+	assert.True(t, columnExists(t, dbPath, "conversation_agenda", "discussed_at"))
+	assert.True(t, columnExists(t, dbPath, "conversation_agenda", "activity_id"))
+
+	assert.False(t, columnExists(t, dbPath, "conversation_agenda", "remind_at"),
+		"the agenda must carry NO scheduling column — that is what distinguishes it from a Reminder")
+
+	var sql string
+	require.NoError(t, db.Raw(
+		"SELECT sql FROM sqlite_master WHERE type = 'index' AND name = 'idx_conversation_agenda_entity_id'",
+	).Scan(&sql).Error)
+	assert.NotEmpty(t, sql)
+}
+
 // TestSquashedSchemaHasNoLegacyFoodPreference verifies the squashed baseline
 // (T22) excludes the legacy contacts.food_preference column — it was retired
 // by T20a and removed from the baseline during the migration squash.

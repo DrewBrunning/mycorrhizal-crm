@@ -1002,5 +1002,32 @@
     "overdueTitle": "Relaciones vencidas",
     "noOverdue": "Nada vencido. Todo al día.",
     "unknownContact": "Contacto desconocido"
+  },
+  "conversationAgenda": {
+    "title": "Agenda de conversación",
+    "placeholder": "Cosas que sacar la próxima vez…",
+    "add": "Añadir",
+    "markDiscussed": "Marcar como hablado",
+    "discussedSection": "Hablados",
+    "discussedOn": "Hablado el {{date}}",
+    "empty": "Nada en la agenda todavía. Añade algo para sacar la próxima vez que habléis.",
+    "deleteMessage": "¿Eliminar este elemento de la agenda?",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "editTitle": "Editar elemento de la agenda",
+    "content": "Qué sacar a colación",
+    "referenceUrl": "Enlace (opcional)",
+    "referenceUrlHint": "Enlace opcional al tema de que se trata.",
+    "discussTitle": "Marcar como hablado",
+    "discussActivity": "Registrado en (opcional)",
+    "discussActivityHint": "Adjunta la interacción que lo cubrió, para que alimente la línea de tiempo.",
+    "noActivity": "Sin interacción",
+    "discussConfirm": "Marcar como hablado",
+    "validation": {
+      "contentRequired": "Indica qué quieres sacar a colación.",
+      "addFailed": "No se pudo añadir el elemento.",
+      "saveFailed": "No se pudo guardar el elemento.",
+      "discussFailed": "No se pudo marcar como hablado."
+    }
   }
 }

@@ -55,18 +55,19 @@ type ContactMergeResolution struct {
 // (computed pre-merge inside the same transaction, so it reflects exactly
 // what RepointContactAssociations is about to move).
 type ContactMergeAssociationCounts struct {
-	Notes                int64 `json:"notes"`
-	Activities           int64 `json:"activities"`
-	Reminders            int64 `json:"reminders"`
-	ReminderCompletions  int64 `json:"reminder_completions"`
-	RelationshipEdges    int64 `json:"relationship_edges"`
-	HouseholdMemberships int64 `json:"household_memberships"`
-	CircleMemberships    int64 `json:"circle_memberships"`
-	Tags                 int64 `json:"tags"`
-	LifeEvents           int64 `json:"life_events"`           // loser is the subject (entity_id)
-	LifeEventReferences  int64 `json:"life_event_references"` // loser appears in someone else's RelatedEntityIDs
-	FieldValues          int64 `json:"field_values"`
-	ContactSyncLinks     int64 `json:"contact_sync_links"` // discarded, not re-pointed
+	Notes                   int64 `json:"notes"`
+	Activities              int64 `json:"activities"`
+	Reminders               int64 `json:"reminders"`
+	ReminderCompletions     int64 `json:"reminder_completions"`
+	RelationshipEdges       int64 `json:"relationship_edges"`
+	HouseholdMemberships    int64 `json:"household_memberships"`
+	CircleMemberships       int64 `json:"circle_memberships"`
+	Tags                    int64 `json:"tags"`
+	LifeEvents              int64 `json:"life_events"`               // loser is the subject (entity_id)
+	LifeEventReferences     int64 `json:"life_event_references"`     // loser appears in someone else's RelatedEntityIDs
+	ConversationAgendaItems int64 `json:"conversation_agenda_items"` // agenda items keyed to the loser (entity_id)
+	FieldValues             int64 `json:"field_values"`
+	ContactSyncLinks        int64 `json:"contact_sync_links"` // discarded, not re-pointed
 }
 
 // ContactMergeRequest is the DTO for both merge endpoints. KeepID survives;

@@ -172,6 +172,17 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.PUT("/life-events/:id", middleware.ValidateJSONMiddleware(&models.LifeEventInput{}), controllers.UpdateLifeEvent)
 			protected.DELETE("/life-events/:id", controllers.DeleteLifeEvent)
 
+			// ConversationAgenda routes (T21 — docs/fork-plan/tickets/
+			// 21-T21-conversation-agenda.md). /:id/discuss is registered
+			// after /:id reads but the PATCH method never collides with
+			// them.
+			protected.POST("/conversation-agenda", middleware.ValidateJSONMiddleware(&models.ConversationAgendaInput{}), controllers.CreateConversationAgenda)
+			protected.GET("/conversation-agenda", controllers.ListConversationAgenda)
+			protected.GET("/conversation-agenda/:id", controllers.GetConversationAgenda)
+			protected.PUT("/conversation-agenda/:id", middleware.ValidateJSONMiddleware(&models.ConversationAgendaInput{}), controllers.UpdateConversationAgenda)
+			protected.PATCH("/conversation-agenda/:id/discuss", middleware.ValidateJSONMiddleware(&models.ConversationAgendaDiscussInput{}), controllers.DiscussConversationAgenda)
+			protected.DELETE("/conversation-agenda/:id", controllers.DeleteConversationAgenda)
+
 			// Preference routes (T20a — docs/fork-plan/tickets/10-T20a-preferences.md)
 			protected.POST("/preferences", middleware.ValidateJSONMiddleware(&models.PreferenceInput{}), controllers.CreatePreference)
 			protected.GET("/preferences", controllers.ListPreferences)

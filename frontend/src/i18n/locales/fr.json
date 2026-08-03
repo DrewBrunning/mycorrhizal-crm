@@ -1002,5 +1002,32 @@
     "overdueTitle": "Relations en retard",
     "noOverdue": "Rien en retard. Vous êtes à jour.",
     "unknownContact": "Contact inconnu"
+  },
+  "conversationAgenda": {
+    "title": "Agenda de conversation",
+    "placeholder": "À évoquer la prochaine fois…",
+    "add": "Ajouter",
+    "markDiscussed": "Marquer comme évoqué",
+    "discussedSection": "Évoqués",
+    "discussedOn": "Évoqué le {{date}}",
+    "empty": "Rien à l'agenda pour l'instant. Ajoutez un point à évoquer la prochaine fois.",
+    "deleteMessage": "Supprimer cet élément de l'agenda ?",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "editTitle": "Modifier l'élément de l'agenda",
+    "content": "Quoi évoquer",
+    "referenceUrl": "Lien (facultatif)",
+    "referenceUrlHint": "Lien facultatif vers le sujet concerné.",
+    "discussTitle": "Marquer comme évoqué",
+    "discussActivity": "Consigné dans (facultatif)",
+    "discussActivityHint": "Associez l'interaction qui l'a couvert, pour qu'elle alimente la chronologie.",
+    "noActivity": "Aucune interaction",
+    "discussConfirm": "Marquer comme évoqué",
+    "validation": {
+      "contentRequired": "Indiquez ce que vous voulez évoquer.",
+      "addFailed": "Échec de l'ajout de l'élément.",
+      "saveFailed": "Échec de l'enregistrement de l'élément.",
+      "discussFailed": "Échec du marquage comme évoqué."
+    }
   }
 }

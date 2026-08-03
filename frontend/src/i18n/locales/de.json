@@ -1002,5 +1002,32 @@
     "overdueTitle": "Überfällige Beziehungen",
     "noOverdue": "Nichts überfällig. Alles im Zeitplan.",
     "unknownContact": "Unbekannter Kontakt"
+  },
+  "conversationAgenda": {
+    "title": "Gesprächsagenda",
+    "placeholder": "Beim nächsten Mal ansprechen…",
+    "add": "Hinzufügen",
+    "markDiscussed": "Als besprochen markieren",
+    "discussedSection": "Besprochen",
+    "discussedOn": "Besprochen am {{date}}",
+    "empty": "Noch nichts auf der Agenda. Füge etwas hinzu, das du beim nächsten Gespräch ansprechen möchtest.",
+    "deleteMessage": "Diesen Agenda-Punkt löschen?",
+    "cancel": "Abbrechen",
+    "save": "Speichern",
+    "editTitle": "Agenda-Punkt bearbeiten",
+    "content": "Was anzusprechen ist",
+    "referenceUrl": "Link (optional)",
+    "referenceUrlHint": "Optionaler Link zum betreffenden Thema.",
+    "discussTitle": "Als besprochen markieren",
+    "discussActivity": "Aufgezeichnet in (optional)",
+    "discussActivityHint": "Verknüpfe die Interaktion, die dies abgedeckt hat, damit es in der Timeline erscheint.",
+    "noActivity": "Keine Interaktion",
+    "discussConfirm": "Als besprochen markieren",
+    "validation": {
+      "contentRequired": "Gib an, was du ansprechen möchtest.",
+      "addFailed": "Agenda-Punkt konnte nicht hinzugefügt werden.",
+      "saveFailed": "Agenda-Punkt konnte nicht gespeichert werden.",
+      "discussFailed": "Als besprochen konnte nicht markiert werden."
+    }
   }
 }
