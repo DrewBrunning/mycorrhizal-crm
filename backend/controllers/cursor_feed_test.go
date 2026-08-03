@@ -302,6 +302,306 @@ func TestChangeFeedNotesTombstones(t *testing.T) {
 	assert.Equal(t, true, notes2[0].(map[string]any)["deleted"], "soft-deleted notes must be returned with deleted:true")
 }
 
+// TestChangeFeedActivitiesTombstones covers the tombstone trap for the
+// activities feed: a soft-deleted activity must surface via ?since= as
+// deleted:true (Activity.AfterDelete bumps updated_at so the cursor
+// sees it).
+func TestChangeFeedActivitiesTombstones(t *testing.T) {
+	db, router := setupRouterWithRetention(30)
+	var user models.User
+	db.First(&user)
+	router.GET("/activities", GetActivities)
+
+	a1 := models.Activity{UserID: user.ID, Title: "one", Date: time.Now()}
+	a2 := models.Activity{UserID: user.ID, Title: "two", Date: time.Now()}
+	require.NoError(t, db.Create(&a1).Error)
+	require.NoError(t, db.Create(&a2).Error)
+
+	afterOne := EncodeCursor(a1.UpdatedAt, a1.ID)
+
+	req := func(query string) map[string]any {
+		t.Helper()
+		r, _ := http.NewRequest("GET", "/activities?"+query, nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, r)
+		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+		var body map[string]any
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+		return body
+	}
+
+	feed := req("since=" + afterOne + "&limit=10")
+	activities := feed["activities"].([]any)
+	require.Len(t, activities, 1, "only the activity after the cursor should appear")
+	assert.Equal(t, "two", activities[0].(map[string]any)["title"])
+	assert.Equal(t, "incremental", feed["sync"].(map[string]any)["mode"])
+
+	require.NoError(t, db.Delete(&a2).Error)
+	feed2 := req("since=" + afterOne + "&limit=10")
+	activities2 := feed2["activities"].([]any)
+	require.Len(t, activities2, 1)
+	assert.Equal(t, "two", activities2[0].(map[string]any)["title"])
+	assert.Equal(t, true, activities2[0].(map[string]any)["deleted"], "soft-deleted activities must be returned with deleted:true")
+}
+
+// TestChangeFeedLifeEventsTombstones covers the tombstone trap for the
+// life-events feed: a soft-deleted LifeEvent must surface via ?since= as
+// deleted:true (LifeEvent.AfterDelete bumps updated_at so the cursor
+// sees it).
+func TestChangeFeedLifeEventsTombstones(t *testing.T) {
+	db, router := setupRouterWithRetention(30)
+	var user models.User
+	db.First(&user)
+	router.GET("/life-events", ListLifeEvents)
+
+	subject := models.Contact{UserID: user.ID, Firstname: "Subject"}
+	require.NoError(t, db.Create(&subject).Error)
+
+	le1 := models.LifeEvent{UserID: user.ID, EntityID: subject.VCardUID, Type: models.LifeEventTypeMarried}
+	le2 := models.LifeEvent{UserID: user.ID, EntityID: subject.VCardUID, Type: models.LifeEventTypeGraduated}
+	require.NoError(t, db.Create(&le1).Error)
+	require.NoError(t, db.Create(&le2).Error)
+
+	afterOne := EncodeCursor(le1.UpdatedAt, le1.ID)
+
+	req := func(query string) map[string]any {
+		t.Helper()
+		r, _ := http.NewRequest("GET", "/life-events?"+query, nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, r)
+		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+		var body map[string]any
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+		return body
+	}
+
+	feed := req("since=" + afterOne + "&limit=10")
+	events := feed["life_events"].([]any)
+	require.Len(t, events, 1, "only the life event after the cursor should appear")
+	assert.Equal(t, models.LifeEventTypeGraduated, events[0].(map[string]any)["type"])
+	assert.Equal(t, "incremental", feed["sync"].(map[string]any)["mode"])
+
+	require.NoError(t, db.Delete(&le2).Error)
+	feed2 := req("since=" + afterOne + "&limit=10")
+	events2 := feed2["life_events"].([]any)
+	require.Len(t, events2, 1)
+	assert.Equal(t, models.LifeEventTypeGraduated, events2[0].(map[string]any)["type"])
+	assert.Equal(t, true, events2[0].(map[string]any)["deleted"], "soft-deleted life events must be returned with deleted:true")
+}
+
+// TestChangeFeedPreferencesTombstones covers the tombstone trap for the
+// preferences feed: a soft-deleted Preference must surface via ?since= as
+// deleted:true (Preference.AfterDelete bumps updated_at so the cursor
+// sees it).
+func TestChangeFeedPreferencesTombstones(t *testing.T) {
+	db, router := setupRouterWithRetention(30)
+	var user models.User
+	db.First(&user)
+	router.GET("/preferences", ListPreferences)
+
+	subject := models.Contact{UserID: user.ID, Firstname: "Subject"}
+	require.NoError(t, db.Create(&subject).Error)
+
+	p1 := models.Preference{UserID: user.ID, EntityID: subject.VCardUID, Category: models.PreferenceCategoryFood, Value: "pizza"}
+	p2 := models.Preference{UserID: user.ID, EntityID: subject.VCardUID, Category: models.PreferenceCategoryFood, Value: "sushi"}
+	require.NoError(t, db.Create(&p1).Error)
+	require.NoError(t, db.Create(&p2).Error)
+
+	afterOne := EncodeCursor(p1.UpdatedAt, p1.ID)
+
+	req := func(query string) map[string]any {
+		t.Helper()
+		r, _ := http.NewRequest("GET", "/preferences?"+query, nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, r)
+		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+		var body map[string]any
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+		return body
+	}
+
+	feed := req("since=" + afterOne + "&limit=10")
+	prefs := feed["preferences"].([]any)
+	require.Len(t, prefs, 1, "only the preference after the cursor should appear")
+	assert.Equal(t, "sushi", prefs[0].(map[string]any)["value"])
+	assert.Equal(t, "incremental", feed["sync"].(map[string]any)["mode"])
+	// Feed mode deliberately omits total.
+	assert.NotContains(t, feed, "total")
+
+	require.NoError(t, db.Delete(&p2).Error)
+	feed2 := req("since=" + afterOne + "&limit=10")
+	prefs2 := feed2["preferences"].([]any)
+	require.Len(t, prefs2, 1)
+	assert.Equal(t, "sushi", prefs2[0].(map[string]any)["value"])
+	assert.Equal(t, true, prefs2[0].(map[string]any)["deleted"], "soft-deleted preferences must be returned with deleted:true")
+}
+
+// TestAfterDeleteBumpsUpdatedAt proves every soft-delete entity's AfterDelete
+// hook advances updated_at so the T17 change feed sees the tombstone. GORM's
+// soft-delete UPDATE only writes deleted_at, leaving updated_at at its
+// pre-delete value — without this hook a feed cursor stored before the delete
+// would forever sit ahead of the tombstone (the exact trap the ticket
+// calls out).
+func TestAfterDeleteBumpsUpdatedAt(t *testing.T) {
+	db, _ := setupRouterWithRetention(30)
+	var user models.User
+	db.First(&user)
+
+	subject := models.Contact{UserID: user.ID, Firstname: "Subject"}
+	require.NoError(t, db.Create(&subject).Error)
+
+	past := time.Date(2020, 1, 1, 0, 0, 0, 0, time.Local)
+	requireAfter := func(t *testing.T, updatedAt time.Time, label string) {
+		t.Helper()
+		assert.True(t, updatedAt.After(past), "%s AfterDelete must bump updated_at past %v, got %v", label, past, updatedAt)
+	}
+
+	// Contact (uint PK, gorm.Model soft delete)
+	t.Run("Contact", func(t *testing.T) {
+		c := models.Contact{UserID: user.ID, Firstname: "AD"}
+		require.NoError(t, db.Create(&c).Error)
+		require.NoError(t, db.Model(&c).UpdateColumn("updated_at", past).Error)
+		require.NoError(t, db.Delete(&c).Error)
+		var reloaded models.Contact
+		require.NoError(t, db.Unscoped().First(&reloaded, c.ID).Error)
+		requireAfter(t, reloaded.UpdatedAt, "Contact")
+	})
+
+	// Note (uint PK, gorm.Model soft delete)
+	t.Run("Note", func(t *testing.T) {
+		n := models.Note{UserID: user.ID, Content: "test", Date: time.Now()}
+		require.NoError(t, db.Create(&n).Error)
+		require.NoError(t, db.Model(&n).UpdateColumn("updated_at", past).Error)
+		require.NoError(t, db.Delete(&n).Error)
+		var reloaded models.Note
+		require.NoError(t, db.Unscoped().First(&reloaded, n.ID).Error)
+		requireAfter(t, reloaded.UpdatedAt, "Note")
+	})
+
+	// Activity (uint PK, gorm.Model soft delete)
+	t.Run("Activity", func(t *testing.T) {
+		a := models.Activity{UserID: user.ID, Title: "test", Date: time.Now()}
+		require.NoError(t, db.Create(&a).Error)
+		require.NoError(t, db.Model(&a).UpdateColumn("updated_at", past).Error)
+		require.NoError(t, db.Delete(&a).Error)
+		var reloaded models.Activity
+		require.NoError(t, db.Unscoped().First(&reloaded, a.ID).Error)
+		requireAfter(t, reloaded.UpdatedAt, "Activity")
+	})
+
+	// LifeEvent (UUID string PK, explicit DeletedAt)
+	t.Run("LifeEvent", func(t *testing.T) {
+		le := models.LifeEvent{UserID: user.ID, EntityID: subject.VCardUID, Type: models.LifeEventTypeMarried}
+		require.NoError(t, db.Create(&le).Error)
+		require.NoError(t, db.Model(&le).UpdateColumn("updated_at", past).Error)
+		require.NoError(t, db.Delete(&le).Error)
+		var reloaded models.LifeEvent
+		require.NoError(t, db.Unscoped().First(&reloaded, "id = ?", le.ID).Error)
+		requireAfter(t, reloaded.UpdatedAt, "LifeEvent")
+	})
+
+	// Preference (UUID string PK, explicit DeletedAt)
+	t.Run("Preference", func(t *testing.T) {
+		p := models.Preference{UserID: user.ID, EntityID: subject.VCardUID, Category: models.PreferenceCategoryFood, Value: "pasta"}
+		require.NoError(t, db.Create(&p).Error)
+		require.NoError(t, db.Model(&p).UpdateColumn("updated_at", past).Error)
+		require.NoError(t, db.Delete(&p).Error)
+		var reloaded models.Preference
+		require.NoError(t, db.Unscoped().First(&reloaded, "id = ?", p.ID).Error)
+		requireAfter(t, reloaded.UpdatedAt, "Preference")
+	})
+}
+
+// TestAfterDeleteSkipsBulkDelete proves that bulk soft deletes (which fire
+// AfterDelete with a zero-value model — DeletedAt.Valid == false) do NOT bump
+// updated_at. The explicit bump in deleteContactAssociations exists precisely
+// because this path is skipped.
+func TestAfterDeleteSkipsBulkDelete(t *testing.T) {
+	db, _ := setupRouterWithRetention(30)
+	var user models.User
+	db.First(&user)
+
+	subject := models.Contact{UserID: user.ID, Firstname: "Subject"}
+	require.NoError(t, db.Create(&subject).Error)
+
+	past := time.Date(2020, 1, 1, 0, 0, 0, 0, time.Local)
+
+	// Contact: bulk soft-delete via Where().Delete() fires hook with
+	// zero-value receiver — DeletedAt.Valid is false, hook skips.
+	t.Run("Contact", func(t *testing.T) {
+		c1 := models.Contact{UserID: user.ID, Firstname: "Bulk1"}
+		c2 := models.Contact{UserID: user.ID, Firstname: "Bulk2"}
+		require.NoError(t, db.Create(&c1).Error)
+		require.NoError(t, db.Create(&c2).Error)
+		require.NoError(t, db.Model(&c1).UpdateColumn("updated_at", past).Error)
+		require.NoError(t, db.Model(&c2).UpdateColumn("updated_at", past).Error)
+		names := []string{c1.Firstname, c2.Firstname}
+		require.NoError(t, db.Where("firstname IN ? AND user_id = ?", names, user.ID).Delete(&models.Contact{}).Error)
+		var reloaded1, reloaded2 models.Contact
+		require.NoError(t, db.Unscoped().First(&reloaded1, c1.ID).Error)
+		require.NoError(t, db.Unscoped().First(&reloaded2, c2.ID).Error)
+		expected := past.Format(time.RFC3339Nano)
+		assert.Equal(t, expected, reloaded1.UpdatedAt.Format(time.RFC3339Nano), "Contact bulk delete must not bump updated_at")
+		assert.Equal(t, expected, reloaded2.UpdatedAt.Format(time.RFC3339Nano), "Contact bulk delete must not bump updated_at")
+	})
+
+	// Note: same pattern.
+	t.Run("Note", func(t *testing.T) {
+		n1 := models.Note{UserID: user.ID, Content: "bulk1", Date: time.Now()}
+		n2 := models.Note{UserID: user.ID, Content: "bulk2", Date: time.Now()}
+		require.NoError(t, db.Create(&n1).Error)
+		require.NoError(t, db.Create(&n2).Error)
+		require.NoError(t, db.Model(&n1).UpdateColumn("updated_at", past).Error)
+		require.NoError(t, db.Model(&n2).UpdateColumn("updated_at", past).Error)
+		require.NoError(t, db.Where("content IN ? AND user_id = ?", []string{"bulk1", "bulk2"}, user.ID).Delete(&models.Note{}).Error)
+		var reloaded models.Note
+		require.NoError(t, db.Unscoped().First(&reloaded, n1.ID).Error)
+		assert.Equal(t, past.Format(time.RFC3339Nano), reloaded.UpdatedAt.Format(time.RFC3339Nano), "Note bulk delete must not bump updated_at")
+	})
+
+	// Activity: same pattern.
+	t.Run("Activity", func(t *testing.T) {
+		a1 := models.Activity{UserID: user.ID, Title: "bulk a1", Date: time.Now()}
+		a2 := models.Activity{UserID: user.ID, Title: "bulk a2", Date: time.Now()}
+		require.NoError(t, db.Create(&a1).Error)
+		require.NoError(t, db.Create(&a2).Error)
+		require.NoError(t, db.Model(&a1).UpdateColumn("updated_at", past).Error)
+		require.NoError(t, db.Model(&a2).UpdateColumn("updated_at", past).Error)
+		require.NoError(t, db.Where("title IN ? AND user_id = ?", []string{"bulk a1", "bulk a2"}, user.ID).Delete(&models.Activity{}).Error)
+		var reloaded models.Activity
+		require.NoError(t, db.Unscoped().First(&reloaded, a1.ID).Error)
+		assert.Equal(t, past.Format(time.RFC3339Nano), reloaded.UpdatedAt.Format(time.RFC3339Nano), "Activity bulk delete must not bump updated_at")
+	})
+
+	// LifeEvent: same pattern (UUID string PK).
+	t.Run("LifeEvent", func(t *testing.T) {
+		le1 := models.LifeEvent{UserID: user.ID, EntityID: subject.VCardUID, Type: "bulk-test"}
+		le2 := models.LifeEvent{UserID: user.ID, EntityID: subject.VCardUID, Type: "bulk-test"}
+		require.NoError(t, db.Create(&le1).Error)
+		require.NoError(t, db.Create(&le2).Error)
+		require.NoError(t, db.Model(&le1).UpdateColumn("updated_at", past).Error)
+		require.NoError(t, db.Model(&le2).UpdateColumn("updated_at", past).Error)
+		require.NoError(t, db.Where("type = ? AND user_id = ?", "bulk-test", user.ID).Delete(&models.LifeEvent{}).Error)
+		var reloaded models.LifeEvent
+		require.NoError(t, db.Unscoped().First(&reloaded, "id = ?", le1.ID).Error)
+		assert.Equal(t, past.Format(time.RFC3339Nano), reloaded.UpdatedAt.Format(time.RFC3339Nano), "LifeEvent bulk delete must not bump updated_at")
+	})
+
+	// Preference: same pattern (UUID string PK).
+	t.Run("Preference", func(t *testing.T) {
+		p1 := models.Preference{UserID: user.ID, EntityID: subject.VCardUID, Category: models.PreferenceCategoryFood, Value: "bulk1"}
+		p2 := models.Preference{UserID: user.ID, EntityID: subject.VCardUID, Category: models.PreferenceCategoryFood, Value: "bulk2"}
+		require.NoError(t, db.Create(&p1).Error)
+		require.NoError(t, db.Create(&p2).Error)
+		require.NoError(t, db.Model(&p1).UpdateColumn("updated_at", past).Error)
+		require.NoError(t, db.Model(&p2).UpdateColumn("updated_at", past).Error)
+		require.NoError(t, db.Where("value IN ? AND user_id = ?", []string{"bulk1", "bulk2"}, user.ID).Delete(&models.Preference{}).Error)
+		var reloaded models.Preference
+		require.NoError(t, db.Unscoped().First(&reloaded, "id = ?", p1.ID).Error)
+		assert.Equal(t, past.Format(time.RFC3339Nano), reloaded.UpdatedAt.Format(time.RFC3339Nano), "Preference bulk delete must not bump updated_at")
+	})
+}
+
 // TestFeedIndexesExistInMigratedSchema is the real-DB check for migration
 // 000043: the composite (user_id, updated_at, id) indexes must exist on every
 // paginated table in the real migrated schema (the cursor query degrades to a

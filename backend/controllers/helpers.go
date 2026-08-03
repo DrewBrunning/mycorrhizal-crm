@@ -90,8 +90,11 @@ func parsePositiveOrDefault(raw string, fallback int) int {
 // SyncMode describes how a collection is synced (T17's decided split).
 const (
 	// SyncModeIncremental collections are soft-deleted, support ?since= change
-	// feeds, and drop `total` from their list response (exact counts are
-	// expensive on exactly these — the large, unboundedly-growing tables).
+	// feeds, and normally drop `total` from their list response (exact counts are
+	// expensive on the large, unboundedly-growing tables — contacts, notes,
+	// activities, life_events). Preferences is a deliberate exception: it
+	// soft-deletes and supports ?since= but is small enough that `total` stays
+	// in browse mode.
 	SyncModeIncremental = "incremental"
 	// SyncModeFullResync collections are hard-deleted and bounded-small; a
 	// client re-pulls them wholesale. `total` is cheap here and kept.
