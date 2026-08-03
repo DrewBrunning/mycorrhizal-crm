@@ -69,13 +69,6 @@ export const lightTheme = createTheme({
   typography: {
     fontFamily: `"IBM Plex Sans", "Fira Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Helvetica Neue", "Droid Sans", sans-serif`,
 
-    h5: {
-      fontFamily: `"EB Garamond", serif`,
-      fontWeight: 600,
-    },
-    h6: {
-      fontFamily: `"EB Garamond", serif`,
-    },
     subtitle1: {
       fontWeight: 500,
     },
@@ -200,13 +193,6 @@ export const darkTheme = createTheme({
   typography: {
     fontFamily: `"IBM Plex Sans", "Fira Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Helvetica Neue", "Droid Sans", sans-serif`,
 
-    h5: {
-      fontFamily: `"EB Garamond", serif`,
-      fontWeight: 600,
-    },
-    h6: {
-      fontFamily: `"EB Garamond", serif`,
-    },
     body2: {
       color: "#B5ADA2", // soil
     },

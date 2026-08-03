@@ -36,7 +36,6 @@ import {
   Autocomplete,
   InputAdornment,
   Collapse,
-  Divider,
   SvgIcon
 } from '@mui/material';
 import { mdiGraphOutline, mdiNoteMultipleOutline } from '@mdi/js';
@@ -162,12 +161,8 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
   };
 
   const drawerContent = (
-    <Box>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Toolbar />
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 2, px: 2 }}>
-        <BrandLogo height={64} />
-      </Box>
-      <Divider />
       <List>
         {mainNavItems.map((item) => (
           <ListItem key={item.text} disablePadding>
@@ -236,6 +231,9 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
           </List>
         </Collapse>
       </List>
+      <Box sx={{ mt: 'auto', py: 2, px: 2 }}>
+        <BrandLogo height="auto" width="100%" />
+      </Box>
     </Box>
   );
 
