@@ -114,6 +114,55 @@ test('degrades gracefully when every block is empty', async () => {
   expect(screen.queryByText('People around them')).toBeNull();
 });
 
+test('cadence card shows on-track when overdue_by is zero', async () => {
+  mockBriefingFetch({
+    ...fullBriefing,
+    cadence: {
+      policy: { id: 'p1', entity_id: 'alice-uid', target_interval_days: 30 },
+      health: { has_qualifying_interaction: true, last_interaction: '2026-08-01T10:00:00Z', next_due: '2026-08-31T00:00:00Z', overdue_by: 0 },
+    },
+  });
+  renderPage();
+
+  await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
+  expect(screen.getByText('Relationship health')).toBeInTheDocument();
+  expect(screen.getByText('On track')).toBeInTheDocument();
+  expect(screen.queryByText(/days overdue/)).toBeNull();
+});
+
+test('cadence card shows no-interactions state without a qualifying interaction ever', async () => {
+  mockBriefingFetch({
+    ...fullBriefing,
+    cadence: {
+      policy: { id: 'p1', entity_id: 'alice-uid', target_interval_days: 30 },
+      health: { has_qualifying_interaction: false, overdue_by: 0 },
+    },
+  });
+  renderPage();
+
+  await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
+  expect(screen.getByText('Relationship health')).toBeInTheDocument();
+  expect(screen.getByText(/No qualifying interactions yet/)).toBeInTheDocument();
+});
+
+test('relationship row renders a link chip pointing at the other contact', async () => {
+  mockBriefingFetch({
+    ...fullBriefing,
+    relationships: [
+      { edge: { id: 'e1', source_id: 'bob-uid', target_id: 'alice-uid', type: 'friend_of' }, other_party_contact_id: 42, other_party_name: 'Bob Marley', display_token: 'friend_of' },
+    ],
+  });
+  renderPage();
+
+  await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
+  expect(screen.getByText(/Bob Marley/)).toBeInTheDocument();
+
+  // The "View" chip is an <a> wrapping the chip; assert the link resolves
+  // to the other party's numeric contact route.
+  const viewChip = screen.getByText('View');
+  expect(viewChip.closest('a')).toHaveAttribute('href', '/contacts/42');
+});
+
 test('shows an error state when the fetch fails', async () => {
   vi.stubGlobal(
     'fetch',

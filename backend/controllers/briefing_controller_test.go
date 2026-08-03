@@ -291,6 +291,110 @@ func TestGetContactBriefing_DisplayTokenInvertsWhenViewedIsSource(t *testing.T) 
 	assert.Equal(t, alice.VCardUID, b2.Relationships[0].OtherPartyUID)
 }
 
+func TestGetContactBriefing_CadenceWithNoQualifyingInteraction(t *testing.T) {
+	db, router := setupRouter()
+	router.GET("/contacts/:id/briefing", GetContactBriefing)
+
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+
+	contact := models.Contact{UserID: user.ID, Firstname: "Inactive"}
+	require.NoError(t, db.Create(&contact).Error)
+	// Cadence policy exists, but no activities at all — the "no
+	// qualifying interaction ever" sub-state within the cadence card.
+	policy := models.CadencePolicy{UserID: user.ID, EntityID: contact.VCardUID, TargetIntervalDays: 30}
+	require.NoError(t, db.Create(&policy).Error)
+
+	req, _ := http.NewRequest("GET", "/contacts/"+idString(contact.ID)+"/briefing", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	var b models.ContactBriefing
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &b))
+	require.NotNil(t, b.Cadence)
+	assert.False(t, b.Cadence.Health.HasQualifyingInteraction)
+	assert.Equal(t, 0, b.Cadence.Health.OverdueBy)
+}
+
+func TestGetContactBriefing_BirthdayAndAnniversary(t *testing.T) {
+	db, router := setupRouter()
+	router.GET("/contacts/:id/briefing", GetContactBriefing)
+
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+
+	contact := models.Contact{UserID: user.ID, Firstname: "Celebrant"}
+	require.NoError(t, db.Create(&contact).Error)
+	// Build both birth and wedding anniversaries so the flat Birthday/
+	// Anniversary columns are derived correctly (CLAUDE.md trap 2).
+	bday := time.Now().AddDate(0, 0, 5)
+	anniv := time.Now().AddDate(0, 0, 20)
+	bYear, bMonth, bDay := bday.Year(), int(bday.Month()), bday.Day()
+	aYear, aMonth, aDay := anniv.Year(), int(anniv.Month()), anniv.Day()
+	models.ApplyRecordToContact(&contact, &contactmodel.Record{
+		Card: contactmodel.Card{
+			Name: &contactmodel.Name{
+				Components: []contactmodel.NameComponent{{Kind: "given", Value: "Celebrant"}},
+			},
+			Anniversaries: []contactmodel.Anniversary{
+				{Kind: "birth", Date: contactmodel.AnniversaryDate{Partial: &contactmodel.PartialDate{Year: &bYear, Month: intPtr(bMonth), Day: intPtr(bDay)}}},
+				{Kind: "wedding", Date: contactmodel.AnniversaryDate{Partial: &contactmodel.PartialDate{Year: &aYear, Month: intPtr(aMonth), Day: intPtr(aDay)}}},
+			},
+		},
+		Envelope: contactmodel.CRMEnvelope{},
+	}, "")
+	require.NoError(t, db.Save(&contact).Error)
+
+	req, _ := http.NewRequest("GET", "/contacts/"+idString(contact.ID)+"/briefing", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	var b models.ContactBriefing
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &b))
+	require.Len(t, b.UpcomingDates, 2)
+	assert.Equal(t, "birthday", b.UpcomingDates[0].Label)
+	assert.Greater(t, b.UpcomingDates[0].DaysUntil, 0)
+	assert.Equal(t, "anniversary", b.UpcomingDates[1].Label)
+	assert.Greater(t, b.UpcomingDates[1].DaysUntil, 0)
+}
+
+func TestGetContactBriefing_ExcludesCompletedReminders(t *testing.T) {
+	db, router := setupRouter()
+	router.GET("/contacts/:id/briefing", GetContactBriefing)
+
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+
+	contact := models.Contact{UserID: user.ID, Firstname: "Reminded"}
+	require.NoError(t, db.Create(&contact).Error)
+
+	// Completed reminder — must be excluded.
+	completed := models.Reminder{
+		UserID: user.ID, ContactID: &contact.ID, Message: "Already done",
+		RemindAt: time.Now().AddDate(0, 0, 3), Recurrence: "once", Completed: true,
+	}
+	require.NoError(t, db.Create(&completed).Error)
+
+	// Incomplete reminder — must be included.
+	upcoming := models.Reminder{
+		UserID: user.ID, ContactID: &contact.ID, Message: "Still needed",
+		RemindAt: time.Now().AddDate(0, 0, 3), Recurrence: "once", Completed: false,
+	}
+	require.NoError(t, db.Create(&upcoming).Error)
+
+	req, _ := http.NewRequest("GET", "/contacts/"+idString(contact.ID)+"/briefing", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	var b models.ContactBriefing
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &b))
+	require.Len(t, b.UpcomingReminders, 1)
+	assert.Equal(t, "Still needed", b.UpcomingReminders[0].Message)
+}
+
 func TestGetContactBriefing_NotFound(t *testing.T) {
 	_, router := setupRouter()
 	router.GET("/contacts/:id/briefing", GetContactBriefing)
