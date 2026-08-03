@@ -35,7 +35,6 @@ import {
   TextField,
   Autocomplete,
   InputAdornment,
-  Collapse,
   SvgIcon
 } from '@mui/material';
 import { mdiGraphOutline, mdiNoteMultipleOutline } from '@mdi/js';
@@ -53,8 +52,6 @@ import HomeWorkIcon from '@mui/icons-material/HomeWork';
 import TokenIcon from '@mui/icons-material/Token';
 import StorageIcon from '@mui/icons-material/Storage';
 import LogoutIcon from '@mui/icons-material/Logout';
-import ExpandLess from '@mui/icons-material/ExpandLess';
-import ExpandMore from '@mui/icons-material/ExpandMore';
 import './App.css';
 
 const drawerWidth = 180;
@@ -78,7 +75,6 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
   const navigate = useNavigate();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
-  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Contact[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -125,17 +121,14 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
   // eslint-disable-next-line react-hooks/exhaustive-deps -- token changes trigger admin status recalculation
   const userIsAdmin = useMemo(() => isAdmin(), [token]);
 
-  const mainNavItems = useMemo(() => [
-    { text: t('nav.dashboard'), icon: <DashboardIcon />, path: '/' },
-    { text: t('nav.contacts'), icon: <ContactsIcon />, path: '/contacts' },
-    { text: t('nav.activities'), icon: <EventNoteIcon />, path: '/activities' },
-    { text: t('nav.notes'), icon: <SvgIcon><path d={mdiNoteMultipleOutline} /></SvgIcon>, path: '/notes' },
-    { text: t('nav.network'), icon: <SvgIcon><path d={mdiGraphOutline} /></SvgIcon>, path: '/network' },
-    { text: t('nav.households'), icon: <HomeWorkIcon />, path: '/households' },
-  ], [t]);
-
-  const settingsSubItems = useMemo(() => {
+  const mainNavItems = useMemo(() => {
     const items = [
+      { text: t('nav.dashboard'), icon: <DashboardIcon />, path: '/' },
+      { text: t('nav.contacts'), icon: <ContactsIcon />, path: '/contacts' },
+      { text: t('nav.activities'), icon: <EventNoteIcon />, path: '/activities' },
+      { text: t('nav.notes'), icon: <SvgIcon><path d={mdiNoteMultipleOutline} /></SvgIcon>, path: '/notes' },
+      { text: t('nav.network'), icon: <SvgIcon><path d={mdiGraphOutline} /></SvgIcon>, path: '/network' },
+      { text: t('nav.households'), icon: <HomeWorkIcon />, path: '/households' },
       { text: t('nav.profile'), icon: <SettingsIcon />, path: '/settings' },
       { text: t('nav.data'), icon: <StorageIcon />, path: '/settings/data' },
       { text: t('nav.integrations'), icon: <TokenIcon />, path: '/api-tokens' },
@@ -146,19 +139,7 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
     return items;
   }, [t, userIsAdmin]);
 
-  const handleSettingsMenuToggle = () => {
-    setSettingsMenuOpen(!settingsMenuOpen);
-  };
-
-  const isSettingsActive = location.pathname.startsWith('/settings') || location.pathname.startsWith('/users') || location.pathname.startsWith('/api-tokens');
-
   // Check if current path matches the nav item (handle exact match for "/" and prefix match for others)
-  const isActiveRoute = (path: string) => {
-    if (path === '/') {
-      return location.pathname === '/';
-    }
-    return location.pathname.startsWith(path);
-  };
 
   const drawerContent = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -170,7 +151,7 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
               component={Link}
               to={item.path}
               onClick={isMobile ? handleDrawerToggle : undefined}
-              selected={isActiveRoute(item.path)}
+              selected={item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path)}
               sx={{
                 '&.Mui-selected': {
                   backgroundColor: 'action.selected',
@@ -185,51 +166,6 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
             </ListItemButton>
           </ListItem>
         ))}
-        {/* Settings submenu */}
-        <ListItem disablePadding>
-          <ListItemButton
-            onClick={handleSettingsMenuToggle}
-            selected={isSettingsActive && !settingsMenuOpen}
-            sx={{
-              '&.Mui-selected': {
-                backgroundColor: 'action.selected',
-              },
-              '&.Mui-selected:hover': {
-                backgroundColor: 'action.selected',
-              },
-            }}
-          >
-            <ListItemIcon><SettingsIcon /></ListItemIcon>
-            <ListItemText primary={t('nav.settings')} />
-            {settingsMenuOpen ? <ExpandLess /> : <ExpandMore />}
-          </ListItemButton>
-        </ListItem>
-        <Collapse in={settingsMenuOpen} timeout="auto" unmountOnExit>
-          <List component="div" disablePadding>
-            {settingsSubItems.map((item) => (
-              <ListItem key={item.text} disablePadding>
-                <ListItemButton
-                  component={Link}
-                  to={item.path}
-                  onClick={isMobile ? handleDrawerToggle : undefined}
-                  selected={item.path === '/settings' ? location.pathname === '/settings' : isActiveRoute(item.path)}
-                  sx={{
-                    pl: 4,
-                    '&.Mui-selected': {
-                      backgroundColor: 'action.selected',
-                    },
-                    '&.Mui-selected:hover': {
-                      backgroundColor: 'action.selected',
-                    },
-                  }}
-                >
-                  <ListItemIcon>{item.icon}</ListItemIcon>
-                  <ListItemText primary={item.text} />
-                </ListItemButton>
-              </ListItem>
-            ))}
-          </List>
-        </Collapse>
       </List>
       <Box sx={{ mt: 'auto', py: 2, px: 2 }}>
         <BrandLogo height="auto" width="100%" />
