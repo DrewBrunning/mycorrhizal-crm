@@ -6,7 +6,8 @@ import {
   Typography,
   Paper,
   IconButton,
-  Link
+  Link,
+  SvgIcon,
 } from '@mui/material';
 import {
   Timeline,
@@ -17,7 +18,7 @@ import {
   TimelineDot,
   TimelineOppositeContent
 } from '@mui/lab';
-import NoteIcon from '@mui/icons-material/Note';
+import { mdiNoteOutline } from '@mdi/js';
 import EventIcon from '@mui/icons-material/Event';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -98,7 +99,7 @@ export default function ContactTimeline({ timelineItems, onEditItem, onDeleteCom
             </TimelineOppositeContent>
             <TimelineSeparator>
               <TimelineDot color={item.type === 'note' ? 'primary' : item.type === 'activity' ? 'secondary' : 'success'}>
-                {item.type === 'note' ? <NoteIcon fontSize="small" /> :
+                {item.type === 'note' ? <SvgIcon fontSize="small"><path d={mdiNoteOutline} /></SvgIcon> :
                  item.type === 'activity' ? <EventIcon fontSize="small" /> :
                  <NotificationsIcon fontSize="small" />}
               </TimelineDot>

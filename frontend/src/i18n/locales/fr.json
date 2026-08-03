@@ -8,12 +8,12 @@
     "dashboard": "Tableau de bord",
     "contacts": "Contacts",
     "activities": "Activités",
-    "notes": "Inbox",
+    "notes": "Capture",
     "network": "Réseau",
     "households": "Foyers",
     "reminders": "Rappels",
     "settings": "Paramètres",
-    "profile": "Profil",
+    "profile": "Général",
     "users": "Utilisateurs",
     "apiTokens": "Jetons API",
     "integrations": "Intégrations",
@@ -42,7 +42,7 @@
     "role": "Rôle",
     "noRole": "Aucun rôle",
     "roles": {
-      "head": "Chef de foyer",
+      "adult": "Adulte",
       "child": "Enfant",
       "pet": "Animal",
       "roommate": "Colocataire"
@@ -153,6 +153,7 @@
     "male": "Homme",
     "female": "Femme",
     "other": "Autre",
+    "prefer_not_to_say": "Je préfère ne pas dire",
     "email": "E-mail",
     "phone": "Téléphone",
     "birthday": "Anniversaire",
@@ -315,6 +316,7 @@
     "male": "Homme",
     "female": "Femme",
     "other": "Autre",
+    "prefer_not_to_say": "Je préfère ne pas dire",
     "deleteContact": "Supprimer le contact",
     "confirmDeleteContact": "Êtes-vous sûr de vouloir supprimer {{name}} ? Cette action est irréversible et supprimera également toutes les notes, activités et rappels associés à ce contact.",
     "deleteContactError": "Échec de la suppression du contact. Veuillez réessayer.",
@@ -325,7 +327,12 @@
     "archive": "Archiver",
     "unarchive": "Désarchiver",
     "archivedBadge": "Archivé",
-    "archiveConfirmation": "Êtes-vous sûr de vouloir archiver ce contact ? Tous les rappels seront supprimés. Vous pourrez le désarchiver plus tard, mais les rappels ne seront pas restaurés."
+    "archiveConfirmation": "Êtes-vous sûr de vouloir archiver ce contact ? Tous les rappels seront supprimés. Vous pourrez le désarchiver plus tard, mais les rappels ne seront pas restaurés.",
+    "tags": "Étiquettes",
+    "noTags": "Pas encore d'étiquettes",
+    "selectTag": "Sélectionner une étiquette...",
+    "newTag": "Nouvelle étiquette...",
+    "add": "Ajouter"
   },
   "noteDialog": {
     "title": "Ajouter une note",
@@ -366,7 +373,7 @@
     "allContactsInfo": "Cette page répertorie toutes les activités de tous les contacts."
   },
   "inbox": {
-    "title": "Inbox",
+    "title": "Capture",
     "addNote": "Ajouter une note",
     "search": "Rechercher…",
     "noNotes": "Aucune note non classée",
@@ -693,12 +700,12 @@
         "custom_fields": "Champs personnalisés"
       },
       "lockedHint": "Déverrouiller pour sélectionner les champs sensibles",
-      "revealButton": "Révéler les champs sensibles",
+      "revealButton": "Activer les champs sensibles",
       "revealTitle": "Inclure des données sensibles ?",
       "revealConfirm": "Certains de ces champs peuvent contenir des informations privées ou sensibles, comme des relations privées ou des champs personnalisés. Ils restent exclus sauf si vous les incluez ici délibérément.",
       "revealCancel": "Annuler",
-      "revealConfirmButton": "Révéler",
-      "revealedHint": "Les champs sensibles sont maintenant déverrouillés. En sélectionner un, ses données privées ou sensibles seront incluses dans cette exportation.",
+      "revealConfirmButton": "Activer",
+      "revealedHint": "Les champs sensibles sont maintenant disponibles. En sélectionner un, ses données privées ou sensibles seront incluses dans cette exportation.",
       "exportButton": "Exporter",
       "exporting": "Exportation en cours...",
       "exportError": "Échec de l'exportation des contacts. Veuillez réessayer.",

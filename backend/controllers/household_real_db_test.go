@@ -43,8 +43,8 @@ func TestHouseholdSuggestions_RealMigratedSchema(t *testing.T) {
 
 	household := models.Household{UserID: user.ID, Name: "Smith Family", Type: models.HouseholdTypeFamilyUnit}
 	require.NoError(t, db.Create(&household).Error)
-	require.NoError(t, db.Create(&models.HouseholdMember{HouseholdID: household.ID, UserID: user.ID, MemberVCardUID: adult1.VCardUID, Role: models.HouseholdRoleHead}).Error)
-	require.NoError(t, db.Create(&models.HouseholdMember{HouseholdID: household.ID, UserID: user.ID, MemberVCardUID: adult2.VCardUID, Role: models.HouseholdRoleHead}).Error)
+	require.NoError(t, db.Create(&models.HouseholdMember{HouseholdID: household.ID, UserID: user.ID, MemberVCardUID: adult1.VCardUID, Role: models.HouseholdRoleAdult}).Error)
+	require.NoError(t, db.Create(&models.HouseholdMember{HouseholdID: household.ID, UserID: user.ID, MemberVCardUID: adult2.VCardUID, Role: models.HouseholdRoleAdult}).Error)
 	require.NoError(t, db.Create(&models.HouseholdMember{HouseholdID: household.ID, UserID: user.ID, MemberVCardUID: child.VCardUID, Role: models.HouseholdRoleChild}).Error)
 	require.NoError(t, db.Create(&models.HouseholdMember{HouseholdID: household.ID, UserID: user.ID, MemberVCardUID: pet.VCardUID, Role: models.HouseholdRolePet}).Error)
 

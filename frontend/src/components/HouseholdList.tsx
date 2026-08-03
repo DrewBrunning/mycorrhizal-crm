@@ -142,7 +142,7 @@ export default function HouseholdList({
 }: HouseholdListProps) {
   const { t } = useTranslation();
   const [addOpenFor, setAddOpenFor] = useState<string | null>(null);
-  const [newMemberRole, setNewMemberRole] = useState<HouseholdRole>('head');
+  const [newMemberRole, setNewMemberRole] = useState<HouseholdRole>('adult');
 
   const membersFor = useCallback(
     (householdId: string): HouseholdMember[] =>

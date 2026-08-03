@@ -8,12 +8,12 @@
     "dashboard": "Dashboard",
     "contacts": "Contacts",
     "activities": "Activities",
-    "notes": "Inbox",
+    "notes": "Capture",
     "network": "Network",
     "households": "Households",
     "reminders": "Reminders",
     "settings": "Settings",
-    "profile": "Profile",
+    "profile": "General",
     "users": "Users",
     "apiTokens": "API Tokens",
     "integrations": "Integrations",
@@ -42,7 +42,7 @@
     "role": "Role",
     "noRole": "No role",
     "roles": {
-      "head": "Head",
+      "adult": "Adult",
       "child": "Child",
       "pet": "Pet",
       "roommate": "Roommate"
@@ -153,6 +153,7 @@
     "male": "Male",
     "female": "Female",
     "other": "Other",
+    "prefer_not_to_say": "Prefer not to say",
     "email": "Email",
     "phone": "Phone",
     "birthday": "Birthday",
@@ -315,6 +316,7 @@
     "male": "Male",
     "female": "Female",
     "other": "Other",
+    "prefer_not_to_say": "Prefer not to say",
     "deleteContact": "Delete Contact",
     "confirmDeleteContact": "Are you sure you want to delete {{name}}? This action cannot be undone and will also delete all notes, activities, and reminders associated with this contact.",
     "deleteContactError": "Failed to delete contact. Please try again.",
@@ -325,7 +327,12 @@
     "archive": "Archive",
     "unarchive": "Unarchive",
     "archivedBadge": "Archived",
-    "archiveConfirmation": "Are you sure you want to archive this contact? All reminders will be deleted. You can unarchive later, but reminders won't be restored."
+    "archiveConfirmation": "Are you sure you want to archive this contact? All reminders will be deleted. You can unarchive later, but reminders won't be restored.",
+    "tags": "Tags",
+    "noTags": "No tags yet",
+    "selectTag": "Select tag...",
+    "newTag": "New tag...",
+    "add": "Add"
   },
   "noteDialog": {
     "title": "Add Note",
@@ -366,7 +373,7 @@
     "allContactsInfo": "This page lists every activity from every contact."
   },
   "inbox": {
-    "title": "Inbox",
+    "title": "Capture",
     "addNote": "Add Note",
     "search": "Search...",
     "noNotes": "No unfiled notes",
@@ -720,11 +727,11 @@
         "custom_fields": "Custom fields"
       },
       "lockedHint": "Unlock to select sensitive fields",
-      "revealButton": "Reveal sensitive fields",
+      "revealButton": "Enable sensitive fields",
       "revealTitle": "Include sensitive data?",
       "revealConfirm": "Some of these fields may contain private or sensitive information, such as private relationships or custom fields. They stay excluded unless you include them here deliberately.",
       "revealCancel": "Cancel",
-      "revealConfirmButton": "Reveal",
+      "revealConfirmButton": "Enable",
       "revealedHint": "Sensitive fields are now unlocked. Selecting one will include its private or sensitive data in this export.",
       "exportButton": "Export",
       "exporting": "Exporting...",

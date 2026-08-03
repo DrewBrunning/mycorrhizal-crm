@@ -43,10 +43,11 @@ import {
   Button,
   Tabs,
   Tab,
-  Typography
+  Typography,
+  SvgIcon,
 } from '@mui/material';
 import { ContactDetailHeaderSkeleton, TimelineSkeleton } from './components/LoadingSkeletons';
-import NoteIcon from '@mui/icons-material/Note';
+import { mdiNotePlusOutline } from '@mdi/js';
 import EventIcon from '@mui/icons-material/Event';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import AddNoteDialog from './components/AddNoteDialog';
@@ -892,7 +893,7 @@ export default function ContactDetailPage() {
             <CardContent sx={{ py: 2 }}>
               <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mb: 1.5, gap: 0.5 }}>
                 <Button 
-                  startIcon={<NoteIcon />} 
+                  startIcon={<SvgIcon><path d={mdiNotePlusOutline} /></SvgIcon>} 
                   onClick={() => setNoteDialogOpen(true)}
                   variant="outlined"
                   size="small"
@@ -948,6 +949,8 @@ export default function ContactDetailPage() {
         open={noteDialogOpen}
         onClose={() => setNoteDialogOpen(false)}
         onSave={handleSaveNote}
+        noteContactId={id ? parseInt(id) : undefined}
+        noteContactName={`${firstname}${lastname ? ' ' + lastname : ''}`}
       />
       
       <AddActivityDialog

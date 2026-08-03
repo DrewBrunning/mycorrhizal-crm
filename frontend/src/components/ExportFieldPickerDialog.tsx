@@ -13,11 +13,12 @@ import {
   FormLabel,
   RadioGroup,
   Radio,
-  Alert,
   Dialog,
+  Alert,
+  SvgIcon,
 } from '@mui/material';
 import LockOutlined from '@mui/icons-material/LockOutlined';
-import WarningAmber from '@mui/icons-material/WarningAmber';
+import { mdiLockOpenVariantOutline } from '@mdi/js';
 import AppDialog from './AppDialog';
 import {
   ExportFormat,
@@ -150,18 +151,16 @@ export default function ExportFieldPickerDialog({
                         label={
                           <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             {t(`settings.exportFieldPicker.sections.${section.token}`)}
-                            {isSensitive && (
-                              <WarningAmber
-                                fontSize="small"
-                                color="warning"
-                                sx={{ verticalAlign: 'middle' }}
-                              />
+                            {isSensitive && !locked && (
+                              <SvgIcon fontSize="small" sx={{ color: 'success.main', verticalAlign: 'middle' }}>
+                                <path d={mdiLockOpenVariantOutline} />
+                              </SvgIcon>
                             )}
                           </Box>
                         }
                       />
                       {locked && (
-                        <LockOutlined fontSize="small" color="action" sx={{ ml: 0.5 }} />
+                        <LockOutlined fontSize="inherit" color="disabled" sx={{ ml: 0.5, opacity: 0.5 }} />
                       )}
                     </Box>
                   );
@@ -172,7 +171,6 @@ export default function ExportFieldPickerDialog({
             {!sensitiveRevealed ? (
               <Button
                 variant="outlined"
-                color="warning"
                 size="small"
                 startIcon={<LockOutlined />}
                 onClick={() => setConfirmOpen(true)}
@@ -181,9 +179,12 @@ export default function ExportFieldPickerDialog({
                 {t('settings.exportFieldPicker.revealButton')}
               </Button>
             ) : (
-              <Alert severity="warning" sx={{ py: 0.5 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <SvgIcon fontSize="small" color="success">
+                  <path d={mdiLockOpenVariantOutline} />
+                </SvgIcon>
                 {t('settings.exportFieldPicker.revealedHint')}
-              </Alert>
+              </Typography>
             )}
 
             {error && <Alert severity="error" sx={{ py: 0 }}>{error}</Alert>}
@@ -201,7 +202,7 @@ export default function ExportFieldPickerDialog({
 
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)} maxWidth="xs">
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <WarningAmber color="warning" />
+          <LockOutlined color="action" />
           {t('settings.exportFieldPicker.revealTitle')}
         </DialogTitle>
         <DialogContent>
@@ -213,7 +214,7 @@ export default function ExportFieldPickerDialog({
           <Button onClick={() => setConfirmOpen(false)}>
             {t('settings.exportFieldPicker.revealCancel')}
           </Button>
-          <Button onClick={handleRevealConfirm} variant="contained" color="warning">
+          <Button onClick={handleRevealConfirm} variant="contained">
             {t('settings.exportFieldPicker.revealConfirmButton')}
           </Button>
         </DialogActions>

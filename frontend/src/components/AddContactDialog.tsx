@@ -6,6 +6,7 @@ import {
   DialogActions,
   Button,
   TextField,
+  Autocomplete,
   MenuItem,
   Chip,
   Box,
@@ -345,18 +346,17 @@ export default function AddContactDialog({
               />
             )}
             {isOn('gender') && (
-              <TextField
-                select
-                label={t('contacts.gender')}
-                fullWidth
-                value={formData.gender}
-                onChange={handleChange('gender')}
-              >
-                <MenuItem value="">{t('contacts.selectGender')}</MenuItem>
-                <MenuItem value="male">{t('contacts.male')}</MenuItem>
-                <MenuItem value="female">{t('contacts.female')}</MenuItem>
-                <MenuItem value="other">{t('contacts.other')}</MenuItem>
-              </TextField>
+              <Autocomplete
+                freeSolo
+                options={['male', 'female', 'other', 'prefer_not_to_say']}
+                getOptionLabel={(v) => ['male', 'female', 'other', 'prefer_not_to_say'].includes(v) ? t(`contacts.${v}`) : (v || '')}
+                value={formData.gender || null}
+                onChange={(_, v) => handleChange('gender')({ target: { value: v || '' } } as any)}
+                onInputChange={(_, v) => handleChange('gender')({ target: { value: v } } as any)}
+                renderInput={(params) => (
+                  <TextField {...params} label={t('contacts.gender')} fullWidth placeholder={t('contacts.selectGender')} />
+                )}
+              />
             )}
           </Stack>
 

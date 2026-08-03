@@ -8,12 +8,12 @@
     "dashboard": "Dashboard",
     "contacts": "Kontakte",
     "activities": "Aktivitäten",
-    "notes": "Posteingang",
+    "notes": "Capture",
     "network": "Netzwerk",
     "households": "Haushalte",
     "reminders": "Erinnerungen",
     "settings": "Einstellungen",
-    "profile": "Profil",
+    "profile": "Allgemein",
     "users": "Benutzer",
     "apiTokens": "API-Tokens",
     "integrations": "Integration",
@@ -42,7 +42,7 @@
     "role": "Rolle",
     "noRole": "Keine Rolle",
     "roles": {
-      "head": "Haushaltsvorstand",
+      "adult": "Erwachsener",
       "child": "Kind",
       "pet": "Haustier",
       "roommate": "Mitbewohner"
@@ -153,6 +153,7 @@
     "male": "Männlich",
     "female": "Weiblich",
     "other": "Andere",
+    "prefer_not_to_say": "Keine Angabe",
     "email": "E-Mail",
     "phone": "Telefon",
     "birthday": "Geburtstag",
@@ -315,6 +316,7 @@
     "male": "Männlich",
     "female": "Weiblich",
     "other": "Andere",
+    "prefer_not_to_say": "Keine Angabe",
     "deleteContact": "Kontakt löschen",
     "confirmDeleteContact": "Möchten Sie {{name}} wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden und löscht auch alle Notizen, Aktivitäten und Erinnerungen, die mit diesem Kontakt verbunden sind.",
     "deleteContactError": "Kontakt konnte nicht gelöscht werden. Bitte versuchen Sie es erneut.",
@@ -325,7 +327,12 @@
     "archive": "Archivieren",
     "unarchive": "Wiederherstellen",
     "archivedBadge": "Archiviert",
-    "archiveConfirmation": "Möchten Sie diesen Kontakt wirklich archivieren? Alle Erinnerungen werden gelöscht. Sie können den Kontakt später wiederherstellen, aber die Erinnerungen werden nicht wiederhergestellt."
+    "archiveConfirmation": "Möchten Sie diesen Kontakt wirklich archivieren? Alle Erinnerungen werden gelöscht. Sie können den Kontakt später wiederherstellen, aber die Erinnerungen werden nicht wiederhergestellt.",
+    "tags": "Tags",
+    "noTags": "Noch keine Tags",
+    "selectTag": "Tag auswählen...",
+    "newTag": "Neuer Tag...",
+    "add": "Hinzufügen"
   },
   "noteDialog": {
     "title": "Notiz hinzufügen",
@@ -366,7 +373,7 @@
     "allContactsInfo": "Diese Seite zeigt alle Aktivitäten aus allen Kontakten."
   },
   "inbox": {
-    "title": "Posteingang",
+    "title": "Capture",
     "addNote": "Notiz hinzufügen",
     "search": "Suchen…",
     "noNotes": "Keine nicht zugewiesenen Notizen",
@@ -698,7 +705,7 @@
       "revealConfirm": "Einige dieser Felder können private oder sensible Informationen enthalten, z. B. private Beziehungen oder benutzerdefinierte Felder. Sie bleiben ausgeschlossen, es sei denn, Sie beziehen sie hier bewusst ein.",
       "revealCancel": "Abbrechen",
       "revealConfirmButton": "Anzeigen",
-      "revealedHint": "Sensible Felder sind jetzt entsperrt. Durch Auswahl eines Felds werden dessen private oder sensible Daten in diesen Export einbezogen.",
+      "revealedHint": "Sensible Felder sind jetzt freigeschaltet. Durch Auswahl eines Felds werden dessen private oder sensible Daten in diesen Export einbezogen.",
       "exportButton": "Exportieren",
       "exporting": "Exportiere...",
       "exportError": "Kontakte konnten nicht exportiert werden. Bitte versuchen Sie es erneut.",

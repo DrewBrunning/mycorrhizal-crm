@@ -94,8 +94,8 @@ func TestGenerateHouseholdSuggestions_FamilyUnit(t *testing.T) {
 	child := createHouseholdTestContact(t, db, user.ID, "Charlie", "")
 	pet := createHouseholdTestContact(t, db, user.ID, "Fluffy", "pet")
 
-	addHouseholdMember(t, db, household.ID, user.ID, adult1, models.HouseholdRoleHead)
-	addHouseholdMember(t, db, household.ID, user.ID, adult2, models.HouseholdRoleHead)
+	addHouseholdMember(t, db, household.ID, user.ID, adult1, models.HouseholdRoleAdult)
+	addHouseholdMember(t, db, household.ID, user.ID, adult2, models.HouseholdRoleAdult)
 	addHouseholdMember(t, db, household.ID, user.ID, child, models.HouseholdRoleChild)
 	addHouseholdMember(t, db, household.ID, user.ID, pet, models.HouseholdRolePet)
 
@@ -189,8 +189,8 @@ func TestGenerateHouseholdSuggestions_IdempotentRerun(t *testing.T) {
 
 	a := createHouseholdTestContact(t, db, user.ID, "Alice", "")
 	b := createHouseholdTestContact(t, db, user.ID, "Bob", "")
-	addHouseholdMember(t, db, household.ID, user.ID, a, models.HouseholdRoleHead)
-	addHouseholdMember(t, db, household.ID, user.ID, b, models.HouseholdRoleHead)
+	addHouseholdMember(t, db, household.ID, user.ID, a, models.HouseholdRoleAdult)
+	addHouseholdMember(t, db, household.ID, user.ID, b, models.HouseholdRoleAdult)
 
 	first, err := GenerateHouseholdSuggestions(db, household)
 	require.NoError(t, err)
@@ -218,7 +218,7 @@ func TestGenerateHouseholdSuggestions_DoesNotDuplicateExistingConfirmedEdge(t *t
 
 	adult := createHouseholdTestContact(t, db, user.ID, "Alice", "")
 	child := createHouseholdTestContact(t, db, user.ID, "Charlie", "")
-	addHouseholdMember(t, db, household.ID, user.ID, adult, models.HouseholdRoleHead)
+	addHouseholdMember(t, db, household.ID, user.ID, adult, models.HouseholdRoleAdult)
 	addHouseholdMember(t, db, household.ID, user.ID, child, models.HouseholdRoleChild)
 
 	// Pre-existing CONFIRMED edge, stored in the INVERSE direction/token —
@@ -258,7 +258,7 @@ func TestGenerateHouseholdSuggestions_ClassifiesByKindNotRole(t *testing.T) {
 	adult := createHouseholdTestContact(t, db, user.ID, "Alice", "")
 	pet := createHouseholdTestContact(t, db, user.ID, "Fluffy", "animal")
 
-	addHouseholdMember(t, db, household.ID, user.ID, adult, models.HouseholdRoleHead)
+	addHouseholdMember(t, db, household.ID, user.ID, adult, models.HouseholdRoleAdult)
 	// Role deliberately left empty, not "pet" — Kind alone must drive it.
 	addHouseholdMember(t, db, household.ID, user.ID, pet, "")
 
@@ -280,7 +280,7 @@ func TestGenerateHouseholdSuggestions_SingleMemberProducesNothing(t *testing.T) 
 	require.NoError(t, db.Create(&household).Error)
 
 	a := createHouseholdTestContact(t, db, user.ID, "Alice", "")
-	addHouseholdMember(t, db, household.ID, user.ID, a, models.HouseholdRoleHead)
+	addHouseholdMember(t, db, household.ID, user.ID, a, models.HouseholdRoleAdult)
 
 	created, err := GenerateHouseholdSuggestions(db, household)
 	require.NoError(t, err)

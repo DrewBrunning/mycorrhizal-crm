@@ -59,7 +59,7 @@ func TestHouseholdMemberUniqueConstraintRejectsDuplicate(t *testing.T) {
 	contact := Contact{UserID: user.ID, Firstname: "Alice"}
 	require.NoError(t, db.Create(&contact).Error)
 
-	first := HouseholdMember{HouseholdID: household.ID, UserID: user.ID, MemberVCardUID: contact.VCardUID, Role: HouseholdRoleHead}
+	first := HouseholdMember{HouseholdID: household.ID, UserID: user.ID, MemberVCardUID: contact.VCardUID, Role: HouseholdRoleAdult}
 	require.NoError(t, db.Create(&first).Error)
 
 	second := HouseholdMember{HouseholdID: household.ID, UserID: user.ID, MemberVCardUID: contact.VCardUID, Role: HouseholdRoleRoommate}

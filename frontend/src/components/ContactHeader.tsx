@@ -204,19 +204,18 @@ export default function ContactHeader({
                   onChange={(e) => onProfileValueChange({ ...profileValues, nickname: e.target.value })}
                   size="small"
                 />
-                <TextField
-                  select
-                  label={t('contactDetail.gender')}
-                  value={profileValues.gender}
-                  onChange={(e) => onProfileValueChange({ ...profileValues, gender: e.target.value })}
+                <Autocomplete
+                  freeSolo
+                  options={['male', 'female', 'other', 'prefer_not_to_say']}
+                  getOptionLabel={(v) => ['male', 'female', 'other', 'prefer_not_to_say'].includes(v) ? t(`contactDetail.${v}`) : (v || '')}
+                  value={profileValues.gender || null}
+                  onChange={(_, v) => onProfileValueChange({ ...profileValues, gender: v || '' })}
+                  onInputChange={(_, v) => onProfileValueChange({ ...profileValues, gender: v })}
                   size="small"
-                  SelectProps={{ native: true }}
-                >
-                  <option value=""></option>
-                  <option value="male">{t('contactDetail.male')}</option>
-                  <option value="female">{t('contactDetail.female')}</option>
-                  <option value="other">{t('contactDetail.other')}</option>
-                </TextField>
+                  renderInput={(params) => (
+                    <TextField {...params} label={t('contactDetail.gender')} fullWidth />
+                  )}
+                />
                 <Box sx={{ display: 'flex', gap: 1, justifyContent: 'space-between' }}>
                   <IconButton
                     size="small"
@@ -328,7 +327,7 @@ export default function ContactHeader({
                 </Box>
                 {gender && (
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
-                    {t(`contactDetail.${gender}`)}
+                    {['male', 'female', 'other', 'prefer_not_to_say'].includes(gender) ? t(`contactDetail.${gender}`) : gender}
                   </Typography>
                 )}
               </>

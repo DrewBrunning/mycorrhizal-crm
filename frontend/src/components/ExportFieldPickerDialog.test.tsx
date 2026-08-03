@@ -54,14 +54,14 @@ test('sensitive controls become interactive only after the reveal action', () =>
   expect(relationships).toBeDisabled();
 
   // Click the reveal button -> confirmation dialog.
-  fireEvent.click(screen.getByRole('button', { name: 'Reveal sensitive fields' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Enable sensitive fields' }));
   expect(screen.getByText('Include sensitive data?')).toBeInTheDocument();
 
   // The reveal has not happened yet: still disabled.
   expect(relationships).toBeDisabled();
 
   // Confirm the deliberate action.
-  fireEvent.click(screen.getByRole('button', { name: 'Reveal' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Enable' }));
 
   // Now the control is interactive.
   expect(relationships).toBeEnabled();
@@ -72,7 +72,7 @@ test('sensitive controls become interactive only after the reveal action', () =>
 test('cancelling the reveal keeps the controls locked', async () => {
   renderDialog();
 
-  fireEvent.click(screen.getByRole('button', { name: 'Reveal sensitive fields' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Enable sensitive fields' }));
   fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
   // The confirm dialog must finish closing (and lift its aria-hidden on the
@@ -104,8 +104,8 @@ test('exporting a revealed sensitive section sends the explicit opt-in', async (
   const onExport = vi.fn().mockResolvedValue(undefined);
   renderDialog({ onExport });
 
-  fireEvent.click(screen.getByRole('button', { name: 'Reveal sensitive fields' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Reveal' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Enable sensitive fields' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Enable' }));
 
   const relationships = await screen.findByRole('checkbox', { name: 'Relationships' });
   fireEvent.click(relationships);
@@ -122,8 +122,8 @@ test('revealing but not selecting a sensitive section does NOT imply the opt-in'
   const onExport = vi.fn().mockResolvedValue(undefined);
   renderDialog({ onExport });
 
-  fireEvent.click(screen.getByRole('button', { name: 'Reveal sensitive fields' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Reveal' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Enable sensitive fields' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Enable' }));
   await waitFor(() => expect(screen.queryByText('Include sensitive data?')).not.toBeInTheDocument());
   // No sensitive section selected.
 

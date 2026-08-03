@@ -29,8 +29,12 @@ var migrationsFS embed.FS
 //     every new physical connection it opens) rather than a one-time
 //     PRAGMA statement, which would only affect whichever single connection
 //     ran it.
+//   - busy_timeout(5000): wait up to 5s for a write lock instead of
+//     immediately returning SQLITE_BUSY. The scheduled jobs fire concurrently
+//     at startup and the first one to INSERT into job_executions fails the
+//     others; a timeout lets them queue instead.
 func openDSN(dbPath string) string {
-	return dbPath + "?_pragma=journal_mode(WAL)&_pragma=foreign_keys(1)"
+	return dbPath + "?_pragma=journal_mode(WAL)&_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)"
 }
 
 // InitDB initializes the database connection and runs migrations

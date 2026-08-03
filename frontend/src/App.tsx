@@ -35,8 +35,10 @@ import {
   TextField,
   Autocomplete,
   InputAdornment,
-  Collapse
+  Collapse,
+  SvgIcon
 } from '@mui/material';
+import { mdiGraphOutline, mdiNoteMultipleOutline } from '@mdi/js';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
 import { getContacts, Contact } from './api/contacts';
@@ -44,8 +46,6 @@ import MenuIcon from '@mui/icons-material/Menu';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import ContactsIcon from '@mui/icons-material/Contacts';
 import EventNoteIcon from '@mui/icons-material/EventNote';
-import NoteIcon from '@mui/icons-material/Note';
-import HubIcon from '@mui/icons-material/Hub';
 import SettingsIcon from '@mui/icons-material/Settings';
 import PeopleIcon from '@mui/icons-material/People';
 import HomeWorkIcon from '@mui/icons-material/HomeWork';
@@ -128,8 +128,8 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
     { text: t('nav.dashboard'), icon: <DashboardIcon />, path: '/' },
     { text: t('nav.contacts'), icon: <ContactsIcon />, path: '/contacts' },
     { text: t('nav.activities'), icon: <EventNoteIcon />, path: '/activities' },
-    { text: t('nav.notes'), icon: <NoteIcon />, path: '/notes' },
-    { text: t('nav.network'), icon: <HubIcon />, path: '/network' },
+    { text: t('nav.notes'), icon: <SvgIcon><path d={mdiNoteMultipleOutline} /></SvgIcon>, path: '/notes' },
+    { text: t('nav.network'), icon: <SvgIcon><path d={mdiGraphOutline} /></SvgIcon>, path: '/network' },
     { text: t('nav.households'), icon: <HomeWorkIcon />, path: '/households' },
   ], [t]);
 
