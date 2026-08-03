@@ -36,9 +36,11 @@ import {
   Autocomplete,
   InputAdornment,
   Collapse,
+  Divider,
   SvgIcon
 } from '@mui/material';
 import { mdiGraphOutline, mdiNoteMultipleOutline } from '@mdi/js';
+import BrandLogo from './components/BrandLogo';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
 import { getContacts, Contact } from './api/contacts';
@@ -162,6 +164,10 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
   const drawerContent = (
     <Box>
       <Toolbar />
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 2, px: 2 }}>
+        <BrandLogo height={64} />
+      </Box>
+      <Divider />
       <List>
         {mainNavItems.map((item) => (
           <ListItem key={item.text} disablePadding>

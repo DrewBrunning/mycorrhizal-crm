@@ -10,6 +10,7 @@ import {
   IconButton,
   Chip,
   Popover,
+  SvgIcon,
 } from '@mui/material';
 import {
   Timeline,
@@ -20,6 +21,7 @@ import {
   TimelineDot,
   TimelineOppositeContent,
 } from '@mui/lab';
+import { mdiCalendarPlus } from '@mdi/js';
 import EventIcon from '@mui/icons-material/Event';
 import EditIcon from '@mui/icons-material/Edit';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
@@ -197,7 +199,7 @@ const ActivitiesPage: React.FC = () => {
             <InfoOutlinedIcon fontSize="small" />
           </IconButton>
         </Box>
-        <Button variant="outlined" startIcon={<EventIcon />} onClick={handleAddActivity}>
+        <Button variant="outlined" startIcon={<SvgIcon><path d={mdiCalendarPlus} /></SvgIcon>} onClick={handleAddActivity}>
           {t('activities.addActivity')}
         </Button>
       </Box>

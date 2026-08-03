@@ -44,6 +44,8 @@ import {
 import { replaceContactFieldValues } from '../api/fieldDefinitions';
 import { Circle } from '../api/circles';
 import { addCircleMember, createCircle } from '../api/circles';
+import { Tag } from '../api/tags';
+import { createTag, addContactTag } from '../api/tags';
 import { createReminder } from '../api/reminders';
 import { useSnackbar } from '../context/SnackbarContext';
 import { handleError, getErrorMessage } from '../utils/errorHandler';
@@ -55,6 +57,7 @@ interface AddContactDialogProps {
   onClose: () => void;
   onContactAdded: (contactId: number) => void;
   availableCircles: Circle[];
+  availableTags: Tag[];
   fieldDefinitions?: FieldDefinition[];
   enabledFields?: Set<ContactFieldKey>;
 }
@@ -83,6 +86,7 @@ export default function AddContactDialog({
   onClose,
   onContactAdded,
   availableCircles,
+  availableTags,
   fieldDefinitions = [],
   enabledFields
 }: AddContactDialogProps) {
@@ -103,6 +107,8 @@ export default function AddContactDialog({
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, FieldValueEditorState>>({});
   const [selectedCircles, setSelectedCircles] = useState<Circle[]>([]);
   const [newCircle, setNewCircle] = useState('');
+  const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
+  const [newTag, setNewTag] = useState('');
   const [createBirthdayReminder, setCreateBirthdayReminder] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -134,6 +140,18 @@ export default function AddContactDialog({
 
   const handleRemoveCircle = (circle: Circle) => {
     setSelectedCircles(selectedCircles.filter(c => c.id !== circle.id && c.name !== circle.name));
+  };
+
+  const handleAddTag = () => {
+    const trimmed = newTag.trim();
+    if (trimmed && !selectedTags.find(t => t.name === trimmed)) {
+      setSelectedTags([...selectedTags, { id: '', created_at: '', updated_at: '', name: trimmed }]);
+      setNewTag('');
+    }
+  };
+
+  const handleRemoveTag = (tag: Tag) => {
+    setSelectedTags(selectedTags.filter(t => t.id !== tag.id && t.name !== tag.name));
   };
 
   const handleSubmit = async () => {
@@ -271,6 +289,20 @@ export default function AddContactDialog({
         }
       }
 
+      // Add tag memberships for selected tags
+      for (const tag of selectedTags) {
+        try {
+          let tagId = tag.id;
+          if (!tagId) {
+            const created = await createTag(tag.name);
+            tagId = created.tag.id;
+          }
+          await addContactTag(newRecord.uid, tagId);
+        } catch {
+          // Silently skip — the contact exists, memberships are best-effort
+        }
+      }
+
       onContactAdded(newRecord.id);
       showSuccess(t('contacts.add.success'));
       handleClose();
@@ -293,6 +325,8 @@ export default function AddContactDialog({
     setCustomFieldValues({});
     setSelectedCircles([]);
     setNewCircle('');
+    setSelectedTags([]);
+    setNewTag('');
     setCreateBirthdayReminder(false);
     setError('');
     onClose();
@@ -521,6 +555,63 @@ export default function AddContactDialog({
               />
               <Button onClick={handleAddCircle} variant="outlined">
                 {t('contacts.add.addCircle')}
+              </Button>
+            </Stack>
+          </Box>
+          <Box>
+            <Typography variant="subtitle2" gutterBottom>
+              {t('contacts.tags')}
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1, mb: 1, flexWrap: 'wrap' }}>
+              {selectedTags.map(t => (
+                <Chip
+                  key={t.id || t.name}
+                  label={t.name}
+                  onDelete={() => handleRemoveTag(t)}
+                  color="secondary"
+                  size="small"
+                />
+              ))}
+            </Box>
+            <Stack direction="row" spacing={1}>
+              <TextField
+                select
+                label={t('contacts.selectTag')}
+                fullWidth
+                value=""
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value) {
+                    const tag = availableTags.find(t => t.name === value);
+                    if (tag && !selectedTags.find(st => st.id === tag.id || st.name === tag.name)) {
+                      setSelectedTags([...selectedTags, tag]);
+                    }
+                  }
+                }}
+              >
+                <MenuItem value="">{t('contacts.selectTag')}</MenuItem>
+                {availableTags
+                  .filter(t => !selectedTags.find(st => st.id === t.id || st.name === t.name))
+                  .map(t => (
+                    <MenuItem key={t.id || t.name} value={t.name}>
+                      {t.name}
+                    </MenuItem>
+                  ))}
+              </TextField>
+              <TextField
+                label={t('contacts.newTag')}
+                value={newTag}
+                onChange={(e) => setNewTag(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddTag();
+                  }
+                }}
+                sx={{ minWidth: 150 }}
+              />
+              <Button onClick={handleAddTag} variant="outlined">
+                {t('common.add')}
               </Button>
             </Stack>
           </Box>

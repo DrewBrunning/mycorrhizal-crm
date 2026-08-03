@@ -165,6 +165,9 @@
     "circles": "Cerchie",
     "selectCircle": "Seleziona cerchia esistente...",
     "newCircle": "Oppure crea nuova...",
+    "tags": "Tag",
+    "selectTag": "Seleziona tag esistente...",
+    "newTag": "Oppure crea nuovo...",
     "add": {
       "button": "Aggiungi Contatto",
       "title": "Aggiungi Nuovo Contatto",

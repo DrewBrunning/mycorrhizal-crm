@@ -20,10 +20,6 @@ import LanguageIcon from '@mui/icons-material/Language';
 import LockResetIcon from '@mui/icons-material/LockReset';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
-import InfoIcon from '@mui/icons-material/Info';
-import GitHubIcon from '@mui/icons-material/GitHub';
-import Link from '@mui/material/Link';
-import BrandLogo from './components/BrandLogo';
 import { changePassword } from './api/auth';
 import { updateLanguage, updateDateFormat } from './api/users';
 import { ThemePreference, useThemePreference } from './AppThemeProvider';
@@ -105,41 +101,6 @@ export default function SettingsPage() {
       <Typography variant="h5" gutterBottom sx={{ mb: 1.5 }}>
         {t('settings.title')}
       </Typography>
-
-      <Card sx={{ mb: 2 }}>
-        <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-            <InfoIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }} />
-            <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-              {t('settings.about.title')}
-            </Typography>
-          </Box>
-          <Divider sx={{ mb: 1.5 }} />
-
-          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-            <BrandLogo height={100} />
-            <Stack spacing={1}>
-              <Typography variant="body2" color="text.secondary">
-                {t('settings.about.description')}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {t('settings.about.contribute')}
-              </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
-                <GitHubIcon sx={{ mr: 1, fontSize: 18, color: 'text.secondary' }} />
-                <Link
-                  href="https://github.com/DrewBrunning/mycorrhizal-crm"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  underline="hover"
-                >
-                  github.com/DrewBrunning/mycorrhizal-crm
-                </Link>
-              </Box>
-            </Stack>
-          </Box>
-        </CardContent>
-      </Card>
 
       <Card sx={{ mb: 2 }}>
         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>

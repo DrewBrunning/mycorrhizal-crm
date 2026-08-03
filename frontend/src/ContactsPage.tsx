@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useContacts } from './hooks/useContacts';
 import { useCircles } from './hooks/useCircles';
+import { useTags } from './hooks/useTags';
 import { useFieldDefinitions } from './hooks/useFieldDefinitions';
 import { getCurrentUser } from './api/admin';
 import { resolveEnabledFields, ContactFieldKey } from './contactFields';
@@ -34,6 +35,7 @@ export default function ContactsPage() {
   const searchQuery = searchParams.get('search') || '';
   const [selectedCircle, setSelectedCircle] = useState('');
   const { circles, circleNamesByUid, refresh: refreshCircles } = useCircles();
+  const { tags } = useTags();
 
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -221,6 +223,7 @@ export default function ContactsPage() {
         onClose={() => setAddDialogOpen(false)}
         onContactAdded={handleContactAdded}
         availableCircles={circles}
+        availableTags={tags}
         fieldDefinitions={fieldDefinitions}
         enabledFields={enabledFields}
       />

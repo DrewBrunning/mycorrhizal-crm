@@ -165,6 +165,9 @@
     "circles": "Kreise",
     "selectCircle": "Vorhandenen Kreis auswählen...",
     "newCircle": "Oder neu erstellen...",
+    "tags": "Tags",
+    "selectTag": "Vorhandenen Tag auswählen...",
+    "newTag": "Oder neu erstellen...",
     "add": {
       "button": "Kontakt hinzufügen",
       "title": "Neuen Kontakt hinzufügen",

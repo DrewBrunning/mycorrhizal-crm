@@ -47,8 +47,7 @@ import {
   SvgIcon,
 } from '@mui/material';
 import { ContactDetailHeaderSkeleton, TimelineSkeleton } from './components/LoadingSkeletons';
-import { mdiNotePlusOutline } from '@mdi/js';
-import EventIcon from '@mui/icons-material/Event';
+import { mdiNotePlusOutline, mdiCalendarPlus } from '@mdi/js';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import AddNoteDialog from './components/AddNoteDialog';
 import AddActivityDialog from './components/AddActivityDialog';
@@ -901,7 +900,7 @@ export default function ContactDetailPage() {
                   {t('contactDetail.addNote')}
                 </Button>
                 <Button 
-                  startIcon={<EventIcon />} 
+                  startIcon={<SvgIcon><path d={mdiCalendarPlus} /></SvgIcon>} 
                   onClick={() => setActivityDialogOpen(true)}
                   variant="outlined"
                   size="small"

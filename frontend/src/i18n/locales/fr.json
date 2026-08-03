@@ -165,6 +165,9 @@
     "circles": "Cercles",
     "selectCircle": "Sélectionnez un cercle existant...",
     "newCircle": "Ou créez-en un nouveau...",
+    "tags": "Étiquettes",
+    "selectTag": "Sélectionnez une étiquette existante...",
+    "newTag": "Ou créez-en une nouvelle...",
     "add": {
       "button": "Ajouter un contact",
       "title": "Ajouter un nouveau contact",
