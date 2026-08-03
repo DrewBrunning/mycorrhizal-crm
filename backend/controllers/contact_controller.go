@@ -578,6 +578,15 @@ func deleteContactAssociations(tx *gorm.DB, contact models.Contact, userID uint)
 		return err
 	}
 
+	// Delete this contact's external integration links and enrichment events
+	// (T14 — both are keyed by Contact.VCardUID and hard-delete)
+	if err := tx.Where("entity_id = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.ExternalIdentity{}).Error; err != nil {
+		return err
+	}
+	if err := tx.Where("entity_id = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.ExternalActivity{}).Error; err != nil {
+		return err
+	}
+
 	return nil
 }
 

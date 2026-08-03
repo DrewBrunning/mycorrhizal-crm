@@ -18,7 +18,7 @@ import {
   TimelineDot,
   TimelineOppositeContent
 } from '@mui/lab';
-import { mdiNoteOutline } from '@mdi/js';
+import { mdiNoteOutline, mdiLinkVariant } from '@mdi/js';
 import EventIcon from '@mui/icons-material/Event';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -28,16 +28,25 @@ import { Note } from '../api/notes';
 import { Activity } from '../api/activities';
 import { ReminderCompletion } from '../api/reminders';
 import { LifeEvent, partialDateDisplay } from '../api/lifeEvents';
+import { ExternalActivity } from '../api/externalLinks';
 import { useDateFormat } from '../DateFormatProvider';
 
 interface ContactTimelineProps {
-  timelineItems: Array<{ type: 'note' | 'activity' | 'completion' | 'life_event'; data: Note | Activity | ReminderCompletion | LifeEvent; date: string }>;
+  timelineItems: Array<{
+    type: 'note' | 'activity' | 'completion' | 'life_event' | 'external_activity';
+    data: Note | Activity | ReminderCompletion | LifeEvent | ExternalActivity;
+    date: string;
+  }>;
   onEditItem: (type: 'note' | 'activity', item: Note | Activity) => void;
   onDeleteCompletion?: (completionId: number) => void;
 }
 
 function isLifeEvent(item: { type: string; data: unknown }): item is { type: 'life_event'; data: LifeEvent } {
   return item.type === 'life_event';
+}
+
+function isExternalActivity(item: { type: string; data: unknown }): item is { type: 'external_activity'; data: ExternalActivity } {
+  return item.type === 'external_activity';
 }
 
 export default function ContactTimeline({ timelineItems, onEditItem, onDeleteCompletion }: ContactTimelineProps) {
@@ -84,6 +93,41 @@ export default function ContactTimeline({ timelineItems, onEditItem, onDeleteCom
                       {event.description}
                     </Typography>
                   )}
+                </Paper>
+              </TimelineContent>
+            </TimelineItem>
+          );
+        }
+
+        if (isExternalActivity(item)) {
+          const event = item.data;
+          const personName =
+            (event.payload?.person_name as string | undefined) ||
+            (event.payload?.name as string | undefined) ||
+            event.source_system;
+          return (
+            <TimelineItem key={`external_activity-${event.id}`}>
+              <TimelineOppositeContent color="text.secondary" sx={{ flex: 0.3 }}>
+                <Typography variant="caption">
+                  {isValidDate ? formatDate(item.date) : (item.date || 'N/A')}
+                </Typography>
+              </TimelineOppositeContent>
+              <TimelineSeparator>
+                <TimelineDot color="info">
+                  <SvgIcon fontSize="small"><path d={mdiLinkVariant} /></SvgIcon>
+                </TimelineDot>
+                {index < timelineItems.length - 1 && <TimelineConnector />}
+              </TimelineSeparator>
+              <TimelineContent>
+                <Paper elevation={1} sx={{ p: 1.5 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 500 }}>
+                    {event.type === 'photo-appearance'
+                      ? t('externalLinks.activity.photoAppearance')
+                      : t('externalLinks.activity.unknown', { type: event.type })}
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 0.5, overflowWrap: 'anywhere' }}>
+                    {t('externalLinks.activity.fromSystem', { system: event.source_system, name: personName })}
+                  </Typography>
                 </Paper>
               </TimelineContent>
             </TimelineItem>
@@ -181,7 +225,7 @@ export default function ContactTimeline({ timelineItems, onEditItem, onDeleteCom
                   >
                     <DeleteIcon fontSize="small" />
                   </IconButton>
-                ) : (
+                ) : item.type === 'note' || item.type === 'activity' ? (
                   <IconButton
                     className="action-icon"
                     size="small"
@@ -196,7 +240,7 @@ export default function ContactTimeline({ timelineItems, onEditItem, onDeleteCom
                   >
                     <EditIcon fontSize="small" />
                   </IconButton>
-                )}
+                ) : null}
               </Paper>
             </TimelineContent>
           </TimelineItem>

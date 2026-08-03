@@ -117,6 +117,25 @@
 > one-click mark-discussed, discussed items stay visible in a resolved state with their date. Agenda
 > items repoint to the keeper on contact merge (like LifeEvents); added to the DeleteContact / DeleteUser
 > cascades and the T26 purge. N2 (prep view) now has its dependency.
+>
+> **T14 + T15/T16 done together on one branch** (2026-08-03) — WP-89 external-link substrate and the
+> Immich integration built on it, deliberately as one landing so the "substrate before the first
+> integration" ordering is preserved in the codebase as well as in the plan. T14 adds the generic
+> `ExternalIdentity` (this contact IS this thing in that system) + `ExternalActivity` (something that
+> happened in an external system, linkable into the timeline) entities and a system-agnostic CRUD API,
+> keyed by `Contact.VCardUID`, hard-delete with `(system, external_id, user_id)` unique keys, metadata/
+> payload as JSON (the `RelationshipEdge.Metadata` pattern). Both joined `deleteContactAssociations` +
+> `DeleteUser` cascades and the real-DB cascade test. T15/T16 adds per-user Immich connection config
+> (API key encrypted via `credential_crypto.go`), a version-pinned Immich client exercised against a
+> permanent fake-Immich-HTTP-server test double, person link → `ExternalIdentity{system:"immich"}`,
+> the contact-page Immich surface (thumbnail proxied through the hardened `/immich/.../thumbnail`
+> route — SVG rejected, Content-Disposition set; SSRF policy is `IMMICH_BLOCK_PRIVATE_URLS`, default
+> false because self-hosted Immich is typically a private address), and a job-lock-guarded enrichment
+> sync that upserts `ExternalActivity` photo-appearance rows onto the timeline. `Activity.ExternalRef`
+> already existed for linking Interactions to `ExternalActivity` — kept, not paralleled. The
+> substrate's genericity is pinned by a test: Paperless-ngx uses the same routes with zero schema
+> change. Immich level 3 (bidirectional) stays deferred — it needs an upstream Immich "external
+> links" capability, a dependency not a scheduling choice.
 
 ## How to read this
 
@@ -241,9 +260,9 @@ happens, T17 in particular is pre-alpha work buying nothing. See the open questi
 | 31 | **N7** File / document attachments per contact | 3 | M | — | new (gap) |
 | 32 | **N9** Notification channels beyond email (ntfy/Gotify/push) | 3 | M | — | new (gap) |
 | 33 | **P1** Contact sharing — one-time filtered copy | 3 | M | T9 | Tier 5 |
-| 34 | **T14** WP-89 external-link substrate | 2 | M | — | `92.4`, `91.12` |
-| 35 | **T15** WP-90 Immich level 1 (linking) | 3 | M | T14 | `92.4` |
-| 36 | **T16** WP-91 Immich level 2 (enrichment) | 3 | M | T15 | `92.4` |
+| 34 | **T14** WP-89 external-link substrate — **DONE** | 2 | M | — | `92.4`, `91.12` |
+| 35 | **T15** WP-90 Immich level 1 (linking) — **DONE** | 3 | M | T14 | `92.4` |
+| 36 | **T16** WP-91 Immich level 2 (enrichment) — **DONE** | 3 | M | T15 | `92.4` |
 | 37 | **T18** WP-93 event history / audit trail | 2 | L | T17 | `92.5` |
 | 38 | **T12b** WP-87 serve Interactions/LifeEvents as CalDAV | 2 | L | T12a, T5 | `92.3` |
 | 39 | **T13** WP-88 two-way calendar sync ⚠ policy call | 2 | M–L | T12b | `92.3` |

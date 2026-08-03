@@ -63,6 +63,8 @@ type Config struct {
 	CalDAVSyncIntervalHours int    // Interval in hours for the scheduled calendar sync job
 	CalDAVBlockPrivateURLs  bool   // Block calendar sync requests to private/loopback addresses (useful for cloud deployments)
 	DeleteRetentionDays     int    // Days soft-deleted rows survive before the purge job hard-deletes them (T26)
+	ImmichSyncIntervalHours int    // Interval in hours for the scheduled Immich enrichment sync (T16)
+	ImmichBlockPrivateURLs  bool   // Block Immich fetches to private/loopback addresses (useful for cloud deployments)
 	OIDC                    OIDCConfig
 }
 
@@ -111,11 +113,18 @@ func LoadConfig() *Config {
 		CalDAVSyncIntervalHours: getIntEnv("CALDAV_SYNC_INTERVAL_HOURS", 6),
 		CalDAVBlockPrivateURLs:  getBoolEnv("CALDAV_BLOCK_PRIVATE_URLS", false),
 		DeleteRetentionDays:     getIntEnv("DELETED_RETENTION_DAYS", 30),
+		ImmichSyncIntervalHours: getIntEnv("IMMICH_SYNC_INTERVAL_HOURS", 6),
+		ImmichBlockPrivateURLs:  getBoolEnv("IMMICH_BLOCK_PRIVATE_URLS", false),
 	}
 
 	if cfg.CalDAVSyncIntervalHours < 1 {
 		log.Println("WARN: CALDAV_SYNC_INTERVAL_HOURS must be at least 1, using 1")
 		cfg.CalDAVSyncIntervalHours = 1
+	}
+
+	if cfg.ImmichSyncIntervalHours < 1 {
+		log.Println("WARN: IMMICH_SYNC_INTERVAL_HOURS must be at least 1, using 1")
+		cfg.ImmichSyncIntervalHours = 1
 	}
 
 	// An email channel is enabled only when it is fully configured

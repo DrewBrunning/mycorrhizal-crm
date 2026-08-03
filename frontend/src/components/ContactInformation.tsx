@@ -24,6 +24,7 @@ import PreferenceList from './PreferenceList';
 import CadencePanel from './CadencePanel';
 import ConversationAgendaList from './ConversationAgendaList';
 import GiftList from './GiftList';
+import ExternalLinkPanel from './ExternalLinkPanel';
 import CustomFieldValueRow from './CustomFieldValueRow';
 import { RelationshipEdge } from '../api/relationshipEdges';
 import { LifeEvent } from '../api/lifeEvents';
@@ -33,6 +34,8 @@ import { ConversationAgenda } from '../api/conversationAgenda';
 import { Gift } from '../api/gifts';
 import { Activity } from '../api/activities';
 import { FieldDefinition } from '../api/fieldDefinitions';
+import { ExternalIdentity } from '../api/externalLinks';
+import { ImmichPerson, ImmichPersonSummary } from '../api/immich';
 import {
   Card as CardModel,
   CRMEnvelope,
@@ -112,6 +115,16 @@ interface ContactInformationProps {
   fieldDefinitions?: FieldDefinition[];
   fieldValuesByDefinition?: Map<string, unknown>;
   onSaveFieldValue?: (definitionId: string, value: unknown) => Promise<void>;
+  // External links (T14) + Immich surface (T15/T16)
+  externalIdentities?: ExternalIdentity[];
+  externalLinksLoading?: boolean;
+  immichSummary?: ImmichPersonSummary | null;
+  immichSummaryLoading?: boolean;
+  onFetchImmichPeople?: () => Promise<ImmichPerson[]>;
+  onLinkImmich?: (person: ImmichPerson) => Promise<void>;
+  onUnlinkImmich?: () => Promise<void>;
+  onSyncImmich?: () => Promise<void>;
+  immichSyncing?: boolean;
 }
 
 const iconSx = { mr: 1, color: 'text.secondary', fontSize: '1.2rem' };
@@ -166,6 +179,15 @@ export default function ContactInformation({
   fieldDefinitions = [],
   fieldValuesByDefinition,
   onSaveFieldValue,
+  externalIdentities = [],
+  externalLinksLoading = false,
+  immichSummary = null,
+  immichSummaryLoading = false,
+  onFetchImmichPeople,
+  onLinkImmich,
+  onUnlinkImmich,
+  onSyncImmich,
+  immichSyncing = false,
 }: ContactInformationProps) {
   const { t } = useTranslation();
   const { formatBirthday, getBirthdayPlaceholder, calculateAge } = useDateFormat();
@@ -237,6 +259,7 @@ export default function ContactInformation({
           <MenuItem value={4}>{t('cadence.title')}</MenuItem>
           <MenuItem value={5}>{t('conversationAgenda.title')}</MenuItem>
           <MenuItem value={6}>{t('gifts.title')}</MenuItem>
+          <MenuItem value={7}>{t('externalLinks.title')}</MenuItem>
         </TextField>
       ) : (
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
@@ -248,6 +271,7 @@ export default function ContactInformation({
             <Tab label={t('cadence.title')} />
             <Tab label={t('conversationAgenda.title')} />
             <Tab label={t('gifts.title')} />
+            <Tab label={t('externalLinks.title')} />
           </Tabs>
         </Box>
       )}
@@ -602,6 +626,25 @@ export default function ContactInformation({
             onEdit={onEditGift || (() => {})}
             onMarkGiven={onMarkGivenGift || (() => Promise.resolve())}
             onDelete={onDeleteGift || (() => {})}
+          />
+        </CardContent>
+      )}
+
+      {/* External links Tab (T14 + T15/T16) — the generic integration
+          substrate's surface, with the Immich link flow rendered on top. */}
+      {activeTab === 7 && (
+        <CardContent sx={{ py: 2 }}>
+          <ExternalLinkPanel
+            contactUid={viewedContactUid || ''}
+            identities={externalIdentities}
+            loading={externalLinksLoading}
+            immichSummary={immichSummary}
+            immichSummaryLoading={immichSummaryLoading}
+            onFetchImmichPeople={onFetchImmichPeople || (() => Promise.resolve([]))}
+            onLinkImmich={onLinkImmich || (() => Promise.resolve())}
+            onUnlinkImmich={onUnlinkImmich || (() => Promise.resolve())}
+            onSyncImmich={onSyncImmich || (() => Promise.resolve())}
+            syncing={immichSyncing}
           />
         </CardContent>
       )}

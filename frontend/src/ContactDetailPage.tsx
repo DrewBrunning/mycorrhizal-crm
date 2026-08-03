@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -73,11 +73,14 @@ import { usePreferences } from './hooks/usePreferences';
 import { useCadencePolicy } from './hooks/useCadencePolicy';
 import { useConversationAgenda } from './hooks/useConversationAgenda';
 import { useGifts } from './hooks/useGifts';
+import { useExternalLinks } from './hooks/useExternalLinks';
 import { useCircles } from './hooks/useCircles';
 import { useTags } from './hooks/useTags';
 import { useFieldDefinitions } from './hooks/useFieldDefinitions';
 import { useContactFieldValues } from './hooks/useFieldDefinitions';
 import { FieldValueInput } from './api/fieldDefinitions';
+import { ExternalActivity } from './api/externalLinks';
+import { ImmichPerson, ImmichPersonSummary, getImmichContactSummary, linkImmichPerson, unlinkImmichPerson, syncImmich, getImmichPeople } from './api/immich';
 import { addCircleMember, removeCircleMember } from './api/circles';
 import { addContactTag, removeContactTag } from './api/tags';
 import { Circle } from './api/circles';
@@ -374,6 +377,58 @@ export default function ContactDetailPage() {
     handleDelete: handleDeleteGift,
   } = useGifts(record?.uid);
 
+  // External links substrate (T14): this contact's ExternalIdentities and
+  // ExternalActivities (enrichment events that land on the timeline).
+  const {
+    identities: externalIdentities,
+    activities: externalActivities,
+    loading: externalLinksLoading,
+    refresh: refreshExternalLinks,
+  } = useExternalLinks(record?.uid);
+
+  // Immich (T15/T16): the first integration on the substrate.
+  const [immichSummary, setImmichSummary] = useState<ImmichPersonSummary | null>(null);
+  const [immichSummaryLoading, setImmichSummaryLoading] = useState(false);
+  const [immichSyncing, setImmichSyncing] = useState(false);
+
+  const refreshImmichSummary = useCallback(async (overrideUid?: string) => {
+    const uid = overrideUid ?? record?.uid;
+    if (!uid) return;
+    setImmichSummaryLoading(true);
+    try {
+      const s = await getImmichContactSummary(uid);
+      setImmichSummary(s);
+    } catch {
+      setImmichSummary(null);
+    } finally {
+      setImmichSummaryLoading(false);
+    }
+  }, [record?.uid]);
+
+  const handleLinkImmich = useCallback(async (person: ImmichPerson) => {
+    if (!record?.uid) return;
+    await linkImmichPerson(record.uid, person.id, person.name);
+    await Promise.all([refreshExternalLinks(record.uid), refreshImmichSummary(record.uid)]);
+  }, [record?.uid, refreshExternalLinks, refreshImmichSummary]);
+
+  const handleUnlinkImmich = useCallback(async () => {
+    if (!record?.uid) return;
+    await unlinkImmichPerson(record.uid);
+    setImmichSummary(null);
+    await refreshExternalLinks(record.uid);
+  }, [record?.uid, refreshExternalLinks]);
+
+  const handleSyncImmich = useCallback(async () => {
+    if (!record?.uid) return;
+    setImmichSyncing(true);
+    try {
+      await syncImmich();
+      await Promise.all([refreshExternalLinks(record.uid), refreshImmichSummary(record.uid)]);
+    } finally {
+      setImmichSyncing(false);
+    }
+  }, [record?.uid, refreshExternalLinks, refreshImmichSummary]);
+
   const [giftDialogOpen, setGiftDialogOpen] = useState(false);
   const [editingGift, setEditingGift] = useState<Gift | null>(null);
 
@@ -592,6 +647,8 @@ export default function ContactDetailPage() {
           refreshAgenda(recordData.uid),
           refreshGifts(recordData.uid),
           refreshFieldValues(recordData.id),
+          refreshExternalLinks(recordData.uid),
+          refreshImmichSummary(recordData.uid),
         ]);
 
         // Only fetch profile picture if contact has one (avoid unnecessary 404)
@@ -625,10 +682,15 @@ export default function ContactDetailPage() {
         URL.revokeObjectURL(currentBlobUrl);
       }
     };
-  }, [id, refreshReminders, refreshRelationshipEdges, refreshLifeEvents, refreshAgenda, refreshGifts]);
+  }, [id, refreshReminders, refreshRelationshipEdges, refreshLifeEvents, refreshAgenda, refreshGifts, refreshExternalLinks, refreshImmichSummary]);
 
-  // Combine and sort notes, activities, completions, and life events for timeline
-  const timelineItems: Array<{ type: 'note' | 'activity' | 'completion' | 'life_event'; data: Note | Activity | ReminderCompletion | LifeEvent; date: string }> = [
+  // Combine and sort notes, activities, completions, life events, and
+  // external activities for the timeline.
+  const timelineItems: Array<{
+    type: 'note' | 'activity' | 'completion' | 'life_event' | 'external_activity';
+    data: Note | Activity | ReminderCompletion | LifeEvent | ExternalActivity;
+    date: string;
+  }> = [
     ...notes.map(note => ({
       type: 'note' as const,
       data: note,
@@ -648,6 +710,11 @@ export default function ContactDetailPage() {
       type: 'life_event' as const,
       data: event,
       date: fullDateFromPartial(event.date!) || event.created_at
+    })),
+    ...externalActivities.map(activity => ({
+      type: 'external_activity' as const,
+      data: activity,
+      date: activity.occurred_at || activity.created_at
     }))
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
@@ -1061,6 +1128,15 @@ export default function ContactDetailPage() {
           fieldDefinitions={fieldDefinitions}
           fieldValuesByDefinition={fieldValuesByDefinition}
           onSaveFieldValue={handleSaveFieldValue}
+          externalIdentities={externalIdentities}
+          externalLinksLoading={externalLinksLoading}
+          immichSummary={immichSummary}
+          immichSummaryLoading={immichSummaryLoading}
+          onFetchImmichPeople={() => getImmichPeople()}
+          onLinkImmich={handleLinkImmich}
+          onUnlinkImmich={handleUnlinkImmich}
+          onSyncImmich={handleSyncImmich}
+          immichSyncing={immichSyncing}
         />
 
         {/* Timeline and Reminders Tabs */}
