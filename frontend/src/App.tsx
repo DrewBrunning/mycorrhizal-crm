@@ -10,6 +10,7 @@ import UsersPage from './UsersPage';
 import CircleTagTriagePage from './CircleTagTriagePage';
 import DataSettingsPage from './DataSettingsPage';
 import HouseholdsPage from './HouseholdsPage';
+import SearchPage from './SearchPage';
 import LoginPage from './LoginPage';
 import RegisterPage from './RegisterPage';
 import { getToken, logoutAndRedirect, isAdmin, fetchAndCacheUserInfo } from './auth';
@@ -110,7 +111,7 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
 
   const handleSearchSubmit = () => {
     if (searchQuery.trim()) {
-      navigate(`/contacts?search=${encodeURIComponent(searchQuery.trim())}`);
+      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
       setSearchQuery('');
       setSearchResults([]);
     }
@@ -123,6 +124,7 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
     const items = [
       { text: t('nav.dashboard'), icon: <DashboardIcon />, path: '/' },
       { text: t('nav.contacts'), icon: <ContactsIcon />, path: '/contacts' },
+      { text: t('nav.search'), icon: <SearchIcon />, path: '/search' },
       { text: t('nav.activities'), icon: <EventNoteIcon />, path: '/activities' },
       { text: t('nav.notes'), icon: <SvgIcon><path d={mdiNotebookOutline} /></SvgIcon>, path: '/notes' },
       { text: t('nav.network'), icon: <SvgIcon><path d={mdiGraphOutline} /></SvgIcon>, path: '/network' },
@@ -375,6 +377,7 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
           <Route path="/settings/data" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><DataSettingsPage /></Suspense>} />
           <Route path="/network" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><NetworkPage /></Suspense>} />
           <Route path="/households" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><HouseholdsPage /></Suspense>} />
+          <Route path="/search" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><SearchPage /></Suspense>} />
           <Route path="/users" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><UsersPage /></Suspense>} />
           <Route path="/api-tokens" element={<Navigate to="/settings" replace />} />
           <Route path="/circle-tag-triage" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><CircleTagTriagePage /></Suspense>} />

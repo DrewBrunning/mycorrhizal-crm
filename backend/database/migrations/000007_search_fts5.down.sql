@@ -1,0 +1,12 @@
+DROP TRIGGER IF EXISTS activities_fts_au;
+DROP TRIGGER IF EXISTS activities_fts_ad;
+DROP TRIGGER IF EXISTS activities_fts_ai;
+DROP TRIGGER IF EXISTS notes_fts_au;
+DROP TRIGGER IF EXISTS notes_fts_ad;
+DROP TRIGGER IF EXISTS notes_fts_ai;
+DROP TRIGGER IF EXISTS contacts_fts_au;
+DROP TRIGGER IF EXISTS contacts_fts_ad;
+DROP TRIGGER IF EXISTS contacts_fts_ai;
+DROP TABLE IF EXISTS contacts_fts;
+DROP TABLE IF EXISTS notes_fts;
+DROP TABLE IF EXISTS activities_fts;

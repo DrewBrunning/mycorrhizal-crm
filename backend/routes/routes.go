@@ -230,6 +230,13 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 
 			// Graph/Network visualization route
 			protected.GET("/graph", controllers.GetGraph)
+			// Graph traversal / multi-hop chains (T10) — GET /graph/connections
+			// with ?from=<VCardUID>&depth=<n>&relation=<token|synonym>
+			protected.GET("/graph/connections", controllers.GetGraphConnections)
+
+			// Full-text search (T11) — GET /search?q=<term>&limit=<n> across
+			// contacts, notes, and interactions
+			protected.GET("/search", controllers.SearchAll)
 
 			// API token routes
 			protected.GET("/api-tokens", controllers.ListApiTokens)
@@ -312,6 +319,9 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			admin.POST("/trigger-purge", func(c *gin.Context) {
 				controllers.TriggerPurge(c, *cfg)
 			})
+			// Rebuild the FTS search index (T11) — needed after bulk data
+			// changes that bypassed the FTS triggers
+			admin.POST("/search/rebuild", controllers.RebuildSearchIndexHandler)
 		}
 	}
 

@@ -6,6 +6,7 @@
   "nav": {
     "dashboard": "Cruscotto",
     "contacts": "Contatti",
+    "search": "Cerca",
     "activities": "Attività",
     "notes": "Note",
     "network": "Rete",
@@ -121,6 +122,18 @@
     "registering": "Registrazione in corso...",
     "registrationFailed": "Registrazione fallita",
     "registrationSuccess": "Registrazione completata! Ora puoi accedere."
+  },
+  "search": {
+    "title": "Cerca",
+    "placeholder": "Cerca contatti, note, interazioni…",
+    "clear": "Cancella",
+    "contacts": "Contatti ({{count}})",
+    "notes": "Note ({{count}})",
+    "activities": "Interazioni ({{count}})",
+    "noResults": "Nessun risultato per \"{{query}}\".",
+    "unfiled": "Non archiviata",
+    "resolvedRelation": "Relazione corrispondente: {{relation}}",
+    "minLengthHint": "Digita almeno due caratteri per cercare."
   },
   "contacts": {
     "title": "Contatti",
@@ -478,6 +491,18 @@
       "unknown": "Evento esterno: {{type}}",
       "fromSystem": "{{name}} (via {{system}})"
     }
+  },
+  "connections": {
+    "title": "Connessioni",
+    "depth": "Profondità",
+    "relationFilter": "Filtro relazione",
+    "relationPlaceholder": "es. fratello o sorella",
+    "apply": "Applica",
+    "depthLabel": "{{depth}} passi",
+    "results": "{{count}} connessioni",
+    "empty": "Nessuna connessione trovata a questa profondità.",
+    "noRelationMatches": "Nessuna connessione corrisponde a \"{{relation}}\".",
+    "notAvailable": "Non disponibile."
   },
   "immich": {
     "settings": {

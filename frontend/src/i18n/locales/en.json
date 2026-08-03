@@ -6,6 +6,7 @@
   "nav": {
     "dashboard": "Dashboard",
     "contacts": "Contacts",
+    "search": "Search",
     "activities": "Activities",
     "notes": "Notes",
     "network": "Network",
@@ -121,6 +122,18 @@
     "registering": "Registering...",
     "registrationFailed": "Registration failed",
     "registrationSuccess": "Registration successful! You can now log in."
+  },
+  "search": {
+    "title": "Search",
+    "placeholder": "Search contacts, notes, interactions…",
+    "clear": "Clear",
+    "contacts": "Contacts ({{count}})",
+    "notes": "Notes ({{count}})",
+    "activities": "Interactions ({{count}})",
+    "noResults": "No results for \"{{query}}\".",
+    "unfiled": "Unfiled",
+    "resolvedRelation": "Matched relationship: {{relation}}",
+    "minLengthHint": "Type at least two characters to search."
   },
   "contacts": {
     "title": "Contacts",
@@ -504,6 +517,18 @@
       "unknown": "External event: {{type}}",
       "fromSystem": "{{name}} (via {{system}})"
     }
+  },
+  "connections": {
+    "title": "Connections",
+    "depth": "Depth",
+    "relationFilter": "Relation filter",
+    "relationPlaceholder": "e.g. brother or sister",
+    "apply": "Apply",
+    "depthLabel": "{{depth}} hops",
+    "results": "{{count}} connections",
+    "empty": "No connections found within this depth.",
+    "noRelationMatches": "No connections match \"{{relation}}\".",
+    "notAvailable": "Not available."
   },
   "immich": {
     "settings": {

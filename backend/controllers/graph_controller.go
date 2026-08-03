@@ -1,9 +1,13 @@
 package controllers
 
 import (
+	"errors"
 	"fmt"
+	apperrors "mycorrhizal/errors"
 	"mycorrhizal/models"
+	"mycorrhizal/services"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -127,5 +131,73 @@ func GetGraph(c *gin.Context) {
 	c.JSON(http.StatusOK, models.GraphResponse{
 		Nodes: nodes,
 		Edges: edges,
+	})
+}
+
+// GetGraphConnections implements graph traversal + multi-hop chains (T10 /
+// WP-85): from a starting contact, list every reachable contact within
+// ?depth= hops, each with the chain of relations describing how it is related
+// to the anchor ("John's sister's husband"). Inferred relations (a grandparent
+// from two parent_of edges) are computed, never stored.
+//
+// Query params:
+//   - from=<Contact.VCardUID> (required, must belong to the caller)
+//   - depth=1..5 (default 3; capped at 5)
+//   - relation=<canonical token or registry synonym> (optional, T11's synonym
+//     consumer: "brother" → sibling_of). Only chains containing a step whose
+//     *display* relation equals the resolved token are returned.
+func GetGraphConnections(c *gin.Context) {
+	db := c.MustGet("db").(*gorm.DB)
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+
+	from := strings.TrimSpace(c.Query("from"))
+	if from == "" {
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("from", "from (a Contact.VCardUID) is required"))
+		return
+	}
+
+	depth := 3
+	if raw := c.Query("depth"); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil || parsed < 1 {
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("depth", "depth must be a positive integer"))
+			return
+		}
+		depth = parsed
+	}
+
+	var fromContact models.Contact
+	if err := db.Where("user_id = ? AND vcard_uid = ?", userID, from).First(&fromContact).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			apperrors.AbortWithError(c, apperrors.ErrNotFound("Contact").WithDetails("vcard_uid", from))
+		} else {
+			apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve contact").WithError(err))
+		}
+		return
+	}
+
+	chains, err := services.TraverseGraph(db, userID, from, depth, c.Query("relation"))
+	if err != nil {
+		if errors.Is(err, services.ErrTraversalTooDeep) {
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("depth", fmt.Sprintf("depth must be at most 5")))
+			return
+		}
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to traverse graph").WithError(err))
+		return
+	}
+
+	fromName := strings.TrimSpace(fromContact.Firstname + " " + fromContact.Lastname)
+	if fromName == "" {
+		fromName = "Unknown"
+	}
+
+	c.JSON(http.StatusOK, models.GraphConnectionsResponse{
+		FromVCardUID: from,
+		FromName:     fromName,
+		Depth:        depth,
+		Chains:       chains,
 	})
 }

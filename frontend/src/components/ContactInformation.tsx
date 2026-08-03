@@ -25,6 +25,7 @@ import CadencePanel from './CadencePanel';
 import ConversationAgendaList from './ConversationAgendaList';
 import GiftList from './GiftList';
 import ExternalLinkPanel from './ExternalLinkPanel';
+import ConnectionsPanel from './ConnectionsPanel';
 import CustomFieldValueRow from './CustomFieldValueRow';
 import { RelationshipEdge } from '../api/relationshipEdges';
 import { LifeEvent } from '../api/lifeEvents';
@@ -125,6 +126,8 @@ interface ContactInformationProps {
   onUnlinkImmich?: () => Promise<void>;
   onSyncImmich?: () => Promise<void>;
   immichSyncing?: boolean;
+  // Graph traversal (T10) — the anchor is the viewed contact.
+  connectionsEnabled?: boolean;
 }
 
 const iconSx = { mr: 1, color: 'text.secondary', fontSize: '1.2rem' };
@@ -188,6 +191,7 @@ export default function ContactInformation({
   onUnlinkImmich,
   onSyncImmich,
   immichSyncing = false,
+  connectionsEnabled = true,
 }: ContactInformationProps) {
   const { t } = useTranslation();
   const { formatBirthday, getBirthdayPlaceholder, calculateAge } = useDateFormat();
@@ -260,6 +264,7 @@ export default function ContactInformation({
           <MenuItem value={5}>{t('conversationAgenda.title')}</MenuItem>
           <MenuItem value={6}>{t('gifts.title')}</MenuItem>
           <MenuItem value={7}>{t('externalLinks.title')}</MenuItem>
+          <MenuItem value={8}>{t('connections.title')}</MenuItem>
         </TextField>
       ) : (
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
@@ -272,6 +277,7 @@ export default function ContactInformation({
             <Tab label={t('conversationAgenda.title')} />
             <Tab label={t('gifts.title')} />
             <Tab label={t('externalLinks.title')} />
+            <Tab label={t('connections.title')} />
           </Tabs>
         </Box>
       )}
@@ -646,6 +652,19 @@ export default function ContactInformation({
             onSyncImmich={onSyncImmich || (() => Promise.resolve())}
             syncing={immichSyncing}
           />
+        </CardContent>
+      )}
+
+      {/* Connections Tab (T10) — multi-hop traversal from the viewed contact. */}
+      {activeTab === 8 && (
+        <CardContent sx={{ py: 2 }}>
+          {connectionsEnabled !== false && viewedContactUid ? (
+            <ConnectionsPanel contactUid={viewedContactUid} />
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              {t('connections.notAvailable')}
+            </Typography>
+          )}
         </CardContent>
       )}
     </Card>

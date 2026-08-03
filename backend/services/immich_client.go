@@ -268,19 +268,24 @@ func (c *ImmichClient) RecentAssets(personID string, limit int) ([]ImmichAsset, 
 // Thumbnail fetches a person's thumbnail image, returning the bytes and the
 // Content-Type from the server (raster only — SVG is rejected by the proxy
 // handler that serves this to browsers, mirroring ProxyImage's hardening).
+// Non-image content types are rejected at this layer before the body reaches
+// the caller, matching httputil.FetchImageFromURL's own validation.
 func (c *ImmichClient) Thumbnail(personID string) ([]byte, string, error) {
 	resp, err := c.do("/api/people/" + url.PathEscape(personID) + "/thumbnail")
 	if err != nil {
 		return nil, "", err
 	}
 	defer resp.Body.Close()
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxImmichBodyBytes))
-	if err != nil {
-		return nil, "", fmt.Errorf("%w: %v", ErrImmichInvalidData, err)
-	}
 	contentType := resp.Header.Get("Content-Type")
 	if contentType == "" {
 		contentType = "image/jpeg"
+	}
+	if !strings.HasPrefix(strings.ToLower(contentType), "image/") {
+		return nil, "", fmt.Errorf("%w: non-image content type %q", ErrImmichInvalidData, contentType)
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxImmichBodyBytes))
+	if err != nil {
+		return nil, "", fmt.Errorf("%w: %v", ErrImmichInvalidData, err)
 	}
 	return body, contentType, nil
 }

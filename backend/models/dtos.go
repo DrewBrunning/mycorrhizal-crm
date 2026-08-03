@@ -354,6 +354,37 @@ type GraphResponse struct {
 	Edges []GraphEdge `json:"edges"`
 }
 
+// GraphChainStep is one hop in a traversal chain (T10 / WP-85). Relation is
+// the *display* token describing what the NEXT contact is to the PREVIOUS
+// contact in the chain — the inverse is already applied when the hop walked
+// against the edge's stored direction. For "John's sister's husband" the
+// chain is [{Sister, sister_of}, {Husband, spouse_of}].
+type GraphChainStep struct {
+	ContactID       uint   `json:"contact_id"`
+	ContactVCardUID string `json:"contact_vcard_uid"`
+	ContactName     string `json:"contact_name"`
+	Relation        string `json:"relation"`
+}
+
+// GraphChain is one traversal result: how a target contact is reachable from
+// the starting contact, as a chain of relation steps. The anchor (start)
+// contact is implicit — Steps[0] is the first hop away from it.
+type GraphChain struct {
+	TargetID       uint             `json:"target_id"`
+	TargetVCardUID string           `json:"target_vcard_uid"`
+	TargetName     string           `json:"target_name"`
+	Depth          int              `json:"depth"`
+	Steps          []GraphChainStep `json:"steps"`
+}
+
+// GraphConnectionsResponse is the API response for GET /graph/connections.
+type GraphConnectionsResponse struct {
+	FromVCardUID string       `json:"from_vcard_uid"`
+	FromName     string       `json:"from_name"`
+	Depth        int          `json:"depth"`
+	Chains       []GraphChain `json:"chains"`
+}
+
 // AdminUserResponse - user data returned to admin (no password)
 type AdminUserResponse struct {
 	ID         uint      `json:"id"`
