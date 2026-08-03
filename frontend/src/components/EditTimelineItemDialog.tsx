@@ -164,7 +164,7 @@ export default function EditTimelineItemDialog({
             {values.noteContactName ? (
               <Box display="flex" alignItems="center" gap={1}>
                 <Chip
-                  label={`${t('inbox.assignedTo')} ${values.noteContactName}`}
+                  label={`${t('notes.assignedTo')} ${values.noteContactName}`}
                   onDelete={() => { setNoteSelectedContact(null); onChange({ ...values, noteContactId: undefined, noteContactName: undefined }); }}
                   size="small"
                 />
@@ -188,8 +188,8 @@ export default function EditTimelineItemDialog({
               renderInput={(params) => (
                 <TextField
                   {...params}
-                  label={t('inbox.assignContact')}
-                  placeholder={t('inbox.searchContacts')}
+                  label={t('notes.assignContact')}
+                  placeholder={t('notes.searchContacts')}
                   InputProps={{
                     ...params.InputProps,
                     endAdornment: (
@@ -202,7 +202,7 @@ export default function EditTimelineItemDialog({
                 />
               )}
               isOptionEqualToValue={(option, value) => option.ID === value.ID}
-              noOptionsText={noteSearchInput ? t('inbox.noContactsFound') : t('inbox.typeToSearch')}
+              noOptionsText={noteSearchInput ? t('notes.noContactsFound') : t('notes.typeToSearch')}
             />
             <TextField
               fullWidth

@@ -1,5 +1,6 @@
 import { test, expect, vi, afterEach } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
 import '../i18n/config';
 import ContactHeader from './ContactHeader';
 import { ContactRecordResponse } from '../api/contacts';
@@ -30,6 +31,8 @@ function profileValues(kind: string) {
   };
 }
 
+const defaultTheme = createTheme();
+
 function renderHeader(props: Partial<React.ComponentProps<typeof ContactHeader>> = {}) {
   const defaults: React.ComponentProps<typeof ContactHeader> = {
     record: baseRecord(),
@@ -53,7 +56,11 @@ function renderHeader(props: Partial<React.ComponentProps<typeof ContactHeader>>
     onExportContact: vi.fn(),
     ...props,
   };
-  return render(<ContactHeader {...defaults} />);
+  return render(
+    <ThemeProvider theme={defaultTheme}>
+      <ContactHeader {...defaults} />
+    </ThemeProvider>
+  );
 }
 
 test('view mode labels the contact by its CRM kind (T27)', () => {
@@ -82,4 +89,45 @@ test('changing the Kind in edit mode reports the new value upward', async () => 
   fireEvent.click(await screen.findByText('Human'));
 
   expect(onProfileValueChange).toHaveBeenCalledWith(expect.objectContaining({ kind: 'human' }));
+});
+
+// MUI's useMediaQuery reads window.matchMedia; jsdom provides none, so give
+// the component a controllable implementation per test (T28).
+function mockMatchMedia(matches: boolean) {
+  window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+    matches,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  }));
+}
+
+test('collapses the action buttons into an overflow menu at phone widths (T28)', () => {
+  mockMatchMedia(true);
+  renderHeader({ onStayInTouch: vi.fn(), onMergeContact: vi.fn(), onArchiveContact: vi.fn() });
+
+  expect(screen.getByLabelText('Actions')).toBeInTheDocument();
+  expect(screen.queryByText('Stay in Touch')).not.toBeInTheDocument();
+  expect(screen.queryByText('Export vCard')).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByLabelText('Actions'));
+  expect(screen.getByText('Stay in Touch')).toBeInTheDocument();
+  expect(screen.getByText('Merge')).toBeInTheDocument();
+  expect(screen.getByText('Archive')).toBeInTheDocument();
+  expect(screen.getByText('vCard 4.0')).toBeInTheDocument();
+});
+
+test('renders the standalone action buttons above phone widths (T28)', () => {
+  mockMatchMedia(false);
+  renderHeader({ onStayInTouch: vi.fn(), onMergeContact: vi.fn(), onArchiveContact: vi.fn() });
+
+  expect(screen.queryByLabelText('Actions')).not.toBeInTheDocument();
+  expect(screen.getByText('Stay in Touch')).toBeInTheDocument();
+  expect(screen.getByText('Export vCard')).toBeInTheDocument();
+  expect(screen.getByText('Merge')).toBeInTheDocument();
+  expect(screen.getByText('Archive')).toBeInTheDocument();
 });

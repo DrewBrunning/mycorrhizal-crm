@@ -158,7 +158,7 @@ const NotesPage: React.FC = () => {
     <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 2, p: 2 }}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
         <Box display="flex" alignItems="center" gap={1}>
-          <Typography variant="h5">{t('inbox.title')}</Typography>
+          <Typography variant="h5">{t('notes.title')}</Typography>
           <Chip
             label={notes.length}
             size="small"
@@ -174,7 +174,7 @@ const NotesPage: React.FC = () => {
           </IconButton>
         </Box>
         <Button variant="outlined" startIcon={<SvgIcon><path d={mdiNotePlusOutline} /></SvgIcon>} onClick={handleAddNote}>
-          {t('inbox.addNote')}
+          {t('notes.addNote')}
         </Button>
       </Box>
       <Popover
@@ -185,7 +185,7 @@ const NotesPage: React.FC = () => {
         anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
       >
         <Box sx={{ p: 2, maxWidth: 320 }}>
-          <Typography variant="body2">{t('inbox.info')}</Typography>
+          <Typography variant="body2">{t('notes.info')}</Typography>
         </Box>
       </Popover>
 
@@ -193,7 +193,7 @@ const NotesPage: React.FC = () => {
         <Box display="flex" gap={2} flexWrap="wrap">
           <TextField
             size="small"
-            label={t('inbox.search')}
+            label={t('notes.search')}
             value={searchInput}
             onChange={(e) => handleSearchChange(e.target.value)}
             variant="outlined"
@@ -201,7 +201,7 @@ const NotesPage: React.FC = () => {
           />
           <TextField
             size="small"
-            label={t('inbox.fromDate')}
+            label={t('notes.fromDate')}
             type="date"
             value={fromDate}
             onChange={(e) => handleFromDateChange(e.target.value)}
@@ -211,7 +211,7 @@ const NotesPage: React.FC = () => {
           />
           <TextField
             size="small"
-            label={t('inbox.toDate')}
+            label={t('notes.toDate')}
             type="date"
             value={toDate}
             onChange={(e) => handleToDateChange(e.target.value)}
@@ -227,7 +227,7 @@ const NotesPage: React.FC = () => {
       ) : notes.length === 0 ? (
         <Paper sx={{ p: 3, textAlign: 'center' }}>
           <Typography variant="body1" color="text.secondary">
-            {hasFilters ? t('inbox.noResults') : t('inbox.noNotes')}
+            {hasFilters ? t('notes.noResults') : t('notes.noNotes')}
           </Typography>
         </Paper>
       ) : (

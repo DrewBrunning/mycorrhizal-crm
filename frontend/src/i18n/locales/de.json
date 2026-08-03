@@ -1,8 +1,7 @@
 {
   "app": {
     "title": "Mycorrhizal CRM",
-    "logout": "Abmelden",
-    "loading": "Laden..."
+    "logout": "Abmelden"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -11,12 +10,8 @@
     "notes": "Notizen",
     "network": "Netzwerk",
     "households": "Haushalte",
-    "reminders": "Erinnerungen",
-    "settings": "Einstellungen",
     "profile": "Einstellungen",
     "users": "Benutzer",
-    "apiTokens": "API-Tokens",
-    "integrations": "Integration",
     "data": "Daten"
   },
   "household": {
@@ -48,10 +43,7 @@
       "roommate": "Mitbewohner"
     },
     "empty": "Noch keine Haushalte. Erstelle einen, um Beziehungen zwischen den Personen, die zusammen wohnen, vorzuschlagen.",
-    "deleteConfirm": "Haushalt löschen",
     "deleteMessage": "Möchtest du diesen Haushalt wirklich löschen? Seine Mitglieder werden nicht gelöscht.",
-    "edit": "Bearbeiten",
-    "delete": "Löschen",
     "cancel": "Abbrechen",
     "save": "Speichern",
     "suggestRelationships": "Beziehungen vorschlagen",
@@ -64,7 +56,6 @@
     "deleted": "Haushalt gelöscht"
   },
   "dashboard": {
-    "welcome": "Willkommen zum Mycorrhizal CRM Dashboard",
     "title": "Dashboard",
     "upcomingBirthdays": "Anstehende Geburtstage",
     "randomContacts": "Bleibe in Kontakt",
@@ -72,7 +63,6 @@
     "noBirthdays": "Keine anstehenden Geburtstage",
     "noContacts": "Keine Kontakte verfügbar",
     "noReminders": "Keine anstehenden Erinnerungen",
-    "error": "Dashboard-Daten konnten nicht geladen werden",
     "yearsOld": "({{age}} Jahre alt)",
     "birthdaysInfo": "Zeigt Geburtstage für mindestens die nächsten zwei Wochen.",
     "remindersInfo": "Zeigt mindestens alle Erinnerungen, die bis einschließlich heute fällig sind. Erinnerungen bleiben sichtbar, bis sie als erledigt markiert werden.",
@@ -81,7 +71,6 @@
   "login": {
     "title": "Anmelden",
     "identifier": "Benutzername oder E-Mail",
-    "email": "E-Mail",
     "password": "Passwort",
     "loginButton": "Anmelden",
     "loggingIn": "Anmeldung läuft...",
@@ -157,6 +146,7 @@
     "kind": "Art",
     "individual": "Einzelperson",
     "pet": "Haustier",
+    "human": "Mensch",
     "animal": "Tier",
     "email": "E-Mail",
     "phone": "Telefon",
@@ -180,7 +170,10 @@
       "requiredFields": "Vorname und Nachname sind erforderlich",
       "error": "Kontakt konnte nicht erstellt werden. Bitte versuchen Sie es erneut.",
       "success": "Kontakt erfolgreich erstellt!",
-      "createBirthdayReminder": "Geburtstagserinnerung erstellen"
+      "createBirthdayReminder": "Geburtstagserinnerung erstellen",
+      "email": "E-Mail",
+      "firstname": "Vorname",
+      "lastname": "Nachname"
     },
     "sortBy": "Sortieren nach",
     "sort": {
@@ -200,7 +193,8 @@
         "description": "Wählen Sie eine Datei (CSV oder VCF) mit Ihren Kontakten. Eine CSV-Datei sollte Überschriften in der ersten Zeile haben.",
         "dragDrop": "Datei (CSV oder VCF) hierher ziehen oder klicken zum Auswählen",
         "maxSize": "Maximale Dateigröße: 5MB",
-        "uploading": "Hochladen..."
+        "uploading": "Hochladen...",
+        "supportedFormats": "Unterstützte Formate: CSV (Tabelle), VCF (vCard)"
       },
       "mapping": {
         "title": "Spalten zuordnen",
@@ -285,7 +279,6 @@
   },
   "timeline": {
     "reminderCompleted": "Erinnerung erledigt",
-    "deleteCompletion": "Löschen",
     "deleteCompletionConfirm": "Möchten Sie diese erledigte Erinnerung wirklich aus der Zeitachse entfernen?"
   },
   "contactDetail": {
@@ -344,7 +337,8 @@
     "noTags": "Noch keine Tags",
     "selectTag": "Tag auswählen...",
     "newTag": "Neuer Tag...",
-    "add": "Hinzufügen"
+    "add": "Hinzufügen",
+    "actions": "Aktionen"
   },
   "noteDialog": {
     "title": "Notiz hinzufügen",
@@ -378,14 +372,11 @@
     "exportVCard": "vCard exportieren",
     "noActivities": "Keine Aktivitäten gefunden",
     "noResults": "Keine Aktivitäten entsprechen Ihren Filtern",
-    "date": "Datum",
     "fromDate": "Von",
     "toDate": "Bis",
-    "deleteConfirm": "Aktivität löschen",
-    "deleteMessage": "Möchten Sie diese Aktivität wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
     "allContactsInfo": "Diese Seite zeigt alle Aktivitäten aus allen Kontakten."
   },
-  "inbox": {
+  "notes": {
     "title": "Notes",
     "addNote": "Notiz hinzufügen",
     "search": "Suchen…",
@@ -399,19 +390,6 @@
     "noContactsFound": "Keine Kontakte gefunden",
     "typeToSearch": "Zum Suchen tippen",
     "assignedTo": "Zugewiesen an"
-  },
-  "notes": {
-    "title": "Notizen",
-    "search": "Notizen suchen...",
-    "addNote": "Notiz hinzufügen",
-    "noNotes": "Keine Notizen gefunden",
-    "noResults": "Keine Notizen entsprechen Ihren Filtern",
-    "date": "Datum",
-    "fromDate": "Von",
-    "toDate": "Bis",
-    "deleteConfirm": "Notiz löschen",
-    "deleteMessage": "Möchten Sie diese Notiz wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
-    "unassignedInfo": "Diese Seite zeigt nur nicht zugewiesene Notizen, die keinem Kontakt zugeordnet sind und wie ein Tagebuch genutzt werden können."
   },
   "lifeEvent": {
     "title": "Lebensereignisse",
@@ -464,13 +442,11 @@
     "noReminders": "Noch keine Erinnerungen",
     "messageRequired": "Nachricht ist erforderlich",
     "dateRequired": "Datum ist erforderlich",
-    "saveFailed": "Erinnerung konnte nicht gespeichert werden",
     "deleteConfirm": "Erinnerung löschen",
     "deleteMessage": "Möchten Sie diese Erinnerung wirklich löschen?",
     "email": "E-Mail",
     "birthdayMessage": "Geburtstag von {{name}}",
     "flexible": "Flexibel",
-    "overdue": "Überfällig",
     "reoccurFromCompletion": "Ab Erledigungsdatum neu planen",
     "reoccurFromCompletionTooltip": "Bei Erledigung wird die nächste Erinnerung ab dem Erledigungsdatum anstelle des ursprünglichen Datums geplant",
     "recurrence": {
@@ -489,7 +465,6 @@
     "cancel": "Abbrechen",
     "edit": "Bearbeiten",
     "delete": "Löschen",
-    "close": "Schließen",
     "back": "Zurück",
     "continue": "Weiter",
     "add": "Hinzufügen",
@@ -502,7 +477,6 @@
     "changeImage": "Bild ändern",
     "zoom": "Zoom",
     "uploading": "Hochladen...",
-    "uploadError": "Profilbild konnte nicht hochgeladen werden",
     "invalidFileType": "Bitte wählen Sie eine Bilddatei",
     "fileTooLarge": "Datei ist zu groß. Maximale Größe ist 10MB.",
     "or": "oder",
@@ -597,11 +571,7 @@
       "deleteTitle": "Kalender löschen?",
       "deleteConfirm": "„{{name}}“ entfernen? Bereits importierte Aktivitäten bleiben erhalten."
     },
-    "about": {
-      "title": "Über Mycorrhizal CRM",
-      "description": "Mycorrhizal CRM ist eine Open-Source-Anwendung zur persönlichen Kontaktverwaltung, die Ihnen hilft, Ihre Kontakte und Beziehungen zu pflegen.",
-      "contribute": "Mitwirkende sind willkommen! Sie können Probleme melden, Funktionen vorschlagen oder Code auf GitHub beitragen."
-    },
+    "about": {},
     "webhooks": {
       "title": "Webhooks",
       "description": "HTTP-POST-Benachrichtigungen empfangen, wenn Ereignisse auftreten.",
@@ -658,7 +628,6 @@
       "description": "Definieren Sie eigene Felder, die bei allen Ihren Kontakten angezeigt werden. Die Felder werden in der unten gezeigten Reihenfolge angezeigt.",
       "loading": "Lade benutzerdefinierte Felder...",
       "noFields": "Noch keine benutzerdefinierten Felder definiert.",
-      "newFieldPlaceholder": "Neuer Feldname...",
       "add": "Hinzufügen",
       "deleteDialog": {
         "title": "Benutzerdefiniertes Feld löschen",
@@ -712,7 +681,6 @@
         "languages": "Bevorzugte Sprachen",
         "custom_fields": "Benutzerdefinierte Felder"
       },
-      "lockedHint": "Entsperren, um sensible Felder auszuwählen",
       "revealButton": "Sensible Felder anzeigen",
       "revealTitle": "Sensible Daten einbeziehen?",
       "revealConfirm": "Einige dieser Felder können private oder sensible Informationen enthalten, z. B. private Beziehungen oder benutzerdefinierte Felder. Sie bleiben ausgeschlossen, es sei denn, Sie beziehen sie hier bewusst ein.",
@@ -727,8 +695,6 @@
     }
   },
   "pages": {
-    "notes": "Notizen Seite",
-    "activities": "Aktivitäten Seite",
     "reminders": "Erinnerungen Seite"
   },
   "network": {
@@ -756,8 +722,6 @@
     "noRelationships": "Noch keine Beziehungen",
     "name": "Name",
     "type": "Beziehungstyp",
-    "birthday": "Geburtstag",
-    "linkedTo": "Verknüpft mit:",
     "entryMode": "Wie möchten Sie diese Beziehung hinzufügen?",
     "enterManually": "Details manuell eingeben",
     "linkToContact": "Mit bestehendem Kontakt verknüpfen",
@@ -768,8 +732,6 @@
     "nameRequired": "Name ist erforderlich",
     "typeRequired": "Beziehungstyp ist erforderlich",
     "contactRequired": "Bitte wählen Sie einen Kontakt",
-    "saveFailed": "Beziehung konnte nicht gespeichert werden",
-    "deleteConfirm": "Beziehung löschen",
     "deleteMessage": "Möchten Sie diese Beziehung wirklich löschen?",
     "suggestedRelationships": "Vorgeschlagene Beziehungen",
     "suggested": "Vorgeschlagen",
@@ -893,8 +855,7 @@
     "resolveFieldValueConflicts": "Widersprüchliche benutzerdefinierte Felder auflösen",
     "keepValue": "{{name}}: {{value}}",
     "associationSummary": "Dabei werden {{notes}} Notiz(en), {{activities}} Aktivität(en), {{reminders}} Erinnerung(en) und {{edges}} Beziehung(en) auf den zusammengeführten Kontakt übertragen.",
-    "mergeButton": "Zusammenführen",
-    "mergeSuccess": "Kontakte erfolgreich zusammengeführt"
+    "mergeButton": "Zusammenführen"
   },
   "triage": {
     "title": "Circle/Tag Migration",

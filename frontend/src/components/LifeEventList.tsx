@@ -54,7 +54,7 @@ export default function LifeEventList({
                 )}
               </Box>
               {event.description && (
-                <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap', mb: 0.5 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', mb: 0.5 }}>
                   {event.description}
                 </Typography>
               )}

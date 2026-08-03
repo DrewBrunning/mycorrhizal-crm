@@ -1,8 +1,7 @@
 {
   "app": {
     "title": "Mycorrhizal CRM",
-    "logout": "Déconnexion",
-    "loading": "Chargement..."
+    "logout": "Déconnexion"
   },
   "nav": {
     "dashboard": "Tableau de bord",
@@ -11,12 +10,8 @@
     "notes": "Notes",
     "network": "Réseau",
     "households": "Foyers",
-    "reminders": "Rappels",
-    "settings": "Paramètres",
     "profile": "Paramètres",
     "users": "Utilisateurs",
-    "apiTokens": "Jetons API",
-    "integrations": "Intégrations",
     "data": "Données"
   },
   "household": {
@@ -48,10 +43,7 @@
       "roommate": "Colocataire"
     },
     "empty": "Aucun foyer pour l'instant. Créez-en un pour commencer à suggérer des relations entre les personnes qui vivent ensemble.",
-    "deleteConfirm": "Supprimer le foyer",
     "deleteMessage": "Voulez-vous vraiment supprimer ce foyer ? Ses membres ne seront pas supprimés.",
-    "edit": "Modifier",
-    "delete": "Supprimer",
     "cancel": "Annuler",
     "save": "Enregistrer",
     "suggestRelationships": "Suggérer des relations",
@@ -64,7 +56,6 @@
     "deleted": "Foyer supprimé"
   },
   "dashboard": {
-    "welcome": "Bienvenue sur le tableau de bord Mycorrhizal CRM",
     "title": "Tableau de bord",
     "upcomingBirthdays": "Anniversaires à venir",
     "randomContacts": "Restez en contact",
@@ -72,7 +63,6 @@
     "noBirthdays": "Aucun anniversaire à venir",
     "noContacts": "Aucun contact disponible",
     "noReminders": "Aucun rappel à venir",
-    "error": "Échec du chargement des données du tableau de bord",
     "yearsOld": "({{age}} ans)",
     "birthdaysInfo": "Affiche les anniversaires pour au moins les deux prochaines semaines.",
     "remindersInfo": "Affiche tous les rappels échéants jusqu'à aujourd'hui inclus. Les rappels restent visibles jusqu'à ce qu'ils soient marqués comme terminés.",
@@ -81,7 +71,6 @@
   "login": {
     "title": "Connexion",
     "identifier": "Nom d'utilisateur ou e-mail",
-    "email": "E-mail",
     "password": "Mot de passe",
     "loginButton": "Se connecter",
     "loggingIn": "Connexion en cours...",
@@ -157,6 +146,7 @@
     "kind": "Type",
     "individual": "Particulier",
     "pet": "Animal de compagnie",
+    "human": "Humain",
     "animal": "Animal",
     "email": "E-mail",
     "phone": "Téléphone",
@@ -180,7 +170,10 @@
       "requiredFields": "Le prénom et le nom sont requis",
       "error": "Échec de la création du contact. Veuillez réessayer.",
       "success": "Contact créé avec succès !",
-      "createBirthdayReminder": "Créer un rappel d'anniversaire"
+      "createBirthdayReminder": "Créer un rappel d'anniversaire",
+      "email": "E-mail",
+      "firstname": "Prénom",
+      "lastname": "Nom"
     },
     "sortBy": "Trier par",
     "sort": {
@@ -200,7 +193,8 @@
         "description": "Sélectionnez un fichier CSV ou VCF contenant vos contacts. Un fichier CSV doit avoir des en-têtes dans la première ligne.",
         "dragDrop": "Glissez-déposez un fichier CSV ici, ou cliquez pour le sélectionner",
         "maxSize": "Taille maximale du fichier : 5 Mo",
-        "uploading": "Téléchargement en cours..."
+        "uploading": "Téléchargement en cours...",
+        "supportedFormats": "Formats supportés : CSV (tableur), VCF (vCard)"
       },
       "mapping": {
         "title": "Mapper les colonnes",
@@ -285,7 +279,6 @@
   },
   "timeline": {
     "reminderCompleted": "Rappel terminé",
-    "deleteCompletion": "Supprimer",
     "deleteCompletionConfirm": "Êtes-vous sûr de vouloir supprimer ce rappel terminé de la chronologie ?"
   },
   "contactDetail": {
@@ -344,7 +337,8 @@
     "noTags": "Pas encore d'étiquettes",
     "selectTag": "Sélectionner une étiquette...",
     "newTag": "Nouvelle étiquette...",
-    "add": "Ajouter"
+    "add": "Ajouter",
+    "actions": "Actions"
   },
   "noteDialog": {
     "title": "Ajouter une note",
@@ -378,14 +372,11 @@
     "exportVCard": "Exporter vCard",
     "noActivities": "Aucune activité trouvée",
     "noResults": "Aucune activité ne correspond à vos filtres",
-    "date": "Date",
     "fromDate": "Du",
     "toDate": "Au",
-    "deleteConfirm": "Supprimer l'activité",
-    "deleteMessage": "Êtes-vous sûr de vouloir supprimer cette activité ? Cette action est irréversible.",
     "allContactsInfo": "Cette page répertorie toutes les activités de tous les contacts."
   },
-  "inbox": {
+  "notes": {
     "title": "Notes",
     "addNote": "Ajouter une note",
     "search": "Rechercher…",
@@ -399,19 +390,6 @@
     "noContactsFound": "Aucun contact trouvé",
     "typeToSearch": "Tapez pour rechercher",
     "assignedTo": "Assigné à"
-  },
-  "notes": {
-    "title": "Notes",
-    "search": "Rechercher des notes...",
-    "addNote": "Ajouter une note",
-    "noNotes": "Aucune note trouvée",
-    "noResults": "Aucune note ne correspond à vos filtres",
-    "date": "Date",
-    "fromDate": "Du",
-    "toDate": "Au",
-    "deleteConfirm": "Supprimer la note",
-    "deleteMessage": "Êtes-vous sûr de vouloir supprimer cette note ? Cette action est irréversible.",
-    "unassignedInfo": "Cette page affiche uniquement les notes non assignées qui ne font pas partie d'un contact et peuvent être utilisées comme un journal."
   },
   "lifeEvent": {
     "title": "Événements de Vie",
@@ -464,13 +442,11 @@
     "noReminders": "Aucun rappel pour l'instant",
     "messageRequired": "Le message est requis",
     "dateRequired": "La date est requise",
-    "saveFailed": "Échec de l'enregistrement du rappel",
     "deleteConfirm": "Supprimer le rappel",
     "deleteMessage": "Êtes-vous sûr de vouloir supprimer ce rappel ?",
     "email": "E-mail",
     "birthdayMessage": "Anniversaire de {{name}}",
     "flexible": "Flexible",
-    "overdue": "En retard",
     "reoccurFromCompletion": "Reprogrammer depuis la date de complétion",
     "reoccurFromCompletionTooltip": "Une fois terminé, le prochain rappel sera programmé à partir de la date de complétion plutôt que de la date initiale du rappel",
     "recurrence": {
@@ -489,7 +465,6 @@
     "cancel": "Annuler",
     "edit": "Modifier",
     "delete": "Supprimer",
-    "close": "Fermer",
     "back": "Retour",
     "continue": "Continuer",
     "add": "Ajouter",
@@ -502,7 +477,6 @@
     "changeImage": "Changer l'image",
     "zoom": "Zoom",
     "uploading": "Téléchargement en cours...",
-    "uploadError": "Échec du téléchargement de la photo de profil",
     "invalidFileType": "Veuillez sélectionner un fichier image",
     "fileTooLarge": "Le fichier est trop volumineux. La taille maximale est de 10 Mo.",
     "or": "ou",
@@ -597,11 +571,7 @@
       "deleteTitle": "Supprimer le calendrier ?",
       "deleteConfirm": "Supprimer « {{name}} » ? Les activités déjà importées seront conservées."
     },
-    "about": {
-      "title": "À propos de Mycorrhizal CRM",
-      "description": "Mycorrhizal CRM est une application de CRM personnelle open source conçue pour vous aider à gérer vos contacts et vos relations.",
-      "contribute": "Les contributeurs sont les bienvenus ! Vous pouvez signaler des problèmes, suggérer des fonctionnalités ou contribuer au code sur GitHub."
-    },
+    "about": {},
     "webhooks": {
       "title": "Webhooks",
       "description": "Recevez des notifications HTTP POST lorsque des événements se produisent dans votre CRM.",
@@ -658,7 +628,6 @@
       "description": "Définissez des champs personnalisés qui apparaissent sur tous vos contacts. Les champs sont affichés dans l'ordre ci-dessous.",
       "loading": "Chargement des champs personnalisés...",
       "noFields": "Aucun champ personnalisé défini pour l'instant.",
-      "newFieldPlaceholder": "Nouveau nom de champ...",
       "add": "Ajouter",
       "deleteDialog": {
         "title": "Supprimer le champ personnalisé",
@@ -712,7 +681,6 @@
         "languages": "Langues préférées",
         "custom_fields": "Champs personnalisés"
       },
-      "lockedHint": "Déverrouiller pour sélectionner les champs sensibles",
       "revealButton": "Activer les champs sensibles",
       "revealTitle": "Inclure des données sensibles ?",
       "revealConfirm": "Certains de ces champs peuvent contenir des informations privées ou sensibles, comme des relations privées ou des champs personnalisés. Ils restent exclus sauf si vous les incluez ici délibérément.",
@@ -727,8 +695,6 @@
     }
   },
   "pages": {
-    "notes": "Page des notes",
-    "activities": "Page des activités",
     "reminders": "Page des rappels"
   },
   "network": {
@@ -756,8 +722,6 @@
     "noRelationships": "Aucune relation pour l'instant",
     "name": "Nom",
     "type": "Type de relation",
-    "birthday": "Anniversaire",
-    "linkedTo": "Lié à :",
     "entryMode": "Comment souhaitez-vous ajouter cette relation ?",
     "enterManually": "Saisir les détails manuellement",
     "linkToContact": "Lier à un contact existant",
@@ -768,8 +732,6 @@
     "nameRequired": "Le nom est requis",
     "typeRequired": "Le type de relation est requis",
     "contactRequired": "Veuillez sélectionner un contact",
-    "saveFailed": "Échec de l'enregistrement de la relation",
-    "deleteConfirm": "Supprimer la relation",
     "deleteMessage": "Êtes-vous sûr de vouloir supprimer cette relation ?",
     "suggestedRelationships": "Relations suggérées",
     "suggested": "Suggérée",
@@ -893,8 +855,7 @@
     "resolveFieldValueConflicts": "Résoudre les champs personnalisés en conflit",
     "keepValue": "{{name}} : {{value}}",
     "associationSummary": "Cela déplacera {{notes}} note(s), {{activities}} activité(s), {{reminders}} rappel(s) et {{edges}} relation(s) vers le contact fusionné.",
-    "mergeButton": "Fusionner",
-    "mergeSuccess": "Contacts fusionnés avec succès"
+    "mergeButton": "Fusionner"
   },
   "triage": {
     "title": "Circle/Tag Migration",

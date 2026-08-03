@@ -80,7 +80,7 @@ export default function ContactTimeline({ timelineItems, onEditItem, onDeleteCom
                     {t(`lifeEvent.types.${event.type}`, event.type)}
                   </Typography>
                   {event.description && (
-                    <Typography variant="body2" sx={{ mt: 0.5 }}>
+                    <Typography variant="body2" sx={{ mt: 0.5, overflowWrap: 'anywhere' }}>
                       {event.description}
                     </Typography>
                   )}
@@ -116,12 +116,12 @@ export default function ContactTimeline({ timelineItems, onEditItem, onDeleteCom
                   }
                 }}
               >
-                <Typography variant="subtitle2" sx={{ fontWeight: 500 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 500, overflowWrap: 'anywhere' }}>
                   {item.type === 'note' ? t('contactDetail.note') :
                    item.type === 'activity' ? (item.data as Activity).title :
                    t('timeline.reminderCompleted')}
                 </Typography>
-                <Typography variant="body2" sx={{ mt: 1 }}>
+                <Typography variant="body2" sx={{ mt: 1, overflowWrap: 'anywhere' }}>
                   {item.type === 'note'
                     ? (item.data as Note).content
                     : item.type === 'activity'
@@ -129,7 +129,7 @@ export default function ContactTimeline({ timelineItems, onEditItem, onDeleteCom
                     : (item.data as ReminderCompletion).message}
                 </Typography>
                 {item.type === 'activity' && (item.data as Activity).location && (
-                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', overflowWrap: 'anywhere' }}>
                     📍 {(item.data as Activity).location}
                   </Typography>
                 )}

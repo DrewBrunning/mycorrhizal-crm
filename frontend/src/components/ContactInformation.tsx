@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Card, CardContent, Divider, Stack, Box, Tabs, Tab, Button, Typography, SvgIcon } from '@mui/material';
+import { Card, CardContent, Divider, Stack, Box, Tabs, Tab, Button, Typography, SvgIcon, TextField, MenuItem, useTheme, useMediaQuery } from '@mui/material';
 import EmailIcon from '@mui/icons-material/Email';
 import PhoneIcon from '@mui/icons-material/Phone';
 import CakeIcon from '@mui/icons-material/Cake';
@@ -130,6 +130,11 @@ export default function ContactInformation({
   const [activeTab, setActiveTab] = useState(0);
   const enabled = enabledFields ?? resolveEnabledFields(null);
   const isOn = (key: ContactFieldKey) => enabled.has(key);
+  // On viewports ≤600px, swap the horizontal tab bar for a dropdown Select
+  // that avoids both overflow cut-off and the need for drag-gesture-less
+  // scrollable tabs (T28).
+  const theme = useTheme();
+  const compactTabs = useMediaQuery(theme.breakpoints.down('sm'));
 
   const birthday = getAnniversaryField(card.anniversaries, 'birth') || '';
   const anniversary = getAnniversaryField(card.anniversaries, 'wedding') || '';
@@ -173,15 +178,31 @@ export default function ContactInformation({
   };
 
   return (
-    <Card sx={{ flex: 1 }}>
-      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-        <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)} aria-label="contact information tabs">
-          <Tab label={t('contactDetail.generalInfo')} />
-          <Tab label={t('relationships.title')} />
-          <Tab label={t('lifeEvent.title')} />
-          <Tab label={t('preference.title')} />
-        </Tabs>
-      </Box>
+    <Card sx={{ flex: 1, minWidth: 0 }}>
+      {compactTabs ? (
+        <TextField
+          select
+          size="small"
+          value={activeTab}
+          onChange={(e) => setActiveTab(Number(e.target.value))}
+          sx={{ m: 1, minWidth: 180 }}
+          aria-label="contact information sections"
+        >
+          <MenuItem value={0}>{t('contactDetail.generalInfo')}</MenuItem>
+          <MenuItem value={1}>{t('relationships.title')}</MenuItem>
+          <MenuItem value={2}>{t('lifeEvent.title')}</MenuItem>
+          <MenuItem value={3}>{t('preference.title')}</MenuItem>
+        </TextField>
+      ) : (
+        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+          <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)} aria-label="contact information tabs">
+            <Tab label={t('contactDetail.generalInfo')} />
+            <Tab label={t('relationships.title')} />
+            <Tab label={t('lifeEvent.title')} />
+            <Tab label={t('preference.title')} />
+          </Tabs>
+        </Box>
+      )}
 
       {/* General Information Tab */}
       {activeTab === 0 && (
