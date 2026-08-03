@@ -44,21 +44,6 @@ export interface CompletionsResponse {
   completions: ReminderCompletion[];
 }
 
-// Get all reminders across all contacts
-export async function getAllReminders(): Promise<Reminder[]> {
-  const response = await apiFetch(
-    `${API_BASE_URL}/reminders`,
-    { headers: getAuthHeaders() }
-  );
-
-  if (!response.ok) {
-    throw await parseErrorResponse(response);
-  }
-
-  const data: RemindersResponse = await response.json();
-  return data.reminders || [];
-}
-
 // Get upcoming reminders (next 7 days or at least next 10 reminders)
 export async function getUpcomingReminders(): Promise<Reminder[]> {
   const response = await apiFetch(
@@ -87,20 +72,6 @@ export async function getRemindersForContact(contactId: number): Promise<Reminde
 
   const data: RemindersResponse = await response.json();
   return data.reminders || [];
-}
-
-// Get a single reminder
-export async function getReminder(reminderId: number): Promise<Reminder> {
-  const response = await apiFetch(
-    `${API_BASE_URL}/reminders/${reminderId}`,
-    { headers: getAuthHeaders() }
-  );
-
-  if (!response.ok) {
-    throw await parseErrorResponse(response);
-  }
-
-  return response.json();
 }
 
 // Create a new reminder

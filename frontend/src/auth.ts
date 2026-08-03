@@ -68,11 +68,6 @@ export async function fetchAndCacheUserInfo(): Promise<UserInfo | null> {
   }
 }
 
-// No-op: token is now in httpOnly cookie, not stored in localStorage
-export function saveToken(_token: string) {
-  // Kept for backward compatibility - token is now set via httpOnly cookie by server
-}
-
 // Returns null - token is in httpOnly cookie (not accessible from JS)
 // Use isAuthenticated() to check login status
 export function getToken(): string | null {
@@ -91,7 +86,7 @@ export function isAuthenticated(): boolean {
 // authenticated via OIDC, so the caller can navigate there to also end the
 // IdP's own session (otherwise "Sign in with SSO" silently re-authenticates
 // without a prompt).
-export async function logoutUser(): Promise<string | undefined> {
+async function logoutUser(): Promise<string | undefined> {
   let redirectURL: string | undefined;
   try {
     const response = await fetch(`${API_BASE_URL}/logout`, {
@@ -122,7 +117,7 @@ interface DecodedToken {
 }
 
 // Returns cached user info (previously decoded from token)
-export function decodeToken(): DecodedToken | null {
+function decodeToken(): DecodedToken | null {
   const userInfoStr = localStorage.getItem(USER_INFO_KEY);
   if (!userInfoStr) {
     return null;

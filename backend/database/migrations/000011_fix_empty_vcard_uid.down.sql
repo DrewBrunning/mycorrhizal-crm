@@ -1,2 +1,0 @@
--- No-op: We don't want to revert UUIDs back to empty strings
--- as that would break the unique constraint

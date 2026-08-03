@@ -20,7 +20,7 @@ const (
 // Conventional (not validated — see Role's doc comment) values for
 // HouseholdMember.Role.
 const (
-	HouseholdRoleAdult   = "adult"
+	HouseholdRoleAdult    = "adult"
 	HouseholdRoleChild    = "child"
 	HouseholdRolePet      = "pet"
 	HouseholdRoleRoommate = "roommate"

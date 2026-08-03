@@ -83,15 +83,6 @@ export async function deleteCircle(id: string): Promise<void> {
   if (!response.ok) throw await parseErrorResponse(response);
 }
 
-// GET /circles/:id
-export async function getCircle(id: string): Promise<CircleWithMembers> {
-  const response = await apiFetch(`${API_BASE_URL}/circles/${id}`, {
-    headers: getAuthHeaders(),
-  });
-  if (!response.ok) throw await parseErrorResponse(response);
-  return response.json();
-}
-
 // POST /circles/:id/members
 export async function addCircleMember(
   circleId: string,

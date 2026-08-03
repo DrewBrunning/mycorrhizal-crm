@@ -40,21 +40,6 @@ export async function getUsers(
 }
 
 
-// Get a single user by ID (admin only)
-export async function getUserById(id: number): Promise<User> {
-  const response = await apiFetch(`${API_BASE_URL}/admin/users/${id}`, {
-    method: 'GET',
-    headers: getAuthHeaders(),
-  });
-
-  if (!response.ok) {
-    throw await parseErrorResponse(response);
-  }
-
-  return response.json();
-}
-
-
 // Update a user (admin only)
 export async function updateUser(
   id: number,

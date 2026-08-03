@@ -48,7 +48,7 @@ export function getErrorMessage(error: unknown): string {
 /**
  * Get the error code if available
  */
-export function getErrorCode(error: unknown): string | undefined {
+function getErrorCode(error: unknown): string | undefined {
   if (error instanceof ApiError) {
     return error.code;
   }
@@ -58,7 +58,7 @@ export function getErrorCode(error: unknown): string | undefined {
 /**
  * Log an error with consistent formatting
  */
-export function logError(error: unknown, context: ErrorContext): void {
+function logError(error: unknown, context: ErrorContext): void {
   if (context.silent) {
     return;
   }
@@ -108,46 +108,6 @@ export function handleError(
   }
   
   return message;
-}
-
-/**
- * Create an error handler bound to a specific notifier.
- * Useful in React components/hooks where the snackbar is available.
- * 
- * @example
- * ```ts
- * const { showError } = useSnackbar();
- * const errorHandler = createErrorHandler({ showError });
- * 
- * try {
- *   await saveNote(data);
- * } catch (err) {
- *   errorHandler.handle(err, 'saving note');
- *   throw err;
- * }
- * ```
- */
-export function createErrorHandler(notifier: ErrorNotifier) {
-  return {
-    /**
-     * Handle an error with the bound notifier
-     */
-    handle(error: unknown, operation: string, options?: { silent?: boolean }): string {
-      return handleError(error, { operation, ...options }, notifier);
-    },
-    
-    /**
-     * Log an error without user notification
-     */
-    log(error: unknown, operation: string, options?: { silent?: boolean }): void {
-      logError(error, { operation, ...options });
-    },
-    
-    /**
-     * Get a user-friendly message from an error
-     */
-    getMessage: getErrorMessage,
-  };
 }
 
 /**

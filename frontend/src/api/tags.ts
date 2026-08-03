@@ -83,15 +83,6 @@ export async function deleteTag(id: string): Promise<void> {
   if (!response.ok) throw await parseErrorResponse(response);
 }
 
-// GET /tags/:id
-export async function getTag(id: string): Promise<TagWithContacts> {
-  const response = await apiFetch(`${API_BASE_URL}/tags/${id}`, {
-    headers: getAuthHeaders(),
-  });
-  if (!response.ok) throw await parseErrorResponse(response);
-  return response.json();
-}
-
 // POST /tags/:id/contacts
 export async function addContactTag(
   tagId: string,

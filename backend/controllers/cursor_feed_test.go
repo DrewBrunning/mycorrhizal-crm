@@ -122,11 +122,9 @@ func TestGetContactsCursorStableUnderBoundaryInsert(t *testing.T) {
 	db.First(&user)
 	router.GET("/contacts", GetContacts)
 
-	var seeded []models.Contact
 	for _, name := range []string{"A", "B", "C", "D", "E", "F"} {
 		c := models.Contact{UserID: user.ID, Firstname: name}
 		require.NoError(t, db.Create(&c).Error)
-		seeded = append(seeded, c)
 	}
 
 	// Page 1: newest two by (updated_at, id) DESC.

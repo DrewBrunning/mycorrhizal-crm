@@ -65,10 +65,7 @@ func eventHasMonthDay(d *contactmodel.PartialDate) bool {
 	// time.Date; reject them here so the user gets feedback instead of a
 	// silently-wrong reminder date.
 	check := time.Date(2000, time.Month(m), day, 0, 0, 0, 0, time.UTC)
-	if check.Month() != time.Month(m) {
-		return false
-	}
-	return true
+	return check.Month() == time.Month(m)
 }
 
 // nextRemindAt computes the next yearly reminder timestamp from month/day,
