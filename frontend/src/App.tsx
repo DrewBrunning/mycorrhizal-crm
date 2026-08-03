@@ -184,9 +184,7 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
       <AppBar 
         position="fixed" 
         sx={{ 
-          zIndex: (theme) => theme.zIndex.drawer + 1,
-          width: { md: `calc(100% - ${drawerWidth}px)` },
-          ml: { md: `${drawerWidth}px` }
+          zIndex: (theme) => theme.zIndex.drawer + 1
         }}
       >
         <Toolbar>

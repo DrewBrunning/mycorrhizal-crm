@@ -197,6 +197,8 @@ each side — so a high rating does not by itself pull a ticket before alpha, an
 | 17 | **T17** WP-92 change feeds + cursor pagination — **DONE** | 2\* | M | T8 | `92.5` |
 | 18 | **T23** UI polish — typography, icons, strings | 4 | M | *(soft: all UI done)* | Tier 6 |
 | 19 | **T22** Legacy / dead-code audit + migration squash — **DONE** | 3 | L | all above | Tier 6 |
+| 20 | **T27** Contact CRM.Kind UI — pet/individual/animal dropdown | 3 | S | — | T22 audit finding |
+| 21 | **T28** Mobile contact view layout — scrollable tabs, action collapsing, 360px min-width | **5** | M | — | T23 polish |
 | | **→ ALPHA — real data begins here** | | | | |
 
 \* T8/T12a/T17 are rated on user-visible value. **If a mobile client is real they are 4s**; if it never
@@ -206,28 +208,28 @@ happens, T17 in particular is pre-alpha work buying nothing. See the open questi
 
 | # | Ticket | R | Size | Depends on | Source |
 |---|---|---|---|---|---|
-| 20 | **T19** WP-94 CadencePolicy + relationship health | **5** | L | T5 | `92.6`, `91.10` |
-| 21 | **T21** WP-96 ConversationAgenda | 4 | M | T5 | `92.6`, `91.11` |
-| 22 | **N2** Prep view / person briefing screen | **5** | M | T5, T19, T21 | new (gap) |
-| 23 | **T10** WP-85 graph traversal + multi-hop chains | 2 | M–L | — | `92.2` |
-| 24 | **T11** WP-86 search synonyms, household scope, FTS5 | **5** | L | T10, T1 | `92.2` |
-| 25 | **N8** 2FA / TOTP enrollment | 3 | M | — | new (gap) |
-| 26 | **N6** Full backup **restore** (export exists; import is contacts-only) | 3 | M | — | new (gap) |
-| 27 | **N5** Bulk operations (tag / circle / archive / delete) | 3 | M | T4 | new (gap) |
-| 28 | **T20b** WP-95 Gift tracking | 3 | M | T5 | `92.6`, `91.11` |
-| 29 | **N7** File / document attachments per contact | 3 | M | — | new (gap) |
-| 30 | **N9** Notification channels beyond email (ntfy/Gotify/push) | 3 | M | — | new (gap) |
-| 31 | **P1** Contact sharing — one-time filtered copy | 3 | M | T9 | Tier 5 |
-| 32 | **T14** WP-89 external-link substrate | 2 | M | — | `92.4`, `91.12` |
-| 33 | **T15** WP-90 Immich level 1 (linking) | 3 | M | T14 | `92.4` |
-| 34 | **T16** WP-91 Immich level 2 (enrichment) | 3 | M | T15 | `92.4` |
-| 35 | **T18** WP-93 event history / audit trail | 2 | L | T17 | `92.5` |
-| 36 | **T12b** WP-87 serve Interactions/LifeEvents as CalDAV | 2 | L | T12a, T5 | `92.3` |
-| 37 | **T13** WP-88 two-way calendar sync ⚠ policy call | 2 | M–L | T12b | `92.3` |
-| 38 | **P1b** Contact sharing — standing/live share + permissions | 2 | XL | P1 | Tier 5 |
-| 39 | **P2** Other integrations (Dawarich, Jellyfin, Paperless-ngx, …) | 2 | — | T14 | `92.7` |
-| 40 | **P3** AI / Ollama layer | 1 | — | most of the above | `92.7`, `90` D1 |
-| 41 | **P4** Local-model code-gen pilot | 1 | — | mobile client work | `80` |
+| 22 | **T19** WP-94 CadencePolicy + relationship health | **5** | L | T5 | `92.6`, `91.10` |
+| 23 | **T21** WP-96 ConversationAgenda | 4 | M | T5 | `92.6`, `91.11` |
+| 24 | **N2** Prep view / person briefing screen | **5** | M | T5, T19, T21 | new (gap) |
+| 25 | **T10** WP-85 graph traversal + multi-hop chains | 2 | M–L | — | `92.2` |
+| 26 | **T11** WP-86 search synonyms, household scope, FTS5 | **5** | L | T10, T1 | `92.2` |
+| 27 | **N8** 2FA / TOTP enrollment | 3 | M | — | new (gap) |
+| 28 | **N6** Full backup **restore** (export exists; import is contacts-only) | 3 | M | — | new (gap) |
+| 29 | **N5** Bulk operations (tag / circle / archive / delete) | 3 | M | T4 | new (gap) |
+| 30 | **T20b** WP-95 Gift tracking | 3 | M | T5 | `92.6`, `91.11` |
+| 31 | **N7** File / document attachments per contact | 3 | M | — | new (gap) |
+| 32 | **N9** Notification channels beyond email (ntfy/Gotify/push) | 3 | M | — | new (gap) |
+| 33 | **P1** Contact sharing — one-time filtered copy | 3 | M | T9 | Tier 5 |
+| 34 | **T14** WP-89 external-link substrate | 2 | M | — | `92.4`, `91.12` |
+| 35 | **T15** WP-90 Immich level 1 (linking) | 3 | M | T14 | `92.4` |
+| 36 | **T16** WP-91 Immich level 2 (enrichment) | 3 | M | T15 | `92.4` |
+| 37 | **T18** WP-93 event history / audit trail | 2 | L | T17 | `92.5` |
+| 38 | **T12b** WP-87 serve Interactions/LifeEvents as CalDAV | 2 | L | T12a, T5 | `92.3` |
+| 39 | **T13** WP-88 two-way calendar sync ⚠ policy call | 2 | M–L | T12b | `92.3` |
+| 40 | **P1b** Contact sharing — standing/live share + permissions | 2 | XL | P1 | Tier 5 |
+| 41 | **P2** Other integrations (Dawarich, Jellyfin, Paperless-ngx, …) | 2 | — | T14 | `92.7` |
+| 42 | **P3** AI / Ollama layer | 1 | — | most of the above | `92.7`, `90` D1 |
+| 43 | **P4** Local-model code-gen pilot | 1 | — | mobile client work | `80` |
 
 ### ⚠ The ordering rules produce an alpha with no rating-5 capability in it
 
