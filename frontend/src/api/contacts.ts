@@ -452,36 +452,38 @@ export interface Birthday {
 
 export interface ContactsResponse {
   contacts: Contact[];
-  total: number;
-  page: number;
+  // T17 cursor pagination: opaque resume token for the next page; empty when
+  // there are no more rows. There is no total/page — cursor pagination gives
+  // up the exact count on large tables.
+  next_cursor: string;
   limit: number;
 }
 
 export interface GetContactsParams {
-  page?: number;
+  // Opaque resume token returned as next_cursor by the previous page.
+  cursor?: string;
   limit?: number;
   search?: string;
   circle?: string;
-  sort?: string;
-  order?: string;
+  // Direction for the (updated_at, id) cursor order ("desc" default).
+  order?: 'asc' | 'desc';
   includeArchived?: boolean;
   archived?: boolean;
 }
 
-// Get all contacts with pagination and filters
+// Get a page of contacts with filters, resumable via next_cursor (T17).
 export async function getContacts(
   params: GetContactsParams
 ): Promise<ContactsResponse> {
-  const { page = 1, limit = 25, search = '', circle = '', sort, order, includeArchived, archived } = params;
+  const { cursor, limit = 25, search = '', circle = '', order, includeArchived, archived } = params;
 
   const queryParams = new URLSearchParams({
-    page: page.toString(),
     limit: limit.toString(),
   });
 
+  if (cursor) queryParams.append('cursor', cursor);
   if (search) queryParams.append('search', search);
   if (circle) queryParams.append('circle', circle);
-  if (sort) queryParams.append('sort', sort);
   if (order) queryParams.append('order', order);
   if (includeArchived) queryParams.append('include_archived', 'true');
   if (archived !== undefined) queryParams.append('archived', archived.toString());
@@ -495,13 +497,28 @@ export async function getContacts(
     throw await parseErrorResponse(response);
   }
 
-  const data: { contacts: ContactSummaryDTO[]; total: number; page: number; limit: number } = await response.json();
+  const data: { contacts: ContactSummaryDTO[]; next_cursor: string; limit: number } = await response.json();
   return {
     contacts: data.contacts.map(summaryToLegacyContact),
-    total: data.total,
-    page: data.page,
+    next_cursor: data.next_cursor,
     limit: data.limit,
   };
+}
+
+// getAllContacts follows next_cursor until the list is exhausted — the
+// "pull everything" affordance callers like the activity/network pages and
+// timeline editor need now that there is no page=1000 shortcut and no total
+// to size a loop with.
+export async function getAllContacts(params: Omit<GetContactsParams, 'cursor'> = {}): Promise<Contact[]> {
+  const contacts: Contact[] = [];
+  let cursor: string | undefined;
+  for (let guard = 0; guard < 100; guard++) {
+    const page = await getContacts({ ...params, cursor });
+    contacts.push(...page.contacts);
+    cursor = page.next_cursor || undefined;
+    if (!cursor) break;
+  }
+  return contacts;
 }
 
 // Resolves a batch of Contact.VCardUID values to full Contact objects in one
@@ -667,9 +684,9 @@ export async function getLegacyCircles(): Promise<string[]> {
 
 // Temporary: filters contacts by a legacy flat-circle string. Used by the
 // T2 triage page's member-add step. Remove after migration.
-export async function getContactsByLegacyCircle(circle: string): Promise<{ contacts: Contact[]; total: number }> {
+export async function getContactsByLegacyCircle(circle: string): Promise<{ contacts: Contact[]; total?: number }> {
   const queryParams = new URLSearchParams({
-    page: '1', limit: '500', circle_legacy: circle,
+    limit: '500', circle_legacy: circle,
   });
   const response = await apiFetch(
     `${API_BASE_URL}/contacts?${queryParams.toString()}`,

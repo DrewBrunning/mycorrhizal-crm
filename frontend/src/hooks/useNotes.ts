@@ -11,12 +11,13 @@ import { handleFetchError } from '../utils/errorHandler';
 
 interface UseNotesResult {
   notes: Note[];
-  total: number;
-  page: number;
+  // Opaque resume token (T17): non-empty while more rows exist.
+  nextCursor: string;
   limit: number;
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
+  loadMore: () => Promise<void>;
 }
 
 export function useNotes(
@@ -25,16 +26,15 @@ export function useNotes(
 ): UseNotesResult {
   // Destructure params to use primitive values as dependencies
   // This prevents re-fetches when callers pass new object references with identical values
-  const { page: paramPage, limit: paramLimit, search, fromDate, toDate } = params;
+  const { cursor: _ignored, limit: paramLimit, search, fromDate, toDate } = params;
 
   const [notes, setNotes] = useState<Note[]>([]);
-  const [total, setTotal] = useState(0);
-  const [pageState, setPageState] = useState(paramPage || 1);
+  const [nextCursor, setNextCursor] = useState('');
   const [limit, setLimit] = useState(paramLimit || 25);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchNotes = useCallback(async () => {
+  const fetchFirst = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -47,15 +47,12 @@ export function useNotes(
         const data = await getContactNotes(contactId);
         const normalized = Array.isArray(data) ? data : data.notes || [];
         setNotes(normalized);
-        setTotal(normalized.length);
-        setPageState(1);
+        setNextCursor('');
         setLimit(normalized.length || paramLimit || 25);
       } else {
-        const fetchParams: GetNotesParams = { page: paramPage, limit: paramLimit, search, fromDate, toDate };
-        const data = await getUnassignedNotes(fetchParams);
+        const data = await getUnassignedNotes({ limit: paramLimit, search, fromDate, toDate });
         setNotes(data.notes || []);
-        setTotal(data.total ?? data.notes?.length ?? 0);
-        setPageState(data.page || paramPage || 1);
+        setNextCursor(data.next_cursor || '');
         setLimit(data.limit || paramLimit || 25);
       }
     } catch (err) {
@@ -64,19 +61,34 @@ export function useNotes(
     } finally {
       setLoading(false);
     }
-  }, [contactId, paramPage, paramLimit, search, fromDate, toDate]);
+  }, [contactId, paramLimit, search, fromDate, toDate]);
+
+  const loadMore = useCallback(async () => {
+    if (!nextCursor) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getUnassignedNotes({ cursor: nextCursor, limit: paramLimit, search, fromDate, toDate });
+      setNotes((prev) => [...prev, ...(data.notes || [])]);
+      setNextCursor(data.next_cursor || '');
+    } catch (err) {
+      setError(handleFetchError(err, 'loading more notes'));
+    } finally {
+      setLoading(false);
+    }
+  }, [nextCursor, paramLimit, search, fromDate, toDate]);
 
   useEffect(() => {
-    fetchNotes();
-  }, [fetchNotes]);
+    fetchFirst();
+  }, [fetchFirst]);
 
   return {
     notes,
-    total,
-    page: pageState,
+    nextCursor,
     limit,
     loading,
     error,
-    refetch: fetchNotes,
+    refetch: fetchFirst,
+    loadMore,
   };
 }

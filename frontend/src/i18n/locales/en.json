@@ -499,7 +499,8 @@
     "close": "Close",
     "back": "Back",
     "continue": "Continue",
-    "add": "Add"
+    "add": "Add",
+    "loadMore": "Load more"
   },
   "profilePicture": {
     "title": "Upload Profile Picture",

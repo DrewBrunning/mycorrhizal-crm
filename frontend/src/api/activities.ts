@@ -21,13 +21,13 @@ export interface Activity {
 
 export interface ActivitiesResponse {
   activities: Activity[];
-  total: number;
-  page: number;
+  // T17 cursor pagination: opaque resume token; empty when there are no more rows.
+  next_cursor: string;
   limit: number;
 }
 
 export interface GetActivitiesParams {
-  page?: number;
+  cursor?: string;
   limit?: number;
   includeContacts?: boolean;
   search?: string;
@@ -35,18 +35,18 @@ export interface GetActivitiesParams {
   toDate?: string;
 }
 
-// Get all activities
+// Get a page of activities, resumable via next_cursor (T17)
 export async function getActivities(
   params: GetActivitiesParams
 ): Promise<ActivitiesResponse> {
-  const { page = 1, limit = 25, includeContacts = false } = params;
+  const { cursor, limit = 25, includeContacts = false } = params;
   const search = params.search?.trim();
 
   const queryParams = new URLSearchParams({
-    page: page.toString(),
     limit: limit.toString(),
   });
 
+  if (cursor) queryParams.append('cursor', cursor);
   if (includeContacts) {
     queryParams.append('include', 'contacts');
   }

@@ -29,6 +29,15 @@ var contactSummaryColumns = []string{
 	"photo", "photo_thumbnail", "archived",
 }
 
+// contactListColumns adds updated_at to the slim projection — the cursor
+// (updated_at, id) needs it to build the response's next_cursor. Fresh slice
+// per var so appends can never leak into contactSummaryColumns' backing array.
+var contactListColumns = append(append([]string{}, contactSummaryColumns...), "updated_at")
+
+// contactFeedColumns additionally selects deleted_at so the ?since= change
+// feed can mark tombstones (Unscoped rows whose deleted_at is set).
+var contactFeedColumns = append(append([]string{}, contactListColumns...), "deleted_at")
+
 func CreateContact(c *gin.Context) {
 	// Save to the database
 	db := c.MustGet("db").(*gorm.DB)
@@ -94,8 +103,6 @@ func GetContacts(c *gin.Context) {
 		return
 	}
 
-	pagination := GetPaginationParams(c)
-
 	// ?vcard_uid= (repeatable) is a batch by-VCardUID lookup, short-circuiting
 	// the rest of this handler's search/sort/pagination/includes logic
 	// entirely -- it exists for callers (e.g. the RelationshipEdge frontend,
@@ -103,7 +110,8 @@ func GetContacts(c *gin.Context) {
 	// a Contact.VCardUID reference back into a displayable name, and have no
 	// use for the list-view machinery below. Bounded by how many UIDs were
 	// requested, not paginated. Respects include_archived like the rest of
-	// this handler (an edge can point at an archived contact).
+	// this handler (an edge can point at an archived contact). Deliberately
+	// NOT migrated to cursor pagination (T17) — it is not a list view.
 	if vcardUIDs := c.QueryArray("vcard_uid"); len(vcardUIDs) > 0 {
 		query := db.Model(&models.Contact{}).Where("user_id = ? AND vcard_uid IN ?", userID, vcardUIDs).
 			Select(contactSummaryColumns)
@@ -135,6 +143,66 @@ func GetContacts(c *gin.Context) {
 	// shape (below) now serves the reason fields= existed (avoiding
 	// over-fetch on a list view) — see contactSummaryColumns.
 
+	// T17: cursor pagination. The list endpoint pages by (updated_at, id) and
+	// the ?since= query turns it into a change feed: everything the user's
+	// data changed after the cursor, including soft-deleted rows (tombstones),
+	// ordered forward so a replica can replay history. An exact `total` count
+	// is deliberately gone from this endpoint — it is expensive on the
+	// unboundedly-growing contacts table, and that is the usual thing cursor
+	// pagination gives up.
+	params, err := GetCursorParams(c)
+	if err != nil {
+		apperrors.AbortWithError(c, err)
+		return
+	}
+	if err := CheckFeedCursorAge(c, params); err != nil {
+		apperrors.AbortWithError(c, err)
+		return
+	}
+
+	// Change feed (?since=): return every row changed after the cursor —
+	// created, updated, AND soft-deleted (read via Unscoped, marked
+	// deleted:true) — regardless of archive state or search/circle filters.
+	// A replica needs the complete picture, not a filtered view.
+	if params.Since {
+		query := db.Unscoped().Model(&models.Contact{}).
+			Where("user_id = ?", userID).
+			Select(contactFeedColumns)
+		if params.Cursor != nil {
+			id, ok := parseCursorID(params.Cursor)
+			if !ok {
+				apperrors.AbortWithError(c, apperrors.ErrInvalidInput("since", "cursor id is malformed"))
+				return
+			}
+			pred, t, idv := cursorPredicate("contacts", params.Cursor, id, false)
+			query = query.Where(pred, t, idv)
+		}
+		query = cursorOrderBy(query, "contacts", false).Limit(params.Limit + 1)
+
+		var contacts []models.Contact
+		if err := query.Find(&contacts).Error; err != nil {
+			apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve contacts").WithError(err))
+			return
+		}
+		nextCursor := ""
+		if len(contacts) > params.Limit {
+			contacts = contacts[:params.Limit]
+			nextCursor = EncodeCursor(contacts[len(contacts)-1].UpdatedAt, contacts[len(contacts)-1].ID)
+		}
+		items := make([]models.ContactSummary, len(contacts))
+		for i := range contacts {
+			items[i] = models.NewContactSummary(&contacts[i])
+			items[i].Deleted = contacts[i].DeletedAt.Valid
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"contacts":    items,
+			"next_cursor": nextCursor,
+			"limit":       params.Limit,
+			"sync":        buildSyncMeta(SyncModeIncremental),
+		})
+		return
+	}
+
 	// Parse relationships to include with validation. Per Gap 2, this
 	// mechanic is preserved exactly as-is; only the per-item shape changes
 	// (ContactSummary, extended to ContactSummaryWithRelations when any
@@ -160,26 +228,13 @@ func GetContacts(c *gin.Context) {
 		}
 	}
 
-	// Parse and validate sort parameters
-	sortField := c.DefaultQuery("sort", "id")
-	sortOrder := c.DefaultQuery("order", "desc")
-
-	allowedSortFields := map[string]bool{"firstname": true, "lastname": true, "id": true, "random": true}
-	if !allowedSortFields[sortField] {
-		sortField = "id"
-	}
-	if sortOrder != "asc" && sortOrder != "desc" {
-		sortOrder = "desc"
-	}
-
 	// Parse archive filtering parameters
 	includeArchived := c.Query("include_archived") == "true"
 	archivedOnly := c.Query("archived") == "true"
 
 	var contacts []models.Contact
 	query := db.Model(&models.Contact{}).Where("user_id = ?", userID).
-		Select(contactSummaryColumns).
-		Limit(pagination.Limit).Offset(pagination.Offset)
+		Select(contactListColumns)
 
 	// Apply archive filtering
 	if !includeArchived {
@@ -190,15 +245,17 @@ func GetContacts(c *gin.Context) {
 		}
 	}
 
-	// Apply ordering - random uses RANDOM() function, others use column name
-	// For search with include_archived, order non-archived first
-	if includeArchived && c.Query("search") != "" {
-		query = query.Order("archived ASC")
-	}
-	if sortField == "random" {
-		query = query.Order("RANDOM()")
-	} else {
-		query = query.Order(sortField + " " + sortOrder)
+	// T17: resume-after cursor. Order is (updated_at, id), so the cursor
+	// position maps directly onto the ordering.
+	desc := params.Order == "desc"
+	if params.Cursor != nil {
+		id, ok := parseCursorID(params.Cursor)
+		if !ok {
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed"))
+			return
+		}
+		pred, t, idv := cursorPredicate("contacts", params.Cursor, id, desc)
+		query = query.Where(pred, t, idv)
 	}
 
 	// Apply search filter using parameterization
@@ -234,40 +291,19 @@ func GetContacts(c *gin.Context) {
 		}
 	}
 
-	// Execute query
+	// Execute query. Fetch one extra row so next_cursor presence is exact:
+	// a full page may still be the last page, and a partial page never has
+	// more.
+	query = cursorOrderBy(query, "contacts", desc).Limit(params.Limit + 1)
 	if err := query.Find(&contacts).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve contacts").WithError(err))
 		return
 	}
-
-	var total int64
-	countQuery := db.Model(&models.Contact{}).Where("user_id = ?", userID)
-
-	// Apply the same archive filter to the count query
-	if !includeArchived {
-		if archivedOnly {
-			countQuery = countQuery.Where("archived = ?", true)
-		} else {
-			countQuery = countQuery.Where("archived = ?", false)
-		}
+	nextCursor := ""
+	if len(contacts) > params.Limit {
+		contacts = contacts[:params.Limit]
+		nextCursor = EncodeCursor(contacts[len(contacts)-1].UpdatedAt, contacts[len(contacts)-1].ID)
 	}
-
-	// Apply the same search filters to the count query
-	if searchTerm := c.Query("search"); searchTerm != "" {
-		countQuery = applyContactSearch(countQuery, searchTerm)
-	}
-
-	if circle := c.Query("circle"); circle != "" {
-		countQuery = countQuery.Where(`EXISTS (
-			SELECT 1 FROM circle_members cm
-			JOIN circles c ON cm.circle_id = c.id AND c.user_id = ?
-			WHERE cm.member_vcard_uid = contacts.vcard_uid AND c.name = ?
-		)`, userID, circle)
-	}
-	if circle := c.Query("circle_legacy"); circle != "" {
-		countQuery = countQuery.Where("EXISTS (SELECT 1 FROM json_each(contacts.circles) WHERE json_each.value = ?)", circle)
-	}
-	countQuery.Count(&total)
 
 	// Map contacts to the slim ContactSummary shape (Gap 2/3): plain
 	// ContactSummary normally, or ContactSummaryWithRelations when includes=
@@ -279,10 +315,10 @@ func GetContacts(c *gin.Context) {
 			items[i] = models.NewContactSummaryWithRelations(&contacts[i])
 		}
 		c.JSON(http.StatusOK, gin.H{
-			"contacts": items,
-			"total":    total,
-			"page":     pagination.Page,
-			"limit":    pagination.Limit,
+			"contacts":    items,
+			"next_cursor": nextCursor,
+			"limit":       params.Limit,
+			"sync":        buildSyncMeta(SyncModeIncremental),
 		})
 		return
 	}
@@ -292,10 +328,10 @@ func GetContacts(c *gin.Context) {
 		items[i] = models.NewContactSummary(&contacts[i])
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"contacts": items,
-		"total":    total,
-		"page":     pagination.Page,
-		"limit":    pagination.Limit,
+		"contacts":    items,
+		"next_cursor": nextCursor,
+		"limit":       params.Limit,
+		"sync":        buildSyncMeta(SyncModeIncremental),
 	})
 }
 
@@ -470,6 +506,17 @@ func deleteContactAssociations(tx *gorm.DB, contact models.Contact, userID uint)
 
 	// Manually delete associated notes
 	if err := tx.Where("contact_id = ? AND user_id = ?", contact.ID, userID).Delete(&models.Note{}).Error; err != nil {
+		return err
+	}
+	// Bulk soft deletes skip Note.AfterDelete (the hook fires on a zero-value
+	// model), so advance updated_at on the just-tombstoned notes explicitly —
+	// otherwise a T17 change-feed cursor stored before this delete would miss
+	// the tombstones forever. The contact's own tombstone (bumped by
+	// Contact.AfterDelete) already signals the cascade to a client; this keeps
+	// the notes feed itself convergent too.
+	if err := tx.Model(&models.Note{}).Unscoped().
+		Where("contact_id = ? AND user_id = ? AND deleted_at IS NOT NULL", contact.ID, userID).
+		UpdateColumn("updated_at", time.Now()).Error; err != nil {
 		return err
 	}
 

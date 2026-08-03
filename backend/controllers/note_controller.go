@@ -138,7 +138,54 @@ func GetUnassignedNotes(c *gin.Context) {
 		return
 	}
 
-	pagination := GetPaginationParams(c)
+	params, err := GetCursorParams(c)
+	if err != nil {
+		apperrors.AbortWithError(c, err)
+		return
+	}
+	if err := CheckFeedCursorAge(c, params); err != nil {
+		apperrors.AbortWithError(c, err)
+		return
+	}
+
+	// Change feed (?since=): every unassigned note changed after the cursor —
+	// including soft-deleted ones (Unscoped, marked deleted:true) so a replica
+	// can apply deletions. Search/date filters are deliberately ignored here:
+	// a feed is a mirror, not a filtered view.
+	if params.Since {
+		query := db.Unscoped().Model(&models.Note{}).
+			Where("notes.user_id = ? AND contact_id IS NULL", userID)
+		if params.Cursor != nil {
+			id, ok := parseCursorID(params.Cursor)
+			if !ok {
+				apperrors.AbortWithError(c, apperrors.ErrInvalidInput("since", "cursor id is malformed"))
+				return
+			}
+			pred, t, idv := cursorPredicate("notes", params.Cursor, id, false)
+			query = query.Where(pred, t, idv)
+		}
+		query = cursorOrderBy(query, "notes", false).Limit(params.Limit + 1)
+		if err := query.Find(&notes).Error; err != nil {
+			apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve notes").WithError(err))
+			return
+		}
+		nextCursor := ""
+		if len(notes) > params.Limit {
+			notes = notes[:params.Limit]
+			nextCursor = EncodeCursor(notes[len(notes)-1].UpdatedAt, notes[len(notes)-1].ID)
+		}
+		for i := range notes {
+			notes[i].Deleted = notes[i].DeletedAt.Valid
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"notes":       notes,
+			"next_cursor": nextCursor,
+			"limit":       params.Limit,
+			"sync":        buildSyncMeta(SyncModeIncremental),
+		})
+		return
+	}
+
 	search := strings.ToLower(strings.TrimSpace(c.Query("search")))
 	fromDateStr := c.Query("fromDate")
 	toDateStr := c.Query("toDate")
@@ -165,27 +212,34 @@ func GetUnassignedNotes(c *gin.Context) {
 		baseQuery = baseQuery.Where("LOWER(content) LIKE ?", like)
 	}
 
-	countQuery := baseQuery.Session(&gorm.Session{})
-	var total int64
-	if err := countQuery.Count(&total).Error; err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to count notes").WithError(err))
-		return
+	// T17: cursor pagination on (updated_at, id). An exact count is
+	// deliberately gone — notes accumulate without bound.
+	desc := params.Order == "desc"
+	if params.Cursor != nil {
+		id, ok := parseCursorID(params.Cursor)
+		if !ok {
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed"))
+			return
+		}
+		pred, t, idv := cursorPredicate("notes", params.Cursor, id, desc)
+		baseQuery = baseQuery.Where(pred, t, idv)
 	}
 
-	if err := baseQuery.Session(&gorm.Session{}).
-		Order("notes.date DESC, notes.id DESC").
-		Limit(pagination.Limit).
-		Offset(pagination.Offset).
-		Find(&notes).Error; err != nil {
+	if err := cursorOrderBy(baseQuery, "notes", desc).Limit(params.Limit + 1).Find(&notes).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve unassigned notes").WithError(err))
 		return
 	}
+	nextCursor := ""
+	if len(notes) > params.Limit {
+		notes = notes[:params.Limit]
+		nextCursor = EncodeCursor(notes[len(notes)-1].UpdatedAt, notes[len(notes)-1].ID)
+	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"notes": notes,
-		"total": total,
-		"page":  pagination.Page,
-		"limit": pagination.Limit,
+		"notes":       notes,
+		"next_cursor": nextCursor,
+		"limit":       params.Limit,
+		"sync":        buildSyncMeta(SyncModeIncremental),
 	})
 }
 

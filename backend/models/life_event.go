@@ -87,6 +87,23 @@ type LifeEvent struct {
 	// ContactSyncLink.ETag and killed CardDAV incremental sync. Generated in
 	// AfterCreate/AfterSave from the UUID string PK + UpdatedAt (see below).
 	ETag string `gorm:"column:etag" json:"-"`
+
+	// Deleted is the T17 change-feed tombstone marker, set by the list
+	// handler when it reads a row with Unscoped() that has a non-null
+	// deleted_at. gorm:"-" keeps it out of the schema; it exists purely so an
+	// incremental sync client can apply the deletion.
+	Deleted bool `gorm:"-" json:"deleted,omitempty"`
+}
+
+// AfterDelete advances updated_at on a soft delete so T17 change feeds see
+// the tombstone (see Note.AfterDelete's doc comment for the full rationale).
+// Hard deletes and bulk deletes are skipped via the DeletedAt guard. The PK
+// is a UUID string, so no numeric conversion is needed.
+func (l *LifeEvent) AfterDelete(tx *gorm.DB) error {
+	if !l.DeletedAt.Valid {
+		return nil
+	}
+	return tx.Model(&LifeEvent{}).Unscoped().Where("id = ?", l.ID).UpdateColumn("updated_at", time.Now()).Error
 }
 
 // BeforeCreate generates a UUID for new LifeEvents, mirroring Household's own

@@ -26,7 +26,7 @@ import { useGraph } from './hooks/useGraph';
 import { useCircles } from './hooks/useCircles';
 import { GraphNode } from './types/graph';
 import { Activity, getActivity, updateActivity, deleteActivity } from './api/activities';
-import { Contact, getContacts } from './api/contacts';
+import { Contact, getAllContacts } from './api/contacts';
 
 export default function NetworkPage() {
   const { t } = useTranslation();
@@ -108,8 +108,8 @@ export default function NetworkPage() {
       const activity = await getActivity(id);
       setEditingActivity(activity);
       if (allContacts.length === 0) {
-        const contactsResponse = await getContacts({ page: 1, limit: 1000 });
-        setAllContacts(contactsResponse.contacts || []);
+        const all = await getAllContacts({ limit: 1000 });
+        setAllContacts(all || []);
       }
       setEditValues({
         activityTitle: activity.title || '',

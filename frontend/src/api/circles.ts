@@ -26,22 +26,23 @@ export interface CircleCreateResponse {
 export interface CircleListResponse {
   circles: Circle[];
   total: number;
-  page: number;
+  // T17 cursor pagination: opaque resume token; empty when there are no more rows.
+  next_cursor: string;
   limit: number;
   members?: CircleMember[];
 }
 
 // GET /circles
 export async function listCircles(params?: {
-  page?: number;
+  cursor?: string;
   limit?: number;
   include_members?: boolean;
 }): Promise<CircleListResponse> {
-  const { page = 1, limit = 100, include_members = false } = params || {};
+  const { cursor, limit = 100, include_members = false } = params || {};
   const queryParams = new URLSearchParams({
-    page: page.toString(),
     limit: limit.toString(),
   });
+  if (cursor) queryParams.append('cursor', cursor);
   if (include_members) queryParams.append('include_members', 'true');
   const response = await apiFetch(
     `${API_BASE_URL}/circles?${queryParams.toString()}`,

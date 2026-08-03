@@ -472,7 +472,8 @@
     "close": "Chiudi",
     "back": "Indietro",
     "continue": "Continua",
-    "add": "Aggiungi"
+    "add": "Aggiungi",
+    "loadMore": "Carica altri"
   },
   "profilePicture": {
     "title": "Carica Foto Profilo",

@@ -150,8 +150,9 @@ func TestGetNotes(t *testing.T) {
 		t.Fatalf("expected notes array in response")
 	}
 	assert.Len(t, noteItems, 2)
-	assert.EqualValues(t, 2, responseBody["total"])
-	assert.EqualValues(t, 1, responseBody["page"])
+	// T17: the cursor envelope has no total/page.
+	assert.NotContains(t, responseBody, "total")
+	assert.NotContains(t, responseBody, "page")
 }
 
 func TestGetNotesSearch(t *testing.T) {
@@ -179,7 +180,7 @@ func TestGetNotesSearch(t *testing.T) {
 		t.Fatalf("expected notes array in response")
 	}
 	assert.Len(t, noteItems, 1)
-	assert.EqualValues(t, 1, responseBody["total"])
+	assert.NotContains(t, responseBody, "total")
 }
 
 func TestCreateNote(t *testing.T) {

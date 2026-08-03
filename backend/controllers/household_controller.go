@@ -74,7 +74,11 @@ func ListHouseholds(c *gin.Context) {
 		return
 	}
 
-	pagination := GetPaginationParams(c)
+	params, err := GetCursorParams(c)
+	if err != nil {
+		apperrors.AbortWithError(c, err)
+		return
+	}
 
 	var households []models.Household
 	var total int64
@@ -85,20 +89,30 @@ func ListHouseholds(c *gin.Context) {
 		return
 	}
 
-	if err := baseQuery.Session(&gorm.Session{}).
-		Order("name").
-		Limit(pagination.Limit).
-		Offset(pagination.Offset).
+	desc := params.Order == "desc"
+	if params.Cursor != nil {
+		pred, t, idv := cursorPredicate("households", params.Cursor, params.Cursor.ID, desc)
+		baseQuery = baseQuery.Where(pred, t, idv)
+	}
+
+	if err := cursorOrderBy(baseQuery, "households", desc).
+		Limit(params.Limit + 1).
 		Find(&households).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve households").WithError(err))
 		return
 	}
+	nextCursor := ""
+	if len(households) > params.Limit {
+		households = households[:params.Limit]
+		nextCursor = EncodeCursor(households[len(households)-1].UpdatedAt, households[len(households)-1].ID)
+	}
 
 	result := gin.H{
-		"households": households,
-		"total":      total,
-		"page":       pagination.Page,
-		"limit":      pagination.Limit,
+		"households":  households,
+		"total":       total,
+		"next_cursor": nextCursor,
+		"limit":       params.Limit,
+		"sync":        buildSyncMeta(SyncModeFullResync),
 	}
 
 	if c.Query("include_members") == "true" {

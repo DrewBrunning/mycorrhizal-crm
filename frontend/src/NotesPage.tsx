@@ -1,4 +1,4 @@
-import { useState, useMemo, ChangeEvent, MouseEvent } from 'react';
+import { useState, useMemo, MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Box,
@@ -7,7 +7,6 @@ import {
   TextField,
   Button,
   IconButton,
-  Pagination,
   Popover,
   Chip,
 } from '@mui/material';
@@ -37,29 +36,29 @@ const NotesPage: React.FC = () => {
   const { formatDate, getDatePlaceholder } = useDateFormat();
   const [searchInput, setSearchInput] = useState('');
   const debouncedSearch = useDebouncedValue(searchInput, 400);
-  const [page, setPage] = useState(1);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const NOTES_PER_PAGE = 25;
 
+  // T17: cursor pagination — the inbox pages by (updated_at, id) and a "load
+  // more" button appends the next_cursor page. There is no page number or
+  // exact total anymore.
   const notesParams = useMemo(
     () => ({
-      page,
       limit: NOTES_PER_PAGE,
       search: debouncedSearch.trim() || undefined,
       fromDate: fromDate || undefined,
       toDate: toDate || undefined,
     }),
-    [page, debouncedSearch, fromDate, toDate]
+    [debouncedSearch, fromDate, toDate]
   );
 
   const {
     notes,
-    total,
-    page: serverPage,
-    limit,
+    nextCursor,
     loading,
     refetch,
+    loadMore,
   } = useNotes(undefined, notesParams);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
@@ -70,26 +69,15 @@ const NotesPage: React.FC = () => {
 
   const handleSearchChange = (value: string) => {
     setSearchInput(value);
-    setPage(1);
   };
 
   const handleFromDateChange = (value: string) => {
     setFromDate(value);
-    setPage(1);
   };
 
   const handleToDateChange = (value: string) => {
     setToDate(value);
-    setPage(1);
   };
-
-  const handlePageChange = (_: ChangeEvent<unknown>, value: number) => {
-    setPage(value);
-  };
-
-  const currentPage = serverPage || page;
-  const pageSize = limit || NOTES_PER_PAGE;
-  const totalPages = Math.max(1, Math.ceil((total || 0) / pageSize));
 
   const handleAddNote = () => {
     setAddDialogOpen(true);
@@ -171,10 +159,10 @@ const NotesPage: React.FC = () => {
         <Box display="flex" alignItems="center" gap={1}>
           <Typography variant="h5">{t('inbox.title')}</Typography>
           <Chip
-            label={total ?? 0}
+            label={notes.length}
             size="small"
-            color={(total ?? 0) > 0 ? 'primary' : 'default'}
-            variant={(total ?? 0) > 0 ? 'filled' : 'outlined'}
+            color={notes.length > 0 ? 'primary' : 'default'}
+            variant={notes.length > 0 ? 'filled' : 'outlined'}
           />
           <IconButton
             size="small"
@@ -288,16 +276,11 @@ const NotesPage: React.FC = () => {
         </Timeline>
       )}
 
-      {totalPages > 1 && (
+      {nextCursor && (
         <Box display="flex" justifyContent="center" mt={3}>
-          <Pagination
-            color="primary"
-            count={totalPages}
-            page={currentPage}
-            onChange={handlePageChange}
-            showFirstButton
-            showLastButton
-          />
+          <Button variant="outlined" onClick={loadMore} disabled={loading}>
+            {t('common.loadMore')}
+          </Button>
         </Box>
       )}
 

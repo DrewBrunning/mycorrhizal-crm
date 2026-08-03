@@ -55,6 +55,10 @@ const (
 	ErrCodeNotFound      = "NOT_FOUND"
 	ErrCodeAlreadyExists = "ALREADY_EXISTS"
 	ErrCodeConflict      = "CONFLICT"
+	// ErrCodeGone signals that a requested resource (e.g. a change-feed cursor
+	// older than the purge retention window) no longer exists and the client
+	// must recover differently (full resync) — RFC 9110's 410 Gone.
+	ErrCodeGone = "GONE"
 
 	// Validation errors
 	ErrCodeValidation   = "VALIDATION_ERROR"
@@ -143,6 +147,17 @@ func ErrConflict(message string) *AppError {
 		message = "Resource conflict occurred"
 	}
 	return NewError(ErrCodeConflict, message, http.StatusConflict)
+}
+
+// ErrGone returns a 410 Gone error. Used by the T17 change feed: a ?since=
+// cursor older than the purge retention window (T26) means tombstones have
+// already been hard-deleted, so incremental sync can no longer converge —
+// the client must full-resync every collection. The message must say so.
+func ErrGone(message string) *AppError {
+	if message == "" {
+		message = "Resource no longer available — full resync required"
+	}
+	return NewError(ErrCodeGone, message, http.StatusGone)
 }
 
 // --- Validation Errors ---

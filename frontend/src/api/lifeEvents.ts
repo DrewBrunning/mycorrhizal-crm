@@ -39,25 +39,25 @@ export interface LifeEventCreateResponse {
 
 export interface LifeEventListResponse {
   life_events: LifeEvent[];
-  total: number;
-  page: number;
+  // T17 cursor pagination: opaque resume token; empty when there are no more rows.
+  next_cursor: string;
   limit: number;
 }
 
 export interface GetLifeEventsParams {
   entity_id?: string;
-  page?: number;
+  cursor?: string;
   limit?: number;
 }
 
 export async function getLifeEvents(
   params: GetLifeEventsParams = {}
 ): Promise<LifeEventListResponse> {
-  const { entity_id, page = 1, limit = 25 } = params;
+  const { entity_id, cursor, limit = 25 } = params;
   const queryParams = new URLSearchParams({
-    page: page.toString(),
     limit: limit.toString(),
   });
+  if (cursor) queryParams.append('cursor', cursor);
   if (entity_id) queryParams.append('entity_id', entity_id);
 
   const response = await apiFetch(

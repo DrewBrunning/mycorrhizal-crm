@@ -79,7 +79,8 @@ export interface RelationshipEdgeInput {
 export interface RelationshipEdgesResponse {
   relationship_edges: RelationshipEdge[];
   total: number;
-  page: number;
+  // T17 cursor pagination: opaque resume token; empty when there are no more rows.
+  next_cursor: string;
   limit: number;
 }
 
@@ -87,15 +88,16 @@ export interface GetRelationshipEdgesParams {
   contactId: string; // Contact.VCardUID
   status?: RelationshipEdgeStatus;
   type?: RelationshipEdgeType;
-  page?: number;
+  cursor?: string;
   limit?: number;
 }
 
 export async function getRelationshipEdges(params: GetRelationshipEdgesParams): Promise<RelationshipEdgesResponse> {
-  const { contactId, status, type, page = 1, limit = 100 } = params;
-  const queryParams = new URLSearchParams({ contact_id: contactId, page: page.toString(), limit: limit.toString() });
+  const { contactId, status, type, cursor, limit = 100 } = params;
+  const queryParams = new URLSearchParams({ contact_id: contactId, limit: limit.toString() });
   if (status) queryParams.append('status', status);
   if (type) queryParams.append('type', type);
+  if (cursor) queryParams.append('cursor', cursor);
 
   const response = await apiFetch(`${API_BASE_URL}/relationship-edges?${queryParams.toString()}`, { headers: getAuthHeaders() });
   if (!response.ok) throw await parseErrorResponse(response);

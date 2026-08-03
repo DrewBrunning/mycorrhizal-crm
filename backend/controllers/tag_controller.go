@@ -74,7 +74,11 @@ func ListTags(c *gin.Context) {
 		return
 	}
 
-	pagination := GetPaginationParams(c)
+	params, err := GetCursorParams(c)
+	if err != nil {
+		apperrors.AbortWithError(c, err)
+		return
+	}
 
 	var tags []models.Tag
 	var total int64
@@ -85,20 +89,30 @@ func ListTags(c *gin.Context) {
 		return
 	}
 
-	if err := baseQuery.Session(&gorm.Session{}).
-		Order("name").
-		Limit(pagination.Limit).
-		Offset(pagination.Offset).
+	desc := params.Order == "desc"
+	if params.Cursor != nil {
+		pred, t, idv := cursorPredicate("tags", params.Cursor, params.Cursor.ID, desc)
+		baseQuery = baseQuery.Where(pred, t, idv)
+	}
+
+	if err := cursorOrderBy(baseQuery, "tags", desc).
+		Limit(params.Limit + 1).
 		Find(&tags).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve tags").WithError(err))
 		return
 	}
+	nextCursor := ""
+	if len(tags) > params.Limit {
+		tags = tags[:params.Limit]
+		nextCursor = EncodeCursor(tags[len(tags)-1].UpdatedAt, tags[len(tags)-1].ID)
+	}
 
 	result := gin.H{
-		"tags":  tags,
-		"total": total,
-		"page":  pagination.Page,
-		"limit": pagination.Limit,
+		"tags":        tags,
+		"total":       total,
+		"next_cursor": nextCursor,
+		"limit":       params.Limit,
+		"sync":        buildSyncMeta(SyncModeFullResync),
 	}
 
 	if c.Query("include_contacts") == "true" {

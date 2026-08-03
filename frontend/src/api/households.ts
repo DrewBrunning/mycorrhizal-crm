@@ -40,7 +40,8 @@ export interface HouseholdWithMembers {
 export interface HouseholdListResponse {
   households: Household[];
   total: number;
-  page: number;
+  // T17 cursor pagination: opaque resume token; empty when there are no more rows.
+  next_cursor: string;
   limit: number;
   members?: HouseholdMember[];
 }
@@ -66,15 +67,15 @@ export interface SuggestRelationshipsResponse {
 
 // GET /households
 export async function listHouseholds(params?: {
-  page?: number;
+  cursor?: string;
   limit?: number;
   include_members?: boolean;
 }): Promise<HouseholdListResponse> {
-  const { page = 1, limit = 100, include_members = false } = params || {};
+  const { cursor, limit = 100, include_members = false } = params || {};
   const queryParams = new URLSearchParams({
-    page: page.toString(),
     limit: limit.toString(),
   });
+  if (cursor) queryParams.append('cursor', cursor);
   if (include_members) queryParams.append('include_members', 'true');
   const response = await apiFetch(
     `${API_BASE_URL}/households?${queryParams.toString()}`,

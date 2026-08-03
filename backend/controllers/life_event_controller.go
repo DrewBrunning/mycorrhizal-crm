@@ -203,8 +203,12 @@ func GetLifeEvent(c *gin.Context) {
 	c.JSON(http.StatusOK, event)
 }
 
-// ListLifeEvents returns the authenticated user's LifeEvents, paginated,
-// optionally filtered by ?entity_id=<Contact.VCardUID>.
+// ListLifeEvents returns the authenticated user's LifeEvents, cursor-
+// paginated (T17), optionally filtered by ?entity_id=<Contact.VCardUID> in
+// browse mode. The ?since= change feed ignores entity_id and returns every
+// changed event — including soft-deleted ones (tombstones) — so a replica
+// converges. `total` is deliberately gone: life events accumulate without
+// bound and exact counts are the thing cursor pagination gives up.
 func ListLifeEvents(c *gin.Context) {
 	db := c.MustGet("db").(*gorm.DB)
 	userID, ok := currentUserID(c)
@@ -212,36 +216,76 @@ func ListLifeEvents(c *gin.Context) {
 		return
 	}
 
-	pagination := GetPaginationParams(c)
-	entityID := c.Query("entity_id")
+	params, err := GetCursorParams(c)
+	if err != nil {
+		apperrors.AbortWithError(c, err)
+		return
+	}
+	if err := CheckFeedCursorAge(c, params); err != nil {
+		apperrors.AbortWithError(c, err)
+		return
+	}
 
 	var events []models.LifeEvent
-	var total int64
+
+	if params.Since {
+		query := db.Unscoped().Model(&models.LifeEvent{}).Where("user_id = ?", userID)
+		if params.Cursor != nil {
+			pred, t, idv := cursorPredicate("life_events", params.Cursor, params.Cursor.ID, false)
+			query = query.Where(pred, t, idv)
+		}
+		query = cursorOrderBy(query, "life_events", false).Limit(params.Limit + 1)
+		if err := query.Find(&events).Error; err != nil {
+			apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve life events").WithError(err))
+			return
+		}
+		nextCursor := ""
+		if len(events) > params.Limit {
+			events = events[:params.Limit]
+			nextCursor = EncodeCursor(events[len(events)-1].UpdatedAt, events[len(events)-1].ID)
+		}
+		for i := range events {
+			events[i].Deleted = events[i].DeletedAt.Valid
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"life_events": events,
+			"next_cursor": nextCursor,
+			"limit":       params.Limit,
+			"sync":        buildSyncMeta(SyncModeIncremental),
+		})
+		return
+	}
+
+	entityID := c.Query("entity_id")
 
 	baseQuery := db.Model(&models.LifeEvent{}).Where("user_id = ?", userID)
 	if entityID != "" {
 		baseQuery = baseQuery.Where("entity_id = ?", entityID)
 	}
 
-	if err := baseQuery.Session(&gorm.Session{}).Count(&total).Error; err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to count life events").WithError(err))
-		return
+	desc := params.Order == "desc"
+	if params.Cursor != nil {
+		pred, t, idv := cursorPredicate("life_events", params.Cursor, params.Cursor.ID, desc)
+		baseQuery = baseQuery.Where(pred, t, idv)
 	}
 
-	if err := baseQuery.Session(&gorm.Session{}).
-		Order("id DESC").
-		Limit(pagination.Limit).
-		Offset(pagination.Offset).
+	if err := cursorOrderBy(baseQuery, "life_events", desc).
+		Limit(params.Limit + 1).
 		Find(&events).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve life events").WithError(err))
 		return
 	}
+	nextCursor := ""
+	if len(events) > params.Limit {
+		events = events[:params.Limit]
+		nextCursor = EncodeCursor(events[len(events)-1].UpdatedAt, events[len(events)-1].ID)
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"life_events": events,
-		"total":       total,
-		"page":        pagination.Page,
-		"limit":       pagination.Limit,
+		"next_cursor": nextCursor,
+		"limit":       params.Limit,
+		"sync":        buildSyncMeta(SyncModeIncremental),
 	})
 }
 

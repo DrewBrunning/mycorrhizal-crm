@@ -114,12 +114,13 @@ func TestOpenAPISpecValidates(t *testing.T) {
 		}
 	}
 
-	// GET /contacts must document the query mechanics Gap 2 requires be
-	// preserved (page/limit/search/sort/order/include_archived/archived/
-	// circle/includes) and must NOT document fields= (Gap 3: removed, not
-	// just undocumented-but-still-there).
+	// GET /contacts must document the cursor-pagination + change-feed query
+	// mechanics T17 requires (cursor/since/limit/order plus the surviving
+	// search/archive/circle/includes filters) and must NOT document the
+	// removed page/sort params or fields= (Gap 3: removed, not just
+	// undocumented-but-still-there).
 	contactsGet := doc.Paths.Find("/contacts").Get
-	wantParams := []string{"page", "limit", "search", "sort", "order", "include_archived", "archived", "circle", "includes"}
+	wantParams := []string{"cursor", "since", "limit", "order", "search", "include_archived", "archived", "circle", "includes"}
 	gotParams := map[string]bool{}
 	for _, p := range contactsGet.Parameters {
 		gotParams[p.Value.Name] = true
@@ -129,8 +130,10 @@ func TestOpenAPISpecValidates(t *testing.T) {
 			t.Errorf("GET /contacts is missing documented query param %q", name)
 		}
 	}
-	if gotParams["fields"] {
-		t.Error("GET /contacts still documents fields=, which WP-71 Gap 3 removed")
+	for _, gone := range []string{"fields", "page", "sort"} {
+		if gotParams[gone] {
+			t.Errorf("GET /contacts still documents %q, which T17 removed", gone)
+		}
 	}
 
 	// POST/PUT /contacts must reference ContactRecordInput as their request

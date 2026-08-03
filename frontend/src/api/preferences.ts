@@ -53,19 +53,21 @@ export interface PreferenceInput {
 export interface PreferencesResponse {
   preferences: Preference[];
   total: number;
-  page: number;
+  // T17 cursor pagination: opaque resume token; empty when there are no more rows.
+  next_cursor: string;
   limit: number;
 }
 
 // GET /preferences
 export async function getPreferences(params?: {
   entityId?: string;
-  page?: number;
+  cursor?: string;
   limit?: number;
 }): Promise<PreferencesResponse> {
-  const { entityId, page = 1, limit = 100 } = params || {};
-  const queryParams = new URLSearchParams({ page: page.toString(), limit: limit.toString() });
+  const { entityId, cursor, limit = 100 } = params || {};
+  const queryParams = new URLSearchParams({ limit: limit.toString() });
   if (entityId) queryParams.append('entity_id', entityId);
+  if (cursor) queryParams.append('cursor', cursor);
   const response = await apiFetch(
     `${API_BASE_URL}/preferences?${queryParams.toString()}`,
     { headers: getAuthHeaders() }

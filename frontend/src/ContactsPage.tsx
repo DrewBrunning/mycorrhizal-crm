@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useContacts } from './hooks/useContacts';
@@ -19,7 +19,6 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
-  Pagination,
   Button,
   FormControlLabel,
   Switch
@@ -31,55 +30,30 @@ import { ContactListSkeleton } from './components/LoadingSkeletons';
 export default function ContactsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get('search') || '';
-  const page = parseInt(searchParams.get('page') || '1', 10);
   const [selectedCircle, setSelectedCircle] = useState('');
   const { circles, circleNamesByUid, refresh: refreshCircles } = useCircles();
 
-  const [sortOption, setSortOption] = useState(() => {
-    return localStorage.getItem('contacts-sort-option') || 'id-desc';
-  });
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [enabledFields, setEnabledFields] = useState<Set<ContactFieldKey>>(() => resolveEnabledFields(null));
   const [showArchived, setShowArchived] = useState(false);
   const pageSize = 10;
 
-  // Parse sort option into field and order
-  const [sortField, sortOrder] = sortOption.split('-');
-
-  // Persist sort option to localStorage
-  useEffect(() => {
-    localStorage.setItem('contacts-sort-option', sortOption);
-  }, [sortOption]);
-
-  // Helper to update page in URL
-  const setPage = useCallback((newPage: number) => {
-    setSearchParams(prev => {
-      const params = new URLSearchParams(prev);
-      if (newPage === 1) {
-        params.delete('page');
-      } else {
-        params.set('page', String(newPage));
-      }
-      return params;
-    });
-  }, [setSearchParams]);
-
-  // Memoize params to prevent infinite re-renders
+  // T17: cursor pagination — the list pages by (updated_at, id) DESC and the
+  // "load more" button appends the next_cursor page. There is no page number
+  // or exact total anymore.
   const contactParams = useMemo(() => ({
-    page,
     limit: pageSize,
     search: searchQuery,
     circle: selectedCircle,
-    sort: sortField,
-    order: sortOrder,
+    order: 'desc' as const,
     includeArchived: showArchived,
-  }), [page, searchQuery, selectedCircle, sortField, sortOrder, showArchived]);
+  }), [searchQuery, selectedCircle, showArchived]);
 
   // Use custom hook for fetching contacts
-  const { contacts, total: totalContacts, loading, refetch } = useContacts(contactParams);
+  const { contacts, nextCursor, loading, refetch, loadMore } = useContacts(contactParams);
 
   // Custom field definitions (T7): the add-contact dialog needs the typed
   // definitions to render per-type value editors.
@@ -98,19 +72,8 @@ export default function ContactsPage() {
     fetchData();
   }, []);
 
-  // Reset to page 1 when search or filter changes (but not on initial mount)
-  const prevFiltersRef = useRef({ searchQuery, selectedCircle });
-  useEffect(() => {
-    const prev = prevFiltersRef.current;
-    if (prev.searchQuery !== searchQuery || prev.selectedCircle !== selectedCircle) {
-      setPage(1);
-      prevFiltersRef.current = { searchQuery, selectedCircle };
-    }
-  }, [searchQuery, selectedCircle, setPage]);
-
-  // Filter contacts by selected circle
-  // With backend pagination, contacts are already filtered
-  const filteredContacts = contacts;
+  // Clear the circle filter chip → list refetches automatically via contactParams.
+  const clearCircle = useCallback(() => setSelectedCircle(''), []);
 
   const handleContactAdded = (contactId: number) => {
     navigate(`/contacts/${contactId}`);
@@ -141,21 +104,6 @@ export default function ContactsPage() {
             ))}
           </Select>
         </FormControl>
-        <FormControl sx={{ minWidth: 150 }} size="small">
-          <InputLabel id="sort-select-label">{t('contacts.sortBy')}</InputLabel>
-          <Select
-            labelId="sort-select-label"
-            value={sortOption}
-            label={t('contacts.sortBy')}
-            onChange={e => setSortOption(e.target.value)}
-          >
-            <MenuItem value="id-desc">{t('contacts.sort.recentlyAdded')}</MenuItem>
-            <MenuItem value="id-asc">{t('contacts.sort.oldestFirst')}</MenuItem>
-            <MenuItem value="firstname-asc">{t('contacts.sort.nameAZ')}</MenuItem>
-            <MenuItem value="firstname-desc">{t('contacts.sort.nameZA')}</MenuItem>
-            <MenuItem value="random-asc">{t('contacts.sort.random')}</MenuItem>
-          </Select>
-        </FormControl>
         <FormControlLabel
           control={
             <Switch
@@ -184,18 +132,8 @@ export default function ContactsPage() {
           {t('contacts.add.button')}
         </Button>
       </Stack>
-      {(totalContacts > 0 || searchQuery || selectedCircle) && (
+      {(contacts.length > 0 || searchQuery || selectedCircle) && (
         <Box sx={{ mb: 2, p: 1.5, bgcolor: 'action.hover', borderRadius: 1, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-          <Typography variant="body2" sx={{ flexGrow: 1 }}>
-            {searchQuery && selectedCircle
-              ? t('contacts.filteredBySearchAndCircle', { search: searchQuery, circle: selectedCircle, count: totalContacts })
-              : searchQuery
-                ? t('contacts.filteredBySearch', { search: searchQuery, count: totalContacts })
-                : selectedCircle
-                  ? t('contacts.filteredMessage', { count: filteredContacts.length, total: totalContacts, circle: selectedCircle })
-                  : t('contacts.totalContacts', { count: totalContacts })
-            }
-          </Typography>
           {searchQuery && (
             <Chip 
               label={`"${searchQuery}"`} 
@@ -207,17 +145,17 @@ export default function ContactsPage() {
             <Chip 
               label={selectedCircle} 
               size="small" 
-              onDelete={() => { setSelectedCircle(''); setPage(1); }} 
+              onDelete={clearCircle} 
             />
           )}
         </Box>
       )}
-      {loading ? (
+      {loading && contacts.length === 0 ? (
         <ContactListSkeleton count={10} />
       ) : (
         <>
           <Stack spacing={2}>
-            {filteredContacts.map(contact => (
+            {contacts.map(contact => (
               <Card
                 key={contact.ID}
                 component={Link}
@@ -260,7 +198,7 @@ export default function ContactsPage() {
                         size="small"
                         variant="outlined"
                         clickable
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedCircle(name); setPage(1); }}
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedCircle(name); }}
                         sx={{ height: 20, fontSize: '0.75rem' }}
                       />
                     ))}
@@ -269,15 +207,11 @@ export default function ContactsPage() {
               </Card>
             ))}
           </Stack>
-          {totalContacts > 0 && (
+          {nextCursor && (
             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-              <Pagination
-                count={Math.max(1, Math.ceil(totalContacts / pageSize))}
-                page={page}
-                onChange={(_, value) => setPage(value)}
-                color="primary"
-                size="large"
-              />
+              <Button variant="outlined" onClick={loadMore} disabled={loading}>
+                {t('common.loadMore')}
+              </Button>
             </Box>
           )}
         </>

@@ -83,12 +83,13 @@ export interface FieldValueInput {
 export interface FieldDefinitionsResponse {
   field_definitions: FieldDefinition[];
   total: number;
-  page: number;
+  // T17 cursor pagination: opaque resume token; empty when there are no more rows.
+  next_cursor: string;
   limit: number;
 }
 
 export async function getFieldDefinitions(limit = 100): Promise<FieldDefinitionsResponse> {
-  const queryParams = new URLSearchParams({ page: '1', limit: limit.toString() });
+  const queryParams = new URLSearchParams({ limit: limit.toString() });
   const response = await apiFetch(`${API_BASE_URL}/field-definitions?${queryParams.toString()}`, {
     headers: getAuthHeaders(),
   });

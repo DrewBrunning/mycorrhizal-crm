@@ -119,7 +119,11 @@ func ListFieldDefinitions(c *gin.Context) {
 		return
 	}
 
-	pagination := GetPaginationParams(c)
+	params, err := GetCursorParams(c)
+	if err != nil {
+		apperrors.AbortWithError(c, err)
+		return
+	}
 
 	var defs []models.FieldDefinition
 	var total int64
@@ -130,20 +134,30 @@ func ListFieldDefinitions(c *gin.Context) {
 		return
 	}
 
-	if err := baseQuery.Session(&gorm.Session{}).
-		Order("label").
-		Limit(pagination.Limit).
-		Offset(pagination.Offset).
+	desc := params.Order == "desc"
+	if params.Cursor != nil {
+		pred, t, idv := cursorPredicate("field_definitions", params.Cursor, params.Cursor.ID, desc)
+		baseQuery = baseQuery.Where(pred, t, idv)
+	}
+
+	if err := cursorOrderBy(baseQuery, "field_definitions", desc).
+		Limit(params.Limit + 1).
 		Find(&defs).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve field definitions").WithError(err))
 		return
+	}
+	nextCursor := ""
+	if len(defs) > params.Limit {
+		defs = defs[:params.Limit]
+		nextCursor = EncodeCursor(defs[len(defs)-1].UpdatedAt, defs[len(defs)-1].ID)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"field_definitions": defs,
 		"total":             total,
-		"page":              pagination.Page,
-		"limit":             pagination.Limit,
+		"next_cursor":       nextCursor,
+		"limit":             params.Limit,
+		"sync":              buildSyncMeta(SyncModeFullResync),
 	})
 }
 

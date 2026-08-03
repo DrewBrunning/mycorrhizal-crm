@@ -29,7 +29,10 @@ func TestGetContacts(t *testing.T) {
 
 	router.GET("/contacts", GetContacts)
 
-	// Create some contacts
+	// Create some contacts, then force EVERY row to share the same
+	// updated_at timestamp — the exact condition where a bare `updated_at`
+	// cursor would drop or duplicate rows at page boundaries. Only the id
+	// tiebreak keeps the (updated_at, id) order total.
 	contacts := []models.Contact{
 		{UserID: user.ID, Firstname: "Alice", Lastname: "Johnson"},
 		{UserID: user.ID, Firstname: "Bob", Lastname: "Smith"},
@@ -37,60 +40,58 @@ func TestGetContacts(t *testing.T) {
 		{UserID: user.ID, Firstname: "David", Lastname: "Brown"},
 		{UserID: user.ID, Firstname: "Eve", Lastname: "Davis"},
 	}
-
-	for _, contact := range contacts {
-		db.Create(&contact)
+	fixed := time.Date(2026, 1, 1, 0, 0, 0, 0, time.Local)
+	for i, contact := range contacts {
+		require.NoError(t, db.Create(&contact).Error)
+		require.NoError(t, db.Model(&contact).UpdateColumn("updated_at", fixed).Error)
+		contacts[i] = contact
 	}
 
-	// Test pagination (page=1, limit=2)
-	req, _ := http.NewRequest("GET", "/contacts?page=1&limit=2", nil)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	// T17: cursor pagination. Page through with limit=2 following next_cursor
+	// until it runs out, and assert every one of the 5 contacts is returned
+	// exactly once — no drops, no duplicates — despite every row sharing the
+	// same updated_at (the id tiebreak is what makes the order total).
+	fetch := func(query string) ([]any, string) {
+		req, _ := http.NewRequest("GET", "/contacts?limit=2&"+query, nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusOK, w.Code)
 
-	assert.Equal(t, http.StatusOK, w.Code)
+		var responseBody map[string]any
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &responseBody))
 
-	var responseBody map[string]any
-	json.Unmarshal(w.Body.Bytes(), &responseBody)
+		// New envelope: no total/page; next_cursor + limit + sync.
+		assert.NotContains(t, responseBody, "total")
+		assert.NotContains(t, responseBody, "page")
+		assert.Equal(t, float64(2), responseBody["limit"])
+		sync := responseBody["sync"].(map[string]any)
+		assert.Equal(t, "incremental", sync["mode"])
 
-	// Assert that only 2 contacts are returned
-	contactsReturned := responseBody["contacts"]
-	assert.Len(t, contactsReturned, 2)
-	assert.Equal(t, float64(5), responseBody["total"]) // Total contacts
-	assert.Equal(t, float64(1), responseBody["page"])  // Current page
-	assert.Equal(t, float64(2), responseBody["limit"]) // Limit per page
+		items := responseBody["contacts"].([]any)
+		next, _ := responseBody["next_cursor"].(string)
+		return items, next
+	}
 
-	// Test pagination (page=2, limit=2)
-	req, _ = http.NewRequest("GET", "/contacts?page=2&limit=2", nil)
-	w = httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	var seen []float64
+	next := ""
+	page := 0
+	for {
+		items, n := fetch("cursor=" + next)
+		for _, raw := range items {
+			seen = append(seen, raw.(map[string]any)["id"].(float64))
+		}
+		if n == "" {
+			break
+		}
+		next = n
+		page++
+		if page > 10 {
+			t.Fatal("cursor pagination did not terminate")
+		}
+	}
 
-	assert.Equal(t, http.StatusOK, w.Code)
-
-	json.Unmarshal(w.Body.Bytes(), &responseBody)
-
-	// Assert that only the next 2 contacts are returned
-	contactsReturned = responseBody["contacts"]
-	assert.Len(t, contactsReturned, 2)
-	assert.Equal(t, float64(5), responseBody["total"]) // Total contacts
-	assert.Equal(t, float64(2), responseBody["page"])  // Current page
-	assert.Equal(t, float64(2), responseBody["limit"]) // Limit per page
-
-	// Test pagination for non-existent page (page=5, limit=2)
-	req, _ = http.NewRequest("GET", "/contacts?page=5&limit=2", nil)
-	w = httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusOK, w.Code)
-
-	json.Unmarshal(w.Body.Bytes(), &responseBody)
-
-	// Assert that no contacts are returned on non-existent page
-	contactsReturned = responseBody["contacts"]
-
-	assert.Len(t, contactsReturned, 0)
-	assert.Equal(t, float64(5), responseBody["total"]) // Total contacts
-	assert.Equal(t, float64(5), responseBody["page"])  // Current page
-	assert.Equal(t, float64(2), responseBody["limit"]) // Limit per page
+	assert.Len(t, seen, 5, "all contacts should be returned across pages")
+	assert.ElementsMatch(t, []float64{1, 2, 3, 4, 5}, seen, "no dropped or duplicated contacts")
 }
 
 // TestGetContacts_FiltersByVCardUID pins down §3d WP0
@@ -242,7 +243,7 @@ func TestGetContactsSearchMultiValue(t *testing.T) {
 		assert.Equal(t, http.StatusOK, w.Code)
 		var body map[string]any
 		json.Unmarshal(w.Body.Bytes(), &body)
-		return int(body["total"].(float64))
+		return len(body["contacts"].([]any))
 	}
 
 	assert.Equal(t, 1, search("navy"), "secondary work email should be searchable")
@@ -454,7 +455,7 @@ func TestGetContactsArchiveAndCircleFiltering(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	var body map[string]any
 	json.Unmarshal(w.Body.Bytes(), &body)
-	assert.Equal(t, float64(1), body["total"])
+	assert.Len(t, body["contacts"].([]any), 1)
 
 	// include_archived=true: both returned.
 	req, _ = http.NewRequest("GET", "/contacts?include_archived=true", nil)
@@ -462,7 +463,7 @@ func TestGetContactsArchiveAndCircleFiltering(t *testing.T) {
 	router.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusOK, w.Code)
 	json.Unmarshal(w.Body.Bytes(), &body)
-	assert.Equal(t, float64(2), body["total"])
+	assert.Len(t, body["contacts"].([]any), 2)
 
 	// archived=true (without include_archived): only the archived one.
 	req, _ = http.NewRequest("GET", "/contacts?archived=true", nil)
@@ -470,8 +471,8 @@ func TestGetContactsArchiveAndCircleFiltering(t *testing.T) {
 	router.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusOK, w.Code)
 	json.Unmarshal(w.Body.Bytes(), &body)
-	assert.Equal(t, float64(1), body["total"])
 	contacts := body["contacts"].([]any)
+	assert.Len(t, contacts, 1)
 	assert.Equal(t, "Archived", contacts[0].(map[string]any)["firstname"])
 
 	// circle= filters by circle membership.

@@ -29,7 +29,9 @@ export function useLifeEvents(entityId: string | undefined) {
         const response = await getLifeEvents(params);
         const fetched = response.life_events || [];
         setEvents(fetched);
-        setTotal(response.total ?? fetched.length);
+        // T17: no exact total from the cursor envelope; the fetched count is
+        // the closest approximation (life events per contact are small).
+        setTotal(fetched.length);
 
         const relatedUids: string[] = [];
         for (const e of fetched) {

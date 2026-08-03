@@ -1,4 +1,4 @@
-import { useState, useMemo, ChangeEvent, MouseEvent } from 'react';
+import { useState, useMemo, MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link as RouterLink } from 'react-router-dom';
 import {
@@ -9,7 +9,6 @@ import {
   Button,
   IconButton,
   Chip,
-  Pagination,
   Popover,
 } from '@mui/material';
 import {
@@ -27,7 +26,7 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { useActivities } from './hooks/useActivities';
 import { useDebouncedValue } from './hooks/useDebounce';
 import { createActivity, updateActivity, deleteActivity, Activity } from './api/activities';
-import { Contact, getContacts } from './api/contacts';
+import { Contact, getAllContacts } from './api/contacts';
 import AddActivityDialog from './components/AddActivityDialog';
 import EditTimelineItemDialog from './components/EditTimelineItemDialog';
 import { ListSkeleton } from './components/LoadingSkeletons';
@@ -39,31 +38,30 @@ const ActivitiesPage: React.FC = () => {
 
   const [searchInput, setSearchInput] = useState('');
   const debouncedSearch = useDebouncedValue(searchInput, 400);
-  const [page, setPage] = useState(1);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const ACTIVITIES_PER_PAGE = 25;
 
-  // Memoize params to prevent unnecessary refetching
+  // T17: cursor pagination — the timeline pages by (updated_at, id) and a
+  // "load more" button appends the next_cursor page. There is no page number
+  // or exact total anymore.
   const activityParams = useMemo(
     () => ({
       includeContacts: true,
-      page,
       limit: ACTIVITIES_PER_PAGE,
       search: debouncedSearch.trim() || undefined,
       fromDate: fromDate || undefined,
       toDate: toDate || undefined,
     }),
-    [page, debouncedSearch, fromDate, toDate]
+    [debouncedSearch, fromDate, toDate]
   );
 
   const {
     activities,
-    total,
-    page: serverPage,
-    limit,
+    nextCursor,
     loading,
     refetch,
+    loadMore,
   } = useActivities(activityParams);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
@@ -81,26 +79,15 @@ const ActivitiesPage: React.FC = () => {
 
   const handleSearchChange = (value: string) => {
     setSearchInput(value);
-    setPage(1);
   };
 
   const handleFromDateChange = (value: string) => {
     setFromDate(value);
-    setPage(1);
   };
 
   const handleToDateChange = (value: string) => {
     setToDate(value);
-    setPage(1);
   };
-
-  const handlePageChange = (_: ChangeEvent<unknown>, value: number) => {
-    setPage(value);
-  };
-
-  const currentPage = serverPage || page;
-  const pageSize = limit || ACTIVITIES_PER_PAGE;
-  const totalPages = Math.max(1, Math.ceil((total || 0) / pageSize));
 
   const handleAddActivity = () => {
     setAddDialogOpen(true);
@@ -132,8 +119,8 @@ const ActivitiesPage: React.FC = () => {
     // Fetch all contacts if not already loaded
     if (allContacts.length === 0) {
       try {
-        const data = await getContacts({ page: 1, limit: 1000 });
-        setAllContacts(data.contacts || []);
+        const all = await getAllContacts({ limit: 1000 });
+        setAllContacts(all || []);
       } catch (err) {
         console.error('Failed to fetch contacts:', err);
       }
@@ -346,16 +333,11 @@ const ActivitiesPage: React.FC = () => {
         </Timeline>
       )}
 
-      {totalPages > 1 && (
+      {nextCursor && (
         <Box display="flex" justifyContent="center" mt={3}>
-          <Pagination
-            color="primary"
-            count={totalPages}
-            page={currentPage}
-            onChange={handlePageChange}
-            showFirstButton
-            showLastButton
-          />
+          <Button variant="outlined" onClick={loadMore} disabled={loading}>
+            {t('common.loadMore')}
+          </Button>
         </Box>
       )}
 

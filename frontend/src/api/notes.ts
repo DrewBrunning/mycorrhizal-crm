@@ -12,13 +12,13 @@ export interface Note {
 
 export interface NotesResponse {
   notes: Note[];
-  total?: number;
-  page?: number;
+  // T17 cursor pagination: opaque resume token; empty when there are no more rows.
+  next_cursor?: string;
   limit?: number;
 }
 
 export interface GetNotesParams {
-  page?: number;
+  cursor?: string;
   limit?: number;
   search?: string;
   fromDate?: string;
@@ -45,14 +45,14 @@ export async function getContactNotes(
 export async function getUnassignedNotes(
   params: GetNotesParams = {}
 ): Promise<NotesResponse> {
-  const { page = 1, limit = 25 } = params;
+  const { cursor, limit = 25 } = params;
   const search = params.search?.trim();
 
   const queryParams = new URLSearchParams({
-    page: page.toString(),
     limit: limit.toString(),
   });
 
+  if (cursor) queryParams.append('cursor', cursor);
   if (search) {
     queryParams.append('search', search);
   }

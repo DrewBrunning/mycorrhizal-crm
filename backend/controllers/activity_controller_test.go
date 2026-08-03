@@ -194,8 +194,11 @@ func TestGetActivities(t *testing.T) {
 	var responseBody map[string]any
 	json.Unmarshal(w.Body.Bytes(), &responseBody)
 	assert.Len(t, responseBody["activities"], 2)
-	assert.EqualValues(t, 2, responseBody["total"])
-	assert.EqualValues(t, 1, responseBody["page"])
+	// T17: the cursor envelope has no total/page.
+	assert.NotContains(t, responseBody, "total")
+	assert.NotContains(t, responseBody, "page")
+	assert.EqualValues(t, 25, responseBody["limit"])
+	assert.Equal(t, "incremental", responseBody["sync"].(map[string]any)["mode"])
 }
 
 func TestGetActivitiesSearchByContact(t *testing.T) {
@@ -239,7 +242,7 @@ func TestGetActivitiesSearchByContact(t *testing.T) {
 		t.Fatalf("expected activities array in response")
 	}
 	assert.Len(t, activitiesRaw, 1)
-	assert.EqualValues(t, 1, responseBody["total"])
+	assert.NotContains(t, responseBody, "total")
 }
 
 func TestGetActivity(t *testing.T) {

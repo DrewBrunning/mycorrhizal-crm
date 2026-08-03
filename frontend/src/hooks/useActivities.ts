@@ -5,19 +5,19 @@ import {
   getActivities,
   getContactActivities,
   GetActivitiesParams,
-  ActivitiesResponse,
   Activity
 } from '../api/activities';
 import { handleFetchError } from '../utils/errorHandler';
 
 interface UseActivitiesResult {
   activities: Activity[];
-  total: number;
-  page: number;
+  // Opaque resume token (T17): non-empty while more rows exist.
+  nextCursor: string;
   limit: number;
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
+  loadMore: () => Promise<void>;
 }
 
 export function useActivities(
@@ -26,17 +26,16 @@ export function useActivities(
 ): UseActivitiesResult {
   // Destructure params to use primitive values as dependencies
   // This prevents re-fetches when callers pass new object references with identical values
-  const { page: paramPage, limit: paramLimit, includeContacts, search, fromDate, toDate } = params;
+  const { cursor: _ignored, limit: paramLimit, includeContacts, search, fromDate, toDate } = params;
 
   const [activities, setActivities] = useState<Activity[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(paramPage || 1);
+  const [nextCursor, setNextCursor] = useState('');
   const [limit, setLimit] = useState(paramLimit || 25);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const requestRef = useRef(0);
 
-  const fetchActivities = useCallback(async () => {
+  const fetchFirst = useCallback(async () => {
     const requestId = requestRef.current + 1;
     requestRef.current = requestId;
     setLoading(true);
@@ -53,18 +52,15 @@ export function useActivities(
           return;
         }
         setActivities(data.activities || []);
-        setTotal(data.activities?.length || 0);
-        setPage(1);
+        setNextCursor('');
         setLimit(paramLimit || data.activities?.length || 25);
       } else {
-        const fetchParams: GetActivitiesParams = { page: paramPage, limit: paramLimit, includeContacts, search, fromDate, toDate };
-        const data: ActivitiesResponse = await getActivities(fetchParams);
+        const data = await getActivities({ limit: paramLimit, includeContacts, search, fromDate, toDate });
         if (requestRef.current !== requestId) {
           return;
         }
         setActivities(data.activities || []);
-        setTotal(data.total || 0);
-        setPage(data.page || 1);
+        setNextCursor(data.next_cursor || '');
         setLimit(data.limit || paramLimit || 25);
       }
     } catch (err) {
@@ -78,19 +74,44 @@ export function useActivities(
         setLoading(false);
       }
     }
-  }, [contactId, paramPage, paramLimit, includeContacts, search, fromDate, toDate]);
+  }, [contactId, paramLimit, includeContacts, search, fromDate, toDate]);
+
+  const loadMore = useCallback(async () => {
+    if (!nextCursor) return;
+    const requestId = requestRef.current + 1;
+    requestRef.current = requestId;
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getActivities({ cursor: nextCursor, limit: paramLimit, includeContacts, search, fromDate, toDate });
+      if (requestRef.current !== requestId) {
+        return;
+      }
+      setActivities((prev) => [...prev, ...(data.activities || [])]);
+      setNextCursor(data.next_cursor || '');
+    } catch (err) {
+      if (requestRef.current !== requestId) {
+        return;
+      }
+      setError(handleFetchError(err, 'loading more activities'));
+    } finally {
+      if (requestRef.current === requestId) {
+        setLoading(false);
+      }
+    }
+  }, [nextCursor, paramLimit, includeContacts, search, fromDate, toDate]);
 
   useEffect(() => {
-    fetchActivities();
-  }, [fetchActivities]);
+    fetchFirst();
+  }, [fetchFirst]);
 
   return {
     activities,
-    total,
-    page,
+    nextCursor,
     limit,
     loading,
     error,
-    refetch: fetchActivities,
+    refetch: fetchFirst,
+    loadMore,
   };
 }

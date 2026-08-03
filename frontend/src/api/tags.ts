@@ -26,22 +26,23 @@ export interface TagCreateResponse {
 export interface TagListResponse {
   tags: Tag[];
   total: number;
-  page: number;
+  // T17 cursor pagination: opaque resume token; empty when there are no more rows.
+  next_cursor: string;
   limit: number;
   contacts?: ContactTag[];
 }
 
 // GET /tags
 export async function listTags(params?: {
-  page?: number;
+  cursor?: string;
   limit?: number;
   include_contacts?: boolean;
 }): Promise<TagListResponse> {
-  const { page = 1, limit = 100, include_contacts = false } = params || {};
+  const { cursor, limit = 100, include_contacts = false } = params || {};
   const queryParams = new URLSearchParams({
-    page: page.toString(),
     limit: limit.toString(),
   });
+  if (cursor) queryParams.append('cursor', cursor);
   if (include_contacts) queryParams.append('include_contacts', 'true');
   const response = await apiFetch(
     `${API_BASE_URL}/tags?${queryParams.toString()}`,

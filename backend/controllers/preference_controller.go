@@ -76,8 +76,12 @@ func GetPreference(c *gin.Context) {
 	c.JSON(http.StatusOK, pref)
 }
 
-// ListPreferences returns the authenticated user's Preferences, paginated,
-// optionally filtered by ?entity_id=<Contact.VCardUID>.
+// ListPreferences returns the authenticated user's Preferences, cursor-
+// paginated (T17), optionally filtered by ?entity_id=<Contact.VCardUID> in
+// browse mode. Preferences soft-delete (user-authored content, T20a), so the
+// ?since= change feed returns tombstones and the collection is incremental.
+// Unlike the unbounded timeline collections, preferences are small enough
+// that `total` stays — it is cheap here and the Preferences UI reads it.
 func ListPreferences(c *gin.Context) {
 	db := c.MustGet("db").(*gorm.DB)
 	userID, ok := currentUserID(c)
@@ -85,10 +89,50 @@ func ListPreferences(c *gin.Context) {
 		return
 	}
 
-	pagination := GetPaginationParams(c)
-	entityID := c.Query("entity_id")
+	params, err := GetCursorParams(c)
+	if err != nil {
+		apperrors.AbortWithError(c, err)
+		return
+	}
+	if err := CheckFeedCursorAge(c, params); err != nil {
+		apperrors.AbortWithError(c, err)
+		return
+	}
 
 	var prefs []models.Preference
+
+	if params.Since {
+		query := db.Unscoped().Model(&models.Preference{}).Where("user_id = ?", userID)
+		if params.Cursor != nil {
+			pred, t, idv := cursorPredicate("preferences", params.Cursor, params.Cursor.ID, false)
+			query = query.Where(pred, t, idv)
+		}
+		query = cursorOrderBy(query, "preferences", false).Limit(params.Limit + 1)
+		if err := query.Find(&prefs).Error; err != nil {
+			apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve preferences").WithError(err))
+			return
+		}
+		nextCursor := ""
+		if len(prefs) > params.Limit {
+			prefs = prefs[:params.Limit]
+			nextCursor = EncodeCursor(prefs[len(prefs)-1].UpdatedAt, prefs[len(prefs)-1].ID)
+		}
+		for i := range prefs {
+			prefs[i].Deleted = prefs[i].DeletedAt.Valid
+		}
+		// Feed mode deliberately omits `total` (it would be the page count,
+		// not the collection size — a feed is incremental).
+		c.JSON(http.StatusOK, gin.H{
+			"preferences": prefs,
+			"next_cursor": nextCursor,
+			"limit":       params.Limit,
+			"sync":        buildSyncMeta(SyncModeIncremental),
+		})
+		return
+	}
+
+	entityID := c.Query("entity_id")
+
 	var total int64
 
 	baseQuery := db.Model(&models.Preference{}).Where("user_id = ?", userID)
@@ -101,20 +145,30 @@ func ListPreferences(c *gin.Context) {
 		return
 	}
 
-	if err := baseQuery.Session(&gorm.Session{}).
-		Order("category, created_at").
-		Limit(pagination.Limit).
-		Offset(pagination.Offset).
+	desc := params.Order == "desc"
+	if params.Cursor != nil {
+		pred, t, idv := cursorPredicate("preferences", params.Cursor, params.Cursor.ID, desc)
+		baseQuery = baseQuery.Where(pred, t, idv)
+	}
+
+	if err := cursorOrderBy(baseQuery, "preferences", desc).
+		Limit(params.Limit + 1).
 		Find(&prefs).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve preferences").WithError(err))
 		return
 	}
+	nextCursor := ""
+	if len(prefs) > params.Limit {
+		prefs = prefs[:params.Limit]
+		nextCursor = EncodeCursor(prefs[len(prefs)-1].UpdatedAt, prefs[len(prefs)-1].ID)
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"preferences": prefs,
+		"next_cursor": nextCursor,
+		"limit":       params.Limit,
 		"total":       total,
-		"page":        pagination.Page,
-		"limit":       pagination.Limit,
+		"sync":        buildSyncMeta(SyncModeIncremental),
 	})
 }
 

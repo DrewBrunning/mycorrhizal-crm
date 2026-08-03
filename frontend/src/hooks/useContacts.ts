@@ -4,32 +4,33 @@ import { isAuthenticated } from '../auth';
 import {
   getContacts,
   GetContactsParams,
-  ContactsResponse,
   Contact
 } from '../api/contacts';
 import { handleFetchError } from '../utils/errorHandler';
 
 interface UseContactsResult {
   contacts: Contact[];
-  total: number;
-  page: number;
+  // Opaque resume token (T17): non-empty while more rows exist. There is no
+  // exact total — cursor pagination gives it up.
+  nextCursor: string;
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
+  loadMore: () => Promise<void>;
 }
 
 export function useContacts(params: GetContactsParams = {}): UseContactsResult {
   // Destructure params to use primitive values as dependencies
   // This prevents re-fetches when callers pass new object references with identical values
-  const { page: paramPage, limit, search, circle, sort, order, includeArchived, archived } = params;
+  const { cursor: _ignored, limit, search, circle, order, includeArchived, archived } = params;
 
   const [contacts, setContacts] = useState<Contact[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(paramPage || 1);
+  const [nextCursor, setNextCursor] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchContacts = useCallback(async () => {
+  // fetchFirst replaces the list (page one); loadMore appends the next page.
+  const fetchFirst = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -38,38 +39,57 @@ export function useContacts(params: GetContactsParams = {}): UseContactsResult {
         throw new Error('No authentication token found');
       }
 
-      const fetchParams: GetContactsParams = {
-        page: paramPage,
+      const data = await getContacts({
         limit,
         search,
         circle,
-        sort,
         order,
         includeArchived,
         archived,
-      };
-      const data: ContactsResponse = await getContacts(fetchParams);
+      });
       setContacts(data.contacts || []);
-      setTotal(data.total || 0);
-      setPage(data.page || 1);
+      setNextCursor(data.next_cursor || '');
     } catch (err) {
       const message = handleFetchError(err, 'fetching contacts');
       setError(message);
     } finally {
       setLoading(false);
     }
-  }, [paramPage, limit, search, circle, sort, order, includeArchived, archived]);
+  }, [limit, search, circle, order, includeArchived, archived]);
+
+  const loadMore = useCallback(async () => {
+    if (!nextCursor) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getContacts({
+        cursor: nextCursor,
+        limit,
+        search,
+        circle,
+        order,
+        includeArchived,
+        archived,
+      });
+      setContacts((prev) => [...prev, ...(data.contacts || [])]);
+      setNextCursor(data.next_cursor || '');
+    } catch (err) {
+      setError(handleFetchError(err, 'loading more contacts'));
+    } finally {
+      setLoading(false);
+    }
+  }, [nextCursor, limit, search, circle, order, includeArchived, archived]);
 
   useEffect(() => {
-    fetchContacts();
-  }, [fetchContacts]);
+    fetchFirst();
+  }, [fetchFirst]);
 
   return {
     contacts,
-    total,
-    page,
+    nextCursor,
     loading,
     error,
-    refetch: fetchContacts,
+    refetch: fetchFirst,
+    loadMore,
   };
 }

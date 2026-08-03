@@ -467,27 +467,41 @@ paths:
         Returns a page of ContactSummary items — never the full Card, so a
         mobile contact-list screen doesn't have to fetch every contact's
         nested data (see docs/fork-plan/50-integration-and-rebrand.md WP-71
-        Gap 2). All existing query mechanics are preserved: pagination,
-        free-text search, sort, archive filtering, circle filtering, and
-        includes=. The fields= partial-projection param is gone (Gap 3) and
-        has no effect if sent.
+        Gap 2). Pagination is cursor-based (T17): rows are ordered by the
+        (updated_at, id) feed key and a page is resumed with next_cursor.
+        ?since= turns the endpoint into a change feed returning every row
+        changed after the cursor — including soft-deleted rows marked
+        deleted:true — for incremental sync. An exact `total` count is
+        deliberately gone. The fields= partial-projection param is gone (Gap
+        3) and has no effect if sent.
       parameters:
-        - name: page
+        - name: cursor
           in: query
-          schema: { type: integer, minimum: 1, default: 1 }
+          description: >
+            Opaque resume token returned as next_cursor by the previous page.
+            Resumes the list after that (updated_at, id) position. Ignored
+            when since is present.
+          schema: { type: string }
+        - name: since
+          in: query
+          description: >
+            Change-feed cursor: return every row changed after this position —
+            created, updated, AND soft-deleted (deleted:true) — ordered
+            forward, ignoring search/circle/archive filters. A cursor older
+            than DELETED_RETENTION_DAYS returns 410 Gone (tombstones were
+            purged; full resync required).
+          schema: { type: string }
         - name: limit
           in: query
           schema: { type: integer, minimum: 1, default: 25 }
+        - name: order
+          in: query
+          description: Direction for the (updated_at, id) cursor order. since forces asc.
+          schema: { type: string, enum: [asc, desc], default: desc }
         - name: search
           in: query
           description: Free-text search across name/nickname/email/phone (including secondary array entries).
           schema: { type: string }
-        - name: sort
-          in: query
-          schema: { type: string, enum: [firstname, lastname, id, random], default: id }
-        - name: order
-          in: query
-          schema: { type: string, enum: [asc, desc], default: desc }
         - name: include_archived
           in: query
           schema: { type: boolean, default: false }
@@ -528,6 +542,21 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "400":
+          description: Malformed cursor or since value.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "410":
+          description: >
+            The ?since= cursor is older than DELETED_RETENTION_DAYS — deleted
+            rows have been purged, so incremental sync can no longer converge.
+            Full resync required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "200":
           description: A page of contacts.
           content:
@@ -541,9 +570,12 @@ paths:
                       anyOf:
                         - $ref: "#/components/schemas/ContactSummary"
                         - $ref: "#/components/schemas/ContactSummaryWithRelations"
-                  total: { type: integer }
-                  page: { type: integer }
+                  next_cursor:
+                    type: string
+                    description: Resume token for the next page; empty when there are no more rows.
                   limit: { type: integer }
+                  sync:
+                    $ref: "#/components/schemas/SyncInfo"
     post:
       summary: Create a contact
       operationId: createContact
@@ -977,13 +1009,22 @@ paths:
     get:
       summary: List relationship edges
       operationId: listRelationshipEdges
+      description: >
+        Cursor-paginated (T17). Relationship edges are a hard-delete
+        collection — the sync.mode is full_resync: a client re-pulls the
+        collection rather than using ?since= (edges have no tombstone).
       parameters:
-        - name: page
+        - name: cursor
           in: query
-          schema: { type: integer, minimum: 1, default: 1 }
+          description: Opaque resume token from the previous page's next_cursor.
+          schema: { type: string }
         - name: limit
           in: query
           schema: { type: integer, minimum: 1, default: 25 }
+        - name: order
+          in: query
+          description: Direction for the (updated_at, id) cursor order.
+          schema: { type: string, enum: [asc, desc], default: desc }
         - name: contact_id
           in: query
           description: Filter to edges where this Contact.VCardUID is either endpoint.
@@ -1015,8 +1056,12 @@ paths:
                     items:
                       $ref: "#/components/schemas/RelationshipEdge"
                   total: { type: integer }
-                  page: { type: integer }
+                  next_cursor:
+                    type: string
+                    description: Resume token for the next page; empty when there are no more rows.
                   limit: { type: integer }
+                  sync:
+                    $ref: "#/components/schemas/SyncInfo"
     post:
       summary: Create a relationship edge
       operationId: createRelationshipEdge
@@ -1327,12 +1372,25 @@ paths:
       summary: List the user's unassigned notes (no contact)
       operationId: listUnassignedNotes
       parameters:
-        - name: page
+        - name: cursor
           in: query
-          schema: { type: integer, minimum: 1, default: 1 }
+          description: Opaque resume token from the previous page's next_cursor. Ignored when since is present.
+          schema: { type: string }
+        - name: since
+          in: query
+          description: >
+            Change-feed cursor: return every unassigned note changed after
+            this position — including soft-deleted ones (deleted:true) —
+            ordered forward, ignoring search/date filters. A cursor older than
+            DELETED_RETENTION_DAYS returns 410 Gone.
+          schema: { type: string }
         - name: limit
           in: query
           schema: { type: integer, minimum: 1, default: 25 }
+        - name: order
+          in: query
+          description: Direction for the (updated_at, id) cursor order. since forces asc.
+          schema: { type: string, enum: [asc, desc], default: desc }
         - name: search
           in: query
           description: Free-text search on note content.
@@ -1352,6 +1410,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "410":
+          description: The ?since= cursor is older than DELETED_RETENTION_DAYS — full resync required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "200":
           description: A page of unassigned notes.
           content:
@@ -1363,9 +1427,12 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/Note"
-                  total: { type: integer }
-                  page: { type: integer }
+                  next_cursor:
+                    type: string
+                    description: Resume token for the next page; empty when there are no more rows.
                   limit: { type: integer }
+                  sync:
+                    $ref: "#/components/schemas/SyncInfo"
     post:
       summary: Create an unassigned note
       operationId: createUnassignedNote
@@ -1504,12 +1571,25 @@ paths:
       summary: List the user's activities
       operationId: listActivities
       parameters:
-        - name: page
+        - name: cursor
           in: query
-          schema: { type: integer, minimum: 1, default: 1 }
+          description: Opaque resume token from the previous page's next_cursor. Ignored when since is present.
+          schema: { type: string }
+        - name: since
+          in: query
+          description: >
+            Change-feed cursor: return every activity changed after this
+            position — including soft-deleted ones (deleted:true) — ordered
+            forward, ignoring search/date filters. A cursor older than
+            DELETED_RETENTION_DAYS returns 410 Gone.
+          schema: { type: string }
         - name: limit
           in: query
           schema: { type: integer, minimum: 1, default: 25 }
+        - name: order
+          in: query
+          description: Direction for the (updated_at, id) cursor order. since forces asc.
+          schema: { type: string, enum: [asc, desc], default: desc }
         - name: include
           in: query
           description: 'When "contacts", each activity carries its participant contacts.'
@@ -1533,6 +1613,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "410":
+          description: The ?since= cursor is older than DELETED_RETENTION_DAYS — full resync required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "200":
           description: A page of activities.
           content:
@@ -1544,9 +1630,12 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/Activity"
-                  total: { type: integer }
-                  page: { type: integer }
+                  next_cursor:
+                    type: string
+                    description: Resume token for the next page; empty when there are no more rows.
                   limit: { type: integer }
+                  sync:
+                    $ref: "#/components/schemas/SyncInfo"
     post:
       summary: Create an activity
       operationId: createActivity
@@ -1652,13 +1741,22 @@ paths:
     get:
       summary: List circles
       operationId: listCircles
+      description: >
+        Cursor-paginated (T17). Circles are a hard-delete collection — the
+        sync.mode is full_resync: a client re-pulls the collection rather than
+        using ?since= (circles have no tombstone).
       parameters:
-        - name: page
+        - name: cursor
           in: query
-          schema: { type: integer, minimum: 1, default: 1 }
+          description: Opaque resume token from the previous page's next_cursor.
+          schema: { type: string }
         - name: limit
           in: query
           schema: { type: integer, minimum: 1, default: 25 }
+        - name: order
+          in: query
+          description: Direction for the (updated_at, id) cursor order.
+          schema: { type: string, enum: [asc, desc], default: desc }
         - name: include_members
           in: query
           description: When true, also returns a members array (all circle_members join rows for the page's circles).
@@ -1682,8 +1780,12 @@ paths:
                     items:
                       $ref: "#/components/schemas/Circle"
                   total: { type: integer }
-                  page: { type: integer }
+                  next_cursor:
+                    type: string
+                    description: Resume token for the next page; empty when there are no more rows.
                   limit: { type: integer }
+                  sync:
+                    $ref: "#/components/schemas/SyncInfo"
                   members:
                     type: array
                     items:
@@ -1864,13 +1966,22 @@ paths:
     get:
       summary: List households
       operationId: listHouseholds
+      description: >
+        Cursor-paginated (T17). Households are a hard-delete collection — the
+        sync.mode is full_resync: a client re-pulls the collection rather than
+        using ?since= (households have no tombstone).
       parameters:
-        - name: page
+        - name: cursor
           in: query
-          schema: { type: integer, minimum: 1, default: 1 }
+          description: Opaque resume token from the previous page's next_cursor.
+          schema: { type: string }
         - name: limit
           in: query
           schema: { type: integer, minimum: 1, default: 25 }
+        - name: order
+          in: query
+          description: Direction for the (updated_at, id) cursor order.
+          schema: { type: string, enum: [asc, desc], default: desc }
         - name: include_members
           in: query
           description: When true, also returns a members array for the page's households.
@@ -1894,8 +2005,12 @@ paths:
                     items:
                       $ref: "#/components/schemas/Household"
                   total: { type: integer }
-                  page: { type: integer }
+                  next_cursor:
+                    type: string
+                    description: Resume token for the next page; empty when there are no more rows.
                   limit: { type: integer }
+                  sync:
+                    $ref: "#/components/schemas/SyncInfo"
                   members:
                     type: array
                     items:
@@ -2134,13 +2249,22 @@ paths:
     get:
       summary: List tags
       operationId: listTags
+      description: >
+        Cursor-paginated (T17). Tags are a hard-delete collection — the
+        sync.mode is full_resync: a client re-pulls the collection rather than
+        using ?since= (tags have no tombstone).
       parameters:
-        - name: page
+        - name: cursor
           in: query
-          schema: { type: integer, minimum: 1, default: 1 }
+          description: Opaque resume token from the previous page's next_cursor.
+          schema: { type: string }
         - name: limit
           in: query
           schema: { type: integer, minimum: 1, default: 25 }
+        - name: order
+          in: query
+          description: Direction for the (updated_at, id) cursor order.
+          schema: { type: string, enum: [asc, desc], default: desc }
         - name: include_contacts
           in: query
           description: When true, also returns a contacts array (all contact_tags join rows for the page's tags).
@@ -2164,8 +2288,12 @@ paths:
                     items:
                       $ref: "#/components/schemas/Tag"
                   total: { type: integer }
-                  page: { type: integer }
+                  next_cursor:
+                    type: string
+                    description: Resume token for the next page; empty when there are no more rows.
                   limit: { type: integer }
+                  sync:
+                    $ref: "#/components/schemas/SyncInfo"
                   contacts:
                     type: array
                     items:
@@ -2345,13 +2473,22 @@ paths:
     get:
       summary: List field definitions
       operationId: listFieldDefinitions
+      description: >
+        Cursor-paginated (T17). Field definitions are a hard-delete collection
+        — the sync.mode is full_resync: a client re-pulls the collection
+        rather than using ?since= (definitions have no tombstone).
       parameters:
-        - name: page
+        - name: cursor
           in: query
-          schema: { type: integer, minimum: 1, default: 1 }
+          description: Opaque resume token from the previous page's next_cursor.
+          schema: { type: string }
         - name: limit
           in: query
           schema: { type: integer, minimum: 1, default: 25 }
+        - name: order
+          in: query
+          description: Direction for the (updated_at, id) cursor order.
+          schema: { type: string, enum: [asc, desc], default: desc }
       responses:
         "401":
           description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
@@ -2371,8 +2508,12 @@ paths:
                     items:
                       $ref: "#/components/schemas/FieldDefinition"
                   total: { type: integer }
-                  page: { type: integer }
+                  next_cursor:
+                    type: string
+                    description: Resume token for the next page; empty when there are no more rows.
                   limit: { type: integer }
+                  sync:
+                    $ref: "#/components/schemas/SyncInfo"
     post:
       summary: Create a field definition
       operationId: createFieldDefinition
@@ -2543,12 +2684,25 @@ paths:
       summary: List life events
       operationId: listLifeEvents
       parameters:
-        - name: page
+        - name: cursor
           in: query
-          schema: { type: integer, minimum: 1, default: 1 }
+          description: Opaque resume token from the previous page's next_cursor. Ignored when since is present.
+          schema: { type: string }
+        - name: since
+          in: query
+          description: >
+            Change-feed cursor: return every life event changed after this
+            position — including soft-deleted ones (deleted:true) — ordered
+            forward, ignoring entity_id. A cursor older than
+            DELETED_RETENTION_DAYS returns 410 Gone.
+          schema: { type: string }
         - name: limit
           in: query
           schema: { type: integer, minimum: 1, default: 25 }
+        - name: order
+          in: query
+          description: Direction for the (updated_at, id) cursor order. since forces asc.
+          schema: { type: string, enum: [asc, desc], default: desc }
         - name: entity_id
           in: query
           description: Filter to life events whose subject contact is this Contact.VCardUID.
@@ -2556,6 +2710,12 @@ paths:
       responses:
         "401":
           description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "410":
+          description: The ?since= cursor is older than DELETED_RETENTION_DAYS — full resync required.
           content:
             application/json:
               schema:
@@ -2571,9 +2731,12 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/LifeEvent"
-                  total: { type: integer }
-                  page: { type: integer }
+                  next_cursor:
+                    type: string
+                    description: Resume token for the next page; empty when there are no more rows.
                   limit: { type: integer }
+                  sync:
+                    $ref: "#/components/schemas/SyncInfo"
     post:
       summary: Create a life event
       operationId: createLifeEvent
@@ -2680,12 +2843,25 @@ paths:
       summary: List preferences
       operationId: listPreferences
       parameters:
-        - name: page
+        - name: cursor
           in: query
-          schema: { type: integer, minimum: 1, default: 1 }
+          description: Opaque resume token from the previous page's next_cursor. Ignored when since is present.
+          schema: { type: string }
+        - name: since
+          in: query
+          description: >
+            Change-feed cursor: return every preference changed after this
+            position — including soft-deleted ones (deleted:true) — ordered
+            forward, ignoring entity_id. A cursor older than
+            DELETED_RETENTION_DAYS returns 410 Gone.
+          schema: { type: string }
         - name: limit
           in: query
           schema: { type: integer, minimum: 1, default: 25 }
+        - name: order
+          in: query
+          description: Direction for the (updated_at, id) cursor order. since forces asc.
+          schema: { type: string, enum: [asc, desc], default: desc }
         - name: entity_id
           in: query
           description: Filter to preferences whose subject contact is this Contact.VCardUID.
@@ -2693,6 +2869,12 @@ paths:
       responses:
         "401":
           description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "410":
+          description: The ?since= cursor is older than DELETED_RETENTION_DAYS — full resync required.
           content:
             application/json:
               schema:
@@ -2709,8 +2891,12 @@ paths:
                     items:
                       $ref: "#/components/schemas/Preference"
                   total: { type: integer }
-                  page: { type: integer }
+                  next_cursor:
+                    type: string
+                    description: Resume token for the next page; empty when there are no more rows.
                   limit: { type: integer }
+                  sync:
+                    $ref: "#/components/schemas/SyncInfo"
     post:
       summary: Create a preference
       operationId: createPreference
@@ -4000,6 +4186,26 @@ components:
               additionalProperties: true
         request_id: { type: string }
         timestamp: { type: string, format: date-time }
+    SyncInfo:
+      type: object
+      description: >
+        T17 sync-mode contract carried by every cursor-paginated list
+        response. `mode` is how THIS collection syncs; the two arrays are the
+        static map of every syncable collection, so a client can plan a full
+        sync without hardcoding endpoint names. Incremental collections are
+        soft-deleted, support ?since= change feeds, and drop `total`;
+        full_resync collections are hard-deleted, are re-pulled wholesale, and
+        keep `total`.
+      properties:
+        mode: { type: string, enum: [incremental, full_resync] }
+        incremental:
+          type: array
+          items: { type: string }
+          description: "Collections that sync incrementally via ?since=: contacts, notes, activities, life_events, preferences."
+        full_resync:
+          type: array
+          items: { type: string }
+          description: "Collections that require a full re-pull: circles, households, tags, relationship_edges, field_definitions."
     MessageResponse:
       type: object
       required: [message]
@@ -4154,6 +4360,13 @@ components:
           nullable: true
           description: "The list query does not select this column, so it is typically null unless the backend changes; do not rely on it being populated."
         archived: { type: boolean }
+        deleted:
+          type: boolean
+          description: >
+            Change-feed tombstone marker (T17): true only when the row was
+            returned by ?since= as a soft-deleted contact. Never set on a
+            plain list request.
+          default: false
     ContactSummaryWithRelations:
       description: ContactSummary extended with the sub-resource arrays requested via includes=.
       allOf:
@@ -4396,6 +4609,10 @@ components:
         contact_id: { type: integer, nullable: true }
         contact:
           $ref: "#/components/schemas/ContactFlat"
+        deleted:
+          type: boolean
+          description: "Change-feed tombstone marker (T17): true only via ?since= for a soft-deleted note."
+          default: false
     NoteInput:
       type: object
       required: [content, date]
@@ -4424,6 +4641,10 @@ components:
           items: { $ref: "#/components/schemas/ContactFlat" }
         type: { type: string }
         external_ref: { type: string }
+        deleted:
+          type: boolean
+          description: "Change-feed tombstone marker (T17): true only via ?since= for a soft-deleted activity."
+          default: false
     ActivityInput:
       type: object
       required: [title, date]
@@ -4639,6 +4860,10 @@ components:
           type: array
           items: { type: string, format: uuid }
         remind: { type: boolean }
+        deleted:
+          type: boolean
+          description: "Change-feed tombstone marker (T17): true only via ?since= for a soft-deleted life event."
+          default: false
     LifeEventInput:
       type: object
       required: [entity_id]
@@ -4670,6 +4895,10 @@ components:
         confidence: { type: number, nullable: true }
         last_confirmed: { type: string, format: date-time, nullable: true }
         sensitivity: { type: string, enum: [normal, private, secret] }
+        deleted:
+          type: boolean
+          description: "Change-feed tombstone marker (T17): true only via ?since= for a soft-deleted preference."
+          default: false
     PreferenceInput:
       type: object
       required: [entity_id, category, value]

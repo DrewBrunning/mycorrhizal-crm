@@ -76,7 +76,11 @@ func ListCircles(c *gin.Context) {
 		return
 	}
 
-	pagination := GetPaginationParams(c)
+	params, err := GetCursorParams(c)
+	if err != nil {
+		apperrors.AbortWithError(c, err)
+		return
+	}
 
 	var circles []models.Circle
 	var total int64
@@ -87,20 +91,30 @@ func ListCircles(c *gin.Context) {
 		return
 	}
 
-	if err := baseQuery.Session(&gorm.Session{}).
-		Order("name").
-		Limit(pagination.Limit).
-		Offset(pagination.Offset).
+	desc := params.Order == "desc"
+	if params.Cursor != nil {
+		pred, t, idv := cursorPredicate("circles", params.Cursor, params.Cursor.ID, desc)
+		baseQuery = baseQuery.Where(pred, t, idv)
+	}
+
+	if err := cursorOrderBy(baseQuery, "circles", desc).
+		Limit(params.Limit + 1).
 		Find(&circles).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve circles").WithError(err))
 		return
 	}
+	nextCursor := ""
+	if len(circles) > params.Limit {
+		circles = circles[:params.Limit]
+		nextCursor = EncodeCursor(circles[len(circles)-1].UpdatedAt, circles[len(circles)-1].ID)
+	}
 
 	result := gin.H{
-		"circles": circles,
-		"total":   total,
-		"page":    pagination.Page,
-		"limit":   pagination.Limit,
+		"circles":     circles,
+		"total":       total,
+		"next_cursor": nextCursor,
+		"limit":       params.Limit,
+		"sync":        buildSyncMeta(SyncModeFullResync),
 	}
 
 	if c.Query("include_members") == "true" {

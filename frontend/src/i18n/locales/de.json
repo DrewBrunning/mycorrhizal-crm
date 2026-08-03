@@ -472,7 +472,8 @@
     "close": "Schließen",
     "back": "Zurück",
     "continue": "Weiter",
-    "add": "Hinzufügen"
+    "add": "Hinzufügen",
+    "loadMore": "Mehr laden"
   },
   "profilePicture": {
     "title": "Profilbild hochladen",

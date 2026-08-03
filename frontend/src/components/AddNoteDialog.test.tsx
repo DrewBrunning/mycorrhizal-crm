@@ -34,8 +34,7 @@ const contactsResponse = () => ({
     { ID: 5, uid: 'uid-5', firstname: 'Alice', lastname: 'Anderson' },
     { ID: 6, uid: 'uid-6', firstname: 'Bob', lastname: 'Brown' },
   ],
-  total: 2,
-  page: 1,
+  next_cursor: '',
   limit: 40,
 });
 

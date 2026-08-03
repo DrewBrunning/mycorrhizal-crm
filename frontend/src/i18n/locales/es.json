@@ -472,7 +472,8 @@
     "close": "Cerrar",
     "back": "Atrás",
     "continue": "Continuar",
-    "add": "Agregar"
+    "add": "Agregar",
+    "loadMore": "Cargar más"
   },
   "profilePicture": {
     "title": "Subir Foto de Perfil",

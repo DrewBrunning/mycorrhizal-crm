@@ -169,7 +169,11 @@ func ListRelationshipEdges(c *gin.Context) {
 		return
 	}
 
-	pagination := GetPaginationParams(c)
+	params, err := GetCursorParams(c)
+	if err != nil {
+		apperrors.AbortWithError(c, err)
+		return
+	}
 	contactID := c.Query("contact_id")
 	status := c.Query("status")
 	relType := c.Query("type")
@@ -196,21 +200,31 @@ func ListRelationshipEdges(c *gin.Context) {
 		return
 	}
 
+	desc := params.Order == "desc"
+	if params.Cursor != nil {
+		pred, t, idv := cursorPredicate("relationship_edges", params.Cursor, params.Cursor.ID, desc)
+		baseQuery = baseQuery.Where(pred, t, idv)
+	}
+
 	var edges []models.RelationshipEdge
-	if err := baseQuery.Session(&gorm.Session{}).
-		Order("created_at DESC").
-		Limit(pagination.Limit).
-		Offset(pagination.Offset).
+	if err := cursorOrderBy(baseQuery, "relationship_edges", desc).
+		Limit(params.Limit + 1).
 		Find(&edges).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve relationship edges").WithError(err))
 		return
+	}
+	nextCursor := ""
+	if len(edges) > params.Limit {
+		edges = edges[:params.Limit]
+		nextCursor = EncodeCursor(edges[len(edges)-1].UpdatedAt, edges[len(edges)-1].ID)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"relationship_edges": edges,
 		"total":              total,
-		"page":               pagination.Page,
-		"limit":              pagination.Limit,
+		"next_cursor":        nextCursor,
+		"limit":              params.Limit,
+		"sync":               buildSyncMeta(SyncModeFullResync),
 	})
 }
 

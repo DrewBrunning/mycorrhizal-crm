@@ -105,8 +105,57 @@ func GetActivities(c *gin.Context) {
 		return
 	}
 
-	// Get pagination parameters from query
-	pagination := GetPaginationParams(c)
+	// T17: cursor pagination on (updated_at, id); ?since= turns the endpoint
+	// into a change feed including soft-deleted rows (tombstones). An exact
+	// `total` count is deliberately gone — activities accumulate without bound.
+	params, err := GetCursorParams(c)
+	if err != nil {
+		apperrors.AbortWithError(c, err)
+		return
+	}
+	if err := CheckFeedCursorAge(c, params); err != nil {
+		apperrors.AbortWithError(c, err)
+		return
+	}
+
+	// Change feed (?since=): every activity changed after the cursor,
+	// including soft-deleted ones (Unscoped, marked deleted:true). Contact
+	// preloading and search/date filters are deliberately ignored here — a
+	// feed is a mirror, not a filtered view.
+	if params.Since {
+		var activities []models.Activity
+		query := db.Unscoped().Model(&models.Activity{}).
+			Where("activities.user_id = ?", userID)
+		if params.Cursor != nil {
+			id, ok := parseCursorID(params.Cursor)
+			if !ok {
+				apperrors.AbortWithError(c, apperrors.ErrInvalidInput("since", "cursor id is malformed"))
+				return
+			}
+			pred, t, idv := cursorPredicate("activities", params.Cursor, id, false)
+			query = query.Where(pred, t, idv)
+		}
+		query = cursorOrderBy(query, "activities", false).Limit(params.Limit + 1)
+		if err := query.Find(&activities).Error; err != nil {
+			apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve activities").WithError(err))
+			return
+		}
+		nextCursor := ""
+		if len(activities) > params.Limit {
+			activities = activities[:params.Limit]
+			nextCursor = EncodeCursor(activities[len(activities)-1].UpdatedAt, activities[len(activities)-1].ID)
+		}
+		for i := range activities {
+			activities[i].Deleted = activities[i].DeletedAt.Valid
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"activities":  activities,
+			"next_cursor": nextCursor,
+			"limit":       params.Limit,
+			"sync":        buildSyncMeta(SyncModeIncremental),
+		})
+		return
+	}
 
 	includeContacts := c.DefaultQuery("include", "") == "contacts"
 	search := strings.ToLower(strings.TrimSpace(c.Query("search")))
@@ -114,7 +163,6 @@ func GetActivities(c *gin.Context) {
 	toDateStr := c.Query("toDate")
 
 	var activities []models.Activity
-	var total int64
 
 	baseQuery := db.Model(&models.Activity{}).
 		Where("activities.user_id = ?", userID)
@@ -149,16 +197,22 @@ func GetActivities(c *gin.Context) {
 			Where(searchClause)
 	}
 
-	countQuery := baseQuery.Session(&gorm.Session{})
-	if err := countQuery.Count(&total).Error; err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to count activities").WithError(err))
-		return
+	// T17: resume-after cursor. Ordering is (updated_at, id); the ORDER BY
+	// columns are all present in activities.* so the SELECT DISTINCT search
+	// branch stays valid.
+	desc := params.Order == "desc"
+	if params.Cursor != nil {
+		id, ok := parseCursorID(params.Cursor)
+		if !ok {
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed"))
+			return
+		}
+		pred, t, idv := cursorPredicate("activities", params.Cursor, id, desc)
+		baseQuery = baseQuery.Where(pred, t, idv)
 	}
 
-	query := baseQuery.Session(&gorm.Session{}).
-		Order("activities.date DESC, activities.id DESC").
-		Limit(pagination.Limit).
-		Offset(pagination.Offset)
+	query := cursorOrderBy(baseQuery.Session(&gorm.Session{}), "activities", desc).
+		Limit(params.Limit + 1)
 
 	if includeContacts {
 		query = query.Preload("Contacts", func(db *gorm.DB) *gorm.DB {
@@ -171,12 +225,17 @@ func GetActivities(c *gin.Context) {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve activities").WithError(err))
 		return
 	}
+	nextCursor := ""
+	if len(activities) > params.Limit {
+		activities = activities[:params.Limit]
+		nextCursor = EncodeCursor(activities[len(activities)-1].UpdatedAt, activities[len(activities)-1].ID)
+	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"activities": activities,
-		"total":      total,
-		"page":       pagination.Page,
-		"limit":      pagination.Limit,
+		"activities":  activities,
+		"next_cursor": nextCursor,
+		"limit":       params.Limit,
+		"sync":        buildSyncMeta(SyncModeIncremental),
 	})
 }
 

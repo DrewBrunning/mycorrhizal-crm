@@ -31,8 +31,7 @@ function mockFetchByUrl(handlers: Record<string, () => unknown>) {
 
 const emptyNotesResponse = () => ({
   notes: [],
-  total: 0,
-  page: 1,
+  next_cursor: '',
   limit: 25,
 });
 
@@ -41,8 +40,7 @@ const twoUnfiledNotesResponse = () => ({
     { ID: 1, content: 'First note', date: '2026-01-01T00:00:00Z', contact_id: null, CreatedAt: '2026-01-01T00:00:00Z', UpdatedAt: '2026-01-01T00:00:00Z' },
     { ID: 2, content: 'Second note', date: '2026-01-02T00:00:00Z', contact_id: null, CreatedAt: '2026-01-02T00:00:00Z', UpdatedAt: '2026-01-02T00:00:00Z' },
   ],
-  total: 2,
-  page: 1,
+  next_cursor: '',
   limit: 25,
 });
 
@@ -87,8 +85,7 @@ test('renders notes list and shows unfiled count', async () => {
 test('inbox is empty when all notes are filed', async () => {
   const allFiledResponse = () => ({
     notes: [],
-    total: 0,
-    page: 1,
+    next_cursor: '',
     limit: 25,
   });
   mockFetchByUrl({ '/notes?': allFiledResponse });
@@ -100,6 +97,44 @@ test('inbox is empty when all notes are filed', async () => {
 
   expect(screen.getByText('0')).toBeDefined();
   expect(screen.getByText('No unfiled notes')).toBeDefined();
+});
+
+// T17: with a non-empty next_cursor the Load more button appears and appends
+// the next cursor page; once next_cursor is empty it disappears.
+test('renders Load more and appends the next cursor page', async () => {
+  const pageOne = () => ({
+    notes: [{ ID: 1, content: 'First note', date: '2026-01-01T00:00:00Z', contact_id: null, CreatedAt: '2026-01-01T00:00:00Z', UpdatedAt: '2026-01-01T00:00:00Z' }],
+    next_cursor: 'CURSOR-1',
+    limit: 25,
+  });
+  const pageTwo = () => ({
+    notes: [{ ID: 2, content: 'Second note', date: '2026-01-02T00:00:00Z', contact_id: null, CreatedAt: '2026-01-02T00:00:00Z', UpdatedAt: '2026-01-02T00:00:00Z' }],
+    next_cursor: '',
+    limit: 25,
+  });
+  // First request (no cursor) → pageOne; second request (?cursor=CURSOR-1) → pageTwo.
+  mockFetchByUrl({
+    'cursor=CURSOR-1': pageTwo,
+    '/notes?': pageOne,
+  });
+  renderPage();
+
+  await waitFor(() => {
+    expect(screen.getByText('First note')).toBeDefined();
+  });
+
+  const loadMore = screen.getByText('Load more');
+  expect(loadMore).toBeDefined();
+
+  loadMore.click();
+
+  await waitFor(() => {
+    expect(screen.getByText('Second note')).toBeDefined();
+  });
+  // Both pages' notes are now shown and the button is gone (next_cursor empty).
+  expect(screen.queryByText('Load more')).toBeNull();
+  expect(screen.getByText('First note')).toBeDefined();
+  expect(screen.getByText('2')).toBeDefined();
 });
 
 // T8: The Add Note button is present and clickable.

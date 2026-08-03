@@ -42,6 +42,10 @@ type ContactSummary struct {
 	PhotoThumbnail string   `json:"photo_thumbnail"`
 	Circles        []string `json:"circles"`
 	Archived       bool     `json:"archived"`
+	// Deleted is the T17 change-feed tombstone marker, set only by the
+	// ?since= feed path (which reads rows with Unscoped()). A plain list
+	// request never sets it.
+	Deleted bool `json:"deleted,omitempty"`
 }
 
 // NewContactSummary builds a ContactSummary directly from a Contact's own

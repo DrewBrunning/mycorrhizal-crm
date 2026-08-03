@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { getContacts } from '../api/contacts';
+import { getAllContacts } from '../api/contacts';
 import { updateNote, deleteNote, Note } from '../api/notes';
 import { updateActivity, deleteActivity, Activity } from '../api/activities';
 import { handleError, handleFetchError, ErrorNotifier } from '../utils/errorHandler';
@@ -36,8 +36,8 @@ export function useTimelineEditing(
       // Fetch all contacts for the autocomplete if not already loaded
       if (allContacts.length === 0) {
         try {
-          const data = await getContacts({ page: 1, limit: 1000 });
-          setAllContacts(data.contacts || []);
+          const all = await getAllContacts({ limit: 1000 });
+          setAllContacts(all || []);
         } catch (err) {
           handleFetchError(err, 'fetching contacts for autocomplete');
         }

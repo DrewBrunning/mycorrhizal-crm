@@ -17,6 +17,8 @@ import {
   parseAnniversaryDate,
   toContactRecordInput,
   getContactsByUid,
+  getContacts,
+  getAllContacts,
 } from './contacts';
 
 describe('email conversion', () => {
@@ -297,5 +299,64 @@ describe('getContactsByUid', () => {
     const calledUrl = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
     // Only the one real uid should appear as a query param.
     expect((calledUrl.match(/vcard_uid=/g) || []).length).toBe(1);
+  });
+});
+
+describe('getContacts cursor pagination (T17)', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const summary = (id: number, firstname: string) => ({
+    id, uid: `uid-${id}`, firstname, lastname: '', nickname: '', fn: firstname,
+    primary_email: '', primary_phone: '', birthday: '', org: '',
+    photo: '', photo_thumbnail: '', circles: [], archived: false,
+  });
+
+  test('sends limit/cursor/order params and reads next_cursor (no page/total)', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        contacts: [summary(1, 'Alice')],
+        next_cursor: 'CURSOR-1',
+        limit: 10,
+      }),
+    });
+
+    const result = await getContacts({ cursor: 'PREV', limit: 10, order: 'asc', search: 'ali', includeArchived: true });
+
+    const calledUrl = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+    expect(calledUrl).toContain('limit=10');
+    expect(calledUrl).toContain('cursor=PREV');
+    expect(calledUrl).toContain('order=asc');
+    expect(calledUrl).toContain('search=ali');
+    expect(calledUrl).toContain('include_archived=true');
+    expect(calledUrl).not.toContain('page=');
+
+    expect(result.contacts[0].firstname).toBe('Alice');
+    expect(result.next_cursor).toBe('CURSOR-1');
+    expect(result.limit).toBe(10);
+  });
+
+  test('getAllContacts follows next_cursor until it is empty', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ contacts: [summary(1, 'Alice')], next_cursor: 'CURSOR-2', limit: 25 }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ contacts: [summary(2, 'Bob')], next_cursor: '', limit: 25 }),
+      });
+
+    const all = await getAllContacts({ limit: 25 });
+
+    expect(all.map((c) => c.firstname)).toEqual(['Alice', 'Bob']);
+    expect((fetch as unknown as ReturnType<typeof vi.fn>)).toHaveBeenCalledTimes(2);
+    const secondUrl = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[1][0] as string;
+    expect(secondUrl).toContain('cursor=CURSOR-2');
   });
 });
