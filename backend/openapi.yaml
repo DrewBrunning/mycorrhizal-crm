@@ -457,6 +457,29 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /users/directory:
+    get:
+      summary: List every other user on the instance (id + username only)
+      operationId: listUserDirectory
+      description: >
+        Unlike admin-only GET /admin/users, any authenticated user can call
+        this — it exists to populate the recipient picker for P1 contact
+        sharing and deliberately returns nothing beyond id/username.
+      responses:
+        "200":
+          description: Every user except the caller.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: integer }
+                        username: { type: string }
 
   # --- Contacts ---
   /contacts:
@@ -1080,6 +1103,195 @@ paths:
                 $ref: "#/components/schemas/ImportResult"
         "400":
           description: A CSV-sourced session ID was sent here, no prior preview cached, or unknown/expired/foreign session.
+
+  # --- Contact sharing (P1, docs/fork-plan/tickets/31-P1-contact-sharing.md) ---
+  # One-time filtered copy between two users on the same instance -- not a
+  # standing/live share (P1b, deferred). Accept is preview-only (parses the
+  # stored payload through the same import machinery as
+  # /contacts/import/vcf/confirm above); Confirm delegates to the identical
+  # service method and only then flips the share to accepted.
+  /contact-shares:
+    post:
+      summary: Share a filtered copy of a contact with another user
+      operationId: createContactShare
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactShareInput"
+      responses:
+        "200":
+          description: Share created (pending).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  contact_share:
+                    $ref: "#/components/schemas/ContactShare"
+        "400":
+          description: Unknown field-selection section, or to_user_id equals the caller.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: The contact does not belong to the caller, or the recipient does not exist.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /contact-shares/incoming:
+    get:
+      summary: List shares sent to the authenticated user
+      operationId: listIncomingContactShares
+      description: Cursor-paginated (same (updated_at, id) scheme as /circles).
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, default: 25 }
+        - name: order
+          in: query
+          schema: { type: string, enum: [asc, desc], default: desc }
+      responses:
+        "200":
+          description: A page of incoming shares.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactShareListResponse"
+  /contact-shares/outgoing:
+    get:
+      summary: List shares the authenticated user has sent
+      operationId: listOutgoingContactShares
+      description: Cursor-paginated (same (updated_at, id) scheme as /circles).
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, default: 25 }
+        - name: order
+          in: query
+          schema: { type: string, enum: [asc, desc], default: desc }
+      responses:
+        "200":
+          description: A page of outgoing shares.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactShareListResponse"
+  /contact-shares/{id}/accept:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Preview accepting a share (parse -> preview; does not import yet)
+      operationId: acceptContactShare
+      description: >
+        Parses the share's stored payload through the same duplicate-
+        detection/preview pipeline as the VCF/JSContact import upload
+        endpoints and returns an ImportPreviewResponse. The recipient then
+        picks a per-row add/update/skip action and calls Confirm — this step
+        alone never changes the share's status.
+      responses:
+        "200":
+          description: Import preview (one row per contact in the payload -- always one for P1).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportPreviewResponse"
+        "404":
+          description: Share not found, or the caller is not its recipient.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: The share has already been accepted or declined.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /contact-shares/{id}/confirm:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Finalize an accepted share using the recipient's per-row actions
+      operationId: confirmContactShare
+      description: >
+        Delegates to the exact same import-session confirm logic as
+        /contacts/import/vcf/confirm (add/update/skip per row, including
+        photo handling); "update" merges into an existing matched contact via
+        the same MergeImportedContact policy an ordinary import uses. Only on
+        success does the share flip to accepted.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportConfirmRequest"
+      responses:
+        "200":
+          description: Import result summary.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportResult"
+        "404":
+          description: Share not found, or the caller is not its recipient.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: The share has already been accepted or declined.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /contact-shares/{id}/decline:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Decline a pending share
+      operationId: declineContactShare
+      description: The sender's original contact and their record of the offer are untouched.
+      responses:
+        "200":
+          description: Share declined.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+        "404":
+          description: Share not found, or the caller is not its recipient.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: The share has already been accepted or declined.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
   # --- Relationship edges ---
   /relationship-edges:
@@ -6139,6 +6351,45 @@ components:
       required: [member_vcard_uid]
       properties:
         member_vcard_uid: { type: string, format: uuid }
+    ContactShareInput:
+      type: object
+      description: T9 field-selection sections, plus who to share with and which contact.
+      required: [to_user_id, vcard_uid, sections]
+      properties:
+        to_user_id: { type: integer }
+        vcard_uid: { type: string, format: uuid }
+        sections:
+          type: array
+          minItems: 1
+          items: { type: string }
+        include_sensitive:
+          type: boolean
+          description: §91.13 opt-in override to include private/secret items within the selected sections.
+    ContactShare:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        from_user_id: { type: integer }
+        to_user_id: { type: integer }
+        contact_display_name: { type: string }
+        status: { type: string, enum: [pending, accepted, declined] }
+        responded_at: { type: string, format: date-time, nullable: true }
+    ContactShareListResponse:
+      type: object
+      properties:
+        contact_shares:
+          type: array
+          items:
+            $ref: "#/components/schemas/ContactShare"
+        usernames:
+          type: object
+          description: Maps the OTHER party's user ID (as a string key) to their username.
+          additionalProperties: { type: string }
+        total: { type: integer }
+        next_cursor: { type: string }
+        limit: { type: integer }
     BulkContactOperationInput:
       type: object
       description: One bulk action across many contacts (N5). Targets are Contact.VCardUID values.

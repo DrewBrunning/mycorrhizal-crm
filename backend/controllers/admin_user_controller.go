@@ -72,6 +72,43 @@ func GetCurrentUser(c *gin.Context) {
 	})
 }
 
+// UserDirectoryEntry is the thin per-user shape ListUserDirectory returns —
+// deliberately just id+username, unlike admin-only ListUsers/GetUser's full
+// AdminUserResponse, since any authenticated user (not just admins) can call
+// this endpoint.
+type UserDirectoryEntry struct {
+	ID       uint   `json:"id"`
+	Username string `json:"username"`
+}
+
+// ListUserDirectory returns every OTHER user on the instance (id + username
+// only) for any authenticated user — unlike ListUsers, which is admin-only
+// and returns the full user record. This exists to populate the recipient
+// picker for P1 contact sharing (docs/fork-plan/tickets/31-P1-contact-
+// sharing.md): sharing a contact needs to name a recipient, and there was
+// previously no way for a non-admin user to discover who else is on the
+// instance.
+func ListUserDirectory(c *gin.Context) {
+	db := c.MustGet("db").(*gorm.DB)
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+
+	var users []models.User
+	if err := db.Select("id, username").Where("id != ?", userID).Order("username ASC").Find(&users).Error; err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve user directory").WithError(err))
+		return
+	}
+
+	entries := make([]UserDirectoryEntry, len(users))
+	for i, u := range users {
+		entries[i] = UserDirectoryEntry{ID: u.ID, Username: u.Username}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"users": entries})
+}
+
 // ListUsers returns a paginated list of all users (admin only)
 func ListUsers(c *gin.Context) {
 	log := logger.FromContext(c)
@@ -318,6 +355,14 @@ func DeleteUser(c *gin.Context) {
 
 		// Delete reminders (hard — user account gone, no tombstoning needed)
 		if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.Reminder{}).Error; err != nil {
+			return err
+		}
+
+		// Delete contact shares where the user is either party (hard —
+		// payload could carry data about the other party's contacts; no
+		// tombstoning once the account is gone). ContactShare has no soft
+		// delete of its own, so no Unscoped() needed here.
+		if err := tx.Where("from_user_id = ? OR to_user_id = ?", userID, userID).Delete(&models.ContactShare{}).Error; err != nil {
 			return err
 		}
 

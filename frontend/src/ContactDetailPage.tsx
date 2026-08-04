@@ -60,6 +60,7 @@ import ReminderList from './components/ReminderList';
 import EditTimelineItemDialog from './components/EditTimelineItemDialog';
 import ContactHeader from './components/ContactHeader';
 import MergeContactsDialog from './components/MergeContactsDialog';
+import ShareContactDialog from './components/ShareContactDialog';
 import ContactInformation from './components/ContactInformation';
 import ContactTimeline from './components/ContactTimeline';
 import ProfilePictureUploadDialog from './components/ProfilePictureUploadDialog';
@@ -196,6 +197,9 @@ export default function ContactDetailPage() {
 
   // Contact merge dialog state (ticket N1)
   const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
+
+  // Contact share dialog state (ticket P1)
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
   // Enabled extended contact fields (UI visibility)
   const [enabledFields, setEnabledFields] = useState<Set<ContactFieldKey>>(() => resolveEnabledFields(null));
@@ -1123,6 +1127,7 @@ export default function ContactDetailPage() {
         onUnarchiveContact={record.archived ? handleUnarchiveContact : undefined}
         onMergeContact={() => setMergeDialogOpen(true)}
         onPrepView={() => navigate(`/contacts/${record.id}/prep`)}
+        onShareContact={() => setShareDialogOpen(true)}
         onExportContact={(format) => {
           if (record?.uid) {
             exportContact(format as 'vcf3' | 'vcf4' | 'jscontact', record.uid).catch(() => showError(t('contactDetail.deleteContactError')));
@@ -1138,6 +1143,14 @@ export default function ContactDetailPage() {
           currentContactId={record.id}
           currentContactUid={record.uid}
           currentContactName={`${firstname} ${lastname}`.trim()}
+        />
+      )}
+
+      {record && (
+        <ShareContactDialog
+          open={shareDialogOpen}
+          onClose={() => setShareDialogOpen(false)}
+          vcardUID={record.uid}
         />
       )}
 

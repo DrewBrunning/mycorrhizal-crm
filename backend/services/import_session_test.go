@@ -955,3 +955,50 @@ func TestBuildActionMap_Empty(t *testing.T) {
 	assert.NotNil(t, m)
 	assert.Len(t, m, 0)
 }
+
+// --- CreateVCFSessionForShare / SessionBelongsToShare (P1) -----------------------
+
+func newTestVCFSessionArgs() ([]VCFContactData, []models.ImportRowPreview) {
+	contacts := []VCFContactData{{Contact: &models.Contact{Firstname: "Alice"}}}
+	previews := []models.ImportRowPreview{{RowIndex: 0, SuggestedAction: "add"}}
+	return contacts, previews
+}
+
+func TestSessionBelongsToShare_TrueForItsOwnBoundSession(t *testing.T) {
+	m := NewImportSessionManager()
+	contacts, previews := newTestVCFSessionArgs()
+	sessionID := m.CreateVCFSessionForShare(1, "share-a", contacts, previews)
+
+	assert.True(t, m.SessionBelongsToShare(sessionID, 1, "share-a"))
+}
+
+func TestSessionBelongsToShare_FalseForADifferentShare(t *testing.T) {
+	m := NewImportSessionManager()
+	contacts, previews := newTestVCFSessionArgs()
+	sessionID := m.CreateVCFSessionForShare(1, "share-a", contacts, previews)
+
+	assert.False(t, m.SessionBelongsToShare(sessionID, 1, "share-b"))
+}
+
+func TestSessionBelongsToShare_FalseForAnOrdinaryUnboundImportSession(t *testing.T) {
+	m := NewImportSessionManager()
+	contacts, previews := newTestVCFSessionArgs()
+	// Plain CreateVCFSession -- the path ordinary VCF/JSContact uploads use,
+	// never bound to any share.
+	sessionID := m.CreateVCFSession(1, contacts, previews)
+
+	assert.False(t, m.SessionBelongsToShare(sessionID, 1, "share-a"))
+}
+
+func TestSessionBelongsToShare_FalseForWrongUser(t *testing.T) {
+	m := NewImportSessionManager()
+	contacts, previews := newTestVCFSessionArgs()
+	sessionID := m.CreateVCFSessionForShare(1, "share-a", contacts, previews)
+
+	assert.False(t, m.SessionBelongsToShare(sessionID, 2, "share-a"), "a session must not validate for a different user even with the right share ID")
+}
+
+func TestSessionBelongsToShare_FalseForUnknownSession(t *testing.T) {
+	m := NewImportSessionManager()
+	assert.False(t, m.SessionBelongsToShare("nonexistent", 1, "share-a"))
+}

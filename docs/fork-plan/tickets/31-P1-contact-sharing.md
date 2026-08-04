@@ -67,6 +67,14 @@ Defaulting into the import path's behaviour by accident is the failure mode.
 - `npx tsc --noEmit` clean, `npx vitest run` green; verified in a real browser with two real accounts.
 
 ### Ticket-specific
+
+> **Note (2026-08-04): the four bullets below describe an anonymous bearer-token public link, which
+> contradicts this ticket's own main body above (an authenticated, in-app, user-to-user share with
+> create/list-incoming/list-outgoing/accept/decline endpoints and a "decision to make deliberately"
+> about merge policy — none of which makes sense for an anonymous link). Confirmed with the user: the
+> main body is authoritative. Built and shipped as the in-app user-to-user model; the bullets below are
+> stale and were never implemented. Left in place as a record of the discrepancy, not as guidance.
+
 - "One-time copy" — not live sync, not permission-based access. User selects a contact, picks fields, generates a shareable export.
 - Reuses the field-picker from T9 (selective export). If T9 is not done, this ticket must build a minimal picker.
 - The share link/token: generates a one-time access token, returns a URL. The recipient gets a read-only view or download.

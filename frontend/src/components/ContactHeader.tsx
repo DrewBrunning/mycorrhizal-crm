@@ -12,6 +12,7 @@ import AutoModeIcon from '@mui/icons-material/AutoMode';
 import ArchiveIcon from '@mui/icons-material/Archive';
 import UnarchiveIcon from '@mui/icons-material/Unarchive';
 import MergeIcon from '@mui/icons-material/MergeType';
+import ShareIcon from '@mui/icons-material/Share';
 import { mdiDownloadOutline, mdiNoteMultipleOutline } from '@mdi/js';
 import { useTranslation } from 'react-i18next';
 import { ContactFieldKey, resolveEnabledFields } from '../contactFields';
@@ -60,6 +61,7 @@ interface ContactHeaderProps {
   onUnarchiveContact?: () => void;
   onMergeContact?: () => void;
   onPrepView?: () => void;
+  onShareContact?: () => void;
   onExportContact: (format: string) => void;
 }
 
@@ -88,6 +90,7 @@ export default function ContactHeader({
   onUnarchiveContact,
   onMergeContact,
   onPrepView,
+  onShareContact,
   onExportContact
 }: ContactHeaderProps) {
   const { t } = useTranslation();
@@ -368,6 +371,12 @@ export default function ContactHeader({
                                   <ListItemText>{t('prep.title')}</ListItemText>
                                 </MenuItem>
                               ),
+                              onShareContact && (
+                                <MenuItem key="share" onClick={() => { setActionsMenuAnchor(null); onShareContact(); }}>
+                                  <ListItemIcon><ShareIcon fontSize="small" /></ListItemIcon>
+                                  <ListItemText>{t('contactShares.shareDialog.title')}</ListItemText>
+                                </MenuItem>
+                              ),
                               <MenuItem key="vcf4" onClick={() => { setActionsMenuAnchor(null); onExportContact('vcf4'); }}>
                                 <ListItemIcon><SvgIcon fontSize="small"><path d={mdiDownloadOutline} /></SvgIcon></ListItemIcon>
                                 <ListItemText>vCard 4.0</ListItemText>
@@ -433,6 +442,16 @@ export default function ContactHeader({
                               onClick={onPrepView}
                             >
                               {t('prep.title')}
+                            </Button>
+                          )}
+                          {onShareContact && (
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              startIcon={<ShareIcon />}
+                              onClick={onShareContact}
+                            >
+                              {t('contactShares.shareDialog.title')}
                             </Button>
                           )}
                           <Button

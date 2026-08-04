@@ -13,7 +13,8 @@
     "households": "Foyers",
     "profile": "Paramètres",
     "users": "Utilisateurs",
-    "data": "Données"
+    "data": "Données",
+    "shares": "Partages"
   },
   "household": {
     "title": "Foyers",
@@ -1317,5 +1318,49 @@
       "anniversary": "Anniversaire de mariage",
       "inDays": "dans {{days}} jour(s)"
     }
+  },
+  "contactShares": {
+    "title": "Partages de contacts",
+    "tabs": {
+      "incoming": "Reçus",
+      "outgoing": "Envoyés"
+    },
+    "shareDialog": {
+      "title": "Partager le contact",
+      "description": "Envoyez une copie filtrée et à usage unique de ce contact à un autre utilisateur de cette instance. Il ou elle décide d'accepter ou non le partage.",
+      "recipient": "Destinataire",
+      "selectRecipient": "Choisir un destinataire…",
+      "sharing": "Partage en cours…",
+      "shareButton": "Partager"
+    },
+    "incoming": {
+      "empty": "Aucun partage reçu.",
+      "from": "De {{username}}",
+      "accept": "Accepter",
+      "decline": "Refuser"
+    },
+    "outgoing": {
+      "empty": "Vous n'avez encore partagé aucun contact.",
+      "to": "À {{username}}"
+    },
+    "status": {
+      "pending": "En attente",
+      "accepted": "Accepté",
+      "declined": "Refusé"
+    },
+    "acceptDialog": {
+      "title": "Vérifier le contact partagé",
+      "description": "Choisissez ce qu'il faut faire de ce contact partagé avant de l'ajouter.",
+      "duplicateOf": "Correspond à : {{name}} ({{reason}})",
+      "actionLabel": "Action",
+      "actionAdd": "Ajouter comme nouveau",
+      "actionUpdate": "Mettre à jour l'existant",
+      "actionSkip": "Ignorer",
+      "confirm": "Confirmer",
+      "confirming": "Confirmation en cours…"
+    },
+    "declineConfirm": "Refuser ce partage ?",
+    "shareError": "Échec du partage du contact",
+    "loadError": "Échec du chargement des partages de contacts"
   }
 }
