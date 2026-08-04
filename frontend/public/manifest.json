@@ -3,35 +3,59 @@
   "name": "Mycorrhizal CRM",
   "icons": [
     {
-      "src": "android-chrome-192x192.png",
+      "src": "/icons/dark/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any",
+      "media": "(prefers-color-scheme: dark)"
     },
     {
-      "src": "android-chrome-512x512.png",
+      "src": "/icons/dark/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any",
+      "media": "(prefers-color-scheme: dark)"
     },
     {
-      "src": "apple-touch-icon.png",
-      "sizes": "180x180",
+      "src": "/icons/dark/maskable-icon-512.png",
+      "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "maskable",
+      "media": "(prefers-color-scheme: dark)"
     },
     {
-      "src": "favicon-32x32.png",
+      "src": "/icons/light/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any",
+      "media": "(prefers-color-scheme: light)"
+    },
+    {
+      "src": "/icons/light/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any",
+      "media": "(prefers-color-scheme: light)"
+    },
+    {
+      "src": "/icons/light/maskable-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable",
+      "media": "(prefers-color-scheme: light)"
+    },
+    {
+      "src": "/favicon-32x32.png",
       "sizes": "32x32",
       "type": "image/png"
     },
     {
-      "src": "favicon-16x16.png",
+      "src": "/favicon-16x16.png",
       "sizes": "16x16",
       "type": "image/png"
     },
     {
-      "src": "favicon.ico",
+      "src": "/favicon.ico",
       "sizes": "64x64 32x32 24x24 16x16",
       "type": "image/x-icon"
     }
