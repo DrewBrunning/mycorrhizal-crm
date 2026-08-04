@@ -19,9 +19,21 @@ items below are recurring bug classes that have shipped broken more than once.
 | `backend/` | Go. Gin + GORM + SQLite, raw-SQL migrations. |
 | `frontend/` | React 18 + TypeScript + MUI + vitest + Playwright. |
 
-**No production data exists yet.** Alpha comes after the pre-alpha tickets on the board. Until then,
-breaking changes and clean removals are cheap and preferred over compatibility shims. Do not add
-backwards-compatibility scaffolding "just in case."
+**Real production data exists as of `v0.2.0-alpha-candidate`.** The user deployed that tag to their own
+server (Docker) for real-world testing on 2026-08-04. Every commit before that tag was written under the
+opposite assumption ("no production data exists yet, breaking changes are cheap") — that history is fine
+as-is, but it no longer describes the present. From here forward:
+
+- **Migrations must preserve existing data.** A column rename/drop/retype needs a real backfill or an
+  explicit, deliberate call that the data it holds is safe to lose — not a silent clean removal. When in
+  doubt, ask; don't default to "just drop it."
+- **Soft-deleted rows are someone's undo button now, not test fixtures.** Be extra careful with anything
+  touching `DeleteContact`/`DeleteUser`'s cascade lists or the eventual T26 retention/purge job — the
+  purge window is a real decision about how long someone's actual data stays recoverable.
+- **Breaking API/contract changes still happen** (this is pre-alpha software, not a stability promise) —
+  but breaking *data* is a different, higher bar than breaking a request shape.
+- Still no backwards-compatibility scaffolding "just in case" for its own sake — the bar moved from "data
+  loss is free" to "data loss needs a reason and a heads-up," not to "never change the schema again."
 
 ## Commands
 

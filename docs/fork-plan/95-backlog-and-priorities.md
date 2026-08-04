@@ -250,6 +250,17 @@
 > Note on T23's ticket text: it says the rebrand established "Source Sans 3" for UI. That is stale —
 > `assets/fonts/README.md` and `theme.ts` both say IBM Plex Sans, and the shipped fonts match the
 > README. The ticket, not the code, is wrong.
+>
+> **Real production data as of `v0.2.0-alpha-candidate` (2026-08-04).** The user deployed that tag to
+> their own server for real-world testing, which retires the "Phase-to-alpha framing" note below (the
+> no-prod-data safe window it describes has closed — see `CLAUDE.md` for the corresponding development-
+> discipline update). Practical consequences for grooming from here: the risk-based alpha cut-line logic
+> that note explains no longer has a future safe window to place tickets inside, so re-apply rule 2
+> ("pre/post-alpha risk") as "does this touch real data" rather than "is it before alpha." **T26** (delete
+> semantics — purge job + constraint fixes, still open) is worth re-prioritizing on that basis: it's the
+> ticket that decides how long a real deletion stays recoverable, which now matters for an actual person's
+> data rather than test fixtures. Not re-ordering the board unilaterally here — flagging it for the next
+> grooming pass.
 
 ## How to read this
 
