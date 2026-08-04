@@ -215,8 +215,35 @@
 > version/commit instead of a hardcoded `"0.1.0"`, surfaced in a Settings "About" card, and the
 > request id now reaches the user on 5xx instead of only `console.error`.
 >
-> **Still open pre-alpha-2:** N4 (notes capture inbox), T25 (small functional gaps sweep), T23 (UI
-> polish). The review found no security issues — the posture documented under Tier 1 holds.
+> **Correction (same day):** the hardening pass's first write-up listed N4, T25 and T23 as still open.
+> They were not — all three were already built, and re-verifying each against its own ticket confirmed
+> it. N4's inbox reframe, debounced contact picker, and "filed notes leave the inbox" behaviour all
+> work (walked end to end in a browser: unfiled note → assign contact → count 1→0 → note appears on the
+> contact's timeline). T25's confirmed data-loss bug is fixed in `api/contacts.ts` with a passthrough
+> for non-standard address component kinds and a round-trip test; its sweep items are covered too
+> (`Passthrough` survival is asserted in `contact_record_reverse_test.go`, and `VCardExtra`'s only
+> reader is `carddav/vcard_mapper.go` restoring unmapped properties, which T22 owns). T23's three
+> calibration items are all addressed: EB Garamond wordmark + IBM Plex Sans UI, self-hosted with
+> `@font-face` in `public/fonts.css`, linked from `index.html` and permitted by nginx's `font-src
+> 'self'`; `@mdi/js`+`@mdi/react` added and used in 11 files including all three named starting points;
+> and the "Profile" sub-label now reads "Settings". Dark and light both verified across
+> notes/contacts/settings/network.
+>
+> **Two small gaps found while verifying, not worth blocking alpha on:**
+> - **N4's unfiled-count chip shows the loaded page, not the total.** `GET /notes` (unassigned) returns
+>   `next_cursor` but no `total`, and the chip renders `notes.length`. With more than one page of
+>   unfiled notes it under-reports and then grows as the user pages — which undercuts the "reads as a
+>   queue" intent in the ticket's item 1. Fix is a `total` on that response.
+> - **N4's "Done when" asked for a component test proving that *assigning a contact removes a note from
+>   the inbox*.** The suite covers the adjacent case (all-filed ⇒ empty inbox) but not the assign action
+>   itself. The behaviour is verified manually and by the backend filter; the test is the gap.
+>
+> **Nothing is left open pre-alpha-2.** The review found no security issues — the posture documented
+> under Tier 1 holds.
+>
+> Note on T23's ticket text: it says the rebrand established "Source Sans 3" for UI. That is stale —
+> `assets/fonts/README.md` and `theme.ts` both say IBM Plex Sans, and the shipped fonts match the
+> README. The ticket, not the code, is wrong.
 
 ## How to read this
 
@@ -299,13 +326,13 @@ each side — so a high rating does not by itself pull a ticket before alpha, an
 | # | Ticket | R | Size | Depends on | Source |
 |---|---|---|---|---|---|
 | 1 | **N1** Contact merge / dedupe for existing contacts — **DONE** (`c7b7e25`) | **5** | M | — | new (gap) |
-| 2 | **N4** Notes: dead-end journal → capture inbox | **4** | S–M | — | new (re-scope) |
+| 2 | **N4** Notes: dead-end journal → capture inbox — **DONE** (verified end-to-end 2026-08-04; see the unfiled-count note below) | **4** | S–M | — | new (re-scope) |
 | 3 | **T5** LifeEvent frontend + timeline surface — **DONE** (verified 2026-08-04) | 4 | M | — | WP-84, `91.6`/`91.8` |
 | 4 | **T5b** LifeEvent → reminder wiring — **DONE** (`syncLifeEventReminder`, verified 2026-08-04) | 4 | S | T5 | new (gap) |
 | 5 | **T2** Circle/Tag user-assisted triage migration — **DONE** (`CircleTagTriagePage.tsx`) | 4 | M | — | WP-84c-i, `91.5` |
 | 6 | **T3** Circle/Tag backend call-site rewiring — **DONE** (`e34e02f`, 2026-08-04) | 4 | S–M | T2 | WP-84c-ii |
 | 7 | **T4** Circle/Tag frontend rewiring (~18 files) — **DONE** (`useCircles`/`circleNamesByUid`) | 4 | L | T3 | WP-84c-iii |
-| 8 | **T25** Known small functional gaps sweep | 3 | S | — | Tier 0 notes |
+| 8 | **T25** Known small functional gaps sweep — **DONE** (address-component passthrough + round-trip test) | 3 | S | — | Tier 0 notes |
 | 8b | **T26** Delete semantics — purge job + constraint fixes | 3 | M | — | new (design, 2026-07-30) |
 | 9 | **T1** Household CRUD + suggestion trigger + review wiring — **DONE** (`HouseholdsPage.tsx`) | 3 | M | — | WP-83, §3d WP3 |
 | 10 | **T20a** Preferences — migrate `FoodPreference`, project `hobby` — **DONE** (`Contact.FoodPreference` retired) | 3 | M | — | `92.6`, `91.9` |
@@ -316,7 +343,7 @@ each side — so a high rating does not by itself pull a ticket before alpha, an
 | 15 | **T24** Non-critical test-coverage expansion — **substantially done** (`aaafbb3`, `207b407`); see the 2026-08-04 note | 2 | M | — | Tier 6, `45` |
 | 16 | **T8** OpenAPI coverage + spec/route drift test — **DONE** | 2\* | M | T1–T7 | `92.9` |
 | 17 | **T17** WP-92 change feeds + cursor pagination — **DONE** | 2\* | M | T8 | `92.5` |
-| 18 | **T23** UI polish — typography, icons, strings | 4 | M | *(soft: all UI done)* | Tier 6 |
+| 18 | **T23** UI polish — typography, icons, strings — **DONE** (fonts self-hosted, MDI added, copy fixed) | 4 | M | *(soft: all UI done)* | Tier 6 |
 | 19 | **T22** Legacy / dead-code audit + migration squash — **DONE** | 3 | L | all above | Tier 6 |
 | 20 | **T27** Contact CRM.Kind UI — pet/individual/animal dropdown — **DONE** (`826aca7`) | 3 | S | — | T22 audit finding |
 | 21 | **T28** Mobile contact view layout — scrollable tabs, action collapsing, 360px min-width — **DONE** | **5** | M | — | T23 polish |
