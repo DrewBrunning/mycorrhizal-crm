@@ -379,7 +379,11 @@ var headerToField = map[string]string{
 	"how we met": "how_we_met", "how_we_met": "how_we_met", "notes": "how_we_met", "how i met": "how_we_met",
 	"work": "work_information", "work_information": "work_information", "job": "work_information", "occupation": "work_information",
 	"contact information": "contact_information", "contact_information": "contact_information", "other contact": "contact_information",
-	"circles": "circles", "groups": "circles", "tags": "circles", "category": "circles", "categories": "circles", "labels": "circles",
+	// Grouping vocabularies split by TARGET (T3), not all collapsed onto
+	// "circles" as they were before Tag existed as a real destination:
+	// a Circle is a group you belong to, a Tag is a label you carry.
+	"circles": "circles", "groups": "circles",
+	"tags": "tags", "labels": "tags", "category": "tags", "categories": "tags",
 	// German
 	"vorname":  "firstname",
 	"nachname": "lastname", "familienname": "lastname",
@@ -555,6 +559,9 @@ func ContactToPreviewMap(contact *models.Contact) map[string]interface{} {
 	set("work_information", contact.WorkInformation)
 	if len(contact.Circles) > 0 {
 		preview["circles"] = strings.Join(contact.Circles, ", ")
+	}
+	if len(contact.ImportedTags) > 0 {
+		preview["tags"] = strings.Join(contact.ImportedTags, ", ")
 	}
 	return preview
 }
@@ -905,6 +912,13 @@ func BuildContactFromRow(userID uint, headers []string, row []string, mappings [
 			if v != "" {
 				contact.Circles = ParseCircles(v)
 			}
+		case "tags":
+			// Staged on the non-persisted ImportedTags field; materialized into
+			// real Tag + ContactTag rows once the contact has a VCardUID (see
+			// services.MaterializeImportedGroupings).
+			if v != "" {
+				contact.ImportedTags = ParseCircles(v)
+			}
 		case "email":
 			putValue(emailVals, &emailGroups, m.Group, v)
 		case "email_label":
@@ -1035,6 +1049,13 @@ func MergeImportedContact(existing *models.Contact, incoming *models.Contact) {
 	}
 	if len(incoming.Circles) > 0 {
 		existing.Circles = incoming.Circles
+	}
+	// ImportedTags is carried across so an "update" row materializes its tags
+	// too. Unlike Circles this is not persisted on the contact — it only needs
+	// to survive as far as MaterializeImportedGroupings, which is additive, so
+	// an update adds tags rather than replacing the contact's existing ones.
+	if len(incoming.ImportedTags) > 0 {
+		existing.ImportedTags = incoming.ImportedTags
 	}
 	// Multi-valued and structured vCard fields
 	if len(incoming.Emails) > 0 {

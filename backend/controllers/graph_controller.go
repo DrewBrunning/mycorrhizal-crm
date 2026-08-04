@@ -73,7 +73,6 @@ func GetGraph(c *gin.Context) {
 			Type:           "contact",
 			Label:          label,
 			PhotoThumbnail: contact.PhotoThumbnail,
-			Circles:        contact.Circles,
 		})
 	}
 

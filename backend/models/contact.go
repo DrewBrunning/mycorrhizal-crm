@@ -88,6 +88,15 @@ type Contact struct {
 	Notes              []Note     `json:"notes,omitempty"`     // One-to-many relationship with notes
 	Reminders          []Reminder `json:"reminders,omitempty"` // One-to-many relationship with reminders
 
+	// ImportedTags stages tag-shaped grouping values parsed out of a CSV/vCard
+	// import ("tags", "labels", "categories" columns) between parsing and
+	// services.MaterializeImportedGroupings turning them into real Tag +
+	// ContactTag rows. NOT persisted (`gorm:"-"`) and never serialized: Tag is
+	// a first-class entity, so unlike the legacy flat Circles column there is
+	// no tag column on `contacts` for this to live in, and adding one would
+	// recreate exactly the split-brain T3 exists to close.
+	ImportedTags []string `gorm:"-" json:"-"`
+
 	// Multi-valued vCard fields (stored as JSON arrays). The legacy Email/Phone/Address
 	// scalars above are kept in sync (see BeforeSave) as the denormalized "primary" value
 	// used for search and list views.

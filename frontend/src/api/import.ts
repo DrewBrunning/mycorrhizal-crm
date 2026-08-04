@@ -100,6 +100,12 @@ export const IMPORTABLE_CONTACT_FIELDS = [
   'how_we_met',
   'work_information',
   'contact_information',
+  // Groupings. Distinct targets since T3: 'circles' creates Circle +
+  // membership rows, 'tags' creates Tag + assignment rows. Both were missing
+  // from this list entirely, so the mapping dropdown could not offer them
+  // even though the backend accepted 'circles'.
+  'circles',
+  'tags',
 ] as const;
 
 export const REPEATABLE_VALUE_FIELDS = new Set<string>(['email', 'phone', 'url', 'impp']);
@@ -136,6 +142,8 @@ export const CONTACT_FIELD_LABELS: Record<string, string> = {
   how_we_met: 'How We Met',
   work_information: 'Work Information',
   contact_information: 'Contact Information',
+  circles: 'Circles',
+  tags: 'Tags',
 };
 
 // Upload a CSV file for import

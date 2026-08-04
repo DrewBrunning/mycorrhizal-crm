@@ -108,7 +108,10 @@ func TestGetGraph_ContactsRelationshipsAndActivities(t *testing.T) {
 	require.NotNil(t, nodeA)
 	assert.Equal(t, "contact", nodeA.Type)
 	assert.Equal(t, "Alice Anderson", nodeA.Label)
-	assert.Equal(t, []string{"Family"}, nodeA.Circles)
+	// GraphNode no longer carries a Circles field: it served the legacy flat
+	// Contact.Circles column, while NetworkGraph.tsx groups nodes from the real
+	// Circle entities and the frontend's GraphNode type never declared
+	// `circles` at all. It was dead payload carrying stale legacy strings.
 
 	nodeB := findGraphNode(resp.Nodes, "c-2")
 	require.NotNil(t, nodeB)

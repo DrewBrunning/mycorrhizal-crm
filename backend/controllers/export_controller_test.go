@@ -69,9 +69,27 @@ func TestExportData(t *testing.T) {
 		HowWeMet:           "Work conference",
 		WorkInformation:    "Software Engineer",
 		ContactInformation: "Prefers email",
-		Circles:            []string{"Friends", "Work"},
+		// Deliberately left on the legacy flat column and NOT mirrored into
+		// Circle entities: the CSV exporter must ignore it. See the
+		// "must not export the legacy flat column" assertion below.
+		Circles: []string{"StaleLegacyCircle"},
 	}
 	db.Create(&contact1)
+
+	// T3: the "Circles"/"Tags" export columns source from the real
+	// Circle/Tag entities, not the flat Contact.Circles JSON column. The
+	// exporter used to read that column, so it emitted stale legacy strings
+	// while omitting every membership the user had actually created.
+	friends := models.Circle{UserID: user.ID, Name: "Friends"}
+	work := models.Circle{UserID: user.ID, Name: "Work"}
+	db.Create(&friends)
+	db.Create(&work)
+	db.Create(&models.CircleMember{CircleID: friends.ID, UserID: user.ID, MemberVCardUID: contact1.VCardUID})
+	db.Create(&models.CircleMember{CircleID: work.ID, UserID: user.ID, MemberVCardUID: contact1.VCardUID})
+
+	vegan := models.Tag{UserID: user.ID, Name: "vegan"}
+	db.Create(&vegan)
+	db.Create(&models.ContactTag{TagID: vegan.ID, UserID: user.ID, ContactVCardUID: contact1.VCardUID})
 
 	// T20a: the "Food Preference" export column sources from the structured
 	// preferences table now, not the retired Contact.FoodPreference field.
@@ -174,7 +192,10 @@ func TestExportData(t *testing.T) {
 	assert.Contains(t, body, "alice@example.com")
 	assert.Contains(t, body, "Bob")
 	assert.Contains(t, body, "Smith")
-	assert.Contains(t, body, "Friends; Work")
+	assert.Contains(t, body, "Friends; Work", "the Circles column must source from the Circle entities")
+	assert.Contains(t, body, "vegan", "the Tags column must source from the Tag entities")
+	assert.NotContains(t, body, "StaleLegacyCircle",
+		"the exporter must not fall back to the legacy flat Contact.Circles column")
 	assert.Contains(t, body, "Vegetarian", "the Food Preference column must source from the preferences table")
 
 	// Verify relationships section
