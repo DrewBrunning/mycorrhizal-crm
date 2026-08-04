@@ -148,7 +148,6 @@ export default function ContactDetailPage() {
     lastname: '',
     suffix: '',
     nickname: '',
-    gender: '',
     // CRMEnvelope.Kind (T27): human|animal. Defaults to human so the
     // header's Kind select always has a valid selection.
     kind: 'human',
@@ -762,9 +761,11 @@ export default function ContactDetailPage() {
   // building an organization/title patch needs to know the *other* half of
   // the pair (department when editing organization, and vice versa) --
   // which only the current `record` has.
-  const buildRecordPatch = (field: string, value: string): { card?: Partial<CardModel>; crm?: Partial<CRMEnvelope> } => {
+  const buildRecordPatch = (field: string, value: string): { card?: Partial<CardModel>; crm?: Partial<CRMEnvelope>; gender?: string } => {
     const card = record?.card || {};
     switch (field) {
+      case 'gender':
+        return { gender: value };
       case 'birthday':
         return { card: { anniversaries: withAnniversary(card.anniversaries, 'birth', value) } };
       case 'anniversary':
@@ -815,7 +816,7 @@ export default function ContactDetailPage() {
 
     try {
       const updated = await updateContactRecord(id!, {
-        gender: record.gender,
+        gender: patch.gender ?? record.gender,
         card: { ...record.card, ...patch.card },
         crm: { ...record.crm, ...patch.crm },
       });
@@ -867,7 +868,6 @@ export default function ContactDetailPage() {
       lastname: nameComponentValue(components, 'surname') || '',
       suffix: nameComponentValue(components, 'generation') || '',
       nickname: record.card?.nicknames?.[0]?.name || '',
-      gender: record.gender ? record.gender.toLowerCase() : '',
       kind: record.crm?.kind || 'human',
       cardKind: record.card?.kind || '',
       language: record.card?.language || '',
@@ -877,7 +877,7 @@ export default function ContactDetailPage() {
 
   const handleCancelEditProfile = () => {
     setEditingProfile(false);
-    setProfileValues({ prefix: '', firstname: '', middle_name: '', lastname: '', suffix: '', nickname: '', gender: '', kind: 'human', cardKind: '', language: '' });
+    setProfileValues({ prefix: '', firstname: '', middle_name: '', lastname: '', suffix: '', nickname: '', kind: 'human', cardKind: '', language: '' });
   };
 
   const handleSaveProfile = async () => {
@@ -905,7 +905,7 @@ export default function ContactDetailPage() {
 
     try {
       const updated = await updateContactRecord(id!, {
-        gender: profileValues.gender,
+        gender: record.gender,
         card: {
           ...record.card,
           name: {
@@ -1096,6 +1096,7 @@ export default function ContactDetailPage() {
         <ContactInformation
           card={record.card}
           crm={record.crm}
+          gender={record.gender}
           editingField={editingField}
           editValue={editValue}
           validationError={validationError}

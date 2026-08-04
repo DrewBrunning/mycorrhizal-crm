@@ -125,6 +125,13 @@ export const DEFAULT_ENABLED_CONTACT_FIELDS: ContactFieldKey[] = [
 // vCard TYPE options for typed multi-value fields (emails/phones/addresses/urls).
 export const CONTACT_TYPE_OPTIONS = ['home', 'work', 'cell', 'fax', 'other'] as const;
 
+// Gender is a legacy free-text CRM field (backend validate: omitempty,max=100 —
+// no enum, and it deliberately has no vCard home, see contact_record.go), so
+// these are convenience suggestions for the free-solo Autocomplete, not a
+// constrained set. The i18n keys are t(`contacts.${value}`); unrecognized
+// free-text values are stored and displayed verbatim.
+export const GENDER_OPTIONS = ['male', 'female', 'non_binary', 'genderfluid', 'other', 'prefer_not_to_say'] as const;
+
 // vCard CONTEXT options (RFC 9554 §4.1.2): the standard usage contexts shared
 // by the neutral model's contexts arrays on emails/phones/addresses/online
 // services/nicknames/languages.

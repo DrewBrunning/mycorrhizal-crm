@@ -11,7 +11,7 @@ test('renders existing pronouns and grammatical genders', () => {
     pronouns: [{ pronouns: 'they/them' }],
     grammaticalGenders: [{ value: 'feminine', language: 'fr' }],
   };
-  render(<SpeakToAsEditor label="Pronouns" value={value} onChange={vi.fn()} />);
+  render(<SpeakToAsEditor value={value} onChange={vi.fn()} />);
   expect(screen.getByDisplayValue('they/them')).toBeInTheDocument();
   expect(screen.getByDisplayValue('fr')).toBeInTheDocument();
 });
@@ -19,7 +19,7 @@ test('renders existing pronouns and grammatical genders', () => {
 test('adds a new pronoun row and reports it upward', () => {
   const onChange = vi.fn();
   const value: CardSpeakToAs = { pronouns: [], grammaticalGenders: [] };
-  render(<SpeakToAsEditor label="Pronouns" value={value} onChange={onChange} />);
+  render(<SpeakToAsEditor value={value} onChange={onChange} />);
 
   const addButtons = screen.getAllByRole('button', { name: 'Add' });
   fireEvent.click(addButtons[0]);
@@ -36,7 +36,7 @@ test('removing a grammatical gender reports the filtered list upward', () => {
     pronouns: [],
     grammaticalGenders: [{ value: 'masculine' }, { value: 'neuter' }],
   };
-  render(<SpeakToAsEditor label="Pronouns" value={value} onChange={onChange} />);
+  render(<SpeakToAsEditor value={value} onChange={onChange} />);
 
   const deleteButtons = screen.getAllByLabelText('Delete');
   fireEvent.click(deleteButtons[0]);

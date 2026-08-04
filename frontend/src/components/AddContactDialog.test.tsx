@@ -1,5 +1,6 @@
 import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react';
+import i18n from '../i18n/config';
 import '../i18n/config';
 import AddContactDialog from './AddContactDialog';
 import { SnackbarProvider } from '../context/SnackbarContext';
@@ -104,12 +105,46 @@ test('submits card.kind = group and card.language when set (WP13/WP4)', async ()
   fireEvent.change(screen.getByLabelText('First Name *'), { target: { value: 'Orchestra' } });
   fireEvent.mouseDown(screen.getByLabelText('Contact Kind'));
   fireEvent.click(await screen.findByText('Group'));
-  fireEvent.change(screen.getByLabelText('Language'), { target: { value: 'de' } });
+  // The Language field is a free-solo Autocomplete; typing then pressing Enter
+  // commits the typed BCP-47 tag as the card language.
+  const langInput = screen.getByLabelText('Language');
+  fireEvent.change(langInput, { target: { value: 'de' } });
+  fireEvent.keyDown(langInput, { key: 'Enter' });
   fireEvent.click(screen.getByRole('button', { name: 'Create' }));
 
   await waitFor(() => expect(mocked).toHaveBeenCalled());
   expect(mocked.mock.calls[0][0].card.kind).toBe('group');
   expect(mocked.mock.calls[0][0].card.language).toBe('de');
+});
+
+test('defaults the card language to the UI language when not touched', async () => {
+  const mocked = vi.mocked(createContactRecord).mockResolvedValue({
+    id: 6,
+    uid: 'uid-6',
+    etag: '',
+    card: {},
+    crm: {},
+  });
+  render(
+    <DateFormatProvider>
+      <SnackbarProvider>
+        <AddContactDialog
+          open
+          onClose={vi.fn()}
+          onContactAdded={vi.fn()}
+          availableCircles={[]}
+          availableTags={[]}
+          enabledFields={resolveEnabledFields(['language'])}
+        />
+      </SnackbarProvider>
+    </DateFormatProvider>
+  );
+
+  fireEvent.change(screen.getByLabelText('First Name *'), { target: { value: 'Ada' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+
+  await waitFor(() => expect(mocked).toHaveBeenCalled());
+  expect(mocked.mock.calls[0][0].card.language).toBe((i18n.language || 'en').split('-')[0]);
 });
 
 test('submits speakToAs pronouns and personalInfo when filled (WP1/WP2)', async () => {
@@ -136,13 +171,15 @@ test('submits speakToAs pronouns and personalInfo when filled (WP1/WP2)', async 
   );
 
   fireEvent.change(screen.getByLabelText('First Name *'), { target: { value: 'Ada' } });
-  // Add a pronoun row (first Add button in the SpeakToAs editor) and a
-  // personal-info row (first Add button in the PersonalInfo editor), then
-  // fill each row's labeled input.
-  const addButtons = screen.getAllByRole('button', { name: 'Add' });
-  fireEvent.click(addButtons[0]);
+  // Add a pronoun row (SpeakToAs editor) and a personal-info row (PersonalInfo
+  // editor), then fill each row's labeled input. Each query is scoped to its
+  // editor so the test doesn't depend on the fields' on-screen ordering.
+  const speakToAsSection = screen.getByText('Pronouns').parentElement as HTMLElement;
+  const personalInfoSection = screen.getByText('Personal Info (Expertise / Hobbies / Interests)').parentElement as HTMLElement;
+
+  fireEvent.click(within(speakToAsSection).getAllByRole('button', { name: 'Add' })[0]);
   fireEvent.change(screen.getByLabelText('Pronouns'), { target: { value: 'she/her' } });
-  fireEvent.click(addButtons[2]);
+  fireEvent.click(within(personalInfoSection).getByRole('button', { name: 'Add' }));
   fireEvent.change(screen.getByLabelText('Value'), { target: { value: 'math' } });
   fireEvent.click(screen.getByRole('button', { name: 'Create' }));
 

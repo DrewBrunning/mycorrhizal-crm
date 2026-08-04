@@ -154,6 +154,8 @@
     "selectGender": "Select gender...",
     "male": "Male",
     "female": "Female",
+    "non_binary": "Non-binary",
+    "genderfluid": "Genderfluid",
     "other": "Other",
     "prefer_not_to_say": "Prefer not to say",
     "kind": "Kind",
@@ -284,6 +286,7 @@
     "preferredLanguagesLabel": "Preferred Languages",
     "cardKindLabel": "Contact Kind",
     "language": "Language",
+    "languageInfo": "The language of this vCard as an ISO-639 / BCP-47 tag (e.g. 'de-AT'). This is card metadata — the language the card data is written in — not the languages the contact speaks. Pronouns, grammatical gender, and preferred languages refer to spoken languages.",
     "anniversaryFields": {
       "kindLabel": "Type",
       "kindOptions": {
@@ -396,6 +399,15 @@
   "contactDetail": {
     "notFound": "Contact not found",
     "generalInfo": "General Information",
+    "section": {
+      "name": "Name",
+      "metadata": "Card metadata",
+      "about": "About",
+      "contact": "Contact",
+      "genderAndPronouns": "Gender & Pronouns",
+      "professional": "Professional",
+      "notes": "Notes"
+    },
     "email": "Email",
     "phone": "Phone",
     "birthday": "Birthday",

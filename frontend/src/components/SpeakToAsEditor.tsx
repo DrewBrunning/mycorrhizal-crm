@@ -17,7 +17,6 @@ import { useRowKeys } from '../hooks/useRowKeys';
 import { CONTEXT_OPTIONS, GRAMMATICAL_GENDER_OPTIONS } from '../contactFields';
 
 interface SpeakToAsEditorProps {
-  label: string;
   value: CardSpeakToAs;
   onChange: (next: CardSpeakToAs) => void;
 }
@@ -25,7 +24,7 @@ interface SpeakToAsEditorProps {
 const EMPTY_PRONOUN: CardPronouns = { pronouns: '' };
 const EMPTY_GENDER: CardGrammaticalGender = { value: '' };
 
-export default function SpeakToAsEditor({ label, value, onChange }: SpeakToAsEditorProps) {
+export default function SpeakToAsEditor({ value, onChange }: SpeakToAsEditorProps) {
   const { t } = useTranslation();
   const genders = value.grammaticalGenders || [];
   const pronouns = value.pronouns || [];
@@ -61,10 +60,6 @@ export default function SpeakToAsEditor({ label, value, onChange }: SpeakToAsEdi
   return (
     <Box>
       <Typography variant="subtitle2" gutterBottom>
-        {label}
-      </Typography>
-
-      <Typography variant="caption" color="text.secondary">
         {t('contacts.speakToAs.pronouns')}
       </Typography>
       <Stack spacing={1} sx={{ mt: 0.5 }}>
@@ -110,7 +105,7 @@ export default function SpeakToAsEditor({ label, value, onChange }: SpeakToAsEdi
         </Box>
       </Stack>
 
-      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
+      <Typography variant="subtitle2" gutterBottom sx={{ mt: 2 }}>
         {t('contacts.speakToAs.grammaticalGender')}
       </Typography>
       <Stack spacing={1} sx={{ mt: 0.5 }}>

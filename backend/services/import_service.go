@@ -678,6 +678,10 @@ func NormalizeGender(input string) string {
 		return "other"
 	case "prefer not to say", "prefer_not_to_say", "keine angabe":
 		return "other"
+	case "non-binary", "nonbinary", "non binaire", "nichtbinär", "nicht binär", "no binario", "non binario":
+		return "non_binary"
+	case "genderfluid", "gender fluid", "genre fluide", "género fluido", "genere fluido":
+		return "genderfluid"
 	default:
 		return input
 	}

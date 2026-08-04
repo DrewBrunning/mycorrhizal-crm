@@ -13,7 +13,8 @@ import {
   Typography,
   Stack,
   FormControlLabel,
-  Switch
+  Switch,
+  Divider,
 } from '@mui/material';
 import AppDialog from './AppDialog';
 import MultiValueField from './MultiValueField';
@@ -21,6 +22,7 @@ import AddressFields from './AddressFields';
 import FieldValueEditor from './FieldValueEditor';
 import SpeakToAsEditor from './SpeakToAsEditor';
 import PersonalInfoEditor from './PersonalInfoEditor';
+import LanguageField from './LanguageField';
 import {
   createContactRecord,
   ContactValue,
@@ -54,7 +56,8 @@ import { createReminder } from '../api/reminders';
 import { useSnackbar } from '../context/SnackbarContext';
 import { handleError, getErrorMessage } from '../utils/errorHandler';
 import { useDateFormat } from '../DateFormatProvider';
-import { ContactFieldKey, resolveEnabledFields } from '../contactFields';
+import { ContactFieldKey, resolveEnabledFields, GENDER_OPTIONS } from '../contactFields';
+import i18n from '../i18n/config';
 
 interface AddContactDialogProps {
   open: boolean;
@@ -79,7 +82,9 @@ const emptyForm = {
   kind: 'human',
   // Card.Kind (WP13, T29): individual|group|org|location|application|device.
   cardKind: '',
-  // Card.Language (WP4, T29): default language tag.
+  // Card.Language (WP4, T29): the vCard's language tag. Defaults to the user's
+  // display language — this is card metadata, not the language the contact
+  // speaks (see LanguageField's info tooltip).
   language: '',
   birthday: '',
   anniversary: '',
@@ -107,7 +112,23 @@ export default function AddContactDialog({
   const enabled = enabledFields ?? resolveEnabledFields(null);
   const isOn = (key: ContactFieldKey) => enabled.has(key);
 
-  const [formData, setFormData] = useState({ ...emptyForm });
+  // The vCard's default language tag is prefilled from the language the user is
+  // displaying the system in (e.g. "de" from "de-AT"). Region subtags are
+  // dropped — the base ISO-639 code is what the dropdown enumerates.
+  const defaultLanguage = () => (i18n.language || 'en').split('-')[0];
+
+  // Section headings for the Add Contact form, matching the overline style used
+  // by the General Info tab on the contact detail page.
+  const SectionHeading = ({ label }: { label: string }) => (
+    <Box>
+      <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 0.08, fontSize: '0.72rem' }}>
+        {label}
+      </Typography>
+      <Divider sx={{ mt: 0.5 }} />
+    </Box>
+  );
+
+  const [formData, setFormData] = useState(() => ({ ...emptyForm, language: defaultLanguage() }));
   const [emails, setEmails] = useState<ContactValue[]>([]);
   const [phones, setPhones] = useState<ContactValue[]>([]);
   const [addresses, setAddresses] = useState<ContactAddress[]>([]);
@@ -337,7 +358,7 @@ export default function AddContactDialog({
   };
 
   const handleClose = () => {
-    setFormData({ ...emptyForm });
+    setFormData({ ...emptyForm, language: defaultLanguage() });
     setEmails([]);
     setPhones([]);
     setAddresses([]);
@@ -365,15 +386,9 @@ export default function AddContactDialog({
           </Typography>
         )}
         <Stack spacing={2} sx={{ mt: 1 }}>
-          {(isOn('prefix') || isOn('suffix')) && (
-            <Stack direction="row" spacing={2}>
-              {isOn('prefix') && (
-                <TextField label={t('contacts.prefix')} fullWidth value={formData.prefix} onChange={handleChange('prefix')} />
-              )}
-              {isOn('suffix') && (
-                <TextField label={t('contacts.suffix')} fullWidth value={formData.suffix} onChange={handleChange('suffix')} />
-              )}
-            </Stack>
+          <SectionHeading label={t('contactDetail.section.name')} />
+          {isOn('prefix') && (
+            <TextField label={t('contacts.prefix')} fullWidth value={formData.prefix} onChange={handleChange('prefix')} />
           )}
           <Stack direction="row" spacing={2}>
             <TextField
@@ -383,6 +398,9 @@ export default function AddContactDialog({
               onChange={handleChange('firstname')}
               required
             />
+            {isOn('middle_name') && (
+              <TextField label={t('contacts.middleName')} fullWidth value={formData.middle_name} onChange={handleChange('middle_name')} />
+            )}
             <TextField
               label={t('contacts.lastname')}
               fullWidth
@@ -390,6 +408,14 @@ export default function AddContactDialog({
               onChange={handleChange('lastname')}
             />
           </Stack>
+          {isOn('suffix') && (
+            <TextField label={t('contacts.suffix')} fullWidth value={formData.suffix} onChange={handleChange('suffix')} />
+          )}
+          {isOn('nickname') && (
+            <TextField label={t('contacts.nickname')} fullWidth value={formData.nickname} onChange={handleChange('nickname')} />
+          )}
+
+          <SectionHeading label={t('contactDetail.section.metadata')} />
           <TextField
             select
             label={t('contacts.kind')}
@@ -419,58 +445,14 @@ export default function AddContactDialog({
             </TextField>
           )}
           {isOn('language') && (
-            <TextField
-              label={t('contacts.language')}
-              fullWidth
+            <LanguageField
               value={formData.language}
-              onChange={handleChange('language')}
-              placeholder="en"
+              onChange={(v) => handleChange('language')({ target: { value: v } } as any)}
+              fullWidth
             />
           )}
-          {isOn('middle_name') && (
-            <TextField label={t('contacts.middleName')} fullWidth value={formData.middle_name} onChange={handleChange('middle_name')} />
-          )}
-          <Stack direction="row" spacing={2}>
-            {isOn('nickname') && (
-              <TextField
-                label={t('contacts.nickname')}
-                fullWidth
-                value={formData.nickname}
-                onChange={handleChange('nickname')}
-              />
-            )}
-            {isOn('gender') && (
-              <Autocomplete
-                fullWidth
-                freeSolo
-                options={['male', 'female', 'other', 'prefer_not_to_say']}
-                getOptionLabel={(v) => ['male', 'female', 'other', 'prefer_not_to_say'].includes(v) ? t(`contacts.${v}`) : (v || '')}
-                value={formData.gender || null}
-                onChange={(_, v) => handleChange('gender')({ target: { value: v || '' } } as any)}
-                onInputChange={(_, v) => handleChange('gender')({ target: { value: v } } as any)}
-                renderInput={(params) => (
-                  <TextField {...params} label={t('contacts.gender')} fullWidth placeholder={t('contacts.selectGender')} />
-                )}
-              />
-            )}
-          </Stack>
 
-          {isOn('emails') && (
-            <MultiValueField label={t('contacts.email')} value={emails} onChange={setEmails} valueType="email" defaultType="home" />
-          )}
-          {isOn('phones') && (
-            <MultiValueField label={t('contacts.phone')} value={phones} onChange={setPhones} valueType="tel" defaultType="cell" />
-          )}
-          {isOn('addresses') && (
-            <AddressFields label={t('contacts.address')} value={addresses} onChange={setAddresses} />
-          )}
-          {isOn('links') && (
-            <MultiValueField label={t('contacts.urls')} value={urls} onChange={setUrls} valueType="url" defaultType="home" />
-          )}
-          {isOn('imppAddresses') && (
-            <MultiValueField label={t('contacts.impps')} value={impps} onChange={setImpps} defaultType="" freeTextType />
-          )}
-
+          <SectionHeading label={t('contactDetail.section.about')} />
           {isOn('birthday') && (
             <>
               <TextField
@@ -504,14 +486,47 @@ export default function AddContactDialog({
               helperText={t('contacts.birthdayFormat')}
             />
           )}
-
-          {isOn('speakToAs') && (
-            <SpeakToAsEditor label={t('contacts.speakToAsLabel')} value={speakToAs} onChange={setSpeakToAs} />
-          )}
           {isOn('personalInfo') && (
             <PersonalInfoEditor label={t('contacts.personalInfoLabel')} value={personalInfo} onChange={setPersonalInfo} />
           )}
 
+          <SectionHeading label={t('contactDetail.section.contact')} />
+          {isOn('phones') && (
+            <MultiValueField label={t('contacts.phone')} value={phones} onChange={setPhones} valueType="tel" defaultType="cell" />
+          )}
+          {isOn('addresses') && (
+            <AddressFields label={t('contacts.address')} value={addresses} onChange={setAddresses} />
+          )}
+          {isOn('emails') && (
+            <MultiValueField label={t('contacts.email')} value={emails} onChange={setEmails} valueType="email" defaultType="home" />
+          )}
+          {isOn('imppAddresses') && (
+            <MultiValueField label={t('contacts.impps')} value={impps} onChange={setImpps} defaultType="" freeTextType />
+          )}
+          {isOn('links') && (
+            <MultiValueField label={t('contacts.urls')} value={urls} onChange={setUrls} valueType="url" defaultType="home" />
+          )}
+
+          <SectionHeading label={t('contactDetail.section.genderAndPronouns')} />
+          {isOn('speakToAs') && (
+            <SpeakToAsEditor value={speakToAs} onChange={setSpeakToAs} />
+          )}
+          {isOn('gender') && (
+            <Autocomplete
+              fullWidth
+              freeSolo
+              options={[...GENDER_OPTIONS]}
+              getOptionLabel={(v) => GENDER_OPTIONS.includes(v as (typeof GENDER_OPTIONS)[number]) ? t(`contacts.${v}`) : (v || '')}
+              value={formData.gender || null}
+              onChange={(_, v) => handleChange('gender')({ target: { value: v || '' } } as any)}
+              onInputChange={(_, v) => handleChange('gender')({ target: { value: v } } as any)}
+              renderInput={(params) => (
+                <TextField {...params} label={t('contacts.gender')} fullWidth placeholder={t('contacts.selectGender')} />
+              )}
+            />
+          )}
+
+          <SectionHeading label={t('contactDetail.section.professional')} />
           {isOn('organizations') && (
             <>
               <TextField label={t('contacts.organization')} fullWidth value={formData.organization} onChange={handleChange('organization')} />
@@ -535,6 +550,7 @@ export default function AddContactDialog({
             />
           )}
 
+          <SectionHeading label={t('contactDetail.section.notes')} />
           {isOn('how_we_met') && (
             <TextField
               label={t('contacts.howWeMet')}

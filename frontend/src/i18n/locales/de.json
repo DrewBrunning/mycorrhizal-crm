@@ -154,6 +154,8 @@
     "selectGender": "Geschlecht auswählen...",
     "male": "Männlich",
     "female": "Weiblich",
+    "non_binary": "Nicht-binär",
+    "genderfluid": "Genderfluid",
     "other": "Andere",
     "prefer_not_to_say": "Keine Angabe",
     "kind": "Art",
@@ -342,6 +344,7 @@
       "device": "Gerät"
     },
     "language": "Sprache",
+    "languageInfo": "Die Sprache dieser vCard als ISO-639-/BCP-47-Tag (z. B. 'de-AT'). Dies sind Metadaten der Karte — die Sprache, in der die Kartendaten verfasst sind — und nicht die Sprachen, die die Person spricht. Pronomen, grammatisches Geschlecht und bevorzugte Sprachen beziehen sich auf gesprochene Sprachen.",
     "anniversaryFields": {
       "kindLabel": "Art",
       "kindOptions": {
@@ -395,6 +398,15 @@
   "contactDetail": {
     "notFound": "Kontakt nicht gefunden",
     "generalInfo": "Allgemeine Informationen",
+    "section": {
+      "name": "Name",
+      "metadata": "Karten-Metadaten",
+      "about": "Über die Person",
+      "contact": "Kontakt",
+      "genderAndPronouns": "Geschlecht & Pronomen",
+      "professional": "Beruflich",
+      "notes": "Notizen"
+    },
     "email": "E-Mail",
     "phone": "Telefon",
     "birthday": "Geburtstag",

@@ -231,6 +231,18 @@ func TestNormalizeGender_OtherSynonyms(t *testing.T) {
 	}
 }
 
+func TestNormalizeGender_NonBinarySynonyms(t *testing.T) {
+	for _, in := range []string{"non-binary", "nonbinary", "Non-Binary", "nichtbinär", "nicht binär", "no binario", "non binaire", "non binario"} {
+		assert.Equal(t, "non_binary", NormalizeGender(in), "input %q", in)
+	}
+}
+
+func TestNormalizeGender_GenderfluidSynonyms(t *testing.T) {
+	for _, in := range []string{"genderfluid", "gender fluid", "genre fluide", "género fluido", "genere fluido"} {
+		assert.Equal(t, "genderfluid", NormalizeGender(in), "input %q", in)
+	}
+}
+
 // TestNormalizeGender_PreferNotToSayMapsToOther documents an observable,
 // slightly surprising behavior: even though models.Contact's Gender
 // validation accepts the literal enum value "prefer_not_to_say", the
@@ -245,7 +257,7 @@ func TestNormalizeGender_PreferNotToSayMapsToOther(t *testing.T) {
 // TestNormalizeGender_UnrecognizedPassedThrough asserts that
 // unrecognized gender values are preserved as-is (gender is free-text).
 func TestNormalizeGender_UnrecognizedPassedThrough(t *testing.T) {
-	assert.Equal(t, "Non-binary", NormalizeGender("Non-binary"))
+	assert.Equal(t, "Other/Prefer not to say", NormalizeGender("Other/Prefer not to say"))
 	assert.Equal(t, "xyz123", NormalizeGender("xyz123"))
 	assert.Equal(t, "", NormalizeGender(""))
 }

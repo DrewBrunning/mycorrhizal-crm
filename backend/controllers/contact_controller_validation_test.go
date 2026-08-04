@@ -112,7 +112,7 @@ func TestCreateContact_RealValidation_FreeTextGenderAccepted(t *testing.T) {
 }
 
 func TestCreateContact_RealValidation_ValidGenderValues(t *testing.T) {
-	validGenders := []string{"male", "female", "other", "prefer_not_to_say"}
+	validGenders := []string{"male", "female", "other", "prefer_not_to_say", "non_binary", "genderfluid"}
 
 	for _, gender := range validGenders {
 		t.Run(gender, func(t *testing.T) {

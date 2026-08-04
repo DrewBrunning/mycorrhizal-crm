@@ -154,6 +154,8 @@
     "selectGender": "Seleccionar género...",
     "male": "Masculino",
     "female": "Femenino",
+    "non_binary": "No binario",
+    "genderfluid": "Género fluido",
     "other": "Otro",
     "prefer_not_to_say": "Prefiero no decirlo",
     "kind": "Tipo",
@@ -342,6 +344,7 @@
       "device": "Dispositivo"
     },
     "language": "Idioma",
+    "languageInfo": "El idioma de esta vCard como etiqueta ISO-639/BCP-47 (p. ej. 'de-AT'). Esto son metadatos de la tarjeta — el idioma en el que están escritos los datos — no los idiomas que habla la persona. Los pronombres, el género gramatical y los idiomas preferidos se refieren a idiomas hablados.",
     "anniversaryFields": {
       "kindLabel": "Tipo",
       "kindOptions": {
@@ -395,6 +398,15 @@
   "contactDetail": {
     "notFound": "Contacto no encontrado",
     "generalInfo": "Información General",
+    "section": {
+      "name": "Nombre",
+      "metadata": "Metadatos de la tarjeta",
+      "about": "Acerca de",
+      "contact": "Contacto",
+      "genderAndPronouns": "Género y pronombres",
+      "professional": "Profesional",
+      "notes": "Notas"
+    },
     "email": "Email",
     "phone": "Teléfono",
     "birthday": "Cumpleaños",
