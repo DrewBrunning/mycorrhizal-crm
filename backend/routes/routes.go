@@ -52,6 +52,11 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.GET("/users/enabled-contact-fields", controllers.GetEnabledContactFields)
 			protected.PATCH("/users/enabled-contact-fields", middleware.ValidateJSONMiddleware(&models.EnabledContactFieldsInput{}), controllers.UpdateEnabledContactFields)
 			protected.GET("/users/me", controllers.GetCurrentUser)
+			// P1 contact sharing recipient picker (docs/fork-plan/tickets/
+			// 31-P1-contact-sharing.md) — the only non-admin way to discover
+			// other users on the instance; deliberately thinner than
+			// admin-only ListUsers (id+username only).
+			protected.GET("/users/directory", controllers.ListUserDirectory)
 
 			// Contact routes
 			protected.GET("/contacts", controllers.GetContacts)
@@ -93,6 +98,21 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// (see UploadJSContactForImport's doc comment): the session it
 			// creates is format-agnostic once parsed into []VCFContactData.
 			protected.POST("/contacts/import/jscontact/upload", controllers.UploadJSContactForImport)
+
+			// P1 contact sharing (docs/fork-plan/tickets/31-P1-contact-sharing.md)
+			// — one-time filtered copy between two users on the same
+			// instance. Accept is preview-only (parses the stored payload
+			// through the same import pipeline above); Confirm delegates to
+			// ConfirmVCF (the exact method /contacts/import/vcf/confirm
+			// uses) and only then flips the share to accepted.
+			protected.POST("/contact-shares", middleware.ValidateJSONMiddleware(&models.ContactShareInput{}), controllers.CreateContactShare)
+			protected.GET("/contact-shares/incoming", controllers.ListIncomingContactShares)
+			protected.GET("/contact-shares/outgoing", controllers.ListOutgoingContactShares)
+			protected.POST("/contact-shares/:id/accept", controllers.AcceptContactShare)
+			protected.POST("/contact-shares/:id/confirm", middleware.ValidateJSONMiddleware(&models.ImportConfirmRequest{}), func(c *gin.Context) {
+				controllers.ConfirmContactShare(c, cfg)
+			})
+			protected.POST("/contact-shares/:id/decline", controllers.DeclineContactShare)
 
 			// RelationshipEdge routes (graph-model relationship API; replaces the
 			// legacy /contacts/:id/relationships stack, removed in §3d WP5)

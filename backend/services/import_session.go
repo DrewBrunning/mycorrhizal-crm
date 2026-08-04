@@ -26,6 +26,12 @@ type importSessionData struct {
 	importType  string           // "csv" or "vcf"
 	vcfContacts []VCFContactData // VCF parsed contacts (nil for CSV imports)
 	csvContacts []models.Contact // CSV contacts built during preview (nil for VCF imports)
+
+	// boundShareID, when non-empty, ties this session to the ContactShare
+	// (P1, docs/fork-plan/tickets/31-P1-contact-sharing.md) whose accept step
+	// created it — see CreateVCFSessionForShare/SessionBelongsToShare below.
+	// Empty for ordinary CSV/VCF/JSContact import sessions.
+	boundShareID string
 }
 
 // ImportSessionManager owns the lifecycle of in-progress import sessions: creation,
@@ -137,6 +143,40 @@ func (m *ImportSessionManager) CreateVCFSession(userID uint, vcfContacts []VCFCo
 	m.mu.Unlock()
 
 	return sessionID
+}
+
+// CreateVCFSessionForShare is CreateVCFSession plus binding the resulting
+// session to shareID (P1's ContactShare.ID). This closes a real gap:
+// without the binding, ConfirmContactShare would accept *any* session ID
+// the client sends as long as it belongs to the same user — including the
+// preview session for a *different* pending share, or an unrelated ordinary
+// CSV/VCF/JSContact import — and still flip the requested share to
+// accepted, decoupling its status/RespondedAt from the data that actually
+// landed. Not a cross-user hole (SessionBelongsToShare still requires the
+// session to belong to userID first), but a real integrity gap within one
+// account. See SessionBelongsToShare, called by ConfirmContactShare before
+// ConfirmVCF ever touches the session.
+func (m *ImportSessionManager) CreateVCFSessionForShare(userID uint, shareID string, vcfContacts []VCFContactData, previews []models.ImportRowPreview) string {
+	sessionID := m.CreateVCFSession(userID, vcfContacts, previews)
+	m.mu.Lock()
+	if sd, exists := m.sessions[sessionID]; exists {
+		sd.boundShareID = shareID
+	}
+	m.mu.Unlock()
+	return sessionID
+}
+
+// SessionBelongsToShare reports whether sessionID (already required to
+// belong to userID) was minted for shareID's own accept step via
+// CreateVCFSessionForShare — false for an expired/foreign/nonexistent
+// session, an ordinary (unbound) import session, or one bound to a
+// different share.
+func (m *ImportSessionManager) SessionBelongsToShare(sessionID string, userID uint, shareID string) bool {
+	sessionData, err := m.get(sessionID, userID)
+	if err != nil {
+		return false
+	}
+	return shareID != "" && sessionData.boundShareID == shareID
 }
 
 // PreviewCSV applies mappings to a CSV session, caches the built contacts and preview

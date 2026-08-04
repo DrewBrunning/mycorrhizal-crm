@@ -154,6 +154,20 @@
 > `resolved_relation`, plus the traversal `relation=` filter accepts tokens or synonyms. Frontend:
 > a Connections panel on the contact page (depth control + relation filter) and a global `/search`
 > page (AppBar search now routes there) that surfaces note and interaction hits, not just contacts.
+>
+> **T9 found already fully implemented 2026-08-04** (`backend/models/field_selection.go`,
+> `ExportFieldPickerDialog.tsx`, `RecordForContactFiltered`) — just never marked done on this board.
+> **P1 (contact sharing) built and done the same day**, in-app user-to-user model (not the anonymous
+> bearer-link variant the ticket file's "Ticket-specific" section described — confirmed with the user,
+> that section was inconsistent with the ticket's main body and is stale/wrong). New `ContactShare`
+> entity (migration `000008`), create/list-incoming/list-outgoing/accept/confirm/decline endpoints, and
+> a new minimal `GET /users/directory` (a real gap found during the work — no non-admin way to discover
+> other users existed before). Accept/confirm reuse the existing VCF/JSContact import pipeline verbatim
+> (`ParseJSContact`, `DetectDuplicate`, `ImportSessionManager.ConfirmVCF`) rather than reimplementing
+> merge logic — the recipient's own add/update/skip choice on the (possibly duplicate-matched) preview
+> row **is** the "what happens if I already have this person" decision the ticket asked to make
+> deliberately. Frontend extracted `FieldSectionPicker` out of `ExportFieldPickerDialog` for reuse by
+> the new `ShareContactDialog`, per T9's own doc note that the picker was built to be reused here.
 
 ## How to read this
 
@@ -248,7 +262,7 @@ each side — so a high rating does not by itself pull a ticket before alpha, an
 | 10 | **T20a** Preferences — migrate `FoodPreference`, project `hobby` | 3 | M | — | `92.6`, `91.9` |
  | 11 | **T6** Custom fields v2 — API surface — **DONE** (`d82f2c5`) | 3 | M | — | WP-84b, `94` |
  | 12 | **T7** Custom fields v2 — frontend, backfill, retire v1 — **DONE** (`b25a613`, `c609c32`) | 3 | L | T6 | WP-84b, `94.6` |
-| 13 | **T9** WP-97 selective field export + sensitivity gating | 3 | L | — | `92.6b` |
+| 13 | **T9** WP-97 selective field export + sensitivity gating — **DONE** | 3 | L | — | `92.6b` |
 | 14 | **T12a** Activity/LifeEvent sync primitives (ETag) | 2 | S | — | `92.3` prereq |
 | 15 | **T24** Non-critical test-coverage expansion | 2 | M | — | Tier 6, `45` |
 | 16 | **T8** OpenAPI coverage + spec/route drift test — **DONE** | 2\* | M | T1–T7 | `92.9` |
@@ -277,7 +291,7 @@ happens, T17 in particular is pre-alpha work buying nothing. See the open questi
 | 30 | **T20b** WP-95 Gift tracking — **DONE** (implemented; commit pending) | 3 | M | T5 | `92.6`, `91.11` |
 | 31 | **N7** File / document attachments per contact | 3 | M | — | new (gap) |
 | 32 | **N9** Notification channels beyond email (ntfy/Gotify/push) | 3 | M | — | new (gap) |
-| 33 | **P1** Contact sharing — one-time filtered copy | 3 | M | T9 | Tier 5 |
+| 33 | **P1** Contact sharing — one-time filtered copy — **DONE** | 3 | M | T9 | Tier 5 |
 | 34 | **T14** WP-89 external-link substrate — **DONE** | 2 | M | — | `92.4`, `91.12` |
 | 35 | **T15** WP-90 Immich level 1 (linking) — **DONE** | 3 | M | T14 | `92.4` |
 | 36 | **T16** WP-91 Immich level 2 (enrichment) — **DONE** | 3 | M | T15 | `92.4` |

@@ -57,7 +57,7 @@ questions in `../95-backlog-and-priorities.md`.
 | [30](28-T20b-gift-tracking.md) | T20b · Gift tracking | 3 | M | **DONE** |
 | [31](29-N7-attachments.md) | N7 · File / document attachments | 3 | M | |
 | [32](30-N9-notification-channels.md) | N9 · Notification channels beyond email | 3 | M | |
-| [33](31-P1-contact-sharing.md) | P1 · Contact sharing — one-time copy | 3 | M | |
+| [33](31-P1-contact-sharing.md) | P1 · Contact sharing — one-time copy | 3 | M | **DONE** |
 | [34](32-T14-external-link-substrate.md) | T14 · External-link substrate | 2 | M | **DONE** |
 | [35](33-T15-T16-immich.md) | T15/T16 · Immich level 1 + 2 | 3 | M each | **DONE** |
 | [36](34-T18-audit-trail.md) | T18 · Event history / audit trail | 2 | L | |

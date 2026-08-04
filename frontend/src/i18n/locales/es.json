@@ -13,7 +13,8 @@
     "households": "Hogares",
     "profile": "Configuración",
     "users": "Usuarios",
-    "data": "Datos"
+    "data": "Datos",
+    "shares": "Comparticiones"
   },
   "household": {
     "title": "Hogares",
@@ -1317,5 +1318,49 @@
       "anniversary": "Aniversario",
       "inDays": "en {{days}} día(s)"
     }
+  },
+  "contactShares": {
+    "title": "Comparticiones de contactos",
+    "tabs": {
+      "incoming": "Recibidas",
+      "outgoing": "Enviadas"
+    },
+    "shareDialog": {
+      "title": "Compartir contacto",
+      "description": "Envía una copia filtrada y de un solo uso de este contacto a otro usuario de esta instancia. Esa persona decide si acepta la compartición.",
+      "recipient": "Destinatario",
+      "selectRecipient": "Elige un destinatario…",
+      "sharing": "Compartiendo…",
+      "shareButton": "Compartir"
+    },
+    "incoming": {
+      "empty": "No hay comparticiones recibidas.",
+      "from": "De {{username}}",
+      "accept": "Aceptar",
+      "decline": "Rechazar"
+    },
+    "outgoing": {
+      "empty": "Aún no has compartido ningún contacto.",
+      "to": "Para {{username}}"
+    },
+    "status": {
+      "pending": "Pendiente",
+      "accepted": "Aceptada",
+      "declined": "Rechazada"
+    },
+    "acceptDialog": {
+      "title": "Revisar contacto compartido",
+      "description": "Elige qué hacer con este contacto compartido antes de añadirlo.",
+      "duplicateOf": "Coincide con: {{name}} ({{reason}})",
+      "actionLabel": "Acción",
+      "actionAdd": "Añadir como nuevo",
+      "actionUpdate": "Actualizar existente",
+      "actionSkip": "Omitir",
+      "confirm": "Confirmar",
+      "confirming": "Confirmando…"
+    },
+    "declineConfirm": "¿Rechazar esta compartición?",
+    "shareError": "No se pudo compartir el contacto",
+    "loadError": "No se pudieron cargar las comparticiones de contactos"
   }
 }

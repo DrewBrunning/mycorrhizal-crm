@@ -13,7 +13,8 @@
     "households": "Haushalte",
     "profile": "Einstellungen",
     "users": "Benutzer",
-    "data": "Daten"
+    "data": "Daten",
+    "shares": "Freigaben"
   },
   "household": {
     "title": "Haushalte",
@@ -1317,5 +1318,49 @@
       "anniversary": "Jahrestag",
       "inDays": "in {{days}} Tag(en)"
     }
+  },
+  "contactShares": {
+    "title": "Kontaktfreigaben",
+    "tabs": {
+      "incoming": "Eingehend",
+      "outgoing": "Ausgehend"
+    },
+    "shareDialog": {
+      "title": "Kontakt teilen",
+      "description": "Sende eine gefilterte, einmalige Kopie dieses Kontakts an einen anderen Benutzer dieser Instanz. Er oder sie entscheidet, ob die Freigabe angenommen wird.",
+      "recipient": "Empfänger",
+      "selectRecipient": "Empfänger auswählen…",
+      "sharing": "Wird geteilt…",
+      "shareButton": "Teilen"
+    },
+    "incoming": {
+      "empty": "Keine eingehenden Freigaben.",
+      "from": "Von {{username}}",
+      "accept": "Annehmen",
+      "decline": "Ablehnen"
+    },
+    "outgoing": {
+      "empty": "Du hast noch keine Kontakte geteilt.",
+      "to": "An {{username}}"
+    },
+    "status": {
+      "pending": "Ausstehend",
+      "accepted": "Angenommen",
+      "declined": "Abgelehnt"
+    },
+    "acceptDialog": {
+      "title": "Geteilten Kontakt prüfen",
+      "description": "Wähle, was mit diesem geteilten Kontakt geschehen soll, bevor er hinzugefügt wird.",
+      "duplicateOf": "Stimmt überein mit: {{name}} ({{reason}})",
+      "actionLabel": "Aktion",
+      "actionAdd": "Als neu hinzufügen",
+      "actionUpdate": "Vorhandenen aktualisieren",
+      "actionSkip": "Überspringen",
+      "confirm": "Bestätigen",
+      "confirming": "Wird bestätigt…"
+    },
+    "declineConfirm": "Diese Freigabe ablehnen?",
+    "shareError": "Kontakt konnte nicht geteilt werden",
+    "loadError": "Kontaktfreigaben konnten nicht geladen werden"
   }
 }

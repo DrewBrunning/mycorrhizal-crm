@@ -73,7 +73,7 @@ export async function createTestContact(
   request: APIRequestContext,
   overrides: Record<string, unknown> = {}
 ): Promise<CreatedContact> {
-  const firstname = `${E2E_CONTACT_PREFIX}${Date.now()}`;
+  const firstname = (overrides.firstname as string | undefined) ?? `${E2E_CONTACT_PREFIX}${Date.now()}`;
   const lastname = (overrides.lastname as string | undefined) ?? 'Temp';
   const response = await request.post(`${API_BASE_URL}/contacts`, {
     data: toContactRecordInput({ firstname, lastname, ...overrides }),

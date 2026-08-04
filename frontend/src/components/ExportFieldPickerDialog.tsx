@@ -7,19 +7,15 @@ import {
   Button,
   Box,
   Typography,
-  Checkbox,
-  FormControlLabel,
   FormControl,
   FormLabel,
   RadioGroup,
   Radio,
-  Dialog,
+  FormControlLabel,
   Alert,
-  SvgIcon,
 } from '@mui/material';
-import LockOutlined from '@mui/icons-material/LockOutlined';
-import { mdiLockOpenVariantOutline } from '@mdi/js';
 import AppDialog from './AppDialog';
+import FieldSectionPicker from './FieldSectionPicker';
 import {
   ExportFormat,
   EXPORT_FIELD_SECTIONS,
@@ -48,7 +44,6 @@ export default function ExportFieldPickerDialog({
   const [format, setFormat] = useState<ExportFormat>('vcf4');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [sensitiveRevealed, setSensitiveRevealed] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState('');
 
@@ -78,11 +73,6 @@ export default function ExportFieldPickerDialog({
     });
   };
 
-  const handleRevealConfirm = () => {
-    setSensitiveRevealed(true);
-    setConfirmOpen(false);
-  };
-
   const handleExport = async () => {
     const includeSensitive =
       sensitiveRevealed &&
@@ -109,7 +99,6 @@ export default function ExportFieldPickerDialog({
   };
 
   return (
-    <>
       <AppDialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
         <DialogTitle>{t('settings.exportFieldPicker.title')}</DialogTitle>
         <DialogContent>
@@ -131,61 +120,12 @@ export default function ExportFieldPickerDialog({
               </RadioGroup>
             </FormControl>
 
-            <FormControl component="fieldset">
-              <FormLabel component="legend">{t('settings.exportFieldPicker.fields')}</FormLabel>
-              <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                {EXPORT_FIELD_SECTIONS.map((section) => {
-                  const isSensitive = section.sensitive;
-                  const locked = isSensitive && !sensitiveRevealed;
-                  const checked = selected.has(section.token);
-                  return (
-                    <Box key={section.token} sx={{ display: 'flex', alignItems: 'center' }}>
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={locked ? false : checked}
-                            disabled={locked}
-                            onChange={(e) => toggle(section.token, e.target.checked)}
-                          />
-                        }
-                        label={
-                          <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            {t(`settings.exportFieldPicker.sections.${section.token}`)}
-                            {isSensitive && !locked && (
-                              <SvgIcon fontSize="small" sx={{ color: 'success.main', verticalAlign: 'middle' }}>
-                                <path d={mdiLockOpenVariantOutline} />
-                              </SvgIcon>
-                            )}
-                          </Box>
-                        }
-                      />
-                      {locked && (
-                        <LockOutlined fontSize="inherit" color="disabled" sx={{ ml: 0.5, opacity: 0.5 }} />
-                      )}
-                    </Box>
-                  );
-                })}
-              </Box>
-            </FormControl>
-
-            {!sensitiveRevealed ? (
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<LockOutlined />}
-                onClick={() => setConfirmOpen(true)}
-                sx={{ alignSelf: 'flex-start' }}
-              >
-                {t('settings.exportFieldPicker.revealButton')}
-              </Button>
-            ) : (
-              <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <SvgIcon fontSize="small" color="success">
-                  <path d={mdiLockOpenVariantOutline} />
-                </SvgIcon>
-                {t('settings.exportFieldPicker.revealedHint')}
-              </Typography>
-            )}
+            <FieldSectionPicker
+              selected={selected}
+              onToggle={toggle}
+              sensitiveRevealed={sensitiveRevealed}
+              onReveal={() => setSensitiveRevealed(true)}
+            />
 
             {error && <Alert severity="error" sx={{ py: 0 }}>{error}</Alert>}
           </Box>
@@ -199,26 +139,5 @@ export default function ExportFieldPickerDialog({
           </Button>
         </DialogActions>
       </AppDialog>
-
-      <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)} maxWidth="xs">
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <LockOutlined color="action" />
-          {t('settings.exportFieldPicker.revealTitle')}
-        </DialogTitle>
-        <DialogContent>
-          <Typography variant="body2">
-            {t('settings.exportFieldPicker.revealConfirm')}
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setConfirmOpen(false)}>
-            {t('settings.exportFieldPicker.revealCancel')}
-          </Button>
-          <Button onClick={handleRevealConfirm} variant="contained">
-            {t('settings.exportFieldPicker.revealConfirmButton')}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </>
   );
 }

@@ -13,7 +13,8 @@
     "households": "Nuclei",
     "profile": "Impostazioni",
     "users": "Utenti",
-    "data": "Dati"
+    "data": "Dati",
+    "shares": "Condivisioni"
   },
   "household": {
     "title": "Nuclei familiari",
@@ -1317,5 +1318,49 @@
       "anniversary": "Anniversario",
       "inDays": "in {{days}} giorno/i"
     }
+  },
+  "contactShares": {
+    "title": "Condivisioni di contatti",
+    "tabs": {
+      "incoming": "Ricevute",
+      "outgoing": "Inviate"
+    },
+    "shareDialog": {
+      "title": "Condividi contatto",
+      "description": "Invia una copia filtrata e monouso di questo contatto a un altro utente di questa istanza. Sarà quella persona a decidere se accettare la condivisione.",
+      "recipient": "Destinatario",
+      "selectRecipient": "Scegli un destinatario…",
+      "sharing": "Condivisione in corso…",
+      "shareButton": "Condividi"
+    },
+    "incoming": {
+      "empty": "Nessuna condivisione ricevuta.",
+      "from": "Da {{username}}",
+      "accept": "Accetta",
+      "decline": "Rifiuta"
+    },
+    "outgoing": {
+      "empty": "Non hai ancora condiviso nessun contatto.",
+      "to": "A {{username}}"
+    },
+    "status": {
+      "pending": "In attesa",
+      "accepted": "Accettata",
+      "declined": "Rifiutata"
+    },
+    "acceptDialog": {
+      "title": "Rivedi il contatto condiviso",
+      "description": "Scegli cosa fare di questo contatto condiviso prima di aggiungerlo.",
+      "duplicateOf": "Corrisponde a: {{name}} ({{reason}})",
+      "actionLabel": "Azione",
+      "actionAdd": "Aggiungi come nuovo",
+      "actionUpdate": "Aggiorna esistente",
+      "actionSkip": "Salta",
+      "confirm": "Conferma",
+      "confirming": "Conferma in corso…"
+    },
+    "declineConfirm": "Rifiutare questa condivisione?",
+    "shareError": "Impossibile condividere il contatto",
+    "loadError": "Impossibile caricare le condivisioni di contatti"
   }
 }

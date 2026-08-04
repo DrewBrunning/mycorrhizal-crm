@@ -74,6 +74,16 @@ func TestDeleteUser_CleansUpAllOwnedRows(t *testing.T) {
 	require.NoError(t, db.Create(&activity).Error)
 	require.NoError(t, db.Create(&models.CalendarEventLink{SubscriptionID: calSub.ID, UserID: target.ID, UID: "evt-1", ActivityID: activity.ID, ContentHash: "h"}).Error)
 
+	// P1 (docs/fork-plan/tickets/31-P1-contact-sharing.md): ContactShare has
+	// TWO owning columns, not one -- a departing user's rows must be swept
+	// whether they were the sender or the recipient.
+	var admin models.User
+	require.NoError(t, db.Where("username = ?", "tester").First(&admin).Error)
+	shareAsSender := models.ContactShare{FromUserID: target.ID, ToUserID: admin.ID, ContactDisplayName: "Alice", Payload: "[]"}
+	require.NoError(t, db.Create(&shareAsSender).Error)
+	shareAsRecipient := models.ContactShare{FromUserID: admin.ID, ToUserID: target.ID, ContactDisplayName: "Bob", Payload: "[]"}
+	require.NoError(t, db.Create(&shareAsRecipient).Error)
+
 	router.DELETE("/users/:id", DeleteUser)
 
 	req, _ := http.NewRequest("DELETE", "/users/"+strconv.Itoa(int(target.ID)), nil)
@@ -113,6 +123,8 @@ func TestDeleteUser_CleansUpAllOwnedRows(t *testing.T) {
 	assertGone("CalendarEventLink", &models.CalendarEventLink{}, "user_id = ?", target.ID)
 	assertGone("CalendarSubscription", &models.CalendarSubscription{}, "user_id = ?", target.ID)
 	assertGone("Contact", &models.Contact{}, "user_id = ?", target.ID)
+	assertGone("ContactShare (target as sender)", &models.ContactShare{}, "id = ?", shareAsSender.ID)
+	assertGone("ContactShare (target as recipient)", &models.ContactShare{}, "id = ?", shareAsRecipient.ID)
 
 	var remainingUser models.User
 	err := db.First(&remainingUser, target.ID).Error

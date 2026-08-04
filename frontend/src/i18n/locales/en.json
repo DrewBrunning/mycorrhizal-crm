@@ -13,7 +13,8 @@
     "households": "Households",
     "profile": "Settings",
     "users": "Users",
-    "data": "Data"
+    "data": "Data",
+    "shares": "Shares"
   },
   "household": {
     "title": "Households",
@@ -1317,5 +1318,49 @@
       "anniversary": "Anniversary",
       "inDays": "in {{days}} day(s)"
     }
+  },
+  "contactShares": {
+    "title": "Contact Shares",
+    "tabs": {
+      "incoming": "Incoming",
+      "outgoing": "Outgoing"
+    },
+    "shareDialog": {
+      "title": "Share Contact",
+      "description": "Send a filtered, one-time copy of this contact to another user on this instance. They choose whether to accept it.",
+      "recipient": "Recipient",
+      "selectRecipient": "Choose a recipient…",
+      "sharing": "Sharing…",
+      "shareButton": "Share"
+    },
+    "incoming": {
+      "empty": "No incoming shares.",
+      "from": "From {{username}}",
+      "accept": "Accept",
+      "decline": "Decline"
+    },
+    "outgoing": {
+      "empty": "You haven't shared any contacts yet.",
+      "to": "To {{username}}"
+    },
+    "status": {
+      "pending": "Pending",
+      "accepted": "Accepted",
+      "declined": "Declined"
+    },
+    "acceptDialog": {
+      "title": "Review shared contact",
+      "description": "Choose what to do with this shared contact before it's added.",
+      "duplicateOf": "Matches: {{name}} ({{reason}})",
+      "actionLabel": "Action",
+      "actionAdd": "Add as new",
+      "actionUpdate": "Update existing",
+      "actionSkip": "Skip",
+      "confirm": "Confirm",
+      "confirming": "Confirming…"
+    },
+    "declineConfirm": "Decline this share?",
+    "shareError": "Failed to share contact",
+    "loadError": "Failed to load contact shares"
   }
 }

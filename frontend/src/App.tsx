@@ -11,6 +11,7 @@ import UsersPage from './UsersPage';
 import CircleTagTriagePage from './CircleTagTriagePage';
 import DataSettingsPage from './DataSettingsPage';
 import HouseholdsPage from './HouseholdsPage';
+import ContactSharesPage from './ContactSharesPage';
 import SearchPage from './SearchPage';
 import LoginPage from './LoginPage';
 import RegisterPage from './RegisterPage';
@@ -50,6 +51,7 @@ import EventNoteIcon from '@mui/icons-material/EventNote';
 import SettingsIcon from '@mui/icons-material/Settings';
 import PeopleIcon from '@mui/icons-material/People';
 import HomeWorkIcon from '@mui/icons-material/HomeWork';
+import ShareIcon from '@mui/icons-material/Share';
 import StorageIcon from '@mui/icons-material/Storage';
 import LogoutIcon from '@mui/icons-material/Logout';
 import './App.css';
@@ -130,6 +132,7 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
       { text: t('nav.notes'), icon: <SvgIcon><path d={mdiNotebookOutline} /></SvgIcon>, path: '/notes' },
       { text: t('nav.network'), icon: <SvgIcon><path d={mdiGraphOutline} /></SvgIcon>, path: '/network' },
       { text: t('nav.households'), icon: <HomeWorkIcon />, path: '/households' },
+      { text: t('nav.shares'), icon: <ShareIcon />, path: '/shares' },
       { text: t('nav.data'), icon: <StorageIcon />, path: '/settings/data' },
       { text: t('nav.profile'), icon: <SettingsIcon />, path: '/settings' },
     ];
@@ -379,6 +382,7 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
           <Route path="/settings/data" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><DataSettingsPage /></Suspense>} />
           <Route path="/network" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><NetworkPage /></Suspense>} />
           <Route path="/households" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><HouseholdsPage /></Suspense>} />
+          <Route path="/shares" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><ContactSharesPage /></Suspense>} />
           <Route path="/search" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><SearchPage /></Suspense>} />
           <Route path="/users" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><UsersPage /></Suspense>} />
           <Route path="/api-tokens" element={<Navigate to="/settings" replace />} />
