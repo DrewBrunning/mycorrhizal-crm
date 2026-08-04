@@ -13,8 +13,19 @@ RUN go mod download
 # Copy source code
 COPY . .
 
+# Version stamping, same as the all-in-one image at /Dockerfile. This is a
+# separately published image, so it needs its own stamp -- without it /health
+# reports "dev" and a bug report cannot be tied to a build.
+ARG APP_VERSION=dev
+ARG APP_COMMIT=""
+ARG APP_BUILD_DATE=""
+
 # Build the application
-RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o mycorrhizal .
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
+    -ldflags "-X mycorrhizal/buildinfo.Version=${APP_VERSION} \
+              -X mycorrhizal/buildinfo.Commit=${APP_COMMIT} \
+              -X mycorrhizal/buildinfo.BuildDate=${APP_BUILD_DATE}" \
+    -o mycorrhizal .
 
 # Runtime stage
 FROM alpine:3.20
