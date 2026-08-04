@@ -613,6 +613,24 @@
       "yearly": "Yearly"
     }
   },
+  "bulk": {
+    "selected": "{{count}} selected",
+    "selectAll": "Select all",
+    "clear": "Clear",
+    "selectCircle": "Circle…",
+    "addCircle": "Add to circle",
+    "removeCircle": "Remove from circle",
+    "selectTag": "Tag…",
+    "addTag": "Add tag",
+    "removeTag": "Remove tag",
+    "archive": "Archive",
+    "unarchive": "Unarchive",
+    "delete": "Delete",
+    "deleteConfirm": "Delete {{count}} contacts? This permanently removes them and all of their data. This cannot be undone.",
+    "selectContact": "Select {{name}}",
+    "resultFailure": "{{succeeded}} of {{total}} succeeded. {{failed}} failed.",
+    "resultError": "The bulk operation failed. Please try again."
+  },
   "common": {
     "save": "Save",
     "saving": "Saving...",
