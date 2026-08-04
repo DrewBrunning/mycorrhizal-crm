@@ -44,6 +44,53 @@ func TestMigrationsApplyToEmptyDatabase(t *testing.T) {
 	require.NoError(t, sqlDB.Close())
 }
 
+// TestMigrateDownRollsBackExactlyOneMigration pins the semantics of "down".
+//
+// cmd/migrate used to call golang-migrate's m.Down() — roll back EVERYTHING —
+// while the Makefile documented the target as "Rollback the last migration".
+// With the migrations squashed to a single initial schema, the documented
+// command dropped the whole database. The CLI now delegates to MigrateDown,
+// and this test is what keeps it a single step: if someone swaps Steps(-1)
+// back to Down(), the version assertion below fails instead of a user's data
+// disappearing.
+func TestMigrateDownRollsBackExactlyOneMigration(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "down-one.db")
+
+	require.NoError(t, MigrateUp(dbPath))
+
+	before, dirty, ok, err := MigrationVersion(dbPath)
+	require.NoError(t, err)
+	require.True(t, ok, "migrations must have been applied")
+	require.False(t, dirty)
+	require.Greater(t, before, uint(1), "need more than one migration for this test to mean anything")
+
+	require.NoError(t, MigrateDown(dbPath))
+
+	after, dirty, ok, err := MigrationVersion(dbPath)
+	require.NoError(t, err)
+	require.True(t, ok, "rolling back one migration must not unapply the whole chain")
+	assert.False(t, dirty)
+	assert.Equal(t, before-1, after, "down must step back exactly one migration, not to zero")
+
+	// The baseline schema — and therefore the user's data — must survive a
+	// single rollback. Under m.Down() these tables were gone.
+	db, err := InitDB(dbPath)
+	require.NoError(t, err)
+	defer func() {
+		sqlDB, err := db.DB()
+		require.NoError(t, err)
+		require.NoError(t, sqlDB.Close())
+	}()
+
+	for _, table := range []string{"users", "contacts"} {
+		var count int64
+		require.NoError(t, db.Raw(
+			"SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?", table,
+		).Scan(&count).Error)
+		assert.Equalf(t, int64(1), count, "table %q must survive a one-step rollback", table)
+	}
+}
+
 // TestSquashedSchemaHasNoLegacyRelationshipsTable verifies the squashed
 // baseline (T22) never creates the legacy `relationships` table — it was
 // dropped in §3d WP5 and does not belong in the clean baseline.

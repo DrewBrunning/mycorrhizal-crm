@@ -59,21 +59,35 @@ func InitDB(dbPath string) (*gorm.DB, error) {
 	return db, nil
 }
 
-// RunMigrations runs all pending database migrations
-func RunMigrations(db *sql.DB) error {
+// newMigrator builds a golang-migrate instance over the EMBEDDED migrations FS
+// for an already-open database handle. Every migration entry point in this
+// package goes through it, so the source of migration SQL can never differ
+// between them — cmd/migrate previously built its own instance from
+// `file://database/migrations`, which meant it only worked from one working
+// directory and could disagree with the binary's embedded copy.
+func newMigrator(db *sql.DB) (*migrate.Migrate, error) {
 	driver, err := withInstance(db, &sqliteConfig{})
 	if err != nil {
-		return fmt.Errorf("failed to create migration driver: %w", err)
+		return nil, fmt.Errorf("failed to create migration driver: %w", err)
 	}
 
 	sourceDriver, err := iofs.New(migrationsFS, "migrations")
 	if err != nil {
-		return fmt.Errorf("failed to create migration source: %w", err)
+		return nil, fmt.Errorf("failed to create migration source: %w", err)
 	}
 
 	m, err := migrate.NewWithInstance("iofs", sourceDriver, "sqlite", driver)
 	if err != nil {
-		return fmt.Errorf("failed to create migration instance: %w", err)
+		return nil, fmt.Errorf("failed to create migration instance: %w", err)
+	}
+	return m, nil
+}
+
+// RunMigrations runs all pending database migrations
+func RunMigrations(db *sql.DB) error {
+	m, err := newMigrator(db)
+	if err != nil {
+		return err
 	}
 
 	// Get current version
@@ -109,27 +123,65 @@ func RunMigrations(db *sql.DB) error {
 	return nil
 }
 
-// MigrateDown rolls back the last migration (use with caution)
-func MigrateDown(dbPath string) error {
-	sqlDB, err := sql.Open("sqlite", dbPath)
+// MigrateUp applies every pending migration to the database at dbPath. Thin
+// path-taking wrapper over RunMigrations so cmd/migrate does not have to
+// duplicate the DSN pragmas — the CLI reaching for its own sql.Open and its own
+// migration source is exactly how it drifted out of sync with the app before
+// (see MigrateDown's note below).
+func MigrateUp(dbPath string) error {
+	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
 	if err != nil {
 		return fmt.Errorf("failed to open database: %w", err)
 	}
 	defer sqlDB.Close()
 
-	driver, err := withInstance(sqlDB, &sqliteConfig{})
+	return RunMigrations(sqlDB)
+}
+
+// MigrationVersion reports the applied migration version and whether the
+// database is in a dirty state. Returns ok=false when no migration has ever
+// been applied.
+func MigrationVersion(dbPath string) (version uint, dirty bool, ok bool, err error) {
+	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
 	if err != nil {
-		return fmt.Errorf("failed to create migration driver: %w", err)
+		return 0, false, false, fmt.Errorf("failed to open database: %w", err)
+	}
+	defer sqlDB.Close()
+
+	m, err := newMigrator(sqlDB)
+	if err != nil {
+		return 0, false, false, err
 	}
 
-	sourceDriver, err := iofs.New(migrationsFS, "migrations")
-	if err != nil {
-		return fmt.Errorf("failed to create migration source: %w", err)
+	version, dirty, err = m.Version()
+	if err == migrate.ErrNilVersion {
+		return 0, false, false, nil
 	}
-
-	m, err := migrate.NewWithInstance("iofs", sourceDriver, "sqlite", driver)
 	if err != nil {
-		return fmt.Errorf("failed to create migration instance: %w", err)
+		return 0, false, false, fmt.Errorf("failed to get migration version: %w", err)
+	}
+	return version, dirty, true, nil
+}
+
+// MigrateDown rolls back exactly ONE migration.
+//
+// It is `m.Steps(-1)`, deliberately, and must stay that way. cmd/migrate used
+// to call golang-migrate's `m.Down()` directly instead of this function —
+// which rolls back *every* migration and drops the whole schema — while the
+// Makefile advertised the target as "Rollback the last migration". With the
+// migrations squashed to a single initial schema, running the documented
+// command would have destroyed the database. The CLI now delegates here so
+// there is one implementation of "down" rather than two that disagree.
+func MigrateDown(dbPath string) error {
+	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
+	if err != nil {
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+	defer sqlDB.Close()
+
+	m, err := newMigrator(sqlDB)
+	if err != nil {
+		return err
 	}
 
 	if err := m.Steps(-1); err != nil {

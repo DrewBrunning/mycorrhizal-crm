@@ -1,7 +1,15 @@
 .PHONY: migrate-up migrate-down migrate-create migrate-status migrate-force migrate-version help
 
-# Database path
-DB_PATH ?= mycorrhizal.db
+# Database path. The migration CLI reads SQLITE_DB_PATH (the same variable the
+# server reads), so every target below EXPORTS this rather than just echoing
+# it. Previously the CLI hardcoded its own path and ignored DB_PATH entirely,
+# so these targets reported one file and migrated another.
+# Snapshot the inbound value first: DB_PATH defaults from it, and SQLITE_DB_PATH
+# is then re-exported from DB_PATH, so reading it directly in both places would
+# be a self-reference.
+INBOUND_DB_PATH := $(SQLITE_DB_PATH)
+DB_PATH ?= $(if $(INBOUND_DB_PATH),$(INBOUND_DB_PATH),mycorrhizal.db)
+export SQLITE_DB_PATH := $(DB_PATH)
 MIGRATIONS_DIR = ./database/migrations
 
 help: ## Show this help message
@@ -10,15 +18,16 @@ help: ## Show this help message
 	@echo 'Available targets:'
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'
 
-migrate-up: ## Run all pending migrations
+migrate-up: ## Run all pending migrations (the server also does this on startup)
 	@echo "Running migrations on $(DB_PATH)..."
 	@go run cmd/migrate/main.go up
-	@echo "Migrations applied successfully!"
 
-migrate-down: ## Rollback the last migration
-	@echo "Rolling back last migration on $(DB_PATH)..."
+migrate-down: ## Roll back exactly ONE migration -- destructive, see warning below
+	@echo "About to roll back ONE migration on $(DB_PATH)."
+	@echo "This runs that migration's .down.sql and DESTROYS the data in whatever"
+	@echo "it drops. There is no undo. Back the database file up first."
+	@printf "Type 'yes' to continue: " && read ans && [ "$$ans" = "yes" ]
 	@go run cmd/migrate/main.go down
-	@echo "Migration rolled back successfully!"
 
 migrate-create: ## Create a new migration file (usage: make migrate-create NAME=create_users_table)
 	@if [ -z "$(NAME)" ]; then \
