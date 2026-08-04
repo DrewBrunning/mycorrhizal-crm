@@ -794,7 +794,14 @@
       "deleteTitle": "Delete calendar?",
       "deleteConfirm": "Remove “{{name}}”? Activities that were already imported will be kept."
     },
-    "about": {},
+    "about": {
+      "title": "About",
+      "version": "Version",
+      "built": "Built {{date}}",
+      "copy": "Copy build details",
+      "copied": "Build details copied",
+      "reportHint": "Include this when reporting a problem."
+    },
     "webhooks": {
       "title": "Webhooks",
       "description": "Receive HTTP POST notifications when events occur in your CRM.",

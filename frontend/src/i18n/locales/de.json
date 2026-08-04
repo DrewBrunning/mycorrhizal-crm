@@ -767,7 +767,14 @@
       "deleteTitle": "Kalender löschen?",
       "deleteConfirm": "„{{name}}“ entfernen? Bereits importierte Aktivitäten bleiben erhalten."
     },
-    "about": {},
+    "about": {
+      "title": "Über",
+      "version": "Version",
+      "built": "Erstellt am {{date}}",
+      "copy": "Build-Details kopieren",
+      "copied": "Build-Details kopiert",
+      "reportHint": "Bitte bei einer Fehlermeldung mit angeben."
+    },
     "webhooks": {
       "title": "Webhooks",
       "description": "HTTP-POST-Benachrichtigungen empfangen, wenn Ereignisse auftreten.",

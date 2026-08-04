@@ -767,7 +767,14 @@
       "deleteTitle": "Supprimer le calendrier ?",
       "deleteConfirm": "Supprimer « {{name}} » ? Les activités déjà importées seront conservées."
     },
-    "about": {},
+    "about": {
+      "title": "À propos",
+      "version": "Version",
+      "built": "Compilé le {{date}}",
+      "copy": "Copier les détails de la version",
+      "copied": "Détails de la version copiés",
+      "reportHint": "À joindre lors du signalement d'un problème."
+    },
     "webhooks": {
       "title": "Webhooks",
       "description": "Recevez des notifications HTTP POST lorsque des événements se produisent dans votre CRM.",

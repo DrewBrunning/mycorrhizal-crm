@@ -40,15 +40,27 @@ export class ApiError extends Error {
     this.requestId = requestId;
   }
 
-  // Get a user-friendly error message including field details
+  // Get a user-friendly error message including field details.
+  //
+  // Server-fault errors (5xx) append the request id. Every backend error
+  // response and every backend log line carries that id, so it is the only
+  // thing that lets a user's "it broke" be located in the logs — but it was
+  // previously only ever console.error'd, which no user reads. A 4xx is the
+  // user's own input and needs no correlation id, so those stay clean.
   getDisplayMessage(): string {
+    let message: string;
     if (this.details && Object.keys(this.details).length > 0) {
-      const fieldErrors = Object.entries(this.details)
+      message = Object.entries(this.details)
         .map(([, msg]) => `${msg}`)
         .join('. ');
-      return fieldErrors;
+    } else {
+      message = this.message;
     }
-    return this.message;
+
+    if (this.status >= 500 && this.requestId) {
+      return `${message} (ref: ${this.requestId})`;
+    }
+    return message;
   }
 }
 

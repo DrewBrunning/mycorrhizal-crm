@@ -54,15 +54,26 @@ migrate-version: ## Show available migration files
 	@echo "Available migration files:"
 	@ls -1 $(MIGRATIONS_DIR)/*.sql 2>/dev/null || echo "No migration files found"
 
+# Version stamping. /health serves these so a bug report can be tied to the
+# binary that produced it. Override APP_VERSION on a release build; the commit
+# and date are derived from the working tree. A bare `go build` still reports a
+# usable commit via Go's embedded VCS stamp (see buildinfo.Get).
+APP_VERSION ?= dev
+APP_COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null)
+APP_BUILD_DATE ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+LDFLAGS = -X mycorrhizal/buildinfo.Version=$(APP_VERSION) \
+          -X mycorrhizal/buildinfo.Commit=$(APP_COMMIT) \
+          -X mycorrhizal/buildinfo.BuildDate=$(APP_BUILD_DATE)
+
 # Development helpers
 dev: ## Build and run the server in development mode
-	@go build -o mycorrhizal . && ./mycorrhizal
+	@go build -ldflags "$(LDFLAGS)" -o mycorrhizal . && ./mycorrhizal
 
 test: ## Run all tests
 	@go test ./... -v
 
 build: ## Build the application
-	@go build -o mycorrhizal .
+	@go build -ldflags "$(LDFLAGS)" -o mycorrhizal .
 
 clean: ## Clean build artifacts
 	@rm -f mycorrhizal

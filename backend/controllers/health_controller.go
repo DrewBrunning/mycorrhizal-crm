@@ -4,16 +4,25 @@ import (
 	"net/http"
 	"time"
 
+	"mycorrhizal/buildinfo"
+
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
-// HealthResponse represents the health check response structure
+// HealthResponse represents the health check response structure.
+//
+// Version/Commit/BuildDate come from the buildinfo package, injected at link
+// time. They were previously a hardcoded "0.1.0" string literal, so every
+// build ever made reported the same version and a bug report could not be
+// tied to the binary that produced it.
 type HealthResponse struct {
 	Status    string         `json:"status"`
 	Timestamp string         `json:"timestamp"`
 	Database  DatabaseHealth `json:"database"`
 	Version   string         `json:"version"`
+	Commit    string         `json:"commit,omitempty"`
+	BuildDate string         `json:"build_date,omitempty"`
 }
 
 // DatabaseHealth represents the database health status
@@ -39,11 +48,14 @@ func HealthCheck(c *gin.Context) {
 		httpStatus = http.StatusServiceUnavailable
 	}
 
+	build := buildinfo.Get()
 	response := HealthResponse{
 		Status:    status,
 		Timestamp: time.Now().UTC().Format(time.RFC3339),
 		Database:  dbHealth,
-		Version:   "0.1.0",
+		Version:   build.Version,
+		Commit:    build.Commit,
+		BuildDate: build.BuildDate,
 	}
 
 	c.JSON(httpStatus, response)
