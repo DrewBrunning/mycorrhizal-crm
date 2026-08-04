@@ -229,14 +229,20 @@
 > and the "Profile" sub-label now reads "Settings". Dark and light both verified across
 > notes/contacts/settings/network.
 >
-> **Two small gaps found while verifying, not worth blocking alpha on:**
-> - **N4's unfiled-count chip shows the loaded page, not the total.** `GET /notes` (unassigned) returns
->   `next_cursor` but no `total`, and the chip renders `notes.length`. With more than one page of
->   unfiled notes it under-reports and then grows as the user pages — which undercuts the "reads as a
->   queue" intent in the ticket's item 1. Fix is a `total` on that response.
-> - **N4's "Done when" asked for a component test proving that *assigning a contact removes a note from
->   the inbox*.** The suite covers the adjacent case (all-filed ⇒ empty inbox) but not the assign action
->   itself. The behaviour is verified manually and by the backend filter; the test is the gap.
+> **Two small gaps found while verifying — both now closed** (`d22913d`):
+> - **N4's unfiled-count chip showed the loaded page, not the total.** `GET /notes` (unassigned) now
+>   returns a `total`, counted on the filtered query but before the cursor predicate. This is a
+>   deliberate exception to T17's removal of counts, and the two assertions pinning that decision were
+>   relaxed rather than deleted: T17's concern was a contact's unbounded note history, whereas this
+>   query is already constrained to `contact_id IS NULL` — a queue the user drains, where the count is
+>   the point. Verified live: 30 unfiled at limit=25 shows "30" with 25 rows, and stays 30 after
+>   "Load more" (previously 25, then 30).
+> - **The component test the ticket asked for** — that assigning a contact removes a note from the
+>   inbox — now exists, driving the real dialog and asserting the PUT carries `contact_id`.
+>
+> A flake in the new `importExport` e2e spec was also fixed: it borrowed `contacts[0]` from the shared
+> seed set, which other specs delete concurrently under `fullyParallel` (~1 failure in 6 runs). It owns
+> its own contact now; 8 consecutive clean full runs since.
 >
 > **Nothing is left open pre-alpha-2.** The review found no security issues — the posture documented
 > under Tier 1 holds.
