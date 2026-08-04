@@ -175,6 +175,53 @@ func TestGetContactBriefing_GracefulDegradation(t *testing.T) {
 	assert.Empty(t, briefing.UpcomingDates)
 }
 
+// TestGetContactBriefing_EmptyBlocksSerializeAsArrays pins the *wire* shape of
+// an empty briefing, which is a different assertion from
+// TestGetContactBriefing_GracefulDegradation above: that test unmarshals into
+// models.ContactBriefing, where an absent key and an empty array both decode to
+// a nil slice, so it passes whether the server omits the block or emits `[]`.
+//
+// The server used to omit them (`omitempty` + GORM leaving nil slices on a
+// no-rows Find), and the frontend's `briefing.open_agenda_items.length` crashed
+// the whole prep view into its ErrorBoundary. Every freshly-created contact is
+// in exactly this state, so the feature was broken on first use and no Go test
+// could see it. Assert on the raw JSON — that is the contract the frontend
+// actually consumes.
+func TestGetContactBriefing_EmptyBlocksSerializeAsArrays(t *testing.T) {
+	db, router := setupRouter()
+	router.GET("/contacts/:id/briefing", GetContactBriefing)
+
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+
+	contact := models.Contact{UserID: user.ID, Firstname: "Fresh"}
+	require.NoError(t, db.Create(&contact).Error)
+
+	req, _ := http.NewRequest("GET", "/contacts/"+idString(contact.ID)+"/briefing", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var raw map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &raw))
+
+	// Every collection block must be present and be `[]` — never missing, never
+	// `null`. The frontend type declares these required and dereferences
+	// `.length` on them without a guard.
+	for _, key := range []string{
+		"recent_notes",
+		"open_agenda_items",
+		"relationships",
+		"life_events",
+		"upcoming_reminders",
+		"upcoming_dates",
+	} {
+		block, present := raw[key]
+		require.Truef(t, present, "block %q must be present in the response even when empty", key)
+		assert.JSONEqf(t, "[]", string(block), "block %q must serialize as an empty array, not null", key)
+	}
+}
+
 func TestGetContactBriefing_ScopedToOwner(t *testing.T) {
 	db, router := setupRouter()
 	router.GET("/contacts/:id/briefing", GetContactBriefing)

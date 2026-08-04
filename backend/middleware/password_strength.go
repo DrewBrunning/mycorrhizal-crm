@@ -165,15 +165,6 @@ func (e *PasswordStrengthError) Error() string {
 	return e.Message
 }
 
-// GetPasswordRequirements returns human-readable password requirements
-func GetPasswordRequirements() string {
-	return `Password must have at least 50 bits of entropy. Examples:
-- 11+ characters with mixed case, numbers, and symbols (e.g., "MyP@ssw0rd!")
-- 15+ characters with letters and numbers (e.g., "correcthorsebattery42")
-- 20+ lowercase letters (e.g., "correct horse battery staple")
-Longer passphrases are preferred over short complex passwords.`
-}
-
 func IsCommonPassword(password string) bool {
 	// Common weak passwords and patterns
 	commonPasswords := []string{

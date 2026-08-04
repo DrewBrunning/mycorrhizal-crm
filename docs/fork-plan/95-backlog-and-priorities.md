@@ -168,6 +168,88 @@
 > row **is** the "what happens if I already have this person" decision the ticket asked to make
 > deliberately. Frontend extracted `FieldSectionPicker` out of `ExportFieldPickerDialog` for reuse by
 > the new `ShareContactDialog`, per T9's own doc note that the picker was built to be reused here.
+>
+> **Pre-alpha-2 hardening pass, 2026-08-04** (branch `feature/pre-alpha-2-hardening`) — a full-codebase
+> review before cutting a second alpha candidate, followed by fixing everything it found. Four release
+> blockers, all verified live in a running instance before and after:
+>
+> 1. **Prep view (N2) crashed on every contact with no history.** `ContactBriefing`'s six collection
+>    blocks were tagged `omitempty`, so a contact with no activity serialized without them and
+>    `briefing.open_agenda_items.length` threw, taking the page into the ErrorBoundary. Every
+>    newly-created contact is in that state — i.e. the state an alpha *starts* in. No layer could see
+>    it: the Go test decoded into a struct where absent and `[]` are both nil, the TS type declared the
+>    fields required, and the vitest "every block is empty" case passed `[]`, a shape the server could
+>    not produce. Fixed at all three layers; the new Go test asserts on raw JSON, not the decoded struct.
+> 2. **`make migrate-down` dropped the entire database.** `cmd/migrate` called `m.Down()` (roll back
+>    *everything*) while the Makefile and CLAUDE.md described it as "rollback the last migration"; with
+>    migrations squashed to one baseline that destroys the schema. `database.MigrateDown` already did
+>    the correct `Steps(-1)` but was dead code. The CLI also hardcoded `mycorrhizal.db`, ignoring
+>    `SQLITE_DB_PATH` — so with the documented `.env.example` it migrated a *different file* than the
+>    server opened. CLI now delegates to the `database` package and reads the env var.
+> 3. **A raw i18n key rendered as a form label** — `PersonalInfoEditor` labelled two Selects with the
+>    `kindOptions`/`levelOptions` *object nodes*, so i18next printed its own diagnostic as the visible
+>    label, in all five languages, on both the create and edit paths.
+> 4. **Circles did not round-trip (T3).** Import wrote circle names to the flat `Contact.Circles`
+>    column and created no `Circle`/`CircleMember` rows, while every UI surface reads the entities — so
+>    imported circles were *invisible in the app*. Export read the same flat column, so it emitted
+>    stale legacy strings and omitted every real membership. Import now materialises real entities
+>    (all four confirm paths, incl. P1 share-accept), the header synonym table splits by target
+>    (`circles`/`groups` → Circle, `tags`/`labels`/`categories` → Tag), and export reads the entities.
+>
+> **Three further bugs surfaced while doing the work**, none of them in the original review:
+> `SQLITE_BUSY` 500s on concurrent writes (SQLite does not run the busy handler when a *deferred*
+> transaction upgrades to a write lock, and GORM wraps every `Create` in one — fixed with
+> `_txlock=immediate`); `ApiError.getDisplayMessage` joining `details` values for *every* error, so a
+> missing contact showed the user a bare `"99999999"` instead of "Contact not found" (77 call sites
+> attach `WithDetails("id", …)` as context, not prose); and a genuinely flaky ETag test that only
+> passed when create and update landed in the same wall-clock second.
+>
+> Also in this pass: backend coverage 74.2% → 75.9% and 0%-coverage functions 96 → 81, concentrated on
+> the destructive paths that had none (`purge_service.go` had *zero*, contact merge's DB-backed half,
+> and six UI-reachable endpoints that each now get an ownership-scoping case); **23 new e2e tests**
+> across the five highest-value uncovered flows (prep view, import/export, merge, search, life events)
+> — the suite is 57 passing, and the prep-view and import/export specs were verified to fail against
+> the pre-fix backend; a **locale parity test** (the `triage.*` block, 25 keys, was untranslated
+> English in all four non-English locales, plus one missing and one orphaned key); dead code removed;
+> and the two debuggability gaps closed — `/health` now reports a real ldflags-injected
+> version/commit instead of a hardcoded `"0.1.0"`, surfaced in a Settings "About" card, and the
+> request id now reaches the user on 5xx instead of only `console.error`.
+>
+> **Correction (same day):** the hardening pass's first write-up listed N4, T25 and T23 as still open.
+> They were not — all three were already built, and re-verifying each against its own ticket confirmed
+> it. N4's inbox reframe, debounced contact picker, and "filed notes leave the inbox" behaviour all
+> work (walked end to end in a browser: unfiled note → assign contact → count 1→0 → note appears on the
+> contact's timeline). T25's confirmed data-loss bug is fixed in `api/contacts.ts` with a passthrough
+> for non-standard address component kinds and a round-trip test; its sweep items are covered too
+> (`Passthrough` survival is asserted in `contact_record_reverse_test.go`, and `VCardExtra`'s only
+> reader is `carddav/vcard_mapper.go` restoring unmapped properties, which T22 owns). T23's three
+> calibration items are all addressed: EB Garamond wordmark + IBM Plex Sans UI, self-hosted with
+> `@font-face` in `public/fonts.css`, linked from `index.html` and permitted by nginx's `font-src
+> 'self'`; `@mdi/js`+`@mdi/react` added and used in 11 files including all three named starting points;
+> and the "Profile" sub-label now reads "Settings". Dark and light both verified across
+> notes/contacts/settings/network.
+>
+> **Two small gaps found while verifying — both now closed** (`d22913d`):
+> - **N4's unfiled-count chip showed the loaded page, not the total.** `GET /notes` (unassigned) now
+>   returns a `total`, counted on the filtered query but before the cursor predicate. This is a
+>   deliberate exception to T17's removal of counts, and the two assertions pinning that decision were
+>   relaxed rather than deleted: T17's concern was a contact's unbounded note history, whereas this
+>   query is already constrained to `contact_id IS NULL` — a queue the user drains, where the count is
+>   the point. Verified live: 30 unfiled at limit=25 shows "30" with 25 rows, and stays 30 after
+>   "Load more" (previously 25, then 30).
+> - **The component test the ticket asked for** — that assigning a contact removes a note from the
+>   inbox — now exists, driving the real dialog and asserting the PUT carries `contact_id`.
+>
+> A flake in the new `importExport` e2e spec was also fixed: it borrowed `contacts[0]` from the shared
+> seed set, which other specs delete concurrently under `fullyParallel` (~1 failure in 6 runs). It owns
+> its own contact now; 8 consecutive clean full runs since.
+>
+> **Nothing is left open pre-alpha-2.** The review found no security issues — the posture documented
+> under Tier 1 holds.
+>
+> Note on T23's ticket text: it says the rebrand established "Source Sans 3" for UI. That is stale —
+> `assets/fonts/README.md` and `theme.ts` both say IBM Plex Sans, and the shipped fonts match the
+> README. The ticket, not the code, is wrong.
 
 ## How to read this
 
@@ -250,24 +332,24 @@ each side — so a high rating does not by itself pull a ticket before alpha, an
 | # | Ticket | R | Size | Depends on | Source |
 |---|---|---|---|---|---|
 | 1 | **N1** Contact merge / dedupe for existing contacts — **DONE** (`c7b7e25`) | **5** | M | — | new (gap) |
-| 2 | **N4** Notes: dead-end journal → capture inbox | **4** | S–M | — | new (re-scope) |
-| 3 | **T5** LifeEvent frontend + timeline surface | 4 | M | — | WP-84, `91.6`/`91.8` |
-| 4 | **T5b** LifeEvent → reminder wiring | 4 | S | T5 | new (gap) |
-| 5 | **T2** Circle/Tag user-assisted triage migration | 4 | M | — | WP-84c-i, `91.5` |
-| 6 | **T3** Circle/Tag backend call-site rewiring | 4 | S–M | T2 | WP-84c-ii |
-| 7 | **T4** Circle/Tag frontend rewiring (~18 files) | 4 | L | T3 | WP-84c-iii |
-| 8 | **T25** Known small functional gaps sweep | 3 | S | — | Tier 0 notes |
+| 2 | **N4** Notes: dead-end journal → capture inbox — **DONE** (verified end-to-end 2026-08-04; see the unfiled-count note below) | **4** | S–M | — | new (re-scope) |
+| 3 | **T5** LifeEvent frontend + timeline surface — **DONE** (verified 2026-08-04) | 4 | M | — | WP-84, `91.6`/`91.8` |
+| 4 | **T5b** LifeEvent → reminder wiring — **DONE** (`syncLifeEventReminder`, verified 2026-08-04) | 4 | S | T5 | new (gap) |
+| 5 | **T2** Circle/Tag user-assisted triage migration — **DONE** (`CircleTagTriagePage.tsx`) | 4 | M | — | WP-84c-i, `91.5` |
+| 6 | **T3** Circle/Tag backend call-site rewiring — **DONE** (`e34e02f`, 2026-08-04) | 4 | S–M | T2 | WP-84c-ii |
+| 7 | **T4** Circle/Tag frontend rewiring (~18 files) — **DONE** (`useCircles`/`circleNamesByUid`) | 4 | L | T3 | WP-84c-iii |
+| 8 | **T25** Known small functional gaps sweep — **DONE** (address-component passthrough + round-trip test) | 3 | S | — | Tier 0 notes |
 | 8b | **T26** Delete semantics — purge job + constraint fixes | 3 | M | — | new (design, 2026-07-30) |
-| 9 | **T1** Household CRUD + suggestion trigger + review wiring | 3 | M | — | WP-83, §3d WP3 |
-| 10 | **T20a** Preferences — migrate `FoodPreference`, project `hobby` | 3 | M | — | `92.6`, `91.9` |
+| 9 | **T1** Household CRUD + suggestion trigger + review wiring — **DONE** (`HouseholdsPage.tsx`) | 3 | M | — | WP-83, §3d WP3 |
+| 10 | **T20a** Preferences — migrate `FoodPreference`, project `hobby` — **DONE** (`Contact.FoodPreference` retired) | 3 | M | — | `92.6`, `91.9` |
  | 11 | **T6** Custom fields v2 — API surface — **DONE** (`d82f2c5`) | 3 | M | — | WP-84b, `94` |
  | 12 | **T7** Custom fields v2 — frontend, backfill, retire v1 — **DONE** (`b25a613`, `c609c32`) | 3 | L | T6 | WP-84b, `94.6` |
 | 13 | **T9** WP-97 selective field export + sensitivity gating — **DONE** | 3 | L | — | `92.6b` |
-| 14 | **T12a** Activity/LifeEvent sync primitives (ETag) | 2 | S | — | `92.3` prereq |
-| 15 | **T24** Non-critical test-coverage expansion | 2 | M | — | Tier 6, `45` |
+| 14 | **T12a** Activity/LifeEvent sync primitives (ETag) — **DONE** (both carry `etag`) | 2 | S | — | `92.3` prereq |
+| 15 | **T24** Non-critical test-coverage expansion — **substantially done** (`aaafbb3`, `207b407`); see the 2026-08-04 note | 2 | M | — | Tier 6, `45` |
 | 16 | **T8** OpenAPI coverage + spec/route drift test — **DONE** | 2\* | M | T1–T7 | `92.9` |
 | 17 | **T17** WP-92 change feeds + cursor pagination — **DONE** | 2\* | M | T8 | `92.5` |
-| 18 | **T23** UI polish — typography, icons, strings | 4 | M | *(soft: all UI done)* | Tier 6 |
+| 18 | **T23** UI polish — typography, icons, strings — **DONE** (fonts self-hosted, MDI added, copy fixed) | 4 | M | *(soft: all UI done)* | Tier 6 |
 | 19 | **T22** Legacy / dead-code audit + migration squash — **DONE** | 3 | L | all above | Tier 6 |
 | 20 | **T27** Contact CRM.Kind UI — pet/individual/animal dropdown — **DONE** (`826aca7`) | 3 | S | — | T22 audit finding |
 | 21 | **T28** Mobile contact view layout — scrollable tabs, action collapsing, 360px min-width — **DONE** | **5** | M | — | T23 polish |

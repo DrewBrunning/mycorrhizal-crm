@@ -1,5 +1,6 @@
 import { FormEvent, useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import BuildVersionCard from './components/BuildVersionCard';
 import {
   Box,
   Card,
@@ -567,6 +568,9 @@ export default function SettingsPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Which build is running -- what a user quotes in a bug report. */}
+      <BuildVersionCard />
     </Box>
   );
 }

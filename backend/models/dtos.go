@@ -331,12 +331,17 @@ type Birthday struct {
 }
 
 // GraphNode represents a node in the network visualization (contact or activity)
+//
+// No Circles field: it used to carry the legacy flat Contact.Circles column,
+// but NetworkGraph.tsx groups and colours nodes from the real Circle entities
+// (the circleNamesByUid map useCircles builds), and the frontend's own
+// GraphNode type never declared `circles` at all. It was dead payload shipping
+// stale legacy strings on every graph request.
 type GraphNode struct {
-	ID             string   `json:"id"`                        // "c-{contactID}" or "a-{activityID}"
-	Type           string   `json:"type"`                      // "contact" or "activity"
-	Label          string   `json:"label"`                     // Display name or activity title
-	PhotoThumbnail string   `json:"photo_thumbnail,omitempty"` // Profile picture for contacts (base64)
-	Circles        []string `json:"circles,omitempty"`         // Circles for contacts
+	ID             string `json:"id"`                        // "c-{contactID}" or "a-{activityID}"
+	Type           string `json:"type"`                      // "contact" or "activity"
+	Label          string `json:"label"`                     // Display name or activity title
+	PhotoThumbnail string `json:"photo_thumbnail,omitempty"` // Profile picture for contacts (base64)
 }
 
 // GraphEdge represents an edge in the network visualization

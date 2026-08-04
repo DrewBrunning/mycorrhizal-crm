@@ -40,15 +40,45 @@ export class ApiError extends Error {
     this.requestId = requestId;
   }
 
-  // Get a user-friendly error message including field details
+  // Get a user-friendly error message including field details.
+  //
+  // `details` carries two different things depending on the error code, and
+  // conflating them was a real bug: this method used to join the detail
+  // VALUES for every error that had any.
+  //
+  //   - VALIDATION_ERROR / INVALID_INPUT: details maps a field name to a
+  //     human-readable message ({name: "Name is required"}), so joining the
+  //     values is exactly right.
+  //   - everything else: details carries machine context, not prose.
+  //     `ErrNotFound("Contact").WithDetails("id", id)` — 77 call sites do
+  //     this — meant a missing contact rendered to the user as a bare
+  //     "99999999" instead of "Contact not found".
+  //
+  // So details are only folded in for the validation-shaped codes; every
+  // other error shows its message.
+  //
+  // Server-fault errors (5xx) additionally append the request id. Every
+  // backend error response and every backend log line carries that id, so it
+  // is the only thing that lets a user's "it broke" be located in the logs —
+  // but it was previously only ever console.error'd, which no user reads. A
+  // 4xx is the user's own input and needs no correlation id.
   getDisplayMessage(): string {
-    if (this.details && Object.keys(this.details).length > 0) {
-      const fieldErrors = Object.entries(this.details)
+    const detailsAreFieldMessages =
+      this.code === 'VALIDATION_ERROR' || this.code === 'INVALID_INPUT';
+
+    let message: string;
+    if (detailsAreFieldMessages && this.details && Object.keys(this.details).length > 0) {
+      message = Object.entries(this.details)
         .map(([, msg]) => `${msg}`)
         .join('. ');
-      return fieldErrors;
+    } else {
+      message = this.message;
     }
-    return this.message;
+
+    if (this.status >= 500 && this.requestId) {
+      return `${message} (ref: ${this.requestId})`;
+    }
+    return message;
   }
 }
 

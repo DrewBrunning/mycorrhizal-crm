@@ -80,11 +80,7 @@
     "noAccount": "¿No tienes cuenta? Regístrate",
     "forgotPassword": "¿Olvidaste tu contraseña?",
     "ssoButton": "Iniciar sesión con {{provider}}",
-    "orSeparator": "o",
-    "oidcDenied": "El inicio de sesión SSO fue cancelado o denegado.",
-    "oidcNoAccount": "No se encontró ninguna cuenta para tu identidad SSO. Contacta con tu administrador.",
-    "oidcError": "Se produjo un error durante el inicio de sesión SSO. Inténtalo de nuevo.",
-    "oidcNoEmail": "Su proveedor de SSO no devolvió una dirección de correo electrónico. Pida a su administrador que conceda el ámbito «email»."
+    "orSeparator": "o"
   },
   "passwordReset": {
     "title": "Restablecer Contraseña",
@@ -302,6 +298,7 @@
       }
     },
     "personalInfo": {
+      "kind": "Tipo",
       "kindOptions": {
         "expertise": "Pericia",
         "hobby": "Afición",
@@ -489,7 +486,6 @@
     "title": "Actividades",
     "search": "Buscar actividades...",
     "addActivity": "Agregar Actividad",
-    "exportVCard": "Exportar vCard",
     "noActivities": "No se encontraron actividades",
     "noResults": "Ninguna actividad coincide con los filtros",
     "fromDate": "Desde",
@@ -771,7 +767,14 @@
       "deleteTitle": "¿Eliminar calendario?",
       "deleteConfirm": "¿Eliminar «{{name}}»? Las actividades ya importadas se conservarán."
     },
-    "about": {},
+    "about": {
+      "title": "Acerca de",
+      "version": "Versión",
+      "built": "Compilado el {{date}}",
+      "copy": "Copiar detalles de la compilación",
+      "copied": "Detalles de la compilación copiados",
+      "reportHint": "Inclúyalo al informar de un problema."
+    },
     "webhooks": {
       "title": "Webhooks",
       "description": "Recibe notificaciones HTTP POST cuando ocurren eventos en tu CRM.",
@@ -1058,31 +1061,31 @@
     "mergeButton": "Combinar"
   },
   "triage": {
-    "title": "Circle/Tag Migration",
-    "description": "Classify your legacy circles into Circles (social groups) and Tags (attributes), or skip them.",
-    "stepClassify": "Classify",
-    "stepPreview": "Preview",
-    "stepApply": "Apply",
-    "colCircleName": "Name",
-    "colContactCount": "Contacts",
-    "colClassification": "Type",
-    "classificationCircle": "Circle",
-    "classificationTag": "Tag",
-    "classificationSkip": "Skip",
-    "summary": "{{total}} items — {{circles}} Circles, {{tags}} Tags, {{skipped}} skipped",
-    "next": "Next",
-    "previewTitle": "Preview",
-    "circlesToCreate": "{{count}} Circles will be created:",
-    "tagsToCreate": "{{count}} Tags will be created:",
-    "skipped": "{{count}} will be skipped:",
-    "back": "Back",
-    "apply": "Apply",
-    "applyTitle": "Apply",
-    "applyDescription": "Create entities and add memberships.",
-    "createEntities": "Create Entities",
-    "addMembers": "Add Members",
-    "noLegacyCircles": "No legacy circles found.",
-    "refresh": "Refresh"
+    "title": "Migración de círculos y etiquetas",
+    "description": "Clasifique sus círculos antiguos como Círculos (grupos sociales) o Etiquetas (atributos), u omítalos. Ejecute esto una sola vez para migrar desde el antiguo sistema de texto plano.",
+    "stepClassify": "Clasificar",
+    "stepPreview": "Vista previa",
+    "stepApply": "Aplicar",
+    "colCircleName": "Nombre",
+    "colContactCount": "Contactos",
+    "colClassification": "Tipo",
+    "classificationCircle": "Círculo",
+    "classificationTag": "Etiqueta",
+    "classificationSkip": "Omitir",
+    "summary": "{{total}} elementos — {{circles}} círculos, {{tags}} etiquetas, {{skipped}} omitidos",
+    "next": "Siguiente",
+    "previewTitle": "Vista previa",
+    "circlesToCreate": "Se crearán {{count}} círculos:",
+    "tagsToCreate": "Se crearán {{count}} etiquetas:",
+    "skipped": "Se omitirán {{count}}:",
+    "back": "Atrás",
+    "apply": "Aplicar",
+    "applyTitle": "Aplicar",
+    "applyDescription": "Crear entidades y añadir miembros. Es idempotente: puede ejecutarlo varias veces sin riesgo.",
+    "createEntities": "Crear entidades",
+    "addMembers": "Añadir miembros",
+    "noLegacyCircles": "No se encontraron círculos antiguos. Puede que no necesite esta migración.",
+    "refresh": "Actualizar"
   },
   "customFields": {
     "addTitle": "Añadir campo personalizado",
@@ -1359,8 +1362,6 @@
       "confirm": "Confirmar",
       "confirming": "Confirmando…"
     },
-    "declineConfirm": "¿Rechazar esta compartición?",
-    "shareError": "No se pudo compartir el contacto",
-    "loadError": "No se pudieron cargar las comparticiones de contactos"
+    "declineConfirm": "¿Rechazar esta compartición?"
   }
 }

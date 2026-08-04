@@ -7,7 +7,12 @@ var ImportableContactFields = []string{
 	// Scalars
 	"firstname", "lastname", "middle_name", "prefix", "suffix", "nickname", "gender",
 	"birthday", "anniversary", "organization", "department", "job_title", "role",
-	"how_we_met", "work_information", "contact_information", "circles",
+	"how_we_met", "work_information", "contact_information",
+	// Groupings. Separate targets since T3: "circles" materializes Circle +
+	// CircleMember rows, "tags" materializes Tag + ContactTag rows. Before
+	// that, tag-shaped headers were folded into "circles" because Tag had no
+	// destination.
+	"circles", "tags",
 	// Multi-value values
 	"email", "phone", "url", "impp",
 	"address_street", "address_city", "address_region", "address_postal", "address_country",

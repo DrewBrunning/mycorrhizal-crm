@@ -57,6 +57,7 @@ const NotesPage: React.FC = () => {
   const {
     notes,
     nextCursor,
+    total: unfiledTotal,
     loading,
     refetch,
     loadMore,
@@ -159,11 +160,15 @@ const NotesPage: React.FC = () => {
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
         <Box display="flex" alignItems="center" gap={1}>
           <Typography variant="h5">{t('notes.title')}</Typography>
+          {/* Queue depth from the server's `total`, not notes.length -- the
+              latter is the loaded page, so this under-counted anyone with
+              more than one page of unfiled notes and then grew as they
+              clicked "Load more". */}
           <Chip
-            label={notes.length}
+            label={unfiledTotal}
             size="small"
-            color={notes.length > 0 ? 'primary' : 'default'}
-            variant={notes.length > 0 ? 'filled' : 'outlined'}
+            color={unfiledTotal > 0 ? 'primary' : 'default'}
+            variant={unfiledTotal > 0 ? 'filled' : 'outlined'}
           />
           <IconButton
             size="small"

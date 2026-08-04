@@ -160,6 +160,11 @@ func main() {
 	// Add security headers (HSTS only when serving over HTTPS, signaled by COOKIE_SECURE)
 	r.Use(middleware.SecurityHeadersMiddleware(cfg.CookieSecure))
 
+	// Apply the configured general-API rate limits before any route is
+	// registered (the middleware package installs safe defaults in its own
+	// init(); this only replaces them when the environment sets them).
+	middleware.ConfigureAPIRateLimiter(cfg.APIRateLimitInterval, cfg.APIRateLimitBurst)
+
 	// Add request body size limit middleware (10MB default) to prevent DoS
 	r.Use(middleware.DefaultBodySizeLimitMiddleware())
 
@@ -236,6 +241,13 @@ func main() {
 	// Stop the scheduler first to prevent new jobs from starting
 	logger.Info().Msg("Stopping scheduler...")
 	s.Stop()
+
+	// Stop the rate limiter's stale-entry sweeper. Its counterpart
+	// StartCleanupRoutine runs from the middleware package's init(), so
+	// without this the goroutine (and the cleanupDone channel that exists
+	// solely to signal it) had no caller at all -- the shutdown hook was
+	// written but never wired up.
+	middleware.StopCleanupRoutine()
 
 	// Create a deadline to wait for active requests to complete
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

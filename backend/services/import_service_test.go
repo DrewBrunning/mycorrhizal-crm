@@ -58,7 +58,11 @@ func TestSuggestColumnMappings_GoogleStyle(t *testing.T) {
 		{"Address 1 - Country", "address_country", 0},
 		{"Address 1 - Label", "address_label", 0},
 		{"Website 1 - Value", "url", 0},
-		{"Labels", "circles", 0},
+		// "Labels" is tag-shaped vocabulary and now routes to the Tag entity.
+		// It used to collapse onto "circles" along with tags/categories,
+		// because Tag did not exist as a destination when this table was
+		// written (T3).
+		{"Labels", "tags", 0},
 	}
 
 	for _, tc := range cases {
@@ -123,8 +127,12 @@ func TestBuildContactFromRow_MultiValue(t *testing.T) {
 	assert.Len(t, c.URLs, 1)
 	assert.Equal(t, "https://ada.example", c.URLs[0].Value)
 
-	// Circles parsed.
-	assert.ElementsMatch(t, []string{"Friends", "Math"}, c.Circles)
+	// The source column here is "Labels", which is tag-shaped vocabulary — so
+	// these land on ImportedTags (destined for real Tag rows), not on the flat
+	// Circles field they used to be folded into before Tag existed as a
+	// destination (T3).
+	assert.ElementsMatch(t, []string{"Friends", "Math"}, c.ImportedTags)
+	assert.Empty(t, c.Circles)
 }
 
 func TestBuildContactFromRow_FlatSingleValue(t *testing.T) {

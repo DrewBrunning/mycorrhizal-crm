@@ -80,11 +80,7 @@
     "noAccount": "Non hai un account? Registrati",
     "forgotPassword": "Hai dimenticato la password?",
     "ssoButton": "Accedi con {{provider}}",
-    "orSeparator": "oppure",
-    "oidcDenied": "Il login SSO è stato annullato o negato.",
-    "oidcNoAccount": "Nessun account trovato per la tua identità SSO. Contatta il tuo amministratore.",
-    "oidcError": "Si è verificato un errore durante il login SSO. Riprova.",
-    "oidcNoEmail": "Il tuo provider SSO non ha restituito un indirizzo email. Chiedi all'amministratore di concedere l'ambito «email»."
+    "orSeparator": "oppure"
   },
   "passwordReset": {
     "title": "Reimposta Password",
@@ -302,6 +298,7 @@
       }
     },
     "personalInfo": {
+      "kind": "Tipo",
       "kindOptions": {
         "expertise": "Competenza",
         "hobby": "Hobby",
@@ -489,7 +486,6 @@
     "title": "Attività",
     "search": "Cerca attività...",
     "addActivity": "Aggiungi Attività",
-    "exportVCard": "Esporta vCard",
     "noActivities": "Nessuna attività trovata",
     "noResults": "Nessuna attività corrisponde ai filtri",
     "fromDate": "Dal",
@@ -771,7 +767,14 @@
       "deleteTitle": "Eliminare il calendario?",
       "deleteConfirm": "Rimuovere “{{name}}”? Le attività già importate verranno mantenute."
     },
-    "about": {},
+    "about": {
+      "title": "Informazioni",
+      "version": "Versione",
+      "built": "Compilato il {{date}}",
+      "copy": "Copia i dettagli della build",
+      "copied": "Dettagli della build copiati",
+      "reportHint": "Includilo quando segnali un problema."
+    },
     "webhooks": {
       "title": "Webhook",
       "description": "Ricevi notifiche HTTP POST quando si verificano eventi nel tuo CRM.",
@@ -1058,31 +1061,31 @@
     "mergeButton": "Unisci"
   },
   "triage": {
-    "title": "Circle/Tag Migration",
-    "description": "Classify your legacy circles into Circles (social groups) and Tags (attributes), or skip them.",
-    "stepClassify": "Classify",
-    "stepPreview": "Preview",
-    "stepApply": "Apply",
-    "colCircleName": "Name",
-    "colContactCount": "Contacts",
-    "colClassification": "Type",
-    "classificationCircle": "Circle",
-    "classificationTag": "Tag",
-    "classificationSkip": "Skip",
-    "summary": "{{total}} items — {{circles}} Circles, {{tags}} Tags, {{skipped}} skipped",
-    "next": "Next",
-    "previewTitle": "Preview",
-    "circlesToCreate": "{{count}} Circles will be created:",
-    "tagsToCreate": "{{count}} Tags will be created:",
-    "skipped": "{{count}} will be skipped:",
-    "back": "Back",
-    "apply": "Apply",
-    "applyTitle": "Apply",
-    "applyDescription": "Create entities and add memberships.",
-    "createEntities": "Create Entities",
-    "addMembers": "Add Members",
-    "noLegacyCircles": "No legacy circles found.",
-    "refresh": "Refresh"
+    "title": "Migrazione di cerchie ed etichette",
+    "description": "Classifica le tue vecchie cerchie come Cerchie (gruppi sociali) o Etichette (attributi), oppure ignorale. Esegui questa operazione una sola volta per migrare dal vecchio sistema a testo semplice.",
+    "stepClassify": "Classifica",
+    "stepPreview": "Anteprima",
+    "stepApply": "Applica",
+    "colCircleName": "Nome",
+    "colContactCount": "Contatti",
+    "colClassification": "Tipo",
+    "classificationCircle": "Cerchia",
+    "classificationTag": "Etichetta",
+    "classificationSkip": "Ignora",
+    "summary": "{{total}} elementi — {{circles}} cerchie, {{tags}} etichette, {{skipped}} ignorati",
+    "next": "Avanti",
+    "previewTitle": "Anteprima",
+    "circlesToCreate": "Verranno create {{count}} cerchie:",
+    "tagsToCreate": "Verranno create {{count}} etichette:",
+    "skipped": "{{count}} verranno ignorati:",
+    "back": "Indietro",
+    "apply": "Applica",
+    "applyTitle": "Applica",
+    "applyDescription": "Crea le entità e aggiungi i membri. L'operazione è idempotente: puoi ripeterla senza rischi.",
+    "createEntities": "Crea entità",
+    "addMembers": "Aggiungi membri",
+    "noLegacyCircles": "Nessuna vecchia cerchia trovata. Potresti non aver bisogno di questa migrazione.",
+    "refresh": "Aggiorna"
   },
   "customFields": {
     "addTitle": "Aggiungi campo personalizzato",
@@ -1359,8 +1362,6 @@
       "confirm": "Conferma",
       "confirming": "Conferma in corso…"
     },
-    "declineConfirm": "Rifiutare questa condivisione?",
-    "shareError": "Impossibile condividere il contatto",
-    "loadError": "Impossibile caricare le condivisioni di contatti"
+    "declineConfirm": "Rifiutare questa condivisione?"
   }
 }

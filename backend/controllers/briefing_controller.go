@@ -172,7 +172,41 @@ func buildContactBriefing(db *gorm.DB, userID uint, contact *models.Contact, now
 	// --- Upcoming dates: birthday and anniversary, each with days-until.
 	briefing.UpcomingDates = buildUpcomingDates(contact, now)
 
+	normalizeBriefingSlices(briefing)
 	return briefing, nil
+}
+
+// normalizeBriefingSlices replaces every nil block with an empty slice so the
+// response always serializes them as `[]` rather than `null`.
+//
+// This is not cosmetic. `db.Find(&x)` leaves x nil when it matches no rows, and
+// ContactBriefing's blocks used to be tagged `omitempty` on top of that — so a
+// contact with no history serialized to `{"contact_id":1,"uid":…,"name":…}`
+// with all six blocks *missing*, and the frontend's
+// `briefing.open_agenda_items.length` crashed the prep view into its
+// ErrorBoundary. Every newly-created contact is in exactly that state, so the
+// page was broken on first use. The `omitempty` tags are gone (see
+// models/briefing.go); this makes the nil-vs-empty half true as well, since
+// without it the blocks would serialize as `null` and crash identically.
+func normalizeBriefingSlices(b *models.ContactBriefing) {
+	if b.RecentNotes == nil {
+		b.RecentNotes = []models.Note{}
+	}
+	if b.OpenAgendaItems == nil {
+		b.OpenAgendaItems = []models.ConversationAgenda{}
+	}
+	if b.Relationships == nil {
+		b.Relationships = []models.BriefingRelationship{}
+	}
+	if b.LifeEvents == nil {
+		b.LifeEvents = []models.LifeEvent{}
+	}
+	if b.UpcomingReminders == nil {
+		b.UpcomingReminders = []models.Reminder{}
+	}
+	if b.UpcomingDates == nil {
+		b.UpcomingDates = []models.BriefingUpcomingDate{}
+	}
 }
 
 // attachBriefingRelationships resolves the briefing's relationship block.

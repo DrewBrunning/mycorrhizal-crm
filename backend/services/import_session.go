@@ -251,6 +251,13 @@ func (m *ImportSessionManager) Confirm(db *gorm.DB, userID uint, req models.Impo
 					result.Errors = append(result.Errors, fmt.Sprintf("Row %d: Failed to create contact: %v", preview.RowIndex+1, err))
 					result.Skipped++
 				} else {
+					// Turn the staged circle/tag names into real Circle/Tag +
+					// membership rows (T3). Without this the values sit in the
+					// flat Contact.Circles column that no UI surface reads any
+					// more, so imported groupings were invisible in the app.
+					if err := MaterializeImportedGroupings(tx, userID, &contact); err != nil {
+						result.Errors = append(result.Errors, fmt.Sprintf("Row %d: Failed to apply circles/tags: %v", preview.RowIndex+1, err))
+					}
 					result.Created++
 					if isVCFImport {
 						sessionData.vcfContacts[preview.RowIndex].Contact.ID = contact.ID
@@ -290,6 +297,9 @@ func (m *ImportSessionManager) Confirm(db *gorm.DB, userID uint, req models.Impo
 					result.Errors = append(result.Errors, fmt.Sprintf("Row %d: Failed to update contact: %v", preview.RowIndex+1, err))
 					result.Skipped++
 				} else {
+					if err := MaterializeImportedGroupings(tx, userID, &existing); err != nil {
+						result.Errors = append(result.Errors, fmt.Sprintf("Row %d: Failed to apply circles/tags: %v", preview.RowIndex+1, err))
+					}
 					result.Updated++
 					if isVCFImport {
 						sessionData.vcfContacts[preview.RowIndex].Contact.ID = existing.ID
@@ -369,6 +379,12 @@ func (m *ImportSessionManager) ConfirmVCF(db *gorm.DB, userID uint, req models.I
 					result.Errors = append(result.Errors, fmt.Sprintf("Row %d: Failed to create contact: %v", preview.RowIndex+1, err))
 					result.Skipped++
 				} else {
+					// T3: materialize circles/tags into real entities. Also
+					// covers P1 contact sharing, which accepts a share through
+					// this exact method.
+					if err := MaterializeImportedGroupings(tx, userID, &contact); err != nil {
+						result.Errors = append(result.Errors, fmt.Sprintf("Row %d: Failed to apply circles/tags: %v", preview.RowIndex+1, err))
+					}
 					result.Created++
 					// Queue photo processing (either embedded data or URL)
 					if len(vcfData.PhotoData) > 0 || vcfData.PhotoURL != "" {
@@ -405,6 +421,9 @@ func (m *ImportSessionManager) ConfirmVCF(db *gorm.DB, userID uint, req models.I
 					result.Errors = append(result.Errors, fmt.Sprintf("Row %d: Failed to update contact: %v", preview.RowIndex+1, err))
 					result.Skipped++
 				} else {
+					if err := MaterializeImportedGroupings(tx, userID, &existing); err != nil {
+						result.Errors = append(result.Errors, fmt.Sprintf("Row %d: Failed to apply circles/tags: %v", preview.RowIndex+1, err))
+					}
 					result.Updated++
 					// Queue photo processing only if contact doesn't already have a photo
 					if existing.Photo == "" && (len(vcfData.PhotoData) > 0 || vcfData.PhotoURL != "") {

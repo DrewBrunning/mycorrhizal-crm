@@ -12,6 +12,15 @@ import "time"
 // Design rules (N2's traps):
 //   - Only status:confirmed relationship edges are included; a suggested edge
 //     is not fact (RelationshipEdge.Status's own doc comment).
+//   - **The six slice blocks below must NOT carry `omitempty`, and the
+//     controller must never leave them nil.** They serialize as `[]`, always.
+//     They previously had `omitempty`, so a contact with no history returned
+//     `{"contact_id":1,"uid":...,"name":...}` with every block *absent* rather
+//     than empty — and PrepViewPage's `briefing.open_agenda_items.length`
+//     crashed the whole page into the ErrorBoundary. That is the state every
+//     freshly-created contact is in, so it broke the prep view on first use.
+//     The frontend type (frontend/src/api/briefings.ts) declares these fields
+//     required, which is the contract this struct now actually honours.
 //   - Sensitivity (91.13): `secret` relationships are excluded in the query —
 //     a secret relationship has no business on a screen likely to be open in
 //     front of the person it concerns. `private` relationships stay: the
@@ -35,7 +44,7 @@ type ContactBriefing struct {
 	// RecentNotes are the contact's most recent notes, newest first, capped
 	// (see BriefingNotesLimit). Notes are user-authored free text — part of
 	// the "what was discussed" block alongside LastActivity.
-	RecentNotes []Note `json:"recent_notes,omitempty"`
+	RecentNotes []Note `json:"recent_notes"`
 
 	// CadenceHealth is T19's DERIVED relationship health (never stored), or
 	// nil when the contact has no CadencePolicy. The briefing's "how overdue
@@ -44,25 +53,25 @@ type ContactBriefing struct {
 
 	// OpenAgendaItems are T21's not-yet-discussed conversation-agenda items
 	// for this contact ("things to bring up"), newest first.
-	OpenAgendaItems []ConversationAgenda `json:"open_agenda_items,omitempty"`
+	OpenAgendaItems []ConversationAgenda `json:"open_agenda_items"`
 
 	// Relationships are the confirmed edges involving this contact, each
 	// resolved with the other party's display name + the label token as read
 	// from this contact's perspective (the frontend reuses the i18n label for
 	// the token). Sensitive edges (sensitivity above normal) excluded.
-	Relationships []BriefingRelationship `json:"relationships,omitempty"`
+	Relationships []BriefingRelationship `json:"relationships"`
 
 	// LifeEvents are this contact's life events, most recent first, capped.
-	LifeEvents []LifeEvent `json:"life_events,omitempty"`
+	LifeEvents []LifeEvent `json:"life_events"`
 
 	// UpcomingReminders are this contact's incomplete reminders due within the
 	// briefing window, soonest first.
-	UpcomingReminders []Reminder `json:"upcoming_reminders,omitempty"`
+	UpcomingReminders []Reminder `json:"upcoming_reminders"`
 
 	// UpcomingDates are the contact's upcoming calendar-ish dates (birthday,
 	// anniversary), each with days-until. Derived from the flat
 	// Birthday/Anniversary columns via services.DaysUntilBirthday.
-	UpcomingDates []BriefingUpcomingDate `json:"upcoming_dates,omitempty"`
+	UpcomingDates []BriefingUpcomingDate `json:"upcoming_dates"`
 }
 
 // BriefingActivity is the slim projection of an Activity shown as the

@@ -124,6 +124,24 @@ func TestActivityETagBulkUpdateOnZeroValueReceiverDoesNotCorrupt(t *testing.T) {
 	require.NoError(t, db.Create(&one).Error)
 	require.NoError(t, db.Create(&two).Error)
 
+	// Capture the ETags the create-time hook assigned, so the assertion below
+	// can compare against what was actually stored.
+	//
+	// Deliberately NOT re-derived from UpdatedAt after the update: the bulk
+	// Update legitimately bumps UpdatedAt while the hook (correctly) leaves the
+	// ETag alone, so `fmt.Sprintf("e-%d-%d", r.ID, r.UpdatedAt.Unix())` only
+	// matches when the create and the update land in the same wall-clock
+	// second. That made this test flaky under parallel package load — it failed
+	// whenever the two straddled a second boundary.
+	etagBefore := map[uint]string{}
+	var before []Activity
+	require.NoError(t, db.Order("id").Find(&before).Error)
+	require.Len(t, before, 2)
+	for _, r := range before {
+		require.NotEmpty(t, r.ETag)
+		etagBefore[r.ID] = r.ETag
+	}
+
 	require.NoError(t, db.Model(&Activity{}).Where("user_id = ?", user.ID).
 		Update("title", "Renamed").Error)
 
@@ -133,6 +151,8 @@ func TestActivityETagBulkUpdateOnZeroValueReceiverDoesNotCorrupt(t *testing.T) {
 	for _, r := range rows {
 		require.NotEmpty(t, r.ETag)
 		assert.Regexp(t, regexp.MustCompile(`^e-\d+-\d+$`), r.ETag, "bulk update must not rewrite ETags from an empty ID")
-		assert.Equal(t, fmt.Sprintf("e-%d-%d", r.ID, r.UpdatedAt.Unix()), r.ETag, "ETag must survive the bulk update unchanged")
+		assert.Equal(t, etagBefore[r.ID], r.ETag, "ETag must survive the bulk update unchanged")
+		assert.NotEqual(t, fmt.Sprintf("e-0-%d", r.UpdatedAt.Unix()), r.ETag,
+			"an ETag derived from a zero ID means the hook fired on the zero-value receiver")
 	}
 }

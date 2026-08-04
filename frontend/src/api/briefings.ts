@@ -67,11 +67,29 @@ export interface ContactBriefing {
 }
 
 // GET /contacts/:id/briefing — the N2 prep-view composition.
+//
+// The six collection blocks are declared required above and PrepViewPage
+// dereferences `.length` on them directly, so they are normalised here rather
+// than guarded at each of the ~6 render sites. The server contract
+// (backend/models/briefing.go) guarantees `[]`, but this endpoint is the one
+// place a contract regression white-screens an entire page, so the boundary
+// asserts it instead of trusting it: the blocks previously came back *absent*
+// for any contact with no history — i.e. every newly-created contact — and the
+// page crashed into its ErrorBoundary on first use.
 export async function getContactBriefing(id: string | number): Promise<ContactBriefing> {
   const response = await apiFetch(
     `${API_BASE_URL}/contacts/${id}/briefing`,
     { headers: getAuthHeaders() }
   );
   if (!response.ok) throw await parseErrorResponse(response);
-  return response.json();
+  const raw = await response.json();
+  return {
+    ...raw,
+    recent_notes: raw.recent_notes ?? [],
+    open_agenda_items: raw.open_agenda_items ?? [],
+    relationships: raw.relationships ?? [],
+    life_events: raw.life_events ?? [],
+    upcoming_reminders: raw.upcoming_reminders ?? [],
+    upcoming_dates: raw.upcoming_dates ?? [],
+  };
 }

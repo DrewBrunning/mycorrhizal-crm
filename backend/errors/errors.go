@@ -270,12 +270,6 @@ func ErrOperationFailed(operation, reason string) *AppError {
 	return err
 }
 
-// IsAppError checks if an error is an AppError
-func IsAppError(err error) bool {
-	_, ok := err.(*AppError)
-	return ok
-}
-
 // GetAppError extracts an AppError from an error, or creates a generic internal error
 func GetAppError(err error) *AppError {
 	if err == nil {

@@ -92,6 +92,41 @@ func serializeFieldValueForCSV(raw json.RawMessage) string {
 	return string(raw)
 }
 
+// groupingNamesByContact batch-loads a contact-grouping join table into a
+// VCardUID -> sorted names map, so the CSV exporter emits Circle/Tag
+// memberships in one query per grouping rather than two per contact.
+//
+// joinTable/entityTable/joinFKColumn/memberColumn are compile-time constants
+// supplied by this file's two call sites (circle_members/circles and
+// contact_tags/tags) — never user input. They are interpolated because GORM
+// cannot parameterize identifiers; the only bound value is userID. If a caller
+// ever needs to pass something derived from a request, this signature is wrong
+// and the query must be rewritten, not the argument sanitized.
+func groupingNamesByContact(db *gorm.DB, userID uint, joinTable, entityTable, joinFKColumn, memberColumn string) (map[string][]string, error) {
+	type row struct {
+		VCardUID string
+		Name     string
+	}
+	var rows []row
+	query := fmt.Sprintf(
+		`SELECT j.%s AS v_card_uid, e.name AS name
+		 FROM %s j
+		 JOIN %s e ON e.id = j.%s
+		 WHERE j.user_id = ?
+		 ORDER BY e.name`,
+		memberColumn, joinTable, entityTable, joinFKColumn,
+	)
+	if err := db.Raw(query, userID).Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	out := make(map[string][]string)
+	for _, r := range rows {
+		out[r.VCardUID] = append(out[r.VCardUID], r.Name)
+	}
+	return out, nil
+}
+
 // parseExportFieldSelection reads the ?sections= and ?include_sensitive=
 // query params accepted by the vCard/JSContact export handlers (WP-97 / T9,
 // docs/fork-plan/tickets/13-T9-selective-export.md). sections is a
@@ -258,6 +293,27 @@ func ExportData(c *gin.Context) {
 		foodByVCardUID[pref.EntityID] = append(foodByVCardUID[pref.EntityID], pref.Value)
 	}
 
+	// Circle/Tag memberships (T3). These come from the real Circle/Tag
+	// entities, NOT the legacy flat Contact.Circles column this exporter used
+	// to join on: every read surface in the app moved to the entities, so the
+	// flat column exported stale legacy strings while omitting every
+	// membership the user had actually created. Batched into maps for the same
+	// reason foodByVCardUID is — one query each rather than two per contact.
+	circlesByVCardUID, err := groupingNamesByContact(db, userID,
+		"circle_members", "circles", "circle_id", "member_vcard_uid")
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to fetch circle memberships for export")
+		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to fetch circle memberships"))
+		return
+	}
+	tagsByVCardUID, err := groupingNamesByContact(db, userID,
+		"contact_tags", "tags", "tag_id", "contact_vcard_uid")
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to fetch tag assignments for export")
+		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to fetch tag assignments"))
+		return
+	}
+
 	// Generate combined CSV content
 	var buf bytes.Buffer
 	writer := csv.NewWriter(&buf)
@@ -269,7 +325,7 @@ func ExportData(c *gin.Context) {
 	contactHeaders := []string{
 		"ID", "Firstname", "Lastname", "Nickname", "Gender", "Email", "Phone",
 		"Birthday", "Address", "How We Met", "Food Preference", "Work Information",
-		"Contact Information", "Circles", "Created At", "Updated At",
+		"Contact Information", "Circles", "Tags", "Created At", "Updated At",
 	}
 	// Custom-field headers come from the v2 definitions' Labels (user-
 	// authored, so the header row gets the same csvSafe treatment as the data
@@ -298,7 +354,8 @@ func ExportData(c *gin.Context) {
 			strings.Join(foodByVCardUID[contact.VCardUID], "; "),
 			contact.WorkInformation,
 			contact.ContactInformation,
-			strings.Join(contact.Circles, "; "),
+			strings.Join(circlesByVCardUID[contact.VCardUID], "; "),
+			strings.Join(tagsByVCardUID[contact.VCardUID], "; "),
 			contact.CreatedAt.Format(time.RFC3339),
 			contact.UpdatedAt.Format(time.RFC3339),
 		}

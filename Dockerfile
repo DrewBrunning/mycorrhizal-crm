@@ -22,8 +22,19 @@ RUN go mod download
 # Copy backend source code
 COPY backend/ .
 
+# Version stamping. Passed as build args so the image records which source it
+# was built from -- /health serves these, and they are what ties a user's bug
+# report to a specific binary. Without them the binary reports "dev".
+ARG APP_VERSION=dev
+ARG APP_COMMIT=""
+ARG APP_BUILD_DATE=""
+
 # Build the application (glebarez/sqlite is pure Go (no CGO, i.e. without QEMU)
-RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o mycorrhizal .
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
+    -ldflags "-X mycorrhizal/buildinfo.Version=${APP_VERSION} \
+              -X mycorrhizal/buildinfo.Commit=${APP_COMMIT} \
+              -X mycorrhizal/buildinfo.BuildDate=${APP_BUILD_DATE}" \
+    -o mycorrhizal .
 
 # =============================================================================
 # Stage 2: Build React frontend (same-origin API, served by nginx)
