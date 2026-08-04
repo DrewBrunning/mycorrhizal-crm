@@ -235,16 +235,17 @@ var (
 	// 2 requests per second with burst of 50 (allows rapid legitimate logins, e.g., E2E tests)
 	authLimiter = NewIPRateLimiter(rate.Every(500*time.Millisecond), 50)
 
-	// General API rate limiter
-	// 100 requests per minute sustained, burst of 1000. All e2e traffic
-	// shares one IP (the browser workers all originate from the same
-	// container/proxy), and a full Playwright run's request volume — every
-	// page load fires several parallel GETs across dozens of tests — sits
-	// close to the old burst of 500; that ran dry near the end of the suite
-	// (confirmed via a real run: ~650 requests total, 429s starting once the
-	// bucket was exhausted). Doubled to give real headroom without changing
-	// the sustained rate, mirroring cardDAVLimiter's existing precedent of a
-	// generous burst for legitimate bulk traffic.
+	// General API rate limiter, per client IP: 100 requests per minute
+	// sustained, burst of 1000 by default.
+	//
+	// Overridable via ConfigureAPIRateLimiter (API_RATE_LIMIT_INTERVAL_MS /
+	// API_RATE_LIMIT_BURST) rather than hardcoded, because the burst has
+	// already had to be raised once — a full Playwright run exhausted the
+	// previous 500 and started 429ing near the end of the suite — and every
+	// new spec pushes it closer again. It is also a real deployment knob:
+	// when several people share one egress IP (a household behind NAT, or a
+	// reverse proxy that does not set X-Forwarded-For) they share a single
+	// bucket, and a busy contact page alone fires ~18 requests.
 	apiLimiter = NewIPRateLimiter(rate.Every(600*time.Millisecond), 1000)
 
 	// CardDAV rate limiter — higher burst to accommodate bulk sync from clients like vdirsyncer
@@ -265,6 +266,17 @@ var (
 // GetAccountRateLimiter returns the global account rate limiter for login attempts
 func GetAccountRateLimiter() *AccountRateLimiter {
 	return accountLimiter
+}
+
+// ConfigureAPIRateLimiter replaces the general-API limiter with one built from
+// the supplied settings. Call once during startup, before routes are
+// registered. Zero/negative values are ignored so a partially-set environment
+// keeps the safe defaults rather than disabling rate limiting outright.
+func ConfigureAPIRateLimiter(interval time.Duration, burst int) {
+	if interval <= 0 || burst <= 0 {
+		return
+	}
+	apiLimiter = NewIPRateLimiter(rate.Every(interval), burst)
 }
 
 // StartCleanupRoutine starts the background cleanup goroutine.

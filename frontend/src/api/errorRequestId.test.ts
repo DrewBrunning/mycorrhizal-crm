@@ -46,3 +46,42 @@ describe('ApiError.getDisplayMessage request id', () => {
     expect(err.getDisplayMessage()).toBe('Name is too long (ref: req-1)');
   });
 });
+
+// `details` carries field messages for validation errors but machine context
+// for everything else. This method used to join the values regardless, so a
+// missing contact — ErrNotFound("Contact").WithDetails("id", id), which 77
+// backend call sites produce — rendered to the user as a bare "99999999".
+// Caught by the prep-view e2e spec, which found the alert showing just an ID.
+describe('ApiError.getDisplayMessage details handling', () => {
+  test('shows the message, not the id, for a not-found error carrying context details', () => {
+    const err = new ApiError('Contact not found', 'NOT_FOUND', 404, { id: '99999999' });
+    expect(err.getDisplayMessage()).toBe('Contact not found');
+  });
+
+  test('folds in field messages for a validation error', () => {
+    const err = new ApiError('Request validation failed', 'VALIDATION_ERROR', 400, {
+      name: 'Name is required',
+    });
+    expect(err.getDisplayMessage()).toBe('Name is required');
+  });
+
+  test('folds in field messages for an invalid-input error', () => {
+    const err = new ApiError('Invalid input', 'INVALID_INPUT', 400, {
+      reason: 'limit must be a positive integer',
+    });
+    expect(err.getDisplayMessage()).toBe('limit must be a positive integer');
+  });
+
+  test('joins multiple field messages', () => {
+    const err = new ApiError('Request validation failed', 'VALIDATION_ERROR', 400, {
+      name: 'Name is required',
+      email: 'Email is invalid',
+    });
+    expect(err.getDisplayMessage()).toBe('Name is required. Email is invalid');
+  });
+
+  test('ignores context details on a conflict error', () => {
+    const err = new ApiError('Already exists', 'ALREADY_EXISTS', 409, { circle_id: 'abc-123' });
+    expect(err.getDisplayMessage()).toBe('Already exists');
+  });
+});

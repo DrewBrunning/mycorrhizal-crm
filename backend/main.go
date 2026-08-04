@@ -160,6 +160,11 @@ func main() {
 	// Add security headers (HSTS only when serving over HTTPS, signaled by COOKIE_SECURE)
 	r.Use(middleware.SecurityHeadersMiddleware(cfg.CookieSecure))
 
+	// Apply the configured general-API rate limits before any route is
+	// registered (the middleware package installs safe defaults in its own
+	// init(); this only replaces them when the environment sets them).
+	middleware.ConfigureAPIRateLimiter(cfg.APIRateLimitInterval, cfg.APIRateLimitBurst)
+
 	// Add request body size limit middleware (10MB default) to prevent DoS
 	r.Use(middleware.DefaultBodySizeLimitMiddleware())
 

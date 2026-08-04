@@ -33,8 +33,26 @@ var migrationsFS embed.FS
 //     immediately returning SQLITE_BUSY. The scheduled jobs fire concurrently
 //     at startup and the first one to INSERT into job_executions fails the
 //     others; a timeout lets them queue instead.
+//   - _txlock=immediate: begin every transaction with BEGIN IMMEDIATE rather
+//     than SQLite's default deferred BEGIN.
+//
+// The last one is not cosmetic, and busy_timeout alone does not cover it. A
+// deferred transaction takes a read lock first and only tries to upgrade to a
+// write lock at its first write; SQLite's busy handler is NOT invoked for that
+// upgrade (it cannot safely wait — another writer may already hold a snapshot),
+// so the upgrade fails instantly with SQLITE_BUSY no matter how long the
+// timeout is. GORM wraps even a single Create in an implicit transaction, so
+// two concurrent POSTs to a write endpoint could produce an immediate 500:
+//
+//	POST /api/v1/contacts -> 500 "database is locked (5) (SQLITE_BUSY)" in 4.8ms
+//
+// observed intermittently under the e2e suite's parallel workers, and equally
+// reachable by a real client issuing concurrent writes. BEGIN IMMEDIATE takes
+// the write lock up front, which IS a case the busy handler retries, so
+// concurrent writers queue for up to busy_timeout instead of erroring.
+// Readers are unaffected: WAL keeps them lock-free.
 func openDSN(dbPath string) string {
-	return dbPath + "?_pragma=journal_mode(WAL)&_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)"
+	return dbPath + "?_pragma=journal_mode(WAL)&_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)&_txlock=immediate"
 }
 
 // InitDB initializes the database connection and runs migrations

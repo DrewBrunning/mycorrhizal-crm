@@ -63,8 +63,17 @@ type Config struct {
 	CalDAVSyncIntervalHours int    // Interval in hours for the scheduled calendar sync job
 	CalDAVBlockPrivateURLs  bool   // Block calendar sync requests to private/loopback addresses (useful for cloud deployments)
 	DeleteRetentionDays     int    // Days soft-deleted rows survive before the purge job hard-deletes them (T26)
-	ImmichSyncIntervalHours int    // Interval in hours for the scheduled Immich enrichment sync (T16)
-	ImmichBlockPrivateURLs  bool   // Block Immich fetches to private/loopback addresses (useful for cloud deployments)
+
+	// General-API rate limiting, per client IP. Configurable because the
+	// hardcoded values had already been raised once to stop a full Playwright
+	// run exhausting the bucket, and because a deployment where several
+	// people share one egress IP (a household behind NAT, or a reverse proxy
+	// without correct X-Forwarded-For) shares a single bucket between them.
+	// Defaults preserve the previous hardcoded behaviour exactly.
+	APIRateLimitInterval    time.Duration // Sustained refill interval, one token per interval
+	APIRateLimitBurst       int           // Bucket size, i.e. the largest instantaneous burst allowed
+	ImmichSyncIntervalHours int           // Interval in hours for the scheduled Immich enrichment sync (T16)
+	ImmichBlockPrivateURLs  bool          // Block Immich fetches to private/loopback addresses (useful for cloud deployments)
 	OIDC                    OIDCConfig
 }
 
@@ -113,6 +122,8 @@ func LoadConfig() *Config {
 		CalDAVSyncIntervalHours: getIntEnv("CALDAV_SYNC_INTERVAL_HOURS", 6),
 		CalDAVBlockPrivateURLs:  getBoolEnv("CALDAV_BLOCK_PRIVATE_URLS", false),
 		DeleteRetentionDays:     getIntEnv("DELETED_RETENTION_DAYS", 30),
+		APIRateLimitInterval:    time.Duration(getIntEnv("API_RATE_LIMIT_INTERVAL_MS", 600)) * time.Millisecond,
+		APIRateLimitBurst:       getIntEnv("API_RATE_LIMIT_BURST", 1000),
 		ImmichSyncIntervalHours: getIntEnv("IMMICH_SYNC_INTERVAL_HOURS", 6),
 		ImmichBlockPrivateURLs:  getBoolEnv("IMMICH_BLOCK_PRIVATE_URLS", false),
 	}
