@@ -393,7 +393,11 @@
   },
   "timeline": {
     "reminderCompleted": "Erinnerung erledigt",
-    "deleteCompletionConfirm": "Möchten Sie diese erledigte Erinnerung wirklich aus der Zeitachse entfernen?"
+    "deleteCompletionConfirm": "Möchten Sie diese erledigte Erinnerung wirklich aus der Zeitachse entfernen?",
+    "gift": {
+      "given": "Geschenk übergeben",
+      "received": "Geschenk erhalten"
+    }
   },
   "contactDetail": {
     "notFound": "Kontakt nicht gefunden",
@@ -1129,13 +1133,24 @@
     "categories": {
       "food": "Essen",
       "drink": "Getränke",
-      "clothing_size": "Kleidergröße",
-      "hobby": "Hobby",
-      "gift": "Geschenk",
-      "dislike": "Abneigung",
-      "media": "Medien"
+      "media": "Medien",
+      "clothing_size": "Kleidergröße"
     },
     "key": "Schlüssel",
+    "keyHint": "Art der Vorliebe, z. B. Favorit, Abneigung, Allergie",
+    "keys": {
+      "favorite": "Favorit",
+      "dislike": "Abneigung",
+      "allergy": "Allergie",
+      "show": "Serie",
+      "movie": "Film",
+      "music": "Musik"
+    },
+    "sections": {
+      "foodDrink": "Essens- & Getränkevorlieben",
+      "media": "Medienvorlieben",
+      "other": "Sonstige Vorlieben"
+    },
     "keyHint": "Optionale Kennung, z. B. favorite_coffee",
     "value": "Wert",
     "sensitivity": "Sichtbarkeit",
@@ -1221,7 +1236,10 @@
     "add": "Hinzufügen",
     "markGiven": "Als verschenkt markieren",
     "ideasSection": "Ideen",
-    "resolvedSection": "Verschenkt & erhalten",
+    "givenSection": "Verschenkt",
+    "receivedSection": "Erhalten",
+    "clothingSizes": "Kleidergrößen",
+    "clothingSizePlaceholder": "Größe hinzufügen, z. B. M, 42, S/M…",
     "empty": "Noch keine Geschenkideen oder -einträge. Füge eine hinzu, wenn dir auffällt, was ihnen gefallen könnte.",
     "deleteMessage": "Dieses Geschenk löschen?",
     "status": {

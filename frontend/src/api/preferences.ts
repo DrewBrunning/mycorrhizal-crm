@@ -2,23 +2,30 @@
 // docs/fork-plan/91-envelope-data-model.md §91.9).
 import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
 
-// Mirrors backend/models/preference.go's conventional (open) category set —
-// the trailing "…" in §91.9 means this is NOT a closed enum; the frontend
-// offers these known categories and free-forms via the dialog's "Other"
-// path... actually no: category is free text on the wire (no oneof on the
-// backend), so these are the curated labels we render, and an unrecognized
-// value still displays via its raw token. No dynamic type-list endpoint
-// exists anywhere in this codebase -- same hand-kept-sync convention as
-// every other enum mirror here.
-export const PREFERENCE_CATEGORIES = [
-  'food',
-  'drink',
-  'clothing_size',
-  'hobby',
-  'gift',
-  'dislike',
-  'media',
-] as const;
+// Mirrors backend/models/preference.go's conventional (open) category set.
+// The category set was trimmed to the two display groups the Preferences tab
+// now shows: food/drink together ("Food & Drink Preferences") and media
+// ("Media Preferences"). hobby was dropped because it lives in
+// Card.PersonalInfo[kind=hobby] (the vCard 4.0 home); gift because gifts are
+// their own entity; dislike because it is now a `key` under food/drink, not a
+// category. The backend keeps the classifier open — an unrecognized category
+// still displays via its raw token (see PREFERENCE_DEFAULT_KEYS' note).
+export const PREFERENCE_CATEGORIES = ['food', 'drink', 'media'] as const;
+export type PreferenceCategory = (typeof PREFERENCE_CATEGORIES)[number];
+
+// Default `key` suggestions per category, offered by the free-solo key input
+// in the preference dialog. These are conveniences, not a closed enum — the
+// key stays free text, exactly like gender in contact creation.
+export const PREFERENCE_DEFAULT_KEYS: Record<PreferenceCategory, string[]> = {
+  food: ['favorite', 'dislike', 'allergy'],
+  drink: ['favorite', 'dislike', 'allergy'],
+  media: ['show', 'movie', 'music'],
+};
+
+// clothing_size is managed from the Gifts tab (where you check sizes before
+// buying), so it is not offered in the general preference dialog but is still
+// a valid category on the wire.
+export const PREFERENCE_CLOTHING_SIZE = 'clothing_size';
 
 // Mirrors backend/models/preference.go's closed Source set (§91.9).
 export type PreferenceSource = 'conversation_note' | 'user' | 'ai-suggested' | 'external';

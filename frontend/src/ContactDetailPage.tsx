@@ -93,7 +93,7 @@ import ConversationAgendaDialog, { ConversationAgendaFormData } from './componen
 import MarkDiscussedDialog from './components/MarkDiscussedDialog';
 import GiftDialog, { GiftFormData } from './components/GiftDialog';
 import { CadencePolicy, CadencePolicyInput } from './api/cadencePolicies';
-import { Preference } from './api/preferences';
+import { Preference, PREFERENCE_CLOTHING_SIZE } from './api/preferences';
 import { LifeEventFormData } from './components/LifeEventDialog';
 import { getOtherPartyId } from './api/relationshipEdges';
 import { LifeEvent } from './api/lifeEvents';
@@ -524,6 +524,31 @@ export default function ContactDetailPage() {
     await handleDeletePreference(id);
   };
 
+  // Clothing sizes are clothing_size preferences surfaced in the Gifts tab
+  // (where you check sizes before buying) rather than the preference dialog.
+  const handleAddClothingSize = async (value: string) => {
+    if (!record?.uid) return;
+    await handleSavePreference(null, toPreferenceInput(record.uid, {
+      category: PREFERENCE_CLOTHING_SIZE,
+      value,
+      sensitivity: 'normal',
+    }));
+  };
+
+  const handleEditClothingSize = async (pref: Preference, value: string) => {
+    if (!record?.uid) return;
+    await handleSavePreference(pref, toPreferenceInput(record.uid, {
+      category: pref.category,
+      key: pref.key,
+      value,
+      sensitivity: pref.sensitivity,
+    }));
+  };
+
+  const handleDeleteClothingSize = async (id: string) => {
+    await handleDeletePreference(id);
+  };
+
   const [lifeEventDialogOpen, setLifeEventDialogOpen] = useState(false);
   const [editingLifeEvent, setEditingLifeEvent] = useState<LifeEvent | null>(null);
 
@@ -544,11 +569,20 @@ export default function ContactDetailPage() {
     } else {
       await handleCreateLifeEvent({ ...data, entity_id: record.uid, source: 'user' });
     }
+    // A married event is mirrored onto the card's wedding anniversary by the
+    // backend (services/wedding_sync.go); reload so the anniversary shows.
+    if (data.type === 'married' || editingLifeEvent?.type === 'married') {
+      await reloadRecord();
+    }
   };
 
   const handleLifeEventDelete = async (id: string) => {
     if (!window.confirm(t('lifeEvent.confirmDelete'))) return;
+    const event = lifeEvents.find((e) => e.id === id);
     await handleDeleteLifeEvent(id);
+    if (event?.type === 'married') {
+      await reloadRecord();
+    }
   };
 
   const editingEdgeOtherParty = useMemo(() => {
@@ -689,8 +723,8 @@ export default function ContactDetailPage() {
   // Combine and sort notes, activities, completions, life events, and
   // external activities for the timeline.
   const timelineItems: Array<{
-    type: 'note' | 'activity' | 'completion' | 'life_event' | 'external_activity';
-    data: Note | Activity | ReminderCompletion | LifeEvent | ExternalActivity;
+    type: 'note' | 'activity' | 'completion' | 'life_event' | 'external_activity' | 'gift';
+    data: Note | Activity | ReminderCompletion | LifeEvent | ExternalActivity | Gift;
     date: string;
   }> = [
     ...notes.map(note => ({
@@ -717,6 +751,13 @@ export default function ContactDetailPage() {
       type: 'external_activity' as const,
       data: activity,
       date: activity.occurred_at || activity.created_at
+    })),
+    // Gifts that actually happened (given/received with a date) are timeline
+    // events; undated ideas stay off the timeline.
+    ...gifts.filter(g => g.date && (g.status === 'given' || g.status === 'received')).map(g => ({
+      type: 'gift' as const,
+      data: g,
+      date: g.date!,
     }))
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
@@ -824,6 +865,7 @@ export default function ContactDetailPage() {
       setEditingField(null);
       setEditValue('');
       setValidationError('');
+      await refreshLifeEvents(record.uid).catch(() => {});
     } catch (err) {
       console.error('Error updating contact:', err);
       if (err instanceof ApiError) {
@@ -833,6 +875,17 @@ export default function ContactDetailPage() {
       } else {
         showError(t('contactDetail.updateError'));
       }
+    }
+  };
+
+  // Refetches the full contact record after a server-side change that touches
+  // the card (e.g. a married LifeEvent mirrored onto the wedding anniversary).
+  const reloadRecord = async () => {
+    if (!id) return;
+    try {
+      setRecord(await getContactRecord(id));
+    } catch {
+      // leave the current record as-is
     }
   };
 
@@ -846,6 +899,10 @@ export default function ContactDetailPage() {
         crm: record.crm,
       });
       setRecord(updated);
+      // The backend mirrors a wedding-anniversary change into a married
+      // LifeEvent (services/wedding_sync.go); refresh so the timeline and the
+      // Life Events tab pick it up without a page reload.
+      await refreshLifeEvents(record.uid).catch(() => {});
     } catch (err) {
       console.error('Error updating contact:', err);
       if (err instanceof ApiError) {
@@ -1147,6 +1204,9 @@ export default function ContactDetailPage() {
           onEditGift={handleEditGift}
           onMarkGivenGift={handleMarkGivenGift}
           onDeleteGift={handleDeleteGiftItem}
+          onAddClothingSize={handleAddClothingSize}
+          onEditClothingSize={handleEditClothingSize}
+          onDeleteClothingSize={handleDeleteClothingSize}
           fieldDefinitions={fieldDefinitions}
           fieldValuesByDefinition={fieldValuesByDefinition}
           onSaveFieldValue={handleSaveFieldValue}

@@ -393,7 +393,11 @@
   },
   "timeline": {
     "reminderCompleted": "Rappel terminé",
-    "deleteCompletionConfirm": "Êtes-vous sûr de vouloir supprimer ce rappel terminé de la chronologie ?"
+    "deleteCompletionConfirm": "Êtes-vous sûr de vouloir supprimer ce rappel terminé de la chronologie ?",
+    "gift": {
+      "given": "Cadeau offert",
+      "received": "Cadeau reçu"
+    }
   },
   "contactDetail": {
     "notFound": "Contact introuvable",
@@ -1129,13 +1133,24 @@
     "categories": {
       "food": "Nourriture",
       "drink": "Boisson",
-      "clothing_size": "Taille de vêtement",
-      "hobby": "Passe-temps",
-      "gift": "Cadeau",
-      "dislike": "Détestation",
-      "media": "Médias"
+      "media": "Médias",
+      "clothing_size": "Taille de vêtement"
     },
     "key": "Clé",
+    "keyHint": "Type de préférence, p. ex. favori, n'aime pas, allergie",
+    "keys": {
+      "favorite": "Favori",
+      "dislike": "N'aime pas",
+      "allergy": "Allergie",
+      "show": "Série",
+      "movie": "Film",
+      "music": "Musique"
+    },
+    "sections": {
+      "foodDrink": "Préférences alimentaires et boissons",
+      "media": "Préférences médias",
+      "other": "Autres préférences"
+    },
     "keyHint": "Qualificatif facultatif, p. ex. favorite_coffee",
     "value": "Valeur",
     "sensitivity": "Sensibilité",
@@ -1221,7 +1236,10 @@
     "add": "Ajouter",
     "markGiven": "Marquer comme offert",
     "ideasSection": "Idées",
-    "resolvedSection": "Offerts et reçus",
+    "givenSection": "Offerts",
+    "receivedSection": "Reçus",
+    "clothingSizes": "Taille de vêtements",
+    "clothingSizePlaceholder": "Ajouter une taille, p. ex. M, 42, S/M…",
     "empty": "Aucune idée ni aucun enregistrement de cadeau pour l'instant. Ajoutez-en un dès que vous remarquez ce qui pourrait lui plaire.",
     "deleteMessage": "Supprimer ce cadeau ?",
     "status": {

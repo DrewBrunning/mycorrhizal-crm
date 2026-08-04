@@ -24,17 +24,19 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import CakeIcon from '@mui/icons-material/Cake';
+import RedeemIcon from '@mui/icons-material/Redeem';
 import { Note } from '../api/notes';
 import { Activity } from '../api/activities';
 import { ReminderCompletion } from '../api/reminders';
 import { LifeEvent, partialDateDisplay } from '../api/lifeEvents';
 import { ExternalActivity } from '../api/externalLinks';
+import { Gift } from '../api/gifts';
 import { useDateFormat } from '../DateFormatProvider';
 
 interface ContactTimelineProps {
   timelineItems: Array<{
-    type: 'note' | 'activity' | 'completion' | 'life_event' | 'external_activity';
-    data: Note | Activity | ReminderCompletion | LifeEvent | ExternalActivity;
+    type: 'note' | 'activity' | 'completion' | 'life_event' | 'external_activity' | 'gift';
+    data: Note | Activity | ReminderCompletion | LifeEvent | ExternalActivity | Gift;
     date: string;
   }>;
   onEditItem: (type: 'note' | 'activity', item: Note | Activity) => void;
@@ -43,6 +45,10 @@ interface ContactTimelineProps {
 
 function isLifeEvent(item: { type: string; data: unknown }): item is { type: 'life_event'; data: LifeEvent } {
   return item.type === 'life_event';
+}
+
+function isGift(item: { type: string; data: unknown }): item is { type: 'gift'; data: Gift } {
+  return item.type === 'gift';
 }
 
 function isExternalActivity(item: { type: string; data: unknown }): item is { type: 'external_activity'; data: ExternalActivity } {
@@ -91,6 +97,40 @@ export default function ContactTimeline({ timelineItems, onEditItem, onDeleteCom
                   {event.description && (
                     <Typography variant="body2" sx={{ mt: 0.5, overflowWrap: 'anywhere' }}>
                       {event.description}
+                    </Typography>
+                  )}
+                </Paper>
+              </TimelineContent>
+            </TimelineItem>
+          );
+        }
+
+        if (isGift(item)) {
+          const gift = item.data;
+          return (
+            <TimelineItem key={`gift-${gift.id}`}>
+              <TimelineOppositeContent color="text.secondary" sx={{ flex: 0.3 }}>
+                <Typography variant="caption">
+                  {isValidDate ? formatDate(item.date) : (item.date || 'N/A')}
+                </Typography>
+              </TimelineOppositeContent>
+              <TimelineSeparator>
+                <TimelineDot color="secondary">
+                  <RedeemIcon fontSize="small" />
+                </TimelineDot>
+                {index < timelineItems.length - 1 && <TimelineConnector />}
+              </TimelineSeparator>
+              <TimelineContent>
+                <Paper elevation={1} sx={{ p: 1.5 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 500 }}>
+                    {t(`timeline.gift.${gift.status}`, gift.status)}
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 0.5, overflowWrap: 'anywhere' }}>
+                    {gift.description}
+                  </Typography>
+                  {gift.occasion && (
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                      {gift.occasion}
                     </Typography>
                   )}
                 </Paper>

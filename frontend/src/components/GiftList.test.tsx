@@ -79,9 +79,26 @@ test('a given gift renders resolved with its date, value and currency, and no ma
   });
 
   expect(screen.getByText('The espresso machine')).toBeInTheDocument();
-  expect(screen.getByText('Given')).toBeInTheDocument();
+  // "Given" appears both as the status chip and the section heading.
+  expect(screen.getAllByText('Given').length).toBeGreaterThan(0);
   expect(screen.getByText('birthday')).toBeInTheDocument();
   expect(screen.queryByLabelText('Mark as given')).not.toBeInTheDocument();
+});
+
+test('a received gift renders under the Received section', () => {
+  renderList({
+    items: [item({ status: 'received', description: 'The scarf they gave me' })],
+  });
+
+  expect(screen.getByText('The scarf they gave me')).toBeInTheDocument();
+  expect(screen.getAllByText('Received').length).toBeGreaterThan(0);
+});
+
+test('an idea renders under the Ideas section', () => {
+  renderList({ items: [item({ description: 'She liked the ceramics shop' })] });
+
+  expect(screen.getByText('She liked the ceramics shop')).toBeInTheDocument();
+  expect(screen.getByText('Ideas')).toBeInTheDocument();
 });
 
 test('delete asks for confirmation before calling onDelete', () => {

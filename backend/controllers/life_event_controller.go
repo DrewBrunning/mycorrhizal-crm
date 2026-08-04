@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"mycorrhizal/contactmodel"
 	apperrors "mycorrhizal/errors"
+	"mycorrhizal/logger"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
+	"mycorrhizal/services"
 	"net/http"
 	"time"
 
@@ -175,6 +177,17 @@ func CreateLifeEvent(c *gin.Context) {
 		return
 	}
 
+	// A married life event populates the card's wedding anniversary
+	// (services/wedding_sync.go), so the card and the timeline stay in sync.
+	// Sync failures are logged rather than aborting: the life event itself has
+	// already been committed at this point, and the next contact save will
+	// re-reconcile the anniversary from the card side.
+	if event.Type == models.LifeEventTypeMarried {
+		if err := services.SyncWeddingFromLifeEvent(db, userID, event.EntityID, event.Date); err != nil {
+			logger.FromContext(c).Error().Err(err).Str("lifeEventID", event.ID).Msg("Error syncing wedding anniversary from life event")
+		}
+	}
+
 	c.JSON(http.StatusCreated, gin.H{"message": "Life event created successfully", "life_event": event})
 }
 
@@ -305,6 +318,7 @@ func UpdateLifeEvent(c *gin.Context) {
 		}
 		return
 	}
+	wasMarried := event.Type == models.LifeEventTypeMarried
 
 	input, err := middleware.GetValidated[models.LifeEventInput](c)
 	if err != nil {
@@ -337,6 +351,21 @@ func UpdateLifeEvent(c *gin.Context) {
 	if txErr != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save life event").WithError(txErr))
 		return
+	}
+
+	// Keep the card's wedding anniversary in step with the married event: a
+	// still-married event syncs its date; an event that stopped being married
+	// (or had its date cleared) clears the anniversary. Sync failures are
+	// logged and the response still succeeds — the next contact save will
+	// re-reconcile any drift.
+	if event.Type == models.LifeEventTypeMarried {
+		if err := services.SyncWeddingFromLifeEvent(db, userID, event.EntityID, event.Date); err != nil {
+			logger.FromContext(c).Error().Err(err).Str("lifeEventID", event.ID).Msg("Error syncing wedding anniversary from life event")
+		}
+	} else if wasMarried {
+		if err := services.SyncWeddingFromLifeEvent(db, userID, event.EntityID, nil); err != nil {
+			logger.FromContext(c).Error().Err(err).Str("lifeEventID", event.ID).Msg("Error clearing wedding anniversary from life event")
+		}
 	}
 
 	c.JSON(http.StatusOK, event)
@@ -372,6 +401,16 @@ func DeleteLifeEvent(c *gin.Context) {
 	if err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to delete life event").WithError(err))
 		return
+	}
+
+	// Deleting a married event clears the card's wedding anniversary.
+	// A sync failure is logged and the delete still succeeds — the contact
+	// still owns the anniversary on its card, and a subsequent card save will
+	// re-reconcile it (which, since the event is gone, will clear it).
+	if event.Type == models.LifeEventTypeMarried {
+		if err := services.SyncWeddingFromLifeEvent(db, userID, event.EntityID, nil); err != nil {
+			logger.FromContext(c).Error().Err(err).Str("lifeEventID", event.ID).Msg("Error clearing wedding anniversary from life event")
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Life event deleted"})

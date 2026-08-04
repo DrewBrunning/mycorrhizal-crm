@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Card, CardContent, Divider, Stack, Box, Tabs, Tab, Button, Typography, SvgIcon, TextField, MenuItem, useTheme, useMediaQuery } from '@mui/material';
-import EmailIcon from '@mui/icons-material/Email';
+import { Card, CardContent, Divider, Stack, Box, Tabs, Tab, Button, Typography, SvgIcon, TextField, MenuItem, useTheme, useMediaQuery } from '@mui/material';import EmailIcon from '@mui/icons-material/Email';
 import PhoneIcon from '@mui/icons-material/Phone';
 import CakeIcon from '@mui/icons-material/Cake';
 import CelebrationIcon from '@mui/icons-material/Celebration';
@@ -76,6 +75,8 @@ import PreferredLanguagesEditor from './PreferredLanguagesEditor';
 import AnniversariesEditor from './AnniversariesEditor';
 import ImportedResourcesSection from './ImportedResourcesSection';
 import RelatedToMembersSection from './RelatedToMembersSection';
+import ClothingSizesPanel from './ClothingSizesPanel';
+import { PREFERENCE_CLOTHING_SIZE } from '../api/preferences';
 
 interface ContactInformationProps {
   card: CardModel;
@@ -130,6 +131,11 @@ interface ContactInformationProps {
   onEditGift?: (gift: Gift) => void;
   onMarkGivenGift?: (gift: Gift) => Promise<void>;
   onDeleteGift?: (id: string) => void;
+  // Clothing sizes (stored as clothing_size preferences, surfaced in the Gifts
+  // tab where you check sizes before buying).
+  onAddClothingSize?: (value: string) => Promise<void>;
+  onEditClothingSize?: (preference: Preference, value: string) => Promise<void>;
+  onDeleteClothingSize?: (id: string) => Promise<void>;
   // Custom fields (v2, T6/T7)
   fieldDefinitions?: FieldDefinition[];
   fieldValuesByDefinition?: Map<string, unknown>;
@@ -209,6 +215,9 @@ export default function ContactInformation({
   onEditGift,
   onMarkGivenGift,
   onDeleteGift,
+  onAddClothingSize,
+  onEditClothingSize,
+  onDeleteClothingSize,
   fieldDefinitions = [],
   fieldValuesByDefinition,
   onSaveFieldValue,
@@ -924,9 +933,17 @@ export default function ContactInformation({
       )}
 
       {/* Gifts Tab (T20b) — inline idea capture at the top, then open ideas
-          and the resolved given/received records. */}
+          and the resolved given/received records. Clothing sizes live here too:
+          they matter when you are about to buy. */}
       {activeTab === 6 && (
         <CardContent sx={{ py: 2 }}>
+          <ClothingSizesPanel
+            sizes={preferences.filter((p) => p.category === PREFERENCE_CLOTHING_SIZE)}
+            onAdd={onAddClothingSize || (() => Promise.resolve())}
+            onEdit={onEditClothingSize || (() => Promise.resolve())}
+            onDelete={onDeleteClothingSize || (() => Promise.resolve())}
+          />
+          {preferences.some((p) => p.category === PREFERENCE_CLOTHING_SIZE) && <Divider sx={{ my: 1.5 }} />}
           <GiftList
             items={gifts}
             lifeEvents={lifeEvents}

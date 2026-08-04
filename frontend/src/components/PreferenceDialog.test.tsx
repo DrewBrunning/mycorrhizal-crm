@@ -37,18 +37,38 @@ test('saves with the selected category, value, and sensitivity', async () => {
   const onSave = vi.fn().mockResolvedValue(undefined);
   renderDialog({ onSave });
 
-  fireEvent.change(screen.getByLabelText('Value *'), { target: { value: 'Photography' } });
+  fireEvent.change(screen.getByLabelText('Value *'), { target: { value: 'Severance' } });
   fireEvent.mouseDown(screen.getByLabelText('Category *'));
-  fireEvent.click(await screen.findByRole('option', { name: 'Hobby' }));
+  fireEvent.click(await screen.findByRole('option', { name: 'Media' }));
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
   await vi.waitFor(() => expect(onSave).toHaveBeenCalled());
   expect(onSave).toHaveBeenCalledWith({
-    category: 'hobby',
+    category: 'media',
     key: undefined,
-    value: 'Photography',
+    value: 'Severance',
     sensitivity: 'normal',
   });
+});
+
+test('key suggestions follow the selected category', async () => {
+  renderDialog();
+
+  // The key field is a free-solo Autocomplete; its combobox input carries the
+  // "Key" label. Default category is food: favorite/dislike/allergy.
+  const keyInput = screen.getByRole('combobox', { name: 'Key' });
+  fireEvent.mouseDown(keyInput);
+  expect(await screen.findByRole('option', { name: 'Favorite' })).toBeInTheDocument();
+  expect(screen.getByRole('option', { name: 'Allergy' })).toBeInTheDocument();
+
+  // Close the key dropdown and switch to Media: show/movie/music.
+  fireEvent.keyDown(keyInput, { key: 'Escape' });
+  fireEvent.mouseDown(screen.getByLabelText('Category *'));
+  fireEvent.click(await screen.findByRole('option', { name: 'Media' }));
+  fireEvent.mouseDown(keyInput);
+  expect(await screen.findByRole('option', { name: 'Show' })).toBeInTheDocument();
+  expect(screen.getByRole('option', { name: 'Movie' })).toBeInTheDocument();
+  expect(screen.getByRole('option', { name: 'Music' })).toBeInTheDocument();
 });
 
 test('edit mode pre-fills the existing preference', () => {
@@ -58,7 +78,7 @@ test('edit mode pre-fills the existing preference', () => {
       created_at: '2026-01-01T00:00:00Z',
       updated_at: '2026-01-01T00:00:00Z',
       entity_id: 'alice-uid',
-      category: 'hobby',
+      category: 'media',
       value: 'Vegetarian',
       sensitivity: 'normal',
     },

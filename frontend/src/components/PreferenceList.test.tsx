@@ -19,12 +19,12 @@ function preference(overrides: Partial<Preference> = {}): Preference {
   };
 }
 
-test('renders preferences with category chips and values', () => {
+test('renders preferences grouped into Food & Drink and Media sections', () => {
   render(
     <PreferenceList
       preferences={[
         preference(),
-        preference({ id: 'p2', category: 'hobby', value: 'Photography' }),
+        preference({ id: 'p2', category: 'media', key: 'show', value: 'Severance' }),
       ]}
       onEdit={vi.fn()}
       onDelete={vi.fn()}
@@ -32,9 +32,27 @@ test('renders preferences with category chips and values', () => {
   );
 
   expect(screen.getByText('Vegetarian')).toBeInTheDocument();
-  expect(screen.getByText('Photography')).toBeInTheDocument();
-  expect(screen.getByText('Food')).toBeInTheDocument();
-  expect(screen.getByText('Hobby')).toBeInTheDocument();
+  expect(screen.getByText('Severance')).toBeInTheDocument();
+  expect(screen.getByText('Food & Drink Preferences')).toBeInTheDocument();
+  expect(screen.getByText('Media Preferences')).toBeInTheDocument();
+  expect(screen.getByText('Show')).toBeInTheDocument();
+});
+
+test('an unrecognized category falls through to the Other section', () => {
+  render(
+    <PreferenceList
+      preferences={[
+        preference({ id: 'p3', category: 'ancient_category', value: 'Legacy data' }),
+      ]}
+      onEdit={vi.fn()}
+      onDelete={vi.fn()}
+    />
+  );
+
+  expect(screen.getByText('Other Preferences')).toBeInTheDocument();
+  expect(screen.getByText('Legacy data')).toBeInTheDocument();
+  expect(screen.queryByText('Food & Drink Preferences')).not.toBeInTheDocument();
+  expect(screen.queryByText('Media Preferences')).not.toBeInTheDocument();
 });
 
 test('shows the sensitivity chip only for non-normal preferences', () => {

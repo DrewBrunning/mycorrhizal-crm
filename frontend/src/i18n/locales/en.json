@@ -394,7 +394,11 @@
   },
   "timeline": {
     "reminderCompleted": "Reminder Completed",
-    "deleteCompletionConfirm": "Are you sure you want to remove this completed reminder from the timeline?"
+    "deleteCompletionConfirm": "Are you sure you want to remove this completed reminder from the timeline?",
+    "gift": {
+      "given": "Gift given",
+      "received": "Gift received"
+    }
   },
   "contactDetail": {
     "notFound": "Contact not found",
@@ -1129,14 +1133,24 @@
     "categories": {
       "food": "Food",
       "drink": "Drink",
-      "clothing_size": "Clothing size",
-      "hobby": "Hobby",
-      "gift": "Gift",
-      "dislike": "Dislike",
-      "media": "Media"
+      "media": "Media",
+      "clothing_size": "Clothing size"
     },
     "key": "Key",
-    "keyHint": "Optional qualifier, e.g. favorite_coffee",
+    "keyHint": "Type of preference, e.g. favorite, dislike, allergy",
+    "keys": {
+      "favorite": "Favorite",
+      "dislike": "Dislike",
+      "allergy": "Allergy",
+      "show": "Show",
+      "movie": "Movie",
+      "music": "Music"
+    },
+    "sections": {
+      "foodDrink": "Food & Drink Preferences",
+      "media": "Media Preferences",
+      "other": "Other Preferences"
+    },
     "value": "Value",
     "sensitivity": "Sensitivity",
     "sensitivities": {
@@ -1221,7 +1235,10 @@
     "add": "Add",
     "markGiven": "Mark as given",
     "ideasSection": "Ideas",
-    "resolvedSection": "Given & received",
+    "givenSection": "Given",
+    "receivedSection": "Received",
+    "clothingSizes": "Clothing sizes",
+    "clothingSizePlaceholder": "Add a size, e.g. M, 42, S/M…",
     "empty": "No gift ideas or records yet. Add one when you notice something they'd like.",
     "deleteMessage": "Delete this gift?",
     "status": {

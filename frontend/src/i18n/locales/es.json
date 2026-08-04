@@ -393,7 +393,11 @@
   },
   "timeline": {
     "reminderCompleted": "Recordatorio Completado",
-    "deleteCompletionConfirm": "¿Estás seguro de que quieres eliminar este recordatorio completado de la línea de tiempo?"
+    "deleteCompletionConfirm": "¿Estás seguro de que quieres eliminar este recordatorio completado de la línea de tiempo?",
+    "gift": {
+      "given": "Regalo entregado",
+      "received": "Regalo recibido"
+    }
   },
   "contactDetail": {
     "notFound": "Contacto no encontrado",
@@ -1129,13 +1133,24 @@
     "categories": {
       "food": "Comida",
       "drink": "Bebida",
-      "clothing_size": "Talla de ropa",
-      "hobby": "Afición",
-      "gift": "Regalo",
-      "dislike": "Desagrado",
-      "media": "Medios"
+      "media": "Medios",
+      "clothing_size": "Talla de ropa"
     },
     "key": "Clave",
+    "keyHint": "Tipo de preferencia, p. ej. favorito, no le gusta, alergia",
+    "keys": {
+      "favorite": "Favorito",
+      "dislike": "No le gusta",
+      "allergy": "Alergia",
+      "show": "Serie",
+      "movie": "Película",
+      "music": "Música"
+    },
+    "sections": {
+      "foodDrink": "Preferencias de comida y bebida",
+      "media": "Preferencias de medios",
+      "other": "Otras preferencias"
+    },
     "keyHint": "Calificador opcional, p. ej. favorite_coffee",
     "value": "Valor",
     "sensitivity": "Sensibilidad",
@@ -1221,7 +1236,10 @@
     "add": "Añadir",
     "markGiven": "Marcar como regalado",
     "ideasSection": "Ideas",
-    "resolvedSection": "Regalados y recibidos",
+    "givenSection": "Regalados",
+    "receivedSection": "Recibidos",
+    "clothingSizes": "Tallas de ropa",
+    "clothingSizePlaceholder": "Añade una talla, p. ej. M, 42, S/M…",
     "empty": "Aún no hay ideas ni registros de regalos. Añade uno cuando notes algo que le gustaría.",
     "deleteMessage": "¿Eliminar este regalo?",
     "status": {

@@ -8,12 +8,15 @@ import {
   Box,
   MenuItem,
   Typography,
+  Autocomplete,
 } from '@mui/material';
 import AppDialog from './AppDialog';
 import { useTranslation } from 'react-i18next';
 import {
   PREFERENCE_CATEGORIES,
+  PREFERENCE_DEFAULT_KEYS,
   Preference,
+  PreferenceCategory,
   PreferenceInput,
   PreferenceSensitivity,
 } from '../api/preferences';
@@ -108,12 +111,20 @@ export default function PreferenceDialog({
             fullWidth
             required
           />
-          <TextField
-            label={t('preference.key')}
-            value={key}
-            onChange={(e) => setKey(e.target.value)}
-            fullWidth
-            helperText={t('preference.keyHint')}
+          <Autocomplete
+            freeSolo
+            options={PREFERENCE_DEFAULT_KEYS[category as PreferenceCategory] ?? []}
+            getOptionLabel={(opt) => t(`preference.keys.${opt}`, opt)}
+            value={key || null}
+            onChange={(_, v) => setKey(v || '')}
+            onInputChange={(_, v) => setKey(v)}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label={t('preference.key')}
+                helperText={t('preference.keyHint')}
+              />
+            )}
           />
           <TextField
             select

@@ -68,8 +68,9 @@ export default function GiftList({
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState('');
 
-  const ideas = items.filter((g) => g.status === 'idea');
-  const resolved = items.filter((g) => g.status !== 'idea');
+  const ideas = items.filter((g) => g.status === 'idea' || g.status === 'purchased');
+  const given = items.filter((g) => g.status === 'given');
+  const received = items.filter((g) => g.status === 'received');
 
   const lifeEventNames = new Map(lifeEvents.map((e) => [e.id, e]));
   const activityNames = new Map(activities.map((a) => [a.ID, a]));
@@ -238,13 +239,23 @@ export default function GiftList({
         </>
       )}
 
-      {resolved.length > 0 && (
+      {given.length > 0 && (
         <>
-          {ideas.length > 0 && <Divider />}
+          <Divider />
           <Typography variant="subtitle2" color="text.secondary">
-            {t('gifts.resolvedSection')}
+            {t('gifts.givenSection')}
           </Typography>
-          {resolved.map(renderItem)}
+          {given.map(renderItem)}
+        </>
+      )}
+
+      {received.length > 0 && (
+        <>
+          <Divider />
+          <Typography variant="subtitle2" color="text.secondary">
+            {t('gifts.receivedSection')}
+          </Typography>
+          {received.map(renderItem)}
         </>
       )}
     </Stack>

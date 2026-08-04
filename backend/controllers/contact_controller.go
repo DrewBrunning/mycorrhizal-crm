@@ -78,6 +78,12 @@ func CreateContact(c *gin.Context) {
 		return
 	}
 
+	// A wedding anniversary on the new card mirrors into a married LifeEvent
+	// (services/wedding_sync.go) so the timeline and the card never disagree.
+	if err := services.SyncWeddingFromCard(db, userID, contact.VCardUID, services.WeddingDateFromCard(&contact.Card)); err != nil {
+		logger.FromContext(c).Error().Err(err).Msg("Error syncing wedding anniversary to life event")
+	}
+
 	go services.TriggerWebhooks(db, currentConfig(c), userID, "contact.created", contact)
 	c.JSON(http.StatusCreated, gin.H{"message": "Contact created successfully", "contact": models.NewContactRecordResponse(&contact, currentConfig(c).ProfilePhotoDir, db)})
 }
@@ -475,6 +481,13 @@ func UpdateContact(c *gin.Context) {
 	if err := db.Save(&contact).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to update contact").WithError(err))
 		return
+	}
+
+	// Mirror the (possibly changed) wedding anniversary into the contact's
+	// married LifeEvent, and vice versa is handled by the life-event
+	// controller. See services/wedding_sync.go.
+	if err := services.SyncWeddingFromCard(db, userID, contact.VCardUID, services.WeddingDateFromCard(&contact.Card)); err != nil {
+		logger.FromContext(c).Error().Err(err).Msg("Error syncing wedding anniversary to life event")
 	}
 
 	go services.TriggerWebhooks(db, currentConfig(c), userID, "contact.updated", contact)
