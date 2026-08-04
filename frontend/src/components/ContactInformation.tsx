@@ -10,6 +10,7 @@ import BusinessIcon from '@mui/icons-material/Business';
 import BadgeIcon from '@mui/icons-material/Badge';
 import LanguageIcon from '@mui/icons-material/Language';
 import ChatIcon from '@mui/icons-material/Chat';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import { mdiNoteMultipleOutline } from '@mdi/js';
 import PeopleIcon from '@mui/icons-material/People';
 import AddIcon from '@mui/icons-material/Add';
@@ -64,7 +65,7 @@ import {
   getOrganizationFields,
   getTitleField,
 } from '../api/contacts';
-import { ContactFieldKey, resolveEnabledFields } from '../contactFields';
+import { ContactFieldKey, resolveEnabledFields, GENDER_OPTIONS } from '../contactFields';
 import { useDateFormat } from '../DateFormatProvider';
 import OnlineServiceEditor from './OnlineServiceEditor';
 import SpeakToAsEditor from './SpeakToAsEditor';
@@ -79,6 +80,7 @@ import RelatedToMembersSection from './RelatedToMembersSection';
 interface ContactInformationProps {
   card: CardModel;
   crm: CRMEnvelope;
+  gender?: string;
   editingField: string | null;
   editValue: string;
   validationError: string;
@@ -149,9 +151,21 @@ interface ContactInformationProps {
 const iconSx = { mr: 1, color: 'text.secondary', fontSize: '1.2rem' };
 const cloneValues = <T extends object>(v: T[]): T[] => v.map((x) => ({ ...x }));
 
+// Small section headings for the General Info tab, matching the caption-style
+// group labels the header uses for circles/tags.
+const SectionHeading = ({ label }: { label: string }) => (
+  <Box sx={{ pt: 1 }}>
+    <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 0.08, fontSize: '0.72rem' }}>
+      {label}
+    </Typography>
+    <Divider sx={{ mt: 0.5 }} />
+  </Box>
+);
+
 export default function ContactInformation({
   card,
   crm,
+  gender = '',
   editingField,
   editValue,
   validationError,
@@ -232,6 +246,22 @@ export default function ContactInformation({
     if (age === null) return undefined;
     return t('dashboard.yearsOld', { age });
   }, [birthday, t, calculateAge]);
+
+  // Logical groupings for the General Info tab (field-ordering pass). A heading
+  // is only shown when at least one of its fields is enabled, so a hidden group
+  // never leaves an orphan heading behind.
+  const showAbout = (['birthday', 'anniversary', 'anniversaries', 'personalInfo', 'keywords', 'preferredLanguages'] as ContactFieldKey[]).some(isOn);
+  const showContact = (['phones', 'addresses', 'emails', 'socialProfiles', 'otherOnlineServices', 'imppAddresses', 'links'] as ContactFieldKey[]).some(isOn);
+  const showAddressThem = (['gender', 'speakToAs'] as ContactFieldKey[]).some(isOn);
+  const showProfessional = (['organizations', 'titles', 'work_information'] as ContactFieldKey[]).some(isOn);
+  const showNotes = (['cardNotes', 'how_we_met', 'contact_information'] as ContactFieldKey[]).some(isOn);
+
+  // Gender is a top-level record field (not part of the Card/CRM envelope), so
+  // it is passed in separately and shown here next to pronouns/grammatical
+  // gender, where it conceptually belongs.
+  const genderDisplay = GENDER_OPTIONS.includes(gender as (typeof GENDER_OPTIONS)[number])
+    ? t(`contacts.${gender}`)
+    : gender;
 
   const renderValueList = (rows: ContactValue[] | undefined) => {
     if (!rows || rows.length === 0) return <Typography variant="body2" color="text.disabled">—</Typography>;
@@ -396,19 +426,102 @@ export default function ContactInformation({
       {activeTab === 0 && (
         <CardContent sx={{ py: 2 }}>
           <Stack spacing={2}>
-            {isOn('emails') && (
-              <EditableArrayField<ContactValue[]>
-                icon={<EmailIcon sx={iconSx} />}
-                label={t('contactDetail.email')}
-                value={cardEmailsToValues(card.emails)}
-                cloneValue={cloneValues}
-                renderDisplay={renderValueList}
-                renderEditor={(draft, setDraft) => (
-                  <MultiValueField label={t('contacts.email')} value={draft} onChange={setDraft} valueType="email" defaultType="home" />
-                )}
-                onSave={(draft) => onUpdateCard({ emails: valuesToCardEmails(draft) })}
+            {showAbout && <SectionHeading label={t('contactDetail.section.about')} />}
+
+            {isOn('birthday') && (
+              <EditableField
+                icon={<CakeIcon sx={iconSx} />}
+                label={t('contactDetail.birthday')}
+                field="birthday"
+                value={birthday}
+                formattedDisplayValue={birthday ? formatBirthday(birthday) : undefined}
+                placeholder={getBirthdayPlaceholder()}
+                displaySuffix={birthdayAgeSuffix}
+                isEditing={editingField === 'birthday'}
+                editValue={editValue}
+                validationError={validationError}
+                onEditStart={onEditStart}
+                onEditCancel={onEditCancel}
+                onEditSave={onEditSave}
+                onEditValueChange={onEditValueChange}
               />
             )}
+
+            {isOn('anniversary') && (
+              <EditableField
+                icon={<CelebrationIcon sx={iconSx} />}
+                label={t('contacts.anniversary')}
+                field="anniversary"
+                value={anniversary}
+                formattedDisplayValue={anniversary ? formatBirthday(anniversary) : undefined}
+                placeholder={getBirthdayPlaceholder()}
+                isEditing={editingField === 'anniversary'}
+                editValue={editValue}
+                validationError={validationError}
+                onEditStart={onEditStart}
+                onEditCancel={onEditCancel}
+                onEditSave={onEditSave}
+                onEditValueChange={onEditValueChange}
+              />
+            )}
+
+            {isOn('anniversaries') && (
+              <EditableArrayField<CardAnniversary[]>
+                icon={<CelebrationIcon sx={iconSx} />}
+                label={t('contacts.anniversaries')}
+                value={card.anniversaries || []}
+                cloneValue={(v) => v.map((x) => ({ ...x, date: { ...x.date, partial: x.date.partial ? { ...x.date.partial } : undefined } }))}
+                renderDisplay={renderAnniversaries}
+                renderEditor={(draft, setDraft) => (
+                  <AnniversariesEditor label={t('contacts.anniversaries')} value={draft} onChange={setDraft} />
+                )}
+                onSave={(draft) => onUpdateCard({ anniversaries: draft.length ? draft : undefined })}
+              />
+            )}
+
+            {isOn('personalInfo') && (
+              <EditableArrayField<CardPersonalInfo[]>
+                icon={<WorkIcon sx={iconSx} />}
+                label={t('contacts.personalInfoLabel')}
+                value={card.personalInfo || []}
+                cloneValue={(v) => v.map((x) => ({ ...x }))}
+                renderDisplay={renderPersonalInfo}
+                renderEditor={(draft, setDraft) => (
+                  <PersonalInfoEditor label={t('contacts.personalInfoLabel')} value={draft} onChange={setDraft} />
+                )}
+                onSave={(draft) => onUpdateCard({ personalInfo: draft.length ? draft : undefined })}
+              />
+            )}
+
+            {isOn('preferredLanguages') && (
+              <EditableArrayField<CardLanguagePref[]>
+                icon={<LanguageIcon sx={iconSx} />}
+                label={t('contacts.preferredLanguagesLabel')}
+                value={card.preferredLanguages || []}
+                cloneValue={(v) => v.map((x) => ({ ...x }))}
+                renderDisplay={renderPreferredLanguages}
+                renderEditor={(draft, setDraft) => (
+                  <PreferredLanguagesEditor label={t('contacts.preferredLanguagesLabel')} value={draft} onChange={setDraft} />
+                )}
+                onSave={(draft) => onUpdateCard({ preferredLanguages: draft.length ? draft : undefined })}
+              />
+            )}
+
+            {isOn('keywords') && (
+              <EditableArrayField<string[]>
+                icon={<BadgeIcon sx={iconSx} />}
+                label={t('contacts.keywordsLabel')}
+                value={card.keywords || []}
+                cloneValue={(v) => [...v]}
+                renderDisplay={renderKeywords}
+                renderEditor={(draft, setDraft) => (
+                  <KeywordsEditor label={t('contacts.keywordsLabel')} value={draft} onChange={setDraft} />
+                )}
+                onSave={(draft) => onUpdateCard({ keywords: draft.length ? draft : undefined })}
+              />
+            )}
+
+            {showContact && <SectionHeading label={t('contactDetail.section.contact')} />}
 
             {isOn('phones') && (
               <EditableArrayField<ContactValue[]>
@@ -438,31 +551,17 @@ export default function ContactInformation({
               />
             )}
 
-            {isOn('links') && (
+            {isOn('emails') && (
               <EditableArrayField<ContactValue[]>
-                icon={<LanguageIcon sx={iconSx} />}
-                label={t('contacts.urls')}
-                value={cardLinksToValues(card.links)}
+                icon={<EmailIcon sx={iconSx} />}
+                label={t('contactDetail.email')}
+                value={cardEmailsToValues(card.emails)}
                 cloneValue={cloneValues}
                 renderDisplay={renderValueList}
                 renderEditor={(draft, setDraft) => (
-                  <MultiValueField label={t('contacts.urls')} value={draft} onChange={setDraft} valueType="url" defaultType="home" />
+                  <MultiValueField label={t('contacts.email')} value={draft} onChange={setDraft} valueType="email" defaultType="home" />
                 )}
-                onSave={(draft) => onUpdateCard({ links: valuesToCardLinks(draft) })}
-              />
-            )}
-
-            {isOn('imppAddresses') && (
-              <EditableArrayField<ContactValue[]>
-                icon={<ChatIcon sx={iconSx} />}
-                label={t('contacts.impps')}
-                value={cardImppToValues(card.imppAddresses)}
-                cloneValue={cloneValues}
-                renderDisplay={renderValueList}
-                renderEditor={(draft, setDraft) => (
-                  <MultiValueField label={t('contacts.impps')} value={draft} onChange={setDraft} defaultType="" freeTextType />
-                )}
-                onSave={(draft) => onUpdateCard({ imppAddresses: valuesToCardImpp(draft) })}
+                onSave={(draft) => onUpdateCard({ emails: valuesToCardEmails(draft) })}
               />
             )}
 
@@ -504,34 +603,44 @@ export default function ContactInformation({
               />
             )}
 
-            {isOn('birthday') && (
-              <EditableField
-                icon={<CakeIcon sx={iconSx} />}
-                label={t('contactDetail.birthday')}
-                field="birthday"
-                value={birthday}
-                formattedDisplayValue={birthday ? formatBirthday(birthday) : undefined}
-                placeholder={getBirthdayPlaceholder()}
-                displaySuffix={birthdayAgeSuffix}
-                isEditing={editingField === 'birthday'}
-                editValue={editValue}
-                validationError={validationError}
-                onEditStart={onEditStart}
-                onEditCancel={onEditCancel}
-                onEditSave={onEditSave}
-                onEditValueChange={onEditValueChange}
+            {isOn('imppAddresses') && (
+              <EditableArrayField<ContactValue[]>
+                icon={<ChatIcon sx={iconSx} />}
+                label={t('contacts.impps')}
+                value={cardImppToValues(card.imppAddresses)}
+                cloneValue={cloneValues}
+                renderDisplay={renderValueList}
+                renderEditor={(draft, setDraft) => (
+                  <MultiValueField label={t('contacts.impps')} value={draft} onChange={setDraft} defaultType="" freeTextType />
+                )}
+                onSave={(draft) => onUpdateCard({ imppAddresses: valuesToCardImpp(draft) })}
               />
             )}
 
-            {isOn('anniversary') && (
+            {isOn('links') && (
+              <EditableArrayField<ContactValue[]>
+                icon={<LanguageIcon sx={iconSx} />}
+                label={t('contacts.urls')}
+                value={cardLinksToValues(card.links)}
+                cloneValue={cloneValues}
+                renderDisplay={renderValueList}
+                renderEditor={(draft, setDraft) => (
+                  <MultiValueField label={t('contacts.urls')} value={draft} onChange={setDraft} valueType="url" defaultType="home" />
+                )}
+                onSave={(draft) => onUpdateCard({ links: valuesToCardLinks(draft) })}
+              />
+            )}
+
+            {showAddressThem && <SectionHeading label={t('contactDetail.section.genderAndPronouns')} />}
+
+            {isOn('gender') && (
               <EditableField
-                icon={<CelebrationIcon sx={iconSx} />}
-                label={t('contacts.anniversary')}
-                field="anniversary"
-                value={anniversary}
-                formattedDisplayValue={anniversary ? formatBirthday(anniversary) : undefined}
-                placeholder={getBirthdayPlaceholder()}
-                isEditing={editingField === 'anniversary'}
+                icon={<PersonOutlineIcon sx={iconSx} />}
+                label={t('contacts.gender')}
+                field="gender"
+                value={gender}
+                formattedDisplayValue={genderDisplay}
+                isEditing={editingField === 'gender'}
                 editValue={editValue}
                 validationError={validationError}
                 onEditStart={onEditStart}
@@ -552,7 +661,7 @@ export default function ContactInformation({
                 })}
                 renderDisplay={renderSpeakToAs}
                 renderEditor={(draft, setDraft) => (
-                  <SpeakToAsEditor label={t('contacts.speakToAsLabel')} value={draft} onChange={setDraft} />
+                  <SpeakToAsEditor value={draft} onChange={setDraft} />
                 )}
                 onSave={(draft) => onUpdateCard({
                   speakToAs: draft.pronouns?.length || draft.grammaticalGenders?.length ? draft : undefined,
@@ -560,75 +669,7 @@ export default function ContactInformation({
               />
             )}
 
-            {isOn('personalInfo') && (
-              <EditableArrayField<CardPersonalInfo[]>
-                icon={<WorkIcon sx={iconSx} />}
-                label={t('contacts.personalInfoLabel')}
-                value={card.personalInfo || []}
-                cloneValue={(v) => v.map((x) => ({ ...x }))}
-                renderDisplay={renderPersonalInfo}
-                renderEditor={(draft, setDraft) => (
-                  <PersonalInfoEditor label={t('contacts.personalInfoLabel')} value={draft} onChange={setDraft} />
-                )}
-                onSave={(draft) => onUpdateCard({ personalInfo: draft.length ? draft : undefined })}
-              />
-            )}
-
-            {isOn('keywords') && (
-              <EditableArrayField<string[]>
-                icon={<BadgeIcon sx={iconSx} />}
-                label={t('contacts.keywordsLabel')}
-                value={card.keywords || []}
-                cloneValue={(v) => [...v]}
-                renderDisplay={renderKeywords}
-                renderEditor={(draft, setDraft) => (
-                  <KeywordsEditor label={t('contacts.keywordsLabel')} value={draft} onChange={setDraft} />
-                )}
-                onSave={(draft) => onUpdateCard({ keywords: draft.length ? draft : undefined })}
-              />
-            )}
-
-            {isOn('cardNotes') && (
-              <EditableArrayField<CardNote[]>
-                icon={<SvgIcon sx={iconSx}><path d={mdiNoteMultipleOutline} /></SvgIcon>}
-                label={t('contacts.cardNotesLabel')}
-                value={card.notes || []}
-                cloneValue={(v) => v.map((x) => ({ ...x, author: x.author ? { ...x.author } : undefined }))}
-                renderDisplay={renderCardNotes}
-                renderEditor={(draft, setDraft) => (
-                  <CardNotesEditor label={t('contacts.cardNotesLabel')} value={draft} onChange={setDraft} />
-                )}
-                onSave={(draft) => onUpdateCard({ notes: draft.length ? draft : undefined })}
-              />
-            )}
-
-            {isOn('preferredLanguages') && (
-              <EditableArrayField<CardLanguagePref[]>
-                icon={<LanguageIcon sx={iconSx} />}
-                label={t('contacts.preferredLanguagesLabel')}
-                value={card.preferredLanguages || []}
-                cloneValue={(v) => v.map((x) => ({ ...x }))}
-                renderDisplay={renderPreferredLanguages}
-                renderEditor={(draft, setDraft) => (
-                  <PreferredLanguagesEditor label={t('contacts.preferredLanguagesLabel')} value={draft} onChange={setDraft} />
-                )}
-                onSave={(draft) => onUpdateCard({ preferredLanguages: draft.length ? draft : undefined })}
-              />
-            )}
-
-            {isOn('anniversaries') && (
-              <EditableArrayField<CardAnniversary[]>
-                icon={<CelebrationIcon sx={iconSx} />}
-                label={t('contacts.anniversaries')}
-                value={card.anniversaries || []}
-                cloneValue={(v) => v.map((x) => ({ ...x, date: { ...x.date, partial: x.date.partial ? { ...x.date.partial } : undefined } }))}
-                renderDisplay={renderAnniversaries}
-                renderEditor={(draft, setDraft) => (
-                  <AnniversariesEditor label={t('contacts.anniversaries')} value={draft} onChange={setDraft} />
-                )}
-                onSave={(draft) => onUpdateCard({ anniversaries: draft.length ? draft : undefined })}
-              />
-            )}
+            {showProfessional && <SectionHeading label={t('contactDetail.section.professional')} />}
 
             {isOn('organizations') && (
               <>
@@ -709,6 +750,22 @@ export default function ContactInformation({
               />
             )}
 
+            {showNotes && <SectionHeading label={t('contactDetail.section.notes')} />}
+
+            {isOn('cardNotes') && (
+              <EditableArrayField<CardNote[]>
+                icon={<SvgIcon sx={iconSx}><path d={mdiNoteMultipleOutline} /></SvgIcon>}
+                label={t('contacts.cardNotesLabel')}
+                value={card.notes || []}
+                cloneValue={(v) => v.map((x) => ({ ...x, author: x.author ? { ...x.author } : undefined }))}
+                renderDisplay={renderCardNotes}
+                renderEditor={(draft, setDraft) => (
+                  <CardNotesEditor label={t('contacts.cardNotesLabel')} value={draft} onChange={setDraft} />
+                )}
+                onSave={(draft) => onUpdateCard({ notes: draft.length ? draft : undefined })}
+              />
+            )}
+
             {isOn('how_we_met') && (
               <EditableField
                 icon={<PeopleIcon sx={{ ...iconSx, mt: 0.5 }} />}
@@ -754,9 +811,12 @@ export default function ContactInformation({
               />
             ))}
 
-            {/* Read-only imported-resource + relatedTo/members sections (WP7/WP8):
-                present to prevent silent data loss and to make imported data
-                visible, not editable — full editing UI is T29b. */}
+            {/* Card metadata: the read-only imported-resource + relatedTo/members
+                sections (WP7/WP8) — present to prevent silent data loss and to
+                make imported data visible, not editable (full editing UI is
+                T29b). Grouped under the same "Card metadata" heading the header
+                and Add-dialog use for language/contact-kind. */}
+            <SectionHeading label={t('contactDetail.section.metadata')} />
             <ImportedResourcesSection card={card} />
             <RelatedToMembersSection card={card} />
           </Stack>

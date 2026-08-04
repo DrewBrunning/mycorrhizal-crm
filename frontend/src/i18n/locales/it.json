@@ -154,6 +154,8 @@
     "selectGender": "Seleziona genere...",
     "male": "Maschio",
     "female": "Femmina",
+    "non_binary": "Non binario",
+    "genderfluid": "Genere fluido",
     "other": "Altro",
     "prefer_not_to_say": "Preferisco non dirlo",
     "kind": "Tipo",
@@ -342,6 +344,7 @@
       "device": "Dispositivo"
     },
     "language": "Lingua",
+    "languageInfo": "La lingua di questa vCard come tag ISO-639/BCP-47 (es. 'de-AT'). Si tratta di metadati della scheda — la lingua in cui sono scritti i dati — non delle lingue parlate dalla persona. Pronomi, genere grammaticale e lingue preferite si riferiscono alle lingue parlate.",
     "anniversaryFields": {
       "kindLabel": "Tipo",
       "kindOptions": {
@@ -395,6 +398,15 @@
   "contactDetail": {
     "notFound": "Contatto non trovato",
     "generalInfo": "Informazioni Generali",
+    "section": {
+      "name": "Nome",
+      "metadata": "Metadati della scheda",
+      "about": "Informazioni",
+      "contact": "Contatto",
+      "genderAndPronouns": "Genere e pronomi",
+      "professional": "Professionale",
+      "notes": "Note"
+    },
     "email": "Email",
     "phone": "Telefono",
     "birthday": "Compleanno",
@@ -1243,5 +1255,40 @@
       "saveFailed": "Impossibile salvare il regalo."
     },
     "statusLabel": "Stato"
+  },
+  "prep": {
+    "title": "Vista di preparazione",
+    "subtitle": "Tutto da ricordare prima di vederli",
+    "unknownContact": "Sconosciuto",
+    "notFound": "Contatto non trovato",
+    "view": "Vedi",
+    "cadence": {
+      "title": "Stato della relazione"
+    },
+    "agenda": {
+      "title": "Argomenti da affrontare"
+    },
+    "lastInteraction": {
+      "title": "Ultima interazione",
+      "none": "Nessuna interazione registrata"
+    },
+    "recentNotes": {
+      "title": "Note recenti"
+    },
+    "relationships": {
+      "title": "Persone intorno a loro"
+    },
+    "lifeEvents": {
+      "title": "Eventi di vita"
+    },
+    "reminders": {
+      "title": "Promemoria imminenti"
+    },
+    "upcomingDates": {
+      "title": "Date imminenti",
+      "birthday": "Compleanno",
+      "anniversary": "Anniversario",
+      "inDays": "in {{days}} giorno/i"
+    }
   }
 }

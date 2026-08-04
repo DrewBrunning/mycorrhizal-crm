@@ -62,6 +62,11 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.POST("/contacts/merge", middleware.ValidateJSONMiddleware(&models.ContactMergeRequest{}), controllers.CommitContactMerge)
 			protected.POST("/contacts", middleware.ValidateJSONMiddleware(&models.ContactRecordInput{}), controllers.CreateContact)
 			protected.GET("/contacts/:id", controllers.GetContact)
+			// N2 prep view: read-only aggregation of everything the user
+			// wants to remember before seeing this contact. Registered after
+			// GET /contacts/:id so the literal /briefing path is never
+			// captured as a contact ID.
+			protected.GET("/contacts/:id/briefing", controllers.GetContactBriefing)
 			protected.PUT("/contacts/:id", middleware.ValidateJSONMiddleware(&models.ContactRecordInput{}), controllers.UpdateContact)
 			protected.DELETE("/contacts/:id", controllers.DeleteContact)
 			protected.POST("/contacts/:id/archive", controllers.ArchiveContact)

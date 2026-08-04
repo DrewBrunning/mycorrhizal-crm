@@ -12,10 +12,11 @@ import AutoModeIcon from '@mui/icons-material/AutoMode';
 import ArchiveIcon from '@mui/icons-material/Archive';
 import UnarchiveIcon from '@mui/icons-material/Unarchive';
 import MergeIcon from '@mui/icons-material/MergeType';
-import { mdiDownloadOutline } from '@mdi/js';
+import { mdiDownloadOutline, mdiNoteMultipleOutline } from '@mdi/js';
 import { useTranslation } from 'react-i18next';
 import { ContactFieldKey, resolveEnabledFields } from '../contactFields';
 import { ContactRecordResponse, nameComponentValue } from '../api/contacts';
+import LanguageField from './LanguageField';
 import { Circle } from '../api/circles';
 import { Tag } from '../api/tags';
 
@@ -26,7 +27,6 @@ export interface ProfileValues {
   lastname: string;
   suffix: string;
   nickname: string;
-  gender: string;
   // CRMEnvelope.Kind (T27): human|animal.
   kind: string;
   // Card.Kind (WP13, T29): individual|group|org|location|application|device.
@@ -59,6 +59,7 @@ interface ContactHeaderProps {
   onArchiveContact?: () => void;
   onUnarchiveContact?: () => void;
   onMergeContact?: () => void;
+  onPrepView?: () => void;
   onExportContact: (format: string) => void;
 }
 
@@ -86,6 +87,7 @@ export default function ContactHeader({
   onArchiveContact,
   onUnarchiveContact,
   onMergeContact,
+  onPrepView,
   onExportContact
 }: ContactHeaderProps) {
   const { t } = useTranslation();
@@ -109,7 +111,6 @@ export default function ContactHeader({
   const lastname = nameComponentValue(card.name?.components, 'surname') || '';
   const suffix = nameComponentValue(card.name?.components, 'generation');
   const nickname = card.nicknames?.[0]?.name;
-  const gender = record.gender;
   const kind = record.crm?.kind || '';
   const archived = record.archived;
 
@@ -225,18 +226,11 @@ export default function ContactHeader({
                   onChange={(e) => onProfileValueChange({ ...profileValues, nickname: e.target.value })}
                   size="small"
                 />
-                <Autocomplete
-                  freeSolo
-                  options={['male', 'female', 'other', 'prefer_not_to_say']}
-                  getOptionLabel={(v) => ['male', 'female', 'other', 'prefer_not_to_say'].includes(v) ? t(`contactDetail.${v}`) : (v || '')}
-                  value={profileValues.gender || null}
-                  onChange={(_, v) => onProfileValueChange({ ...profileValues, gender: v || '' })}
-                  onInputChange={(_, v) => onProfileValueChange({ ...profileValues, gender: v })}
-                  size="small"
-                  renderInput={(params) => (
-                    <TextField {...params} label={t('contactDetail.gender')} fullWidth />
-                  )}
-                />
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1 }}>
+                  <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 0.08, fontSize: '0.72rem' }}>
+                    {t('contactDetail.section.metadata')}
+                  </Typography>
+                </Box>
                 <TextField
                   select
                   label={t('contactDetail.kind')}
@@ -266,12 +260,11 @@ export default function ContactHeader({
                   </TextField>
                 )}
                 {isOn('language') && (
-                  <TextField
-                    label={t('contacts.language')}
+                  <LanguageField
                     value={profileValues.language}
-                    onChange={(e) => onProfileValueChange({ ...profileValues, language: e.target.value })}
+                    onChange={(v) => onProfileValueChange({ ...profileValues, language: v })}
                     size="small"
-                    placeholder="en"
+                    fullWidth
                   />
                 )}
                 <Box sx={{ display: 'flex', gap: 1, justifyContent: 'space-between' }}>
@@ -369,6 +362,12 @@ export default function ContactHeader({
                                   <ListItemText>{t('contactMerge.mergeButton')}</ListItemText>
                                 </MenuItem>
                               ),
+                              onPrepView && (
+                                <MenuItem key="prep" onClick={() => { setActionsMenuAnchor(null); onPrepView(); }}>
+                                  <ListItemIcon><SvgIcon fontSize="small"><path d={mdiNoteMultipleOutline} /></SvgIcon></ListItemIcon>
+                                  <ListItemText>{t('prep.title')}</ListItemText>
+                                </MenuItem>
+                              ),
                               <MenuItem key="vcf4" onClick={() => { setActionsMenuAnchor(null); onExportContact('vcf4'); }}>
                                 <ListItemIcon><SvgIcon fontSize="small"><path d={mdiDownloadOutline} /></SvgIcon></ListItemIcon>
                                 <ListItemText>vCard 4.0</ListItemText>
@@ -426,6 +425,16 @@ export default function ContactHeader({
                               {t('contactMerge.mergeButton')}
                             </Button>
                           )}
+                          {onPrepView && (
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              startIcon={<SvgIcon><path d={mdiNoteMultipleOutline} /></SvgIcon>}
+                              onClick={onPrepView}
+                            >
+                              {t('prep.title')}
+                            </Button>
+                          )}
                           <Button
                             variant="outlined"
                             size="small"
@@ -465,11 +474,6 @@ export default function ContactHeader({
                     )}
                   </Box>
                 </Box>
-                {gender && (
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
-                    {['male', 'female', 'other', 'prefer_not_to_say'].includes(gender) ? t(`contactDetail.${gender}`) : gender}
-                  </Typography>
-                )}
                 {kind === 'animal' && (
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
                     {t(`contactDetail.${kind}`)}

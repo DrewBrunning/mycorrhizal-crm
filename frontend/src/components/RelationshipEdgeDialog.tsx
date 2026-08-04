@@ -31,6 +31,7 @@ import {
   toBackendType,
 } from '../api/relationshipEdges';
 import { Contact, getContacts } from '../api/contacts';
+import { GENDER_OPTIONS } from '../contactFields';
 import { useSnackbar } from '../context/SnackbarContext';
 import { handleError, handleFetchError, getErrorMessage } from '../utils/errorHandler';
 import { useDateFormat } from '../DateFormatProvider';
@@ -322,8 +323,8 @@ export default function RelationshipEdgeDialog({
           {!isEditing && entryMode === 'manual' && (
             <Autocomplete
               freeSolo
-              options={['male', 'female', 'other', 'prefer_not_to_say']}
-              getOptionLabel={(v) => ['male', 'female', 'other', 'prefer_not_to_say'].includes(v) ? t(`contacts.${v}`) : (v || '')}
+              options={[...GENDER_OPTIONS]}
+              getOptionLabel={(v) => GENDER_OPTIONS.includes(v as (typeof GENDER_OPTIONS)[number]) ? t(`contacts.${v}`) : (v || '')}
               value={gender || null}
               onChange={(_, v) => setGender(v || '')}
               onInputChange={(_, v) => setGender(v)}

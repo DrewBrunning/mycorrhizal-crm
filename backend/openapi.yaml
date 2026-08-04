@@ -812,6 +812,37 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /contacts/{id}/briefing:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      summary: Get a contact's prep-view briefing (N2)
+      operationId: getContactBriefing
+      description: >
+        Read-only composition of everything the user wants to remember about a
+        person before seeing them: last interaction, recent notes, cadence
+        health, open agenda items, confirmed relationships, life events,
+        upcoming reminders, and upcoming dates. Pure aggregation of existing
+        data — never persisted, every block degrades to empty when its source
+        is absent. Secret-sensitivity relationships are excluded (91.13): a
+        secret relationship must not surface on a screen likely to be open in
+        front of the person it concerns.
+      responses:
+        "200":
+          description: The briefing.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactBriefing"
+        "404":
+          description: Contact not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /contacts/{id}/archive:
     parameters:
       - name: id
@@ -5659,6 +5690,94 @@ components:
         notes: { type: array, items: { type: object } }
         activities: { type: array, items: { type: object } }
         reminders: { type: array, items: { type: object } }
+    ContactBriefing:
+      type: object
+      description: >
+        Read-only N2 prep-view composition (GET /contacts/{id}/briefing). A
+        pure aggregation of existing data; every block degrades to empty when
+        its source is absent or the feature isn't built yet.
+      properties:
+        contact_id: { type: integer }
+        uid: { type: string }
+        name: { type: string }
+        photo_thumbnail: { type: string }
+        kind: { type: string, description: "CRMEnvelope.Kind (human|animal)" }
+        last_activity:
+          $ref: "#/components/schemas/BriefingActivity"
+        recent_notes:
+          type: array
+          items: { type: object }
+        cadence:
+          $ref: "#/components/schemas/BriefingCadence"
+        open_agenda_items:
+          type: array
+          items: { $ref: "#/components/schemas/ConversationAgenda" }
+        relationships:
+          type: array
+          items: { $ref: "#/components/schemas/BriefingRelationship" }
+        life_events:
+          type: array
+          items: { $ref: "#/components/schemas/LifeEvent" }
+        upcoming_reminders:
+          type: array
+          items: { $ref: "#/components/schemas/Reminder" }
+        upcoming_dates:
+          type: array
+          items: { $ref: "#/components/schemas/BriefingUpcomingDate" }
+    BriefingActivity:
+      type: object
+      description: Slim projection of an Activity shown as the briefing's "last interaction".
+      properties:
+        id: { type: integer }
+        uuid: { type: string }
+        title: { type: string }
+        description: { type: string }
+        type: { type: string }
+        location: { type: string }
+        date: { type: string, format: date-time }
+    BriefingCadence:
+      type: object
+      description: A contact's cadence policy bundled with its derived health.
+      properties:
+        policy:
+          $ref: "#/components/schemas/CadencePolicy"
+        health:
+          $ref: "#/components/schemas/BriefingCadenceHealth"
+    BriefingCadenceHealth:
+      type: object
+      description: >
+        The DERIVED relationship-health read-model (91.10), never stored.
+        has_qualifying_interaction stays false until the contact has at least
+        one qualifying interaction; overdue_by is whole calendar days past due
+        (0 when due today or later).
+      properties:
+        has_qualifying_interaction: { type: boolean }
+        last_interaction: { type: string, format: date-time, nullable: true }
+        next_due: { type: string, format: date-time, nullable: true }
+        overdue_by: { type: integer }
+    BriefingRelationship:
+      type: object
+      description: One confirmed relationship edge resolved for display.
+      properties:
+        edge:
+          $ref: "#/components/schemas/RelationshipEdge"
+        other_party_contact_id:
+          type: integer
+          description: The other contact's numeric ID (for linking to /contacts/:id).
+        other_party_name: { type: string }
+        other_party_uid: { type: string }
+        display_token:
+          type: string
+          description: >
+            relationship_type_registry token describing the other party from
+            this contact's perspective.
+    BriefingUpcomingDate:
+      type: object
+      description: One upcoming birthday/anniversary for the briefing.
+      properties:
+        label: { type: string, enum: [birthday, anniversary] }
+        date: { type: string, description: "YYYY-MM-DD or --MM-DD" }
+        days_until: { type: integer }
     ContactFlat:
       type: object
       description: >

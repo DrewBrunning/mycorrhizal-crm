@@ -1,6 +1,7 @@
 import { useState, useEffect, Suspense, useMemo } from 'react';
 import ContactsPage from './ContactsPage';
 import ContactDetailPage from './ContactDetailPage';
+import PrepViewPage from './PrepViewPage';
 import ActivitiesPage from './ActivitiesPage';
 import NotesPage from './NotesPage';
 import DashboardPage from './DashboardPage';
@@ -371,6 +372,7 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
         <Routes>
           <Route path="/contacts" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><ContactsPage /></Suspense>} />
           <Route path="/contacts/:id" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><ContactDetailPage /></Suspense>} />
+          <Route path="/contacts/:id/prep" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><PrepViewPage /></Suspense>} />
           <Route path="/notes" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><NotesPage /></Suspense>} />
           <Route path="/activities" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><ActivitiesPage /></Suspense>} />
           <Route path="/settings" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><SettingsPage /></Suspense>} />
