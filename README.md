@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/ef5a9313-43bc-492e-ae29-91c643e95bda" alt="Mycorrhizal CRM Logo" width="180" />
+<img width="192" height="192" alt="mark-mycelium-light-192" src="https://github.com/user-attachments/assets/5f8e7a54-b8e6-408a-b594-9131739822da" />
 </p>
 
 <p align="center">
