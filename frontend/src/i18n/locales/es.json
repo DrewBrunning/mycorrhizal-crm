@@ -302,6 +302,7 @@
       }
     },
     "personalInfo": {
+      "kind": "Tipo",
       "kindOptions": {
         "expertise": "Pericia",
         "hobby": "Afición",

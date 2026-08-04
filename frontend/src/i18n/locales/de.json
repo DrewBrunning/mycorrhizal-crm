@@ -302,6 +302,7 @@
       }
     },
     "personalInfo": {
+      "kind": "Art",
       "kindOptions": {
         "expertise": "Expertise",
         "hobby": "Hobby",

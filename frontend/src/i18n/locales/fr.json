@@ -302,6 +302,7 @@
       }
     },
     "personalInfo": {
+      "kind": "Type",
       "kindOptions": {
         "expertise": "Compétence",
         "hobby": "Loisir",

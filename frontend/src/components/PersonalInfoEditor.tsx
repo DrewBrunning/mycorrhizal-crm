@@ -55,9 +55,23 @@ export default function PersonalInfoEditor({ label, value, onChange }: PersonalI
             <Stack spacing={1}>
               <Stack direction="row" spacing={1} alignItems="center">
                 <FormControl size="small" sx={{ minWidth: 140 }}>
-                  <InputLabel>{t('contacts.personalInfo.kindOptions')}</InputLabel>
+                  {/* The leaf key `.kind`, NOT the `.kindOptions` object node
+                      the individual options live under — i18next has no string
+                      for an object node and renders its complaint as the label
+                      ("key '…kindOptions (en)' returned an object instead of
+                      string"), which shipped visible on this form.
+
+                      id/labelId pair: without it MUI renders the label as a
+                      detached <label> with no `for`, so the Select has no
+                      accessible name for screen readers (and getByLabelText
+                      cannot find it). Keyed off the stable row key so the ids
+                      stay unique across rows. */}
+                  <InputLabel id={`personal-info-kind-label-${rowKeys.keyAt(index)}`}>
+                    {t('contacts.personalInfo.kind')}
+                  </InputLabel>
                   <Select
-                    label={t('contacts.personalInfo.kindOptions')}
+                    labelId={`personal-info-kind-label-${rowKeys.keyAt(index)}`}
+                    label={t('contacts.personalInfo.kind')}
                     value={row.kind}
                     onChange={(e) => updateRow(index, { kind: e.target.value })}
                   >
@@ -86,9 +100,14 @@ export default function PersonalInfoEditor({ label, value, onChange }: PersonalI
               </Stack>
               <Stack direction="row" spacing={1}>
                 <FormControl size="small" sx={{ minWidth: 140 }}>
-                  <InputLabel>{t('contacts.personalInfo.levelOptions')}</InputLabel>
+                  {/* Leaf key `.level`, not the `.levelOptions` object node —
+                      same bug as the kind Select above, same id/labelId fix. */}
+                  <InputLabel id={`personal-info-level-label-${rowKeys.keyAt(index)}`}>
+                    {t('contacts.personalInfo.level')}
+                  </InputLabel>
                   <Select
-                    label={t('contacts.personalInfo.levelOptions')}
+                    labelId={`personal-info-level-label-${rowKeys.keyAt(index)}`}
+                    label={t('contacts.personalInfo.level')}
                     value={row.level || ''}
                     onChange={(e) => updateRow(index, { level: e.target.value })}
                   >
