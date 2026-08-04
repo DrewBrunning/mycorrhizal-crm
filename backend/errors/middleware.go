@@ -111,9 +111,3 @@ func LogError(c *gin.Context, err *AppError) {
 func AbortWithError(c *gin.Context, err *AppError) {
 	RespondWithError(c, err)
 }
-
-// AbortWithCustomError creates and responds with a custom error
-func AbortWithCustomError(c *gin.Context, code, message string, httpStatus int) {
-	err := NewError(code, message, httpStatus)
-	RespondWithError(c, err)
-}

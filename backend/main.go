@@ -237,6 +237,13 @@ func main() {
 	logger.Info().Msg("Stopping scheduler...")
 	s.Stop()
 
+	// Stop the rate limiter's stale-entry sweeper. Its counterpart
+	// StartCleanupRoutine runs from the middleware package's init(), so
+	// without this the goroutine (and the cleanupDone channel that exists
+	// solely to signal it) had no caller at all -- the shutdown hook was
+	// written but never wired up.
+	middleware.StopCleanupRoutine()
+
 	// Create a deadline to wait for active requests to complete
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
