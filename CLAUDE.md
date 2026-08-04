@@ -33,9 +33,15 @@ cd backend && go build ./... && go vet ./... && gofmt -l . && go test ./...
 cd frontend && npx tsc --noEmit && npx vitest run
 ```
 
-Migrations: `cd backend && make migrate-up` (see `make help`). Migration files are **hand-written SQL
-up/down pairs** in `backend/database/migrations/` — this project does **not** use GORM `AutoMigrate` for
-schema. Never add a column by editing a model struct alone.
+Migrations: the server runs every pending migration on startup (`database.InitDB`, from an embedded FS),
+so `make migrate-up` is only needed to migrate a database without booting the app. Migration files are
+**hand-written SQL up/down pairs** in `backend/database/migrations/` — this project does **not** use GORM
+`AutoMigrate` for schema. Never add a column by editing a model struct alone.
+
+`make migrate-down` rolls back **exactly one** migration and prompts before doing it. It is destructive
+— it runs that migration's `.down.sql`. Both the CLI and the Makefile read `SQLITE_DB_PATH`, so they
+always target the same database the server does; they used to hardcode `mycorrhizal.db` and roll back
+*every* migration, which with the squashed baseline destroyed the whole schema.
 
 Dev server: use the Browser/preview tooling with `.claude/launch.json`'s `frontend-dev`, never a raw
 `npm start` in a shell. The backend needs `JWT_SECRET_KEY`, `PROFILE_PHOTO_DIR`, `SQLITE_DB_PATH`, and
@@ -121,6 +127,14 @@ These are real bugs that shipped, not hypotheticals.
    `*apperrors.AppError` from inside and type-assert it after to preserve a 404/400 instead of
    flattening to 500. `relationship_edge_controller.go` does this.
 
+9. **`busy_timeout` alone does not stop `SQLITE_BUSY`; the DSN also needs `_txlock=immediate`.**
+   SQLite does **not** invoke the busy handler when a *deferred* transaction upgrades its read lock to
+   a write lock — it fails instantly instead, no matter how long the timeout. GORM wraps even a single
+   `Create` in an implicit transaction, so two concurrent writes produced a 500 `database is locked` in
+   under 5ms. `openDSN` sets `_txlock=immediate` so transactions take the write lock up front, which
+   *is* a case the busy handler retries; WAL keeps readers unaffected. Pinned by
+   `database/concurrent_write_test.go`. Don't remove the flag.
+
 ### Backend conventions
 
 - Controllers: follow `circle_controller.go` / `life_event_controller.go` (the newer idiom) over older
@@ -148,10 +162,24 @@ These are real bugs that shipped, not hypotheticals.
    dynamic type-list endpoint anywhere in this codebase, by design. If you add a token backend-side, the
    frontend copy must be updated by hand — add a comment noting it must stay in sync.
 5. **All five locale files get real translations** (`en`, `de`, `es`, `fr`, `it`), not English
-   placeholders. No test enforces parity, but this repo does not ship placeholders.
-6. **Playwright's `e2e/global-setup.ts` hardcodes `http://localhost:7300`** for both the app origin and
+   placeholders. `src/i18n/locales.test.ts` now enforces this: identical key sets in both directions,
+   identical interpolation placeholders, and no *namespace* left byte-identical to English. That last
+   check exists because an entire 25-key block once shipped as untranslated English in all four
+   non-English locales. It cannot assert per-key difference — proper nouns and cognates are legitimately
+   identical in bulk.
+6. **Translate to a leaf key, never to an object node.** `t('contacts.personalInfo.kindOptions')` where
+   `kindOptions` is a parent of `{expertise, hobby, …}` renders i18next's diagnostic —
+   `key '…' returned an object instead of string` — as visible UI text. This shipped on the contact
+   create/edit form in all five languages.
+7. **Playwright's `e2e/global-setup.ts` hardcodes `http://localhost:7300`** for both the app origin and
    its direct API calls, separately from `playwright.config.ts`'s `baseURL`. The e2e suite cannot run
    against a different port without editing shared test infra.
+8. **A Go struct field that is `omitempty` and a TS field that is required is a crash waiting to
+   happen.** `db.Find` leaves a slice nil when nothing matches, `omitempty` then drops the key
+   entirely, and a required TS type means nobody guards the `.length`. This took the whole prep view
+   into the ErrorBoundary for any contact with no history. Collection fields on a response DTO should
+   not carry `omitempty`, and a test asserting it must read the **raw JSON** — decoding into the Go
+   struct makes "absent" and `[]` indistinguishable, which is exactly why the existing test passed.
 
 ### Frontend conventions
 

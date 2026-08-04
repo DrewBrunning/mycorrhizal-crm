@@ -7,8 +7,15 @@ describe('ApiError.getDisplayMessage', () => {
     expect(err.getDisplayMessage()).toBe('Something went wrong');
   });
 
+  // The code here must be the one the backend actually emits
+  // (apperrors.ErrCodeValidation = "VALIDATION_ERROR"). This fixture used a
+  // bare "VALIDATION", which no server response ever carries — it only passed
+  // because getDisplayMessage folded in `details` for every code. It no longer
+  // does: `details` holds field messages for VALIDATION_ERROR/INVALID_INPUT
+  // and machine context for everything else, and conflating the two showed
+  // users a bare record id instead of "Contact not found".
   test('joins field-level details when present', () => {
-    const err = new ApiError('Validation failed', 'VALIDATION', 400, {
+    const err = new ApiError('Validation failed', 'VALIDATION_ERROR', 400, {
       email: 'Email is invalid',
       password: 'Password too weak',
     });
@@ -16,7 +23,7 @@ describe('ApiError.getDisplayMessage', () => {
   });
 
   test('returns the message for an empty details object', () => {
-    const err = new ApiError('Validation failed', 'VALIDATION', 400, {});
+    const err = new ApiError('Validation failed', 'VALIDATION_ERROR', 400, {});
     expect(err.getDisplayMessage()).toBe('Validation failed');
   });
 });
