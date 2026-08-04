@@ -71,6 +71,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Short SHA and an ISO-8601 build timestamp for the version stamp. The
+      # full github.sha is 40 chars, which is unwieldy in a UI badge and in a
+      # bug report; buildinfo's own VCS fallback truncates to 12, so match it.
+      - name: Compute build stamp
+        id: stamp
+        run: |
+          echo "commit=$(echo '${{ github.sha }}' | cut -c1-12)" >> "$GITHUB_OUTPUT"
+          echo "date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
       - name: Extract metadata (tags, labels)
         id: meta
         uses: docker/metadata-action@v5
@@ -90,5 +99,15 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          # Stamp the binary with the release it actually is. Without these the
+          # Dockerfile's defaults apply and /health reports version "dev" --
+          # so a published v0.2.0 image could not be told apart from any other
+          # build, which is the exact problem the buildinfo package exists to
+          # solve. metadata-action's `version` output is the semver derived
+          # from the tag that triggered this run.
+          build-args: |
+            APP_VERSION=${{ steps.meta.outputs.version }}
+            APP_COMMIT=${{ steps.stamp.outputs.commit }}
+            APP_BUILD_DATE=${{ steps.stamp.outputs.date }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
