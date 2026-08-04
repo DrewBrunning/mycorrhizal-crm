@@ -586,6 +586,24 @@
       "yearly": "Jährlich"
     }
   },
+  "bulk": {
+    "selected": "{{count}} ausgewählt",
+    "selectAll": "Alle auswählen",
+    "clear": "Leeren",
+    "selectCircle": "Kreis…",
+    "addCircle": "Zum Kreis hinzufügen",
+    "removeCircle": "Aus dem Kreis entfernen",
+    "selectTag": "Tag…",
+    "addTag": "Tag hinzufügen",
+    "removeTag": "Tag entfernen",
+    "archive": "Archivieren",
+    "unarchive": "Wiederherstellen",
+    "delete": "Löschen",
+    "deleteConfirm": "{{count}} Kontakte löschen? Dies entfernt sie samt aller Daten dauerhaft. Dies kann nicht rückgängig gemacht werden.",
+    "selectContact": "{{name}} auswählen",
+    "resultFailure": "{{succeeded}} von {{total}} erfolgreich. {{failed}} fehlgeschlagen.",
+    "resultError": "Die Sammelaktion ist fehlgeschlagen. Bitte versuche es erneut."
+  },
   "common": {
     "save": "Speichern",
     "saving": "Speichern...",

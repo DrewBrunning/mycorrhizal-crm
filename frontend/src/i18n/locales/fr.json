@@ -586,6 +586,24 @@
       "yearly": "Annuel"
     }
   },
+  "bulk": {
+    "selected": "{{count}} sélectionnés",
+    "selectAll": "Tout sélectionner",
+    "clear": "Effacer",
+    "selectCircle": "Cercle…",
+    "addCircle": "Ajouter au cercle",
+    "removeCircle": "Retirer du cercle",
+    "selectTag": "Étiquette…",
+    "addTag": "Ajouter une étiquette",
+    "removeTag": "Retirer l'étiquette",
+    "archive": "Archiver",
+    "unarchive": "Désarchiver",
+    "delete": "Supprimer",
+    "deleteConfirm": "Supprimer {{count}} contacts ? Cela les supprime définitivement avec toutes leurs données. Cette action est irréversible.",
+    "selectContact": "Sélectionner {{name}}",
+    "resultFailure": "{{succeeded}} sur {{total}} réussis. {{failed}} échecs.",
+    "resultError": "L'opération groupée a échoué. Veuillez réessayer."
+  },
   "common": {
     "save": "Enregistrer",
     "saving": "Enregistrement en cours...",

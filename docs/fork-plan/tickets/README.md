@@ -48,12 +48,12 @@ questions in `../95-backlog-and-priorities.md`.
 |---|---|---|---|---|
 | [22](20-T19-cadence.md) | T19 · CadencePolicy + relationship health | 5 | L | **DONE** |
 | [23](21-T21-conversation-agenda.md) | T21 · ConversationAgenda | 4 | M | **DONE** |
-| [24](22-N2-prep-view.md) | N2 · Prep view / person briefing | 5 | M | |
+| [24](22-N2-prep-view.md) | N2 · Prep view / person briefing | 5 | M | **DONE** |
 | [25](23-T10-graph-traversal.md) | T10 · Graph traversal + multi-hop | 2 | M–L | **DONE** |
 | [26](24-T11-search-fts5.md) | T11 · Search synonyms, household scope, FTS5 | 5 | L | **DONE** |
 | [27](25-N8-2fa.md) | N8 · 2FA / TOTP | 3 | M | |
 | [28](26-N6-backup-restore.md) | N6 · Full backup restore | 3 | M | |
-| [29](27-N5-bulk-operations.md) | N5 · Bulk operations | 3 | M | |
+| [29](27-N5-bulk-operations.md) | N5 · Bulk operations | 3 | M | **DONE** |
 | [30](28-T20b-gift-tracking.md) | T20b · Gift tracking | 3 | M | **DONE** |
 | [31](29-N7-attachments.md) | N7 · File / document attachments | 3 | M | |
 | [32](30-N9-notification-channels.md) | N9 · Notification channels beyond email | 3 | M | |

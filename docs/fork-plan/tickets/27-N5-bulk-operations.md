@@ -7,6 +7,7 @@
 | **Depends on** | [T4](07-T4-circle-tag-frontend.md) — so it operates on real Circle/Tag entities |
 | **Alpha** | after |
 | **Source** | New (gap found in the 2026-07-30 product review) |
+| **Status** | **DONE** — `POST /contacts/bulk` with partial-success semantics + multi-select list UI. See the implementation notes at the bottom. |
 
 ## Why this exists
 
@@ -88,3 +89,28 @@ This ticket is post-alpha — real production data exists. Changes that modify s
 - `gorm:"column:xxx"` tag is mandatory for acronyms/compound words — GORM silently derives wrong names
 - New entities: decide soft vs hard delete per T26's rule (user-authored content → soft, edge/join rows → hard)
 - Delete cascade: add new entities to `deleteContactAssociations` in `contact_controller.go` and `DeleteUser` in `admin_user_controller.go`
+
+## Implementation notes (DONE)
+
+- **One batch endpoint, not a loop.** `POST /contacts/bulk` (`controllers/bulk_operation_controller.go`,
+  model `models/bulk_operation.go`) runs a single action across `vcard_uids` (max 500) with
+  partial-success semantics: the response reports `succeeded`/`failed` and a per-uid `failures` list.
+  `failed > 0` is still HTTP 200 — the caller inspects the summary.
+- **Ownership by construction.** Every target resolves through `Contact.VCardUID AND user_id = ?`, so a
+  foreign contact is a reported failure, never silently skipped. A foreign/missing circle or tag aborts
+  the whole request (404) — it is a malformed action, not a per-contact outcome.
+- **Idempotent membership.** Adding to something already present (or removing from something already
+  absent) counts as success — the bulk 409 the per-contact endpoints return becomes a no-op. Duplicate
+  uids in the request are deduped before counting.
+- **Bulk delete is real but per-contact transactional.** `deleteContactAssociations` + `tx.Delete` run
+  in their own transaction per contact, so a mid-batch failure never leaves one contact half-cleaned.
+  Profile photo files are cleaned after the batch. The UI requires a confirm dialog naming the count.
+- **Selection survives pagination.** The list keys selection by `Contact.VCardUID` in a `Set`, so "load
+  more" appends pages without touching it; "select all" covers every currently loaded contact.
+- **No new migration.** Reuses existing tables (contacts, circle_members, contact_tags, reminders).
+- **OpenAPI** documents the endpoint and both schemas (`/contacts/bulk`, `BulkContactOperationInput`,
+  `BulkOperationResult`); the coverage test requires it.
+- **Tests:** backend `controllers/bulk_operation_controller_test.go` (membership add/remove/dup/ownership
+  partial-success/archive/unarchive/delete/foreign-circle/validation); frontend `ContactsPage.test.tsx`
+  (selection across pagination, select-all, bulk tag payload, delete confirm) and
+  `BulkActionsBar.test.tsx`.

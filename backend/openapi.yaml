@@ -744,6 +744,52 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /contacts/bulk:
+    post:
+      summary: Run one bulk action across many contacts (N5)
+      operationId: bulkContactOperation
+      description: >
+        Applies a single action (add/remove circle, add/remove tag, archive,
+        unarchive, delete) to many contacts at once, with partial-success
+        semantics: the response reports how many succeeded and which failed.
+        Targets are Contact.VCardUID values, scoped to the authenticated user —
+        a VCardUID that is not the user's own contact is reported as a failure,
+        never silently skipped. Membership actions are idempotent: adding to
+        something already present (or removing from something already absent)
+        counts as success rather than the 409 the per-contact endpoints return.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BulkContactOperationInput"
+      responses:
+        "200":
+          description: >
+            The operation ran; check `succeeded`/`failed` for the per-contact
+            outcome. `failed > 0` is still a 200 (partial success).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BulkOperationResult"
+        "400":
+          description: Invalid action, empty uid list, or a missing circle_id/tag_id for a membership action.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: The target circle or tag does not exist or belongs to another user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /contacts/{id}:
     parameters:
       - name: id
@@ -6093,6 +6139,36 @@ components:
       required: [member_vcard_uid]
       properties:
         member_vcard_uid: { type: string, format: uuid }
+    BulkContactOperationInput:
+      type: object
+      description: One bulk action across many contacts (N5). Targets are Contact.VCardUID values.
+      required: [action, vcard_uids]
+      properties:
+        action:
+          type: string
+          enum: [add_circle, remove_circle, add_tag, remove_tag, archive, unarchive, delete]
+        vcard_uids:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items: { type: string, format: uuid }
+        circle_id: { type: string, format: uuid }
+        tag_id: { type: string, format: uuid }
+    BulkOperationResult:
+      type: object
+      description: Partial-success outcome of a bulk operation.
+      properties:
+        action: { type: string }
+        total: { type: integer }
+        succeeded: { type: integer }
+        failed: { type: integer }
+        failures:
+          type: array
+          items:
+            type: object
+            properties:
+              vcard_uid: { type: string, format: uuid }
+              reason: { type: string }
     Household:
       type: object
       properties:

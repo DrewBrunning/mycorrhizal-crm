@@ -586,6 +586,24 @@
       "yearly": "Anual"
     }
   },
+  "bulk": {
+    "selected": "{{count}} seleccionados",
+    "selectAll": "Seleccionar todo",
+    "clear": "Limpiar",
+    "selectCircle": "Círculo…",
+    "addCircle": "Añadir al círculo",
+    "removeCircle": "Quitar del círculo",
+    "selectTag": "Etiqueta…",
+    "addTag": "Añadir etiqueta",
+    "removeTag": "Quitar etiqueta",
+    "archive": "Archivar",
+    "unarchive": "Desarchivar",
+    "delete": "Eliminar",
+    "deleteConfirm": "¿Eliminar {{count}} contactos? Esto los elimina permanentemente junto con todos sus datos. Esta acción no se puede deshacer.",
+    "selectContact": "Seleccionar {{name}}",
+    "resultFailure": "{{succeeded}} de {{total}} correctos. {{failed}} fallidos.",
+    "resultError": "La operación masiva falló. Inténtalo de nuevo."
+  },
   "common": {
     "save": "Guardar",
     "saving": "Guardando...",

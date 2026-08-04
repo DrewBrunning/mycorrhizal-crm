@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useContacts } from './hooks/useContacts';
 import { useCircles } from './hooks/useCircles';
@@ -7,8 +7,10 @@ import { useTags } from './hooks/useTags';
 import { useFieldDefinitions } from './hooks/useFieldDefinitions';
 import { getCurrentUser } from './api/admin';
 import { resolveEnabledFields, ContactFieldKey } from './contactFields';
+import { BulkAction, runBulkOperation } from './api/bulkOperations';
 import AddContactDialog from './components/AddContactDialog';
 import ImportContactsDialog from './components/ImportContactsDialog';
+import BulkActionsBar from './components/BulkActionsBar';
 import {
   Box,
   Card,
@@ -22,7 +24,8 @@ import {
   InputLabel,
   Button,
   FormControlLabel,
-  Switch
+  Switch,
+  Checkbox
 } from '@mui/material';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import FileUploadIcon from '@mui/icons-material/FileUpload';
@@ -35,13 +38,27 @@ export default function ContactsPage() {
   const searchQuery = searchParams.get('search') || '';
   const [selectedCircle, setSelectedCircle] = useState('');
   const { circles, circleNamesByUid, refresh: refreshCircles } = useCircles();
-  const { tags } = useTags();
+  const { tags, refresh: refreshTags } = useTags();
 
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [enabledFields, setEnabledFields] = useState<Set<ContactFieldKey>>(() => resolveEnabledFields(null));
   const [showArchived, setShowArchived] = useState(false);
   const pageSize = 10;
+
+  // N5 multi-select: keyed by Contact.VCardUID so it survives pagination —
+  // "load more" appends to the list but the selection Set is untouched.
+  const [selectedUids, setSelectedUids] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+
+  // Selection is meaningless once the visible set changes underneath it — a
+  // filter/search/archived change swaps `contacts` for an unrelated page,
+  // so a stale selection would let a bulk action (including delete) run
+  // against contacts the user can no longer see. Clear it here rather than
+  // in useContacts, which has no concept of selection.
+  useEffect(() => {
+    setSelectedUids(new Set());
+  }, [searchQuery, selectedCircle, showArchived]);
 
   // T17: cursor pagination — the list pages by (updated_at, id) DESC and the
   // "load more" button appends the next_cursor page. There is no page number
@@ -85,7 +102,73 @@ export default function ContactsPage() {
     await refetch();
     await refreshCircles();
   };
-  
+
+  // --- N5 selection --------------------------------------------------------
+
+  const isSelected = useCallback((uid: string | undefined) => !!uid && selectedUids.has(uid), [selectedUids]);
+  const allSelected = contacts.length > 0 && contacts.every((c) => isSelected(c.uid));
+
+  const toggleSelect = (uid: string | undefined) => {
+    if (!uid) return;
+    setSelectedUids((prev) => {
+      const next = new Set(prev);
+      if (next.has(uid)) next.delete(uid);
+      else next.add(uid);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    const loaded = contacts.map((c) => c.uid).filter(Boolean) as string[];
+    if (allSelected) {
+      setSelectedUids(new Set());
+    } else {
+      setSelectedUids((prev) => new Set([...prev, ...loaded]));
+    }
+  };
+
+  const clearSelection = () => setSelectedUids(new Set());
+
+  // --- N5 bulk actions -----------------------------------------------------
+
+  const handleBulk = async (action: BulkAction, circleId?: string, tagId?: string) => {
+    if (selectedUids.size === 0) return;
+    setBulkBusy(true);
+    try {
+      const result = await runBulkOperation({
+        action,
+        vcard_uids: Array.from(selectedUids),
+        circle_id: circleId,
+        tag_id: tagId,
+      });
+      if (result.failed > 0) {
+        // Partial success: surface the counts so nothing failed silently.
+        window.alert(t('bulk.resultFailure', { total: result.total, succeeded: result.succeeded, failed: result.failed }));
+      }
+      setSelectedUids(new Set());
+      await Promise.all([refetch(), refreshCircles(), refreshTags()]);
+    } catch {
+      window.alert(t('bulk.resultError'));
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedUids.size === 0) return Promise.resolve();
+    // Bulk delete is the most destructive action in the app — require a real
+    // confirmation naming the count before anything happens.
+    if (!window.confirm(t('bulk.deleteConfirm', { count: selectedUids.size }))) return Promise.resolve();
+    return handleBulk('delete');
+  };
+
+  const handleAddCircle = (circleId: string) => handleBulk('add_circle', circleId);
+  const handleRemoveCircle = (circleId: string) => handleBulk('remove_circle', circleId);
+  const handleAddTag = (tagId: string) => handleBulk('add_tag', undefined, tagId);
+  const handleRemoveTag = (tagId: string) => handleBulk('remove_tag', undefined, tagId);
+  const handleArchive = () => handleBulk('archive');
+  const handleUnarchive = () => handleBulk('unarchive');
+
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 2, p: 2 }}>
       <Typography variant="h5" gutterBottom sx={{ mb: 2 }}>
@@ -152,6 +235,23 @@ export default function ContactsPage() {
           )}
         </Box>
       )}
+      <BulkActionsBar
+        selectedCount={selectedUids.size}
+        loadedCount={contacts.length}
+        allSelected={allSelected}
+        circles={circles}
+        tags={tags}
+        busy={bulkBusy}
+        onSelectAll={toggleSelectAll}
+        onClear={clearSelection}
+        onAddCircle={handleAddCircle}
+        onRemoveCircle={handleRemoveCircle}
+        onAddTag={handleAddTag}
+        onRemoveTag={handleRemoveTag}
+        onArchive={handleArchive}
+        onUnarchive={handleUnarchive}
+        onDelete={handleBulkDelete}
+      />
       {loading && contacts.length === 0 ? (
         <ContactListSkeleton count={10} />
       ) : (
@@ -160,8 +260,7 @@ export default function ContactsPage() {
             {contacts.map(contact => (
               <Card
                 key={contact.ID}
-                component={Link}
-                to={`/contacts/${contact.ID}`}
+                onClick={() => navigate(`/contacts/${contact.ID}`)}
                 sx={{
                   display: 'flex',
                   alignItems: 'center',
@@ -175,6 +274,13 @@ export default function ContactsPage() {
                   }
                 }}
               >
+                <Checkbox
+                  checked={isSelected(contact.uid)}
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => { e.stopPropagation(); toggleSelect(contact.uid); }}
+                  disabled={bulkBusy}
+                  inputProps={{ 'aria-label': t('bulk.selectContact', { name: `${contact.firstname} ${contact.lastname}`.trim() }) }}
+                />
                 <Avatar src={contact.photo_thumbnail || undefined} sx={{ width: 48, height: 48, mr: 1.5, bgcolor: 'primary.main' }}>
                   {contact.firstname.charAt(0)}
                 </Avatar>

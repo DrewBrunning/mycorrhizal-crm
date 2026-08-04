@@ -61,6 +61,9 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.POST("/contacts/merge/preview", middleware.ValidateJSONMiddleware(&models.ContactMergeRequest{}), controllers.PreviewContactMerge)
 			protected.POST("/contacts/merge", middleware.ValidateJSONMiddleware(&models.ContactMergeRequest{}), controllers.CommitContactMerge)
 			protected.POST("/contacts", middleware.ValidateJSONMiddleware(&models.ContactRecordInput{}), controllers.CreateContact)
+			// N5 bulk operations — registered before /contacts/:id so the
+			// literal path is never captured as a contact ID.
+			protected.POST("/contacts/bulk", middleware.ValidateJSONMiddleware(&models.BulkContactOperationInput{}), controllers.BulkContactOperation)
 			protected.GET("/contacts/:id", controllers.GetContact)
 			// N2 prep view: read-only aggregation of everything the user
 			// wants to remember before seeing this contact. Registered after

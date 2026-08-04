@@ -586,6 +586,24 @@
       "yearly": "Annuale"
     }
   },
+  "bulk": {
+    "selected": "{{count}} selezionati",
+    "selectAll": "Seleziona tutto",
+    "clear": "Cancella",
+    "selectCircle": "Cerchia…",
+    "addCircle": "Aggiungi alla cerchia",
+    "removeCircle": "Rimuovi dalla cerchia",
+    "selectTag": "Etichetta…",
+    "addTag": "Aggiungi etichetta",
+    "removeTag": "Rimuovi etichetta",
+    "archive": "Archivia",
+    "unarchive": "Ripristina",
+    "delete": "Elimina",
+    "deleteConfirm": "Eliminare {{count}} contatti? Questo li rimuove definitivamente con tutti i loro dati. Non si può annullare.",
+    "selectContact": "Seleziona {{name}}",
+    "resultFailure": "{{succeeded}} di {{total}} riusciti. {{failed}} falliti.",
+    "resultError": "L'operazione in blocco non è riuscita. Riprova."
+  },
   "common": {
     "save": "Salva",
     "saving": "Salvataggio in corso...",
