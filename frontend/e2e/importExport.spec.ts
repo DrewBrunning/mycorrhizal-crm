@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { deleteTestContact, waitForLoading } from './fixtures';
+import { createTestContact, deleteTestContact, waitForLoading } from './fixtures';
 import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 
 /**
@@ -171,10 +171,14 @@ test.describe('CSV import/export round trip', () => {
     const circle = await createCircle.json();
     const circleId = circle.circle?.id ?? circle.id;
 
-    const contactResponse = await request.get(`${API_BASE_URL}/contacts?limit=1`);
-    const { contacts } = await contactResponse.json();
-    const contact = contacts[0];
-    expect(contact, 'global-setup seeds contacts').toBeTruthy();
+    // Owns its own contact rather than borrowing contacts[0] from the shared
+    // seed set. The suite runs fullyParallel and several specs create and
+    // delete contacts, so whichever contact happened to be first could be
+    // deleted mid-test -- which made this flake roughly 1 run in 6.
+    const contact = await createTestContact(request, {
+      firstname: `${E2E_CONTACT_PREFIX}ExportMember`,
+      lastname: 'Circle',
+    });
 
     try {
       const addMember = await request.post(`${API_BASE_URL}/circles/${circleId}/members`, {
@@ -186,6 +190,7 @@ test.describe('CSV import/export round trip', () => {
       const csv = await exportResponse.text();
       expect(csv, 'a membership created in the app must reach the export').toContain(circleName);
     } finally {
+      await deleteTestContact(request, contact.ID);
       await request.delete(`${API_BASE_URL}/circles/${circleId}`).catch(() => {});
     }
   });

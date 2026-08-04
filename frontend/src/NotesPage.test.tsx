@@ -1,5 +1,5 @@
 import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, waitFor } from '@testing-library/react';
+import { render, screen, cleanup, waitFor, fireEvent } from '@testing-library/react';
 import './i18n/config';
 import NotesPage from './NotesPage';
 import { SnackbarProvider } from './context/SnackbarContext';
@@ -162,4 +162,113 @@ test('renders the filter and search bar', async () => {
   expect(screen.getByLabelText('Search...')).toBeDefined();
   expect(screen.getByLabelText('From')).toBeDefined();
   expect(screen.getByLabelText('To')).toBeDefined();
+});
+
+// N4's ticket asks for a test proving that "a note that gains a contact
+// disappears from the inbox". The suite covered the adjacent case (a response
+// with no notes renders as empty) but never the assign action itself, so the
+// filing path -- the whole point of the inbox -- was untested.
+test('assigning a contact files the note and removes it from the inbox', async () => {
+  // The server returns the note as unfiled first; once it has been PUT with a
+  // contact_id it no longer matches `contact_id IS NULL`, so the refetch that
+  // follows a save returns an empty inbox. Flipping this flag is what models
+  // that server-side behaviour.
+  let filed = false;
+  const putBodies: string[] = [];
+
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, options?: { method?: string; body?: string }) => {
+      if (options?.method === 'PUT') {
+        putBodies.push(options.body ?? '');
+        filed = true;
+        return { ok: true, json: async () => ({ message: 'ok' }) };
+      }
+      // The dialog's debounced contact search.
+      if (url.includes('/contacts?')) {
+        return {
+          ok: true,
+          json: async () => ({
+            contacts: [{ id: 7, uid: 'uid-7', firstname: 'Charlie', lastname: 'Chaplin' }],
+          }),
+        };
+      }
+      if (url.includes('/notes')) {
+        return {
+          ok: true,
+          json: async () =>
+            filed
+              ? { notes: [], next_cursor: '', limit: 25, total: 0 }
+              : {
+                  notes: [
+                    {
+                      ID: 1,
+                      content: 'File me onto someone',
+                      date: '2026-01-01T00:00:00Z',
+                      contact_id: null,
+                      CreatedAt: '2026-01-01T00:00:00Z',
+                      UpdatedAt: '2026-01-01T00:00:00Z',
+                    },
+                  ],
+                  next_cursor: '',
+                  limit: 25,
+                  total: 1,
+                },
+        };
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    })
+  );
+
+  renderPage();
+
+  await waitFor(() => expect(screen.getByText('File me onto someone')).toBeDefined());
+  expect(screen.getByText('1')).toBeDefined();
+
+  // Open the note for editing (the row's icon button).
+  const editButtons = screen.getAllByRole('button');
+  fireEvent.click(editButtons[editButtons.length - 1]);
+
+  await waitFor(() => expect(screen.getByRole('dialog')).toBeDefined());
+
+  // Assign a contact through the debounced Autocomplete.
+  const picker = screen.getByPlaceholderText('Search contacts...');
+  fireEvent.change(picker, { target: { value: 'Charlie' } });
+  await waitFor(() => expect(screen.getByText('Charlie Chaplin')).toBeDefined(), { timeout: 3000 });
+  fireEvent.click(screen.getByText('Charlie Chaplin'));
+
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  // The save must actually carry the contact id -- filing is the point.
+  await waitFor(() => expect(putBodies.length).toBe(1));
+  expect(JSON.parse(putBodies[0]).contact_id).toBe(7);
+
+  // ...and the note must leave the inbox, with the queue depth following it.
+  await waitFor(() => expect(screen.queryByText('File me onto someone')).toBeNull());
+  expect(screen.getByText('No unfiled notes')).toBeDefined();
+  expect(screen.getByText('0')).toBeDefined();
+});
+
+// The chip is a queue depth, so it must render the server's `total` rather
+// than the number of rows on the loaded page. Rendering notes.length
+// under-counted anyone with more than one page of unfiled notes, and the
+// number then grew as they clicked "Load more".
+test('unfiled count shows the server total, not the loaded page length', async () => {
+  mockFetchByUrl({
+    '/notes?': () => ({
+      notes: [
+        { ID: 1, content: 'First note', date: '2026-01-01T00:00:00Z', contact_id: null, CreatedAt: '2026-01-01T00:00:00Z', UpdatedAt: '2026-01-01T00:00:00Z' },
+        { ID: 2, content: 'Second note', date: '2026-01-02T00:00:00Z', contact_id: null, CreatedAt: '2026-01-02T00:00:00Z', UpdatedAt: '2026-01-02T00:00:00Z' },
+      ],
+      next_cursor: 'more-pages-exist',
+      limit: 2,
+      total: 42,
+    }),
+  });
+  renderPage();
+
+  await waitFor(() => expect(screen.getByText('First note')).toBeDefined());
+
+  expect(screen.getByText('42')).toBeDefined();
+  expect(screen.queryByText('2'), 'must not render the page length as the queue depth').toBeNull();
 });

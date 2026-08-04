@@ -15,6 +15,12 @@ export interface NotesResponse {
   // T17 cursor pagination: opaque resume token; empty when there are no more rows.
   next_cursor?: string;
   limit?: number;
+  // Queue depth for the N4 inbox: how many notes match the current filters in
+  // total, not how many are on the loaded page. Only the unassigned-notes
+  // endpoint returns it — a contact's note history is unbounded, which is why
+  // T17 dropped counts there, whereas the unfiled set is a queue being drained.
+  // Optional because the contact-scoped list shares this type and omits it.
+  total?: number;
 }
 
 export interface GetNotesParams {

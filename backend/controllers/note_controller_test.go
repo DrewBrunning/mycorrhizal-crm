@@ -3,6 +3,7 @@ package controllers
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetContactNotes(t *testing.T) {
@@ -150,9 +152,16 @@ func TestGetNotes(t *testing.T) {
 		t.Fatalf("expected notes array in response")
 	}
 	assert.Len(t, noteItems, 2)
-	// T17: the cursor envelope has no total/page.
-	assert.NotContains(t, responseBody, "total")
+	// T17: the cursor envelope has no offset-style `page`.
+	//
+	// `total` IS present here, deliberately, and this assertion was relaxed to
+	// say so rather than deleted. T17 removed counts because a contact's note
+	// history is unbounded; the unfiled set this endpoint returns is a queue
+	// the user drains, and N4's inbox chip is a queue depth. See
+	// TestGetUnassignedNotes_TotalCountsWholeSetNotPage.
 	assert.NotContains(t, responseBody, "page")
+	assert.Contains(t, responseBody, "total")
+	assert.EqualValues(t, 2, responseBody["total"])
 }
 
 func TestGetNotesSearch(t *testing.T) {
@@ -180,7 +189,9 @@ func TestGetNotesSearch(t *testing.T) {
 		t.Fatalf("expected notes array in response")
 	}
 	assert.Len(t, noteItems, 1)
-	assert.NotContains(t, responseBody, "total")
+	// The total tracks the active search filter, so it stays consistent with
+	// the list rendered beside it (see TestGetUnassignedNotes_TotalRespectsSearchFilter).
+	assert.EqualValues(t, 1, responseBody["total"])
 }
 
 func TestCreateNote(t *testing.T) {
@@ -487,4 +498,129 @@ func TestUpdateNoteRejectsCrossUserContactID(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+// N4's inbox chip is a queue depth, so GET /notes (unassigned) returns a
+// `total`. It reports the whole filtered result set, NOT the page — the
+// frontend previously rendered `notes.length`, so a user with more than one
+// page of unfiled notes saw an under-count that grew as they paged.
+//
+// This is a deliberate exception to T17's removal of counts: that decision was
+// about a contact's note history, which accumulates without bound. The unfiled
+// set is a queue the user drains, and counting it is the point of an inbox.
+func TestGetUnassignedNotes_TotalCountsWholeSetNotPage(t *testing.T) {
+	db, router := setupRouter()
+	router.GET("/notes", GetUnassignedNotes)
+
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+
+	const unfiled = 7
+	for i := 0; i < unfiled; i++ {
+		require.NoError(t, db.Create(&models.Note{
+			UserID: user.ID, Content: fmt.Sprintf("unfiled %d", i),
+		}).Error)
+	}
+
+	// A page smaller than the result set: `total` must still report all of it.
+	req, _ := http.NewRequest("GET", "/notes?limit=3", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var resp struct {
+		Notes      []models.Note `json:"notes"`
+		Total      int64         `json:"total"`
+		NextCursor string        `json:"next_cursor"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+
+	assert.Len(t, resp.Notes, 3, "the page is limited")
+	assert.NotEmpty(t, resp.NextCursor, "more pages remain")
+	assert.Equal(t, int64(unfiled), resp.Total,
+		"total must count the whole unfiled set, not the returned page")
+}
+
+// A note that gains a contact leaves the inbox, and the total must follow it
+// down — otherwise the queue depth never decreases as the user files.
+func TestGetUnassignedNotes_TotalExcludesFiledNotes(t *testing.T) {
+	db, router := setupRouter()
+	router.GET("/notes", GetUnassignedNotes)
+
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+
+	contact := models.Contact{UserID: user.ID, Firstname: "Filed"}
+	require.NoError(t, db.Create(&contact).Error)
+
+	unfiled := models.Note{UserID: user.ID, Content: "still unfiled"}
+	require.NoError(t, db.Create(&unfiled).Error)
+	filed := models.Note{UserID: user.ID, Content: "already filed", ContactID: &contact.ID}
+	require.NoError(t, db.Create(&filed).Error)
+
+	req, _ := http.NewRequest("GET", "/notes", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var resp struct {
+		Notes []models.Note `json:"notes"`
+		Total int64         `json:"total"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+
+	assert.Equal(t, int64(1), resp.Total, "a filed note must not count toward the inbox depth")
+	require.Len(t, resp.Notes, 1)
+	assert.Equal(t, "still unfiled", resp.Notes[0].Content)
+}
+
+// The count is computed on the filtered query, so it stays consistent with the
+// list rendered next to it rather than contradicting a visible search filter.
+func TestGetUnassignedNotes_TotalRespectsSearchFilter(t *testing.T) {
+	db, router := setupRouter()
+	router.GET("/notes", GetUnassignedNotes)
+
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+
+	require.NoError(t, db.Create(&models.Note{UserID: user.ID, Content: "buy oranges"}).Error)
+	require.NoError(t, db.Create(&models.Note{UserID: user.ID, Content: "buy apples"}).Error)
+	require.NoError(t, db.Create(&models.Note{UserID: user.ID, Content: "call the plumber"}).Error)
+
+	req, _ := http.NewRequest("GET", "/notes?search=buy", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var resp struct {
+		Total int64 `json:"total"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Equal(t, int64(2), resp.Total, "total must reflect the active search filter")
+}
+
+// Another user's unfiled notes must never inflate this user's queue depth.
+func TestGetUnassignedNotes_TotalScopedToOwner(t *testing.T) {
+	db, router := setupRouter()
+	router.GET("/notes", GetUnassignedNotes)
+
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+	other := models.User{Username: "other-notes", Email: "other-notes@example.com", Password: "x"}
+	require.NoError(t, db.Create(&other).Error)
+
+	require.NoError(t, db.Create(&models.Note{UserID: user.ID, Content: "mine"}).Error)
+	require.NoError(t, db.Create(&models.Note{UserID: other.ID, Content: "theirs"}).Error)
+	require.NoError(t, db.Create(&models.Note{UserID: other.ID, Content: "theirs too"}).Error)
+
+	req, _ := http.NewRequest("GET", "/notes", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var resp struct {
+		Total int64 `json:"total"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Equal(t, int64(1), resp.Total)
 }

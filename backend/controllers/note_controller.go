@@ -212,8 +212,29 @@ func GetUnassignedNotes(c *gin.Context) {
 		baseQuery = baseQuery.Where("LOWER(content) LIKE ?", like)
 	}
 
-	// T17: cursor pagination on (updated_at, id). An exact count is
-	// deliberately gone — notes accumulate without bound.
+	// N4: the inbox needs a real queue depth, so this endpoint DOES return a
+	// total — unlike the contact-scoped note list above, where T17 removed the
+	// count because a contact's note history accumulates without bound.
+	//
+	// The two cases differ in kind. This query is already constrained to
+	// `contact_id IS NULL`: the unfiled set is a queue the user drains, not a
+	// history that grows forever, so counting it is bounded work on an indexed
+	// predicate. And the count is the point of an inbox — the frontend chip
+	// previously rendered `notes.length`, i.e. the number of rows on the
+	// loaded page, so a user with more than one page of unfiled notes saw an
+	// under-count that then grew as they clicked "Load more".
+	//
+	// Counted on the filtered query (search/date) but BEFORE the cursor
+	// predicate is applied, so it reflects the whole result set the user is
+	// paging through rather than the page they are on. Session() clones the
+	// builder so the count does not pollute the Find below.
+	var total int64
+	if err := baseQuery.Session(&gorm.Session{}).Count(&total).Error; err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to count unassigned notes").WithError(err))
+		return
+	}
+
+	// T17: cursor pagination on (updated_at, id).
 	desc := params.Order == "desc"
 	if params.Cursor != nil {
 		id, ok := parseCursorID(params.Cursor)
@@ -239,6 +260,7 @@ func GetUnassignedNotes(c *gin.Context) {
 		"notes":       notes,
 		"next_cursor": nextCursor,
 		"limit":       params.Limit,
+		"total":       total,
 		"sync":        buildSyncMeta(SyncModeIncremental),
 	})
 }
