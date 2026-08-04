@@ -51,6 +51,15 @@ export default function ContactsPage() {
   const [selectedUids, setSelectedUids] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
 
+  // Selection is meaningless once the visible set changes underneath it — a
+  // filter/search/archived change swaps `contacts` for an unrelated page,
+  // so a stale selection would let a bulk action (including delete) run
+  // against contacts the user can no longer see. Clear it here rather than
+  // in useContacts, which has no concept of selection.
+  useEffect(() => {
+    setSelectedUids(new Set());
+  }, [searchQuery, selectedCircle, showArchived]);
+
   // T17: cursor pagination — the list pages by (updated_at, id) DESC and the
   // "load more" button appends the next_cursor page. There is no page number
   // or exact total anymore.
@@ -267,6 +276,7 @@ export default function ContactsPage() {
               >
                 <Checkbox
                   checked={isSelected(contact.uid)}
+                  onClick={(e) => e.stopPropagation()}
                   onChange={(e) => { e.stopPropagation(); toggleSelect(contact.uid); }}
                   disabled={bulkBusy}
                   inputProps={{ 'aria-label': t('bulk.selectContact', { name: `${contact.firstname} ${contact.lastname}`.trim() }) }}
