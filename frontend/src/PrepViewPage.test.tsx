@@ -114,6 +114,34 @@ test('degrades gracefully when every block is empty', async () => {
   expect(screen.queryByText('People around them')).toBeNull();
 });
 
+// The test above passes `[]` for every block — a shape the server does NOT
+// send. The blocks were tagged `omitempty` in Go, so a contact with no history
+// came back as `{contact_id, uid, name, kind}` with all six blocks *absent*,
+// and `briefing.open_agenda_items.length` threw, taking the whole page into the
+// ErrorBoundary. Every freshly-created contact was in that state, so the prep
+// view was broken on first use while both this suite and the Go suite stayed
+// green.
+//
+// The server now always emits `[]` and getContactBriefing normalises anyway.
+// This test pins the response shape that actually shipped, so a regression on
+// either side is caught here rather than by a user.
+test('survives a response that omits every collection block entirely', async () => {
+  mockBriefingFetch({
+    contact_id: 1,
+    uid: 'bare-uid',
+    name: 'Bare Minimum',
+    kind: 'human',
+  });
+  renderPage();
+
+  await waitFor(() => expect(screen.getByText('Bare Minimum')).toBeInTheDocument());
+
+  // Rendered the page rather than the ErrorBoundary's failure surface.
+  expect(screen.getByText('No interactions recorded yet')).toBeInTheDocument();
+  expect(screen.queryByText('Things to bring up')).toBeNull();
+  expect(screen.queryByText('Upcoming dates')).toBeNull();
+});
+
 test('cadence card shows on-track when overdue_by is zero', async () => {
   mockBriefingFetch({
     ...fullBriefing,
