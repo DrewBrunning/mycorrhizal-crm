@@ -190,14 +190,6 @@
       "firstname": "Nome",
       "lastname": "Cognome"
     },
-    "sortBy": "Ordina per",
-    "sort": {
-      "recentlyAdded": "Aggiunti di Recente",
-      "oldestFirst": "Prima i più vecchi",
-      "nameAZ": "Nome A-Z",
-      "nameZA": "Nome Z-A",
-      "random": "Casuale"
-    },
     "showArchived": "Mostra archiviati",
     "archived": "Archiviato",
     "import": {
@@ -1155,7 +1147,7 @@
       "clothing_size": "Taglia di abbigliamento"
     },
     "key": "Chiave",
-    "keyHint": "Tipo di preferenza, es. preferito, non gli piace, allergia",
+    "keyHint": "Qualificatore facoltativo, es. favorite_coffee",
     "keys": {
       "favorite": "Preferito",
       "dislike": "Non gli piace",
@@ -1169,7 +1161,6 @@
       "media": "Preferenze media",
       "other": "Altre preferenze"
     },
-    "keyHint": "Qualificatore facoltativo, es. favorite_coffee",
     "value": "Valore",
     "sensitivity": "Sensibilità",
     "sensitivities": {

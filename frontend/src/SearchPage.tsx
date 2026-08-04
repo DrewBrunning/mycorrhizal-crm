@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -33,14 +33,31 @@ export default function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { result, loading, error, runSearch } = useSearch();
 
-  const initial = searchParams.get('q') || '';
-  const [input, setInput] = useState(initial);
+  const qParam = searchParams.get('q') || '';
+  const [input, setInput] = useState(qParam);
+  // Tracks the q value this component itself last wrote to the URL, so the
+  // sync effect below can tell "the URL changed because we wrote it"
+  // (ignore) apart from "the URL changed because something else navigated
+  // here" — e.g. the top-nav search bar submitting a new query while this
+  // page is already mounted. React Router doesn't remount SearchPage for a
+  // same-route param change, so without this, `input` (seeded from the URL
+  // only at first mount) never picks up the new query and the debounce
+  // effect below silently writes the stale one back over the URL.
+  const ownWriteRef = useRef(qParam);
+
+  useEffect(() => {
+    if (qParam !== ownWriteRef.current) {
+      setInput(qParam);
+    }
+  }, [qParam]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       runSearch(input);
       // Keep the URL in sync so the query is shareable/reloadable.
-      setSearchParams(input.trim().length >= 2 ? { q: input.trim() } : {}, { replace: true });
+      const nextQ = input.trim().length >= 2 ? input.trim() : '';
+      ownWriteRef.current = nextQ;
+      setSearchParams(nextQ ? { q: nextQ } : {}, { replace: true });
     }, 300);
     return () => clearTimeout(timer);
   }, [input, runSearch, setSearchParams]);

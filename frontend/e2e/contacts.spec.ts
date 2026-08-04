@@ -10,7 +10,7 @@ test.describe('Contacts', () => {
 
     await expect(page.getByRole('heading', { name: /contacts/i })).toBeVisible();
     await expect(page.getByLabel(/filter by circle/i)).toBeVisible();
-    await expect(page.getByLabel(/sort by/i)).toBeVisible();
+    await expect(page.getByLabel(/show archived/i)).toBeVisible();
     await expect(page.getByRole('button', { name: /add/i })).toBeVisible();
   });
 

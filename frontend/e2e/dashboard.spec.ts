@@ -42,9 +42,10 @@ test.describe('Navigation', () => {
 
   test('should navigate to settings from sidebar', async ({ page }) => {
     await page.goto('/');
-    // Settings is a collapsible submenu — expand it, then open Profile.
-    await page.locator('.MuiDrawer-root').getByText('Settings').click();
-    await page.locator('.MuiDrawer-root').getByText('Profile').click();
+    // The sidebar is a flat list — one item goes straight to /settings,
+    // there is no submenu to expand. Its i18n key is `nav.profile` but the
+    // rendered label is "Settings" (a stale key name from before a rename).
+    await page.locator('.MuiDrawer-root a[href="/settings"]').click();
     await expect(page).toHaveURL(/\/settings/);
   });
 });

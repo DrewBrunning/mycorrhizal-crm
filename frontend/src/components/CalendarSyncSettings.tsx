@@ -260,6 +260,7 @@ export default function CalendarSyncSettings() {
                               size="small"
                               onClick={() => handleSync(cal)}
                               disabled={!!syncing[cal.id]}
+                              aria-label={t('settings.calendarSync.syncNow')}
                             >
                               {syncing[cal.id] ? (
                                 <CircularProgress size={18} />
@@ -269,10 +270,10 @@ export default function CalendarSyncSettings() {
                             </IconButton>
                           </span>
                         </Tooltip>
-                        <IconButton size="small" onClick={() => openEdit(cal)}>
+                        <IconButton size="small" onClick={() => openEdit(cal)} aria-label={t('common.edit')}>
                           <EditIcon fontSize="small" />
                         </IconButton>
-                        <IconButton size="small" onClick={() => handleDeleteClick(cal)}>
+                        <IconButton size="small" onClick={() => handleDeleteClick(cal)} aria-label={t('common.delete')}>
                           <DeleteIcon fontSize="small" />
                         </IconButton>
                       </Stack>

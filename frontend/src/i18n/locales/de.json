@@ -190,14 +190,6 @@
       "firstname": "Vorname",
       "lastname": "Nachname"
     },
-    "sortBy": "Sortieren nach",
-    "sort": {
-      "recentlyAdded": "Zuletzt hinzugefügt",
-      "oldestFirst": "Älteste zuerst",
-      "nameAZ": "Name A-Z",
-      "nameZA": "Name Z-A",
-      "random": "Zufällig"
-    },
     "showArchived": "Archivierte anzeigen",
     "archived": "Archiviert",
     "import": {
@@ -1155,7 +1147,7 @@
       "clothing_size": "Kleidergröße"
     },
     "key": "Schlüssel",
-    "keyHint": "Art der Vorliebe, z. B. Favorit, Abneigung, Allergie",
+    "keyHint": "Optionale Kennung, z. B. favorite_coffee",
     "keys": {
       "favorite": "Favorit",
       "dislike": "Abneigung",
@@ -1169,7 +1161,6 @@
       "media": "Medienvorlieben",
       "other": "Sonstige Vorlieben"
     },
-    "keyHint": "Optionale Kennung, z. B. favorite_coffee",
     "value": "Wert",
     "sensitivity": "Sichtbarkeit",
     "sensitivities": {

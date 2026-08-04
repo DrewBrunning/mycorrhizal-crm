@@ -236,8 +236,16 @@ var (
 	authLimiter = NewIPRateLimiter(rate.Every(500*time.Millisecond), 50)
 
 	// General API rate limiter
-	// 100 requests per minute with burst of 500
-	apiLimiter = NewIPRateLimiter(rate.Every(600*time.Millisecond), 500)
+	// 100 requests per minute sustained, burst of 1000. All e2e traffic
+	// shares one IP (the browser workers all originate from the same
+	// container/proxy), and a full Playwright run's request volume — every
+	// page load fires several parallel GETs across dozens of tests — sits
+	// close to the old burst of 500; that ran dry near the end of the suite
+	// (confirmed via a real run: ~650 requests total, 429s starting once the
+	// bucket was exhausted). Doubled to give real headroom without changing
+	// the sustained rate, mirroring cardDAVLimiter's existing precedent of a
+	// generous burst for legitimate bulk traffic.
+	apiLimiter = NewIPRateLimiter(rate.Every(600*time.Millisecond), 1000)
 
 	// CardDAV rate limiter — higher burst to accommodate bulk sync from clients like vdirsyncer
 	// 10 requests per second sustained, burst of 2500 for initial address book sync

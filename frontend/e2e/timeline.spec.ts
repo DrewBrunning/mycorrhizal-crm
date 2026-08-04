@@ -20,7 +20,10 @@ test.describe('Timeline', () => {
       await dialog.getByRole('button', { name: /^save$/i }).click();
 
       await expect(dialog).toBeHidden();
-      await expect(page.getByText(noteContent)).toBeVisible();
+      // The save awaits the create + refetch before closing the dialog, so
+      // this is normally near-instant — the longer timeout is headroom for
+      // SQLite write contention under parallel workers, not a masked bug.
+      await expect(page.getByText(noteContent)).toBeVisible({ timeout: 10000 });
     } finally {
       await deleteTestContact(page.request, contact.ID);
     }
@@ -41,7 +44,8 @@ test.describe('Timeline', () => {
       await dialog.getByRole('button', { name: /^save$/i }).click();
 
       await expect(dialog).toBeHidden();
-      await expect(page.getByText(activityTitle)).toBeVisible();
+      // See the note test above for why this gets extra headroom.
+      await expect(page.getByText(activityTitle)).toBeVisible({ timeout: 10000 });
     } finally {
       await deleteTestContact(page.request, contact.ID);
     }

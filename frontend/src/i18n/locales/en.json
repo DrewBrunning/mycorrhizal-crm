@@ -190,14 +190,6 @@
       "firstname": "First Name",
       "lastname": "Last Name"
     },
-    "sortBy": "Sort by",
-    "sort": {
-      "recentlyAdded": "Recently Added",
-      "oldestFirst": "Oldest First",
-      "nameAZ": "Name A-Z",
-      "nameZA": "Name Z-A",
-      "random": "Random"
-    },
     "showArchived": "Show archived",
     "archived": "Archived",
     "import": {

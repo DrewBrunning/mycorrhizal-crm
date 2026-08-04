@@ -1,0 +1,135 @@
+import { test, expect, vi, afterEach, beforeEach } from 'vitest';
+import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import '../i18n/config';
+import AddActivityDialog from './AddActivityDialog';
+import { getContacts, Contact } from '../api/contacts';
+
+// This codebase's vitest setup has no auto-cleanup and no globals: true.
+afterEach(cleanup);
+
+vi.mock('../api/contacts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../api/contacts')>();
+  return { ...actual, getContacts: vi.fn() };
+});
+
+function contact(overrides: Partial<Contact> = {}): Contact {
+  return { ID: 1, firstname: 'Alice', lastname: 'Johnson', ...overrides };
+}
+
+beforeEach(() => {
+  vi.mocked(getContacts).mockReset();
+  vi.mocked(getContacts).mockResolvedValue({ contacts: [contact()], next_cursor: '' } as never);
+});
+
+function renderDialog(props: Partial<React.ComponentProps<typeof AddActivityDialog>> = {}) {
+  const defaults: React.ComponentProps<typeof AddActivityDialog> = {
+    open: true,
+    onClose: vi.fn(),
+    onSave: vi.fn().mockResolvedValue(undefined),
+    ...props,
+  };
+  return render(<AddActivityDialog {...defaults} />);
+}
+
+test('renders the title, description, location, date, and contacts fields', async () => {
+  renderDialog();
+  await waitFor(() => expect(getContacts).toHaveBeenCalled());
+
+  expect(screen.getByLabelText('Title *')).toBeInTheDocument();
+  expect(screen.getByLabelText('Description')).toBeInTheDocument();
+  expect(screen.getByLabelText('Location')).toBeInTheDocument();
+  expect(screen.getByLabelText('Date *')).toBeInTheDocument();
+  expect(screen.getByLabelText('Contacts')).toBeInTheDocument();
+});
+
+test('requires a title and date before saving', async () => {
+  const onSave = vi.fn();
+  renderDialog({ onSave });
+  await waitFor(() => expect(getContacts).toHaveBeenCalled());
+
+  fireEvent.change(screen.getByLabelText('Title *'), { target: { value: '' } });
+  fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+
+  expect(screen.getByText('Title and date are required')).toBeInTheDocument();
+  expect(onSave).not.toHaveBeenCalled();
+});
+
+test('saves with the entered title, description, location, and date', async () => {
+  const onSave = vi.fn().mockResolvedValue(undefined);
+  const onClose = vi.fn();
+  renderDialog({ onSave, onClose });
+  await waitFor(() => expect(getContacts).toHaveBeenCalled());
+
+  fireEvent.change(screen.getByLabelText('Title *'), { target: { value: 'Coffee catchup' } });
+  fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Talked about the new job' } });
+  fireEvent.change(screen.getByLabelText('Location'), { target: { value: 'Blue Bottle' } });
+  fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+
+  await waitFor(() =>
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Coffee catchup',
+        description: 'Talked about the new job',
+        location: 'Blue Bottle',
+        contact_ids: [],
+      })
+    )
+  );
+  // The dialog closes itself (via the parent's onClose) once the save resolves.
+  await waitFor(() => expect(onClose).toHaveBeenCalled());
+});
+
+test('preselects the contact passed via preselectedContactId', async () => {
+  vi.mocked(getContacts).mockResolvedValue({
+    contacts: [contact({ ID: 1, firstname: 'Alice', lastname: 'Johnson' }), contact({ ID: 2, firstname: 'Bob', lastname: 'Smith' })],
+    next_cursor: '',
+  } as never);
+
+  renderDialog({ preselectedContactId: 2 });
+
+  await waitFor(() => expect(screen.getByText('Bob Smith')).toBeInTheDocument());
+});
+
+test('selecting a contact from the autocomplete includes it in contact_ids', async () => {
+  vi.mocked(getContacts).mockResolvedValue({
+    contacts: [contact({ ID: 3, firstname: 'Carol', lastname: 'Diaz' })],
+    next_cursor: '',
+  } as never);
+  const onSave = vi.fn().mockResolvedValue(undefined);
+
+  renderDialog({ onSave });
+  await waitFor(() => expect(getContacts).toHaveBeenCalled());
+
+  fireEvent.change(screen.getByLabelText('Title *'), { target: { value: 'Lunch' } });
+  fireEvent.mouseDown(screen.getByLabelText('Contacts'));
+  fireEvent.click(await screen.findByRole('option', { name: 'Carol Diaz' }));
+
+  fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+
+  await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ contact_ids: [3] })));
+});
+
+test('a save failure keeps the dialog open and shows an error', async () => {
+  const onSave = vi.fn().mockRejectedValue(new Error('boom'));
+  const onClose = vi.fn();
+  renderDialog({ onSave, onClose });
+  await waitFor(() => expect(getContacts).toHaveBeenCalled());
+
+  fireEvent.change(screen.getByLabelText('Title *'), { target: { value: 'Will fail' } });
+  fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+
+  await waitFor(() => expect(screen.getByText('Failed to save activity')).toBeInTheDocument());
+  expect(onClose).not.toHaveBeenCalled();
+});
+
+test('cancel closes the dialog without saving', async () => {
+  const onSave = vi.fn();
+  const onClose = vi.fn();
+  renderDialog({ onSave, onClose });
+  await waitFor(() => expect(getContacts).toHaveBeenCalled());
+
+  fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
+
+  expect(onSave).not.toHaveBeenCalled();
+  expect(onClose).toHaveBeenCalled();
+});

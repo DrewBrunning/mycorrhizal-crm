@@ -1,6 +1,6 @@
 import { test, expect, vi, afterEach } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { MemoryRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import './i18n/config';
 import SearchPage from './SearchPage';
 import { DateFormatProvider } from './DateFormatProvider';
@@ -93,4 +93,48 @@ test('clicking a contact navigates to its page', async () => {
   });
   fireEvent.click(screen.getAllByText('Wolfgang Symphony')[0]);
   await waitFor(() => expect(screen.getByText('CONTACT PAGE')).toBeInTheDocument());
+});
+
+// Regression test: the top-nav search bar submits a new query by navigating
+// to /search?q=X. React Router does not remount SearchPage for a same-route
+// param change, so this only exercises the real bug (input state seeded
+// from the URL once at mount, never resynced) if the URL changes while the
+// page is already mounted — a plain `renderSearchPage(initial)` call can't
+// reach that path. Confirmed live in a real browser before the fix: it left
+// the old query's results on screen and reverted the URL back to it.
+function ExternalNavButton({ to }: { to: string }) {
+  const navigate = useNavigate();
+  return <button onClick={() => navigate(to)}>external-nav</button>;
+}
+
+test('a query submitted externally (e.g. the top-nav search bar) while already on the page replaces the old search', async () => {
+  const responses: Record<string, unknown> = {
+    Alice: { query: 'Alice', resolved_relation: '', contacts: [{ id: 1, uid: 'u1', firstname: 'Alice', lastname: 'Johnson' }], notes: [], activities: [] },
+    Bob: { query: 'Bob', resolved_relation: '', contacts: [{ id: 2, uid: 'u2', firstname: 'Bob', lastname: 'Smith' }], notes: [], activities: [] },
+  };
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      const q = new URL(url, 'http://x').searchParams.get('q') || '';
+      return { ok: true, json: async () => responses[q] ?? { query: q, resolved_relation: '', contacts: [], notes: [], activities: [] } };
+    })
+  );
+
+  render(
+    <DateFormatProvider>
+      <MemoryRouter initialEntries={['/search?q=Alice']}>
+        <ExternalNavButton to="/search?q=Bob" />
+        <Routes>
+          <Route path="/search" element={<SearchPage />} />
+        </Routes>
+      </MemoryRouter>
+    </DateFormatProvider>
+  );
+
+  await waitFor(() => expect(screen.getByText('Alice Johnson')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByText('external-nav'));
+
+  await waitFor(() => expect(screen.getByText('Bob Smith')).toBeInTheDocument());
+  expect(screen.queryByText('Alice Johnson')).not.toBeInTheDocument();
 });

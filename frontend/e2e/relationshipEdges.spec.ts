@@ -30,7 +30,7 @@ test.describe('RelationshipEdges', () => {
       // The Relationship Type Select is the first combobox in this dialog
       // (Gender is second, manual-mode only; Sensitivity is third).
       await dialog.getByRole('combobox').first().click();
-      await page.getByRole('option', { name: 'Friend' }).click();
+      await page.getByRole('option', { name: 'Friend', exact: true }).click();
 
       await dialog.getByRole('button', { name: /^save$/i }).click();
 
@@ -63,7 +63,7 @@ test.describe('RelationshipEdges', () => {
       // In linked mode the DOM order is: Autocomplete (combobox #0), then
       // the Relationship Type Select (combobox #1) -- no Gender field shown.
       await dialog.getByRole('combobox').nth(1).click();
-      await page.getByRole('option', { name: 'Parent' }).click();
+      await page.getByRole('option', { name: 'Parent', exact: true }).click();
 
       await dialog.getByRole('button', { name: /^save$/i }).click();
       await expect(dialog).toBeHidden();
@@ -95,7 +95,7 @@ test.describe('RelationshipEdges', () => {
       const createDialog = page.getByRole('dialog');
       await createDialog.getByRole('textbox', { name: /^name/i }).fill(relName);
       await createDialog.getByRole('combobox').first().click();
-      await page.getByRole('option', { name: 'Friend' }).click();
+      await page.getByRole('option', { name: 'Friend', exact: true }).click();
       await createDialog.getByRole('button', { name: /^save$/i }).click();
       await expect(createDialog).toBeHidden();
 
@@ -107,9 +107,12 @@ test.describe('RelationshipEdges', () => {
       const editDialog = page.getByRole('dialog');
       await expect(editDialog).toBeVisible();
       await editDialog.getByRole('combobox').first().click();
-      await page.getByRole('option', { name: 'Sibling' }).click();
+      await page.getByRole('option', { name: 'Sibling', exact: true }).click();
       await editDialog.getByRole('button', { name: /^save$/i }).click();
-      await expect(editDialog).toBeHidden();
+      // Extra headroom under parallel-worker write contention (confirmed via
+      // a real run: passes reliably alone, flaked once under 2 workers) —
+      // see the identical note in timeline.spec.ts.
+      await expect(editDialog).toBeHidden({ timeout: 10000 });
 
       await expect(page.getByText('Sibling')).toBeVisible();
     } finally {
@@ -129,7 +132,7 @@ test.describe('RelationshipEdges', () => {
       const dialog = page.getByRole('dialog');
       await dialog.getByRole('textbox', { name: /^name/i }).fill(relName);
       await dialog.getByRole('combobox').first().click();
-      await page.getByRole('option', { name: 'Friend' }).click();
+      await page.getByRole('option', { name: 'Friend', exact: true }).click();
       await dialog.getByRole('button', { name: /^save$/i }).click();
       await expect(dialog).toBeHidden();
       await expect(page.getByText(relName)).toBeVisible();
