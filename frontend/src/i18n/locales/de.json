@@ -80,11 +80,7 @@
     "noAccount": "Noch kein Konto? Registrieren",
     "forgotPassword": "Passwort vergessen?",
     "ssoButton": "Anmelden mit {{provider}}",
-    "orSeparator": "oder",
-    "oidcDenied": "Die SSO-Anmeldung wurde abgebrochen oder abgelehnt.",
-    "oidcNoAccount": "Kein Konto für Ihre SSO-Identität gefunden. Kontaktieren Sie Ihren Administrator.",
-    "oidcError": "Bei der SSO-Anmeldung ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.",
-    "oidcNoEmail": "Ihr SSO-Anbieter hat keine E-Mail-Adresse zurückgegeben. Bitten Sie Ihren Administrator, den Scope „email“ freizugeben."
+    "orSeparator": "oder"
   },
   "passwordReset": {
     "title": "Passwort zurücksetzen",
@@ -490,7 +486,6 @@
     "title": "Aktivitäten",
     "search": "Aktivitäten suchen...",
     "addActivity": "Aktivität hinzufügen",
-    "exportVCard": "vCard exportieren",
     "noActivities": "Keine Aktivitäten gefunden",
     "noResults": "Keine Aktivitäten entsprechen Ihren Filtern",
     "fromDate": "Von",
@@ -1059,31 +1054,31 @@
     "mergeButton": "Zusammenführen"
   },
   "triage": {
-    "title": "Circle/Tag Migration",
-    "description": "Classify your legacy circles into Circles (social groups) and Tags (attributes), or skip them.",
-    "stepClassify": "Classify",
-    "stepPreview": "Preview",
-    "stepApply": "Apply",
+    "title": "Kreis-/Tag-Migration",
+    "description": "Ordnen Sie Ihre bisherigen Kreise als Kreise (soziale Gruppen) oder Tags (Eigenschaften) ein oder überspringen Sie sie. Führen Sie dies einmalig aus, um vom alten Freitext-System zu migrieren.",
+    "stepClassify": "Einordnen",
+    "stepPreview": "Vorschau",
+    "stepApply": "Anwenden",
     "colCircleName": "Name",
-    "colContactCount": "Contacts",
-    "colClassification": "Type",
-    "classificationCircle": "Circle",
+    "colContactCount": "Kontakte",
+    "colClassification": "Art",
+    "classificationCircle": "Kreis",
     "classificationTag": "Tag",
-    "classificationSkip": "Skip",
-    "summary": "{{total}} items — {{circles}} Circles, {{tags}} Tags, {{skipped}} skipped",
-    "next": "Next",
-    "previewTitle": "Preview",
-    "circlesToCreate": "{{count}} Circles will be created:",
-    "tagsToCreate": "{{count}} Tags will be created:",
-    "skipped": "{{count}} will be skipped:",
-    "back": "Back",
-    "apply": "Apply",
-    "applyTitle": "Apply",
-    "applyDescription": "Create entities and add memberships.",
-    "createEntities": "Create Entities",
-    "addMembers": "Add Members",
-    "noLegacyCircles": "No legacy circles found.",
-    "refresh": "Refresh"
+    "classificationSkip": "Überspringen",
+    "summary": "{{total}} Einträge — {{circles}} Kreise, {{tags}} Tags, {{skipped}} übersprungen",
+    "next": "Weiter",
+    "previewTitle": "Vorschau",
+    "circlesToCreate": "{{count}} Kreise werden erstellt:",
+    "tagsToCreate": "{{count}} Tags werden erstellt:",
+    "skipped": "{{count}} werden übersprungen:",
+    "back": "Zurück",
+    "apply": "Anwenden",
+    "applyTitle": "Anwenden",
+    "applyDescription": "Entitäten erstellen und Mitgliedschaften hinzufügen. Der Vorgang ist idempotent — Sie können ihn gefahrlos mehrfach ausführen.",
+    "createEntities": "Entitäten erstellen",
+    "addMembers": "Mitglieder hinzufügen",
+    "noLegacyCircles": "Keine bisherigen Kreise gefunden. Sie benötigen diese Migration möglicherweise nicht.",
+    "refresh": "Aktualisieren"
   },
   "customFields": {
     "addTitle": "Benutzerdefiniertes Feld hinzufügen",
@@ -1360,8 +1355,6 @@
       "confirm": "Bestätigen",
       "confirming": "Wird bestätigt…"
     },
-    "declineConfirm": "Diese Freigabe ablehnen?",
-    "shareError": "Kontakt konnte nicht geteilt werden",
-    "loadError": "Kontaktfreigaben konnten nicht geladen werden"
+    "declineConfirm": "Diese Freigabe ablehnen?"
   }
 }

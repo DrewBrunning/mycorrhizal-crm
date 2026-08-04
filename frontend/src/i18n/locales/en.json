@@ -80,11 +80,7 @@
     "noAccount": "Don't have an account? Register",
     "forgotPassword": "Forgot your password?",
     "ssoButton": "Login with {{provider}}",
-    "orSeparator": "or",
-    "oidcDenied": "SSO login was cancelled or denied.",
-    "oidcNoAccount": "No account found for your SSO identity. Contact your administrator.",
-    "oidcError": "An error occurred during SSO login. Please try again.",
-    "oidcNoEmail": "Your SSO provider did not return an email address. Ask your administrator to grant the 'email' scope."
+    "orSeparator": "or"
   },
   "passwordReset": {
     "title": "Reset Password",
@@ -1359,8 +1355,6 @@
       "confirm": "Confirm",
       "confirming": "Confirming…"
     },
-    "declineConfirm": "Decline this share?",
-    "shareError": "Failed to share contact",
-    "loadError": "Failed to load contact shares"
+    "declineConfirm": "Decline this share?"
   }
 }
