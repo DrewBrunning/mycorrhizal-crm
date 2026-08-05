@@ -61,3 +61,26 @@ without waiting for their next edit.
   user's address matches.
 - Hand-verified: `RebuildSearchIndex` run against existing seeded contacts makes their addresses
   searchable without editing them first.
+
+## Shipped
+
+**Done, 2026-08-05.** Address text is now part of the searchable surface, on both search
+paths. Contacts' structured addresses are flattened into a denormalized
+`contacts.addresses_flat` column — `Contact.BeforeSave` mirrors every `Addresses[]` entry via
+the new `FlattenAddresses` helper (alongside the legacy `Address` scalar), and migration
+`000010` backfills it for pre-existing rows. `contacts_fts` then indexes it exactly like
+`org`/`email`/`phone` — the ticket's "lowest-friction option", consistent with how the rest
+of the index already works (flat columns, not JSON `json_each` matching).
+
+FTS5 cannot `ALTER TABLE ADD COLUMN`, so `000010` drops and recreates `contacts_fts` and its
+triggers with the new column and rebuilds the index in one transaction (the FTS tables are
+derived data, the "safe to change post-alpha" argument of the ticket). Soft-delete handling
+(`deleted_at IS NULL` trigger guard) and `user_id UNINDEXED` scoping are unchanged from T11.
+The legacy `applyContactSearch` LIKE fallback (`GET /contacts?search=`) matches
+`addresses_flat` as well, closing the same gap there.
+
+`RebuildSearchIndex` / `cmd/backfill-search-index` carry the new column, so a rebuild makes
+existing contacts' addresses searchable without editing them first — hand-verified against a
+real DB and pinned by `TestSearchAddressesMigrationBackfillsExistingRows`. Frontend needed no
+change: `/search` already renders contact hits, and the address match is proven end-to-end by
+a new Playwright spec (`finds a contact by its address street`).
