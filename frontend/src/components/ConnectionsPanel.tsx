@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -43,11 +43,40 @@ export default function ConnectionsPanel({ contactUid }: ConnectionsPanelProps) 
   const [relation, setRelation] = useState('');
   const [appliedRelation, setAppliedRelation] = useState('');
 
-  // Reload whenever the anchor or depth changes; the relation filter applies
-  // on submit.
+  // T31 made this panel render on every contact page view (it used to mount
+  // only when its tab was opened), so the depth-3 traversal must not fire as
+  // part of the page's critical path. Defer the initial fetch until the panel
+  // is about to scroll into view; jsdom has no IntersectionObserver, so
+  // component tests fall back to loading immediately.
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+
   useEffect(() => {
+    const el = panelRef.current;
+    if (!el) return;
+    if (typeof IntersectionObserver === 'undefined') {
+      setVisible(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '300px 0px' }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // Reload whenever the anchor or depth changes; the relation filter applies
+  // on submit. Skipped until the panel has first become visible.
+  useEffect(() => {
+    if (!visible) return;
     refresh({ depth, relation: appliedRelation.trim() || undefined, overrideUid: contactUid });
-  }, [contactUid, depth, refresh, appliedRelation]);
+  }, [contactUid, depth, refresh, appliedRelation, visible]);
 
   const handleApplyRelation = () => {
     setAppliedRelation(relation.trim());
@@ -87,7 +116,7 @@ export default function ConnectionsPanel({ contactUid }: ConnectionsPanelProps) 
   );
 
   return (
-    <Stack spacing={1.5}>
+    <Stack spacing={1.5} ref={panelRef}>
       <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
         <TextField
           select

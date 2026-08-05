@@ -6,6 +6,13 @@ interface RelatedToMembersSectionProps {
   card: Card;
 }
 
+// The component renders nothing when there are no related entities or members;
+// the contact page uses this to decide whether the "Card metadata" heading
+// above it should render at all (T30).
+export function hasRelatedToOrMembers(card: Card): boolean {
+  return (card.relatedTo?.length ?? 0) > 0 || (card.members?.length ?? 0) > 0;
+}
+
 export default function RelatedToMembersSection({ card }: RelatedToMembersSectionProps) {
   const { t } = useTranslation();
 

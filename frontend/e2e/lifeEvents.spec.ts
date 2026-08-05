@@ -30,7 +30,6 @@ test.describe('Life events', () => {
 
       await page.goto(`/contacts/${contact.ID}`);
       await waitForLoading(page);
-      await page.getByRole('tab', { name: /life events/i }).click();
 
       // Rendered twice (list row + its title attribute), hence .first().
       await expect(page.getByText('Finished their doctorate').first()).toBeVisible({ timeout: 15000 });

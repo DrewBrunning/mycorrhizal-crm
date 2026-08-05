@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback, type ReactNode } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -41,15 +41,10 @@ import {
   CardContent,
   Divider,
   Button,
-  Tabs,
-  Tab,
   Typography,
   SvgIcon,
-  TextField,
-  MenuItem,
-  useTheme,
-  useMediaQuery,
 } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
 import { ContactDetailHeaderSkeleton, TimelineSkeleton } from './components/LoadingSkeletons';
 import { mdiNotePlusOutline, mdiCalendarPlus } from '@mdi/js';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
@@ -63,6 +58,15 @@ import MergeContactsDialog from './components/MergeContactsDialog';
 import ShareContactDialog from './components/ShareContactDialog';
 import ContactInformation from './components/ContactInformation';
 import ContactTimeline from './components/ContactTimeline';
+import RelationshipEdgeList from './components/RelationshipEdgeList';
+import LifeEventList from './components/LifeEventList';
+import PreferenceList from './components/PreferenceList';
+import CadencePanel from './components/CadencePanel';
+import ConversationAgendaList from './components/ConversationAgendaList';
+import GiftList from './components/GiftList';
+import ClothingSizesPanel from './components/ClothingSizesPanel';
+import ExternalLinkPanel from './components/ExternalLinkPanel';
+import ConnectionsPanel from './components/ConnectionsPanel';
 import ProfilePictureUploadDialog from './components/ProfilePictureUploadDialog';
 import { useContactDialogs } from './hooks/useContactDialogs';
 import { exportContact } from './api/export';
@@ -118,6 +122,75 @@ function fullDateFromPartial(d: PartialDate): string | undefined {
     return `${d.year}-01-01`;
   }
   return undefined;
+}
+
+// T31: the contact detail page is one scrollable page grouped into a handful
+// of anchor sections instead of a growing tab strip. PanelCard is the visual
+// unit (a titled, bordered card); SectionGroup is the anchor a jump-nav link
+// scrolls to; ContactJumpNav is the sticky in-page menu that keeps "which
+// section is this under" from becoming "scroll past everything else".
+function SectionGroup({ id, children }: { id: string; children: ReactNode }) {
+  return (
+    // scrollMarginTop must clear the AppBar (64) plus the sticky jump nav (~40)
+    // so an anchor click lands a section's title below the nav, not under it.
+    <Box component="section" id={id} sx={{ scrollMarginTop: 112, mb: 1 }}>
+      {children}
+    </Box>
+  );
+}
+
+function PanelCard({ title, actions, children }: { title: string; actions?: ReactNode; children: ReactNode }) {
+  return (
+    <Card sx={{ mb: 2 }}>
+      <CardContent sx={{ py: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+          <Typography variant="subtitle1" component="h3" sx={{ fontWeight: 600 }}>
+            {title}
+          </Typography>
+          {actions}
+        </Box>
+        <Divider sx={{ mb: 1.5 }} />
+        {children}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ContactJumpNav({ ariaLabel, sections }: { ariaLabel: string; sections: Array<{ id: string; label: string }> }) {
+  return (
+    <Box
+      component="nav"
+      aria-label={ariaLabel}
+      sx={{
+        position: 'sticky',
+        top: { xs: 56, sm: 64 },
+        zIndex: 10,
+        display: 'flex',
+        gap: 0.5,
+        overflowX: 'auto',
+        bgcolor: 'background.paper',
+        borderRadius: 1,
+        border: 1,
+        borderColor: 'divider',
+        px: 1,
+        py: 0.5,
+        mb: 2,
+      }}
+    >
+      {sections.map((s) => (
+        <Button
+          key={s.id}
+          component="a"
+          href={`#${s.id}`}
+          size="small"
+          color="inherit"
+          sx={{ whiteSpace: 'nowrap', textTransform: 'none' }}
+        >
+          {s.label}
+        </Button>
+      ))}
+    </Box>
+  );
 }
 
 export default function ContactDetailPage() {
@@ -183,14 +256,6 @@ export default function ContactDetailPage() {
     const names = tagNamesByUid.get(record.uid) || [];
     return allTags.filter((t) => names.includes(t.name));
   }, [record?.uid, tagNamesByUid, allTags]);
-
-  // Tab state
-  const [activeTab, setActiveTab] = useState(0);
-  // On viewports ≤600px, swap the horizontal tab bar for a dropdown
-  // Select so tabs never get cut off and always accept touch selection
-  // (T28).
-  const theme = useTheme();
-  const compactTabs = useMediaQuery(theme.breakpoints.down('sm'));
 
   // Profile picture upload state
   const [profilePictureDialogOpen, setProfilePictureDialogOpen] = useState(false);
@@ -731,7 +796,7 @@ export default function ContactDetailPage() {
         URL.revokeObjectURL(currentBlobUrl);
       }
     };
-  }, [id, refreshReminders, refreshRelationshipEdges, refreshLifeEvents, refreshAgenda, refreshGifts, refreshExternalLinks, refreshImmichSummary]);
+  }, [id, refreshReminders, refreshRelationshipEdges, refreshLifeEvents, refreshAgenda, refreshGifts, refreshFieldValues, refreshExternalLinks, refreshImmichSummary]);
 
   // Combine and sort notes, activities, completions, life events, and
   // external activities for the timeline.
@@ -1163,15 +1228,23 @@ export default function ContactDetailPage() {
         />
       )}
 
-      {/* General Information and Timeline — two columns at `lg`+ only so
-          tablets and phones always get a full-width single-column layout
-          where no content gets squeezed (T28). */}
-      <Box sx={{ 
-        display: 'flex', 
-        flexDirection: { xs: 'column', lg: 'row' }, 
-        gap: 2 
-      }}>
-        {/* General Information */}
+      {/* T31: one scrollable page grouped into anchor sections, replacing the
+          tab strip. ContactJumpNav is the sticky in-page menu; each SectionGroup
+          is an anchor holding one or more PanelCards. */}
+      <ContactJumpNav
+        ariaLabel={t('contactDetail.jumpNav')}
+        sections={[
+          { id: 'overview', label: t('contactDetail.section.overview') },
+          { id: 'people', label: t('contactDetail.section.people') },
+          { id: 'timeline', label: t('contactDetail.timeline') },
+          { id: 'cadence', label: t('contactDetail.section.cadence') },
+          { id: 'gifts', label: t('gifts.title') },
+          { id: 'external-links', label: t('externalLinks.title') },
+        ]}
+      />
+
+      {/* Overview — General Information, custom fields, Preferences */}
+      <SectionGroup id="overview">
         <ContactInformation
           card={record.card}
           crm={record.crm}
@@ -1192,135 +1265,176 @@ export default function ContactDetailPage() {
           }}
           onUpdateCard={handleUpdateCard}
           enabledFields={enabledFields}
-          confirmedEdges={confirmedEdges}
-          suggestedEdges={suggestedEdges}
-          contactsByUid={contactsByUid}
-          viewedContactUid={record?.uid}
-          onAddRelationshipEdge={handleAddRelationshipEdge}
-          onEditRelationshipEdge={handleEditRelationshipEdge}
-          onDeleteRelationshipEdge={handleDeleteRelationshipEdge}
-          onAcceptSuggestion={handleAcceptSuggestion}
-          onRejectSuggestion={handleRejectSuggestion}
-          lifeEvents={lifeEvents}
-          lifeEventsContactsByUid={lifeEventsContactsByUid}
-          onAddLifeEvent={handleAddLifeEvent}
-          onEditLifeEvent={handleEditLifeEvent}
-          onDeleteLifeEvent={handleLifeEventDelete}
-          preferences={preferences}
-          onAddPreference={handleAddPreference}
-          onEditPreference={handleEditPreference}
-          onDeletePreference={handlePreferenceDelete}
-          cadencePolicy={cadencePolicy}
-          cadenceLoading={cadenceLoading}
-          onAddCadence={handleAddCadence}
-          onEditCadence={handleEditCadence}
-          onDeleteCadence={handleCadenceDelete}
-          agendaItems={agendaItems}
-          onAddAgenda={handleAddAgendaItem}
-          onEditAgenda={handleEditAgendaItem}
-          onDiscussAgenda={handleDiscussAgendaItem}
-          onDeleteAgenda={handleDeleteAgendaItem}
-          gifts={gifts}
-          activities={activities}
-          onAddGift={handleAddGiftItem}
-          onEditGift={handleEditGift}
-          onMarkGivenGift={handleMarkGivenGift}
-          onDeleteGift={handleDeleteGiftItem}
-          onAddClothingSize={handleAddClothingSize}
-          onEditClothingSize={handleEditClothingSize}
-          onDeleteClothingSize={handleDeleteClothingSize}
           fieldDefinitions={fieldDefinitions}
           fieldValuesByDefinition={fieldValuesByDefinition}
           onSaveFieldValue={handleSaveFieldValue}
-          externalIdentities={externalIdentities}
-          externalLinksLoading={externalLinksLoading}
-          immichSummary={immichSummary}
-          immichSummaryLoading={immichSummaryLoading}
-          onFetchImmichPeople={() => getImmichPeople()}
-          onLinkImmich={handleLinkImmich}
-          onUnlinkImmich={handleUnlinkImmich}
-          onSyncImmich={handleSyncImmich}
-          immichSyncing={immichSyncing}
         />
+        <PanelCard
+          title={t('preference.title')}
+          actions={
+            <Button startIcon={<AddIcon />} onClick={handleAddPreference} variant="outlined" size="small">
+              {t('preference.add')}
+            </Button>
+          }
+        >
+          <PreferenceList
+            preferences={preferences}
+            onEdit={handleEditPreference}
+            onDelete={handlePreferenceDelete}
+          />
+        </PanelCard>
+      </SectionGroup>
 
-        {/* Timeline and Reminders Tabs */}
-        <Card sx={{ flex: 1, minWidth: 0 }}>
-          {compactTabs ? (
-            <TextField
-              select
-              size="small"
-              value={activeTab}
-              onChange={(e) => setActiveTab(Number(e.target.value))}
-              sx={{ m: 1, minWidth: 160 }}
-              aria-label="timeline and reminders sections"
-            >
-              <MenuItem value={0}>{t('contactDetail.timeline')}</MenuItem>
-              <MenuItem value={1}>{t('reminders.title')}</MenuItem>
-            </TextField>
-          ) : (
-            <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-              <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)} aria-label="timeline and reminders tabs">
-                <Tab label={t('contactDetail.timeline')} />
-                <Tab label={t('reminders.title')} />
-              </Tabs>
-            </Box>
-          )}
+      {/* People — relationships + connections/graph */}
+      <SectionGroup id="people">
+        <PanelCard
+          title={t('relationships.title')}
+          actions={
+            <Button startIcon={<AddIcon />} onClick={handleAddRelationshipEdge} variant="outlined" size="small">
+              {t('relationships.addRelationship')}
+            </Button>
+          }
+        >
+          <RelationshipEdgeList
+            confirmedEdges={confirmedEdges}
+            suggestedEdges={suggestedEdges}
+            contactsByUid={contactsByUid || new Map()}
+            viewedContactUid={record?.uid || ''}
+            onEdit={handleEditRelationshipEdge}
+            onDelete={handleDeleteRelationshipEdge}
+            onAccept={handleAcceptSuggestion}
+            onReject={handleRejectSuggestion}
+          />
+        </PanelCard>
+        <PanelCard title={t('connections.title')}>
+          <ConnectionsPanel contactUid={record.uid} />
+        </PanelCard>
+      </SectionGroup>
 
-          {/* Tab Panel 0: Timeline - Notes and Activities */}
-          {activeTab === 0 && (
-            <CardContent sx={{ py: 2 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mb: 1.5, gap: 0.5 }}>
-                <Button 
-                  startIcon={<SvgIcon><path d={mdiNotePlusOutline} /></SvgIcon>} 
-                  onClick={() => setNoteDialogOpen(true)}
-                  variant="outlined"
-                  size="small"
-                >
-                  {t('contactDetail.addNote')}
-                </Button>
-                <Button 
-                  startIcon={<SvgIcon><path d={mdiCalendarPlus} /></SvgIcon>} 
-                  onClick={() => setActivityDialogOpen(true)}
-                  variant="outlined"
-                  size="small"
-                >
-                  {t('contactDetail.addActivity')}
-                </Button>
-              </Box>
-              <Divider sx={{ mb: 2 }} />
-              
-              <ContactTimeline
-                timelineItems={timelineItems}
-                onEditItem={handleStartEditTimelineItem}
-                onDeleteCompletion={handleDeleteCompletion}
-              />
-            </CardContent>
-          )}
+      {/* Timeline — merged timeline, life events, conversation agenda */}
+      <SectionGroup id="timeline">
+        <PanelCard
+          title={t('contactDetail.timeline')}
+          actions={
+            <>
+              <Button
+                startIcon={<SvgIcon><path d={mdiNotePlusOutline} /></SvgIcon>}
+                onClick={() => setNoteDialogOpen(true)}
+                variant="outlined"
+                size="small"
+              >
+                {t('contactDetail.addNote')}
+              </Button>
+              <Button
+                startIcon={<SvgIcon><path d={mdiCalendarPlus} /></SvgIcon>}
+                onClick={() => setActivityDialogOpen(true)}
+                variant="outlined"
+                size="small"
+              >
+                {t('contactDetail.addActivity')}
+              </Button>
+            </>
+          }
+        >
+          <ContactTimeline
+            timelineItems={timelineItems}
+            onEditItem={handleStartEditTimelineItem}
+            onDeleteCompletion={handleDeleteCompletion}
+          />
+        </PanelCard>
+        <PanelCard
+          title={t('lifeEvent.title')}
+          actions={
+            <Button startIcon={<AddIcon />} onClick={handleAddLifeEvent} variant="outlined" size="small">
+              {t('lifeEvent.add')}
+            </Button>
+          }
+        >
+          <LifeEventList
+            events={lifeEvents}
+            contactsByUid={lifeEventsContactsByUid || new Map()}
+            onEdit={handleEditLifeEvent}
+            onDelete={handleLifeEventDelete}
+          />
+        </PanelCard>
+        <PanelCard title={t('conversationAgenda.title')}>
+          <ConversationAgendaList
+            items={agendaItems}
+            onAdd={handleAddAgendaItem}
+            onEdit={handleEditAgendaItem}
+            onDiscuss={handleDiscussAgendaItem}
+            onDelete={handleDeleteAgendaItem}
+          />
+        </PanelCard>
+      </SectionGroup>
 
-          {/* Tab Panel 1: Reminders */}
-          {activeTab === 1 && (
-            <CardContent sx={{ py: 2 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mb: 1.5 }}>
-                <Button 
-                  startIcon={<NotificationsActiveIcon />} 
-                  onClick={handleAddReminder}
-                  variant="outlined"
-                  size="small"
-                >
-                  {t('reminders.add')}
-                </Button>
-              </Box>
-              <Divider sx={{ mb: 1.5 }} />
-              <ReminderList
-                reminders={reminders}
-                onComplete={handleCompleteReminder}
-                onEdit={handleEditReminder}
-                onDelete={handleDeleteReminder}
-              />
-            </CardContent>
-          )}
-        </Card>
-      </Box>
+      {/* Cadence & follow-up — cadence policy + upcoming reminders */}
+      <SectionGroup id="cadence">
+        <PanelCard title={t('cadence.title')}>
+          <CadencePanel
+            policy={cadencePolicy}
+            loading={cadenceLoading}
+            onAdd={handleAddCadence}
+            onEdit={handleEditCadence}
+            onDelete={handleCadenceDelete}
+          />
+        </PanelCard>
+        <PanelCard
+          title={t('reminders.title')}
+          actions={
+            <Button startIcon={<NotificationsActiveIcon />} onClick={handleAddReminder} variant="outlined" size="small">
+              {t('reminders.add')}
+            </Button>
+          }
+        >
+          <ReminderList
+            reminders={reminders}
+            onComplete={handleCompleteReminder}
+            onEdit={handleEditReminder}
+            onDelete={handleDeleteReminder}
+          />
+        </PanelCard>
+      </SectionGroup>
+
+      {/* Gifts — ideas, given/received records, clothing sizes */}
+      <SectionGroup id="gifts">
+        <PanelCard title={t('gifts.title')}>
+          <ClothingSizesPanel
+            sizes={preferences.filter((p) => p.category === PREFERENCE_CLOTHING_SIZE)}
+            onAdd={handleAddClothingSize}
+            onEdit={handleEditClothingSize}
+            onDelete={handleDeleteClothingSize}
+          />
+          {preferences.some((p) => p.category === PREFERENCE_CLOTHING_SIZE) && <Divider sx={{ my: 1.5 }} />}
+          <GiftList
+            items={gifts}
+            lifeEvents={lifeEvents}
+            activities={activities}
+            onAdd={handleAddGiftItem}
+            onEdit={handleEditGift}
+            onMarkGiven={handleMarkGivenGift}
+            onDelete={handleDeleteGiftItem}
+          />
+        </PanelCard>
+      </SectionGroup>
+
+      {/* External links — Immich + other ExternalIdentity panels */}
+      <SectionGroup id="external-links">
+        <PanelCard title={t('externalLinks.title')}>
+          <ExternalLinkPanel
+            contactUid={record?.uid || ''}
+            identities={externalIdentities}
+            loading={externalLinksLoading}
+            immichSummary={immichSummary}
+            immichSummaryLoading={immichSummaryLoading}
+            onFetchImmichPeople={() => getImmichPeople()}
+            onLinkImmich={handleLinkImmich}
+            onUnlinkImmich={handleUnlinkImmich}
+            onSyncImmich={handleSyncImmich}
+            syncing={immichSyncing}
+          />
+        </PanelCard>
+      </SectionGroup>
 
       {/* Dialogs */}
       <AddNoteDialog

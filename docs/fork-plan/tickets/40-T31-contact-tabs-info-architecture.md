@@ -72,3 +72,15 @@ desktop vs. mobile.
   style.
 - `npx tsc --noEmit` clean, `npx vitest run` green, e2e contact-detail specs updated and green.
 - Visually verified at desktop and mobile widths.
+
+**Done, 2026-08-05.** `ContactDetailPage` is now a single scrollable page of anchor sections —
+Overview (General Information + Preferences), People (Relationships + Connections), Timeline
+(merged timeline + Life Events + Conversation Agenda), Cadence & follow-up (Cadence +
+Reminders), Gifts, and External links — with a sticky in-page jump nav (`ContactJumpNav`).
+The `activeTab` state model is gone; `ContactInformation` was slimmed to the General
+Information card and the panels it used to own moved up to the page as `PanelCard`s. The same
+jump-nav pattern is used on desktop and mobile (a horizontally scrollable strip below the
+AppBar) rather than two navigation metaphors. Component + e2e coverage updated; new
+`e2e/contactDetailLayout.spec.ts` pins the jump-nav structure, anchor scrolling, and no
+horizontal overflow at 390px. The depth-3 Connections traversal that now renders on every
+page is deferred until the panel scrolls near the viewport (IntersectionObserver).

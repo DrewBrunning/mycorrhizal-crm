@@ -21,6 +21,16 @@ const RESOURCE_FIELDS: Array<{ field: keyof Card; labelKey: string }> = [
   { field: 'contactUris', labelKey: 'contacts.importedResources.contactUris' },
 ];
 
+// The component renders nothing when every resource list is empty; the contact
+// page uses this to decide whether the "Card metadata" heading above it should
+// render at all (T30) — an orphan heading is the same bug as a hidden section.
+export function hasImportedResources(card: Card): boolean {
+  return RESOURCE_FIELDS.some(({ field }) => {
+    const v = card[field];
+    return Array.isArray(v) && v.length > 0;
+  });
+}
+
 function renderResource(r: CardResource): string {
   const parts = [r.uri];
   if (r.kind) parts.push(r.kind);

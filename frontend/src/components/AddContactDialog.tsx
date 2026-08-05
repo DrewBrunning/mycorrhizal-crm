@@ -111,6 +111,11 @@ export default function AddContactDialog({
   const { parseBirthdayInput, getBirthdayPlaceholder, autoFormatBirthdayInput } = useDateFormat();
   const enabled = enabledFields ?? resolveEnabledFields(null);
   const isOn = (key: ContactFieldKey) => enabled.has(key);
+  // A form section's heading is shown only when at least one of its fields is
+  // enabled. The create form is always empty, so "would this section render
+  // anything" reduces to the field-visibility check alone (T30) — mirroring
+  // the detail page's hasVisibleFields but without the "has a value" half.
+  const sectionEnabled = (keys: ContactFieldKey[]) => keys.some(isOn);
 
   // The vCard's default language tag is prefilled from the language the user is
   // displaying the system in (e.g. "de" from "de-AT"). Region subtags are
@@ -452,7 +457,9 @@ export default function AddContactDialog({
             />
           )}
 
-          <SectionHeading label={t('contactDetail.section.about')} />
+          {sectionEnabled(['birthday', 'anniversary', 'personalInfo']) && (
+            <SectionHeading label={t('contactDetail.section.about')} />
+          )}
           {isOn('birthday') && (
             <>
               <TextField
@@ -490,7 +497,9 @@ export default function AddContactDialog({
             <PersonalInfoEditor label={t('contacts.personalInfoLabel')} value={personalInfo} onChange={setPersonalInfo} />
           )}
 
-          <SectionHeading label={t('contactDetail.section.contact')} />
+          {sectionEnabled(['phones', 'addresses', 'emails', 'imppAddresses', 'links']) && (
+            <SectionHeading label={t('contactDetail.section.contact')} />
+          )}
           {isOn('phones') && (
             <MultiValueField label={t('contacts.phone')} value={phones} onChange={setPhones} valueType="tel" defaultType="cell" />
           )}
@@ -507,7 +516,9 @@ export default function AddContactDialog({
             <MultiValueField label={t('contacts.urls')} value={urls} onChange={setUrls} valueType="url" defaultType="home" />
           )}
 
-          <SectionHeading label={t('contactDetail.section.genderAndPronouns')} />
+          {sectionEnabled(['speakToAs', 'gender']) && (
+            <SectionHeading label={t('contactDetail.section.genderAndPronouns')} />
+          )}
           {isOn('speakToAs') && (
             <SpeakToAsEditor value={speakToAs} onChange={setSpeakToAs} />
           )}
@@ -526,7 +537,9 @@ export default function AddContactDialog({
             />
           )}
 
-          <SectionHeading label={t('contactDetail.section.professional')} />
+          {sectionEnabled(['organizations', 'titles', 'work_information']) && (
+            <SectionHeading label={t('contactDetail.section.professional')} />
+          )}
           {isOn('organizations') && (
             <>
               <TextField label={t('contacts.organization')} fullWidth value={formData.organization} onChange={handleChange('organization')} />
@@ -550,7 +563,9 @@ export default function AddContactDialog({
             />
           )}
 
-          <SectionHeading label={t('contactDetail.section.notes')} />
+          {sectionEnabled(['how_we_met', 'contact_information']) && (
+            <SectionHeading label={t('contactDetail.section.notes')} />
+          )}
           {isOn('how_we_met') && (
             <TextField
               label={t('contacts.howWeMet')}

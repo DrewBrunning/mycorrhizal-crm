@@ -423,7 +423,7 @@ export default function SettingsPage() {
                   ) : (
                     tokens.map((token) => (
                       <TableRow key={token.id}>
-                        <TableCell>{token.name}</TableCell>
+                        <TableCell sx={{ overflowWrap: 'anywhere' }}>{token.name}</TableCell>
                         <TableCell>
                           <Chip
                             label={

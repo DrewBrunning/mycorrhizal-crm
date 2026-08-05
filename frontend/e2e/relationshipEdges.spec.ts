@@ -18,7 +18,6 @@ test.describe('RelationshipEdges', () => {
     try {
       await page.goto(`/contacts/${contact.ID}`);
 
-      await page.getByRole('tab', { name: /relationships/i }).click();
       await page.getByRole('button', { name: /add relationship/i }).click();
 
       const dialog = page.getByRole('dialog');
@@ -36,7 +35,7 @@ test.describe('RelationshipEdges', () => {
 
       await expect(dialog).toBeHidden();
       await expect(page.getByText(relName)).toBeVisible();
-      await expect(page.getByText('Friend')).toBeVisible();
+      await expect(page.getByText('Friend', { exact: true })).toBeVisible();
     } finally {
       await deleteTestContact(page.request, contact.ID);
     }
@@ -48,7 +47,6 @@ test.describe('RelationshipEdges', () => {
 
     try {
       await page.goto(`/contacts/${alice.ID}`);
-      await page.getByRole('tab', { name: /relationships/i }).click();
       await page.getByRole('button', { name: /add relationship/i }).click();
 
       const dialog = page.getByRole('dialog');
@@ -68,15 +66,17 @@ test.describe('RelationshipEdges', () => {
       await dialog.getByRole('button', { name: /^save$/i }).click();
       await expect(dialog).toBeHidden();
 
-      // From Alice's page: Bob is her Parent.
+      // From Alice's page: Bob is her Parent. `exact: true` is required since
+      // T31 renders the card's RelatedToMembers metadata on the same page
+      // ("urn:uuid:... (parent_of)") — the edge card's type label is the only
+      // exact "Parent" text.
       await expect(page.getByText('E2E-Bob')).toBeVisible();
-      await expect(page.getByText('Parent')).toBeVisible();
+      await expect(page.getByText('Parent', { exact: true })).toBeVisible();
 
       // From Bob's page: Alice is his Child (the inverse label).
       await page.goto(`/contacts/${bob.ID}`);
-      await page.getByRole('tab', { name: /relationships/i }).click();
       await expect(page.getByText('E2E-Alice')).toBeVisible();
-      await expect(page.getByText('Child')).toBeVisible();
+      await expect(page.getByText('Child', { exact: true })).toBeVisible();
     } finally {
       await deleteTestContact(page.request, alice.ID);
       await deleteTestContact(page.request, bob.ID);
@@ -89,7 +89,6 @@ test.describe('RelationshipEdges', () => {
 
     try {
       await page.goto(`/contacts/${contact.ID}`);
-      await page.getByRole('tab', { name: /relationships/i }).click();
       await page.getByRole('button', { name: /add relationship/i }).click();
 
       const createDialog = page.getByRole('dialog');
@@ -114,7 +113,7 @@ test.describe('RelationshipEdges', () => {
       // see the identical note in timeline.spec.ts.
       await expect(editDialog).toBeHidden({ timeout: 10000 });
 
-      await expect(page.getByText('Sibling')).toBeVisible();
+      await expect(page.getByText('Sibling', { exact: true })).toBeVisible();
     } finally {
       await deleteTestContact(page.request, contact.ID);
     }
@@ -126,7 +125,6 @@ test.describe('RelationshipEdges', () => {
 
     try {
       await page.goto(`/contacts/${contact.ID}`);
-      await page.getByRole('tab', { name: /relationships/i }).click();
       await page.getByRole('button', { name: /add relationship/i }).click();
 
       const dialog = page.getByRole('dialog');

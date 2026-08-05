@@ -26,6 +26,22 @@ vi.mock('./auth', async (importOriginal) => {
   return { ...actual, isAdmin: vi.fn() };
 });
 
+// MUI's useMediaQuery needs window.matchMedia; jsdom provides none, so tests
+// must install it. Default to `false` (desktop/table layout); the T32 stacked
+// test flips it to simulate a phone-width viewport.
+function mockMatchMedia(matches: boolean) {
+  window.matchMedia = vi.fn().mockImplementation(() => ({
+    matches,
+    media: '',
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  }));
+}
+
 function user(overrides: Partial<User> = {}): User {
   return {
     id: 1,
@@ -40,6 +56,7 @@ function user(overrides: Partial<User> = {}): User {
 }
 
 beforeEach(() => {
+  mockMatchMedia(false);
   vi.mocked(getUsers).mockReset();
   vi.mocked(updateUser).mockReset();
   vi.mocked(deleteUser).mockReset();
@@ -85,6 +102,30 @@ test('lists users with their role', async () => {
   expect(screen.getByText('plain-user')).toBeInTheDocument();
   expect(screen.getByText('Admin')).toBeInTheDocument();
   expect(screen.getByText('User')).toBeInTheDocument();
+});
+
+test('reflows to stacked user cards below the sm breakpoint (T32)', async () => {
+  mockMatchMedia(true);
+  vi.mocked(getUsers).mockResolvedValue({
+    users: [
+      user({ username: 'card-admin', email: 'admin@example.com', is_admin: true }),
+      user({ id: 3, username: 'card-user', email: 'a-very-long-address@example.com' }),
+    ],
+    total: 2,
+    page: 1,
+    limit: 25,
+    total_pages: 1,
+  });
+
+  renderPage();
+
+  await waitFor(() => expect(screen.getByText('card-admin')).toBeInTheDocument());
+  // No table at phone width — each user is a card, and both the edit and
+  // delete actions remain reachable.
+  expect(screen.queryByRole('table')).toBeNull();
+  expect(screen.getByText('admin@example.com')).toBeInTheDocument();
+  expect(screen.getAllByTitle('Edit')).toHaveLength(2);
+  expect(screen.getAllByTitle('Delete')).toHaveLength(2);
 });
 
 test('shows the empty state when there are no users', async () => {

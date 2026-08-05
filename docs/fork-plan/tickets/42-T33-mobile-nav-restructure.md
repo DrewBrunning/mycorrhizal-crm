@@ -52,3 +52,12 @@ An actual information-architecture pass on the nav bar, not a mechanical shrink.
 - `npx tsc --noEmit` clean, `npx vitest run` green.
 - Visually verified at 360px, 390px, and 414px, and that a screen reader / accessibility check
   (`aria-label`s present) passes for icon-only items.
+
+**Done, 2026-08-05.** The phone-width AppBar now shows primary destinations (Contacts, Search,
+Notes) as icon-only buttons, each with an aria-label; secondary items live in the hamburger
+drawer; and account-level items (Settings, Data settings, User Management, logout) collapse
+into a new account menu. The collapse happens at the `sm` breakpoint, matching the 600px
+convention T28 established for the contact page, so sm-md tablets and desktop are unchanged.
+`app.accountMenu` translated in all five locales. New `e2e/navMobile.spec.ts` pins the
+icon-only primary row, direct navigation, one-tap drawer reachability, the account menu, and
+no AppBar-induced horizontal overflow at 360/390px.

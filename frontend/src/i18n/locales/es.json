@@ -1,7 +1,8 @@
 {
   "app": {
     "title": "Mycorrhizal CRM",
-    "logout": "Cerrar sesión"
+    "logout": "Cerrar sesión",
+    "accountMenu": "Cuenta"
   },
   "nav": {
     "dashboard": "Panel",
@@ -391,7 +392,6 @@
   },
   "contactDetail": {
     "notFound": "Contacto no encontrado",
-    "generalInfo": "Información General",
     "section": {
       "name": "Nombre",
       "metadata": "Metadatos de la tarjeta",
@@ -399,7 +399,10 @@
       "contact": "Contacto",
       "genderAndPronouns": "Género y pronombres",
       "professional": "Profesional",
-      "notes": "Notas"
+      "notes": "Notas",
+      "overview": "Resumen",
+      "people": "Personas",
+      "cadence": "Cadencia y seguimiento"
     },
     "email": "Email",
     "phone": "Teléfono",
@@ -457,7 +460,8 @@
     "selectTag": "Seleccionar etiqueta...",
     "newTag": "Nueva etiqueta...",
     "add": "Agregar",
-    "actions": "Acciones"
+    "actions": "Acciones",
+    "jumpNav": "Ir a la sección"
   },
   "noteDialog": {
     "title": "Agregar Nota",

@@ -183,7 +183,11 @@ export default function NetworkPage() {
   }
 
   return (
-    <Box sx={{ height: 'calc(100vh - 100px)', display: 'flex', flexDirection: 'column', mt: 2, p: 2 }}>
+    // On phone widths the column of controls is taller than the viewport, so
+    // the page itself must be allowed to grow and scroll — pinning it to
+    // `100vh - chrome` clips the graph card (T32). On md+ the graph keeps the
+    // fixed-height, no-page-scroll layout.
+    <Box sx={{ height: { xs: 'auto', md: 'calc(100vh - 100px)' }, display: 'flex', flexDirection: 'column', mt: 2, p: 2, maxWidth: '100%' }}>
       <Typography variant="h5" gutterBottom sx={{ mb: 2 }}>
         {t('network.title')}
       </Typography>
@@ -203,7 +207,7 @@ export default function NetworkPage() {
       >
         <Autocomplete
           size="small"
-          sx={{ minWidth: 200 }}
+          sx={{ minWidth: { xs: 0, sm: 200 }, width: isMobile ? '100%' : undefined }}
           options={contactNodes}
           getOptionLabel={(n) => n.label}
           value={contactNodes.find(n => n.id === centeredNodeId) ?? null}
@@ -214,7 +218,7 @@ export default function NetworkPage() {
           clearOnEscape
         />
 
-        <FormControl size="small" sx={{ minWidth: 150 }}>
+        <FormControl size="small" sx={{ minWidth: { xs: 0, sm: 150 }, width: isMobile ? '100%' : undefined }}>
           <InputLabel>{t('network.filterByCircle')}</InputLabel>
           <Select
             value={selectedCircle}
@@ -274,8 +278,10 @@ export default function NetworkPage() {
         </Card>
       )}
 
-      {/* Graph */}
-      <Card sx={{ flex: 1, position: 'relative', overflow: 'hidden', minHeight: 400 }}>
+      {/* Graph — the canvas sizes itself to this container, and the graph's
+          own pan/zoom controls keep a wide 2D layout usable on phones without
+          the page ever scrolling horizontally (T32). */}
+      <Card sx={{ flex: { xs: '0 0 auto', md: 1 }, height: { xs: '65vh', md: 'auto' }, minHeight: 400, position: 'relative', overflow: 'hidden' }}>
         <NetworkGraph
           data={data}
           onNodeClick={handleNodeClick}

@@ -60,6 +60,48 @@ test('defaults the Kind selection to human', async () => {
   expect(mocked.mock.calls[0][0].crm.kind).toBe('human');
 });
 
+// --- T30: section headings follow field-visibility, not a fixed template ---
+
+test('hides the About section heading when every About field is disabled', () => {
+  render(
+    <DateFormatProvider>
+      <SnackbarProvider>
+        <AddContactDialog
+          open
+          onClose={vi.fn()}
+          onContactAdded={vi.fn()}
+          availableCircles={[]}
+          availableTags={[]}
+          enabledFields={resolveEnabledFields(['emails'])}
+        />
+      </SnackbarProvider>
+    </DateFormatProvider>
+  );
+  // The create form is always empty, so the heading renders iff at least one
+  // of its fields is enabled (T30).
+  expect(screen.queryByText('About')).toBeNull();
+  expect(screen.getByText('Contact')).toBeInTheDocument();
+});
+
+test('shows the About section heading when any About field is enabled', () => {
+  render(
+    <DateFormatProvider>
+      <SnackbarProvider>
+        <AddContactDialog
+          open
+          onClose={vi.fn()}
+          onContactAdded={vi.fn()}
+          availableCircles={[]}
+          availableTags={[]}
+          enabledFields={resolveEnabledFields(['birthday'])}
+        />
+      </SnackbarProvider>
+    </DateFormatProvider>
+  );
+  expect(screen.getByText('About')).toBeInTheDocument();
+  expect(screen.queryByText('Contact')).toBeNull();
+});
+
 test('submits crm.kind = animal when Animal is selected (T27)', async () => {
   const mocked = vi.mocked(createContactRecord).mockResolvedValue({
     id: 3,
