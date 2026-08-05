@@ -60,3 +60,9 @@ Either way:
   reminder fires on the right day, including across a year boundary.
 - A year-only event is proven to be rejected/disabled rather than producing a broken reminder.
 - Hand-verified: break the recurrence logic, confirm the test fails, restore.
+
+## Shipped
+
+**Done.** No further landing narrative was recorded beyond the ticket board's status — which of shape (a)
+or (b) was actually built was not written down; check `syncLifeEventReminder` (referenced by
+`95-backlog-and-priorities.md`'s grooming log for [T19](20-T19-cadence.md)) if you need to know which.

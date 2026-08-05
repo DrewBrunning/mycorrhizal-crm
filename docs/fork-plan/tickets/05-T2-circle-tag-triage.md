@@ -68,3 +68,10 @@ should be needed.
 
 This ticket only **creates** the data. The app still reads the flat field until T3 and T4 land — expect
 the UI to look unchanged afterwards. That is correct, not a bug.
+
+## Shipped
+
+**Done, 2026-08-04** (`CircleTagTriagePage.tsx`). Closed the circle half of P5's long-open acceptance gate
+(`92.1`'s "legacy relationship + circle data migrated (dry-run-verified)" — the relationship half closed
+back at §3d). [T3](06-T3-circle-tag-backend.md) and [T4](07-T4-circle-tag-frontend.md) followed the same
+day.

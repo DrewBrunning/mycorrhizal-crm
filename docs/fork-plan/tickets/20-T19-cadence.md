@@ -14,9 +14,9 @@
 else in this model is scaffolding for this question.
 
 It sits post-alpha only because the alpha line was drawn by *risk* and this ticket is purely additive.
-`95-backlog-and-priorities.md` records a standing recommendation to **pull it before alpha**: its value is
-immediate on day one of real use, and its only dependency already precedes alpha. Check whether that
-decision has been made before assuming this is post-alpha work.
+`tickets/README.md` records a standing recommendation to **pull it before alpha**: its value is
+immediate on day one of real use, and its only dependency already precedes alpha. (Moot now — this
+ticket is DONE — kept for context on why it landed where it did.)
 
 ## The spec (`91.10`)
 
@@ -115,3 +115,19 @@ but the CRM owns the cadence *state*, and that task's completion is not a reset 
 - `gorm:"column:xxx"` tag is mandatory for acronyms/compound words — GORM silently derives wrong names
 - New entities: decide soft vs hard delete per T26's rule (user-authored content → soft, edge/join rows → hard)
 - Delete cascade: add new entities to `deleteContactAssociations` in `contact_controller.go` and `DeleteUser` in `admin_user_controller.go`
+
+## Shipped
+
+**Done, 2026-08-03** (`cb88826`) — pulled forward per this file's own standing recommendation, since its
+only dependency (T5) shipped pre-alpha and its value is immediate. One `CadencePolicy` per contact
+(soft-deleted; a partial unique index so a deleted policy never blocks re-creating it), `qualifying_types`
+as a JSON column. Health (`next_due`/`overdue_by`) is derived from the timeline via `Activity.Qualifying()`
+and never stored, exactly as specified.
+
+**Decisions resolved during implementation:** a contact with no qualifying interaction ever has
+**undefined** health — cadence does not count from the contact's creation date, settling the open question
+this ticket flagged. An empty `qualifying_types` list means every default-qualifying type counts, rather
+than none. Overdue cadences emit `cadence.overdue` webhooks daily, job-lock guarded for multi-instance
+safety. Qualifying interactions reset cadence; non-qualifying ones and task completion do not — the
+webhook is only a passive notification to an external task manager (Vikunja), and the CRM owns the state,
+matching this ticket's central trap warning exactly.

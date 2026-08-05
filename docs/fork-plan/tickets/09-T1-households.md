@@ -79,6 +79,13 @@ AI layer must reuse.
 
 That last browser check is the point of the ticket. It is the first time the suggestion-review surface
 has ever run against real data.
+
+## Shipped
+
+**Done** (`HouseholdsPage.tsx`). No further landing narrative beyond the ticket board's status was
+recorded — the backend model/suggestion-engine landing (WP-83, its own prerequisite) has a full write-up
+in `95-backlog-and-priorities.md`'s Tier 2 section if the underlying engine's behavior needs re-checking,
+but this ticket's own CRUD-API-plus-frontend layer has no separate write-up beyond "done."
 ## Flash implementation notes
 
 ### Files to read first

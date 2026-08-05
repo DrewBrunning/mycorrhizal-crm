@@ -25,51 +25,89 @@ you are most likely to want it, because that is when the app is newest and least
 That is a judgment call about how much you value alpha-period history, not a migration hazard. If undo
 matters to you during alpha, this belongs earlier.
 
+## Design decisions — locked 2026-08-04
+
+1. **Capture mechanism: GORM hooks (`AfterCreate`/`AfterUpdate`/`AfterDelete`).** Completeness is
+   the property that matters for an audit log, and hooks guarantee every GORM write to a registered
+   model is captured without relying on individual call sites remembering. Opacity at the call site
+   is a feature here, not a bug.
+
+2. **Transaction semantics: fire-and-forget from within the hook.** The audit write must not
+   participate in the real write's transaction — an audit failure rolling back a contact save is
+   unacceptable. Write the audit row in a separate goroutine with its own error logging. Trade:
+   a write that succeeds but whose audit row fails to persist leaves a gap. Accept that gap over
+   the alternative (audit failures blocking real writes).
+
+3. **Undo scope: updates only.** Undo reverses the `before` snapshot from the audit event.
+   Delete undo requires reconstructing cascade-deleted rows across ~14 tables and is a follow-up
+   ticket if wanted. The "Done when" section reflects this narrower scope. The undo affordance
+   must visibly reflect the T26 purge window — after `AUDIT_RETENTION_DAYS` passes, the audit
+   row is gone and there is nothing to undo. Show a "revertable until" date, not a dead button.
+
+4. **Retention: 90 days default, configurable via `AUDIT_RETENTION_DAYS`.** Purge job reuses T26's
+   existing job-locked cron pattern. 90 days is short enough to control SQLite file growth during
+   early real use (when writes are most frequent and a bug is most likely), long enough for the
+   debugging use case. Document the volume trade: longer retention is linear row growth.
+
 ## What to build
 
-1. **An append-only event table** — entity type, entity id, operation, actor (user), timestamp, and a
-   before/after diff or full snapshot. Immutable: no update or delete path, ever.
-2. **Capture points.** Two options, and the choice matters:
-   - **GORM hooks** (`AfterCreate`/`AfterUpdate`/`AfterDelete`) — catches everything automatically,
-     including writes from services and migrations, but is invisible at the call site and fires inside
-     transactions you may not control.
-   - **Explicit service-layer calls** — visible and controllable, but every new write path is a chance to
-     forget.
-   Hooks are the safer default for an audit log specifically, because completeness is the property that
-   matters. Say which you chose and why.
-3. **Undo** — replay an event backwards. Note this is genuinely hard for deletes that cascaded across ~14
-   tables; scope what is undoable rather than promising everything. A realistic first cut is undo for
-   updates and single-entity deletes only.
+1. **An append-only `audit_events` table** — entity type, entity ID, operation (`create|update|delete`),
+   actor (user ID), timestamp, and a `before` snapshot (JSON) for update/delete events. Immutable:
+   no update or delete path, ever. Model-level guard (no `Update`/`Delete` receiver methods) plus
+   a DB-level safety net (`REVOKE INSERT, UPDATE, DELETE` or an application-level check). Hard-delete
+   (system-generated, not user-authored — per T26).
 
-   **⚠ Undo of a delete cannot reach further back than [T26](08b-T26-delete-semantics.md)'s retention
-   window** — after the purge job runs, the soft-deleted row is genuinely gone and there is nothing to
-   restore *to*. Either bound the undo affordance to that window and say so in the UI, or have the audit
-   trail keep its own full snapshot of deleted rows (which makes it the recovery store, with all the
-   volume and secret-handling consequences noted below). Decide which; do not let a user click "undo" and
-   get silence.
-4. **Webhook event coverage** for the newer entities, reusing `services/webhook_service.go` (signing,
-   retry, delivery records, and the job-locked retry processor all exist).
+2. **Capture via GORM hooks.** Register `AfterCreate`/`AfterUpdate`/`AfterDelete` on audited models.
+   Each hook:
+   - Builds the audit event struct.
+   - Launches a goroutine to persist it (separate `gorm.DB` session, not the hook's transaction).
+   - Logs errors but does not return them — per the transaction decision above.
+   - Never captures `Password`, `TOTPSecret`, `ApiTokenHash`, or any `secret`-sensitivity field.
+     Maintain a deny-list of field names checked in each hook.
+
+3. **Retention purge.** A job-locked cron (reusing T26's `acquireJobLock` pattern) that deletes
+   audit rows older than `AUDIT_RETENTION_DAYS`. Run alongside the existing T26 purge job.
+   Initial implementation: default 90 days, configurable.
+
+4. **Undo (updates only).** An endpoint that accepts an audit-event ID, loads the `before` snapshot,
+   applies it via `ApplyRecordToContact` (or entity-specific equivalent), and writes back. Must
+   verify the current `user_id` scope matches the audit event's. Must reject undo of events older
+   than retention. Must reject undo of `delete`-type events (updates only).
+
+5. **Webhook event coverage** for the newer entities (Circles, Tags, LifeEvents, Households, Gifts,
+   etc.), reusing `services/webhook_service.go`'s existing delivery infrastructure.
 
 ## Traps
 
 - **Volume.** Every write generating a row with a full snapshot grows fast on a single-file SQLite DB.
-  Decide retention (and whether it is configurable) up front, not after the file is 2GB.
+  The 90-day retention cap limits this, but an instance with heavy write patterns should be monitored.
 - **Do not log secrets.** Password hashes, TOTP secrets ([N8](25-N8-2fa.md)), API token hashes, and OIDC
-  tokens must never reach the audit table. An audit log is a secondary copy of everything — treat it with
-  the same care as the primary.
+  tokens must never reach the audit table. Maintain a deny-list of field names checked in each hook.
+  An audit log is a secondary copy of everything — treat it with the same care as the primary.
 - **Sensitivity (`91.13`)** applies to audit rows too: a `secret` relationship's content should not become
   readable via the audit surface.
-- Soft-deleted rows already exist (`gorm.Model`); do not confuse "soft deleted" with "audited delete."
-- Transactions: an audit write that fails must not roll back the real write, and an audit write inside a
-  rolled-back transaction must not persist. Pick which side you want and be deliberate.
+- **Goroutine lifecycle.** Audit writes fire from a goroutine detached from the hook's transaction.
+  The goroutine opens its own `gorm.DB` session. Error logging is the only feedback mechanism — there
+  is no synchronous confirmation that the audit row persisted. Test this explicitly.
+- **Migration/backfill hooks.** A backfill script or migration that bulk-writes rows fires hooks.
+  Either make hooks idempotent (they are — audit rows are append-only) or skip them during migration
+  runs with `db.Session(&gorm.Session{SkipHooks: true})`. Decide in implementation.
+- **Undo across the purge boundary.** The undo endpoint must reject events older than `AUDIT_RETENTION_DAYS`.
+  After purge, the audit row is gone. Show the user a "revertable until" date in the UI so a dead
+  button doesn't surprise them.
 
 ## Done when
 
 - `go build ./... && go vet ./... && gofmt -l . && go test ./...` green.
 - Tests prove: every entity's create/update/delete produces exactly one event; the table rejects mutation;
-  no secret-bearing field ever appears in an event; undo restores an updated record correctly.
-- Hand-verified: remove one capture point, confirm the completeness test fails, restore.
-- Volume measured against a realistic write pattern, with the retention decision written down.
+  no secret-bearing field ever appears in an event; undo restores an updated record correctly; undo of a
+  deleted record is rejected (not silently skipped); undo of a purged event (past retention) is rejected;
+  a hook's goroutine failure does not roll back the real write.
+- Hand-verified: remove one capture point (delete a hook registration), confirm the completeness test
+  fails, restore.
+- Retention purge job tested: rows older than `AUDIT_RETENTION_DAYS` are removed, newer rows survive.
+- Volume measured against a realistic write pattern, with the retention decision verified to keep the
+  SQLite file within acceptable bounds.
 
 ### Post-alpha note
 This ticket is post-alpha — real production data exists. Changes that modify schemas or data must be additive and non-destructive. Migration files must be hand-written SQL up/down pairs. Test against `database.InitDB`, not `AutoMigrate`. For integrations: SSRF protection via `httputil.SafeDialContext` is mandatory for any outbound requests.

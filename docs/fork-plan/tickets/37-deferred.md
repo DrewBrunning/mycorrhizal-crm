@@ -58,10 +58,11 @@ vector search proves necessary, and then via an external sidecar — never a pri
 **Rating 1.** See `80-local-model-pilot.md`. Deferred on its own terms; re-enters when **mobile client
 work begins**, independent of this backend roadmap.
 
-Note this connects to the open question flagged in `95-backlog-and-priorities.md`: whether a mobile client
-is real at all. That answer re-rates [T8](16-T8-openapi.md), [T12a](14-T12a-etag-primitives.md), and
-[T17](17-T17-change-feeds.md) from 2 to 4 — so it is worth settling before those tickets rather than
-before this one.
+This connects to what used to be an open question — whether a mobile client is real at all, which would
+have re-rated [T8](16-T8-openapi.md), [T12a](14-T12a-etag-primitives.md), and
+[T17](17-T17-change-feeds.md) from 2 to 4. Moot now: all three shipped pre-alpha as ordered regardless
+(see `tickets/README.md`'s footnote on that table). This ticket's own mobile-client dependency is
+unaffected either way — it stays deferred until real mobile client work begins.
 
 ### Post-alpha note
 This ticket is post-alpha — real production data exists. Changes that modify schemas or data must be additive and non-destructive. Migration files must be hand-written SQL up/down pairs. Test against `database.InitDB`, not `AutoMigrate`. For integrations: SSRF protection via `httputil.SafeDialContext` is mandatory for any outbound requests.

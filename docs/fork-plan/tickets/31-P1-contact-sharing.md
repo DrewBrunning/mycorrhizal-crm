@@ -110,3 +110,21 @@ Defaulting into the import path's behaviour by accident is the failure mode.
 - `gorm:"column:xxx"` tag is mandatory for acronyms/compound words — GORM silently derives wrong names
 - New entities: decide soft vs hard delete per T26's rule (user-authored content → soft, edge/join rows → hard)
 - Delete cascade: add new entities to `deleteContactAssociations` in `contact_controller.go` and `DeleteUser` in `admin_user_controller.go`
+
+## Shipped
+
+**Done, 2026-08-04**, as the in-app user-to-user model described in this ticket's main body (see the
+"Ticket-specific" note above for the stale anonymous-link bullets this superseded). New `ContactShare`
+entity (migration `000008`), with create/list-incoming/list-outgoing/accept/confirm/decline endpoints, and
+a new minimal `GET /users/directory` — a real gap found during the work: no non-admin way to discover
+other users on the instance existed before this.
+
+**The merge-on-accept decision** this ticket asked to make deliberately: accept/confirm reuse the existing
+VCF/JSContact import pipeline verbatim (`ParseJSContact`, `DetectDuplicate`,
+`ImportSessionManager.ConfirmVCF`) rather than reimplementing merge logic — the recipient's own
+add/update/skip choice on the (possibly duplicate-matched) preview row **is** the "what happens if I
+already have this person" decision, rather than a separate policy.
+
+Frontend extracted `FieldSectionPicker` out of `ExportFieldPickerDialog` for reuse by the new
+`ShareContactDialog`, exactly per [T9](13-T9-selective-export.md)'s own note that the picker was built to
+be reused here.

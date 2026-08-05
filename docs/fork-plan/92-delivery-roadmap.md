@@ -9,22 +9,28 @@
 > are placeholders whose detail is written when they come into view, because the model they build on will
 > have taught us things by then.
 >
-> **Execution order lives elsewhere as of 2026-07-30.** `95-backlog-and-priorities.md`'s ticket board
-> merges this doc's remaining WPs with that file's own backlog into one ordered set of tickets, and
-> re-sequences them (P6–P10 here become tickets T10–T21, deliberately placed *after* a new Phase A that
-> activates already-built-but-unreachable entities, and after WP-97). **This doc remains the source of
-> truth for each WP's scope**; it is no longer the source of truth for what to do next.
+> **Execution order lives in [`tickets/README.md`](tickets/README.md) as of 2026-08-04** (previously
+> `95-backlog-and-priorities.md`, which no longer carries a live board — see that file's own updated
+> intro). That table merges this doc's remaining WPs with the rest of the backlog into one ordered,
+> status-tracked set of tickets (P6–P10 here became tickets T10–T21). **This doc remains the source of
+> truth for each WP's detailed scope**; it is not the source of truth for status or what to do next.
 
 ## 92.0 Where the existing plan ends and this begins
 
-Already specified in `50-integration-and-rebrand.md` (do these first — they are `90.5` step 1):
+Already specified in `50-integration-and-rebrand.md` (`90.5` step 1) — **all four DONE**, predating the
+ticket system so none of them have their own ticket file; confirmed complete against the running app
+rather than left as stale status text:
 - **WP-70 · P1** — persistence swap + migration. **DONE** (committed).
-- **WP-71 · P2** — API + mobile-ready summary/detail endpoints + OpenAPI. *Next up.* (Delivers priority #3.)
-- **WP-72 · P3** — frontend remodel.
-- **WP-73 · P4** — CardDAV 4.0 upgrade through the adapters. (Delivers the *contact* half of priority #4.)
-- **WP-74** — rebrand. **Re-slotted:** originally "do last"; with the hard-fork decision (`90` D2) it can
-  happen at any deliberate branding moment, but remains non-blocking and is not scheduled here. Left where
-  it is; timing is a product call.
+- **WP-71 · P2** — API + mobile-ready summary/detail endpoints + OpenAPI. **DONE** — the contacts API and
+  summary/detail split are the foundation every later WP builds on; OpenAPI coverage was completed for
+  the rest of the surface by [T8](tickets/16-T8-openapi.md).
+- **WP-72 · P3** — frontend remodel. **DONE** — see `95-backlog-and-priorities.md`'s "Tier 0" section
+  (historical journal entry).
+- **WP-73 · P4** — CardDAV 4.0 upgrade through the adapters. **DONE** — CardDAV sync is live, including
+  the app-specific-password hardening from Tier 3a.
+- **WP-74** — rebrand. **DONE** — see `95-backlog-and-priorities.md`'s "Rebranding" section (historical
+  journal entry). Was originally "re-slotted" to happen whenever convenient rather than scheduled; it
+  happened.
 
 This doc covers `90.5` steps 2–8 as new phases **P5–P10** (+ deferred), starting at **WP-80**.
 
@@ -105,12 +111,12 @@ depend on P5's relationship graph and could be picked up independently of the re
 |---|---|---|
 | **WP-97** | A field-selection representation over `contactmodel.Card`'s top-level sections (emails, phones, addresses, organizations, media/photo, personal info, related-to, ...) — coarse-grained like Google's own picker, not per-value. Applied by filtering the `Record`/`Card` *before* it reaches an exporter, not inside each exporter — since `vcard3.Adapter`, `vcard4.Adapter`, and `jscontact.Adapter` (`controllers/export_controller.go`'s `ExportContactsAsVCF`/`ExportContactsAsJSContact`) all already consume the same neutral `Card`, one filter function makes the selection apply to all three formats identically, with zero changes to any of the three adapters themselves. **Sensitivity-marked items (`91.13`) default unchecked AND gated behind a deliberate extra action before they're even selectable — not just a pre-unchecked box, a real foot-gun guard — see the two notes below the table, including the real change this forces in WP-80's projection.** Frontend: a field-picker UI (checkboxes per section, sensible "select all" default for ordinary fields) wired into the existing export flow. | P0, WP-73 |
 
-**Reused, not rebuilt, by Tier 5** (`95-backlog-and-priorities.md`'s contact-sharing-between-users item):
-that item's own description already calls for "opting which fields to include" when sharing a contact to
+**Reused, not rebuilt, by [P1](tickets/31-P1-contact-sharing.md) (contact sharing between users — DONE):**
+that ticket's own description already calls for "opting which fields to include" when sharing a contact to
 another user on the same instance — the same field-selection UI and filter function this WP builds, not a
-second implementation. Tier 5 will need its own persistence for a saved/default selection (per-share, not
-per-export-click), but the selection *model* and *UI* are the reusable part. Whoever picks up Tier 5
-should check whether WP-97 already covers the field-selection half before re-scoping it.
+second implementation, and P1's landing note confirms it reused this exactly. A deferred standing/live
+share variant ([P1b](tickets/37-deferred.md)) would need its own persistence for a saved/default selection
+(per-share, not per-export-click), but the selection *model* and *UI* remain the reusable part.
 
 **Relationship to `91.13` (Sensitivity — `normal|private|secret` on relationships/tags/life-events), per
 user clarification (2026-07-30):** not two independent axes — this WP's field-selection UI is the concrete

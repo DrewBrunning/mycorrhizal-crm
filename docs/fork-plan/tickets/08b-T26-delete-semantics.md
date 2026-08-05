@@ -125,3 +125,15 @@ already uses a `WHERE` clause, so it is a small change and the standard answer.
 - `DeleteUser`'s `Unscoped()` exception is documented in its doc comment, and pinned by a test that
   asserts with `Unscoped()` (the default helper cannot see the difference).
 - Retention default documented in `.env.example` and `docs/deployment.md`.
+
+## Shipped
+
+**Done.** Confirmed directly against the codebase (no landing narrative was recorded in the grooming
+journal beyond an early "still open" note that predates this actually shipping, since superseded):
+`services/purge_service.go`'s `PurgeDeletedRows` is the job-locked cron entry point
+(`models.JobNamePurgeDeleted`); `admin_user_controller.go`'s `DeleteUser` uses `Unscoped()` for the user
+row and its soft-deleting children, exactly the one deliberate exception this ticket specified; the
+partial unique index (`idx_contacts_vcard_uid_user ... WHERE deleted_at IS NULL`) is live in the schema.
+`controllers/helpers.go` also implements the T17 implication this ticket flagged — a cursor older than
+the retention window gets an explicit "your cursor is older than `DELETED_RETENTION_DAYS`" response
+rather than silently missing tombstones.

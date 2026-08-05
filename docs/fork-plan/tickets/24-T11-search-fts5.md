@@ -89,3 +89,24 @@ This ticket is post-alpha — real production data exists. Changes that modify s
 - `gorm:"column:xxx"` tag is mandatory for acronyms/compound words — GORM silently derives wrong names
 - New entities: decide soft vs hard delete per T26's rule (user-authored content → soft, edge/join rows → hard)
 - Delete cascade: add new entities to `deleteContactAssociations` in `contact_controller.go` and `DeleteUser` in `admin_user_controller.go`
+
+## Shipped
+
+**Done, 2026-08-03 — built together with [T10](23-T10-graph-traversal.md) on one branch**, since this
+ticket's synonym half genuinely rides on T10's traversal. Adds FTS5 full-text search over contacts, notes,
+and interactions (migration `000007_search_fts5`, virtual tables + triggers). One real implementation
+surprise: the pure-Go SQLite driver's documented FTS5 `'delete'` special command turned out broken, so the
+triggers use a regular `DELETE ... WHERE rowid` instead — verified working, not a deviation that cost
+anything. `GET /search` is user-scoped with soft-deleted and secret items excluded, grouped into
+contacts/notes/activities. `RebuildSearchIndex` is idempotent (an admin endpoint plus
+`cmd/backfill-search-index` CLI). The synonym consumer this ticket exists to activate now runs for real:
+the whole query resolves through the relation-type registry (`brother` → `sibling_of`) and echoes as
+`resolved_relation`, and the traversal `relation=` filter accepts tokens or synonyms. Frontend: a global
+`/search` page (the AppBar search now routes there) surfacing note and interaction hits, not just
+contacts, per this ticket's own "otherwise the feature is invisible" requirement.
+
+**Known gap found later, 2026-08-04 (v0.2.0-alpha real-world testing) — not yet fixed:** address fields
+are not indexed. Confirmed against the actual migration: `contacts_fts` covers
+`firstname, lastname, nickname, email, phone, org` only, and the legacy `applyContactSearch` fallback has
+the same gap. Searching a street name does not find a contact who lives there. Filed as
+[T38](47-T38-search-address-fields.md).

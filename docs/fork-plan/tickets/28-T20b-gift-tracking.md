@@ -87,3 +87,10 @@ This ticket is post-alpha — real production data exists. Changes that modify s
 - `gorm:"column:xxx"` tag is mandatory for acronyms/compound words — GORM silently derives wrong names
 - New entities: decide soft vs hard delete per T26's rule (user-authored content → soft, edge/join rows → hard)
 - Delete cascade: add new entities to `deleteContactAssociations` in `contact_controller.go` and `DeleteUser` in `admin_user_controller.go`
+
+## Shipped
+
+**Done.** No further landing narrative beyond the ticket board's status was recorded. Three real gaps
+found later during v0.2.0-alpha real-world testing (no URL field on gift ideas, no notes field, and no way
+to add a gift directly at "given"/"received" status without going through "idea" first) are filed as
+[T35](44-T35-gift-tracking-gaps.md).

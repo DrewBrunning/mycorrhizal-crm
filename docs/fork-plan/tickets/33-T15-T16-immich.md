@@ -94,3 +94,21 @@ This ticket is post-alpha — real production data exists. Changes that modify s
 - `gorm:"column:xxx"` tag is mandatory for acronyms/compound words — GORM silently derives wrong names
 - New entities: decide soft vs hard delete per T26's rule (user-authored content → soft, edge/join rows → hard)
 - Delete cascade: add new entities to `deleteContactAssociations` in `contact_controller.go` and `DeleteUser` in `admin_user_controller.go`
+
+## Shipped
+
+**Done, 2026-08-03 — built together with [T14](32-T14-external-link-substrate.md) on one branch.** Both
+levels landed at once: per-user Immich connection config (API key encrypted via `credential_crypto.go`), a
+version-pinned Immich client exercised against a **permanent fake-Immich-HTTP-server test double** (the
+`oidc_service` fake-IdP fixture's precedent, per this ticket's own "Done when" instruction), person link →
+`ExternalIdentity{system:"immich"}`, the contact-page Immich surface (thumbnail proxied through a hardened
+`/immich/.../thumbnail` route — SVG rejected, `Content-Disposition` set, matching the existing image
+proxy's hardening this ticket's traps required), and a job-lock-guarded enrichment sync upserting
+`ExternalActivity` photo-appearance rows onto the timeline.
+
+**The SSRF policy decision this ticket flagged**: `IMMICH_BLOCK_PRIVATE_URLS`, configurable, **default
+false** — because self-hosted Immich is typically a private address, and defaulting to block would make
+the integration useless for most self-hosters, exactly the tension this ticket's traps section predicted.
+
+**Level 3 (bidirectional) confirmed still deferred** — genuinely blocked on an upstream Immich "external
+links" capability that doesn't exist yet, not a scheduling choice, matching this ticket's own framing.

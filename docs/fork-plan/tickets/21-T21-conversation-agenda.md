@@ -93,3 +93,16 @@ find yourself adding a `remind_at`, you have built the wrong thing.
 - `gorm:"column:xxx"` tag is mandatory for acronyms/compound words — GORM silently derives wrong names
 - New entities: decide soft vs hard delete per T26's rule (user-authored content → soft, edge/join rows → hard)
 - Delete cascade: add new entities to `deleteContactAssociations` in `contact_controller.go` and `DeleteUser` in `admin_user_controller.go`
+
+## Shipped
+
+**Done, 2026-08-03.** Surfaced on the contact page's new Agenda tab. Explicitly not date-scheduled as
+specified — the model carries no due-date column at all, pinned by a migration test asserting `remind_at`
+does not exist. Items resolve via `PATCH /conversation-agenda/:id/discuss`, optionally linking the
+interaction (`activity_id`) that covered it, which feeds the timeline. Soft-delete, per T26's
+user-authored-content rule. Frontend: inline single-input add (no modal, per this ticket's own low-friction
+requirement), one-click mark-discussed, and discussed items stay visible in a resolved state with their
+date rather than disappearing — matching this ticket's own "should not vanish irrecoverably" trap. Agenda
+items repoint to the keeper on contact merge (like LifeEvents), and were added to the `DeleteContact` /
+`DeleteUser` cascades and the T26 purge job. [N2](22-N2-prep-view.md) (prep view) had its dependency
+satisfied by this landing.

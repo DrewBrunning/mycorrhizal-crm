@@ -91,3 +91,15 @@ This ticket is post-alpha — real production data exists. Changes that modify s
 - `gorm:"column:xxx"` tag is mandatory for acronyms/compound words — GORM silently derives wrong names
 - New entities: decide soft vs hard delete per T26's rule (user-authored content → soft, edge/join rows → hard)
 - Delete cascade: add new entities to `deleteContactAssociations` in `contact_controller.go` and `DeleteUser` in `admin_user_controller.go`
+
+## Shipped
+
+**Done, 2026-08-03 — built together with [T11](24-T11-search-fts5.md) on one branch**, because T11's
+synonym half genuinely rides on this ticket's traversal. Adds `GET /graph/connections`: multi-hop chains
+via a recursive CTE over `relationship_edges`, computed not stored, with a per-branch visited set (cycles
+terminate) plus an explicit depth cap, restricted to `status: confirmed` and `sensitivity != secret` edges
+(a secret edge never leaks into a derived chain; private stays visible, matching the graph display) — and,
+the highest-risk logic this ticket flagged, direction applied via the registry's inverse (a `parent_of`
+edge walked Parent→Child displays `child_of`; walked Child→Parent displays `parent_of`), hand-verified and
+pinned in both directions as this ticket's own "Done when" required. Frontend: a Connections panel on the
+contact page with a depth control and relation filter.

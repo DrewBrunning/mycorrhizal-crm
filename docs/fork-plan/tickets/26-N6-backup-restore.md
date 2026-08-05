@@ -19,76 +19,51 @@
 - **Import** (`import_service.go`, `import_controller.go`) handles CSV/VCF/JSContact **contacts only** —
   there is no path back in for notes, activities, reminders, or relationships.
 
-## Decide the scope first — this ticket has two honest answers
+## Scope — locked in as file-level backup/restore (option a)
 
-**(a) Document SQLite file-level backup/restore and declare app-level restore out of scope.**
-For a single-file SQLite self-hosted app this is the *correct* answer for disaster recovery: stop the
-service (or use `VACUUM INTO` / the backup API for a consistent online copy — note WAL mode is on, so
-naively copying the `.db` file alone is not safe), copy the file, done. Cheap, complete, and honest.
-Deliverable is a documented, tested procedure in `docs/deployment.md` plus possibly a `make backup`
-target.
+**Decision locked 2026-08-04:** This ticket is file-level backup/restore only. App-level import of
+remaining entity types (notes, activities, reminders, relationships) is explicitly out of scope.
+If partial restore or instance migration is ever wanted, it will be its own ticket with its own
+design pass — no existing user has asked for it, and the effort (genuinely L, not M) doesn't match
+this ticket's R3 rating.
 
-**(b) Build app-level import for the remaining entity types.**
-Only worth it if the real requirement is *partial* restore or *instance migration* — moving to a new
-host, merging two instances, cherry-picking one contact's history back. That is a different need from
-disaster recovery, and it is the only thing (a) does not cover.
+## What to build
 
-**Recommendation: do (a) first and see whether (b) is ever actually wanted.** (a) is a fraction of the
-work and covers the case that actually loses data.
+Document a tested backup/restore procedure in `docs/deployment.md`, plus a `make backup` Makefile
+target if useful. This is a docs + Makefile task — **no backend code, no frontend code, no
+migrations, no i18n.**
 
-## If you build (b)
+The procedure must cover:
 
-- Reuse the import session machinery (`import_session.go`) — preview, partial success, and confirm are
-  already there and already handle partial-failure semantics.
-- Entity order matters: contacts before anything referencing them; relationship edges need both endpoints
-  present.
-- Identity: the CSV carries numeric IDs, which will not survive a restore into a fresh DB. Match on
-  `VCardUID` instead, and note the export must therefore include it — **check whether it currently
-  does**, because the contacts section exports `ID`, not `uid`.
-- Idempotency: re-running a restore must not duplicate.
-- **Soft-deleted rows.** A file-level backup contains them; an app-level export probably should not.
-  Either way, a restore must not resurrect rows that were sitting in
-  [T26](08b-T26-delete-semantics.md)'s purge queue — decide whether restore excludes
-  `deleted_at IS NOT NULL` rows, and document it. Restoring a contact the user deleted is a surprising
-  and arguably privacy-relevant failure.
+1. **Online backup** using `VACUUM INTO` — produces a consistent SQLite snapshot without stopping the
+   server. WAL mode is on (`database/open.go` sets `_journal_mode=wal`), so naively copying the
+   `.db` file while the server is running produces a corrupt snapshot. `VACUUM INTO` is the correct
+   approach for a live instance.
+2. **Offline backup** as a fallback — stop the server, copy the `.db` file and the profile-photo
+   directory (`PROFILE_PHOTO_DIR`), restart. Simpler but requires downtime.
+3. **Restore procedure** — stop the server, replace the `.db` file and photo directory from backup,
+   restart. Include a verification step (list contacts, check a known note/reminder survived).
+4. **Photo directory** — lives outside the SQLite file (`config.Config.ProfilePhotoDir`, configured
+   via `PROFILE_PHOTO_DIR` env var). Must be backed up separately. Document this explicitly.
+
+## Traps
+
+- **WAL checkpoint before `VACUUM INTO`** — if the WAL has uncheckpointed pages, `VACUUM INTO` may
+  not include the most recent writes. Run `PRAGMA wal_checkpoint(TRUNCATE)` first.
+- **Attachments (N7)** — if attachments land before this ticket does, they live in their own
+  directory outside SQLite and the procedure must cover that directory too. Add a note in the
+  attachments ticket's "Done when" to update this procedure.
+- **`make backup` target** — if built, it should shell out to `sqlite3` for `VACUUM INTO` rather
+  than linking against the Go SQLite driver, because `VACUUM INTO` is a SQL statement the Go driver
+  handles normally. The target reads `SQLITE_DB_PATH` from the environment (same as the Makefile
+  already does for `migrate-up`/`migrate-down`).
 
 ## Done when
 
-**For (a):** the procedure is documented and **actually tested** — back up a populated instance, destroy
-it, restore, and verify contacts, notes, activities, reminders, relationships, and photos all survive.
-Include the WAL caveat and the profile-photo directory, which lives outside the database file.
-
-**For (b):** round-trip tests prove export → import into a fresh DB reproduces every entity type, with a
-real-DB test rather than mocks, plus an idempotency test for a repeated restore.
-
-### Post-alpha note
-This ticket is post-alpha — real production data exists. Changes that modify schemas or data must be additive and non-destructive. Migration files must be hand-written SQL up/down pairs. Test against `database.InitDB`, not `AutoMigrate`.
-
-## Flash implementation notes
-
-### Files to read first
-- `/CLAUDE.md` at repo root (conventions, recurring traps, commands)
-- Study an existing fully-implemented feature for the pattern: model → controller → routes → api → hooks → dialog → list → page wiring → i18n
-- Common pattern references: `circle_controller.go` + test (newer idiom), `api/relationshipEdges.ts` + hook, `RelationshipEdgeDialog.tsx` + test, the `ContactInformation.tsx` tab + `ContactDetailPage.tsx` wiring
-
-### Tests you must write before considering it done
-- Backend: controller tests covering CRUD, ownership scoping, error states (not found, cross-user, 409 duplicate)
-- Backend: real-DB test (`database.InitDB`, not `AutoMigrate`) for the core round-trip + any migration-dependent behavior
-- Frontend: component test (`afterEach(cleanup)`, mock `fetch` with `vi.stubGlobal`) for dialog and list
-- Hand-verify EVERY new test: break the code, confirm the test fails, restore. A test that has never failed has proven nothing.
-
-### Self-verification checklist
-1. `npx tsc --noEmit` — clean
-2. `npx vitest run` — green (ALL tests, not just yours)
-3. `cd backend && go build ./... && go vet ./... && gofmt -l . && go test ./...` — green
-4. New migrations: run `make migrate-up` to verify they apply cleanly
-5. All 5 locale files (`de/es/fr/it/en`) — real translations for any new strings
-
-### Common traps (beyond CLAUDE.md)
-- `gorm.Model` only works on uint-PK entities — UUID PK models need explicit `ID`/`CreatedAt`/`UpdatedAt` fields
-- Backend tests use `setupRouter()` from `activity_controller_test.go` (sets `db`, `userID`, `cfg` in Gin context, uses AutoMigrate)
-- Frontend component tests: `afterEach(cleanup)` mandatory; MUI appends `" *"` to required field `getByLabelText`
-- Migration files: hand-written SQL up/down pairs — never add a column by editing the struct alone
-- `gorm:"column:xxx"` tag is mandatory for acronyms/compound words — GORM silently derives wrong names
-- New entities: decide soft vs hard delete per T26's rule (user-authored content → soft, edge/join rows → hard)
-- Delete cascade: add new entities to `deleteContactAssociations` in `contact_controller.go` and `DeleteUser` in `admin_user_controller.go`
+- `docs/deployment.md` has a tested backup/restore section covering both online and offline
+  procedures, with the photo-directory caveat.
+- The procedure is **actually tested** — back up a populated instance, destroy the `.db` and photo
+  directory, restore, and verify contacts, notes, activities, reminders, relationships, and photos
+  all survive.
+- If a `make backup` target is built: test it against a running instance and confirm the output file
+  restores cleanly.

@@ -99,3 +99,9 @@ the "layer a new representation on top, bridge them, defer removal" pattern that
 - Sensitivity in UI: a `secret` field should not render in contexts that get exported/shared
 - v1 retirement checklist: `User.CustomFieldNames`, `Contact.CustomFields`, their DTOs, `/users/custom-fields` routes, all frontend consumers, CSV export path
 - `grep -rn "CustomFieldNames|custom_fields" backend frontend/src` must return only v2 references when done
+
+## Shipped
+
+**Done** (`b25a613`, `c609c32`). No further landing narrative beyond the ticket board's status was
+recorded — confirm the backfill was actually run (this ticket's own "Done when" requirement) against the
+real deployment before treating v1 as fully retired if that matters for your purposes.

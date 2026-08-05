@@ -25,7 +25,9 @@ Use the Browser tooling with `.claude/launch.json`'s `frontend-dev` rather than 
 
 Review which font is used where (headings, body, labels, monospace) and confirm it is consistent and
 *intentional* rather than whatever a component happened to inherit. The rebrand established self-hosted
-EB Garamond for the wordmark and Source Sans 3 for UI — see `assets/fonts/README.md` and `theme.ts`.
+EB Garamond for the wordmark and **IBM Plex Sans** for UI (this file previously said "Source Sans 3" —
+that was stale ticket text, not the actual shipped choice; corrected here, see the Shipped note below) —
+see `assets/fonts/README.md` and `theme.ts`.
 
 ### 2. Icons
 
@@ -89,3 +91,12 @@ Remember every string change is **five locale files** with real translations.
 - Do not nest a `<Chip>` inside `<Typography variant="body2">` — invalid HTML, React warns
 - Do not hardcode colors in components — extend the OKLCH theme in `theme.ts`
 - Component tests need explicit `afterEach(cleanup)` (vitest here has no auto-cleanup)
+
+## Shipped
+
+**Done**, confirmed 2026-08-04 during the pre-alpha-2 hardening pass. All three calibration items
+addressed: EB Garamond wordmark + IBM Plex Sans UI, self-hosted via `@font-face` in `public/fonts.css`,
+linked from `index.html` and permitted by nginx's `font-src 'self'`; `@mdi/js`+`@mdi/react` added and used
+in 11 files, including all three named starting points (notes list, add-note, network/graph); the
+Settings page's "Profile" sub-label now reads "Settings". Dark and light both verified across
+notes/contacts/settings/network.
