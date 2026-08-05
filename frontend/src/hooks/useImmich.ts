@@ -8,7 +8,9 @@ import {
   linkImmichPerson,
   unlinkImmichPerson,
   syncImmich,
+  testImmichConnection,
   ImmichConfigResponse,
+  ImmichConnectionTestResult,
   ImmichPerson,
   ImmichPersonSummary,
 } from '../api/immich';
@@ -30,6 +32,9 @@ export function useImmich(notifier?: ErrorNotifier) {
   const [peopleLoading, setPeopleLoading] = useState(false);
 
   const [syncing, setSyncing] = useState(false);
+
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<ImmichConnectionTestResult | null>(null);
 
   const refreshConfig = useCallback(async () => {
     setConfigLoading(true);
@@ -114,6 +119,26 @@ export function useImmich(notifier?: ErrorNotifier) {
     }
   }, [refreshConfig, notifier]);
 
+  // testConnection diagnoses the currently saved connection. A thrown error
+  // here means the check itself couldn't run (no connection saved) — routed
+  // through the notifier like every other action. A diagnosed failure
+  // (ok: false) is not thrown; it's returned/stored for the component to
+  // render inline, since it's expected diagnostic output, not an exception.
+  const testConnection = useCallback(async () => {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const result = await testImmichConnection();
+      setTestResult(result);
+      return result;
+    } catch (err) {
+      handleError(err, { operation: 'testing Immich connection' }, notifier);
+      throw err;
+    } finally {
+      setTesting(false);
+    }
+  }, [notifier]);
+
   return {
     config,
     configLoading,
@@ -123,6 +148,8 @@ export function useImmich(notifier?: ErrorNotifier) {
     people,
     peopleLoading,
     syncing,
+    testing,
+    testResult,
     refreshConfig,
     saveConfig,
     removeConfig,
@@ -131,5 +158,6 @@ export function useImmich(notifier?: ErrorNotifier) {
     linkPerson,
     unlinkPerson,
     runSync,
+    testConnection,
   };
 }

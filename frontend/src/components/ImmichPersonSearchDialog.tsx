@@ -16,6 +16,7 @@ import {
 import AppDialog from './AppDialog';
 import { useTranslation } from 'react-i18next';
 import { ImmichPerson } from '../api/immich';
+import { getErrorMessage } from '../utils/errorHandler';
 
 interface ImmichPersonSearchDialogProps {
   open: boolean;
@@ -51,7 +52,7 @@ export default function ImmichPersonSearchDialog({
     setLoading(true);
     onFetchPeople()
       .then((fetched) => setPeople(fetched || []))
-      .catch(() => setError(t('immich.search.loadFailed')))
+      .catch((err) => setError(getErrorMessage(err)))
       .finally(() => setLoading(false));
   }, [open, onFetchPeople, t]);
 

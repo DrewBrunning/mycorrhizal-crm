@@ -664,6 +664,8 @@
       "syncEnabled": "Automatically sync photo appearances",
       "saveButton": "Save connection",
       "removeButton": "Remove connection",
+      "testConnectionButton": "Test connection",
+      "testingConnection": "Testing…",
       "removeConfirm": "Remove the Immich connection? Linked contacts keep their existing photo history.",
       "baseUrlRequired": "Base URL is required.",
       "saved": "Immich connection saved",
@@ -674,7 +676,6 @@
     "search": {
       "title": "Link an Immich person",
       "placeholder": "Search people by name…",
-      "loadFailed": "Could not load people from Immich. Is the connection configured and reachable?",
       "linkFailed": "Could not link this person.",
       "noMatches": "No people match. Try a different name, or check that Immich has finished face recognition.",
       "unnamed": "(unnamed person)"

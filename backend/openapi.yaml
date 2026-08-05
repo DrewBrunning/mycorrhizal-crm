@@ -5319,6 +5319,35 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MessageResponse"
+  /immich/test-connection:
+    post:
+      summary: Test the current user's saved Immich connection
+      operationId: testImmichConnection
+      description: >
+        Checks reachability (unauthenticated ping) then API key validity
+        (GET /users/me) against the currently saved connection, reporting
+        which stage failed rather than a generic error. Always 200 when the
+        check itself could run — ok:false is a successful diagnosis, not a
+        failure of this endpoint.
+      responses:
+        "200":
+          description: The diagnosis (ok may be true or false).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImmichConnectionTestResult"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: No Immich connection configured.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /immich/people:
     get:
       summary: Browse the user's Immich people (L1 picker)
@@ -6625,6 +6654,17 @@ components:
         base_url: { type: string }
         api_key: { type: string, description: "Write-only: empty on update keeps the stored key; required on first connect." }
         sync_enabled: { type: boolean }
+    ImmichConnectionTestResult:
+      type: object
+      description: >
+        Stage-by-stage diagnosis of a "Test connection" check — reachability
+        (unauthenticated ping) then auth (API key). ok:false is a successful
+        diagnosis of an upstream problem, not an application error, so this
+        is always returned with HTTP 200.
+      properties:
+        ok: { type: boolean }
+        stage: { type: string, enum: [reachability, auth, ok] }
+        message: { type: string }
     ImmichPerson:
       type: object
       properties:

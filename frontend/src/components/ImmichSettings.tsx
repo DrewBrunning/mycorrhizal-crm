@@ -157,6 +157,12 @@ export default function ImmichSettings() {
               </Alert>
             )}
 
+            {immich.testResult && (
+              <Alert severity={immich.testResult.ok ? 'success' : 'warning'} sx={{ py: 0 }}>
+                {immich.testResult.message}
+              </Alert>
+            )}
+
             {immich.configError && (
               <Alert severity="error" sx={{ py: 0 }}>
                 {immich.configError}
@@ -172,6 +178,20 @@ export default function ImmichSettings() {
               <Button variant="contained" size="small" onClick={handleSave} disabled={saving}>
                 {saving ? t('common.saving') : t('immich.settings.saveButton')}
               </Button>
+              {immich.config?.has_api_key && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => {
+                    immich.testConnection().catch(() => {
+                      /* handled via the notifier inside the hook */
+                    });
+                  }}
+                  disabled={immich.testing}
+                >
+                  {immich.testing ? t('immich.settings.testingConnection') : t('immich.settings.testConnectionButton')}
+                </Button>
+              )}
               {immich.config && (
                 <Button variant="outlined" size="small" color="error" onClick={handleRemove}>
                   {t('immich.settings.removeButton')}

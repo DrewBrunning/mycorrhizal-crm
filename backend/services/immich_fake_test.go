@@ -23,6 +23,13 @@ type fakeImmichPerson struct {
 	Thumbnail  []byte
 }
 
+// fakeImmichMe is the server-side state for GET /users/me (Test Connection's
+// auth check).
+type fakeImmichMe struct {
+	Email string
+	Name  string
+}
+
 // fakeImmichServer is a permanent, real-protocol test double for the Immich
 // REST API (the oidc fake-IdP precedent, T16 "Done when"). It serves the same
 // wire shapes the real Immich does for the endpoints this integration relies
@@ -37,6 +44,9 @@ type fakeImmichServer struct {
 	// matching x-api-key header (401) — the expired-key failure path.
 	APIKey string
 	People map[string]*fakeImmichPerson
+	// Me is the identity returned by GET /users/me. Defaults to a fixed test
+	// account when unset.
+	Me *fakeImmichMe
 	// FailWithStatus forces a whole-instance failure when non-zero.
 	FailWithStatus int
 	// LastAPIKey records the last x-api-key header seen, for asserting the
@@ -73,6 +83,17 @@ func (f *fakeImmichServer) handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	path := strings.TrimPrefix(r.URL.Path, "/api")
+
+	// Real Immich's ping is unauthenticated — it must stay reachable
+	// regardless of the API key, so Test Connection's reachability stage is
+	// genuinely independent of the auth stage. Every other endpoint here
+	// requires the key.
+	if path == "/server/ping" {
+		f.handlePing(w)
+		return
+	}
+
 	key := r.Header.Get("x-api-key")
 	f.LastAPIKey = key
 	if f.APIKey != "" && key != f.APIKey {
@@ -81,8 +102,9 @@ func (f *fakeImmichServer) handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	path := strings.TrimPrefix(r.URL.Path, "/api")
 	switch {
+	case path == "/users/me":
+		f.handleMe(w)
 	case path == "/people":
 		f.handlePeople(w)
 	case strings.HasSuffix(path, "/statistics"):
@@ -100,6 +122,18 @@ func (f *fakeImmichServer) handle(w http.ResponseWriter, r *http.Request) {
 func personIDFromPath(path, suffix string) string {
 	start := strings.Index(path, "/people/") + len("/people/")
 	return path[start : len(path)-len(suffix)]
+}
+
+func (f *fakeImmichServer) handlePing(w http.ResponseWriter) {
+	writeJSON(w, map[string]any{"res": "pong"})
+}
+
+func (f *fakeImmichServer) handleMe(w http.ResponseWriter) {
+	me := f.Me
+	if me == nil {
+		me = &fakeImmichMe{Email: "test@example.com", Name: "Test User"}
+	}
+	writeJSON(w, map[string]any{"email": me.Email, "name": me.Name})
 }
 
 func (f *fakeImmichServer) handlePeople(w http.ResponseWriter) {

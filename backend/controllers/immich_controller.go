@@ -120,6 +120,29 @@ func DeleteImmichConfig(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Immich config deleted"})
 }
 
+// TestImmichConnection diagnoses the current user's saved Immich connection
+// (Settings' "Test connection" button): reachability, then API key validity,
+// reported as a specific stage/message rather than a generic error. A
+// service-level error (no connection configured, unparseable stored URL)
+// still goes through abortImmichServiceError; otherwise this always responds
+// 200 — a diagnosed failure (ok: false) is a successful response.
+func TestImmichConnection(c *gin.Context) {
+	db := c.MustGet("db").(*gorm.DB)
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+
+	cfg := currentConfig(c)
+	result, err := services.TestImmichConnection(db, cfg, userID)
+	if err != nil {
+		abortImmichServiceError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
 // ListImmichPeople browses every person in the user's Immich instance so the
 // L1 picker can search by name (immich.go's client does the stable-API
 // pagination; this endpoint is the user's own data, so no per-contact scope).

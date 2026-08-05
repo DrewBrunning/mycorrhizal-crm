@@ -91,3 +91,43 @@ test('a configured connection shows the sync toggle and remove button', async ()
   expect(toggle).toBeChecked();
   expect(screen.getByText('Automatically sync photo appearances')).toBeInTheDocument();
 });
+
+test('test connection shows the backend-diagnosed success message', async () => {
+  mockFetchByUrl({
+    '/immich/config': () => ({ base_url: 'http://immich:2283', has_api_key: true, sync_enabled: true, last_sync_status: '', last_sync_error: '' }),
+    '/immich/test-connection': () => ({ ok: true, stage: 'ok', message: 'Connected to Immich as alice@example.com' }),
+  });
+
+  render(
+    <SnackbarProvider>
+      <ImmichSettings />
+    </SnackbarProvider>
+  );
+
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Test connection' })).toBeInTheDocument());
+  fireEvent.click(screen.getByRole('button', { name: 'Test connection' }));
+
+  await waitFor(() => {
+    expect(screen.getByText('Connected to Immich as alice@example.com')).toBeInTheDocument();
+  });
+});
+
+test('test connection shows the backend-diagnosed failure message, not a generic one', async () => {
+  mockFetchByUrl({
+    '/immich/config': () => ({ base_url: 'http://immich:2283', has_api_key: true, sync_enabled: true, last_sync_status: '', last_sync_error: '' }),
+    '/immich/test-connection': () => ({ ok: false, stage: 'auth', message: 'Immich rejected the API key.' }),
+  });
+
+  render(
+    <SnackbarProvider>
+      <ImmichSettings />
+    </SnackbarProvider>
+  );
+
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Test connection' })).toBeInTheDocument());
+  fireEvent.click(screen.getByRole('button', { name: 'Test connection' }));
+
+  await waitFor(() => {
+    expect(screen.getByText('Immich rejected the API key.')).toBeInTheDocument();
+  });
+});
