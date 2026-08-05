@@ -106,3 +106,10 @@ also be overridable — decide consistently.
 - Sensitivity: ordinary fields are opt-out (checked by default), sensitive are opt-in (unchecked by default). Sensitive items must be visually distinct AND behind an extra deliberate action before interactive.
 - Frontend field picker: coarse-grained (whole sections like emails, phones, addresses), not per-value. Follow Google Contacts' reference.
 - Test: same selection produces identical omissions across all three formats. Sensitive item excluded by default, included only with explicit opt-in. Component test: sensitive control not interactive until gating action taken.
+
+## Shipped
+
+**Found already fully implemented, 2026-08-04** — `backend/models/field_selection.go`,
+`ExportFieldPickerDialog.tsx`, and `RecordForContactFiltered` were all already built and working; this
+ticket had simply never been marked done on the board. [P1](31-P1-contact-sharing.md) (contact sharing,
+built the same day) confirmed it reused this exactly, per this ticket's own design intent.

@@ -95,3 +95,17 @@ Per `91.12`:
 - `gorm:"column:xxx"` tag is mandatory for acronyms/compound words — GORM silently derives wrong names
 - New entities: decide soft vs hard delete per T26's rule (user-authored content → soft, edge/join rows → hard)
 - Delete cascade: add new entities to `deleteContactAssociations` in `contact_controller.go` and `DeleteUser` in `admin_user_controller.go`
+
+## Shipped
+
+**Done, 2026-08-03 — built together with [T15/T16](33-T15-T16-immich.md) on one branch**, deliberately, so
+the "substrate before the first integration" ordering this ticket exists to protect is preserved in the
+codebase as well as in the plan, not just claimed by commit order. `ExternalIdentity` (this contact IS
+this thing in that system) and `ExternalActivity` (something that happened externally, linkable into the
+timeline) both landed as specified — keyed by `Contact.VCardUID`, hard-delete with `(system, external_id,
+user_id)` unique keys, metadata/payload as JSON following `RelationshipEdge.Metadata`'s pattern exactly.
+Both joined `deleteContactAssociations` + `DeleteUser`'s cascades, with a real-DB cascade test. This
+ticket's own "done when" genericity test was honored for real, not just written: **the substrate is pinned
+by a test proving Paperless-ngx could use the same routes with zero schema change**, not merely argued.
+`Activity.ExternalRef` (already existing, per this ticket's own note) was reused to link Interactions to
+`ExternalActivity`, not paralleled with a second link mechanism.

@@ -62,4 +62,10 @@ Expect roughly: contact chips, the contacts-list circle filter, `AddContactDialo
 ## Milestone
 
 Landing this closes **P5's acceptance gate** (`92.1`), open since WP-84c was split. Note that in the
-commit message and update `95-backlog-and-priorities.md`.
+commit message and update `tickets/README.md`'s status column.
+
+## Shipped
+
+**Done, 2026-08-04** (`useCircles`/`circleNamesByUid`). P5's acceptance gate is now closed. See
+[T3](06-T3-circle-tag-backend.md)'s Shipped note for a real round-trip bug (imported circles invisible in
+the app) found and fixed in this same area shortly after initial landing.

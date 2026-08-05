@@ -27,25 +27,49 @@ all. ntfy, Gotify, and web push are the idiomatic answers.
   user could already wire ntfy through a webhook crudely.
 - `models.Reminder.ByMail *bool` — a per-reminder channel flag already exists, in embryonic form.
 
+## Design decisions — locked 2026-08-04
+
+1. **Delivery state: per-channel delivery records (new `NotificationDelivery` table).** Mirrors
+   `WebhookDelivery`'s existing pattern — one row per reminder per channel, independent failure
+   tracking. Existing `reminders.email_sent` rows get backfilled into one delivery record each.
+   `reminders.email_sent` is deprecated but not removed (existing consumers may read it); new code
+   queries `NotificationDelivery` for channel status.
+
+2. **Private-address policy: reuse `WEBHOOK_BLOCK_PRIVATE_URLS`.** Self-hosted ntfy/Gotify instances
+   are typically on private addresses. Rather than a notification-specific flag, the existing webhook
+   flag controls all outbound HTTP calls including notifications. A self-hosted ntfy user sets
+   `WEBHOOK_BLOCK_PRIVATE_URLS=false`. Document this in the Settings UI alongside the ntfy config
+   field — don't let a user type a private URL and get a silent failure with no explanation.
+
 ## What to build
 
-1. **Generalise delivery state.** `reminders.email_sent` assumes one channel. Either add per-channel
-   delivery records (cleaner, mirrors `WebhookDelivery`) or generalise the flag. **Decide this first** —
-   everything else follows from it, and getting it wrong means a second migration later.
+1. **`NotificationDelivery` model + migration.** Columns: `reminder_id`, `channel` (`email|ntfy|gotify|push`),
+   `sent_at` (nullable — NULL means not yet sent), `status` (`pending|sent|failed`), `error` (nullable
+   string), timestamps. Backfill migration creates one `sent` delivery row per `reminders` row where
+   `email_sent = true`. Hard-delete (join/edge row per T26 — accessory to a reminder, not
+   independently meaningful). Add to the reminder's cascade path, not `DeleteContact`/`DeleteUser`
+   directly.
 2. **A channel abstraction** — an interface with email as the first implementation, so adding ntfy is a
-   new implementation rather than a new branch in `SendReminders`.
-3. **ntfy and/or Gotify** as the first non-email channel. Both are trivial HTTP POSTs; the work is
-   configuration and delivery bookkeeping, not protocol.
-4. **Per-user (and ideally per-reminder) channel preference**, generalising `ByMail`.
-5. **Settings UI** for configuring the channel and testing it. A "send test notification" button is worth
-   more than it sounds — misconfigured notifications fail silently otherwise.
+   new implementation rather than a new branch in `SendReminders`. ntfy and Gotify are both trivial
+   HTTP POSTs; the work is configuration and delivery bookkeeping, not protocol.
+3. **`SendReminders` rewritten to dispatch per-channel.** Query reminders where `completed=false` joined
+   against `NotificationDelivery` — a reminder is due for a channel when no delivery row exists with
+   `channel = ? AND status = 'sent'`. Failure in one channel must not mark the reminder as sent for
+   other channels, and must not block other channels from dispatching. The job lock still prevents
+   double-send across instances.
+4. **Per-user channel preference**, generalising `ByMail`. New column(s) on `User` as decided during
+   implementation — keep `ByMail` as the email-specific toggle for backwards compat, add new columns
+   for new channels.
+5. **Settings UI** for configuring each channel (ntfy URL + topic, Gotify URL + token) and a "send
+   test notification" button per channel — misconfigured notifications fail silently otherwise.
 
 ## Traps
 
-- **Reuse the SSRF guard.** A user-supplied ntfy/Gotify URL is exactly the attack shape
-  `httputil/fetch.go`'s dialer-level protection exists for, and `WEBHOOK_BLOCK_PRIVATE_URLS` already
-  configures this class of decision. A self-hosted ntfy is usually on a private address, so the *default*
-  here likely differs from webhooks — make that an explicit, documented choice rather than an accident.
+- **Reuse the SSRF guard and its config flag.** A user-supplied ntfy/Gotify URL is exactly the attack
+  shape `httputil/fetch.go`'s dialer-level protection exists for. Use the existing
+  `WEBHOOK_BLOCK_PRIVATE_URLS` flag — no separate notification-specific flag. A self-hosted ntfy user
+  sets `WEBHOOK_BLOCK_PRIVATE_URLS=false`. Document this next to the ntfy URL field in Settings so a
+  private-address URL doesn't fail silently with no explanation.
 - **Do not bypass the job lock.** `SendReminders` is job-locked so a multi-instance deploy does not
   double-send. A new channel must sit inside the same lock.
 - Failure in one channel must not block another, and must not mark the reminder as sent.

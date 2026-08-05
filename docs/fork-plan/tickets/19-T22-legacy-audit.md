@@ -111,3 +111,36 @@ materially more expensive from this point on.
 - `gorm:"column:xxx"` tag is mandatory for acronyms/compound words — GORM silently derives wrong names
 - New entities: decide soft vs hard delete per T26's rule (user-authored content → soft, edge/join rows → hard)
 - Delete cascade: add new entities to `deleteContactAssociations` in `contact_controller.go` and `DeleteUser` in `admin_user_controller.go`
+
+## Shipped
+
+**Audit complete 2026-08-02.** Dispositions per candidate:
+
+1. **`Contact.VCardExtra`** → **KEPT.** Still authoritative for CardDAV export of unmapped vCard
+   properties (`carddav/vcard_mapper.go`'s `ContactToVCard`); the CardDAV import path (`VCardToContact`)
+   still writes to it. Removing it needs the CardDAV export path updated to read from `Passthrough.VCard`
+   instead — non-trivial, deferred to a dedicated future ticket rather than done here.
+2. **`RelationshipEdge.LegacyRelationshipID`** → **REMOVED.** Zero application code read it; the field,
+   its unique index, and migration 000028 are all gone.
+3. **Backfill tools** → **REMOVED**: `cmd/backfill-contact-records` (one-shot WP-70 tool),
+   `cmd/backfill-preferences` + `services/preference_migration.go` (one-shot T20a tool — the
+   `contacts.food_preference` column is also excluded from the squashed baseline as a result).
+   `cmd/backfill-custom-fields` and `cmd/backfill-relationship-edges` were already removed earlier, by T7
+   and by §3d WP5 respectively.
+4. **Migration squash** → **DONE.** 43 incremental migrations squashed to a single
+   `000001_initial_schema.up.sql`/`.down.sql` pair — excludes `food_preference` and
+   `legacy_relationship_id`, carries [T26](08b-T26-delete-semantics.md)'s partial unique index and
+   [T5](03-T5-lifeevent-frontend.md)'s `life_events.deleted_at`, and produces a schema verified
+   byte-for-byte identical to the pre-squash chain via a real schema-dump comparison. **Decision: recreate
+   from scratch** rather than preserve `schema_migrations` version continuity (43→1 renumbers everything)
+   — acceptable because no production data existed yet at the time this ran.
+5. **Dead/duplicate scaffolding** → **DONE**, both sides swept (not just the one duplicate `Relationship`
+   type §3d had already found): backend removed `RelationshipEdge.LegacyRelationshipID`,
+   `services/preference_migration.go` + its test, fixed two `staticcheck` findings and one `gofmt` issue;
+   frontend deleted three fully-dead `types/*.ts` files, stripped `types/index.ts` to just the types still
+   used, deleted the already-superseded `ApiTokensPage.tsx` and four dead barrel files, and removed six
+   dead API functions plus dead exports in `errorHandler.ts`/`auth.ts`. `npx tsc --noEmit` clean,
+   `npx vitest run` 166/166 green at the time.
+
+The end-to-end smoke test this ticket's own "Done when" requires (register → contact with relationships
+and life events → export → re-import against a freshly migrated DB) was run as part of this pass.

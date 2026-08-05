@@ -98,3 +98,11 @@ as [T2](05-T2-circle-tag-triage.md). Doing one before alpha and the other after 
 - CSV export change: `export_controller.go` currently writes `strings.Join(contact.Circles, "; ")` for circles and has a `"Food Preference"` column — you're replacing the column with preference data
 - The 13 files that consume `FoodPreference` are listed in the ticket — grep for each one and update it
 - `import_service.go` maps `"food:food_preference"` and `"dietary:food_preference"` — update these mappings
+
+## Shipped
+
+**Done** — `Contact.FoodPreference` retired. No further landing narrative beyond the ticket board's
+status was recorded for the migration itself. Its one-shot backfill tool (`cmd/backfill-preferences` +
+`services/preference_migration.go`) was later removed as spent by [T22](19-T22-legacy-audit.md)'s
+legacy-audit sweep, and the `contacts.food_preference` column was excluded from that ticket's squashed
+migration baseline — both expected once this ticket's own migration had actually run.

@@ -147,3 +147,37 @@ for every case that actually needs it.
 **What wins on conflict.** `MergeImportedContact`'s "incoming wins" policy was written for imports. For a
 user-driven merge, per-field choice in the preview UI is friendlier and arguably correct. Decide before
 building the preview; if you keep the automatic policy, say so in the UI so it isn't surprising.
+
+## Shipped
+
+**Done 2026-07-30 (`c7b7e25`).** Two real corrections surfaced during implementation, both already
+anticipated as risks above:
+
+- **`MergeImportedContact` was *not* reused**, per this ticket's own warning — its "incoming wins if
+  non-empty" policy would have overwritten multi-valued fields instead of unioning them (a contact with
+  `home@` merged with one with `work@` would have kept only one). Merge-specific union/conflict-resolution
+  logic was written instead (`services.ComputeContactMergeResolution`); `MergeImportedContact` itself and
+  its import-path tests are untouched.
+- **`FieldValue` can't be unioned** (one value per field per contact, unlike every other association) —
+  a collision becomes its own conflict-list entry rather than a silent keeper-wins default, per the user's
+  explicit call when this was scoped.
+
+`DeleteContact`'s cascade-delete checklist was extracted into a shared `deleteContactAssociations` so the
+merge-commit path and the standalone delete path can't drift apart (`CLAUDE.md`'s own warning about
+exactly this). Also closed a known limitation Tier 3c had accepted: `LifeEvent.RelatedEntityIDs` (a JSON
+array, not a joined row) is now correctly rewritten when a merged-away contact is a secondary participant
+on someone else's life event — `DeleteContact` still doesn't touch it, so merge is now the more complete
+of the two paths.
+
+**Found only by live-browser verification, not by the 19 passing mocked/unit tests:** a Go nil slice
+marshals to JSON `null`, not `[]`. Every component test had a hand-written `conflicts: []` fixture; the
+real backend sends `null` whenever a merge has no conflicts, and the dialog crashed spreading it. Fixed by
+normalizing once where the preview is stored (matching `useRelationshipEdges.ts`'s existing `|| []`
+convention), with a new regression test using the actual null-shape response.
+
+Hand-verified twice, per this repo's discipline: the union-vs-overwrite fix (revert, confirm the real-DB
+test fails, restore) and the null-slice fix (revert, confirm the new component test fails, restore).
+Verified end-to-end: full backend (`go test ./...`) and frontend (`tsc` + `vitest`) suites green, a
+real-DB integration test seeding every association type in one pass, and two full merges run live in a
+browser (including a fresh tab to rule out stale console history) with a clean console and correct audit
+notes on both.

@@ -59,7 +59,7 @@ Likelier to be worth it:
 
 **Do not chase the percentage.** A test that asserts a getter returns what was set is negative value —
 it adds maintenance cost and catches nothing. If a package's honest answer is "not worth covering," write
-that in the commit message and in `95-backlog-and-priorities.md` and move on. Partial completion with
+that in the commit message and in this ticket's own file and move on. Partial completion with
 reasons is the expected outcome here, not a failure.
 
 ## Done when
@@ -105,3 +105,9 @@ reasons is the expected outcome here, not a failure.
 - `gorm:"column:xxx"` tag is mandatory for acronyms/compound words — GORM silently derives wrong names
 - New entities: decide soft vs hard delete per T26's rule (user-authored content → soft, edge/join rows → hard)
 - Delete cascade: add new entities to `deleteContactAssociations` in `contact_controller.go` and `DeleteUser` in `admin_user_controller.go`
+
+## Shipped
+
+**Substantially done** (`aaafbb3`, `207b407`). Per this ticket's own "explicit instruction," expect (and
+treat as success, not a gap) some packages left deliberately uncovered with a written reason rather than
+100% coverage across the board.

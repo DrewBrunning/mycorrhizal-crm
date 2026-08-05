@@ -97,3 +97,8 @@ real implementation — it takes care to avoid a save loop.
 - Migration: include backfill for existing rows (like `000030` did for `activities.uuid`). Add column, then `UPDATE SET etag = printf('e-%d-%d', id, unixepoch(updated_at))` in the same migration file.
 - Real-DB test: create an Activity → assert ETag exists → update it → assert ETag changed. Prove with `database.InitDB`, not `AutoMigrate`.
 - Hand-verify: remove the `gorm:"column:etag"` tag, confirm the real-DB test fails (it will show `e_tag` column not found), restore.
+
+## Shipped
+
+**Done** — both `Activity` and `LifeEvent` carry a real `etag` column. No further landing narrative
+beyond the ticket board's status was recorded.

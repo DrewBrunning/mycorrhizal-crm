@@ -45,3 +45,7 @@ but was never wired to any form.
 - `cd backend && go build ./... && go vet ./... && go test ./...` green.
 - Hand-verified: create a family household with two adults, one child, one pet — confirm
   the suggestion count and edge types match `household_service_test.go`'s expected counts.
+
+## Shipped
+
+**Done** (`826aca7`). No further landing narrative beyond the ticket board's status was recorded.

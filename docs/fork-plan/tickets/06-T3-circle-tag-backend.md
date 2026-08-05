@@ -56,3 +56,18 @@ With real `Circle`/`Tag` rows created by T2, the backend sites still reading and
 - A test covers the import synonym split: a "groups" column and a "labels" column land in Circle and Tag
   respectively.
 - Hand-verified: break the join condition, confirm the filter test fails, restore.
+
+## Shipped
+
+**Done, 2026-08-04** (`e34e02f`).
+
+**A real bug in this exact area was found and fixed the same day**, during the pre-alpha-2 hardening pass
+that followed initial landing: **circles did not actually round-trip.** Import was still writing circle
+names to the flat `Contact.Circles` column and creating no `Circle`/`CircleMember` rows, while every UI
+surface (post-T4) reads the real entities — so imported circles were *invisible in the app* despite this
+ticket's synonym-split work. Export had the same gap in reverse: it read the stale flat column, emitting
+legacy strings and omitting real membership. Fixed by materializing real entities on all four import
+confirm paths (including P1's share-accept path, which didn't exist when this ticket was originally
+scoped), with the header synonym table split by target exactly as this ticket specified
+(`circles`/`groups` → Circle, `tags`/`labels`/`categories` → Tag), and by pointing export at the real
+entities instead of the flat column.

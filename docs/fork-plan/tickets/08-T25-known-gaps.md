@@ -47,5 +47,18 @@ a flat editing shape and writes it back:
   import → edit → save → export round trip.
 - Hand-verified: revert the fix, confirm the test fails, restore.
 - `npx tsc --noEmit` clean, `npx vitest run` green; `go test ./...` green if the backend was touched.
-- Anything else found is either fixed here (if trivial) or written up in
-  `95-backlog-and-priorities.md` — do not fix silently and do not drop findings.
+- Anything else found is either fixed here (if trivial) or written up as a new ticket in
+  `tickets/` — do not fix silently and do not drop findings.
+
+## Shipped
+
+**Done.** The confirmed data-loss bug is fixed in `api/contacts.ts` with a passthrough for non-standard
+address component kinds, pinned by a round-trip test. The "also sweep for" items are covered too:
+`Passthrough` survival is asserted in `contact_record_reverse_test.go`, and `Contact.VCardExtra`'s only
+reader is `carddav/vcard_mapper.go` restoring unmapped properties — confirmed, not removed (that removal
+is [T22](19-T22-legacy-audit.md)'s call, not this ticket's).
+
+**Superseded by [T29](38-T29-contact-field-gaps.md).** T29 turned out to be the full "sweep for the same
+class of bug" this ticket asked for — its WP10 explicitly closes the address-component gap this ticket
+fixed, plus eleven more concepts across the neutral model. With both landed, this ticket's scope is fully
+covered; T29 is the more complete record of the underlying class of bug.

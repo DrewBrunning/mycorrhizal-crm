@@ -108,3 +108,8 @@ while no production data exists, and it gets tombstones for free.
 
 **Do [04 · T5b](04-T5b-lifeevent-reminders.md) immediately after.** Without it, life-event dates generate
 no reminders and the feature is inert — alpha cannot evaluate whether it is useful.
+
+## Shipped
+
+**Done.** No further landing narrative was recorded beyond the ticket board's status — the grooming
+journal's per-ticket detail for this one didn't go beyond "DONE."

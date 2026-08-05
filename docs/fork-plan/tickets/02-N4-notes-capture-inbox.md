@@ -75,3 +75,19 @@ inbox exists to prevent.
 **Should the inbox nag?** A badge/count in the nav makes it a real queue; silence makes it a shoebox. An
 inbox nobody triages is the same dead end in a different shape — but a permanent unread badge is its own
 kind of annoying. Pick one deliberately.
+
+## Shipped
+
+**Done.** The inbox reframe, debounced contact picker, and "filed notes leave the inbox" behavior all
+verified working end to end in a real browser: unfiled note → assign contact → count 1→0 → note appears
+on the contact's timeline.
+
+**Two small gaps found later during the 2026-08-04 pre-alpha-2 hardening pass, both fixed (`d22913d`):**
+- **The unfiled-count chip showed the loaded page, not the true total.** `GET /notes` (unassigned) now
+  returns a `total`, counted on the filtered query before the cursor predicate — a deliberate, narrow
+  exception to [T17](17-T17-change-feeds.md)'s removal of counts, since T17's concern was a *contact's*
+  unbounded note history, whereas this query is already constrained to `contact_id IS NULL` — a queue the
+  user drains, where the count is the point. Verified live: 30 unfiled at `limit=25` shows "30" with 25
+  rows, and stays "30" after "Load more" (previously showed 25, then 30).
+- The component test this ticket's own "Done when" asked for — that assigning a contact removes a note
+  from the inbox — now exists, driving the real dialog and asserting the `PUT` carries `contact_id`.

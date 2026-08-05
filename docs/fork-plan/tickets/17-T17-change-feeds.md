@@ -170,3 +170,10 @@ resync**, plus the "your cursor is too old" answer above. A client cannot infer 
 - `gorm:"column:xxx"` tag is mandatory for acronyms/compound words — GORM silently derives wrong names
 - New entities: decide soft vs hard delete per T26's rule (user-authored content → soft, edge/join rows → hard)
 - Delete cascade: add new entities to `deleteContactAssociations` in `contact_controller.go` and `DeleteUser` in `admin_user_controller.go`
+
+## Shipped
+
+**Done.** No further landing narrative beyond the ticket board's status was recorded, beyond one
+downstream confirmation: [N4](02-N4-notes-capture-inbox.md)'s unfiled-note count later needed a
+deliberate, narrow exception to this ticket's removal of `total` from list responses (see N4's Shipped
+note) — the exception is scoped to that one bounded query, not a reversal of this ticket's design.

@@ -99,3 +99,8 @@ there are **no routes and no frontend**. The untyped v1 (`User.CustomFieldNames`
 - Endpoints: pick between nested (`/contacts/:id/field-values`) or flat (`/field-values?entity_id=`). The ticket says either is defensible — pick one and STATE the choice in the controller's doc comment.
 - `projectCustomFields` in `contact_record.go` already filters sensitivity in the query — study it before building the read path.
 - Test: cross-user access denied, type validation rejection, Multi list round-trip, sensitivity filtering
+
+## Shipped
+
+**Done** (`d82f2c5`). No further landing narrative beyond the ticket board's status was recorded — see
+[T7](12-T7-custom-fields-frontend.md)'s Shipped note for the frontend/backfill/v1-retirement half.

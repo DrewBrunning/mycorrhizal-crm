@@ -11,10 +11,11 @@ items below are recurring bug classes that have shipped broken more than once.
 
 | Where | What |
 |---|---|
-| `docs/fork-plan/95-backlog-and-priorities.md` | **The ticket board — the live plan.** Read the board section; the Tier 0–6 sections below it are historical. |
+| `docs/fork-plan/tickets/README.md` | **The status board — the live plan.** Single source of truth for what's outstanding and its order. |
 | `docs/fork-plan/tickets/` | One file per ticket, self-contained enough to implement from. |
 | `docs/fork-plan/91-envelope-data-model.md` | Entity specs with field tables. The detailed source. |
-| `docs/fork-plan/92-delivery-roadmap.md` | WP scope. **Not** the execution order — the board is. |
+| `docs/fork-plan/92-delivery-roadmap.md` | WP scope detail. **Not** the execution order or status — `tickets/README.md` is. |
+| `docs/fork-plan/95-backlog-and-priorities.md` | Dated grooming journal — *why* past decisions were made. **Not** the execution order or status. |
 | `docs/fork-plan/00`–`50` | Neutral model, adapters, correspondence, integration history. |
 | `backend/` | Go. Gin + GORM + SQLite, raw-SQL migrations. |
 | `frontend/` | React 18 + TypeScript + MUI + vitest + Playwright. |
@@ -68,7 +69,8 @@ Dev server: use the Browser/preview tooling with `.claude/launch.json`'s `fronte
 - **Never commit to `main` or merge without being asked.**
 - **Hand-verify your tests.** Break the code, confirm the new test actually fails, restore. A test that
   has never failed has proven nothing. This has caught real bugs here repeatedly.
-- Update `docs/fork-plan/95-backlog-and-priorities.md` when a ticket lands.
+- Update `docs/fork-plan/tickets/README.md`'s status column when a ticket lands, and add a short landing
+  note to that ticket's own file — that pair is the sole status record now, nowhere else.
 
 ## Backend traps
 

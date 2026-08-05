@@ -1,9 +1,13 @@
 # 95 — Backlog and priorities
 
-> **Unlike `00`–`94`, this file is a living document, not a historical planning record.** Re-groom it
-> whenever priorities shift. It is the durable source of truth for "what's next" — the in-session task
-> tool is used only for tracking the one or two items actively being worked on right now, since it has
-> repeatedly lost its full contents mid-session and should not be trusted as the backlog's home.
+> **Status board moved, 2026-08-04: [`docs/fork-plan/tickets/README.md`](tickets/README.md) is now the
+> single source of truth for ticket status and ordering.** This file no longer carries a live board — the
+> ticket-status tables and per-ticket scope write-ups that used to live below were removed in favor of
+> that one place, once having both in parallel started causing real confusion about what was actually
+> outstanding. What remains here is the **dated grooming journal**: a chronological record of *why*
+> decisions were made, kept for institutional memory, not for "what's next" (read `tickets/README.md` for
+> that). New status updates belong in `tickets/README.md`, not appended here. The in-session task tool is
+> still not to be trusted as the backlog's home — it has repeatedly lost its full contents mid-session.
 >
 > Last groomed: 2026-07-29 (Tier 1 closed; Tier 2/P5 — WP-80/81/82/83/84/84b/84c(backend) all done; the
 > triage-UI/migration/frontend half of WP-84c is now filed under Tier 4, and P5's own acceptance gate is
@@ -261,564 +265,30 @@
 > ticket that decides how long a real deletion stays recoverable, which now matters for an actual person's
 > data rather than test fixtures. Not re-ordering the board unilaterally here — flagging it for the next
 > grooming pass.
-
-## How to read this
-
-Tiers are ordered by "best use of time for immediate impact," not by when the idea was conceived.
-Within a tier, do items top-to-bottom. Re-groom (re-run this judgment call) whenever a tier completes,
-a security concern surfaces, or the user's priorities change — don't treat the ordering below as fixed
-forever.
-
-**As of the 2026-07-30 re-groom, the ticket board below is the execution order.** The Tier 0–6 sections
-after it are retained as the historical record and as the detailed source material each ticket cites —
-they are no longer the thing you read to decide what to do next.
-
-# Ticket board — remaining work (re-groomed 2026-07-30)
-
-Everything still open, from this file **and** `92-delivery-roadmap.md`, merged into one ordered set of
-tickets. One ticket per feature/enhancement/change, each independently completable on its own branch
-(per the branch-per-concern discipline used throughout).
-
-> **📁 Each ticket has its own file in [`tickets/`](tickets/README.md)**, written to be implementable
-> without reading this document — what exists today with real file paths, what to build, which existing
-> patterns to copy, the traps specific to that ticket, and a definition of done. The table below is the
-> index and the rationale; the ticket files are the work.
 >
-> **Read [`/CLAUDE.md`](../../CLAUDE.md) first** — it carries the repo-wide conventions and recurring
-> bug classes every ticket assumes and none of them repeat.
-
-**Note on "Phase A/B/C/D".** Those labels survive in the ticket details and in the superseded-tier
-pointers below as *conceptual groupings* (Phase A = activate what's built, D = alpha readiness, and so
-on). The board itself is no longer organised by them — it is one dependency-and-value ordering, so a
-ticket's number is its position, not its phase.
-
-**First ordering principle (user's call, 2026-07-30): activate what's already built before starting new
-phases.** The survey behind this re-groom found five backend entities that are fully implemented but
-**unreachable by any user** — the single largest gap in the project, and one the old tier structure hid
-by filing it as "Tier 4 exception: WP-84c's deferred frontend/migration half":
-
-| Entity | Model | Service/logic | HTTP routes | Frontend | Reachable? |
-|---|---|---|---|---|---|
-| `Household`/`HouseholdMember` (WP-83) | yes | yes (`GenerateHouseholdSuggestions`) | **none** | **none** | **no** |
-| `Circle`/`Tag` (WP-84/84c) | yes | yes | yes | **none** (18 files still read flat `Contact.Circles`) | **no** |
-| `LifeEvent` (WP-84) | yes | — | yes | **none** | **no** |
-| `FieldDefinition`/`FieldValue` (WP-84b) | yes | yes (validation + projection + backfill CLI) | **none** | **none** (v1 still live) | **no** |
-| `RelationshipEdge` (§3d) | yes | yes | yes | yes | **yes** — the only one |
-
-Two knock-on facts that make this the right thing to fix first:
-- **P5's own acceptance gate is still open.** `92.1` requires "legacy relationship + circle data migrated
-  (dry-run-verified)". The relationship half closed with §3d; the circle half has never run.
-- **§3d WP3 shipped a suggestion-review UI that can never fire.** `GenerateHouseholdSuggestions` has zero
-  HTTP callers, so no `status: suggested` edge can exist in a running app. T1 below is what turns that
-  already-written Accept/Reject surface on.
-
-**Phase-to-alpha framing (user's clarification, 2026-07-30):** real production data does **not** exist
-until after the alpha-readiness phase (Phase D) — alpha is the milestone at the end of Phase D, not at
-the end of the board. Everything above that line is inside the safe, no-prod-data window; everything
-below it is not, which is why the cut line below was drawn by asking, per ticket, *does this change the
-shape of data or contracts alpha will populate?* The pre-real-data cleanup (T22) therefore sits at the
-**end** of that window rather than being rushed forward. "Tier 6" was never "polish someday" — it is the
-release-readiness gate.
-
-## The board
-
-**Usefulness rating (`R`), added 2026-07-30 in a product-review pass.** Scored per the user's scale:
-
-| R | Meaning |
-|---|---|
-| **5** | Practically necessary |
-| **4** | Strong feature or improvement, likely to see frequent use |
-| **3** | Nice to have, likely to be used |
-| **2** | Potentially nice, but unlikely to be used often |
-| **1** | Re-evaluate whether a CRM should do this at all |
-
-**Ordering rules, in precedence order (user's, 2026-07-30):** (1) dependency; (2) pre/post-alpha risk —
-anything that gets substantially harder or riskier once real data exists goes before alpha; (3) rating;
-(4) size, smaller first between equals. Note rule 2 sets the *alpha line* while rule 3 orders *within*
-each side — so a high rating does not by itself pull a ticket before alpha, and rule 1 can override rule
-3 (which is why T23/T22 sit late despite R4/R3, and why T10 at R2 precedes T11 at R5).
-
-### Before alpha
-
-| # | Ticket | R | Size | Depends on | Source |
-|---|---|---|---|---|---|
-| 1 | **N1** Contact merge / dedupe for existing contacts — **DONE** (`c7b7e25`) | **5** | M | — | new (gap) |
-| 2 | **N4** Notes: dead-end journal → capture inbox — **DONE** (verified end-to-end 2026-08-04; see the unfiled-count note below) | **4** | S–M | — | new (re-scope) |
-| 3 | **T5** LifeEvent frontend + timeline surface — **DONE** (verified 2026-08-04) | 4 | M | — | WP-84, `91.6`/`91.8` |
-| 4 | **T5b** LifeEvent → reminder wiring — **DONE** (`syncLifeEventReminder`, verified 2026-08-04) | 4 | S | T5 | new (gap) |
-| 5 | **T2** Circle/Tag user-assisted triage migration — **DONE** (`CircleTagTriagePage.tsx`) | 4 | M | — | WP-84c-i, `91.5` |
-| 6 | **T3** Circle/Tag backend call-site rewiring — **DONE** (`e34e02f`, 2026-08-04) | 4 | S–M | T2 | WP-84c-ii |
-| 7 | **T4** Circle/Tag frontend rewiring (~18 files) — **DONE** (`useCircles`/`circleNamesByUid`) | 4 | L | T3 | WP-84c-iii |
-| 8 | **T25** Known small functional gaps sweep — **DONE** (address-component passthrough + round-trip test) | 3 | S | — | Tier 0 notes |
-| 8b | **T26** Delete semantics — purge job + constraint fixes | 3 | M | — | new (design, 2026-07-30) |
-| 9 | **T1** Household CRUD + suggestion trigger + review wiring — **DONE** (`HouseholdsPage.tsx`) | 3 | M | — | WP-83, §3d WP3 |
-| 10 | **T20a** Preferences — migrate `FoodPreference`, project `hobby` — **DONE** (`Contact.FoodPreference` retired) | 3 | M | — | `92.6`, `91.9` |
- | 11 | **T6** Custom fields v2 — API surface — **DONE** (`d82f2c5`) | 3 | M | — | WP-84b, `94` |
- | 12 | **T7** Custom fields v2 — frontend, backfill, retire v1 — **DONE** (`b25a613`, `c609c32`) | 3 | L | T6 | WP-84b, `94.6` |
-| 13 | **T9** WP-97 selective field export + sensitivity gating — **DONE** | 3 | L | — | `92.6b` |
-| 14 | **T12a** Activity/LifeEvent sync primitives (ETag) — **DONE** (both carry `etag`) | 2 | S | — | `92.3` prereq |
-| 15 | **T24** Non-critical test-coverage expansion — **substantially done** (`aaafbb3`, `207b407`); see the 2026-08-04 note | 2 | M | — | Tier 6, `45` |
-| 16 | **T8** OpenAPI coverage + spec/route drift test — **DONE** | 2\* | M | T1–T7 | `92.9` |
-| 17 | **T17** WP-92 change feeds + cursor pagination — **DONE** | 2\* | M | T8 | `92.5` |
-| 18 | **T23** UI polish — typography, icons, strings — **DONE** (fonts self-hosted, MDI added, copy fixed) | 4 | M | *(soft: all UI done)* | Tier 6 |
-| 19 | **T22** Legacy / dead-code audit + migration squash — **DONE** | 3 | L | all above | Tier 6 |
-| 20 | **T27** Contact CRM.Kind UI — pet/individual/animal dropdown — **DONE** (`826aca7`) | 3 | S | — | T22 audit finding |
-| 21 | **T28** Mobile contact view layout — scrollable tabs, action collapsing, 360px min-width — **DONE** | **5** | M | — | T23 polish |
-| | **→ ALPHA v0.1.0 — shipped** | | | | |
-
-\* T8/T12a/T17 are rated on user-visible value. **If a mobile client is real they are 4s**; if it never
-happens, T17 in particular is pre-alpha work buying nothing. See the open question below.
-
-### After alpha
-
-| # | Ticket | R | Size | Depends on | Source |
-|---|---|---|---|---|---|---|
-| 22 | **T19** WP-94 CadencePolicy + relationship health — **DONE** (`cb88826`) | **5** | L | T5 | `92.6`, `91.10` |
-| 23 | **T21** WP-96 ConversationAgenda | 4 | M | T5 | `92.6`, `91.11` |
-| 24 | **N2** Prep view / person briefing screen — **DONE** | **5** | M | T5, T19, T21 | new (gap) |
-| 25 | **T10** WP-85 graph traversal + multi-hop chains — **DONE** | 2 | M–L | — | `92.2` |
-| 26 | **T11** WP-86 search synonyms, household scope, FTS5 — **DONE** | **5** | L | T10, T1 | `92.2` |
-| 27 | **N8** 2FA / TOTP enrollment | 3 | M | — | new (gap) |
-| 28 | **N6** Full backup **restore** (export exists; import is contacts-only) | 3 | M | — | new (gap) |
-| 29 | **N5** Bulk operations (tag / circle / archive / delete) — **DONE** | 3 | M | T4 | new (gap) |
-| 30 | **T20b** WP-95 Gift tracking — **DONE** (implemented; commit pending) | 3 | M | T5 | `92.6`, `91.11` |
-| 31 | **N7** File / document attachments per contact | 3 | M | — | new (gap) |
-| 32 | **N9** Notification channels beyond email (ntfy/Gotify/push) | 3 | M | — | new (gap) |
-| 33 | **P1** Contact sharing — one-time filtered copy — **DONE** | 3 | M | T9 | Tier 5 |
-| 34 | **T14** WP-89 external-link substrate — **DONE** | 2 | M | — | `92.4`, `91.12` |
-| 35 | **T15** WP-90 Immich level 1 (linking) — **DONE** | 3 | M | T14 | `92.4` |
-| 36 | **T16** WP-91 Immich level 2 (enrichment) — **DONE** | 3 | M | T15 | `92.4` |
-| 37 | **T18** WP-93 event history / audit trail | 2 | L | T17 | `92.5` |
-| 38 | **T12b** WP-87 serve Interactions/LifeEvents as CalDAV | 2 | L | T12a, T5 | `92.3` |
-| 39 | **T13** WP-88 two-way calendar sync ⚠ policy call | 2 | M–L | T12b | `92.3` |
-| 40 | **P1b** Contact sharing — standing/live share + permissions | 2 | XL | P1 | Tier 5 |
-| 41 | **P2** Other integrations (Dawarich, Jellyfin, Paperless-ngx, …) | 2 | — | T14 | `92.7` |
-| 42 | **P3** AI / Ollama layer | 1 | — | most of the above | `92.7`, `90` D1 |
-| 43 | **P4** Local-model code-gen pilot | 1 | — | mobile client work | `80` |
-| 44 | **T29** Contact field gaps — neutral-model richness not yet in frontend UI — **DONE** | **5** | L | — | new (field-gap audit) |
-
-### ⚠ The ordering rules produce an alpha with no rating-5 capability in it
-
-Worth stating plainly, because it is a consequence of the rules rather than a judgment anyone made:
-**all three R5 capabilities — T19 cadence, T11 search, N2 prep view — land *after* alpha**, because rule 2
-places the line by *risk* and all three are additive/safe to defer. N1 contact merge is the only R5 inside
-alpha. So alpha as ordered above is a good place to *put* data without yet containing the reasons to
-*use* it — which is a problem, since alpha exists to generate real usage.
-
-**Recommendation (not applied — rules were followed as given): pull T19 forward, leave T11 where it is.**
-T19 is the product's reason to exist ("who have I not talked to in too long"), its only dependency (T5) is
-already pre-alpha, and its value is immediate on day one of real use. T11's value, by contrast, *scales
-with data volume* — searching a few weeks of alpha notes is not the problem; searching five years of them
-is. So deferring search is principled, while deferring cadence guts the alpha. N2 prep view then becomes
-partially available (it degrades gracefully without T21's agenda items).
-
-### Considered and deliberately not ticketed
-
-Reviewed against Monica's feature set and rejected, with reasons, so they don't get re-raised:
-
-- **Tasks** (R2) — deliberately delegated to an external manager: `92.6`/WP-94 routes overdue cadence to
-  Vikunja via webhook rather than building a task system. A legitimate architecture choice, not an omission.
-- **Debts / money owed** (R1) — Monica has it; niche enough to not belong in this product.
-- **Conversation/message log** (R2) — already covered: `Activity.Type` includes `message`, and Activities
-  support multiple contacts.
-- **Introduction chain / "who introduced us"** (R2) — mostly covered by `HowWeMet`; if wanted, it is a
-  registry token in `relationship_type_registry.go`, not a feature.
-- **Standalone journal as it exists today** (R1) — superseded by N4 rather than kept. See N4's detail.
-
-### Open questions that change the ordering
-
-1. **Is a mobile client actually going to happen?** It re-rates T8, T12a, and T17 from 2 to 4 and
-   justifies their pre-alpha placement. If not, T17 especially should move past alpha. `92.9` and `80`
-   both assume mobile eventually; nothing has committed to it.
-2. **Keep i18n across 5 locales?** (R2) Inherited from Meerkat. Every user-facing string in every ticket
-   above costs 5 translations — a real, permanent drag (§3d WP3 paid it). Defensible for a shared fork,
-   hard to justify for a one-or-two-person instance. Worth a deliberate keep-or-drop rather than default.
-
-**Alpha cut line — decided 2026-07-30.** Phase C was originally a single block of 12 tickets sitting
-between the working app and alpha, which put alpha a long way out for capability depth (search, CalDAV,
-Immich, sync, cadence) layered onto a CRM that would already work without any of it. Each Phase C ticket
-was then classified by whether it *changes the shape of data or contracts that alpha will populate*, and
-only three came back yes — so Phase C is split, and alpha now cuts after **A + B + C-pre + D**.
-
-The classification, with the evidence behind it (checked against the code, not inferred from the WP text):
-
-| Ticket | Verdict | Why |
-|---|---|---|
-| T12a ETag primitives | **pre** | `ETag` exists only on `Contact`/`ContactSubscription`. `Activity` got `UUID` in WP-84 but no ETag; `LifeEvent` has neither. CalDAV needs a per-resource ETag, so this is an additive column + backfill on `activities` — same shape as WP-84's own `activities.uuid` backfill (migration `000030`), a proven pattern here. Split out of WP-87 so the cheap schema half lands pre-alpha without dragging a whole CalDAV server with it. |
-| T17 change feeds | **pre** | Not a data risk — an **API-contract** risk. Every list endpoint returns offset-shaped `{total, page, limit}`; WP-92 explicitly replaces that with cursors ("not offset — for large histories"). Free to break while we are the only consumer; a versioning scheme once anything external depends on it. Also interacts with T8 — publishing the OpenAPI spec and *then* flipping pagination means publishing the contract twice. |
-| T20a Preferences | **pre** | WP-95's "migrate `FoodPreference`" moves a live, populated field that spans 13 files (model, `contactmodel` envelope, `contact_record`/`_reverse`, import, CSV export, 5 frontend files) into a new entity. Structurally the *same* migration as `Contact.Circles`→Circle/Tag, which is already pre-alpha as T2 — doing one before and one after would be incoherent. |
-| T10 graph traversal | post | Pure read layer: recursive CTEs over `relationship_edges`, inferred relations "computed, not stored" per `92.2`. Zero schema. |
-| T11 search + FTS5 | post | No FTS5 anywhere today, so this adds virtual tables + triggers + an index backfill — but that index is *derived*, rebuildable from source at any time. A post-alpha build is a re-runnable index job, not a destructive migration. |
-| T12b CalDAV serve | post | Once T12a's primitive exists, serving is read-side and additive. |
-| T13 two-way sync | post ⚠ | Additive, but carries a real policy call — see its detail below. Gated behind T12b anyway. |
-| T14–T16 substrate + Immich | post | All-new tables; nothing existing changes. `Activity.ExternalRef` is already in place waiting for it (WP-84). |
-| T18 audit trail | post | Pure-additive new log table. The cost of deferring is not risk but **lost history** — an audit log only knows what happened after it is switched on, so alpha-period undo/debugging is unrecoverable. A judgment call, not a hazard. |
-| T19 cadence | post | New `CadencePolicy` table; health is derived from the timeline, not stored. **Better deferred** — cadence computed against a real interaction history is immediately meaningful, whereas pre-alpha it computes over nothing. `Activity.Qualifying()` already exists and has had no consumer since WP-84. |
-| T20b gift tracking | post | New entity, unrelated to T20a's migration — which is why WP-95 was split. |
-| T21 agenda | post | New entity, contact-view surface. Additive. |
-
-## Ticket detail
-
-### T1 — Household CRUD API + suggestion trigger + review wiring
-
-**What's necessary.** `controllers/household_controller.go` following `circle_controller.go`'s idiom
-exactly, including real nested member sub-resources (`POST/DELETE /households/:id/members`) rather than a
-bulk-replace field, and a `409 ErrAlreadyExists` on duplicate add — that precedent is already set. A
-dedicated trigger endpoint (e.g. `POST /households/:id/suggest-relationships`) that calls the existing
-`services.GenerateHouseholdSuggestions` and persists the returned `status: suggested` edges idempotently.
-Routes in `routes.go`. Tests including a real-DB one (`database.InitDB`, not `AutoMigrate` — this repo's
-recurring GORM-column-tag bug class). Frontend: a household management surface (create, name, type, add/
-remove members) plus whatever wiring makes generated suggestions appear in `RelationshipEdgeList`'s
-already-built suggested section.
-
-**Why here.** Highest payoff-per-unit-effort of anything remaining: the review UI, the suggestion engine,
-and the edge model all already exist and are tested — this ticket is the missing connective tissue
-between them. It is also the project's first live use of the propose-then-approve pattern that `92.7`
-says the eventual AI layer must reuse.
-
-**Watch for.** Split backend-first if it runs long, but note that a backend-only T1 does not satisfy the
-ticket's own purpose (reachability), so the minimal UI is in scope, not optional.
-
-### T2 — Circle/Tag user-assisted triage migration
-
-**What's necessary.** A UI that walks every distinct existing `Contact.Circles` string and has the user
-classify each as a `Circle` (a group you belong to) or a `Tag` (a label), then writes real `Circle`/`Tag`
-+ membership rows via the CRUD API that already exists. `91.5` is explicit that this must **not** be an
-automated heuristic — "a light user-assisted step" is the requirement, so a mapping-by-guess
-implementation fails this ticket. Dry-run/preview before committing, matching the discipline of every
-other migration in this repo.
-
-**Why here.** This is the half of P5's acceptance gate that has never run. It must precede T3/T4 because
-those switch reads over to the new tables — doing them first would read empty tables.
-
-### T3 — Circle/Tag backend call-site rewiring
-
-**What's necessary.** Move the ~5 backend sites still reading/writing flat `Contact.Circles` onto the real
-entities: `contact_controller.go`'s `GetCircles` and its `json_each`-based JSON-array filtering, and
-`import_service.go`'s circles/tags/groups/labels synonym-mapping. That last one needs real thought rather
-than a find-and-replace: it currently maps **all four** of those vocabularies onto the single flat
-`circles` field, and now that `Tag` exists as a distinct destination the mapping has to split by target,
-not just change where it writes.
-
-### T4 — Circle/Tag frontend rewiring
-
-**What's necessary.** The ~18 frontend files consuming `circles` as a flat string array — chips, filters,
-graph nodes, dashboard, import dialog — move onto the Circle/Tag entities and their CRUD API. Retire the
-flat field once nothing reads it.
-
-**Why here.** Largest single frontend surface left. Completing it closes P5's acceptance gate outright.
-
-### T5 — LifeEvent frontend + timeline surface
-
-**What's necessary.** `api/lifeEvents.ts`, a contact-detail surface for viewing/creating/editing life
-events, and integration into the timeline (`91.8`) alongside notes and activities. `PartialDate` rendering
-needs care — year-only and month-day-only values are both legal and already round-trip correctly on the
-backend.
-
-**Why here.** CRUD routes already exist and are tested; this is pure activation. It also unblocks T12
-(CalDAV serves LifeEvents out), T19, T20, and T21, all of which read the timeline as source of truth.
-
-### T6 — Custom fields v2, API surface
-
-**What's necessary.** CRUD controllers + routes for `FieldDefinition` and `FieldValue`, wiring the
-existing `services.ValidateFieldValue` type-dispatch into the write path, and honoring `91.13` sensitivity
-on read. The model, validation, standards projection, and the `cmd/backfill-custom-fields` migration tool
-all already exist and are tested — none of that needs rebuilding.
-
-### T7 — Custom fields v2 frontend, backfill run, retire v1
-
-**What's necessary.** Replace `CustomFieldsSettings.tsx` and the other v1 consumers
-(`ContactInformation.tsx`, `AddContactDialog.tsx`, `ContactsPage.tsx`, `api/users.ts`, `api/contacts.ts`)
-with the typed v2 equivalents, including per-type input rendering and the `FieldConstraints.Multi` list
-case. Then run `cmd/backfill-custom-fields` for real (dry-run first — note its documented two-pass
-limitation: a dry run against a fresh DB cannot show pass-2 successes), and retire the v1
-`User.CustomFieldNames` + `Contact.CustomFields` columns and their CSV-export path.
-
-**Why here.** v1 is what's actually live today; v2 is the unreachable parallel implementation. Leaving
-both is exactly the "layer a new representation on top, bridge them, defer removal" pattern that T22
-exists to clean up — so finish the cutover rather than adding to that pile.
-
-### T8 — OpenAPI coverage + spec/route drift test
-
-**What's necessary.** `openapi.yaml` currently documents **13 of ~70** route patterns — contacts, export,
-import, and contact-subscriptions only. Everything else (activities, notes, reminders, circles, tags,
-life-events, relationship-edges, households, graph, webhooks, calendars, api-tokens, users, admin) is
-undocumented. Document them in the style WP-71 established for contacts, and add a test that fails when a
-registered route has no spec entry, so this cannot silently rot again.
-
-**Why here.** `92.9` makes this binding, not cosmetic: every new entity is supposed to get
-summary/detail/OpenAPI treatment so a future mobile client targets one coherent spec rather than a
-patchwork. Scheduled after T1–T7 so it documents the finished surface once instead of twice, but the
-drift test is worth adding as soon as it's convenient.
-
-### T9 — WP-97 selective field export + sensitivity gating
-
-**What's necessary.** Full scope is in `92.6b` and should be read directly — it is unusually well
-specified, including two user clarifications. Summary: a coarse-grained field-selection model over
-`contactmodel.Card`'s top-level sections, applied by filtering the `Record`/`Card` **before** it reaches
-an exporter so all three adapters (vCard 3, vCard 4, JSContact) inherit it with zero adapter changes; plus
-a picker UI wired into the existing export flow. Sensitive items (`91.13`) are opt-**in**, ordinary
-categories opt-**out**, same control, opposite default.
-
-**The non-obvious part, already flagged in `92.6b` and worth re-flagging:** the sensitivity override is
-not purely a UI concern. `projectRelationshipEdges` in `models/contact_record.go` enforces
-`Sensitivity: normal` as an unconditional SQL filter with no override parameter — so "include these
-sensitive edges this once" needs a real change there, not just a Card filter sitting in front of an
-otherwise-unchanged projection. Also binding: an unchecked box is explicitly **not** sufficient gating;
-a sensitive item must be visually distinct and behind a deliberate extra action before its control is even
-interactive. This is specified as foot-gun prevention, not decoration.
-
-**Why here.** Depends only on P0 + WP-73, both long done, so it is genuinely pickable at any time. It also
-builds the field-selection model and UI that post-alpha contact sharing (P1) is supposed to reuse rather
-than reinvent.
-
-### T12a — Activity/LifeEvent sync primitives (ETag)
-
-**What's necessary.** An `etag` column on `activities` (and `life_events` if it will be served too),
-generated and refreshed the way `Contact.ETag` already is — `models/contact.go` computes
-`e-{id}-{updatedAt.Unix()}` in its create/save hooks — plus a migration backfilling existing rows,
-following `000030`'s `activities.uuid` backfill precedent exactly.
-
-**Why here, split out of WP-87.** This is the only genuinely schema-shaped part of the CalDAV work, and
-it is small. Splitting it out means the cheap column lands while the tables are empty, without pulling a
-whole CalDAV server implementation (T12b, sized L) in front of alpha to get it.
-
-### T10–T21 — the rest of the P6–P10 capability phases (WP-85 … WP-96)
-
-Scope for each is in `92-delivery-roadmap.md` `§92.2`–`§92.6` and is not duplicated here; that doc remains
-the source of truth. Pre/post-alpha placement and its evidence are in the classification table above.
-Re-groom notes worth carrying:
-
-- **T11 (search).** Household-scoped queries ("everyone in the Smith household") now genuinely depend on
-  T1 — households are unreachable until then, so that half of WP-86 has nothing to query.
-- **T12b (CalDAV serve).** Serves Interactions **and LifeEvents** out, so it depends on T5 for LifeEvents
-  to be real, user-visible objects rather than an API-only entity, and on T12a for the ETag primitive.
-- **T13 (two-way sync) — the one post-alpha ticket carrying a real warning.** Its risk is not schema but
-  **reconciliation policy applied to real data**. `CalendarEventLink` today reconciles one-way via
-  `ContentHash`, with no ETag/If-Match primitive; two-way means deciding what wins when both sides
-  changed. This repo has a precedent that must **not** be inherited by default: `reconcileContactSync`
-  deliberately full-overwrites local edits on remote change (intentional, and pinned by Tier 3c item
-  11a's test). Shipping that same policy onto real synced calendar data would silently discard real user
-  edits. Settle the merge semantics explicitly, and prefer testing against a scratch calendar over a live
-  one.
-- **T14–T16 (Immich).** Substrate first, deliberately, so no integration grows bespoke tables — keep that
-  order even post-alpha. Immich level 3 (bidirectional) stays deferred pending an upstream Immich
-  capability, which is a dependency, not a scheduling choice.
-- **T17 (change feeds).** Depends on T8 in practice: cursor pagination over "the entity APIs" is only
-  meaningful once those APIs are specified, and it should land in the spec at the same time — which is
-  also why it is pre-alpha, so the spec is published once with its final pagination shape.
-- **T19–T21.** All read the timeline (`91.8`), hence the shared T5 dependency. T19 carries the rule that
-  **recording a qualifying interaction resets cadence, not completing a task** — `Activity.Qualifying()`
-  already exists for exactly this and has had no consumer since WP-84.
-
-### T22 — Legacy-representation / dead-code audit + migration squash
-
-**What's necessary.** This ticket *is* the audit — identify candidates, then decide keep/remove/defer per
-candidate, the same methodology Tier 3c item 11 used. Known starting candidates: `Contact.VCardExtra`
-(its own doc comment says `Passthrough` supersedes it "in spirit" but nothing ever confirmed it dead);
-`RelationshipEdge.LegacyRelationshipID` (vestigial since §3d WP5 removed the model it referenced);
-`cmd/backfill-custom-fields` and `cmd/backfill-contact-records` (spent one-shot tools — `cmd/backfill-
-relationship-edges` was already removed in §3d WP5 out of compile necessity); squashing ~35 incremental
-migrations to a single clean baseline; and a broader dead-export sweep (a Go dead-code tool plus a
-frontend unused-export check) rather than assuming the duplicate `Relationship` type §3d found was the
-only instance.
-
-**Why here.** The migration squash in particular is safe **only** while no deployment needs a stepwise
-upgrade path preserved — which is true right up until alpha and false forever after. Placing it at the end
-of Phase D puts it as late as possible while still inside that window, so it sweeps up debt created by
-Phases A–C rather than running before them and missing it.
-
-### T23 — UI polish
-
-**What's necessary.** Treat this as a method, not a checklist: walk the running app flow by flow and fix
-what reads as unpolished. Three calibration examples are recorded in the Tier 6 section — a typography
-audit for consistency/intent rather than inheritance; adding MDI (`@mdi/js`) alongside the existing
-`@mui/icons-material` and using it where it has a better semantic match (notes list, add-note, network
-graph are named starting points), without ripping out every MUI icon; and a copy review, of which the
-Settings page's confusing "Profile" sub-label is the one concrete known instance.
-
-### T24 — Non-critical test-coverage expansion
-
-**What's necessary.** The packages `45-test-coverage-closure.md` never scoped at all: `config` 24.2%,
-`database` 37.8%, `routes` 0%, `errors` 0%, `i18n` (now has its first tests, from item 12), `logger` 0%,
-and the remaining one-shot `cmd/*` tools. Needs a scoping pass to decide which are worth covering versus
-accepted as low-value — `cmd/migrate`'s thin CLI wrapper plausibly isn't. Explicitly **do not** chase the
-percentage for its own sake.
-
-### T25 — Known small functional gaps sweep
-
-**What's necessary.** Small, real, individually-not-worth-a-ticket issues found in passing and recorded
-rather than fixed. The one confirmed instance: `AddressFields`/`toLegacyContact` round-trip only 5 address
-component kinds (street/locality/region/postcode/country), so a CardDAV-imported address using other
-JSContact kinds (apartment, floor, district, …) silently loses them on the next edit-and-save through the
-UI. Narrow — only affects externally-imported addresses with non-standard structure — but it is real data
-loss, and the fix belongs in the adapter (`api/contacts.ts`), not the components. Sweep for others while
-here.
-
-**Why here.** Data-loss bugs should be closed before real data exists, which puts this inside Phase D
-rather than after it.
-
-### N1 — contact merge / dedupe for existing contacts (R5, pre-alpha) — **DONE**
-
-**Done** (2026-07-30, `c7b7e25`). Full detail lives in
-[`docs/fork-plan/tickets/01-N1-contact-merge.md`](tickets/01-N1-contact-merge.md); summary here.
-
-Two corrections to the plan below, found during implementation: **`MergeImportedContact`'s semantics were
-not reused** — its "incoming wins if non-empty" policy overwrites multi-valued fields instead of unioning
-them, which would have silently dropped data on exactly the case this ticket exists to preserve (a
-contact with `home@` merged with one with `work@` would have kept only one). Merge-specific
-union/conflict-resolution logic was written instead (`services.ComputeContactMergeResolution`), and
-`MergeImportedContact` itself is untouched. Second, `FieldValue` — unlike every other association — can't
-be unioned (one value per field per contact), so a collision became its own conflict list rather than a
-silent keeper-wins default, per the user's explicit call when this was scoped.
-
-`DeleteContact`'s cascade-delete checklist was extracted into a shared `deleteContactAssociations` so the
-merge-commit path and the standalone delete path share one canonical list (`CLAUDE.md`'s own warning
-about exactly this drift risk). N1 also closes a known limitation Tier 3c item 1 had accepted for
-deletes: `LifeEvent.RelatedEntityIDs` (a JSON array, not a joined row) is now correctly rewritten when a
-merged-away contact is referenced as a secondary participant on someone else's life event — `DeleteContact`
-still doesn't touch it, which is now the more limited of the two paths.
-
-**Found only by live-browser verification, not by 19 passing mocked/unit tests**: a Go nil slice
-marshals to JSON `null`, not `[]`. Every component test had hand-written `conflicts: []` in its fixture;
-the real backend sends `null` whenever a merge has no conflicts, and the dialog crashed spreading it.
-Fixed by normalizing once where the preview is stored (matching `useRelationshipEdges.ts`'s existing
-`|| []` convention), with a new regression test using the actual null-shape response. Hand-verified twice,
-per this repo's discipline: the union-vs-overwrite fix (revert, confirm the real-DB test fails, restore)
-and the null-slice fix (revert, confirm the new component test fails, restore).
-
-Verified end-to-end: full backend (`go test ./...`) and frontend (`tsc` + `vitest`) suites green, a
-real-DB integration test seeding every association type in one pass, and two full merges run live in a
-browser (including a fresh tab to rule out stale console history) with a clean console and correct audit
-notes on both.
-
-<details>
-<summary>Original scoping (kept for context)</summary>
-
-**The gap.** Duplicate detection exists **only at import time** (`services.DetectDuplicate` +
-`MergeImportedContact`, reachable from the import preview/confirm flow). There is no way to merge two
-contacts that are *already* in the database. Duplicates will arrive continuously from CardDAV sync,
-repeat imports, and manual entry, and today the only remedy is deleting one by hand and losing whatever
-was attached to it.
-
-**What's necessary.** A merge endpoint taking a keep-ID and a merge-ID, plus a UI to pick the pair and
-preview the result. Field-level resolution can reuse `MergeImportedContact`'s already-pinned semantics,
-but the hard part is **everything hanging off the loser**, all of which must move rather than cascade-
-delete: notes, activities (many-to-many via `activity_contacts`), reminders and reminder completions,
-`RelationshipEdge` rows on both `source_id` and `target_id`, household/circle memberships, contact tags,
-`FieldValue` rows, and `ContactSyncLink`. `DeleteContact` in `contact_controller.go` already enumerates
-exactly this set for the delete path — use it as the checklist, and add a real-DB test that a merge
-leaves zero orphans and zero lost associations.
-
-**Why pre-alpha.** Not because building it gets harder later — because *not having it* during alpha
-produces duplicate sprawl across real data that then has to be untangled by hand. The cost lands on the
-data, not the code.
-
-</details>
-
-### T5b — LifeEvent → reminder wiring (R4, pre-alpha)
-
-**The gap.** Birthdays auto-generate reminders (`birthday_service.go` → `GetUpcomingBirthdays`, feeding
-the dashboard widget, the daily email, and the `birthday.occurred` webhook). Life-event dates generate
-nothing, so "work anniversary," "death anniversary," "sobriety date," "wedding anniversary" are inert
-data once entered.
-
-**What's necessary.** Let a `LifeEvent` opt into recurring annual reminders, and surface those through
-the same path birthdays already use rather than a parallel one. Watch `PartialDate`: year-only events
-have no month/day to remind on, so the opt-in needs to be unavailable (not silently broken) for those.
-
-**Why here.** Small, and it completes T5 — shipping life events into alpha without it means alpha
-cannot actually evaluate whether the feature is useful, since the feature does nothing.
-
-### N4 — notes: dead-end journal → capture inbox (R4, pre-alpha)
-
-**The problem, and why this is a re-scope rather than a removal.** The standalone journal rates **1** as
-built: `NotesPage` creates notes via `createUnassignedNote` and passes `allContacts={[]}` to its dialog,
-so a note created there **can never be attached to a contact from the UI**. It is a dead-end diary inside
-a relationship CRM — it feeds nothing in the graph, timeline, or cadence. The "notes about a group" use
-case does not rescue it either, because `Activity` already supports multiple contacts and is the correct
-home for that.
-
-**The re-scope that makes it a 4.** Turn the same page into a **capture inbox**: quick-jot now, file onto
-a contact later. That targets the actual friction in a personal CRM — the useful detail always arrives
-when you are nowhere near the contact record. The backend already supports it (`UpdateNote` sets
-`ContactID`; the column is a nullable `*uint`); only the UI withholds it.
-
-**What's necessary.** Surface an unfiled-notes inbox with a visible count, add contact assignment to the
-edit path on that page (pass real contacts instead of `[]`), and let a filed note leave the inbox. Decide
-whether unfiled notes should nag (a badge) or sit quietly — an inbox nobody triages is the same dead end
-in a different shape.
-
-**Why pre-alpha.** Shipping the dead-end version into alpha generates exactly the pile of unfilable
-orphan notes the inbox exists to prevent.
-
-### N2 — prep view / person briefing screen (R5, post-alpha)
-
-**The gap, and why no existing ticket covers it.** Every ingredient is planned and none of them assemble:
-T5 gives life events, T19 gives cadence/overdue, T21 gives agenda items, and the timeline plus notes
-already exist. But nothing owns the screen you actually want *before you see someone*: last interaction
-and what was discussed, their kids' and partner's names from the graph, food preferences, open agenda
-items, upcoming dates, and how overdue the relationship is. This is the difference between a database and
-a relationship OS, and it is currently nobody's job.
-
-**What's necessary.** A single assembled view on the contact page (or a dedicated pre-meeting mode)
-composing the above from existing entities. Almost no new persistence — this is a read-side composition
-ticket, which is why it stays M despite being R5.
-
-**Why post-alpha.** Dependency, not value: it needs T19 and T21 to be complete. It degrades gracefully,
-so a reduced version could ship as soon as T19 lands.
-
-### N5–N9 — smaller gaps found in the Monica comparison (all post-alpha)
-
-| # | Ticket | What's necessary |
-|---|---|---|
-| **N5** | Bulk operations (R3, M) | Multi-select on the contacts list → bulk add/remove circle or tag, bulk archive, bulk delete. Depends on T4 so it operates on real Circle/Tag entities rather than the flat field. Matters once the list runs to hundreds. |
-| **N6** | Full backup restore (R3, M) | Export is complete (CSV with every section, VCF, JSContact) but **import is contacts-only**, so an exported instance cannot be restored. Either extend import to cover notes/activities/reminders/relationships/custom fields, or ship a documented SQLite file-level backup/restore procedure and explicitly declare app-level restore out of scope. Cheapest honest answer may be the latter. |
-| **N7** | File / document attachments (R3, M) | Per-contact file storage — reuse `photostore`'s on-disk pattern and `config.ProfilePhotoDir`'s precedent rather than inventing a second storage mechanism. Remember it expands the backup surface beyond the SQLite file. |
-| **N8** | 2FA / TOTP (R3, M) | No second factor exists today — password or OIDC only. Additive: a secret + recovery codes on `User`, enrollment UI, and a verification step in the login path. **Rate 4 if the instance is internet-exposed rather than behind a VPN/tailnet.** Note that Tier 1's security review did not flag this, so it is a genuine new finding rather than an accepted risk. |
-| **N9** | Notification channels beyond email (R3, M) | Reminders are email-only (`mailer.go`/`email_renderer.go`), which suits self-hosters poorly. Webhooks (already built) cover this crudely; a first-class ntfy/Gotify/push target does it properly. |
-
-### P1 / P1b — contact sharing between users
-
-**Re-sized 2026-07-30 from XL to M, and split.** The old XL was not wrong so much as *answering a
-different question*: Tier 5's own text below imagines a **standing, live, permissioned share** —
-"data model for shared-vs-private fields, permission model," a share that re-syncs and re-confirms
-"on every field newly marked sensitive after the share was created." That is genuinely XL. But the
-near-term feature is much smaller, and conflating them inflated the ticket.
-
-**P1 — one-time filtered copy (M).** Sender picks a contact and a field selection, the system emits a
-filtered copy, the recipient accepts and it lands in their account. Almost every piece already exists:
-
-| Step | What it reuses |
-|---|---|
-| Field selection + filtering | T9/WP-97's picker and its `Record`/`Card` filter function — built to be reused here, not reimplemented (`92.6b` says so explicitly) |
-| Serialize the filtered record | `jscontact.Adapter{}.Export(record)`, already the engine behind `ExportContactsAsJSContact` |
-| Parse on accept | `services.ParseJSContact` — already exists, already feeds the shared import path |
-| Duplicate detection + preview | `services.DetectDuplicate` + the existing import-session preview/confirm flow |
-| Write into the recipient's account | `MergeImportedContact` / `ApplyRecordToContact`, the one shared Record→Contact writer |
-
-So the genuinely **new** surface is small: a `ContactShare` entity (from-user, to-user, payload, status
-pending/accepted/declined), create/list/accept/decline endpoints, and two frontend pieces — a share
-dialog wrapping T9's picker, and an incoming-shares inbox. That is M, not XL.
-
-**Safe post-alpha? Yes — additive, with one decision to make deliberately.** It adds a new table and
-changes no existing shape, and unlike T13 the write path is user-initiated per acceptance with an
-explicit preview, not a background sync. The decision worth making consciously rather than inheriting:
-**what accepting a share does when the recipient already has that person.** `MergeImportedContact`'s
-policy is "incoming wins if non-empty, existing survives if blank" (confirmed and pinned by Tier 3c item
-11c) — which may be wrong here, since a shared copy arguably should not overwrite the recipient's own
-notes and edits on someone they already track. Decide create-new vs. merge-into-match vs. ask, rather
-than defaulting into the import path's existing behavior.
-
-**One product caveat that is not a technical one.** The stated use case is two users on the same
-instance, e.g. spouses. If alpha *is* that scenario, sharing may be a headline feature of alpha rather
-than a follow-on — in which case pull P1 forward for product reasons, not safety ones. Technically it is
-safe either side of the line.
-
-**P1b — standing/live share + permission model (XL, deferred).** Everything Tier 5's section below
-describes beyond the one-time copy: persistence for a live share, the shared-vs-private field model, the
-permission model, and re-confirmation when a field is newly marked sensitive after the share exists.
-Needs its own design pass before it can be broken into WPs. Do not start it as part of P1.
+> **11 new tickets filed 2026-08-04** (T30–T40) from a real-world v0.2.0-alpha testing pass — bugs and
+> gaps found using the deployed app, not design speculation. All are "after alpha" by construction (real
+> data already exists, so the old pre/post-alpha cut line is moot — see `CLAUDE.md`'s framing update);
+> ordered in `tickets/README.md` by rating then size per the existing rules. Two decisions worth surfacing: **T34** (tappable
+> contact fields) is a deliberate exception to the frontend-hardcoded-registry convention — messaging/social
+> link types are user-configurable (a real `LinkFieldType` CRUD entity), confirmed with the user, because a
+> personal CRM's contact-linking needs vary too much per user to hardcode; phone/email stay hardcoded since
+> those are universal. **T36** (life event categories) — an initial check against the current
+> `monicahq/monica` GitHub source turned up a different, lower-stakes seed (4 categories, ~20 day-to-day
+> entries) and the ticket briefly assumed the user's 43-item/5-category recollection didn't match
+> upstream; the user then supplied the actual list directly, which matches exactly (5 categories, 43
+> items) — the ticket now uses that real list verbatim, not a from-scratch substitute.
+
+## How to read what's below
+
+The board and per-ticket scope write-ups that used to live in this section moved to
+[`docs/fork-plan/tickets/README.md`](tickets/README.md) (2026-08-04) — that file is now the only place
+ticket status/ordering/rating lives. What follows in *this* file, starting at "Tier 0" below, is the
+**dated engineering journal** predating the ticket system: the security review, the P5 core-model build
+(WP-80..84c), the rebrand, and the Tier 3/4/5/6 audits and hardening passes, each already marked DONE where
+finished. Kept for institutional memory (the *why* behind decisions, and real bugs found + how they were
+fixed) — not read for current status. `92-delivery-roadmap.md` remains the source of truth for a WP's
+detailed scope where a ticket references one.
 
 ## Tier 0 — DONE: WP-72 frontend nested-model remodel
 
@@ -992,15 +462,17 @@ reaches `filepath.Join` unguarded on the delete path, but is only ever set to a 
 so it is not reachable (**Tier 3c**). `golang.org/x/crypto`'s `openpgp` subpackage carries a standing
 advisory with no fixed version; govulncheck confirms it is not called (**Tier 3c**, CVE sweep).
 
-## Tier 2 — IN PROGRESS: P5 core relationship & event model (WP-80..84c backend slice done)
+## Tier 2 — DONE: P5 core relationship & event model (WP-80..84c, backend + the deferred triage/frontend
+half both landed — see tickets T2/T3/T4 in `tickets/README.md`)
 
 Full detail already lives in `92-delivery-roadmap.md §92.1` — not duplicated here. Hard gate: nothing in
 P6+ starts until this is green, since search, timeline, cadence, and integrations all read these
-entities. **Not yet fully green**: `92.1`'s own P5 acceptance line requires "legacy relationship + circle
-data migrated (dry-run-verified)" — the relationship half is done (WP-81), but the circle half needs the
-user-assisted triage UI that was split out of WP-84c and re-filed under Tier 4 (see that section) — so P5's
-hard gate technically waits on a piece of Tier 4 work, not just Tier 2 work. Worth keeping in mind when
-re-grooming: P6+ isn't actually unblockable purely by finishing what's left in this tier's own list.
+entities. **Now fully green.** `92.1`'s own P5 acceptance line required "legacy relationship + circle
+data migrated (dry-run-verified)" — the relationship half was done at WP-81; the circle half needed the
+user-assisted triage UI split out of WP-84c, which landed as [T2](tickets/05-T2-circle-tag-triage.md)
+(2026-08-04), with the backend/frontend rewiring following as
+[T3](tickets/06-T3-circle-tag-backend.md)/[T4](tickets/07-T4-circle-tag-frontend.md). P5's acceptance
+gate is closed.
 
 **WP-80 — DONE (`cc67a07`, merged to `main` `c8fdc1f`, 2026-07-28).** Relationship graph entity
 (`RelationshipEdge`, `models/relationship_edge.go` — the first UUID-string-primary-key entity in this
@@ -1360,195 +832,30 @@ missing functionality that has to be built before the old functionality can go.
 Not required for this WP: no live data migration run (WP-81's tool exists for a real carryover if ever
 needed later, but there's no production data to carry over now).
 
-## Tier 4 — P6–P10 (search, CalDAV export, external links/Immich, sync, relationship-maintenance)
+## Tier 4/5/6 — superseded by the ticket board; detail moved into each ticket's own Shipped note
 
-> **Superseded as a plan by the ticket board (2026-07-30); retained for detail.** These WPs are now
-> tickets T10–T21 (Phase C), and this tier's two "exceptions" were promoted out of it: WP-97 is T9
-> (Phase B) and WP-84c's deferred half is T2/T3/T4 (Phase A), reordered ahead of the P6–P10 work.
+These three tiers (P6–P10 capability work; contact sharing; the alpha-readiness polish/audit gate) were
+originally written here as forward-looking plans, then marked "superseded by the ticket board, retained
+for detail" once the ticket system existed. That detail has since been copied into each landed ticket's
+own `## Shipped` section (2026-08-04), so keeping a second copy here stopped pulling its weight — read the
+ticket file, not this section, for what actually happened. Pointers, not a summary:
 
-Unchanged from `92-delivery-roadmap.md §92.2–92.6` — gated behind Tier 2 (P5) by that doc's own hard
-gate. See that file for the full WP breakdown and dependency graph (`§92.8`).
-
-**Exception: WP-97, selective field export (vCard 3/4, JSContact)** (`92-delivery-roadmap.md §92.6b`,
-added 2026-07-29 at the user's request — Google Contacts' "choose fields to export" is the reference).
-Depends only on P0 + WP-73 (both done), **not** on P5's graph work, so it is not actually gated behind the
-rest of this tier and could be picked up independently whenever convenient. Its field-selection UI and
-filter function are meant to be **reused, not rebuilt**, by Tier 5 below.
-
-**Exception: WP-84c's deferred frontend/migration half** (split out 2026-07-29 — the backend CRUD slice of
-WP-84c is done, see Tier 2 above). Three pieces, likely worth splitting further when picked up rather than
-doing as one PR, given how large WP-84's own frontend blast-radius estimate was:
-1. A user-assisted triage UI for classifying each existing `Contact.Circles` string as a `Circle` or a
-   `Tag` (§91.5 is explicit this must not be an automated heuristic) — this is also the piece Tier 2/P5's
-   own acceptance criteria is technically still waiting on (see the note in that section).
-2. Rewiring the ~5 backend call sites still reading/writing the flat field directly: `contact_controller.
-   go`'s `GetCircles` and its `json_each`-based JSON-array filtering, and `import_service.go`'s
-   circles/tags/groups/labels synonym-mapping (which currently maps ALL of those onto the one flat
-   `circles` field — once Tag exists as a real destination, this mapping needs to split by target, not just
-   change where it writes).
-3. Rewiring the ~17 frontend files currently consuming `circles` as a flat string array (chips, filters,
-   graph nodes, dashboard, import dialog) to use the new Circle/Tag entities and their CRUD API instead.
-
-## Tier 5 — Contact sharing between users (standalone, big)
-
-> **Superseded as a plan by the ticket board (2026-07-30); retained for detail.** **Split into P1 and
-> P1b, and re-sized.** What this section describes — a standing, live, permissioned share — is P1b and
-> is genuinely XL. But the near-term feature is a **one-time filtered copy** (P1), which is only **M**:
-> the sender's field selection reuses T9/WP-97's picker and filter, serialization reuses the existing
-> JSContact export adapter, and the recipient's accept path reuses `ParseJSContact` + `DetectDuplicate` +
-> the existing import preview/confirm flow. The genuinely new surface is a `ContactShare` entity, four
-> endpoints, and two frontend pieces. See P1's ticket detail for the reuse map and the one merge-policy
-> decision it must make deliberately.
-
-Two users on the same instance (e.g. spouses) should be able to share contacts directly — opting which
-fields to include — rather than round-tripping through lossy VCF export/import. Explicitly a "revisit on
-the roadmap at some point" item per the user, not scheduled. Comparable in scope to a P8-or-later phase;
-needs its own design pass (data model for shared-vs-private fields, permission model) before it can be
-broken into WPs.
-
-**The "opting which fields to include" half is already scheduled**: Tier 4's WP-97 (above) builds a
-reusable field-selection UI and filter function for export, at the user's explicit request that the same
-system be reused here rather than built twice. When this tier gets its design pass, start from WP-97's
-selection model/UI and add the sharing-specific parts (persistence for a live share vs. a one-time export,
-and the permission model) rather than re-deriving field selection from scratch.
-
-Also carries WP-97's sensitivity-default rule (see `92-delivery-roadmap.md §92.6b`): sensitivity-marked
-relationships/tags/life-events (`91.13`) default excluded from a share, with an explicit per-share opt-in
-override — arguably higher-stakes here than for a file export, since sharing hands the data to a specific
-other person on the instance, not just out to a file. Worth confirming this default still feels right once
-this tier's permission model exists (e.g. whether a standing/live share should re-apply the default on
-every sync, or only at share-creation time).
-
-Carries WP-97's foot-gun-prevention requirement too, and it matters *more* here than for export: a
-sensitive item must be gated behind a deliberate extra action before it's even selectable for a share, not
-just unchecked by default — a misclick here doesn't just produce an unwanted file, it discloses the data to
-another live person on the instance, likely without either party noticing until later. If this tier ends
-up supporting a *standing* share (auto-syncing, not a one-time send), the gating should arguably re-confirm
-on every field newly marked sensitive after the share was created, not just at creation time — flagged here
-as a design question, not decided.
-
-## Tier 6 — Polish (UI + non-critical test coverage)
-
-> **Superseded as a plan by the ticket board (2026-07-30); retained for detail.** Now tickets T22–T25,
-> Phase D. **Re-framed by the user on 2026-07-30 and worth stating plainly, because the wording below
-> gets it wrong:** this tier is not "polish someday" — it is the **alpha-readiness gate**, the cleanup /
-> validation / polish that makes Mycorrhizal ready for actual use, after which it goes into alpha and
-> real data starts existing. That also settles the intra-tier ordering debate recorded below: the
-> dead-code audit's "window closes once production data exists" concern is real but not urgent, since
-> production data arrives *after* this entire tier, not during it. T22 is therefore scheduled at the
-> **end** of Phase D — as late as possible while still inside the safe window — so it also sweeps up
-> whatever debt Phases A–C create, rather than running first and missing it.
-
-Explicitly last priority — polish after everything else (Tiers 1–5) is ready, per the user's own framing.
-Originally UI-only (fonts/icons/strings); broadened 2026-07-29 to also carry non-critical test-coverage
-expansion, and broadened again same day to carry a legacy-representation/dead-code audit (see below,
-scheduled *first* within this tier — unlike the other two Tier 6 items, its window closes once real
-production data exists, so it shouldn't sit behind UI polish indefinitely even though the tier itself is
-still last-priority overall). *(That last parenthetical is the part the 2026-07-30 re-framing corrects —
-see the note above.)*
-
-### Legacy-representation / dead-code audit
-
-Added 2026-07-29, prompted by §3d: that item started as a small `GetGraph` rewire and turned out to be a
-whole legacy subsystem (`models.Relationship`) still doing real work years after its replacement
-(`RelationshipEdge`) existed, because this fork's build pattern across WP-80→84c was consistently "layer a
-new representation on top of the old one, bridge them, defer full removal" — new nested `Card`/`CRM`/
-`Passthrough` alongside legacy flat fields, typed `FieldValue` alongside the old `CustomFields` map, and so
-on. **Given no production data exists yet, this is the cheapest point at which to sweep for other instances
-of the same pattern and remove what's safe to remove** — every session after a v0.1 pre-release cut makes
-this more expensive (real data to migrate, real upgrade paths to preserve).
-
-**T22 audit complete (2026-08-02).** Dispositions per candidate:
-
-1. **`Contact.VCardExtra`** → **KEPT.** Still authoritative for CardDAV export of unmapped vCard
-   properties in `carddav/vcard_mapper.go:184-197` (`ContactToVCard`). The CardDAV import path
-   (`VCardToContact`) still writes to it. Removing it requires updating the CardDAV export path
-   to read from `Passthrough.VCard` instead — non-trivial work, deferred to a dedicated ticket.
-
-2. **`RelationshipEdge.LegacyRelationshipID`** → **REMOVED.** Zero application code read it.
-   The `gorm:"uniqueIndex"` tag, the column, and the partial unique index from migration 000028
-   are all gone. The field was deleted from the model; migration 000028 deleted; the column
-   excluded from the squashed baseline.
-
-3. **Backfill tools** → **REMOVED.**
-   - `cmd/backfill-contact-records` — one-shot WP-70 tool. Deleted.
-   - `cmd/backfill-preferences` + `services/preference_migration.go` — one-shot T20a tool and
-     its service function. Deleted. The `contacts.food_preference` column is also excluded from
-     the squashed baseline.
-   - `cmd/backfill-custom-fields` — already removed by T7 (commit `b25a613`).
-   - `cmd/backfill-relationship-edges` — already removed by §3d WP5 (commit `b1425b2`).
-
-4. **Migration squash** → **DONE.** 43 incremental migrations squashed to a single
-   `000001_initial_schema.up.sql`/`.down.sql` pair. The squashed baseline:
-   - Excludes `food_preference` and `legacy_relationship_id` columns.
-   - Carries T26's partial unique index (`idx_contacts_vcard_uid_user WHERE vcard_uid IS NOT
-     NULL AND deleted_at IS NULL`).
-   - Carries T5's `life_events.deleted_at`.
-   - Produces byte-for-byte identical schema to the pre-squash chain (verified via schema dump
-     comparison).
-   - **Decision: recreate from scratch.** The golang-migrate version numbering changes (43→1),
-     so any DB that ran the old chain must be deleted and recreated. Acceptable: no production
-     data exists.
-
-5. **Dead/duplicate scaffolding** → **DONE.** Both backend and frontend swept:
-
-   *Backend (removed):*
-   - `models/relationship_edge.go`: removed `LegacyRelationshipID` field (vestigial).
-   - `services/preference_migration.go` + test: removed (one-shot, dead after CLI deletion).
-   - `controllers/preference_real_db_test.go`: removed (tested deleted function).
-   - Fixed `staticcheck` SA4010 in `cursor_feed_test.go` (dead append result).
-   - Fixed `staticcheck` S1008 in `life_event_controller.go` (simplified boolean).
-   - Fixed `gofmt` in `models/household.go`.
-
-   *Frontend (removed):*
-   - Deleted `types/api.ts`, `types/forms.ts`, `types/utils.ts` (all dead — zero consumers).
-   - Stripped `types/index.ts` to only `User`, `UsersListResponse`, `UserUpdateInput`.
-   - Deleted `ApiTokensPage.tsx` (replaced by `SettingsPage`, already redirected).
-   - Deleted 4 dead barrel files: `api/index.ts`, `hooks/index.ts`, `components/index.ts`,
-     `utils/index.ts`.
-   - Removed 6 dead API functions: `getUserById`, `getCircle`, `getHousehold`, `getAllReminders`,
-     `getReminder`, `getTag`.
-   - Removed dead `createErrorHandler` + unexported `getErrorCode`, `logError` in `errorHandler.ts`.
-   - Removed dead `saveToken` + unexported `logoutUser`, `decodeToken` in `auth.ts`.
-   - `npx tsc --noEmit` clean, `npx vitest run` 166/166 green.
-
-### UI polish (fonts, icons, strings)
-
-Not a fixed checklist: the task is to actually walk through the app's flows page by page and find places
-where the typography, iconography, or copy could be clearer or more consistent, using the examples below as
-a starting calibration for what "better" looks like, not an exhaustive list to check off.
-
-1. **Typography audit** — review which font is used where across the app (headings, body, labels, monospace
-   if any) and confirm it's consistent and intentional, not just whatever a component happened to inherit.
-2. **Icon library**: the frontend currently uses `@mui/icons-material` only (confirmed via `package.json` —
-   no `@mdi/js`/`@mdi/react` dependency exists yet). Add MDI (Material Design Icons, Pictogrammers) as a
-   dependency and use it where it has a more specific/better semantic match than MUI's own set — doesn't
-   require ripping out every existing MUI icon at once. Named examples to start from: notes list icon →
-   `mdi-note-multiple-outline`, "add note" action → `mdi-note-plus-outline`, network/graph page →
-   `mdi-graph-outline`.
-3. **String/copy review** — walk each flow (contacts, network, notes, activities, settings, import/export,
-   ...) and fix labels that don't clearly describe what they do. Named example: the Settings page's
-   "Profile" sub-label doesn't make sense — it's just Settings, not a distinct "Profile" section within it;
-   needs either a clearer label or removing the redundant sub-naming. (Exact current location wasn't
-   pre-located — finding it by walking the real UI is part of this task, not done ahead of time here.)
-4. General instruction for whoever picks this up: treat 1–3 as a method, not a checklist — go through the
-   actual running app, flow by flow, and note/fix anything that reads as unpolished (inconsistent icon
-   style, a label that's technically accurate but not clear, a font that doesn't match its surroundings),
-   similar in spirit to the three examples above.
-
-### Non-critical test coverage expansion
-
-5. **Expand test coverage outside the already-scoped security and critical-path tests** (added 2026-07-29,
-   split out of Tier 3c's "broader test-coverage closure" during that item's re-scoping — see the note
-   there). `docs/fork-plan/45-test-coverage-closure.md`'s own Phase 3 scope (Tier 3, higher priority)
-   doesn't cover these packages at all; real `go test ./... -cover` numbers as of 2026-07-29: `config`
-   24.2%, `database` 37.8%, `routes` 0.0%, `errors` 0.0%, `i18n` 0.0%, `logger` 0.0%, and the one-shot
-   `cmd/backfill-custom-fields` 33.7% / `cmd/backfill-relationship-edges` 55.6% / `cmd/backfill-contact-records`
-   0.0% / `cmd/migrate` 0.0%. None of these are security-sensitive (config loading, route registration,
-   logging, i18n string loading, already-run one-off migration scripts) — that's exactly why this is Tier 6
-   and not Tier 3. Needs a fresh scoping pass to decide which of these are actually worth covering versus
-   accepted as low-value (e.g. `cmd/migrate`'s `main.go` may just be a thin CLI wrapper not worth testing in
-   isolation) — don't chase the percentage for its own sake.
+- **Tier 4** (P6–P10: search, CalDAV export, external links/Immich, sync) → tickets T10–T21, `tickets/
+  README.md` for status, `92-delivery-roadmap.md §92.2–92.6` for WP scope detail. Its two exceptions:
+  WP-97 (selective field export) landed as [T9](tickets/13-T9-selective-export.md) — see its Shipped note;
+  WP-84c's deferred triage/migration/frontend half landed as
+  [T2](tickets/05-T2-circle-tag-triage.md)/[T3](tickets/06-T3-circle-tag-backend.md)/
+  [T4](tickets/07-T4-circle-tag-frontend.md) — see their Shipped notes.
+- **Tier 5** (contact sharing between users) → split into [P1](tickets/31-P1-contact-sharing.md)
+  (one-time filtered copy, done — see its Shipped note for the reuse map and the merge-policy decision)
+  and P1b (the standing/live/permissioned share this section originally described, still needing its own
+  design pass — see [`tickets/37-deferred.md`](tickets/37-deferred.md) for the open questions: the
+  shared-vs-private field model, the permission model, and re-confirmation when a field is newly marked
+  sensitive after a share exists).
+- **Tier 6** (alpha-readiness gate: legacy/dead-code audit, UI polish, non-critical test coverage) →
+  [T22](tickets/19-T22-legacy-audit.md) (its Shipped note carries the full audit disposition list — what
+  was kept, removed, and why), [T23](tickets/18-T23-ui-polish.md), and
+  [T24](tickets/15-T24-test-coverage.md) — all done, all with Shipped notes.
 
 ## Deferred / someday
 

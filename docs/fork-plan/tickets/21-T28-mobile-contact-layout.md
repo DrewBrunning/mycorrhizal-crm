@@ -57,3 +57,10 @@ and does not handle small viewports correctly. Specific problems observed:
 - Action buttons collapse into an overflow menu at ≤400px.
 - `npx tsc --noEmit` clean, `npx vitest run` green.
 - Visually verified on a real phone or responsive-design mode at 360px, 390px, and 414px widths.
+
+## Shipped
+
+**Done.** No further landing narrative beyond the ticket board's status was recorded. Its established
+patterns (scrollable tabs, action collapsing into an overflow menu, `overflow-wrap: anywhere`, the `sm`
+breakpoint for aggressive reflow) are the explicit precedent [T32](41-T32-remaining-pages-mobile.md) and
+[T33](42-T33-mobile-nav-restructure.md) are meant to reuse for the pages/chrome this ticket didn't cover.
