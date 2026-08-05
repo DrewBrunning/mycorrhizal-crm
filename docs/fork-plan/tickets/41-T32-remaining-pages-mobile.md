@@ -60,3 +60,12 @@ codebase:
   horizontal overflow.
 - `npx tsc --noEmit` clean, `npx vitest run` green.
 - Visually verified on responsive-design mode at 360px, 390px, and 414px for all three pages.
+
+**Done, 2026-08-05.** Network, Settings and User Management no longer overflow horizontally at
+360-414px. Root cause shared across all three: the app's `<main>` flex item defaulted to
+`min-width: auto`, so any wide child (timeline, network controls, settings tables) forced the
+whole page to scroll — fixed with `minWidth: 0` so each child contains its own overflow
+(committed with T33). Network additionally grew on phone widths (the fixed page height clipped
+the graph card) and the graph got an explicit 65vh card; User Management reflows to stacked
+card-per-user below `sm`. New `e2e/mobileLayout.spec.ts` pins the no-overflow invariant and
+the stacked user list.

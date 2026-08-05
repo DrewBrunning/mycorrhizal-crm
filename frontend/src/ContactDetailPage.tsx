@@ -131,7 +131,9 @@ function fullDateFromPartial(d: PartialDate): string | undefined {
 // section is this under" from becoming "scroll past everything else".
 function SectionGroup({ id, children }: { id: string; children: ReactNode }) {
   return (
-    <Box component="section" id={id} sx={{ scrollMarginTop: 80, mb: 1 }}>
+    // scrollMarginTop must clear the AppBar (64) plus the sticky jump nav (~40)
+    // so an anchor click lands a section's title below the nav, not under it.
+    <Box component="section" id={id} sx={{ scrollMarginTop: 112, mb: 1 }}>
       {children}
     </Box>
   );
@@ -142,7 +144,7 @@ function PanelCard({ title, actions, children }: { title: string; actions?: Reac
     <Card sx={{ mb: 2 }}>
       <CardContent sx={{ py: 2 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+          <Typography variant="subtitle1" component="h3" sx={{ fontWeight: 600 }}>
             {title}
           </Typography>
           {actions}
@@ -794,7 +796,7 @@ export default function ContactDetailPage() {
         URL.revokeObjectURL(currentBlobUrl);
       }
     };
-  }, [id, refreshReminders, refreshRelationshipEdges, refreshLifeEvents, refreshAgenda, refreshGifts, refreshExternalLinks, refreshImmichSummary]);
+  }, [id, refreshReminders, refreshRelationshipEdges, refreshLifeEvents, refreshAgenda, refreshGifts, refreshFieldValues, refreshExternalLinks, refreshImmichSummary]);
 
   // Combine and sort notes, activities, completions, life events, and
   // external activities for the timeline.
@@ -1305,13 +1307,7 @@ export default function ContactDetailPage() {
           />
         </PanelCard>
         <PanelCard title={t('connections.title')}>
-          {record?.uid ? (
-            <ConnectionsPanel contactUid={record.uid} />
-          ) : (
-            <Typography variant="body2" color="text.secondary">
-              {t('connections.notAvailable')}
-            </Typography>
-          )}
+          <ConnectionsPanel contactUid={record.uid} />
         </PanelCard>
       </SectionGroup>
 

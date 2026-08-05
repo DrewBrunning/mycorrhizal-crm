@@ -35,7 +35,7 @@ test.describe('RelationshipEdges', () => {
 
       await expect(dialog).toBeHidden();
       await expect(page.getByText(relName)).toBeVisible();
-      await expect(page.getByText('Friend')).toBeVisible();
+      await expect(page.getByText('Friend', { exact: true })).toBeVisible();
     } finally {
       await deleteTestContact(page.request, contact.ID);
     }
@@ -113,7 +113,7 @@ test.describe('RelationshipEdges', () => {
       // see the identical note in timeline.spec.ts.
       await expect(editDialog).toBeHidden({ timeout: 10000 });
 
-      await expect(page.getByText('Sibling')).toBeVisible();
+      await expect(page.getByText('Sibling', { exact: true })).toBeVisible();
     } finally {
       await deleteTestContact(page.request, contact.ID);
     }

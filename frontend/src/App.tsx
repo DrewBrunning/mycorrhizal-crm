@@ -62,6 +62,12 @@ import './App.css';
 
 const drawerWidth = 180;
 
+// T33 nav classification: which destinations are "primary" (kept as icons in
+// the phone AppBar) and which are "account-level" (collapsed into the account
+// menu). Everything else is secondary and lives in the hamburger drawer.
+const PRIMARY_NAV_PATHS = ['/contacts', '/search', '/notes'];
+const ACCOUNT_NAV_PATHS = ['/settings', '/settings/data', '/users'];
+
 // Scroll to top on route change
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -160,14 +166,12 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
   //   account  — Settings, Data settings, User Management; collapsed into the
   //              account menu instead of the main nav row
   //   everything else is secondary and lives in the hamburger drawer.
-  const primaryPaths = ['/contacts', '/search', '/notes'];
-  const accountPaths = ['/settings', '/settings/data', '/users'];
   const primaryNavItems = useMemo(
-    () => mainNavItems.filter((item) => primaryPaths.includes(item.path)),
+    () => mainNavItems.filter((item) => PRIMARY_NAV_PATHS.includes(item.path)),
     [mainNavItems]
   );
   const accountNavItems = useMemo(
-    () => mainNavItems.filter((item) => accountPaths.includes(item.path)),
+    () => mainNavItems.filter((item) => ACCOUNT_NAV_PATHS.includes(item.path)),
     [mainNavItems]
   );
 

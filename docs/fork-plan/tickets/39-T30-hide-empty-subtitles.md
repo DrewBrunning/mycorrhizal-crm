@@ -49,3 +49,12 @@ list-entry variant too.
 - With at least one field visible, the subtitle still renders normally.
 - `npx tsc --noEmit` clean, `npx vitest run` green — add a component test asserting the subtitle
   is absent when all fields in a section are toggled off.
+
+**Done, 2026-08-05.** General Info section subtitles now render only when at least one field
+in the section is both enabled in field-visibility settings *and* carrying a value on the
+contact — a shared `hasVisibleFields()` check (`frontend/src/contactSectionVisibility.ts`)
+feeds both the section body and its heading so they can't disagree. The Card metadata heading
+shares the imported-resources / related-entities render guards instead of rendering
+unconditionally. The AddContactDialog form gets the same treatment (its sections are always
+empty, so enabled-ness alone gates the heading). Component tests pin both traps
+(enabled-but-empty hides the subtitle; present-but-disabled hides it too).
