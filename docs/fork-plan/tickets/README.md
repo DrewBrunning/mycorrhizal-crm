@@ -24,24 +24,23 @@ the rank.
 
 | Rank | Ticket | R | Size | Depends on | Ready? |
 |---|---|---|---|---|---|
-| 1 | [T34](43-T34-contact-field-linking.md) · Tappable contact fields (tel/sms/mailto/copy/link registry) | 5 | L | T29 ✅ | Ready |
-| 2 | [T38](47-T38-search-address-fields.md) · Search doesn't index address fields | 4 | S–M | T11 ✅ | Ready |
-| 3 | [T31](40-T31-contact-tabs-info-architecture.md) · Contact detail — grouped cards, not tabs | 4 | M | — | Ready |
-| 4 | [T33](42-T33-mobile-nav-restructure.md) · Mobile navigation bar restructuring | 4 | M | — | Ready |
-| 5 | [T30](39-T30-hide-empty-subtitles.md) · Hide empty section subtitles | 3 | S | — | Ready |
-| 6 | [T35](44-T35-gift-tracking-gaps.md) · Gift tracking gaps | 3 | S | T20b ✅ | Ready |
-| 7 | [T39](48-T39-user-management-add-user.md) · Add new users from User Management | 3 | S | — | Ready |
-| 8 | [N6](26-N6-backup-restore.md) · Full backup restore | 3 | S | — | Ready |
-| 9 | [N7](29-N7-attachments.md) · File / document attachments | 3 | M | — | Ready (coordinate with N6 — not a hard dependency, see its ticket) |
-| 10 | [N8](25-N8-2fa.md) · 2FA / TOTP | 3 | M | — | Ready |
-| 11 | [N9](30-N9-notification-channels.md) · Notification channels beyond email | 3 | M | — | Ready |
-| 12 | [T32](41-T32-remaining-pages-mobile.md) · Mobile layout — Network/Settings/User Mgmt | 3 | M | — | Ready |
-| 13 | [T36](45-T36-life-event-categories.md) · Life event categories + defaults | 3 | M | T5 ✅ | Ready |
-| 14 | [T40](49-T40-household-suggestions-shared-address.md) · Suggest households from shared address | 3 | M | T1 ✅ | Ready |
-| 15 | [T37](46-T37-pet-relationship-kind-default.md) · Pet relationship should default to animal kind | 2 | S | §3d ✅, T27 ✅ | Ready |
-| 16 | [T12b](35-T12b-caldav-serve.md) · Serve Interactions/LifeEvents as CalDAV | 2 | L | T12a ✅, T5 ✅ | Ready |
-| 17 | [T18](34-T18-audit-trail.md) · Event history / audit trail | 2 | L | T17 ✅ | Ready |
-| 18 | [T13](36-T13-two-way-calendar.md) · Two-way calendar sync ⚠ | 2 | M–L | **T12b** (rank 16, not done) | **Blocked** — do not start before T12b lands |
+| 1 | [T38](47-T38-search-address-fields.md) · Search doesn't index address fields | 4 | S–M | T11 ✅ | Ready |
+| 2 | [T31](40-T31-contact-tabs-info-architecture.md) · Contact detail — grouped cards, not tabs | 4 | M | — | Ready |
+| 3 | [T33](42-T33-mobile-nav-restructure.md) · Mobile navigation bar restructuring | 4 | M | — | Ready |
+| 4 | [T30](39-T30-hide-empty-subtitles.md) · Hide empty section subtitles | 3 | S | — | Ready |
+| 5 | [T35](44-T35-gift-tracking-gaps.md) · Gift tracking gaps | 3 | S | T20b ✅ | Ready |
+| 6 | [T39](48-T39-user-management-add-user.md) · Add new users from User Management | 3 | S | — | Ready |
+| 7 | [N6](26-N6-backup-restore.md) · Full backup restore | 3 | S | — | Ready |
+| 8 | [N7](29-N7-attachments.md) · File / document attachments | 3 | M | — | Ready (coordinate with N6 — not a hard dependency, see its ticket) |
+| 9 | [N8](25-N8-2fa.md) · 2FA / TOTP | 3 | M | — | Ready |
+| 10 | [N9](30-N9-notification-channels.md) · Notification channels beyond email | 3 | M | — | Ready |
+| 11 | [T32](41-T32-remaining-pages-mobile.md) · Mobile layout — Network/Settings/User Mgmt | 3 | M | — | Ready |
+| 12 | [T36](45-T36-life-event-categories.md) · Life event categories + defaults | 3 | M | T5 ✅ | Ready |
+| 13 | [T40](49-T40-household-suggestions-shared-address.md) · Suggest households from shared address | 3 | M | T1 ✅ | Ready |
+| 14 | [T37](46-T37-pet-relationship-kind-default.md) · Pet relationship should default to animal kind | 2 | S | §3d ✅, T27 ✅ | Ready |
+| 15 | [T12b](35-T12b-caldav-serve.md) · Serve Interactions/LifeEvents as CalDAV | 2 | L | T12a ✅, T5 ✅ | Ready |
+| 16 | [T18](34-T18-audit-trail.md) · Event history / audit trail | 2 | L | T17 ✅ | Ready |
+| 17 | [T13](36-T13-two-way-calendar.md) · Two-way calendar sync ⚠ | 2 | M–L | **T12b** (rank 15, not done) | **Blocked** — do not start before T12b lands |
 
 ### Deferred — not ranked, no plan to schedule
 
@@ -90,6 +89,7 @@ Kept for reference/lookup, not ranked — order below is roughly the sequence th
 | [T15/T16](33-T15-T16-immich.md) · Immich level 1 + 2 | **DONE** |
 | [T29](38-T29-contact-field-gaps.md) · Contact field gaps | **DONE** |
 | | **→ v0.2.0-alpha-candidate — real production data begins here** |
+| [T34](43-T34-contact-field-linking.md) · Tappable contact fields (tel/sms/mailto/copy/link registry) | **DONE** |
 
 ### ⚠ A grooming lesson worth keeping visible
 

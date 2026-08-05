@@ -497,6 +497,13 @@ func DeleteUser(c *gin.Context) {
 			return err
 		}
 
+		// Delete link field types (hard — user account gone, no
+		// tombstoning needed; matches the other DeletedAt-bearing entities
+		// above, e.g. CadencePolicy/Preference/LifeEvent)
+		if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.LinkFieldType{}).Error; err != nil {
+			return err
+		}
+
 		// Delete contacts (hard)
 		if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.Contact{}).Error; err != nil {
 			return err

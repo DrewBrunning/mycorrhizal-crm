@@ -2250,6 +2250,160 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  # --- Link field types (T34) ---
+  /link-field-types:
+    get:
+      summary: List the user's link field types
+      operationId: listLinkFieldTypes
+      description: >
+        Not paginated (a small Settings-owned registry). Lazily seeds the
+        user's default link field types on their first call.
+      responses:
+        "200":
+          description: The user's link field types.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  link_field_types:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/LinkFieldType"
+    post:
+      summary: Create a link field type
+      operationId: createLinkFieldType
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LinkFieldTypeInput"
+      responses:
+        "201":
+          description: Link field type created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Link field type created" }
+                  link_field_type:
+                    $ref: "#/components/schemas/LinkFieldType"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: A link field type with this name already exists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /link-field-types/reorder:
+    put:
+      summary: Reorder the user's link field types
+      operationId: reorderLinkFieldTypes
+      description: Every ID in the payload must belong to the caller, with no duplicates.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LinkFieldTypeReorderInput"
+      responses:
+        "200":
+          description: The reordered link field types.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  link_field_types:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/LinkFieldType"
+        "400":
+          description: Validation failed, or an ID doesn't belong to the caller.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /link-field-types/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get a link field type
+      operationId: getLinkFieldType
+      responses:
+        "200":
+          description: The link field type.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LinkFieldType"
+        "404":
+          description: Link field type not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      summary: Update a link field type
+      operationId: updateLinkFieldType
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LinkFieldTypeInput"
+      responses:
+        "200":
+          description: The updated link field type (raw, not wrapped).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LinkFieldType"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Link field type not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Another link field type with this name already exists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete a link field type (soft delete)
+      operationId: deleteLinkFieldType
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Link field type not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   # --- Households ---
   /households:
     get:
@@ -6798,6 +6952,52 @@ components:
           type: array
           items: { type: string, format: uuid }
         remind: { type: boolean }
+
+    # --- Link field types (T34) ---
+    LinkFieldType:
+      type: object
+      description: >
+        A user-configurable messaging/social link type (name, {value}-templated
+        protocol, category, icon, position). Deliberately not a hardcoded
+        oneof-validated enum — see the ticket's "Decisions made" section.
+      properties:
+        id: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        name: { type: string }
+        protocol:
+          type: string
+          description: >
+            URI template with a literal "{value}" placeholder, e.g.
+            "https://wa.me/{value}". May be empty for a seeded default with
+            no stable public profile-by-handle URL (e.g. Discord) — user
+            editable, not resolvable to a link until filled in.
+        category: { type: string, enum: [messaging, social, other] }
+        icon: { type: string }
+        is_default:
+          type: boolean
+          description: True for a seeded row; false for a user-added one. Provenance only — editing a default keeps it flagged as a default.
+        position: { type: integer }
+    LinkFieldTypeInput:
+      type: object
+      required: [name, category]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        protocol: { type: string, maxLength: 2000 }
+        category: { type: string, enum: [messaging, social, other] }
+        icon: { type: string, maxLength: 100 }
+        position:
+          type: integer
+          description: Optional on create (defaults to end-of-list); sent on update as a full replace.
+    LinkFieldTypeReorderInput:
+      type: object
+      required: [order]
+      properties:
+        order:
+          type: array
+          minItems: 1
+          items: { type: string, format: uuid }
+          description: The caller's full set of LinkFieldType IDs in the desired display order.
 
     # --- Conversation agenda (T21) ---
     ConversationAgenda:

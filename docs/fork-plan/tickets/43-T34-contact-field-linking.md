@@ -7,6 +7,7 @@
 | **Depends on** | [T29](38-T29-contact-field-gaps.md) (SocialProfiles/OtherOnlineServices/IMPP already carry the `OnlineService` shape this reuses) |
 | **Alpha** | n/a — real data exists. New `LinkFieldType` table is additive/new, nothing existing changes; hand-written migration, real-DB test, per `CLAUDE.md` |
 | **Source** | v0.2.0-alpha real-world testing |
+| **Status** | **DONE** — see landing note at the bottom of this file |
 
 ## Why this exists
 
@@ -139,3 +140,49 @@ the URI).
 - Settings CRUD screen: add a custom link type, confirm it applies to a matching `OnlineService`
   entry without a code change.
 - All 5 locale files have real translations for every new string.
+
+## Landing note
+
+Landed on `feature/T34-contact-field-linking`.
+
+**Backend:** `LinkFieldType` (UUID PK, soft-delete, partial unique index on `(user_id, name)` —
+migration `000009`) with full CRUD + a `PUT /link-field-types/reorder` endpoint
+(`link_field_type_controller.go`). No existing "seed defaults on first fetch" pattern existed in
+this repo to copy (the ticket implied one) — `ListLinkFieldTypes` lazily seeds
+`LinkFieldTypeDefaults` (11 messaging + 8 social) on a user's first call, racing concurrent
+first-fetches safely via the partial unique index + a recount-and-swallow fallback. Discord/Wire/
+Session/GroupMe/Slack seed with an empty `Protocol` (no stable public profile-by-handle URL, per
+the ticket's own call) rather than blocking. `DeleteUser` hard-deletes `LinkFieldType` rows
+(`Unscoped()`, matching every other `DeletedAt`-bearing entity in that cascade — soft-deleting
+there would just leave orphaned tombstones behind for a gone account). `openapi.yaml` + the
+route-coverage/schema-spot-check drift tests were updated for the 5 new endpoints.
+
+**Frontend:** `resolveOnlineServiceLink` (client-side, in `utils/linkResolution.ts`) matches
+`OnlineService.Service` case-insensitively against the registry and substitutes `{value}` —
+deliberately kept out of the backend to avoid widening the contact response. A CopyButton
+component + `utils/clipboard.ts` (Clipboard API with an `execCommand` fallback) is used
+consistently across every field row in `ContactInformation.tsx`. Single-action fields (email,
+address, online-service handles, raw links) became the tappable value itself; phone — the only
+multi-action field — gets discrete call/text icon buttons instead, per the ticket's own table.
+Every built/substituted/passthrough href is checked with `isSafeUrlString` (a client-side mirror
+of the backend's `safeurl` validator) before use, including the *substituted* `{value}` result,
+not just the stored template. `LinkFieldTypesSettings.tsx` (Settings CRUD screen) uses up/down
+arrow buttons for reordering — no drag-and-drop library exists in this repo, and one type
+registry didn't warrant adding one.
+
+**Tests:** backend real-DB test (`link_field_type_real_db_test.go`) covers CRUD, lazy seeding,
+the partial-unique-index-after-soft-delete case, the duplicate-name 409, `safeurl` rejection, and
+reorder — hand-verified by breaking the unique index and the `DeleteUser` cascade line and
+confirming the tests actually fail, then restoring. Frontend: `linkResolution.test.ts` (pure
+resolution logic), `ContactInformation.test.tsx` extensions (per-phone-type buttons, link hrefs,
+copy buttons, a round-trip regression test), `LinkFieldTypesSettings.test.tsx`,
+`CopyButton.test.tsx`, `clipboard.test.ts`, plus two new Playwright specs
+(`linkFieldTypes.spec.ts`, `contactFieldLinking.spec.ts`) run against the
+`docker-compose.test.yml` stack. The e2e social-profile-resolution path is deliberately *not*
+automated (it's off by default in `DEFAULT_ENABLED_CONTACT_FIELDS`, and flipping that shared
+TEST_USER setting mid-suite would race other spec files under `fullyParallel: true`) — covered by
+unit/component tests instead, plus a manual hand-verification pass confirming a custom link type
+added via Settings resolves on a contact's page with no code change.
+
+**All 5 locale files** got real translations for `common.copy(Failed|Value)`, `contactDetail.call`/
+`.text`, and the full `settings.linkFieldTypes.*` namespace.

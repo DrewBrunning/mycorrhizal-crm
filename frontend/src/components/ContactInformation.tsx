@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react';
-import { Card, CardContent, Divider, Stack, Box, Tabs, Tab, Button, Typography, SvgIcon, TextField, MenuItem, useTheme, useMediaQuery } from '@mui/material';import EmailIcon from '@mui/icons-material/Email';
+import { useState, useMemo, useEffect } from 'react';
+import { Card, CardContent, Divider, Stack, Box, Tabs, Tab, Button, Typography, SvgIcon, TextField, MenuItem, IconButton, Tooltip, useTheme, useMediaQuery } from '@mui/material';import EmailIcon from '@mui/icons-material/Email';
 import PhoneIcon from '@mui/icons-material/Phone';
+import SmsOutlinedIcon from '@mui/icons-material/SmsOutlined';
 import CakeIcon from '@mui/icons-material/Cake';
 import CelebrationIcon from '@mui/icons-material/Celebration';
 import HomeIcon from '@mui/icons-material/Home';
@@ -77,6 +78,18 @@ import ImportedResourcesSection from './ImportedResourcesSection';
 import RelatedToMembersSection from './RelatedToMembersSection';
 import ClothingSizesPanel from './ClothingSizesPanel';
 import { PREFERENCE_CLOTHING_SIZE } from '../api/preferences';
+import CopyButton from './CopyButton';
+import { useLinkFieldTypes } from '../hooks/useLinkFieldTypes';
+import {
+  buildTelLink,
+  buildSmsLink,
+  buildMailtoLink,
+  buildAddressLink,
+  formatAddressLine,
+  resolveOnlineServiceLink,
+  isSafeUrlString,
+  looksLikeAbsoluteUri,
+} from '../utils/linkResolution';
 
 interface ContactInformationProps {
   card: CardModel;
@@ -235,6 +248,14 @@ export default function ContactInformation({
   const { t } = useTranslation();
   const { formatBirthday, getBirthdayPlaceholder, calculateAge } = useDateFormat();
   const [activeTab, setActiveTab] = useState(0);
+  // Read-only fetch of the user's LinkFieldType registry (T34) — resolves
+  // socialProfiles/otherOnlineServices handles to tappable links. Small
+  // Settings-owned registry; a plain GET on mount is cheap enough not to
+  // warrant lifting this above the contact detail page.
+  const { linkFieldTypes, refreshLinkFieldTypes } = useLinkFieldTypes();
+  useEffect(() => {
+    refreshLinkFieldTypes();
+  }, [refreshLinkFieldTypes]);
   const enabled = enabledFields ?? resolveEnabledFields(null);
   const isOn = (key: ContactFieldKey) => enabled.has(key);
   // On viewports ≤600px, swap the horizontal tab bar for a dropdown Select
@@ -272,16 +293,99 @@ export default function ContactInformation({
     ? t(`contacts.${gender}`)
     : gender;
 
-  const renderValueList = (rows: ContactValue[] | undefined) => {
+  // Every displayed field value gets a copy button (T34), tappable or not —
+  // the ask is explicit that every field gets it, even ones with no other
+  // action. Single-action fields (email, address, online-service handles,
+  // raw links) become the tappable value itself, an <a href> around the
+  // displayed text; phone is the only multi-action field (call vs text), so
+  // it gets discrete icon buttons beside plain text instead of ambiguously
+  // wrapping the whole value in one link.
+  const renderPhoneList = (rows: ContactValue[] | undefined) => {
     if (!rows || rows.length === 0) return <Typography variant="body2" color="text.disabled">—</Typography>;
     return (
-      <Stack>
+      <Stack spacing={0.25}>
+        {rows.map((r, i) => {
+          const isFax = r.type === 'fax';
+          const isCell = r.type === 'cell';
+          return (
+            <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+              <Typography variant="body2">
+                {r.value}
+                {r.type ? ` (${t(`contacts.types.${r.type}`, r.type)})` : ''}
+              </Typography>
+              {!isFax && (
+                <Tooltip title={t('contactDetail.call')}>
+                  <IconButton size="small" component="a" href={buildTelLink(r.value)} aria-label={t('contactDetail.call')}>
+                    <PhoneIcon fontSize="inherit" />
+                  </IconButton>
+                </Tooltip>
+              )}
+              {isCell && (
+                <Tooltip title={t('contactDetail.text')}>
+                  <IconButton size="small" component="a" href={buildSmsLink(r.value)} aria-label={t('contactDetail.text')}>
+                    <SmsOutlinedIcon fontSize="inherit" />
+                  </IconButton>
+                </Tooltip>
+              )}
+              <CopyButton value={r.value} label={t('contactDetail.phone')} />
+            </Box>
+          );
+        })}
+      </Stack>
+    );
+  };
+
+  const renderEmailList = (rows: ContactValue[] | undefined) => {
+    if (!rows || rows.length === 0) return <Typography variant="body2" color="text.disabled">—</Typography>;
+    return (
+      <Stack spacing={0.25}>
         {rows.map((r, i) => (
-          <Typography key={i} variant="body2">
-            {r.value}
-            {r.type ? ` (${t(`contacts.types.${r.type}`, r.type)})` : ''}
-          </Typography>
+          <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+            <Typography variant="body2" component="a" href={buildMailtoLink(r.value)} sx={{ color: 'inherit' }}>
+              {r.value}
+              {r.type ? ` (${t(`contacts.types.${r.type}`, r.type)})` : ''}
+            </Typography>
+            <CopyButton value={r.value} label={t('contactDetail.email')} />
+          </Box>
         ))}
+      </Stack>
+    );
+  };
+
+  // Shared by Card.Links (already full URLs by definition) and IMPP
+  // addresses (uri-shaped, per T29): links directly if the value is both a
+  // recognized absolute URI and passes the safe-scheme guard, else falls
+  // back to plain text — always with a copy button.
+  const renderUriValueList = (rows: ContactValue[] | undefined, copyLabel: string) => {
+    if (!rows || rows.length === 0) return <Typography variant="body2" color="text.disabled">—</Typography>;
+    return (
+      <Stack spacing={0.25}>
+        {rows.map((r, i) => {
+          const tappable = looksLikeAbsoluteUri(r.value) && isSafeUrlString(r.value);
+          return (
+            <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+              {tappable ? (
+                <Typography
+                  variant="body2"
+                  component="a"
+                  href={r.value}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{ color: 'inherit', wordBreak: 'break-all' }}
+                >
+                  {r.value}
+                  {r.type ? ` (${t(`contacts.types.${r.type}`, r.type)})` : ''}
+                </Typography>
+              ) : (
+                <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
+                  {r.value}
+                  {r.type ? ` (${t(`contacts.types.${r.type}`, r.type)})` : ''}
+                </Typography>
+              )}
+              <CopyButton value={r.value} label={copyLabel} />
+            </Box>
+          );
+        })}
       </Stack>
     );
   };
@@ -289,13 +393,24 @@ export default function ContactInformation({
   const renderAddressList = (rows: ContactAddress[] | undefined) => {
     if (!rows || rows.length === 0) return <Typography variant="body2" color="text.disabled">—</Typography>;
     return (
-      <Stack spacing={0.5}>
-        {rows.map((a, i) => (
-          <Typography key={i} variant="body2">
-            {[a.street, a.city, a.region, a.postal, a.country].filter(Boolean).join(', ')}
-            {a.type ? ` (${t(`contacts.types.${a.type}`, a.type)})` : ''}
-          </Typography>
-        ))}
+      <Stack spacing={0.25}>
+        {rows.map((a, i) => {
+          const formatted = formatAddressLine(a);
+          const href = buildAddressLink(a);
+          const suffix = a.type ? ` (${t(`contacts.types.${a.type}`, a.type)})` : '';
+          return (
+            <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+              {href ? (
+                <Typography variant="body2" component="a" href={href} target="_blank" rel="noopener noreferrer" sx={{ color: 'inherit' }}>
+                  {formatted}{suffix}
+                </Typography>
+              ) : (
+                <Typography variant="body2">{formatted}{suffix}</Typography>
+              )}
+              {formatted && <CopyButton value={formatted} label={t('contactDetail.address')} />}
+            </Box>
+          );
+        })}
       </Stack>
     );
   };
@@ -303,13 +418,25 @@ export default function ContactInformation({
   const renderOnlineServices = (rows: CardOnlineService[] | undefined) => {
     if (!rows || rows.length === 0) return <Typography variant="body2" color="text.disabled">—</Typography>;
     return (
-      <Stack spacing={0.5}>
-        {rows.map((s, i) => (
-          <Typography key={i} variant="body2">
-            {s.service ? `${s.service}: ` : ''}{s.uri || s.user || ''}
-            {s.contexts?.length ? ` (${s.contexts.join(', ')})` : ''}
-          </Typography>
-        ))}
+      <Stack spacing={0.25}>
+        {rows.map((s, i) => {
+          const label = `${s.service ? `${s.service}: ` : ''}${s.uri || s.user || ''}`;
+          const href = resolveOnlineServiceLink(s, linkFieldTypes);
+          const suffix = s.contexts?.length ? ` (${s.contexts.join(', ')})` : '';
+          const copyValue = s.uri || s.user || label;
+          return (
+            <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+              {href ? (
+                <Typography variant="body2" component="a" href={href} target="_blank" rel="noopener noreferrer" sx={{ color: 'inherit', wordBreak: 'break-all' }}>
+                  {label}{suffix}
+                </Typography>
+              ) : (
+                <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>{label}{suffix}</Typography>
+              )}
+              {copyValue && <CopyButton value={copyValue} label={t('contacts.socialProfiles')} />}
+            </Box>
+          );
+        })}
       </Stack>
     );
   };
@@ -538,7 +665,7 @@ export default function ContactInformation({
                 label={t('contactDetail.phone')}
                 value={cardPhonesToValues(card.phones)}
                 cloneValue={cloneValues}
-                renderDisplay={renderValueList}
+                renderDisplay={renderPhoneList}
                 renderEditor={(draft, setDraft) => (
                   <MultiValueField label={t('contacts.phone')} value={draft} onChange={setDraft} valueType="tel" defaultType="cell" />
                 )}
@@ -566,7 +693,7 @@ export default function ContactInformation({
                 label={t('contactDetail.email')}
                 value={cardEmailsToValues(card.emails)}
                 cloneValue={cloneValues}
-                renderDisplay={renderValueList}
+                renderDisplay={renderEmailList}
                 renderEditor={(draft, setDraft) => (
                   <MultiValueField label={t('contacts.email')} value={draft} onChange={setDraft} valueType="email" defaultType="home" />
                 )}
@@ -618,7 +745,7 @@ export default function ContactInformation({
                 label={t('contacts.impps')}
                 value={cardImppToValues(card.imppAddresses)}
                 cloneValue={cloneValues}
-                renderDisplay={renderValueList}
+                renderDisplay={(rows) => renderUriValueList(rows, t('contacts.impps'))}
                 renderEditor={(draft, setDraft) => (
                   <MultiValueField label={t('contacts.impps')} value={draft} onChange={setDraft} defaultType="" freeTextType />
                 )}
@@ -632,7 +759,7 @@ export default function ContactInformation({
                 label={t('contacts.urls')}
                 value={cardLinksToValues(card.links)}
                 cloneValue={cloneValues}
-                renderDisplay={renderValueList}
+                renderDisplay={(rows) => renderUriValueList(rows, t('contacts.urls'))}
                 renderEditor={(draft, setDraft) => (
                   <MultiValueField label={t('contacts.urls')} value={draft} onChange={setDraft} valueType="url" defaultType="home" />
                 )}

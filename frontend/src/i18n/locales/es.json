@@ -403,6 +403,8 @@
     },
     "email": "Email",
     "phone": "Teléfono",
+    "call": "Llamar",
+    "text": "SMS",
     "birthday": "Cumpleaños",
     "birthdayError": "Formato de fecha inválido. Verifica tu configuración de formato de fecha.",
     "address": "Dirección",
@@ -603,7 +605,11 @@
     "continue": "Continuar",
     "add": "Agregar",
     "loadMore": "Cargar más",
-    "none": "Ninguno"
+    "none": "Ninguno",
+    "copy": "Copiar",
+    "copied": "Copiado al portapapeles",
+    "copyFailed": "No se pudo copiar al portapapeles",
+    "copyValue": "Copiar {{label}}"
   },
   "externalLinks": {
     "title": "Enlaces externos",
@@ -904,6 +910,36 @@
       "exportError": "Error al exportar los contactos. Inténtalo de nuevo.",
       "customExportButton": "Exportación personalizada...",
       "success": "Tus contactos han sido exportados exitosamente."
+    },
+    "linkFieldTypes": {
+      "title": "Tipos de enlace",
+      "description": "Configura los tipos de enlace de mensajería y redes sociales: cómo un nombre de servicio y un usuario se convierten en un enlace pulsable.",
+      "add": "Añadir tipo de enlace",
+      "addTitle": "Añadir tipo de enlace",
+      "editTitle": "Editar tipo de enlace",
+      "name": "Nombre",
+      "protocol": "Plantilla de enlace",
+      "protocolHelp": "Una URL con {value} en el lugar del usuario, p. ej. https://example.com/{value}. Déjalo en blanco si aún no hay un enlace funcional.",
+      "category": "Categoría",
+      "categoryOptions": {
+        "messaging": "Mensajería",
+        "social": "Redes sociales",
+        "other": "Otro"
+      },
+      "icon": "Icono",
+      "iconHelp": "Elige de la lista o escribe el nombre de un icono MDI personalizado.",
+      "defaultBadge": "Predeterminado",
+      "noProtocol": "Sin plantilla de enlace",
+      "loading": "Cargando tipos de enlace...",
+      "empty": "Aún no hay tipos de enlace.",
+      "edit": "Editar {{name}}",
+      "delete": "Eliminar {{name}}",
+      "moveUp": "Mover {{name}} hacia arriba",
+      "moveDown": "Mover {{name}} hacia abajo",
+      "deleteDialog": {
+        "title": "Eliminar tipo de enlace",
+        "message": "¿Eliminar «{{name}}»? Los campos de contacto que coincidan dejarán de ser pulsables."
+      }
     }
   },
   "pages": {

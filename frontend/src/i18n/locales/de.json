@@ -403,6 +403,8 @@
     },
     "email": "E-Mail",
     "phone": "Telefon",
+    "call": "Anrufen",
+    "text": "SMS",
     "birthday": "Geburtstag",
     "birthdayError": "Ungültiges Datumsformat. Überprüfen Sie Ihre Datumsformat-Einstellung.",
     "address": "Adresse",
@@ -603,7 +605,11 @@
     "continue": "Weiter",
     "add": "Hinzufügen",
     "loadMore": "Mehr laden",
-    "none": "Keine"
+    "none": "Keine",
+    "copy": "Kopieren",
+    "copied": "In die Zwischenablage kopiert",
+    "copyFailed": "Kopieren in die Zwischenablage fehlgeschlagen",
+    "copyValue": "{{label}} kopieren"
   },
   "externalLinks": {
     "title": "Externe Verknüpfungen",
@@ -904,6 +910,36 @@
       "exportError": "Kontakte konnten nicht exportiert werden. Bitte versuchen Sie es erneut.",
       "customExportButton": "Benutzerdefinierter Export...",
       "success": "Ihre Kontakte wurden erfolgreich exportiert."
+    },
+    "linkFieldTypes": {
+      "title": "Link-Feldtypen",
+      "description": "Nachrichten- und Social-Media-Linktypen konfigurieren — wie ein Dienstname und ein Benutzername zu einem anklickbaren Link werden.",
+      "add": "Link-Typ hinzufügen",
+      "addTitle": "Link-Typ hinzufügen",
+      "editTitle": "Link-Typ bearbeiten",
+      "name": "Name",
+      "protocol": "Link-Vorlage",
+      "protocolHelp": "Eine URL mit {value} anstelle des Benutzernamens, z. B. https://example.com/{value}. Leer lassen, wenn noch kein funktionierender Link existiert.",
+      "category": "Kategorie",
+      "categoryOptions": {
+        "messaging": "Messaging",
+        "social": "Social Media",
+        "other": "Sonstiges"
+      },
+      "icon": "Symbol",
+      "iconHelp": "Aus der Liste wählen oder einen eigenen MDI-Symbolnamen eingeben.",
+      "defaultBadge": "Standard",
+      "noProtocol": "Keine Link-Vorlage festgelegt",
+      "loading": "Link-Feldtypen werden geladen...",
+      "empty": "Noch keine Link-Feldtypen.",
+      "edit": "{{name}} bearbeiten",
+      "delete": "{{name}} löschen",
+      "moveUp": "{{name}} nach oben verschieben",
+      "moveDown": "{{name}} nach unten verschieben",
+      "deleteDialog": {
+        "title": "Link-Typ löschen",
+        "message": "„{{name}}“ löschen? Passende Kontaktfelder sind danach nicht mehr anklickbar."
+      }
     }
   },
   "pages": {

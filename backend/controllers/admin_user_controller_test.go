@@ -61,6 +61,7 @@ func TestDeleteUser_CleansUpAllOwnedRows(t *testing.T) {
 
 	require.NoError(t, db.Create(&models.RelationshipEdge{UserID: target.ID, SourceID: contact.VCardUID, TargetID: contact.VCardUID, Type: "related_to"}).Error)
 	require.NoError(t, db.Create(&models.LifeEvent{UserID: target.ID, EntityID: contact.VCardUID, Type: "custom"}).Error)
+	require.NoError(t, db.Create(&models.LinkFieldType{UserID: target.ID, Name: "Custom", Protocol: "https://example.com/{value}", Category: models.LinkFieldTypeCategoryOther}).Error)
 	require.NoError(t, db.Create(&models.ConversationAgenda{UserID: target.ID, EntityID: contact.VCardUID, Content: "Ask about something"}).Error)
 	require.NoError(t, db.Create(&models.Gift{UserID: target.ID, EntityID: contact.VCardUID, Description: "A gift idea"}).Error)
 
@@ -125,6 +126,15 @@ func TestDeleteUser_CleansUpAllOwnedRows(t *testing.T) {
 	assertGone("Contact", &models.Contact{}, "user_id = ?", target.ID)
 	assertGone("ContactShare (target as sender)", &models.ContactShare{}, "id = ?", shareAsSender.ID)
 	assertGone("ContactShare (target as recipient)", &models.ContactShare{}, "id = ?", shareAsRecipient.ID)
+	assertGone("LinkFieldType", &models.LinkFieldType{}, "user_id = ?", target.ID)
+
+	// LinkFieldType is soft-deletable (T26); DeleteUser hard-deletes it
+	// (Unscoped, like CadencePolicy/Preference/LifeEvent) since there's no
+	// tombstone consumer once the account is gone — assertGone alone
+	// wouldn't catch a plain soft-delete leaving the row behind.
+	var unscopedLinkFieldTypeCount int64
+	require.NoError(t, db.Unscoped().Model(&models.LinkFieldType{}).Where("user_id = ?", target.ID).Count(&unscopedLinkFieldTypeCount).Error)
+	assert.Zero(t, unscopedLinkFieldTypeCount, "LinkFieldType rows must be hard-deleted, not merely soft-deleted")
 
 	var remainingUser models.User
 	err := db.First(&remainingUser, target.ID).Error
