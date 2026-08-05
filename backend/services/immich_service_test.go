@@ -62,6 +62,40 @@ func connectImmichForUser(t *testing.T, db *gorm.DB, userID uint, contactUID, ba
 	return *identity
 }
 
+func TestNormalizeImmichBaseURL(t *testing.T) {
+	cases := []struct {
+		name    string
+		in      string
+		want    string
+		wantErr bool
+	}{
+		{name: "plain https", in: "https://immich.example", want: "https://immich.example"},
+		{name: "trailing slash stripped", in: "https://immich.example/", want: "https://immich.example"},
+		{name: "multiple trailing slashes stripped", in: "https://immich.example///", want: "https://immich.example"},
+		{name: "whitespace trimmed", in: "  https://immich.example  ", want: "https://immich.example"},
+		{name: "trailing /api stripped", in: "https://immich.example/api", want: "https://immich.example"},
+		{name: "trailing /api/ stripped", in: "https://immich.example/api/", want: "https://immich.example"},
+		{name: "trailing /api under a path prefix stripped", in: "https://example.com/immich/api", want: "https://example.com/immich"},
+		{name: "path segment that merely contains api is left alone", in: "https://immich.example/apiv2", want: "https://immich.example/apiv2"},
+		{name: "http scheme kept", in: "http://immich:2283", want: "http://immich:2283"},
+		{name: "missing scheme is rejected, not guessed", in: "immich.example.com", wantErr: true},
+		{name: "empty is rejected", in: "   ", wantErr: true},
+		{name: "unsupported scheme is rejected", in: "ftp://immich.example", wantErr: true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := NormalizeImmichBaseURL(tc.in)
+			if tc.wantErr {
+				assert.True(t, errors.Is(err, ErrImmichInvalidURL), "expected ErrImmichInvalidURL, got %v", err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}
+
 func TestImmichClient_ListPeople(t *testing.T) {
 	fake := newFakeImmichServer(t, "sekret")
 	defer fake.Close()

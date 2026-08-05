@@ -90,6 +90,14 @@ func SaveImmichConfig(c *gin.Context) {
 
 	ic, saveErr := services.UpsertImmichConfig(db, cfg.JWTSecretKey, userID, *input)
 	if saveErr != nil {
+		// A malformed base URL is the user's own input, not a database
+		// failure — reject it as a 400 with the specific reason
+		// (NormalizeImmichBaseURL/abortImmichServiceError), immediately at
+		// save time rather than only on first use.
+		if errors.Is(saveErr, services.ErrImmichInvalidURL) {
+			abortImmichServiceError(c, saveErr)
+			return
+		}
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save Immich config").WithError(saveErr))
 		return
 	}

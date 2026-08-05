@@ -132,6 +132,40 @@ func TestSaveImmichConfig_CreateWithoutKeyIsRejected(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
+// TestSaveImmichConfig_RejectsSchemelessBaseURL pins the fix for a real gap:
+// a scheme-less base URL used to save successfully and only fail later,
+// confusingly, the first time the connection was actually used. It must now
+// be rejected immediately, at save time.
+func TestSaveImmichConfig_RejectsSchemelessBaseURL(t *testing.T) {
+	db := seedImmichControllerDB(t)
+	router := immichTestRouter(t, db)
+
+	w := immichDoJSON(t, router, "PUT", "/immich/config", models.ImmichConfigInput{
+		BaseURL: "immich.example.com", APIKey: "k",
+	})
+	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+
+	var count int64
+	require.NoError(t, db.Model(&models.ImmichConfig{}).Where("user_id = ?", uint(1)).Count(&count).Error)
+	assert.EqualValues(t, 0, count, "a rejected base URL must not be persisted")
+}
+
+// TestSaveImmichConfig_TrimsTrailingAPISegment pins the one deliberate
+// auto-correction: a base URL ending in "/api" is saved with that segment
+// stripped, since the client always appends "/api/..." itself.
+func TestSaveImmichConfig_TrimsTrailingAPISegment(t *testing.T) {
+	db := seedImmichControllerDB(t)
+	router := immichTestRouter(t, db)
+
+	w := immichDoJSON(t, router, "PUT", "/immich/config", models.ImmichConfigInput{
+		BaseURL: "https://immich.example/api", APIKey: "k",
+	})
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var resp services.ImmichConfigResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Equal(t, "https://immich.example", resp.BaseURL)
+}
+
 func TestListImmichPeople(t *testing.T) {
 	db := seedImmichControllerDB(t)
 	router := immichTestRouter(t, db)

@@ -6,6 +6,7 @@ import (
 	"mycorrhizal/config"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
+	"net/url"
 	"strings"
 	"time"
 
@@ -56,11 +57,56 @@ func GetImmichConfigForUser(db *gorm.DB, userID uint) (*models.ImmichConfig, err
 	return &config, nil
 }
 
+// NormalizeImmichBaseURL validates and sanitizes a user-supplied Immich base
+// URL at save time, mirroring NormalizeCalendarURL/NormalizeContactSubscriptionURL's
+// shape (trim, parse, require an explicit http/https scheme + host) rather
+// than guessing at what the user meant — this codebase's established
+// precedent for self-hosted-server URLs is to reject malformed input, not
+// auto-repair it. A missing scheme is rejected (there is no way to tell
+// whether the user meant http or https), which is why this returns
+// ErrImmichInvalidURL — the same sentinel NewImmichClient already uses at
+// *use* time — rather than accepting it and failing later, confusingly, the
+// first time the connection is actually used.
+//
+// The one exception is stripping a trailing "/api" (or "/api/") path
+// segment: this client always appends "/api/..." itself (immich_client.go's
+// do()), so a base URL that already ends in exactly that segment can only
+// produce broken double "/api/api/..." requests — unlike a missing scheme,
+// there is exactly one correct interpretation, so it's safe to correct
+// automatically. It's also a common mistake: Immich's own API docs live at
+// "/api", and users copy that root by habit.
+func NormalizeImmichBaseURL(raw string) (string, error) {
+	trimmed := strings.TrimRight(strings.TrimSpace(raw), "/")
+	if trimmed == "" {
+		return "", ErrImmichInvalidURL
+	}
+	parsed, err := url.Parse(trimmed)
+	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
+		return "", ErrImmichInvalidURL
+	}
+
+	trimmedPath := strings.TrimRight(parsed.Path, "/")
+	segments := strings.Split(trimmedPath, "/")
+	if last := segments[len(segments)-1]; strings.EqualFold(last, "api") {
+		parsed.Path = strings.Join(segments[:len(segments)-1], "/")
+	}
+
+	return strings.TrimRight(parsed.String(), "/"), nil
+}
+
 // UpsertImmichConfig creates or updates a user's ImmichConfig. A non-empty
 // APIKey is encrypted at rest (credential_crypto.go); an empty one on update
 // keeps the existing stored key unchanged. On create the key is required.
+// The base URL is normalized/validated immediately (NormalizeImmichBaseURL)
+// so a malformed URL is rejected at save time, not the first time the
+// connection is actually used.
 func UpsertImmichConfig(db *gorm.DB, jwtSecret string, userID uint, input models.ImmichConfigInput) (*models.ImmichConfig, error) {
 	existing, err := GetImmichConfigForUser(db, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	baseURL, err := NormalizeImmichBaseURL(input.BaseURL)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +117,7 @@ func UpsertImmichConfig(db *gorm.DB, jwtSecret string, userID uint, input models
 	}
 
 	if existing != nil {
-		existing.BaseURL = strings.TrimRight(input.BaseURL, "/")
+		existing.BaseURL = baseURL
 		existing.SyncEnabled = syncEnabled
 		if input.APIKey != "" {
 			enc, err := EncryptCredential(jwtSecret, input.APIKey)
@@ -95,7 +141,7 @@ func UpsertImmichConfig(db *gorm.DB, jwtSecret string, userID uint, input models
 	}
 	created := models.ImmichConfig{
 		UserID:          userID,
-		BaseURL:         strings.TrimRight(input.BaseURL, "/"),
+		BaseURL:         baseURL,
 		APIKeyEncrypted: enc,
 		SyncEnabled:     syncEnabled,
 	}
