@@ -34,6 +34,17 @@ type ImmichConfigResponse struct {
 	LastSyncError  string     `json:"last_sync_error"`
 }
 
+// ImmichConnectionTestResult is the outcome of "Test connection" (Settings):
+// a stage-by-stage diagnosis rather than a plain success/exception, since
+// the point of this action is telling the user *what* is wrong when
+// something is, not just that something is. Stage is one of "reachability",
+// "auth", or "ok".
+type ImmichConnectionTestResult struct {
+	OK      bool   `json:"ok"`
+	Stage   string `json:"stage"`
+	Message string `json:"message"`
+}
+
 // ImmichPersonSummary is what the contact page needs to render the Immich
 // link: the identity plus live (or cached, on failure) person info.
 type ImmichPersonSummary struct {
@@ -177,6 +188,63 @@ func buildImmichClient(db *gorm.DB, cfg config.Config, userID uint) (*ImmichClie
 		return nil, nil, err
 	}
 	return client, ic, nil
+}
+
+// TestImmichConnection checks the current user's saved Immich connection in
+// two stages — reachability (Ping, unauthenticated) then auth (GetMyUser) —
+// so a failure is diagnosed rather than just reported. A Go error here means
+// the check itself could not run (no connection configured, stored URL
+// unparseable); the controller maps that through abortImmichServiceError
+// exactly like every other Immich endpoint. A populated, non-error result
+// with OK:false is a *successful* diagnosis of an upstream problem, not an
+// application error — this always responds 200.
+func TestImmichConnection(db *gorm.DB, cfg config.Config, userID uint) (*ImmichConnectionTestResult, error) {
+	client, _, err := buildImmichClient(db, cfg, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := client.Ping(); err != nil {
+		// Ping is expected to be unauthenticated on real Immich, but if a
+		// proxy or version in front of it gates on the key anyway, an
+		// unauthorized response is still an auth problem, not a
+		// reachability one — classify by the actual sentinel, not by which
+		// call surfaced it.
+		stage := "reachability"
+		if errors.Is(err, ErrImmichUnauthorized) {
+			stage = "auth"
+		}
+		logger.Warn().Err(err).Uint("user_id", userID).Str("stage", stage).Msg("Immich test connection: ping failed")
+		return diagnoseImmichConnectionFailure(stage, err), nil
+	}
+
+	user, err := client.GetMyUser()
+	if err != nil {
+		logger.Warn().Err(err).Uint("user_id", userID).Msg("Immich test connection: auth failed")
+		return diagnoseImmichConnectionFailure("auth", err), nil
+	}
+
+	logger.Info().Uint("user_id", userID).Msg("Immich test connection: ok")
+	return &ImmichConnectionTestResult{
+		OK:      true,
+		Stage:   "ok",
+		Message: fmt.Sprintf("Connected to Immich as %s", user.Email),
+	}, nil
+}
+
+// diagnoseImmichConnectionFailure turns a sentinel error from the client
+// into a specific, stage-appropriate message for the user.
+func diagnoseImmichConnectionFailure(stage string, err error) *ImmichConnectionTestResult {
+	message := err.Error()
+	switch {
+	case errors.Is(err, ErrImmichPrivateAddress):
+		message = "The Immich URL resolves to a private or loopback address, which this server is configured to block (IMMICH_BLOCK_PRIVATE_URLS)."
+	case errors.Is(err, ErrImmichUnauthorized):
+		message = "Immich rejected the API key. Check that it hasn't been revoked, expired, or mistyped."
+	case errors.Is(err, ErrImmichUnreachable):
+		message = fmt.Sprintf("Could not reach the Immich server: %v", err)
+	}
+	return &ImmichConnectionTestResult{OK: false, Stage: stage, Message: message}
 }
 
 // ListImmichPeopleForUser browses every person in the user's Immich instance

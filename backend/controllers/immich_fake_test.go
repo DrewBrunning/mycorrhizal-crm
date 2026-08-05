@@ -23,14 +23,24 @@ type testPerson struct {
 	Thumbnail  []byte
 }
 
+// testMe is the server-side state for GET /users/me (Test Connection's auth
+// check).
+type testMe struct {
+	Email string
+	Name  string
+}
+
 // newImmichTestServer is the controller-package copy of the fake Immich
 // server (the services package keeps its own for its tests; both exercise the
 // real HTTP protocol against the same wire shapes).
 type fakeImmichController struct {
-	t              *testing.T
-	Server         *httptest.Server
-	APIKey         string
-	People         map[string]*testPerson
+	t      *testing.T
+	Server *httptest.Server
+	APIKey string
+	People map[string]*testPerson
+	// Me is the identity returned by GET /users/me. Defaults to a fixed test
+	// account when unset.
+	Me             *testMe
 	FailWithStatus int
 	LastAPIKey     string
 }
@@ -69,6 +79,15 @@ func (f *fakeImmichController) handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	path := strings.TrimPrefix(r.URL.Path, "/api")
+
+	// Real Immich's ping is unauthenticated — see the services-package fake's
+	// identical comment for why this must stay outside the key check.
+	if path == "/server/ping" {
+		writeControllerJSON(w, map[string]any{"res": "pong"})
+		return
+	}
+
 	key := r.Header.Get("x-api-key")
 	f.LastAPIKey = key
 	if f.APIKey != "" && key != f.APIKey {
@@ -76,8 +95,13 @@ func (f *fakeImmichController) handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	path := strings.TrimPrefix(r.URL.Path, "/api")
 	switch {
+	case path == "/users/me":
+		me := f.Me
+		if me == nil {
+			me = &testMe{Email: "test@example.com", Name: "Test User"}
+		}
+		writeControllerJSON(w, map[string]any{"email": me.Email, "name": me.Name})
 	case path == "/people":
 		items := make([]map[string]any, 0, len(f.People))
 		for id, p := range f.People {
