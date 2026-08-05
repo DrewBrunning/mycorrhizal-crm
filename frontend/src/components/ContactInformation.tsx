@@ -66,6 +66,9 @@ import {
   getTitleField,
 } from '../api/contacts';
 import { ContactFieldKey, resolveEnabledFields, GENDER_OPTIONS } from '../contactFields';
+import { hasVisibleFields } from '../contactSectionVisibility';
+import { hasImportedResources } from './ImportedResourcesSection';
+import { hasRelatedToOrMembers } from './RelatedToMembersSection';
 import { useDateFormat } from '../DateFormatProvider';
 import OnlineServiceEditor from './OnlineServiceEditor';
 import SpeakToAsEditor from './SpeakToAsEditor';
@@ -282,13 +285,20 @@ export default function ContactInformation({
   }, [birthday, t, calculateAge]);
 
   // Logical groupings for the General Info tab (field-ordering pass). A heading
-  // is only shown when at least one of its fields is enabled, so a hidden group
-  // never leaves an orphan heading behind.
-  const showAbout = (['birthday', 'anniversary', 'anniversaries', 'personalInfo', 'keywords', 'preferredLanguages'] as ContactFieldKey[]).some(isOn);
-  const showContact = (['phones', 'addresses', 'emails', 'socialProfiles', 'otherOnlineServices', 'imppAddresses', 'links'] as ContactFieldKey[]).some(isOn);
-  const showAddressThem = (['gender', 'speakToAs'] as ContactFieldKey[]).some(isOn);
-  const showProfessional = (['organizations', 'titles', 'work_information'] as ContactFieldKey[]).some(isOn);
-  const showNotes = (['cardNotes', 'how_we_met', 'contact_information'] as ContactFieldKey[]).some(isOn);
+  // is only shown when at least one of its fields is both enabled AND present
+  // on this contact (T30) — a section with every field hidden or empty must not
+  // leave an orphan heading behind.
+  const showAbout = hasVisibleFields('about', { card, crm, enabled, gender });
+  const showContact = hasVisibleFields('contact', { card, crm, enabled, gender });
+  const showAddressThem = hasVisibleFields('genderAndPronouns', { card, crm, enabled, gender });
+  const showProfessional = hasVisibleFields('professional', { card, crm, enabled, gender });
+  const showNotes = hasVisibleFields('notes', { card, crm, enabled, gender });
+  // Card metadata isn't a toggleable field — it renders the read-only imported
+  // resource / related-entity sections, which themselves render nothing when
+  // the card has none. Share that check so the heading doesn't appear over an
+  // empty card (T30's original report: "Card Metadata showing when all fields
+  // are hidden").
+  const showMetadata = hasImportedResources(card) || hasRelatedToOrMembers(card);
 
   // Gender is a top-level record field (not part of the Card/CRM envelope), so
   // it is passed in separately and shown here next to pronouns/grammatical
@@ -988,7 +998,7 @@ export default function ContactInformation({
                 make imported data visible, not editable (full editing UI is
                 T29b). Grouped under the same "Card metadata" heading the header
                 and Add-dialog use for language/contact-kind. */}
-            <SectionHeading label={t('contactDetail.section.metadata')} />
+            {showMetadata && <SectionHeading label={t('contactDetail.section.metadata')} />}
             <ImportedResourcesSection card={card} />
             <RelatedToMembersSection card={card} />
           </Stack>

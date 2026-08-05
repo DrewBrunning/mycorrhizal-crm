@@ -100,6 +100,48 @@ test('shows a dropdown Select for section navigation on mobile viewports (T28)',
   expect(screen.queryByRole('tablist')).toBeNull();
 });
 
+// --- T30: hide section subtitles when the section has nothing to show ---
+
+test('hides the About subtitle when every About field is disabled', () => {
+  renderInformation({}, {}, { enabledFields: new Set<ContactFieldKey>(['emails']) });
+  expect(screen.queryByText('About')).toBeNull();
+});
+
+test('hides the Contact subtitle when its fields are present but disabled', () => {
+  // A value on the contact is not enough — the field must also be enabled in
+  // field-visibility settings (the ticket's "non-empty but hidden" trap).
+  renderInformation({ phones: [{ number: '+15551234567' }] }, {}, { enabledFields: new Set<ContactFieldKey>(['birthday']) });
+  expect(screen.queryByText('Contact')).toBeNull();
+});
+
+test('hides the About subtitle when its fields are enabled but empty', () => {
+  // The reverse trap: enabled in settings but nothing on the contact.
+  renderInformation({}, {}, {
+    enabledFields: new Set<ContactFieldKey>(['birthday', 'anniversary', 'anniversaries', 'personalInfo', 'keywords', 'preferredLanguages']),
+  });
+  expect(screen.queryByText('About')).toBeNull();
+});
+
+test('shows the Contact subtitle when a field is enabled and present', () => {
+  renderInformation({ phones: [{ number: '+15551234567' }] });
+  expect(screen.getByText('Contact')).toBeInTheDocument();
+});
+
+test('hides the Card metadata heading when the card has no imported resources or related entities', () => {
+  renderInformation({}, {}, { enabledFields: new Set<ContactFieldKey>(['emails']) });
+  expect(screen.queryByText('Card metadata')).toBeNull();
+});
+
+test('shows the Card metadata heading when the card has imported resources', () => {
+  renderInformation({ media: [{ uri: 'https://example.com/photo.jpg' }] });
+  expect(screen.getByText('Card metadata')).toBeInTheDocument();
+});
+
+test('shows the Card metadata heading when the card has related entities', () => {
+  renderInformation({ relatedTo: [{ target: 'urn:uuid:1234' }] });
+  expect(screen.getByText('Card metadata')).toBeInTheDocument();
+});
+
 test('long unbroken email addresses wrap instead of overflowing (T28)', () => {
   const email = 'averyveryveryverylongunbrokenword@example.com';
   renderInformation({ emails: [{ address: email, contexts: ['home'] }] });
