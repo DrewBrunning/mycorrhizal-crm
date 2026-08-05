@@ -144,3 +144,34 @@ Every category also gets an **"Add a new life event type"** affordance — see i
   Relationships" after backfill, and that `job_change`/`adopted_pet` rows now display under their
   updated labels without their stored `type` changing.
 - All 5 locale files have real translations for every new category, type, and affordance label.
+
+## Landing note
+
+**DONE.** Implemented on `feature/life-event-categories`.
+
+- Backend: `LifeEvent.Category` (nullable, `oneof`-validated) added via migration `000011`, which
+  also backfills the 7 pre-existing constant-mapped rows and leaves everything else `NULL`. The 37
+  new `LifeEventType*` constants live in `models/life_event.go`; the type→category registry
+  (`LifeEventTypeCategories`, `LifeEventCategories()`, `LifeEventCategoryForType`,
+  `LifeEventTypesForCategory`) lives in a new `models/life_event_type_registry.go`, mirroring
+  `relationship_type_registry.go`'s pattern. `job_change`/`adopted_pet` display labels updated in
+  i18n only — stored values unchanged.
+- Frontend: `LifeEventDialog` now has a cascading Category → Type picker (`LIFE_EVENT_CATEGORIES`
+  / `LIFE_EVENT_TYPES_BY_CATEGORY` in `api/lifeEvents.ts`, hand-mirrored per frontend-trap-4), a
+  per-category "Add a new life event type" custom-text affordance, and an "Other / Uncategorized"
+  bucket for events with no category (rendered as a plain free-text Type field). `LifeEventList`
+  shows a category chip when present.
+- All 5 locales carry real translations for the 5 category labels, 37 new type labels, and the new
+  affordance/validation strings (`locales.test.ts` parity check green).
+- Tests: backend migration/backfill tests (real-migrated-schema, per CLAUDE.md's real-DB
+  requirement — caught and pinned the exact `gorm:"column:..."` mismatch trap class on a
+  deliberate hand-break), registry completeness tests, controller validation tests; frontend
+  `LifeEventDialog.test.tsx` / `LifeEventList.test.tsx` component tests and new Playwright specs in
+  `e2e/lifeEvents.spec.ts` for the cascading picker, custom-type creation, edit re-filing, and the
+  uncategorized bucket.
+- Hand-verified live (real dev server + scratch DB, not vitest mocks): the full create flow with
+  a predefined type, the custom-type flow, and editing an existing categorized event. That
+  live pass caught a real bug the component tests couldn't see — `ContactDetailPage`'s
+  `LifeEventDialog` `initial=` prop omitted `category` entirely, so every edit silently showed
+  "Other / Uncategorized" regardless of the event's real category. Fixed
+  (`ContactDetailPage.tsx`).

@@ -30,12 +30,11 @@ the rank.
 | 4 | [N7](29-N7-attachments.md) · File / document attachments | 3 | M | — | Ready (coordinate with N6 — not a hard dependency, see its ticket) |
 | 5 | [N8](25-N8-2fa.md) · 2FA / TOTP | 3 | M | — | Ready |
 | 6 | [N9](30-N9-notification-channels.md) · Notification channels beyond email | 3 | M | — | Ready |
-| 7 | [T36](45-T36-life-event-categories.md) · Life event categories + defaults | 3 | M | T5 ✅ | Ready |
-| 8 | [T40](49-T40-household-suggestions-shared-address.md) · Suggest households from shared address | 3 | M | T1 ✅ | Ready |
-| 9 | [T37](46-T37-pet-relationship-kind-default.md) · Pet relationship should default to animal kind | 2 | S | §3d ✅, T27 ✅ | Ready |
-| 10 | [T12b](35-T12b-caldav-serve.md) · Serve Interactions/LifeEvents as CalDAV | 2 | L | T12a ✅, T5 ✅ | Ready |
-| 11 | [T18](34-T18-audit-trail.md) · Event history / audit trail | 2 | L | T17 ✅ | Ready |
-| 12 | [T13](36-T13-two-way-calendar.md) · Two-way calendar sync ⚠ | 2 | M–L | **T12b** (rank 10, not done) | **Blocked** — do not start before T12b lands |
+| 7 | [T40](49-T40-household-suggestions-shared-address.md) · Suggest households from shared address | 3 | M | T1 ✅ | Ready |
+| 8 | [T37](46-T37-pet-relationship-kind-default.md) · Pet relationship should default to animal kind | 2 | S | §3d ✅, T27 ✅ | Ready |
+| 9 | [T12b](35-T12b-caldav-serve.md) · Serve Interactions/LifeEvents as CalDAV | 2 | L | T12a ✅, T5 ✅ | Ready |
+| 10 | [T18](34-T18-audit-trail.md) · Event history / audit trail | 2 | L | T17 ✅ | Ready |
+| 11 | [T13](36-T13-two-way-calendar.md) · Two-way calendar sync ⚠ | 2 | M–L | **T12b** (rank 9, not done) | **Blocked** — do not start before T12b lands |
 
 ### Deferred — not ranked, no plan to schedule
 
@@ -90,6 +89,7 @@ Kept for reference/lookup, not ranked — order below is roughly the sequence th
 | [T31](40-T31-contact-tabs-info-architecture.md) · Contact detail — grouped cards, not tabs | **DONE** |
 | [T32](41-T32-remaining-pages-mobile.md) · Mobile layout — Network/Settings/User Mgmt | **DONE** |
 | [T33](42-T33-mobile-nav-restructure.md) · Mobile navigation bar restructuring | **DONE** |
+| [T36](45-T36-life-event-categories.md) · Life event categories + expanded default types | **DONE** |
 
 ### ⚠ A grooming lesson worth keeping visible
 

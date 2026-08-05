@@ -336,8 +336,10 @@ func TestSearchAddressesMigrationBackfillsExistingRows(t *testing.T) {
 		userID, `[{"type":"home","street":"Clark St","city":"Springfield","region":"IL","postal":"62701","country":"USA"},{"type":"work","street":"","city":"Chicago"}]`)
 	require.NoError(t, err)
 
-	// Apply 000010.
-	require.NoError(t, m.Up())
+	// Apply exactly 000010 — not m.Up(), which would also run every
+	// migration after it (e.g. T36's 000011) and make the MigrateDown below
+	// roll back the wrong one.
+	require.NoError(t, m.Steps(1))
 
 	// The backfill derived addresses_flat from the JSON array (mirroring
 	// FormatAddress/FlattenAddresses: components joined with ", ", addresses
@@ -376,6 +378,93 @@ func TestSearchAddressesMigrationBackfillsExistingRows(t *testing.T) {
 		"SELECT firstname FROM contacts WHERE vcard_uid = 'vcard-t38'",
 	).Scan(&firstname))
 	assert.Equal(t, "Pre", firstname, "a rollback must not destroy the contact")
+}
+
+// TestMigrationsAddLifeEventCategories pins the T36 migration's shape: an
+// additive nullable life_events.category column.
+func TestMigrationsAddLifeEventCategories(t *testing.T) {
+	assert.True(t, columnExists(t, filepath.Join(t.TempDir(), "life-event-categories.db"), "life_events", "category"),
+		"life_events.category must be added by the T36 migration")
+}
+
+// TestLifeEventCategoriesMigrationBackfillsExistingRows is T36's data-safety
+// test: life_events rows written before this migration — whose Type matches
+// one of the seven pre-existing LifeEventType* constants — must have
+// category backfilled without waiting for their next edit. A row whose Type
+// doesn't map onto any of the seven (either a legacy free-text value or one
+// of T36's own 37 new tokens, since those never existed pre-migration
+// either) must be left NULL rather than guessed, per the ticket's own trap
+// note.
+func TestLifeEventCategoriesMigrationBackfillsExistingRows(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "t36-backfill.db")
+	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
+	require.NoError(t, err)
+	defer sqlDB.Close()
+
+	m, err := newMigrator(sqlDB)
+	require.NoError(t, err)
+	// Apply everything up to but NOT including 000011, so the rows below
+	// genuinely predate the new column.
+	require.NoError(t, m.Steps(10))
+
+	_, err = sqlDB.Exec(
+		"INSERT INTO users (created_at, updated_at, username, password, email) VALUES (datetime('now'), datetime('now'), 't36', 'x', 't36@example.com')")
+	require.NoError(t, err)
+	var userID int64
+	require.NoError(t, sqlDB.QueryRow("SELECT id FROM users WHERE username = 't36'").Scan(&userID))
+
+	_, err = sqlDB.Exec(
+		"INSERT INTO contacts (created_at, updated_at, firstname, lastname, user_id, vcard_uid) VALUES (datetime('now'), datetime('now'), 'Pre', 'Existing', ?, 'vcard-t36')",
+		userID)
+	require.NoError(t, err)
+
+	insertEvent := func(id, eventType string) {
+		_, err := sqlDB.Exec(
+			"INSERT INTO life_events (id, created_at, updated_at, user_id, entity_id, type) VALUES (?, datetime('now'), datetime('now'), ?, 'vcard-t36', ?)",
+			id, userID, eventType)
+		require.NoError(t, err)
+	}
+	// One per pre-existing constant, plus an unmapped legacy free-text value.
+	insertEvent("evt-moved", "moved")
+	insertEvent("evt-job-change", "job_change")
+	insertEvent("evt-retired", "retired")
+	insertEvent("evt-graduated", "graduated")
+	insertEvent("evt-married", "married")
+	insertEvent("evt-had-child", "had_child")
+	insertEvent("evt-adopted-pet", "adopted_pet")
+	insertEvent("evt-legacy-freetext", "started a podcast")
+
+	require.NoError(t, m.Steps(1))
+
+	category := func(id string) sql.NullString {
+		var c sql.NullString
+		require.NoError(t, sqlDB.QueryRow("SELECT category FROM life_events WHERE id = ?", id).Scan(&c))
+		return c
+	}
+
+	assert.Equal(t, "home_living", category("evt-moved").String)
+	assert.Equal(t, "work_education", category("evt-job-change").String)
+	assert.Equal(t, "work_education", category("evt-retired").String)
+	assert.Equal(t, "work_education", category("evt-graduated").String)
+	assert.Equal(t, "family_relationships", category("evt-married").String)
+	assert.Equal(t, "family_relationships", category("evt-had-child").String)
+	assert.Equal(t, "family_relationships", category("evt-adopted-pet").String)
+	assert.False(t, category("evt-legacy-freetext").Valid,
+		"a legacy free-text type with no registry mapping must be left NULL, not guessed")
+
+	// Down: rolling back exactly this migration drops the column; the events
+	// themselves survive.
+	require.NoError(t, MigrateDown(dbPath))
+
+	var colCount int64
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM pragma_table_info('life_events') WHERE name = 'category'",
+	).Scan(&colCount))
+	assert.Equal(t, int64(0), colCount, "the down migration must remove life_events.category")
+
+	var eventCount int64
+	require.NoError(t, sqlDB.QueryRow("SELECT COUNT(*) FROM life_events WHERE entity_id = 'vcard-t36'").Scan(&eventCount))
+	assert.EqualValues(t, 8, eventCount, "a rollback must not destroy the life events")
 }
 
 // TestOpenDSN_PragmasArePresent verifies that openDSN appends the two pragmas

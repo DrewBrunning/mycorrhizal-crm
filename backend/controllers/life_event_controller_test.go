@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"mycorrhizal/contactmodel"
+	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
@@ -40,6 +41,102 @@ func TestCreateLifeEvent(t *testing.T) {
 	var count int64
 	db.Model(&models.LifeEvent{}).Count(&count)
 	assert.EqualValues(t, 1, count)
+}
+
+// T36: Category round-trips through create/update, and an invalid value is
+// rejected by LifeEventInput's `oneof` validator.
+func TestCreateLifeEventWithCategory(t *testing.T) {
+	db, router := setupRouter()
+	router.POST("/life-events", withValidated(func() any { return &models.LifeEventInput{} }), CreateLifeEvent)
+
+	var user models.User
+	db.First(&user)
+	contact := models.Contact{UserID: user.ID, Firstname: "Alice"}
+	db.Create(&contact)
+
+	payload := models.LifeEventInput{
+		EntityID: contact.VCardUID,
+		Type:     models.LifeEventTypeBoughtAHome,
+		Category: models.LifeEventCategoryHomeLiving,
+	}
+	jsonValue, _ := json.Marshal(payload)
+
+	req, _ := http.NewRequest("POST", "/life-events", bytes.NewBuffer(jsonValue))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusCreated, w.Code)
+
+	var reloaded models.LifeEvent
+	db.Where("entity_id = ?", contact.VCardUID).First(&reloaded)
+	assert.Equal(t, models.LifeEventCategoryHomeLiving, reloaded.Category)
+}
+
+func TestCreateLifeEventRejectsInvalidCategory(t *testing.T) {
+	db, router := setupRouter()
+	// Real validation middleware (not withValidated) so the `oneof` tag on
+	// LifeEventInput.Category is actually enforced.
+	router.POST("/life-events", middleware.ValidateJSONMiddleware(&models.LifeEventInput{}), CreateLifeEvent)
+
+	var user models.User
+	db.First(&user)
+	contact := models.Contact{UserID: user.ID, Firstname: "Alice"}
+	db.Create(&contact)
+
+	payload := models.LifeEventInput{
+		EntityID: contact.VCardUID,
+		Type:     "some custom event",
+		Category: "not_a_real_category",
+	}
+	jsonValue, _ := json.Marshal(payload)
+
+	req, _ := http.NewRequest("POST", "/life-events", bytes.NewBuffer(jsonValue))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var count int64
+	db.Model(&models.LifeEvent{}).Count(&count)
+	assert.Zero(t, count, "an invalid category must not create a row")
+}
+
+func TestUpdateLifeEventChangesCategory(t *testing.T) {
+	db, router := setupRouter()
+	router.PUT("/life-events/:id", withValidated(func() any { return &models.LifeEventInput{} }), UpdateLifeEvent)
+
+	var user models.User
+	db.First(&user)
+	contact := models.Contact{UserID: user.ID, Firstname: "Alice"}
+	db.Create(&contact)
+	event := models.LifeEvent{
+		UserID: user.ID, EntityID: contact.VCardUID,
+		Type: models.LifeEventTypeMarried, Category: models.LifeEventCategoryFamilyRelationships,
+	}
+	db.Create(&event)
+
+	// Re-filing under a custom type keeps the category, exercising the
+	// "Add a new life event type" affordance's data path (category comes
+	// from the picker, not from a Type->Category lookup).
+	payload := models.LifeEventInput{
+		EntityID: contact.VCardUID,
+		Type:     "started a book club",
+		Category: models.LifeEventCategoryTravelExperiences,
+	}
+	jsonValue, _ := json.Marshal(payload)
+	req, _ := http.NewRequest("PUT", "/life-events/"+event.ID, bytes.NewBuffer(jsonValue))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var reloaded models.LifeEvent
+	db.First(&reloaded, "id = ?", event.ID)
+	assert.Equal(t, "started a book club", reloaded.Type)
+	assert.Equal(t, models.LifeEventCategoryTravelExperiences, reloaded.Category)
 }
 
 func TestCreateLifeEventRejectsContactFromAnotherUser(t *testing.T) {

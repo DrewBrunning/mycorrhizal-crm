@@ -14,6 +14,15 @@ import (
 // Activity.Type/InteractionType* above and HouseholdMember.Role) values for
 // LifeEvent.Type. §91.6 lists these with a trailing "…", signalling an open,
 // extensible set.
+//
+// T36 (docs/fork-plan/tickets/45-T36-life-event-categories.md) added the 37
+// tokens below the original seven — Monica-style categorized defaults, five
+// per-category groups reproduced in full in the ticket. Each token's
+// category lives in life_event_type_registry.go's LifeEventTypeCategories,
+// not here — this block only owns the stored string values. The original
+// seven keep their exact stored values even where T36 changed a display
+// label (job_change -> "Started a new job", adopted_pet -> "Got a pet"):
+// that's an i18n-only change, never a rename of what's persisted.
 const (
 	LifeEventTypeMarried    = "married"
 	LifeEventTypeGraduated  = "graduated"
@@ -22,6 +31,63 @@ const (
 	LifeEventTypeAdoptedPet = "adopted_pet"
 	LifeEventTypeRetired    = "retired"
 	LifeEventTypeMoved      = "moved"
+
+	// Home & Living
+	LifeEventTypeBoughtAHome          = "bought_a_home"
+	LifeEventTypeMadeAHomeImprovement = "made_a_home_improvement"
+	LifeEventTypeWentOnHolidays       = "went_on_holidays"
+	LifeEventTypeGotANewVehicle       = "got_a_new_vehicle"
+	LifeEventTypeGotARoommate         = "got_a_roommate"
+
+	// Health & Wellness
+	LifeEventTypeOvercameAnIllness               = "overcame_an_illness"
+	LifeEventTypeQuitAHabit                      = "quit_a_habit"
+	LifeEventTypeStartedNewEatingHabits          = "started_new_eating_habits"
+	LifeEventTypeLostWeight                      = "lost_weight"
+	LifeEventTypeStartedWearingGlassesOrContacts = "started_wearing_glasses_or_contacts"
+	LifeEventTypeBrokeABone                      = "broke_a_bone"
+	LifeEventTypeRemovedBraces                   = "removed_braces"
+	LifeEventTypeHadSurgery                      = "had_surgery"
+	LifeEventTypeWentToTheDentist                = "went_to_the_dentist"
+
+	// Work & Education
+	LifeEventTypeStartedSchool          = "started_school"
+	LifeEventTypeStudiedAbroad          = "studied_abroad"
+	LifeEventTypeStartedVolunteering    = "started_volunteering"
+	LifeEventTypePublishedAPaper        = "published_a_paper"
+	LifeEventTypeStartedMilitaryService = "started_military_service"
+
+	// Travel & Experiences
+	LifeEventTypeStartedASport           = "started_a_sport"
+	LifeEventTypeStartedAHobby           = "started_a_hobby"
+	LifeEventTypeLearnedANewInstrument   = "learned_a_new_instrument"
+	LifeEventTypeLearnedANewLanguage     = "learned_a_new_language"
+	LifeEventTypeGotATattooOrPiercing    = "got_a_tattoo_or_piercing"
+	LifeEventTypeGotALicense             = "got_a_license"
+	LifeEventTypeTraveled                = "traveled"
+	LifeEventTypeGotAnAchievementOrAward = "got_an_achievement_or_award"
+	LifeEventTypeChangedBeliefs          = "changed_beliefs"
+	LifeEventTypeSpokeForTheFirstTime    = "spoke_for_the_first_time"
+	LifeEventTypeKissedForTheFirstTime   = "kissed_for_the_first_time"
+
+	// Family & Relationships
+	LifeEventTypeStartedARelationship = "started_a_relationship"
+	LifeEventTypeGotEngaged           = "got_engaged"
+	LifeEventTypeAnniversary          = "anniversary"
+	LifeEventTypeExpectsABaby         = "expects_a_baby"
+	LifeEventTypeAddedAFamilyMember   = "added_a_family_member"
+	LifeEventTypeEndedARelationship   = "ended_a_relationship"
+	LifeEventTypeLostALovedOne        = "lost_a_loved_one"
+)
+
+// Category values for LifeEvent.Category (T36). A closed set, unlike Type —
+// validated via LifeEventInput's `oneof` struct tag.
+const (
+	LifeEventCategoryHomeLiving          = "home_living"
+	LifeEventCategoryHealthWellness      = "health_wellness"
+	LifeEventCategoryWorkEducation       = "work_education"
+	LifeEventCategoryTravelExperiences   = "travel_experiences"
+	LifeEventCategoryFamilyRelationships = "family_relationships"
 )
 
 // Provenance values stored on LifeEvent.Source, following
@@ -56,6 +122,16 @@ type LifeEvent struct {
 	// Type is conventional/unvalidated — see the LifeEventType* constants
 	// above.
 	Type string `json:"type,omitempty"`
+
+	// Category is a closed classifier (T36) — unlike Type, it's validated
+	// (LifeEventInput's `oneof` tag) against the five LifeEventCategory*
+	// tokens above. Nullable: existing pre-T36 rows only got a category via
+	// migration 000011's backfill where their Type mapped onto one of the
+	// original seven constants; everything else stays NULL/uncategorized
+	// rather than guessing (see that migration's comment). A custom
+	// (free-text Type) event still requires a category from the frontend's
+	// per-category "Add a new life event type" affordance.
+	Category string `gorm:"column:category" json:"category,omitempty" validate:"omitempty,oneof=home_living health_wellness work_education travel_experiences family_relationships"`
 
 	// Date reuses contactmodel.PartialDate per §91.6's own instruction
 	// ("life events are often known only to a year"), JSON-serialized like

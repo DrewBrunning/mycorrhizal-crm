@@ -124,4 +124,150 @@ test.describe('Life events', () => {
       await deleteTestContact(request, contact.ID);
     }
   });
+
+  // T36 (docs/fork-plan/tickets/45-T36-life-event-categories.md): the
+  // cascading category -> type picker, its per-category custom-type
+  // affordance, and the "Other / Uncategorized" bucket for a pre-existing
+  // event with no category.
+  test.describe('T36 category picker', () => {
+    test('creates a life event via the cascading category -> type picker', async ({ page, request }) => {
+      const contact = await createTestContact(request, {
+        firstname: `${E2E_CONTACT_PREFIX}CategoryPicker`,
+        lastname: 'Subject',
+      });
+
+      try {
+        await page.goto(`/contacts/${contact.ID}`);
+        await waitForLoading(page);
+
+        await page.getByRole('button', { name: /add life event/i }).click();
+        const dialog = page.getByRole('dialog');
+        await expect(dialog).toBeVisible();
+
+        await dialog.getByLabel('Category *').click();
+        await page.getByRole('option', { name: 'Home & Living', exact: true }).click();
+
+        await dialog.getByLabel('Event Type *').click();
+        await page.getByRole('option', { name: 'Bought a home', exact: true }).click();
+
+        await dialog.getByRole('button', { name: /^save$/i }).click();
+        await expect(dialog).toBeHidden();
+
+        await expect(page.getByText('Bought a home')).toBeVisible();
+        await expect(page.getByText('Home & Living')).toBeVisible();
+      } finally {
+        await deleteTestContact(request, contact.ID);
+      }
+    });
+
+    test('creates a custom life event type via "Add a new life event type"', async ({ page, request }) => {
+      const contact = await createTestContact(request, {
+        firstname: `${E2E_CONTACT_PREFIX}CustomType`,
+        lastname: 'Subject',
+      });
+
+      try {
+        await page.goto(`/contacts/${contact.ID}`);
+        await waitForLoading(page);
+
+        await page.getByRole('button', { name: /add life event/i }).click();
+        const dialog = page.getByRole('dialog');
+        await expect(dialog).toBeVisible();
+
+        await dialog.getByLabel('Category *').click();
+        await page.getByRole('option', { name: 'Health & Wellness', exact: true }).click();
+
+        await dialog.getByLabel('Event Type *').click();
+        await page.getByRole('option', { name: 'Add a new life event type', exact: true }).click();
+
+        await dialog.getByLabel('Custom event name *').fill('Ran a marathon');
+        await dialog.getByRole('button', { name: /^save$/i }).click();
+        await expect(dialog).toBeHidden();
+
+        await expect(page.getByText('Ran a marathon')).toBeVisible();
+        await expect(page.getByText('Health & Wellness')).toBeVisible();
+      } finally {
+        await deleteTestContact(request, contact.ID);
+      }
+    });
+
+    test('editing re-files an event under a different category, pre-filling the existing one first', async ({ page, request }) => {
+      const contact = await createTestContact(request, {
+        firstname: `${E2E_CONTACT_PREFIX}RecategorizeEdit`,
+        lastname: 'Subject',
+      });
+
+      try {
+        const create = await request.post(`${API_BASE_URL}/life-events`, {
+          data: { entity_id: contact.uid, type: 'married', category: 'family_relationships', date: { year: 2020 } },
+        });
+        expect(create.ok(), `create failed: ${await create.text()}`).toBeTruthy();
+
+        await page.goto(`/contacts/${contact.ID}`);
+        await waitForLoading(page);
+        await expect(page.getByText('Married').first()).toBeVisible();
+
+        const card = page.locator('text=Married').first().locator('..').locator('..');
+        await card.hover();
+        await card.getByLabel('Edit').click();
+
+        const dialog = page.getByRole('dialog');
+        await expect(dialog).toBeVisible();
+        // Pre-filled from the existing event before any change is made.
+        await expect(dialog.getByLabel('Category *')).toHaveText('Family & Relationships');
+        await expect(dialog.getByLabel('Event Type *')).toHaveText('Married');
+
+        await dialog.getByLabel('Category *').click();
+        await page.getByRole('option', { name: 'Travel & Experiences', exact: true }).click();
+        await dialog.getByLabel('Event Type *').click();
+        await page.getByRole('option', { name: 'Traveled', exact: true }).click();
+
+        await dialog.getByRole('button', { name: /^save$/i }).click();
+        await expect(dialog).toBeHidden({ timeout: 10000 });
+
+        await expect(page.getByText('Traveled')).toBeVisible();
+        await expect(page.getByText('Travel & Experiences')).toBeVisible();
+        await expect(page.getByText('Married')).toBeHidden();
+      } finally {
+        await deleteTestContact(request, contact.ID);
+      }
+    });
+
+    test('an event with no category (pre-migration/legacy) edits gracefully via the Other / Uncategorized bucket', async ({ page, request }) => {
+      const contact = await createTestContact(request, {
+        firstname: `${E2E_CONTACT_PREFIX}Uncategorized`,
+        lastname: 'Subject',
+      });
+
+      try {
+        // No category in the payload — mirrors a pre-T36 row the migration
+        // left NULL because its type didn't map onto one of the seven
+        // original constants.
+        const create = await request.post(`${API_BASE_URL}/life-events`, {
+          data: { entity_id: contact.uid, type: 'started a podcast' },
+        });
+        expect(create.ok(), `create failed: ${await create.text()}`).toBeTruthy();
+
+        await page.goto(`/contacts/${contact.ID}`);
+        await waitForLoading(page);
+        await expect(page.getByText('started a podcast').first()).toBeVisible();
+
+        const card = page.locator('text=started a podcast').first().locator('..').locator('..');
+        await card.hover();
+        await card.getByLabel('Edit').click();
+
+        const dialog = page.getByRole('dialog');
+        await expect(dialog).toBeVisible();
+        await expect(dialog.getByLabel('Category *')).toHaveText('Other / Uncategorized');
+        // Uncategorized renders Type as a plain free-text field showing the
+        // raw stored value, not a picker with nothing selected.
+        await expect(dialog.getByLabel('Event Type *')).toHaveValue('started a podcast');
+
+        await dialog.getByRole('button', { name: /^cancel$/i }).click();
+        await expect(dialog).toBeHidden();
+      } finally {
+        await deleteTestContact(request, contact.ID);
+      }
+    });
+  });
 });

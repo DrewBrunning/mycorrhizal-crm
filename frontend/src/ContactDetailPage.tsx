@@ -1550,6 +1550,7 @@ export default function ContactDetailPage() {
           editingLifeEvent
             ? {
                 type: editingLifeEvent.type,
+                category: editingLifeEvent.category,
                 date: editingLifeEvent.date,
                 description: editingLifeEvent.description,
                 relatedEntityIds: editingLifeEvent.related_entity_ids,

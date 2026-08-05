@@ -1,17 +1,99 @@
 import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
 
-// LifeEvent type tokens — must stay in sync with backend/models/life_event.go's
-// LifeEventType* constants.
-export const LIFE_EVENT_TYPES = [
-  'married',
-  'graduated',
-  'job_change',
-  'had_child',
-  'adopted_pet',
-  'retired',
-  'moved',
+// LifeEvent category tokens — T36 (docs/fork-plan/tickets/45-T36-life-event-
+// categories.md). Hardcoded mirror of backend/models/life_event.go's
+// LifeEventCategory* constants (frontend-trap-4 in CLAUDE.md: there is no
+// dynamic type-list endpoint, by design — keep this in sync by hand).
+export const LIFE_EVENT_CATEGORIES = [
+  'home_living',
+  'health_wellness',
+  'work_education',
+  'travel_experiences',
+  'family_relationships',
 ] as const;
+export type LifeEventCategory = (typeof LIFE_EVENT_CATEGORIES)[number];
+
+// LifeEvent type tokens, grouped by category and ordered exactly as the
+// ticket's authoritative list (itself the order Monica settled on through
+// real use) — must stay in sync with backend/models/life_event_type_
+// registry.go's LifeEventTypeCategories / LifeEventTypesForCategory.
+export const LIFE_EVENT_TYPES_BY_CATEGORY: Record<LifeEventCategory, readonly string[]> = {
+  home_living: [
+    'moved',
+    'bought_a_home',
+    'made_a_home_improvement',
+    'went_on_holidays',
+    'got_a_new_vehicle',
+    'got_a_roommate',
+  ],
+  health_wellness: [
+    'overcame_an_illness',
+    'quit_a_habit',
+    'started_new_eating_habits',
+    'lost_weight',
+    'started_wearing_glasses_or_contacts',
+    'broke_a_bone',
+    'removed_braces',
+    'had_surgery',
+    'went_to_the_dentist',
+  ],
+  work_education: [
+    'job_change',
+    'retired',
+    'started_school',
+    'studied_abroad',
+    'started_volunteering',
+    'published_a_paper',
+    'started_military_service',
+    'graduated',
+  ],
+  travel_experiences: [
+    'started_a_sport',
+    'started_a_hobby',
+    'learned_a_new_instrument',
+    'learned_a_new_language',
+    'got_a_tattoo_or_piercing',
+    'got_a_license',
+    'traveled',
+    'got_an_achievement_or_award',
+    'changed_beliefs',
+    'spoke_for_the_first_time',
+    'kissed_for_the_first_time',
+  ],
+  family_relationships: [
+    'started_a_relationship',
+    'got_engaged',
+    'married',
+    'anniversary',
+    'expects_a_baby',
+    'had_child',
+    'added_a_family_member',
+    'adopted_pet',
+    'ended_a_relationship',
+    'lost_a_loved_one',
+  ],
+};
+
+// Flattened, all 44 predefined tokens — derived from LIFE_EVENT_TYPES_BY_CATEGORY
+// rather than listed a second time, so the two can't drift apart.
+export const LIFE_EVENT_TYPES = LIFE_EVENT_CATEGORIES.flatMap(
+  (cat) => LIFE_EVENT_TYPES_BY_CATEGORY[cat]
+);
 export type LifeEventType = (typeof LIFE_EVENT_TYPES)[number];
+
+// Inverse lookup: predefined type token -> its category. A custom (user-
+// typed) type has no entry — its category comes from whichever category's
+// picker the user opened it from, not from this map.
+const LIFE_EVENT_TYPE_TO_CATEGORY: Record<string, LifeEventCategory> = Object.fromEntries(
+  LIFE_EVENT_CATEGORIES.flatMap((cat) =>
+    LIFE_EVENT_TYPES_BY_CATEGORY[cat].map((type) => [type, cat])
+  )
+);
+
+/** Returns the category a predefined type belongs to, or undefined for a custom/unregistered type. */
+export function categoryForLifeEventType(type: string): LifeEventCategory | undefined {
+  return LIFE_EVENT_TYPE_TO_CATEGORY[type];
+}
 
 export interface PartialDate {
   year?: number;
@@ -25,6 +107,7 @@ export interface LifeEvent {
   updated_at: string;
   entity_id: string;
   type: string;
+  category?: string;
   date?: PartialDate;
   description?: string;
   source?: string;
@@ -68,16 +151,19 @@ export async function getLifeEvents(
   return response.json();
 }
 
+export interface LifeEventInputData {
+  entity_id: string;
+  type: string;
+  category?: string;
+  date?: PartialDate;
+  description?: string;
+  source?: string;
+  related_entity_ids?: string[];
+  remind?: boolean;
+}
+
 export async function createLifeEvent(
-  data: {
-    entity_id: string;
-    type: string;
-    date?: PartialDate;
-    description?: string;
-    source?: string;
-    related_entity_ids?: string[];
-    remind?: boolean;
-  }
+  data: LifeEventInputData
 ): Promise<LifeEventCreateResponse> {
   const response = await apiFetch(`${API_BASE_URL}/life-events`, {
     method: 'POST',
@@ -90,15 +176,7 @@ export async function createLifeEvent(
 
 export async function updateLifeEvent(
   id: string,
-  data: {
-    entity_id: string;
-    type: string;
-    date?: PartialDate;
-    description?: string;
-    source?: string;
-    related_entity_ids?: string[];
-    remind?: boolean;
-  }
+  data: LifeEventInputData
 ): Promise<LifeEvent> {
   const response = await apiFetch(`${API_BASE_URL}/life-events/${id}`, {
     method: 'PUT',
