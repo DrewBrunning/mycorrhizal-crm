@@ -104,6 +104,7 @@ type ImmichAsset struct {
 //   - GET /api/people/:id/statistics  — photo count (L1 display)
 //   - GET /api/people/:id/assets      — latest appearance (L1 display, L2)
 //   - GET /api/people/:id/thumbnail   — person thumbnail (L1 display)
+//   - GET /api/assets/:id/thumbnail   — one photo's image (contact-photo picker)
 //
 // "Pin what you rely on and fail gracefully" (T16 trap): every parse is
 // defensive, and any unexpected response shape maps to ErrImmichInvalidData
@@ -311,10 +312,23 @@ func (c *ImmichClient) RecentAssets(personID string, limit int) ([]ImmichAsset, 
 // Thumbnail fetches a person's thumbnail image, returning the bytes and the
 // Content-Type from the server (raster only — SVG is rejected by the proxy
 // handler that serves this to browsers, mirroring ProxyImage's hardening).
-// Non-image content types are rejected at this layer before the body reaches
-// the caller, matching httputil.FetchImageFromURL's own validation.
 func (c *ImmichClient) Thumbnail(personID string) ([]byte, string, error) {
-	resp, err := c.do("/api/people/" + url.PathEscape(personID) + "/thumbnail")
+	return c.fetchImage("/api/people/" + url.PathEscape(personID) + "/thumbnail")
+}
+
+// AssetThumbnail fetches one asset's thumbnail image (the contact-photo
+// picker's "load this candidate photo" step, L1: browse a linked person's
+// recent photos and pick one). Same hardening as Thumbnail.
+func (c *ImmichClient) AssetThumbnail(assetID string) ([]byte, string, error) {
+	return c.fetchImage("/api/assets/" + url.PathEscape(assetID) + "/thumbnail")
+}
+
+// fetchImage performs the shared image-fetch-and-validate behind Thumbnail
+// and AssetThumbnail: non-image content types are rejected at this layer
+// before the body reaches the caller, matching httputil.FetchImageFromURL's
+// own validation.
+func (c *ImmichClient) fetchImage(path string) ([]byte, string, error) {
+	resp, err := c.do(path)
 	if err != nil {
 		return nil, "", err
 	}

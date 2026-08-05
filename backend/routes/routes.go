@@ -330,6 +330,8 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.DELETE("/immich/contacts/:vcard_uid/link", controllers.UnlinkImmichContact)
 			protected.GET("/immich/contacts/:vcard_uid/summary", controllers.GetImmichContactSummary)
 			protected.GET("/immich/contacts/:vcard_uid/thumbnail", controllers.GetImmichThumbnail)
+			protected.GET("/immich/contacts/:vcard_uid/assets", controllers.ListImmichContactAssets)
+			protected.GET("/immich/contacts/:vcard_uid/assets/:asset_id/image", controllers.GetImmichAssetImage)
 		}
 
 		// Admin routes (admin authentication required)

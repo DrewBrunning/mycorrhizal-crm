@@ -81,7 +81,7 @@ import { useFieldDefinitions } from './hooks/useFieldDefinitions';
 import { useContactFieldValues } from './hooks/useFieldDefinitions';
 import { FieldValueInput } from './api/fieldDefinitions';
 import { ExternalActivity } from './api/externalLinks';
-import { ImmichPerson, ImmichPersonSummary, getImmichContactSummary, linkImmichPerson, unlinkImmichPerson, syncImmich, getImmichPeople } from './api/immich';
+import { ImmichPerson, ImmichPersonSummary, getImmichConfig, getImmichContactSummary, linkImmichPerson, unlinkImmichPerson, syncImmich, getImmichPeople } from './api/immich';
 import { addCircleMember, removeCircleMember } from './api/circles';
 import { addContactTag, removeContactTag } from './api/tags';
 import { Circle } from './api/circles';
@@ -396,6 +396,15 @@ export default function ContactDetailPage() {
   const [immichSummary, setImmichSummary] = useState<ImmichPersonSummary | null>(null);
   const [immichSummaryLoading, setImmichSummaryLoading] = useState(false);
   const [immichSyncing, setImmichSyncing] = useState(false);
+  // Whether Immich is configured at all — gates the "Choose from Immich"
+  // profile-photo entry point (Part 3). Failure just leaves it hidden.
+  const [immichConfigured, setImmichConfigured] = useState(false);
+
+  useEffect(() => {
+    getImmichConfig()
+      .then((cfg) => setImmichConfigured(cfg.has_api_key))
+      .catch(() => setImmichConfigured(false));
+  }, []);
 
   const refreshImmichSummary = useCallback(async (overrideUid?: string) => {
     const uid = overrideUid ?? record?.uid;
@@ -1371,6 +1380,16 @@ export default function ContactDetailPage() {
         open={profilePictureDialogOpen}
         onClose={() => setProfilePictureDialogOpen(false)}
         onUpload={handleUploadProfilePicture}
+        immich={
+          immichConfigured && record?.uid
+            ? {
+                contactUid: record.uid,
+                isLinked: externalIdentities.some((i) => i.system === 'immich'),
+                onFetchPeople: () => getImmichPeople(),
+                onLinkPerson: handleLinkImmich,
+              }
+            : undefined
+        }
       />
 
       <RelationshipEdgeDialog

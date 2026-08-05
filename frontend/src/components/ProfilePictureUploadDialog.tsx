@@ -15,16 +15,28 @@ import {
   Divider
 } from '@mui/material';
 import AppDialog from './AppDialog';
+import ImmichPhotoPickerDialog from './ImmichPhotoPickerDialog';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import LinkIcon from '@mui/icons-material/Link';
+import { mdiImageMultipleOutline } from '@mdi/js';
+import { SvgIcon } from '@mui/material';
 import { handleError, getErrorMessage } from '../utils/errorHandler';
 import { API_BASE_URL, apiFetch } from '../api/client';
+import { ImmichPerson } from '../api/immich';
 
 interface ProfilePictureUploadDialogProps {
   open: boolean;
   onClose: () => void;
   onUpload: (croppedImageBlob: Blob) => Promise<void>;
+  // Immich integration (optional — omitted entirely when Immich isn't
+  // configured, hiding the "Choose from Immich" entry point).
+  immich?: {
+    contactUid: string;
+    isLinked: boolean;
+    onFetchPeople: () => Promise<ImmichPerson[]>;
+    onLinkPerson: (person: ImmichPerson) => Promise<void>;
+  };
 }
 
 // Helper function to create a cropped image blob
@@ -87,7 +99,8 @@ function createImage(url: string): Promise<HTMLImageElement> {
 export default function ProfilePictureUploadDialog({
   open,
   onClose,
-  onUpload
+  onUpload,
+  immich
 }: ProfilePictureUploadDialogProps) {
   const { t } = useTranslation();
   const [imageSrc, setImageSrc] = useState<string | null>(null);
@@ -98,6 +111,7 @@ export default function ProfilePictureUploadDialog({
   const [error, setError] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState('');
   const [fetchingUrl, setFetchingUrl] = useState(false);
+  const [immichPickerOpen, setImmichPickerOpen] = useState(false);
 
   const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -201,7 +215,18 @@ export default function ProfilePictureUploadDialog({
     setError(null);
     setImageUrl('');
     setFetchingUrl(false);
+    setImmichPickerOpen(false);
     onClose();
+  };
+
+  // A photo picked from Immich lands here the same way a fetched URL does —
+  // set imageSrc and reset the crop, then the existing crop UI/onUpload
+  // handles the rest, untouched.
+  const handleImmichImageSelected = (dataUrl: string) => {
+    setImmichPickerOpen(false);
+    setImageSrc(dataUrl);
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
   };
 
   return (
@@ -284,6 +309,28 @@ export default function ProfilePictureUploadDialog({
                 {fetchingUrl ? <CircularProgress size={20} /> : t('profilePicture.fetch')}
               </Button>
             </Box>
+
+            {immich && (
+              <>
+                <Divider sx={{ my: 3 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    {t('profilePicture.or')}
+                  </Typography>
+                </Divider>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={
+                    <SvgIcon fontSize="small">
+                      <path d={mdiImageMultipleOutline} />
+                    </SvgIcon>
+                  }
+                  onClick={() => setImmichPickerOpen(true)}
+                >
+                  {t('profilePicture.chooseFromImmich')}
+                </Button>
+              </>
+            )}
           </Box>
         ) : (
           // Cropping view
@@ -356,6 +403,17 @@ export default function ProfilePictureUploadDialog({
           {uploading ? t('profilePicture.uploading') : t('common.save')}
         </Button>
       </DialogActions>
+      {immich && (
+        <ImmichPhotoPickerDialog
+          open={immichPickerOpen}
+          onClose={() => setImmichPickerOpen(false)}
+          contactUid={immich.contactUid}
+          isLinked={immich.isLinked}
+          onFetchPeople={immich.onFetchPeople}
+          onLinkPerson={immich.onLinkPerson}
+          onImageSelected={handleImmichImageSelected}
+        />
+      )}
     </AppDialog>
   );
 }
