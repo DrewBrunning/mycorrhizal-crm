@@ -8,6 +8,9 @@ updates:
     directory: "/frontend"
     schedule:
       interval: "weekly"
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
   - package-ecosystem: "bundler"
     directory: "/docs"
     schedule:

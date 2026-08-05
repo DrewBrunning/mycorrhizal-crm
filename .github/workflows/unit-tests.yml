@@ -24,6 +24,17 @@ jobs:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
 
+      - name: Check formatting and vet
+        working-directory: backend
+        run: |
+          fmt_out="$(gofmt -l .)"
+          if [ -n "$fmt_out" ]; then
+            echo "gofmt found unformatted files:"
+            echo "$fmt_out"
+            exit 1
+          fi
+          go vet ./...
+
       - name: Run tests
         working-directory: backend
         run: go test ./...

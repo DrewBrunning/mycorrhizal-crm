@@ -83,6 +83,14 @@ test-results/
 *.bak
 *.backup
 *~
+
+# Ad-hoc debug/scratch scripts (should never be committed)
+debug-*.mjs
+debug-*.ts
+debug-*.js
+*-debug.mjs
+*-debug.ts
+*-debug.js
 # CLAUDE.md is deliberately NOT ignored: it carries this repo's conventions and
 # recurring bug classes, and is auto-loaded by coding agents. It has to be
 # tracked to reach worktrees, other machines, and anyone else working here.
