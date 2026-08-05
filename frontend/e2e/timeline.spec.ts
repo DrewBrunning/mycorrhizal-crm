@@ -1,8 +1,11 @@
 import { test, expect } from './fixtures';
-import { createTestContact, deleteTestContact } from './fixtures';
+import { createTestContact, deleteTestContact, waitForLoading } from './fixtures';
 
-// Notes and activities both render in the contact's Timeline tab. Each test
-// uses a throwaway contact and cleans it up (which cascades the note/activity).
+// Notes and activities both render in the contact's Timeline section. Each
+// test uses a throwaway contact and cleans it up (which cascades the
+// note/activity). T31 made every panel mount eagerly — more effects run in
+// parallel, so waitForLoading ensures the page is fully settled before
+// interacting, and the dialog assertions get extra headroom.
 test.describe('Timeline', () => {
   test('should add a note to a contact', async ({ page }) => {
     const contact = await createTestContact(page.request);
@@ -10,11 +13,12 @@ test.describe('Timeline', () => {
 
     try {
       await page.goto(`/contacts/${contact.ID}`);
+      await waitForLoading(page);
 
       // Timeline is always visible now (T31) — no tab to switch to.
       await page.getByRole('button', { name: /add note/i }).click();
       const dialog = page.getByRole('dialog');
-      await expect(dialog).toBeVisible();
+      await expect(dialog).toBeVisible({ timeout: 10000 });
 
       await dialog.getByLabel(/content/i).fill(noteContent);
       await dialog.getByRole('button', { name: /^save$/i }).click();
@@ -35,10 +39,11 @@ test.describe('Timeline', () => {
 
     try {
       await page.goto(`/contacts/${contact.ID}`);
+      await waitForLoading(page);
 
       await page.getByRole('button', { name: /add activity/i }).click();
       const dialog = page.getByRole('dialog');
-      await expect(dialog).toBeVisible();
+      await expect(dialog).toBeVisible({ timeout: 10000 });
 
       await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill(activityTitle);
       await dialog.getByRole('button', { name: /^save$/i }).click();
