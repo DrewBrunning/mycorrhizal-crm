@@ -6,6 +6,7 @@ import (
 	"mycorrhizal/config"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
+	"net/url"
 	"strings"
 	"time"
 
@@ -33,6 +34,17 @@ type ImmichConfigResponse struct {
 	LastSyncError  string     `json:"last_sync_error"`
 }
 
+// ImmichConnectionTestResult is the outcome of "Test connection" (Settings):
+// a stage-by-stage diagnosis rather than a plain success/exception, since
+// the point of this action is telling the user *what* is wrong when
+// something is, not just that something is. Stage is one of "reachability",
+// "auth", or "ok".
+type ImmichConnectionTestResult struct {
+	OK      bool   `json:"ok"`
+	Stage   string `json:"stage"`
+	Message string `json:"message"`
+}
+
 // ImmichPersonSummary is what the contact page needs to render the Immich
 // link: the identity plus live (or cached, on failure) person info.
 type ImmichPersonSummary struct {
@@ -56,11 +68,56 @@ func GetImmichConfigForUser(db *gorm.DB, userID uint) (*models.ImmichConfig, err
 	return &config, nil
 }
 
+// NormalizeImmichBaseURL validates and sanitizes a user-supplied Immich base
+// URL at save time, mirroring NormalizeCalendarURL/NormalizeContactSubscriptionURL's
+// shape (trim, parse, require an explicit http/https scheme + host) rather
+// than guessing at what the user meant — this codebase's established
+// precedent for self-hosted-server URLs is to reject malformed input, not
+// auto-repair it. A missing scheme is rejected (there is no way to tell
+// whether the user meant http or https), which is why this returns
+// ErrImmichInvalidURL — the same sentinel NewImmichClient already uses at
+// *use* time — rather than accepting it and failing later, confusingly, the
+// first time the connection is actually used.
+//
+// The one exception is stripping a trailing "/api" (or "/api/") path
+// segment: this client always appends "/api/..." itself (immich_client.go's
+// do()), so a base URL that already ends in exactly that segment can only
+// produce broken double "/api/api/..." requests — unlike a missing scheme,
+// there is exactly one correct interpretation, so it's safe to correct
+// automatically. It's also a common mistake: Immich's own API docs live at
+// "/api", and users copy that root by habit.
+func NormalizeImmichBaseURL(raw string) (string, error) {
+	trimmed := strings.TrimRight(strings.TrimSpace(raw), "/")
+	if trimmed == "" {
+		return "", ErrImmichInvalidURL
+	}
+	parsed, err := url.Parse(trimmed)
+	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
+		return "", ErrImmichInvalidURL
+	}
+
+	trimmedPath := strings.TrimRight(parsed.Path, "/")
+	segments := strings.Split(trimmedPath, "/")
+	if last := segments[len(segments)-1]; strings.EqualFold(last, "api") {
+		parsed.Path = strings.Join(segments[:len(segments)-1], "/")
+	}
+
+	return strings.TrimRight(parsed.String(), "/"), nil
+}
+
 // UpsertImmichConfig creates or updates a user's ImmichConfig. A non-empty
 // APIKey is encrypted at rest (credential_crypto.go); an empty one on update
 // keeps the existing stored key unchanged. On create the key is required.
+// The base URL is normalized/validated immediately (NormalizeImmichBaseURL)
+// so a malformed URL is rejected at save time, not the first time the
+// connection is actually used.
 func UpsertImmichConfig(db *gorm.DB, jwtSecret string, userID uint, input models.ImmichConfigInput) (*models.ImmichConfig, error) {
 	existing, err := GetImmichConfigForUser(db, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	baseURL, err := NormalizeImmichBaseURL(input.BaseURL)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +128,7 @@ func UpsertImmichConfig(db *gorm.DB, jwtSecret string, userID uint, input models
 	}
 
 	if existing != nil {
-		existing.BaseURL = strings.TrimRight(input.BaseURL, "/")
+		existing.BaseURL = baseURL
 		existing.SyncEnabled = syncEnabled
 		if input.APIKey != "" {
 			enc, err := EncryptCredential(jwtSecret, input.APIKey)
@@ -95,7 +152,7 @@ func UpsertImmichConfig(db *gorm.DB, jwtSecret string, userID uint, input models
 	}
 	created := models.ImmichConfig{
 		UserID:          userID,
-		BaseURL:         strings.TrimRight(input.BaseURL, "/"),
+		BaseURL:         baseURL,
 		APIKeyEncrypted: enc,
 		SyncEnabled:     syncEnabled,
 	}
@@ -131,6 +188,63 @@ func buildImmichClient(db *gorm.DB, cfg config.Config, userID uint) (*ImmichClie
 		return nil, nil, err
 	}
 	return client, ic, nil
+}
+
+// TestImmichConnection checks the current user's saved Immich connection in
+// two stages — reachability (Ping, unauthenticated) then auth (GetMyUser) —
+// so a failure is diagnosed rather than just reported. A Go error here means
+// the check itself could not run (no connection configured, stored URL
+// unparseable); the controller maps that through abortImmichServiceError
+// exactly like every other Immich endpoint. A populated, non-error result
+// with OK:false is a *successful* diagnosis of an upstream problem, not an
+// application error — this always responds 200.
+func TestImmichConnection(db *gorm.DB, cfg config.Config, userID uint) (*ImmichConnectionTestResult, error) {
+	client, _, err := buildImmichClient(db, cfg, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := client.Ping(); err != nil {
+		// Ping is expected to be unauthenticated on real Immich, but if a
+		// proxy or version in front of it gates on the key anyway, an
+		// unauthorized response is still an auth problem, not a
+		// reachability one — classify by the actual sentinel, not by which
+		// call surfaced it.
+		stage := "reachability"
+		if errors.Is(err, ErrImmichUnauthorized) {
+			stage = "auth"
+		}
+		logger.Warn().Err(err).Uint("user_id", userID).Str("stage", stage).Msg("Immich test connection: ping failed")
+		return diagnoseImmichConnectionFailure(stage, err), nil
+	}
+
+	user, err := client.GetMyUser()
+	if err != nil {
+		logger.Warn().Err(err).Uint("user_id", userID).Msg("Immich test connection: auth failed")
+		return diagnoseImmichConnectionFailure("auth", err), nil
+	}
+
+	logger.Info().Uint("user_id", userID).Msg("Immich test connection: ok")
+	return &ImmichConnectionTestResult{
+		OK:      true,
+		Stage:   "ok",
+		Message: fmt.Sprintf("Connected to Immich as %s", user.Email),
+	}, nil
+}
+
+// diagnoseImmichConnectionFailure turns a sentinel error from the client
+// into a specific, stage-appropriate message for the user.
+func diagnoseImmichConnectionFailure(stage string, err error) *ImmichConnectionTestResult {
+	message := err.Error()
+	switch {
+	case errors.Is(err, ErrImmichPrivateAddress):
+		message = "The Immich URL resolves to a private or loopback address, which this server is configured to block (IMMICH_BLOCK_PRIVATE_URLS)."
+	case errors.Is(err, ErrImmichUnauthorized):
+		message = "Immich rejected the API key. Check that it hasn't been revoked, expired, or mistyped."
+	case errors.Is(err, ErrImmichUnreachable):
+		message = fmt.Sprintf("Could not reach the Immich server: %v", err)
+	}
+	return &ImmichConnectionTestResult{OK: false, Stage: stage, Message: message}
 }
 
 // ListImmichPeopleForUser browses every person in the user's Immich instance

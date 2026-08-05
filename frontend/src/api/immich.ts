@@ -32,6 +32,12 @@ export interface ImmichAssetSummary {
   occurred_at: string;
 }
 
+export interface ImmichConnectionTestResult {
+  ok: boolean;
+  stage: string;
+  message: string;
+}
+
 export interface ImmichPersonSummary {
   identity: {
     id: string;
@@ -68,6 +74,18 @@ export async function deleteImmichConfig(): Promise<void> {
     method: 'DELETE', headers: getAuthHeaders(),
   });
   if (!response.ok) throw await parseErrorResponse(response);
+}
+
+// Diagnoses the currently saved connection — reachability then API key
+// validity — reporting which stage failed rather than a generic error. A
+// diagnosed failure (ok: false) is still a 200; only a missing/unparseable
+// saved connection throws.
+export async function testImmichConnection(): Promise<ImmichConnectionTestResult> {
+  const response = await apiFetch(`${API_BASE_URL}/immich/test-connection`, {
+    method: 'POST', headers: getAuthHeaders(),
+  });
+  if (!response.ok) throw await parseErrorResponse(response);
+  return response.json();
 }
 
 export async function getImmichPeople(): Promise<ImmichPerson[]> {

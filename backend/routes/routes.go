@@ -323,6 +323,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.GET("/immich/config", controllers.GetImmichConfig)
 			protected.PUT("/immich/config", middleware.ValidateJSONMiddleware(&models.ImmichConfigInput{}), controllers.SaveImmichConfig)
 			protected.DELETE("/immich/config", controllers.DeleteImmichConfig)
+			protected.POST("/immich/test-connection", controllers.TestImmichConnection)
 			protected.GET("/immich/people", controllers.ListImmichPeople)
 			protected.POST("/immich/sync", controllers.SyncImmichNow)
 			protected.POST("/immich/contacts/:vcard_uid/link", controllers.LinkImmichContact)

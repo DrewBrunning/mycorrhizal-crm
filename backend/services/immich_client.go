@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"mycorrhizal/httputil"
+	"mycorrhizal/logger"
 	"net"
 	"net/http"
 	"net/url"
@@ -73,6 +74,15 @@ type ImmichPerson struct {
 // ImmichPersonStatistics is the GET /api/people/:id/statistics DTO.
 type ImmichPersonStatistics struct {
 	Assets int `json:"assets"`
+}
+
+// ImmichUser is the slice of GET /api/users/me this client relies on —
+// used only by "Test connection" (L1) to confirm an API key resolves to a
+// real account. Nothing else in this integration needs the caller's own
+// identity.
+type ImmichUser struct {
+	Email string `json:"email"`
+	Name  string `json:"name"`
 }
 
 // ImmichAsset is the slice of the Immich AssetResponseDto this client relies
@@ -149,7 +159,11 @@ func immichPrivateBlockingDialContext(ctx context.Context, network, addr string)
 }
 
 // do performs a GET against the Immich API, applying the x-api-key header and
-// mapping auth/not-found responses to sentinel errors.
+// mapping auth/not-found responses to sentinel errors. Every call is logged
+// at Debug (method/path/outcome, never the API key) so LOG_LEVEL=debug shows
+// exactly what's being called and what Immich returned — the "add debugging"
+// half of the fix for the swallowed-error bug users hit when a connection
+// silently doesn't work.
 func (c *ImmichClient) do(path string) (*http.Response, error) {
 	req, err := http.NewRequest(http.MethodGet, c.baseURL+path, nil)
 	if err != nil {
@@ -160,8 +174,10 @@ func (c *ImmichClient) do(path string) (*http.Response, error) {
 
 	resp, err := c.client.Do(req)
 	if err != nil {
+		logger.Debug().Err(err).Str("url", c.baseURL+path).Msg("Immich API request failed")
 		return nil, fmt.Errorf("%w: %v", ErrImmichUnreachable, err)
 	}
+	logger.Debug().Str("url", c.baseURL+path).Int("status", resp.StatusCode).Msg("Immich API request")
 	switch resp.StatusCode {
 	case http.StatusOK:
 		return resp, nil
@@ -222,6 +238,33 @@ func (c *ImmichClient) ListPeople() ([]ImmichPerson, error) {
 		}
 	}
 	return people, nil
+}
+
+// Ping checks basic reachability of the Immich server (GET /api/server/ping),
+// independent of API key validity — this endpoint requires no auth, so it
+// isolates "is the URL even right and reachable" from "is the key valid"
+// (Test Connection's first stage).
+func (c *ImmichClient) Ping() error {
+	resp, err := c.do("/api/server/ping")
+	if err != nil {
+		return err
+	}
+	resp.Body.Close()
+	return nil
+}
+
+// GetMyUser resolves the API key's owning account (GET /api/users/me) — used
+// only to validate a key (Test Connection's second stage).
+func (c *ImmichClient) GetMyUser() (*ImmichUser, error) {
+	resp, err := c.do("/api/users/me")
+	if err != nil {
+		return nil, err
+	}
+	var u ImmichUser
+	if err := decodeJSON(resp, &u); err != nil {
+		return nil, err
+	}
+	return &u, nil
 }
 
 // GetStatistics returns a person's photo count (GET /api/people/:id/statistics).

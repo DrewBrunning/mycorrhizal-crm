@@ -90,6 +90,14 @@ func SaveImmichConfig(c *gin.Context) {
 
 	ic, saveErr := services.UpsertImmichConfig(db, cfg.JWTSecretKey, userID, *input)
 	if saveErr != nil {
+		// A malformed base URL is the user's own input, not a database
+		// failure — reject it as a 400 with the specific reason
+		// (NormalizeImmichBaseURL/abortImmichServiceError), immediately at
+		// save time rather than only on first use.
+		if errors.Is(saveErr, services.ErrImmichInvalidURL) {
+			abortImmichServiceError(c, saveErr)
+			return
+		}
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save Immich config").WithError(saveErr))
 		return
 	}
@@ -118,6 +126,29 @@ func DeleteImmichConfig(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Immich config deleted"})
+}
+
+// TestImmichConnection diagnoses the current user's saved Immich connection
+// (Settings' "Test connection" button): reachability, then API key validity,
+// reported as a specific stage/message rather than a generic error. A
+// service-level error (no connection configured, unparseable stored URL)
+// still goes through abortImmichServiceError; otherwise this always responds
+// 200 — a diagnosed failure (ok: false) is a successful response.
+func TestImmichConnection(c *gin.Context) {
+	db := c.MustGet("db").(*gorm.DB)
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+
+	cfg := currentConfig(c)
+	result, err := services.TestImmichConnection(db, cfg, userID)
+	if err != nil {
+		abortImmichServiceError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
 }
 
 // ListImmichPeople browses every person in the user's Immich instance so the

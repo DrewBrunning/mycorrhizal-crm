@@ -62,6 +62,40 @@ func connectImmichForUser(t *testing.T, db *gorm.DB, userID uint, contactUID, ba
 	return *identity
 }
 
+func TestNormalizeImmichBaseURL(t *testing.T) {
+	cases := []struct {
+		name    string
+		in      string
+		want    string
+		wantErr bool
+	}{
+		{name: "plain https", in: "https://immich.example", want: "https://immich.example"},
+		{name: "trailing slash stripped", in: "https://immich.example/", want: "https://immich.example"},
+		{name: "multiple trailing slashes stripped", in: "https://immich.example///", want: "https://immich.example"},
+		{name: "whitespace trimmed", in: "  https://immich.example  ", want: "https://immich.example"},
+		{name: "trailing /api stripped", in: "https://immich.example/api", want: "https://immich.example"},
+		{name: "trailing /api/ stripped", in: "https://immich.example/api/", want: "https://immich.example"},
+		{name: "trailing /api under a path prefix stripped", in: "https://example.com/immich/api", want: "https://example.com/immich"},
+		{name: "path segment that merely contains api is left alone", in: "https://immich.example/apiv2", want: "https://immich.example/apiv2"},
+		{name: "http scheme kept", in: "http://immich:2283", want: "http://immich:2283"},
+		{name: "missing scheme is rejected, not guessed", in: "immich.example.com", wantErr: true},
+		{name: "empty is rejected", in: "   ", wantErr: true},
+		{name: "unsupported scheme is rejected", in: "ftp://immich.example", wantErr: true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := NormalizeImmichBaseURL(tc.in)
+			if tc.wantErr {
+				assert.True(t, errors.Is(err, ErrImmichInvalidURL), "expected ErrImmichInvalidURL, got %v", err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}
+
 func TestImmichClient_ListPeople(t *testing.T) {
 	fake := newFakeImmichServer(t, "sekret")
 	defer fake.Close()
@@ -202,6 +236,111 @@ func TestImmichClient_ThumbnailRejectsNonImageContentType(t *testing.T) {
 	_, _, err = client.Thumbnail("p1")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "non-image content type")
+}
+
+func TestImmichClient_Ping(t *testing.T) {
+	fake := newFakeImmichServer(t, "")
+	defer fake.Close()
+
+	client, err := NewImmichClient(fake.URL(), "", false)
+	require.NoError(t, err)
+
+	assert.NoError(t, client.Ping())
+}
+
+func TestImmichClient_PingUnreachable(t *testing.T) {
+	fake := newFakeImmichServer(t, "")
+	url := fake.URL()
+	fake.Close()
+
+	client, err := NewImmichClient(url, "", false)
+	require.NoError(t, err)
+
+	err = client.Ping()
+	assert.True(t, errors.Is(err, ErrImmichUnreachable), "an unreachable instance must map to ErrImmichUnreachable, got %v", err)
+}
+
+func TestImmichClient_GetMyUser(t *testing.T) {
+	fake := newFakeImmichServer(t, "sekret")
+	defer fake.Close()
+	fake.Me = &fakeImmichMe{Email: "alice@example.com", Name: "Alice"}
+
+	client, err := NewImmichClient(fake.URL(), "sekret", false)
+	require.NoError(t, err)
+
+	user, err := client.GetMyUser()
+	require.NoError(t, err)
+	assert.Equal(t, "alice@example.com", user.Email)
+}
+
+func TestImmichClient_GetMyUserUnauthorized(t *testing.T) {
+	fake := newFakeImmichServer(t, "sekret")
+	defer fake.Close()
+
+	client, err := NewImmichClient(fake.URL(), "wrong-key", false)
+	require.NoError(t, err)
+
+	_, err = client.GetMyUser()
+	assert.True(t, errors.Is(err, ErrImmichUnauthorized), "an invalid key must map to ErrImmichUnauthorized, got %v", err)
+}
+
+func TestTestImmichConnection_Success(t *testing.T) {
+	db := newImmichTestDB(t)
+	user, contact := seedImmichUser(t, db)
+
+	fake := newFakeImmichServer(t, "sekret")
+	defer fake.Close()
+	fake.Me = &fakeImmichMe{Email: "alice@example.com"}
+
+	connectImmichForUser(t, db, user.ID, contact.VCardUID, fake.URL(), "sekret")
+
+	result, err := TestImmichConnection(db, immichTestConfig(), user.ID)
+	require.NoError(t, err)
+	assert.True(t, result.OK)
+	assert.Equal(t, "ok", result.Stage)
+	assert.Contains(t, result.Message, "alice@example.com")
+}
+
+func TestTestImmichConnection_AuthFailure(t *testing.T) {
+	db := newImmichTestDB(t)
+	user, contact := seedImmichUser(t, db)
+
+	fake := newFakeImmichServer(t, "sekret")
+	defer fake.Close()
+
+	// Stored key no longer matches (simulates a revoked/expired key).
+	connectImmichForUser(t, db, user.ID, contact.VCardUID, fake.URL(), "now-stale-key")
+
+	result, err := TestImmichConnection(db, immichTestConfig(), user.ID)
+	require.NoError(t, err, "a diagnosed upstream failure is a successful check, not a Go error")
+	assert.False(t, result.OK)
+	assert.Equal(t, "auth", result.Stage)
+	assert.Contains(t, result.Message, "API key")
+}
+
+func TestTestImmichConnection_Unreachable(t *testing.T) {
+	db := newImmichTestDB(t)
+	user, contact := seedImmichUser(t, db)
+
+	fake := newFakeImmichServer(t, "")
+	url := fake.URL()
+	fake.Close()
+
+	connectImmichForUser(t, db, user.ID, contact.VCardUID, url, "")
+
+	result, err := TestImmichConnection(db, immichTestConfig(), user.ID)
+	require.NoError(t, err)
+	assert.False(t, result.OK)
+	assert.Equal(t, "reachability", result.Stage)
+}
+
+func TestTestImmichConnection_NoConfigReturnsError(t *testing.T) {
+	db := newImmichTestDB(t)
+	user, _ := seedImmichUser(t, db)
+
+	_, err := TestImmichConnection(db, immichTestConfig(), user.ID)
+	require.Error(t, err, "no saved connection must be a Go error, not a diagnosed result")
+	assert.True(t, errors.Is(err, ErrImmichUnauthorized))
 }
 
 func TestSyncImmichForUser_WritesActivitiesAndDedups(t *testing.T) {

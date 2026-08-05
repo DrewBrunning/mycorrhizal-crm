@@ -51,9 +51,9 @@ test('picking a person calls onSelect and closes', async () => {
   expect(onClose).toHaveBeenCalled();
 });
 
-test('a fetch failure surfaces the load error', async () => {
+test('a fetch failure surfaces the real error message, not a generic one', async () => {
   renderDialog({ onFetchPeople: vi.fn().mockRejectedValue(new Error('down')) });
   await waitFor(() => {
-    expect(screen.getByText(/Could not load people from Immich/i)).toBeInTheDocument();
+    expect(screen.getByText('down')).toBeInTheDocument();
   });
 });
