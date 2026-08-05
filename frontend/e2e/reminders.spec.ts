@@ -10,9 +10,6 @@ test.describe('Reminders', () => {
     try {
       await page.goto(`/contacts/${contact.ID}`);
 
-      // Switch from the Timeline tab to the Reminders tab.
-      await page.getByRole('tab', { name: /reminders/i }).click();
-
       await page.getByRole('button', { name: /add.*reminder/i }).click();
       await expect(page.getByRole('dialog')).toBeVisible();
 
@@ -32,7 +29,6 @@ test.describe('Reminders', () => {
 
     try {
       await page.goto(`/contacts/${contact.ID}`);
-      await page.getByRole('tab', { name: /reminders/i }).click();
 
       await page.getByRole('button', { name: /add.*reminder/i }).click();
       await expect(page.getByRole('dialog')).toBeVisible();

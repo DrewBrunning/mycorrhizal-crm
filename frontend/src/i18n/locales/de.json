@@ -391,7 +391,6 @@
   },
   "contactDetail": {
     "notFound": "Kontakt nicht gefunden",
-    "generalInfo": "Allgemeine Informationen",
     "section": {
       "name": "Name",
       "metadata": "Karten-Metadaten",
@@ -399,7 +398,10 @@
       "contact": "Kontakt",
       "genderAndPronouns": "Geschlecht & Pronomen",
       "professional": "Beruflich",
-      "notes": "Notizen"
+      "notes": "Notizen",
+      "overview": "Übersicht",
+      "people": "Personen",
+      "cadence": "Rhythmus & Nachverfolgung"
     },
     "email": "E-Mail",
     "phone": "Telefon",
@@ -457,7 +459,8 @@
     "selectTag": "Tag auswählen...",
     "newTag": "Neuer Tag...",
     "add": "Hinzufügen",
-    "actions": "Aktionen"
+    "actions": "Aktionen",
+    "jumpNav": "Zum Abschnitt springen"
   },
   "noteDialog": {
     "title": "Notiz hinzufügen",

@@ -391,7 +391,6 @@
   },
   "contactDetail": {
     "notFound": "Contact introuvable",
-    "generalInfo": "Informations générales",
     "section": {
       "name": "Nom",
       "metadata": "Métadonnées de la carte",
@@ -399,7 +398,10 @@
       "contact": "Contact",
       "genderAndPronouns": "Genre et pronoms",
       "professional": "Professionnel",
-      "notes": "Notes"
+      "notes": "Notes",
+      "overview": "Aperçu",
+      "people": "Personnes",
+      "cadence": "Cadence et suivi"
     },
     "email": "E-mail",
     "phone": "Téléphone",
@@ -457,7 +459,8 @@
     "selectTag": "Sélectionner une étiquette...",
     "newTag": "Nouvelle étiquette...",
     "add": "Ajouter",
-    "actions": "Actions"
+    "actions": "Actions",
+    "jumpNav": "Aller à la section"
   },
   "noteDialog": {
     "title": "Ajouter une note",

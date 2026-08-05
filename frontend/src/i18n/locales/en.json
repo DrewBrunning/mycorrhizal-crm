@@ -391,7 +391,6 @@
   },
   "contactDetail": {
     "notFound": "Contact not found",
-    "generalInfo": "General Information",
     "section": {
       "name": "Name",
       "metadata": "Card metadata",
@@ -399,7 +398,10 @@
       "contact": "Contact",
       "genderAndPronouns": "Gender & Pronouns",
       "professional": "Professional",
-      "notes": "Notes"
+      "notes": "Notes",
+      "overview": "Overview",
+      "people": "People",
+      "cadence": "Cadence & follow-up"
     },
     "email": "Email",
     "phone": "Phone",
@@ -457,7 +459,8 @@
     "selectTag": "Select tag...",
     "newTag": "New tag...",
     "add": "Add",
-    "actions": "Actions"
+    "actions": "Actions",
+    "jumpNav": "Jump to section"
   },
   "noteDialog": {
     "title": "Add Note",

@@ -85,19 +85,18 @@ function fieldRow(label: string): HTMLElement {
   return outerBox as HTMLElement;
 }
 
-test('renders all four section tabs (T28)', () => {
-  renderInformation();
-  expect(screen.getByText('General Information')).toBeInTheDocument();
-  expect(screen.getByText('Relationships')).toBeInTheDocument();
-  expect(screen.getByText('Life Events')).toBeInTheDocument();
-  expect(screen.getByText('Preferences')).toBeInTheDocument();
+test('renders the General Information content without any tab navigation (T31)', () => {
+  renderInformation({ phones: [{ number: '+15551234567' }] });
+  expect(screen.getByText('Phone')).toBeInTheDocument();
+  expect(screen.queryByRole('tablist')).toBeNull();
+  expect(screen.queryByLabelText('contact information sections')).toBeNull();
 });
 
-test('shows a dropdown Select for section navigation on mobile viewports (T28)', () => {
+test('shows no tab or dropdown navigation on mobile viewports either (T31)', () => {
   mockMatchMedia(true);
   renderInformation();
-  expect(screen.getByLabelText('contact information sections')).toBeInTheDocument();
   expect(screen.queryByRole('tablist')).toBeNull();
+  expect(screen.queryByLabelText('contact information sections')).toBeNull();
 });
 
 // --- T30: hide section subtitles when the section has nothing to show ---

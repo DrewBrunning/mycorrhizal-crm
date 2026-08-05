@@ -11,7 +11,7 @@ test.describe('Timeline', () => {
     try {
       await page.goto(`/contacts/${contact.ID}`);
 
-      // Timeline is the default tab.
+      // Timeline is always visible now (T31) — no tab to switch to.
       await page.getByRole('button', { name: /add note/i }).click();
       const dialog = page.getByRole('dialog');
       await expect(dialog).toBeVisible();
