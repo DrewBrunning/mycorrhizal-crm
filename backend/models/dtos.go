@@ -73,7 +73,7 @@ type ContactTagInput struct {
 type LifeEventInput struct {
 	EntityID         string                    `json:"entity_id" validate:"required,uuid4"`
 	Type             string                    `json:"type,omitempty"`
-	Category         string                    `json:"category,omitempty" validate:"omitempty,oneof=home_living health_wellness work_education travel_experiences family_relationships"`
+	Category         string                    `json:"category,omitempty" validate:"omitempty,life_event_category"`
 	Date             *contactmodel.PartialDate `json:"date,omitempty"`
 	Description      string                    `json:"description,omitempty" validate:"max=2000"`
 	Source           string                    `json:"source,omitempty" validate:"omitempty,oneof=user imported ai-suggested"`

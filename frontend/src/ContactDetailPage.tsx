@@ -663,10 +663,24 @@ export default function ContactDetailPage() {
 
   const handleSaveLifeEvent = async (data: LifeEventFormData) => {
     if (!record?.uid) return;
+    // Explicit field-by-field mapping, not a blind {...data} spread:
+    // LifeEventFormData.relatedEntityIds is camelCase (the dialog's own
+    // shape) but the API wants related_entity_ids — a spread would silently
+    // carry the wrong key through (TS excess-property checks don't fire on
+    // spreads) and the picked related contacts would never actually save.
+    const payload = {
+      entity_id: record.uid,
+      type: data.type,
+      category: data.category,
+      date: data.date,
+      description: data.description,
+      related_entity_ids: data.relatedEntityIds,
+      remind: data.remind,
+    };
     if (editingLifeEvent) {
-      await handleUpdateLifeEvent(editingLifeEvent.id, { ...data, entity_id: record.uid });
+      await handleUpdateLifeEvent(editingLifeEvent.id, payload);
     } else {
-      await handleCreateLifeEvent({ ...data, entity_id: record.uid, source: 'user' });
+      await handleCreateLifeEvent({ ...payload, source: 'user' });
     }
     // A married event is mirrored onto the card's wedding anniversary by the
     // backend (services/wedding_sync.go); reload so the anniversary shows.

@@ -125,6 +125,61 @@ test.describe('Life events', () => {
     }
   });
 
+  // Regression coverage for a bug T36's review found (not introduced by it,
+  // but sitting silently in the exact save path T36 rewired): ContactDetail
+  // Page's LifeEventDialog `onSave` handler blind-spread the dialog's
+  // camelCase LifeEventFormData into the API payload, so `relatedEntityIds`
+  // never became `related_entity_ids` and picked related contacts were
+  // silently dropped on every save. TS couldn't catch it (spreads skip
+  // excess-property checks), and no test exercised the UI save path with a
+  // related contact selected — only this UI-driven save can catch it; a
+  // direct API POST bypasses the dialog entirely.
+  test('a related contact picked in the dialog survives the save', async ({ page, request }) => {
+    const subject = await createTestContact(request, {
+      firstname: `${E2E_CONTACT_PREFIX}RelatedSubject`,
+      lastname: 'Subject',
+    });
+    const related = await createTestContact(request, {
+      firstname: `${E2E_CONTACT_PREFIX}RelatedOther`,
+      lastname: 'Other',
+    });
+
+    try {
+      await page.goto(`/contacts/${subject.ID}`);
+      await waitForLoading(page);
+
+      await page.getByRole('button', { name: /add life event/i }).click();
+      const dialog = page.getByRole('dialog');
+      await expect(dialog).toBeVisible();
+
+      await dialog.getByLabel('Category *').click();
+      await page.getByRole('option', { name: 'Family & Relationships', exact: true }).click();
+      await dialog.getByLabel('Event Type *').click();
+      await page.getByRole('option', { name: 'Started a relationship', exact: true }).click();
+
+      const autocomplete = dialog.getByRole('combobox', { name: /related to/i });
+      await autocomplete.fill(related.lastname);
+      await page.getByRole('option', { name: new RegExp(related.lastname) }).click();
+
+      await dialog.getByRole('button', { name: /^save$/i }).click();
+      await expect(dialog).toBeHidden();
+
+      // Confirm through the API, not just the UI chip -- proves the value
+      // actually round-tripped through the backend, not just local state.
+      const list = await request.get(`${API_BASE_URL}/life-events?entity_id=${subject.uid}&limit=10`);
+      expect(list.ok()).toBeTruthy();
+      const body = await list.json();
+      const event = (body.life_events ?? []).find(
+        (e: { type: string }) => e.type === 'started_a_relationship'
+      );
+      expect(event, 'the life event must have been created').toBeTruthy();
+      expect(event.related_entity_ids, 'the picked related contact must have been saved').toEqual([related.uid]);
+    } finally {
+      await deleteTestContact(request, subject.ID);
+      await deleteTestContact(request, related.ID);
+    }
+  });
+
   // T36 (docs/fork-plan/tickets/45-T36-life-event-categories.md): the
   // cascading category -> type picker, its per-category custom-type
   // affordance, and the "Other / Uncategorized" bucket for a pre-existing

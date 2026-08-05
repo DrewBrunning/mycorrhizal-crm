@@ -131,7 +131,7 @@ type LifeEvent struct {
 	// rather than guessing (see that migration's comment). A custom
 	// (free-text Type) event still requires a category from the frontend's
 	// per-category "Add a new life event type" affordance.
-	Category string `gorm:"column:category" json:"category,omitempty" validate:"omitempty,oneof=home_living health_wellness work_education travel_experiences family_relationships"`
+	Category string `gorm:"column:category" json:"category,omitempty" validate:"omitempty,life_event_category"`
 
 	// Date reuses contactmodel.PartialDate per §91.6's own instruction
 	// ("life events are often known only to a year"), JSON-serialized like

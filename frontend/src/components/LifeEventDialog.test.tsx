@@ -31,6 +31,17 @@ test('create mode: the type field is disabled until a category is chosen', () =>
   expect(screen.getByLabelText('Event Type')).toBeDisabled();
 });
 
+test('edit mode falls back to Uncategorized instead of crashing on an unrecognized category token', () => {
+  renderDialog({
+    // Simulates stale data or a category token this frontend copy predates
+    // (frontend-trap-4 mirror drift) — must degrade gracefully, not throw.
+    initial: { type: 'some event', category: 'not_a_real_category' },
+  });
+
+  expect(screen.getByLabelText('Category *')).toHaveTextContent('Other / Uncategorized');
+  expect(screen.getByLabelText('Event Type *')).toHaveValue('some event');
+});
+
 test('choosing a category reveals that category\'s type options plus "Add a new life event type"', async () => {
   renderDialog();
   await chooseCategory('Home & Living');
@@ -117,11 +128,10 @@ test('edit mode falls back to the "Other / Uncategorized" bucket for a pre-migra
   expect(screen.getByLabelText('Event Type *')).toHaveValue('started a podcast');
 });
 
-test('choosing "Other / Uncategorized" omits category from the saved payload', async () => {
+test('re-saving an uncategorized legacy event without picking a category omits category from the payload', async () => {
   const onSave = vi.fn().mockResolvedValue(undefined);
-  renderDialog({ onSave });
+  renderDialog({ onSave, initial: { type: 'started a podcast' } });
 
-  await chooseCategory('Other / Uncategorized');
   const typeField = screen.getByLabelText('Event Type *');
   fireEvent.change(typeField, { target: { value: 'Some legacy event' } });
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
@@ -130,4 +140,27 @@ test('choosing "Other / Uncategorized" omits category from the saved payload', a
   expect(onSave).toHaveBeenCalledWith(
     expect.objectContaining({ type: 'Some legacy event', category: undefined })
   );
+});
+
+// A new event must always be filed under one of the five real categories —
+// "Other / Uncategorized" exists only to display/edit data that predates
+// categorization gracefully, not as something a user can newly opt into.
+test('a brand-new event cannot be filed as "Other / Uncategorized" — the option is not offered', () => {
+  renderDialog();
+
+  fireEvent.mouseDown(screen.getByLabelText('Category *'));
+  expect(screen.getByText('Home & Living')).toBeInTheDocument();
+  expect(screen.queryByText('Other / Uncategorized')).not.toBeInTheDocument();
+});
+
+// Once a legacy uncategorized event is deliberately re-filed under a real
+// category, the Uncategorized option must not reappear — it was only ever
+// offered because that was the incoming state.
+test('re-filing a legacy uncategorized event under a real category removes the Uncategorized option going forward', async () => {
+  renderDialog({ initial: { type: 'started a podcast' } });
+
+  await chooseCategory('Home & Living');
+
+  fireEvent.mouseDown(screen.getByRole('combobox', { name: /category/i }));
+  expect(screen.queryByText('Other / Uncategorized')).not.toBeInTheDocument();
 });

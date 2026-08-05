@@ -74,25 +74,15 @@ export const LIFE_EVENT_TYPES_BY_CATEGORY: Record<LifeEventCategory, readonly st
   ],
 };
 
-// Flattened, all 44 predefined tokens — derived from LIFE_EVENT_TYPES_BY_CATEGORY
-// rather than listed a second time, so the two can't drift apart.
-export const LIFE_EVENT_TYPES = LIFE_EVENT_CATEGORIES.flatMap(
-  (cat) => LIFE_EVENT_TYPES_BY_CATEGORY[cat]
-);
-export type LifeEventType = (typeof LIFE_EVENT_TYPES)[number];
-
-// Inverse lookup: predefined type token -> its category. A custom (user-
-// typed) type has no entry — its category comes from whichever category's
-// picker the user opened it from, not from this map.
-const LIFE_EVENT_TYPE_TO_CATEGORY: Record<string, LifeEventCategory> = Object.fromEntries(
-  LIFE_EVENT_CATEGORIES.flatMap((cat) =>
-    LIFE_EVENT_TYPES_BY_CATEGORY[cat].map((type) => [type, cat])
-  )
-);
-
-/** Returns the category a predefined type belongs to, or undefined for a custom/unregistered type. */
-export function categoryForLifeEventType(type: string): LifeEventCategory | undefined {
-  return LIFE_EVENT_TYPE_TO_CATEGORY[type];
+/**
+ * Reports whether token is one of the five known category tokens — guards
+ * an indexed lookup into LIFE_EVENT_TYPES_BY_CATEGORY against an unknown
+ * value (stale/corrupted data, or a category this frontend copy predates —
+ * the frontend-trap-4 mirror-drift scenario) so callers narrow to
+ * LifeEventCategory instead of blindly casting.
+ */
+export function isKnownLifeEventCategory(token: string): token is LifeEventCategory {
+  return (LIFE_EVENT_CATEGORIES as readonly string[]).includes(token);
 }
 
 export interface PartialDate {

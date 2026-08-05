@@ -23,6 +23,7 @@ import {
   LIFE_EVENT_TYPES_BY_CATEGORY,
   LifeEventCategory,
   PartialDate,
+  isKnownLifeEventCategory,
   partialDateHasMonthDay,
   partialDateIsYearOnly,
 } from '../api/lifeEvents';
@@ -140,9 +141,15 @@ export default function LifeEventDialog({
   useEffect(() => {
     if (open) {
       if (initial) {
-        const initCategory: LifeEventCategory | typeof UNCATEGORIZED = initial.category
-          ? (initial.category as LifeEventCategory)
-          : UNCATEGORIZED;
+        // Falls back to UNCATEGORIZED both for a genuinely empty Category
+        // (the legacy/pre-migration case) and for an unrecognized one (stale
+        // data, or a category token this frontend copy predates) — isKnownLifeEventCategory
+        // guards the LIFE_EVENT_TYPES_BY_CATEGORY lookup below from throwing
+        // on the latter.
+        const initCategory: LifeEventCategory | typeof UNCATEGORIZED =
+          initial.category && isKnownLifeEventCategory(initial.category)
+            ? initial.category
+            : UNCATEGORIZED;
         setCategory(initCategory);
         setType(initial.type || '');
         // A predefined category's type list decides whether the existing
@@ -151,7 +158,7 @@ export default function LifeEventDialog({
         // useCustomType value is never read.
         setUseCustomType(
           initCategory !== UNCATEGORIZED &&
-            !LIFE_EVENT_TYPES_BY_CATEGORY[initCategory as LifeEventCategory].includes(initial.type || '')
+            !LIFE_EVENT_TYPES_BY_CATEGORY[initCategory].includes(initial.type || '')
         );
         if (initial.date) {
           setDateYear(initial.date.year != null ? String(initial.date.year) : '');
@@ -270,7 +277,14 @@ export default function LifeEventDialog({
                 {t(`lifeEvent.categories.${cat}`)}
               </MenuItem>
             ))}
-            <MenuItem value={UNCATEGORIZED}>{t('lifeEvent.categories.uncategorized')}</MenuItem>
+            {/* Only offered when it's already the current (legacy/unrecognized)
+                state — a brand-new event, or one already filed under a real
+                category, must always get one of the five real categories;
+                "Other / Uncategorized" is display/edit-graceful-degradation
+                for existing data, not a choice a user can newly opt into. */}
+            {category === UNCATEGORIZED && (
+              <MenuItem value={UNCATEGORIZED}>{t('lifeEvent.categories.uncategorized')}</MenuItem>
+            )}
           </TextField>
 
           {category === '' && (

@@ -86,10 +86,12 @@ var LifeEventTypeCategories = map[string]string{
 
 // lifeEventTypesByCategoryOrder preserves the ticket's authoritative
 // within-category ordering, since LifeEventTypeCategories (a map) can't.
-// Only migration 000011's backfill (matched via LifeEventCategoryForType)
-// and tests need this; the frontend keeps its own hand-mirrored copy per
-// CLAUDE.md frontend-trap-4, exactly like every other backend `oneof`
-// registry.
+// Migration 000011's own backfill is static SQL and does NOT read this —
+// it hand-duplicates the same seven-constant mapping directly in the
+// UPDATE statements, since a migration file can't call Go code. Only
+// LifeEventTypesForCategory and tests use this; the frontend keeps its own
+// hand-mirrored copy per CLAUDE.md frontend-trap-4, exactly like every
+// other backend `oneof`-shaped registry.
 var lifeEventTypesByCategoryOrder = map[string][]string{
 	LifeEventCategoryHomeLiving: {
 		LifeEventTypeMoved,
@@ -156,10 +158,11 @@ func LifeEventCategories() []string {
 }
 
 // IsKnownLifeEventCategory reports whether token is one of the five
-// registered category tokens. Not used by the validator itself (the `oneof`
-// struct tag on LifeEvent.Category/LifeEventInput.Category is the actual
-// enforcement) — provided for tests and any future call site that needs a
-// membership check without duplicating the token list.
+// registered category tokens. Backs the life_event_category validator tag
+// (middleware/validation.go's validateLifeEventCategory) — the same role
+// IsKnownRelationType plays for the relation_type tag — so LifeEvent.
+// Category/LifeEventInput.Category validation reads this registry instead
+// of a second hardcoded token list.
 func IsKnownLifeEventCategory(token string) bool {
 	for _, c := range lifeEventCategoryOrder {
 		if c == token {
