@@ -1,7 +1,8 @@
 {
   "app": {
     "title": "Mycorrhizal CRM",
-    "logout": "Esci"
+    "logout": "Esci",
+    "accountMenu": "Account"
   },
   "nav": {
     "dashboard": "Cruscotto",

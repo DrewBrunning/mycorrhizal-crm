@@ -1,7 +1,8 @@
 {
   "app": {
     "title": "Mycorrhizal CRM",
-    "logout": "Abmelden"
+    "logout": "Abmelden",
+    "accountMenu": "Konto"
   },
   "nav": {
     "dashboard": "Dashboard",

@@ -32,6 +32,9 @@ import {
   Box,
   Button,
   CircularProgress,
+  Menu,
+  MenuItem,
+  Divider,
   useTheme,
   useMediaQuery,
   TextField,
@@ -54,6 +57,7 @@ import HomeWorkIcon from '@mui/icons-material/HomeWork';
 import ShareIcon from '@mui/icons-material/Share';
 import StorageIcon from '@mui/icons-material/Storage';
 import LogoutIcon from '@mui/icons-material/Logout';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import './App.css';
 
 const drawerWidth = 180;
@@ -76,7 +80,13 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
   const location = useLocation();
   const navigate = useNavigate();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  // Below the `sm` breakpoint the AppBar itself is the crowded surface: even
+  // title + live search + logout overflow ~360-414px. Swap to icon-only
+  // primary destinations + an account menu (T33) once space is tight.
+  const compactNav = useMediaQuery(theme.breakpoints.down('sm'));
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [accountMenuAnchor, setAccountMenuAnchor] = useState<HTMLElement | null>(null);
+  const accountMenuOpen = Boolean(accountMenuAnchor);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Contact[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -142,6 +152,25 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
     return items;
   }, [t, userIsAdmin]);
 
+  // T33 information-architecture pass: the nav bar had grown to ten
+  // destinations. Each is classified so the mobile AppBar knows where it
+  // lives:
+  //   primary  — used constantly, kept as visible icons in the AppBar below sm
+  //              (Contacts, Search, Notes)
+  //   account  — Settings, Data settings, User Management; collapsed into the
+  //              account menu instead of the main nav row
+  //   everything else is secondary and lives in the hamburger drawer.
+  const primaryPaths = ['/contacts', '/search', '/notes'];
+  const accountPaths = ['/settings', '/settings/data', '/users'];
+  const primaryNavItems = useMemo(
+    () => mainNavItems.filter((item) => primaryPaths.includes(item.path)),
+    [mainNavItems]
+  );
+  const accountNavItems = useMemo(
+    () => mainNavItems.filter((item) => accountPaths.includes(item.path)),
+    [mainNavItems]
+  );
+
   const drawerContent = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Toolbar />
@@ -200,7 +229,7 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
               color="inherit" 
               aria-label="menu" 
               onClick={handleDrawerToggle} 
-              sx={{ mr: 2 }}
+              sx={{ mr: 0.5 }}
             >
               <MenuIcon />
             </IconButton>
@@ -215,6 +244,7 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
             }}
             sx={{
               flexGrow: 1,
+              display: { xs: 'none', sm: 'block' },
               textDecoration: 'none',
               color: 'inherit',
               fontFamily: '"EB Garamond", serif',
@@ -224,7 +254,60 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
           >
             {t('app.title')}
           </Typography>
-          <Autocomplete
+
+          {compactNav ? (
+            // Phone-width AppBar (T33): primary destinations stay directly
+            // visible as icon-only buttons (each carries an aria-label — no
+            // accessible name is dropped when the label is), secondary items
+            // live in the hamburger drawer, and account-level items collapse
+            // into the account menu.
+            <>
+              {primaryNavItems.map((item) => (
+                <IconButton
+                  key={item.path}
+                  component={Link}
+                  to={item.path}
+                  color="inherit"
+                  aria-label={item.text}
+                  sx={{ mr: 0.5 }}
+                >
+                  {item.icon}
+                </IconButton>
+              ))}
+              <Box sx={{ flexGrow: 1 }} />
+              <IconButton
+                color="inherit"
+                aria-label={t('app.accountMenu')}
+                onClick={(e) => setAccountMenuAnchor(e.currentTarget)}
+              >
+                <AccountCircleIcon />
+              </IconButton>
+              <Menu
+                anchorEl={accountMenuAnchor}
+                open={accountMenuOpen}
+                onClose={() => setAccountMenuAnchor(null)}
+              >
+                {accountNavItems.map((item) => (
+                  <MenuItem
+                    key={item.path}
+                    component={Link}
+                    to={item.path}
+                    onClick={() => setAccountMenuAnchor(null)}
+                  >
+                    <ListItemIcon>{item.icon}</ListItemIcon>
+                    <ListItemText>{item.text}</ListItemText>
+                  </MenuItem>
+                ))}
+                <Divider sx={{ my: 0.5 }} />
+                <MenuItem onClick={handleLogout}>
+                  <ListItemIcon><LogoutIcon /></ListItemIcon>
+                  <ListItemText>{t('app.logout')}</ListItemText>
+                </MenuItem>
+              </Menu>
+            </>
+          ) : (
+            <>
+              <Autocomplete
             freeSolo
             size="small"
             options={searchResults}
@@ -328,9 +411,11 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
               </li>
             )}
           />
-          <Button color="inherit" startIcon={<LogoutIcon />} onClick={handleLogout}>
-            {t('app.logout')}
-          </Button>
+              <Button color="inherit" startIcon={<LogoutIcon />} onClick={handleLogout}>
+                {t('app.logout')}
+              </Button>
+            </>
+          )}
         </Toolbar>
       </AppBar>
 
@@ -368,6 +453,14 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
         sx={{ 
           flexGrow: 1, 
           p: 2,
+          // `min-width: auto` (the flex default) stops this item shrinking below
+          // its content's intrinsic width, so a wide child (the contact
+          // timeline, the network controls, the settings tables) would force
+          // the page to scroll horizontally at phone widths instead of the
+          // child scrolling/containing itself. minWidth: 0 lets the page
+          // column take the viewport and the children handle their own
+          // overflow (T32/T33).
+          minWidth: 0,
           width: { md: `calc(100% - ${drawerWidth}px)` },
           mt: 7
         }}
