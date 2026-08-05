@@ -27,20 +27,24 @@ type testPerson struct {
 // server (the services package keeps its own for its tests; both exercise the
 // real HTTP protocol against the same wire shapes).
 type fakeImmichController struct {
-	t              *testing.T
-	Server         *httptest.Server
-	APIKey         string
-	People         map[string]*testPerson
-	FailWithStatus int
-	LastAPIKey     string
+	t      *testing.T
+	Server *httptest.Server
+	APIKey string
+	People map[string]*testPerson
+	// AssetThumbnails serves GET /api/assets/:id/thumbnail (the contact-photo
+	// picker's per-photo fetch), keyed by asset ID — independent of People.
+	AssetThumbnails map[string][]byte
+	FailWithStatus  int
+	LastAPIKey      string
 }
 
 // newImmichTestServer builds a started fake Immich instance.
 func newImmichTestServer(t *testing.T, apiKey string) *fakeImmichController {
 	f := &fakeImmichController{
-		t:      t,
-		APIKey: apiKey,
-		People: make(map[string]*testPerson),
+		t:               t,
+		APIKey:          apiKey,
+		People:          make(map[string]*testPerson),
+		AssetThumbnails: make(map[string][]byte),
 	}
 	f.Server = httptest.NewServer(http.HandlerFunc(f.handle))
 	return f
@@ -59,6 +63,11 @@ func (f *fakeImmichController) URL() string {
 // addTestPerson registers a person.
 func (f *fakeImmichController) addTestPerson(id, name string, photoCount int, assets []testAsset, thumbnail []byte) {
 	f.People[id] = &testPerson{Name: name, PhotoCount: photoCount, Assets: assets, Thumbnail: thumbnail}
+}
+
+// addTestAssetThumbnail registers an asset's thumbnail bytes.
+func (f *fakeImmichController) addTestAssetThumbnail(assetID string, thumbnail []byte) {
+	f.AssetThumbnails[assetID] = thumbnail
 }
 
 func (f *fakeImmichController) handle(w http.ResponseWriter, r *http.Request) {
@@ -84,6 +93,18 @@ func (f *fakeImmichController) handle(w http.ResponseWriter, r *http.Request) {
 			items = append(items, map[string]any{"id": id, "name": p.Name})
 		}
 		writeControllerJSON(w, map[string]any{"people": map[string]any{"items": items, "hasNextPage": false}, "total": len(items)})
+	// Checked before the generic person "/thumbnail" suffix case below —
+	// both end in "/thumbnail", and this one is asset-scoped, not
+	// person-scoped (the contact-photo picker's per-photo fetch).
+	case strings.HasPrefix(path, "/assets/") && strings.HasSuffix(path, "/thumbnail"):
+		id := testAssetIDFromPath(path)
+		body, ok := f.AssetThumbnails[id]
+		if !ok {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "image/jpeg")
+		_, _ = w.Write(body)
 	case strings.HasSuffix(path, "/statistics"):
 		id := testPersonIDFromPath(path, "/statistics")
 		p, ok := f.People[id]
@@ -117,6 +138,12 @@ func (f *fakeImmichController) handle(w http.ResponseWriter, r *http.Request) {
 func testPersonIDFromPath(path, suffix string) string {
 	start := strings.Index(path, "/people/") + len("/people/")
 	return path[start : len(path)-len(suffix)]
+}
+
+// testAssetIDFromPath extracts the asset ID from "/assets/:id/thumbnail".
+func testAssetIDFromPath(path string) string {
+	start := strings.Index(path, "/assets/") + len("/assets/")
+	return path[start : len(path)-len("/thumbnail")]
 }
 
 func writeControllerJSON(w http.ResponseWriter, v any) {

@@ -27,6 +27,11 @@ export interface ImmichPerson {
   name: string;
 }
 
+export interface ImmichAssetSummary {
+  id: string;
+  occurred_at: string;
+}
+
 export interface ImmichPersonSummary {
   identity: {
     id: string;
@@ -109,4 +114,21 @@ export async function syncImmich(): Promise<void> {
 // own connection credentials.
 export function immichThumbnailUrl(contactUid: string): string {
   return `${API_BASE_URL}/immich/contacts/${contactUid}/thumbnail`;
+}
+
+// Recent photos of a linked contact's Immich person, for the profile-photo
+// picker's browse-then-pick step. Requires an existing link.
+export async function getImmichContactAssets(contactUid: string): Promise<ImmichAssetSummary[]> {
+  const response = await apiFetch(`${API_BASE_URL}/immich/contacts/${contactUid}/assets`, {
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) throw await parseErrorResponse(response);
+  const result = await response.json();
+  return result.assets || [];
+}
+
+// The proxied URL for one of a linked contact's recent Immich photos (the
+// profile-photo picker), same hardening as immichThumbnailUrl.
+export function immichAssetImageUrl(contactUid: string, assetId: string): string {
+  return `${API_BASE_URL}/immich/contacts/${contactUid}/assets/${assetId}/image`;
 }

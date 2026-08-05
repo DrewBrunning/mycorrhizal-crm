@@ -664,6 +664,13 @@
       "unlink": "Desvincular",
       "unlinkConfirm": "¿Desvincular esta persona del contacto? Las entradas de la línea de tiempo de fotos se conservan.",
       "unlinkFailed": "No se pudo desvincular la persona."
+    },
+    "photoPicker": {
+      "title": "Elegir una foto de Immich",
+      "noPhotos": "Aún no se encontraron fotos para esta persona.",
+      "loadFailed": "No se pudo cargar esa foto.",
+      "primaryPhotoAlt": "Miniatura actual de Immich",
+      "photoAlt": "Foto de Immich"
     }
   },
   "profilePicture": {
@@ -678,7 +685,8 @@
     "or": "o",
     "urlPlaceholder": "Pegar URL de imagen...",
     "fetch": "Obtener",
-    "urlFetchError": "Error al obtener la imagen desde la URL"
+    "urlFetchError": "Error al obtener la imagen desde la URL",
+    "chooseFromImmich": "Elegir desde Immich"
   },
   "settings": {
     "title": "Configuración",

@@ -47,6 +47,8 @@ func immichTestRouter(t *testing.T, db *gorm.DB) *gin.Engine {
 	router.DELETE("/immich/contacts/:vcard_uid/link", UnlinkImmichContact)
 	router.GET("/immich/contacts/:vcard_uid/summary", GetImmichContactSummary)
 	router.GET("/immich/contacts/:vcard_uid/thumbnail", GetImmichThumbnail)
+	router.GET("/immich/contacts/:vcard_uid/assets", ListImmichContactAssets)
+	router.GET("/immich/contacts/:vcard_uid/assets/:asset_id/image", GetImmichAssetImage)
 	return router
 }
 
@@ -274,4 +276,79 @@ func TestGetImmichThumbnail(t *testing.T) {
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 	assert.Equal(t, "image/jpeg", w.Header().Get("Content-Type"))
 	assert.Equal(t, []byte{0xff, 0xd8, 0xff, 0xe0}, w.Body.Bytes())
+}
+
+func TestListImmichContactAssets(t *testing.T) {
+	db := seedImmichControllerDB(t)
+	router := immichTestRouter(t, db)
+
+	fake := newImmichTestServer(t, "sekret")
+	defer fake.Close()
+	fake.addTestPerson("person-alice", "Alice", 2, []testAsset{
+		{ID: "asset-old", FileCreatedAt: "2026-01-01T10:00:00Z"},
+		{ID: "asset-new", FileCreatedAt: "2026-08-03T10:00:00Z"},
+	}, nil)
+
+	var contact models.Contact
+	require.NoError(t, db.Where("user_id = ?", uint(1)).First(&contact).Error)
+
+	enc, _ := services.EncryptCredential("test-jwt-secret-0123456789abcdef0123456789abcdef", "sekret")
+	require.NoError(t, db.Create(&models.ImmichConfig{UserID: 1, BaseURL: fake.URL(), APIKeyEncrypted: enc}).Error)
+	require.NoError(t, db.Create(&models.ExternalIdentity{
+		UserID: 1, EntityID: contact.VCardUID, System: services.ExternalSystemImmich, ExternalID: "person-alice",
+	}).Error)
+
+	w := immichDoJSON(t, router, "GET", "/immich/contacts/"+contact.VCardUID+"/assets", nil)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var resp struct {
+		Assets []services.ImmichAssetSummary `json:"assets"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	require.Len(t, resp.Assets, 2)
+	assert.Equal(t, "asset-new", resp.Assets[0].ID, "newest first")
+}
+
+func TestListImmichContactAssets_NoLinkIs404(t *testing.T) {
+	db := seedImmichControllerDB(t)
+	router := immichTestRouter(t, db)
+
+	var contact models.Contact
+	require.NoError(t, db.Where("user_id = ?", uint(1)).First(&contact).Error)
+
+	w := immichDoJSON(t, router, "GET", "/immich/contacts/"+contact.VCardUID+"/assets", nil)
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestGetImmichAssetImage(t *testing.T) {
+	db := seedImmichControllerDB(t)
+	router := immichTestRouter(t, db)
+
+	fake := newImmichTestServer(t, "")
+	defer fake.Close()
+	fake.addTestAssetThumbnail("asset-1", []byte{0xff, 0xd8, 0xff, 0xcc})
+
+	var contact models.Contact
+	require.NoError(t, db.Where("user_id = ?", uint(1)).First(&contact).Error)
+
+	enc, _ := services.EncryptCredential("test-jwt-secret-0123456789abcdef0123456789abcdef", "k")
+	require.NoError(t, db.Create(&models.ImmichConfig{UserID: 1, BaseURL: fake.URL(), APIKeyEncrypted: enc}).Error)
+	require.NoError(t, db.Create(&models.ExternalIdentity{
+		UserID: 1, EntityID: contact.VCardUID, System: services.ExternalSystemImmich, ExternalID: "person-alice",
+	}).Error)
+
+	w := immichDoJSON(t, router, "GET", "/immich/contacts/"+contact.VCardUID+"/assets/asset-1/image", nil)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	assert.Equal(t, "image/jpeg", w.Header().Get("Content-Type"))
+	assert.Equal(t, []byte{0xff, 0xd8, 0xff, 0xcc}, w.Body.Bytes())
+}
+
+func TestGetImmichAssetImage_NoLinkIs404(t *testing.T) {
+	db := seedImmichControllerDB(t)
+	router := immichTestRouter(t, db)
+
+	var contact models.Contact
+	require.NoError(t, db.Where("user_id = ?", uint(1)).First(&contact).Error)
+
+	w := immichDoJSON(t, router, "GET", "/immich/contacts/"+contact.VCardUID+"/assets/asset-1/image", nil)
+	assert.Equal(t, http.StatusNotFound, w.Code)
 }

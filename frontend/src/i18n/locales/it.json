@@ -664,6 +664,13 @@
       "unlink": "Scollega",
       "unlinkConfirm": "Scollegare questa persona dal contatto? Le voci della timeline fotografica vengono conservate.",
       "unlinkFailed": "Impossibile scollegare la persona."
+    },
+    "photoPicker": {
+      "title": "Scegli una foto da Immich",
+      "noPhotos": "Nessuna foto trovata finora per questa persona.",
+      "loadFailed": "Impossibile caricare quella foto.",
+      "primaryPhotoAlt": "Miniatura Immich attuale",
+      "photoAlt": "Foto da Immich"
     }
   },
   "profilePicture": {
@@ -678,7 +685,8 @@
     "or": "o",
     "urlPlaceholder": "Incolla URL immagine...",
     "fetch": "Recupera",
-    "urlFetchError": "Impossibile recuperare l'immagine dall'URL"
+    "urlFetchError": "Impossibile recuperare l'immagine dall'URL",
+    "chooseFromImmich": "Scegli da Immich"
   },
   "settings": {
     "title": "Impostazioni",

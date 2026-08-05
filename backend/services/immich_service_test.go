@@ -160,6 +160,31 @@ func TestImmichClient_Thumbnail(t *testing.T) {
 	assert.Equal(t, "image/jpeg", contentType)
 }
 
+func TestImmichClient_AssetThumbnail(t *testing.T) {
+	fake := newFakeImmichServer(t, "")
+	defer fake.Close()
+	fake.addAssetThumbnail("asset-1", []byte{0xff, 0xd8, 0xff, 0xaa})
+
+	client, err := NewImmichClient(fake.URL(), "", false)
+	require.NoError(t, err)
+
+	body, contentType, err := client.AssetThumbnail("asset-1")
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0xff, 0xd8, 0xff, 0xaa}, body)
+	assert.Equal(t, "image/jpeg", contentType)
+}
+
+func TestImmichClient_AssetThumbnailNotFound(t *testing.T) {
+	fake := newFakeImmichServer(t, "")
+	defer fake.Close()
+
+	client, err := NewImmichClient(fake.URL(), "", false)
+	require.NoError(t, err)
+
+	_, _, err = client.AssetThumbnail("no-such-asset")
+	assert.True(t, errors.Is(err, ErrImmichNotFound), "a missing asset must map to ErrImmichNotFound, got %v", err)
+}
+
 // TestImmichClient_ThumbnailRejectsNonImageContentType pins the
 // defense-in-depth hardening added during review: the Immich client's
 // Thumbnail method must reject Content-Types that don't start with "image/"
@@ -344,6 +369,58 @@ func TestFetchImmichPersonSummary_LiveAndCachedDegradation(t *testing.T) {
 	degraded := FetchImmichPersonSummary(db, immichTestConfig(), user.ID, &identity)
 	assert.Equal(t, "Alice", degraded.PersonName, "the name is still available from cached metadata")
 	assert.EqualValues(t, 7, degraded.PhotoCount, "photo count degrades to the cache on failure")
+}
+
+func TestListImmichRecentAssetsForContact(t *testing.T) {
+	db := newImmichTestDB(t)
+	user, contact := seedImmichUser(t, db)
+
+	fake := newFakeImmichServer(t, "sekret")
+	defer fake.Close()
+	fake.addPerson("person-alice", "Alice", 2, []fakeImmichAsset{
+		{ID: "asset-old", FileCreatedAt: "2026-01-01T10:00:00Z"},
+		{ID: "asset-new", FileCreatedAt: "2026-08-03T10:00:00Z"},
+	}, nil)
+
+	connectImmichForUser(t, db, user.ID, contact.VCardUID, fake.URL(), "sekret")
+
+	assets, err := ListImmichRecentAssetsForContact(db, immichTestConfig(), user.ID, contact.VCardUID)
+	require.NoError(t, err)
+	require.Len(t, assets, 2)
+	assert.Equal(t, "asset-new", assets[0].ID, "newest first")
+	assert.Equal(t, "asset-old", assets[1].ID)
+}
+
+func TestListImmichRecentAssetsForContact_NoLinkIsNotFound(t *testing.T) {
+	db := newImmichTestDB(t)
+	user, contact := seedImmichUser(t, db)
+
+	_, err := ListImmichRecentAssetsForContact(db, immichTestConfig(), user.ID, contact.VCardUID)
+	assert.True(t, errors.Is(err, ErrImmichNotFound), "no link must map to ErrImmichNotFound, got %v", err)
+}
+
+func TestFetchImmichAssetImage(t *testing.T) {
+	db := newImmichTestDB(t)
+	user, contact := seedImmichUser(t, db)
+
+	fake := newFakeImmichServer(t, "sekret")
+	defer fake.Close()
+	fake.addAssetThumbnail("asset-1", []byte{0xff, 0xd8, 0xff, 0xbb})
+
+	connectImmichForUser(t, db, user.ID, contact.VCardUID, fake.URL(), "sekret")
+
+	body, contentType, err := FetchImmichAssetImage(db, immichTestConfig(), user.ID, contact.VCardUID, "asset-1")
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0xff, 0xd8, 0xff, 0xbb}, body)
+	assert.Equal(t, "image/jpeg", contentType)
+}
+
+func TestFetchImmichAssetImage_NoLinkIsNotFound(t *testing.T) {
+	db := newImmichTestDB(t)
+	user, contact := seedImmichUser(t, db)
+
+	_, _, err := FetchImmichAssetImage(db, immichTestConfig(), user.ID, contact.VCardUID, "asset-1")
+	assert.True(t, errors.Is(err, ErrImmichNotFound), "no link must map to ErrImmichNotFound, got %v", err)
 }
 
 func TestSyncImmichWithRateLimit_SkipsWhenRecentlyRun(t *testing.T) {

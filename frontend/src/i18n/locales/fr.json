@@ -664,6 +664,13 @@
       "unlink": "Dissocier",
       "unlinkConfirm": "Dissocier cette personne du contact ? Les entrées de chronologie photo sont conservées.",
       "unlinkFailed": "Impossible de dissocier la personne."
+    },
+    "photoPicker": {
+      "title": "Choisir une photo depuis Immich",
+      "noPhotos": "Aucune photo trouvée pour cette personne pour le moment.",
+      "loadFailed": "Impossible de charger cette photo.",
+      "primaryPhotoAlt": "Vignette Immich actuelle",
+      "photoAlt": "Photo depuis Immich"
     }
   },
   "profilePicture": {
@@ -678,7 +685,8 @@
     "or": "ou",
     "urlPlaceholder": "Collez l'URL de l'image...",
     "fetch": "Récupérer",
-    "urlFetchError": "Échec de la récupération de l'image depuis l'URL"
+    "urlFetchError": "Échec de la récupération de l'image depuis l'URL",
+    "chooseFromImmich": "Choisir depuis Immich"
   },
   "settings": {
     "title": "Paramètres",
