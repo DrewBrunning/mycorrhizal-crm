@@ -2,6 +2,7 @@ import { Box, Typography, TextField, IconButton } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
+import CopyButton from './CopyButton';
 
 interface EditableFieldProps {
   icon: React.ReactNode;
@@ -91,18 +92,23 @@ export default function EditableField({
           )}
         </Box>
         {!isEditing && (
-          <IconButton
-            className="edit-icon"
-            size="small"
-            onClick={() => onEditStart(field, value)}
-            sx={{
-              opacity: 0,
-              transition: 'opacity 0.2s',
-              ml: 1
-            }}
-          >
-            <EditIcon fontSize="small" />
-          </IconButton>
+          <Box sx={{ display: 'flex', alignItems: 'center', ml: 1 }}>
+            {/* Every field gets a copy button (T34), tappable or not -- shown
+                whenever there's a value to copy, unlike the hover-only edit
+                affordance below. */}
+            {value && <CopyButton value={value} label={label} />}
+            <IconButton
+              className="edit-icon"
+              size="small"
+              onClick={() => onEditStart(field, value)}
+              sx={{
+                opacity: 0,
+                transition: 'opacity 0.2s',
+              }}
+            >
+              <EditIcon fontSize="small" />
+            </IconButton>
+          </Box>
         )}
       </Box>
     </Box>

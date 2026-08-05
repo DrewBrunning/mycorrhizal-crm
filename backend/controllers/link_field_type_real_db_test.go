@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -177,7 +178,84 @@ func TestLinkFieldType_RealMigratedSchema(t *testing.T) {
 	require.NoError(t, db.First(&reorderedCustom, "id = ?", recreated.LinkFieldType.ID).Error)
 	assert.Equal(t, 0, reorderedCustom.Position)
 
-	// Reorder with an ID that doesn't belong to the user -> rejected outright.
-	badReorderResp := doJSON("PUT", "/link-field-types/reorder", models.LinkFieldTypeReorderInput{Order: []string{"00000000-0000-0000-0000-000000000000"}})
+	// Reorder including a real, well-formed UUID4 that belongs to a DIFFERENT
+	// user -> rejected outright (not just any malformed/nil UUID, which the
+	// dive,uuid4 struct-tag validator alone would already catch before this
+	// handler is even reached — this proves the handler's own ownership
+	// check, not just input validation).
+	otherUser := models.User{Username: "linkfieldtype-realdb-other", Password: "password123!A", Email: "linkfieldtype-realdb-other@example.com"}
+	require.NoError(t, db.Create(&otherUser).Error)
+	otherType := models.LinkFieldType{UserID: otherUser.ID, Name: "Other's Type", Protocol: "https://example.com/{value}", Category: models.LinkFieldTypeCategoryOther}
+	require.NoError(t, db.Create(&otherType).Error)
+
+	finalListResp2 := doJSON("GET", "/link-field-types", nil)
+	require.Equal(t, http.StatusOK, finalListResp2.Code, finalListResp2.Body.String())
+	var finalListed2 struct {
+		LinkFieldTypes []models.LinkFieldType `json:"link_field_types"`
+	}
+	require.NoError(t, json.Unmarshal(finalListResp2.Body.Bytes(), &finalListed2))
+	ownIDs := make([]string, len(finalListed2.LinkFieldTypes))
+	for i, lt := range finalListed2.LinkFieldTypes {
+		ownIDs[i] = lt.ID
+	}
+
+	foreignOrder := append(append([]string{}, ownIDs...), otherType.ID)
+	badReorderResp := doJSON("PUT", "/link-field-types/reorder", models.LinkFieldTypeReorderInput{Order: foreignOrder})
 	require.Equal(t, http.StatusBadRequest, badReorderResp.Code, badReorderResp.Body.String())
+
+	// Reorder with a genuine, fully-owned, duplicate-free SUBSET (missing the
+	// last of the user's own IDs) -> also rejected: the full set must be
+	// supplied, not just IDs that individually check out.
+	partialOrder := ownIDs[:len(ownIDs)-1]
+	partialReorderResp := doJSON("PUT", "/link-field-types/reorder", models.LinkFieldTypeReorderInput{Order: partialOrder})
+	require.Equal(t, http.StatusBadRequest, partialReorderResp.Code, partialReorderResp.Body.String())
+}
+
+// TestLinkFieldType_ConcurrentSeeding pins seedLinkFieldTypesIfEmpty's own
+// documented race-handling claim (link_field_type_controller.go's doc
+// comment): concurrent first-fetches for the same brand-new user must not
+// error out and must not double-seed, following this repo's own precedent
+// for pinning this class of bug (database/concurrent_write_test.go).
+func TestLinkFieldType_ConcurrentSeeding(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "link-field-types-concurrent.db")
+	db, err := database.InitDB(dbPath)
+	require.NoError(t, err)
+
+	user := models.User{Username: "linkfieldtype-concurrent", Password: "password123!A", Email: "linkfieldtype-concurrent@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	// A generous worker count plus a start barrier (all goroutines block on
+	// `release` until every one of them is spawned and ready) maximizes the
+	// chance several Count()==0 reads genuinely interleave before any
+	// Create() commits -- the exact window seedLinkFieldTypesIfEmpty's race
+	// handling exists for. SQLite's own write serialization (_txlock=
+	// immediate) makes the actual double-INSERT window narrow, so this is
+	// best-effort, not a guaranteed repro, matching this repo's existing
+	// concurrent-write test's own honesty about that.
+	const workers = 32
+	errs := make(chan error, workers)
+	release := make(chan struct{})
+	var ready sync.WaitGroup
+	var wg sync.WaitGroup
+	ready.Add(workers)
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			ready.Done()
+			<-release
+			errs <- seedLinkFieldTypesIfEmpty(db, user.ID)
+		}()
+	}
+	ready.Wait()
+	close(release)
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		assert.NoError(t, err, "a concurrent first-seed must not surface as a request-level error")
+	}
+
+	var count int64
+	require.NoError(t, db.Model(&models.LinkFieldType{}).Where("user_id = ?", user.ID).Count(&count).Error)
+	assert.Equal(t, int64(len(models.LinkFieldTypeDefaults)), count, "concurrent seeding must not duplicate the default set")
 }

@@ -93,6 +93,33 @@ test('resolveOnlineServiceLink returns null when the handle is missing even if t
   expect(link).toBeNull();
 });
 
+// A bare handle with no scheme (e.g. imported straight into the URI slot)
+// passes isSafeUrlString -- it has no dangerous scheme, but it also isn't a
+// URI at all. Without the looksLikeAbsoluteUri guard this would render as a
+// bogus relative/same-origin href instead of falling through to "not
+// tappable".
+test('resolveOnlineServiceLink rejects a URI value that has no scheme at all', () => {
+  const link = resolveOnlineServiceLink({ uri: 'alice@example.com', service: 'WhatsApp', user: '15551234567' }, [whatsapp]);
+  expect(link).toBeNull();
+});
+
+test('resolveOnlineServiceLink rejects a protocol-relative URI value', () => {
+  const link = resolveOnlineServiceLink({ uri: '//evil.example.com/x' }, [whatsapp]);
+  expect(link).toBeNull();
+});
+
+// A template referencing {value} more than once (e.g. a query-string
+// callback param) must have every occurrence substituted, not just the
+// first -- .replace(string, ...) only replaces the first match.
+test('resolveOnlineServiceLink substitutes every occurrence of {value} in the template', () => {
+  const repeated: LinkFieldType = {
+    id: '3', name: 'Repeated', protocol: 'https://x.example.com/{value}?ref={value}', category: 'other',
+    is_default: false, position: 0, created_at: '', updated_at: '',
+  };
+  const link = resolveOnlineServiceLink({ service: 'Repeated', user: 'alice' }, [repeated]);
+  expect(link).toBe('https://x.example.com/alice?ref=alice');
+});
+
 test('formatAddressLine joins non-empty parts and skips blanks', () => {
   expect(formatAddressLine({ street: '', city: 'Springfield', region: 'IL', postal: '', country: '' })).toBe('Springfield, IL');
   expect(formatAddressLine({ street: '', city: '', region: '', postal: '', country: '' })).toBe('');

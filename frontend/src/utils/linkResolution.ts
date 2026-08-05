@@ -65,7 +65,11 @@ export function resolveOnlineServiceLink(
   linkFieldTypes: LinkFieldType[]
 ): string | null {
   if (service.uri && service.uri.trim()) {
-    return isSafeUrlString(service.uri) ? service.uri : null;
+    // Must actually look like a URI, not just lack a dangerous scheme --
+    // isSafeUrlString alone accepts a bare handle with no scheme at all
+    // (e.g. a stray "alice@example.com" imported into the URI slot), which
+    // would otherwise render as a bogus same-origin/relative href.
+    return looksLikeAbsoluteUri(service.uri) && isSafeUrlString(service.uri) ? service.uri : null;
   }
 
   if (service.service && service.user) {
@@ -73,7 +77,10 @@ export function resolveOnlineServiceLink(
       (lt) => lt.name.toLowerCase() === service.service!.toLowerCase()
     );
     if (match?.protocol && match.protocol.includes('{value}')) {
-      const substituted = match.protocol.replace('{value}', encodeURIComponent(service.user));
+      // split/join rather than a single .replace(): a user-authored template
+      // may reference {value} more than once (e.g. "…/{value}?ref={value}"),
+      // and .replace(string, ...) only substitutes the first occurrence.
+      const substituted = match.protocol.split('{value}').join(encodeURIComponent(service.user));
       return isSafeUrlString(substituted) ? substituted : null;
     }
   }

@@ -256,11 +256,13 @@ func DeleteLinkFieldType(c *gin.Context) {
 }
 
 // ReorderLinkFieldTypes persists a new display order for the authenticated
-// user's LinkFieldTypes. The full set of IDs must be supplied and every ID
-// must belong to the caller — a partial or foreign-owned ID list is
-// rejected outright rather than silently reordering a subset (COUNT of
-// matching owned rows must equal the list length, which also catches
-// duplicate IDs in the payload).
+// user's LinkFieldTypes. The full set of IDs must be supplied, with every ID
+// belonging to the caller and no duplicates — a partial or foreign-owned ID
+// list is rejected outright rather than silently reordering a subset or
+// leaving the un-listed rows colliding with the newly assigned positions.
+// Two counts enforce this: COUNT of matching owned rows must equal the list
+// length (catches foreign IDs and duplicates), AND must equal the user's
+// total row count (catches an incomplete list of otherwise-valid IDs).
 func ReorderLinkFieldTypes(c *gin.Context) {
 	input, err := middleware.GetValidated[models.LinkFieldTypeReorderInput](c)
 	if err != nil {
@@ -274,13 +276,19 @@ func ReorderLinkFieldTypes(c *gin.Context) {
 		return
 	}
 
+	var total int64
+	if err := db.Model(&models.LinkFieldType{}).Where("user_id = ?", userID).Count(&total).Error; err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to verify link field types").WithError(err))
+		return
+	}
+
 	var count int64
 	if err := db.Model(&models.LinkFieldType{}).Where("user_id = ? AND id IN ?", userID, input.Order).Count(&count).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to verify link field types").WithError(err))
 		return
 	}
-	if int(count) != len(input.Order) {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("order", "every ID must belong to the current user, with no duplicates"))
+	if int(count) != len(input.Order) || int(total) != len(input.Order) {
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("order", "must include every one of the user's link field types exactly once, with no duplicates"))
 		return
 	}
 

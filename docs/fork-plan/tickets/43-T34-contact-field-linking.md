@@ -158,31 +158,70 @@ there would just leave orphaned tombstones behind for a gone account). `openapi.
 route-coverage/schema-spot-check drift tests were updated for the 5 new endpoints.
 
 **Frontend:** `resolveOnlineServiceLink` (client-side, in `utils/linkResolution.ts`) matches
-`OnlineService.Service` case-insensitively against the registry and substitutes `{value}` —
-deliberately kept out of the backend to avoid widening the contact response. A CopyButton
-component + `utils/clipboard.ts` (Clipboard API with an `execCommand` fallback) is used
-consistently across every field row in `ContactInformation.tsx`. Single-action fields (email,
-address, online-service handles, raw links) became the tappable value itself; phone — the only
-multi-action field — gets discrete call/text icon buttons instead, per the ticket's own table.
-Every built/substituted/passthrough href is checked with `isSafeUrlString` (a client-side mirror
-of the backend's `safeurl` validator) before use, including the *substituted* `{value}` result,
-not just the stored template. `LinkFieldTypesSettings.tsx` (Settings CRUD screen) uses up/down
-arrow buttons for reordering — no drag-and-drop library exists in this repo, and one type
-registry didn't warrant adding one.
+`OnlineService.Service` case-insensitively against the registry and substitutes *every*
+occurrence of `{value}` (a `split('{value}').join(...)`, not a single `.replace()`, since a
+user-authored template may reference the placeholder more than once) — deliberately kept out of
+the backend to avoid widening the contact response. A CopyButton component +
+`utils/clipboard.ts` (Clipboard API with an `execCommand` fallback) is on every field row in
+`ContactInformation.tsx`, including the single-scalar `EditableField`-based ones (birthday,
+gender, organization, how-we-met, ...) via a shared change to `EditableField.tsx` itself, not
+just the newly-tappable rows. Single-action fields (email, address, online-service handles, raw
+links) became the tappable value itself; phone — the only multi-action field — gets discrete
+call/text icon buttons instead, per the ticket's own table, keyed off the phone's full
+`features`/`contexts` arrays (not just the first token) so a real-world multi-TYPE vCard import
+like `TYPE=VOICE,CELL` still gets its text button. Every built/substituted/passthrough href
+(including a full-URI `OnlineService.URI` passthrough) is checked against both
+`looksLikeAbsoluteUri` and `isSafeUrlString` (a client-side mirror of the backend's `safeurl`
+validator) before use — a value with no dangerous scheme but also no scheme at all (e.g. a bare
+handle mistakenly imported into the URI slot) is not tappable either.
+`LinkFieldTypesSettings.tsx` (Settings CRUD screen) uses up/down arrow buttons for reordering —
+no drag-and-drop library exists in this repo, and one type registry didn't warrant adding one.
+The registry fetch inside `ContactInformation.tsx` only fires when `socialProfiles` or
+`otherOnlineServices` is actually enabled (`ListLinkFieldTypes` does a write — lazy defaults
+seeding — on a user's first call, and neither field is in `DEFAULT_ENABLED_CONTACT_FIELDS`).
 
-**Tests:** backend real-DB test (`link_field_type_real_db_test.go`) covers CRUD, lazy seeding,
-the partial-unique-index-after-soft-delete case, the duplicate-name 409, `safeurl` rejection, and
-reorder — hand-verified by breaking the unique index and the `DeleteUser` cascade line and
-confirming the tests actually fail, then restoring. Frontend: `linkResolution.test.ts` (pure
-resolution logic), `ContactInformation.test.tsx` extensions (per-phone-type buttons, link hrefs,
-copy buttons, a round-trip regression test), `LinkFieldTypesSettings.test.tsx`,
-`CopyButton.test.tsx`, `clipboard.test.ts`, plus two new Playwright specs
-(`linkFieldTypes.spec.ts`, `contactFieldLinking.spec.ts`) run against the
-`docker-compose.test.yml` stack. The e2e social-profile-resolution path is deliberately *not*
-automated (it's off by default in `DEFAULT_ENABLED_CONTACT_FIELDS`, and flipping that shared
-TEST_USER setting mid-suite would race other spec files under `fullyParallel: true`) — covered by
-unit/component tests instead, plus a manual hand-verification pass confirming a custom link type
-added via Settings resolves on a contact's page with no code change.
+**Scope decision — IMPP is not routed through the registry.** The ticket's §5 names
+`SocialProfiles`, `OtherOnlineServices`, *and* IMPP as `OnlineService`-shaped. The first two are;
+IMPP isn't, on the frontend: `cardImppToValues` (`api/contacts.ts`, pre-existing, T29) flattens
+IMPP to the same `ContactValue` (type/value) shape phones and emails use, via `MultiValueField`,
+discarding `Service`/`User` entirely — only `URI` survives. `renderUriValueList` links an IMPP
+entry directly when its value is itself a safe absolute URI (the existing `xmpp:`/`sip:`-style
+case) but cannot registry-match a bare handle, because the handle's originating service name
+never reaches the frontend. Making IMPP registry-matchable would mean rebuilding its editor
+around `OnlineServiceEditor` instead of `MultiValueField` — a real UI change with its own
+review/i18n/test surface, not a tappable-link concern — so it's left as a follow-up rather than
+folded into an already-large ticket.
+
+**Reorder requires the complete set.** `ReorderLinkFieldTypes` checks the submitted ID list
+against the user's *total* row count, not just that every submitted ID is owned and duplicate-
+free — a genuine but incomplete subset is rejected, matching the handler's own doc comment,
+`api/linkFieldTypes.ts`'s doc comment, and `openapi.yaml`'s description (all three said this from
+the start; the check itself was strengthened to match).
+
+**Tests:** backend real-DB test (`link_field_type_real_db_test.go`) covers CRUD, lazy seeding, a
+best-effort forced-concurrency seeding-race test (32 workers behind a start barrier — SQLite's
+own write serialization makes the double-INSERT window narrow, so this is best-effort like
+`database/concurrent_write_test.go`'s own precedent, not a guaranteed repro), the partial-unique-
+index-after-soft-delete case, the duplicate-name 409, `safeurl` rejection, reorder rejecting a
+foreign owner's real UUID4 *and* a genuine-but-incomplete subset of the caller's own IDs — every
+one of these hand-verified by breaking the corresponding code and confirming the test actually
+fails, then restoring. Frontend: `linkResolution.test.ts` (pure resolution logic, including the
+scheme-less-URI and repeated-`{value}` cases), `ContactInformation.test.tsx` extensions
+(per-phone-type buttons including multi-TYPE-token imports, link hrefs, copy buttons on every
+field, a positive registry-resolution case reached through the real hook via a mocked API module
+— not just the pure resolver in isolation, a negative "fetch doesn't fire" case, and a round-trip
+regression test), `LinkFieldTypesSettings.test.tsx`, `CopyButton.test.tsx`, `clipboard.test.ts`,
+`api/linkFieldTypes.test.ts`, plus two new Playwright specs (`linkFieldTypes.spec.ts`,
+`contactFieldLinking.spec.ts`) run against the `docker-compose.test.yml` stack. The e2e
+social-profile-resolution path is deliberately *not* automated (it's off by default in
+`DEFAULT_ENABLED_CONTACT_FIELDS`, and flipping that shared TEST_USER setting mid-suite would race
+other spec files under `fullyParallel: true`) — covered by the component-level registry test
+instead, plus a manual hand-verification pass confirming a custom link type added via Settings
+resolves on a contact's page with no code change.
 
 **All 5 locale files** got real translations for `common.copy(Failed|Value)`, `contactDetail.call`/
 `.text`, and the full `settings.linkFieldTypes.*` namespace.
+
+**Reviewed by an Opus subagent** (security, test comprehensiveness, ticket completeness,
+regressions, idiom, docs) before landing; every finding above reflects that pass's fixes, not the
+first-draft implementation — see this branch's git history for the pre-review/post-review split.

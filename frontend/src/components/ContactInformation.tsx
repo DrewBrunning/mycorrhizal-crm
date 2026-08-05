@@ -248,16 +248,20 @@ export default function ContactInformation({
   const { t } = useTranslation();
   const { formatBirthday, getBirthdayPlaceholder, calculateAge } = useDateFormat();
   const [activeTab, setActiveTab] = useState(0);
-  // Read-only fetch of the user's LinkFieldType registry (T34) — resolves
-  // socialProfiles/otherOnlineServices handles to tappable links. Small
-  // Settings-owned registry; a plain GET on mount is cheap enough not to
-  // warrant lifting this above the contact detail page.
-  const { linkFieldTypes, refreshLinkFieldTypes } = useLinkFieldTypes();
-  useEffect(() => {
-    refreshLinkFieldTypes();
-  }, [refreshLinkFieldTypes]);
   const enabled = enabledFields ?? resolveEnabledFields(null);
   const isOn = (key: ContactFieldKey) => enabled.has(key);
+  // Read-only fetch of the user's LinkFieldType registry (T34) — resolves
+  // socialProfiles/otherOnlineServices handles to tappable links. Only
+  // fetched when one of those fields is actually enabled: ListLinkFieldTypes
+  // does a write (lazy-seeds 19 defaults) on a user's first call, and
+  // neither field is in DEFAULT_ENABLED_CONTACT_FIELDS, so an unconditional
+  // fetch would cost every contact-page view for accounts that never touch
+  // this registry.
+  const socialFieldsEnabled = isOn('socialProfiles') || isOn('otherOnlineServices');
+  const { linkFieldTypes, refreshLinkFieldTypes } = useLinkFieldTypes();
+  useEffect(() => {
+    if (socialFieldsEnabled) refreshLinkFieldTypes();
+  }, [socialFieldsEnabled, refreshLinkFieldTypes]);
   // On viewports ≤600px, swap the horizontal tab bar for a dropdown Select
   // that avoids both overflow cut-off and the need for drag-gesture-less
   // scrollable tabs (T28).
@@ -300,13 +304,24 @@ export default function ContactInformation({
   // displayed text; phone is the only multi-action field (call vs text), so
   // it gets discrete icon buttons beside plain text instead of ambiguously
   // wrapping the whole value in one link.
+  // A phone's TYPE tokens can carry more than one feature (vCard TYPE=VOICE,CELL
+  // is a real, common iOS/Google export shape) -- `r.type` alone is only the
+  // FIRST token (cardPhonesToValues' `features?.[0] || contexts?.[0]`), so a
+  // cell number imported as "voice,cell" would otherwise show as a plain
+  // landline with no text button, and a "voice,fax" number would wrongly
+  // gain a call button. Check the full features/contexts arrays, falling
+  // back to `type` only for rows that carry neither (e.g. minimal manually-
+  // entered data where only a bare type string was ever set).
+  const phoneHasToken = (r: ContactValue, token: string): boolean =>
+    r.features?.includes(token) || r.contexts?.includes(token) || r.type === token || false;
+
   const renderPhoneList = (rows: ContactValue[] | undefined) => {
     if (!rows || rows.length === 0) return <Typography variant="body2" color="text.disabled">—</Typography>;
     return (
       <Stack spacing={0.25}>
         {rows.map((r, i) => {
-          const isFax = r.type === 'fax';
-          const isCell = r.type === 'cell';
+          const isFax = phoneHasToken(r, 'fax');
+          const isCell = !isFax && phoneHasToken(r, 'cell');
           return (
             <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
               <Typography variant="body2">
@@ -315,19 +330,19 @@ export default function ContactInformation({
               </Typography>
               {!isFax && (
                 <Tooltip title={t('contactDetail.call')}>
-                  <IconButton size="small" component="a" href={buildTelLink(r.value)} aria-label={t('contactDetail.call')}>
+                  <IconButton size="small" component="a" href={buildTelLink(r.value)} aria-label={`${t('contactDetail.call')} ${r.value}`}>
                     <PhoneIcon fontSize="inherit" />
                   </IconButton>
                 </Tooltip>
               )}
               {isCell && (
                 <Tooltip title={t('contactDetail.text')}>
-                  <IconButton size="small" component="a" href={buildSmsLink(r.value)} aria-label={t('contactDetail.text')}>
+                  <IconButton size="small" component="a" href={buildSmsLink(r.value)} aria-label={`${t('contactDetail.text')} ${r.value}`}>
                     <SmsOutlinedIcon fontSize="inherit" />
                   </IconButton>
                 </Tooltip>
               )}
-              <CopyButton value={r.value} label={t('contactDetail.phone')} />
+              <CopyButton value={r.value} label={`${t('contactDetail.phone')} ${r.value}`} />
             </Box>
           );
         })}
@@ -345,7 +360,7 @@ export default function ContactInformation({
               {r.value}
               {r.type ? ` (${t(`contacts.types.${r.type}`, r.type)})` : ''}
             </Typography>
-            <CopyButton value={r.value} label={t('contactDetail.email')} />
+            <CopyButton value={r.value} label={`${t('contactDetail.email')} ${r.value}`} />
           </Box>
         ))}
       </Stack>
@@ -382,7 +397,7 @@ export default function ContactInformation({
                   {r.type ? ` (${t(`contacts.types.${r.type}`, r.type)})` : ''}
                 </Typography>
               )}
-              <CopyButton value={r.value} label={copyLabel} />
+              {r.value && <CopyButton value={r.value} label={`${copyLabel} ${r.value}`} />}
             </Box>
           );
         })}
@@ -407,7 +422,7 @@ export default function ContactInformation({
               ) : (
                 <Typography variant="body2">{formatted}{suffix}</Typography>
               )}
-              {formatted && <CopyButton value={formatted} label={t('contactDetail.address')} />}
+              {formatted && <CopyButton value={formatted} label={`${t('contactDetail.address')} ${formatted}`} />}
             </Box>
           );
         })}
@@ -433,7 +448,7 @@ export default function ContactInformation({
               ) : (
                 <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>{label}{suffix}</Typography>
               )}
-              {copyValue && <CopyButton value={copyValue} label={t('contacts.socialProfiles')} />}
+              {copyValue && <CopyButton value={copyValue} label={`${t('contacts.socialProfiles')} ${copyValue}`} />}
             </Box>
           );
         })}
@@ -444,13 +459,16 @@ export default function ContactInformation({
   const renderPersonalInfo = (rows: CardPersonalInfo[] | undefined) => {
     if (!rows || rows.length === 0) return <Typography variant="body2" color="text.disabled">—</Typography>;
     return (
-      <Stack spacing={0.5}>
+      <Stack spacing={0.25}>
         {rows.map((p, i) => (
-          <Typography key={i} variant="body2">
-            {p.value}
-            {p.kind ? ` (${t(`contacts.personalInfo.kindOptions.${p.kind}`, p.kind)})` : ''}
-            {p.level ? ` · ${t(`contacts.personalInfo.levelOptions.${p.level}`, p.level)}` : ''}
-          </Typography>
+          <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+            <Typography variant="body2">
+              {p.value}
+              {p.kind ? ` (${t(`contacts.personalInfo.kindOptions.${p.kind}`, p.kind)})` : ''}
+              {p.level ? ` · ${t(`contacts.personalInfo.levelOptions.${p.level}`, p.level)}` : ''}
+            </Typography>
+            {p.value && <CopyButton value={p.value} label={t('contacts.personalInfoLabel')} />}
+          </Box>
         ))}
       </Stack>
     );
@@ -459,9 +477,12 @@ export default function ContactInformation({
   const renderKeywords = (rows: string[] | undefined) => {
     if (!rows || rows.length === 0) return <Typography variant="body2" color="text.disabled">—</Typography>;
     return (
-      <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap' }}>
+      <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', alignItems: 'center' }}>
         {rows.map((k, i) => (
-          <Typography key={i} variant="body2">#{k}</Typography>
+          <Box key={i} sx={{ display: 'flex', alignItems: 'center' }}>
+            <Typography variant="body2">#{k}</Typography>
+            <CopyButton value={k} label={t('contacts.keywordsLabel')} />
+          </Box>
         ))}
       </Stack>
     );
@@ -470,9 +491,12 @@ export default function ContactInformation({
   const renderCardNotes = (rows: CardNote[] | undefined) => {
     if (!rows || rows.length === 0) return <Typography variant="body2" color="text.disabled">—</Typography>;
     return (
-      <Stack spacing={0.5}>
+      <Stack spacing={0.25}>
         {rows.map((n, i) => (
-          <Typography key={i} variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{n.note}</Typography>
+          <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{n.note}</Typography>
+            {n.note && <CopyButton value={n.note} label={t('contacts.cardNotesLabel')} />}
+          </Box>
         ))}
       </Stack>
     );
@@ -481,12 +505,15 @@ export default function ContactInformation({
   const renderPreferredLanguages = (rows: CardLanguagePref[] | undefined) => {
     if (!rows || rows.length === 0) return <Typography variant="body2" color="text.disabled">—</Typography>;
     return (
-      <Stack spacing={0.5}>
+      <Stack spacing={0.25}>
         {rows.map((l, i) => (
-          <Typography key={i} variant="body2">
-            {l.language}
-            {l.contexts?.length ? ` (${l.contexts.join(', ')})` : ''}
-          </Typography>
+          <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+            <Typography variant="body2">
+              {l.language}
+              {l.contexts?.length ? ` (${l.contexts.join(', ')})` : ''}
+            </Typography>
+            {l.language && <CopyButton value={l.language} label={t('contacts.preferredLanguagesLabel')} />}
+          </Box>
         ))}
       </Stack>
     );
@@ -501,20 +528,29 @@ export default function ContactInformation({
     if (s.grammaticalGenders?.length) {
       parts.push(s.grammaticalGenders.map((g) => t(`contacts.speakToAs.gramGender.${g.value}`, g.value)).join(', '));
     }
-    return <Typography variant="body2">{parts.join(' · ')}</Typography>;
+    const combined = parts.join(' · ');
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+        <Typography variant="body2">{combined}</Typography>
+        {combined && <CopyButton value={combined} label={t('contacts.speakToAsLabel')} />}
+      </Box>
+    );
   };
 
   const renderAnniversaries = (rows: CardAnniversary[] | undefined) => {
     if (!rows || rows.length === 0) return <Typography variant="body2" color="text.disabled">—</Typography>;
     return (
-      <Stack spacing={0.5}>
+      <Stack spacing={0.25}>
         {rows.map((a, i) => {
           const date = formatAnniversaryDate(a.date);
           return (
-            <Typography key={i} variant="body2">
-              {date ? date : '—'}
-              {` (${t(`contacts.anniversaryFields.kindOptions.${a.kind}`, a.kind)})`}
-            </Typography>
+            <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+              <Typography variant="body2">
+                {date ? date : '—'}
+                {` (${t(`contacts.anniversaryFields.kindOptions.${a.kind}`, a.kind)})`}
+              </Typography>
+              {date && <CopyButton value={date} label={t('contacts.anniversaries')} />}
+            </Box>
           );
         })}
       </Stack>
