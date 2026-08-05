@@ -692,6 +692,13 @@
       "unlink": "Unlink",
       "unlinkConfirm": "Unlink this person from the contact? The photo timeline entries are kept.",
       "unlinkFailed": "Could not unlink the person."
+    },
+    "photoPicker": {
+      "title": "Choose a photo from Immich",
+      "noPhotos": "No photos found for this person yet.",
+      "loadFailed": "Could not load that photo.",
+      "primaryPhotoAlt": "Current Immich thumbnail",
+      "photoAlt": "Photo from Immich"
     }
   },
   "profilePicture": {
@@ -706,7 +713,8 @@
     "or": "or",
     "urlPlaceholder": "Paste image URL...",
     "fetch": "Fetch",
-    "urlFetchError": "Failed to fetch image from URL"
+    "urlFetchError": "Failed to fetch image from URL",
+    "chooseFromImmich": "Choose from Immich"
   },
   "settings": {
     "title": "Settings",

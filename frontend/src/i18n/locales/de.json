@@ -665,6 +665,13 @@
       "unlink": "Verknüpfung lösen",
       "unlinkConfirm": "Person vom Kontakt lösen? Die Foto-Zeitleisten-Einträge bleiben erhalten.",
       "unlinkFailed": "Die Person konnte nicht gelöst werden."
+    },
+    "photoPicker": {
+      "title": "Foto von Immich auswählen",
+      "noPhotos": "Für diese Person wurden noch keine Fotos gefunden.",
+      "loadFailed": "Dieses Foto konnte nicht geladen werden.",
+      "primaryPhotoAlt": "Aktuelles Immich-Vorschaubild",
+      "photoAlt": "Foto von Immich"
     }
   },
   "profilePicture": {
@@ -679,7 +686,8 @@
     "or": "oder",
     "urlPlaceholder": "Bild-URL einfügen...",
     "fetch": "Abrufen",
-    "urlFetchError": "Bild konnte nicht von URL abgerufen werden"
+    "urlFetchError": "Bild konnte nicht von URL abgerufen werden",
+    "chooseFromImmich": "Von Immich auswählen"
   },
   "settings": {
     "title": "Einstellungen",

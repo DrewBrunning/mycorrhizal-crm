@@ -44,6 +44,10 @@ type fakeImmichServer struct {
 	// matching x-api-key header (401) — the expired-key failure path.
 	APIKey string
 	People map[string]*fakeImmichPerson
+	// AssetThumbnails serves GET /api/assets/:id/thumbnail (the contact-photo
+	// picker's per-photo fetch), keyed by asset ID — independent of People
+	// since a picker browses assets directly, not through a person lookup.
+	AssetThumbnails map[string][]byte
 	// Me is the identity returned by GET /users/me. Defaults to a fixed test
 	// account when unset.
 	Me *fakeImmichMe
@@ -57,9 +61,10 @@ type fakeImmichServer struct {
 // newFakeImmichServer builds a started fake Immich instance.
 func newFakeImmichServer(t *testing.T, apiKey string) *fakeImmichServer {
 	f := &fakeImmichServer{
-		t:      t,
-		APIKey: apiKey,
-		People: make(map[string]*fakeImmichPerson),
+		t:               t,
+		APIKey:          apiKey,
+		People:          make(map[string]*fakeImmichPerson),
+		AssetThumbnails: make(map[string][]byte),
 	}
 	f.Server = httptest.NewServer(http.HandlerFunc(f.handle))
 	return f
@@ -107,6 +112,11 @@ func (f *fakeImmichServer) handle(w http.ResponseWriter, r *http.Request) {
 		f.handleMe(w)
 	case path == "/people":
 		f.handlePeople(w)
+	// Checked before the generic person "/thumbnail" suffix case below —
+	// both end in "/thumbnail", and this one is asset-scoped, not
+	// person-scoped (the contact-photo picker's per-photo fetch).
+	case strings.HasPrefix(path, "/assets/") && strings.HasSuffix(path, "/thumbnail"):
+		f.handleAssetThumbnail(w, assetIDFromPath(path))
 	case strings.HasSuffix(path, "/statistics"):
 		f.handleStatistics(w, personIDFromPath(path, "/statistics"))
 	case strings.HasSuffix(path, "/assets"):
@@ -122,6 +132,12 @@ func (f *fakeImmichServer) handle(w http.ResponseWriter, r *http.Request) {
 func personIDFromPath(path, suffix string) string {
 	start := strings.Index(path, "/people/") + len("/people/")
 	return path[start : len(path)-len(suffix)]
+}
+
+// assetIDFromPath extracts the asset ID from "/assets/:id/thumbnail".
+func assetIDFromPath(path string) string {
+	start := strings.Index(path, "/assets/") + len("/assets/")
+	return path[start : len(path)-len("/thumbnail")]
 }
 
 func (f *fakeImmichServer) handlePing(w http.ResponseWriter) {
@@ -175,6 +191,16 @@ func (f *fakeImmichServer) handleThumbnail(w http.ResponseWriter, personID strin
 	_, _ = w.Write(p.Thumbnail)
 }
 
+func (f *fakeImmichServer) handleAssetThumbnail(w http.ResponseWriter, assetID string) {
+	body, ok := f.AssetThumbnails[assetID]
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "image/jpeg")
+	_, _ = w.Write(body)
+}
+
 func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(v)
@@ -183,4 +209,10 @@ func writeJSON(w http.ResponseWriter, v any) {
 // addPerson registers a person with the given assets and thumbnail.
 func (f *fakeImmichServer) addPerson(id, name string, photoCount int, assets []fakeImmichAsset, thumbnail []byte) {
 	f.People[id] = &fakeImmichPerson{Name: name, PhotoCount: photoCount, Assets: assets, Thumbnail: thumbnail}
+}
+
+// addAssetThumbnail registers an asset's thumbnail bytes (the contact-photo
+// picker's per-photo fetch, independent of any person).
+func (f *fakeImmichServer) addAssetThumbnail(assetID string, thumbnail []byte) {
+	f.AssetThumbnails[assetID] = thumbnail
 }

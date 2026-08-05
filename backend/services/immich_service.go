@@ -534,6 +534,20 @@ func SyncImmichWithRateLimit(db *gorm.DB, cfg config.Config) {
 	}
 }
 
+// GetImmichIdentityForContact resolves a contact's Immich ExternalIdentity —
+// the shared "does this contact have a link at all" lookup used by the
+// thumbnail proxy, the summary, and the contact-photo picker.
+func GetImmichIdentityForContact(db *gorm.DB, userID uint, contactUID string) (*models.ExternalIdentity, error) {
+	var identity models.ExternalIdentity
+	if err := db.Where("user_id = ? AND system = ? AND entity_id = ?", userID, ExternalSystemImmich, contactUID).First(&identity).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrImmichNotFound
+		}
+		return nil, err
+	}
+	return &identity, nil
+}
+
 // FetchImmichThumbnail proxies a linked person's thumbnail image for the
 // contact page (T16 item 4: prefer proxying over copying image data into this
 // app). The person is resolved through the contact's ExternalIdentity, and
@@ -541,11 +555,8 @@ func SyncImmichWithRateLimit(db *gorm.DB, cfg config.Config) {
 // (controller) applies the same SVG rejection + Content-Disposition/CSP
 // hardening as the existing image proxy.
 func FetchImmichThumbnail(db *gorm.DB, cfg config.Config, userID uint, contactUID string) ([]byte, string, error) {
-	var identity models.ExternalIdentity
-	if err := db.Where("user_id = ? AND system = ? AND entity_id = ?", userID, ExternalSystemImmich, contactUID).First(&identity).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, "", ErrImmichNotFound
-		}
+	identity, err := GetImmichIdentityForContact(db, userID, contactUID)
+	if err != nil {
 		return nil, "", err
 	}
 	client, _, err := buildImmichClient(db, cfg, userID)
@@ -553,4 +564,59 @@ func FetchImmichThumbnail(db *gorm.DB, cfg config.Config, userID uint, contactUI
 		return nil, "", err
 	}
 	return client.Thumbnail(identity.ExternalID)
+}
+
+// ImmichAssetSummary is the slice of an Immich asset the contact-photo picker
+// needs to render a candidate: enough to display and to fetch the image via
+// GetImmichAssetImage.
+type ImmichAssetSummary struct {
+	ID         string    `json:"id"`
+	OccurredAt time.Time `json:"occurred_at"`
+}
+
+// immichPhotoPickerAssetLimit bounds how many recent photos the contact-photo
+// picker offers to browse — enough to be useful, small enough that fetching
+// each one's thumbnail (the picker renders them as a grid) stays cheap.
+const immichPhotoPickerAssetLimit = 30
+
+// ListImmichRecentAssetsForContact returns a linked contact's recent Immich
+// photos (id + occurred_at) for the contact-photo picker (browse-then-pick,
+// T16 follow-on): requires an existing link — the same trust boundary as
+// FetchImmichThumbnail, reusing the identity lookup.
+func ListImmichRecentAssetsForContact(db *gorm.DB, cfg config.Config, userID uint, contactUID string) ([]ImmichAssetSummary, error) {
+	identity, err := GetImmichIdentityForContact(db, userID, contactUID)
+	if err != nil {
+		return nil, err
+	}
+	client, _, err := buildImmichClient(db, cfg, userID)
+	if err != nil {
+		return nil, err
+	}
+	assets, err := client.RecentAssets(identity.ExternalID, immichPhotoPickerAssetLimit)
+	if err != nil {
+		return nil, err
+	}
+	summaries := make([]ImmichAssetSummary, len(assets))
+	for i, asset := range assets {
+		summaries[i] = ImmichAssetSummary{ID: asset.ID, OccurredAt: assetOccurredAt(&asset)}
+	}
+	return summaries, nil
+}
+
+// FetchImmichAssetImage proxies one of a linked contact's recent Immich
+// photos (the contact-photo picker's "load this candidate photo" step). Gated
+// on the contact having an existing link at all — like FetchImmichThumbnail,
+// this fetches under the user's own Immich credentials for their own
+// contact, so an arbitrary assetID under that key is "can see any of my own
+// Immich photos," not a cross-user access issue; the link-exists check is
+// what gates the feature being reachable at all.
+func FetchImmichAssetImage(db *gorm.DB, cfg config.Config, userID uint, contactUID, assetID string) ([]byte, string, error) {
+	if _, err := GetImmichIdentityForContact(db, userID, contactUID); err != nil {
+		return nil, "", err
+	}
+	client, _, err := buildImmichClient(db, cfg, userID)
+	if err != nil {
+		return nil, "", err
+	}
+	return client.AssetThumbnail(assetID)
 }

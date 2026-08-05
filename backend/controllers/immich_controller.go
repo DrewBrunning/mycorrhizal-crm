@@ -321,10 +321,59 @@ func GetImmichThumbnail(c *gin.Context) {
 		abortImmichServiceError(c, err)
 		return
 	}
+	writeImmichImage(c, body, contentType)
+}
 
+// ListImmichContactAssets returns a linked contact's recent Immich photos
+// (id + occurred_at) for the profile-photo picker's browse-then-pick step
+// (Part 3). No link → the same 503 "not configured"-shaped error as every
+// other per-contact Immich endpoint.
+func ListImmichContactAssets(c *gin.Context) {
+	db := c.MustGet("db").(*gorm.DB)
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+
+	contactUID := c.Param("vcard_uid")
+	cfg := currentConfig(c)
+	assets, err := services.ListImmichRecentAssetsForContact(db, cfg, userID, contactUID)
+	if err != nil {
+		abortImmichServiceError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"assets": assets})
+}
+
+// GetImmichAssetImage proxies one of a linked contact's recent Immich photos
+// for the profile-photo picker, applying the same SVG-rejection +
+// Content-Disposition hardening as GetImmichThumbnail.
+func GetImmichAssetImage(c *gin.Context) {
+	db := c.MustGet("db").(*gorm.DB)
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+
+	contactUID := c.Param("vcard_uid")
+	assetID := c.Param("asset_id")
+	cfg := currentConfig(c)
+	body, contentType, err := services.FetchImmichAssetImage(db, cfg, userID, contactUID, assetID)
+	if err != nil {
+		abortImmichServiceError(c, err)
+		return
+	}
+	writeImmichImage(c, body, contentType)
+}
+
+// writeImmichImage is the shared response tail for GetImmichThumbnail and
+// GetImmichAssetImage: reject SVG (an image served from the API origin is an
+// XSS vector), then write the body with Content-Disposition: inline so it is
+// only ever interpreted as an image resource.
+func writeImmichImage(c *gin.Context, body []byte, contentType string) {
 	lowerContentType := strings.ToLower(contentType)
 	if strings.HasPrefix(lowerContentType, "image/svg") {
-		logger.FromContext(c).Warn().Str("content_type", contentType).Msg("Rejected SVG Immich thumbnail (XSS risk)")
+		logger.FromContext(c).Warn().Str("content_type", contentType).Msg("Rejected SVG Immich image (XSS risk)")
 		apperrors.AbortWithError(c, apperrors.ErrValidation("SVG images are not supported by the image proxy"))
 		return
 	}

@@ -5520,6 +5520,78 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /immich/contacts/{vcard_uid}/assets:
+    parameters:
+      - name: vcard_uid
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Browse a linked contact's recent Immich photos (profile-photo picker)
+      operationId: listImmichContactAssets
+      description: >
+        Requires an existing Immich link on this contact. Returns recent
+        photos (id + occurred_at) to browse and pick one as the contact's
+        profile photo.
+      responses:
+        "200":
+          description: The recent photos.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  assets:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ImmichAssetSummary"
+        "404":
+          description: No Immich link for this contact.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: Immich unreachable, or the API key is invalid/expired.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /immich/contacts/{vcard_uid}/assets/{asset_id}/image:
+    parameters:
+      - name: vcard_uid
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: asset_id
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      summary: Proxy one of a linked contact's recent Immich photos
+      operationId: getImmichAssetImage
+      description: >
+        Same hardening as /immich/contacts/{vcard_uid}/thumbnail (SVG
+        rejected, Content-Disposition set). Used by the profile-photo picker
+        after browsing listImmichContactAssets.
+      responses:
+        "200":
+          description: The image bytes.
+          content:
+            image/jpeg:
+              schema: { type: string, format: binary }
+        "404":
+          description: No Immich link for this contact.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: Immich unreachable, or the API key is invalid/expired.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
   # --- Admin ---
   /admin/users:
@@ -6683,6 +6755,12 @@ components:
           type: string
           format: date-time
           nullable: true
+    ImmichAssetSummary:
+      type: object
+      description: One of a linked contact's recent Immich photos (profile-photo picker).
+      properties:
+        id: { type: string }
+        occurred_at: { type: string, format: date-time }
 
     # --- Life events ---
     LifeEvent:
