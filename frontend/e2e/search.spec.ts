@@ -59,6 +59,43 @@ test.describe('Search', () => {
     }
   });
 
+  test('finds a contact by its address street (T38)', async ({ page, request }) => {
+    // T38: address fields were never part of the FTS index (or the legacy
+    // LIKE fallback), so a street name found nothing. This spans the whole
+    // path: a contact created through the API gets its addresses_flat column
+    // populated by BeforeSave, indexed by the migration-000010 trigger, and
+    // the /search page surfaces the contact when the street is the query.
+    const streetToken = `Heliotrope${Date.now()}`;
+    const firstname = `${E2E_CONTACT_PREFIX}AddrSearch${Date.now()}`;
+    const contact = await createTestContact(request, {
+      firstname,
+      lastname: 'Target',
+      addresses: [
+        {
+          type: 'home',
+          street: `${streetToken} St`,
+          city: 'Nowhereville',
+          region: '',
+          postal: '',
+          country: '',
+        },
+      ],
+    });
+
+    try {
+      // The street token appears nowhere in the contact's name/email/phone,
+      // so the match can only come from the indexed address text. The search
+      // page renders the contact's name for a hit, which is what we assert.
+      await page.goto(`/search?q=${encodeURIComponent(streetToken)}`);
+      await waitForLoading(page);
+
+      await expect(page.getByText(new RegExp(firstname))).toBeVisible({ timeout: 15000 });
+      await expect(page.getByText(/Contacts \(\d+\)/)).toBeVisible();
+    } finally {
+      await deleteTestContact(request, contact.ID);
+    }
+  });
+
   test('shows an explicit empty state rather than a blank page', async ({ page }) => {
     const nonsense = `NoSuchThing${Date.now()}`;
     await page.goto(`/search?q=${encodeURIComponent(nonsense)}`);

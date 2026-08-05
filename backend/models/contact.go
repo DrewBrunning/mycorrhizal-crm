@@ -147,6 +147,14 @@ type Contact struct {
 	FN  string `gorm:"column:fn" json:"-"`
 	Org string `gorm:"column:org" json:"-"`
 
+	// AddressesFlat is the denormalized, searchable concatenation of every
+	// Addresses[] entry (see FlattenAddresses), kept in sync by BeforeSave
+	// like the legacy Address scalar and indexed into contacts_fts so search
+	// finds street names/cities (T38). Derived data — rebuildable from the
+	// addresses JSON at any time — so it is deliberately not part of the API
+	// surface. Backfilled for pre-existing rows by migration 000010.
+	AddressesFlat string `gorm:"column:addresses_flat;type:text" json:"-"`
+
 	// cardSetDirectly is a transient, in-memory-only marker (unexported, so
 	// GORM ignores it entirely — no column, nothing to tag) set by
 	// ApplyRecordToContact (contact_record_reverse.go, WP-71/P2) to tell
@@ -182,10 +190,25 @@ func FormatAddress(a ContactAddress) string {
 	return strings.Join(parts, ", ")
 }
 
-// BeforeSave keeps the denormalized primary scalars (Email/Phone/Address) in sync
-// with the first entry of their respective JSON arrays, and keeps the neutral
-// Card/CRM/Passthrough representation (and its own derived projection
-// scalars) in sync with the legacy fields on every create/update.
+// FlattenAddresses renders every structured address as one searchable string:
+// each address's non-empty components joined with ", " (FormatAddress), the
+// addresses joined with a space. It feeds the denormalized AddressesFlat
+// column (T38), which contacts_fts indexes — mirroring how FormatAddress
+// keeps the legacy Address scalar in sync, but over the whole array rather
+// than just the first entry.
+func FlattenAddresses(addresses []ContactAddress) string {
+	parts := make([]string, 0, len(addresses))
+	for _, a := range addresses {
+		parts = append(parts, FormatAddress(a))
+	}
+	return strings.Join(parts, " ")
+}
+
+// BeforeSave keeps the denormalized primary scalars (Email/Phone/Address)
+// and the searchable AddressesFlat column (T38) in sync with the JSON
+// arrays, and keeps the neutral Card/CRM/Passthrough representation (and
+// its own derived projection scalars) in sync with the legacy fields on
+// every create/update.
 //
 // RecordFromContact + contactmodel.DeriveProjection is now the single source
 // of truth for Firstname/Lastname/Email/Phone/Birthday/FN/Org: the old
@@ -216,6 +239,7 @@ func (c *Contact) BeforeSave(tx *gorm.DB) error {
 	if len(c.Addresses) > 0 {
 		c.Address = FormatAddress(c.Addresses[0])
 	}
+	c.AddressesFlat = FlattenAddresses(c.Addresses)
 
 	var record *contactmodel.Record
 	if c.cardSetDirectly {

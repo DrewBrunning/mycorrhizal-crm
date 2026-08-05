@@ -1,6 +1,7 @@
 package database
 
 import (
+	"database/sql"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -268,6 +269,113 @@ func TestSquashedSchemaHasT26PartialIndex(t *testing.T) {
 	assert.NotEmpty(t, sql)
 	assert.Contains(t, sql, "WHERE vcard_uid IS NOT NULL AND deleted_at IS NULL",
 		"T26 partial unique index must be in the baseline")
+}
+
+// TestMigrationsAddSearchAddressesFlat pins the T38 migration's shape: the
+// denormalized addresses_flat column exists on contacts, and contacts_fts
+// (dropped and recreated by 000010 because FTS5 cannot ALTER TABLE) indexes
+// it so a street/city search can hit.
+func TestMigrationsAddSearchAddressesFlat(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "search-addresses.db")
+	assert.True(t, columnExists(t, dbPath, "contacts", "addresses_flat"),
+		"contacts.addresses_flat must be added by the T38 migration")
+
+	db, err := InitDB(dbPath)
+	require.NoError(t, err)
+	defer func() {
+		sqlDB, err := db.DB()
+		require.NoError(t, err)
+		require.NoError(t, sqlDB.Close())
+	}()
+
+	var sql string
+	require.NoError(t, db.Raw(
+		"SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'contacts_fts'",
+	).Scan(&sql).Error)
+	assert.Contains(t, sql, "addresses_flat",
+		"contacts_fts must index addresses_flat so address text is searchable")
+
+	// The FTS triggers must reference the new column too — a trigger that
+	// still used the old 8-column insert would silently never index addresses.
+	var triggerSQL string
+	require.NoError(t, db.Raw(
+		"SELECT sql FROM sqlite_master WHERE type = 'trigger' AND name = 'contacts_fts_ai'",
+	).Scan(&triggerSQL).Error)
+	assert.Contains(t, triggerSQL, "addresses_flat",
+		"the contacts insert trigger must populate addresses_flat")
+}
+
+// TestSearchAddressesMigrationBackfillsExistingRows is the T38 data-safety
+// test: contacts whose addresses predate migration 000010 (rows that were
+// never saved through GORM/BeforeSave) must have addresses_flat populated by
+// the migration's own backfill — and become searchable through the FTS index
+// the migration rebuilds — without waiting for their next edit.
+func TestSearchAddressesMigrationBackfillsExistingRows(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "t38-backfill.db")
+	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
+	require.NoError(t, err)
+	defer sqlDB.Close()
+
+	m, err := newMigrator(sqlDB)
+	require.NoError(t, err)
+	// Apply everything up to but NOT including 000010, so the contact below
+	// genuinely predates the new column.
+	require.NoError(t, m.Steps(9))
+
+	_, err = sqlDB.Exec(
+		"INSERT INTO users (created_at, updated_at, username, password, email) VALUES (datetime('now'), datetime('now'), 't38', 'x', 't38@example.com')")
+	require.NoError(t, err)
+	var userID int64
+	require.NoError(t, sqlDB.QueryRow("SELECT id FROM users WHERE username = 't38'").Scan(&userID))
+
+	// A pre-existing contact with JSON addresses, written raw (no GORM, no
+	// BeforeSave), exactly like a row created before this migration shipped.
+	_, err = sqlDB.Exec(`
+		INSERT INTO contacts (created_at, updated_at, firstname, lastname, user_id, vcard_uid, addresses)
+		VALUES (datetime('now'), datetime('now'), 'Pre', 'Existing', ?, 'vcard-t38', ?)`,
+		userID, `[{"type":"home","street":"Clark St","city":"Springfield","region":"IL","postal":"62701","country":"USA"},{"type":"work","street":"","city":"Chicago"}]`)
+	require.NoError(t, err)
+
+	// Apply 000010.
+	require.NoError(t, m.Up())
+
+	// The backfill derived addresses_flat from the JSON array (mirroring
+	// FormatAddress/FlattenAddresses: components joined with ", ", addresses
+	// joined with a space).
+	var flat string
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT addresses_flat FROM contacts WHERE vcard_uid = 'vcard-t38'",
+	).Scan(&flat))
+	assert.Contains(t, flat, "Clark St", "backfilled street must be present")
+	assert.Contains(t, flat, "Springfield", "backfilled city must be present")
+	assert.Contains(t, flat, "Chicago", "the second address must be flattened too")
+
+	// The migration's own index rebuild makes the address findable without
+	// any additional re-index step.
+	var ftsCount int64
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM contacts_fts WHERE contacts_fts MATCH 'clark' AND user_id = ?", userID,
+	).Scan(&ftsCount))
+	assert.Equal(t, int64(1), ftsCount, "the migration-rebuilt FTS index must find the backfilled address")
+
+	// Down: rolling back exactly this migration drops the column and reverts
+	// contacts_fts; the contact's data itself survives. Checked through the
+	// still-open raw connection rather than columnExists, because columnExists
+	// opens via InitDB, which would re-apply the up migration and mask the
+	// rollback.
+	require.NoError(t, MigrateDown(dbPath))
+
+	var colCount int64
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM pragma_table_info('contacts') WHERE name = 'addresses_flat'",
+	).Scan(&colCount))
+	assert.Equal(t, int64(0), colCount, "the down migration must remove contacts.addresses_flat")
+
+	var firstname string
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT firstname FROM contacts WHERE vcard_uid = 'vcard-t38'",
+	).Scan(&firstname))
+	assert.Equal(t, "Pre", firstname, "a rollback must not destroy the contact")
 }
 
 // TestOpenDSN_PragmasArePresent verifies that openDSN appends the two pragmas

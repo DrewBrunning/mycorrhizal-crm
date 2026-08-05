@@ -9,14 +9,23 @@ import (
 )
 
 // Full-text search over contacts, notes, and interactions (T11 / WP-86,
-// docs/fork-plan/tickets/24-T11-search-fts5.md). Backed by FTS5 virtual
-// tables kept in sync by triggers (migration 000007_search_fts5); the index
-// is derived data and can be rebuilt at any time via RebuildSearchIndex.
+// docs/fork-plan/tickets/24-T11-search-fts5.md; addresses added by T38,
+// docs/fork-plan/tickets/47-T38-search-address-fields.md). Backed by FTS5
+// virtual tables kept in sync by triggers (migrations 000007 + 000010); the
+// index is derived data and can be rebuilt at any time via
+// RebuildSearchIndex.
+//
+// Contact addresses are searchable through the denormalized
+// contacts.addresses_flat column (maintained by Contact.BeforeSave and
+// backfilled by migration 000010), indexed into contacts_fts like the other
+// flat fields — the ticket's lowest-friction option, consistent with how the
+// rest of the index works.
 //
 // Scoping: each FTS row carries user_id (UNINDEXED), and every query filters
 // on it — the highest-risk correctness rule of the ticket, pinned by
-// TestSearch_CrossUserReturnsNothing. The base-table JOIN also re-scopes and
-// re-filters soft-deleted rows (defense-in-depth on top of the triggers).
+// TestSearch_CrossUserReturnsNothing and TestSearch_CrossUserAddressDoesNotLeak.
+// The base-table JOIN also re-scopes and re-filters soft-deleted rows
+// (defense-in-depth on top of the triggers).
 
 // SearchResult is the grouped response: matched contacts, notes, and
 // interactions (activities). Query and any resolved relation synonym are
@@ -221,18 +230,20 @@ func Search(db *gorm.DB, userID uint, term string, limit int, householdID *strin
 }
 
 // RebuildSearchIndex truncates the three FTS virtual tables and re-inserts
-// every live row from the base tables. Idempotent and re-runnable — call it
-// after any bulk data change that bypassed the triggers (raw SQL migrations,
-// backfills). Runs in one transaction so a failure cannot leave a half-built
-// index.
+// every live row from the base tables, including the address text in
+// contacts.addresses_flat. Idempotent and re-runnable — call it after any
+// bulk data change that bypassed the triggers (raw SQL migrations,
+// backfills), and to make pre-existing contacts' addresses searchable after
+// migration 000010. Runs in one transaction so a failure cannot leave a
+// half-built index.
 func RebuildSearchIndex(db *gorm.DB) error {
 	return db.Transaction(func(tx *gorm.DB) error {
 		for _, stmt := range []string{
 			"DELETE FROM contacts_fts",
 			"DELETE FROM notes_fts",
 			"DELETE FROM activities_fts",
-			`INSERT INTO contacts_fts(rowid, user_id, firstname, lastname, nickname, email, phone, org)
-			 SELECT id, user_id, firstname, lastname, nickname, email, phone, org
+			`INSERT INTO contacts_fts(rowid, user_id, firstname, lastname, nickname, email, phone, org, addresses_flat)
+			 SELECT id, user_id, firstname, lastname, nickname, email, phone, org, addresses_flat
 			 FROM contacts WHERE deleted_at IS NULL`,
 			`INSERT INTO notes_fts(rowid, user_id, content)
 			 SELECT id, user_id, content
