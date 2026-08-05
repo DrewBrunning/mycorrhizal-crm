@@ -14,11 +14,11 @@ import (
 )
 
 // newSearchDB migrates a REAL schema (database.InitDB) because the FTS5
-// virtual tables + triggers live in migration 000007 and do not exist under
-// AutoMigrate — a test that searched an AutoMigrate DB would silently return
-// "no such table". The FTS5-vs-driver trap (the 'delete' special command
-// failing on glebarez/sqlite) is exactly the kind of thing only a real-schema
-// test can catch.
+// virtual tables + triggers live in migrations 000007 + 000010 and do not
+// exist under AutoMigrate — a test that searched an AutoMigrate DB would
+// silently return "no such table". The FTS5-vs-driver trap (the 'delete'
+// special command failing on glebarez/sqlite) is exactly the kind of thing
+// only a real-schema test can catch.
 func newSearchDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	db, err := database.InitDB(filepath.Join(t.TempDir(), "search-real.db"))
