@@ -562,3 +562,28 @@ func TestContactETagBulkUpdateOnZeroValueReceiverDoesNotCorrupt(t *testing.T) {
 		assert.Equal(t, fmt.Sprintf("e-%d-%d", r.ID, r.UpdatedAt.Unix()), r.ETag, "ETag must survive the bulk update unchanged")
 	}
 }
+
+// TestFlattenAddresses pins the Go-side derivation that feeds the searchable
+// AddressesFlat column (T38): each address's non-empty components joined with
+// ", ", addresses joined with a space. Migration 000010's SQL backfill
+// deliberately mirrors this exact shape for pre-existing rows, so this test
+// is what keeps the two from silently diverging (which would make new-contact
+// and pre-existing-contact search behavior differ).
+func TestFlattenAddresses(t *testing.T) {
+	addresses := []ContactAddress{
+		{Type: "home", Street: "742 Clark St", City: "Springfield", Region: "IL", Postal: "62701", Country: "USA"},
+		{Type: "work", Street: "", City: "Chicago"},
+	}
+	got := FlattenAddresses(addresses)
+	want := "742 Clark St, Springfield, IL, 62701, USA Chicago"
+	if got != want {
+		t.Errorf("FlattenAddresses = %q, want %q", got, want)
+	}
+
+	if empty := FlattenAddresses(nil); empty != "" {
+		t.Errorf("FlattenAddresses(nil) = %q, want empty", empty)
+	}
+	if blank := FlattenAddresses([]ContactAddress{{Type: "home", Street: "  ", City: "", Region: "", Postal: "", Country: ""}}); blank != "" {
+		t.Errorf("FlattenAddresses(all-blank) = %q, want empty", blank)
+	}
+}

@@ -14,11 +14,11 @@ import (
 )
 
 // newSearchDB migrates a REAL schema (database.InitDB) because the FTS5
-// virtual tables + triggers live in migration 000007 and do not exist under
-// AutoMigrate — a test that searched an AutoMigrate DB would silently return
-// "no such table". The FTS5-vs-driver trap (the 'delete' special command
-// failing on glebarez/sqlite) is exactly the kind of thing only a real-schema
-// test can catch.
+// virtual tables + triggers live in migrations 000007 + 000010 and do not
+// exist under AutoMigrate — a test that searched an AutoMigrate DB would
+// silently return "no such table". The FTS5-vs-driver trap (the 'delete'
+// special command failing on glebarez/sqlite) is exactly the kind of thing
+// only a real-schema test can catch.
 func newSearchDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	db, err := database.InitDB(filepath.Join(t.TempDir(), "search-real.db"))
@@ -272,4 +272,117 @@ func TestSearch_SecretSensitivityNotFindable(t *testing.T) {
 	result, err := Search(db, user.ID, "alice", 0, nil)
 	require.NoError(t, err)
 	require.Len(t, result.Contacts, 1)
+}
+
+// TestSearch_AddressMatch pins T38's core gap: address text (street, city,
+// postal) is part of the searchable surface, not just names/email/phone/org.
+// The tokens are chosen to be absent from every other indexed field so the
+// match can only come from the addresses_flat column.
+func TestSearch_AddressMatch(t *testing.T) {
+	db := newSearchDB(t)
+	user := models.User{Username: "search-addr", Password: "password123!A", Email: "search-addr@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	require.NoError(t, db.Create(&models.Contact{
+		UserID: user.ID, Firstname: "Arthur", Lastname: "Harding",
+		Addresses: []models.ContactAddress{
+			{Type: "home", Street: "Mangosteen Lane", City: "Clarkston", Region: "IL", Postal: "62701", Country: "USA"},
+			{Type: "work", Street: "14 Nectarine St", City: "Chicago"},
+		},
+	}).Error)
+
+	// Street of the first address, city of the first address, street of the
+	// second address — and a postal code.
+	for _, term := range []string{"mangosteen", "clarkston", "nectarine", "62701"} {
+		result, err := Search(db, user.ID, term, 0, nil)
+		require.NoError(t, err, "term %q must not error", term)
+		require.Len(t, result.Contacts, 1, "term %q must find the contact by its address", term)
+		assert.Equal(t, "Arthur", result.Contacts[0].Firstname)
+	}
+
+	// Prefix matching within an address term (same FTS behavior as names).
+	result, err := Search(db, user.ID, "mangost", 0, nil)
+	require.NoError(t, err)
+	require.Len(t, result.Contacts, 1, "a prefix of an address token must match")
+}
+
+// TestSearch_SoftDeletedAddressNotFindable re-applies T11's soft-delete trap
+// to T38's new surface: a soft-deleted contact's address must drop out of
+// the index (the AFTER UPDATE trigger re-inserts only when deleted_at IS
+// NULL).
+func TestSearch_SoftDeletedAddressNotFindable(t *testing.T) {
+	db := newSearchDB(t)
+	user := models.User{Username: "search-addr-del", Password: "password123!A", Email: "search-addr-del@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	contact := models.Contact{
+		UserID: user.ID, Firstname: "Jane", Lastname: "Doe",
+		Addresses: []models.ContactAddress{{Type: "home", Street: "Rosebud Avenue", City: "Bedford"}},
+	}
+	require.NoError(t, db.Create(&contact).Error)
+
+	found, err := Search(db, user.ID, "rosebud", 0, nil)
+	require.NoError(t, err)
+	require.Len(t, found.Contacts, 1, "the address must be findable before deletion")
+
+	require.NoError(t, db.Delete(&contact).Error)
+	found2, err := Search(db, user.ID, "rosebud", 0, nil)
+	require.NoError(t, err)
+	assert.Empty(t, found2.Contacts, "a soft-deleted contact's address must not be findable")
+}
+
+// TestSearch_CrossUserAddressDoesNotLeak re-applies T11's user-scoping rule
+// (the highest-risk correctness issue of that ticket) to T38's new surface:
+// an address match in another user's index rows must never surface for this
+// user.
+func TestSearch_CrossUserAddressDoesNotLeak(t *testing.T) {
+	db := newSearchDB(t)
+	user := models.User{Username: "search-addr-u1", Password: "password123!A", Email: "search-addr-u1@example.com"}
+	other := models.User{Username: "search-addr-u2", Password: "password123!A", Email: "search-addr-u2@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+	require.NoError(t, db.Create(&other).Error)
+
+	// Only the OTHER user has a contact whose address matches the term.
+	require.NoError(t, db.Create(&models.Contact{
+		UserID: other.ID, Firstname: "Rita", Lastname: "Bell",
+		Addresses: []models.ContactAddress{{Type: "home", Street: "Primrose Court", City: "Alberta"}},
+	}).Error)
+
+	result, err := Search(db, user.ID, "primrose", 0, nil)
+	require.NoError(t, err)
+	assert.Empty(t, result.Contacts, "a cross-user address match must not leak")
+	assert.Empty(t, result.Notes)
+	assert.Empty(t, result.Activities)
+
+	// Sanity: the owner CAN find it.
+	owner, err := Search(db, other.ID, "primrose", 0, nil)
+	require.NoError(t, err)
+	require.Len(t, owner.Contacts, 1)
+}
+
+// TestRebuildSearchIndex_AddressesSearchable pins the ticket's hand-verified
+// requirement as a real test: RebuildSearchIndex against existing contacts
+// makes their addresses searchable without editing them first. The trigger
+// path is bypassed (index wiped) to prove the rebuild itself carries the
+// address text, not the live trigger.
+func TestRebuildSearchIndex_AddressesSearchable(t *testing.T) {
+	db := newSearchDB(t)
+	user := models.User{Username: "search-rebuild-addr", Password: "password123!A", Email: "search-rebuild-addr@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	require.NoError(t, db.Create(&models.Contact{
+		UserID: user.ID, Firstname: "Pam", Lastname: "Post",
+		Addresses: []models.ContactAddress{{Type: "home", Street: "Heliotrope Drive", City: "Oakville"}},
+	}).Error)
+
+	// Simulate a bulk operation that bypassed the triggers (raw SQL wipe).
+	require.NoError(t, db.Exec("DELETE FROM contacts_fts").Error)
+	stale, err := Search(db, user.ID, "heliotrope", 0, nil)
+	require.NoError(t, err)
+	require.Empty(t, stale.Contacts, "the wiped index must not find the address yet")
+
+	require.NoError(t, RebuildSearchIndex(db))
+	result, err := Search(db, user.ID, "heliotrope", 0, nil)
+	require.NoError(t, err)
+	require.Len(t, result.Contacts, 1, "after a rebuild, an existing contact's address must be findable without editing it")
 }

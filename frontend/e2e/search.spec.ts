@@ -59,6 +59,107 @@ test.describe('Search', () => {
     }
   });
 
+  test('finds a contact by its address street (T38)', async ({ page, request }) => {
+    // T38: address fields were never part of the FTS index (or the legacy
+    // LIKE fallback), so a street name found nothing. This spans the whole
+    // path: a contact created through the API gets its addresses_flat column
+    // populated by BeforeSave, indexed by the migration-000010 trigger, and
+    // the /search page surfaces the contact when the street is the query.
+    const streetToken = `Heliotrope${Date.now()}`;
+    const firstname = `${E2E_CONTACT_PREFIX}AddrSearch${Date.now()}`;
+    const contact = await createTestContact(request, {
+      firstname,
+      lastname: 'Target',
+      addresses: [
+        {
+          type: 'home',
+          street: `${streetToken} St`,
+          city: 'Nowhereville',
+          region: '',
+          postal: '',
+          country: '',
+        },
+      ],
+    });
+
+    try {
+      // The street token appears nowhere in the contact's name/email/phone,
+      // so the match can only come from the indexed address text. The search
+      // page renders the contact's name for a hit, which is what we assert.
+      await page.goto(`/search?q=${encodeURIComponent(streetToken)}`);
+      await waitForLoading(page);
+
+      await expect(page.getByText(new RegExp(firstname))).toBeVisible({ timeout: 15000 });
+      await expect(page.getByText(/Contacts \(\d+\)/)).toBeVisible();
+    } finally {
+      await deleteTestContact(request, contact.ID);
+    }
+  });
+
+  test('finds a contact by address via the legacy contacts list search (T38)', async ({ request }) => {
+    // T38's other half: the legacy /contacts?search= LIKE fallback
+    // (applyContactSearch) must also match address text. The token is
+    // absent from every name/email/phone field so the match can only
+    // come from the denormalized addresses_flat column.
+    const streetToken = `Rosemary${Date.now()}`;
+    const firstname = `${E2E_CONTACT_PREFIX}LegacyAddr${Date.now()}`;
+    const contact = await createTestContact(request, {
+      firstname,
+      lastname: 'Target',
+      addresses: [{ type: 'home', street: `${streetToken} Lane`, city: 'Westwood', region: '', postal: '', country: '' }],
+    });
+
+    try {
+      const response = await request.get(
+        `${API_BASE_URL}/contacts?search=${encodeURIComponent(streetToken)}`
+      );
+      expect(response.ok()).toBeTruthy();
+      const body = await response.json();
+      expect(body.contacts).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ firstname }),
+        ])
+      );
+      expect(body.contacts.length).toBe(1);
+    } finally {
+      await deleteTestContact(request, contact.ID);
+    }
+  });
+
+  test('a soft-deleted contact address is not findable (T38)', async ({ page, request }) => {
+    // The T11/T38 soft-delete rule: the AFTER UPDATE trigger re-inserts
+    // into contacts_fts ONLY when deleted_at IS NULL, so a soft-deleted
+    // contact's address drops out of the index entirely. Must hold e2e —
+    // the trigger is SQL, invisible to a unit test that mutates the index
+    // directly, so the real path is the only one that can catch a broken
+    // trigger definition.
+    const streetToken = `Foxglove${Date.now()}`;
+    const firstname = `${E2E_CONTACT_PREFIX}DelAddr${Date.now()}`;
+    const contact = await createTestContact(request, {
+      firstname,
+      lastname: 'Target',
+      addresses: [{ type: 'home', street: `${streetToken} Court`, city: 'Meadowview', region: '', postal: '', country: '' }],
+    });
+
+    try {
+      // Before delete: search by the street must surface the contact.
+      await page.goto(`/search?q=${encodeURIComponent(streetToken)}`);
+      await waitForLoading(page);
+      await expect(page.getByText(new RegExp(firstname))).toBeVisible({ timeout: 15000 });
+
+      // Soft-delete the contact.
+      await request.delete(`${API_BASE_URL}/contacts/${contact.ID}`);
+
+      // After soft-delete: the FTS trigger removes the row from the index,
+      // so a search for the same address token must return no-results.
+      await page.goto(`/search?q=${encodeURIComponent(streetToken)}`);
+      await waitForLoading(page);
+      await expect(page.getByText(/No results for/)).toBeVisible({ timeout: 15000 });
+    } finally {
+      await deleteTestContact(request, contact.ID);
+    }
+  });
+
   test('shows an explicit empty state rather than a blank page', async ({ page }) => {
     const nonsense = `NoSuchThing${Date.now()}`;
     await page.goto(`/search?q=${encodeURIComponent(nonsense)}`);

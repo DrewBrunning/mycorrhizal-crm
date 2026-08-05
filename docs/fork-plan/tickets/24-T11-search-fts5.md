@@ -105,8 +105,11 @@ the whole query resolves through the relation-type registry (`brother` → `sibl
 `/search` page (the AppBar search now routes there) surfacing note and interaction hits, not just
 contacts, per this ticket's own "otherwise the feature is invisible" requirement.
 
-**Known gap found later, 2026-08-04 (v0.2.0-alpha real-world testing) — not yet fixed:** address fields
-are not indexed. Confirmed against the actual migration: `contacts_fts` covers
-`firstname, lastname, nickname, email, phone, org` only, and the legacy `applyContactSearch` fallback has
-the same gap. Searching a street name does not find a contact who lives there. Filed as
-[T38](47-T38-search-address-fields.md).
+**Known gap found later, 2026-08-04 (v0.2.0-alpha real-world testing):** address fields were
+not indexed. Confirmed against the actual migration: `contacts_fts` covered
+`firstname, lastname, nickname, email, phone, org` only, and the legacy `applyContactSearch`
+fallback had the same gap. Searching a street name did not find a contact who lives there.
+Filed as [T38](47-T38-search-address-fields.md) — **fixed 2026-08-05**: a denormalized
+`contacts.addresses_flat` column (maintained by `BeforeSave`, backfilled by migration
+`000010`) is now indexed by `contacts_fts` and matched by the legacy fallback, exactly like
+the other flat fields.

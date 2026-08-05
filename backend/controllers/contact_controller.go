@@ -95,9 +95,14 @@ func applyContactSearch(query *gorm.DB, searchTerm string) *gorm.DB {
 		"firstname LIKE ? OR lastname LIKE ? OR nickname LIKE ? "+
 			"OR (firstname || ' ' || lastname) LIKE ? OR (nickname || ' ' || lastname) LIKE ? "+
 			"OR email LIKE ? OR phone LIKE ? "+
+			// T38: address text is searchable through the denormalized
+			// addresses_flat column (populated by Contact.BeforeSave and
+			// backfilled by migration 000010), the same flat-column surface
+			// contacts_fts indexes.
+			"OR addresses_flat LIKE ? "+
 			"OR (json_valid(emails) AND EXISTS (SELECT 1 FROM json_each(contacts.emails) WHERE json_extract(json_each.value, '$.value') LIKE ?)) "+
 			"OR (json_valid(phones) AND EXISTS (SELECT 1 FROM json_each(contacts.phones) WHERE json_extract(json_each.value, '$.value') LIKE ?))",
-		like, like, like, like, like, like, like, like, like,
+		like, like, like, like, like, like, like, like, like, like,
 	)
 }
 
