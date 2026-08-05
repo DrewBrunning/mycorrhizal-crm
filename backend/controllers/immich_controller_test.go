@@ -41,6 +41,7 @@ func immichTestRouter(t *testing.T, db *gorm.DB) *gin.Engine {
 	router.GET("/immich/config", GetImmichConfig)
 	router.PUT("/immich/config", withValidated(func() any { return &models.ImmichConfigInput{} }), SaveImmichConfig)
 	router.DELETE("/immich/config", DeleteImmichConfig)
+	router.POST("/immich/test-connection", TestImmichConnection)
 	router.GET("/immich/people", ListImmichPeople)
 	router.POST("/immich/sync", SyncImmichNow)
 	router.POST("/immich/contacts/:vcard_uid/link", LinkImmichContact)
@@ -130,6 +131,48 @@ func TestSaveImmichConfig_CreateWithoutKeyIsRejected(t *testing.T) {
 
 	w := immichDoJSON(t, router, "PUT", "/immich/config", models.ImmichConfigInput{BaseURL: "https://immich.example"})
 	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestTestImmichConnection_NoConfigIs503(t *testing.T) {
+	db := seedImmichControllerDB(t)
+	router := immichTestRouter(t, db)
+
+	w := immichDoJSON(t, router, "POST", "/immich/test-connection", nil)
+	assert.Equal(t, http.StatusServiceUnavailable, w.Code)
+}
+
+func TestTestImmichConnection_SuccessAndFailure(t *testing.T) {
+	db := seedImmichControllerDB(t)
+	router := immichTestRouter(t, db)
+
+	fake := newImmichTestServer(t, "sekret")
+	defer fake.Close()
+	fake.Me = &testMe{Email: "alice@example.com"}
+
+	enc, err := services.EncryptCredential("test-jwt-secret-0123456789abcdef0123456789abcdef", "sekret")
+	require.NoError(t, err)
+	require.NoError(t, db.Create(&models.ImmichConfig{UserID: 1, BaseURL: fake.URL(), APIKeyEncrypted: enc}).Error)
+
+	w := immichDoJSON(t, router, "POST", "/immich/test-connection", nil)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var result services.ImmichConnectionTestResult
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &result))
+	assert.True(t, result.OK)
+	assert.Equal(t, "ok", result.Stage)
+	assert.Contains(t, result.Message, "alice@example.com")
+
+	// A diagnosed failure (wrong key) is still HTTP 200 — the diagnosis
+	// itself succeeded.
+	badEnc, err := services.EncryptCredential("test-jwt-secret-0123456789abcdef0123456789abcdef", "wrong-key")
+	require.NoError(t, err)
+	require.NoError(t, db.Model(&models.ImmichConfig{}).Where("user_id = ?", uint(1)).Update("api_key_encrypted", badEnc).Error)
+
+	w2 := immichDoJSON(t, router, "POST", "/immich/test-connection", nil)
+	require.Equal(t, http.StatusOK, w2.Code, w2.Body.String())
+	var failResult services.ImmichConnectionTestResult
+	require.NoError(t, json.Unmarshal(w2.Body.Bytes(), &failResult))
+	assert.False(t, failResult.OK)
+	assert.Equal(t, "auth", failResult.Stage)
 }
 
 func TestListImmichPeople(t *testing.T) {

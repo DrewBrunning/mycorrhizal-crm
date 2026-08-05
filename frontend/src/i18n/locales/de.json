@@ -637,6 +637,8 @@
       "syncEnabled": "Foto-Auftritte automatisch synchronisieren",
       "saveButton": "Verbindung speichern",
       "removeButton": "Verbindung entfernen",
+      "testConnectionButton": "Verbindung testen",
+      "testingConnection": "Wird getestet…",
       "removeConfirm": "Immich-Verbindung entfernen? Verknüpfte Kontakte behalten ihre bestehende Foto-Historie.",
       "baseUrlRequired": "Basis-URL ist erforderlich.",
       "saved": "Immich-Verbindung gespeichert",
@@ -647,7 +649,6 @@
     "search": {
       "title": "Immich-Person verknüpfen",
       "placeholder": "Personen nach Name suchen…",
-      "loadFailed": "Personen konnten nicht von Immich geladen werden. Ist die Verbindung konfiguriert und erreichbar?",
       "linkFailed": "Diese Person konnte nicht verknüpft werden.",
       "noMatches": "Keine passenden Personen. Versuche einen anderen Namen oder prüfe, ob Immich die Gesichtserkennung abgeschlossen hat.",
       "unnamed": "(unbenannte Person)"

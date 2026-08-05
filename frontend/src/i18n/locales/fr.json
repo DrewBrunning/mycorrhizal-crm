@@ -637,6 +637,8 @@
       "syncEnabled": "Synchroniser automatiquement les apparitions photo",
       "saveButton": "Enregistrer la connexion",
       "removeButton": "Supprimer la connexion",
+      "testConnectionButton": "Tester la connexion",
+      "testingConnection": "Test en cours…",
       "removeConfirm": "Supprimer la connexion Immich ? Les contacts liés conservent leur historique photo existant.",
       "baseUrlRequired": "L'URL de base est requise.",
       "saved": "Connexion Immich enregistrée",
@@ -647,7 +649,6 @@
     "search": {
       "title": "Lier une personne Immich",
       "placeholder": "Rechercher des personnes par nom…",
-      "loadFailed": "Impossible de charger les personnes depuis Immich. La connexion est-elle configurée et joignable ?",
       "linkFailed": "Impossible de lier cette personne.",
       "noMatches": "Aucune personne ne correspond. Essayez un autre nom ou vérifiez que Immich a terminé la reconnaissance faciale.",
       "unnamed": "(personne sans nom)"
