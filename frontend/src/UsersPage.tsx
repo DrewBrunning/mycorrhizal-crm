@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Typography,
+  Card,
   Table,
   TableBody,
   TableCell,
@@ -25,6 +26,8 @@ import {
   FormControlLabel,
   Switch,
   Stack,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import AppDialog from './components/AppDialog';
 import EditIcon from '@mui/icons-material/Edit';
@@ -39,6 +42,12 @@ export default function UsersPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { showSuccess, showError } = useSnackbar();
+  // A wide six-column table cannot be read at 360-414px, so below `sm` the
+  // user list reflows to a stacked card-per-user layout (T32) — the same
+  // single-column precedent T28 set for the contact page. The table stays for
+  // tablets and up, where it is readable.
+  const theme = useTheme();
+  const compact = useMediaQuery(theme.breakpoints.down('sm'));
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -210,7 +219,7 @@ export default function UsersPage() {
 
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 2, p: 2 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5, gap: 1, flexWrap: 'wrap' }}>
         <Typography variant="h5">
           {t('users.title')}
         </Typography>
@@ -230,69 +239,130 @@ export default function UsersPage() {
         </Alert>
       )}
 
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>{t('users.columns.id')}</TableCell>
-              <TableCell>{t('users.columns.username')}</TableCell>
-              <TableCell>{t('users.columns.email')}</TableCell>
-              <TableCell>{t('users.columns.role')}</TableCell>
-              <TableCell>{t('users.columns.created')}</TableCell>
-              <TableCell align="right">{t('users.columns.actions')}</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
+      {compact ? (
+        <>
+          <Stack spacing={1.5}>
             {users.map((user) => (
-              <TableRow key={user.id}>
-                <TableCell>{user.id}</TableCell>
-                <TableCell>{user.username}</TableCell>
-                <TableCell>{user.email}</TableCell>
-                <TableCell>
-                  <Chip
-                    label={user.is_admin ? t('users.roles.admin') : t('users.roles.user')}
-                    color={user.is_admin ? 'primary' : 'default'}
-                    size="small"
-                  />
-                </TableCell>
-                <TableCell>{formatDate(user.created_at)}</TableCell>
-                <TableCell align="right">
-                  <IconButton
-                    size="small"
-                    onClick={() => handleEditClick(user)}
-                    title={t('common.edit')}
-                  >
-                    <EditIcon fontSize="small" />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleDeleteClick(user)}
-                    title={t('common.delete')}
-                  >
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
+              <Card key={user.id} sx={{ p: 1.5 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1 }}>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 600, overflowWrap: 'anywhere' }}>
+                      {user.username}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
+                      {user.email}
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
+                      <Chip
+                        label={user.is_admin ? t('users.roles.admin') : t('users.roles.user')}
+                        color={user.is_admin ? 'primary' : 'default'}
+                        size="small"
+                      />
+                      <Typography variant="caption" color="text.secondary">
+                        {t('users.columns.created')}: {formatDate(user.created_at)}
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <Box sx={{ display: 'flex' }}>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleEditClick(user)}
+                      title={t('common.edit')}
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDeleteClick(user)}
+                      title={t('common.delete')}
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                </Box>
+              </Card>
             ))}
-            {users.length === 0 && !loading && (
+          </Stack>
+          {users.length === 0 && !loading && (
+            <Typography color="text.secondary" align="center" sx={{ mt: 2 }}>
+              {t('users.noUsers')}
+            </Typography>
+          )}
+          <TablePagination
+            component="div"
+            count={total}
+            page={page}
+            onPageChange={handleChangePage}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            rowsPerPageOptions={[10, 25, 50]}
+          />
+        </>
+      ) : (
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
               <TableRow>
-                <TableCell colSpan={6} align="center">
-                  {t('users.noUsers')}
-                </TableCell>
+                <TableCell>{t('users.columns.id')}</TableCell>
+                <TableCell>{t('users.columns.username')}</TableCell>
+                <TableCell>{t('users.columns.email')}</TableCell>
+                <TableCell>{t('users.columns.role')}</TableCell>
+                <TableCell>{t('users.columns.created')}</TableCell>
+                <TableCell align="right">{t('users.columns.actions')}</TableCell>
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
-        <TablePagination
-          component="div"
-          count={total}
-          page={page}
-          onPageChange={handleChangePage}
-          rowsPerPage={rowsPerPage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-          rowsPerPageOptions={[10, 25, 50]}
-        />
-      </TableContainer>
+            </TableHead>
+            <TableBody>
+              {users.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell>{user.id}</TableCell>
+                  <TableCell sx={{ overflowWrap: 'anywhere' }}>{user.username}</TableCell>
+                  <TableCell sx={{ overflowWrap: 'anywhere' }}>{user.email}</TableCell>
+                  <TableCell>
+                    <Chip
+                      label={user.is_admin ? t('users.roles.admin') : t('users.roles.user')}
+                      color={user.is_admin ? 'primary' : 'default'}
+                      size="small"
+                    />
+                  </TableCell>
+                  <TableCell>{formatDate(user.created_at)}</TableCell>
+                  <TableCell align="right">
+                    <IconButton
+                      size="small"
+                      onClick={() => handleEditClick(user)}
+                      title={t('common.edit')}
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDeleteClick(user)}
+                      title={t('common.delete')}
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {users.length === 0 && !loading && (
+                <TableRow>
+                  <TableCell colSpan={6} align="center">
+                    {t('users.noUsers')}
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+          <TablePagination
+            component="div"
+            count={total}
+            page={page}
+            onPageChange={handleChangePage}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            rowsPerPageOptions={[10, 25, 50]}
+          />
+        </TableContainer>
+      )}
 
       {/* Edit User Dialog */}
       <AppDialog open={editDialogOpen} onClose={handleEditClose} maxWidth="sm" fullWidth>
