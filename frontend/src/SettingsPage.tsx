@@ -59,6 +59,7 @@ import {
 import { useSnackbar } from './context/SnackbarContext';
 import WebhooksSettings from './components/WebhooksSettings';
 import ImmichSettings from './components/ImmichSettings';
+import LinkFieldTypesSettings from './components/LinkFieldTypesSettings';
 
 export default function SettingsPage() {
   const { t, i18n } = useTranslation();
@@ -374,6 +375,8 @@ export default function SettingsPage() {
       <WebhooksSettings />
 
       <ImmichSettings />
+
+      <LinkFieldTypesSettings />
 
       <Card sx={{ mb: 2 }}>
         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>

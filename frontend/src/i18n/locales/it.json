@@ -403,6 +403,8 @@
     },
     "email": "Email",
     "phone": "Telefono",
+    "call": "Chiama",
+    "text": "SMS",
     "birthday": "Compleanno",
     "birthdayError": "Formato data non valido. Controlla le impostazioni del formato data.",
     "address": "Indirizzo",
@@ -603,7 +605,11 @@
     "continue": "Continua",
     "add": "Aggiungi",
     "loadMore": "Carica altri",
-    "none": "Nessuno"
+    "none": "Nessuno",
+    "copy": "Copia",
+    "copied": "Copiato negli appunti",
+    "copyFailed": "Impossibile copiare negli appunti",
+    "copyValue": "Copia {{label}}"
   },
   "externalLinks": {
     "title": "Collegamenti esterni",
@@ -904,6 +910,36 @@
       "exportError": "Esportazione contatti fallita. Riprova.",
       "customExportButton": "Esportazione personalizzata...",
       "success": "I tuoi contatti sono stati esportati con successo."
+    },
+    "linkFieldTypes": {
+      "title": "Tipi di link",
+      "description": "Configura i tipi di link di messaggistica e social — come un nome di servizio e un nome utente diventano un link cliccabile.",
+      "add": "Aggiungi tipo di link",
+      "addTitle": "Aggiungi tipo di link",
+      "editTitle": "Modifica tipo di link",
+      "name": "Nome",
+      "protocol": "Modello di link",
+      "protocolHelp": "Un URL con {value} al posto del nome utente, ad es. https://example.com/{value}. Lascia vuoto se non c'è ancora un link funzionante.",
+      "category": "Categoria",
+      "categoryOptions": {
+        "messaging": "Messaggistica",
+        "social": "Social",
+        "other": "Altro"
+      },
+      "icon": "Icona",
+      "iconHelp": "Scegli dall'elenco o digita il nome di un'icona MDI personalizzata.",
+      "defaultBadge": "Predefinito",
+      "noProtocol": "Nessun modello di link impostato",
+      "loading": "Caricamento dei tipi di link...",
+      "empty": "Nessun tipo di link ancora.",
+      "edit": "Modifica {{name}}",
+      "delete": "Elimina {{name}}",
+      "moveUp": "Sposta {{name}} in alto",
+      "moveDown": "Sposta {{name}} in basso",
+      "deleteDialog": {
+        "title": "Elimina tipo di link",
+        "message": "Eliminare \"{{name}}\"? I campi contatto corrispondenti non saranno più cliccabili."
+      }
     }
   },
   "pages": {

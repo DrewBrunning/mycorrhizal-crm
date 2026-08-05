@@ -504,3 +504,29 @@ type WebhookDeliveryResponse struct {
 	NextRetryAt *time.Time `json:"next_retry_at"`
 	CreatedAt   time.Time  `json:"created_at"`
 }
+
+// LinkFieldTypeInput is the DTO for creating/updating a LinkFieldType
+// (link_field_type.go, T34). Protocol is validated with `safeurl` so a
+// `javascript:`/`data:`/etc. scheme can't be stored as the template — see
+// LinkFieldType's own doc comment for why that alone isn't sufficient once
+// {value} is substituted at render time. IsDefault is deliberately absent
+// here: it is never client-settable (CreateLinkFieldType always forces
+// false; edits never touch it).
+type LinkFieldTypeInput struct {
+	Name     string `json:"name" validate:"required,min=1,max=200"`
+	Protocol string `json:"protocol" validate:"max=2000,safeurl"`
+	Category string `json:"category" validate:"required,oneof=messaging social other"`
+	Icon     string `json:"icon,omitempty" validate:"max=100"`
+	// Position is optional on create (defaults to end-of-list server-side)
+	// but always sent on update (full-replace, matching CadencePolicyInput's
+	// precedent of treating every DTO field as replaceable).
+	Position *int `json:"position,omitempty"`
+}
+
+// LinkFieldTypeReorderInput is the DTO for PUT /link-field-types/reorder —
+// the full set of the user's LinkFieldType IDs in the desired display
+// order. Every ID must belong to the caller; the handler rejects the
+// request otherwise rather than silently reordering a subset.
+type LinkFieldTypeReorderInput struct {
+	Order []string `json:"order" validate:"required,min=1,dive,uuid4"`
+}

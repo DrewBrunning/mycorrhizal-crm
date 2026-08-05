@@ -403,6 +403,8 @@
     },
     "email": "Email",
     "phone": "Phone",
+    "call": "Call",
+    "text": "Text",
     "birthday": "Birthday",
     "birthdayError": "Invalid date format. Check your date format setting.",
     "address": "Address",
@@ -630,7 +632,11 @@
     "continue": "Continue",
     "add": "Add",
     "none": "None",
-    "loadMore": "Load more"
+    "loadMore": "Load more",
+    "copy": "Copy",
+    "copied": "Copied to clipboard",
+    "copyFailed": "Couldn't copy to clipboard",
+    "copyValue": "Copy {{label}}"
   },
   "externalLinks": {
     "title": "External Links",
@@ -931,6 +937,36 @@
       "exportError": "Failed to export contacts. Please try again.",
       "customExportButton": "Custom export...",
       "success": "Your contacts have been exported successfully."
+    },
+    "linkFieldTypes": {
+      "title": "Link Field Types",
+      "description": "Configure messaging and social link types — how a service name and handle resolve to a tappable link.",
+      "add": "Add Link Type",
+      "addTitle": "Add Link Type",
+      "editTitle": "Edit Link Type",
+      "name": "Name",
+      "protocol": "Link Template",
+      "protocolHelp": "A URL with {value} in place of the handle, e.g. https://example.com/{value}. Leave blank if there's no working link yet.",
+      "category": "Category",
+      "categoryOptions": {
+        "messaging": "Messaging",
+        "social": "Social",
+        "other": "Other"
+      },
+      "icon": "Icon",
+      "iconHelp": "Pick from the list or type a custom MDI icon name.",
+      "defaultBadge": "Default",
+      "noProtocol": "No link template set",
+      "loading": "Loading link field types...",
+      "empty": "No link field types yet.",
+      "edit": "Edit {{name}}",
+      "delete": "Delete {{name}}",
+      "moveUp": "Move {{name}} up",
+      "moveDown": "Move {{name}} down",
+      "deleteDialog": {
+        "title": "Delete Link Type",
+        "message": "Delete \"{{name}}\"? Any contact fields matching it will no longer be tappable."
+      }
     }
   },
   "pages": {

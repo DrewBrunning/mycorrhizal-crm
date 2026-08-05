@@ -83,6 +83,7 @@ func TestOpenAPISpecValidates(t *testing.T) {
 		"Circle", "CircleInput", "CircleMember", "CircleMemberInput",
 		"Household", "HouseholdInput", "HouseholdMember",
 		"HouseholdMemberInput",
+		"LinkFieldType", "LinkFieldTypeInput", "LinkFieldTypeReorderInput",
 		"Tag", "TagInput", "ContactTag", "ContactTagInput",
 		"RelationshipEdge", "RelationshipEdgeInput", "ThinContactInput",
 		"LifeEvent", "LifeEventInput",

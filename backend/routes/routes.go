@@ -160,6 +160,14 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.POST("/circles/:id/members", middleware.ValidateJSONMiddleware(&models.CircleMemberInput{}), controllers.AddCircleMember)
 			protected.DELETE("/circles/:id/members/:vcard_uid", controllers.RemoveCircleMember)
 
+			// LinkFieldType routes (T34 — docs/fork-plan/tickets/43-T34-contact-field-linking.md)
+			protected.POST("/link-field-types", middleware.ValidateJSONMiddleware(&models.LinkFieldTypeInput{}), controllers.CreateLinkFieldType)
+			protected.GET("/link-field-types", controllers.ListLinkFieldTypes)
+			protected.GET("/link-field-types/:id", controllers.GetLinkFieldType)
+			protected.PUT("/link-field-types/reorder", middleware.ValidateJSONMiddleware(&models.LinkFieldTypeReorderInput{}), controllers.ReorderLinkFieldTypes)
+			protected.PUT("/link-field-types/:id", middleware.ValidateJSONMiddleware(&models.LinkFieldTypeInput{}), controllers.UpdateLinkFieldType)
+			protected.DELETE("/link-field-types/:id", controllers.DeleteLinkFieldType)
+
 			// Household routes (T1 — docs/fork-plan/tickets/09-T1-households.md)
 			protected.POST("/households", middleware.ValidateJSONMiddleware(&models.HouseholdInput{}), controllers.CreateHousehold)
 			protected.GET("/households", controllers.ListHouseholds)

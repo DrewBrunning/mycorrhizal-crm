@@ -403,6 +403,8 @@
     },
     "email": "E-mail",
     "phone": "Téléphone",
+    "call": "Appeler",
+    "text": "SMS",
     "birthday": "Anniversaire",
     "birthdayError": "Format de date invalide. Vérifiez votre paramètre de format de date.",
     "address": "Adresse",
@@ -603,7 +605,11 @@
     "continue": "Continuer",
     "add": "Ajouter",
     "loadMore": "Charger plus",
-    "none": "Aucun"
+    "none": "Aucun",
+    "copy": "Copier",
+    "copied": "Copié dans le presse-papiers",
+    "copyFailed": "Impossible de copier dans le presse-papiers",
+    "copyValue": "Copier {{label}}"
   },
   "externalLinks": {
     "title": "Liens externes",
@@ -904,6 +910,36 @@
       "exportError": "Échec de l'exportation des contacts. Veuillez réessayer.",
       "customExportButton": "Export personnalisé...",
       "success": "Vos contacts ont été exportés avec succès."
+    },
+    "linkFieldTypes": {
+      "title": "Types de lien",
+      "description": "Configurez les types de liens de messagerie et de réseaux sociaux — comment un nom de service et un identifiant deviennent un lien cliquable.",
+      "add": "Ajouter un type de lien",
+      "addTitle": "Ajouter un type de lien",
+      "editTitle": "Modifier le type de lien",
+      "name": "Nom",
+      "protocol": "Modèle de lien",
+      "protocolHelp": "Une URL avec {value} à la place de l'identifiant, p. ex. https://example.com/{value}. Laissez vide s'il n'y a pas encore de lien fonctionnel.",
+      "category": "Catégorie",
+      "categoryOptions": {
+        "messaging": "Messagerie",
+        "social": "Réseaux sociaux",
+        "other": "Autre"
+      },
+      "icon": "Icône",
+      "iconHelp": "Choisissez dans la liste ou saisissez le nom d'une icône MDI personnalisée.",
+      "defaultBadge": "Par défaut",
+      "noProtocol": "Aucun modèle de lien défini",
+      "loading": "Chargement des types de lien...",
+      "empty": "Aucun type de lien pour le moment.",
+      "edit": "Modifier {{name}}",
+      "delete": "Supprimer {{name}}",
+      "moveUp": "Déplacer {{name}} vers le haut",
+      "moveDown": "Déplacer {{name}} vers le bas",
+      "deleteDialog": {
+        "title": "Supprimer le type de lien",
+        "message": "Supprimer « {{name}} » ? Les champs de contact correspondants ne seront plus cliquables."
+      }
     }
   },
   "pages": {
