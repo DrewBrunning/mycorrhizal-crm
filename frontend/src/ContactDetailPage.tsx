@@ -471,6 +471,27 @@ export default function ContactDetailPage() {
       .catch(() => setImmichConfigured(false));
   }, []);
 
+  // T31's sticky ContactJumpNav sits above every SectionGroup at zIndex 10.
+  // SectionGroup's own scrollMarginTop only compensates when the *section*
+  // itself is the scroll target (an anchor-nav click) — it does nothing when
+  // something scrolls a *descendant* into view instead, e.g. a button deep
+  // inside a PanelCard. That's exactly what a generic "scroll element into
+  // view" call does (Playwright's auto-scroll before clicking is one; a
+  // future keyboard-focus scroll would be another), so the target could land
+  // right under the sticky nav and swallow the click. scroll-padding-top on
+  // the scrolling root applies to every scrollIntoView() call for any
+  // descendant, not just elements that opt in individually, so it covers
+  // both cases with one offset. Scoped to this page only (via mount/unmount)
+  // since no other page has a sticky in-page nav.
+  useEffect(() => {
+    const root = document.documentElement;
+    const previous = root.style.scrollPaddingTop;
+    root.style.scrollPaddingTop = '112px';
+    return () => {
+      root.style.scrollPaddingTop = previous;
+    };
+  }, []);
+
   const refreshImmichSummary = useCallback(async (overrideUid?: string) => {
     const uid = overrideUid ?? record?.uid;
     if (!uid) return;

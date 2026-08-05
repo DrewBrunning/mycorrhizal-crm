@@ -1,0 +1,42 @@
+name: Docker Build Check
+
+# Build-only validation for the split backend/frontend images (no push, no
+# registry auth needed). The all-in-one root Dockerfile is deliberately not
+# covered here — e2e-tests.yml already builds it on every PR as a
+# prerequisite for the e2e run, so re-building it here would be redundant.
+# These two are otherwise only built on tag push, in docker-publish.yml.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        include:
+          - context: ./backend
+            file: ./backend/Dockerfile
+          - context: ./frontend
+            file: ./frontend/Dockerfile
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          push: false
+          cache-from: type=gha,scope=${{ matrix.file }}
+          cache-to: type=gha,scope=${{ matrix.file }},mode=max
