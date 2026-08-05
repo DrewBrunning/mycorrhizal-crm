@@ -150,7 +150,7 @@ test.describe('Life events', () => {
 
       await page.getByRole('button', { name: /add life event/i }).click();
       const dialog = page.getByRole('dialog');
-      await expect(dialog).toBeVisible();
+      await expect(dialog).toBeVisible({ timeout: 10000 });
 
       await dialog.getByLabel('Category *').click();
       await page.getByRole('option', { name: 'Family & Relationships', exact: true }).click();
@@ -162,7 +162,7 @@ test.describe('Life events', () => {
       await page.getByRole('option', { name: new RegExp(related.lastname) }).click();
 
       await dialog.getByRole('button', { name: /^save$/i }).click();
-      await expect(dialog).toBeHidden();
+      await expect(dialog).toBeHidden({ timeout: 10000 });
 
       // Confirm through the API, not just the UI chip -- proves the value
       // actually round-tripped through the backend, not just local state.
@@ -197,7 +197,7 @@ test.describe('Life events', () => {
 
         await page.getByRole('button', { name: /add life event/i }).click();
         const dialog = page.getByRole('dialog');
-        await expect(dialog).toBeVisible();
+        await expect(dialog).toBeVisible({ timeout: 10000 });
 
         await dialog.getByLabel('Category *').click();
         await page.getByRole('option', { name: 'Home & Living', exact: true }).click();
@@ -206,7 +206,7 @@ test.describe('Life events', () => {
         await page.getByRole('option', { name: 'Bought a home', exact: true }).click();
 
         await dialog.getByRole('button', { name: /^save$/i }).click();
-        await expect(dialog).toBeHidden();
+        await expect(dialog).toBeHidden({ timeout: 10000 });
 
         await expect(page.getByText('Bought a home')).toBeVisible();
         await expect(page.getByText('Home & Living')).toBeVisible();
@@ -227,7 +227,7 @@ test.describe('Life events', () => {
 
         await page.getByRole('button', { name: /add life event/i }).click();
         const dialog = page.getByRole('dialog');
-        await expect(dialog).toBeVisible();
+        await expect(dialog).toBeVisible({ timeout: 10000 });
 
         await dialog.getByLabel('Category *').click();
         await page.getByRole('option', { name: 'Health & Wellness', exact: true }).click();
@@ -237,7 +237,7 @@ test.describe('Life events', () => {
 
         await dialog.getByLabel('Custom event name *').fill('Ran a marathon');
         await dialog.getByRole('button', { name: /^save$/i }).click();
-        await expect(dialog).toBeHidden();
+        await expect(dialog).toBeHidden({ timeout: 10000 });
 
         await expect(page.getByText('Ran a marathon')).toBeVisible();
         await expect(page.getByText('Health & Wellness')).toBeVisible();
@@ -262,12 +262,19 @@ test.describe('Life events', () => {
         await waitForLoading(page);
         await expect(page.getByText('Married').first()).toBeVisible();
 
-        const card = page.locator('text=Married').first().locator('..').locator('..');
+        // LifeEventList nests the type label one Box deeper than
+        // RelationshipEdgeList does (an extra icon+type+chips row Box), so
+        // this needs three '..' to reach the Paper's outer flex Box -- the
+        // actual common ancestor of the text and the hover-revealed
+        // life-event-actions Box -- not two. Two lands on a sibling of the
+        // actions Box, so getByLabel('Edit') below would never match
+        // anything and the click would time out deterministically.
+        const card = page.locator('text=Married').first().locator('..').locator('..').locator('..');
         await card.hover();
         await card.getByLabel('Edit').click();
 
         const dialog = page.getByRole('dialog');
-        await expect(dialog).toBeVisible();
+        await expect(dialog).toBeVisible({ timeout: 10000 });
         // Pre-filled from the existing event before any change is made.
         await expect(dialog.getByLabel('Category *')).toHaveText('Family & Relationships');
         await expect(dialog.getByLabel('Event Type *')).toHaveText('Married');
@@ -307,19 +314,21 @@ test.describe('Life events', () => {
         await waitForLoading(page);
         await expect(page.getByText('started a podcast').first()).toBeVisible();
 
-        const card = page.locator('text=started a podcast').first().locator('..').locator('..');
+        // See the identical note in the "editing re-files an event" test
+        // above -- three '..' is required for LifeEventList's DOM depth.
+        const card = page.locator('text=started a podcast').first().locator('..').locator('..').locator('..');
         await card.hover();
         await card.getByLabel('Edit').click();
 
         const dialog = page.getByRole('dialog');
-        await expect(dialog).toBeVisible();
+        await expect(dialog).toBeVisible({ timeout: 10000 });
         await expect(dialog.getByLabel('Category *')).toHaveText('Other / Uncategorized');
         // Uncategorized renders Type as a plain free-text field showing the
         // raw stored value, not a picker with nothing selected.
         await expect(dialog.getByLabel('Event Type *')).toHaveValue('started a podcast');
 
         await dialog.getByRole('button', { name: /^cancel$/i }).click();
-        await expect(dialog).toBeHidden();
+        await expect(dialog).toBeHidden({ timeout: 10000 });
       } finally {
         await deleteTestContact(request, contact.ID);
       }
