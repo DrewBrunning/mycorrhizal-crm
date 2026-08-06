@@ -161,6 +161,7 @@ func CreateLifeEvent(c *gin.Context) {
 			UserID:           userID,
 			EntityID:         input.EntityID,
 			Type:             input.Type,
+			Category:         input.Category,
 			Date:             input.Date,
 			Description:      input.Description,
 			Source:           input.Source,
@@ -336,6 +337,7 @@ func UpdateLifeEvent(c *gin.Context) {
 
 	event.EntityID = input.EntityID
 	event.Type = input.Type
+	event.Category = input.Category
 	event.Date = input.Date
 	event.Description = input.Description
 	event.Source = input.Source

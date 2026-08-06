@@ -28,6 +28,7 @@ func init() {
 	validate.RegisterValidation("safeurl", validateSafeURL)
 	validate.RegisterValidation("relation_type", validateRelationType)
 	validate.RegisterValidation("fielddefprojection", validateFieldDefinitionProjection)
+	validate.RegisterValidation("life_event_category", validateLifeEventCategory)
 }
 
 // ValidationError represents a validation error response
@@ -228,6 +229,15 @@ func validateNoAtSign(fl validator.FieldLevel) bool {
 // rather than a second hardcoded list drifting out of sync with it.
 func validateRelationType(fl validator.FieldLevel) bool {
 	return models.IsKnownRelationType(fl.Field().String())
+}
+
+// validateLifeEventCategory checks a LifeEvent.Category value against
+// models.IsKnownLifeEventCategory (T36, models/life_event_type_registry.go),
+// following validateRelationType's own registration style so the registry
+// stays the single source of truth for valid category tokens rather than a
+// second hardcoded `oneof=...` list drifting out of sync with it.
+func validateLifeEventCategory(fl validator.FieldLevel) bool {
+	return models.IsKnownLifeEventCategory(fl.Field().String())
 }
 
 // fieldDefinitionProjectionPattern matches FieldDefinition.Projection (WP-84b,

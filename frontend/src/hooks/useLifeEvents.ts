@@ -5,7 +5,7 @@ import {
   updateLifeEvent,
   deleteLifeEvent,
   LifeEvent,
-  PartialDate,
+  LifeEventInputData,
   GetLifeEventsParams,
 } from '../api/lifeEvents';
 import { getContactsByUid, Contact } from '../api/contacts';
@@ -60,15 +60,7 @@ export function useLifeEvents(entityId: string | undefined) {
   }, [refresh]);
 
   const handleCreate = useCallback(
-    async (data: {
-      entity_id: string;
-      type: string;
-      date?: PartialDate;
-      description?: string;
-      source?: string;
-      related_entity_ids?: string[];
-      remind?: boolean;
-    }) => {
+    async (data: LifeEventInputData) => {
       await createLifeEvent(data);
       await refresh();
     },
@@ -76,18 +68,7 @@ export function useLifeEvents(entityId: string | undefined) {
   );
 
   const handleUpdate = useCallback(
-    async (
-      id: string,
-      data: {
-        entity_id: string;
-        type: string;
-        date?: PartialDate;
-        description?: string;
-        source?: string;
-        related_entity_ids?: string[];
-        remind?: boolean;
-      }
-    ) => {
+    async (id: string, data: LifeEventInputData) => {
       await updateLifeEvent(id, data);
       await refresh();
     },

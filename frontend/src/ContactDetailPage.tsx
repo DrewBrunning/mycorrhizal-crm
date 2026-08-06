@@ -651,6 +651,32 @@ export default function ContactDetailPage() {
   const [lifeEventDialogOpen, setLifeEventDialogOpen] = useState(false);
   const [editingLifeEvent, setEditingLifeEvent] = useState<LifeEvent | null>(null);
 
+  // Memoized, not an inline object literal at the JSX call site: LifeEventDialog's
+  // own reset effect keys off `initial`'s *reference* (dep array `[open,
+  // initial]`), so an inline literal -- a new object on literally every
+  // ContactDetailPage render, whether or not editingLifeEvent itself changed
+  // -- re-fires that effect on any unrelated re-render while the dialog is
+  // open, silently reverting whatever the user had just changed (e.g.
+  // re-filing a life event's category) back to the original values. Keying
+  // this on editingLifeEvent keeps the reference stable across renders that
+  // don't touch it. Confirmed live: without this, selecting a new category
+  // in the edit dialog visibly reverted to the original category/type
+  // moments later.
+  const lifeEventDialogInitial = useMemo(
+    () =>
+      editingLifeEvent
+        ? {
+            type: editingLifeEvent.type,
+            category: editingLifeEvent.category,
+            date: editingLifeEvent.date,
+            description: editingLifeEvent.description,
+            relatedEntityIds: editingLifeEvent.related_entity_ids,
+            remind: editingLifeEvent.remind,
+          }
+        : undefined,
+    [editingLifeEvent]
+  );
+
   const handleAddLifeEvent = () => {
     setEditingLifeEvent(null);
     setLifeEventDialogOpen(true);
@@ -663,10 +689,24 @@ export default function ContactDetailPage() {
 
   const handleSaveLifeEvent = async (data: LifeEventFormData) => {
     if (!record?.uid) return;
+    // Explicit field-by-field mapping, not a blind {...data} spread:
+    // LifeEventFormData.relatedEntityIds is camelCase (the dialog's own
+    // shape) but the API wants related_entity_ids — a spread would silently
+    // carry the wrong key through (TS excess-property checks don't fire on
+    // spreads) and the picked related contacts would never actually save.
+    const payload = {
+      entity_id: record.uid,
+      type: data.type,
+      category: data.category,
+      date: data.date,
+      description: data.description,
+      related_entity_ids: data.relatedEntityIds,
+      remind: data.remind,
+    };
     if (editingLifeEvent) {
-      await handleUpdateLifeEvent(editingLifeEvent.id, { ...data, entity_id: record.uid });
+      await handleUpdateLifeEvent(editingLifeEvent.id, payload);
     } else {
-      await handleCreateLifeEvent({ ...data, entity_id: record.uid, source: 'user' });
+      await handleCreateLifeEvent({ ...payload, source: 'user' });
     }
     // A married event is mirrored onto the card's wedding anniversary by the
     // backend (services/wedding_sync.go); reload so the anniversary shows.
@@ -1546,17 +1586,7 @@ export default function ContactDetailPage() {
           setEditingLifeEvent(null);
         }}
         onSave={handleSaveLifeEvent}
-        initial={
-          editingLifeEvent
-            ? {
-                type: editingLifeEvent.type,
-                date: editingLifeEvent.date,
-                description: editingLifeEvent.description,
-                relatedEntityIds: editingLifeEvent.related_entity_ids,
-                remind: editingLifeEvent.remind,
-              }
-            : undefined
-        }
+        initial={lifeEventDialogInitial}
         excludeContactUid={record?.uid}
       />
 

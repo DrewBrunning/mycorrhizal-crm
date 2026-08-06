@@ -82,3 +82,42 @@ func TestActivityAndLifeEventETag_RealMigratedSchema(t *testing.T) {
 	require.NoError(t, db.First(&reloadedEvent2, "id = ?", event.ID).Error)
 	assert.Equal(t, event.ETag, reloadedEvent2.ETag, "the updated LifeEvent ETag must persist")
 }
+
+// TestLifeEventCategory_RealMigratedSchema is T36's real-DB check for the
+// same column-tag-mismatch trap this file's doc comment describes: an
+// AutoMigrate-backed test can't catch LifeEvent.Category's `gorm:"column:
+// category"` tag disagreeing with migration 000011's actual `category`
+// column, because AutoMigrate would happily derive its own schema from
+// whatever the tag says. Only a database.InitDB-migrated DB proves the two
+// agree.
+func TestLifeEventCategory_RealMigratedSchema(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "category-real.db")
+	db, err := database.InitDB(dbPath)
+	require.NoError(t, err)
+
+	user := User{Username: "categorytester", Password: "password123!A", Email: "category@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+	contact := Contact{UserID: user.ID, Firstname: "Alice"}
+	require.NoError(t, db.Create(&contact).Error)
+
+	event := LifeEvent{
+		UserID:   user.ID,
+		EntityID: contact.VCardUID,
+		Type:     LifeEventTypeMoved,
+		Category: LifeEventCategoryHomeLiving,
+	}
+	require.NoError(t, db.Create(&event).Error)
+
+	var reloaded LifeEvent
+	require.NoError(t, db.First(&reloaded, "id = ?", event.ID).Error)
+	assert.Equal(t, LifeEventCategoryHomeLiving, reloaded.Category,
+		"Category must persist through the real migrated 'category' column")
+
+	// And directly through the raw column, ruling out GORM masking a tag
+	// mismatch by deriving its own (wrong) schema.
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	var raw string
+	require.NoError(t, sqlDB.QueryRow("SELECT category FROM life_events WHERE id = ?", event.ID).Scan(&raw))
+	assert.Equal(t, LifeEventCategoryHomeLiving, raw)
+}

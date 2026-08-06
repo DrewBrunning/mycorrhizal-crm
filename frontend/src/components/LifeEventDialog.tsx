@@ -19,9 +19,11 @@ import AppDialog from './AppDialog';
 import { useTranslation } from 'react-i18next';
 import { Contact, getContacts, getContactsByUid } from '../api/contacts';
 import {
-  LIFE_EVENT_TYPES,
-  LifeEventType,
+  LIFE_EVENT_CATEGORIES,
+  LIFE_EVENT_TYPES_BY_CATEGORY,
+  LifeEventCategory,
   PartialDate,
+  isKnownLifeEventCategory,
   partialDateHasMonthDay,
   partialDateIsYearOnly,
 } from '../api/lifeEvents';
@@ -47,11 +49,25 @@ function contactLabel(c: ContactBrief): string {
 
 export interface LifeEventFormData {
   type: string;
+  category?: string;
   date?: PartialDate;
   description?: string;
   relatedEntityIds?: string[];
   remind?: boolean;
 }
+
+// UNCATEGORIZED is a UI-only sentinel (T36) — never sent to the backend as a
+// Category value. It covers two cases: an existing pre-migration life event
+// whose Category was left NULL (nothing to backfill it from, see migration
+// 000011's own comment), and a brand-new event the user deliberately leaves
+// uncategorized. Selecting it renders Type as a plain free-text field, since
+// no category-specific default list applies.
+const UNCATEGORIZED = 'uncategorized';
+
+// CUSTOM_TYPE sentinel for the trailing "Add a new life event type" option in
+// each category's Type select (ticket item 4) — picking it swaps the Select
+// for a free-text field instead of submitting the sentinel itself as Type.
+const CUSTOM_TYPE = '__custom__';
 
 interface LifeEventDialogProps {
   open: boolean;
@@ -69,7 +85,9 @@ export default function LifeEventDialog({
   excludeContactUid,
 }: LifeEventDialogProps) {
   const { t } = useTranslation();
-  const [type, setType] = useState<LifeEventType | ''>('');
+  const [category, setCategory] = useState<LifeEventCategory | typeof UNCATEGORIZED | ''>('');
+  const [type, setType] = useState('');
+  const [useCustomType, setUseCustomType] = useState(false);
   const [dateYear, setDateYear] = useState('');
   const [dateMonth, setDateMonth] = useState('');
   const [dateDay, setDateDay] = useState('');
@@ -123,7 +141,25 @@ export default function LifeEventDialog({
   useEffect(() => {
     if (open) {
       if (initial) {
-        setType((initial.type as LifeEventType) || '');
+        // Falls back to UNCATEGORIZED both for a genuinely empty Category
+        // (the legacy/pre-migration case) and for an unrecognized one (stale
+        // data, or a category token this frontend copy predates) — isKnownLifeEventCategory
+        // guards the LIFE_EVENT_TYPES_BY_CATEGORY lookup below from throwing
+        // on the latter.
+        const initCategory: LifeEventCategory | typeof UNCATEGORIZED =
+          initial.category && isKnownLifeEventCategory(initial.category)
+            ? initial.category
+            : UNCATEGORIZED;
+        setCategory(initCategory);
+        setType(initial.type || '');
+        // A predefined category's type list decides whether the existing
+        // value renders as a picked option or a custom one; UNCATEGORIZED
+        // always renders as free text (see the Type field below), so its
+        // useCustomType value is never read.
+        setUseCustomType(
+          initCategory !== UNCATEGORIZED &&
+            !LIFE_EVENT_TYPES_BY_CATEGORY[initCategory].includes(initial.type || '')
+        );
         if (initial.date) {
           setDateYear(initial.date.year != null ? String(initial.date.year) : '');
           setDateMonth(initial.date.month != null ? String(initial.date.month) : '');
@@ -145,7 +181,9 @@ export default function LifeEventDialog({
           }).catch(() => {});
         }
       } else {
+        setCategory('');
         setType('');
+        setUseCustomType(false);
         setDateYear('');
         setDateMonth('');
         setDateDay('');
@@ -169,7 +207,29 @@ export default function LifeEventDialog({
   const canRemind = partialDateHasMonthDay(currentDate);
   const isYearOnly = partialDateIsYearOnly(currentDate);
 
+  const handleCategoryChange = (value: LifeEventCategory | typeof UNCATEGORIZED) => {
+    setCategory(value);
+    setType('');
+    setUseCustomType(false);
+    setError('');
+  };
+
+  const handleTypeSelectChange = (value: string) => {
+    if (value === CUSTOM_TYPE) {
+      setUseCustomType(true);
+      setType('');
+    } else {
+      setUseCustomType(false);
+      setType(value);
+    }
+    setError('');
+  };
+
   const handleSave = async () => {
+    if (!category) {
+      setError(t('lifeEvent.validation.categoryRequired'));
+      return;
+    }
     if (!type) {
       setError(t('lifeEvent.validation.typeRequired'));
       return;
@@ -179,6 +239,7 @@ export default function LifeEventDialog({
     try {
       await onSave({
         type,
+        category: category === UNCATEGORIZED ? undefined : category,
         date: currentDate,
         description: description || undefined,
         relatedEntityIds: relatedContacts.map((c) => c.uid),
@@ -205,18 +266,76 @@ export default function LifeEventDialog({
         <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
           <TextField
             select
-            label={t('lifeEvent.type')}
-            value={type}
-            onChange={(e) => { setType(e.target.value as LifeEventType); setError(''); }}
+            label={t('lifeEvent.category')}
+            value={category}
+            onChange={(e) => handleCategoryChange(e.target.value as LifeEventCategory | typeof UNCATEGORIZED)}
             fullWidth
             required
           >
-            {LIFE_EVENT_TYPES.map((tkn) => (
-              <MenuItem key={tkn} value={tkn}>
-                {t(`lifeEvent.types.${tkn}`, tkn)}
+            {LIFE_EVENT_CATEGORIES.map((cat) => (
+              <MenuItem key={cat} value={cat}>
+                {t(`lifeEvent.categories.${cat}`)}
               </MenuItem>
             ))}
+            {/* Only offered when it's already the current (legacy/unrecognized)
+                state — a brand-new event, or one already filed under a real
+                category, must always get one of the five real categories;
+                "Other / Uncategorized" is display/edit-graceful-degradation
+                for existing data, not a choice a user can newly opt into. */}
+            {category === UNCATEGORIZED && (
+              <MenuItem value={UNCATEGORIZED}>{t('lifeEvent.categories.uncategorized')}</MenuItem>
+            )}
           </TextField>
+
+          {category === '' && (
+            <TextField
+              label={t('lifeEvent.type')}
+              value=""
+              placeholder={t('lifeEvent.selectCategoryFirst')}
+              fullWidth
+              disabled
+            />
+          )}
+
+          {category === UNCATEGORIZED && (
+            <TextField
+              label={t('lifeEvent.type')}
+              value={type}
+              onChange={(e) => { setType(e.target.value); setError(''); }}
+              fullWidth
+              required
+            />
+          )}
+
+          {category !== '' && category !== UNCATEGORIZED && (
+            <>
+              <TextField
+                select
+                label={t('lifeEvent.type')}
+                value={useCustomType ? CUSTOM_TYPE : type}
+                onChange={(e) => handleTypeSelectChange(e.target.value)}
+                fullWidth
+                required
+              >
+                {LIFE_EVENT_TYPES_BY_CATEGORY[category].map((tkn) => (
+                  <MenuItem key={tkn} value={tkn}>
+                    {t(`lifeEvent.types.${tkn}`, tkn)}
+                  </MenuItem>
+                ))}
+                <MenuItem value={CUSTOM_TYPE}>{t('lifeEvent.addCustomType')}</MenuItem>
+              </TextField>
+              {useCustomType && (
+                <TextField
+                  label={t('lifeEvent.customTypeLabel')}
+                  value={type}
+                  onChange={(e) => { setType(e.target.value); setError(''); }}
+                  fullWidth
+                  required
+                  autoFocus
+                />
+              )}
+            </>
+          )}
 
           <Box display="flex" gap={1}>
             <TextField

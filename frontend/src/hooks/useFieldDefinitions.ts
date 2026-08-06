@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import {
   getFieldDefinitions,
   createFieldDefinition,
@@ -94,6 +94,22 @@ export function useContactFieldValues(contactId: string | number | undefined, no
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Held in a ref rather than a dependency: every caller passes the notifier as
+  // an inline `{ showError }` object literal, so it is a fresh identity on
+  // every render even though showError itself is a stable useCallback. With it
+  // in the dep arrays below, `refresh` changed identity on every render --
+  // and ContactDetailPage's main fetch effect lists `refresh` as a dependency
+  // while its body calls setRecord/setNotes/setActivities, so the effect
+  // re-ran on every render and its own setState calls rendered again. That
+  // closed an unconditional render->fetch loop: ~600 API requests during a
+  // single 1.3s e2e test, sustained at 220-700 req/s until the page unmounted,
+  // which starved unrelated in-flight saves behind the browser's 6-connection
+  // pool. The ref keeps the latest notifier without making the callbacks
+  // churn. Pinned by useFieldDefinitions.test.ts and by an e2e request-count
+  // guard in e2e/contactDetailLayout.spec.ts.
+  const notifierRef = useRef(notifier);
+  notifierRef.current = notifier;
+
   // Accepts an optional override id so the very first load (before the
   // caller's record is resolved via state) can pass the freshly-fetched id
   // directly -- the same pattern refreshRelationshipEdges uses for its
@@ -108,11 +124,11 @@ export function useContactFieldValues(contactId: string | number | undefined, no
     } catch (err) {
       const msg = handleFetchError(err, 'fetching custom field values');
       setError(msg);
-      handleError(err, { operation: 'fetching custom field values' }, notifier);
+      handleError(err, { operation: 'fetching custom field values' }, notifierRef.current);
     } finally {
       setLoading(false);
     }
-  }, [contactId, notifier]);
+  }, [contactId]);
 
   const valuesByDefinition = useMemo(() => {
     const map = new Map<string, unknown>();
@@ -126,11 +142,11 @@ export function useContactFieldValues(contactId: string | number | undefined, no
       try {
         setValues(await replaceContactFieldValues(contactId, fieldValues));
       } catch (err) {
-        handleError(err, { operation: 'saving custom field values' }, notifier);
+        handleError(err, { operation: 'saving custom field values' }, notifierRef.current);
         throw err;
       }
     },
-    [contactId, notifier]
+    [contactId]
   );
 
   return {

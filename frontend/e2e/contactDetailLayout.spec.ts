@@ -33,6 +33,47 @@ test.describe('Contact detail layout (T31)', () => {
     }
   });
 
+  // Regression guard for an unconditional render->fetch loop (measured at ~600
+  // API requests during a single 1.3s test, sustained at 220-700 req/s from
+  // page load until unmount). Root cause was one unstable dependency:
+  // useContactFieldValues kept the caller's `notifier` in its useCallback deps,
+  // and callers pass an inline `{ showError }` literal -- a new identity every
+  // render -- so `refreshFieldValues` churned, the main fetch effect that lists
+  // it as a dependency re-ran on every render, and its own setRecord/setNotes/
+  // setActivities calls rendered again.
+  //
+  // Deliberately counts requests rather than pinning any one hook's deps: that
+  // effect lists eight refresh callbacks, and any of them regressing the same
+  // way reproduces the same loop. /users/me is the probe because the page
+  // fetches it exactly once per pass of that effect and nothing else on the
+  // page touches it. The effect legitimately runs twice per load (every
+  // refresher keys on record?.uid / record?.id, which are undefined on mount
+  // and only resolve after the effect's own setRecord), hence a bound rather
+  // than an equality -- but a bound far below the hundreds a loop produces.
+  test('does not re-fetch in a loop once the page has settled', async ({ page }) => {
+    const contact = await createTestContact(page.request);
+
+    try {
+      let userFetches = 0;
+      page.on('request', (req) => {
+        if (req.url().includes('/api/v1/users/me')) userFetches++;
+      });
+
+      await page.goto(`/contacts/${contact.ID}`);
+      await waitForLoading(page);
+
+      // Count only what happens *after* the page has settled, so the initial
+      // load's legitimate passes aren't what the bound is measuring.
+      const afterLoad = userFetches;
+      await page.waitForTimeout(2000);
+      const whileIdle = userFetches - afterLoad;
+
+      expect(whileIdle, `contact detail page kept re-fetching while idle (${whileIdle} /users/me requests in 2s)`).toBeLessThan(3);
+    } finally {
+      await deleteTestContact(page.request, contact.ID);
+    }
+  });
+
   test('jump nav scrolls to the target section', async ({ page }) => {
     const contact = await createTestContact(page.request);
 

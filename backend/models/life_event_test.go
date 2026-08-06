@@ -89,6 +89,49 @@ func TestLifeEventPartialDateAndRelatedEntityIDsRoundTrip(t *testing.T) {
 	assert.Equal(t, []string{spouse.VCardUID}, reloaded.RelatedEntityIDs)
 }
 
+// TestLifeEventCategoryRoundTrips pins T36's Category column against a real
+// migrated-schema save/reload, per the WP-83 lesson (only a real DB catches
+// column/tag mismatches AutoMigrate-only tests can't see).
+func TestLifeEventCategoryRoundTrips(t *testing.T) {
+	db := setupLifeEventTestDB(t)
+	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+	contact := Contact{UserID: user.ID, Firstname: "Alice"}
+	require.NoError(t, db.Create(&contact).Error)
+
+	event := LifeEvent{
+		UserID:   user.ID,
+		EntityID: contact.VCardUID,
+		Type:     LifeEventTypeMoved,
+		Category: LifeEventCategoryHomeLiving,
+	}
+	require.NoError(t, db.Create(&event).Error)
+
+	var reloaded LifeEvent
+	require.NoError(t, db.First(&reloaded, "id = ?", event.ID).Error)
+	assert.Equal(t, LifeEventCategoryHomeLiving, reloaded.Category)
+}
+
+// TestLifeEventCategoryOmittedStaysEmpty pins the nullable-column behavior a
+// legacy or custom-type event relies on: an event created without a
+// Category must round-trip as the empty string, not some non-empty
+// sentinel, so the frontend's "Other / Uncategorized" bucket has something
+// unambiguous to check against.
+func TestLifeEventCategoryOmittedStaysEmpty(t *testing.T) {
+	db := setupLifeEventTestDB(t)
+	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+	contact := Contact{UserID: user.ID, Firstname: "Alice"}
+	require.NoError(t, db.Create(&contact).Error)
+
+	event := LifeEvent{UserID: user.ID, EntityID: contact.VCardUID, Type: "started a podcast"}
+	require.NoError(t, db.Create(&event).Error)
+
+	var reloaded LifeEvent
+	require.NoError(t, db.First(&reloaded, "id = ?", event.ID).Error)
+	assert.Empty(t, reloaded.Category)
+}
+
 func TestLifeEventETagGeneratedOnCreateAndPersists(t *testing.T) {
 	db := setupLifeEventTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}

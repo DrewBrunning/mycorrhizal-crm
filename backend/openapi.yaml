@@ -6926,6 +6926,10 @@ components:
         updated_at: { type: string, format: date-time }
         entity_id: { type: string, format: uuid }
         type: { type: string }
+        category:
+          type: string
+          enum: [home_living, health_wellness, work_education, travel_experiences, family_relationships]
+          description: "T36: nullable on the wire. Only backfilled (migration 000011) for pre-existing rows whose type mapped onto one of the original seven LifeEventType* constants; otherwise absent/uncategorized."
         date:
           $ref: "#/components/schemas/PartialDate"
         description: { type: string, maxLength: 2000 }
@@ -6944,6 +6948,9 @@ components:
       properties:
         entity_id: { type: string, format: uuid }
         type: { type: string }
+        category:
+          type: string
+          enum: [home_living, health_wellness, work_education, travel_experiences, family_relationships]
         date:
           $ref: "#/components/schemas/PartialDate"
         description: { type: string, maxLength: 2000 }

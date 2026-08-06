@@ -42,6 +42,12 @@ export default function LifeEventList({
                 <Typography variant="subtitle2">
                   {t(`lifeEvent.types.${event.type}`, event.type)}
                 </Typography>
+                {event.category && (
+                  <Chip
+                    label={t(`lifeEvent.categories.${event.category}`, event.category)}
+                    size="small"
+                  />
+                )}
                 <Chip
                   label={partialDateDisplay(event.date)}
                   size="small"
@@ -78,10 +84,10 @@ export default function LifeEventList({
               className="life-event-actions"
               sx={{ opacity: 0, transition: 'opacity 0.2s', display: 'flex', gap: 1 }}
             >
-              <IconButton size="small" onClick={() => onEdit(event)}>
+              <IconButton size="small" onClick={() => onEdit(event)} aria-label={t('common.edit')}>
                 <EditIcon fontSize="small" />
               </IconButton>
-              <IconButton size="small" onClick={() => onDelete(event.id)}>
+              <IconButton size="small" onClick={() => onDelete(event.id)} aria-label={t('common.delete')}>
                 <DeleteIcon fontSize="small" />
               </IconButton>
             </Box>

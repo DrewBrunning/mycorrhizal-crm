@@ -144,3 +144,78 @@ Every category also gets an **"Add a new life event type"** affordance — see i
   Relationships" after backfill, and that `job_change`/`adopted_pet` rows now display under their
   updated labels without their stored `type` changing.
 - All 5 locale files have real translations for every new category, type, and affordance label.
+
+## Landing note
+
+**DONE.** Implemented on `feature/life-event-categories`.
+
+- Backend: `LifeEvent.Category` (nullable, `oneof`-validated) added via migration `000011`, which
+  also backfills the 7 pre-existing constant-mapped rows and leaves everything else `NULL`. The 37
+  new `LifeEventType*` constants live in `models/life_event.go`; the type→category registry
+  (`LifeEventTypeCategories`, `LifeEventCategories()`, `LifeEventCategoryForType`,
+  `LifeEventTypesForCategory`) lives in a new `models/life_event_type_registry.go`, mirroring
+  `relationship_type_registry.go`'s pattern. `job_change`/`adopted_pet` display labels updated in
+  i18n only — stored values unchanged.
+- Frontend: `LifeEventDialog` now has a cascading Category → Type picker (`LIFE_EVENT_CATEGORIES`
+  / `LIFE_EVENT_TYPES_BY_CATEGORY` in `api/lifeEvents.ts`, hand-mirrored per frontend-trap-4), a
+  per-category "Add a new life event type" custom-text affordance, and an "Other / Uncategorized"
+  bucket for events with no category (rendered as a plain free-text Type field). `LifeEventList`
+  shows a category chip when present.
+- All 5 locales carry real translations for the 5 category labels, 37 new type labels, and the new
+  affordance/validation strings (`locales.test.ts` parity check green).
+- Tests: backend migration/backfill tests (real-migrated-schema, per CLAUDE.md's real-DB
+  requirement — caught and pinned the exact `gorm:"column:..."` mismatch trap class on a
+  deliberate hand-break), registry completeness tests, controller validation tests; frontend
+  `LifeEventDialog.test.tsx` / `LifeEventList.test.tsx` component tests and new Playwright specs in
+  `e2e/lifeEvents.spec.ts` for the cascading picker, custom-type creation, edit re-filing, and the
+  uncategorized bucket.
+- Hand-verified live (real dev server + scratch DB, not vitest mocks): the full create flow with
+  a predefined type, the custom-type flow, and editing an existing categorized event. That
+  live pass caught a real bug the component tests couldn't see — `ContactDetailPage`'s
+  `LifeEventDialog` `initial=` prop omitted `category` entirely, so every edit silently showed
+  "Other / Uncategorized" regardless of the event's real category. Fixed
+  (`ContactDetailPage.tsx`).
+
+### Opus review pass
+
+An Opus subagent reviewed the branch (security, test comprehensiveness, ticket completeness,
+regressions, idiom, anti-patterns, docs) and confirmed ticket scope, i18n parity, migration safety,
+and security scoping were all correct with backend/frontend suites green. It found and I fixed:
+
+1. **Crash on an unrecognized category token** (`LifeEventDialog.tsx`): editing a `LifeEvent` whose
+   `Category` was stale/unrecognized (or predates this frontend build — the frontend-trap-4 mirror-
+   drift scenario) threw `Cannot read properties of undefined (reading 'includes')`, taking the page
+   into the ErrorBoundary. Fixed with a real `isKnownLifeEventCategory` type guard
+   (`api/lifeEvents.ts`) instead of an unchecked cast; falls back to the "Other / Uncategorized"
+   bucket like any other unrecognized category. Hand-broken and confirmed the new test
+   (`edit mode falls back to Uncategorized instead of crashing...`) catches it.
+2. **New events could be saved uncategorized**, contradicting the ticket's "category is still
+   required" language. The "Other / Uncategorized" option is now only offered in the Category
+   picker when it's already the event's current state (a legacy event with no category) — never
+   selectable for a brand-new event or one already filed under a real category. Hand-broken and
+   confirmed the new test (`a brand-new event cannot be filed as "Other / Uncategorized"...`)
+   catches it.
+3. **`related_entity_ids` silently dropped on every life-event save** — pre-existing on `main`
+   (not introduced by this ticket) but sitting in the exact save path this ticket rewired, and
+   untested. `ContactDetailPage`'s `handleSaveLifeEvent` blind-spread the dialog's camelCase
+   `LifeEventFormData` into the API payload; `relatedEntityIds` never became `related_entity_ids`,
+   and TypeScript's excess-property checks don't fire on spreads, so it compiled clean while
+   quietly losing every picked related contact. Fixed with explicit field-by-field mapping. Added
+   `e2e/lifeEvents.spec.ts`'s `a related contact picked in the dialog survives the save`, and
+   hand-verified live end-to-end (UI pick → API round-trip) since no unit test can exercise
+   `ContactDetailPage`'s wiring.
+4. **Registry doc comments overclaimed / the registry had no production caller.** Wired
+   `IsKnownLifeEventCategory` into a real `life_event_category` validator tag
+   (`middleware/validation.go`, mirroring `relation_type`/`validateRelationType`), replacing the
+   `oneof=...` literal on both `LifeEvent.Category` and `LifeEventInput.Category` — the registry is
+   now the actual single source of truth for category validation, not just test-only. Also
+   corrected a comment that implied migration 000011 reads this registry; it can't (a migration is
+   static SQL) and hand-duplicates the same seven-constant mapping instead.
+5. **Dead/weakened frontend exports**: `LIFE_EVENT_TYPES` and `LifeEventType` had zero remaining
+   consumers after the rewrite and `LifeEventType` had silently degraded from a literal union to
+   plain `string`. Removed both; `categoryForLifeEventType` (also unused) was replaced by the
+   `isKnownLifeEventCategory` guard fix #1 needed anyway.
+
+All fixes re-verified: `go build/vet/gofmt/test` and `tsc --noEmit`/`vitest run` green (497 frontend
+tests), every new/changed test hand-broken and confirmed to fail before being restored, and the
+uncategorized-bucket and related-contact fixes re-checked live against a fresh dev server.

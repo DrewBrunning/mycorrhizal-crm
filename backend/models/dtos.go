@@ -67,9 +67,13 @@ type ContactTagInput struct {
 }
 
 // LifeEventInput is the DTO for creating/updating a LifeEvent (life_event.go).
+// Category (T36) is independently submitted, not derived server-side from
+// Type — the frontend's cascading category->type picker already knows both,
+// and a custom (free-text) Type has no registry entry to derive from.
 type LifeEventInput struct {
 	EntityID         string                    `json:"entity_id" validate:"required,uuid4"`
 	Type             string                    `json:"type,omitempty"`
+	Category         string                    `json:"category,omitempty" validate:"omitempty,life_event_category"`
 	Date             *contactmodel.PartialDate `json:"date,omitempty"`
 	Description      string                    `json:"description,omitempty" validate:"max=2000"`
 	Source           string                    `json:"source,omitempty" validate:"omitempty,oneof=user imported ai-suggested"`
