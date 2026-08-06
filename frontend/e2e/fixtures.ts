@@ -36,12 +36,33 @@ export async function logoutUser(page: Page): Promise<void> {
 }
 
 /**
- * Waits for the page to finish its initial load-and-settle: first any MUI
- * loading indicator disappearing, then the page's height holding steady.
- *
- * Two layers, because one alone isn't enough -- both are real bugs pinned
- * down on the T36 branch by tracing actual click coordinates against actual
- * button positions in a failing run:
+ * Waits for a page's scrollHeight to hold steady across a few consecutive
+ * checks, spaced 50ms apart. A generic "layout has stopped changing" signal,
+ * used below for two different reasons content can still be moving even
+ * after the obvious loading indicators are gone.
+ */
+async function waitForHeightStable(page: Page, timeoutMs = 5000): Promise<void> {
+  let lastHeight = -1;
+  let stableChecks = 0;
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline && stableChecks < 3) {
+    const height = await page.evaluate(() => document.documentElement.scrollHeight).catch(() => -1);
+    if (height === lastHeight) {
+      stableChecks++;
+    } else {
+      stableChecks = 0;
+      lastHeight = height;
+    }
+    await page.waitForTimeout(50);
+  }
+}
+
+/**
+ * Waits for the page to finish its initial load-and-settle: loading
+ * indicators gone, height stable, AND every IntersectionObserver-deferred
+ * section already triggered. Three layers, because two weren't enough --
+ * all three are real bugs pinned down on the T36 branch by tracing actual
+ * click coordinates against actual button positions in failing runs:
  *
  * 1. Indicators: both CircularProgress (`role="progressbar"`) and Skeleton
  *    (`.MuiSkeleton-root`, no ARIA role at all). Several pages
@@ -55,22 +76,36 @@ export async function logoutUser(page: Page): Promise<void> {
  *    page is a plain eager `import`, never `React.lazy()`, so Suspense never
  *    actually suspends on it.
  *
- * 2. Height stability: closes a second, different gap the first layer
- *    structurally cannot -- a section can defer its own fetch (e.g.
- *    ContactDetailPage's ConnectionsPanel, gated behind an
- *    IntersectionObserver) and render nothing at all, `null`, until that
- *    fetch starts. There is no indicator to watch for during that window; the
- *    only real signal is that the page is about to grow once the fetch
- *    lands. Waiting for scrollHeight to hold steady across a few consecutive
- *    checks catches this regardless of which component or mechanism is
- *    responsible, without this helper needing to know about every page's
- *    internal loading implementation.
+ * 2. Height stability: closes a gap layer 1 structurally cannot -- a section
+ *    can defer its own fetch (e.g. ContactDetailPage's ConnectionsPanel,
+ *    gated behind an IntersectionObserver) and render nothing at all, `null`,
+ *    until that fetch starts. There is no indicator to watch for during that
+ *    window; the only real signal is that the page is about to grow once the
+ *    fetch lands.
  *
- * Together these closed a real bug: without them, a click's target
- * coordinates could be computed while the page was still ~1140px tall (the
- * Skeleton state, or the moment right after it) instead of its true ~2930px
- * height, so the click landed wherever content ended up after the page
- * shifted ~1000px down before the click actually fired.
+ * 3. Force-trigger deferred sections by scrolling through the whole page:
+ *    ConnectionsPanel's IntersectionObserver only fires once the panel is
+ *    within `rootMargin: '300px'` of the viewport -- which it may not be
+ *    right after navigation, so layers 1+2 can both pass clean while the
+ *    panel hasn't started loading yet. The very next scroll (Playwright's own
+ *    auto-scroll before a click, e.g. scrolling to the Timeline section's
+ *    Add Note button, which sits right below ConnectionsPanel) brings it
+ *    into range and fires it right then -- so a click's own scroll-into-view
+ *    can trigger a fresh async layout shift *during* the click gesture
+ *    itself. Confirmed directly: instrumented mousedown vs. mouseup targets
+ *    on a failing click showed mousedown correctly hitting the button and
+ *    mouseup 15-20ms later landing on a `MuiCardContent-root` div instead --
+ *    the button had physically moved out from under the cursor between the
+ *    two. Scrolling to the bottom and back once, before any test touches the
+ *    page, brings every such section into range and lets its fetch land
+ *    while nothing is mid-click.
+ *
+ * Without all three, a click's target coordinates could be computed against
+ * a layout that was still changing -- anywhere from the ~1140px Skeleton
+ * state up through a ~30px late shift from a section that only started
+ * loading because the click's own scroll brought it into view -- so the
+ * click landed wherever content ended up after the page moved out from under
+ * it before the click actually fired.
  */
 export async function waitForLoading(page: Page): Promise<void> {
   await page
@@ -86,19 +121,16 @@ export async function waitForLoading(page: Page): Promise<void> {
     )
     .catch(() => {});
 
-  let lastHeight = -1;
-  let stableChecks = 0;
-  const deadline = Date.now() + 5000;
-  while (Date.now() < deadline && stableChecks < 3) {
-    const height = await page.evaluate(() => document.documentElement.scrollHeight).catch(() => -1);
-    if (height === lastHeight) {
-      stableChecks++;
-    } else {
-      stableChecks = 0;
-      lastHeight = height;
-    }
-    await page.waitForTimeout(50);
-  }
+  await waitForHeightStable(page);
+
+  // Force-trigger any IntersectionObserver-deferred section, then wait for
+  // the resulting fetches to land, before any test's own click gets to
+  // scroll there itself and race one.
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight)).catch(() => {});
+  await page.waitForTimeout(100);
+  await page.evaluate(() => window.scrollTo(0, 0)).catch(() => {});
+
+  await waitForHeightStable(page);
 }
 
 /**
