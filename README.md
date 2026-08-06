@@ -88,7 +88,9 @@ Reminders can be delivered through four channels. Email is configured server-sid
 
 The only server-side setting for ntfy/Gotify/push is `WEBHOOK_BLOCK_PRIVATE_URLS`. It defaults to `false` so the server can reach a self-hosted ntfy or Gotify on a private address — set it to `true` on a multi-tenant or cloud deployment, where posting to internal addresses on user-supplied URLs would be an SSRF risk.
 
-> **⚠️ Browser push is not usable yet in v0.3.0.** The frontend still ships Create React App's default `serviceWorkerRegistration.unregister()`, which tears down the service worker — and with it the push subscription — on the next page load. The setting appears in the UI and the server side works, but a browser subscription will not survive. Use ntfy, Gotify, or email until this is fixed. Browser push also requires an HTTPS origin (or localhost) regardless, since browsers refuse to register a service worker over plain HTTP.
+> **⚠️ Browser push requires HTTPS.** Push notifications are delivered to a service worker, and browsers refuse to register one on a plain-HTTP origin. `localhost` is exempt, so local testing works, but a LAN deployment reached over `http://` cannot register a device. The other three channels have no such requirement.
+
+Because the app registers a service worker, it is served cache-first. A newly deployed version therefore announces itself with a "new version available" prompt instead of appearing silently — reload when you see it.
 
 ---
 
