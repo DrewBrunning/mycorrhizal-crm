@@ -36,12 +36,69 @@ export async function logoutUser(page: Page): Promise<void> {
 }
 
 /**
- * Waits for any MUI loading spinners to disappear.
+ * Waits for the page to finish its initial load-and-settle: first any MUI
+ * loading indicator disappearing, then the page's height holding steady.
+ *
+ * Two layers, because one alone isn't enough -- both are real bugs pinned
+ * down on the T36 branch by tracing actual click coordinates against actual
+ * button positions in a failing run:
+ *
+ * 1. Indicators: both CircularProgress (`role="progressbar"`) and Skeleton
+ *    (`.MuiSkeleton-root`, no ARIA role at all). Several pages
+ *    (ContactDetailPage, ContactsPage, NotesPage, ActivitiesPage,
+ *    DashboardPage) gate their real content behind a Skeleton, not a
+ *    progressbar, so watching only `[role="progressbar"]` silently no-ops on
+ *    them: `waitForSelector(..., {state: 'hidden'})` resolves instantly when
+ *    the selector never matches anything, which is exactly what happens when
+ *    the only progressbar on the page is App.tsx's per-route
+ *    `<Suspense fallback={<CircularProgress/>}>` -- dead weight, since every
+ *    page is a plain eager `import`, never `React.lazy()`, so Suspense never
+ *    actually suspends on it.
+ *
+ * 2. Height stability: closes a second, different gap the first layer
+ *    structurally cannot -- a section can defer its own fetch (e.g.
+ *    ContactDetailPage's ConnectionsPanel, gated behind an
+ *    IntersectionObserver) and render nothing at all, `null`, until that
+ *    fetch starts. There is no indicator to watch for during that window; the
+ *    only real signal is that the page is about to grow once the fetch
+ *    lands. Waiting for scrollHeight to hold steady across a few consecutive
+ *    checks catches this regardless of which component or mechanism is
+ *    responsible, without this helper needing to know about every page's
+ *    internal loading implementation.
+ *
+ * Together these closed a real bug: without them, a click's target
+ * coordinates could be computed while the page was still ~1140px tall (the
+ * Skeleton state, or the moment right after it) instead of its true ~2930px
+ * height, so the click landed wherever content ended up after the page
+ * shifted ~1000px down before the click actually fired.
  */
 export async function waitForLoading(page: Page): Promise<void> {
   await page
-    .waitForSelector('[role="progressbar"]', { state: 'hidden', timeout: 10000 })
+    .waitForFunction(
+      () => {
+        const isVisible = (el: Element) => {
+          const rect = el.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        };
+        return ![...document.querySelectorAll('[role="progressbar"], .MuiSkeleton-root')].some(isVisible);
+      },
+      { timeout: 10000 }
+    )
     .catch(() => {});
+
+  let lastHeight = -1;
+  let stableChecks = 0;
+  const deadline = Date.now() + 5000;
+  while (Date.now() < deadline && stableChecks < 3) {
+    const height = await page.evaluate(() => document.documentElement.scrollHeight).catch(() => -1);
+    if (height === lastHeight) {
+      stableChecks++;
+    } else {
+      stableChecks = 0;
+      lastHeight = height;
+    }
+    await page.waitForTimeout(50);
+  }
 }
 
 /**
