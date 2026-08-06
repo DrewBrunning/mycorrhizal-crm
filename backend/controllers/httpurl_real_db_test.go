@@ -18,7 +18,7 @@ import (
 )
 
 // TestHTTPURLAllowlist_RealMigratedSchema is T41's real-DB check. Every one of
-// the four web-link fields that moved from the `safeurl` blocklist to the
+// the web-link fields that moved from the `safeurl` blocklist to the
 // `httpurl` allowlist must reject a previously-accepted non-http scheme with a
 // 400 at the binding layer, and still accept a plain http(s) value. It uses
 // the real ValidateJSONMiddleware (not the withValidated test shim, which
@@ -51,6 +51,8 @@ func TestHTTPURLAllowlist_RealMigratedSchema(t *testing.T) {
 	router.POST("/conversation-agenda", middleware.ValidateJSONMiddleware(&models.ConversationAgendaInput{}), CreateConversationAgenda)
 	router.POST("/external-identities", middleware.ValidateJSONMiddleware(&models.ExternalIdentityInput{}), CreateExternalIdentity)
 	router.PUT("/immich/config", middleware.ValidateJSONMiddleware(&models.ImmichConfigInput{}), SaveImmichConfig)
+	router.PUT("/notifications/config", middleware.ValidateJSONMiddleware(&models.NotificationConfigInput{}), SaveNotificationConfig)
+	router.POST("/notifications/push-subscriptions", middleware.ValidateJSONMiddleware(&models.PushSubscriptionInput{}), CreatePushSubscription)
 
 	do := func(method, path string, body any) *httptest.ResponseRecorder {
 		var buf bytes.Buffer
@@ -69,6 +71,16 @@ func TestHTTPURLAllowlist_RealMigratedSchema(t *testing.T) {
 		expectedAccepted int
 		accepted         func() *httptest.ResponseRecorder
 		rejected         func() *httptest.ResponseRecorder
+		// rejectedBodyContains, when set, additionally pins WHERE the 400 came
+		// from. It matters only for the ntfy/Gotify URLs: those have a second,
+		// independent scheme check in normalizeNotificationURL, which returns
+		// its own 400 ("notification URL must be a valid http(s) URL"). Without
+		// this assertion those two subtests pass with `safeurl` on the field
+		// too — the service backstop rejects ftp:// either way — so they would
+		// pin nothing about the validator. Asserting the validator's own
+		// message ("must be an http:// or https:// URL") is what makes them
+		// fail if the tag regresses. Found by hand-verifying this test.
+		rejectedBodyContains string
 	}{
 		{
 			name:             "gift URL",
@@ -122,6 +134,46 @@ func TestHTTPURLAllowlist_RealMigratedSchema(t *testing.T) {
 				return do("PUT", "/immich/config", models.ImmichConfigInput{BaseURL: "ftp://immich.example", APIKey: "key-1"})
 			},
 		},
+		// N9's channel targets. These landed after T41 was written, so they
+		// carried `safeurl` on arrival even though they are the strongest case
+		// for the allowlist in the codebase: unlike every field above, the
+		// server itself POSTs to them.
+		{
+			name:                 "ntfy url",
+			expectedAccepted:     http.StatusOK,
+			rejectedBodyContains: "NtfyURL must be an http:// or https:// URL",
+			accepted: func() *httptest.ResponseRecorder {
+				return do("PUT", "/notifications/config", models.NotificationConfigInput{NtfyURL: "https://ntfy.example", NtfyTopic: "mycorrhizal"})
+			},
+			rejected: func() *httptest.ResponseRecorder {
+				return do("PUT", "/notifications/config", models.NotificationConfigInput{NtfyURL: "ftp://ntfy.example", NtfyTopic: "mycorrhizal"})
+			},
+		},
+		{
+			name:                 "gotify url",
+			expectedAccepted:     http.StatusOK,
+			rejectedBodyContains: "GotifyURL must be an http:// or https:// URL",
+			accepted: func() *httptest.ResponseRecorder {
+				return do("PUT", "/notifications/config", models.NotificationConfigInput{GotifyURL: "https://gotify.example", GotifyToken: "tok"})
+			},
+			rejected: func() *httptest.ResponseRecorder {
+				return do("PUT", "/notifications/config", models.NotificationConfigInput{GotifyURL: "gopher://gotify.example", GotifyToken: "tok"})
+			},
+		},
+		{
+			name:             "push subscription endpoint",
+			expectedAccepted: http.StatusCreated,
+			accepted: func() *httptest.ResponseRecorder {
+				return do("POST", "/notifications/push-subscriptions", models.PushSubscriptionInput{
+					Endpoint: "https://push.example.com/sub-ok", P256dh: "p256", Auth: "auth",
+				})
+			},
+			rejected: func() *httptest.ResponseRecorder {
+				return do("POST", "/notifications/push-subscriptions", models.PushSubscriptionInput{
+					Endpoint: "intent://push.example.com/#Intent;scheme=zebra;end", P256dh: "p256", Auth: "auth",
+				})
+			},
+		},
 	}
 
 	for _, tc := range cases {
@@ -131,6 +183,10 @@ func TestHTTPURLAllowlist_RealMigratedSchema(t *testing.T) {
 
 			rejectedResp := tc.rejected()
 			assert.Equal(t, http.StatusBadRequest, rejectedResp.Code, "a previously-accepted non-http scheme must now be rejected: %s", rejectedResp.Body.String())
+			if tc.rejectedBodyContains != "" {
+				assert.Contains(t, rejectedResp.Body.String(), tc.rejectedBodyContains,
+					"the 400 must come from the httpurl validator at the binding layer, not from a downstream service check")
+			}
 		})
 	}
 }
