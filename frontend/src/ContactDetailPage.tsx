@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useCallback, type ReactNode } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import {
   Card as CardModel,

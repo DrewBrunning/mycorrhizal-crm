@@ -1,6 +1,6 @@
 import { test, expect, vi, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import '../i18n/config';
 import ContactTimeline from './ContactTimeline';
 import { Gift } from '../api/gifts';

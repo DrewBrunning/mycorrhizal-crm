@@ -1,6 +1,6 @@
 import { test, expect, vi, afterEach } from 'vitest';
 import { render, screen, cleanup, waitFor } from '@testing-library/react';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { MemoryRouter, Routes, Route } from 'react-router';
 import './i18n/config';
 import PrepViewPage from './PrepViewPage';
 import { SnackbarProvider } from './context/SnackbarContext';

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { loginUser, isAuthenticated, API_BASE_URL } from './auth';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import i18n from './i18n/config';
 import { initializeDateFormatFromBackend } from './DateFormatProvider';

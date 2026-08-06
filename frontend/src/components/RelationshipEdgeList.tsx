@@ -13,7 +13,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { RelationshipEdge, getDisplayLabel, getOtherPartyId } from '../api/relationshipEdges';
 import { Contact } from '../api/contacts';
 

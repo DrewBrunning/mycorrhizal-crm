@@ -39,7 +39,13 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
 # =============================================================================
 # Stage 2: Build React frontend (same-origin API, served by nginx)
 # =============================================================================
-FROM --platform=$BUILDPLATFORM node:20-alpine AS frontend-builder
+# react-router 8 requires Node >=22.22.0 (engines field). Matches CI's own
+# node-version: 22 pin (unit-tests.yml, e2e-tests.yml) rather than floating on
+# node:lts-alpine the way frontend/Dockerfile (the split image) does -- this
+# repo prefers an explicit, reproducible pin over a floating tag (see the Go
+# toolchain note in CLAUDE.md). frontend/Dockerfile didn't need this change:
+# lts-alpine already resolves past the floor (Node 24 as of 2026-08).
+FROM --platform=$BUILDPLATFORM node:22-alpine AS frontend-builder
 
 WORKDIR /app
 

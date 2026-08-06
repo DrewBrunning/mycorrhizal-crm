@@ -1,6 +1,6 @@
 import { Box, Typography, Card, CardContent, Avatar, Chip, Alert, CircularProgress } from '@mui/material';
 import WarningIcon from '@mui/icons-material/Warning';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { OverdueCadence } from '../api/cadencePolicies';
 import { useDateFormat } from '../DateFormatProvider';
