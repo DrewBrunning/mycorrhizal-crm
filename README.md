@@ -23,30 +23,72 @@ Mycorrhizal CRM is a self-hosted contact relationship management solution. It is
 
 ---
 
-## Features & Enhancements On Top Of Upstream Meerkat (In Development)
+## Features & Enhancements On Top Of Upstream Meerkat
 
-Mycorrhizal builds heavily upon the solid foundation of Meerkat, adding modern protocol support, deeper structural relationships, and lifestyle tracking utilities:
+Mycorrhizal builds heavily upon the solid foundation of Meerkat, adding modern protocol support, deeper structural relationships, and lifestyle tracking utilities.
+
+Everything in this section is **built and working today**. Things that are planned but not yet implemented are listed separately under [On the roadmap](#on-the-roadmap) — nothing below is aspirational.
 
 ### Modern Data Formats & Syncing
 - **Expanded Protocol Support:** In addition to vCard 3.0 and CardDAV/CalDAV, Mycorrhizal adds full support for **vCard 4.0** and **JSContact**.
 - **Flexible Export:** Granular selective field export so you can choose exactly which fields get exported for available formats.
+- **Field Sensitivity:** Mark fields as private or secret to exclude them from exports and external sync entirely.
 
 ### Relationships, Households & Pets
 - **Bidirectional Relationship Graphs:** Relationships are no longer strictly unidirectional. Creating a connection automatically maps it both ways and facilitates relationship-based searching.
+- **Multi-Hop Graph Traversal:** Explore how you're connected to someone through intermediaries, not just direct links.
 - **Household Tracking:** Automatically suggests relationships for contacts sharing the same address. Search by a household to pull lists for event invites, mail, or holiday cards.
 - **Pets as Contacts:** Add pets directly to your CRM and search for owners using their pet's name with the relationship support.
+- **Circles & Tags:** Two distinct grouping mechanisms — circles for the social groups a person belongs to, tags for free-form labelling.
 
 ### Data Management & Organization
 - **Contact Merging:** Seamlessly merge duplicate contact records.
-- **Custom Fields & Mappings:** Support for custom fields, including custom mappings to vCard fields to enable extended properties
-- **Repurposed General Notes:** Upstream Meerkat's journaling notes have been refactored into general notes that can be cleanly associated with any contact at a later point.
-- **File & Documents**: Associate document and files with a contact, including integrations with Seafile and Paperless-ngx via APIs and OwnCloud and NextCloud via WebDAV.
+- **Custom Fields & Mappings:** Support for custom fields, including custom mappings to vCard fields to enable extended properties.
+- **Repurposed General Notes:** Upstream Meerkat's journaling notes have been refactored into general notes that can be cleanly associated with any contact at a later point, including a capture inbox for notes you file later.
+- **Full-Text Search:** SQLite FTS5 search across contacts, notes and addresses, with relationship synonyms and household scoping.
+- **Bulk Operations:** Apply circle, tag and delete operations across many contacts at once.
 - **One-Time Cross-User Sharing:** Share specific contacts with other users on the same instance, including granular selection of which fields are shared. *(Note: This is a one-time point-in-time copy/share to the target user rather than an ongoing real-time sync).*
 
+### Staying In Touch
+- **Cadence & Relationship Health:** Set how often you intend to be in touch with someone and see who has gone quiet. Cadence resets on a real interaction, not on ticking off a task.
+- **Prep View:** A per-person briefing pulling together recent history, open agenda items and life events before you see or call someone.
+- **Conversation Agenda:** Keep a running list of things to raise next time you talk to a given person.
+- **Notification Channels:** Reminders can be delivered by email, [ntfy](https://ntfy.sh), [Gotify](https://gotify.net), or browser push — see [Notifications](#notifications) below.
+
 ### Tracking & Integrations
-- **Expanded Life Event Reminders:** Automated reminders for major life events like anniversaries, complementing existing birthday tracking.
-- **Gift Tracking:** Modeled after [Monica](https://github.com/monicahq/monica), allowing you to track gift ideas, past gifts given, and received items.
+- **Expanded Life Event Reminders:** Automated reminders for major life events like anniversaries, complementing existing birthday tracking, organised into categories.
+- **Gift Tracking:** Modeled after [Monica](https://github.com/monicahq/monica), allowing you to track gift ideas, past gifts given, and received items, with links and notes.
 - **Immich Integration:** Link contacts directly to identified persons/faces in an [Immich](https://github.com/immich-app/immich) instance to easily view photos of individuals right from their profile.
+- **External Links:** Deep-link a contact into other systems you run, with a configurable link-type registry (`tel:`, `sms:`, WhatsApp, and anything else you define).
+
+### On the roadmap
+
+Not built yet. Listed so the feature set above can be read as a description of what exists rather than of what is intended:
+
+- **Files & Documents:** Associating documents and files with a contact, including integrations with Seafile and Paperless-ngx via APIs and OwnCloud/NextCloud via WebDAV.
+- **Full Backup & Restore:** A single-command backup and restore covering the database and photos together. *(Until this lands, back up by copying your data and photo directories, per [Getting Started](https://drewbrunning.github.io/mycorrhizal-crm/getting-started.html#backup).)*
+- **Two-Factor Authentication:** TOTP as a second factor on login. SSO via OIDC is available today as an alternative.
+- **Serving Interactions as CalDAV:** Exposing activities and life events to a calendar client, and eventually two-way calendar sync.
+- **Audit Trail:** A per-record history of what changed and when.
+
+---
+
+## Notifications
+
+Reminders can be delivered through four channels. Email is configured server-side; the other three are configured per user, in the app under **Settings → Notifications**, because each user has their own topic, token and devices.
+
+| Channel | Configured | What you need |
+|---|---|---|
+| **Email** | Server (`.env`) | Either a [Resend](https://resend.com) API key, or SMTP host/credentials. Both may be set, in which case each email is sent through both. |
+| **ntfy** | Per user, in-app | Your ntfy server URL and a topic. Works with the public ntfy.sh or a self-hosted instance. |
+| **Gotify** | Per user, in-app | Your Gotify server URL and an application token. The token is stored encrypted at rest. |
+| **Browser push** | Per user, in-app | Nothing to configure. The VAPID keypair is generated once on first use and stored in the database. |
+
+`REMINDER_TIME` and `REMINDER_TIMEZONE` control *when* the daily reminder run happens; they apply to every enabled channel, not just email.
+
+The only server-side setting for ntfy/Gotify/push is `WEBHOOK_BLOCK_PRIVATE_URLS`. It defaults to `false` so the server can reach a self-hosted ntfy or Gotify on a private address — set it to `true` on a multi-tenant or cloud deployment, where posting to internal addresses on user-supplied URLs would be an SSRF risk.
+
+> **⚠️ Browser push is not usable yet in v0.3.0.** The frontend still ships Create React App's default `serviceWorkerRegistration.unregister()`, which tears down the service worker — and with it the push subscription — on the next page load. The setting appears in the UI and the server side works, but a browser subscription will not survive. Use ntfy, Gotify, or email until this is fixed. Browser push also requires an HTTPS origin (or localhost) regardless, since browsers refuse to register a service worker over plain HTTP.
 
 ---
 
