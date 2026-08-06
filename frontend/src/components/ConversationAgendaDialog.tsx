@@ -11,6 +11,7 @@ import {
 import AppDialog from './AppDialog';
 import { useTranslation } from 'react-i18next';
 import { ConversationAgenda } from '../api/conversationAgenda';
+import { isHttpUrlString, looksLikeAbsoluteUri } from '../utils/linkResolution';
 
 export interface ConversationAgendaFormData {
   content: string;
@@ -52,11 +53,27 @@ export default function ConversationAgendaDialog({
       setError(t('conversationAgenda.validation.contentRequired'));
       return;
     }
+
+    // "example.com/article" is what people actually paste, and the backend's
+    // `httpurl` validator would reject it for having no scheme — but the list
+    // only links an absolute URI anyway, so default a scheme-less value to
+    // https (the same call GiftDialog makes for gift URLs). An absolute URI
+    // is left alone, so an unsafe/unknown scheme still reaches the check
+    // below and is caught client-side with a readable message.
+    let normalizedUrl = referenceUrl.trim();
+    if (normalizedUrl !== '' && !looksLikeAbsoluteUri(normalizedUrl)) {
+      normalizedUrl = `https://${normalizedUrl}`;
+    }
+    if (normalizedUrl !== '' && !isHttpUrlString(normalizedUrl)) {
+      setError(t('conversationAgenda.validation.invalidUrl'));
+      return;
+    }
+
     setSaving(true);
     try {
       await onSave({
         content: content.trim(),
-        reference_url: referenceUrl.trim() || undefined,
+        reference_url: normalizedUrl || undefined,
       });
       onClose();
     } catch {

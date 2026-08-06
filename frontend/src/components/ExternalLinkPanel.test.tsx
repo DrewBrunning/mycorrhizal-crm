@@ -95,6 +95,64 @@ test('a cancelled unlink does not fire the handler', async () => {
   expect(onUnlinkImmich).not.toHaveBeenCalled();
 });
 
+test('an unsafe Immich deep-link URL is shown as text, never as an href', () => {
+  // A URL that predates the httpurl validator (or arrives via a non-API
+  // path) must not become a clickable javascript: link (T41).
+  renderPanel({
+    identities: [{ ...identity, url: 'javascript:alert(1)' }],
+    immichSummary: summary,
+  });
+
+  expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  expect(screen.getByText('javascript:alert(1)')).toBeInTheDocument();
+});
+
+test('a non-http scheme Immich deep-link URL is shown as text, never as an href', () => {
+  renderPanel({
+    identities: [{ ...identity, url: 'mailto:alice@example.com' }],
+    immichSummary: summary,
+  });
+
+  expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  expect(screen.getByText('mailto:alice@example.com')).toBeInTheDocument();
+});
+
+test('a generic identity with an unsafe URL is shown as text, never as an href', () => {
+  const paperless: ExternalIdentity = {
+    id: 'ei-2',
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+    entity_id: 'alice-uid',
+    system: 'paperless',
+    external_id: 'doc-42',
+    url: 'ftp://paperless.example/documents/42',
+    metadata: {},
+    sync_status: 'idle',
+  };
+  renderPanel({ identities: [paperless] });
+
+  expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  expect(screen.getByText('ftp://paperless.example/documents/42')).toBeInTheDocument();
+});
+
+test('a generic identity with a non-http scheme URL is shown as text, never as an href', () => {
+  const paperless: ExternalIdentity = {
+    id: 'ei-2',
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+    entity_id: 'alice-uid',
+    system: 'paperless',
+    external_id: 'doc-42',
+    url: 'mailto:doc@example.com',
+    metadata: {},
+    sync_status: 'idle',
+  };
+  renderPanel({ identities: [paperless] });
+
+  expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  expect(screen.getByText('mailto:doc@example.com')).toBeInTheDocument();
+});
+
 test('generic non-Immich identities render under other integrations', () => {
   const paperless: ExternalIdentity = {
     id: 'ei-2',

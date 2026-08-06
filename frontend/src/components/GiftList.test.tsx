@@ -137,12 +137,21 @@ test('a gift URL renders as a tappable link that opens in a new tab', () => {
 });
 
 test('an unsafe-scheme URL is shown as text, never as an href', () => {
-  // A value that predates the safeurl validator (or arrives from a synced
+  // A value that predates the httpurl validator (or arrives from a synced
   // replica) must not become a clickable javascript: link.
   renderList({ items: [item({ url: 'javascript:alert(1)' })] });
 
   expect(screen.queryByRole('link')).not.toBeInTheDocument();
   expect(screen.getByText('javascript:alert(1)')).toBeInTheDocument();
+});
+
+test('a non-http scheme that the old validator accepted is shown as text, never as an href', () => {
+  // safeurl used to accept mailto: — httpurl (T41) does not, and the render
+  // guard must agree with the write validator: a gift URL means a web page.
+  renderList({ items: [item({ url: 'mailto:a@b.com' })] });
+
+  expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  expect(screen.getByText('mailto:a@b.com')).toBeInTheDocument();
 });
 
 test('a URL that is not an absolute URI is shown as text, not linked', () => {

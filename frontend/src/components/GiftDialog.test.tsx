@@ -199,6 +199,24 @@ test('an unsafe-scheme URL is rejected client-side without calling onSave', asyn
   expect(onSave).not.toHaveBeenCalled();
 });
 
+test('a non-http scheme the old validator accepted is rejected client-side (T41)', async () => {
+  // safeurl accepted mailto:; the web-link fields are http(s)-only now, and
+  // the dialog must catch it with a readable message rather than a 400.
+  const onSave = vi.fn().mockResolvedValue(undefined);
+  renderDialog({ gift: null, onSave });
+
+  fireEvent.change(screen.getByLabelText('What the gift is *'), {
+    target: { value: 'A watch' },
+  });
+  fireEvent.change(screen.getByLabelText('Link (optional)'), {
+    target: { value: 'mailto:a@b.com' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  await vi.waitFor(() => expect(screen.getByText(/unsafe scheme/i)).toBeInTheDocument());
+  expect(onSave).not.toHaveBeenCalled();
+});
+
 test('the status selector lets a brand-new gift start as given', async () => {
   // T35's full-form path: the dialog opened with no gift behind it must be
   // able to record something already given, without an idea round trip.

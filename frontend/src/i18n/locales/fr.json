@@ -701,6 +701,7 @@
       "testingConnection": "Test en cours…",
       "removeConfirm": "Supprimer la connexion Immich ? Les contacts liés conservent leur historique photo existant.",
       "baseUrlRequired": "L'URL de base est requise.",
+      "invalidBaseUrl": "L'URL de base doit être une URL http:// ou https://.",
       "saved": "Connexion Immich enregistrée",
       "removed": "Connexion Immich supprimée",
       "saveFailed": "Échec de l'enregistrement de la connexion Immich",
@@ -1348,7 +1349,8 @@
       "contentRequired": "Indiquez ce que vous voulez évoquer.",
       "addFailed": "Échec de l'ajout de l'élément.",
       "saveFailed": "Échec de l'enregistrement de l'élément.",
-      "discussFailed": "Échec du marquage comme évoqué."
+      "discussFailed": "Échec du marquage comme évoqué.",
+      "invalidUrl": "Le lien doit être une URL http:// ou https://."
     }
   },
   "gifts": {

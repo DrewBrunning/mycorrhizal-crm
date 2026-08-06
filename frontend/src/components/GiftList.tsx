@@ -21,7 +21,7 @@ import { Gift } from '../api/gifts';
 import { LifeEvent } from '../api/lifeEvents';
 import { Activity } from '../api/activities';
 import { useDateFormat } from '../DateFormatProvider';
-import { isSafeUrlString, looksLikeAbsoluteUri } from '../utils/linkResolution';
+import { isHttpUrlString } from '../utils/linkResolution';
 
 interface GiftListProps {
   items: Gift[];
@@ -183,12 +183,14 @@ export default function GiftList({
             </Typography>
             {url && (
               <Typography variant="caption" component="div" sx={{ overflowWrap: 'anywhere' }}>
-                {/* Tappable when it is a real absolute URI with a safe scheme
-                    (T34's convention); otherwise shown as plain text rather
-                    than turned into a nonsense — or unsafe — href. The dialog
-                    defaults a scheme-less value to https, so this fallback is
-                    for values written by something other than the dialog. */}
-                {looksLikeAbsoluteUri(url) && isSafeUrlString(url) ? (
+                {/* Tappable only when it is a real http(s) URL (T41's
+                    `httpurl` allowlist — a gift URL means a web page, so
+                    anything else, e.g. a mailto: or a value predating the
+                    validator, is shown as plain text rather than turned into
+                    a nonsense — or unsafe — href). The dialog defaults a
+                    scheme-less value to https, so this fallback is for values
+                    written by something other than the dialog. */}
+                {isHttpUrlString(url) ? (
                   <a href={url} target="_blank" rel="noopener noreferrer">
                     {url}
                   </a>

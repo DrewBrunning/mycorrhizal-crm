@@ -18,6 +18,7 @@ import { mdiImageMultipleOutline } from '@mdi/js';
 import { SvgIcon } from '@mui/material';
 import { useImmich } from '../hooks/useImmich';
 import { useSnackbar } from '../context/SnackbarContext';
+import { isHttpUrlString } from '../utils/linkResolution';
 
 // ImmichSettings is the settings-page card for the Immich connection
 // (T15/T16). The base URL + API key are per-user-global; the key is stored
@@ -52,6 +53,15 @@ export default function ImmichSettings() {
     const trimmed = baseUrl.trim();
     if (!trimmed) {
       setSaveError(t('immich.settings.baseUrlRequired'));
+      return;
+    }
+    // Mirror the backend's `httpurl` validator (T41) client-side so a
+    // non-http(s) base URL is a readable message here rather than a 400.
+    // Deliberately no scheme-less→https default like GiftDialog: the backend
+    // service rejects a missing scheme (there is no way to guess http vs
+    // https), so the client must too.
+    if (!isHttpUrlString(trimmed)) {
+      setSaveError(t('immich.settings.invalidBaseUrl'));
       return;
     }
     setSaving(true);

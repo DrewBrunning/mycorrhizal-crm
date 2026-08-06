@@ -56,10 +56,11 @@ type ExternalIdentity struct {
 	ExternalID string `gorm:"column:external_id;not null" json:"external_id" validate:"required,min=1,max=255"`
 
 	// URL is an optional deep-link back into the external system, rendered as
-	// the "open in Immich" affordance. User-influenced, so it is safeurl-
-	// validated on write; anything this app *fetches* from it still goes
+	// the "open in Immich" affordance. User-influenced and rendered as an
+	// href, so it is httpurl-validated on write (T41) — a web page, not an
+	// app-scheme URI; anything this app *fetches* from it still goes
 	// through the SSRF-guarded transport (httputil/fetch.go).
-	URL string `json:"url,omitempty" validate:"omitempty,max=2000,safeurl"`
+	URL string `json:"url,omitempty" validate:"omitempty,max=2000,httpurl"`
 
 	// Metadata is the free-form JSON payload for system-specific data
 	// (person name, photo count cache, sync offsets, ...). Same gorm
@@ -95,7 +96,7 @@ type ExternalIdentityInput struct {
 	EntityID   string                 `json:"entity_id" validate:"required,uuid4"`
 	System     string                 `json:"system" validate:"required,min=1,max=64"`
 	ExternalID string                 `json:"external_id" validate:"required,min=1,max=255"`
-	URL        string                 `json:"url,omitempty" validate:"omitempty,max=2000,safeurl"`
+	URL        string                 `json:"url,omitempty" validate:"omitempty,max=2000,httpurl"`
 	Metadata   map[string]interface{} `json:"metadata,omitempty"`
 	SyncStatus string                 `json:"sync_status,omitempty" validate:"omitempty,oneof=idle syncing synced error"`
 }

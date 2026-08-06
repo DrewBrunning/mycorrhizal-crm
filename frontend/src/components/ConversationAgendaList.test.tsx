@@ -118,7 +118,29 @@ test('a declining delete confirmation does not call onDelete', () => {
   vi.unstubAllGlobals();
 });
 
-test('an optional reference link is rendered', () => {
+test('an optional reference link is rendered as a safely-targeted link', () => {
   renderList({ items: [item({ reference_url: 'https://example.com/article' })] });
-  expect(screen.getByText('https://example.com/article')).toBeInTheDocument();
+
+  const link = screen.getByRole('link', { name: 'https://example.com/article' });
+  expect(link).toHaveAttribute('href', 'https://example.com/article');
+  expect(link).toHaveAttribute('target', '_blank');
+  expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+});
+
+test('an unsafe-scheme reference_url is shown as text, never as an href', () => {
+  // A value that predates the httpurl validator (or arrives via a non-API
+  // path) must not become a clickable javascript: link (T41).
+  renderList({ items: [item({ reference_url: 'javascript:alert(1)' })] });
+
+  expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  expect(screen.getByText('javascript:alert(1)')).toBeInTheDocument();
+});
+
+test('a non-http scheme reference_url is shown as text, never as an href', () => {
+  // safeurl used to accept mailto: — httpurl (T41) does not, and the render
+  // guard must agree with the write validator.
+  renderList({ items: [item({ reference_url: 'mailto:a@b.com' })] });
+
+  expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  expect(screen.getByText('mailto:a@b.com')).toBeInTheDocument();
 });
