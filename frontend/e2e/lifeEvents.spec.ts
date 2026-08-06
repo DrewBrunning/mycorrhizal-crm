@@ -171,10 +171,10 @@ test.describe('Life events', () => {
       const dialog = page.getByRole('dialog');
       await expect(dialog).toBeVisible({ timeout: 10000 });
 
-      await dialog.getByLabel('Category *').click();
-      await page.getByRole('option', { name: 'Family & Relationships', exact: true }).click();
-      await dialog.getByLabel('Event Type *').click();
-      await page.getByRole('option', { name: 'Started a relationship', exact: true }).click();
+      await stableClick(dialog.getByLabel('Category *'));
+      await stableClick(page.getByRole('option', { name: 'Family & Relationships', exact: true }));
+      await stableClick(dialog.getByLabel('Event Type *'));
+      await stableClick(page.getByRole('option', { name: 'Started a relationship', exact: true }));
 
       const autocomplete = dialog.getByRole('combobox', { name: /related to/i });
       await autocomplete.fill(related.lastname);
@@ -218,11 +218,11 @@ test.describe('Life events', () => {
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible({ timeout: 10000 });
 
-        await dialog.getByLabel('Category *').click();
-        await page.getByRole('option', { name: 'Home & Living', exact: true }).click();
+        await stableClick(dialog.getByLabel('Category *'));
+        await stableClick(page.getByRole('option', { name: 'Home & Living', exact: true }));
 
-        await dialog.getByLabel('Event Type *').click();
-        await page.getByRole('option', { name: 'Bought a home', exact: true }).click();
+        await stableClick(dialog.getByLabel('Event Type *'));
+        await stableClick(page.getByRole('option', { name: 'Bought a home', exact: true }));
 
         await dialog.getByRole('button', { name: /^save$/i }).click();
         await expect(dialog).toBeHidden({ timeout: 10000 });
@@ -248,11 +248,11 @@ test.describe('Life events', () => {
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible({ timeout: 10000 });
 
-        await dialog.getByLabel('Category *').click();
-        await page.getByRole('option', { name: 'Health & Wellness', exact: true }).click();
+        await stableClick(dialog.getByLabel('Category *'));
+        await stableClick(page.getByRole('option', { name: 'Health & Wellness', exact: true }));
 
-        await dialog.getByLabel('Event Type *').click();
-        await page.getByRole('option', { name: 'Add a new life event type', exact: true }).click();
+        await stableClick(dialog.getByLabel('Event Type *'));
+        await stableClick(page.getByRole('option', { name: 'Add a new life event type', exact: true }));
 
         await dialog.getByLabel('Custom event name *').fill('Ran a marathon');
         await dialog.getByRole('button', { name: /^save$/i }).click();
@@ -295,10 +295,16 @@ test.describe('Life events', () => {
         await expect(dialog.getByLabel('Category *')).toHaveText('Family & Relationships');
         await expect(dialog.getByLabel('Event Type *')).toHaveText('Married');
 
-        await dialog.getByLabel('Category *').click();
-        await page.getByRole('option', { name: 'Travel & Experiences', exact: true }).click();
-        await dialog.getByLabel('Event Type *').click();
-        await page.getByRole('option', { name: 'Traveled', exact: true }).click();
+        // stableClick, not a plain .click(): the dialog's content is already
+        // correct by this point (confirmed above), but MUI's Dialog Grow
+        // transition can still be animating the dialog's position/scale for
+        // a beat after that -- a plain click here raced it and opened the
+        // dropdown at a stale position, so the *next* click (selecting the
+        // option) landed back on the still-open previous dropdown instead.
+        await stableClick(dialog.getByLabel('Category *'));
+        await stableClick(page.getByRole('option', { name: 'Travel & Experiences', exact: true }));
+        await stableClick(dialog.getByLabel('Event Type *'));
+        await stableClick(page.getByRole('option', { name: 'Traveled', exact: true }));
 
         await dialog.getByRole('button', { name: /^save$/i }).click();
         await expect(dialog).toBeHidden({ timeout: 10000 });
