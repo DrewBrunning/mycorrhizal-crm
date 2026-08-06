@@ -95,7 +95,7 @@ func LoadConfig() *Config {
 
 	cfg := &Config{
 		DBPath:                  getEnv("SQLITE_DB_PATH", "mycorrhizal.db"),
-		ReminderTime:            getEnv("REMINDER_TIME", "12:00"),
+		ReminderTime:            getEnv("REMINDER_TIME", "06:00"),
 		ReminderTimezone:        getEnv("REMINDER_TIMEZONE", "UTC"),
 		FrontendURL:             getEnv("FRONTEND_URL", "*"),
 		Port:                    getEnv("PORT", "8080"),
@@ -286,7 +286,7 @@ func (c *Config) Validate() []ValidationError {
 	if !timePattern.MatchString(c.ReminderTime) {
 		errors = append(errors, ValidationError{
 			Field:   "REMINDER_TIME",
-			Message: fmt.Sprintf("Invalid time format '%s'. Must be in HH:MM format (e.g., 12:00).", c.ReminderTime),
+			Message: fmt.Sprintf("Invalid time format '%s'. Must be in HH:MM format (e.g., 06:00).", c.ReminderTime),
 		})
 	}
 

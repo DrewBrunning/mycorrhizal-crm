@@ -196,6 +196,13 @@ func TestLoadConfig_Defaults(t *testing.T) {
 
 	// Default retention
 	assert.Equal(t, 30, cfg.DeleteRetentionDays)
+
+	// Default reminder schedule. Pinned because this value is also stated in
+	// three places outside the code — .env.example, backend/.env.example and
+	// docs/getting-started.md — and they had already drifted apart once
+	// (12:00 in code and docs, 06:00 in both env samples).
+	assert.Equal(t, "06:00", cfg.ReminderTime)
+	assert.Equal(t, "UTC", cfg.ReminderTimezone)
 }
 
 func TestLoadConfig_DeleteRetentionDays(t *testing.T) {
