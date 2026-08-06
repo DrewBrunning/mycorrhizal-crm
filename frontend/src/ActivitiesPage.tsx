@@ -1,6 +1,6 @@
 import { useState, useMemo, MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink } from 'react-router';
 import {
   Box,
   Typography,
