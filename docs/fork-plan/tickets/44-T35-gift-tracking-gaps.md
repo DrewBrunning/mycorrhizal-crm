@@ -102,7 +102,8 @@ url/notes value from a non-dialog writer rendering an empty row; a stale error m
 while typing notes; a wrong migration number in a test comment; and a test-coverage asymmetry in
 `api/gifts.test.ts`. Deliberately not changed: `isSafeUrlString`'s blocklist (`javascript`/`data`/
 `vbscript`/`file`) rather than an http(s) allowlist — that is T34's repo-wide convention, and
-diverging for one field is a decision for its own ticket, not a drive-by.
+diverging for one field is a decision for its own ticket, not a drive-by. Ticketed as
+[T41](50-T41-http-url-allowlist.md).
 
 Numbered `000012`, not `000011`: T36 (life event categories) merged to `main` while this was in
 flight and took `000011`. Its own migration test already steps exactly one migration, so the two
