@@ -101,6 +101,8 @@ func CreateGift(c *gin.Context) {
 		Status:      status,
 		Occasion:    input.Occasion,
 		Description: input.Description,
+		URL:         input.URL,
+		Notes:       input.Notes,
 		Date:        input.Date,
 		ValueCents:  input.ValueCents,
 		Currency:    input.Currency,
@@ -274,6 +276,8 @@ func UpdateGift(c *gin.Context) {
 	gift.Status = status
 	gift.Occasion = input.Occasion
 	gift.Description = input.Description
+	gift.URL = input.URL
+	gift.Notes = input.Notes
 	gift.Date = input.Date
 	gift.ValueCents = input.ValueCents
 	gift.Currency = input.Currency

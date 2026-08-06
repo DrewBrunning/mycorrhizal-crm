@@ -1355,6 +1355,7 @@
     "title": "Geschenke",
     "placeholder": "Geschenkidee notieren…",
     "add": "Hinzufügen",
+    "addFull": "Mit Details hinzufügen",
     "markGiven": "Als verschenkt markieren",
     "ideasSection": "Ideen",
     "givenSection": "Verschenkt",
@@ -1375,6 +1376,10 @@
     "createTitle": "Geschenk hinzufügen",
     "editTitle": "Geschenk bearbeiten",
     "description": "Was das Geschenk ist",
+    "url": "Link (optional)",
+    "urlHint": "Eine Produktseite oder etwas anderes, das zur Idee gehört.",
+    "notes": "Notizen (optional)",
+    "notesHint": "Größe, wo du es gesehen hast, was vor dem Kauf zu prüfen ist.",
     "occasion": "Anlass (optional)",
     "occasionHint": "Geburtstag, Feiertag, Einweihung, …",
     "date": "Datum",
@@ -1389,6 +1394,7 @@
     "validation": {
       "descriptionRequired": "Beschreibe das Geschenk oder die Idee.",
       "invalidAmount": "Gib einen gültigen Betrag ein.",
+      "invalidUrl": "Dieser Link verwendet ein unsicheres Schema. Verwende http:// oder https://.",
       "currencyRequired": "Bei einem Betrag ist eine Währung erforderlich.",
       "addFailed": "Geschenk konnte nicht hinzugefügt werden.",
       "saveFailed": "Geschenk konnte nicht gespeichert werden."

@@ -105,12 +105,15 @@ type ConversationAgendaDiscussInput struct {
 // opportunistically without choosing a state. ValueCents/Currency must be set
 // together (explicit-currency rule, enforced in the controller since this
 // codebase has no cross-field validator). LifeEventID/ActivityID are optional
-// soft references verified to belong to the user.
+// soft references verified to belong to the user. URL/Notes (T35) are the
+// optional product link and free-text context.
 type GiftInput struct {
 	EntityID    string     `json:"entity_id" validate:"required,uuid4"`
 	Status      string     `json:"status,omitempty" validate:"omitempty,oneof=idea purchased given received"`
 	Occasion    string     `json:"occasion,omitempty" validate:"max=200"`
 	Description string     `json:"description" validate:"required,min=1,max=2000"`
+	URL         string     `json:"url,omitempty" validate:"omitempty,safeurl,max=2000"`
+	Notes       string     `json:"notes,omitempty" validate:"omitempty,max=2000"`
 	Date        *time.Time `json:"date,omitempty"`
 	ValueCents  int64      `json:"value_cents,omitempty"`
 	Currency    string     `json:"currency,omitempty" validate:"omitempty,len=3"`

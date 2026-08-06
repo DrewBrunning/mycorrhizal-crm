@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   Box,
+  Button,
   Typography,
   IconButton,
   Stack,
@@ -20,6 +21,7 @@ import { Gift } from '../api/gifts';
 import { LifeEvent } from '../api/lifeEvents';
 import { Activity } from '../api/activities';
 import { useDateFormat } from '../DateFormatProvider';
+import { isSafeUrlString, looksLikeAbsoluteUri } from '../utils/linkResolution';
 
 interface GiftListProps {
   items: Gift[];
@@ -28,6 +30,10 @@ interface GiftListProps {
   lifeEvents?: LifeEvent[];
   activities?: Activity[];
   onAdd: (description: string) => Promise<void>;
+  // Opens the full GiftDialog for a brand-new gift (T35): the quick-add input
+  // above always creates an idea, so this is the only way to record something
+  // that was already given or received without editing it afterwards.
+  onAddFull: () => void;
   onEdit: (gift: Gift) => void;
   onMarkGiven: (gift: Gift) => Promise<void>;
   onDelete: (id: string) => void;
@@ -58,6 +64,7 @@ export default function GiftList({
   lifeEvents = [],
   activities = [],
   onAdd,
+  onAddFull,
   onEdit,
   onMarkGiven,
   onDelete,
@@ -143,6 +150,10 @@ export default function GiftList({
 
   const renderItem = (gift: Gift) => {
     const metas = renderMeta(gift);
+    // Trimmed, because the dialog is not the only writer: a direct API caller
+    // can store "   ", which is neither empty nor renderable.
+    const url = gift.url?.trim() ?? '';
+    const notes = gift.notes?.trim() ?? '';
     const resolvedStyle = gift.status !== 'idea';
     return (
       <Paper
@@ -170,6 +181,31 @@ export default function GiftList({
             <Typography variant="body1" sx={{ mt: 0.5, overflowWrap: 'anywhere' }}>
               {gift.description}
             </Typography>
+            {url && (
+              <Typography variant="caption" component="div" sx={{ overflowWrap: 'anywhere' }}>
+                {/* Tappable when it is a real absolute URI with a safe scheme
+                    (T34's convention); otherwise shown as plain text rather
+                    than turned into a nonsense — or unsafe — href. The dialog
+                    defaults a scheme-less value to https, so this fallback is
+                    for values written by something other than the dialog. */}
+                {looksLikeAbsoluteUri(url) && isSafeUrlString(url) ? (
+                  <a href={url} target="_blank" rel="noopener noreferrer">
+                    {url}
+                  </a>
+                ) : (
+                  url
+                )}
+              </Typography>
+            )}
+            {notes && (
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mt: 0.5, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}
+              >
+                {notes}
+              </Typography>
+            )}
           </Box>
           {renderActions(gift)}
         </Box>
@@ -179,44 +215,61 @@ export default function GiftList({
 
   return (
     <Stack spacing={1.5}>
-      <TextField
-        size="small"
-        value={draft}
-        onChange={(e) => {
-          setDraft(e.target.value);
-          setAddError('');
-        }}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            handleAdd();
-          }
-        }}
-        placeholder={t('gifts.placeholder')}
-        disabled={adding}
-        slotProps={{
-          htmlInput: { 'aria-label': t('gifts.placeholder') },
-        }}
-        InputProps={{
-          startAdornment: (
-            <InputAdornment position="start">
-              <RedeemIcon fontSize="small" color="action" />
-            </InputAdornment>
-          ),
-          endAdornment: (
-            <InputAdornment position="end">
-              <IconButton
-                size="small"
-                onClick={handleAdd}
-                disabled={adding || !draft.trim()}
-                aria-label={t('gifts.add')}
-              >
-                <AddIcon />
-              </IconButton>
-            </InputAdornment>
-          ),
-        }}
-      />
+      {/* Two entry points, deliberately (T35): the inline input stays the
+          low-friction idea capture T20b was built around, and "Add with
+          details" opens the full dialog for anything that already has a status —
+          something given or received that never was an idea first. The row
+          wraps rather than squeezing the input on a narrow screen. */}
+      <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        <TextField
+          sx={{ flex: '1 1 200px' }}
+          size="small"
+          value={draft}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            setAddError('');
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handleAdd();
+            }
+          }}
+          placeholder={t('gifts.placeholder')}
+          disabled={adding}
+          slotProps={{
+            htmlInput: { 'aria-label': t('gifts.placeholder') },
+          }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <RedeemIcon fontSize="small" color="action" />
+              </InputAdornment>
+            ),
+            endAdornment: (
+              <InputAdornment position="end">
+                <IconButton
+                  size="small"
+                  onClick={handleAdd}
+                  disabled={adding || !draft.trim()}
+                  aria-label={t('gifts.add')}
+                >
+                  <AddIcon />
+                </IconButton>
+              </InputAdornment>
+            ),
+          }}
+        />
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<AddIcon />}
+          onClick={onAddFull}
+          sx={{ flexShrink: 0, height: 40, whiteSpace: 'nowrap' }}
+        >
+          {t('gifts.addFull')}
+        </Button>
+      </Box>
       {addError && (
         <Typography color="error" variant="body2">
           {addError}

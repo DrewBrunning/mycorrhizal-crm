@@ -26,6 +26,7 @@ function renderList(props: Partial<React.ComponentProps<typeof GiftList>> = {}) 
   const defaults: React.ComponentProps<typeof GiftList> = {
     items: [],
     onAdd: vi.fn().mockResolvedValue(undefined),
+    onAddFull: vi.fn(),
     onEdit: vi.fn(),
     onMarkGiven: vi.fn().mockResolvedValue(undefined),
     onDelete: vi.fn(),
@@ -121,6 +122,75 @@ test('a declining delete confirmation does not call onDelete', () => {
   expect(onDelete).not.toHaveBeenCalled();
 
   vi.unstubAllGlobals();
+});
+
+// --- T35: URL, notes, and the full-form entry point ---
+
+test('a gift URL renders as a tappable link that opens in a new tab', () => {
+  renderList({ items: [item({ url: 'https://shop.example.com/mug' })] });
+
+  const link = screen.getByRole('link', { name: 'https://shop.example.com/mug' });
+  expect(link).toHaveAttribute('href', 'https://shop.example.com/mug');
+  expect(link).toHaveAttribute('target', '_blank');
+  // Without noopener the opened page gets a handle on this window.
+  expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+});
+
+test('an unsafe-scheme URL is shown as text, never as an href', () => {
+  // A value that predates the safeurl validator (or arrives from a synced
+  // replica) must not become a clickable javascript: link.
+  renderList({ items: [item({ url: 'javascript:alert(1)' })] });
+
+  expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  expect(screen.getByText('javascript:alert(1)')).toBeInTheDocument();
+});
+
+test('a URL that is not an absolute URI is shown as text, not linked', () => {
+  renderList({ items: [item({ url: 'shop.example.com/mug' })] });
+
+  expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  expect(screen.getByText('shop.example.com/mug')).toBeInTheDocument();
+});
+
+test('notes render alongside the description', () => {
+  renderList({
+    items: [item({ notes: 'Size medium. Check she has not bought it herself.' })],
+  });
+
+  expect(screen.getByText('She liked the ceramics shop')).toBeInTheDocument();
+  expect(screen.getByText(/Size medium/)).toBeInTheDocument();
+});
+
+test('a whitespace-only URL or notes value renders nothing at all', () => {
+  // The dialog trims, but it is not the only writer — a direct API caller can
+  // store "   ", which must not become an empty row. Asserted structurally,
+  // because an empty row has no text to query for: the item's content column
+  // holds exactly the chip/meta row and the description, nothing else.
+  renderList({ items: [item({ url: '   ', notes: '  ' })] });
+
+  const content = screen.getByText('She liked the ceramics shop').parentElement!;
+  expect(content.children).toHaveLength(2);
+  expect(screen.queryByRole('link')).not.toBeInTheDocument();
+});
+
+test('a gift with neither URL nor notes renders neither', () => {
+  renderList({ items: [item()] });
+
+  expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  expect(screen.getByText('She liked the ceramics shop')).toBeInTheDocument();
+});
+
+test('the full-form entry point calls onAddFull without touching the quick-add input', () => {
+  const onAddFull = vi.fn();
+  const onAdd = vi.fn().mockResolvedValue(undefined);
+  renderList({ onAddFull, onAdd });
+
+  fireEvent.click(screen.getByRole('button', { name: /Add with details/i }));
+
+  expect(onAddFull).toHaveBeenCalledTimes(1);
+  expect(onAdd).not.toHaveBeenCalled();
+  // The low-friction idea capture stays exactly where it was (T20b's point).
+  expect(screen.getByLabelText('Record a gift idea…')).toBeInTheDocument();
 });
 
 test('a purchased item still shows the mark-given action', async () => {

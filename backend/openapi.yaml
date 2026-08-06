@@ -7106,6 +7106,19 @@ components:
         status: { type: string, enum: [idea, purchased, given, received] }
         occasion: { type: string, maxLength: 200 }
         description: { type: string, maxLength: 2000 }
+        url:
+          type: string
+          maxLength: 2000
+          description: >
+            Optional link to the thing itself (T35) — e.g. the product page for
+            a captured idea. Rejected on write if it uses an unsafe scheme
+            (javascript:, data:, vbscript:, file:).
+        notes:
+          type: string
+          maxLength: 2000
+          description: >
+            Optional free-text context beyond what the gift is (T35) — sizing,
+            where you saw it, "check they still want this".
         date:
           type: string
           format: date-time
@@ -7139,6 +7152,8 @@ components:
         status: { type: string, enum: [idea, purchased, given, received] }
         occasion: { type: string, maxLength: 200 }
         description: { type: string, minLength: 1, maxLength: 2000 }
+        url: { type: string, maxLength: 2000, description: "Safe-scheme URL only; unsafe schemes are a 400." }
+        notes: { type: string, maxLength: 2000 }
         date: { type: string, format: date-time, nullable: true }
         value_cents: { type: integer }
         currency: { type: string, maxLength: 3 }

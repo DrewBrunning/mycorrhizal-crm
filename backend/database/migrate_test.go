@@ -244,6 +244,77 @@ func TestMigrationsAddGifts(t *testing.T) {
 	assert.NotEmpty(t, sql)
 }
 
+// TestMigrationsAddGiftURLAndNotes covers T35's two additive columns and,
+// more importantly, that adding them preserves gift rows that predate them.
+// Real production data exists as of v0.2.0-alpha-candidate, so "the migration
+// applies" is not the interesting assertion — "the migration applies and the
+// user's existing gifts are still there, unchanged" is.
+func TestMigrationsAddGiftURLAndNotes(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "t35-gift-url-notes.db")
+	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
+	require.NoError(t, err)
+	defer sqlDB.Close()
+
+	m, err := newMigrator(sqlDB)
+	require.NoError(t, err)
+	// Everything up to but NOT including 000012, so the gift below genuinely
+	// predates the new columns.
+	require.NoError(t, m.Steps(11))
+
+	_, err = sqlDB.Exec(
+		"INSERT INTO users (created_at, updated_at, username, password, email) VALUES (datetime('now'), datetime('now'), 't35', 'x', 't35@example.com')")
+	require.NoError(t, err)
+	var userID int64
+	require.NoError(t, sqlDB.QueryRow("SELECT id FROM users WHERE username = 't35'").Scan(&userID))
+
+	_, err = sqlDB.Exec(`
+		INSERT INTO gifts (id, created_at, updated_at, user_id, entity_id, status, occasion, description, value_cents, currency)
+		VALUES ('gift-t35', datetime('now'), datetime('now'), ?, 'vcard-t35', 'given', 'birthday', 'The espresso machine', 12000, 'EUR')`,
+		userID)
+	require.NoError(t, err)
+
+	// Apply exactly 000012 — Steps(1), not m.Up(), so the MigrateDown below
+	// still rolls back this migration once another one lands after it.
+	require.NoError(t, m.Steps(1))
+
+	var colCount int64
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM pragma_table_info('gifts') WHERE name IN ('url', 'notes')",
+	).Scan(&colCount))
+	assert.Equal(t, int64(2), colCount, "gifts.url and gifts.notes must be added by the T35 migration")
+
+	// The pre-existing gift survives untouched, with the new columns simply
+	// null (nullable, no default, no backfill).
+	var description, currency string
+	var url, notes sql.NullString
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT description, currency, url, notes FROM gifts WHERE id = 'gift-t35'",
+	).Scan(&description, &currency, &url, &notes))
+	assert.Equal(t, "The espresso machine", description, "an additive migration must not disturb existing gift data")
+	assert.Equal(t, "EUR", currency)
+	assert.False(t, url.Valid, "an existing row's new url column must be null, not an empty-string backfill")
+	assert.False(t, notes.Valid)
+
+	// Writing the new columns works against the real migrated schema.
+	_, err = sqlDB.Exec(
+		"UPDATE gifts SET url = ?, notes = ? WHERE id = 'gift-t35'",
+		"https://shop.example.com/machine", "Check the voltage")
+	require.NoError(t, err)
+
+	// Down drops both columns; the row itself and its original data survive.
+	require.NoError(t, MigrateDown(dbPath))
+
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM pragma_table_info('gifts') WHERE name IN ('url', 'notes')",
+	).Scan(&colCount))
+	assert.Equal(t, int64(0), colCount, "the down migration must remove both columns")
+
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT description FROM gifts WHERE id = 'gift-t35'",
+	).Scan(&description))
+	assert.Equal(t, "The espresso machine", description, "a rollback must not destroy the gift")
+}
+
 // TestSquashedSchemaHasNoLegacyFoodPreference verifies the squashed baseline
 // (T22) excludes the legacy contacts.food_preference column — it was retired
 // by T20a and removed from the baseline during the migration squash.
