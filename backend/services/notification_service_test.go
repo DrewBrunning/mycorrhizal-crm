@@ -137,6 +137,21 @@ func newDueReminder(t *testing.T, db *gorm.DB, user models.User, message string)
 	return r
 }
 
+// TestNotificationSendersCoverAllChannels pins the channel registry against
+// the model's AllNotificationChannels list: every declared channel must have a
+// sender registered, so adding a channel to the enum without wiring a sender
+// (or vice versa) is caught here rather than silently never dispatching.
+func TestNotificationSendersCoverAllChannels(t *testing.T) {
+	registered := map[string]bool{}
+	for _, s := range notificationSenders {
+		registered[string(s.Channel())] = true
+	}
+	for _, ch := range models.AllNotificationChannels {
+		assert.True(t, registered[string(ch)], "channel %q must have a registered sender", ch)
+	}
+	assert.Len(t, notificationSenders, len(models.AllNotificationChannels))
+}
+
 // TestSendReminders_DispatchesToNtfy is the primary per-channel dispatch test:
 // a due reminder plus an enabled, configured ntfy channel produces exactly one
 // POST to the user's topic, a 'sent' delivery row, and no re-send on a second
