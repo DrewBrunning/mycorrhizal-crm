@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"mycorrhizal/config"
+	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // TestDeleteUser_CleansUpAllOwnedRows is the regression test for Tier 3c
@@ -327,6 +329,236 @@ func TestGetUser_InvalidID(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+}
+
+// --- CreateUser (T39) ---
+
+func TestCreateUser_Success(t *testing.T) {
+	db, router := setupRouter()
+
+	router.POST("/users", withValidated(func() any { return &models.AdminUserCreateInput{} }), CreateUser)
+
+	payload := models.AdminUserCreateInput{
+		Username: "NewUser",
+		Email:    "NewUser@Example.com",
+		Password: "brandNewPassw0rd!",
+		IsAdmin:  true,
+	}
+	jsonValue, _ := json.Marshal(payload)
+
+	req, _ := http.NewRequest("POST", "/users", bytes.NewBuffer(jsonValue))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+
+	var resp models.AdminUserResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	// Username/email are normalized to lowercase, matching RegisterUser/UpdateUser.
+	assert.Equal(t, "newuser", resp.Username)
+	assert.Equal(t, "newuser@example.com", resp.Email)
+	assert.True(t, resp.IsAdmin)
+	assert.NotZero(t, resp.ID)
+	assert.NotContains(t, w.Body.String(), "password")
+
+	var created models.User
+	require.NoError(t, db.Where("username = ?", "newuser").First(&created).Error)
+	// The stored password must be hashed, never the plaintext the admin typed.
+	assert.NotEqual(t, "brandNewPassw0rd!", created.Password)
+	require.NoError(t, bcrypt.CompareHashAndPassword([]byte(created.Password), []byte("brandNewPassw0rd!")),
+		"stored password hash must verify against the submitted password")
+
+	// The new user must actually be able to log in with the set password —
+	// this is the ticket's "Done when" hand-verification, pinned as an
+	// automated check too.
+	loginRouter := gin.Default()
+	loginRouter.Use(func(c *gin.Context) {
+		c.Set("db", db)
+		c.Next()
+	})
+	cfg := &config.Config{JWTExpiryHours: 1, JWTSecretKey: "test-secret-key-for-login-check"}
+	loginRouter.POST("/login", func(c *gin.Context) { LoginUser(c, cfg) })
+
+	loginPayload, _ := json.Marshal(map[string]string{"identifier": "newuser", "password": "brandNewPassw0rd!"})
+	loginReq, _ := http.NewRequest("POST", "/login", bytes.NewBuffer(loginPayload))
+	loginReq.Header.Set("Content-Type", "application/json")
+	loginW := httptest.NewRecorder()
+	loginRouter.ServeHTTP(loginW, loginReq)
+
+	assert.Equal(t, http.StatusOK, loginW.Code, loginW.Body.String())
+}
+
+func TestCreateUser_DefaultsToNonAdmin(t *testing.T) {
+	_, router := setupRouter()
+
+	router.POST("/users", withValidated(func() any { return &models.AdminUserCreateInput{} }), CreateUser)
+
+	payload := models.AdminUserCreateInput{
+		Username: "plainuser",
+		Email:    "plainuser@example.com",
+		Password: "brandNewPassw0rd!",
+	}
+	jsonValue, _ := json.Marshal(payload)
+
+	req, _ := http.NewRequest("POST", "/users", bytes.NewBuffer(jsonValue))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+
+	var resp models.AdminUserResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.False(t, resp.IsAdmin, "omitting is_admin must not implicitly grant it")
+}
+
+func TestCreateUser_DuplicateEmail_Conflict(t *testing.T) {
+	db, router := setupRouter()
+
+	require.NoError(t, db.Create(&models.User{Username: "existing", Email: "taken@example.com", Password: "password123"}).Error)
+
+	router.POST("/users", withValidated(func() any { return &models.AdminUserCreateInput{} }), CreateUser)
+
+	payload := models.AdminUserCreateInput{
+		Username: "different-username",
+		Email:    "taken@example.com",
+		Password: "brandNewPassw0rd!",
+	}
+	jsonValue, _ := json.Marshal(payload)
+
+	req, _ := http.NewRequest("POST", "/users", bytes.NewBuffer(jsonValue))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusConflict, w.Code, w.Body.String())
+
+	var count int64
+	require.NoError(t, db.Model(&models.User{}).Where("username = ?", "different-username").Count(&count).Error)
+	assert.Zero(t, count, "no user should be created when the email collides")
+}
+
+func TestCreateUser_DuplicateUsername_Conflict(t *testing.T) {
+	db, router := setupRouter()
+
+	require.NoError(t, db.Create(&models.User{Username: "taken", Email: "taken@example.com", Password: "password123"}).Error)
+
+	router.POST("/users", withValidated(func() any { return &models.AdminUserCreateInput{} }), CreateUser)
+
+	payload := models.AdminUserCreateInput{
+		Username: "taken",
+		Email:    "different@example.com",
+		Password: "brandNewPassw0rd!",
+	}
+	jsonValue, _ := json.Marshal(payload)
+
+	req, _ := http.NewRequest("POST", "/users", bytes.NewBuffer(jsonValue))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusConflict, w.Code, w.Body.String())
+}
+
+// Reuses the same validators as self-registration (models.UserRegistrationInput)
+// rather than a parallel set — a short password must be rejected the same way.
+func TestCreateUser_WeakPassword_Rejected(t *testing.T) {
+	_, router := setupRouter()
+
+	router.POST("/users", middleware.ValidateJSONMiddleware(&models.AdminUserCreateInput{}), CreateUser)
+
+	jsonValue := []byte(`{"username":"weakpw","email":"weakpw@example.com","password":"short"}`)
+
+	req, _ := http.NewRequest("POST", "/users", bytes.NewBuffer(jsonValue))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+}
+
+func TestCreateUser_MissingFields_Rejected(t *testing.T) {
+	_, router := setupRouter()
+
+	router.POST("/users", middleware.ValidateJSONMiddleware(&models.AdminUserCreateInput{}), CreateUser)
+
+	jsonValue := []byte(`{"username":"","email":"","password":""}`)
+
+	req, _ := http.NewRequest("POST", "/users", bytes.NewBuffer(jsonValue))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+}
+
+// Every other success-path test above uses withValidated, a bare
+// ShouldBindJSON with no struct validation, so none of them actually proves
+// a valid payload clears the REAL middleware.ValidateJSONMiddleware chain
+// the route registers (routes/routes.go). This wires that real chain with a
+// payload shaped like what the Add User dialog sends, so a future tightening
+// of AdminUserCreateInput's validate tags that starts rejecting legitimate
+// input would be caught here rather than only in the (not always run)
+// Playwright e2e suite.
+func TestCreateUser_RealValidationMiddleware_AcceptsValidPayload(t *testing.T) {
+	db, router := setupRouter()
+
+	router.POST("/users", middleware.ValidateJSONMiddleware(&models.AdminUserCreateInput{}), CreateUser)
+
+	jsonValue := []byte(`{"username":"realvalidation","email":"realvalidation@example.com","password":"brandNewPassw0rd!"}`)
+
+	req, _ := http.NewRequest("POST", "/users", bytes.NewBuffer(jsonValue))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+
+	var count int64
+	require.NoError(t, db.Model(&models.User{}).Where("username = ?", "realvalidation").Count(&count).Error)
+	assert.EqualValues(t, 1, count)
+}
+
+// A non-admin must not be able to reach CreateUser at all — this wires the
+// REAL middleware chain (AdminMiddleware), unlike the handler-only tests
+// above, to prove the route itself is gated rather than relying solely on
+// the handler (CreateUser has no caller-privilege check of its own, the same
+// design as UpdateUser — see TestUpdateUser_HandlerAllowsSelfPromotion_
+// GatedOnlyByRouteMiddleware's note above).
+func TestCreateUser_NonAdmin_Forbidden(t *testing.T) {
+	db, _ := setupRouter()
+
+	var nonAdmin models.User
+	require.NoError(t, db.Where("username = ?", "tester").First(&nonAdmin).Error)
+	require.False(t, nonAdmin.IsAdmin, "seeded test user must start as a non-admin for this test to be meaningful")
+
+	router := gin.Default()
+	router.Use(func(c *gin.Context) {
+		c.Set("db", db)
+		c.Set("userID", nonAdmin.ID)
+		c.Next()
+	})
+	router.Use(middleware.AdminMiddleware())
+	router.POST("/admin/users", middleware.ValidateJSONMiddleware(&models.AdminUserCreateInput{}), CreateUser)
+
+	payload := models.AdminUserCreateInput{
+		Username: "shouldnotexist",
+		Email:    "shouldnotexist@example.com",
+		Password: "brandNewPassw0rd!",
+	}
+	jsonValue, _ := json.Marshal(payload)
+
+	req, _ := http.NewRequest("POST", "/admin/users", bytes.NewBuffer(jsonValue))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code, w.Body.String())
+
+	var count int64
+	require.NoError(t, db.Model(&models.User{}).Where("username = ?", "shouldnotexist").Count(&count).Error)
+	assert.Zero(t, count, "no user should be created when the caller is not an admin")
 }
 
 // --- UpdateUser: normal CRUD paths ---

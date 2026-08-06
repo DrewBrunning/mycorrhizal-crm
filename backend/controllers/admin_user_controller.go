@@ -192,6 +192,67 @@ func GetUser(c *gin.Context) {
 	})
 }
 
+// CreateUser creates a new user (admin only). Mirrors RegisterUser's
+// hashing/validation but is reached only through the admin-gated route
+// (middleware.AdminMiddleware), so — unlike self-registration — it accepts
+// IsAdmin directly and is not subject to RegistrationDisabled. Password is
+// set by the admin directly, matching this app's existing admin-reset
+// pattern (UpdateUser's Password field) rather than an invite-email flow
+// (see T39's ticket).
+func CreateUser(c *gin.Context) {
+	log := logger.FromContext(c)
+	db := c.MustGet("db").(*gorm.DB)
+
+	input, appErr := middleware.GetValidated[models.AdminUserCreateInput](c)
+	if appErr != nil {
+		apperrors.AbortWithError(c, appErr)
+		return
+	}
+
+	hashedPassword, err := services.HashPassword(input.Password)
+	if err != nil {
+		if errors.Is(err, services.ErrPasswordTooLong) {
+			apperrors.AbortWithError(c, apperrors.ErrValidation(err.Error()))
+		} else {
+			log.Error().Err(err).Msg("Failed to hash password during admin create")
+			apperrors.AbortWithError(c, apperrors.ErrInternal("Could not hash password").WithError(err))
+		}
+		return
+	}
+
+	user := models.User{
+		Username: strings.ToLower(input.Username),
+		Email:    strings.ToLower(input.Email),
+		Password: hashedPassword,
+		IsAdmin:  input.IsAdmin,
+	}
+
+	if err := db.Create(&user).Error; err != nil {
+		// Surfaced clearly rather than swallowed — per T39's ticket, this is
+		// also the path a collision with a soft-deleted account's email would
+		// hit, though DeleteUser's hard-delete (T26) means that shouldn't
+		// happen for accounts removed through this app.
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+			apperrors.AbortWithError(c, apperrors.ErrAlreadyExists("User").WithDetails("field", "username or email"))
+			return
+		}
+		log.Error().Err(err).Msg("Failed to create user")
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("create user").WithError(err))
+		return
+	}
+
+	c.JSON(http.StatusCreated, models.AdminUserResponse{
+		ID:         user.ID,
+		Username:   user.Username,
+		Email:      user.Email,
+		Language:   user.Language,
+		DateFormat: user.DateFormat,
+		IsAdmin:    user.IsAdmin,
+		CreatedAt:  user.CreatedAt,
+		UpdatedAt:  user.UpdatedAt,
+	})
+}
+
 // updates a user's information (admin only)
 func UpdateUser(c *gin.Context) {
 	log := logger.FromContext(c)

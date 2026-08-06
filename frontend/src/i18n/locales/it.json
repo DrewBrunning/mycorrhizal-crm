@@ -1114,6 +1114,7 @@
     "title": "Gestione Utenti",
     "loadError": "Caricamento utenti fallito",
     "noUsers": "Nessun utente trovato",
+    "addUser": "Aggiungi Utente",
     "columns": {
       "id": "ID",
       "username": "Nome utente",
@@ -1134,12 +1135,20 @@
       "passwordHint": "Lascia vuoto per mantenere la password attuale",
       "isAdmin": "Amministratore"
     },
+    "createDialog": {
+      "title": "Aggiungi Utente",
+      "username": "Nome utente",
+      "email": "Email",
+      "password": "Password",
+      "isAdmin": "Amministratore"
+    },
     "deleteDialog": {
       "title": "Elimina Utente",
       "message": "Sei sicuro di voler eliminare l'utente \"{{username}}\"?",
       "warning": "Questo eliminerà permanentemente l'utente e tutti i suoi dati inclusi contatti, attività, note e promemoria."
     },
     "updateError": "Impossibile aggiornare l'utente",
+    "createError": "Impossibile creare l'utente",
     "deleteError": "Impossibile eliminare l'utente",
     "triggerReminders": "Invia Email Promemoria",
     "triggerRemindersSuccess": "Email di promemoria inviate con successo",

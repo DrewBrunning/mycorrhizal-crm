@@ -1114,6 +1114,7 @@
     "title": "Benutzerverwaltung",
     "loadError": "Benutzer konnten nicht geladen werden",
     "noUsers": "Keine Benutzer gefunden",
+    "addUser": "Benutzer hinzufügen",
     "columns": {
       "id": "ID",
       "username": "Benutzername",
@@ -1134,12 +1135,20 @@
       "passwordHint": "Leer lassen, um aktuelles Passwort zu behalten",
       "isAdmin": "Administrator"
     },
+    "createDialog": {
+      "title": "Benutzer hinzufügen",
+      "username": "Benutzername",
+      "email": "E-Mail",
+      "password": "Passwort",
+      "isAdmin": "Administrator"
+    },
     "deleteDialog": {
       "title": "Benutzer löschen",
       "message": "Möchten Sie den Benutzer \"{{username}}\" wirklich löschen?",
       "warning": "Dies löscht den Benutzer und alle seine Daten dauerhaft, einschließlich Kontakte, Aktivitäten, Notizen und Erinnerungen."
     },
     "updateError": "Benutzer konnte nicht aktualisiert werden",
+    "createError": "Benutzer konnte nicht erstellt werden",
     "deleteError": "Benutzer konnte nicht gelöscht werden",
     "triggerReminders": "Erinnerungs-E-Mails senden",
     "triggerRemindersSuccess": "Erinnerungs-E-Mails erfolgreich gesendet",
