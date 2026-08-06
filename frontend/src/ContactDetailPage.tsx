@@ -651,6 +651,32 @@ export default function ContactDetailPage() {
   const [lifeEventDialogOpen, setLifeEventDialogOpen] = useState(false);
   const [editingLifeEvent, setEditingLifeEvent] = useState<LifeEvent | null>(null);
 
+  // Memoized, not an inline object literal at the JSX call site: LifeEventDialog's
+  // own reset effect keys off `initial`'s *reference* (dep array `[open,
+  // initial]`), so an inline literal -- a new object on literally every
+  // ContactDetailPage render, whether or not editingLifeEvent itself changed
+  // -- re-fires that effect on any unrelated re-render while the dialog is
+  // open, silently reverting whatever the user had just changed (e.g.
+  // re-filing a life event's category) back to the original values. Keying
+  // this on editingLifeEvent keeps the reference stable across renders that
+  // don't touch it. Confirmed live: without this, selecting a new category
+  // in the edit dialog visibly reverted to the original category/type
+  // moments later.
+  const lifeEventDialogInitial = useMemo(
+    () =>
+      editingLifeEvent
+        ? {
+            type: editingLifeEvent.type,
+            category: editingLifeEvent.category,
+            date: editingLifeEvent.date,
+            description: editingLifeEvent.description,
+            relatedEntityIds: editingLifeEvent.related_entity_ids,
+            remind: editingLifeEvent.remind,
+          }
+        : undefined,
+    [editingLifeEvent]
+  );
+
   const handleAddLifeEvent = () => {
     setEditingLifeEvent(null);
     setLifeEventDialogOpen(true);
@@ -1560,18 +1586,7 @@ export default function ContactDetailPage() {
           setEditingLifeEvent(null);
         }}
         onSave={handleSaveLifeEvent}
-        initial={
-          editingLifeEvent
-            ? {
-                type: editingLifeEvent.type,
-                category: editingLifeEvent.category,
-                date: editingLifeEvent.date,
-                description: editingLifeEvent.description,
-                relatedEntityIds: editingLifeEvent.related_entity_ids,
-                remind: editingLifeEvent.remind,
-              }
-            : undefined
-        }
+        initial={lifeEventDialogInitial}
         excludeContactUid={record?.uid}
       />
 
