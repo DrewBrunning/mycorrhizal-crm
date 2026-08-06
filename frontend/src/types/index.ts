@@ -25,3 +25,10 @@ export interface UserUpdateInput {
   password?: string;
   is_admin?: boolean;
 }
+
+export interface UserCreateInput {
+  username: string;
+  email: string;
+  password: string;
+  is_admin?: boolean;
+}

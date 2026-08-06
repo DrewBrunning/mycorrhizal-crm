@@ -5770,6 +5770,42 @@ paths:
           description: Not authenticated (cookie or full-scope bearer token required).
         "403":
           description: Not an admin, or an API token was used on an admin path.
+    post:
+      summary: Create a new user (admin)
+      operationId: adminCreateUser
+      description: >
+        Password is set directly by the admin, matching the existing admin-reset
+        pattern (PATCH's password field) rather than an invite-email flow.
+        Reuses the same username/email/password validation as self-registration.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminUserCreateInput"
+      responses:
+        "201":
+          description: The created user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUserResponse"
+        "400":
+          description: Validation failed (weak password, missing fields, etc).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated (cookie or full-scope bearer token required).
+        "403":
+          description: Not an admin, or an API token was used on an admin path.
+        "409":
+          description: Username or email already in use.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /admin/users/{id}:
     parameters:
       - name: id
@@ -6124,6 +6160,15 @@ components:
         email: { type: string, format: email }
         password: { type: string, minLength: 8 }
         is_admin: { type: boolean }
+    AdminUserCreateInput:
+      type: object
+      description: Unlike self-registration, is_admin may be set directly (the caller already passed admin auth to reach this route).
+      required: [username, email, password]
+      properties:
+        username: { type: string, minLength: 1, maxLength: 50 }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+        is_admin: { type: boolean, default: false }
 
     # --- Contacts ---
     ContactSummary:
