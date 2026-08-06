@@ -4,15 +4,42 @@ on:
   push:
     tags: ['v*']
 
+  # Manual fallback for a tag that exists but never produced a run.
+  #
+  # A tag trigger is the only path into this workflow, so when the push event
+  # is lost the tag is published-but-unbuilt and the sole recovery is deleting
+  # and re-pushing the tag. That is not hypothetical: during the GitHub Actions
+  # incident of 2026-08-06, webhook delivery was throttled to ~15% and the
+  # v0.3.0 tag push created no run at all -- not queued, not failed, absent.
+  #
+  # This takes the tag as an INPUT rather than relying on the ref this is
+  # dispatched from, so it can rebuild a tag whose commit predates this change.
+  # Dispatch it from a branch; it checks out the tag you name.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to build and publish (e.g. v0.3.0)'
+        required: true
+        type: string
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  # The tag being released. On a tag push that is the ref; on a manual run it
+  # is the input. Everything below keys off this rather than github.ref_name /
+  # github.sha, which on a dispatch point at the branch, not the tag.
+  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
 
 jobs:
   create-release:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+
+    # Only on a real tag push. A manual run is for recovering images when the
+    # release already exists -- re-running it would regenerate the notes and
+    # append a second copy of the Docker Images block over whatever is there.
+    if: github.event_name == 'push'
 
     steps:
       - name: Checkout repository
@@ -21,6 +48,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.RELEASE_TAG }}
           generate_release_notes: true
           append_body: true
           body: |
@@ -29,13 +57,13 @@ jobs:
 
             All-in-one image (frontend + backend in one container):
             ```
-            ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+            ghcr.io/${{ github.repository }}:${{ env.RELEASE_TAG }}
             ```
 
             Separate images:
             ```
-            ghcr.io/${{ github.repository }}-backend:${{ github.ref_name }}
-            ghcr.io/${{ github.repository }}-frontend:${{ github.ref_name }}
+            ghcr.io/${{ github.repository }}-backend:${{ env.RELEASE_TAG }}
+            ghcr.io/${{ github.repository }}-frontend:${{ env.RELEASE_TAG }}
             ```
 
   build-and-push:
@@ -60,6 +88,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # Explicit, so a manual run builds the TAG's tree rather than
+          # whatever branch it was dispatched from.
+          ref: ${{ env.RELEASE_TAG }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -72,23 +104,36 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       # Short SHA and an ISO-8601 build timestamp for the version stamp. The
-      # full github.sha is 40 chars, which is unwieldy in a UI badge and in a
+      # full SHA is 40 chars, which is unwieldy in a UI badge and in a
       # bug report; buildinfo's own VCS fallback truncates to 12, so match it.
+      #
+      # Read from the checked-out tree, not from github.sha: on a manual run
+      # github.sha is the dispatching branch's head, which would stamp the
+      # binary and tag the image with a commit that is not the one being built.
       - name: Compute build stamp
         id: stamp
         run: |
-          echo "commit=$(echo '${{ github.sha }}' | cut -c1-12)" >> "$GITHUB_OUTPUT"
-          echo "date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+          sha=$(git rev-parse HEAD)
+          {
+            echo "commit=$(echo "$sha" | cut -c1-12)"
+            echo "sha7=$(echo "$sha" | cut -c1-7)"
+            echo "date=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Extract metadata (tags, labels)
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}${{ matrix.suffix }}
+          # Each type takes an explicit value so the derived tags come from
+          # RELEASE_TAG and the checked-out commit. Left implicit, semver reads
+          # the ref and sha reads github.sha -- both wrong on a manual run,
+          # which would publish an image labelled with the branch it was
+          # dispatched from. Same output as before on a tag push.
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix=
+            type=semver,pattern={{version}},value=${{ env.RELEASE_TAG }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ env.RELEASE_TAG }}
+            type=raw,value=${{ steps.stamp.outputs.sha7 }}
 
       - name: Build and push
         uses: docker/build-push-action@v5
