@@ -73,6 +73,34 @@ test('saving posts the base URL and API key, and the key never comes back', asyn
   await waitFor(() => expect(screen.getByLabelText('API Key')).toHaveValue(''));
 });
 
+test('a non-http(s) base URL is rejected client-side without sending a request (T41)', async () => {
+  let putBody: unknown = null;
+  mockFetchByUrl({
+    '/immich/config': (init?: RequestInit) => {
+      if (init && init.method === 'PUT') {
+        putBody = JSON.parse(String(init.body));
+      }
+      return { base_url: '', has_api_key: false, sync_enabled: true, last_sync_status: '', last_sync_error: '' };
+    },
+  });
+
+  render(
+    <SnackbarProvider>
+      <ImmichSettings />
+    </SnackbarProvider>
+  );
+
+  await waitFor(() => expect(screen.getByLabelText('Base URL')).toBeInTheDocument());
+  // Scheme-less is rejected deliberately — unlike GiftDialog there is no
+  // scheme-less→https default, because the backend cannot guess http vs https.
+  fireEvent.change(screen.getByLabelText('Base URL'), { target: { value: 'immich.example.com' } });
+  fireEvent.change(screen.getByLabelText('API Key'), { target: { value: 'sekret-key' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save connection' }));
+
+  await waitFor(() => expect(screen.getByText(/http:\/\/ or https:\/\//i)).toBeInTheDocument());
+  expect(putBody).toBeNull();
+});
+
 test('a configured connection shows the sync toggle and remove button', async () => {
   mockFetchByUrl({
     '/immich/config': () => ({ base_url: 'http://immich:2283', has_api_key: true, sync_enabled: true, last_sync_status: 'success', last_sync_error: '' }),

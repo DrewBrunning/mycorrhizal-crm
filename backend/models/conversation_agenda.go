@@ -37,9 +37,11 @@ type ConversationAgenda struct {
 	EntityID string `gorm:"column:entity_id;not null;index" json:"entity_id" validate:"required,uuid4"`
 
 	// Content is the free-text item. ReferenceURL is an optional link/reference
-	// to whatever the item is about — no due date anywhere in this model.
+	// to whatever the item is about — a web page, so it is `httpurl`-validated
+	// (T41) to reject anything but http/https. No due date anywhere in this
+	// model.
 	Content      string `gorm:"not null" json:"content" validate:"required,min=1,max=2000"`
-	ReferenceURL string `json:"reference_url,omitempty" validate:"omitempty,safeurl,max=2000"`
+	ReferenceURL string `json:"reference_url,omitempty" validate:"omitempty,httpurl,max=2000"`
 
 	// DiscussedAt is the "resolved/discussed flag with the date it was
 	// discussed" (§91.11). nil = still open (surfaced in the open list); set =

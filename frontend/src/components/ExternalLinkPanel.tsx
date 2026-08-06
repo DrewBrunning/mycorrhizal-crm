@@ -23,6 +23,7 @@ import { ExternalIdentity } from '../api/externalLinks';
 import { ImmichPerson, ImmichPersonSummary, immichThumbnailUrl } from '../api/immich';
 import ImmichPersonSearchDialog from './ImmichPersonSearchDialog';
 import { useDateFormat } from '../DateFormatProvider';
+import { isHttpUrlString } from '../utils/linkResolution';
 
 interface ExternalLinkPanelProps {
   contactUid: string;
@@ -135,16 +136,24 @@ export default function ExternalLinkPanel({
                     t('immich.panel.linkedPerson')}
                 </Typography>
                 <Chip size="small" label="Immich" />
-                {immichIdentity.url && (
-                  <Link
-                    href={immichIdentity.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25 }}
-                  >
-                    {t('immich.panel.openInImmich')} <OpenInNewIcon sx={{ fontSize: 14 }} />
-                  </Link>
-                )}
+                {immichIdentity.url &&
+                  (isHttpUrlString(immichIdentity.url) ? (
+                    <Link
+                      href={immichIdentity.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25 }}
+                    >
+                      {t('immich.panel.openInImmich')} <OpenInNewIcon sx={{ fontSize: 14 }} />
+                    </Link>
+                  ) : (
+                    // A URL that predates the write-time `httpurl` validator
+                    // (or arrived via a non-API path) is shown as text, never
+                    // turned into an href (T41).
+                    <Typography variant="caption" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
+                      {immichIdentity.url}
+                    </Typography>
+                  ))}
               </Box>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                 {t('immich.panel.photoCount', { count: immichSummary?.photo_count ?? 0 })}
@@ -200,11 +209,18 @@ export default function ExternalLinkPanel({
                         </Typography>
                       </Box>
                     </Box>
-                    {identity.url && (
-                      <Link href={identity.url} target="_blank" rel="noopener noreferrer">
-                        <OpenInNewIcon fontSize="small" />
-                      </Link>
-                    )}
+                    {identity.url &&
+                      (isHttpUrlString(identity.url) ? (
+                        <Link href={identity.url} target="_blank" rel="noopener noreferrer">
+                          <OpenInNewIcon fontSize="small" />
+                        </Link>
+                      ) : (
+                        // Same render-time guard as the Immich row: an unsafe
+                        // or non-http URL is shown as text, not as an href.
+                        <Typography variant="caption" color="text.secondary" sx={{ overflowWrap: 'anywhere', maxWidth: 240 }}>
+                          {identity.url}
+                        </Typography>
+                      ))}
                   </Box>
                 </Paper>
               ))

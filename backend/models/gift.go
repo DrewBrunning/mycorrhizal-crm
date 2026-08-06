@@ -64,15 +64,15 @@ type Gift struct {
 
 	// URL is an optional link to the thing itself — the product page for an
 	// idea captured as "she mentioned she liked this specific item" (T35).
-	// User-supplied and rendered as an href, so it is `safeurl`-validated to
-	// keep a javascript:/data: scheme out of the stored value; the frontend
-	// re-checks at render time (utils/linkResolution.ts) because a stored
-	// value predating validation is still possible. The column tag is pinned
-	// explicitly per CLAUDE.md trap 1: GORM's initialism handling happens to
-	// derive `url` here, but an acronym field is exactly the silent
-	// name-mismatch class that broke ContactSyncLink.ETag (`e_tag` vs
-	// `etag`), so the migration's spelling is stated rather than inferred.
-	URL string `gorm:"column:url" json:"url,omitempty" validate:"omitempty,safeurl,max=2000"`
+	// User-supplied and rendered as an href, so it is `httpurl`-validated to
+	// keep anything but an http:// or https:// scheme out of the stored value
+	// (T41); the frontend re-checks at render time (utils/linkResolution.ts)
+	// because a stored value predating validation is still possible. The column
+	// tag is pinned explicitly per CLAUDE.md trap 1: GORM's initialism handling
+	// happens to derive `url` here, but an acronym field is exactly the silent
+	// name-mismatch class that broke ContactSyncLink.ETag (`e_tag` vs `etag`),
+	// so the migration's spelling is stated rather than inferred.
+	URL string `gorm:"column:url" json:"url,omitempty" validate:"omitempty,httpurl,max=2000"`
 
 	// Notes is free-text context beyond what the gift is: sizing, where you
 	// saw it, "check they still want this before buying" (T35). Deliberately

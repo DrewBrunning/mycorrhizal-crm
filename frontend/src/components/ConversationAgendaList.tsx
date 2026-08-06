@@ -18,6 +18,7 @@ import ForumIcon from '@mui/icons-material/Forum';
 import { useTranslation } from 'react-i18next';
 import { ConversationAgenda } from '../api/conversationAgenda';
 import { useDateFormat } from '../DateFormatProvider';
+import { isHttpUrlString } from '../utils/linkResolution';
 
 interface ConversationAgendaListProps {
   items: ConversationAgenda[];
@@ -120,9 +121,17 @@ export default function ConversationAgendaList({
           </Typography>
           {item.reference_url && (
             <Typography variant="caption" component="div" sx={{ overflowWrap: 'anywhere' }}>
-              <a href={item.reference_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
-                {item.reference_url}
-              </a>
+              {/* Tappable only when it is a real http(s) URL (T41's `httpurl`
+                  allowlist); a reference_url that predates the write-time
+                  validator or arrived without one is shown as plain text
+                  rather than turned into an unsafe href. */}
+              {isHttpUrlString(item.reference_url) ? (
+                <a href={item.reference_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+                  {item.reference_url}
+                </a>
+              ) : (
+                item.reference_url
+              )}
             </Typography>
           )}
           {discussed && item.discussed_at && (

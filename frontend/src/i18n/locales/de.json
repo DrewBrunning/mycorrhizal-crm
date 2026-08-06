@@ -701,6 +701,7 @@
       "testingConnection": "Wird getestet…",
       "removeConfirm": "Immich-Verbindung entfernen? Verknüpfte Kontakte behalten ihre bestehende Foto-Historie.",
       "baseUrlRequired": "Basis-URL ist erforderlich.",
+      "invalidBaseUrl": "Basis-URL muss eine http://- oder https://-URL sein.",
       "saved": "Immich-Verbindung gespeichert",
       "removed": "Immich-Verbindung entfernt",
       "saveFailed": "Fehler beim Speichern der Immich-Verbindung",
@@ -1348,7 +1349,8 @@
       "contentRequired": "Gib an, was du ansprechen möchtest.",
       "addFailed": "Agenda-Punkt konnte nicht hinzugefügt werden.",
       "saveFailed": "Agenda-Punkt konnte nicht gespeichert werden.",
-      "discussFailed": "Als besprochen konnte nicht markiert werden."
+      "discussFailed": "Als besprochen konnte nicht markiert werden.",
+      "invalidUrl": "Link muss eine http://- oder https://-URL sein."
     }
   },
   "gifts": {

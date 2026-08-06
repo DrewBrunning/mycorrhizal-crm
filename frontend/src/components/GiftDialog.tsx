@@ -15,7 +15,7 @@ import { Gift, GIFT_STATUSES, GiftStatus } from '../api/gifts';
 import { LifeEvent, partialDateDisplay } from '../api/lifeEvents';
 import { Activity } from '../api/activities';
 import { useDateFormat } from '../DateFormatProvider';
-import { isSafeUrlString, looksLikeAbsoluteUri } from '../utils/linkResolution';
+import { isHttpUrlString, looksLikeAbsoluteUri } from '../utils/linkResolution';
 
 // GiftFormData is what the dialog submits; the page adds entity_id and hands it
 // to the hook as a GiftInput.
@@ -117,9 +117,9 @@ export default function GiftDialog({
       normalizedUrl = `https://${normalizedUrl}`;
     }
 
-    // Mirror the backend's `safeurl` validator client-side so an unsafe
+    // Mirror the backend's `httpurl` validator client-side so a non-http
     // scheme is a readable message here rather than a 400 from the API.
-    if (normalizedUrl !== '' && !isSafeUrlString(normalizedUrl)) {
+    if (normalizedUrl !== '' && !isHttpUrlString(normalizedUrl)) {
       setError(t('gifts.validation.invalidUrl'));
       return;
     }

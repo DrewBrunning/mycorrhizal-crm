@@ -701,6 +701,7 @@
       "testingConnection": "Test in corso…",
       "removeConfirm": "Rimuovere la connessione Immich? I contatti collegati conservano la cronologia foto esistente.",
       "baseUrlRequired": "L'URL di base è obbligatoria.",
+      "invalidBaseUrl": "L'URL di base deve essere un URL http:// o https://.",
       "saved": "Connessione Immich salvata",
       "removed": "Connessione Immich rimossa",
       "saveFailed": "Impossibile salvare la connessione Immich",
@@ -1348,7 +1349,8 @@
       "contentRequired": "Indica cosa vuoi tirare fuori.",
       "addFailed": "Impossibile aggiungere l'elemento.",
       "saveFailed": "Impossibile salvare l'elemento.",
-      "discussFailed": "Impossibile segnare come discusso."
+      "discussFailed": "Impossibile segnare come discusso.",
+      "invalidUrl": "Il link deve essere un URL http:// o https://."
     }
   },
   "gifts": {

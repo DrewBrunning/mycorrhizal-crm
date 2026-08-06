@@ -4,6 +4,7 @@ import {
   buildSmsLink,
   buildMailtoLink,
   isSafeUrlString,
+  isHttpUrlString,
   looksLikeAbsoluteUri,
   resolveOnlineServiceLink,
   formatAddressLine,
@@ -39,6 +40,44 @@ test('isSafeUrlString rejects an unsafe scheme even after {value} substitution -
   const template = 'javascript:alert(1)//{value}';
   const substituted = template.replace('{value}', encodeURIComponent('anything'));
   expect(isSafeUrlString(substituted)).toBe(false);
+});
+
+// isHttpUrlString is the client mirror of backend validateHTTPURL (T41). This
+// table intentionally mirrors backend/middleware/validation_test.go's
+// TestValidateStruct_HTTPURL exactly — the two implementations disagreeing is
+// the actual risk the ticket exists to close. Keep them in step.
+test('isHttpUrlString accepts http(s) and empty values', () => {
+  expect(isHttpUrlString('')).toBe(true);
+  expect(isHttpUrlString('   ')).toBe(true);
+  expect(isHttpUrlString('https://example.com/path?q=1')).toBe(true);
+  expect(isHttpUrlString('http://example.com')).toBe(true);
+  expect(isHttpUrlString('http://immich:2283')).toBe(true);
+});
+
+test('isHttpUrlString rejects everything that is not http(s), including no scheme at all', () => {
+  expect(isHttpUrlString('example.com')).toBe(false);
+  expect(isHttpUrlString('example.com:8080/x')).toBe(false);
+  expect(isHttpUrlString('//example.com/x')).toBe(false);
+  expect(isHttpUrlString('mailto:a@b.com')).toBe(false);
+  expect(isHttpUrlString('javascript:alert(1)')).toBe(false);
+  expect(isHttpUrlString('JavaScript:alert(1)')).toBe(false);
+  expect(isHttpUrlString('java\tscript:alert(1)')).toBe(false);
+  expect(isHttpUrlString('data:text/html,<script>')).toBe(false);
+  expect(isHttpUrlString('vbscript:msgbox(1)')).toBe(false);
+  expect(isHttpUrlString('file:///etc/passwd')).toBe(false);
+  expect(isHttpUrlString('blob:https://example.com/abc-123')).toBe(false);
+  expect(isHttpUrlString('intent://scan/#Intent;scheme=zebra;end')).toBe(false);
+  expect(isHttpUrlString('ms-msdt:/id:PCWAlert;S:RunProgram;X:cmd')).toBe(false);
+});
+
+// The two guards are intentionally different: Card.Links/IMPP are legitimately
+// non-http (xmpp:, sip:, mailto:), web-link fields are not. A scheme the
+// blocklist lets through must not leak into the allowlist.
+test('isSafeUrlString accepts schemes that isHttpUrlString rejects', () => {
+  expect(isSafeUrlString('mailto:a@b.com')).toBe(true);
+  expect(isHttpUrlString('mailto:a@b.com')).toBe(false);
+  expect(isSafeUrlString('intent://scan/#Intent;scheme=zebra;end')).toBe(true);
+  expect(isHttpUrlString('intent://scan/#Intent;scheme=zebra;end')).toBe(false);
 });
 
 test('looksLikeAbsoluteUri distinguishes a real URI from a bare handle', () => {

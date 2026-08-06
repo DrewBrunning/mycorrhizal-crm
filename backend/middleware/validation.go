@@ -26,6 +26,7 @@ func init() {
 	validate.RegisterValidation("unique_circles", validateUniqueCircles)
 	validate.RegisterValidation("no_at_sign", validateNoAtSign)
 	validate.RegisterValidation("safeurl", validateSafeURL)
+	validate.RegisterValidation("httpurl", validateHTTPURL)
 	validate.RegisterValidation("relation_type", validateRelationType)
 	validate.RegisterValidation("fielddefprojection", validateFieldDefinitionProjection)
 	validate.RegisterValidation("life_event_category", validateLifeEventCategory)
@@ -81,6 +82,8 @@ func formatValidationError(err validator.FieldError) string {
 		return field + " must be a valid URL"
 	case "safeurl":
 		return field + " uses an unsafe URL scheme"
+	case "httpurl":
+		return field + " must be an http:// or https:// URL"
 	case "relation_type":
 		return field + " must be a known relationship type"
 	default:
@@ -136,18 +139,28 @@ func validatePhone(fl validator.FieldLevel) bool {
 	return true
 }
 
+// normalizeSchemeURL strips everything ≤ U+0020 (which is what defeats the
+// `java&Tab;script:` bypass — the browser's URL parser drops these control
+// characters before it ever looks at the scheme, so a validator that keeps
+// them is checking a different string than the browser) and lowercases the
+// result, ready for a leading-scheme check. Shared by validateSafeURL and
+// validateHTTPURL so the two validators' normalization cannot drift.
+func normalizeSchemeURL(raw string) string {
+	return strings.Map(func(r rune) rune {
+		if r <= ' ' {
+			return -1
+		}
+		return unicode.ToLower(r)
+	}, strings.TrimSpace(raw))
+}
+
 // rejects values whose URL scheme can execute scripts when the value is rendered as link
 func validateSafeURL(fl validator.FieldLevel) bool {
 	raw := strings.TrimSpace(fl.Field().String())
 	if raw == "" {
 		return true
 	}
-	normalized := strings.Map(func(r rune) rune {
-		if r <= ' ' {
-			return -1
-		}
-		return unicode.ToLower(r)
-	}, raw)
+	normalized := normalizeSchemeURL(raw)
 	// Only a leading "scheme:" is dangerous; a bare "host:port" or path is fine.
 	if i := strings.IndexByte(normalized, ':'); i > 0 {
 		switch normalized[:i] {
@@ -156,6 +169,28 @@ func validateSafeURL(fl validator.FieldLevel) bool {
 		}
 	}
 	return true
+}
+
+// validateHTTPURL is the `httpurl` validator (T41) for the fields whose value
+// means "a web page" — a gift's product link, an agenda item's reference
+// article, an external system's deep link, an Immich base URL. It is an
+// allowlist, deliberately stricter than validateSafeURL's blocklist: after the
+// same normalization, only http/https are accepted and everything else — an
+// unknown scheme (`blob:`, `intent:`, `ms-msdt:`, ...), a known-dangerous one
+// (`javascript:`, `data:`, ...), or no scheme at all — is rejected. An empty
+// value is allowed; fields opt into `required` separately.
+func validateHTTPURL(fl validator.FieldLevel) bool {
+	raw := strings.TrimSpace(fl.Field().String())
+	if raw == "" {
+		return true
+	}
+	normalized := normalizeSchemeURL(raw)
+	i := strings.IndexByte(normalized, ':')
+	if i <= 0 {
+		return false
+	}
+	scheme := normalized[:i]
+	return scheme == "http" || scheme == "https"
 }
 
 // validateBirthday validates date format (YYYY-MM-DD or --MM-DD)

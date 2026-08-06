@@ -28,8 +28,11 @@ type ImmichConfig struct {
 	UserID uint `gorm:"not null;index" json:"-"`
 
 	// BaseURL is the Immich server root (typically a private/self-hosted
-	// address — see config.ImmichBlockPrivateURLs for the SSRF policy).
-	BaseURL string `gorm:"column:base_url;not null" json:"base_url" validate:"required,min=1,max=2000,safeurl"`
+	// address — see config.ImmichBlockPrivateURLs for the SSRF policy). A web
+	// URL, so it is `httpurl`-validated (T41); NormalizeImmichBaseURL in
+	// services/immich_service.go independently requires http/https and is what
+	// rejects a scheme-less value (there is no way to guess http vs https).
+	BaseURL string `gorm:"column:base_url;not null" json:"base_url" validate:"required,min=1,max=2000,httpurl"`
 
 	// APIKeyEncrypted is the AES-256-GCM-encrypted Immich API key.
 	APIKeyEncrypted string `gorm:"column:api_key_encrypted;not null;default:''" json:"-"`
@@ -46,7 +49,7 @@ type ImmichConfig struct {
 // APIKey is write-only: empty means "keep the stored key unchanged" on
 // update; on create it must be non-empty.
 type ImmichConfigInput struct {
-	BaseURL     string `json:"base_url" validate:"required,min=1,max=2000,safeurl"`
+	BaseURL     string `json:"base_url" validate:"required,min=1,max=2000,httpurl"`
 	APIKey      string `json:"api_key" validate:"max=512"`
 	SyncEnabled *bool  `json:"sync_enabled,omitempty"`
 }
