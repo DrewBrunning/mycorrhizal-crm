@@ -1,4 +1,4 @@
-import { test as base, Page, APIRequestContext, expect } from '@playwright/test';
+import { test as base, Page, Locator, APIRequestContext, expect } from '@playwright/test';
 import { TEST_USER, API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 import { toContactRecordInput } from '../src/api/contacts';
 
@@ -37,9 +37,7 @@ export async function logoutUser(page: Page): Promise<void> {
 
 /**
  * Waits for a page's scrollHeight to hold steady across a few consecutive
- * checks, spaced 50ms apart. A generic "layout has stopped changing" signal,
- * used below for two different reasons content can still be moving even
- * after the obvious loading indicators are gone.
+ * checks, spaced 50ms apart. A generic "layout has stopped changing" signal.
  */
 async function waitForHeightStable(page: Page, timeoutMs = 5000): Promise<void> {
   let lastHeight = -1;
@@ -58,17 +56,17 @@ async function waitForHeightStable(page: Page, timeoutMs = 5000): Promise<void> 
 }
 
 /**
- * Waits for the page to finish its initial load-and-settle: loading
- * indicators gone, height stable, AND every IntersectionObserver-deferred
- * section already triggered. Three layers, because two weren't enough --
- * all three are real bugs pinned down on the T36 branch by tracing actual
- * click coordinates against actual button positions in failing runs:
+ * Waits for the page to finish its initial load: loading indicators gone,
+ * then height holding steady. Two layers, because watching indicators alone
+ * silently no-ops on several pages -- a real bug pinned down on the T36
+ * branch by tracing actual click coordinates against actual button
+ * positions in a failing CI run:
  *
  * 1. Indicators: both CircularProgress (`role="progressbar"`) and Skeleton
- *    (`.MuiSkeleton-root`, no ARIA role at all). Several pages
- *    (ContactDetailPage, ContactsPage, NotesPage, ActivitiesPage,
- *    DashboardPage) gate their real content behind a Skeleton, not a
- *    progressbar, so watching only `[role="progressbar"]` silently no-ops on
+ *    (`.MuiSkeleton-root`, no ARIA role at all). ContactDetailPage,
+ *    ContactsPage, NotesPage, ActivitiesPage and DashboardPage all gate
+ *    their real content behind a Skeleton, not a progressbar, so watching
+ *    only `[role="progressbar"]` (the old implementation) silently no-ops on
  *    them: `waitForSelector(..., {state: 'hidden'})` resolves instantly when
  *    the selector never matches anything, which is exactly what happens when
  *    the only progressbar on the page is App.tsx's per-route
@@ -83,29 +81,15 @@ async function waitForHeightStable(page: Page, timeoutMs = 5000): Promise<void> 
  *    window; the only real signal is that the page is about to grow once the
  *    fetch lands.
  *
- * 3. Force-trigger deferred sections by scrolling through the whole page:
- *    ConnectionsPanel's IntersectionObserver only fires once the panel is
- *    within `rootMargin: '300px'` of the viewport -- which it may not be
- *    right after navigation, so layers 1+2 can both pass clean while the
- *    panel hasn't started loading yet. The very next scroll (Playwright's own
- *    auto-scroll before a click, e.g. scrolling to the Timeline section's
- *    Add Note button, which sits right below ConnectionsPanel) brings it
- *    into range and fires it right then -- so a click's own scroll-into-view
- *    can trigger a fresh async layout shift *during* the click gesture
- *    itself. Confirmed directly: instrumented mousedown vs. mouseup targets
- *    on a failing click showed mousedown correctly hitting the button and
- *    mouseup 15-20ms later landing on a `MuiCardContent-root` div instead --
- *    the button had physically moved out from under the cursor between the
- *    two. Scrolling to the bottom and back once, before any test touches the
- *    page, brings every such section into range and lets its fetch land
- *    while nothing is mid-click.
- *
- * Without all three, a click's target coordinates could be computed against
- * a layout that was still changing -- anywhere from the ~1140px Skeleton
- * state up through a ~30px late shift from a section that only started
- * loading because the click's own scroll brought it into view -- so the
- * click landed wherever content ended up after the page moved out from under
- * it before the click actually fired.
+ * This much closes the *initial-load* race, but does not by itself make
+ * every click safe: a section like ConnectionsPanel can still be triggered
+ * fresh by a *later* scroll (e.g. a click's own scroll-into-view bringing it
+ * within its `rootMargin`), shifting the page again well after this
+ * function has already returned. That is a per-click race, not a page-load
+ * one, and closing it here (e.g. by scrolling through the whole page first)
+ * was tried and measured to still fail -- see `stableClick` below, which is
+ * the layer that actually closes it, by re-checking immediately before each
+ * click instead of trying to predict every async side effect in advance.
  */
 export async function waitForLoading(page: Page): Promise<void> {
   await page
@@ -122,15 +106,45 @@ export async function waitForLoading(page: Page): Promise<void> {
     .catch(() => {});
 
   await waitForHeightStable(page);
+}
 
-  // Force-trigger any IntersectionObserver-deferred section, then wait for
-  // the resulting fetches to land, before any test's own click gets to
-  // scroll there itself and race one.
-  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight)).catch(() => {});
-  await page.waitForTimeout(100);
-  await page.evaluate(() => window.scrollTo(0, 0)).catch(() => {});
-
-  await waitForHeightStable(page);
+/**
+ * Clicks a locator only once its on-screen position has held steady --
+ * closes a click-time race `waitForLoading` structurally can't (see its own
+ * doc comment): a section can still shift the page *during* a click's own
+ * scroll-into-view, well after page load already settled, moving the target
+ * out from under the cursor between mousedown and mouseup. Confirmed
+ * directly on ContactDetailPage's Add Note button: instrumenting mousedown
+ * vs. mouseup targets on a failing click showed mousedown correctly hitting
+ * the button and mouseup 15-20ms later landing on a `MuiCardContent-root`
+ * div instead -- the button had physically moved in that window. Waiting
+ * for the *specific target's* position to stop changing immediately before
+ * clicking closes this regardless of what's causing the shift, which
+ * proved more reliable in practice than trying to preemptively trigger
+ * every possible async side effect during `waitForLoading`.
+ *
+ * Prefer this over a plain `.click()` for any button that opens a dialog on
+ * a page with dynamically-loaded sections above it (ContactDetailPage's
+ * Add Note / Add Activity / Add Life Event and its life-event edit
+ * affordance are the ones this was pinned down against).
+ */
+export async function stableClick(locator: Locator): Promise<void> {
+  const page = locator.page();
+  let lastPosition: { x: number; y: number } | null = null;
+  let stableChecks = 0;
+  const deadline = Date.now() + 5000;
+  while (Date.now() < deadline && stableChecks < 3) {
+    await locator.scrollIntoViewIfNeeded().catch(() => {});
+    const box = await locator.boundingBox().catch(() => null);
+    if (box && lastPosition && box.x === lastPosition.x && box.y === lastPosition.y) {
+      stableChecks++;
+    } else {
+      stableChecks = 0;
+    }
+    lastPosition = box ? { x: box.x, y: box.y } : null;
+    await page.waitForTimeout(50);
+  }
+  await locator.click();
 }
 
 /**

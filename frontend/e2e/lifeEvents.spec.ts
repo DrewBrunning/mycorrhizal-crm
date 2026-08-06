@@ -1,6 +1,25 @@
-import { test, expect } from '@playwright/test';
-import { createTestContact, deleteTestContact, waitForLoading } from './fixtures';
+import { test, expect, Page } from '@playwright/test';
+import { createTestContact, deleteTestContact, waitForLoading, stableClick } from './fixtures';
 import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
+
+/**
+ * Finds a specific event's card within the Life Events panel specifically --
+ * not just `page.locator('text=...')`, which is ambiguous here.
+ * ContactTimeline renders the same life event a second time in its own
+ * combined feed (a separate PanelCard titled "Timeline", above this one),
+ * so `text=Married` alone matches multiple elements and `.first()` isn't
+ * guaranteed to land on the Life Events entry -- confirmed directly: for a
+ * "married" event it consistently picked the ContactTimeline occurrence
+ * instead, which renders no Edit button at all for life-event items
+ * (ContactTimeline only gives note/activity items one), so the derived card
+ * had zero matches and every downstream wait/click hung until the test's
+ * own timeout. Scoping to the "Life Events" PanelCard's CardContent first
+ * makes this unambiguous regardless of what ContactTimeline also renders.
+ */
+function lifeEventCard(page: Page, typeText: string) {
+  const panel = page.getByRole('heading', { name: 'Life Events', exact: true }).locator('..').locator('..');
+  return panel.locator('.MuiPaper-root').filter({ hasText: typeText });
+}
 
 /**
  * Life events (T5 / WP-84) — a pre-alpha ticket with no e2e coverage.
@@ -148,7 +167,7 @@ test.describe('Life events', () => {
       await page.goto(`/contacts/${subject.ID}`);
       await waitForLoading(page);
 
-      await page.getByRole('button', { name: /add life event/i }).click();
+      await stableClick(page.getByRole('button', { name: /add life event/i }));
       const dialog = page.getByRole('dialog');
       await expect(dialog).toBeVisible({ timeout: 10000 });
 
@@ -195,7 +214,7 @@ test.describe('Life events', () => {
         await page.goto(`/contacts/${contact.ID}`);
         await waitForLoading(page);
 
-        await page.getByRole('button', { name: /add life event/i }).click();
+        await stableClick(page.getByRole('button', { name: /add life event/i }));
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible({ timeout: 10000 });
 
@@ -225,7 +244,7 @@ test.describe('Life events', () => {
         await page.goto(`/contacts/${contact.ID}`);
         await waitForLoading(page);
 
-        await page.getByRole('button', { name: /add life event/i }).click();
+        await stableClick(page.getByRole('button', { name: /add life event/i }));
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible({ timeout: 10000 });
 
@@ -262,16 +281,13 @@ test.describe('Life events', () => {
         await waitForLoading(page);
         await expect(page.getByText('Married').first()).toBeVisible();
 
-        // LifeEventList nests the type label one Box deeper than
-        // RelationshipEdgeList does (an extra icon+type+chips row Box), so
-        // this needs three '..' to reach the Paper's outer flex Box -- the
-        // actual common ancestor of the text and the hover-revealed
-        // life-event-actions Box -- not two. Two lands on a sibling of the
-        // actions Box, so getByLabel('Edit') below would never match
-        // anything and the click would time out deterministically.
-        const card = page.locator('text=Married').first().locator('..').locator('..').locator('..');
+        // See lifeEventCard's own doc comment -- 'text=Married' alone is
+        // ambiguous (ContactTimeline renders the same event a second time,
+        // with no Edit button on that copy) and consistently picked the
+        // wrong occurrence for this exact event type.
+        const card = lifeEventCard(page, 'Married');
         await card.hover();
-        await card.getByLabel('Edit').click();
+        await stableClick(card.getByLabel('Edit'));
 
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible({ timeout: 10000 });
@@ -314,11 +330,11 @@ test.describe('Life events', () => {
         await waitForLoading(page);
         await expect(page.getByText('started a podcast').first()).toBeVisible();
 
-        // See the identical note in the "editing re-files an event" test
-        // above -- three '..' is required for LifeEventList's DOM depth.
-        const card = page.locator('text=started a podcast').first().locator('..').locator('..').locator('..');
+        // See lifeEventCard's own doc comment for why this must be scoped
+        // to the Life Events panel rather than a bare text= locator.
+        const card = lifeEventCard(page, 'started a podcast');
         await card.hover();
-        await card.getByLabel('Edit').click();
+        await stableClick(card.getByLabel('Edit'));
 
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible({ timeout: 10000 });
