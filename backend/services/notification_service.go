@@ -214,7 +214,7 @@ func (ntfyNotificationSender) Send(db *gorm.DB, cfg config.Config, user models.U
 
 	var sendErr error
 	for _, r := range reminders {
-		body := notificationShortBody(lang, r, contactMap)
+		body := notificationShortBody(r, contactMap)
 		if err := sendNtfyMessage(cfg, nc, title, body); err != nil {
 			recordNotificationDelivery(db, r.ID, models.ChannelNtfy, false, err.Error())
 			if sendErr == nil {
@@ -280,7 +280,7 @@ func (gotifyNotificationSender) Send(db *gorm.DB, cfg config.Config, user models
 
 	var sendErr error
 	for _, r := range reminders {
-		body := notificationShortBody(lang, r, contactMap)
+		body := notificationShortBody(r, contactMap)
 		if err := sendGotifyMessage(cfg, nc, title, body); err != nil {
 			recordNotificationDelivery(db, r.ID, models.ChannelGotify, false, err.Error())
 			if sendErr == nil {
@@ -423,7 +423,7 @@ func (pushNotificationSender) Send(db *gorm.DB, cfg config.Config, user models.U
 	var sendErr error
 	for _, sub := range subs {
 		for _, r := range reminders {
-			body := notificationShortBody(lang, r, contactMap)
+			body := notificationShortBody(r, contactMap)
 			stale, err := sendPushMessage(db, cfg, user, sub, vapidPublic, vapidPrivate, title, body)
 			if err != nil {
 				recordNotificationDelivery(db, r.ID, models.ChannelPush, false, err.Error())
@@ -521,8 +521,10 @@ func loadReminderContactNames(db *gorm.DB, userID uint, reminders []models.Remin
 
 // notificationShortBody builds the short-form body for the push-style
 // channels: "<Contact>: <Message>" when a contact name resolves, otherwise the
-// raw message. Push notifications need these short strings, not the email body.
-func notificationShortBody(lang string, reminder models.Reminder, contactMap map[uint]string) string {
+// raw message. The format is locale-agnostic (every locale uses the same
+// `Name: message` pattern for push notifications); if a future locale needs a
+// different template, add an i18n key with a {{contact}} placeholder.
+func notificationShortBody(reminder models.Reminder, contactMap map[uint]string) string {
 	if reminder.ContactID != nil {
 		if name, ok := contactMap[*reminder.ContactID]; ok && name != "" {
 			return name + ": " + reminder.Message

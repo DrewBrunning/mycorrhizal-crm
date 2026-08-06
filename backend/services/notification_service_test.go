@@ -44,18 +44,15 @@ type fakeChannelServer struct {
 	mu       sync.Mutex
 	hits     []string
 	statuses map[string]int
-	headers  map[string][]string
 }
 
 func newFakeChannelServer(t *testing.T, statuses map[string]int) *fakeChannelServer {
 	t.Helper()
-	f := &fakeChannelServer{statuses: statuses, headers: map[string][]string{}}
+	f := &fakeChannelServer{statuses: statuses}
 	f.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, _ := io.ReadAll(r.Body)
+		io.ReadAll(r.Body) //nolint:errcheck
 		f.mu.Lock()
 		f.hits = append(f.hits, r.URL.Path)
-		f.headers[r.URL.Path] = append(f.headers[r.URL.Path], r.Header.Get("X-Gotify-Key"))
-		_ = body
 		status := http.StatusOK
 		for prefix, s := range statuses {
 			if strings.HasPrefix(r.URL.Path, prefix) {
@@ -76,15 +73,6 @@ func (f *fakeChannelServer) count() int {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return len(f.hits)
-}
-
-func (f *fakeChannelServer) gotifyKeyFor(path string) string {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	if hs := f.headers[path]; len(hs) > 0 {
-		return hs[0]
-	}
-	return ""
 }
 
 // newNotificationUser creates a user with the given channel toggles enabled
@@ -523,9 +511,9 @@ func TestNotificationShortBody(t *testing.T) {
 	withContact := map[uint]string{7: "Jane Doe"}
 	noContact := map[uint]string{}
 
-	assert.Equal(t, "Jane Doe: Call me", notificationShortBody("en", models.Reminder{ContactID: &contactID, Message: "Call me"}, withContact))
-	assert.Equal(t, "Call me", notificationShortBody("en", models.Reminder{ContactID: &contactID, Message: "Call me"}, noContact))
-	assert.Equal(t, "Just the message", notificationShortBody("en", models.Reminder{Message: "Just the message"}, withContact))
+	assert.Equal(t, "Jane Doe: Call me", notificationShortBody(models.Reminder{ContactID: &contactID, Message: "Call me"}, withContact))
+	assert.Equal(t, "Call me", notificationShortBody(models.Reminder{ContactID: &contactID, Message: "Call me"}, noContact))
+	assert.Equal(t, "Just the message", notificationShortBody(models.Reminder{Message: "Just the message"}, withContact))
 }
 
 // TestRecordNotificationDeliveryFailureCarriesError pins the failed-delivery
