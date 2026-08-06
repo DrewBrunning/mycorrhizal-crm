@@ -48,9 +48,16 @@ export async function subscribeBrowserPush(vapidPublicKey: string): Promise<Push
 
   let registration = await navigator.serviceWorker.getRegistration();
   if (!registration) {
-    // The app's own service worker (precache + push handler) should already be
-    // registered in production; fall back to registering it in case the page
-    // loaded before the registration ran.
+    // index.tsx registers the app's service worker (precache + push handler) on
+    // window load, so in production one normally exists by now. This covers the
+    // race where the user reaches Settings before that ran -- and it is the
+    // only path that registers at all in a dev build, where register() is a
+    // no-op.
+    //
+    // Note this is a fallback, not the mechanism: until 2026-08-06 index.tsx
+    // called unregister(), and relying on this line alone meant the
+    // registration -- and the subscription created below, which the
+    // registration owns -- was destroyed on the next page load.
     const swUrl = `${process.env.PUBLIC_URL || ''}/service-worker.js`;
     registration = await navigator.serviceWorker.register(swUrl);
   }

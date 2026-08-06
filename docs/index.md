@@ -14,7 +14,7 @@ The name comes from mycorrhiza, the symbiotic network fungi form with plant root
 - **Contact Management** - Organize contacts with custom fields, photos, and circle-based grouping
 - **Relationship Tracking** - Map connections between contacts
 - **Activities & Notes** - Log meetings, calls, and personal notes
-- **Reminders** - Set recurring reminders with optional email notifications
+- **Reminders** - Set recurring reminders, delivered by email, ntfy, Gotify or browser push
 - **Privacy-Focused** - Self-hosted, your data stays with you
 
 ## Quick Links

@@ -1,6 +1,6 @@
 ---
 title: User Settings
-nav_order: 5
+nav_order: 6
 has_children: false
 ---
 
@@ -8,7 +8,9 @@ has_children: false
 
 ## Language
 
-Currently you can choose between **English** and **Deutsch** (German) for the application interface. The language change takes effect immediately. Your language preference is also used in the backend for email notifications (e.g., reminder emails). Backend messages (especially errors) always stay in English.
+The interface is available in **English**, **Deutsch** (German), **Italiano** (Italian), **Español** (Spanish) and **Français** (French). The language change takes effect immediately.
+
+Your language preference is also used by the backend for notifications — reminder emails, and the messages sent to ntfy, Gotify and browser push. Backend messages (especially errors) always stay in English.
 
 
 ## Date Format
@@ -24,4 +26,11 @@ Choose your preference between light mode and dark mode. This setting is stored 
 ## Custom Field Names
 
 Define custom fields that appear on all your contacts for tracking information that doesn't fit into the standard contact fields. You can change the order of the custom fields, though they will always be displayed after the standard fields.
+
+
+## Notifications
+
+Choose how reminders reach you — email, [ntfy](https://ntfy.sh), [Gotify](https://gotify.net), or browser push — and register the browsers that should receive push notifications. Each channel has a test button that reports the actual failure reason rather than failing quietly.
+
+See [Notifications](notifications.html) for what each channel needs, how they differ, and what to check when one stops arriving.
 

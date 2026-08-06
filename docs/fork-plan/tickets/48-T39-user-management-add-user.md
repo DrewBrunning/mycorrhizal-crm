@@ -48,3 +48,27 @@ an update.
 - Hand-verified: an admin creates a new user from User Management, the new user can log in with
   the set password.
 - All 5 locale files have real translations for any new strings.
+
+## Landing note — 2026-08-06
+
+Landed on `feature/T39-user-management-add-user` (squash-merged as
+[#42](https://github.com/DrewBrunning/mycorrhizal-crm/pull/42)).
+
+- **Backend**: `POST /admin/users` behind `middleware.AdminMiddleware`
+  (`routes/routes.go`), handled by `controllers.CreateUser` in
+  `admin_user_controller.go`. It mirrors `RegisterUser`'s hashing and validation but,
+  being admin-gated, accepts `IsAdmin` directly and is deliberately *not* subject to
+  `DISABLE_REGISTRATION` — an admin adding a user is not self-registration.
+- **Uniqueness** is surfaced, not swallowed: a `UNIQUE constraint failed` from
+  `users.username`/`email` becomes a `409 ErrAlreadyExists` with a
+  `field: "username or email"` detail. The ticket's soft-delete-collision trap turned
+  out to be moot in practice — T26 made `DeleteUser` hard-delete via `Unscoped()`, so
+  an account removed through this app leaves no row to collide with.
+- **Frontend**: an "Add user" action on `UsersPage.tsx` opening a dialog built from
+  the same fields as the existing edit dialog, so create and edit stay one pattern
+  rather than two.
+- **Coverage**: controller tests for success, duplicate username/email, and non-admin
+  rejection; `e2e/userManagement.spec.ts` pins the end-to-end claim the ticket asked
+  to hand-verify — an admin creates a user who then logs in with the set password —
+  plus the duplicate-username conflict keeping the dialog open.
+- All 5 locale files carry real translations for the new strings.

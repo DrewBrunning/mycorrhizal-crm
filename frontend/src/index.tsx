@@ -5,6 +5,8 @@ import './index.css';
 import App from './App';
 import ErrorBoundary from './components/ErrorBoundary';
 import * as serviceWorkerRegistration from './serviceWorkerRegistration';
+import { notifyUpdateAvailable } from './serviceWorkerUpdates';
+import ServiceWorkerUpdatePrompt from './components/ServiceWorkerUpdatePrompt';
 import reportWebVitals from './reportWebVitals';
 import './i18n/config';
 import { AppThemeProvider } from './AppThemeProvider';
@@ -32,6 +34,7 @@ root.render(
             showDetails={process.env.NODE_ENV === 'development'}
           >
             <App />
+            <ServiceWorkerUpdatePrompt />
           </ErrorBoundary>
         </SnackbarProvider>
       </DateFormatProvider>
@@ -39,10 +42,25 @@ root.render(
   </React.StrictMode>
 );
 
-// If you want your app to work offline and load faster, you can change
-// unregister() to register() below. Note this comes with some pitfalls.
-// Learn more about service workers: https://cra.link/PWA
-serviceWorkerRegistration.unregister();
+// The service worker is REGISTERED, not unregistered (CRA scaffolds the
+// opposite and it stayed that way until 2026-08-06).
+//
+// This is not primarily about offline support: Web Push (N9) delivers to a
+// service worker, and a PushSubscription is owned by the registration. While
+// this called unregister(), every page load tore down the registration and
+// took any push subscription with it -- so enabling browser notifications
+// appeared to work and then silently stopped, with the server's stored
+// subscription going stale and being pruned on the next 404/410.
+//
+// The cost of registering is that the app is now served cache-first, so a
+// deployed update is not picked up until the new worker takes over.
+// ServiceWorkerUpdatePrompt turns that into an explicit "reload to update"
+// notice rather than a user sitting on a stale bundle indefinitely.
+//
+// register() is a no-op outside production builds and on insecure origins
+// (browsers refuse to register a service worker over plain HTTP), which is why
+// browser push needs HTTPS or localhost.
+serviceWorkerRegistration.register({ onUpdate: notifyUpdateAvailable });
 
 // If you want to start measuring performance in your app, pass a function
 // to log results (for example: reportWebVitals(console.log))

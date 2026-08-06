@@ -2,7 +2,11 @@
   "app": {
     "title": "Mycorrhizal CRM",
     "logout": "Abmelden",
-    "accountMenu": "Konto"
+    "accountMenu": "Konto",
+    "update": {
+      "available": "Eine neue Version von Mycorrhizal CRM ist verfügbar.",
+      "reload": "Neu laden"
+    }
   },
   "nav": {
     "dashboard": "Dashboard",

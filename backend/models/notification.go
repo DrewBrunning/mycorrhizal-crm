@@ -71,10 +71,17 @@ type NotificationConfig struct {
 // row). GotifyToken is write-only: empty means "keep the stored token
 // unchanged". URLs are optional (a user may use only one push-style channel)
 // but, when present, must be valid http(s) URLs.
+//
+// The URLs use `httpurl` (T41's allowlist), not `safeurl` (the older
+// four-scheme blocklist): these are targets the *server* posts to, so "not one
+// of four known-dangerous schemes" is the wrong bar — only http/https can ever
+// be dispatched. This is the outer gate; `normalizeNotificationURL` in
+// services/notification_service.go still re-checks scheme and host, since it
+// also enforces the non-empty host that a tag cannot express.
 type NotificationConfigInput struct {
-	NtfyURL      string `json:"ntfy_url" validate:"max=2000,safeurl"`
+	NtfyURL      string `json:"ntfy_url" validate:"max=2000,httpurl"`
 	NtfyTopic    string `json:"ntfy_topic" validate:"max=200"`
-	GotifyURL    string `json:"gotify_url" validate:"max=2000,safeurl"`
+	GotifyURL    string `json:"gotify_url" validate:"max=2000,httpurl"`
 	GotifyToken  string `json:"gotify_token" validate:"max=512"`
 	NotifyNtfy   *bool  `json:"notify_ntfy,omitempty"`
 	NotifyGotify *bool  `json:"notify_gotify,omitempty"`
@@ -108,8 +115,11 @@ type PushSubscription struct {
 }
 
 // PushSubscriptionInput is the DTO for registering a browser Push subscription.
+// Endpoint is `httpurl` for the same reason as NotificationConfigInput's URLs —
+// it is a server-dispatched target, and every real push service hands out an
+// https URL.
 type PushSubscriptionInput struct {
-	Endpoint    string `json:"endpoint" validate:"required,max=2000,safeurl"`
+	Endpoint    string `json:"endpoint" validate:"required,max=2000,httpurl"`
 	P256dh      string `json:"p256dh" validate:"required,max=1024"`
 	Auth        string `json:"auth" validate:"required,max=1024"`
 	DeviceLabel string `json:"device_label" validate:"max=200"`

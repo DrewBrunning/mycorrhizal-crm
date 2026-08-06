@@ -43,6 +43,8 @@ The **Stay in Touch** button on a contact's detail page opens a prefilled remind
 
 If you enable **Send email notification** on a reminder, you will receive an email when the reminder is due. This requires a valid email address on your account and a configured email channel (Resend or SMTP) on the server.
 
+Reminders can also be delivered by ntfy, Gotify or browser push. Those channels are enabled once for your account rather than per reminder, so they notify you about every due reminder regardless of the **Send email notification** checkbox — see [Notifications](notifications.html).
+
 When a reminder is due, you can complete or skip it. The difference is that selecting **Complete** creates a completion entry on the related contact's timeline while the **Skip** option directly schedules the next reminder occurence (if there is one) without creating a timeline entry. Overdue reminders remain visible until they are completed or skipped though they will not show up in the reminder emails  again.
 
 

@@ -2,7 +2,11 @@
   "app": {
     "title": "Mycorrhizal CRM",
     "logout": "Déconnexion",
-    "accountMenu": "Compte"
+    "accountMenu": "Compte",
+    "update": {
+      "available": "Une nouvelle version de Mycorrhizal CRM est disponible.",
+      "reload": "Recharger"
+    }
   },
   "nav": {
     "dashboard": "Tableau de bord",
