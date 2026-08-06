@@ -1,4 +1,4 @@
-import { test as base, Page, APIRequestContext, expect } from '@playwright/test';
+import { test as base, Page, Locator, APIRequestContext, expect } from '@playwright/test';
 import { TEST_USER, API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 import { toContactRecordInput } from '../src/api/contacts';
 
@@ -36,12 +36,122 @@ export async function logoutUser(page: Page): Promise<void> {
 }
 
 /**
- * Waits for any MUI loading spinners to disappear.
+ * Waits for a page's scrollHeight to hold steady across a few consecutive
+ * checks, spaced 50ms apart. A generic "layout has stopped changing" signal.
+ */
+async function waitForHeightStable(page: Page, timeoutMs = 5000): Promise<void> {
+  let lastHeight = -1;
+  let stableChecks = 0;
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline && stableChecks < 3) {
+    const height = await page.evaluate(() => document.documentElement.scrollHeight).catch(() => -1);
+    if (height === lastHeight) {
+      stableChecks++;
+    } else {
+      stableChecks = 0;
+      lastHeight = height;
+    }
+    await page.waitForTimeout(50);
+  }
+}
+
+/**
+ * Waits for the page to finish its initial load: loading indicators gone,
+ * then height holding steady. Two layers, because watching indicators alone
+ * silently no-ops on several pages -- a real bug pinned down on the T36
+ * branch by tracing actual click coordinates against actual button
+ * positions in a failing CI run:
+ *
+ * 1. Indicators: both CircularProgress (`role="progressbar"`) and Skeleton
+ *    (`.MuiSkeleton-root`, no ARIA role at all). ContactDetailPage,
+ *    ContactsPage, NotesPage, ActivitiesPage and DashboardPage all gate
+ *    their real content behind a Skeleton, not a progressbar, so watching
+ *    only `[role="progressbar"]` (the old implementation) silently no-ops on
+ *    them: `waitForSelector(..., {state: 'hidden'})` resolves instantly when
+ *    the selector never matches anything, which is exactly what happens when
+ *    the only progressbar on the page is App.tsx's per-route
+ *    `<Suspense fallback={<CircularProgress/>}>` -- dead weight, since every
+ *    page is a plain eager `import`, never `React.lazy()`, so Suspense never
+ *    actually suspends on it.
+ *
+ * 2. Height stability: closes a gap layer 1 structurally cannot -- a section
+ *    can defer its own fetch (e.g. ContactDetailPage's ConnectionsPanel,
+ *    gated behind an IntersectionObserver) and render nothing at all, `null`,
+ *    until that fetch starts. There is no indicator to watch for during that
+ *    window; the only real signal is that the page is about to grow once the
+ *    fetch lands.
+ *
+ * This much closes the *initial-load* race, but does not by itself make
+ * every click safe: a section like ConnectionsPanel can still be triggered
+ * fresh by a *later* scroll (e.g. a click's own scroll-into-view bringing it
+ * within its `rootMargin`), shifting the page again well after this
+ * function has already returned. That is a per-click race, not a page-load
+ * one, and closing it here (e.g. by scrolling through the whole page first)
+ * was tried and measured to still fail -- see `stableClick` below, which is
+ * the layer that actually closes it, by re-checking immediately before each
+ * click instead of trying to predict every async side effect in advance.
  */
 export async function waitForLoading(page: Page): Promise<void> {
   await page
-    .waitForSelector('[role="progressbar"]', { state: 'hidden', timeout: 10000 })
+    .waitForFunction(
+      () => {
+        const isVisible = (el: Element) => {
+          const rect = el.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        };
+        return ![...document.querySelectorAll('[role="progressbar"], .MuiSkeleton-root')].some(isVisible);
+      },
+      { timeout: 10000 }
+    )
     .catch(() => {});
+
+  await waitForHeightStable(page);
+}
+
+/**
+ * Clicks a locator only once its on-screen position has held steady --
+ * closes a click-time race `waitForLoading` structurally can't (see its own
+ * doc comment): a section can still shift the page *during* a click's own
+ * scroll-into-view, well after page load already settled, moving the target
+ * out from under the cursor between mousedown and mouseup. Confirmed
+ * directly on ContactDetailPage's Add Note button: instrumenting mousedown
+ * vs. mouseup targets on a failing click showed mousedown correctly hitting
+ * the button and mouseup 15-20ms later landing on a `MuiCardContent-root`
+ * div instead -- the button had physically moved in that window. Waiting
+ * for the *specific target's* position to stop changing immediately before
+ * clicking closes this regardless of what's causing the shift, which
+ * proved more reliable in practice than trying to preemptively trigger
+ * every possible async side effect during `waitForLoading`.
+ *
+ * Prefer this over a plain `.click()` for any button that opens a dialog on
+ * a page with dynamically-loaded sections above it (ContactDetailPage's
+ * Add Note / Add Activity / Add Life Event and its life-event edit
+ * affordance are the ones this was pinned down against).
+ */
+export async function stableClick(locator: Locator): Promise<void> {
+  const page = locator.page();
+  let lastPosition: { x: number; y: number } | null = null;
+  let stableChecks = 0;
+  const deadline = Date.now() + 5000;
+  while (Date.now() < deadline && stableChecks < 3) {
+    // Explicit per-call timeouts, not just the loop's own deadline: without
+    // one, scrollIntoViewIfNeeded/boundingBox on a locator that never
+    // resolves (e.g. an option in a dropdown that isn't actually open --
+    // its own real bug, not something this loop can wait out) hangs inside
+    // that single await, past this loop's 5s budget, until the *test's*
+    // outer timeout eventually force-closes the page -- which reports a
+    // useless "Target page ... has been closed" instead of the real error.
+    await locator.scrollIntoViewIfNeeded({ timeout: 2000 }).catch(() => {});
+    const box = await locator.boundingBox({ timeout: 2000 }).catch(() => null);
+    if (box && lastPosition && box.x === lastPosition.x && box.y === lastPosition.y) {
+      stableChecks++;
+    } else {
+      stableChecks = 0;
+    }
+    lastPosition = box ? { x: box.x, y: box.y } : null;
+    await page.waitForTimeout(50);
+  }
+  await locator.click();
 }
 
 /**
