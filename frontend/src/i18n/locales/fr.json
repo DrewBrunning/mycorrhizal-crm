@@ -1346,6 +1346,7 @@
     "title": "Cadeaux",
     "placeholder": "Noter une idée de cadeau…",
     "add": "Ajouter",
+    "addFull": "Ajouter avec détails",
     "markGiven": "Marquer comme offert",
     "ideasSection": "Idées",
     "givenSection": "Offerts",
@@ -1366,6 +1367,10 @@
     "createTitle": "Ajouter un cadeau",
     "editTitle": "Modifier le cadeau",
     "description": "Ce qu'est le cadeau",
+    "url": "Lien (facultatif)",
+    "urlHint": "Une page produit, ou tout autre élément à conserver avec l'idée.",
+    "notes": "Notes (facultatif)",
+    "notesHint": "Taille, où vous l'avez vu, ce qu'il faut vérifier avant d'acheter.",
     "occasion": "Occasion (facultatif)",
     "occasionHint": "anniversaire, fête, pendaison de crémaillère, …",
     "date": "Date",
@@ -1380,6 +1385,7 @@
     "validation": {
       "descriptionRequired": "Décrivez le cadeau ou l'idée.",
       "invalidAmount": "Saisissez un montant valide.",
+      "invalidUrl": "Ce lien utilise un schéma non sécurisé. Utilisez http:// ou https://.",
       "currencyRequired": "Une devise est requise lorsqu'un montant est défini.",
       "addFailed": "Échec de l'ajout du cadeau.",
       "saveFailed": "Échec de l'enregistrement du cadeau."

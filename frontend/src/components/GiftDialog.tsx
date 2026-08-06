@@ -15,12 +15,16 @@ import { Gift, GIFT_STATUSES, GiftStatus } from '../api/gifts';
 import { LifeEvent, partialDateDisplay } from '../api/lifeEvents';
 import { Activity } from '../api/activities';
 import { useDateFormat } from '../DateFormatProvider';
+import { isSafeUrlString } from '../utils/linkResolution';
 
 // GiftFormData is what the dialog submits; the page adds entity_id and hands it
 // to the hook as a GiftInput.
 export interface GiftFormData {
   status: GiftStatus;
   description: string;
+  // Optional product link and free-text context (T35).
+  url?: string;
+  notes?: string;
   occasion?: string;
   // ISO datetime (or null to clear); the dialog converts the date-only picker.
   date?: string | null;
@@ -68,6 +72,8 @@ export default function GiftDialog({
   const { formatDate } = useDateFormat();
   const [status, setStatus] = useState<GiftStatus | ''>('');
   const [description, setDescription] = useState('');
+  const [url, setUrl] = useState('');
+  const [notes, setNotes] = useState('');
   const [occasion, setOccasion] = useState('');
   const [date, setDate] = useState('');
   const [amount, setAmount] = useState('');
@@ -81,6 +87,8 @@ export default function GiftDialog({
     if (open) {
       setStatus(gift?.status || 'idea');
       setDescription(gift?.description || '');
+      setUrl(gift?.url || '');
+      setNotes(gift?.notes || '');
       setOccasion(gift?.occasion || '');
       setDate(gift?.date ? toDateInputValue(gift.date) : '');
       setAmount(gift?.value_cents ? String(gift.value_cents / 100) : '');
@@ -95,6 +103,14 @@ export default function GiftDialog({
     const trimmed = description.trim();
     if (!trimmed) {
       setError(t('gifts.validation.descriptionRequired'));
+      return;
+    }
+
+    // Mirror the backend's `safeurl` validator client-side so an unsafe
+    // scheme is a readable message here rather than a 400 from the API.
+    const trimmedUrl = url.trim();
+    if (trimmedUrl !== '' && !isSafeUrlString(trimmedUrl)) {
+      setError(t('gifts.validation.invalidUrl'));
       return;
     }
 
@@ -118,6 +134,8 @@ export default function GiftDialog({
     const data: GiftFormData = {
       status: (status || 'idea') as GiftStatus,
       description: trimmed,
+      url: trimmedUrl || undefined,
+      notes: notes.trim() || undefined,
       occasion: occasion.trim() || undefined,
       date: date ? new Date(`${date}T00:00:00`).toISOString() : null,
       value_cents: valueCents,
@@ -170,6 +188,29 @@ export default function GiftDialog({
             multiline
             minRows={2}
             required
+          />
+
+          <TextField
+            label={t('gifts.url')}
+            type="url"
+            value={url}
+            onChange={(e) => {
+              setUrl(e.target.value);
+              setError('');
+            }}
+            fullWidth
+            placeholder="https://"
+            helperText={t('gifts.urlHint')}
+          />
+
+          <TextField
+            label={t('gifts.notes')}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            fullWidth
+            multiline
+            minRows={2}
+            helperText={t('gifts.notesHint')}
           />
 
           <TextField

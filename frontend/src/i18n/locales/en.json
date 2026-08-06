@@ -1346,6 +1346,7 @@
     "title": "Gifts",
     "placeholder": "Record a gift idea…",
     "add": "Add",
+    "addFull": "Add with details",
     "markGiven": "Mark as given",
     "ideasSection": "Ideas",
     "givenSection": "Given",
@@ -1366,6 +1367,10 @@
     "createTitle": "Add a gift",
     "editTitle": "Edit gift",
     "description": "What the gift is",
+    "url": "Link (optional)",
+    "urlHint": "A product page, or anything else worth keeping alongside the idea.",
+    "notes": "Notes (optional)",
+    "notesHint": "Sizing, where you saw it, anything to check before buying.",
     "occasion": "Occasion (optional)",
     "occasionHint": "birthday, holiday, housewarming, …",
     "date": "Date",
@@ -1380,6 +1385,7 @@
     "validation": {
       "descriptionRequired": "Describe the gift or idea.",
       "invalidAmount": "Enter a valid amount.",
+      "invalidUrl": "That link uses an unsafe scheme. Use http:// or https://.",
       "currencyRequired": "A currency is required when an amount is set.",
       "addFailed": "Failed to add gift.",
       "saveFailed": "Failed to save gift."

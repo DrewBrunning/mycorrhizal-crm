@@ -20,6 +20,12 @@ export interface Gift {
   status: GiftStatus;
   occasion?: string;
   description: string;
+  // Optional link to the thing itself — a product page for a captured idea
+  // (T35). Safe-scheme-validated server-side; still re-checked client-side
+  // before it is used as an href (utils/linkResolution.ts).
+  url?: string;
+  // Optional free-text context beyond what the gift is (T35).
+  notes?: string;
   // When the gift was given/received; undefined for a date-less idea.
   date?: string;
   // Optional value in the currency's minor unit, always paired with currency.
@@ -38,6 +44,8 @@ export interface GiftInput {
   status?: GiftStatus;
   occasion?: string;
   description: string;
+  url?: string;
+  notes?: string;
   date?: string | null;
   value_cents?: number;
   currency?: string;

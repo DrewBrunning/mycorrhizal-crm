@@ -1346,6 +1346,7 @@
     "title": "Regalos",
     "placeholder": "Anota una idea de regalo…",
     "add": "Añadir",
+    "addFull": "Añadir con detalles",
     "markGiven": "Marcar como regalado",
     "ideasSection": "Ideas",
     "givenSection": "Regalados",
@@ -1366,6 +1367,10 @@
     "createTitle": "Añadir regalo",
     "editTitle": "Editar regalo",
     "description": "Qué es el regalo",
+    "url": "Enlace (opcional)",
+    "urlHint": "Una página de producto o cualquier otra cosa que merezca guardarse junto a la idea.",
+    "notes": "Notas (opcional)",
+    "notesHint": "Talla, dónde lo viste, cualquier cosa que comprobar antes de comprarlo.",
     "occasion": "Ocasión (opcional)",
     "occasionHint": "cumpleaños, festividad, estreno de casa, …",
     "date": "Fecha",
@@ -1380,6 +1385,7 @@
     "validation": {
       "descriptionRequired": "Describe el regalo o la idea.",
       "invalidAmount": "Introduce un importe válido.",
+      "invalidUrl": "Ese enlace usa un esquema no seguro. Usa http:// o https://.",
       "currencyRequired": "Se requiere una moneda cuando se establece un importe.",
       "addFailed": "No se pudo añadir el regalo.",
       "saveFailed": "No se pudo guardar el regalo."

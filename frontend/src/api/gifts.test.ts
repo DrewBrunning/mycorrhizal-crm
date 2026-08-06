@@ -53,6 +53,38 @@ describe('createGift', () => {
     expect(init.method).toBe('POST');
     expect(result.id).toBe('g1');
   });
+
+  test('carries the T35 url and notes fields through the request body', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        message: 'Gift created successfully',
+        gift: {
+          id: 'g2',
+          entity_id: 'alice-uid',
+          description: 'The ceramic mug',
+          status: 'idea',
+          url: 'https://shop.example.com/mug',
+          notes: 'Size medium',
+        },
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await createGift({
+      entity_id: 'alice-uid',
+      description: 'The ceramic mug',
+      url: 'https://shop.example.com/mug',
+      notes: 'Size medium',
+    });
+
+    const [, init] = fetchMock.mock.calls[0];
+    const body = JSON.parse(init.body);
+    expect(body.url).toBe('https://shop.example.com/mug');
+    expect(body.notes).toBe('Size medium');
+    expect(result.url).toBe('https://shop.example.com/mug');
+    expect(result.notes).toBe('Size medium');
+  });
 });
 
 describe('updateGift', () => {
