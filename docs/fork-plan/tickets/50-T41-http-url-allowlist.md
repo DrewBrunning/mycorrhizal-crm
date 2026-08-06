@@ -116,3 +116,73 @@ A **second** validator alongside `safeurl`, not a change to `safeurl` itself (se
 - All 5 locale files have real translations for any new validation message.
 - The decision about pre-existing non-http values is recorded in this ticket's landing note, with
   the count it was made against.
+
+## Landing note (2026-08-06)
+
+Implemented on `feature/t41-http-url-allowlist`.
+
+- **Backend:** new `httpurl` validator registered in
+  `backend/middleware/validation.go` next to `safeurl`, sharing the normalize
+  step that was factored out of `validateSafeURL` (`normalizeSchemeURL`) so the
+  two cannot drift. Accepts only `http`/`https` after normalization; rejects
+  the known-dangerous schemes, the unknown ones (`blob:`, `intent:`,
+  `ms-msdt:`, …), and scheme-less values. New message: "… must be an http://
+  or https:// URL".
+- **Fields moved** (`safeurl` → `httpurl`): `Gift.URL` + `GiftInput.URL`,
+  `ConversationAgenda.ReferenceURL` + `ConversationAgendaInput.ReferenceURL`,
+  `ExternalIdentity.URL` (model + input DTO), `ImmichConfig.BaseURL` (model +
+  input DTO). `safeurl` is untouched for `Card.Links`/IMPP,
+  `LinkFieldType.Protocol`, and url-typed custom fields. The Immich field was
+  already http(s)-enforced by `NormalizeImmichBaseURL` at the service layer —
+  the new tag just makes the binding-layer error message match.
+- **Frontend:** `isHttpUrlString` in `utils/linkResolution.ts`, sharing a new
+  `normalizeSchemeCheck` with `isSafeUrlString`. `GiftDialog` switched to it;
+  `ConversationAgendaDialog` gained the same scheme-less→https default as
+  `GiftDialog` plus the pre-check; `ImmichSettings` gained a pre-check with no
+  scheme-less default (the backend service deliberately rejects a missing
+  scheme). Render guards added to `GiftList`, `ConversationAgendaList`, and
+  both `ExternalLinkPanel` link sites (unsafe stored value → text, not href).
+  `ContactInformation` keeps `isSafeUrlString` for the legitimately non-http
+  Card.Links/IMPP rows — the codebase now has both render guards, and each
+  site uses the right one.
+- **Tests:** Go table for `httpurl` (mirrors the frontend table exactly),
+  real-DB controller test covering all four fields' 400-on-a-previously-
+  accepted-scheme (`backend/controllers/httpurl_real_db_test.go`), vitest
+  unit/component tests for the render guards and dialog pre-checks, and a new
+  Playwright spec `frontend/e2e/httpUrlAllowlist.spec.ts`. Full suites green:
+  `go build/vet/gofmt/test ./...`, `npx tsc --noEmit`, `npx vitest run`
+  (533), `npx playwright test` (94).
+- **i18n:** `conversationAgenda.validation.invalidUrl` and
+  `immich.settings.invalidBaseUrl` added and translated in all 5 locales.
+
+**Decision on pre-existing non-http values** (the ticket body's trap): the
+decision is to **accept** the write-path break. A stored value that predates
+the validator keeps rendering and syncing fine; it only fails on its next
+edit, with the clear "must be an http:// or https:// URL" message. No silent
+rewrite of stored data. The count of at-risk rows in the production DB could
+not be obtained from this environment (no access to the deployed database);
+to get the count against your own data, run:
+
+```sql
+-- Rows whose value, after stripping chars ≤ U+0020 and lowercasing (the
+-- validators' own normalize step), does not start with http:// or https://.
+SELECT 'gifts.url' AS field, COUNT(*) AS at_risk FROM gifts
+  WHERE url IS NOT NULL AND replace(url, char(9), '') != ''
+    AND lower(replace(url, char(9), '')) NOT LIKE 'http://%'
+    AND lower(replace(url, char(9), '')) NOT LIKE 'https://%'
+UNION ALL
+SELECT 'agenda.reference_url', COUNT(*) FROM conversation_agenda
+  WHERE reference_url IS NOT NULL AND replace(reference_url, char(9), '') != ''
+    AND lower(replace(reference_url, char(9), '')) NOT LIKE 'http://%'
+    AND lower(replace(reference_url, char(9), '')) NOT LIKE 'https://%'
+UNION ALL
+SELECT 'external_identities.url', COUNT(*) FROM external_identities
+  WHERE url IS NOT NULL AND replace(url, char(9), '') != ''
+    AND lower(replace(url, char(9), '')) NOT LIKE 'http://%'
+    AND lower(replace(url, char(9), '')) NOT LIKE 'https://%'
+UNION ALL
+SELECT 'immich_configs.base_url', COUNT(*) FROM immich_configs
+  WHERE base_url IS NOT NULL AND replace(base_url, char(9), '') != ''
+    AND lower(replace(base_url, char(9), '')) NOT LIKE 'http://%'
+    AND lower(replace(base_url, char(9), '')) NOT LIKE 'https://%';
+```

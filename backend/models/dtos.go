@@ -89,7 +89,7 @@ type LifeEventInput struct {
 type ConversationAgendaInput struct {
 	EntityID     string `json:"entity_id" validate:"required,uuid4"`
 	Content      string `json:"content" validate:"required,min=1,max=2000"`
-	ReferenceURL string `json:"reference_url,omitempty" validate:"omitempty,safeurl,max=2000"`
+	ReferenceURL string `json:"reference_url,omitempty" validate:"omitempty,httpurl,max=2000"`
 }
 
 // ConversationAgendaDiscussInput is the DTO for PATCH /conversation-agenda/:id/
@@ -112,7 +112,7 @@ type GiftInput struct {
 	Status      string     `json:"status,omitempty" validate:"omitempty,oneof=idea purchased given received"`
 	Occasion    string     `json:"occasion,omitempty" validate:"max=200"`
 	Description string     `json:"description" validate:"required,min=1,max=2000"`
-	URL         string     `json:"url,omitempty" validate:"omitempty,safeurl,max=2000"`
+	URL         string     `json:"url,omitempty" validate:"omitempty,httpurl,max=2000"`
 	Notes       string     `json:"notes,omitempty" validate:"omitempty,max=2000"`
 	Date        *time.Time `json:"date,omitempty"`
 	ValueCents  int64      `json:"value_cents,omitempty"`

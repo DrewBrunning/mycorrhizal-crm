@@ -701,6 +701,7 @@
       "testingConnection": "Probando…",
       "removeConfirm": "¿Quitar la conexión de Immich? Los contactos vinculados conservan su historial de fotos existente.",
       "baseUrlRequired": "La URL base es obligatoria.",
+      "invalidBaseUrl": "La URL base debe ser una URL http:// o https://.",
       "saved": "Conexión de Immich guardada",
       "removed": "Conexión de Immich eliminada",
       "saveFailed": "No se pudo guardar la conexión de Immich",
@@ -1348,7 +1349,8 @@
       "contentRequired": "Indica qué quieres sacar a colación.",
       "addFailed": "No se pudo añadir el elemento.",
       "saveFailed": "No se pudo guardar el elemento.",
-      "discussFailed": "No se pudo marcar como hablado."
+      "discussFailed": "No se pudo marcar como hablado.",
+      "invalidUrl": "El enlace debe ser una URL http:// o https://."
     }
   },
   "gifts": {

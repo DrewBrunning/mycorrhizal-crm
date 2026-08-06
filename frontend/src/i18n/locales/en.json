@@ -728,6 +728,7 @@
       "testingConnection": "Testing…",
       "removeConfirm": "Remove the Immich connection? Linked contacts keep their existing photo history.",
       "baseUrlRequired": "Base URL is required.",
+      "invalidBaseUrl": "Base URL must be an http:// or https:// URL.",
       "saved": "Immich connection saved",
       "removed": "Immich connection removed",
       "saveFailed": "Failed to save the Immich connection",
@@ -1348,7 +1349,8 @@
       "contentRequired": "Enter what you want to bring up.",
       "addFailed": "Failed to add agenda item.",
       "saveFailed": "Failed to save agenda item.",
-      "discussFailed": "Failed to mark as discussed."
+      "discussFailed": "Failed to mark as discussed.",
+      "invalidUrl": "Link must be an http:// or https:// URL."
     }
   },
   "gifts": {

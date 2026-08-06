@@ -187,7 +187,51 @@ func TestValidateStruct_SafeURL(t *testing.T) {
 	}
 }
 
-// TestValidateStruct_Birthday tests birthday validation through ValidateStruct
+// TestValidateStruct_HTTPURL tests the httpurl validator (T41) through
+// ValidateStruct. The mirror frontend test (frontend/src/utils/
+// linkResolution.test.ts) must match this table exactly — the two
+// implementations disagreeing is the actual risk this ticket exists to close.
+func TestValidateStruct_HTTPURL(t *testing.T) {
+	type TestStruct struct {
+		URL string `validate:"httpurl"`
+	}
+
+	tests := []struct {
+		name    string
+		url     string
+		isValid bool
+	}{
+		{name: "empty allowed", url: "", isValid: true},
+		{name: "whitespace allowed", url: "   ", isValid: true},
+		{name: "https accepted", url: "https://example.com/path?q=1", isValid: true},
+		{name: "http accepted", url: "http://example.com", isValid: true},
+		{name: "http with port accepted", url: "http://immich:2283", isValid: true},
+		{name: "scheme-less rejected", url: "example.com", isValid: false},
+		{name: "host with port rejected", url: "example.com:8080/x", isValid: false},
+		{name: "protocol-relative rejected", url: "//example.com/x", isValid: false},
+		{name: "mailto rejected", url: "mailto:a@b.com", isValid: false},
+		{name: "javascript rejected", url: "javascript:alert(1)", isValid: false},
+		{name: "uppercase javascript rejected", url: "JavaScript:alert(1)", isValid: false},
+		{name: "whitespace-obfuscated javascript rejected", url: "java\tscript:alert(1)", isValid: false},
+		{name: "data rejected", url: "data:text/html,<script>", isValid: false},
+		{name: "vbscript rejected", url: "vbscript:msgbox(1)", isValid: false},
+		{name: "file rejected", url: "file:///etc/passwd", isValid: false},
+		{name: "blob rejected", url: "blob:https://example.com/abc-123", isValid: false},
+		{name: "intent rejected", url: "intent://scan/#Intent;scheme=zebra;end", isValid: false},
+		{name: "ms-msdt rejected", url: "ms-msdt:/id:PCWAlert;S:RunProgram;X:cmd", isValid: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			errors := ValidateStruct(TestStruct{URL: tt.url})
+			hasErrors := len(errors) > 0
+			if hasErrors == tt.isValid {
+				t.Errorf("ValidateStruct with url %q: hasErrors=%v, want isValid=%v", tt.url, hasErrors, tt.isValid)
+			}
+		})
+	}
+}
+
 func TestValidateStruct_Birthday(t *testing.T) {
 	type TestStruct struct {
 		Birthday string `validate:"birthday"`

@@ -246,7 +246,7 @@ func TestGift_URLAndNotes_RealMigratedSchema(t *testing.T) {
 	assert.Empty(t, persisted.URL, "full-replace update must clear an omitted url")
 	assert.Empty(t, persisted.Notes, "full-replace update must clear omitted notes")
 
-	// A javascript: URL is rejected by the safeurl validator at the binding
+	// A javascript: URL is rejected by the httpurl validator at the binding
 	// layer, so it never reaches the database.
 	unsafeResp := doJSON("POST", "/gifts", models.GiftInput{
 		EntityID: contact.VCardUID, Description: "Malicious", URL: "javascript:alert(1)",

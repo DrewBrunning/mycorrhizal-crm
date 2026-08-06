@@ -23,13 +23,14 @@ export function buildMailtoLink(email: string): string {
 // entry, the value was never validated server-side as an href at all).
 // This must run on every built/substituted/passthrough URL before it is
 // used as an <a href>, not just on registry Protocol templates.
+//
+// Kept in sync with the backend by hand (frontend trap 4): if a scheme
+// moves in/out of the blocklist here, validateSafeURL in
+// backend/middleware/validation.go must change too.
 export function isSafeUrlString(url: string): boolean {
   const raw = url.trim();
   if (raw === '') return true;
-  const normalized = Array.from(raw)
-    .filter((ch) => ch.charCodeAt(0) > 32)
-    .join('')
-    .toLowerCase();
+  const normalized = normalizeSchemeCheck(url);
   const colonIndex = normalized.indexOf(':');
   if (colonIndex > 0) {
     const scheme = normalized.slice(0, colonIndex);
@@ -38,6 +39,41 @@ export function isSafeUrlString(url: string): boolean {
     }
   }
   return true;
+}
+
+// Client-side mirror of backend/middleware/validation.go's validateHTTPURL
+// (T41): an allowlist, not a blocklist. For the fields whose value means "a
+// web page" (a gift's product link, an agenda item's reference article, an
+// external system's deep link, an Immich base URL) only http/https are
+// accepted — everything else, including an unknown scheme (blob:, intent:,
+// ms-msdt:, ...) and a value with no scheme at all, is rejected. An empty
+// value is accepted (fields opt into `required` separately).
+//
+// Kept in sync with the backend by hand (frontend trap 4); the Go table in
+// backend/middleware/validation_test.go's TestValidateStruct_HTTPURL and the
+// unit tests in linkResolution.test.ts must mirror each other exactly.
+export function isHttpUrlString(url: string): boolean {
+  const raw = url.trim();
+  if (raw === '') return true;
+  const normalized = normalizeSchemeCheck(url);
+  const colonIndex = normalized.indexOf(':');
+  if (colonIndex <= 0) return false;
+  const scheme = normalized.slice(0, colonIndex);
+  return scheme === 'http' || scheme === 'https';
+}
+
+// normalizeSchemeCheck strips everything ≤ U+0020 (which defeats the
+// java&Tab;script: obfuscation — the browser's URL parser drops those control
+// characters before it reads the scheme, so a validator that keeps them is
+// checking a different string than the browser) and lowercases the result,
+// ready for a leading-scheme check. Shared by isSafeUrlString and
+// isHttpUrlString so the two guards' normalization cannot drift, mirroring
+// backend/middleware/validation.go's own shared normalizeSchemeURL.
+function normalizeSchemeCheck(value: string): string {
+  return Array.from(value)
+    .filter((ch) => ch.charCodeAt(0) > 32)
+    .join('')
+    .toLowerCase();
 }
 
 // True when the value looks like an absolute URI ("scheme:...") rather
