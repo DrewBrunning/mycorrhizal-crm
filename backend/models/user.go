@@ -26,4 +26,12 @@ type User struct {
 	// which is how a password change or reset ends existing sessions — JWTs are
 	// stateless, so there is nothing else to revoke.
 	TokenVersion uint `gorm:"not null;default:0" json:"-"`
+
+	// N9 notification-channel toggles (migration 000013). Email stays gated
+	// per-reminder by Reminder.ByMail for backwards compatibility; these toggle
+	// the push-style channels globally for the user. A channel dispatches when
+	// its toggle is on AND the user has a usable per-channel config.
+	NotifyNtfy   bool `gorm:"column:notify_ntfy;not null;default:false" json:"notify_ntfy"`
+	NotifyGotify bool `gorm:"column:notify_gotify;not null;default:false" json:"notify_gotify"`
+	NotifyPush   bool `gorm:"column:notify_push;not null;default:false" json:"notify_push"`
 }

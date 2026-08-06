@@ -1479,5 +1479,56 @@
       "confirming": "Confirmation en cours…"
     },
     "declineConfirm": "Refuser ce partage ?"
+  },
+  "notifications": {
+    "settings": {
+      "title": "Notifications",
+      "description": "Choisissez comment recevoir vos rappels. L'e-mail est configuré côté serveur (Resend/SMTP) et activé par rappel ; les canaux ci-dessous envoient vos rappels à vos services push auto-hébergés.",
+      "loadError": "Impossible de charger les paramètres de notification.",
+      "saveButton": "Enregistrer les paramètres de notification",
+      "saved": "Paramètres de notification enregistrés",
+      "saveFailed": "Impossible d'enregistrer les paramètres de notification.",
+      "test": "Envoyer une notification de test",
+      "testing": "Envoi…",
+      "testSuccess": "Notification de test envoyée via {{channel}}",
+      "testFailed": "Échec du test : {{error}}",
+      "privateUrlWarning": "Cela ressemble à une adresse privée. Si WEBHOOK_BLOCK_PRIVATE_URLS est activé sur le serveur, les notifications vers des adresses privées sont bloquées. Définissez WEBHOOK_BLOCK_PRIVATE_URLS=false sur une installation auto-hébergée pour les autoriser.",
+      "channels": {
+        "email": "e-mail",
+        "ntfy": "ntfy",
+        "gotify": "Gotify",
+        "push": "push navigateur"
+      },
+      "ntfy": {
+        "enable": "Envoyer les rappels via ntfy",
+        "url": "URL du serveur ntfy",
+        "urlHint": "L'URL de base de votre serveur ntfy, p. ex. https://ntfy.sh",
+        "topic": "Sujet"
+      },
+      "gotify": {
+        "enable": "Envoyer les rappels via Gotify",
+        "url": "URL du serveur Gotify",
+        "urlHint": "L'URL de base de votre serveur Gotify, p. ex. http://gotify:8080",
+        "token": "Jeton d'application",
+        "tokenHintExisting": "Un jeton est déjà enregistré. Laissez le champ vide pour le conserver.",
+        "tokenHintNew": "Créez un jeton d'application dans votre instance Gotify."
+      },
+      "push": {
+        "enable": "Envoyer les rappels via push navigateur",
+        "description": "Les rappels sont envoyés à chaque navigateur enregistré ci-dessous. Activez les notifications pour ajouter ce navigateur.",
+        "enableButton": "Activer les notifications du navigateur",
+        "enabling": "Activation…",
+        "devices": "Appareils enregistrés",
+        "noDevices": "Aucun appareil enregistré pour le moment.",
+        "removeDevice": "Retirer cet appareil"
+      },
+      "pushEnabled": "Notifications du navigateur activées",
+      "pushPermissionDenied": "L'autorisation de notification a été refusée. Autorisez-la dans votre navigateur puis réessayez.",
+      "pushUnsupported": "Ce navigateur ne prend pas en charge les notifications push.",
+      "pushEnableFailed": "Impossible d'activer les notifications du navigateur.",
+      "deleteDeviceConfirm": "Retirer cet appareil ({{label}}) ? Vous ne recevrez plus de notifications push ici.",
+      "deviceDeleted": "Appareil retiré",
+      "deviceDeleteFailed": "Impossible de retirer l'appareil."
+    }
   }
 }

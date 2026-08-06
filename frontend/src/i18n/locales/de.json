@@ -1479,5 +1479,56 @@
       "confirming": "Wird bestätigt…"
     },
     "declineConfirm": "Diese Freigabe ablehnen?"
+  },
+  "notifications": {
+    "settings": {
+      "title": "Benachrichtigungen",
+      "description": "Wähle, wie dich Erinnerungs-Benachrichtigungen erreichen. E-Mail wird serverseitig (Resend/SMTP) konfiguriert und pro Erinnerung aktiviert; die Kanäle unten liefern Erinnerungen an deine selbst gehosteten Push-Dienste.",
+      "loadError": "Benachrichtigungseinstellungen konnten nicht geladen werden.",
+      "saveButton": "Benachrichtigungseinstellungen speichern",
+      "saved": "Benachrichtigungseinstellungen gespeichert",
+      "saveFailed": "Benachrichtigungseinstellungen konnten nicht gespeichert werden.",
+      "test": "Testbenachrichtigung senden",
+      "testing": "Wird gesendet…",
+      "testSuccess": "Testbenachrichtigung über {{channel}} gesendet",
+      "testFailed": "Test fehlgeschlagen: {{error}}",
+      "privateUrlWarning": "Das sieht nach einer privaten Adresse aus. Wenn WEBHOOK_BLOCK_PRIVATE_URLS auf dem Server aktiviert ist, werden Benachrichtigungen an private Adressen blockiert. Setze bei einem selbst gehosteten Setup WEBHOOK_BLOCK_PRIVATE_URLS=false, um sie zu erlauben.",
+      "channels": {
+        "email": "E-Mail",
+        "ntfy": "ntfy",
+        "gotify": "Gotify",
+        "push": "Browser-Push"
+      },
+      "ntfy": {
+        "enable": "Erinnerungen per ntfy senden",
+        "url": "ntfy-Server-URL",
+        "urlHint": "Die Basis-URL deines ntfy-Servers, z. B. https://ntfy.sh",
+        "topic": "Thema"
+      },
+      "gotify": {
+        "enable": "Erinnerungen per Gotify senden",
+        "url": "Gotify-Server-URL",
+        "urlHint": "Die Basis-URL deines Gotify-Servers, z. B. http://gotify:8080",
+        "token": "App-Token",
+        "tokenHintExisting": "Ein Token ist bereits gespeichert. Leer lassen, um es zu behalten.",
+        "tokenHintNew": "Erstelle einen App-Token in deiner Gotify-Instanz."
+      },
+      "push": {
+        "enable": "Erinnerungen per Browser-Push senden",
+        "description": "Erinnerungen werden an jeden unten registrierten Browser gepusht. Aktiviere Benachrichtigungen, um diesen Browser hinzuzufügen.",
+        "enableButton": "Browser-Benachrichtigungen aktivieren",
+        "enabling": "Wird aktiviert…",
+        "devices": "Registrierte Geräte",
+        "noDevices": "Noch keine Geräte registriert.",
+        "removeDevice": "Dieses Gerät entfernen"
+      },
+      "pushEnabled": "Browser-Benachrichtigungen aktiviert",
+      "pushPermissionDenied": "Die Benachrichtigungsberechtigung wurde verweigert. Erlaube sie in deinem Browser und versuche es erneut.",
+      "pushUnsupported": "Dieser Browser unterstützt keine Push-Benachrichtigungen.",
+      "pushEnableFailed": "Browser-Benachrichtigungen konnten nicht aktiviert werden.",
+      "deleteDeviceConfirm": "Dieses Gerät ({{label}}) entfernen? Du erhältst hier keine Push-Benachrichtigungen mehr.",
+      "deviceDeleted": "Gerät entfernt",
+      "deviceDeleteFailed": "Das Gerät konnte nicht entfernt werden."
+    }
   }
 }

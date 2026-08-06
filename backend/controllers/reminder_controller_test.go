@@ -548,6 +548,93 @@ func TestCompleteReminder_SkipDoesNotCreateCompletionRecord(t *testing.T) {
 	assert.Len(t, completions, 0)
 }
 
+// boolPtr returns a pointer to b for the pointer-bool fields (Reminder.ByMail).
+func boolPtr(b bool) *bool { return &b }
+
+func TestDeleteReminder_ClearsNotificationDeliveries(t *testing.T) {
+	db, router := setupRouter()
+	router.DELETE("/reminders/:id", DeleteReminder)
+
+	var user models.User
+	db.First(&user)
+
+	contact := models.Contact{UserID: user.ID, Firstname: "Amy", Lastname: "Lee"}
+	db.Create(&contact)
+
+	reminder := models.Reminder{
+		UserID:     user.ID,
+		Message:    "Cleanup me",
+		ByMail:     boolPtr(false),
+		RemindAt:   time.Now().Add(-24 * time.Hour),
+		Recurrence: "once",
+		ContactID:  &contact.ID,
+	}
+	db.Create(&reminder)
+
+	// A delivery record for the reminder (as a dispatch would leave behind).
+	require.NoError(t, db.Create(&models.NotificationDelivery{
+		ReminderID: reminder.ID,
+		Channel:    "ntfy",
+		Status:     "sent",
+	}).Error)
+
+	req, _ := http.NewRequest("DELETE", "/reminders/"+strconv.Itoa(int(reminder.ID)), nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var remaining int64
+	require.NoError(t, db.Model(&models.NotificationDelivery{}).Where("reminder_id = ?", reminder.ID).Count(&remaining).Error)
+	assert.Zero(t, remaining, "deleting a reminder must clear its delivery state")
+}
+
+// TestCompleteReminder_RescheduleClearsNotificationDeliveries pins the N9
+// invariant that a rescheduled occurrence is a fresh reminder: the previous
+// occurrence's delivery rows must be cleared, or no channel would ever notify
+// for the next occurrence (mirroring the existing email_sent=false reset).
+func TestCompleteReminder_RescheduleClearsNotificationDeliveries(t *testing.T) {
+	db, router := setupRouter()
+	router.PATCH("/reminders/:id/complete", CompleteReminder)
+
+	var user models.User
+	db.First(&user)
+
+	contact := models.Contact{UserID: user.ID, Firstname: "Jamie", Lastname: "Smith"}
+	db.Create(&contact)
+
+	reminder := models.Reminder{
+		UserID:                user.ID,
+		Message:               "Weekly check-in",
+		ByMail:                boolPtr(true),
+		RemindAt:              time.Now().Add(-48 * time.Hour),
+		Recurrence:            "weekly",
+		ReoccurFromCompletion: boolPtr(true),
+		ContactID:             &contact.ID,
+	}
+	db.Create(&reminder)
+
+	// A previous occurrence's deliveries (as a daily dispatch would leave).
+	require.NoError(t, db.Create(&models.NotificationDelivery{
+		ReminderID: reminder.ID,
+		Channel:    "ntfy",
+		Status:     "sent",
+	}).Error)
+	require.NoError(t, db.Create(&models.NotificationDelivery{
+		ReminderID: reminder.ID,
+		Channel:    "email",
+		Status:     "sent",
+	}).Error)
+
+	req, _ := http.NewRequest("PATCH", "/reminders/"+strconv.Itoa(int(reminder.ID))+"/complete", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var remaining int64
+	require.NoError(t, db.Model(&models.NotificationDelivery{}).Where("reminder_id = ?", reminder.ID).Count(&remaining).Error)
+	assert.Zero(t, remaining, "rescheduling must clear the previous occurrence's deliveries")
+}
+
 func TestGetCompletionsForContact(t *testing.T) {
 	db, router := setupRouter()
 

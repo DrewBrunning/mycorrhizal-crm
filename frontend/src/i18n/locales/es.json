@@ -1479,5 +1479,56 @@
       "confirming": "Confirmando…"
     },
     "declineConfirm": "¿Rechazar esta compartición?"
+  },
+  "notifications": {
+    "settings": {
+      "title": "Notificaciones",
+      "description": "Elige cómo te llegan las notificaciones de recordatorios. El correo se configura en el servidor (Resend/SMTP) y se activa por recordatorio; los canales de abajo envían recordatorios a tus servicios push autohospedados.",
+      "loadError": "No se pudieron cargar los ajustes de notificación.",
+      "saveButton": "Guardar ajustes de notificación",
+      "saved": "Ajustes de notificación guardados",
+      "saveFailed": "No se pudieron guardar los ajustes de notificación.",
+      "test": "Enviar notificación de prueba",
+      "testing": "Enviando…",
+      "testSuccess": "Notificación de prueba enviada por {{channel}}",
+      "testFailed": "Prueba fallida: {{error}}",
+      "privateUrlWarning": "Esto parece una dirección privada. Si WEBHOOK_BLOCK_PRIVATE_URLS está activado en el servidor, se bloquean las notificaciones a direcciones privadas. Establece WEBHOOK_BLOCK_PRIVATE_URLS=false en una instalación autohospedada para permitirlas.",
+      "channels": {
+        "email": "correo",
+        "ntfy": "ntfy",
+        "gotify": "Gotify",
+        "push": "push del navegador"
+      },
+      "ntfy": {
+        "enable": "Enviar recordatorios por ntfy",
+        "url": "URL del servidor ntfy",
+        "urlHint": "La URL base de tu servidor ntfy, p. ej. https://ntfy.sh",
+        "topic": "Tema"
+      },
+      "gotify": {
+        "enable": "Enviar recordatorios por Gotify",
+        "url": "URL del servidor Gotify",
+        "urlHint": "La URL base de tu servidor Gotify, p. ej. http://gotify:8080",
+        "token": "Token de aplicación",
+        "tokenHintExisting": "Ya hay un token guardado. Déjalo vacío para mantenerlo.",
+        "tokenHintNew": "Crea un token de aplicación en tu instancia de Gotify."
+      },
+      "push": {
+        "enable": "Enviar recordatorios por push del navegador",
+        "description": "Los recordatorios se envían a cada navegador registrado abajo. Activa las notificaciones para añadir este navegador.",
+        "enableButton": "Activar notificaciones del navegador",
+        "enabling": "Activando…",
+        "devices": "Dispositivos registrados",
+        "noDevices": "Aún no hay dispositivos registrados.",
+        "removeDevice": "Eliminar este dispositivo"
+      },
+      "pushEnabled": "Notificaciones del navegador activadas",
+      "pushPermissionDenied": "Se denegó el permiso de notificación. Permítelo en tu navegador e inténtalo de nuevo.",
+      "pushUnsupported": "Este navegador no admite notificaciones push.",
+      "pushEnableFailed": "No se pudieron activar las notificaciones del navegador.",
+      "deleteDeviceConfirm": "¿Eliminar este dispositivo ({{label}})? Dejarás de recibir notificaciones push aquí.",
+      "deviceDeleted": "Dispositivo eliminado",
+      "deviceDeleteFailed": "No se pudo eliminar el dispositivo."
+    }
   }
 }

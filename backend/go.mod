@@ -5,6 +5,7 @@ go 1.25.3
 toolchain go1.26.5
 
 require (
+	github.com/SherClockHolmes/webpush-go v1.4.0
 	github.com/coreos/go-oidc/v3 v3.20.0
 	github.com/emersion/go-ical v0.0.0-20250609112844-439c63cef608
 	github.com/gen2brain/heic v0.7.1
@@ -34,6 +35,7 @@ require (
 	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/go-openapi/jsonpointer v0.22.5 // indirect
 	github.com/go-openapi/swag/jsonname v0.25.5 // indirect
+	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/oasdiff/yaml v0.1.1 // indirect
 	github.com/oasdiff/yaml3 v0.0.14 // indirect

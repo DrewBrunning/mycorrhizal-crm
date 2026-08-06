@@ -77,4 +77,41 @@ self.addEventListener('message', (event) => {
   }
 });
 
+// N9 — Web Push notifications. The backend encrypts a short {title, body}
+// JSON payload to each registered subscription; the notificationclick handler
+// brings an existing app window to the front or opens a new one.
+self.addEventListener('push', (event) => {
+  let data: { title?: string; body?: string } = {};
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch {
+      data = { body: event.data.text() };
+    }
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'Mycorrhizal CRM', {
+      body: data.body || '',
+      icon: '/notification-icon-96.png',
+      badge: '/notification-icon-96.png',
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    (async () => {
+      const windowClients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      for (const client of windowClients) {
+        if ('focus' in client) {
+          client.focus();
+          return;
+        }
+      }
+      await self.clients.openWindow('/');
+    })()
+  );
+});
+
 // Any other custom service worker logic can go here.

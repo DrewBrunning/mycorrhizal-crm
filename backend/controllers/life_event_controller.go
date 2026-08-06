@@ -88,6 +88,12 @@ func nextRemindAt(month, day int, now time.Time, loc *time.Location) time.Time {
 func syncLifeEventReminder(tx *gorm.DB, userID uint, event *models.LifeEvent, now time.Time, loc *time.Location) error {
 	// Hard-delete: machine-synthesized rows are join-like, not user-authored.
 	// Prevents soft-delete accumulation on every toggle/edit of Remind.
+	// N9: their delivery state goes too (the reminders are Unscoped()-removed
+	// here, so the FK cascade would cover it — this explicit pass keeps the
+	// manual-cascade checklist complete).
+	if err := tx.Where("reminder_id IN (SELECT id FROM reminders WHERE life_event_id = ?)", event.ID).Delete(&models.NotificationDelivery{}).Error; err != nil {
+		return err
+	}
 	if err := tx.Unscoped().Where("life_event_id = ?", event.ID).Delete(&models.Reminder{}).Error; err != nil {
 		return err
 	}
@@ -395,6 +401,11 @@ func DeleteLifeEvent(c *gin.Context) {
 	}
 
 	err := db.Transaction(func(tx *gorm.DB) error {
+		// N9: clear this event's reminder delivery state alongside its
+		// machine-synthesized reminders.
+		if err := tx.Where("reminder_id IN (SELECT id FROM reminders WHERE life_event_id = ?)", event.ID).Delete(&models.NotificationDelivery{}).Error; err != nil {
+			return err
+		}
 		if err := tx.Unscoped().Where("life_event_id = ?", event.ID).Delete(&models.Reminder{}).Error; err != nil {
 			return err
 		}

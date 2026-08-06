@@ -11,12 +11,13 @@ import { getApiTokens, createApiToken, revokeApiToken, ApiToken } from './api/ap
 // This codebase's vitest setup has no auto-cleanup and no globals: true.
 afterEach(cleanup);
 
-// WebhooksSettings and ImmichSettings are separately tested (their own
-// *.test.tsx files) and fire their own API calls on mount — stub them out
-// so this file can focus on password change and API tokens without needing
-// to also mock their unrelated endpoints.
+// WebhooksSettings, ImmichSettings and NotificationSettings are separately
+// tested (their own *.test.tsx files) and fire their own API calls on mount —
+// stub them out so this file can focus on password change and API tokens
+// without needing to also mock their unrelated endpoints.
 vi.mock('./components/WebhooksSettings', () => ({ default: () => null }));
 vi.mock('./components/ImmichSettings', () => ({ default: () => null }));
+vi.mock('./components/NotificationSettings', () => ({ default: () => null }));
 
 vi.mock('./api/auth', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api/auth')>();

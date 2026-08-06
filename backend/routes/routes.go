@@ -288,6 +288,17 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.POST("/webhooks/:id/test", controllers.TestWebhook)
 			protected.GET("/webhooks/:id/deliveries", controllers.GetWebhookDeliveries)
 
+			// Notification routes (N9 — docs/fork-plan/tickets/
+			// 30-N9-notification-channels.md). Per-user channel config, the
+			// per-user channel toggles, per-channel test notification, and Web
+			// Push device registrations.
+			protected.GET("/notifications/config", controllers.GetNotificationConfig)
+			protected.PUT("/notifications/config", middleware.ValidateJSONMiddleware(&models.NotificationConfigInput{}), controllers.SaveNotificationConfig)
+			protected.POST("/notifications/config/test", controllers.TestNotificationChannel)
+			protected.GET("/notifications/push-subscriptions", controllers.ListPushSubscriptions)
+			protected.POST("/notifications/push-subscriptions", middleware.ValidateJSONMiddleware(&models.PushSubscriptionInput{}), controllers.CreatePushSubscription)
+			protected.DELETE("/notifications/push-subscriptions/:id", controllers.DeletePushSubscription)
+
 			// Calendar subscription routes (CalDAV/iCS activity import)
 			protected.GET("/calendars", controllers.ListCalendarSubscriptions)
 			protected.POST("/calendars", middleware.ValidateJSONMiddleware(&models.CalendarSubscriptionInput{}), controllers.CreateCalendarSubscription)

@@ -120,3 +120,34 @@ all. ntfy, Gotify, and web push are the idiomatic answers.
 - `gorm:"column:xxx"` tag is mandatory for acronyms/compound words — GORM silently derives wrong names
 - New entities: decide soft vs hard delete per T26's rule (user-authored content → soft, edge/join rows → hard)
 - Delete cascade: add new entities to `deleteContactAssociations` in `contact_controller.go` and `DeleteUser` in `admin_user_controller.go`
+
+## Landing note — 2026-08-06
+
+Shipped on `feature/n9-notification-channels`.
+
+- **Delivery state** now lives in `notification_deliveries` (one row per reminder per
+  channel), backfilled from `reminders.email_sent` by migration 000013. `email_sent`
+  is kept as a backwards-compat mirror and written in step by the email sender.
+- **Channel abstraction**: `services.NotificationSender` interface + the
+  `notificationSenders` registry (email / ntfy / gotify / push). `SendReminders`
+  dispatches per channel — a reminder is due for a channel when no `sent` delivery
+  row exists; a failed channel never marks it sent and never blocks another.
+- **Per-user config** is stored Immich-style in `notification_configs` (ntfy
+  URL+topic, Gotify URL+token encrypted at rest via `credential_crypto.go`), with
+  per-user toggles `users.notify_ntfy/notify_gotify/notify_push`. Email stays gated
+  per-reminder on `ByMail`.
+- **Web Push** implemented (VAPID keys generated once into `server_settings`,
+  `push_subscriptions` per device, `service-worker.ts` push/notificationclick
+  handlers). Browser subscription is via Settings' "Enable browser notifications".
+- **SSRF**: the existing `WEBHOOK_BLOCK_PRIVATE_URLS` flag + `clientFor`/`isPrivateURL`
+  govern all outbound channel HTTP; the Settings card warns client-side on
+  private-looking URLs and the test button surfaces the server's reason.
+- **API**: `GET/PUT /notifications/config`, `POST /notifications/config/test`,
+  `GET/POST/DELETE /notifications/push-subscriptions`.
+- Delivery rows are cleared whenever a reminder is deleted or a recurring reminder is
+  rescheduled (all reminder-deletion sites + `CompleteReminder`), so the next
+  occurrence notifies again.
+- Real-instance happy path verified in Go integration tests against a live fake
+  ntfy/Gotify/push-service endpoint on the real migrated schema; the Playwright spec
+  covers the Settings UI end to end (config persistence, private-URL warning, and a
+  misconfigured channel reporting its failure instead of failing silently).

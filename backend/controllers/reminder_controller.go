@@ -166,6 +166,10 @@ func DeleteReminder(c *gin.Context) {
 		return
 	}
 
+	if err := services.DeleteNotificationDeliveries(db, []uint{reminder.ID}); err != nil {
+		logger.FromContext(c).Error().Err(err).Uint("reminder_id", reminder.ID).Msg("Failed to clear notification deliveries for reminder")
+	}
+
 	if err := db.Delete(&reminder).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to delete reminder").WithError(err))
 		return
@@ -316,11 +320,13 @@ func CompleteReminder(c *gin.Context) {
 	// If reoccur from completion, calculate next reminder time
 	// Default to true if not specified (nil)
 	reoccurFromCompletion := reminder.ReoccurFromCompletion == nil || *reminder.ReoccurFromCompletion
+	rescheduled := false
 	if reoccurFromCompletion && reminder.Recurrence != "once" {
 		reminder.RemindAt = services.CalculateNextReminderTime(reminder)
 		// Reset completed and email_sent flags for recurring reminders
 		reminder.Completed = false
 		reminder.EmailSent = false
+		rescheduled = true
 
 		logger.FromContext(c).Info().
 			Time("next_remind_at", reminder.RemindAt).
@@ -331,6 +337,10 @@ func CompleteReminder(c *gin.Context) {
 
 	// Delete "once" reminders after completion
 	if reminder.Recurrence == "once" {
+		// N9: clear this occurrence's delivery state so no channel re-sends it
+		if err := services.DeleteNotificationDeliveries(db, []uint{reminder.ID}); err != nil {
+			logger.FromContext(c).Error().Err(err).Uint("reminder_id", reminder.ID).Msg("Failed to clear notification deliveries for completed reminder")
+		}
 		if err := db.Delete(&reminder).Error; err != nil {
 			apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to delete 'once' reminder").WithError(err))
 			return
@@ -345,6 +355,15 @@ func CompleteReminder(c *gin.Context) {
 	if err := db.Save(&reminder).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to update reminder").WithError(err))
 		return
+	}
+
+	// N9: a rescheduled occurrence is a fresh reminder — clear the previous
+	// occurrence's delivery records so every enabled channel notifies again
+	// (mirrors the email_sent=false reset above).
+	if rescheduled {
+		if err := services.DeleteNotificationDeliveries(db, []uint{reminder.ID}); err != nil {
+			logger.FromContext(c).Error().Err(err).Uint("reminder_id", reminder.ID).Msg("Failed to clear notification deliveries for rescheduled reminder")
+		}
 	}
 
 	// Clear the Contact association to avoid including it in the response
