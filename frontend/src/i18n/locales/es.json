@@ -1114,6 +1114,7 @@
     "title": "Gestión de Usuarios",
     "loadError": "Error al cargar los usuarios",
     "noUsers": "No se encontraron usuarios",
+    "addUser": "Añadir Usuario",
     "columns": {
       "id": "ID",
       "username": "Nombre de usuario",
@@ -1134,12 +1135,20 @@
       "passwordHint": "Dejar vacío para mantener la contraseña actual",
       "isAdmin": "Administrador"
     },
+    "createDialog": {
+      "title": "Añadir Usuario",
+      "username": "Nombre de usuario",
+      "email": "Email",
+      "password": "Contraseña",
+      "isAdmin": "Administrador"
+    },
     "deleteDialog": {
       "title": "Eliminar Usuario",
       "message": "¿Estás seguro de que quieres eliminar al usuario \"{{username}}\"?",
       "warning": "Esto eliminará permanentemente al usuario y todos sus datos, incluyendo contactos, actividades, notas y recordatorios."
     },
     "updateError": "Error al actualizar el usuario",
+    "createError": "Error al crear el usuario",
     "deleteError": "Error al eliminar el usuario",
     "triggerReminders": "Enviar Emails de Recordatorio",
     "triggerRemindersSuccess": "Emails de recordatorio enviados exitosamente",

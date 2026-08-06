@@ -349,6 +349,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 		admin.Use(middleware.AdminMiddleware())
 		{
 			admin.GET("/users", controllers.ListUsers)
+			admin.POST("/users", middleware.ValidateJSONMiddleware(&models.AdminUserCreateInput{}), controllers.CreateUser)
 			admin.GET("/users/:id", controllers.GetUser)
 			admin.PATCH("/users/:id", middleware.ValidateJSONMiddleware(&models.AdminUserUpdateInput{}), controllers.UpdateUser)
 			admin.DELETE("/users/:id", controllers.DeleteUser)

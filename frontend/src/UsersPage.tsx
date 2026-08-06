@@ -1,4 +1,4 @@
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, useCallback, FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -33,10 +33,11 @@ import AppDialog from './components/AppDialog';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SendIcon from '@mui/icons-material/Send';
-import { getUsers, updateUser, deleteUser, triggerReminders } from './api/admin';
+import AddIcon from '@mui/icons-material/Add';
+import { getUsers, createUser, updateUser, deleteUser, triggerReminders } from './api/admin';
 import { isAdmin } from './auth';
 import { useSnackbar } from './context/SnackbarContext';
-import type { User, UserUpdateInput } from './types';
+import type { User, UserUpdateInput, UserCreateInput } from './types';
 
 export default function UsersPage() {
   const { t } = useTranslation();
@@ -55,6 +56,13 @@ export default function UsersPage() {
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [total, setTotal] = useState(0);
   const [triggerLoading, setTriggerLoading] = useState(false);
+
+  // Create dialog state
+  const emptyCreateForm: UserCreateInput = { username: '', email: '', password: '', is_admin: false };
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createForm, setCreateForm] = useState<UserCreateInput>(emptyCreateForm);
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createError, setCreateError] = useState('');
 
   // Edit dialog state
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -76,26 +84,29 @@ export default function UsersPage() {
     }
   }, [navigate]);
 
-  // Fetch users
-  useEffect(() => {
-    const fetchUsers = async () => {
-      setLoading(true);
-      setError('');
+  // Fetch users for the current page. Also called directly (not just from
+  // the effect below) after a create, so the new user renders wherever the
+  // server-paginated, id-ordered list actually places it rather than being
+  // spliced onto whatever page happens to be showing (T39 review finding).
+  const fetchUsers = useCallback(async () => {
+    setLoading(true);
+    setError('');
 
-      try {
-        const response = await getUsers(page + 1, rowsPerPage);
-        setUsers(response.users);
-        setTotal(response.total);
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : t('users.loadError');
-        setError(errorMessage);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUsers();
+    try {
+      const response = await getUsers(page + 1, rowsPerPage);
+      setUsers(response.users);
+      setTotal(response.total);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : t('users.loadError');
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
   }, [page, rowsPerPage, t]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   const handleChangePage = (_: unknown, newPage: number) => {
     setPage(newPage);
@@ -108,6 +119,41 @@ export default function UsersPage() {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
+  };
+
+  // Create handlers
+  const handleCreateClick = () => {
+    setCreateForm(emptyCreateForm);
+    setCreateError('');
+    setCreateDialogOpen(true);
+  };
+
+  const handleCreateClose = () => {
+    setCreateDialogOpen(false);
+    setCreateForm(emptyCreateForm);
+    setCreateError('');
+  };
+
+  const handleCreateSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+
+    setCreateLoading(true);
+    setCreateError('');
+
+    try {
+      await createUser(createForm);
+      // Refetch the current page rather than splicing the new user into
+      // local state — the list is server-paginated and ordered by id ASC,
+      // so a locally-spliced row would render on the wrong page and desync
+      // from the total TablePagination shows (T39 review finding).
+      await fetchUsers();
+      handleCreateClose();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : t('users.createError');
+      setCreateError(errorMessage);
+    } finally {
+      setCreateLoading(false);
+    }
   };
 
   // Edit handlers
@@ -223,14 +269,23 @@ export default function UsersPage() {
         <Typography variant="h5">
           {t('users.title')}
         </Typography>
-        <Button
-          variant="outlined"
-          startIcon={triggerLoading ? <CircularProgress size={16} /> : <SendIcon />}
-          onClick={handleTriggerReminders}
-          disabled={triggerLoading}
-        >
-          {t('users.triggerReminders')}
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleCreateClick}
+          >
+            {t('users.addUser')}
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={triggerLoading ? <CircularProgress size={16} /> : <SendIcon />}
+            onClick={handleTriggerReminders}
+            disabled={triggerLoading}
+          >
+            {t('users.triggerReminders')}
+          </Button>
+        </Box>
       </Box>
 
       {error && (
@@ -367,6 +422,61 @@ export default function UsersPage() {
           />
         </TableContainer>
       )}
+
+      {/* Create User Dialog */}
+      <AppDialog open={createDialogOpen} onClose={handleCreateClose} maxWidth="sm" fullWidth>
+        <form onSubmit={handleCreateSubmit}>
+          <DialogTitle>{t('users.createDialog.title')}</DialogTitle>
+          <DialogContent>
+            <Stack spacing={2} sx={{ mt: 1 }}>
+              {createError && <Alert severity="error">{createError}</Alert>}
+              <TextField
+                label={t('users.createDialog.username')}
+                value={createForm.username}
+                onChange={(e) => setCreateForm({ ...createForm, username: e.target.value })}
+                fullWidth
+                required
+                size="small"
+              />
+              <TextField
+                label={t('users.createDialog.email')}
+                type="email"
+                value={createForm.email}
+                onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
+                fullWidth
+                required
+                size="small"
+              />
+              <TextField
+                label={t('users.createDialog.password')}
+                type="password"
+                value={createForm.password}
+                onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
+                fullWidth
+                required
+                size="small"
+              />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={createForm.is_admin || false}
+                    onChange={(e) => setCreateForm({ ...createForm, is_admin: e.target.checked })}
+                  />
+                }
+                label={t('users.createDialog.isAdmin')}
+              />
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCreateClose} disabled={createLoading}>
+              {t('common.cancel')}
+            </Button>
+            <Button type="submit" variant="contained" disabled={createLoading}>
+              {createLoading ? t('common.saving') : t('common.save')}
+            </Button>
+          </DialogActions>
+        </form>
+      </AppDialog>
 
       {/* Edit User Dialog */}
       <AppDialog open={editDialogOpen} onClose={handleEditClose} maxWidth="sm" fullWidth>

@@ -415,6 +415,18 @@ type CurrentUserResponse struct {
 	EnabledContactFields []string `json:"enabled_contact_fields"`
 }
 
+// AdminUserCreateInput - DTO for admin creating a new user. Unlike
+// UserRegistrationInput (self-registration), this intentionally DOES accept
+// IsAdmin: the caller already passed AdminMiddleware to reach this route, so
+// setting it here isn't mass assignment by an untrusted party — the same
+// trust boundary AdminUserUpdateInput's IsAdmin field relies on.
+type AdminUserCreateInput struct {
+	Username string `json:"username" validate:"required,min=1,max=50,no_at_sign"`
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required,min=8,strong_password"`
+	IsAdmin  bool   `json:"is_admin"`
+}
+
 // AdminUserUpdateInput - DTO for admin updating a user
 type AdminUserUpdateInput struct {
 	Username *string `json:"username" validate:"omitempty,min=1,max=50,no_at_sign"`
