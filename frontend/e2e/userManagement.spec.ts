@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures';
+import { request } from '@playwright/test';
 import { API_BASE_URL } from './global-setup';
 import { stableClick, waitForLoading } from './fixtures';
 
@@ -30,23 +31,31 @@ test.describe('User Management: Add User (T39)', () => {
     await expect(page.getByRole('dialog')).toBeHidden();
     await expect(page.getByText(newUser.username, { exact: true })).toBeVisible();
 
+    // Look up the created user's id as the admin BEFORE logging in as them
+    // below — page.request shares the browser context's cookie jar with the
+    // page, so a login response's Set-Cookie would otherwise silently swap
+    // out the admin session out from under later page.request calls.
+    const list = await page.request.get(`${API_BASE_URL}/admin/users?limit=200`);
+    expect(list.ok()).toBeTruthy();
+    const listBody = await list.json();
+    const created = (listBody.users || []).find((u: any) => u.username === newUser.username);
+    expect(created, 'created user should be findable via the admin list endpoint').toBeTruthy();
+
+    // Hand-verification from the ticket's "Done when", pinned as an
+    // automated check: the created user can actually log in. Uses a wholly
+    // separate request context (own cookie jar) so this doesn't clobber the
+    // admin session used for cleanup below — mirrors isolation.spec.ts's
+    // pattern for acting as a second user.
+    const newUserCtx = await request.newContext();
     try {
-      // Hand-verification from the ticket's "Done when", pinned as an
-      // automated check: the created user can actually log in.
-      const loginResponse = await page.request.post(`${API_BASE_URL}/login`, {
+      const loginResponse = await newUserCtx.post(`${API_BASE_URL}/login`, {
         data: { identifier: newUser.username, password: newUser.password },
       });
       expect(loginResponse.ok(), `login as newly created user failed: ${await loginResponse.text()}`).toBeTruthy();
     } finally {
-      // Clean up via the admin API — find the user's id from the list and delete it.
-      const list = await page.request.get(`${API_BASE_URL}/admin/users?limit=200`);
-      if (list.ok()) {
-        const body = await list.json();
-        const created = (body.users || []).find((u: any) => u.username === newUser.username);
-        if (created) {
-          await page.request.delete(`${API_BASE_URL}/admin/users/${created.id}`).catch(() => {});
-        }
-      }
+      await newUserCtx.dispose();
+      // Clean up via the admin API, still on the original (admin) session.
+      await page.request.delete(`${API_BASE_URL}/admin/users/${created.id}`).catch(() => {});
     }
   });
 

@@ -144,8 +144,18 @@ test('a load failure surfaces the error', async () => {
   await waitFor(() => expect(screen.getByText('network down')).toBeInTheDocument());
 });
 
-test('creating a user submits the form and adds the new user to the list', async () => {
-  vi.mocked(getUsers).mockResolvedValue({ users: [], total: 0, page: 1, limit: 25, total_pages: 0 });
+test('creating a user submits the form, refetches the current page, and shows the new user', async () => {
+  // Initial load is empty; after create, the page is refetched (not spliced
+  // locally — the list is server-paginated) and now includes the new user.
+  vi.mocked(getUsers)
+    .mockResolvedValueOnce({ users: [], total: 0, page: 1, limit: 25, total_pages: 0 })
+    .mockResolvedValueOnce({
+      users: [user({ id: 11, username: 'brand-new', email: 'brand-new@example.com' })],
+      total: 1,
+      page: 1,
+      limit: 25,
+      total_pages: 1,
+    });
   vi.mocked(createUser).mockResolvedValue(
     user({ id: 11, username: 'brand-new', email: 'brand-new@example.com' })
   );
@@ -169,10 +179,20 @@ test('creating a user submits the form and adds the new user to the list', async
     })
   );
   await waitFor(() => expect(screen.getByText('brand-new')).toBeInTheDocument());
+  // The refetch, not a local splice, is what supplied the row above.
+  expect(getUsers).toHaveBeenCalledTimes(2);
 });
 
 test('creating an admin user includes is_admin in the create payload', async () => {
-  vi.mocked(getUsers).mockResolvedValue({ users: [], total: 0, page: 1, limit: 25, total_pages: 0 });
+  vi.mocked(getUsers)
+    .mockResolvedValueOnce({ users: [], total: 0, page: 1, limit: 25, total_pages: 0 })
+    .mockResolvedValueOnce({
+      users: [user({ id: 12, username: 'new-admin', email: 'new-admin@example.com', is_admin: true })],
+      total: 1,
+      page: 1,
+      limit: 25,
+      total_pages: 1,
+    });
   vi.mocked(createUser).mockResolvedValue(
     user({ id: 12, username: 'new-admin', email: 'new-admin@example.com', is_admin: true })
   );

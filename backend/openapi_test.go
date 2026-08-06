@@ -72,7 +72,7 @@ func TestOpenAPISpecValidates(t *testing.T) {
 		"UpdateLanguageInput", "UpdateDateFormatInput",
 		"EnabledContactFieldsInput", "PasswordStrength", "OIDCConfigResponse",
 		"AdminUserResponse", "CurrentUserResponse", "AdminUsersListResponse",
-		"AdminUserUpdateInput",
+		"AdminUserUpdateInput", "AdminUserCreateInput",
 		"ContactFlat", "ContactResponse", "ContactEmail", "ContactPhone",
 		"ContactURL", "ContactIMPP", "ContactAddress", "Birthday",
 		"ContactMergeRequest", "ContactMergePreviewResponse",

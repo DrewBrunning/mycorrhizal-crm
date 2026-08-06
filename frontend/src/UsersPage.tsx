@@ -1,4 +1,4 @@
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, useCallback, FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -84,26 +84,29 @@ export default function UsersPage() {
     }
   }, [navigate]);
 
-  // Fetch users
-  useEffect(() => {
-    const fetchUsers = async () => {
-      setLoading(true);
-      setError('');
+  // Fetch users for the current page. Also called directly (not just from
+  // the effect below) after a create, so the new user renders wherever the
+  // server-paginated, id-ordered list actually places it rather than being
+  // spliced onto whatever page happens to be showing (T39 review finding).
+  const fetchUsers = useCallback(async () => {
+    setLoading(true);
+    setError('');
 
-      try {
-        const response = await getUsers(page + 1, rowsPerPage);
-        setUsers(response.users);
-        setTotal(response.total);
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : t('users.loadError');
-        setError(errorMessage);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUsers();
+    try {
+      const response = await getUsers(page + 1, rowsPerPage);
+      setUsers(response.users);
+      setTotal(response.total);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : t('users.loadError');
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
   }, [page, rowsPerPage, t]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   const handleChangePage = (_: unknown, newPage: number) => {
     setPage(newPage);
@@ -138,9 +141,12 @@ export default function UsersPage() {
     setCreateError('');
 
     try {
-      const newUser = await createUser(createForm);
-      setUsers([...users, newUser]);
-      setTotal(total + 1);
+      await createUser(createForm);
+      // Refetch the current page rather than splicing the new user into
+      // local state — the list is server-paginated and ordered by id ASC,
+      // so a locally-spliced row would render on the wrong page and desync
+      // from the total TablePagination shows (T39 review finding).
+      await fetchUsers();
       handleCreateClose();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : t('users.createError');

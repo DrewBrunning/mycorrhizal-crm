@@ -493,6 +493,33 @@ func TestCreateUser_MissingFields_Rejected(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
 }
 
+// Every other success-path test above uses withValidated, a bare
+// ShouldBindJSON with no struct validation, so none of them actually proves
+// a valid payload clears the REAL middleware.ValidateJSONMiddleware chain
+// the route registers (routes/routes.go). This wires that real chain with a
+// payload shaped like what the Add User dialog sends, so a future tightening
+// of AdminUserCreateInput's validate tags that starts rejecting legitimate
+// input would be caught here rather than only in the (not always run)
+// Playwright e2e suite.
+func TestCreateUser_RealValidationMiddleware_AcceptsValidPayload(t *testing.T) {
+	db, router := setupRouter()
+
+	router.POST("/users", middleware.ValidateJSONMiddleware(&models.AdminUserCreateInput{}), CreateUser)
+
+	jsonValue := []byte(`{"username":"realvalidation","email":"realvalidation@example.com","password":"brandNewPassw0rd!"}`)
+
+	req, _ := http.NewRequest("POST", "/users", bytes.NewBuffer(jsonValue))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+
+	var count int64
+	require.NoError(t, db.Model(&models.User{}).Where("username = ?", "realvalidation").Count(&count).Error)
+	assert.EqualValues(t, 1, count)
+}
+
 // A non-admin must not be able to reach CreateUser at all — this wires the
 // REAL middleware chain (AdminMiddleware), unlike the handler-only tests
 // above, to prove the route itself is gated rather than relying solely on
