@@ -117,6 +117,105 @@ test('an amount without a currency is rejected', async () => {
   expect(onSave).not.toHaveBeenCalled();
 });
 
+// --- T35: URL + notes fields ---
+
+test('prefills the URL and notes fields from the gift', () => {
+  renderDialog({
+    gift: { ...gift, url: 'https://shop.example.com/machine', notes: 'Check the voltage' },
+  });
+
+  expect(screen.getByLabelText('Link (optional)')).toHaveValue('https://shop.example.com/machine');
+  expect(screen.getByLabelText('Notes (optional)')).toHaveValue('Check the voltage');
+});
+
+test('save submits a trimmed URL and notes', async () => {
+  const onSave = vi.fn().mockResolvedValue(undefined);
+  renderDialog({ gift: null, onSave });
+
+  fireEvent.change(screen.getByLabelText('What the gift is *'), {
+    target: { value: 'The ceramic mug' },
+  });
+  fireEvent.change(screen.getByLabelText('Link (optional)'), {
+    target: { value: '  https://shop.example.com/mug  ' },
+  });
+  fireEvent.change(screen.getByLabelText('Notes (optional)'), {
+    target: { value: '  Size medium  ' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  await vi.waitFor(() => expect(onSave).toHaveBeenCalled());
+  expect(onSave.mock.calls[0][0]).toMatchObject({
+    url: 'https://shop.example.com/mug',
+    notes: 'Size medium',
+  });
+});
+
+test('empty URL and notes are sent as undefined, not empty strings', async () => {
+  const onSave = vi.fn().mockResolvedValue(undefined);
+  renderDialog({ gift: null, onSave });
+
+  fireEvent.change(screen.getByLabelText('What the gift is *'), {
+    target: { value: 'A new idea' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  await vi.waitFor(() => expect(onSave).toHaveBeenCalled());
+  const submitted = onSave.mock.calls[0][0];
+  expect(submitted.url).toBeUndefined();
+  expect(submitted.notes).toBeUndefined();
+});
+
+test('a scheme-less URL is normalized to https so it renders as a link', async () => {
+  // Without this the value saves happily and then shows as dead text, because
+  // GiftList only links an absolute URI.
+  const onSave = vi.fn().mockResolvedValue(undefined);
+  renderDialog({ gift: null, onSave });
+
+  fireEvent.change(screen.getByLabelText('What the gift is *'), {
+    target: { value: 'The ceramic mug' },
+  });
+  fireEvent.change(screen.getByLabelText('Link (optional)'), {
+    target: { value: 'shop.example.com/mug' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  await vi.waitFor(() => expect(onSave).toHaveBeenCalled());
+  expect(onSave.mock.calls[0][0].url).toBe('https://shop.example.com/mug');
+});
+
+test('an unsafe-scheme URL is rejected client-side without calling onSave', async () => {
+  const onSave = vi.fn().mockResolvedValue(undefined);
+  renderDialog({ gift: null, onSave });
+
+  fireEvent.change(screen.getByLabelText('What the gift is *'), {
+    target: { value: 'A watch' },
+  });
+  fireEvent.change(screen.getByLabelText('Link (optional)'), {
+    target: { value: 'javascript:alert(1)' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  await vi.waitFor(() => expect(screen.getByText(/unsafe scheme/i)).toBeInTheDocument());
+  expect(onSave).not.toHaveBeenCalled();
+});
+
+test('the status selector lets a brand-new gift start as given', async () => {
+  // T35's full-form path: the dialog opened with no gift behind it must be
+  // able to record something already given, without an idea round trip.
+  const onSave = vi.fn().mockResolvedValue(undefined);
+  renderDialog({ gift: null, onSave });
+
+  fireEvent.change(screen.getByLabelText('What the gift is *'), {
+    target: { value: 'The scarf' },
+  });
+  fireEvent.mouseDown(screen.getByLabelText('Status'));
+  fireEvent.click(screen.getByRole('option', { name: 'Given' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  await vi.waitFor(() => expect(onSave).toHaveBeenCalled());
+  expect(onSave.mock.calls[0][0]).toMatchObject({ status: 'given', description: 'The scarf' });
+});
+
 test('the life event and activity selectors offer the links', () => {
   renderDialog();
   fireEvent.mouseDown(screen.getByLabelText(/Relates to a life event/i));

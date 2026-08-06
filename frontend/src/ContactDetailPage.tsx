@@ -543,6 +543,14 @@ export default function ContactDetailPage() {
     setGiftDialogOpen(true);
   };
 
+  // The full-form entry point (T35): the same dialog as edit, with no gift
+  // behind it, so a gift can be recorded straight as given/received instead of
+  // being created as an idea and immediately edited.
+  const handleAddFullGift = () => {
+    setEditingGift(null);
+    setGiftDialogOpen(true);
+  };
+
   // One-click "mark it given" (T20b's Done-when flow): the gift record is the
   // durable object — status flips to given, the date defaults to now when the
   // idea had none. All other fields are preserved.
@@ -553,6 +561,8 @@ export default function ContactDetailPage() {
         entity_id: record.uid,
         status: 'given',
         description: gift.description,
+        url: gift.url,
+        notes: gift.notes,
         occasion: gift.occasion,
         date: gift.date ?? new Date().toISOString(),
         value_cents: gift.value_cents,
@@ -1472,6 +1482,7 @@ export default function ContactDetailPage() {
             lifeEvents={lifeEvents}
             activities={activities}
             onAdd={handleAddGiftItem}
+            onAddFull={handleAddFullGift}
             onEdit={handleEditGift}
             onMarkGiven={handleMarkGivenGift}
             onDelete={handleDeleteGiftItem}
