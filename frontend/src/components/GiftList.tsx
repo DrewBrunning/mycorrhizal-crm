@@ -150,6 +150,10 @@ export default function GiftList({
 
   const renderItem = (gift: Gift) => {
     const metas = renderMeta(gift);
+    // Trimmed, because the dialog is not the only writer: a direct API caller
+    // can store "   ", which is neither empty nor renderable.
+    const url = gift.url?.trim() ?? '';
+    const notes = gift.notes?.trim() ?? '';
     const resolvedStyle = gift.status !== 'idea';
     return (
       <Paper
@@ -177,27 +181,29 @@ export default function GiftList({
             <Typography variant="body1" sx={{ mt: 0.5, overflowWrap: 'anywhere' }}>
               {gift.description}
             </Typography>
-            {gift.url && (
+            {url && (
               <Typography variant="caption" component="div" sx={{ overflowWrap: 'anywhere' }}>
                 {/* Tappable when it is a real absolute URI with a safe scheme
                     (T34's convention); otherwise shown as plain text rather
-                    than turned into a nonsense — or unsafe — href. */}
-                {looksLikeAbsoluteUri(gift.url) && isSafeUrlString(gift.url) ? (
-                  <a href={gift.url} target="_blank" rel="noopener noreferrer">
-                    {gift.url}
+                    than turned into a nonsense — or unsafe — href. The dialog
+                    defaults a scheme-less value to https, so this fallback is
+                    for values written by something other than the dialog. */}
+                {looksLikeAbsoluteUri(url) && isSafeUrlString(url) ? (
+                  <a href={url} target="_blank" rel="noopener noreferrer">
+                    {url}
                   </a>
                 ) : (
-                  gift.url
+                  url
                 )}
               </Typography>
             )}
-            {gift.notes && (
+            {notes && (
               <Typography
                 variant="body2"
                 color="text.secondary"
                 sx={{ mt: 0.5, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}
               >
-                {gift.notes}
+                {notes}
               </Typography>
             )}
           </Box>
@@ -210,8 +216,8 @@ export default function GiftList({
   return (
     <Stack spacing={1.5}>
       {/* Two entry points, deliberately (T35): the inline input stays the
-          low-friction idea capture T20b was built around, and "Add gift"
-          opens the full dialog for anything that already has a status —
+          low-friction idea capture T20b was built around, and "Add with
+          details" opens the full dialog for anything that already has a status —
           something given or received that never was an idea first. The row
           wraps rather than squeezing the input on a narrow screen. */}
       <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', flexWrap: 'wrap' }}>

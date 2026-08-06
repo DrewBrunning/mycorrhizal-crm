@@ -71,7 +71,10 @@ its documented full-replace semantics, so omitting `url`/`notes` clears them.
 
 **Frontend:** URL (`type="url"`) and multiline notes fields in `GiftDialog.tsx`, with a client-side
 `isSafeUrlString` check mirroring the backend validator so an unsafe scheme is a readable message
-rather than a 400. `GiftList.tsx` renders a set URL through T34's tappable-link convention —
+rather than a 400. A scheme-less value (`shop.example.com/mug` — what people actually paste) is
+normalized to `https://` on save: both validators would have accepted it as-is, and it would then
+have rendered as dead text, since only an absolute URI is linkable. `GiftList.tsx` renders a set
+URL through T34's tappable-link convention —
 `looksLikeAbsoluteUri && isSafeUrlString`, `target="_blank" rel="noopener noreferrer"`, plain text
 otherwise — and notes as secondary text under the description. The full-form entry point is an "Add
 with details" button beside the quick-add input (the row wraps rather than squeezing the input on a
@@ -83,13 +86,23 @@ in hand, so it would have silently wiped `url`/`notes` on the one-click "mark as
 are now carried through, pinned by an e2e round trip.
 
 **Tests:** a real-DB round trip (`TestGift_URLAndNotes_RealMigratedSchema`) covering create, read
-back from the physical `url`/`notes` columns, the list surface, full-replace clearing, and the
-`safeurl`/`max` rejections — through the real `ValidateJSONMiddleware`, not the `withValidated` test
-shim, so the validator genuinely runs. A migration test asserts that adding the columns preserves
-pre-existing gift rows (real production data exists) and that the down migration is clean.
+back from the physical `url`/`notes` columns, the list surface, update *setting* both fields,
+full-replace clearing, and the `safeurl`/`max` rejections — through the real
+`ValidateJSONMiddleware`, not the `withValidated` test shim, so the validator genuinely runs. A
+migration test asserts that adding the columns preserves pre-existing gift rows (real production
+data exists) and that the down migration is clean.
 `e2e/gifts.spec.ts` covers the four user-visible paths; frontend unit tests cover the dialog fields,
 the safe/unsafe/non-absolute link rendering, and the second entry point. Every new assertion was
 hand-verified by breaking the code first — including two Docker rebuild cycles for the e2e ones.
+
+**Review pass:** an Opus review of the branch found no blockers. Fixed from it: the Go suite proved
+only that update *clears* url/notes, never that it can set them (a one-line mutation of
+`UpdateGift` stayed green — now caught); the scheme-less-URL normalization above; a whitespace-only
+url/notes value from a non-dialog writer rendering an empty row; a stale error message left visible
+while typing notes; a wrong migration number in a test comment; and a test-coverage asymmetry in
+`api/gifts.test.ts`. Deliberately not changed: `isSafeUrlString`'s blocklist (`javascript`/`data`/
+`vbscript`/`file`) rather than an http(s) allowlist — that is T34's repo-wide convention, and
+diverging for one field is a decision for its own ticket, not a drive-by.
 
 Numbered `000012`, not `000011`: T36 (life event categories) merged to `main` while this was in
 flight and took `000011`. Its own migration test already steps exactly one migration, so the two

@@ -15,7 +15,7 @@ import { Gift, GIFT_STATUSES, GiftStatus } from '../api/gifts';
 import { LifeEvent, partialDateDisplay } from '../api/lifeEvents';
 import { Activity } from '../api/activities';
 import { useDateFormat } from '../DateFormatProvider';
-import { isSafeUrlString } from '../utils/linkResolution';
+import { isSafeUrlString, looksLikeAbsoluteUri } from '../utils/linkResolution';
 
 // GiftFormData is what the dialog submits; the page adds entity_id and hands it
 // to the hook as a GiftInput.
@@ -106,10 +106,20 @@ export default function GiftDialog({
       return;
     }
 
+    // "shop.example.com/mug" is what people actually paste, and both this
+    // validator and the backend's would accept it — but GiftList only links a
+    // value that is an absolute URI, so it would save without complaint and
+    // then render as dead text. Default a scheme-less value to https, which is
+    // what the field's own placeholder already promises. An absolute URI is
+    // left alone, so an unsafe scheme still reaches the check below.
+    let normalizedUrl = url.trim();
+    if (normalizedUrl !== '' && !looksLikeAbsoluteUri(normalizedUrl)) {
+      normalizedUrl = `https://${normalizedUrl}`;
+    }
+
     // Mirror the backend's `safeurl` validator client-side so an unsafe
     // scheme is a readable message here rather than a 400 from the API.
-    const trimmedUrl = url.trim();
-    if (trimmedUrl !== '' && !isSafeUrlString(trimmedUrl)) {
+    if (normalizedUrl !== '' && !isSafeUrlString(normalizedUrl)) {
       setError(t('gifts.validation.invalidUrl'));
       return;
     }
@@ -134,7 +144,7 @@ export default function GiftDialog({
     const data: GiftFormData = {
       status: (status || 'idea') as GiftStatus,
       description: trimmed,
-      url: trimmedUrl || undefined,
+      url: normalizedUrl || undefined,
       notes: notes.trim() || undefined,
       occasion: occasion.trim() || undefined,
       date: date ? new Date(`${date}T00:00:00`).toISOString() : null,
@@ -206,7 +216,10 @@ export default function GiftDialog({
           <TextField
             label={t('gifts.notes')}
             value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            onChange={(e) => {
+              setNotes(e.target.value);
+              setError('');
+            }}
             fullWidth
             multiline
             minRows={2}

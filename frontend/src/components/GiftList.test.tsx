@@ -161,6 +161,18 @@ test('notes render alongside the description', () => {
   expect(screen.getByText(/Size medium/)).toBeInTheDocument();
 });
 
+test('a whitespace-only URL or notes value renders nothing at all', () => {
+  // The dialog trims, but it is not the only writer — a direct API caller can
+  // store "   ", which must not become an empty row. Asserted structurally,
+  // because an empty row has no text to query for: the item's content column
+  // holds exactly the chip/meta row and the description, nothing else.
+  renderList({ items: [item({ url: '   ', notes: '  ' })] });
+
+  const content = screen.getByText('She liked the ceramics shop').parentElement!;
+  expect(content.children).toHaveLength(2);
+  expect(screen.queryByRole('link')).not.toBeInTheDocument();
+});
+
 test('a gift with neither URL nor notes renders neither', () => {
   renderList({ items: [item()] });
 

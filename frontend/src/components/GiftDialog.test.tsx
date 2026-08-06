@@ -165,6 +165,24 @@ test('empty URL and notes are sent as undefined, not empty strings', async () =>
   expect(submitted.notes).toBeUndefined();
 });
 
+test('a scheme-less URL is normalized to https so it renders as a link', async () => {
+  // Without this the value saves happily and then shows as dead text, because
+  // GiftList only links an absolute URI.
+  const onSave = vi.fn().mockResolvedValue(undefined);
+  renderDialog({ gift: null, onSave });
+
+  fireEvent.change(screen.getByLabelText('What the gift is *'), {
+    target: { value: 'The ceramic mug' },
+  });
+  fireEvent.change(screen.getByLabelText('Link (optional)'), {
+    target: { value: 'shop.example.com/mug' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  await vi.waitFor(() => expect(onSave).toHaveBeenCalled());
+  expect(onSave.mock.calls[0][0].url).toBe('https://shop.example.com/mug');
+});
+
 test('an unsafe-scheme URL is rejected client-side without calling onSave', async () => {
   const onSave = vi.fn().mockResolvedValue(undefined);
   renderDialog({ gift: null, onSave });

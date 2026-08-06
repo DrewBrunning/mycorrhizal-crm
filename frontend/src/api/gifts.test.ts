@@ -117,6 +117,34 @@ describe('updateGift', () => {
     expect(JSON.parse(init.body).currency).toBe('EUR');
     expect(result.status).toBe('given');
   });
+
+  test('sends the T35 url and notes fields, and omitting them clears them', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        id: 'g1',
+        entity_id: 'alice-uid',
+        description: 'The ceramic mug',
+        status: 'idea',
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    // Update is full-replace server-side, so an absent url/notes really does
+    // mean "clear it" — the caller must always send the current values.
+    const result = await updateGift('g1', {
+      entity_id: 'alice-uid',
+      description: 'The ceramic mug',
+      url: 'https://shop.example.com/mug',
+      notes: 'Size medium',
+    });
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.url).toBe('https://shop.example.com/mug');
+    expect(body.notes).toBe('Size medium');
+    expect(result.url).toBeUndefined();
+    expect(result.notes).toBeUndefined();
+  });
 });
 
 describe('deleteGift', () => {

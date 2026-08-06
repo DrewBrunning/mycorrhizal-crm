@@ -134,7 +134,7 @@ func TestGift_RealMigratedSchema(t *testing.T) {
 }
 
 // TestGift_URLAndNotes_RealMigratedSchema is T35's real-DB round trip for the
-// two columns added by migration 000011. It runs against database.InitDB
+// two columns added by migration 000012. It runs against database.InitDB
 // rather than AutoMigrate for the usual reason (CLAUDE.md trap 1): `URL` is
 // exactly the acronym-cased field whose GORM-derived column name can silently
 // disagree with the hand-written SQL — AutoMigrate would happily create
@@ -220,6 +220,21 @@ func TestGift_URLAndNotes_RealMigratedSchema(t *testing.T) {
 	require.Len(t, listed.Items, 1)
 	assert.Equal(t, productURL, listed.Items[0].URL)
 	assert.Equal(t, notes, listed.Items[0].Notes)
+
+	// Update must be able to *set* both fields, not just carry them from
+	// create — assigning them in UpdateGift is its own line of code, and
+	// without this the clearing assertion below passes even if update hard-
+	// codes them empty.
+	const editedURL = "https://shop.example.com/handmade-ceramic-mug-blue"
+	const editedNotes = "She picked the blue one in the end."
+	editResp := doJSON("PUT", "/gifts/"+giftID, models.GiftInput{
+		EntityID: contact.VCardUID, Description: "The ceramic mug she liked",
+		URL: editedURL, Notes: editedNotes,
+	})
+	require.Equal(t, http.StatusOK, editResp.Code, editResp.Body.String())
+	require.NoError(t, db.First(&persisted, "id = ?", giftID).Error)
+	assert.Equal(t, editedURL, persisted.URL, "update must persist a changed url")
+	assert.Equal(t, editedNotes, persisted.Notes, "update must persist changed notes")
 
 	// Update is full-replace (UpdateGift's documented semantics): omitting
 	// url/notes clears them rather than preserving the old values.
