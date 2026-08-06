@@ -20,5 +20,11 @@
   },
   "calendar": {
     "untitledEvent": "Untitled calendar event"
+  },
+  "notifications": {
+    "reminderTitle": "Reminder",
+    "reminderUnknownContact": "Unknown",
+    "testTitle": "Test notification",
+    "testBody": "This is a test notification from Mycorrhizal CRM."
   }
 }

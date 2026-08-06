@@ -1468,5 +1468,56 @@
       "confirming": "Confirming…"
     },
     "declineConfirm": "Decline this share?"
+  },
+  "notifications": {
+    "settings": {
+      "title": "Notifications",
+      "description": "Choose how reminder notifications reach you. Email is configured server-side (Resend/SMTP) and toggled per reminder; the channels below deliver reminders to your self-hosted push services.",
+      "loadError": "Failed to load notification settings.",
+      "saveButton": "Save notification settings",
+      "saved": "Notification settings saved",
+      "saveFailed": "Failed to save notification settings.",
+      "test": "Send test notification",
+      "testing": "Sending…",
+      "testSuccess": "Test notification sent via {{channel}}",
+      "testFailed": "Test failed: {{error}}",
+      "privateUrlWarning": "This looks like a private address. If WEBHOOK_BLOCK_PRIVATE_URLS is enabled on the server, notifications to private addresses are blocked. Set WEBHOOK_BLOCK_PRIVATE_URLS=false on a self-hosted setup to allow them.",
+      "channels": {
+        "email": "email",
+        "ntfy": "ntfy",
+        "gotify": "Gotify",
+        "push": "browser push"
+      },
+      "ntfy": {
+        "enable": "Send reminders via ntfy",
+        "url": "ntfy server URL",
+        "urlHint": "The base URL of your ntfy server, e.g. https://ntfy.sh",
+        "topic": "Topic"
+      },
+      "gotify": {
+        "enable": "Send reminders via Gotify",
+        "url": "Gotify server URL",
+        "urlHint": "The base URL of your Gotify server, e.g. http://gotify:8080",
+        "token": "App token",
+        "tokenHintExisting": "A token is already stored. Leave the field empty to keep it.",
+        "tokenHintNew": "Create an app token in your Gotify instance."
+      },
+      "push": {
+        "enable": "Send reminders via browser push",
+        "description": "Reminders are pushed to every browser registered below. Enable notifications to add this browser.",
+        "enableButton": "Enable browser notifications",
+        "enabling": "Enabling…",
+        "devices": "Registered devices",
+        "noDevices": "No devices registered yet.",
+        "removeDevice": "Remove this device"
+      },
+      "pushEnabled": "Browser notifications enabled",
+      "pushPermissionDenied": "Notification permission was denied. Allow it in your browser and try again.",
+      "pushUnsupported": "This browser does not support push notifications.",
+      "pushEnableFailed": "Failed to enable browser notifications.",
+      "deleteDeviceConfirm": "Remove this device ({{label}})? You will stop receiving push notifications here.",
+      "deviceDeleted": "Device removed",
+      "deviceDeleteFailed": "Failed to remove the device."
+    }
   }
 }

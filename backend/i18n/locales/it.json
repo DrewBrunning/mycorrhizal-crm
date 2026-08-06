@@ -20,5 +20,11 @@
   },
   "calendar": {
     "untitledEvent": "Evento del calendario senza titolo"
+  },
+  "notifications": {
+    "reminderTitle": "Promemoria",
+    "reminderUnknownContact": "Sconosciuto",
+    "testTitle": "Notifica di prova",
+    "testBody": "Questa è una notifica di prova di Mycorrhizal CRM."
   }
 }

@@ -169,6 +169,11 @@ func runBulkContactAction(db *gorm.DB, userID uint, contact models.Contact, acti
 		// Mirror the single-contact ArchiveContact: archiving also retires the
 		// contact's reminders.
 		return db.Transaction(func(tx *gorm.DB) error {
+			// N9: clear delivery state for the contact's reminders before the
+			// (soft) reminder delete leaves the rows dangling.
+			if err := tx.Where("reminder_id IN (SELECT id FROM reminders WHERE contact_id = ? AND user_id = ?)", contact.ID, userID).Delete(&models.NotificationDelivery{}).Error; err != nil {
+				return err
+			}
 			if err := tx.Where("contact_id = ? AND user_id = ?", contact.ID, userID).Delete(&models.Reminder{}).Error; err != nil {
 				return err
 			}

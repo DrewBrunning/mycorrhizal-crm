@@ -4777,6 +4777,150 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  # --- Notifications (N9) ---
+  /notifications/config:
+    get:
+      summary: Get the user's notification channel setup
+      operationId: getNotificationConfig
+      description: Returns the per-user ntfy/Gotify config (Gotify token only as a has/has-not flag), the per-user channel toggles, and the server's Web Push VAPID public key so the browser can subscribe.
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: The user's notification channel setup.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationConfigResponse"
+    put:
+      summary: Save the user's notification channel setup
+      operationId: saveNotificationConfig
+      description: "Upserts the per-user ntfy/Gotify config and the per-user channel toggles in one call. A Gotify token is write-only: an empty value keeps the stored token."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationConfigInput"
+      responses:
+        "400":
+          description: Validation failed (e.g. an invalid URL).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: The saved setup.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationConfigResponse"
+  /notifications/config/test:
+    post:
+      summary: Send a test notification through a channel
+      operationId: testNotificationChannel
+      description: Sends a single test notification via the user's saved config for the requested channel. A diagnosed failure (unconfigured, unreachable, private address blocked) is a 200 with ok:false so the Settings card can render the reason.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [channel]
+              properties:
+                channel:
+                  type: string
+                  enum: [ntfy, gotify, push]
+      responses:
+        "400":
+          description: Unknown channel or malformed body.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: The test result.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  error: { type: string, description: "Present only when ok is false." }
+  /notifications/push-subscriptions:
+    get:
+      summary: List the user's push devices
+      operationId: listPushSubscriptions
+      responses:
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: The user's registered push devices.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  subscriptions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PushSubscriptionResponse"
+    post:
+      summary: Register a browser push subscription
+      operationId: createPushSubscription
+      description: Called after the browser Push API subscribe succeeds. Re-registering the same endpoint updates the existing row instead of duplicating it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushSubscriptionInput"
+      responses:
+        "201":
+          description: The registered subscription.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PushSubscriptionResponse"
+        "400":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /notifications/push-subscriptions/{id}:
+    delete:
+      summary: Remove one of the user's push devices
+      operationId: deletePushSubscription
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Subscription removed.
+        "400":
+          description: Non-integer id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Subscription not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   # --- Calendar subscriptions ---
   /calendars:
     get:
@@ -7406,6 +7550,46 @@ components:
         error: { type: string, nullable: true }
         attempts: { type: integer }
         next_retry_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+    NotificationConfigInput:
+      type: object
+      description: "Channel URLs are optional (a user may use only one push-style channel) but, when present, must be valid http(s) URLs. gotify_token is write-only: empty keeps the stored token. Omitted toggles are left unchanged."
+      properties:
+        ntfy_url: { type: string, format: uri, maxLength: 2000 }
+        ntfy_topic: { type: string, maxLength: 200 }
+        gotify_url: { type: string, format: uri, maxLength: 2000 }
+        gotify_token: { type: string, maxLength: 512, description: "Encrypted at rest. On update, an empty value leaves the stored token untouched." }
+        notify_ntfy: { type: boolean, nullable: true }
+        notify_gotify: { type: boolean, nullable: true }
+        notify_push: { type: boolean, nullable: true }
+    NotificationConfigResponse:
+      type: object
+      description: Never includes the stored Gotify token.
+      properties:
+        ntfy_url: { type: string }
+        ntfy_topic: { type: string }
+        gotify_url: { type: string }
+        gotify_has_token: { type: boolean }
+        notify_ntfy: { type: boolean }
+        notify_gotify: { type: boolean }
+        notify_push: { type: boolean }
+        vapid_public_key: { type: string, description: "The server's Web Push VAPID public key, for the browser subscription call." }
+    PushSubscriptionInput:
+      type: object
+      required: [endpoint, p256dh, auth]
+      properties:
+        endpoint: { type: string, format: uri, maxLength: 2000 }
+        p256dh: { type: string, maxLength: 1024 }
+        auth: { type: string, maxLength: 1024 }
+        device_label: { type: string, maxLength: 200 }
+    PushSubscriptionResponse:
+      type: object
+      properties:
+        id: { type: integer }
+        endpoint: { type: string }
+        p256dh: { type: string }
+        auth: { type: string }
+        device_label: { type: string }
         created_at: { type: string, format: date-time }
 
     # --- Graph ---

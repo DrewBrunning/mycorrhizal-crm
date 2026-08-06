@@ -353,7 +353,14 @@ func DeleteUser(c *gin.Context) {
 	err = db.Transaction(func(tx *gorm.DB) error {
 		userID := uint(id)
 
-		// Delete reminders (hard — user account gone, no tombstoning needed)
+		// Delete reminders (hard — user account gone, no tombstoning needed).
+		// N9: their notification delivery state is hard-deleted first (the
+		// reminder rows are Unscoped()-removed here, so the FK cascade would
+		// cover it — this explicit pass keeps the manual-cascade checklist
+		// complete rather than relying on the constraint).
+		if err := tx.Where("reminder_id IN (SELECT id FROM reminders WHERE user_id = ?)", userID).Delete(&models.NotificationDelivery{}).Error; err != nil {
+			return err
+		}
 		if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.Reminder{}).Error; err != nil {
 			return err
 		}
@@ -494,6 +501,15 @@ func DeleteUser(c *gin.Context) {
 
 		// Delete the user's Immich connection config (T15/T16)
 		if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.ImmichConfig{}).Error; err != nil {
+			return err
+		}
+
+		// Delete the user's notification channel config and push device
+		// subscriptions (N9 — hard: account gone, no tombstoning needed)
+		if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.NotificationConfig{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.PushSubscription{}).Error; err != nil {
 			return err
 		}
 

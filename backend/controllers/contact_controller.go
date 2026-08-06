@@ -513,6 +513,12 @@ func deleteContactAssociations(tx *gorm.DB, contact models.Contact, userID uint)
 	// are deleted further down. If the order changes, LifeEvent-owned
 	// reminders would survive the cascade and dangle. Keep reminders
 	// above LifeEvents.
+	// N9: notification delivery state is a hard-deleted accessory of its
+	// reminder, so it must be cleared alongside the reminders (which are
+	// soft-deleted here — the row stays, so the FK cascade never fires).
+	if err := tx.Where("reminder_id IN (SELECT id FROM reminders WHERE contact_id = ? AND user_id = ?)", contact.ID, userID).Delete(&models.NotificationDelivery{}).Error; err != nil {
+		return err
+	}
 	if err := tx.Where("contact_id = ? AND user_id = ?", contact.ID, userID).Delete(&models.Reminder{}).Error; err != nil {
 		return err
 	}
@@ -746,6 +752,11 @@ func ArchiveContact(c *gin.Context) {
 
 	// Archive contact and delete reminders in a transaction
 	err := db.Transaction(func(tx *gorm.DB) error {
+		// N9: clear notification delivery state for this contact's reminders
+		// before the (soft) reminder delete leaves the rows dangling.
+		if err := tx.Where("reminder_id IN (SELECT id FROM reminders WHERE contact_id = ? AND user_id = ?)", id, userID).Delete(&models.NotificationDelivery{}).Error; err != nil {
+			return err
+		}
 		// Delete all reminders for this contact
 		if err := tx.Where("contact_id = ? AND user_id = ?", id, userID).Delete(&models.Reminder{}).Error; err != nil {
 			return err

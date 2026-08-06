@@ -1468,5 +1468,56 @@
       "confirming": "Conferma in corso…"
     },
     "declineConfirm": "Rifiutare questa condivisione?"
+  },
+  "notifications": {
+    "settings": {
+      "title": "Notifiche",
+      "description": "Scegli come ricevere i promemoria. L'email è configurata lato server (Resend/SMTP) e attivata per ogni promemoria; i canali qui sotto inviano i promemoria ai tuoi servizi push self-hosted.",
+      "loadError": "Impossibile caricare le impostazioni delle notifiche.",
+      "saveButton": "Salva impostazioni notifiche",
+      "saved": "Impostazioni notifiche salvate",
+      "saveFailed": "Impossibile salvare le impostazioni delle notifiche.",
+      "test": "Invia notifica di prova",
+      "testing": "Invio…",
+      "testSuccess": "Notifica di prova inviata via {{channel}}",
+      "testFailed": "Test fallito: {{error}}",
+      "privateUrlWarning": "Sembra un indirizzo privato. Se WEBHOOK_BLOCK_PRIVATE_URLS è attivo sul server, le notifiche verso indirizzi privati vengono bloccate. Imposta WEBHOOK_BLOCK_PRIVATE_URLS=false su un'installazione self-hosted per consentirle.",
+      "channels": {
+        "email": "email",
+        "ntfy": "ntfy",
+        "gotify": "Gotify",
+        "push": "push del browser"
+      },
+      "ntfy": {
+        "enable": "Invia promemoria via ntfy",
+        "url": "URL server ntfy",
+        "urlHint": "L'URL di base del tuo server ntfy, es. https://ntfy.sh",
+        "topic": "Argomento"
+      },
+      "gotify": {
+        "enable": "Invia promemoria via Gotify",
+        "url": "URL server Gotify",
+        "urlHint": "L'URL di base del tuo server Gotify, es. http://gotify:8080",
+        "token": "Token app",
+        "tokenHintExisting": "Un token è già salvato. Lascia il campo vuoto per mantenerlo.",
+        "tokenHintNew": "Crea un token app nella tua istanza Gotify."
+      },
+      "push": {
+        "enable": "Invia promemoria via push del browser",
+        "description": "I promemoria vengono inviati a ogni browser registrato qui sotto. Attiva le notifiche per aggiungere questo browser.",
+        "enableButton": "Attiva notifiche del browser",
+        "enabling": "Attivazione…",
+        "devices": "Dispositivi registrati",
+        "noDevices": "Nessun dispositivo registrato.",
+        "removeDevice": "Rimuovi questo dispositivo"
+      },
+      "pushEnabled": "Notifiche del browser attivate",
+      "pushPermissionDenied": "Permesso di notifica negato. Consenti le notifiche nel browser e riprova.",
+      "pushUnsupported": "Questo browser non supporta le notifiche push.",
+      "pushEnableFailed": "Impossibile attivare le notifiche del browser.",
+      "deleteDeviceConfirm": "Rimuovere questo dispositivo ({{label}})? Non riceverai più notifiche push qui.",
+      "deviceDeleted": "Dispositivo rimosso",
+      "deviceDeleteFailed": "Impossibile rimuovere il dispositivo."
+    }
   }
 }

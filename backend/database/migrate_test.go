@@ -551,3 +551,120 @@ func TestOpenDSN_PragmasArePresent(t *testing.T) {
 	assert.True(t, strings.HasPrefix(dsn, "/path/to/db.sqlite?"),
 		"openDSN must preserve the db path as the DSN prefix")
 }
+
+// TestNotificationChannelsMigration pins the N9 migration's shape AND its
+// data-safety backfill. Real production data exists, so "the migration
+// applies" is not the interesting assertion — "email_sent=true reminders get
+// one backfilled 'sent' email delivery so the per-channel dispatch does not
+// re-email yesterday's reminders" is.
+func TestNotificationChannelsMigration(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "n9-migration.db")
+	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
+	require.NoError(t, err)
+	defer sqlDB.Close()
+
+	m, err := newMigrator(sqlDB)
+	require.NoError(t, err)
+	// Everything up to but NOT including 000013, so the rows below genuinely
+	// predate the notification-channel tables.
+	require.NoError(t, m.Steps(12))
+
+	_, err = sqlDB.Exec(
+		"INSERT INTO users (created_at, updated_at, username, password, email) VALUES (datetime('now'), datetime('now'), 'n9', 'x', 'n9@example.com')")
+	require.NoError(t, err)
+	var userID int64
+	require.NoError(t, sqlDB.QueryRow("SELECT id FROM users WHERE username = 'n9'").Scan(&userID))
+
+	_, err = sqlDB.Exec(
+		"INSERT INTO contacts (created_at, updated_at, firstname, lastname, user_id, vcard_uid) VALUES (datetime('now'), datetime('now'), 'Pre', 'Existing', ?, 'vcard-n9')",
+		userID)
+	require.NoError(t, err)
+
+	// Two pre-existing reminders: one already emailed (email_sent=1, with a
+	// last_sent), one not. The backfill must cover exactly the first.
+	_, err = sqlDB.Exec(`
+		INSERT INTO reminders (created_at, updated_at, user_id, message, by_mail, remind_at, recurrence, completed, email_sent, last_sent, contact_id)
+		VALUES (datetime('now'), datetime('now'), ?, 'sent', 1, datetime('now'), 'once', 0, 1, datetime('now'), 1)`,
+		userID)
+	require.NoError(t, err)
+	_, err = sqlDB.Exec(`
+		INSERT INTO reminders (created_at, updated_at, user_id, message, by_mail, remind_at, recurrence, completed, email_sent, last_sent, contact_id)
+		VALUES (datetime('now'), datetime('now'), ?, 'unsent', 1, datetime('now'), 'once', 0, 0, NULL, 1)`,
+		userID)
+	require.NoError(t, err)
+
+	require.NoError(t, m.Steps(1))
+
+	// The new user toggles exist.
+	var toggleCount int64
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM pragma_table_info('users') WHERE name IN ('notify_ntfy', 'notify_gotify', 'notify_push')",
+	).Scan(&toggleCount))
+	assert.Equal(t, int64(3), toggleCount, "users must gain the three N9 channel toggles")
+
+	// Backfill: exactly one 'sent' email delivery, for the emailed reminder.
+	var sentCount int64
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM notification_deliveries WHERE channel = 'email' AND status = 'sent'",
+	).Scan(&sentCount))
+	assert.Equal(t, int64(1), sentCount, "one backfilled sent email delivery per email_sent=true reminder")
+
+	var (
+		deliveryReminderID int64
+		sentAt             sql.NullString
+	)
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT reminder_id, sent_at FROM notification_deliveries WHERE channel = 'email' AND status = 'sent'",
+	).Scan(&deliveryReminderID, &sentAt))
+	var sentReminderID int64
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT id FROM reminders WHERE message = 'sent'",
+	).Scan(&sentReminderID))
+	assert.Equal(t, sentReminderID, deliveryReminderID, "the backfilled delivery must reference the emailed reminder")
+	assert.True(t, sentAt.Valid, "a backfilled sent delivery must carry a sent_at")
+
+	// The notification_configs partial unique index blocks a second active
+	// row per user but allows re-creating after soft delete (T26 pattern).
+	_, err = sqlDB.Exec(`
+		INSERT INTO notification_configs (created_at, updated_at, user_id) VALUES (datetime('now'), datetime('now'), ?)`,
+		userID)
+	require.NoError(t, err)
+	_, err = sqlDB.Exec(`
+		INSERT INTO notification_configs (created_at, updated_at, user_id) VALUES (datetime('now'), datetime('now'), ?)`,
+		userID)
+	assert.Error(t, err, "a second active config row for the same user must violate the partial unique index")
+	_, err = sqlDB.Exec("UPDATE notification_configs SET deleted_at = datetime('now') WHERE user_id = ?", userID)
+	require.NoError(t, err)
+	_, err = sqlDB.Exec(`
+		INSERT INTO notification_configs (created_at, updated_at, user_id) VALUES (datetime('now'), datetime('now'), ?)`,
+		userID)
+	assert.NoError(t, err, "re-creating a config after soft delete must be allowed")
+
+	// The reminder FK cascades: a hard-removed reminder takes its delivery
+	// rows with it.
+	_, err = sqlDB.Exec("DELETE FROM reminders WHERE message = 'sent'")
+	require.NoError(t, err)
+	var remaining int64
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM notification_deliveries WHERE reminder_id = ?", sentReminderID,
+	).Scan(&remaining))
+	assert.Zero(t, remaining, "notification_deliveries must be cascaded when their reminder is hard-deleted")
+
+	// Down: rolling back 000013 drops the new tables/columns; the pre-existing
+	// user/contact/reminders survive.
+	require.NoError(t, MigrateDown(dbPath))
+	var tableCount int64
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name IN ('notification_deliveries', 'notification_configs', 'push_subscriptions', 'server_settings')",
+	).Scan(&tableCount))
+	assert.Zero(t, tableCount, "the down migration must drop all four N9 tables")
+	var colCount int64
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM pragma_table_info('users') WHERE name IN ('notify_ntfy', 'notify_gotify', 'notify_push')",
+	).Scan(&colCount))
+	assert.Zero(t, colCount, "the down migration must remove the three user toggles")
+
+	var reminderCount int64
+	require.NoError(t, sqlDB.QueryRow("SELECT COUNT(*) FROM reminders WHERE message = 'unsent'").Scan(&reminderCount))
+	assert.EqualValues(t, 1, reminderCount, "a rollback must not destroy the reminder")
+}

@@ -163,6 +163,19 @@ func SendRemindersWithRateLimit(db *gorm.DB, cfg config.Config) error {
 	return err
 }
 
+// notificationDeliveryKey identifies one (reminder, channel) pair in the
+// delivered-state set SendReminders builds.
+type notificationDeliveryKey struct {
+	reminderID uint
+	channel    string
+}
+
+// SendReminders dispatches due reminders across every configured notification
+// channel. A reminder is due for a channel when NO NotificationDelivery row
+// exists with that channel and status='sent' — a 'failed' or 'pending' row
+// leaves it due, so a failure in one channel never marks the reminder as sent
+// and never blocks another channel from dispatching. Email remains a per-user
+// digest (it also carries birthdays); the push-style channels send per reminder.
 func SendReminders(db *gorm.DB, config config.Config) error {
 	logger.Info().Msg("Sending reminders...")
 	var reminders []models.Reminder
@@ -171,15 +184,30 @@ func SendReminders(db *gorm.DB, config config.Config) error {
 	now := time.Now().In(loc)
 	endOfDay := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, loc)
 
-	// Fetch reminders that are:
-	// - Set to be sent by email
-	// - Due today or before
-	// - Not completed
-	// - Email not yet sent for this occurrence
-	err := db.Where("by_mail = ? AND remind_at <= ? AND completed = ? AND email_sent = ?",
-		true, endOfDay, false, false).Find(&reminders).Error
-	if err != nil {
+	// Fetch reminders that are due today or before and not completed. Per-channel
+	// eligibility (ByMail for email, per-user toggles for the rest) is decided by
+	// each channel sender, keyed off the delivery records below.
+	if err := db.Where("remind_at <= ? AND completed = ?", endOfDay, false).Find(&reminders).Error; err != nil {
 		return fmt.Errorf("failed to fetch reminders: %w", err)
+	}
+
+	// Build the set of (reminder, channel) pairs already marked sent for this
+	// occurrence.
+	sentDeliveries := make(map[notificationDeliveryKey]bool)
+	if len(reminders) > 0 {
+		reminderIDs := make([]uint, 0, len(reminders))
+		for _, r := range reminders {
+			reminderIDs = append(reminderIDs, r.ID)
+		}
+		var deliveries []models.NotificationDelivery
+		if err := db.Where("reminder_id IN ?", reminderIDs).Find(&deliveries).Error; err != nil {
+			return fmt.Errorf("failed to fetch notification deliveries: %w", err)
+		}
+		for _, d := range deliveries {
+			if d.Status == "sent" {
+				sentDeliveries[notificationDeliveryKey{reminderID: d.ReminderID, channel: d.Channel}] = true
+			}
+		}
 	}
 
 	// Group reminders by user
@@ -226,7 +254,7 @@ func SendReminders(db *gorm.DB, config config.Config) error {
 		return nil
 	}
 
-	// Fetch all users we need to email
+	// Fetch all users we need to reach
 	var users []models.User
 	if err := db.Where("id IN ?", userIDs).Find(&users).Error; err != nil {
 		return fmt.Errorf("failed to fetch users: %w", err)
@@ -239,7 +267,6 @@ func SendReminders(db *gorm.DB, config config.Config) error {
 
 	sort.Slice(userIDs, func(i, j int) bool { return userIDs[i] < userIDs[j] })
 
-	var sendErrors int
 	for _, userID := range userIDs {
 		user, exists := userByID[userID]
 		if !exists {
@@ -249,50 +276,70 @@ func SendReminders(db *gorm.DB, config config.Config) error {
 
 		userReminders := remindersByUser[userID] // May be nil/empty for birthday-only users
 
-		// Send email only when enabled; preserve reminders (email_sent=false) when disabled
-		// so they are picked up again once email is configured.
-		if config.EmailEnabled() {
-			if err := sendReminderEmailFn(user, userReminders, config, db); err != nil {
-				logger.Error().Err(err).Uint("user_id", user.ID).Msg("Error sending daily email, skipping reminder mutations for this user")
-				sendErrors++
-			} else {
-				// Mark reminders as email_sent so they won't be re-emailed
-				for _, reminder := range userReminders {
-					reminder.EmailSent = true
-					reminder.LastSent = new(time.Time)
-					*reminder.LastSent = time.Now()
-					if err := db.Save(&reminder).Error; err != nil {
-						logger.Error().Err(err).Uint("reminder_id", reminder.ID).Msg("Failed to update reminder after sending email")
-					} else {
-						logger.Info().Uint("reminder_id", reminder.ID).Msg("Marked reminder as email_sent")
-					}
+		// Birthdays falling today — the email digest includes them (and is the
+		// only channel that runs for a birthday-only user), and they drive the
+		// birthday.occurred webhooks below.
+		var todayBirthdays []models.Birthday
+		birthdays, err := GetUpcomingBirthdays(db, userID, now)
+		if err != nil {
+			logger.Warn().Err(err).Uint("user_id", userID).Msg("Failed to fetch birthdays for user")
+		} else {
+			for _, bday := range birthdays {
+				if DaysUntilBirthday(bday.Birthday, now) == 0 {
+					todayBirthdays = append(todayBirthdays, bday)
 				}
 			}
-		} else {
-			logger.Info().Int("reminder_count", len(userReminders)).Uint("user_id", userID).Msg("Email sending disabled (no channel configured), skipping reminder mutations to preserve them")
 		}
 
-		// Fire reminder.triggered webhooks regardless of email config
+		// Dispatch each enabled channel. Failure in one channel is logged and
+		// does not abort the others.
+		for _, sender := range notificationSenders {
+			channel := sender.Channel()
+
+			eligible := make([]models.Reminder, 0, len(userReminders))
+			for _, r := range userReminders {
+				if sentDeliveries[notificationDeliveryKey{reminderID: r.ID, channel: string(channel)}] {
+					continue
+				}
+				// Legacy mirror: a reminder the pre-N9 code already emailed
+				// (email_sent=true) must not be re-emailed even if its backfilled
+				// delivery row is somehow missing. The other channels have no
+				// legacy field — delivery rows are their only record.
+				if channel == models.ChannelEmail && r.EmailSent {
+					continue
+				}
+				eligible = append(eligible, r)
+			}
+
+			// Email is a per-user digest: it also carries birthdays, so it runs
+			// even with no due reminders (but a birthday today). The push-style
+			// channels only run when there is a reminder to say.
+			if channel == models.ChannelEmail && len(eligible) == 0 && len(todayBirthdays) == 0 {
+				continue
+			}
+			if channel != models.ChannelEmail && len(eligible) == 0 {
+				continue
+			}
+
+			if !sender.Enabled(db, config, user) {
+				continue
+			}
+
+			if err := sender.Send(db, config, user, eligible); err != nil {
+				logger.Error().Err(err).Uint("user_id", user.ID).Str("channel", string(channel)).Msg("Error sending notifications")
+			}
+		}
+
+		// Fire reminder.triggered webhooks regardless of channel config
 		for _, reminder := range userReminders {
 			go TriggerWebhooks(db, config, reminder.UserID, "reminder.triggered", reminder)
 		}
 
-		// Fire birthday.occurred for each birthday that falls today regardless of email config
-		todayBirthdays, err := GetUpcomingBirthdays(db, userID, now)
-		if err != nil {
-			logger.Warn().Err(err).Uint("user_id", userID).Msg("Failed to fetch birthdays for webhook")
-		} else {
-			for _, bday := range todayBirthdays {
-				if DaysUntilBirthday(bday.Birthday, now) == 0 {
-					bday := bday
-					go TriggerWebhooks(db, config, userID, "birthday.occurred", bday)
-				}
-			}
+		// Fire birthday.occurred for each birthday that falls today regardless of channel config
+		for _, bday := range todayBirthdays {
+			bday := bday
+			go TriggerWebhooks(db, config, userID, "birthday.occurred", bday)
 		}
-	}
-
-	if sendErrors > 0 {
-		logger.Warn().Int("failed_users", sendErrors).Int("total_users", len(userIDs)).Msg("Some emails failed to send")
 	}
 
 	return nil
