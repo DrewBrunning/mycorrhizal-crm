@@ -13,11 +13,21 @@ import (
 // been asserted for a single scalar field (Phone, in TestParseVCF_DuplicateDetectionAndMerge).
 // These tests pin the same policy down for every array field (Emails/Phones/Addresses/URLs/
 // IMPPs/Circles) and for the "existing survives" direction, which was never asserted at all.
+//
+// T49 (docs/fork-plan/tickets/58-T49-vcf-import-merge-corrupts-existing-contact.md) replaced
+// the array fields' "replace whenever incoming has any entries" semantics with an additive
+// merge: existing entries always survive, and only genuinely new (non-blank, not-already-
+// present) incoming entries get appended. TestMergeImportedContact_ArrayFieldsOverwriteWhenIncomingNonEmpty
+// below is updated accordingly -- it used to assert the old, buggy "incoming replaces existing"
+// behavior as if it were the intended policy; that assertion is exactly what this ticket fixes.
+// Circles is unaffected: it isn't a vCard multi-valued field in this sense (ParseCircles already
+// filters blanks before Circles is ever populated) and T49 did not change its replace semantics.
 
-// TestMergeImportedContact_ArrayFieldsOverwriteWhenIncomingNonEmpty proves the "incoming wins"
-// half of the policy holds for every multi-valued field, not just the one scalar field the
-// pre-existing test happened to cover.
-func TestMergeImportedContact_ArrayFieldsOverwriteWhenIncomingNonEmpty(t *testing.T) {
+// TestMergeImportedContact_ArrayFieldsAdditivelyMerge proves the additive-merge policy (T49)
+// holds for every multi-valued field: existing entries survive, and a genuinely new incoming
+// entry (different value, not blank) is appended alongside them -- not "incoming replaces
+// existing" as this test used to assert before T49.
+func TestMergeImportedContact_ArrayFieldsAdditivelyMerge(t *testing.T) {
 	existing := &models.Contact{
 		Emails:    []models.ContactEmail{{Type: "old", Value: "old@example.com"}},
 		Phones:    []models.ContactPhone{{Type: "old", Value: "555-0000"}},
@@ -37,12 +47,82 @@ func TestMergeImportedContact_ArrayFieldsOverwriteWhenIncomingNonEmpty(t *testin
 
 	MergeImportedContact(existing, incoming)
 
-	assert.Equal(t, incoming.Emails, existing.Emails)
-	assert.Equal(t, incoming.Phones, existing.Phones)
-	assert.Equal(t, incoming.Addresses, existing.Addresses)
-	assert.Equal(t, incoming.URLs, existing.URLs)
-	assert.Equal(t, incoming.IMPPs, existing.IMPPs)
+	// Both the existing and the new entry must be present -- "merge" means
+	// "combine", not "last import wins" (T49).
+	assert.Equal(t, []models.ContactEmail{
+		{Type: "old", Value: "old@example.com"},
+		{Type: "new", Value: "new@example.com"},
+	}, existing.Emails)
+	assert.Equal(t, []models.ContactPhone{
+		{Type: "old", Value: "555-0000"},
+		{Type: "new", Value: "555-1111"},
+	}, existing.Phones)
+	assert.Equal(t, []models.ContactAddress{
+		{Type: "old", Street: "1 Old St"},
+		{Type: "new", Street: "2 New Ave"},
+	}, existing.Addresses)
+	assert.Equal(t, []models.ContactURL{
+		{Type: "old", Value: "https://old.example.com"},
+		{Type: "new", Value: "https://new.example.com"},
+	}, existing.URLs)
+	assert.Equal(t, []models.ContactIMPP{
+		{Type: "old", Value: "old-impp"},
+		{Type: "new", Value: "new-impp"},
+	}, existing.IMPPs)
+	// Circles is untouched by T49 -- still a full replace.
 	assert.Equal(t, incoming.Circles, existing.Circles)
+}
+
+// TestMergeImportedContact_ArrayFieldsDontDuplicateExistingValue proves the additive merge
+// dedupes: an incoming entry that repeats a value the contact already has (as a re-import of
+// the same vCard would produce) must not create a second copy.
+func TestMergeImportedContact_ArrayFieldsDontDuplicateExistingValue(t *testing.T) {
+	existing := &models.Contact{
+		Emails: []models.ContactEmail{{Type: "home", Value: "same@example.com"}},
+		Phones: []models.ContactPhone{{Type: "home", Value: "555-0000"}},
+	}
+	incoming := &models.Contact{
+		Emails: []models.ContactEmail{{Type: "work", Value: "same@example.com"}}, // same value, different label
+		Phones: []models.ContactPhone{{Type: "home", Value: "555-0000"}},         // exact repeat
+	}
+
+	MergeImportedContact(existing, incoming)
+
+	assert.Equal(t, []models.ContactEmail{{Type: "home", Value: "same@example.com"}}, existing.Emails)
+	assert.Equal(t, []models.ContactPhone{{Type: "home", Value: "555-0000"}}, existing.Phones)
+}
+
+// TestMergeImportedContact_ArrayFieldsIgnoreBlankIncomingEntries proves the specific bug T49
+// reproduced against a real migrated DB: an incoming array with a single blank-valued entry
+// (T50's vCard 2.1 parsing gap is a real source of these) must not wipe out the existing,
+// populated array just because len(incoming) > 0.
+func TestMergeImportedContact_ArrayFieldsIgnoreBlankIncomingEntries(t *testing.T) {
+	existing := &models.Contact{
+		Emails: []models.ContactEmail{{Type: "home", Value: "keep@example.com"}},
+		Phones: []models.ContactPhone{{Type: "home", Value: "555-0000"}},
+	}
+	incoming := &models.Contact{
+		Emails: []models.ContactEmail{{Type: "home", Value: ""}}, // len() > 0 but no content
+		Phones: []models.ContactPhone{{Type: "home", Value: ""}},
+	}
+
+	MergeImportedContact(existing, incoming)
+
+	assert.Equal(t, []models.ContactEmail{{Type: "home", Value: "keep@example.com"}}, existing.Emails)
+	assert.Equal(t, []models.ContactPhone{{Type: "home", Value: "555-0000"}}, existing.Phones)
+}
+
+// TestMergeImportedContact_NeverReassignsVCardUID pins the other half of T49's reproduction:
+// an existing contact's VCardUID (its identity, keyed on by every graph-adjacent table's
+// entity_id) must survive a merge even when the incoming side carries its own (freshly minted,
+// per ParseVCF) UID.
+func TestMergeImportedContact_NeverReassignsVCardUID(t *testing.T) {
+	existing := &models.Contact{VCardUID: "original-stable-uid"}
+	incoming := &models.Contact{VCardUID: "freshly-generated-uuid"}
+
+	MergeImportedContact(existing, incoming)
+
+	assert.Equal(t, "original-stable-uid", existing.VCardUID)
 }
 
 // TestMergeImportedContact_ExistingSurvivesWhenIncomingBlank proves the other, previously
