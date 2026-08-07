@@ -24,7 +24,7 @@ the rank.
 
 | Rank | Ticket | R | Size | Depends on | Ready? |
 |---|---|---|---|---|---|
-| 1 | [T50](59-T50-vcard21-import-blank-fields.md) · vCard 2.1 import produces blank phone/email/photo | 5 | M | T49 ✅ | Ready |
+| 1 | [T50](59-T50-vcard21-import-blank-fields.md) · vCard 2.1 import produces blank phone/email/photo | 5 | M | T49 ✅ | **Implemented, on `feature/t50-vcard21-import`** — builds/tests green, hand-verified against the real reported file. Awaiting merge to close. |
 | 2 | [T51](60-T51-push-notification-413-payload-too-large.md) · Browser push "Test notification" fails with 413 from the push service | 4 | S | N9 ✅ | Ready |
 | 3 | [T42](51-T42-immich-link-person-error-misclassification.md) · Immich "link a person" fails with "Could not reach Immich" | 4 | S | T15/T16 ✅ | Ready |
 | 4 | [T44](53-T44-link-field-type-registry-not-in-editors.md) · Link field type registry doesn't reach the editors | 4 | M | T34 ✅ | Ready |

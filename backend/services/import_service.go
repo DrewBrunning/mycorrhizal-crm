@@ -90,18 +90,27 @@ func splitVCardBlocks(data []byte) [][]byte {
 	return vcardBlockRE.FindAll(data, -1)
 }
 
-// sniffVCardVersion returns "3.0" if the block's VERSION property starts
-// with "3", otherwise "4.0" (the default for a missing/unrecognized
-// VERSION, matching this WP's "advertise 4.0 by default" precedent).
+// sniffVCardVersion returns "2.1" if the block's VERSION property starts
+// with "2", "3.0" if it starts with "3", otherwise "4.0" (the default for a
+// missing/unrecognized VERSION, matching this WP's "advertise 4.0 by
+// default" precedent). vCard 2.1 (T50) is detected explicitly rather than
+// falling through to the 4.0 default: it uses a legacy bare-token parameter
+// grammar go-vcard's decoder cannot parse at all, the largest version gap
+// this app has an adapter for, so it needs its own normalization pass (see
+// normalizeVCard21) before either adapter can see it correctly.
 func sniffVCardVersion(block []byte) string {
 	m := vcardVersionRE.FindSubmatch(block)
 	if m == nil {
 		return "4.0"
 	}
-	if strings.HasPrefix(strings.TrimSpace(string(m[1])), "3") {
+	switch v := strings.TrimSpace(string(m[1])); {
+	case strings.HasPrefix(v, "2"):
+		return "2.1"
+	case strings.HasPrefix(v, "3"):
 		return "3.0"
+	default:
+		return "4.0"
 	}
-	return "4.0"
 }
 
 // diagnosticsToStrings renders adapter Diagnostics (docs/fork-plan/
@@ -175,11 +184,24 @@ func ParseVCF(reader io.Reader, db *gorm.DB, userID uint) (contacts []VCFContact
 		}
 
 		var adapter contactmodel.Importer = vcard4.Adapter{}
-		if sniffVCardVersion(block) == "3.0" {
+		var normDiags []contactmodel.Diagnostic
+		switch sniffVCardVersion(block) {
+		case "2.1":
+			// vCard 2.1's legacy bare-token parameter grammar and
+			// QUOTED-PRINTABLE encoding are both opaque to go-vcard's
+			// decoder (T50) -- normalize the raw bytes first. vcard3, not
+			// vcard4, is the target adapter: its importMediaURI already
+			// tolerates 2.1-style ENCODING=BASE64 (vcard4 only understands
+			// native data: URIs), and 2.1's TYPE-token grammar is a subset
+			// of 3.0's, not 4.0's.
+			block, normDiags = normalizeVCard21(block)
+			adapter = vcard3.Adapter{}
+		case "3.0":
 			adapter = vcard3.Adapter{}
 		}
 
 		record, diags, importErr := adapter.Import(block)
+		diags = append(normDiags, diags...)
 		if importErr != nil {
 			// Skip malformed vCards but continue parsing
 			previews = append(previews, models.ImportRowPreview{
