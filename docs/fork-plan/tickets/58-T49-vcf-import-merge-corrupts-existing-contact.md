@@ -101,3 +101,41 @@ to notice and *harder* to recover from than an outright delete would be.
   phone/email/gifts, using both a well-formed vCard and one with gaps; confirm nothing existing is
   lost and the contact's `VCardUID` is unchanged before and after.
 - `CreateMergeNote`'s timeline note is checked to genuinely describe the resulting merge.
+
+## Landing note — 2026-08-06
+
+Both bugs fixed in `services/import_service.go`'s `MergeImportedContact`:
+
+1. **`VCardUID` is no longer touched by merge, at all** — the `if incoming.VCardUID != "" { ... }`
+   block is gone. The existing contact's identity survives every merge unconditionally.
+2. **Multi-valued fields (`Emails`/`Phones`/`Addresses`/`URLs`/`IMPPs`) now merge additively**, via
+   a new generic `mergeContactValues[T]` helper: every existing entry survives unconditionally, and
+   an incoming entry is appended only if it has actual content (blank-value entries — the T50
+   case — are filtered) *and* isn't a duplicate of something already present (deduped by
+   normalized value, so a re-import of the same vCard doesn't pile up copies). Decision per item 2:
+   went with "existing entries plus any genuinely new incoming ones" (additive), matching the
+   user's stated expectation ("erased all fields rather than appending"). `Circles` was left alone
+   — it isn't a vCard multi-valued field in this sense, and `ParseCircles` already filters blanks
+   before `Circles` is ever populated, so it was never exposed to this bug.
+
+`CreateMergeNote` was changed to take the incoming `*models.Contact` directly instead of the
+flattened `map[string]interface{}` preview — it needs the real `Emails`/`Phones`/etc. slices to
+report what an additive merge actually added, which a flattened string map can't carry. Scalar
+fields are still reported as `old → new`; multi-valued fields are now reported as `added: x, y`
+(and the old per-field `Email`/`Phone`/`Address` *scalar* lines were dropped from the note, since
+those scalars are just `Contact.BeforeSave`'s denormalized first-entry projection of the arrays —
+reporting both would double up). Both call sites in `import_session.go` (`Confirm`'s shared
+update branch and `ConfirmVCF`'s update branch) updated accordingly; `preview.ParsedContact` is
+untouched and still serves its original purpose (the API preview table).
+
+Verified: `go build ./... && go vet ./... && gofmt -l . && go test ./...` green. Two new real-DB
+tests (`services/import_service_merge_real_db_test.go`, against `database.InitDB`, not
+`AutoMigrate`) reproduce the ticket's exact scenario for both VCF and CSV — existing contact with
+phone/email/a linked `Gift`, incoming with a fresh `VCardUID` and a non-overlapping/blank-valued
+field — and assert `VCardUID` is unchanged, existing data survives, and the `Gift` stays reachable
+via `WHERE entity_id = contact.vcard_uid`. Hand-verified per `/CLAUDE.md`'s testing rule: temporarily
+reverted both fixes, confirmed all new tests fail (including the two real-DB ones, reproducing the
+exact "gift becomes unreachable" symptom), then restored — diffed byte-identical to the fix.
+`import_service_merge_test.go`'s pre-existing tests, which had pinned the old replace-semantics as
+if it were the intended policy, were rewritten to assert the additive/dedup/blank-filtering
+behavior instead (that assertion *was* the bug this ticket fixes).
