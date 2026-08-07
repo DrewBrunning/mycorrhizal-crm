@@ -60,7 +60,17 @@
     "saveFailed": "Échec de l'enregistrement du foyer",
     "created": "Foyer créé",
     "updated": "Foyer mis à jour",
-    "deleted": "Foyer supprimé"
+    "deleted": "Foyer supprimé",
+    "suggestAddresses": "Suggérer des foyers avec adresse partagée",
+    "scanning": "Analyse en cours…",
+    "scanFailed": "Impossible d'analyser les adresses partagées",
+    "addressSuggestions": "Suggestions d'adresse partagée",
+    "addressSuggestionDescription": "Contacts qui partagent une adresse mais ne vivent pas encore dans le même foyer.",
+    "noAddressSuggestions": "Aucune suggestion d'adresse partagée trouvée. Ajoutez des adresses à davantage de contacts pour trouver des groupes.",
+    "acceptSuggestion": "Accepter",
+    "dismissSuggestion": "Ignorer",
+    "suggestionAccepted": "Foyer créé à partir de la suggestion",
+    "suggestionDismissed": "Suggestion ignorée"
   },
   "dashboard": {
     "title": "Tableau de bord",

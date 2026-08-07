@@ -387,3 +387,94 @@ func SuggestHouseholdRelationships(c *gin.Context) {
 		"total":           len(created),
 	})
 }
+
+// SuggestAddressHouseholds is T40's detection trigger (docs/fork-plan/
+// tickets/49-T40-household-suggestions-shared-address.md): scan the caller's
+// non-archived contacts, group them by normalized address, and return every
+// group of 2+ that is not already a co-resident household and not dismissed.
+// Read-only and idempotent — it persists nothing. The returned suggestions
+// carry the stable (address_hash, member_hash) pair and the shared address so
+// the client can render them and drive accept/dismiss.
+func SuggestAddressHouseholds(c *gin.Context) {
+	db := c.MustGet("db").(*gorm.DB)
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+
+	suggestions, err := services.GenerateAddressHouseholdSuggestions(db, userID)
+	if err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to scan shared addresses").WithError(err))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"suggestions": suggestions,
+		"total":       len(suggestions),
+	})
+}
+
+// AcceptAddressHouseholdSuggestion is T40's accept action: create the
+// Household + HouseholdMember rows for a suggested group. The members are
+// re-validated server-side (still the user's contacts, still sharing a
+// normalized address, not already co-members, not dismissed); the shared
+// address is copied onto the household. Errors surface as specific statuses:
+// 400 for an invalid group, 404 for a member that's gone, 409 when the group
+// has already been absorbed or dismissed.
+func AcceptAddressHouseholdSuggestion(c *gin.Context) {
+	db := c.MustGet("db").(*gorm.DB)
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+
+	input, err := middleware.GetValidated[models.AcceptHouseholdSuggestionInput](c)
+	if err != nil {
+		apperrors.AbortWithError(c, err)
+		return
+	}
+
+	household, svcErr := services.AcceptAddressHouseholdSuggestion(db, userID, input.MemberVCardUIDs, input.Name, input.Type)
+	if svcErr != nil {
+		// The service returns *apperrors.AppError for all its client-visible
+		// rejection paths; everything else is a real database failure.
+		if appErr, ok := svcErr.(*apperrors.AppError); ok {
+			apperrors.AbortWithError(c, appErr)
+			return
+		}
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to create household from suggestion").WithError(svcErr))
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"household": household})
+}
+
+// DismissAddressHouseholdSuggestion is T40's dismiss action: permanently
+// record the suggested group as rejected so the detection pass stops offering
+// it. The (address_hash, member_hash) pair is recomputed from the members'
+// real addresses server-side, and the natural-key unique index makes a
+// duplicate dismissal a 409 rather than a duplicate row.
+func DismissAddressHouseholdSuggestion(c *gin.Context) {
+	db := c.MustGet("db").(*gorm.DB)
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+
+	input, err := middleware.GetValidated[models.DismissHouseholdSuggestionInput](c)
+	if err != nil {
+		apperrors.AbortWithError(c, err)
+		return
+	}
+
+	if err := services.DismissAddressHouseholdSuggestion(db, userID, input.MemberVCardUIDs); err != nil {
+		if appErr, ok := err.(*apperrors.AppError); ok {
+			apperrors.AbortWithError(c, appErr)
+			return
+		}
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to dismiss household suggestion").WithError(err))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Household suggestion dismissed"})
+}

@@ -54,6 +54,25 @@ type HouseholdMemberInput struct {
 	Until          string `json:"until,omitempty"`
 }
 
+// AcceptHouseholdSuggestionInput is the DTO for POST /households/suggestions/
+// accept (T40 — docs/fork-plan/tickets/49-T40-household-suggestions-shared-
+// address.md). The suggested group is identified by its member VCardUIDs; the
+// server recomputes the shared address and the dismissal hashes from the
+// members' real contacts data, so a client can neither fabricate a group nor
+// dismiss/accept an arbitrary hash. Name/Type are optional with server-side
+// defaults.
+type AcceptHouseholdSuggestionInput struct {
+	MemberVCardUIDs []string `json:"member_vcard_uids" validate:"required,min=2,dive,required,uuid4"`
+	Name            string   `json:"name,omitempty" validate:"omitempty,max=200"`
+	Type            string   `json:"type,omitempty" validate:"omitempty,oneof=family_unit roommates other"`
+}
+
+// DismissHouseholdSuggestionInput is the DTO for POST /households/suggestions/
+// dismiss (T40).
+type DismissHouseholdSuggestionInput struct {
+	MemberVCardUIDs []string `json:"member_vcard_uids" validate:"required,min=2,dive,required,uuid4"`
+}
+
 // TagInput is the DTO for creating/updating a Tag (tag.go). Only Name is
 // editable here -- tagging lifecycle lives in its own AddContactTag/
 // RemoveContactTag endpoints, not folded into update.

@@ -1,12 +1,21 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Box, Typography, Button, Alert, LinearProgress } from '@mui/material';
+import { Box, Typography, Button, Alert, LinearProgress, Stack } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import LocationSearchingIcon from '@mui/icons-material/LocationSearching';
 import HouseholdDialog, { HouseholdFormData } from './components/HouseholdDialog';
 import HouseholdList from './components/HouseholdList';
+import AddressHouseholdSuggestions from './components/AddressHouseholdSuggestions';
 import { useHouseholds } from './hooks/useHouseholds';
 import { useSnackbar } from './context/SnackbarContext';
-import { Household, HouseholdMember } from './api/households';
+import {
+  Household,
+  HouseholdMember,
+  AddressHouseholdSuggestion,
+  suggestAddressHouseholds,
+  acceptAddressHouseholdSuggestion,
+  dismissAddressHouseholdSuggestion,
+} from './api/households';
 import { getContactsByUid, Contact } from './api/contacts';
 import { handleFetchError } from './utils/errorHandler';
 
@@ -32,6 +41,12 @@ export default function HouseholdsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingHousehold, setEditingHousehold] = useState<Household | null>(null);
   const [suggestPendingId, setSuggestPendingId] = useState<string | null>(null);
+
+  // T40: shared-address household suggestions, loaded on demand.
+  const [addressSuggestions, setAddressSuggestions] = useState<AddressHouseholdSuggestion[]>([]);
+  const [suggestionsLoaded, setSuggestionsLoaded] = useState(false);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [suggestionsError, setSuggestionsError] = useState('');
 
   // Resolve member VCardUIDs to contact names for display. Re-resolved on
   // every membership change (the async result replaces the map wholesale).
@@ -101,13 +116,68 @@ export default function HouseholdsPage() {
     }
   };
 
+  const handleScanAddressSuggestions = async () => {
+    setSuggestionsLoading(true);
+    setSuggestionsError('');
+    try {
+      const result = await suggestAddressHouseholds();
+      setAddressSuggestions(result.suggestions);
+      setSuggestionsLoaded(true);
+    } catch (err) {
+      handleFetchError(err, 'scanning for shared-address suggestions');
+      setSuggestionsError(t('household.scanFailed'));
+    } finally {
+      setSuggestionsLoading(false);
+    }
+  };
+
+  const handleAcceptSuggestion = async (suggestion: AddressHouseholdSuggestion) => {
+    try {
+      await acceptAddressHouseholdSuggestion(suggestion.member_vcard_uids);
+      setAddressSuggestions((prev) =>
+        prev.filter(
+          (s) => !(s.address_hash === suggestion.address_hash && s.member_hash === suggestion.member_hash)
+        )
+      );
+      await refresh();
+      showSuccess(t('household.suggestionAccepted'));
+    } catch (err) {
+      handleFetchError(err, 'accepting household suggestion');
+      await handleScanAddressSuggestions();
+    }
+  };
+
+  const handleDismissSuggestion = async (suggestion: AddressHouseholdSuggestion) => {
+    try {
+      await dismissAddressHouseholdSuggestion(suggestion.member_vcard_uids);
+      setAddressSuggestions((prev) =>
+        prev.filter(
+          (s) => !(s.address_hash === suggestion.address_hash && s.member_hash === suggestion.member_hash)
+        )
+      );
+      showInfo(t('household.suggestionDismissed'));
+    } catch (err) {
+      handleFetchError(err, 'dismissing household suggestion');
+    }
+  };
+
   return (
     <Box sx={{ maxWidth: 960, mx: 'auto', mt: 2, p: 2 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
         <Typography variant="h5">{t('household.title')}</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreate}>
-          {t('household.newHousehold')}
-        </Button>
+        <Stack direction="row" spacing={1}>
+          <Button
+            variant="outlined"
+            startIcon={<LocationSearchingIcon />}
+            onClick={handleScanAddressSuggestions}
+            disabled={suggestionsLoading}
+          >
+            {suggestionsLoading ? t('household.scanning') : t('household.suggestAddresses')}
+          </Button>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreate}>
+            {t('household.newHousehold')}
+          </Button>
+        </Stack>
       </Box>
       <Typography variant="body2" color="text.secondary" paragraph>
         {t('household.description')}
@@ -115,6 +185,16 @@ export default function HouseholdsPage() {
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       {loading && <LinearProgress sx={{ mb: 2 }} />}
+
+      {suggestionsLoaded && !suggestionsLoading && (
+        <AddressHouseholdSuggestions
+          suggestions={addressSuggestions}
+          onAccept={handleAcceptSuggestion}
+          onDismiss={handleDismissSuggestion}
+          busy={suggestionsLoading}
+        />
+      )}
+      {suggestionsError && <Alert severity="error" sx={{ mt: 2 }}>{suggestionsError}</Alert>}
 
       <HouseholdList
         households={households}

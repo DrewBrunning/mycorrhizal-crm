@@ -808,7 +808,117 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "404":
-          description: The target circle or tag does not exist or belongs to another user.
+          description: Household not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # --- T40 address-based household suggestions ---
+  /households/suggest-addresses:
+    post:
+      summary: Scan contacts for shared-address household suggestions
+      operationId: suggestAddressHouseholds
+      description: >
+        T40: groups the caller's non-archived contacts by normalized address
+        and returns every group of two or more that is not already a
+        co-resident household and has not been dismissed. Read-only and
+        idempotent — nothing is persisted.
+      responses:
+        "200":
+          description: Suggestions found.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  suggestions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AddressHouseholdSuggestion"
+                  total: { type: integer }
+        "500":
+          description: Database error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /households/suggestions/accept:
+    post:
+      summary: Accept a shared-address household suggestion
+      operationId: acceptAddressHouseholdSuggestion
+      description: >
+        T40: creates a Household plus its member rows for a suggested group,
+        identified by its member VCardUIDs. The shared address is re-derived
+        server-side from the members' real data; the group must not already be
+        co-residents and must not have been dismissed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AcceptHouseholdSuggestionInput"
+      responses:
+        "201":
+          description: Household created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  household:
+                    $ref: "#/components/schemas/Household"
+        "400":
+          description: Invalid group (too few members, bad type).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: A suggested member contact no longer exists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Group already co-residents or already dismissed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /households/suggestions/dismiss:
+    post:
+      summary: Dismiss a shared-address household suggestion
+      operationId: dismissAddressHouseholdSuggestion
+      description: >
+        T40: permanently records a suggested group (identified by its member
+        VCardUIDs) as rejected so the detection pass stops offering it. The
+        hash pair is recomputed server-side.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DismissHouseholdSuggestionInput"
+      responses:
+        "200":
+          description: Suggestion dismissed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Household suggestion dismissed" }
+        "400":
+          description: Invalid group.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Group already dismissed.
           content:
             application/json:
               schema:
@@ -6902,6 +7012,37 @@ components:
         role: { type: string }
         since: { type: string }
         until: { type: string }
+    AddressHouseholdSuggestion:
+      type: object
+      description: >
+        One T40 shared-address household suggestion: a group of 2+ contacts
+        sharing a normalized address, identified by a stable hash pair.
+      properties:
+        address_hash: { type: string, description: "SHA-256 of the normalized shared-address key" }
+        member_hash: { type: string, description: "SHA-256 of the sorted member VCardUIDs joined" }
+        member_vcard_uids:
+          type: array
+          items: { type: string, format: uuid }
+        address:
+          $ref: "#/components/schemas/Address"
+    AcceptHouseholdSuggestionInput:
+      type: object
+      required: [member_vcard_uids]
+      properties:
+        member_vcard_uids:
+          type: array
+          minItems: 2
+          items: { type: string, format: uuid }
+        name: { type: string, maxLength: 200 }
+        type: { type: string, enum: [family_unit, roommates, other] }
+    DismissHouseholdSuggestionInput:
+      type: object
+      required: [member_vcard_uids]
+      properties:
+        member_vcard_uids:
+          type: array
+          minItems: 2
+          items: { type: string, format: uuid }
     Tag:
       type: object
       properties:

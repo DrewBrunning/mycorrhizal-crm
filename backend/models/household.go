@@ -105,3 +105,31 @@ type HouseholdMember struct {
 	Since string `json:"since,omitempty"`
 	Until string `json:"until,omitempty"`
 }
+
+// DismissedHouseholdSuggestion is T40's permanent rejection memory
+// (docs/fork-plan/tickets/49-T40-household-suggestions-shared-address.md):
+// one row per dismissed address-based household-suggestion group, identified
+// by (user_id, address_hash, member_hash) where address_hash is SHA-256 of
+// the normalized shared-address key and member_hash is SHA-256 of the sorted
+// member VCardUIDs joined. The detection query excludes any group whose hash
+// pair is present, so dismissing once is dismissing forever — the same
+// addresses always produce the same group.
+//
+// uint primary key, hard-delete per T26: this is a join-shaped row whose
+// identity IS its natural-key composite unique index, and a "dismissed" state
+// is not user-authored content with an undo button — it is a permanent,
+// deterministic fact. If a user wants to re-offer a group they create the
+// household manually (the ticket's locked decision).
+type DismissedHouseholdSuggestion struct {
+	ID        uint      `gorm:"primarykey" json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+
+	// GORM tag priorities mirror the migration's composite unique index
+	// column order (user_id, address_hash, member_hash) exactly, so a
+	// AutoMigrate-derived schema (test-only) and the real migration SQL
+	// agree.
+	UserID      uint   `gorm:"not null;index;uniqueIndex:idx_dismissed_household_suggestions_unique,priority:1" json:"-"`
+	AddressHash string `gorm:"not null;uniqueIndex:idx_dismissed_household_suggestions_unique,priority:2" json:"address_hash"`
+	MemberHash  string `gorm:"not null;uniqueIndex:idx_dismissed_household_suggestions_unique,priority:3" json:"member_hash"`
+}

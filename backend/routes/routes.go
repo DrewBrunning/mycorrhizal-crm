@@ -179,6 +179,16 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.PATCH("/households/:id/members/:vcard_uid", controllers.UpdateHouseholdMember)
 			protected.POST("/households/:id/suggest-relationships", controllers.SuggestHouseholdRelationships)
 
+			// T40 address-based household suggestions (docs/fork-plan/
+			// tickets/49-T40-household-suggestions-shared-address.md). The
+			// literal /suggestions paths are registered before any /:id
+			// capture would matter (there is no GET /households/:id/... below
+			// that could collide), and accept/dismiss re-validate the group
+			// server-side from its member VCardUIDs.
+			protected.POST("/households/suggest-addresses", controllers.SuggestAddressHouseholds)
+			protected.POST("/households/suggestions/accept", middleware.ValidateJSONMiddleware(&models.AcceptHouseholdSuggestionInput{}), controllers.AcceptAddressHouseholdSuggestion)
+			protected.POST("/households/suggestions/dismiss", middleware.ValidateJSONMiddleware(&models.DismissHouseholdSuggestionInput{}), controllers.DismissAddressHouseholdSuggestion)
+
 			// Tag routes (WP-84c)
 			protected.POST("/tags", middleware.ValidateJSONMiddleware(&models.TagInput{}), controllers.CreateTag)
 			protected.GET("/tags", controllers.ListTags)

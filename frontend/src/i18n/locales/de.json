@@ -60,7 +60,17 @@
     "saveFailed": "Speichern des Haushalts fehlgeschlagen",
     "created": "Haushalt erstellt",
     "updated": "Haushalt aktualisiert",
-    "deleted": "Haushalt gelöscht"
+    "deleted": "Haushalt gelöscht",
+    "suggestAddresses": "Haushalte über gemeinsame Adresse vorschlagen",
+    "scanning": "Suche läuft…",
+    "scanFailed": "Gemeinsame Adressen konnten nicht durchsucht werden",
+    "addressSuggestions": "Vorschläge mit gemeinsamer Adresse",
+    "addressSuggestionDescription": "Kontakte, die eine Adresse teilen, aber noch nicht in einem Haushalt zusammenleben.",
+    "noAddressSuggestions": "Keine Vorschläge mit gemeinsamer Adresse gefunden. Füge mehr Kontakten Adressen hinzu, um Gruppen zu finden.",
+    "acceptSuggestion": "Übernehmen",
+    "dismissSuggestion": "Verwerfen",
+    "suggestionAccepted": "Haushalt aus dem Vorschlag erstellt",
+    "suggestionDismissed": "Vorschlag verworfen"
   },
   "dashboard": {
     "title": "Dashboard",

@@ -60,7 +60,17 @@
     "saveFailed": "No se pudo guardar el hogar",
     "created": "Hogar creado",
     "updated": "Hogar actualizado",
-    "deleted": "Hogar eliminado"
+    "deleted": "Hogar eliminado",
+    "suggestAddresses": "Sugerir hogares con dirección compartida",
+    "scanning": "Buscando…",
+    "scanFailed": "No se pudieron buscar las direcciones compartidas",
+    "addressSuggestions": "Sugerencias con dirección compartida",
+    "addressSuggestionDescription": "Contactos que comparten una dirección pero aún no viven en el mismo hogar.",
+    "noAddressSuggestions": "No se encontraron sugerencias con dirección compartida. Añade direcciones a más contactos para encontrar grupos.",
+    "acceptSuggestion": "Aceptar",
+    "dismissSuggestion": "Descartar",
+    "suggestionAccepted": "Hogar creado a partir de la sugerencia",
+    "suggestionDismissed": "Sugerencia descartada"
   },
   "dashboard": {
     "title": "Panel",

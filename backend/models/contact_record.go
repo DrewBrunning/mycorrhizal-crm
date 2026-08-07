@@ -602,7 +602,7 @@ func buildMedia(c *Contact, photoDir string) []contactmodel.Resource {
 func buildAddresses(c *Contact) []contactmodel.Address {
 	var out []contactmodel.Address
 	for _, a := range c.Addresses {
-		out = append(out, addressFromContactAddress(a))
+		out = append(out, AddressFromContactAddress(a))
 	}
 	if len(out) == 0 && c.Address != "" {
 		out = append(out, contactmodel.Address{Full: c.Address})
@@ -610,7 +610,13 @@ func buildAddresses(c *Contact) []contactmodel.Address {
 	return out
 }
 
-func addressFromContactAddress(a ContactAddress) contactmodel.Address {
+// AddressFromContactAddress maps a flat ContactAddress (the legacy stored
+// shape) onto the neutral contactmodel.Address shape, mirroring the vCard ADR
+// row mapping ("name"/"locality"/"region"/"postcode"/"country" components +
+// a FormatAddress Full line). Exported so T40's household-suggestion service
+// can reuse it for the household it creates from a shared address instead of
+// duplicating the mapping.
+func AddressFromContactAddress(a ContactAddress) contactmodel.Address {
 	var components []contactmodel.AddressComponent
 	addComp := func(kind, value string) {
 		if value != "" {

@@ -11,6 +11,19 @@ import (
 	"gorm.io/gorm"
 )
 
+// thinContactIsPet reports whether a thin contact being created at one end of
+// a relationship edge is the pet side of a pet/owner pair. Per the type
+// registry (models/relationship_type_registry.go), "A owned_by B" reads "A is
+// owned by B" — so the pet is the SOURCE of an owned_by edge, and by symmetry
+// the TARGET of an owns edge. Any other combination is the owner (presumably
+// human) and must not be classified as an animal.
+func thinContactIsPet(edgeType string, isSource bool) bool {
+	if isSource {
+		return edgeType == "owned_by"
+	}
+	return edgeType == "owns"
+}
+
 // resolveRelationshipEndpoint resolves one RelationshipEdge endpoint (source
 // or target) to a Contact.VCardUID: either verifying ownership of an
 // existing contact (id != ""), or creating a new "thin" Contact from thin
@@ -22,7 +35,17 @@ import (
 // aborts exactly once, after the transaction resolves, preserving the
 // specific NotFound/InvalidInput status rather than flattening every
 // failure into a generic 500.
-func resolveRelationshipEndpoint(tx *gorm.DB, userID uint, fieldName, id string, thin *models.ThinContactInput) (string, *apperrors.AppError) {
+//
+// edgeType/isSource drive T37's thin-contact-kind defaulting: a thin contact
+// that is the pet side of an owned_by/owns pair (see thinContactIsPet) gets
+// CRM.Kind = "animal", so the household-suggestion engine
+// (services.household_service.go's classifyMember) doesn't silently treat a
+// just-created pet as a human adult until someone fixes its kind by hand.
+// Set through ApplyRecordToContact (models/contact_record_reverse.go), never
+// by mutating the struct field directly — BeforeSave re-derives
+// Card/CRM/Passthrough from the flat fields on Create and would discard a
+// direct field mutation (CLAUDE.md backend trap 2).
+func resolveRelationshipEndpoint(tx *gorm.DB, userID uint, fieldName, id string, thin *models.ThinContactInput, edgeType string, isSource bool) (string, *apperrors.AppError) {
 	switch {
 	case id != "" && thin != nil:
 		return "", apperrors.ErrInvalidInput(fieldName, "specify either an existing contact id or a new contact, not both")
@@ -37,6 +60,15 @@ func resolveRelationshipEndpoint(tx *gorm.DB, userID uint, fieldName, id string,
 		return contact.VCardUID, nil
 	case thin != nil:
 		contact := models.Contact{UserID: userID, Firstname: thin.Name, Gender: thin.Gender, Birthday: thin.Birthday}
+		if thinContactIsPet(edgeType, isSource) {
+			// Round-trip through the neutral Record so the kind rides the
+			// authoritative c.CRM path (ApplyRecordToContact sets the
+			// cardSetDirectly guard that keeps BeforeSave from re-deriving
+			// and discarding it), rather than mutating c.CRM.Kind directly.
+			record := models.RecordFromContact(&contact, models.DefaultPhotoDir)
+			record.Envelope.Kind = "animal"
+			models.ApplyRecordToContact(&contact, record, "")
+		}
 		if err := tx.Create(&contact).Error; err != nil {
 			return "", apperrors.ErrDatabase("Failed to create related contact").WithError(err)
 		}
@@ -60,11 +92,11 @@ func applyRelationshipEdgeInput(db *gorm.DB, userID uint, edge *models.Relations
 	}
 
 	return db.Transaction(func(tx *gorm.DB) error {
-		sourceID, aerr := resolveRelationshipEndpoint(tx, userID, "source_id", input.SourceID, input.SourceThin)
+		sourceID, aerr := resolveRelationshipEndpoint(tx, userID, "source_id", input.SourceID, input.SourceThin, input.Type, true)
 		if aerr != nil {
 			return aerr
 		}
-		targetID, aerr := resolveRelationshipEndpoint(tx, userID, "target_id", input.TargetID, input.TargetThin)
+		targetID, aerr := resolveRelationshipEndpoint(tx, userID, "target_id", input.TargetID, input.TargetThin, input.Type, false)
 		if aerr != nil {
 			return aerr
 		}

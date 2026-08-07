@@ -668,3 +668,71 @@ func TestNotificationChannelsMigration(t *testing.T) {
 	require.NoError(t, sqlDB.QueryRow("SELECT COUNT(*) FROM reminders WHERE message = 'unsent'").Scan(&reminderCount))
 	assert.EqualValues(t, 1, reminderCount, "a rollback must not destroy the reminder")
 }
+
+// TestAddressSuggestionDismissalMigration pins the T40 migration's shape:
+// the dismissed_household_suggestions table exists with its natural-key
+// composite unique index (so a duplicate dismissal is structurally
+// impossible), and rolling back 000014 drops it without touching pre-existing
+// tables.
+func TestAddressSuggestionDismissalMigration(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "t40-migration.db")
+	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
+	require.NoError(t, err)
+	defer sqlDB.Close()
+
+	m, err := newMigrator(sqlDB)
+	require.NoError(t, err)
+	// Everything up to but NOT including 000014, so a user row can be
+	// created pre-migration and must survive the rollback.
+	require.NoError(t, m.Steps(13))
+
+	_, err = sqlDB.Exec(
+		"INSERT INTO users (created_at, updated_at, username, password, email) VALUES (datetime('now'), datetime('now'), 't40', 'x', 't40@example.com')")
+	require.NoError(t, err)
+	var userID int64
+	require.NoError(t, sqlDB.QueryRow("SELECT id FROM users WHERE username = 't40'").Scan(&userID))
+
+	require.NoError(t, m.Steps(1))
+
+	// The table and its unique index exist.
+	var tableCount int64
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'dismissed_household_suggestions'",
+	).Scan(&tableCount))
+	assert.EqualValues(t, 1, tableCount, "000014 must create dismissed_household_suggestions")
+
+	var indexCount int64
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = 'idx_dismissed_household_suggestions_unique'",
+	).Scan(&indexCount))
+	assert.EqualValues(t, 1, indexCount, "000014 must create the natural-key unique index")
+
+	// The unique index rejects a duplicate dismissal but allows a distinct one.
+	_, err = sqlDB.Exec(`
+		INSERT INTO dismissed_household_suggestions (created_at, updated_at, user_id, address_hash, member_hash)
+		VALUES (datetime('now'), datetime('now'), ?, 'hash-a', 'members-1')`,
+		userID)
+	require.NoError(t, err)
+	_, err = sqlDB.Exec(`
+		INSERT INTO dismissed_household_suggestions (created_at, updated_at, user_id, address_hash, member_hash)
+		VALUES (datetime('now'), datetime('now'), ?, 'hash-a', 'members-1')`,
+		userID)
+	assert.Error(t, err, "a duplicate (address_hash, member_hash) dismissal must violate the unique index")
+	_, err = sqlDB.Exec(`
+		INSERT INTO dismissed_household_suggestions (created_at, updated_at, user_id, address_hash, member_hash)
+		VALUES (datetime('now'), datetime('now'), ?, 'hash-b', 'members-1')`,
+		userID)
+	assert.NoError(t, err, "a distinct address_hash must be insertable")
+
+	// Down: rolling back 000014 drops the table; the pre-existing user survives.
+	require.NoError(t, MigrateDown(dbPath))
+	var afterCount int64
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'dismissed_household_suggestions'",
+	).Scan(&afterCount))
+	assert.Zero(t, afterCount, "the down migration must drop dismissed_household_suggestions")
+
+	var userCount int64
+	require.NoError(t, sqlDB.QueryRow("SELECT COUNT(*) FROM users WHERE username = 't40'").Scan(&userCount))
+	assert.EqualValues(t, 1, userCount, "a rollback must not destroy the pre-existing user")
+}
