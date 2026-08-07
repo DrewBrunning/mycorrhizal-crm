@@ -160,6 +160,7 @@
     "genderfluid": "Genderfluid",
     "other": "Andere",
     "prefer_not_to_say": "Keine Angabe",
+    "preferred": "Bevorzugt",
     "kind": "Art",
     "individual": "Einzelperson",
     "pet": "Haustier",
@@ -178,6 +179,7 @@
     "newCircle": "Oder neu erstellen...",
     "tags": "Tags",
     "selectTag": "Vorhandenen Tag auswählen...",
+    "setAsPreferred": "Als bevorzugt markieren",
     "newTag": "Oder neu erstellen...",
     "add": {
       "button": "Kontakt hinzufügen",

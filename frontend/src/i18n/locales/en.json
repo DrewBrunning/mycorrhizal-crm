@@ -160,6 +160,7 @@
     "genderfluid": "Genderfluid",
     "other": "Other",
     "prefer_not_to_say": "Prefer not to say",
+    "preferred": "Preferred",
     "kind": "Kind",
     "individual": "Individual",
     "pet": "Pet",
@@ -178,6 +179,7 @@
     "newCircle": "Or create new...",
     "tags": "Tags",
     "selectTag": "Select existing tag...",
+    "setAsPreferred": "Set as preferred",
     "newTag": "Or create new...",
     "add": {
       "button": "Add Contact",

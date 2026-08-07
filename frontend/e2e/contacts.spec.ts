@@ -86,21 +86,25 @@ test.describe('Contacts', () => {
   test('should delete a contact from the detail page', async ({ page }) => {
     const contact = await createTestContact(page.request, { lastname: 'ToDelete' });
 
-    await page.goto(`/contacts/${contact.ID}`);
-    await expect(page.getByRole('heading', { name: `${contact.firstname} ToDelete` })).toBeVisible();
+    try {
+      await page.goto(`/contacts/${contact.ID}`);
+      await waitForLoading(page);
+      await expect(page.getByRole('heading', { name: `${contact.firstname} ToDelete` })).toBeVisible();
 
-    // Deletion is confirmed via a native confirm() dialog.
-    page.once('dialog', (dialog) => dialog.accept());
+      // Deletion is confirmed via a native confirm() dialog.
+      page.once('dialog', (dialog) => dialog.accept());
 
-    // The delete button only appears inside profile edit mode (entered via the
-    // name pencil). The delete button itself has a title, so it's role-addressable.
-    await page.locator('.edit-icon').first().click();
-    await page.getByRole('button', { name: /delete contact/i }).click();
+      // T53: Delete is in the main actions ("…") menu, not buried in profile edit.
+      await page.getByRole('button', { name: /actions/i }).click();
+      await page.getByRole('menuitem', { name: /delete contact/i }).click();
 
-    // Redirects back to the list, and the contact is gone.
-    await expect(page).toHaveURL(/\/contacts$/);
+      // Redirects back to the list, and the contact is gone.
+      await expect(page).toHaveURL(/\/contacts$/);
 
-    const lookup = await page.request.get(`${API_BASE_URL}/contacts/${contact.ID}`);
-    expect(lookup.status()).toBe(404);
+      const lookup = await page.request.get(`${API_BASE_URL}/contacts/${contact.ID}`);
+      expect(lookup.status()).toBe(404);
+    } finally {
+      await deleteTestContact(page.request, contact.ID);
+    }
   });
 });

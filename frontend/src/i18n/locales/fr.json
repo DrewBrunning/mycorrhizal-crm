@@ -160,6 +160,7 @@
     "genderfluid": "Genre fluide",
     "other": "Autre",
     "prefer_not_to_say": "Je préfère ne pas dire",
+    "preferred": "Préféré",
     "kind": "Type",
     "individual": "Particulier",
     "pet": "Animal de compagnie",
@@ -178,6 +179,7 @@
     "newCircle": "Ou créez-en un nouveau...",
     "tags": "Étiquettes",
     "selectTag": "Sélectionnez une étiquette existante...",
+    "setAsPreferred": "Définir comme préféré",
     "newTag": "Ou créez-en une nouvelle...",
     "add": {
       "button": "Ajouter un contact",

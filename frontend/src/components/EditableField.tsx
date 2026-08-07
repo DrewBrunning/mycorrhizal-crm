@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Box, Typography, TextField, IconButton } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import CloseIcon from '@mui/icons-material/Close';
@@ -42,6 +43,9 @@ export default function EditableField({
   const baseDisplayValue = formattedDisplayValue || value;
   const displayValue = baseDisplayValue ? (displaySuffix ? `${baseDisplayValue} ${displaySuffix}` : baseDisplayValue) : '-';
   const showError = isEditing && validationError;
+  const [revealed, setRevealed] = useState(false);
+
+  const toggleReveal = () => { setRevealed((r) => !r); };
 
   return (
     <Box
@@ -49,10 +53,23 @@ export default function EditableField({
         position: 'relative',
         '&:hover .edit-icon': {
           opacity: 1
+        },
+        '& .copy-icon': {
+          opacity: 0,
+          transition: 'opacity 0.2s',
+        },
+        '&:hover .copy-icon': {
+          opacity: 1
         }
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: multiline ? 'flex-start' : 'center' }}>
+      <Box
+        sx={{ display: 'flex', alignItems: multiline ? 'flex-start' : 'center' }}
+        onClick={!isEditing && value ? toggleReveal : undefined}
+        role={!isEditing && value ? 'button' : undefined}
+        tabIndex={!isEditing && value ? 0 : undefined}
+        onKeyDown={!isEditing && value ? (e) => { if (e.key === 'Enter' || e.key === ' ') toggleReveal(); } : undefined}
+      >
         {icon}
         <Box sx={{ flex: 1 }}>
           <Typography variant="caption" color="text.secondary">
@@ -93,10 +110,8 @@ export default function EditableField({
         </Box>
         {!isEditing && (
           <Box sx={{ display: 'flex', alignItems: 'center', ml: 1 }}>
-            {/* Every field gets a copy button (T34), tappable or not -- shown
-                whenever there's a value to copy, unlike the hover-only edit
-                affordance below. */}
-            {value && <CopyButton value={value} label={label} />}
+            {/* Copy button hidden until hover or tap (T55), matching the edit affordance. */}
+            {value && <CopyButton value={value} label={label} className={revealed ? undefined : 'copy-icon'} />}
             <IconButton
               className="edit-icon"
               size="small"

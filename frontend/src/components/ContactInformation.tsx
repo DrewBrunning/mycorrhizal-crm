@@ -14,6 +14,7 @@ import ChatIcon from '@mui/icons-material/Chat';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import { mdiNoteMultipleOutline } from '@mdi/js';
 import PeopleIcon from '@mui/icons-material/People';
+import StarIcon from '@mui/icons-material/Star';
 import { useTranslation } from 'react-i18next';
 import EditableField from './EditableField';
 import EditableArrayField from './EditableArrayField';
@@ -196,33 +197,49 @@ export default function ContactInformation({
     r.features?.includes(token) || r.contexts?.includes(token) || r.type === token || false;
 
   const renderPhoneList = (rows: ContactValue[] | undefined) => {
-    if (!rows || rows.length === 0) return <Typography variant="body2" color="text.disabled">—</Typography>;
+    if (!rows || rows.length === 0) return <Typography variant="body2" color="text.disabled">â€"</Typography>;
     return (
       <Stack spacing={0.25}>
         {rows.map((r, i) => {
           const isFax = phoneHasToken(r, 'fax');
           const isCell = !isFax && phoneHasToken(r, 'cell');
           return (
-            <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-              <Typography variant="body2">
-                {r.value}
-                {r.type ? ` (${t(`contacts.types.${r.type}`, r.type)})` : ''}
-              </Typography>
-              {!isFax && (
-                <Tooltip title={t('contactDetail.call')}>
-                  <IconButton size="small" component="a" href={buildTelLink(r.value)} aria-label={`${t('contactDetail.call')} ${r.value}`}>
-                    <PhoneIcon fontSize="inherit" />
-                  </IconButton>
-                </Tooltip>
-              )}
-              {isCell && (
-                <Tooltip title={t('contactDetail.text')}>
-                  <IconButton size="small" component="a" href={buildSmsLink(r.value)} aria-label={`${t('contactDetail.text')} ${r.value}`}>
-                    <SmsOutlinedIcon fontSize="inherit" />
-                  </IconButton>
-                </Tooltip>
-              )}
-              <CopyButton value={r.value} label={`${t('contactDetail.phone')} ${r.value}`} />
+            <Box key={i} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+              <Box sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                  {r.pref === 1 && (
+                    <StarIcon sx={{ fontSize: '0.85rem', color: 'primary.main', flexShrink: 0 }} />
+                  )}
+                  {!isFax ? (
+                    <Typography variant="body2" component="a" href={buildTelLink(r.value)} sx={{ color: 'inherit' }}>
+                      {r.value}
+                      {r.type ? ` (${t(`contacts.types.${r.type}`, r.type)})` : ''}
+                    </Typography>
+                  ) : (
+                    <Typography variant="body2">
+                      {r.value}
+                      {r.type ? ` (${t(`contacts.types.${r.type}`, r.type)})` : ''}
+                    </Typography>
+                  )}
+                </Box>
+              </Box>
+              <Box sx={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                {!isFax && (
+                  <Tooltip title={t('contactDetail.call')}>
+                    <IconButton size="small" component="a" href={buildTelLink(r.value)} aria-label={`${t('contactDetail.call')} ${r.value}`}>
+                      <PhoneIcon fontSize="inherit" />
+                    </IconButton>
+                  </Tooltip>
+                )}
+                {isCell && (
+                  <Tooltip title={t('contactDetail.text')}>
+                    <IconButton size="small" component="a" href={buildSmsLink(r.value)} aria-label={`${t('contactDetail.text')} ${r.value}`}>
+                      <SmsOutlinedIcon fontSize="inherit" />
+                    </IconButton>
+                  </Tooltip>
+                )}
+                <CopyButton value={r.value} label={`${t('contactDetail.phone')} ${r.value}`} />
+              </Box>
             </Box>
           );
         })}
@@ -235,12 +252,21 @@ export default function ContactInformation({
     return (
       <Stack spacing={0.25}>
         {rows.map((r, i) => (
-          <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-            <Typography variant="body2" component="a" href={buildMailtoLink(r.value)} sx={{ color: 'inherit' }}>
-              {r.value}
-              {r.type ? ` (${t(`contacts.types.${r.type}`, r.type)})` : ''}
-            </Typography>
-            <CopyButton value={r.value} label={`${t('contactDetail.email')} ${r.value}`} />
+          <Box key={i} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+            <Box sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                {r.pref === 1 && (
+                  <StarIcon sx={{ fontSize: '0.85rem', color: 'primary.main', flexShrink: 0 }} />
+                )}
+                <Typography variant="body2" component="a" href={buildMailtoLink(r.value)} sx={{ color: 'inherit' }}>
+                  {r.value}
+                  {r.type ? ` (${t(`contacts.types.${r.type}`, r.type)})` : ''}
+                </Typography>
+              </Box>
+            </Box>
+            <Box sx={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 0.25 }}>
+              <CopyButton value={r.value} label={`${t('contactDetail.email')} ${r.value}`} />
+            </Box>
           </Box>
         ))}
       </Stack>
@@ -258,26 +284,35 @@ export default function ContactInformation({
         {rows.map((r, i) => {
           const tappable = looksLikeAbsoluteUri(r.value) && isSafeUrlString(r.value);
           return (
-            <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-              {tappable ? (
-                <Typography
-                  variant="body2"
-                  component="a"
-                  href={r.value}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  sx={{ color: 'inherit', wordBreak: 'break-all' }}
-                >
-                  {r.value}
-                  {r.type ? ` (${t(`contacts.types.${r.type}`, r.type)})` : ''}
-                </Typography>
-              ) : (
-                <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
-                  {r.value}
-                  {r.type ? ` (${t(`contacts.types.${r.type}`, r.type)})` : ''}
-                </Typography>
-              )}
-              {r.value && <CopyButton value={r.value} label={`${copyLabel} ${r.value}`} />}
+            <Box key={i} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+              <Box sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                  {r.pref === 1 && (
+                    <StarIcon sx={{ fontSize: '0.85rem', color: 'primary.main', flexShrink: 0 }} />
+                  )}
+                  {tappable ? (
+                    <Typography
+                      variant="body2"
+                      component="a"
+                      href={r.value}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      sx={{ color: 'inherit', wordBreak: 'break-all' }}
+                    >
+                      {r.value}
+                      {r.type ? ` (${t(`contacts.types.${r.type}`, r.type)})` : ''}
+                    </Typography>
+                  ) : (
+                    <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
+                      {r.value}
+                      {r.type ? ` (${t(`contacts.types.${r.type}`, r.type)})` : ''}
+                    </Typography>
+                  )}
+                </Box>
+              </Box>
+              <Box sx={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                {r.value && <CopyButton value={r.value} label={`${copyLabel} ${r.value}`} />}
+              </Box>
             </Box>
           );
         })}
@@ -294,15 +329,19 @@ export default function ContactInformation({
           const href = buildAddressLink(a);
           const suffix = a.type ? ` (${t(`contacts.types.${a.type}`, a.type)})` : '';
           return (
-            <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-              {href ? (
-                <Typography variant="body2" component="a" href={href} target="_blank" rel="noopener noreferrer" sx={{ color: 'inherit' }}>
-                  {formatted}{suffix}
-                </Typography>
-              ) : (
-                <Typography variant="body2">{formatted}{suffix}</Typography>
-              )}
-              {formatted && <CopyButton value={formatted} label={`${t('contactDetail.address')} ${formatted}`} />}
+            <Box key={i} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+              <Box sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+                {href ? (
+                  <Typography variant="body2" component="a" href={href} target="_blank" rel="noopener noreferrer" sx={{ color: 'inherit' }}>
+                    {formatted}{suffix}
+                  </Typography>
+                ) : (
+                  <Typography variant="body2">{formatted}{suffix}</Typography>
+                )}
+              </Box>
+              <Box sx={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                {formatted && <CopyButton value={formatted} label={`${t('contactDetail.address')} ${formatted}`} />}
+              </Box>
             </Box>
           );
         })}
@@ -325,15 +364,19 @@ export default function ContactInformation({
           const suffix = s.contexts?.length ? ` (${s.contexts.join(', ')})` : '';
           const copyValue = s.uri || s.user || label;
           return (
-            <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-              {href ? (
-                <Typography variant="body2" component="a" href={href} target="_blank" rel="noopener noreferrer" sx={{ color: 'inherit', wordBreak: 'break-all' }}>
-                  {label}{suffix}
-                </Typography>
-              ) : (
-                <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>{label}{suffix}</Typography>
-              )}
-              {copyValue && <CopyButton value={copyValue} label={`${copyLabel} ${copyValue}`} />}
+            <Box key={i} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+              <Box sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+                {href ? (
+                  <Typography variant="body2" component="a" href={href} target="_blank" rel="noopener noreferrer" sx={{ color: 'inherit', wordBreak: 'break-all' }}>
+                    {label}{suffix}
+                  </Typography>
+                ) : (
+                  <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>{label}{suffix}</Typography>
+                )}
+              </Box>
+              <Box sx={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                {copyValue && <CopyButton value={copyValue} label={`${copyLabel} ${copyValue}`} />}
+              </Box>
             </Box>
           );
         })}
@@ -346,13 +389,17 @@ export default function ContactInformation({
     return (
       <Stack spacing={0.25}>
         {rows.map((p, i) => (
-          <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-            <Typography variant="body2">
-              {p.value}
-              {p.kind ? ` (${t(`contacts.personalInfo.kindOptions.${p.kind}`, p.kind)})` : ''}
-              {p.level ? ` · ${t(`contacts.personalInfo.levelOptions.${p.level}`, p.level)}` : ''}
-            </Typography>
-            {p.value && <CopyButton value={p.value} label={t('contacts.personalInfoLabel')} />}
+          <Box key={i} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+            <Box sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+              <Typography variant="body2">
+                {p.value}
+                {p.kind ? ` (${t(`contacts.personalInfo.kindOptions.${p.kind}`, p.kind)})` : ''}
+                {p.level ? ` · ${t(`contacts.personalInfo.levelOptions.${p.level}`, p.level)}` : ''}
+              </Typography>
+            </Box>
+            <Box sx={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 0.25 }}>
+              {p.value && <CopyButton value={p.value} label={t('contacts.personalInfoLabel')} />}
+            </Box>
           </Box>
         ))}
       </Stack>
@@ -362,9 +409,9 @@ export default function ContactInformation({
   const renderKeywords = (rows: string[] | undefined) => {
     if (!rows || rows.length === 0) return <Typography variant="body2" color="text.disabled">—</Typography>;
     return (
-      <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', alignItems: 'center' }}>
+      <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', alignItems: 'center', gap: 1 }}>
         {rows.map((k, i) => (
-          <Box key={i} sx={{ display: 'flex', alignItems: 'center' }}>
+          <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
             <Typography variant="body2">#{k}</Typography>
             <CopyButton value={k} label={t('contacts.keywordsLabel')} />
           </Box>
@@ -378,9 +425,13 @@ export default function ContactInformation({
     return (
       <Stack spacing={0.25}>
         {rows.map((n, i) => (
-          <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{n.note}</Typography>
-            {n.note && <CopyButton value={n.note} label={t('contacts.cardNotesLabel')} />}
+          <Box key={i} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+            <Box sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+              <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{n.note}</Typography>
+            </Box>
+            <Box sx={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 0.25 }}>
+              {n.note && <CopyButton value={n.note} label={t('contacts.cardNotesLabel')} />}
+            </Box>
           </Box>
         ))}
       </Stack>
@@ -392,12 +443,16 @@ export default function ContactInformation({
     return (
       <Stack spacing={0.25}>
         {rows.map((l, i) => (
-          <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-            <Typography variant="body2">
-              {l.language}
-              {l.contexts?.length ? ` (${l.contexts.join(', ')})` : ''}
-            </Typography>
-            {l.language && <CopyButton value={l.language} label={t('contacts.preferredLanguagesLabel')} />}
+          <Box key={i} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+            <Box sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+              <Typography variant="body2">
+                {l.language}
+                {l.contexts?.length ? ` (${l.contexts.join(', ')})` : ''}
+              </Typography>
+            </Box>
+            <Box sx={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 0.25 }}>
+              {l.language && <CopyButton value={l.language} label={t('contacts.preferredLanguagesLabel')} />}
+            </Box>
           </Box>
         ))}
       </Stack>
@@ -415,9 +470,13 @@ export default function ContactInformation({
     }
     const combined = parts.join(' · ');
     return (
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-        <Typography variant="body2">{combined}</Typography>
-        {combined && <CopyButton value={combined} label={t('contacts.speakToAsLabel')} />}
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+        <Box sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+          <Typography variant="body2">{combined}</Typography>
+        </Box>
+        <Box sx={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 0.25 }}>
+          {combined && <CopyButton value={combined} label={t('contacts.speakToAsLabel')} />}
+        </Box>
       </Box>
     );
   };
@@ -429,12 +488,16 @@ export default function ContactInformation({
         {rows.map((a, i) => {
           const date = formatAnniversaryDate(a.date);
           return (
-            <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-              <Typography variant="body2">
-                {date ? date : '—'}
-                {` (${t(`contacts.anniversaryFields.kindOptions.${a.kind}`, a.kind)})`}
-              </Typography>
-              {date && <CopyButton value={date} label={t('contacts.anniversaries')} />}
+            <Box key={i} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+              <Box sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+                <Typography variant="body2">
+                  {date ? date : '—'}
+                  {` (${t(`contacts.anniversaryFields.kindOptions.${a.kind}`, a.kind)})`}
+                </Typography>
+              </Box>
+              <Box sx={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                {date && <CopyButton value={date} label={t('contacts.anniversaries')} />}
+              </Box>
             </Box>
           );
         })}

@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { useContacts } from './hooks/useContacts';
 import { useCircles } from './hooks/useCircles';
 import { useTags } from './hooks/useTags';
-import { useFieldDefinitions } from './hooks/useFieldDefinitions';
 import { getCurrentUser } from './api/admin';
 import { resolveEnabledFields, ContactFieldKey } from './contactFields';
 import { BulkAction, runBulkOperation } from './api/bulkOperations';
@@ -73,10 +72,6 @@ export default function ContactsPage() {
 
   // Use custom hook for fetching contacts
   const { contacts, nextCursor, loading, refetch, loadMore } = useContacts(contactParams);
-
-  // Custom field definitions (T7): the add-contact dialog needs the typed
-  // definitions to render per-type value editors.
-  const { definitions: fieldDefinitions } = useFieldDefinitions();
 
   // Fetch enabled contact fields
   useEffect(() => {
@@ -330,7 +325,6 @@ export default function ContactsPage() {
         onContactAdded={handleContactAdded}
         availableCircles={circles}
         availableTags={tags}
-        fieldDefinitions={fieldDefinitions}
         enabledFields={enabledFields}
       />
       <ImportContactsDialog

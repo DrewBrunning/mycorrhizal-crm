@@ -270,15 +270,7 @@ export default function ContactHeader({
                     fullWidth
                   />
                 )}
-                <Box sx={{ display: 'flex', gap: 1, justifyContent: 'space-between' }}>
-                  <IconButton
-                    size="small"
-                    color="error"
-                    onClick={onDeleteContact}
-                    title={t('contactDetail.deleteContact')}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
+                <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
                   <Box sx={{ display: 'flex', gap: 1 }}>
                     <IconButton size="small" color="primary" onClick={onSaveProfile}>
                       <SaveIcon />
@@ -302,17 +294,13 @@ export default function ContactHeader({
                 )}
                 <Box
                   sx={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    justifyContent: 'space-between',
-                    flexWrap: 'wrap',
-                    gap: 0.5,
+                    position: 'relative',
                     '&:hover .edit-icon': {
                       opacity: 1
                     }
                   }}
                 >
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', pr: compactActions ? 5 : 'auto' }}>
                     <Typography variant="h5" sx={{ fontWeight: 500, lineHeight: 1.2, overflowWrap: 'anywhere' }}>
                       {displayName}
                     </Typography>
@@ -323,13 +311,22 @@ export default function ContactHeader({
                       sx={{
                         ml: 1,
                         opacity: 0,
-                        transition: 'opacity 0.2s'
+                        transition: 'opacity 0.2s',
+                        flexShrink: 0,
                       }}
                     >
                       <EditIcon fontSize="small" />
                     </IconButton>
                   </Box>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      top: 0,
+                      right: 0,
+                      display: 'flex',
+                      gap: 1,
+                    }}
+                  >
                     {compactActions ? (
                       <>
                         <IconButton
@@ -393,6 +390,12 @@ export default function ContactHeader({
                                 <MenuItem key="archive" onClick={() => { setActionsMenuAnchor(null); onArchiveContact(); }}>
                                   <ListItemIcon><ArchiveIcon fontSize="small" /></ListItemIcon>
                                   <ListItemText>{t('contactDetail.archive')}</ListItemText>
+                                </MenuItem>
+                              ),
+                              onDeleteContact && (
+                                <MenuItem key="delete" onClick={() => { setActionsMenuAnchor(null); onDeleteContact(); }}>
+                                  <ListItemIcon><DeleteIcon fontSize="small" color="error" /></ListItemIcon>
+                                  <ListItemText sx={{ color: 'error.main' }}>{t('contactDetail.deleteContact')}</ListItemText>
                                 </MenuItem>
                               ),
                             ]
