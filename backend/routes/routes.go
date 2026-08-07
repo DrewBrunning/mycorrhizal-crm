@@ -124,6 +124,20 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.DELETE("/relationship-edges/:id", controllers.DeleteRelationshipEdge)
 			protected.PATCH("/relationship-edges/:id/accept", controllers.AcceptRelationshipEdge)
 
+			// Attachment routes (N7 — docs/fork-plan/tickets/
+			// 29-N7-attachments.md). Registered before /contacts/:id reads
+			// where needed; download/delete are addressed by attachment ID.
+			protected.POST("/contacts/:id/attachments", func(c *gin.Context) {
+				controllers.UploadAttachment(c, cfg)
+			})
+			protected.GET("/contacts/:id/attachments", controllers.ListContactAttachments)
+			protected.GET("/attachments/:id/download", func(c *gin.Context) {
+				controllers.DownloadAttachment(c, cfg)
+			})
+			protected.DELETE("/attachments/:id", func(c *gin.Context) {
+				controllers.DeleteAttachment(c, cfg)
+			})
+
 			// Profile picture routes
 			protected.POST("/contacts/:id/profile_picture", func(c *gin.Context) {
 				controllers.AddPhotoToContact(c, cfg)

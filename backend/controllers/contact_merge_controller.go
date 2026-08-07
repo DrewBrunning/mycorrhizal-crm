@@ -139,6 +139,16 @@ func CommitContactMerge(c *gin.Context) {
 	}
 
 	var noteContent string
+	// Capture the loser's attachment stored names before the transaction
+	// soft-deletes the records, so their files can be removed afterwards
+	// (file deletion can't be rolled back).
+	var loserAttachmentNames []string
+	if err := db.Model(&models.Attachment{}).
+		Where("contact_vcard_uid = ? AND user_id = ?", loser.VCardUID, userID).
+		Pluck("stored_name", &loserAttachmentNames).Error; err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to load contact attachments").WithError(err))
+		return
+	}
 	txErr := db.Transaction(func(tx *gorm.DB) error {
 		if err := services.ApplyContactMergeResolution(&keeper, resolution, input.Resolutions); err != nil {
 			return err // defense in depth; already validated above
@@ -188,6 +198,9 @@ func CommitContactMerge(c *gin.Context) {
 	// deletion can't be rolled back. The loser's photo file is discarded;
 	// the keeper's own Photo/PhotoThumbnail was never touched.
 	deleteContactPhotos(c, loser)
+	// The loser's attachment files (N7): deleteContactAssociations soft-deleted
+	// the records inside the transaction; remove the on-disk files here.
+	deleteContactAttachmentFiles(c, loserAttachmentNames)
 
 	go services.TriggerWebhooks(db, currentConfig(c), userID, "contact.updated", keeper)
 	go services.TriggerWebhooks(db, currentConfig(c), userID, "contact.deleted", gin.H{"id": loser.ID})

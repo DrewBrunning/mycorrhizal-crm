@@ -55,6 +55,7 @@ type Config struct {
 	WriteTimeout            int    // HTTP server write timeout in seconds
 	IdleTimeout             int    // HTTP server idle timeout in seconds
 	ProfilePhotoDir         string // Directory for storing profile photos (must be absolute path)
+	AttachmentsDir          string // Directory for storing contact attachments (N7; alongside the photo dir, must be absolute path)
 	CardDAVEnabled          bool   // Enable CardDAV server for contact sync
 	CalDAVEnabled           bool   // Enable CalDAV server for Interaction/LifeEvent sync (T12b)
 	CalDAVTwoWayEnabled     bool   // Allow calendar sync to push local edits back out (T13)
@@ -117,6 +118,7 @@ func LoadConfig() *Config {
 		WriteTimeout:            writeTimeout,
 		IdleTimeout:             idleTimeout,
 		ProfilePhotoDir:         getEnv("PROFILE_PHOTO_DIR", ""),
+		AttachmentsDir:          getEnv("ATTACHMENTS_DIR", filepath.Join(filepath.Dir(getEnv("PROFILE_PHOTO_DIR", "")), "attachments")),
 		CardDAVEnabled:          getBoolEnv("CARDDAV_ENABLED", false),
 		CalDAVEnabled:           getBoolEnv("CALDAV_ENABLED", false),
 		CalDAVTwoWayEnabled:     getBoolEnv("CALDAV_TWO_WAY_ENABLED", false),
@@ -268,6 +270,16 @@ func (c *Config) Validate() []ValidationError {
 		errors = append(errors, ValidationError{
 			Field:   "PROFILE_PHOTO_DIR",
 			Message: fmt.Sprintf("Profile photo directory '%s' must be an absolute path for security.", c.ProfilePhotoDir),
+		})
+	}
+
+	// Validate attachments directory - derived from the photo dir's parent by
+	// default, so it must be absolute whenever the photo dir (also required,
+	// above) is.
+	if c.AttachmentsDir != "" && !filepath.IsAbs(c.AttachmentsDir) {
+		errors = append(errors, ValidationError{
+			Field:   "ATTACHMENTS_DIR",
+			Message: fmt.Sprintf("Attachments directory '%s' must be an absolute path for security.", c.AttachmentsDir),
 		})
 	}
 
