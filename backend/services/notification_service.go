@@ -362,6 +362,34 @@ func (pushNotificationSender) Enabled(db *gorm.DB, _ config.Config, user models.
 	return count > 0
 }
 
+// webPushRecordOverhead is the fixed non-payload overhead webpush-go's
+// aes128gcm encoding wraps around the plaintext for every record: 16-byte
+// salt + 4-byte record-size header + 1-byte public-key-length + 65-byte
+// uncompressed P-256 public key + 1-byte padding delimiter + 16-byte
+// AES-GCM auth tag (RFC 8291 §4; webpush-go's SendNotificationWithContext).
+// A webpush.Options.RecordSize smaller than len(payload)+webPushRecordOverhead
+// makes webpush-go's internal pad() fail with ErrMaxPadExceeded.
+const webPushRecordOverhead = 103
+
+// pushRecordSize sizes webpush.Options.RecordSize to the payload actually
+// being sent instead of relying on webpush-go's default (MaxRecordSize,
+// 4096), which pads every message — including a two-word test notification
+// — out to a request body of exactly RecordSize bytes regardless of content
+// (the framing is self-balancing: header 86 + ciphertext RecordSize-86), and
+// gets rejected with 413 by push services enforcing a smaller per-message
+// limit (T51). Capped at webpush.MaxRecordSize, the largest size push
+// services are generally known to accept; a payload too large to fit even
+// then still fails, just with webpush-go's own "payload has exceeded the
+// maximum length" error instead of a 413 from the service — the same
+// threshold (payload > 3993 bytes) the library's own default already had.
+func pushRecordSize(payloadLen int) uint32 {
+	size := payloadLen + webPushRecordOverhead
+	if size > int(webpush.MaxRecordSize) {
+		return webpush.MaxRecordSize
+	}
+	return uint32(size)
+}
+
 // sendPushMessage delivers one Web Push message to a subscription. Returns
 // stale=true when the push service no longer knows the subscription
 // (404/410) — the caller should drop it. Reuses clientFor so the webhook SSRF
@@ -380,6 +408,7 @@ func sendPushMessage(db *gorm.DB, cfg config.Config, user models.User, sub model
 		VAPIDPublicKey:  vapidPublic,
 		VAPIDPrivateKey: vapidPrivate,
 		TTL:             86400,
+		RecordSize:      pushRecordSize(len(payload)),
 		HTTPClient:      clientFor(cfg),
 	})
 	if err != nil {
