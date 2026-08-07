@@ -7,32 +7,18 @@
 // dropdown; resolveLinkFieldTypeIcon resolves against the full @mdi/js export
 // surface, so any valid MDI name typed into the free-text field renders
 // correctly (T43).
-import {
-  mdiMessageLock,
-  mdiFacebookMessenger,
-  mdiWhatsapp,
-  mdiSend,
-  mdiChatOutline,
-  mdiMatrix,
-  mdiSlack,
-  mdiTwitter,
-  mdiButterflyOutline,
-  mdiInstagram,
-  mdiAt,
-  mdiMusicNote,
-  mdiReddit,
-  mdiSpotify,
-  mdiTwitch,
-  mdiLinkVariant,
-} from '@mdi/js';
 import * as mdiIcons from '@mdi/js';
 
 export const LINK_FIELD_TYPE_ICONS: Record<string, string> = {
   mdiMessageLock,
   mdiFacebookMessenger,
   mdiWhatsapp,
+  mdiSnapchat,
   mdiSend,
   mdiChatOutline,
+  mdiForumOutline,
+  mdiMessageOutline,
+  mdiMessageText,
   mdiMatrix,
   mdiSlack,
   mdiTwitter,
@@ -43,6 +29,7 @@ export const LINK_FIELD_TYPE_ICONS: Record<string, string> = {
   mdiReddit,
   mdiSpotify,
   mdiTwitch,
+  mdiSteam,
 };
 
 export const LINK_FIELD_TYPE_ICON_FALLBACK = mdiLinkVariant;
