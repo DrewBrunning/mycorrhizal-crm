@@ -24,9 +24,14 @@ the rank.
 
 | Rank | Ticket | R | Size | Depends on | Ready? |
 |---|---|---|---|---|---|
-| 1 | [N6](26-N6-backup-restore.md) · Full backup restore | 3 | S | — | Ready |
-| 2 | [N7](29-N7-attachments.md) · File / document attachments | 3 | M | — | Ready (coordinate with N6 — not a hard dependency, see its ticket) |
-| 3 | [N8](25-N8-2fa.md) · 2FA / TOTP | 3 | M | — | Ready |
+| 1 | [N6](26-N6-backup-restore.md) · Full backup restore | 3 | S | — | Ready (deferred to v0.5.0 to batch schema/model changes; N7 done, so the board is otherwise empty) |
+
+> **N8 (2FA/TOTP) moved to Feature ideas, 2026-08-07.** For a self-hosted instance
+> going through OIDC the IdP already owns 2FA, so app-level TOTP is redundant there; it only
+> matters for local password accounts, which a single-operator instance rarely has. Not dropped —
+> it's genuinely more likely than the live-sync/Dawarich ideas below — just not scheduled while
+> N7 (the last task before the v0.4.0 alpha cut) and N6 (deferred to v0.5.0 to batch schema/model
+> changes) remain.
 
 ### Deferred — not ranked, no plan to schedule
 
@@ -58,6 +63,7 @@ Planned features that these get built at all.
 
 | Ticket | Notes |
 |---|---|
+| [N8](25-N8-2fa.md) · 2FA / TOTP | R3. Highest-confidence item here — moved down from the ranked table 2026-08-07 because OIDC already covers 2FA for IdP-backed instances (see the note on the To-be-done table). Pulled in if local-account instances ever matter. |
 | [P1b](69-P1b-standing-contact-share.md) · Standing/live contact share + permission model (true synced contacts across users) | R1–2. XL. The closest existing formalization of "true sync," not a one-time copy like the done [P1](31-P1-contact-sharing.md). |
 | [P2d](73-P2d-dawarich-geopulse-integration.md) · Dawarich / GeoPulse integration | R1–2. Location-history correlation into life-event/activity suggestions — an L4 idea, not a simple link. |
 | [P2e](74-P2e-jellyfin-integration.md) · Jellyfin integration | R1. Least-defined idea in this list — not even scoped enough to say what it would do. |
@@ -139,6 +145,7 @@ Kept for reference/lookup, not ranked — order below is roughly the sequence th
 | [T12b](35-T12b-caldav-serve.md) · Serve Interactions/LifeEvents as CalDAV | **DONE** |
 | [T13](36-T13-two-way-calendar.md) · Two-way calendar sync ⚠ | **DONE** |
 | [T18](34-T18-audit-trail.md) · Event history / audit trail | **DONE** |
+| [N7](29-N7-attachments.md) · File / document attachments | **DONE** |
 
 ### ⚠ A grooming lesson worth keeping visible
 

@@ -70,6 +70,7 @@ import ConversationAgendaList from './components/ConversationAgendaList';
 import GiftList from './components/GiftList';
 import ClothingSizesPanel from './components/ClothingSizesPanel';
 import ExternalLinkPanel from './components/ExternalLinkPanel';
+import AttachmentsSection from './components/AttachmentsSection';
 import ConnectionsPanel from './components/ConnectionsPanel';
 import ProfilePictureUploadDialog from './components/ProfilePictureUploadDialog';
 import { useContactDialogs } from './hooks/useContactDialogs';
@@ -1368,6 +1369,7 @@ export default function ContactDetailPage() {
           { id: 'cadence', label: t('contactDetail.section.cadence') },
           { id: 'gifts', label: t('gifts.title') },
           { id: 'external-links', label: t('externalLinks.title') },
+          { id: 'attachments', label: t('attachments.title') },
         ]}
       />
 
@@ -1562,6 +1564,13 @@ export default function ContactDetailPage() {
             onSyncImmich={handleSyncImmich}
             syncing={immichSyncing}
           />
+        </PanelCard>
+      </SectionGroup>
+
+      {/* Attachments (N7) — files/documents attached to the contact */}
+      <SectionGroup id="attachments">
+        <PanelCard title={t('attachments.title')}>
+          <AttachmentsSection contactId={id ?? ''} />
         </PanelCard>
       </SectionGroup>
 

@@ -1599,6 +1599,131 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  # --- Attachments (N7) ---
+  /contacts/{id}/attachments:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    post:
+      summary: Upload an attachment to a contact
+      operationId: uploadAttachment
+      description: >
+        Stores a file against a contact (N7). The bytes go to disk under a
+        server-generated UUID name; the original name is display-only. SVG and
+        HTML uploads are rejected (in-origin XSS). Max 25MB.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: Attachment created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  attachment:
+                    $ref: "#/components/schemas/Attachment"
+        "400":
+          description: Invalid file (missing, too large, or SVG/HTML).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Contact not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    get:
+      summary: List a contact's attachments
+      operationId: listContactAttachments
+      description: Returns the contact's non-deleted attachments, newest first.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Attachments.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  attachments:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Attachment"
+                  total: { type: integer }
+        "404":
+          description: Contact not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /attachments/{id}/download:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      summary: Download an attachment
+      operationId: downloadAttachment
+      description: >
+        Serves an attachment's bytes. Content-Disposition is attachment by
+        default and inline only for the image/pdf allow-list; SVG/HTML are
+        never inline. X-Content-Type-Options: nosniff is always set.
+      responses:
+        "200":
+          description: The file bytes.
+        "404":
+          description: Attachment or file not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /attachments/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    delete:
+      summary: Delete an attachment
+      operationId: deleteAttachment
+      description: >
+        Soft-deletes the attachment record and removes its file from disk.
+      responses:
+        "200":
+          description: Attachment deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+        "404":
+          description: Attachment not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   # --- Profile pictures ---
   /contacts/{id}/profile_picture:
     parameters:
@@ -7130,6 +7255,17 @@ components:
         entity_id: { type: string }
         operation: { type: string, enum: [create, update, delete] }
         before_snapshot: { type: string, description: "Redacted JSON of the pre-update/pre-delete state (empty for creates)" }
+    Attachment:
+      type: object
+      description: One file/document attached to a contact (N7). The bytes live on disk under a server-generated UUID name.
+      properties:
+        id: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        contact_vcard_uid: { type: string, format: uuid }
+        original_name: { type: string, description: "Display-only; never used to build a filesystem path" }
+        content_type: { type: string }
+        size_bytes: { type: integer }
     Tag:
       type: object
       properties:

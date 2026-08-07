@@ -3,9 +3,11 @@ package controllers
 import (
 	"errors"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
+	"mycorrhizal/attachments"
 	"mycorrhizal/config"
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/logger"
@@ -410,9 +412,23 @@ func DeleteUser(c *gin.Context) {
 		}
 	}
 
+	// Capture the user's attachment stored names before the transaction
+	// removes the rows, so their files can be cleaned from disk afterwards.
+	var userAttachmentNames []string
+	if err := db.Model(&models.Attachment{}).Where("user_id = ?", uint(id)).Pluck("stored_name", &userAttachmentNames).Error; err != nil {
+		log.Error().Err(err).Uint64("user_id", id).Msg("Failed to load user attachments for deletion")
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("load user attachments").WithError(err))
+		return
+	}
+
 	// Delete user's data in a transaction
 	err = db.Transaction(func(tx *gorm.DB) error {
 		userID := uint(id)
+
+		// Delete attachments (N7 — hard: account gone, no tombstoning needed).
+		if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.Attachment{}).Error; err != nil {
+			return err
+		}
 
 		// Delete reminders (hard — user account gone, no tombstoning needed).
 		// N9: their notification delivery state is hard-deleted first (the
@@ -600,5 +616,31 @@ func DeleteUser(c *gin.Context) {
 		return
 	}
 
+	// Remove the user's attachment files after the transaction committed
+	// (file deletion can't be rolled back). Uses the admin's own context for
+	// the config; the deleted user's files are addressed by stored name.
+	deleteUserAttachmentFiles(c, userAttachmentNames)
+
 	c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully"})
+}
+
+// deleteUserAttachmentFiles removes attachment files owned by a deleted user
+// from disk (N7). storedNames were captured before the transaction deleted the
+// rows.
+func deleteUserAttachmentFiles(c *gin.Context, storedNames []string) {
+	dir := currentConfig(c).AttachmentsDir
+	if dir == "" || len(storedNames) == 0 {
+		return
+	}
+	log := logger.FromContext(c)
+	for _, name := range storedNames {
+		path, err := attachments.StoredPath(dir, name)
+		if err != nil {
+			log.Warn().Err(err).Str("stored_name", name).Msg("Failed to resolve attachment path for user cleanup")
+			continue
+		}
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			log.Warn().Err(err).Str("path", path).Msg("Failed to delete user attachment file")
+		}
+	}
 }

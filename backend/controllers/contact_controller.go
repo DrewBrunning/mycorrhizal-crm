@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"errors"
+	"mycorrhizal/attachments"
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/logger"
 	"mycorrhizal/middleware"
@@ -611,6 +612,13 @@ func deleteContactAssociations(tx *gorm.DB, contact models.Contact, userID uint)
 		return err
 	}
 
+	// Delete this contact's attachments (N7 — user-authored content, soft
+	// delete; the on-disk files are removed by the caller after the
+	// transaction commits, see deleteContactPhotos' sibling below).
+	if err := tx.Where("contact_vcard_uid = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.Attachment{}).Error; err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -635,6 +643,13 @@ func DeleteContact(c *gin.Context) {
 	}
 
 	// Start a transaction to ensure all deletes succeed together
+	var attachmentNames []string
+	if err := db.Model(&models.Attachment{}).
+		Where("contact_vcard_uid = ? AND user_id = ?", contact.VCardUID, userID).
+		Pluck("stored_name", &attachmentNames).Error; err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to load contact attachments").WithError(err))
+		return
+	}
 	err := db.Transaction(func(tx *gorm.DB) error {
 		if err := deleteContactAssociations(tx, contact, userID); err != nil {
 			return err
@@ -653,9 +668,11 @@ func DeleteContact(c *gin.Context) {
 		return
 	}
 
-	// Cleanup profile photos after successful database transaction
-	// This is done outside the transaction since file deletion cannot be rolled back
+	// Cleanup profile photos and attachment files after successful database
+	// transaction. This is done outside the transaction since file deletion
+	// cannot be rolled back.
 	deleteContactPhotos(c, contact)
+	deleteContactAttachmentFiles(c, attachmentNames)
 
 	go services.TriggerWebhooks(db, currentConfig(c), userID, "contact.deleted", gin.H{"id": contact.ID})
 	c.JSON(http.StatusOK, gin.H{"message": "Contact deleted"})
@@ -688,6 +705,28 @@ func deleteContactPhotos(c *gin.Context, contact models.Contact) {
 			log.Warn().Err(err).Str("path", thumbnailPath).Msg("Failed to delete contact thumbnail")
 		} else if err == nil {
 			log.Debug().Str("path", thumbnailPath).Msg("Deleted contact thumbnail")
+		}
+	}
+}
+
+// deleteContactAttachmentFiles removes a contact's attachment files from disk
+// (N7). Called after the database transaction that soft-deleted the attachment
+// records, since file deletion cannot be rolled back. storedNames are the
+// server-generated UUID filenames captured before the delete.
+func deleteContactAttachmentFiles(c *gin.Context, storedNames []string) {
+	dir := currentConfig(c).AttachmentsDir
+	if dir == "" || len(storedNames) == 0 {
+		return
+	}
+	log := logger.FromContext(c)
+	for _, name := range storedNames {
+		path, err := attachments.StoredPath(dir, name)
+		if err != nil {
+			log.Warn().Err(err).Str("stored_name", name).Msg("Failed to resolve attachment path for cleanup")
+			continue
+		}
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			log.Warn().Err(err).Str("path", path).Msg("Failed to delete contact attachment file")
 		}
 	}
 }

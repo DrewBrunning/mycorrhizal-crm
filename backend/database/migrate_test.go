@@ -826,3 +826,43 @@ func TestAuditEventsMigration(t *testing.T) {
 	require.NoError(t, sqlDB.QueryRow("SELECT COUNT(*) FROM users WHERE username = 't18'").Scan(&userCount))
 	assert.EqualValues(t, 1, userCount, "a rollback must not destroy the pre-existing user")
 }
+
+// TestAttachmentsMigration pins migration 000017's shape: the attachments
+// table exists with its columns/indexes, and rolling back drops it without
+// touching pre-existing data.
+func TestAttachmentsMigration(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "n7-migration.db")
+	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
+	require.NoError(t, err)
+	defer sqlDB.Close()
+
+	m, err := newMigrator(sqlDB)
+	require.NoError(t, err)
+	require.NoError(t, m.Steps(16))
+
+	_, err = sqlDB.Exec("INSERT INTO users (created_at, updated_at, username, password, email) VALUES (datetime('now'), datetime('now'), 'n7', 'x', 'n7@example.com')")
+	require.NoError(t, err)
+
+	require.NoError(t, m.Steps(1))
+
+	var tableCount int64
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'attachments'",
+	).Scan(&tableCount))
+	assert.EqualValues(t, 1, tableCount, "000017 must create attachments")
+
+	_, err = sqlDB.Exec(`
+		INSERT INTO attachments (created_at, updated_at, user_id, contact_vcard_uid, stored_name, original_name, content_type, size_bytes)
+		VALUES (datetime('now'), datetime('now'), 1, 'contact-1', 'uuid-1', 'cv.pdf', 'application/pdf', 123)`)
+	require.NoError(t, err)
+
+	// Down: rolling back drops the table; the user survives.
+	require.NoError(t, MigrateDown(dbPath))
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'attachments'",
+	).Scan(&tableCount))
+	assert.Zero(t, tableCount, "the down migration must drop attachments")
+	var userCount int64
+	require.NoError(t, sqlDB.QueryRow("SELECT COUNT(*) FROM users WHERE username = 'n7'").Scan(&userCount))
+	assert.EqualValues(t, 1, userCount, "a rollback must not destroy the pre-existing user")
+}
