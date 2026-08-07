@@ -13,11 +13,13 @@ import {
 } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
 import TuneIcon from '@mui/icons-material/Tune';
+import UploadIcon from '@mui/icons-material/Upload';
 import { exportContacts, exportDataAsCsv, exportContactsAsVcf, ExportFormat, ExportSelection } from './api/export';
 import CustomFieldsSettings from './components/CustomFieldsSettings';
 import ContactFieldSettings from './components/ContactFieldSettings';
 import CalendarSyncSettings from './components/CalendarSyncSettings';
 import ExportFieldPickerDialog from './components/ExportFieldPickerDialog';
+import ImportContactsDialog from './components/ImportContactsDialog';
 
 export default function DataSettingsPage() {
   const { t } = useTranslation();
@@ -31,6 +33,11 @@ export default function DataSettingsPage() {
   const [customExporting, setCustomExporting] = useState(false);
   const [customExportError, setCustomExportError] = useState('');
   const [customExportSuccess, setCustomExportSuccess] = useState('');
+
+  // T56 (docs/fork-plan/tickets/65-T56-bulk-contacts-import-flow.md): the
+  // bulk import entry point, reusing the exact same wizard the Contacts page
+  // uses — one import flow, two doors.
+  const [importOpen, setImportOpen] = useState(false);
 
   const handleExportData = async () => {
     setExportError('');
@@ -90,6 +97,34 @@ export default function DataSettingsPage() {
       <CustomFieldsSettings />
 
       <CalendarSyncSettings />
+
+      <Card sx={{ mb: 2 }}>
+        <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+            <UploadIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }} />
+            <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+              {t('settings.data.import.title')}
+            </Typography>
+          </Box>
+          <Divider sx={{ mb: 1.5 }} />
+
+          <Stack spacing={1.5}>
+            <Typography variant="body2" color="text.secondary">
+              {t('settings.data.import.description')}
+            </Typography>
+            <Box>
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<UploadIcon />}
+                onClick={() => setImportOpen(true)}
+              >
+                {t('settings.data.import.importButton')}
+              </Button>
+            </Box>
+          </Stack>
+        </CardContent>
+      </Card>
 
       <Card sx={{ mb: 2 }}>
         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
@@ -166,6 +201,12 @@ export default function DataSettingsPage() {
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
         onExport={handleCustomExport}
+      />
+
+      <ImportContactsDialog
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImportComplete={() => setImportOpen(false)}
       />
     </Box>
   );

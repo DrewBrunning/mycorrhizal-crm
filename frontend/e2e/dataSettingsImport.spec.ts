@@ -1,0 +1,64 @@
+import { test, expect } from './fixtures';
+import { waitForLoading } from './fixtures';
+import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
+
+// T56 (docs/fork-plan/tickets/65-T56-bulk-contacts-import-flow.md): the bulk
+// import entry point lives in Settings → Data, alongside the export UI, and
+// reuses the same wizard as the Contacts page — now with bulk controls. This
+// drives the real dialog end to end through the file input.
+test.describe('Bulk contacts import in Data Settings', () => {
+  test('imports a CSV address book from Data Settings', async ({ page, request }) => {
+    const name = `${E2E_CONTACT_PREFIX}Bulk${Date.now()}`;
+    const second = `${E2E_CONTACT_PREFIX}Bulk2${Date.now()}`;
+    const csv = `First Name,Last Name,Email\n${name},One,${name}@example.com\n${second},Two,${second}@example.com\n`;
+
+    try {
+      await page.goto('/settings/data');
+      await waitForLoading(page);
+
+      await page.getByRole('button', { name: /import contacts/i }).first().click();
+
+      const dialog = page.getByRole('dialog');
+      await expect(dialog).toBeVisible();
+
+      // The dialog's file input is hidden; setInputFiles works on it directly.
+      await dialog.locator('#import-file-input').setInputFiles({
+        name: 'addressbook.csv',
+        mimeType: 'text/csv',
+        buffer: Buffer.from(csv),
+      });
+
+      // CSV goes through the mapping step — accept the suggested mappings.
+      await expect(dialog.getByText('Map Columns')).toBeVisible();
+      await dialog.getByRole('button', { name: /continue/i }).click();
+
+      // Preview: bulk-accept both rows, then import.
+      await expect(dialog.getByText('2 to create')).toBeVisible();
+      await dialog.getByRole('button', { name: /accept all suggested/i }).click();
+      await dialog.getByRole('button', { name: /^import$/i }).click();
+
+      // Result step reports both created.
+      await expect(dialog.getByText('2 contacts created')).toBeVisible();
+      await dialog.getByRole('button', { name: /done/i }).click();
+      await expect(dialog).toBeHidden();
+
+      // The imported contacts are real: findable via the API.
+      const search = await request.get(`${API_BASE_URL}/search?q=${encodeURIComponent(name)}&limit=10`);
+      expect(search.ok()).toBeTruthy();
+      const body = await search.json();
+      expect(
+        body.contacts.some((c: { firstname: string }) => c.firstname === name),
+        'the imported contact must be searchable'
+      ).toBeTruthy();
+    } finally {
+      // Clean up the imported contacts (skip/ignore failures — the contacts
+      // may not exist if the import failed mid-run).
+      for (const firstname of [name, second]) {
+        const list = await request.get(`${API_BASE_URL}/contacts?limit=200`);
+        const { contacts } = await list.json();
+        const match = contacts.find((c: { firstname: string }) => c.firstname === firstname);
+        if (match) await request.delete(`${API_BASE_URL}/contacts/${match.id}`).catch(() => {});
+      }
+    }
+  });
+});

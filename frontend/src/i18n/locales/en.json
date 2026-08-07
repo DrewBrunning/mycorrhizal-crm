@@ -212,8 +212,8 @@
       "upload": {
         "title": "Upload Contacts File",
         "description": "Select a CSV or VCF file containing your contacts. A CSV file should have headers in the first row.",
-        "dragDrop": "Drag and drop a CSV file here, or click to select",
-        "maxSize": "Maximum file size: 5MB",
+        "dragDrop": "Drag and drop a CSV or VCF file here, or click to select",
+        "maxSize": "Maximum file size: 50MB (VCF) / 20MB (CSV)",
         "uploading": "Uploading...",
         "supportedFormats": "Supported formats: CSV (spreadsheet), VCF (vCard)"
       },
@@ -250,7 +250,10 @@
         "toCreate": "{{count}} to create",
         "toUpdate": "{{count}} to update",
         "toSkip": "{{count}} to skip",
-        "errors": "{{count}} with errors"
+        "errors": "{{count}} with errors",
+        "acceptAll": "Accept all suggested",
+        "skipAll": "Skip all",
+        "importing": "Importing…"
       },
       "result": {
         "title": "Import Complete",
@@ -967,7 +970,12 @@
       }
     },
     "data": {
-      "title": "Data"
+      "title": "Data",
+      "import": {
+        "title": "Import Contacts",
+        "description": "Bring in a full address book — a Google Takeout export, another contacts app's CSV or VCF export, or a JSContact JSON file. The same review flow as the Contacts page is used, with bulk controls for large files.",
+        "importButton": "Import Contacts"
+      }
     },
     "exportFieldPicker": {
       "title": "Export Contacts — Choose Fields",

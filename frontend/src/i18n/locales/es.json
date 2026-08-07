@@ -212,8 +212,8 @@
       "upload": {
         "title": "Subir Archivo de Contactos",
         "description": "Selecciona un archivo CSV o VCF con tus contactos. Un archivo CSV debe tener encabezados en la primera fila.",
-        "dragDrop": "Arrastra y suelta un archivo CSV aquí, o haz clic para seleccionar",
-        "maxSize": "Tamaño máximo del archivo: 5MB",
+        "dragDrop": "Arrastra y suelta un archivo CSV o VCF aquí, o haz clic para seleccionar",
+        "maxSize": "Tamaño máximo del archivo: 50MB (VCF) / 20MB (CSV)",
         "uploading": "Subiendo...",
         "supportedFormats": "Formatos compatibles: CSV (hoja de cálculo), VCF (vCard)"
       },
@@ -250,7 +250,10 @@
         "toCreate": "{{count}} para crear",
         "toUpdate": "{{count}} para actualizar",
         "toSkip": "{{count}} para omitir",
-        "errors": "{{count}} con errores"
+        "errors": "{{count}} con errores",
+        "acceptAll": "Aceptar todos los sugeridos",
+        "skipAll": "Omitir todos",
+        "importing": "Importando…"
       },
       "result": {
         "title": "Importación Completa",
@@ -940,7 +943,12 @@
       }
     },
     "data": {
-      "title": "Datos"
+      "title": "Datos",
+      "import": {
+        "title": "Importar contactos",
+        "description": "Trae una agenda completa: una exportación de Google Takeout, una exportación CSV o VCF de otra app de contactos, o un archivo JSON de JSContact. Se usa el mismo flujo de revisión que en la página de Contactos, con controles masivos para archivos grandes.",
+        "importButton": "Importar contactos"
+      }
     },
     "exportFieldPicker": {
       "title": "Exportar contactos — elegir campos",
