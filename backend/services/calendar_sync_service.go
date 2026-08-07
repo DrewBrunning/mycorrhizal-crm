@@ -273,7 +273,7 @@ func (s *CalendarSyncService) syncSubscription(ctx context.Context, db *gorm.DB,
 
 	localizeUntitledEvents(db, sub.UserID, events)
 
-	stats, err := importEvents(db, sub, events)
+	stats, err := importEvents(db, sub, events, cfg.CalDAVTwoWayEnabled)
 	if err != nil {
 		return stats, err
 	}
@@ -599,7 +599,13 @@ func filterEventsByWindow(events []calendarEvent, start, end time.Time) []calend
 // importEvents upserts events into activities, keyed by UID through
 // CalendarEventLink. Existing unchanged events are skipped, changed events
 // update their activity, and activities the user deleted are not re-imported.
-func importEvents(db *gorm.DB, sub *models.CalendarSubscription, events []calendarEvent) (CalendarSyncStats, error) {
+//
+// twoWay gates the both-changed conflict handling: only when two-way sync is
+// enabled (T13) does a pending local edit win over a remote change (the local
+// edit is preserved and left for the push phase to send back). With two-way
+// off, the pre-T13 remote-wins behavior is unchanged, so an existing
+// deployment that never opted in sees no difference.
+func importEvents(db *gorm.DB, sub *models.CalendarSubscription, events []calendarEvent, twoWay bool) (CalendarSyncStats, error) {
 	contactsByEmail, err := loadContactsByEmail(db, sub.UserID, events)
 	if err != nil {
 		return CalendarSyncStats{}, err
@@ -699,8 +705,10 @@ func importEvents(db *gorm.DB, sub *models.CalendarSubscription, events []calend
 			// the last sync AND the remote changed too. Policy: local-wins —
 			// see pushLocalEdits' doc comment. Leave the local activity
 			// untouched and let the push phase overwrite the remote; leaving
-			// link.ContentHash stale is what the push phase keys on.
-			if activity.UpdatedAt.After(link.UpdatedAt) {
+			// link.ContentHash stale is what the push phase keys on. Only
+			// applies when two-way is enabled — otherwise the pre-T13
+			// remote-wins behavior is preserved for this deployment.
+			if twoWay && activity.UpdatedAt.After(link.UpdatedAt) {
 				stats.Skipped++
 				continue
 			}

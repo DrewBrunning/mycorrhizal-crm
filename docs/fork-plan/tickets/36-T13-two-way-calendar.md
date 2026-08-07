@@ -71,6 +71,31 @@ write them down, and test them against a scratch calendar — never a live one.*
 ### Post-alpha note
 This ticket is post-alpha — real production data exists. Changes that modify schemas or data must be additive and non-destructive. Migration files must be hand-written SQL up/down pairs. Test against `database.InitDB`, not `AutoMigrate`. For integrations: SSRF protection via `httputil.SafeDialContext` is mandatory for any outbound requests.
 
+## Landing note (2026-08-07)
+
+Landed with T12b. The conflict policy is **local-wins on both-changed**,
+documented in `pushLocalEdits`' doc comment in the same style
+`reconcileContactSync` documents its overwrite behavior — a both-changed
+conflict is detected (activity/link `UpdatedAt` ordering + the remote ETag as
+If-Match), never silently assumed, and the CRM edit deliberately overwrites
+the remote. Deliberately not the contact path's remote-wins overwrite.
+
+Deletion semantics are conservative: locally-deleted activities stop being
+re-imported but are never DELETE'd on the remote, and an absent remote event
+is never treated as deleted (a rolling window makes "deleted" indistinguishable
+from "moved out of window"). No automatic deletion in either direction.
+
+Shipped behind `CALDAV_TWO_WAY_ENABLED` (default **off**), so no real calendar
+is ever written to without a deployment opting in; the both-changed behavior
+only changes for opted-in deployments (default deployments keep the old
+remote-wins pull). Migration 000015 adds `remote_etag` + `remote_path` to
+`calendar_event_links` (plain-ICS-fallback subscriptions stay NULL and never
+push). Every conflict case is pinned by a mock-server test (local-only push
+with If-Match + no loop, remote-only pull, both-changed 412→unconditional
+retry, local delete respected, remote delete leaves the activity alone, and
+the default-off config never writing). Verified against a mock scratch
+calendar, never a live one — per the ticket.
+
 ## Flash implementation notes
 
 ### Files to read first

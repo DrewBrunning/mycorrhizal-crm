@@ -22,6 +22,8 @@ services:
       - PROFILE_PHOTO_DIR=/app/static/photos
       - FRONTEND_URL=http://localhost:7300
       - DISABLE_REGISTRATION=false
+      # CalDAV serving (T12b) enabled so the e2e suite can exercise it.
+      - CALDAV_ENABLED=true
       # The e2e suite drives the whole app from one IP, so every worker shares
       # a single rate-limit bucket. A full run is several thousand requests
       # (one contact page alone fires ~18), which exhausted the production

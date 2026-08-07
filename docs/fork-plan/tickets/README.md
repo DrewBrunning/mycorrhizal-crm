@@ -27,9 +27,7 @@ the rank.
 | 1 | [N6](26-N6-backup-restore.md) · Full backup restore | 3 | S | — | Ready |
 | 2 | [N7](29-N7-attachments.md) · File / document attachments | 3 | M | — | Ready (coordinate with N6 — not a hard dependency, see its ticket) |
 | 3 | [N8](25-N8-2fa.md) · 2FA / TOTP | 3 | M | — | Ready |
-| 4 | [T12b](35-T12b-caldav-serve.md) · Serve Interactions/LifeEvents as CalDAV | 2 | L | T12a ✅, T5 ✅ | Ready |
-| 5 | [T18](34-T18-audit-trail.md) · Event history / audit trail | 2 | L | T17 ✅ | Ready |
-| 6 | [T13](36-T13-two-way-calendar.md) · Two-way calendar sync ⚠ | 2 | M–L | **T12b** (rank 4, not done) | **Blocked** — do not start before T12b lands |
+| 4 | [T18](34-T18-audit-trail.md) · Event history / audit trail | 2 | L | T17 ✅ | Ready |
 
 ### Deferred — not ranked, no plan to schedule
 
@@ -139,6 +137,8 @@ Kept for reference/lookup, not ranked — order below is roughly the sequence th
 | [T37](46-T37-pet-relationship-kind-default.md) · Pet relationship should default to animal kind | **DONE** |
 | [T40](49-T40-household-suggestions-shared-address.md) · Suggest households from shared address | **DONE** |
 | [T56](65-T56-bulk-contacts-import-flow.md) · Bulk contacts import (Google Takeout / contacts-app export) in Data Settings | **DONE** |
+| [T12b](35-T12b-caldav-serve.md) · Serve Interactions/LifeEvents as CalDAV | **DONE** |
+| [T13](36-T13-two-way-calendar.md) · Two-way calendar sync ⚠ | **DONE** |
 
 ### ⚠ A grooming lesson worth keeping visible
 
