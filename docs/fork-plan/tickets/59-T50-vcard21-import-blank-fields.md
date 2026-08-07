@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Rating** | 4 — real, common case (many phone/Google/Apple exports are still vCard 2.1), not a corner case |
+| **Rating** | 5 — real, common case (many phone/Google/Apple exports are still vCard 2.1), not a corner case |
 | **Size** | M |
 | **Depends on** | [T49](58-T49-vcf-import-merge-corrupts-existing-contact.md) — not a hard blocker (this ticket's fix stands alone), but land T49 first: until it does, a vCard 2.1 import that happens to match an existing contact by name is the easiest real-world way to trigger T49's data loss |
 | **Alpha** | n/a — real data exists; this is import-parsing logic, no schema change |

@@ -17,6 +17,17 @@ concretely) could drive directly rather than a human clicking through the Data S
 a materially different bar: a UI-backing endpoint can change shape whenever the UI does; an API a
 mobile client depends on needs versioning discipline and can't casually break.
 
+**Not just a first-run flow.** The Android app needs this from at least two separate places in its
+own UX, not one: a first-run "would you like to import your contacts?" onboarding prompt, and a
+separate, always-available "Import from contacts" entry point in the app's own Data settings
+(mirroring where T56 puts the equivalent flow on the web) so a user can re-trigger an import later —
+after adding new device contacts, say, not only at setup. Relative to this API, that distinction
+shouldn't matter: one stable bulk-import contract serves both call sites identically, the same way
+today's single backend endpoint doesn't care whether a browser request came from an onboarding
+screen or a settings page. Noted here so a future design pass scopes the API contract itself
+correctly (repeatable, not a one-shot "setup wizard" call) rather than only against the narrower
+first-run case.
+
 ## Why it's deferred, not ticketed for real
 
 There's no concrete consumer today — [M1](67-M1-mobile-android-app.md) records the intent to build

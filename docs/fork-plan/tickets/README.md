@@ -30,21 +30,21 @@ stated algorithm, not manually pinned to the top for effect — the algorithm al
 | Rank | Ticket | R | Size | Depends on | Ready? |
 |---|---|---|---|---|---|
 | 1 | [T49](58-T49-vcf-import-merge-corrupts-existing-contact.md) · VCF/CSV import merge silently corrupts and orphans existing contact data ⚠ | 5 | M | — | Ready |
-| 2 | [T51](60-T51-push-notification-413-payload-too-large.md) · Browser push "Test notification" fails with 413 from the push service | 4 | S | N9 ✅ | Ready |
-| 3 | [T50](59-T50-vcard21-import-blank-fields.md) · vCard 2.1 import produces blank phone/email/photo | 4 | M | **T49** (rank 1, not done) | **Blocked** — do not start before T49 lands |
+| 2 | [T50](59-T50-vcard21-import-blank-fields.md) · vCard 2.1 import produces blank phone/email/photo | 5 | M | **T49** (rank 1, not done) | **Blocked** — do not start before T49 lands |
+| 3 | [T51](60-T51-push-notification-413-payload-too-large.md) · Browser push "Test notification" fails with 413 from the push service | 4 | S | N9 ✅ | Ready |
 | 4 | [T42](51-T42-immich-link-person-error-misclassification.md) · Immich "link a person" fails with "Could not reach Immich" | 4 | S | T15/T16 ✅ | Ready |
-| 5 | [N6](26-N6-backup-restore.md) · Full backup restore | 3 | S | — | Ready |
-| 6 | [T45](54-T45-contact-jump-nav-mobile-dropdown.md) · Contact jump nav should collapse to a dropdown on narrow viewports | 3 | S | T31 ✅ | Ready |
-| 7 | [T53](62-T53-contact-detail-delete-action.md) · Delete a contact from its own detail page, not only from the list | 3 | S | — | Ready |
-| 8 | [N7](29-N7-attachments.md) · File / document attachments | 3 | M | — | Ready (coordinate with N6 — not a hard dependency, see its ticket) |
-| 9 | [N8](25-N8-2fa.md) · 2FA / TOTP | 3 | M | — | Ready |
-| 10 | [T40](49-T40-household-suggestions-shared-address.md) · Suggest households from shared address | 3 | M | T1 ✅ | Ready |
-| 11 | [T44](53-T44-link-field-type-registry-not-in-editors.md) · Link field type registry doesn't reach the editors | 3 | M | T34 ✅ | Ready |
-| 12 | [T46](55-T46-gift-add-entry-points-per-status.md) · Gift "add" entry points default to Idea everywhere | 3 | S–M | T35 ✅ | Ready |
+| 5 | [T44](53-T44-link-field-type-registry-not-in-editors.md) · Link field type registry doesn't reach the editors | 4 | M | T34 ✅ | Ready |
+| 6 | [T46](55-T46-gift-add-entry-points-per-status.md) · Gift "add" entry points default to Idea everywhere | 4 | S–M | T35 ✅ | Ready |
+| 7 | [N6](26-N6-backup-restore.md) · Full backup restore | 3 | S | — | Ready |
+| 8 | [T45](54-T45-contact-jump-nav-mobile-dropdown.md) · Contact jump nav should collapse to a dropdown on narrow viewports | 3 | S | T31 ✅ | Ready |
+| 9 | [T53](62-T53-contact-detail-delete-action.md) · Delete a contact from its own detail page, not only from the list | 3 | S | — | Ready |
+| 10 | [N7](29-N7-attachments.md) · File / document attachments | 3 | M | — | Ready (coordinate with N6 — not a hard dependency, see its ticket) |
+| 11 | [N8](25-N8-2fa.md) · 2FA / TOTP | 3 | M | — | Ready |
+| 12 | [T40](49-T40-household-suggestions-shared-address.md) · Suggest households from shared address | 3 | M | T1 ✅ | Ready |
 | 13 | [T47](56-T47-field-action-icons-layout-and-tel-link.md) · Field action icons should sit near the edit button; phone should also be a tel: link | 3 | M | T34 ✅ | Ready |
 | 14 | [T52](61-T52-simplify-contact-add-flow.md) · Simplify the contact-add flow to name + contact fields | 3 | M | — | Ready |
 | 15 | [T48](57-T48-migrate-frontend-off-cra-to-vite.md) · Migrate frontend off Create React App to Vite | 3 | XL | — | Ready |
-| 16 | [T56](65-T56-bulk-contacts-import-flow.md) · Bulk contacts import (Google Takeout / contacts-app export) in Data Settings | 3 | M | **T49, T50** (ranks 1, 3, not done) | **Blocked** — do not start before both land |
+| 16 | [T56](65-T56-bulk-contacts-import-flow.md) · Bulk contacts import (Google Takeout / contacts-app export) in Data Settings | 3 | M | **T49, T50** (ranks 1, 2, not done) | **Blocked** — do not start before both land |
 | 17 | [T37](46-T37-pet-relationship-kind-default.md) · Pet relationship should default to animal kind | 2 | S | §3d ✅, T27 ✅ | Ready |
 | 18 | [T43](52-T43-link-field-type-custom-icons.md) · Custom link field type icons don't render | 2 | S | T34 ✅ | Ready |
 | 19 | [T54](63-T54-contact-header-menu-fixed-position.md) · Contact header's actions menu shifts position when the name wraps | 2 | S | — | Ready |
@@ -66,7 +66,7 @@ stability rather than on demand for the idea itself.
 | Ticket | Notes |
 |---|---|
 | [M1](67-M1-mobile-android-app.md) · Native Android app (Kotlin, Jetpack Compose) | R2. Automated call/SMS/contact-interaction tracking is the actual point, not just a native UI. Gated on API-surface stability — earliest realistic entry is the move from beta to a real v1.0.0. |
-| [T57](66-T57-bulk-import-api-for-external-clients.md) · Documented/stable bulk-import API for external clients | R1–2. A named sub-piece of M1 — pull in the device's full contact list on first setup. No concrete consumer until M1 starts. |
+| [T57](66-T57-bulk-import-api-for-external-clients.md) · Documented/stable bulk-import API for external clients | R1–2. A named sub-piece of M1 — a repeatable contact-import contract the mobile app calls from both a first-run prompt and a standing "Import from contacts" entry point in Data, not a one-shot setup-only call. No concrete consumer until M1 starts. |
 | [P4](68-P4-local-model-pilot.md) · Local-model code-gen pilot | R1. Re-enters scope specifically when M1's work begins, independent of the rest of this roadmap. |
 
 **Planned features** — concrete, scoped-enough-to-name integrations; higher confidence they'll

@@ -38,9 +38,10 @@ on every backend change. Earliest realistic entry point is **the move from beta 
 per the source conversation — not before.
 
 Two existing tickets are concretely gated on this one, not the other way around:
-- [T57](66-T57-bulk-import-api-for-external-clients.md) — a documented bulk-import API a mobile
-  client could drive to pull in the device's full contact list on first setup. A direct sub-piece of
-  this initiative, not a separate idea.
+- [T57](66-T57-bulk-import-api-for-external-clients.md) — a documented, repeatable bulk-import API
+  the mobile client drives from more than one place: a first-run "import your contacts?" prompt, and
+  a separate, standing "Import from contacts" entry point in the app's own Data settings, so an
+  import isn't limited to initial setup. A direct sub-piece of this initiative, not a separate idea.
 - [P4](68-P4-local-model-pilot.md) — the local-model code-gen pilot re-enters scope specifically
   "when mobile client work begins," per its own note.
 

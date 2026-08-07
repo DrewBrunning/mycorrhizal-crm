@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Rating** | 3 — same rating as the T20b/T35 gift-tracking work this extends |
+| **Rating** | 4 |
 | **Size** | S–M |
 | **Depends on** | [T35](44-T35-gift-tracking-gaps.md) (done — added the "Add with details" full-form entry point this ticket revises) |
 | **Alpha** | n/a — frontend-only wiring change; `GiftInput.status` is already optional and accepted by the API, no backend change needed |

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Rating** | 3 — the registry (Settings → "Contact field types") is effectively undiscoverable from the editor you'd actually use it in |
+| **Rating** | 4 — the registry (Settings → "Contact field types") is effectively undiscoverable from the editor you'd actually use it in |
 | **Size** | M |
 | **Depends on** | [T34](43-T34-contact-field-linking.md) (done — owns `LinkFieldType`, `OnlineServiceEditor`, and explicitly deferred IMPP as a follow-up — see its landing note) |
 | **Alpha** | n/a — frontend-only, no schema/API change |
