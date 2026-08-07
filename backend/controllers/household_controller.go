@@ -32,6 +32,8 @@ func CreateHousehold(c *gin.Context) {
 		return
 	}
 
+	go services.TriggerWebhooks(db, currentConfig(c), userID, "household.created", household)
+
 	c.JSON(http.StatusOK, gin.H{"message": "Household created successfully", "household": household})
 }
 
@@ -165,6 +167,8 @@ func UpdateHousehold(c *gin.Context) {
 		return
 	}
 
+	go services.TriggerWebhooks(db, currentConfig(c), userID, "household.updated", household)
+
 	c.JSON(http.StatusOK, household)
 }
 
@@ -192,6 +196,8 @@ func DeleteHousehold(c *gin.Context) {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to delete household").WithError(err))
 		return
 	}
+
+	go services.TriggerWebhooks(db, currentConfig(c), userID, "household.deleted", gin.H{"id": household.ID})
 
 	c.JSON(http.StatusOK, gin.H{"message": "Household deleted"})
 }

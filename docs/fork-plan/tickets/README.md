@@ -27,7 +27,6 @@ the rank.
 | 1 | [N6](26-N6-backup-restore.md) · Full backup restore | 3 | S | — | Ready |
 | 2 | [N7](29-N7-attachments.md) · File / document attachments | 3 | M | — | Ready (coordinate with N6 — not a hard dependency, see its ticket) |
 | 3 | [N8](25-N8-2fa.md) · 2FA / TOTP | 3 | M | — | Ready |
-| 4 | [T18](34-T18-audit-trail.md) · Event history / audit trail | 2 | L | T17 ✅ | Ready |
 
 ### Deferred — not ranked, no plan to schedule
 
@@ -139,6 +138,7 @@ Kept for reference/lookup, not ranked — order below is roughly the sequence th
 | [T56](65-T56-bulk-contacts-import-flow.md) · Bulk contacts import (Google Takeout / contacts-app export) in Data Settings | **DONE** |
 | [T12b](35-T12b-caldav-serve.md) · Serve Interactions/LifeEvents as CalDAV | **DONE** |
 | [T13](36-T13-two-way-calendar.md) · Two-way calendar sync ⚠ | **DONE** |
+| [T18](34-T18-audit-trail.md) · Event history / audit trail | **DONE** |
 
 ### ⚠ A grooming lesson worth keeping visible
 
