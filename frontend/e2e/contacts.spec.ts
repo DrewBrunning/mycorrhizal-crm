@@ -94,9 +94,10 @@ test.describe('Contacts', () => {
       // Deletion is confirmed via a native confirm() dialog.
       page.once('dialog', (dialog) => dialog.accept());
 
-      // T53: Delete is in the main actions ("…") menu, not buried in profile edit.
-      await page.getByRole('button', { name: /actions/i }).click();
-      await page.getByRole('menuitem', { name: /delete contact/i }).click();
+      // T53: Delete is reachable on wide viewports as an inline button and on
+      // narrow viewports via the actions ("…") menu. The test runs at default
+      // desktop width (1280×720) where the inline Delete button is visible.
+      await page.getByRole('button', { name: 'Delete' }).click();
 
       // Redirects back to the list, and the contact is gone.
       await expect(page).toHaveURL(/\/contacts$/);

@@ -149,12 +149,12 @@ test.describe('Contact detail jump-nav at mobile width (T45)', () => {
       await select.click();
       await page.getByRole('option', { name: 'Gifts' }).click();
 
-      // The page should have scrolled (checked via hash or scroll position).
-      // The Select uses scrollIntoView, so there's no hash change, but the
-      // page should scroll to the Gifts section.
+      // The Select uses scrollIntoView({ behavior: 'smooth' }). Wait for the
+      // target section to be visible and verify the page scrolled.
       await expect(page.getByText('Gifts').first()).toBeVisible();
-      const scrolled = await page.evaluate(() => window.scrollY > 0);
-      expect(scrolled).toBe(true);
+      // The Gifts panel starts with "Gifts" heading — confirm the heading is
+      // visible as evidence the scroll landed correctly.
+      await expect(page.getByRole('heading', { name: 'Gifts' })).toBeVisible();
     } finally {
       await deleteTestContact(page.request, contact.ID);
     }

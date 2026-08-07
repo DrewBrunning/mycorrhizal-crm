@@ -31,11 +31,13 @@ test.describe('Contact field linking', () => {
       await page.goto(`/contacts/${contact.ID}`);
 
       // Cell: call + text + copy.
-      await expect(page.locator('a[href="tel:+15551234001"]')).toBeVisible();
+      // T47: the phone number text itself is now a tel: link, so two elements
+      // share the same href (the text link and the call icon button).
+      await expect(page.locator('a[href="tel:+15551234001"]').first()).toBeVisible();
       await expect(page.locator('a[href="sms:+15551234001"]')).toBeVisible();
 
       // Landline (home): call + copy, no text.
-      await expect(page.locator('a[href="tel:+15551234002"]')).toBeVisible();
+      await expect(page.locator('a[href="tel:+15551234002"]').first()).toBeVisible();
       await expect(page.locator('a[href="sms:+15551234002"]')).toHaveCount(0);
 
       // Fax: no call, no text -- copy only.
