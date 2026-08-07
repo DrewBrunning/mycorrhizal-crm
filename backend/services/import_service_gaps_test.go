@@ -271,12 +271,12 @@ func TestCreateMergeNote_CSVChangesRecorded(t *testing.T) {
 	contact := models.Contact{UserID: userID, Firstname: "John", Lastname: "Doe"}
 	require.NoError(t, db.Create(&contact).Error)
 
-	newValues := map[string]interface{}{
-		"firstname": "Jonathan",
-		"email":     "jon@example.com",
+	incoming := &models.Contact{
+		Firstname: "Jonathan",
+		Emails:    []models.ContactEmail{{Type: "home", Value: "jon@example.com"}},
 	}
 
-	err := CreateMergeNote(db, userID, contact.ID, &contact, newValues, "CSV")
+	err := CreateMergeNote(db, userID, contact.ID, &contact, incoming, "CSV")
 	require.NoError(t, err)
 
 	var notes []models.Note
@@ -289,7 +289,7 @@ func TestCreateMergeNote_CSVChangesRecorded(t *testing.T) {
 	assert.Equal(t, contact.ID, *note.ContactID)
 	assert.Contains(t, note.Content, "CSV Import updated this contact.")
 	assert.Contains(t, note.Content, "- First Name: John → Jonathan")
-	assert.Contains(t, note.Content, "- Email: (empty) → jon@example.com")
+	assert.Contains(t, note.Content, "- Emails: added jon@example.com")
 }
 
 func TestCreateMergeNote_VCFLabelAndCirclesDiff(t *testing.T) {
@@ -299,9 +299,9 @@ func TestCreateMergeNote_VCFLabelAndCirclesDiff(t *testing.T) {
 	contact := models.Contact{UserID: userID, Firstname: "Ada", Circles: []string{"Old"}}
 	require.NoError(t, db.Create(&contact).Error)
 
-	newValues := map[string]interface{}{"circles": "Friends, Family"}
+	incoming := &models.Contact{Circles: []string{"Friends", "Family"}}
 
-	err := CreateMergeNote(db, userID, contact.ID, &contact, newValues, "VCF")
+	err := CreateMergeNote(db, userID, contact.ID, &contact, incoming, "VCF")
 	require.NoError(t, err)
 
 	var notes []models.Note
@@ -320,14 +320,49 @@ func TestCreateMergeNote_NoChangesCreatesNoNote(t *testing.T) {
 	contact := models.Contact{UserID: userID, Firstname: "John"}
 	require.NoError(t, db.Create(&contact).Error)
 
-	newValues := map[string]interface{}{"firstname": "John"} // identical value
+	incoming := &models.Contact{Firstname: "John"} // identical value
 
-	err := CreateMergeNote(db, userID, contact.ID, &contact, newValues, "VCF")
+	err := CreateMergeNote(db, userID, contact.ID, &contact, incoming, "VCF")
 	require.NoError(t, err)
 
 	var count int64
 	require.NoError(t, db.Model(&models.Note{}).Count(&count).Error)
 	assert.Equal(t, int64(0), count)
+}
+
+// TestCreateMergeNote_MultiValuedFieldsReportOnlyGenuinelyNewEntries pins
+// T49's "added" reporting for multi-valued fields: an incoming entry that
+// duplicates one the contact already has must not be reported (it wasn't
+// added), an incoming entry with a blank value must not be reported (it
+// isn't content), and a genuinely new entry must show up as "added ...".
+func TestCreateMergeNote_MultiValuedFieldsReportOnlyGenuinelyNewEntries(t *testing.T) {
+	db, _ := setupRouter()
+	userID := uint(1)
+
+	contact := models.Contact{
+		UserID: userID,
+		Emails: []models.ContactEmail{{Type: "home", Value: "existing@example.com"}},
+		Phones: []models.ContactPhone{{Type: "home", Value: "555-0000"}},
+	}
+	require.NoError(t, db.Create(&contact).Error)
+
+	incoming := &models.Contact{
+		Emails: []models.ContactEmail{
+			{Type: "home", Value: "existing@example.com"}, // duplicate, not new
+			{Type: "work", Value: "new@example.com"},      // genuinely new
+		},
+		Phones: []models.ContactPhone{{Type: "home", Value: ""}}, // blank, not content
+	}
+
+	err := CreateMergeNote(db, userID, contact.ID, &contact, incoming, "VCF")
+	require.NoError(t, err)
+
+	var notes []models.Note
+	require.NoError(t, db.Find(&notes).Error)
+	require.Len(t, notes, 1)
+	assert.Contains(t, notes[0].Content, "- Emails: added new@example.com")
+	assert.NotContains(t, notes[0].Content, "existing@example.com")
+	assert.NotContains(t, notes[0].Content, "Phones")
 }
 
 // --- diagnosticsToStrings (branch closure) --------------------------------

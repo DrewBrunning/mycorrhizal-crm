@@ -1012,6 +1012,87 @@ func normalizeImportType(label, def string) string {
 	}
 }
 
+// mergeContactValues implements T49's additive merge semantics for a
+// multi-valued vCard field (Emails/Phones/Addresses/URLs/IMPPs): every
+// existing entry survives unconditionally, and an incoming entry is appended
+// only if it actually carries content (per isBlank) and isn't already present
+// among the existing entries (per key, so a re-import that repeats a value
+// the contact already has doesn't create a duplicate). This replaces the old
+// "if len(incoming) > 0 { existing = incoming }" policy, which wholesale
+// replaced the existing array — including with an incoming entry whose only
+// content was a blank value (T50) — any time the incoming side had a
+// nonzero-length slice at all. added mirrors exactly the subset of incoming
+// that got appended, for callers (CreateMergeNote) that need to describe the
+// merge without performing it.
+func mergeContactValues[T any](existing, incoming []T, isBlank func(T) bool, key func(T) string) (merged []T, added []T) {
+	seen := make(map[string]struct{}, len(existing))
+	for _, e := range existing {
+		if !isBlank(e) {
+			seen[key(e)] = struct{}{}
+		}
+	}
+	merged = make([]T, len(existing), len(existing)+len(incoming))
+	copy(merged, existing)
+	for _, in := range incoming {
+		if isBlank(in) {
+			continue
+		}
+		k := key(in)
+		if _, ok := seen[k]; ok {
+			continue
+		}
+		seen[k] = struct{}{}
+		merged = append(merged, in)
+		added = append(added, in)
+	}
+	return merged, added
+}
+
+// displayValues renders a slice of merged/added entries for a merge-note line.
+func displayValues[T any](vals []T, display func(T) string) []string {
+	if len(vals) == 0 {
+		return nil
+	}
+	out := make([]string, len(vals))
+	for i, v := range vals {
+		out[i] = display(v)
+	}
+	return out
+}
+
+// isBlank/key/display helpers for each multi-valued Contact field, shared by
+// MergeImportedContact and CreateMergeNote so both agree on what counts as
+// "content" and what counts as "the same entry".
+func contactEmailBlank(e models.ContactEmail) bool { return strings.TrimSpace(e.Value) == "" }
+func contactEmailKey(e models.ContactEmail) string {
+	return strings.ToLower(strings.TrimSpace(e.Value))
+}
+func contactEmailDisplay(e models.ContactEmail) string { return strings.TrimSpace(e.Value) }
+
+func contactPhoneBlank(p models.ContactPhone) bool     { return strings.TrimSpace(p.Value) == "" }
+func contactPhoneKey(p models.ContactPhone) string     { return strings.TrimSpace(p.Value) }
+func contactPhoneDisplay(p models.ContactPhone) string { return strings.TrimSpace(p.Value) }
+
+func contactURLBlank(u models.ContactURL) bool     { return strings.TrimSpace(u.Value) == "" }
+func contactURLKey(u models.ContactURL) string     { return strings.ToLower(strings.TrimSpace(u.Value)) }
+func contactURLDisplay(u models.ContactURL) string { return strings.TrimSpace(u.Value) }
+
+func contactIMPPBlank(i models.ContactIMPP) bool { return strings.TrimSpace(i.Value) == "" }
+func contactIMPPKey(i models.ContactIMPP) string {
+	return strings.ToLower(strings.TrimSpace(i.Value))
+}
+func contactIMPPDisplay(i models.ContactIMPP) string { return strings.TrimSpace(i.Value) }
+
+// ContactAddress has no single Value field, so blank/key/display are derived
+// from FormatAddress's rendering of the whole struct: blank means every
+// component is blank, and two addresses are "the same entry" if they render
+// identically.
+func contactAddressBlank(a models.ContactAddress) bool { return models.FormatAddress(a) == "" }
+func contactAddressKey(a models.ContactAddress) string {
+	return strings.ToLower(models.FormatAddress(a))
+}
+func contactAddressDisplay(a models.ContactAddress) string { return models.FormatAddress(a) }
+
 // merges fields from an imported contact into an existing one, overwriting only non-empty incoming values
 func MergeImportedContact(existing *models.Contact, incoming *models.Contact) {
 	if incoming.Firstname != "" {
@@ -1057,22 +1138,14 @@ func MergeImportedContact(existing *models.Contact, incoming *models.Contact) {
 	if len(incoming.ImportedTags) > 0 {
 		existing.ImportedTags = incoming.ImportedTags
 	}
-	// Multi-valued and structured vCard fields
-	if len(incoming.Emails) > 0 {
-		existing.Emails = incoming.Emails
-	}
-	if len(incoming.Phones) > 0 {
-		existing.Phones = incoming.Phones
-	}
-	if len(incoming.Addresses) > 0 {
-		existing.Addresses = incoming.Addresses
-	}
-	if len(incoming.URLs) > 0 {
-		existing.URLs = incoming.URLs
-	}
-	if len(incoming.IMPPs) > 0 {
-		existing.IMPPs = incoming.IMPPs
-	}
+	// Multi-valued and structured vCard fields: additive merge (T49), not
+	// replace. See mergeContactValues's doc comment for why "incoming has any
+	// entries at all" was never the right trigger.
+	existing.Emails, _ = mergeContactValues(existing.Emails, incoming.Emails, contactEmailBlank, contactEmailKey)
+	existing.Phones, _ = mergeContactValues(existing.Phones, incoming.Phones, contactPhoneBlank, contactPhoneKey)
+	existing.Addresses, _ = mergeContactValues(existing.Addresses, incoming.Addresses, contactAddressBlank, contactAddressKey)
+	existing.URLs, _ = mergeContactValues(existing.URLs, incoming.URLs, contactURLBlank, contactURLKey)
+	existing.IMPPs, _ = mergeContactValues(existing.IMPPs, incoming.IMPPs, contactIMPPBlank, contactIMPPKey)
 	if incoming.MiddleName != "" {
 		existing.MiddleName = incoming.MiddleName
 	}
@@ -1100,52 +1173,79 @@ func MergeImportedContact(existing *models.Contact, incoming *models.Contact) {
 	if incoming.VCardExtra != "" {
 		existing.VCardExtra = incoming.VCardExtra
 	}
-	if incoming.VCardUID != "" {
-		existing.VCardUID = incoming.VCardUID
-	}
+	// existing.VCardUID is deliberately never touched here (T49): it is the
+	// existing contact's identity, assigned once at its own creation, and
+	// every graph-adjacent table (Gift, LifeEvent, RelationshipEdge, ...)
+	// keys on it via entity_id. ParseVCF mints a fresh random UUID for any
+	// source vCard lacking its own UID (the common case for real-world
+	// exports), so accepting incoming.VCardUID here silently reassigns the
+	// existing contact's identity and orphans every row filed under the old
+	// one -- exactly what "gifts was also wiped out" turned out to be.
 }
 
-// creates a note documenting what was changed during import
-func CreateMergeNote(db *gorm.DB, userID uint, contactID uint, original *models.Contact, newValues map[string]interface{}, importType string) error {
+// creates a note documenting what an "update" import actually changed on an
+// existing contact. incoming is the parsed import row's own Contact (not yet
+// merged into original -- both call sites run this before
+// MergeImportedContact). Scalar fields are reported the same way as before
+// (old -> new); multi-valued fields (Emails/Phones/Addresses/URLs/IMPPs) are
+// reported as "added" lists (T49): now that merging those fields is
+// additive rather than replace, an old-value/new-value diff of the whole
+// array no longer describes what happened -- only what got appended does.
+// Email/Phone/Address are intentionally not reported as scalars: they are
+// just the denormalized "first entry" projection of Emails/Phones/Addresses
+// (Contact.BeforeSave), already covered by the array reporting below.
+func CreateMergeNote(db *gorm.DB, userID uint, contactID uint, original *models.Contact, incoming *models.Contact, importType string) error {
 	var changes []string
 
-	fieldLabels := map[string]struct {
-		label    string
-		original string
-	}{
-		"firstname":           {"First Name", original.Firstname},
-		"lastname":            {"Last Name", original.Lastname},
-		"middle_name":         {"Middle Name", original.MiddleName},
-		"prefix":              {"Prefix", original.Prefix},
-		"suffix":              {"Suffix", original.Suffix},
-		"nickname":            {"Nickname", original.Nickname},
-		"email":               {"Email", original.Email},
-		"phone":               {"Phone", original.Phone},
-		"birthday":            {"Birthday", original.Birthday},
-		"anniversary":         {"Anniversary", original.Anniversary},
-		"address":             {"Address", original.Address},
-		"gender":              {"Gender", original.Gender},
-		"organization":        {"Organization", original.Organization},
-		"department":          {"Department", original.Department},
-		"job_title":           {"Job Title", original.JobTitle},
-		"role":                {"Role", original.Role},
-		"how_we_met":          {"How We Met", original.HowWeMet},
-		"work_information":    {"Work Information", original.WorkInformation},
-		"contact_information": {"Contact Information", original.ContactInformation},
-	}
-
-	for field, info := range fieldLabels {
-		newVal := GetStringField(newValues, field)
-		if newVal != "" && info.original != newVal {
-			if info.original != "" {
-				changes = append(changes, fmt.Sprintf("- %s: %s → %s", info.label, info.original, newVal))
+	addScalar := func(label, oldVal, newVal string) {
+		if newVal != "" && oldVal != newVal {
+			if oldVal != "" {
+				changes = append(changes, fmt.Sprintf("- %s: %s → %s", label, oldVal, newVal))
 			} else {
-				changes = append(changes, fmt.Sprintf("- %s: (empty) → %s", info.label, newVal))
+				changes = append(changes, fmt.Sprintf("- %s: (empty) → %s", label, newVal))
 			}
 		}
 	}
 
-	if newCirclesStr := GetStringField(newValues, "circles"); newCirclesStr != "" {
+	addScalar("First Name", original.Firstname, incoming.Firstname)
+	addScalar("Last Name", original.Lastname, incoming.Lastname)
+	addScalar("Middle Name", original.MiddleName, incoming.MiddleName)
+	addScalar("Prefix", original.Prefix, incoming.Prefix)
+	addScalar("Suffix", original.Suffix, incoming.Suffix)
+	addScalar("Nickname", original.Nickname, incoming.Nickname)
+	addScalar("Birthday", original.Birthday, incoming.Birthday)
+	addScalar("Anniversary", original.Anniversary, incoming.Anniversary)
+	addScalar("Gender", original.Gender, incoming.Gender)
+	addScalar("Organization", original.Organization, incoming.Organization)
+	addScalar("Department", original.Department, incoming.Department)
+	addScalar("Job Title", original.JobTitle, incoming.JobTitle)
+	addScalar("Role", original.Role, incoming.Role)
+	addScalar("How We Met", original.HowWeMet, incoming.HowWeMet)
+	addScalar("Work Information", original.WorkInformation, incoming.WorkInformation)
+	addScalar("Contact Information", original.ContactInformation, incoming.ContactInformation)
+
+	addAdded := func(label string, added []string) {
+		if len(added) > 0 {
+			changes = append(changes, fmt.Sprintf("- %s: added %s", label, strings.Join(added, ", ")))
+		}
+	}
+
+	_, addedEmails := mergeContactValues(original.Emails, incoming.Emails, contactEmailBlank, contactEmailKey)
+	addAdded("Emails", displayValues(addedEmails, contactEmailDisplay))
+
+	_, addedPhones := mergeContactValues(original.Phones, incoming.Phones, contactPhoneBlank, contactPhoneKey)
+	addAdded("Phones", displayValues(addedPhones, contactPhoneDisplay))
+
+	_, addedAddresses := mergeContactValues(original.Addresses, incoming.Addresses, contactAddressBlank, contactAddressKey)
+	addAdded("Addresses", displayValues(addedAddresses, contactAddressDisplay))
+
+	_, addedURLs := mergeContactValues(original.URLs, incoming.URLs, contactURLBlank, contactURLKey)
+	addAdded("URLs", displayValues(addedURLs, contactURLDisplay))
+
+	_, addedIMPPs := mergeContactValues(original.IMPPs, incoming.IMPPs, contactIMPPBlank, contactIMPPKey)
+	addAdded("IMPPs", displayValues(addedIMPPs, contactIMPPDisplay))
+
+	if newCirclesStr := strings.Join(incoming.Circles, ", "); newCirclesStr != "" {
 		oldCircles := strings.Join(original.Circles, ", ")
 		if oldCircles != newCirclesStr {
 			if oldCircles != "" {

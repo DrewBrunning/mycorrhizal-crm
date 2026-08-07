@@ -279,19 +279,20 @@ func (m *ImportSessionManager) Confirm(db *gorm.DB, userID uint, req models.Impo
 				}
 
 				importType := "CSV"
+				var incoming *models.Contact
 				if isVCFImport {
 					importType = "VCF"
+					incoming = sessionData.vcfContacts[preview.RowIndex].Contact
+				} else {
+					csvContact := sessionData.csvContacts[preview.RowIndex]
+					incoming = &csvContact
 				}
-				if err := CreateMergeNote(tx, userID, existing.ID, &existing, preview.ParsedContact, importType); err != nil {
+
+				if err := CreateMergeNote(tx, userID, existing.ID, &existing, incoming, importType); err != nil {
 					log.Warn().Err(err).Uint("contact_id", existing.ID).Msg("Failed to create merge note")
 				}
 
-				if isVCFImport {
-					MergeImportedContact(&existing, sessionData.vcfContacts[preview.RowIndex].Contact)
-				} else {
-					csvContact := sessionData.csvContacts[preview.RowIndex]
-					MergeImportedContact(&existing, &csvContact)
-				}
+				MergeImportedContact(&existing, incoming)
 
 				if err := tx.Save(&existing).Error; err != nil {
 					result.Errors = append(result.Errors, fmt.Sprintf("Row %d: Failed to update contact: %v", preview.RowIndex+1, err))
@@ -411,7 +412,7 @@ func (m *ImportSessionManager) ConfirmVCF(db *gorm.DB, userID uint, req models.I
 					continue
 				}
 
-				if err := CreateMergeNote(tx, userID, existing.ID, &existing, preview.ParsedContact, "VCF"); err != nil {
+				if err := CreateMergeNote(tx, userID, existing.ID, &existing, vcfData.Contact, "VCF"); err != nil {
 					log.Warn().Err(err).Uint("contact_id", existing.ID).Msg("Failed to create merge note")
 				}
 
