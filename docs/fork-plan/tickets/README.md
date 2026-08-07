@@ -55,10 +55,39 @@ stated algorithm, not manually pinned to the top for effect — the algorithm al
 
 ### Deferred — not ranked, no plan to schedule
 
+None of these are implementation-ready. Each needs its own design pass before it's even a sizeable
+ticket — pulled in only when a concrete need arises, never implemented straight from its file. Split
+into three categories, 2026-08-06, because "deferred" was hiding a real difference in how solidified
+each idea actually is.
+
+**Mobile clients** — a real, intended project (a native Android app), just gated on API-contract
+stability rather than on demand for the idea itself.
+
 | Ticket | Notes |
 |---|---|
-| [T57](66-T57-bulk-import-api-for-external-clients.md) · Documented/stable bulk-import API for external clients (e.g. a future Android app) | R1–2. No concrete consumer exists yet. Pulled in when one does — see the file. |
-| [P1b/P2/P3/P4](37-deferred.md) · Standing contact-share permissions, other integrations, AI layer, local-model pilot | R1–2. Each needs its own design pass before it's even a sizeable ticket. Pulled in only when a concrete need arises — see the file for why each was deferred rather than dropped. |
+| [M1](67-M1-mobile-android-app.md) · Native Android app (Kotlin, Jetpack Compose) | R2. Automated call/SMS/contact-interaction tracking is the actual point, not just a native UI. Gated on API-surface stability — earliest realistic entry is the move from beta to a real v1.0.0. |
+| [T57](66-T57-bulk-import-api-for-external-clients.md) · Documented/stable bulk-import API for external clients | R1–2. A named sub-piece of M1 — pull in the device's full contact list on first setup. No concrete consumer until M1 starts. |
+| [P4](68-P4-local-model-pilot.md) · Local-model code-gen pilot | R1. Re-enters scope specifically when M1's work begins, independent of the rest of this roadmap. |
+
+**Planned features** — concrete, scoped-enough-to-name integrations; higher confidence they'll
+actually get built than the Feature ideas below, just not scheduled yet.
+
+| Ticket | Notes |
+|---|---|
+| [P2a](70-P2a-paperless-ngx-integration.md) · Paperless-ngx integration (API) | R2. Link a contact to a document that already lives in Paperless-ngx. |
+| [P2b](71-P2b-seafile-integration.md) · Seafile integration (API) | R2. Same idea, for Seafile-hosted files/folders. |
+| [P2c](72-P2c-nextcloud-owncloud-integration.md) · Nextcloud / ownCloud integration (WebDAV) | R2. Same idea again, reached via WebDAV rather than a bespoke API — a genuinely different integration shape from P2a/P2b. |
+
+**Feature ideas** — real, but "might come back to" rather than planned. Lower confidence than
+Planned features that these get built at all.
+
+| Ticket | Notes |
+|---|---|
+| [P1b](69-P1b-standing-contact-share.md) · Standing/live contact share + permission model (true synced contacts across users) | R1–2. XL. The closest existing formalization of "true sync," not a one-time copy like the done [P1](31-P1-contact-sharing.md). |
+| [P2d](73-P2d-dawarich-geopulse-integration.md) · Dawarich / GeoPulse integration | R1–2. Location-history correlation into life-event/activity suggestions — an L4 idea, not a simple link. |
+| [P2e](74-P2e-jellyfin-integration.md) · Jellyfin integration | R1. Least-defined idea in this list — not even scoped enough to say what it would do. |
+| [P2f](75-P2f-audiobookshelf-integration.md) · Audiobookshelf integration | R1. Same shape of idea as P2e, for Audiobookshelf. |
+| [P3](76-P3-ai-ollama-layer.md) · AI / Ollama layer | R1. Summarization, entity/relationship extraction, memory-curator suggestions. Gated on the propose-then-approve pattern; `90` D1 is explicit this is not an AI-first project. |
 
 ## Done
 

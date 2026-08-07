@@ -849,9 +849,9 @@ ticket file, not this section, for what actually happened. Pointers, not a summa
 - **Tier 5** (contact sharing between users) → split into [P1](tickets/31-P1-contact-sharing.md)
   (one-time filtered copy, done — see its Shipped note for the reuse map and the merge-policy decision)
   and P1b (the standing/live/permissioned share this section originally described, still needing its own
-  design pass — see [`tickets/37-deferred.md`](tickets/37-deferred.md) for the open questions: the
-  shared-vs-private field model, the permission model, and re-confirmation when a field is newly marked
-  sensitive after a share exists).
+  design pass — see [`tickets/69-P1b-standing-contact-share.md`](tickets/69-P1b-standing-contact-share.md)
+  for the open questions: the shared-vs-private field model, the permission model, and re-confirmation
+  when a field is newly marked sensitive after a share exists).
 - **Tier 6** (alpha-readiness gate: legacy/dead-code audit, UI polish, non-critical test coverage) →
   [T22](tickets/19-T22-legacy-audit.md) (its Shipped note carries the full audit disposition list — what
   was kept, removed, and why), [T23](tickets/18-T23-ui-polish.md), and

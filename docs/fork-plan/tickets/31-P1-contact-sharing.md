@@ -12,7 +12,7 @@
 
 Tier 5's original text imagines a **standing, live, permissioned share** — a shared-vs-private field
 model, a permission model, re-syncing, and re-confirmation when a field is newly marked sensitive after
-the share exists. That is genuinely XL, and it is now [P1b](37-deferred.md).
+the share exists. That is genuinely XL, and it is now [P1b](69-P1b-standing-contact-share.md).
 
 The near-term feature is much smaller: **export a filtered copy, let the other user import it on accept.**
 Nearly every piece already exists.

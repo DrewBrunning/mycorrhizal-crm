@@ -46,25 +46,39 @@ recognizing 2.1 as a distinct, older version that neither adapter is actually bu
 
 ## What to build
 
-This ticket is scoping, not a mandated single fix — the real decision is which of these the product
-wants, and it's worth deciding deliberately rather than defaulting:
+**Decision made, 2026-08-06: build real vCard 2.1 support, not a reject-and-message path.**
+Discussed as part of scoping this ticket — recorded here rather than left as an open menu, since
+the "which option" question is settled:
+
+- `go-vcard` has **zero** vCard-2.1 or QUOTED-PRINTABLE awareness anywhere in its source (checked
+  directly, not assumed) — there is no library flag to flip; any 2.1 support is hand-built either
+  way, so "reject explicitly" isn't actually the cheaper option here.
+- Once [T49](58-T49-vcf-import-merge-corrupts-existing-contact.md) lands, a bad/incomplete parse
+  can no longer destroy existing data — worst case is a new contact with some fields blank, visible
+  and fixable by hand. That removes this ticket from "safety" territory; it's a completeness/UX
+  question now, and "silently import less than we could have" is worse UX than actually parsing
+  the file correctly.
+- vCard 2.1 is not a rare legacy corner case in practice — many phones' native "export/share
+  contact" flows still emit it today, unrelated to how old the device is. Telling a user to
+  "re-export from something that supports 3.0" may not be something they're able to do at all.
+- The actual gap is bounded and well-documented, not open-ended: (1) bare-token `TYPE=`/`ENCODING=`
+  parameter grammar, and (2) QUOTED-PRINTABLE text encoding (Go's `mime/quotedprintable` already
+  handles the decode — this is wiring, not new logic). Both are finite, testable-against-the-real-
+  file pieces of work.
 
 1. **Detect vCard 2.1 explicitly** in `sniffVCardVersion` rather than letting it silently fall
-   through to 4.0. At minimum, distinguish it from "true 3.0/4.0 that just isn't literally `3.0`."
-2. **Decide the actual handling for a detected 2.1 document**, one of:
-   - Normalize the bare-token legacy parameter grammar into `TYPE=`/`ENCODING=` form *before*
-     handing the block to `go-vcard`'s decoder — a pre-processing pass, since the corruption happens
-     inside the shared decoder, not in either adapter's own code.
-   - Reject 2.1 explicitly with a clear, specific import-preview error ("vCard 2.1 is not
-     supported; re-export as vCard 3.0 or later") rather than silently importing a mostly-empty
-     contact — worse for the specific user hitting this, but categorically safer than what ships
-     today, since a loud failure beats a silent one.
-   - Something in between (best-effort normalize the common fields — TEL/EMAIL/PHOTO — and flag
-     the rest via `contactmodel.Diagnostic` warnings, matching this codebase's existing degradation
-     pattern for unmappable data).
-3. Whichever path is chosen, the photo case needs its own explicit check — `extractPhotoFromRecord`
-   (`import_service.go:133`) depends on the photo actually landing in the neutral `Record`, which
-   requires the underlying property value to be recoverable at all.
+   through to 4.0.
+2. **Normalize the bare-token legacy parameter grammar into `TYPE=`/`ENCODING=` form on the raw
+   block bytes, before handing it to `go-vcard`'s decoder** — a pre-processing pass, since the
+   corruption happens inside the shared decoder, not in either adapter's own code. Add
+   QUOTED-PRINTABLE decoding for any property that declares it.
+3. **Whatever still can't be recovered after normalization goes through
+   `contactmodel.Diagnostic` warnings** (the existing degradation pattern this codebase already
+   uses for unmappable data) — normalizing most of the format doesn't mean claiming to handle all
+   of it silently.
+4. The photo case needs its own explicit check — `extractPhotoFromRecord` (`import_service.go:133`)
+   depends on the photo actually landing in the neutral `Record`, which requires the underlying
+   property value to be recoverable at all.
 
 ## Traps
 
@@ -72,9 +86,11 @@ wants, and it's worth deciding deliberately rather than defaulting:
   (`;CELL;PREF` vs `;PREF;CELL` vs any other combination) — vCard 2.1's grammar allows any number of
   bare tokens in any order; a fix scoped to this one example will look fixed and still fail the next
   real-world 2.1 export.
-- If normalizing pre-decode, do it on the raw block bytes for the *whole* vCard, not per-property —
-  `PHOTO`'s bare `JPEG` token needs the same treatment as `TEL`'s bare `CELL`/`PREF`, and a
-  property-specific patch will miss whichever one wasn't tested against.
+- Normalize on the raw block bytes for the *whole* vCard, not per-property — `PHOTO`'s bare `JPEG`
+  token needs the same treatment as `TEL`'s bare `CELL`/`PREF`, and a property-specific patch will
+  miss whichever one wasn't tested against.
+- Don't hand-roll QUOTED-PRINTABLE decoding — `mime/quotedprintable` in the stdlib already does
+  this correctly; a custom decoder here is unnecessary surface area for a solved problem.
 - See [T49](58-T49-vcf-import-merge-corrupts-existing-contact.md) — even after this ticket lands,
   a genuinely malformed or partial import merging into an existing contact must not delete what the
   existing contact already had. That's T49's fix, not this one's, but don't consider this ticket
@@ -85,7 +101,8 @@ wants, and it's worth deciding deliberately rather than defaulting:
 - `go build ./... && go vet ./... && gofmt -l . && go test ./...` green.
 - A real-file test using the reported vCard (or an equivalent minimal fixture reproducing the same
   `TEL;CELL;PREF:`/`EMAIL;PREF;HOME:`/`PHOTO;ENCODING=BASE64;JPEG:` shapes) proves phone, email and
-  photo all survive import, whichever handling strategy is chosen.
-- If the "reject with a clear error" path is chosen instead: a test proves the import preview
-  surfaces a specific, actionable message rather than a mostly-empty contact.
+  photo all survive import.
+- A QUOTED-PRINTABLE-encoded fixture proves that decoding path works too, not just BASE64.
+- A property genuinely unrecoverable even after normalization surfaces as a
+  `contactmodel.Diagnostic` warning, not silent data loss.
 - Hand-verified against the real reported file.

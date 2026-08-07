@@ -19,10 +19,12 @@ mobile client depends on needs versioning discipline and can't casually break.
 
 ## Why it's deferred, not ticketed for real
 
-There's no concrete consumer today — no Android app exists yet. Per this repo's own precedent
-([P1b/P2/P3/P4](37-deferred.md)), a speculative integration surface without a real client to design
-against isn't a sizeable ticket, it's a placeholder for a design pass that should happen once the
-actual consumer (and its actual constraints — auth model, expected batch sizes, offline/retry
+There's no concrete consumer today — [M1](67-M1-mobile-android-app.md) records the intent to build
+a native Android app, but it hasn't started, and this ticket is a named sub-piece of that work (see
+M1's own "what's already decided" section). Per this repo's own precedent for the Deferred section
+(`tickets/README.md`'s Deferred table), a speculative integration surface without a real client to
+design against isn't a sizeable ticket, it's a placeholder for a design pass that should happen once
+the actual consumer (and its actual constraints — auth model, expected batch sizes, offline/retry
 behavior) exists. Scoping this now would mean guessing at requirements a real mobile client would
 immediately contradict.
 
