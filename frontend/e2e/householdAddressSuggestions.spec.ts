@@ -15,8 +15,12 @@ test.describe('Address-based household suggestions', () => {
   };
 
   test('suggests a shared-address household and accepting it creates one', async ({ page }) => {
-    const a = await createTestContact(page.request, { firstname: 'E2E-AddrA', lastname: `T40${Date.now()}`, addresses: [sharedAddress] });
-    const b = await createTestContact(page.request, { firstname: 'E2E-AddrB', lastname: `T40${Date.now()}`, addresses: [sharedAddress] });
+    // First names are made unique per run so a leftover household from a
+    // crashed earlier run can never collide with this run's assertions (the
+    // compose DB persists until `down -v`).
+    const suffix = Date.now().toString();
+    const a = await createTestContact(page.request, { firstname: `E2EAddrA${suffix}`, lastname: 'T40', addresses: [sharedAddress] });
+    const b = await createTestContact(page.request, { firstname: `E2EAddrB${suffix}`, lastname: 'T40', addresses: [sharedAddress] });
 
     try {
       await page.goto('/households');
@@ -30,15 +34,17 @@ test.describe('Address-based household suggestions', () => {
       await expect(page.getByText(new RegExp(`${b.firstname}`))).toBeVisible();
 
       // Accepting materializes a Household whose generated name joins the
-      // members' first names.
+      // members' first names. Member order is deterministic but derived from
+      // the members' UUIDs (server-side sort), so match either order.
       await page.getByRole('button', { name: 'Accept' }).click();
-      await expect(page.getByText(`${a.firstname} & ${b.firstname}`)).toBeVisible();
+      const eitherOrder = new RegExp(`(${a.firstname}.*${b.firstname}|${b.firstname}.*${a.firstname})`);
+      await expect(page.getByText(eitherOrder)).toBeVisible();
 
       // The suggestion is gone from the list, and the new household persists
       // after reload.
       await expect(page.getByText('742 Evergreen Terrace, Springfield, IL, 62704')).toBeHidden();
       await page.reload();
-      await expect(page.getByText(`${a.firstname} & ${b.firstname}`)).toBeVisible();
+      await expect(page.getByText(eitherOrder)).toBeVisible();
     } finally {
       await deleteTestContact(page.request, a.ID);
       await deleteTestContact(page.request, b.ID);
