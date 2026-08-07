@@ -9,6 +9,7 @@ import (
 	"mycorrhizal/i18n"
 	"mycorrhizal/logger"
 	"mycorrhizal/middleware"
+	"mycorrhizal/models"
 	"mycorrhizal/routes"
 	"mycorrhizal/services"
 	"net/http"
@@ -74,6 +75,9 @@ func main() {
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to initialize database")
 	}
+	// T18 audit trail: give the GORM hooks a standalone session for their
+	// fire-and-forget audit writes (never the hook's transaction).
+	models.RegisterAuditDB(db)
 
 	logger.Info().Msg("Initializing i18n translations...")
 	if err := i18n.Init(); err != nil {
@@ -110,6 +114,14 @@ func main() {
 	})
 	go safeGo("purge-initial-run", func() {
 		services.PurgeDeletedRows(db, *cfg)
+	})
+
+	// Purge expired audit events past their retention window (T18).
+	s.Every(24).Hours().Do(func() {
+		services.PurgeExpiredAuditEventsScheduled(db, *cfg)
+	})
+	go safeGo("audit-purge-initial-run", func() {
+		services.PurgeExpiredAuditEventsScheduled(db, *cfg)
 	})
 
 	// Emit overdue-cadence webhooks daily (T19). Job-lock guarded so a

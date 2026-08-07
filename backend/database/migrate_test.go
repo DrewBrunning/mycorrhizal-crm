@@ -783,3 +783,46 @@ func TestCalendarTwoWayMigration(t *testing.T) {
 	require.NoError(t, sqlDB.QueryRow("SELECT COUNT(*) FROM calendar_event_links").Scan(&rowCount))
 	assert.EqualValues(t, 1, rowCount, "a rollback must not destroy the row")
 }
+
+// TestAuditEventsMigration pins migration 000016's shape: the audit_events
+// table exists with its immutability trigger (an UPDATE is rejected), and
+// rolling back drops both without touching pre-existing data.
+func TestAuditEventsMigration(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "t18-migration.db")
+	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
+	require.NoError(t, err)
+	defer sqlDB.Close()
+
+	m, err := newMigrator(sqlDB)
+	require.NoError(t, err)
+	require.NoError(t, m.Steps(15))
+
+	_, err = sqlDB.Exec("INSERT INTO users (created_at, updated_at, username, password, email) VALUES (datetime('now'), datetime('now'), 't18', 'x', 't18@example.com')")
+	require.NoError(t, err)
+
+	require.NoError(t, m.Steps(1))
+
+	var tableCount int64
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'audit_events'",
+	).Scan(&tableCount))
+	assert.EqualValues(t, 1, tableCount, "000016 must create audit_events")
+
+	// The immutability trigger rejects UPDATE.
+	_, err = sqlDB.Exec(`
+		INSERT INTO audit_events (created_at, updated_at, entity_type, entity_id, operation, user_id)
+		VALUES (datetime('now'), datetime('now'), 'contact', 'x', 'create', 1)`)
+	require.NoError(t, err)
+	_, err = sqlDB.Exec(`UPDATE audit_events SET operation = 'delete' WHERE entity_id = 'x'`)
+	assert.Error(t, err, "audit_events must reject UPDATE via its trigger")
+
+	// Down: rolling back drops the table and trigger; the user survives.
+	require.NoError(t, MigrateDown(dbPath))
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'audit_events'",
+	).Scan(&tableCount))
+	assert.Zero(t, tableCount, "the down migration must drop audit_events")
+	var userCount int64
+	require.NoError(t, sqlDB.QueryRow("SELECT COUNT(*) FROM users WHERE username = 't18'").Scan(&userCount))
+	assert.EqualValues(t, 1, userCount, "a rollback must not destroy the pre-existing user")
+}

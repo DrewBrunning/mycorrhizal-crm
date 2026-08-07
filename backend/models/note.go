@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"time"
 
 	"gorm.io/gorm"
@@ -35,5 +36,6 @@ func (n *Note) AfterDelete(tx *gorm.DB) error {
 	if !n.DeletedAt.Valid {
 		return nil
 	}
+	auditAfterDelete(tx, AuditEntityNote, fmt.Sprintf("%d", n.ID), n.UserID, n)
 	return tx.Model(&Note{}).Unscoped().Where("id = ?", n.ID).UpdateColumn("updated_at", time.Now()).Error
 }

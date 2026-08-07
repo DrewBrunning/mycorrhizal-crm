@@ -65,6 +65,7 @@ type Config struct {
 	CalDAVSyncIntervalHours int    // Interval in hours for the scheduled calendar sync job
 	CalDAVBlockPrivateURLs  bool   // Block calendar sync requests to private/loopback addresses (useful for cloud deployments)
 	DeleteRetentionDays     int    // Days soft-deleted rows survive before the purge job hard-deletes them (T26)
+	AuditRetentionDays      int    // Days audit events survive before the retention purge removes them (T18, default 90)
 
 	// General-API rate limiting, per client IP. Configurable because the
 	// hardcoded values had already been raised once to stop a full Playwright
@@ -126,6 +127,7 @@ func LoadConfig() *Config {
 		CalDAVSyncIntervalHours: getIntEnv("CALDAV_SYNC_INTERVAL_HOURS", 6),
 		CalDAVBlockPrivateURLs:  getBoolEnv("CALDAV_BLOCK_PRIVATE_URLS", false),
 		DeleteRetentionDays:     getIntEnv("DELETED_RETENTION_DAYS", 30),
+		AuditRetentionDays:      getIntEnv("AUDIT_RETENTION_DAYS", 90),
 		APIRateLimitInterval:    time.Duration(getIntEnv("API_RATE_LIMIT_INTERVAL_MS", 600)) * time.Millisecond,
 		APIRateLimitBurst:       getIntEnv("API_RATE_LIMIT_BURST", 1000),
 		ImmichSyncIntervalHours: getIntEnv("IMMICH_SYNC_INTERVAL_HOURS", 6),
