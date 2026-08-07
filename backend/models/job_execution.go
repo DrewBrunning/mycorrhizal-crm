@@ -40,4 +40,8 @@ const (
 	// JobNameImmichSync is the job name for the scheduled Immich enrichment
 	// sync job (T16).
 	JobNameImmichSync = "immich_sync"
+
+	// JobNameAuditPurge is the job name for the periodic removal of expired
+	// audit events past their retention window (T18).
+	JobNameAuditPurge = "audit_purge"
 )

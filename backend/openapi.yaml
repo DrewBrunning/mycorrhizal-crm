@@ -4888,6 +4888,83 @@ paths:
                 $ref: "#/components/schemas/Error"
 
   # --- Notifications (N9) ---
+  # --- T18 audit trail ---
+  /audit:
+    get:
+      summary: List audit events
+      operationId: listAuditEvents
+      description: >
+        Returns the caller's immutable audit events (T18), newest first,
+        optionally filtered by entity_type/entity_id. Read-only.
+      parameters:
+        - name: entity_type
+          in: query
+          required: false
+          schema: { type: string }
+        - name: entity_id
+          in: query
+          required: false
+          schema: { type: string }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, default: 100, maximum: 500 }
+      responses:
+        "200":
+          description: Audit events.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  audit_events:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AuditEvent"
+                  total: { type: integer }
+
+  /audit/{id}/undo:
+    post:
+      summary: Undo an update audit event
+      operationId: undoAuditEvent
+      description: >
+        Restores the record an update audit event describes to its before
+        snapshot (updates only — delete events are rejected). Events past the
+        AUDIT_RETENTION_DAYS window are rejected (410): the purge has removed
+        them and there is nothing to undo.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Record restored.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+        "400":
+          description: Not an update event, or undo unsupported for this entity.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Audit event or target record not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "410":
+          description: Event past retention; nothing to undo.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /notifications/config:
     get:
       summary: Get the user's notification channel setup
@@ -7043,6 +7120,16 @@ components:
           type: array
           minItems: 2
           items: { type: string, format: uuid }
+    AuditEvent:
+      type: object
+      description: One immutable create/update/delete record in the audit log (T18).
+      properties:
+        id: { type: integer }
+        created_at: { type: string, format: date-time }
+        entity_type: { type: string, enum: [contact, note, activity, life_event, gift, circle, tag, household, reminder] }
+        entity_id: { type: string }
+        operation: { type: string, enum: [create, update, delete] }
+        before_snapshot: { type: string, description: "Redacted JSON of the pre-update/pre-delete state (empty for creates)" }
     Tag:
       type: object
       properties:

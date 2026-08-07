@@ -78,6 +78,7 @@ func (a *Activity) AfterDelete(tx *gorm.DB) error {
 	if !a.DeletedAt.Valid {
 		return nil
 	}
+	auditAfterDelete(tx, AuditEntityActivity, a.UUID, a.UserID, a)
 	return tx.Model(&Activity{}).Unscoped().Where("id = ?", a.ID).UpdateColumn("updated_at", time.Now()).Error
 }
 
@@ -113,6 +114,9 @@ func (a *Activity) AfterSave(tx *gorm.DB) error {
 	if a.ID == 0 {
 		return nil
 	}
+	// T18 audit fires first: the ETag UpdateColumn below swaps in a fresh
+	// statement, which would otherwise wipe the audit's instance state.
+	auditAfterSave(tx, AuditEntityActivity, a.UUID, a.UserID)
 	newETag := fmt.Sprintf("e-%d-%d", a.ID, a.UpdatedAt.Unix())
 	if newETag != a.ETag {
 		a.ETag = newETag

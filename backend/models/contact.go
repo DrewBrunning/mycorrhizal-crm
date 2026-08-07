@@ -278,6 +278,9 @@ func (c *Contact) BeforeSave(tx *gorm.DB) error {
 	c.FN = proj.FN
 	c.Org = proj.Org
 
+	// T18 audit: mark create-vs-update and capture the pre-update snapshot.
+	auditBeforeSave[Contact](tx, AuditEntityContact, c.ID, c.ID == 0)
+
 	return nil
 }
 
@@ -300,6 +303,10 @@ func (c *Contact) AfterSave(tx *gorm.DB) error {
 	if c.ID == 0 {
 		return nil
 	}
+	// T18 audit fires first: the ETag UpdateColumn below swaps in a fresh
+	// statement, which would otherwise wipe the audit's instance state
+	// (is_new / before) captured in BeforeSave.
+	auditAfterSave(tx, AuditEntityContact, c.VCardUID, c.UserID)
 	newETag := fmt.Sprintf("e-%d-%d", c.ID, c.UpdatedAt.Unix())
 	if newETag != c.ETag {
 		c.ETag = newETag
@@ -315,5 +322,6 @@ func (c *Contact) AfterDelete(tx *gorm.DB) error {
 	if !c.DeletedAt.Valid {
 		return nil
 	}
+	auditAfterDelete(tx, AuditEntityContact, c.VCardUID, c.UserID, c)
 	return tx.Model(&Contact{}).Unscoped().Where("id = ?", c.ID).UpdateColumn("updated_at", time.Now()).Error
 }

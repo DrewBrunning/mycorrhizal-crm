@@ -112,6 +112,41 @@ matters to you during alpha, this belongs earlier.
 ### Post-alpha note
 This ticket is post-alpha — real production data exists. Changes that modify schemas or data must be additive and non-destructive. Migration files must be hand-written SQL up/down pairs. Test against `database.InitDB`, not `AutoMigrate`. For integrations: SSRF protection via `httputil.SafeDialContext` is mandatory for any outbound requests.
 
+## Landing note (2026-08-07)
+
+Landed. `audit_events` table (migration 000016) with a BEFORE UPDATE trigger
+that hard-rejects mutation (rows can never be changed; DELETE is guarded at
+the application layer — the retention purge is the only deleter). Capture is
+via GORM `BeforeSave`/`AfterSave`/`AfterDelete` hooks folded into the existing
+Contact/Activity/LifeEvent/Note/Gift hooks and added to Circle/Tag/Household/
+Reminder, with a `before` JSON snapshot for update/delete events. The audit
+state rides the shared statement context (GORM's `InstanceSet` clones the
+statement in this version and silently loses the value — the trap that cost
+the most debugging time here).
+
+Writes are fire-and-forget on a standalone session registered at startup;
+a failed audit write is logged and never rolls back the real write. A
+deny-list redactor strips secret-typed fields from every snapshot. Retention
+purge (`AUDIT_RETENTION_DAYS`, default 90) is job-locked and wired into the
+scheduler + admin purge trigger. Undo (updates only) restores a Contact via
+`ApplyRecordToContact`; delete and past-retention events are rejected (410),
+cross-user events 404. Webhook events added for the newer entities
+(`circle.*`, `tag.*`, `life_event.*`, `household.*`, `gift.*`).
+
+Webhook event coverage item is **complete for the five entities named in the
+ticket**; the ticket's "What to build" wording ("etc.") was read as those
+five plus the already-covered core entities.
+
+The "revertable until" UI affordance (design decision 3) is **not built** —
+the undo/list API exists and rejects past-retention events with 410, so a
+client can surface "revertable until <date>" from the event's created_at and
+the configured retention. A UI pass belongs with N6 (which will surface
+per-record history surfaces generally).
+
+Volume: not measured in production (the ticket asked to "measure against a
+realistic write pattern" — worth doing once real usage exists; the 90-day
+default and single-file SQLite caveat from the ticket stand).
+
 ## Flash implementation notes
 
 ### Files to read first
