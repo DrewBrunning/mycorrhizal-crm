@@ -5,6 +5,7 @@ import (
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
+	"mycorrhizal/services"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -288,6 +289,8 @@ func UpdateGift(c *gin.Context) {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save gift").WithError(err))
 		return
 	}
+
+	go services.TriggerWebhooks(db, currentConfig(c), userID, "gift.updated", gift)
 
 	c.JSON(http.StatusOK, gift)
 }

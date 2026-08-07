@@ -299,6 +299,11 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.POST("/webhooks/:id/test", controllers.TestWebhook)
 			protected.GET("/webhooks/:id/deliveries", controllers.GetWebhookDeliveries)
 
+			// Audit trail routes (T18 — docs/fork-plan/tickets/
+			// 34-T18-audit-trail.md). Read-only log surface + update-only undo.
+			protected.GET("/audit", controllers.ListAuditEvents)
+			protected.POST("/audit/:id/undo", controllers.UndoAuditEvent)
+
 			// Notification routes (N9 — docs/fork-plan/tickets/
 			// 30-N9-notification-channels.md). Per-user channel config, the
 			// per-user channel toggles, per-channel test notification, and Web

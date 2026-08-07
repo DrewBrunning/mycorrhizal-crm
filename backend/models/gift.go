@@ -124,6 +124,7 @@ func (g *Gift) AfterDelete(tx *gorm.DB) error {
 	if !g.DeletedAt.Valid {
 		return nil
 	}
+	auditAfterDelete(tx, AuditEntityGift, g.ID, g.UserID, g)
 	return tx.Model(&Gift{}).Unscoped().Where("id = ?", g.ID).UpdateColumn("updated_at", time.Now()).Error
 }
 
