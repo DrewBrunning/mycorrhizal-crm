@@ -60,7 +60,17 @@
     "saveFailed": "Failed to save household",
     "created": "Household created",
     "updated": "Household updated",
-    "deleted": "Household deleted"
+    "deleted": "Household deleted",
+    "suggestAddresses": "Suggest households from shared address",
+    "scanning": "Scanning…",
+    "scanFailed": "Couldn't scan shared addresses",
+    "addressSuggestions": "Shared-address suggestions",
+    "addressSuggestionDescription": "Contacts who share an address but are not in a household together yet.",
+    "noAddressSuggestions": "No shared-address suggestions found. Add addresses to more contacts to find groups here.",
+    "acceptSuggestion": "Accept",
+    "dismissSuggestion": "Dismiss",
+    "suggestionAccepted": "Household created from the suggestion",
+    "suggestionDismissed": "Suggestion dismissed"
   },
   "dashboard": {
     "title": "Dashboard",

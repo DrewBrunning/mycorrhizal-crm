@@ -170,3 +170,86 @@ export async function suggestHouseholdRelationships(
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json();
 }
+
+// ---------------------------------------------------------------------------
+// T40 address-based household suggestions (docs/fork-plan/tickets/
+// 49-T40-household-suggestions-shared-address.md).
+// ---------------------------------------------------------------------------
+
+// A neutral AddressComponent pair, mirroring contactmodel.AddressComponent's
+// wire shape on the suggestion's address.
+export interface AddressComponent {
+  kind: string;
+  value: string;
+}
+
+export interface AddressHouseholdSuggestion {
+  address_hash: string;
+  member_hash: string;
+  member_vcard_uids: string[];
+  address: {
+    components: AddressComponent[];
+    full?: string;
+  };
+}
+
+export interface SuggestAddressHouseholdsResponse {
+  suggestions: AddressHouseholdSuggestion[];
+  total: number;
+}
+
+// Renders a suggestion's address as a single display line (street, locality,
+// region, postcode, country — mirroring the backend's FormatAddress order),
+// falling back to the full text when present.
+export function formatSuggestionAddress(address: AddressHouseholdSuggestion['address']): string {
+  if (address.full) return address.full;
+  const byKind: Record<string, string> = {};
+  for (const comp of address.components) {
+    if (!(comp.kind in byKind)) byKind[comp.kind] = comp.value;
+  }
+  const parts = ['name', 'locality', 'region', 'postcode', 'country']
+    .map((kind) => byKind[kind])
+    .filter((v) => v && v.trim());
+  return parts.join(', ');
+}
+
+// POST /households/suggest-addresses -- T40 detection trigger. Read-only and
+// idempotent.
+export async function suggestAddressHouseholds(): Promise<SuggestAddressHouseholdsResponse> {
+  const response = await apiFetch(`${API_BASE_URL}/households/suggest-addresses`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) throw await parseErrorResponse(response);
+  return response.json();
+}
+
+// POST /households/suggestions/accept -- create the Household + member rows
+// for a suggested group. The server re-validates the group from the member
+// VCardUIDs.
+export async function acceptAddressHouseholdSuggestion(
+  memberVCardUids: string[],
+  input?: { name?: string; type?: HouseholdType }
+): Promise<Household> {
+  const response = await apiFetch(`${API_BASE_URL}/households/suggestions/accept`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ member_vcard_uids: memberVCardUids, ...input }),
+  });
+  if (!response.ok) throw await parseErrorResponse(response);
+  const result = await response.json();
+  return result.household;
+}
+
+// POST /households/suggestions/dismiss -- permanently dismiss a suggested
+// group so the scan stops offering it.
+export async function dismissAddressHouseholdSuggestion(
+  memberVCardUids: string[]
+): Promise<void> {
+  const response = await apiFetch(`${API_BASE_URL}/households/suggestions/dismiss`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ member_vcard_uids: memberVCardUids }),
+  });
+  if (!response.ok) throw await parseErrorResponse(response);
+}

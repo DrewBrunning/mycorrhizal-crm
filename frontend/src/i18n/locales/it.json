@@ -60,7 +60,17 @@
     "saveFailed": "Salvataggio del nucleo familiare non riuscito",
     "created": "Nucleo familiare creato",
     "updated": "Nucleo familiare aggiornato",
-    "deleted": "Nucleo familiare eliminato"
+    "deleted": "Nucleo familiare eliminato",
+    "suggestAddresses": "Suggerisci nuclei familiari con indirizzo condiviso",
+    "scanning": "Ricerca in corso…",
+    "scanFailed": "Impossibile cercare gli indirizzi condivisi",
+    "addressSuggestions": "Suggerimenti con indirizzo condiviso",
+    "addressSuggestionDescription": "Contatti che condividono un indirizzo ma non vivono ancora nello stesso nucleo familiare.",
+    "noAddressSuggestions": "Nessun suggerimento con indirizzo condiviso trovato. Aggiungi indirizzi a più contatti per trovare gruppi.",
+    "acceptSuggestion": "Accetta",
+    "dismissSuggestion": "Ignora",
+    "suggestionAccepted": "Nucleo familiare creato dal suggerimento",
+    "suggestionDismissed": "Suggerimento ignorato"
   },
   "dashboard": {
     "title": "Cruscotto",
