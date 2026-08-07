@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"errors"
+	"fmt"
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/logger"
 	"mycorrhizal/middleware"
@@ -17,7 +18,9 @@ import (
 // abortImmichServiceError maps a services-level Immich sentinel error to the
 // right HTTP status: an unreachable instance or expired key is a 503
 // (external service error) with a stable message; a missing/not-found person
-// is a 404; everything else is a 503 fallback.
+// is a 404; a real (non-2xx) response from Immich that isn't one of those is
+// its own distinct 503 (T42 — must not read as "the instance is down" when
+// Immich just answered); everything else is the same 503 fallback.
 func abortImmichServiceError(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, services.ErrImmichUnauthorized):
@@ -26,6 +29,13 @@ func abortImmichServiceError(c *gin.Context, err error) {
 		apperrors.AbortWithError(c, apperrors.ErrNotFound("Immich person").WithError(err))
 	case errors.Is(err, services.ErrImmichInvalidURL):
 		apperrors.AbortWithError(c, apperrors.ErrValidation("Immich base URL is invalid"))
+	case errors.Is(err, services.ErrImmichRequestFailed):
+		status := "an unexpected status"
+		var reqErr *services.ImmichRequestError
+		if errors.As(err, &reqErr) {
+			status = reqErr.Status
+		}
+		apperrors.AbortWithError(c, apperrors.ErrExternal("Immich", fmt.Sprintf("Immich returned an error (%s). The instance is reachable — this request itself failed.", status)).WithError(err))
 	default:
 		apperrors.AbortWithError(c, apperrors.ErrExternal("Immich", "Could not reach Immich. Is the instance up?").WithError(err))
 	}
