@@ -8,12 +8,15 @@ import {
   Button,
   Paper,
   Autocomplete,
+  SvgIcon,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import { CardOnlineService, onlineServicesToRows, rowsToOnlineServices, OnlineServiceRow } from '../api/contacts';
+import { LinkFieldType } from '../api/linkFieldTypes';
 import { useRowKeys } from '../hooks/useRowKeys';
 import { CONTEXT_OPTIONS } from '../contactFields';
+import { resolveLinkFieldTypeIcon } from '../linkFieldTypeIcons';
 
 interface OnlineServiceEditorProps {
   label: string;
@@ -23,6 +26,11 @@ interface OnlineServiceEditorProps {
   showService?: boolean;
   /** When true, the URI field is the only value input (IMPP-style). */
   uriOnly?: boolean;
+  /** The user's LinkFieldType registry (T44) — offered as freeSolo Autocomplete
+   * suggestions for the service field so a registry entry is discoverable from
+   * the editor itself. Optional: without it the field degrades to a plain
+   * free-text input, exactly as it behaved before this ticket. */
+  linkFieldTypes?: LinkFieldType[];
 }
 
 const EMPTY_ROW: OnlineServiceRow = {
@@ -38,6 +46,7 @@ export default function OnlineServiceEditor({
   onChange,
   showService = true,
   uriOnly = false,
+  linkFieldTypes,
 }: OnlineServiceEditorProps) {
   const { t } = useTranslation();
   const rowKeys = useRowKeys(value.length);
@@ -68,12 +77,36 @@ export default function OnlineServiceEditor({
           <Paper key={rowKeys.keyAt(index)} variant="outlined" sx={{ p: 1.5 }}>
             <Stack spacing={1}>
               {showService && (
-                <TextField
-                  label={t('contacts.onlineServices.service')}
+                <Autocomplete
+                  freeSolo
                   size="small"
-                  fullWidth
+                  options={linkFieldTypes ?? []}
                   value={row.service}
-                  onChange={(e) => updateRow(index, { service: e.target.value })}
+                  onChange={(_, newValue) => {
+                    // A selected option arrives as a LinkFieldType object.
+                    const service = typeof newValue === 'string' ? newValue : (newValue?.name ?? '');
+                    updateRow(index, { service });
+                  }}
+                  onInputChange={(_, newInput, reason) => {
+                    // Persist free text keystroke-by-keystroke (like the old
+                    // TextField) so an unregistered/one-off service name
+                    // survives even if the row is saved without committing
+                    // the dropdown -- same freeSolo pattern MultiValueField
+                    // uses for its type field.
+                    if (reason === 'input') updateRow(index, { service: newInput });
+                  }}
+                  getOptionLabel={(opt) => (typeof opt === 'string' ? opt : opt.name)}
+                  renderOption={({ key, ...optionProps }, opt) => (
+                    <Box component="li" key={key} {...optionProps} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <SvgIcon fontSize="small">
+                        <path d={resolveLinkFieldTypeIcon(opt.icon)} />
+                      </SvgIcon>
+                      {opt.name}
+                    </Box>
+                  )}
+                  renderInput={(params) => (
+                    <TextField {...params} label={t('contacts.onlineServices.service')} size="small" />
+                  )}
                 />
               )}
               <TextField

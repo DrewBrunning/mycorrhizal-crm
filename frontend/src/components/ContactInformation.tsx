@@ -38,8 +38,6 @@ import {
   valuesToCardPhones,
   cardLinksToValues,
   valuesToCardLinks,
-  cardImppToValues,
-  valuesToCardImpp,
   cardAddressesToValues,
   valuesToCardAddresses,
   getAnniversaryField,
@@ -129,17 +127,19 @@ export default function ContactInformation({
   const enabled = enabledFields ?? resolveEnabledFields(null);
   const isOn = (key: ContactFieldKey) => enabled.has(key);
   // Read-only fetch of the user's LinkFieldType registry (T34) — resolves
-  // socialProfiles/otherOnlineServices handles to tappable links. Only
-  // fetched when one of those fields is actually enabled: ListLinkFieldTypes
-  // does a write (lazy-seeds 19 defaults) on a user's first call, and
-  // neither field is in DEFAULT_ENABLED_CONTACT_FIELDS, so an unconditional
-  // fetch would cost every contact-page view for accounts that never touch
-  // this registry.
-  const socialFieldsEnabled = isOn('socialProfiles') || isOn('otherOnlineServices');
+  // socialProfiles/otherOnlineServices/imppAddresses handles to tappable
+  // links and, since T44, feeds the service-name Autocomplete in all three
+  // fields' editors. Only fetched when one of those fields is actually
+  // enabled: ListLinkFieldTypes does a write (lazy-seeds 19 defaults) on a
+  // user's first call, and none of the three is in
+  // DEFAULT_ENABLED_CONTACT_FIELDS, so an unconditional fetch would cost
+  // every contact-page view for accounts that never touch this registry.
+  const registryFieldsEnabled =
+    isOn('socialProfiles') || isOn('otherOnlineServices') || isOn('imppAddresses');
   const { linkFieldTypes, refreshLinkFieldTypes } = useLinkFieldTypes();
   useEffect(() => {
-    if (socialFieldsEnabled) refreshLinkFieldTypes();
-  }, [socialFieldsEnabled, refreshLinkFieldTypes]);
+    if (registryFieldsEnabled) refreshLinkFieldTypes();
+  }, [registryFieldsEnabled, refreshLinkFieldTypes]);
 
   const birthday = getAnniversaryField(card.anniversaries, 'birth') || '';
   const anniversary = getAnniversaryField(card.anniversaries, 'wedding') || '';
@@ -310,7 +310,12 @@ export default function ContactInformation({
     );
   };
 
-  const renderOnlineServices = (rows: CardOnlineService[] | undefined) => {
+  // Shared by SocialProfiles, OtherOnlineServices and IMPP (T44 routes IMPP
+  // through this same registry-aware renderer instead of renderUriValueList,
+  // so an IMPP handle resolves through the user's LinkFieldType registry the
+  // way the other two fields do). `copyLabel` is the field name used in the
+  // copy button's aria-label.
+  const renderOnlineServices = (rows: CardOnlineService[] | undefined, copyLabel: string) => {
     if (!rows || rows.length === 0) return <Typography variant="body2" color="text.disabled">—</Typography>;
     return (
       <Stack spacing={0.25}>
@@ -328,7 +333,7 @@ export default function ContactInformation({
               ) : (
                 <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>{label}{suffix}</Typography>
               )}
-              {copyValue && <CopyButton value={copyValue} label={`${t('contacts.socialProfiles')} ${copyValue}`} />}
+              {copyValue && <CopyButton value={copyValue} label={`${copyLabel} ${copyValue}`} />}
             </Box>
           );
         })}
@@ -586,13 +591,14 @@ export default function ContactInformation({
               label={t('contacts.socialProfiles')}
               value={card.socialProfiles || []}
               cloneValue={(v) => v.map((x) => ({ ...x }))}
-              renderDisplay={renderOnlineServices}
+              renderDisplay={(rows) => renderOnlineServices(rows, t('contacts.socialProfiles'))}
               renderEditor={(draft, setDraft) => (
                 <OnlineServiceEditor
                   label={t('contacts.socialProfiles')}
                   value={draft}
                   onChange={setDraft}
                   showService
+                  linkFieldTypes={linkFieldTypes}
                 />
               )}
               onSave={(draft) => onUpdateCard({ socialProfiles: draft.length ? draft : undefined })}
@@ -605,13 +611,14 @@ export default function ContactInformation({
               label={t('contacts.otherOnlineServices')}
               value={card.otherOnlineServices || []}
               cloneValue={(v) => v.map((x) => ({ ...x }))}
-              renderDisplay={renderOnlineServices}
+              renderDisplay={(rows) => renderOnlineServices(rows, t('contacts.otherOnlineServices'))}
               renderEditor={(draft, setDraft) => (
                 <OnlineServiceEditor
                   label={t('contacts.otherOnlineServices')}
                   value={draft}
                   onChange={setDraft}
                   showService
+                  linkFieldTypes={linkFieldTypes}
                 />
               )}
               onSave={(draft) => onUpdateCard({ otherOnlineServices: draft.length ? draft : undefined })}
@@ -619,16 +626,22 @@ export default function ContactInformation({
           )}
 
           {isOn('imppAddresses') && (
-            <EditableArrayField<ContactValue[]>
+            <EditableArrayField<CardOnlineService[]>
               icon={<ChatIcon sx={iconSx} />}
               label={t('contacts.impps')}
-              value={cardImppToValues(card.imppAddresses)}
+              value={card.imppAddresses || []}
               cloneValue={cloneValues}
-              renderDisplay={(rows) => renderUriValueList(rows, t('contacts.impps'))}
+              renderDisplay={(rows) => renderOnlineServices(rows, t('contacts.impps'))}
               renderEditor={(draft, setDraft) => (
-                <MultiValueField label={t('contacts.impps')} value={draft} onChange={setDraft} defaultType="" freeTextType />
+                <OnlineServiceEditor
+                  label={t('contacts.impps')}
+                  value={draft}
+                  onChange={setDraft}
+                  uriOnly
+                  linkFieldTypes={linkFieldTypes}
+                />
               )}
-              onSave={(draft) => onUpdateCard({ imppAddresses: valuesToCardImpp(draft) })}
+              onSave={(draft) => onUpdateCard({ imppAddresses: draft.length ? draft : undefined })}
             />
           )}
 

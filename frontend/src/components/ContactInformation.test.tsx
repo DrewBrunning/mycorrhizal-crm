@@ -8,6 +8,7 @@ import ContactInformation from './ContactInformation';
 import { Card, CRMEnvelope } from '../api/contacts';
 import { ContactFieldKey } from '../contactFields';
 import { getLinkFieldTypes } from '../api/linkFieldTypes';
+import { resolveLinkFieldTypeIcon } from '../linkFieldTypeIcons';
 
 // This codebase's vitest setup does not auto-cleanup between tests (no
 // `globals: true`, setupTests.ts doesn't register it) -- without this,
@@ -292,6 +293,70 @@ test('a social profile resolves through the LinkFieldType registry to a working 
 test('does not fetch the LinkFieldType registry when neither social field is enabled', () => {
   renderInformation({ phones: [{ number: '+15551234567', features: ['cell'] }] });
   expect(getLinkFieldTypes).not.toHaveBeenCalled();
+});
+
+// --- T44: the LinkFieldType registry reaches the editors ---
+
+// IMPP now renders through the same registry-aware display path Social
+// Profiles uses (OnlineServiceEditor + renderOnlineServices), so a full-URI
+// entry still links directly and a bare handle with a registry service can
+// resolve the way the other two fields do.
+test('an IMPP entry with a full URI links directly and is copyable', async () => {
+  renderInformation(
+    { imppAddresses: [{ service: 'WhatsApp', uri: 'xmpp:alice@example.com' }] },
+    {},
+    { enabledFields: new Set<ContactFieldKey>(['imppAddresses']) }
+  );
+  const row = fieldRow('Instant Messaging');
+  const link = within(row).getByText(/xmpp:alice@example\.com/);
+  expect(link.closest('a')).toHaveAttribute('href', 'xmpp:alice@example.com');
+  expect(within(row).getByLabelText(/^Copy Instant Messaging /)).toBeInTheDocument();
+});
+
+// The IMPP editor is routed through OnlineServiceEditor (uriOnly): service +
+// address inputs, no separate user/handle field, and the same registry
+// Autocomplete. A pre-existing entry imported with no Service value must
+// round-trip unchanged.
+test('the IMPP editor is OnlineServiceEditor (uriOnly) and preserves a pre-existing entry with no service', async () => {
+  const { onUpdateCard } = renderInformation(
+    { imppAddresses: [{ uri: 'xmpp:alice@example.com' }] },
+    {},
+    { enabledFields: new Set<ContactFieldKey>(['imppAddresses']) }
+  );
+  const row = fieldRow('Instant Messaging');
+  fireEvent.click(within(row).getByLabelText('Edit'));
+
+  expect(screen.getByRole('combobox', { name: 'Service' })).toBeInTheDocument();
+  expect(screen.getByLabelText('Address')).toHaveValue('xmpp:alice@example.com');
+  expect(screen.queryByLabelText('Username')).toBeNull();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  expect(onUpdateCard).toHaveBeenCalledWith({ imppAddresses: [{ uri: 'xmpp:alice@example.com' }] });
+});
+
+// The Social Profiles editor receives the registry: its service Autocomplete
+// offers the user's registry entries (with icons) once the fetch lands.
+test('the Social Profiles editor offers the registry as service Autocomplete options with icons', async () => {
+  vi.mocked(getLinkFieldTypes).mockResolvedValue([
+    {
+      id: 'whatsapp-id', name: 'WhatsApp', protocol: 'https://wa.me/{value}', category: 'messaging',
+      is_default: true, position: 0, created_at: '', updated_at: '', icon: 'mdiWhatsapp',
+    },
+  ]);
+  renderInformation(
+    { socialProfiles: [{ uri: 'https://wa.me/15551234567' }] },
+    {},
+    { enabledFields: new Set<ContactFieldKey>(['socialProfiles']) }
+  );
+  const row = fieldRow('Social Profiles');
+  fireEvent.click(within(row).getByLabelText('Edit'));
+
+  const serviceInput = screen.getByRole('combobox', { name: 'Service' });
+  fireEvent.mouseDown(serviceInput);
+  await waitFor(() => expect(getLinkFieldTypes).toHaveBeenCalled());
+  const option = await screen.findByRole('option', { name: 'WhatsApp' });
+  const iconPath = option.querySelector('svg path');
+  expect(iconPath?.getAttribute('d')).toBe(resolveLinkFieldTypeIcon('mdiWhatsapp'));
 });
 
 // --- T34 regression: adding action buttons must not change the save round trip ---

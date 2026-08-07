@@ -190,7 +190,9 @@ case) but cannot registry-match a bare handle, because the handle's originating 
 never reaches the frontend. Making IMPP registry-matchable would mean rebuilding its editor
 around `OnlineServiceEditor` instead of `MultiValueField` — a real UI change with its own
 review/i18n/test surface, not a tappable-link concern — so it's left as a follow-up rather than
-folded into an already-large ticket.
+folded into an already-large ticket. **This gap is closed by [T44](53-T44-link-field-type-registry-not-in-editors.md)**,
+which rebuilt the IMPP editor around `OnlineServiceEditor`'s `uriOnly` mode and moved its display
+onto the same registry-aware renderer.
 
 **Reorder requires the complete set.** `ReorderLinkFieldTypes` checks the submitted ID list
 against the user's *total* row count, not just that every submitted ID is owned and duplicate-
