@@ -270,15 +270,7 @@ export default function ContactHeader({
                     fullWidth
                   />
                 )}
-                <Box sx={{ display: 'flex', gap: 1, justifyContent: 'space-between' }}>
-                  <IconButton
-                    size="small"
-                    color="error"
-                    onClick={onDeleteContact}
-                    title={t('contactDetail.deleteContact')}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
+                <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
                   <Box sx={{ display: 'flex', gap: 1 }}>
                     <IconButton size="small" color="primary" onClick={onSaveProfile}>
                       <SaveIcon />
@@ -300,107 +292,155 @@ export default function ContactHeader({
                     sx={{ mb: 1 }}
                   />
                 )}
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    justifyContent: 'space-between',
-                    flexWrap: 'wrap',
-                    gap: 0.5,
-                    '&:hover .edit-icon': {
-                      opacity: 1
-                    }
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Typography variant="h5" sx={{ fontWeight: 500, lineHeight: 1.2, overflowWrap: 'anywhere' }}>
-                      {displayName}
-                    </Typography>
-                    <IconButton
-                      className="edit-icon"
-                      size="small"
-                      onClick={onStartEditProfile}
+                {compactActions ? (
+                  // T54: on narrow viewports the single MoreVertIcon menu button
+                  // is absolutely positioned so it stays pinned to the upper-right
+                  // corner regardless of how many lines the name wraps to.
+                  <Box
+                    sx={{
+                      position: 'relative',
+                      '&:hover .edit-icon': {
+                        opacity: 1
+                      }
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', pr: 5 }}>
+                      <Typography variant="h5" sx={{ fontWeight: 500, lineHeight: 1.2, overflowWrap: 'anywhere' }}>
+                        {displayName}
+                      </Typography>
+                      <IconButton
+                        className="edit-icon"
+                        size="small"
+                        onClick={onStartEditProfile}
+                        sx={{
+                          ml: 1,
+                          opacity: 0,
+                          transition: 'opacity 0.2s',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                    <Box
                       sx={{
-                        ml: 1,
-                        opacity: 0,
-                        transition: 'opacity 0.2s'
+                        position: 'absolute',
+                        top: 0,
+                        right: 0,
                       }}
                     >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                  </Box>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    {compactActions ? (
-                      <>
-                        <IconButton
-                          size="small"
-                          aria-label={t('contactDetail.actions')}
-                          onClick={(e) => setActionsMenuAnchor(e.currentTarget)}
-                        >
-                          <MoreVertIcon />
-                        </IconButton>
-                        <Menu
-                          anchorEl={actionsMenuAnchor}
-                          open={actionsMenuOpen}
-                          onClose={() => setActionsMenuAnchor(null)}
-                        >
-                          {archived ? (
-                            onUnarchiveContact && (
-                              <MenuItem key="unarchive" onClick={() => { setActionsMenuAnchor(null); onUnarchiveContact(); }}>
-                                <ListItemIcon><UnarchiveIcon fontSize="small" /></ListItemIcon>
-                                <ListItemText>{t('contactDetail.unarchive')}</ListItemText>
+                      <IconButton
+                        size="small"
+                        aria-label={t('contactDetail.actions')}
+                        onClick={(e) => setActionsMenuAnchor(e.currentTarget)}
+                      >
+                        <MoreVertIcon />
+                      </IconButton>
+                      <Menu
+                        anchorEl={actionsMenuAnchor}
+                        open={actionsMenuOpen}
+                        onClose={() => setActionsMenuAnchor(null)}
+                      >
+                        {archived ? (
+                          onUnarchiveContact && (
+                            <MenuItem key="unarchive" onClick={() => { setActionsMenuAnchor(null); onUnarchiveContact(); }}>
+                              <ListItemIcon><UnarchiveIcon fontSize="small" /></ListItemIcon>
+                              <ListItemText>{t('contactDetail.unarchive')}</ListItemText>
+                            </MenuItem>
+                          )
+                        ) : (
+                          [
+                            onStayInTouch && (
+                              <MenuItem key="stay-in-touch" onClick={() => { setActionsMenuAnchor(null); onStayInTouch(); }}>
+                                <ListItemIcon><AutoModeIcon fontSize="small" /></ListItemIcon>
+                                <ListItemText>{t('contactDetail.stayInTouch')}</ListItemText>
                               </MenuItem>
-                            )
-                          ) : (
-                            [
-                              onStayInTouch && (
-                                <MenuItem key="stay-in-touch" onClick={() => { setActionsMenuAnchor(null); onStayInTouch(); }}>
-                                  <ListItemIcon><AutoModeIcon fontSize="small" /></ListItemIcon>
-                                  <ListItemText>{t('contactDetail.stayInTouch')}</ListItemText>
-                                </MenuItem>
-                              ),
-                              onMergeContact && (
-                                <MenuItem key="merge" onClick={() => { setActionsMenuAnchor(null); onMergeContact(); }}>
-                                  <ListItemIcon><MergeIcon fontSize="small" /></ListItemIcon>
-                                  <ListItemText>{t('contactMerge.mergeButton')}</ListItemText>
-                                </MenuItem>
-                              ),
-                              onPrepView && (
-                                <MenuItem key="prep" onClick={() => { setActionsMenuAnchor(null); onPrepView(); }}>
-                                  <ListItemIcon><SvgIcon fontSize="small"><path d={mdiNoteMultipleOutline} /></SvgIcon></ListItemIcon>
-                                  <ListItemText>{t('prep.title')}</ListItemText>
-                                </MenuItem>
-                              ),
-                              onShareContact && (
-                                <MenuItem key="share" onClick={() => { setActionsMenuAnchor(null); onShareContact(); }}>
-                                  <ListItemIcon><ShareIcon fontSize="small" /></ListItemIcon>
-                                  <ListItemText>{t('contactShares.shareDialog.title')}</ListItemText>
-                                </MenuItem>
-                              ),
-                              <MenuItem key="vcf4" onClick={() => { setActionsMenuAnchor(null); onExportContact('vcf4'); }}>
-                                <ListItemIcon><SvgIcon fontSize="small"><path d={mdiDownloadOutline} /></SvgIcon></ListItemIcon>
-                                <ListItemText>vCard 4.0</ListItemText>
-                              </MenuItem>,
-                              <MenuItem key="vcf3" onClick={() => { setActionsMenuAnchor(null); onExportContact('vcf3'); }}>
-                                <ListItemIcon><SvgIcon fontSize="small"><path d={mdiDownloadOutline} /></SvgIcon></ListItemIcon>
-                                <ListItemText>vCard 3.0</ListItemText>
-                              </MenuItem>,
-                              <MenuItem key="jscontact" onClick={() => { setActionsMenuAnchor(null); onExportContact('jscontact'); }}>
-                                <ListItemIcon><SvgIcon fontSize="small"><path d={mdiDownloadOutline} /></SvgIcon></ListItemIcon>
-                                <ListItemText>JSContact</ListItemText>
-                              </MenuItem>,
-                              onArchiveContact && (
-                                <MenuItem key="archive" onClick={() => { setActionsMenuAnchor(null); onArchiveContact(); }}>
-                                  <ListItemIcon><ArchiveIcon fontSize="small" /></ListItemIcon>
-                                  <ListItemText>{t('contactDetail.archive')}</ListItemText>
-                                </MenuItem>
-                              ),
-                            ]
-                          )}
-                        </Menu>
-                      </>
-                    ) : (
-                      archived ? (
+                            ),
+                            onMergeContact && (
+                              <MenuItem key="merge" onClick={() => { setActionsMenuAnchor(null); onMergeContact(); }}>
+                                <ListItemIcon><MergeIcon fontSize="small" /></ListItemIcon>
+                                <ListItemText>{t('contactMerge.mergeButton')}</ListItemText>
+                              </MenuItem>
+                            ),
+                            onPrepView && (
+                              <MenuItem key="prep" onClick={() => { setActionsMenuAnchor(null); onPrepView(); }}>
+                                <ListItemIcon><SvgIcon fontSize="small"><path d={mdiNoteMultipleOutline} /></SvgIcon></ListItemIcon>
+                                <ListItemText>{t('prep.title')}</ListItemText>
+                              </MenuItem>
+                            ),
+                            onShareContact && (
+                              <MenuItem key="share" onClick={() => { setActionsMenuAnchor(null); onShareContact(); }}>
+                                <ListItemIcon><ShareIcon fontSize="small" /></ListItemIcon>
+                                <ListItemText>{t('contactShares.shareDialog.title')}</ListItemText>
+                              </MenuItem>
+                            ),
+                            <MenuItem key="vcf4" onClick={() => { setActionsMenuAnchor(null); onExportContact('vcf4'); }}>
+                              <ListItemIcon><SvgIcon fontSize="small"><path d={mdiDownloadOutline} /></SvgIcon></ListItemIcon>
+                              <ListItemText>vCard 4.0</ListItemText>
+                            </MenuItem>,
+                            <MenuItem key="vcf3" onClick={() => { setActionsMenuAnchor(null); onExportContact('vcf3'); }}>
+                              <ListItemIcon><SvgIcon fontSize="small"><path d={mdiDownloadOutline} /></SvgIcon></ListItemIcon>
+                              <ListItemText>vCard 3.0</ListItemText>
+                            </MenuItem>,
+                            <MenuItem key="jscontact" onClick={() => { setActionsMenuAnchor(null); onExportContact('jscontact'); }}>
+                              <ListItemIcon><SvgIcon fontSize="small"><path d={mdiDownloadOutline} /></SvgIcon></ListItemIcon>
+                              <ListItemText>JSContact</ListItemText>
+                            </MenuItem>,
+                            onArchiveContact && (
+                              <MenuItem key="archive" onClick={() => { setActionsMenuAnchor(null); onArchiveContact(); }}>
+                                <ListItemIcon><ArchiveIcon fontSize="small" /></ListItemIcon>
+                                <ListItemText>{t('contactDetail.archive')}</ListItemText>
+                              </MenuItem>
+                            ),
+                            onDeleteContact && (
+                              <MenuItem key="delete" onClick={() => { setActionsMenuAnchor(null); onDeleteContact(); }}>
+                                <ListItemIcon><DeleteIcon fontSize="small" color="error" /></ListItemIcon>
+                                <ListItemText sx={{ color: 'error.main' }}>{t('contactDetail.deleteContact')}</ListItemText>
+                              </MenuItem>
+                            ),
+                          ]
+                        )}
+                      </Menu>
+                    </Box>
+                  </Box>
+                ) : (
+                  // On wide viewports, the buttons sit next to the name in normal
+                  // flex flow. T54 keeps this layout unchanged — the flex-wrap here
+                  // on wide screens rarely causes the wrap the ticket is about, and
+                  // inline buttons cannot sensibly overlay the name the way a single
+                  // icon can on narrow widths.
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: 0.5,
+                      '&:hover .edit-icon': {
+                        opacity: 1
+                      }
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Typography variant="h5" sx={{ fontWeight: 500, lineHeight: 1.2, overflowWrap: 'anywhere' }}>
+                        {displayName}
+                      </Typography>
+                      <IconButton
+                        className="edit-icon"
+                        size="small"
+                        onClick={onStartEditProfile}
+                        sx={{
+                          ml: 1,
+                          opacity: 0,
+                          transition: 'opacity 0.2s',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      {archived ? (
                         onUnarchiveContact && (
                           <Button
                             variant="outlined"
@@ -488,11 +528,20 @@ export default function ContactHeader({
                               {t('contactDetail.archive')}
                             </Button>
                           )}
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            color="error"
+                            startIcon={<DeleteIcon />}
+                            onClick={onDeleteContact}
+                          >
+                            {t('contactDetail.delete')}
+                          </Button>
                         </>
-                      )
-                    )}
+                      )}
+                    </Box>
                   </Box>
-                </Box>
+                )}
                 {kind === 'animal' && (
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
                     {t(`contactDetail.${kind}`)}

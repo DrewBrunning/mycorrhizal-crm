@@ -110,3 +110,53 @@ test.describe('Contact detail at phone width (T31)', () => {
     }
   });
 });
+
+// T45: the jump nav collapses to a Select dropdown below the md breakpoint.
+test.describe('Contact detail jump-nav at mobile width (T45)', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test('renders a dropdown jump nav instead of a button row', async ({ page }) => {
+    const contact = await createTestContact(page.request);
+
+    try {
+      await page.goto(`/contacts/${contact.ID}`);
+      await waitForLoading(page);
+
+      const nav = page.getByRole('navigation', { name: /jump to section/i });
+      await expect(nav).toBeVisible();
+
+      // At this narrow width, the nav should be a dropdown (combobox), not a
+      // row of link buttons.
+      await expect(nav.getByRole('combobox')).toBeVisible();
+      await expect(nav.getByRole('link')).not.toBeAttached();
+    } finally {
+      await deleteTestContact(page.request, contact.ID);
+    }
+  });
+
+  test('jump nav dropdown navigates to sections', async ({ page }) => {
+    const contact = await createTestContact(page.request);
+
+    try {
+      await page.goto(`/contacts/${contact.ID}`);
+      await waitForLoading(page);
+
+      const nav = page.getByRole('navigation', { name: /jump to section/i });
+      await expect(nav).toBeVisible();
+
+      // Open the dropdown and select a section
+      const select = nav.getByRole('combobox');
+      await select.click();
+      await page.getByRole('option', { name: 'Gifts' }).click();
+
+      // The Select uses scrollIntoView({ behavior: 'smooth' }). Wait for the
+      // target section to be visible and verify the page scrolled.
+      await expect(page.getByText('Gifts').first()).toBeVisible();
+      // The Gifts panel starts with "Gifts" heading — confirm the heading is
+      // visible as evidence the scroll landed correctly.
+      await expect(page.getByRole('heading', { name: 'Gifts' })).toBeVisible();
+    } finally {
+      await deleteTestContact(page.request, contact.ID);
+    }
+  });
+});

@@ -43,7 +43,11 @@ import {
   Button,
   Typography,
   SvgIcon,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
+import MenuItem from '@mui/material/MenuItem';
+import Select from '@mui/material/Select';
 import AddIcon from '@mui/icons-material/Add';
 import { ContactDetailHeaderSkeleton, TimelineSkeleton } from './components/LoadingSkeletons';
 import { mdiNotePlusOutline, mdiCalendarPlus } from '@mdi/js';
@@ -157,6 +161,53 @@ function PanelCard({ title, actions, children }: { title: string; actions?: Reac
 }
 
 function ContactJumpNav({ ariaLabel, sections }: { ariaLabel: string; sections: Array<{ id: string; label: string }> }) {
+  const theme = useTheme();
+  const isNarrow = useMediaQuery(theme.breakpoints.down('md'));
+
+  const handleSelectChange = (event: any) => {
+    const id = event.target.value as string;
+    if (id) {
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  if (isNarrow) {
+    return (
+      <Box
+        component="nav"
+        aria-label={ariaLabel}
+        sx={{
+          position: 'sticky',
+          top: { xs: 56, sm: 64 },
+          zIndex: 10,
+          bgcolor: 'background.paper',
+          borderRadius: 1,
+          border: 1,
+          borderColor: 'divider',
+          px: 1,
+          py: 0.5,
+          mb: 2,
+        }}
+      >
+        <Select
+          fullWidth
+          size="small"
+          value=""
+          displayEmpty
+          onChange={handleSelectChange}
+          sx={{ '& .MuiSelect-select': { py: 0.75 } }}
+          renderValue={() => ariaLabel}
+        >
+          {sections.map((s) => (
+            <MenuItem key={s.id} value={s.id}>
+              {s.label}
+            </MenuItem>
+          ))}
+        </Select>
+      </Box>
+    );
+  }
+
   return (
     <Box
       component="nav"

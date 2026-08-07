@@ -11,6 +11,8 @@ interface CopyButtonProps {
   // Optional context folded into the aria-label, e.g. "phone number" ->
   // "Copy phone number". Falls back to a generic "Copy" label.
   label?: string;
+  // Optional CSS class for hover/visibility control (T55).
+  className?: string;
 }
 
 // Universal copy-to-clipboard action button (T34) — every displayed contact
@@ -20,7 +22,7 @@ interface CopyButtonProps {
 // sites (API token reveal, webhook secret reveal, build version) use a
 // different UX (checkmark-flip icon, no snackbar) and are out of this
 // ticket's scope.
-export default function CopyButton({ value, label }: CopyButtonProps) {
+export default function CopyButton({ value, label, className }: CopyButtonProps) {
   const { t } = useTranslation();
   const { showSuccess, showError } = useSnackbar();
 
@@ -37,7 +39,7 @@ export default function CopyButton({ value, label }: CopyButtonProps) {
 
   return (
     <Tooltip title={t('common.copy')}>
-      <IconButton size="small" onClick={handleCopy} aria-label={ariaLabel}>
+      <IconButton size="small" onClick={handleCopy} aria-label={ariaLabel} className={className}>
         <ContentCopyIcon fontSize="inherit" />
       </IconButton>
     </Tooltip>
