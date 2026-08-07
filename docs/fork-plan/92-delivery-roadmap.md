@@ -115,7 +115,7 @@ depend on P5's relationship graph and could be picked up independently of the re
 that ticket's own description already calls for "opting which fields to include" when sharing a contact to
 another user on the same instance — the same field-selection UI and filter function this WP builds, not a
 second implementation, and P1's landing note confirms it reused this exactly. A deferred standing/live
-share variant ([P1b](tickets/37-deferred.md)) would need its own persistence for a saved/default selection
+share variant ([P1b](tickets/69-P1b-standing-contact-share.md)) would need its own persistence for a saved/default selection
 (per-share, not per-export-click), but the selection *model* and *UI* remain the reusable part.
 
 **Relationship to `91.13` (Sensitivity — `normal|private|secret` on relationships/tags/life-events), per

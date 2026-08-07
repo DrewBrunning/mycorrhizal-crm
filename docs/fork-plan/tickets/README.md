@@ -22,22 +22,72 @@ ticket blocked on another open ticket ranks below ready ones at the same rating,
 size) → **effort** (smaller first). Ticket numbers are stable IDs, not rank — the table order is
 the rank.
 
+**T49 is the first R5 entry this table has ever ranked** (no R5/R4 tickets were previously in "To
+be done" — the existing R5 *capabilities* all shipped already, see "Done" below). It's not a
+capability gap; it's active, proven data loss on real production data. Ranked here strictly by the
+stated algorithm, not manually pinned to the top for effect — the algorithm already puts it there.
+
 | Rank | Ticket | R | Size | Depends on | Ready? |
 |---|---|---|---|---|---|
-| 1 | [N6](26-N6-backup-restore.md) · Full backup restore | 3 | S | — | Ready |
-| 2 | [N7](29-N7-attachments.md) · File / document attachments | 3 | M | — | Ready (coordinate with N6 — not a hard dependency, see its ticket) |
-| 3 | [N8](25-N8-2fa.md) · 2FA / TOTP | 3 | M | — | Ready |
-| 4 | [T40](49-T40-household-suggestions-shared-address.md) · Suggest households from shared address | 3 | M | T1 ✅ | Ready |
-| 5 | [T37](46-T37-pet-relationship-kind-default.md) · Pet relationship should default to animal kind | 2 | S | §3d ✅, T27 ✅ | Ready |
-| 6 | [T12b](35-T12b-caldav-serve.md) · Serve Interactions/LifeEvents as CalDAV | 2 | L | T12a ✅, T5 ✅ | Ready |
-| 7 | [T18](34-T18-audit-trail.md) · Event history / audit trail | 2 | L | T17 ✅ | Ready |
-| 8 | [T13](36-T13-two-way-calendar.md) · Two-way calendar sync ⚠ | 2 | M–L | **T12b** (rank 6, not done) | **Blocked** — do not start before T12b lands |
+| 1 | [T49](58-T49-vcf-import-merge-corrupts-existing-contact.md) · VCF/CSV import merge silently corrupts and orphans existing contact data ⚠ | 5 | M | — | Ready |
+| 2 | [T50](59-T50-vcard21-import-blank-fields.md) · vCard 2.1 import produces blank phone/email/photo | 5 | M | **T49** (rank 1, not done) | **Blocked** — do not start before T49 lands |
+| 3 | [T51](60-T51-push-notification-413-payload-too-large.md) · Browser push "Test notification" fails with 413 from the push service | 4 | S | N9 ✅ | Ready |
+| 4 | [T42](51-T42-immich-link-person-error-misclassification.md) · Immich "link a person" fails with "Could not reach Immich" | 4 | S | T15/T16 ✅ | Ready |
+| 5 | [T44](53-T44-link-field-type-registry-not-in-editors.md) · Link field type registry doesn't reach the editors | 4 | M | T34 ✅ | Ready |
+| 6 | [T46](55-T46-gift-add-entry-points-per-status.md) · Gift "add" entry points default to Idea everywhere | 4 | S–M | T35 ✅ | Ready |
+| 7 | [N6](26-N6-backup-restore.md) · Full backup restore | 3 | S | — | Ready |
+| 8 | [T45](54-T45-contact-jump-nav-mobile-dropdown.md) · Contact jump nav should collapse to a dropdown on narrow viewports | 3 | S | T31 ✅ | Ready |
+| 9 | [T53](62-T53-contact-detail-delete-action.md) · Delete a contact from its own detail page, not only from the list | 3 | S | — | Ready |
+| 10 | [N7](29-N7-attachments.md) · File / document attachments | 3 | M | — | Ready (coordinate with N6 — not a hard dependency, see its ticket) |
+| 11 | [N8](25-N8-2fa.md) · 2FA / TOTP | 3 | M | — | Ready |
+| 12 | [T40](49-T40-household-suggestions-shared-address.md) · Suggest households from shared address | 3 | M | T1 ✅ | Ready |
+| 13 | [T47](56-T47-field-action-icons-layout-and-tel-link.md) · Field action icons should sit near the edit button; phone should also be a tel: link | 3 | M | T34 ✅ | Ready |
+| 14 | [T52](61-T52-simplify-contact-add-flow.md) · Simplify the contact-add flow to name + contact fields | 3 | M | — | Ready |
+| 15 | [T48](57-T48-migrate-frontend-off-cra-to-vite.md) · Migrate frontend off Create React App to Vite | 3 | XL | — | Ready |
+| 16 | [T56](65-T56-bulk-contacts-import-flow.md) · Bulk contacts import (Google Takeout / contacts-app export) in Data Settings | 3 | M | **T49, T50** (ranks 1, 2, not done) | **Blocked** — do not start before both land |
+| 17 | [T37](46-T37-pet-relationship-kind-default.md) · Pet relationship should default to animal kind | 2 | S | §3d ✅, T27 ✅ | Ready |
+| 18 | [T43](52-T43-link-field-type-custom-icons.md) · Custom link field type icons don't render | 2 | S | T34 ✅ | Ready |
+| 19 | [T54](63-T54-contact-header-menu-fixed-position.md) · Contact header's actions menu shifts position when the name wraps | 2 | S | — | Ready |
+| 20 | [T55](64-T55-copy-button-hover-visibility.md) · Copy button should be hidden until hover/tap, matching edit | 2 | S | — | Ready |
+| 21 | [T12b](35-T12b-caldav-serve.md) · Serve Interactions/LifeEvents as CalDAV | 2 | L | T12a ✅, T5 ✅ | Ready |
+| 22 | [T18](34-T18-audit-trail.md) · Event history / audit trail | 2 | L | T17 ✅ | Ready |
+| 23 | [T13](36-T13-two-way-calendar.md) · Two-way calendar sync ⚠ | 2 | M–L | **T12b** (rank 21, not done) | **Blocked** — do not start before T12b lands |
 
 ### Deferred — not ranked, no plan to schedule
 
+None of these are implementation-ready. Each needs its own design pass before it's even a sizeable
+ticket — pulled in only when a concrete need arises, never implemented straight from its file. Split
+into three categories, 2026-08-06, because "deferred" was hiding a real difference in how solidified
+each idea actually is.
+
+**Mobile clients** — a real, intended project (a native Android app), just gated on API-contract
+stability rather than on demand for the idea itself.
+
 | Ticket | Notes |
 |---|---|
-| [P1b/P2/P3/P4](37-deferred.md) · Standing contact-share permissions, other integrations, AI layer, local-model pilot | R1–2. Each needs its own design pass before it's even a sizeable ticket. Pulled in only when a concrete need arises — see the file for why each was deferred rather than dropped. |
+| [M1](67-M1-mobile-android-app.md) · Native Android app (Kotlin, Jetpack Compose) | R2. Automated call/SMS/contact-interaction tracking is the actual point, not just a native UI. Gated on API-surface stability — earliest realistic entry is the move from beta to a real v1.0.0. |
+| [T57](66-T57-bulk-import-api-for-external-clients.md) · Documented/stable bulk-import API for external clients | R1–2. A named sub-piece of M1 — a repeatable contact-import contract the mobile app calls from both a first-run prompt and a standing "Import from contacts" entry point in Data, not a one-shot setup-only call. No concrete consumer until M1 starts. |
+| [P4](68-P4-local-model-pilot.md) · Local-model code-gen pilot | R1. Re-enters scope specifically when M1's work begins, independent of the rest of this roadmap. |
+
+**Planned features** — concrete, scoped-enough-to-name integrations; higher confidence they'll
+actually get built than the Feature ideas below, just not scheduled yet.
+
+| Ticket | Notes |
+|---|---|
+| [P2a](70-P2a-paperless-ngx-integration.md) · Paperless-ngx integration (API) | R2. Link a contact to a document that already lives in Paperless-ngx. |
+| [P2b](71-P2b-seafile-integration.md) · Seafile integration (API) | R2. Same idea, for Seafile-hosted files/folders. |
+| [P2c](72-P2c-nextcloud-owncloud-integration.md) · Nextcloud / ownCloud integration (WebDAV) | R2. Same idea again, reached via WebDAV rather than a bespoke API — a genuinely different integration shape from P2a/P2b. |
+
+**Feature ideas** — real, but "might come back to" rather than planned. Lower confidence than
+Planned features that these get built at all.
+
+| Ticket | Notes |
+|---|---|
+| [P1b](69-P1b-standing-contact-share.md) · Standing/live contact share + permission model (true synced contacts across users) | R1–2. XL. The closest existing formalization of "true sync," not a one-time copy like the done [P1](31-P1-contact-sharing.md). |
+| [P2d](73-P2d-dawarich-geopulse-integration.md) · Dawarich / GeoPulse integration | R1–2. Location-history correlation into life-event/activity suggestions — an L4 idea, not a simple link. |
+| [P2e](74-P2e-jellyfin-integration.md) · Jellyfin integration | R1. Least-defined idea in this list — not even scoped enough to say what it would do. |
+| [P2f](75-P2f-audiobookshelf-integration.md) · Audiobookshelf integration | R1. Same shape of idea as P2e, for Audiobookshelf. |
+| [P3](76-P3-ai-ollama-layer.md) · AI / Ollama layer | R1. Summarization, entity/relationship extraction, memory-curator suggestions. Gated on the propose-then-approve pattern; `90` D1 is explicit this is not an AI-first project. |
 
 ## Done
 
