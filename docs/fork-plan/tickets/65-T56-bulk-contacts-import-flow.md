@@ -53,3 +53,18 @@ without repeated small batches.
   flow end to end, including the preview step, without the UI becoming unusable.
 - e2e coverage for the new entry point.
 - All 5 locale files have real translations for any new strings.
+
+## Landing note (2026-08-07)
+
+Landed. Decision (the ticket's open "replace vs add" question): **add** a bulk entry point on
+Settings → Data while **keeping** the Contacts-page one — both doors open the *same*
+`ImportContactsDialog`, so there is still exactly one import flow, not two competing UIs.
+The wizard now scales to full address-book imports: the preview table paginates client-side
+(20 rows/page, so hundreds of rows never mount hundreds of Selects), and bulk "Accept all
+suggested" / "Skip all" controls apply one decision across the whole file with a single click.
+Confirm shows an explicit progress state (spinner + "Importing…", back/cancel disabled).
+
+Backend caps raised for address-book-scale files: `MaxCSVSize` 5MB→20MB, `MaxVCFSize`
+10MB→50MB (photos), `MaxCSVRows`/`MaxVCFContacts` 1000→20000. Pinned by a test that parses
+1001 contacts (over the old ceiling) cleanly. e2e drives the real Data Settings dialog end to
+end against the all-in-one image.
