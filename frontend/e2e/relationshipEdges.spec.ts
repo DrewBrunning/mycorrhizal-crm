@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures';
 import { createTestContact, deleteTestContact } from './fixtures';
+import { API_BASE_URL } from './global-setup';
 
 // §3d WP3 (docs/fork-plan/95-backlog-and-priorities.md): replaces
 // relationships.spec.ts now that the Relationships tab talks to
@@ -116,6 +117,47 @@ test.describe('RelationshipEdges', () => {
       await expect(page.getByText('Sibling', { exact: true })).toBeVisible();
     } finally {
       await deleteTestContact(page.request, contact.ID);
+    }
+  });
+
+  // T37 (docs/fork-plan/tickets/46-T37-pet-relationship-kind-default.md):
+  // creating a pet via the "enter manually" path must default the new
+  // contact's CRM.Kind to animal, so the household engine doesn't treat it as
+  // a human adult. Verified end-to-end: create the pet from a human contact's
+  // page (the frontend sends source_thin on an owned_by edge), then open the
+  // pet's own detail page and confirm the animal badge (T27's UI) renders.
+  test('a contact created as a pet relationship is labelled as an animal', async ({ page, request }) => {
+    const owner = await createTestContact(page.request, { firstname: 'E2E-Pet-Owner', lastname: `Rel${Date.now()}` });
+    const petName = `E2E-Pet ${Date.now()}`;
+
+    try {
+      await page.goto(`/contacts/${owner.ID}`);
+      await page.getByRole('button', { name: /add relationship/i }).click();
+
+      const dialog = page.getByRole('dialog');
+      await expect(dialog).toBeVisible();
+
+      await dialog.getByRole('textbox', { name: /^name/i }).fill(petName);
+      await dialog.getByRole('combobox').first().click();
+      await page.getByRole('option', { name: 'Pet', exact: true }).click();
+      await dialog.getByRole('button', { name: /^save$/i }).click();
+      await expect(dialog).toBeHidden();
+      await expect(page.getByText(petName)).toBeVisible();
+
+      // Resolve the pet's numeric contact ID via search so we can open its
+      // detail page (the edge response only carries the pet's vcard UID).
+      const searchResponse = await request.get(
+        `${API_BASE_URL}/search?q=${encodeURIComponent(petName)}&limit=10`
+      );
+      expect(searchResponse.ok(), `search for pet failed: ${searchResponse.status()}`).toBeTruthy();
+      const searchBody = await searchResponse.json();
+      const pet = searchBody.contacts.find((c: { firstname: string }) => c.firstname === petName);
+      expect(pet, 'pet contact should be findable by name').toBeTruthy();
+
+      await page.goto(`/contacts/${pet.id}`);
+      await expect(page.getByText('Animal', { exact: true })).toBeVisible();
+    } finally {
+      await deleteTestContact(page.request, owner.ID);
     }
   });
 
