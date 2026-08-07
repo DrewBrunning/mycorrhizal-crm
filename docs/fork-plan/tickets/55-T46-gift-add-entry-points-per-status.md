@@ -86,3 +86,33 @@ entry point:
   already-empty section and one with existing items.
 - `e2e/gifts.spec.ts` updated to cover the new per-section entry points.
 - All 5 locale files have real translations for any new/changed strings.
+
+## Landed (2026-08-07, feature/t46-gift-add-entry-points-per-status)
+
+Implemented option 2 (per-section entry points) exactly as recommended:
+
+- `GiftList.tsx` now renders three always-visible status columns — Ideas / Given / Received —
+  each an accessible `<section>` (named by its header, so tests and assistive tech can target
+  one row's entry points among three identical inputs/buttons). Each column owns a quick-add
+  input + "Add with details" button; the quick path calls `createGift` with the section's
+  status (`idea`/`given`/`received`), and the button opens `GiftDialog` pre-seeded with it.
+  The Ideas quick-add keeps its exact T20b type-and-Enter behavior, now under the Ideas header
+  instead of floating above all three.
+- `GiftDialog.tsx` gained an `initialStatus?: GiftStatus` prop used only when `gift` is null;
+  editing still always uses the gift's own status. Defaults to `'idea'`, so the dialog's
+  behavior is unchanged for any other caller (there is none today).
+- `ContactDetailPage.tsx` threads the section status through `handleAddGiftItem`/`handleAddFullGift`
+  into a `giftDialogInitialStatus` state; `handleMarkGivenGift`'s one-click flow is untouched.
+- **Empty-state decision** (the ticket's open question): the `gifts.empty` first-run hint is kept,
+  rendered only while `items.length === 0` above the three sections. Each section's own add row is
+  the always-present affordance per section; the single hint just invites the very first gift. This
+  also keeps `contactDetailLayout.spec.ts`'s inline-render pin (`/no gift ideas or records yet/i`)
+  meaningful.
+- i18n: `gifts.givenPlaceholder` / `gifts.receivedPlaceholder` added to all 5 locales with real
+  translations; `locales.test.ts` enforces the key sets match.
+- Tests: `GiftList`/`GiftDialog` unit suites cover per-section status seeding (quick + full-form),
+  always-visible empty sections, entry points surviving a populated section, and edit-ignores-
+  initialStatus. Hand-verified by breaking each new behavior and confirming the new tests fail.
+  `e2e/gifts.spec.ts` now covers the Given and Received quick paths (including recording a second
+  gift into a non-empty section) and both pre-seeded full-form dialogs; the two gift-dialog clicks
+  in `httpUrlAllowlist.spec.ts` were scoped to the Ideas section region (three buttons now exist).
