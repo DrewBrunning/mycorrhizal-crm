@@ -62,6 +62,27 @@ populates itself from your real calendar). Publishing CRM events back out is a n
 ### Post-alpha note
 This ticket is post-alpha — real production data exists. Changes that modify schemas or data must be additive and non-destructive. Migration files must be hand-written SQL up/down pairs. Test against `database.InitDB`, not `AutoMigrate`. For integrations: SSRF protection via `httputil.SafeDialContext` is mandatory for any outbound requests.
 
+## Landing note (2026-08-07)
+
+Landed with T13. New `backend/caldav` package mirrors the CardDAV server: a
+`caldav.Backend` serving one per-user calendar of the CRM's own Activities and
+LifeEvents, wired under `/caldav` (gated by `CALDAV_ENABLED`) with the shared
+CardDAV BasicAuth (password or DAV-scoped API token). Activities → VEVENT with
+DATE-TIME DTSTART and a stable UID derived from `Activity.UUID`; month/day
+LifeEvents → annually-recurring VEVENT (`VALUE=DATE` + `RRULE:FREQ=YEARLY`);
+year-only events are skipped. ETags come from the T12a per-entity ETags
+(go-webdav v0.7.0 has no RFC 6578 sync-collection REPORT — same reality as the
+CardDAV side; calendar-query with ETags is the incremental mechanism).
+Read-only by design — two-way writes target subscribed remote calendars, not
+this endpoint. nginx proxies `/caldav` in both container configs.
+
+**"Verified against two real clients" (Thunderbird/phone) could not be done
+in this environment.** Substituted with a protocol-level end-to-end run
+against the all-in-one Docker image: Basic-auth principal discovery, calendar
+home PROPFIND, calendar-query REPORT (event returned with quoted getetag),
+and GET of a specific `.ics` (valid VEVENT + ETag header). Real-client
+verification is still worth doing once before relying on it.
+
 ## Flash implementation notes
 
 ### Files to read first

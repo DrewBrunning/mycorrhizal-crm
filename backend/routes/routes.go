@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"mycorrhizal/caldav"
 	"mycorrhizal/carddav"
 	"mycorrhizal/config"
 	"mycorrhizal/controllers"
@@ -389,6 +390,37 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 	// CardDAV routes (optional, enabled via CARDDAV_ENABLED)
 	if cfg.CardDAVEnabled {
 		registerCardDAVRoutes(router, cfg, db)
+	}
+
+	// CalDAV routes (optional, enabled via CALDAV_ENABLED) — serve the CRM's
+	// own Activities/LifeEvents out as an iCalendar collection (T12b).
+	if cfg.CalDAVEnabled {
+		registerCalDAVRoutes(router, db)
+	}
+}
+
+// registerCalDAVRoutes sets up CalDAV endpoints for Interaction/LifeEvent
+// sync (T12b, docs/fork-plan/tickets/35-T12b-caldav-serve.md). Authentication
+// reuses the CardDAV BasicAuth path (password or a DAV-scoped API token), so
+// both DAV surfaces share one credential story. Read-only: clients subscribe,
+// they never write through this endpoint.
+func registerCalDAVRoutes(router *gin.Engine, db *gorm.DB) {
+	router.GET("/.well-known/caldav", caldav.WellKnownRedirect)
+
+	handler := caldav.NewHandler(db)
+
+	calDAVGroup := router.Group("/caldav")
+	calDAVGroup.Use(func(c *gin.Context) {
+		c.Set("db", db)
+		c.Next()
+	})
+	calDAVGroup.Use(middleware.CardDAVRateLimitMiddleware())
+	calDAVGroup.Use(carddav.BasicAuthMiddleware())
+	{
+		ginHandler := handler.GinHandler()
+		calDAVGroup.Any("/*path", ginHandler)
+		calDAVGroup.Handle("PROPFIND", "/*path", ginHandler)
+		calDAVGroup.Handle("REPORT", "/*path", ginHandler)
 	}
 }
 
