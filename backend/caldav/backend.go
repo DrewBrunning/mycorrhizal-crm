@@ -166,6 +166,7 @@ func calendarObjectFromActivity(username string, a *models.Activity) *CalendarOb
 	// Activity.Date is a full time.Time — a DATE-TIME, so clients never
 	// shift it by a day (the DATE-vs-DATE-TIME trap).
 	event.Props.SetDateTime(ical.PropDateTimeStart, a.Date.UTC())
+	event.Props.SetDateTime(ical.PropDateTimeStamp, a.UpdatedAt.UTC())
 	event.Props.SetText(ical.PropSummary, a.Title)
 	if a.Description != "" {
 		event.Props.SetText(ical.PropDescription, a.Description)

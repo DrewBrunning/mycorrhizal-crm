@@ -41,4 +41,16 @@ type CalendarEventLink struct {
 	UID            string    `gorm:"not null;uniqueIndex:idx_calendar_event_links_sub_uid,priority:2" json:"uid"`
 	ActivityID     uint      `gorm:"not null;index" json:"activity_id"`
 	ContentHash    string    `gorm:"not null" json:"-"`
+
+	// RemoteETag is the remote calendar object's ETag as last observed (T13,
+	// docs/fork-plan/tickets/36-T13-two-way-calendar.md), used as the If-Match
+	// precondition when pushing a local edit back out. NULL until the next
+	// CalDAV query captures it, and always NULL for plain-ICS-fallback
+	// subscriptions (which have no write path).
+	RemoteETag string `gorm:"column:remote_etag" json:"-"`
+
+	// RemotePath is the remote calendar object's resource path, used to
+	// address the same object on a push PUT. Explicit gorm column tag keeps
+	// GORM's derivation identical to migration 000015's column name.
+	RemotePath string `gorm:"column:remote_path" json:"-"`
 }

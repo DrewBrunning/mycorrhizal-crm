@@ -736,3 +736,50 @@ func TestAddressSuggestionDismissalMigration(t *testing.T) {
 	require.NoError(t, sqlDB.QueryRow("SELECT COUNT(*) FROM users WHERE username = 't40'").Scan(&userCount))
 	assert.EqualValues(t, 1, userCount, "a rollback must not destroy the pre-existing user")
 }
+
+// TestCalendarTwoWayMigration pins migration 000015's shape: calendar_event_links
+// gains the two nullable two-way sync columns (remote_etag, remote_path), and
+// rolling back drops them without touching pre-existing data.
+func TestCalendarTwoWayMigration(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "t13-migration.db")
+	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
+	require.NoError(t, err)
+	defer sqlDB.Close()
+
+	m, err := newMigrator(sqlDB)
+	require.NoError(t, err)
+	require.NoError(t, m.Steps(14))
+
+	// Satisfy the calendar_event_links foreign keys before inserting a row.
+	_, err = sqlDB.Exec("INSERT INTO users (created_at, updated_at, username, password, email) VALUES (datetime('now'), datetime('now'), 't13', 'x', 't13@example.com')")
+	require.NoError(t, err)
+	_, err = sqlDB.Exec("INSERT INTO calendar_subscriptions (created_at, updated_at, user_id, name, url, sync_enabled) VALUES (datetime('now'), datetime('now'), 1, 's', 'http://x', 1)")
+	require.NoError(t, err)
+	_, err = sqlDB.Exec("INSERT INTO activities (created_at, updated_at, user_id, title, date) VALUES (datetime('now'), datetime('now'), 1, 'a', datetime('now'))")
+	require.NoError(t, err)
+	_, err = sqlDB.Exec(`
+		INSERT INTO calendar_event_links (created_at, updated_at, subscription_id, user_id, uid, activity_id, content_hash)
+		VALUES (datetime('now'), datetime('now'), 1, 1, 'uid-1', 1, 'hash-1')`)
+	require.NoError(t, err)
+
+	require.NoError(t, m.Steps(1))
+
+	var colCount int64
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM pragma_table_info('calendar_event_links') WHERE name IN ('remote_etag', 'remote_path')",
+	).Scan(&colCount))
+	assert.Equal(t, int64(2), colCount, "000015 must add both two-way columns")
+
+	var rowCount int64
+	require.NoError(t, sqlDB.QueryRow("SELECT COUNT(*) FROM calendar_event_links").Scan(&rowCount))
+	assert.EqualValues(t, 1, rowCount, "the migration must not touch existing rows")
+
+	// Down: rolling back drops the columns; the existing row survives.
+	require.NoError(t, MigrateDown(dbPath))
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM pragma_table_info('calendar_event_links') WHERE name IN ('remote_etag', 'remote_path')",
+	).Scan(&colCount))
+	assert.Zero(t, colCount, "the down migration must remove both columns")
+	require.NoError(t, sqlDB.QueryRow("SELECT COUNT(*) FROM calendar_event_links").Scan(&rowCount))
+	assert.EqualValues(t, 1, rowCount, "a rollback must not destroy the row")
+}

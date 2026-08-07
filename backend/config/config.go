@@ -57,6 +57,7 @@ type Config struct {
 	ProfilePhotoDir         string // Directory for storing profile photos (must be absolute path)
 	CardDAVEnabled          bool   // Enable CardDAV server for contact sync
 	CalDAVEnabled           bool   // Enable CalDAV server for Interaction/LifeEvent sync (T12b)
+	CalDAVTwoWayEnabled     bool   // Allow calendar sync to push local edits back out (T13)
 	CookieSecure            bool   // Set Secure flag on auth cookie (requires HTTPS)
 	CookieDomain            string // Domain for auth cookie (empty = current domain only)
 	RegistrationDisabled    bool   // Disable new user registration
@@ -117,6 +118,7 @@ func LoadConfig() *Config {
 		ProfilePhotoDir:         getEnv("PROFILE_PHOTO_DIR", ""),
 		CardDAVEnabled:          getBoolEnv("CARDDAV_ENABLED", false),
 		CalDAVEnabled:           getBoolEnv("CALDAV_ENABLED", false),
+		CalDAVTwoWayEnabled:     getBoolEnv("CALDAV_TWO_WAY_ENABLED", false),
 		CookieSecure:            getBoolEnv("COOKIE_SECURE", false),
 		CookieDomain:            getEnv("COOKIE_DOMAIN", ""),
 		RegistrationDisabled:    getBoolEnv("DISABLE_REGISTRATION", false),

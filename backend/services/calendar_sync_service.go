@@ -1,6 +1,7 @@
 package services
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -61,6 +62,12 @@ type calendarEvent struct {
 	Location       string
 	Date           time.Time
 	AttendeeEmails []string
+	// ETag and Path are the remote calendar object's sync identity, captured
+	// from the CalDAV query response (T13). Empty for events pulled via the
+	// plain-ICS GET fallback, which has no collection semantics and therefore
+	// no write path — such events can never be pushed back.
+	ETag string
+	Path string
 }
 
 func (e calendarEvent) contentHash() string {
@@ -266,7 +273,30 @@ func (s *CalendarSyncService) syncSubscription(ctx context.Context, db *gorm.DB,
 
 	localizeUntitledEvents(db, sub.UserID, events)
 
-	return importEvents(db, sub, events)
+	stats, err := importEvents(db, sub, events)
+	if err != nil {
+		return stats, err
+	}
+
+	// Two-way (T13): after pulling, push any local CRM edits back out to the
+	// subscribed remote calendar — but only when the deployment opted in.
+	// Default off, so enabling this never surprises an operator by writing
+	// to a real calendar it was only asked to read.
+	if cfg.CalDAVTwoWayEnabled {
+		var httpClient webdav.HTTPClient = s.client
+		if sub.Username != "" || password != "" {
+			httpClient = webdav.HTTPClientWithBasicAuth(s.client, sub.Username, password)
+		}
+		pushStats, err := s.pushLocalEdits(ctx, db, sub, events, httpClient)
+		if err != nil {
+			return stats, err
+		}
+		stats.Created += pushStats.Created
+		stats.Updated += pushStats.Updated
+		stats.Skipped += pushStats.Skipped
+	}
+
+	return stats, nil
 }
 
 // localizeUntitledEvents fills empty event titles with a fallback in the
@@ -347,7 +377,11 @@ func (s *CalendarSyncService) queryCalDAV(ctx context.Context, httpClient webdav
 		if object.Data == nil {
 			continue
 		}
-		events = append(events, extractEvents(object.Data, windowStart, windowEnd)...)
+		for _, extracted := range extractEvents(object.Data, windowStart, windowEnd) {
+			extracted.ETag = object.ETag
+			extracted.Path = object.Path
+			events = append(events, extracted)
+		}
 	}
 	return events, nil
 }
@@ -636,6 +670,8 @@ func importEvents(db *gorm.DB, sub *models.CalendarSubscription, events []calend
 					UID:            event.UID,
 					ActivityID:     activity.ID,
 					ContentHash:    hash,
+					RemoteETag:     event.ETag,
+					RemotePath:     event.Path,
 				}).Error; err != nil {
 					return err
 				}
@@ -659,6 +695,16 @@ func importEvents(db *gorm.DB, sub *models.CalendarSubscription, events []calend
 				continue
 			}
 
+			// T13 both-changed conflict: the user edited this activity since
+			// the last sync AND the remote changed too. Policy: local-wins —
+			// see pushLocalEdits' doc comment. Leave the local activity
+			// untouched and let the push phase overwrite the remote; leaving
+			// link.ContentHash stale is what the push phase keys on.
+			if activity.UpdatedAt.After(link.UpdatedAt) {
+				stats.Skipped++
+				continue
+			}
+
 			activity.Title = event.Title
 			activity.Description = event.Description
 			activity.Location = event.Location
@@ -673,6 +719,8 @@ func importEvents(db *gorm.DB, sub *models.CalendarSubscription, events []calend
 				}
 			}
 			link.ContentHash = hash
+			link.RemoteETag = event.ETag
+			link.RemotePath = event.Path
 			if err := tx.Save(&link).Error; err != nil {
 				return err
 			}
@@ -683,6 +731,200 @@ func importEvents(db *gorm.DB, sub *models.CalendarSubscription, events []calend
 	if err != nil {
 		return CalendarSyncStats{}, fmt.Errorf("failed to import calendar events: %w", err)
 	}
+	return stats, nil
+}
+
+// ---------------------------------------------------------------------------
+// T13 — two-way calendar sync (docs/fork-plan/tickets/36-T13-two-way-calendar.md)
+//
+// CONFLICT POLICY — read before changing anything here.
+//
+// Local CRM edits to an imported activity are pushed back out to the
+// subscribed remote calendar; the conflict policy when both sides changed is
+// **local-wins**: the CRM is the personal relationship OS, a deliberate edit
+// about an interaction (a corrected note, a moved date) is higher-value than
+// the raw import, and a both-changed conflict is DETECTED (via the
+// activity/link UpdatedAt ordering + the remote ETag), not silently assumed.
+//
+// Deliberately NOT inherited from contact_sync_service.go's reconcileContactSync
+// (which full-overwrites local edits on any remote change): that policy would
+// silently discard whatever the user typed into the CRM about an interaction,
+// which is exactly the failure mode this ticket calls out.
+//
+// Deletion semantics — conservative, no automatic deletion in either
+// direction:
+//   - A locally-deleted activity stops being re-imported (existing behavior,
+//     importEvents) and is never DELETE'd on the remote: the subscribed
+//     calendar is the user's own real calendar, and CRM -> remote deletion is
+//     too destructive to do silently.
+//   - A remote event absent from a fetch is not treated as deleted: the sync
+//     uses a rolling past/future window, so "deleted" is indistinguishable
+//     from "moved out of the window". Orphaned links/activities are simply
+//     left alone.
+//
+// The push is gated on CALDAV_TWO_WAY_ENABLED (default off) so no real
+// calendar is ever written to unless a deployment opts in.
+// ---------------------------------------------------------------------------
+
+// activityContentHash hashes an activity's imported content (the four fields
+// the import writes) — the post-push value stored on link.ContentHash so the
+// next fetch recognizes the pushed state as in sync. Attendees are excluded:
+// they are not representable in the push and would otherwise never converge.
+func activityContentHash(a *models.Activity) string {
+	parts := []string{a.Title, a.Description, a.Location, a.Date.UTC().Format(time.RFC3339)}
+	sum := sha256.Sum256([]byte(strings.Join(parts, "\x1f")))
+	return hex.EncodeToString(sum[:])
+}
+
+// activityToICalendar serializes an activity as a single-event iCalendar
+// calendar for pushing to a remote. The VEVENT carries the REMOTE event's UID
+// (link.UID), so the PUT updates the same object in place rather than
+// creating a duplicate.
+func activityToICalendar(remoteUID string, a *models.Activity) *ical.Calendar {
+	cal := ical.NewCalendar()
+	cal.Props.SetText(ical.PropVersion, "2.0")
+	cal.Props.SetText(ical.PropProductID, "-//Mycorrhizal CRM//CalendarSync//EN")
+
+	event := ical.NewEvent()
+	event.Props.SetText(ical.PropUID, remoteUID)
+	event.Props.SetDateTime(ical.PropDateTimeStart, a.Date.UTC())
+	event.Props.SetDateTime(ical.PropDateTimeStamp, time.Now().UTC())
+	event.Props.SetText(ical.PropSummary, a.Title)
+	if a.Description != "" {
+		event.Props.SetText(ical.PropDescription, a.Description)
+	}
+	if a.Location != "" {
+		event.Props.SetText(ical.PropLocation, a.Location)
+	}
+	cal.Children = append(cal.Children, event.Component)
+	return cal
+}
+
+// resolveRemoteObjectURL joins the subscription's scheme+host with the
+// remote object's path captured from the CalDAV query. Remote paths are
+// server-relative (e.g. /remote.php/calendars/u/cal/evt.ics).
+func resolveRemoteObjectURL(subscriptionURL, remotePath string) (*url.URL, error) {
+	base, err := url.Parse(strings.TrimSpace(subscriptionURL))
+	if err != nil {
+		return nil, ErrCalendarInvalidURL
+	}
+	base.Path = ""
+	base.RawPath = ""
+	base.RawQuery = ""
+	base.Fragment = ""
+	joined, err := url.Parse(remotePath)
+	if err != nil {
+		return nil, ErrCalendarInvalidURL
+	}
+	return base.ResolveReference(joined), nil
+}
+
+// putCalendarObject PUTs a serialized iCalendar calendar to the remote URL,
+// carrying the stored ETag as an If-Match precondition when known. Returns the
+// response ETag (the remote's new sync identity), or the HTTP status on
+// failure so the caller can distinguish a 412 conflict.
+func putCalendarObject(httpClient webdav.HTTPClient, remoteURL *url.URL, cal *ical.Calendar, ifMatch string) (string, int, error) {
+	var buf bytes.Buffer
+	if err := ical.NewEncoder(&buf).Encode(cal); err != nil {
+		return "", 0, fmt.Errorf("encoding pushed event: %w", err)
+	}
+
+	req, err := http.NewRequest(http.MethodPut, remoteURL.String(), &buf)
+	if err != nil {
+		return "", 0, fmt.Errorf("building push request: %w", err)
+	}
+	req.Header.Set("Content-Type", "text/calendar; charset=utf-8")
+	if ifMatch != "" {
+		req.Header.Set("If-Match", `"`+ifMatch+`"`)
+	}
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		if isCalendarSentinel(err) {
+			return "", 0, err
+		}
+		return "", 0, fmt.Errorf("%w: %v", ErrCalendarUnreachable, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusNoContent {
+		return "", resp.StatusCode, nil
+	}
+	return strings.Trim(resp.Header.Get("ETag"), `"`), resp.StatusCode, nil
+}
+
+// pushLocalEdits propagates local CRM edits on imported activities back out
+// to the subscribed remote calendar, per the conflict policy documented
+// above. Events fetched via the plain-ICS fallback carry no remote path and
+// are skipped (no write path exists for them).
+func (s *CalendarSyncService) pushLocalEdits(ctx context.Context, db *gorm.DB, sub *models.CalendarSubscription, events []calendarEvent, httpClient webdav.HTTPClient) (CalendarSyncStats, error) {
+	var stats CalendarSyncStats
+
+	var links []models.CalendarEventLink
+	if err := db.Where("subscription_id = ? AND remote_path <> ''", sub.ID).Find(&links).Error; err != nil {
+		return stats, fmt.Errorf("loading calendar links for push: %w", err)
+	}
+	if len(links) == 0 {
+		return stats, nil
+	}
+
+	parsedURL, err := NormalizeCalendarURL(sub.URL)
+	if err != nil {
+		return stats, err
+	}
+
+	for i := range links {
+		link := &links[i]
+
+		var activity models.Activity
+		err := db.Where("id = ? AND user_id = ?", link.ActivityID, sub.UserID).First(&activity).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) || activity.DeletedAt.Valid {
+			// Locally deleted: not pushed (see the deletion-semantics note).
+			stats.Skipped++
+			continue
+		}
+		if err != nil {
+			return stats, fmt.Errorf("loading activity for calendar push: %w", err)
+		}
+
+		// No local edit since the last sync -> nothing to push.
+		if !activity.UpdatedAt.After(link.UpdatedAt) {
+			continue
+		}
+
+		remoteURL, err := resolveRemoteObjectURL(parsedURL.String(), link.RemotePath)
+		if err != nil {
+			return stats, err
+		}
+
+		// Push with If-Match. A 412 means the remote moved on after our last
+		// fetch — the both-changed case — and the policy is local-wins, so
+		// retry unconditionally (the remote edit is deliberately overwritten).
+		newETag, status, err := putCalendarObject(httpClient, remoteURL, activityToICalendar(link.UID, &activity), link.RemoteETag)
+		if status == http.StatusPreconditionFailed {
+			logger.Info().Uint("subscription_id", sub.ID).Str("uid", link.UID).
+				Msg("Calendar push conflict (412) — local-wins policy overwrites the remote edit")
+			newETag, status, err = putCalendarObject(httpClient, remoteURL, activityToICalendar(link.UID, &activity), "")
+		}
+		if err != nil {
+			return stats, err
+		}
+		if status != http.StatusOK && status != http.StatusCreated && status != http.StatusNoContent {
+			return stats, fmt.Errorf("%w: push returned status %d", ErrCalendarUnreachable, status)
+		}
+
+		// Mark the pushed content as in sync so the next fetch recognizes it
+		// (and so a subsequent remote change is correctly seen as a remote
+		// edit rather than a still-pending local one).
+		link.ContentHash = activityContentHash(&activity)
+		link.RemoteETag = newETag
+		link.UpdatedAt = activity.UpdatedAt
+		if err := db.Save(link).Error; err != nil {
+			return stats, fmt.Errorf("saving calendar link after push: %w", err)
+		}
+		stats.Updated++
+	}
+
 	return stats, nil
 }
 
