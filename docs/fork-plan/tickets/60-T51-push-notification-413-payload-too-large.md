@@ -87,13 +87,31 @@ Confirmed the 413-misread-as-stale trap doesn't apply: `sendPushMessage`'s statu
 treats 404/410 as stale (unchanged), everything else — including a 413, should one still occur —
 falls through to the generic error path.
 
-Pinned with two tests in `services/notification_service_test.go`:
-`TestPushRecordSize` (pure unit test on the sizing function, including the oversized-payload cap)
-and `TestTestNotificationChannel_PushBodySizeMatchesPayload` (end-to-end through
+Pinned with three tests in `services/notification_service_test.go`:
+`TestPushRecordSize` (pure unit test on the sizing function, including both sides of the
+oversized-payload cap boundary at 3993/3994 bytes), `TestPushRecordSizeMatchesWebpushFraming`
+(pins the 103-byte overhead against the real library — the computed `RecordSize` must encode and
+put exactly that many bytes on the wire, and one byte less must fail with `ErrMaxPadExceeded`,
+which is what makes 103 the exact minimum rather than merely "big enough"), and
+`TestTestNotificationChannel_PushBodySizeMatchesPayload` (end-to-end through
 `TestNotificationChannel` against a fake push service, asserting the actual wire body length via a
-new `fakeChannelServer.lastBodyLen()`). Both were hand-verified to fail against the pre-fix code
-(temporarily reverting the `RecordSize` line reproduced the exact bug: a 4096-byte body regardless
-of the ~20-byte test payload) before being confirmed to pass with the fix restored.
+new `fakeChannelServer.lastBodyLen()`).
+
+Hand-verification: reverting the `RecordSize` line reproduces the exact bug in the wire test (a
+4096-byte body regardless of the 67-byte test payload). Note that this alone does *not* fail
+`TestPushRecordSize`, which exercises the sizing function directly — that test instead asserts
+literal expected sizes rather than recomputing from `webPushRecordOverhead`, so that a wrong value
+of the constant actually fails it; perturbing the constant in either direction was confirmed to
+fail both it and `TestPushRecordSizeMatchesWebpushFraming`.
+
+Measured, not assumed: webpush-go's framing is self-balancing (86-byte header + `RecordSize`-86
+ciphertext), so the request body is **exactly** `RecordSize` bytes — the pre-fix default produced
+exactly 4096, not the ~4180 estimated in "Why this exists" above. In production (English strings)
+the test notification's payload is 88 bytes, so the body goes from 4096 to 191 bytes — a 21x
+reduction. It measures 67 bytes inside the unit tests only because `i18n.T` returns the raw message
+keys there: the locale bundle is loaded by the server at startup, not by the `services` test
+package. That does not weaken the assertions (the expectation is computed from the same payload),
+but it does mean the wire test exercises key-length content, not real translated content.
 
 The sandboxed dev-preview browser used for the automated part of this session can't grant
 Notification permission, so end-to-end confirmation had to happen in the user's own real browser

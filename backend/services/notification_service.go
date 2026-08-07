@@ -374,12 +374,14 @@ const webPushRecordOverhead = 103
 // pushRecordSize sizes webpush.Options.RecordSize to the payload actually
 // being sent instead of relying on webpush-go's default (MaxRecordSize,
 // 4096), which pads every message — including a two-word test notification
-// — out to a ~4180-byte request body regardless of content and gets
-// rejected with 413 by push services enforcing a smaller per-message limit
-// (T51). Capped at webpush.MaxRecordSize, the largest size push services are
-// generally known to accept; an oversized payload still fails, just with
-// webpush-go's own "payload has exceeded the maximum length" error instead
-// of a 413 from the service.
+// — out to a request body of exactly RecordSize bytes regardless of content
+// (the framing is self-balancing: header 86 + ciphertext RecordSize-86), and
+// gets rejected with 413 by push services enforcing a smaller per-message
+// limit (T51). Capped at webpush.MaxRecordSize, the largest size push
+// services are generally known to accept; a payload too large to fit even
+// then still fails, just with webpush-go's own "payload has exceeded the
+// maximum length" error instead of a 413 from the service — the same
+// threshold (payload > 3993 bytes) the library's own default already had.
 func pushRecordSize(payloadLen int) uint32 {
 	size := payloadLen + webPushRecordOverhead
 	if size > int(webpush.MaxRecordSize) {

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -498,18 +499,81 @@ func TestTestNotificationChannel(t *testing.T) {
 
 // TestPushRecordSize pins the RecordSize computation (T51): a short payload
 // must produce a record far below webpush-go's 4096-byte MaxRecordSize
-// default, sized to len(payload)+webPushRecordOverhead, and an
-// implausibly large payload must be capped at MaxRecordSize rather than
-// growing unbounded.
+// default, and a payload too large to fit must be capped at MaxRecordSize
+// rather than growing unbounded.
+//
+// The expectations are deliberately written as literals rather than as
+// len(payload)+webPushRecordOverhead: an assertion built from the same
+// constant the implementation uses holds for *any* value of that constant,
+// including a wrong one, so it would pin nothing. The constant itself is
+// pinned against the real library in TestPushRecordSizeMatchesWebpushFraming.
 func TestPushRecordSize(t *testing.T) {
-	shortPayload := len(`{"title":"Test notification","body":"This is a test notification"}`)
-	got := pushRecordSize(shortPayload)
-	assert.Equal(t, uint32(shortPayload+webPushRecordOverhead), got)
-	assert.Less(t, got, webpush.MaxRecordSize, "a short payload must not be padded out to the library's 4096-byte default")
+	assert.Equal(t, 103, webPushRecordOverhead,
+		"webpush-go aes128gcm framing: 16B salt + 4B rs + 1B keylen + 65B pubkey + 1B delimiter + 16B GCM tag")
 
-	// A payload so large that payload+overhead would exceed MaxRecordSize
-	// must be capped, not left to grow past what push services accept.
+	assert.Equal(t, uint32(103), pushRecordSize(0))
+	assert.Equal(t, uint32(123), pushRecordSize(20))
+
+	shortPayload := len(`{"title":"Test notification","body":"This is a test notification"}`)
+	assert.Equal(t, uint32(169), pushRecordSize(shortPayload))
+	assert.Less(t, pushRecordSize(shortPayload), webpush.MaxRecordSize,
+		"a short payload must not be padded out to the library's 4096-byte default")
+
+	// Cap boundary: 3993 is the largest payload that still fits exactly, so
+	// it lands on MaxRecordSize uncapped; everything above it is capped
+	// there rather than left to grow past what push services accept.
+	fits := int(webpush.MaxRecordSize) - webPushRecordOverhead
+	assert.Equal(t, 3993, fits)
+	assert.Equal(t, webpush.MaxRecordSize, pushRecordSize(fits))
+	assert.Equal(t, webpush.MaxRecordSize, pushRecordSize(fits+1))
 	assert.Equal(t, webpush.MaxRecordSize, pushRecordSize(int(webpush.MaxRecordSize)))
+}
+
+// TestPushRecordSizeMatchesWebpushFraming pins webPushRecordOverhead against
+// the actual library rather than against arithmetic that reuses it (T51).
+// For each payload size, the RecordSize pushRecordSize computes must encode
+// successfully and put exactly that many bytes on the wire, and one byte
+// less must be rejected with ErrMaxPadExceeded — which is what makes 103 the
+// exact minimum rather than merely "big enough". An overhead that is too
+// small breaks every push send outright; this is the assertion that catches
+// it.
+func TestPushRecordSizeMatchesWebpushFraming(t *testing.T) {
+	fake := newFakeChannelServer(t, nil)
+	vapidPrivate, vapidPublic, err := webpush.GenerateVAPIDKeys()
+	require.NoError(t, err)
+
+	sub := &webpush.Subscription{
+		Endpoint: fake.URL() + "/push",
+		Keys: webpush.Keys{
+			P256dh: "BNNL5ZaTfK81qhXOx23-wewhigUeFb632jN6LvRWCFH1ubQr77FE_9qV1FuojuRmHP42zmf34rXgW80OvUVDgTk",
+			Auth:   "zqbxT6JKstKSY9JKibZLSQ",
+		},
+	}
+	opts := func(rs uint32) *webpush.Options {
+		return &webpush.Options{
+			Subscriber:      "mailto:test@example.com",
+			VAPIDPublicKey:  vapidPublic,
+			VAPIDPrivateKey: vapidPrivate,
+			TTL:             86400,
+			RecordSize:      rs,
+		}
+	}
+
+	for _, payloadLen := range []int{0, 1, 20, 200, int(webpush.MaxRecordSize) - webPushRecordOverhead} {
+		payload := bytes.Repeat([]byte("a"), payloadLen)
+		rs := pushRecordSize(payloadLen)
+
+		resp, err := webpush.SendNotification(payload, sub, opts(rs))
+		require.NoErrorf(t, err, "a %d-byte payload must encode at RecordSize %d", payloadLen, rs)
+		resp.Body.Close()
+		assert.Equalf(t, int(rs), fake.lastBodyLen(),
+			"a %d-byte payload must put exactly RecordSize (%d) bytes on the wire", payloadLen, rs)
+
+		_, err = webpush.SendNotification(payload, sub, opts(rs-1))
+		assert.ErrorIsf(t, err, webpush.ErrMaxPadExceeded,
+			"RecordSize %d (one under) must not fit a %d-byte payload — overhead %d is not minimal",
+			rs-1, payloadLen, webPushRecordOverhead)
+	}
 }
 
 // TestTestNotificationChannel_PushBodySizeMatchesPayload verifies the fix
