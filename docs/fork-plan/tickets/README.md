@@ -22,28 +22,42 @@ ticket blocked on another open ticket ranks below ready ones at the same rating,
 size) → **effort** (smaller first). Ticket numbers are stable IDs, not rank — the table order is
 the rank.
 
+**T49 is the first R5 entry this table has ever ranked** (no R5/R4 tickets were previously in "To
+be done" — the existing R5 *capabilities* all shipped already, see "Done" below). It's not a
+capability gap; it's active, proven data loss on real production data. Ranked here strictly by the
+stated algorithm, not manually pinned to the top for effect — the algorithm already puts it there.
+
 | Rank | Ticket | R | Size | Depends on | Ready? |
 |---|---|---|---|---|---|
-| 1 | [T42](51-T42-immich-link-person-error-misclassification.md) · Immich "link a person" fails with "Could not reach Immich" | 4 | S | T15/T16 ✅ | Ready |
-| 2 | [N6](26-N6-backup-restore.md) · Full backup restore | 3 | S | — | Ready |
-| 3 | [T45](54-T45-contact-jump-nav-mobile-dropdown.md) · Contact jump nav should collapse to a dropdown on narrow viewports | 3 | S | T31 ✅ | Ready |
-| 4 | [N7](29-N7-attachments.md) · File / document attachments | 3 | M | — | Ready (coordinate with N6 — not a hard dependency, see its ticket) |
-| 5 | [N8](25-N8-2fa.md) · 2FA / TOTP | 3 | M | — | Ready |
-| 6 | [T40](49-T40-household-suggestions-shared-address.md) · Suggest households from shared address | 3 | M | T1 ✅ | Ready |
-| 7 | [T44](53-T44-link-field-type-registry-not-in-editors.md) · Link field type registry doesn't reach the editors | 3 | M | T34 ✅ | Ready |
-| 8 | [T46](55-T46-gift-add-entry-points-per-status.md) · Gift "add" entry points default to Idea everywhere | 3 | S–M | T35 ✅ | Ready |
-| 9 | [T47](56-T47-field-action-icons-layout-and-tel-link.md) · Field action icons should sit near the edit button; phone should also be a tel: link | 3 | M | T34 ✅ | Ready |
-| 10 | [T48](57-T48-migrate-frontend-off-cra-to-vite.md) · Migrate frontend off Create React App to Vite | 3 | XL | — | Ready |
-| 11 | [T37](46-T37-pet-relationship-kind-default.md) · Pet relationship should default to animal kind | 2 | S | §3d ✅, T27 ✅ | Ready |
-| 12 | [T43](52-T43-link-field-type-custom-icons.md) · Custom link field type icons don't render | 2 | S | T34 ✅ | Ready |
-| 13 | [T12b](35-T12b-caldav-serve.md) · Serve Interactions/LifeEvents as CalDAV | 2 | L | T12a ✅, T5 ✅ | Ready |
-| 14 | [T18](34-T18-audit-trail.md) · Event history / audit trail | 2 | L | T17 ✅ | Ready |
-| 15 | [T13](36-T13-two-way-calendar.md) · Two-way calendar sync ⚠ | 2 | M–L | **T12b** (rank 13, not done) | **Blocked** — do not start before T12b lands |
+| 1 | [T49](58-T49-vcf-import-merge-corrupts-existing-contact.md) · VCF/CSV import merge silently corrupts and orphans existing contact data ⚠ | 5 | M | — | Ready |
+| 2 | [T51](60-T51-push-notification-413-payload-too-large.md) · Browser push "Test notification" fails with 413 from the push service | 4 | S | N9 ✅ | Ready |
+| 3 | [T50](59-T50-vcard21-import-blank-fields.md) · vCard 2.1 import produces blank phone/email/photo | 4 | M | **T49** (rank 1, not done) | **Blocked** — do not start before T49 lands |
+| 4 | [T42](51-T42-immich-link-person-error-misclassification.md) · Immich "link a person" fails with "Could not reach Immich" | 4 | S | T15/T16 ✅ | Ready |
+| 5 | [N6](26-N6-backup-restore.md) · Full backup restore | 3 | S | — | Ready |
+| 6 | [T45](54-T45-contact-jump-nav-mobile-dropdown.md) · Contact jump nav should collapse to a dropdown on narrow viewports | 3 | S | T31 ✅ | Ready |
+| 7 | [T53](62-T53-contact-detail-delete-action.md) · Delete a contact from its own detail page, not only from the list | 3 | S | — | Ready |
+| 8 | [N7](29-N7-attachments.md) · File / document attachments | 3 | M | — | Ready (coordinate with N6 — not a hard dependency, see its ticket) |
+| 9 | [N8](25-N8-2fa.md) · 2FA / TOTP | 3 | M | — | Ready |
+| 10 | [T40](49-T40-household-suggestions-shared-address.md) · Suggest households from shared address | 3 | M | T1 ✅ | Ready |
+| 11 | [T44](53-T44-link-field-type-registry-not-in-editors.md) · Link field type registry doesn't reach the editors | 3 | M | T34 ✅ | Ready |
+| 12 | [T46](55-T46-gift-add-entry-points-per-status.md) · Gift "add" entry points default to Idea everywhere | 3 | S–M | T35 ✅ | Ready |
+| 13 | [T47](56-T47-field-action-icons-layout-and-tel-link.md) · Field action icons should sit near the edit button; phone should also be a tel: link | 3 | M | T34 ✅ | Ready |
+| 14 | [T52](61-T52-simplify-contact-add-flow.md) · Simplify the contact-add flow to name + contact fields | 3 | M | — | Ready |
+| 15 | [T48](57-T48-migrate-frontend-off-cra-to-vite.md) · Migrate frontend off Create React App to Vite | 3 | XL | — | Ready |
+| 16 | [T56](65-T56-bulk-contacts-import-flow.md) · Bulk contacts import (Google Takeout / contacts-app export) in Data Settings | 3 | M | **T49, T50** (ranks 1, 3, not done) | **Blocked** — do not start before both land |
+| 17 | [T37](46-T37-pet-relationship-kind-default.md) · Pet relationship should default to animal kind | 2 | S | §3d ✅, T27 ✅ | Ready |
+| 18 | [T43](52-T43-link-field-type-custom-icons.md) · Custom link field type icons don't render | 2 | S | T34 ✅ | Ready |
+| 19 | [T54](63-T54-contact-header-menu-fixed-position.md) · Contact header's actions menu shifts position when the name wraps | 2 | S | — | Ready |
+| 20 | [T55](64-T55-copy-button-hover-visibility.md) · Copy button should be hidden until hover/tap, matching edit | 2 | S | — | Ready |
+| 21 | [T12b](35-T12b-caldav-serve.md) · Serve Interactions/LifeEvents as CalDAV | 2 | L | T12a ✅, T5 ✅ | Ready |
+| 22 | [T18](34-T18-audit-trail.md) · Event history / audit trail | 2 | L | T17 ✅ | Ready |
+| 23 | [T13](36-T13-two-way-calendar.md) · Two-way calendar sync ⚠ | 2 | M–L | **T12b** (rank 21, not done) | **Blocked** — do not start before T12b lands |
 
 ### Deferred — not ranked, no plan to schedule
 
 | Ticket | Notes |
 |---|---|
+| [T57](66-T57-bulk-import-api-for-external-clients.md) · Documented/stable bulk-import API for external clients (e.g. a future Android app) | R1–2. No concrete consumer exists yet. Pulled in when one does — see the file. |
 | [P1b/P2/P3/P4](37-deferred.md) · Standing contact-share permissions, other integrations, AI layer, local-model pilot | R1–2. Each needs its own design pass before it's even a sizeable ticket. Pulled in only when a concrete need arises — see the file for why each was deferred rather than dropped. |
 
 ## Done
