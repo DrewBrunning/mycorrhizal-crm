@@ -7,45 +7,32 @@
 // dropdown; resolveLinkFieldTypeIcon resolves against the full @mdi/js export
 // surface, so any valid MDI name typed into the free-text field renders
 // correctly (T43).
-import {
-  mdiMessageLock,
-  mdiFacebookMessenger,
-  mdiWhatsapp,
-  mdiSend,
-  mdiChatOutline,
-  mdiMatrix,
-  mdiSlack,
-  mdiTwitter,
-  mdiButterflyOutline,
-  mdiInstagram,
-  mdiAt,
-  mdiMusicNote,
-  mdiReddit,
-  mdiSpotify,
-  mdiTwitch,
-  mdiLinkVariant,
-} from '@mdi/js';
 import * as mdiIcons from '@mdi/js';
 
 export const LINK_FIELD_TYPE_ICONS: Record<string, string> = {
-  mdiMessageLock,
-  mdiFacebookMessenger,
-  mdiWhatsapp,
-  mdiSend,
-  mdiChatOutline,
-  mdiMatrix,
-  mdiSlack,
-  mdiTwitter,
-  mdiButterflyOutline,
-  mdiInstagram,
-  mdiAt,
-  mdiMusicNote,
-  mdiReddit,
-  mdiSpotify,
-  mdiTwitch,
+  mdiMessageLock: mdiIcons.mdiMessageLock,
+  mdiFacebookMessenger: mdiIcons.mdiFacebookMessenger,
+  mdiWhatsapp: mdiIcons.mdiWhatsapp,
+  mdiSnapchat: mdiIcons.mdiSnapchat,
+  mdiSend: mdiIcons.mdiSend,
+  mdiChatOutline: mdiIcons.mdiChatOutline,
+  mdiForumOutline: mdiIcons.mdiForumOutline,
+  mdiMessageOutline: mdiIcons.mdiMessageOutline,
+  mdiMessageText: mdiIcons.mdiMessageText,
+  mdiMatrix: mdiIcons.mdiMatrix,
+  mdiSlack: mdiIcons.mdiSlack,
+  mdiTwitter: mdiIcons.mdiTwitter,
+  mdiButterflyOutline: mdiIcons.mdiButterflyOutline,
+  mdiInstagram: mdiIcons.mdiInstagram,
+  mdiAt: mdiIcons.mdiAt,
+  mdiMusicNote: mdiIcons.mdiMusicNote,
+  mdiReddit: mdiIcons.mdiReddit,
+  mdiSpotify: mdiIcons.mdiSpotify,
+  mdiTwitch: mdiIcons.mdiTwitch,
+  mdiSteam: mdiIcons.mdiSteam,
 };
 
-export const LINK_FIELD_TYPE_ICON_FALLBACK = mdiLinkVariant;
+export const LINK_FIELD_TYPE_ICON_FALLBACK = mdiIcons.mdiLinkVariant;
 
 export const LINK_FIELD_TYPE_ICON_OPTIONS = Object.keys(LINK_FIELD_TYPE_ICONS);
 
