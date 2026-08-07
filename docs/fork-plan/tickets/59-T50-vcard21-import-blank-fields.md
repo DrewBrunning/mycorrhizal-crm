@@ -106,3 +106,61 @@ the "which option" question is settled:
 - A property genuinely unrecoverable even after normalization surfaces as a
   `contactmodel.Diagnostic` warning, not silent data loss.
 - Hand-verified against the real reported file.
+
+## Landing note — 2026-08-06
+
+Implemented as scoped: real vCard 2.1 support, not a reject-and-message path.
+
+1. **`sniffVCardVersion` (`services/import_service.go`) now detects `"2.1"` as its own return
+   value** (any `VERSION` starting with `"2"`) instead of falling through to the `"4.0"` default —
+   fixes the "compounding, separate issue" the ticket called out.
+2. **New `services/vcard21_normalize.go`** does the byte-level pre-processing, run once over a
+   whole 2.1 block before it ever reaches `go-vcard`'s decoder (the corruption is inside that
+   shared decoder, confirmed in the ticket's own investigation, so patching either adapter after
+   the fact can't fix it):
+   - Reconstructs fully-unfolded logical property lines, undoing both standard RFC 2425
+     leading-whitespace folding and — independently, only for properties whose own parameter
+     section declares `ENCODING=QUOTED-PRINTABLE` — QUOTED-PRINTABLE's own soft-line-break
+     continuation (a trailing `=` with *no* leading whitespace on the next line), which
+     `go-vcard`'s decoder has no notion of at all.
+   - Every bare parameter token is classified generically — a known Content-Transfer-Encoding
+     token (`BASE64`/`B`/`QUOTED-PRINTABLE`/`7BIT`/`8BIT`) becomes `ENCODING=<token>`, anything
+     else becomes `TYPE=<token>` — regardless of position or combination, per the ticket's
+     explicit "don't hard-code this file's ordering" trap. Verified against a second fixture with
+     reversed/extra tokens (`TEL;PREF;CELL;WORK:`, `EMAIL;HOME;PREF;INTERNET:`) during development.
+   - `ENCODING=QUOTED-PRINTABLE` values are decoded via `mime/quotedprintable` (stdlib does the
+     actual decode; this only wires the already-unfolded value into it) and re-escaped
+     (backslash, then embedded newlines) so the decoded text survives as a single vCard value line
+     that `go-vcard`'s own unescaper correctly reverses.
+   - A decode failure (tested with an unescaped raw `0x7F` byte — invalid per RFC 2045, and
+     `mime/quotedprintable` rejects it outright unlike a bad hex digit, which it tolerates as
+     literal) doesn't fail the card: it's left as raw undecoded text plus a
+     `contactmodel.Diagnostic{Severity:"warn", Concept:"vcard21.quoted-printable"}`.
+3. **`ParseVCF` routes a sniffed `"2.1"` block through `normalizeVCard21` and then
+   `vcard3.Adapter`, not `vcard4.Adapter`** — `vcard3`'s `importMediaURI` already tolerated
+   2.1-style `ENCODING=BASE64` before this ticket (pre-existing), while `vcard4`'s photo import
+   only understands native `data:` URIs and has no `ENCODING`-param handling at all; 2.1's
+   TYPE-token grammar is also a subset of 3.0's, not 4.0's. `services/contact_sync_service.go`'s
+   own `sniffVCardVersion` call site (CardDAV sync) was deliberately left untouched — it re-encodes
+   through `go-vcard`'s own encoder before sniffing, so it can't see a raw 2.1 payload in practice,
+   and the ticket's scope is the VCF import path.
+
+Verified: `go build ./... && go vet ./... && gofmt -l . && go test ./...` green. New
+`services/vcard21_import_test.go`: bare-token grammar (the reported file's exact
+`TEL;CELL;PREF:`/`EMAIL;PREF;HOME:`/`PHOTO;ENCODING=BASE64;JPEG:` shapes, the PHOTO value folded
+across two physical lines to also exercise standard folding) proves phone/email/photo all survive;
+a QUOTED-PRINTABLE fixture with a genuine soft line break proves that decode path; a malformed-QP
+fixture proves graceful degradation to a `Diagnostic` instead of data loss; a routing test pins
+vcard3 (not vcard4) as the 2.1 target adapter; a table test covers `sniffVCardVersion` directly.
+Hand-verified per `/CLAUDE.md`'s testing rule: reverted `import_service.go`'s routing/sniff changes
+only (kept the unused normalizer file in place), confirmed all 5 new test functions fail against
+the old behavior, then restored — full suite green again afterward.
+
+**Hand-verified against the actual reported file**, 2026-08-06: ran `ParseVCF` against the real
+`Elizabeth Brunning.vcf` (provided locally for this purpose only, not committed to the repo, per
+`/CLAUDE.md`'s data-safety posture) through a throwaway, uncommitted test — confirmed via a
+`grep`-based structure check first that its `TEL`/`EMAIL`/`PHOTO` lines match this ticket's quoted
+shapes exactly (`TEL;CELL;PREF:`, `EMAIL;PREF;HOME:`, `PHOTO;ENCODING=BASE64;JPEG:`), then imported
+it: `ValidCount=1, ErrorCount=0`, email and phone both non-empty, photo recovered as a 23,917-byte
+`image/jpeg`, zero diagnostics. The temporary test file was deleted immediately after and never
+touched git. All Done-when items are now closed.
