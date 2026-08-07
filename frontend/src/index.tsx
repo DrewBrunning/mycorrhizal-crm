@@ -31,7 +31,7 @@ root.render(
           <ErrorBoundary
             name="Application"
             onError={logError}
-            showDetails={process.env.NODE_ENV === 'development'}
+            showDetails={import.meta.env.DEV}
           >
             <App />
             <ServiceWorkerUpdatePrompt />

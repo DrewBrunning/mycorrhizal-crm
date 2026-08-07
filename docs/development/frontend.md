@@ -8,21 +8,22 @@ nav_order: 3
 
 ## Setup
 
-Requires Node.js and Yarn.
+Requires Node.js and Yarn. The app is built with [Vite](https://vite.dev) (dev server, bundler) and
+tested with Vitest + Playwright.
 
 ```sh
 cd frontend
-cp .env.example .env  # set REACT_APP_API_URL if backend isn't on localhost:8080
+cp .env.example .env  # set VITE_API_URL if backend isn't on localhost:8080
 yarn install
 ```
 
 ## Running Locally
 
 ```sh
-yarn start  # dev server on port 7300
+yarn start  # Vite dev server on port 7300
 ```
 
-Hot reload is enabled. The dev server proxies nothing so requests go directly to `REACT_APP_API_URL`.
+Hot reload is enabled. The dev server proxies nothing so requests go directly to `VITE_API_URL`.
 
 ## Adding a New Page
 
@@ -35,7 +36,7 @@ Hot reload is enabled. The dev server proxies nothing so requests go directly to
 
 All requests go through `src/api/client.ts`. It handles:
 - httpOnly cookie auth (`credentials: 'include'`, no Authorization header)
-- Configurable timeout via `REACT_APP_REQUEST_TIMEOUT` (default 30s)
+- Configurable timeout via `VITE_REQUEST_TIMEOUT` (default 30s)
 - Automatic redirect to `/login` on 401
 - Structured `ApiError` with `code` and `details` fields
 

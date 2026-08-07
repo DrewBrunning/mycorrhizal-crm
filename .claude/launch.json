@@ -4,7 +4,7 @@
     {
       "name": "frontend-dev",
       "runtimeExecutable": "sh",
-      "runtimeArgs": ["-c", "cd frontend && FAST_REFRESH=false npx --yes yarn start"],
+      "runtimeArgs": ["-c", "cd frontend && npx --yes yarn start"],
       "port": 7300,
       "autoPort": true
     },

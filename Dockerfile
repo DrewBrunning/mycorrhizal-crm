@@ -62,7 +62,7 @@ COPY frontend/ .
 
 # API is served from the same origin; nginx proxies /api to the backend.
 # Must stay empty so the bundle uses relative URLs
-ENV REACT_APP_API_URL=""
+ENV VITE_API_URL=""
 
 RUN if [ -f yarn.lock ]; then yarn build; else npm run build; fi
 

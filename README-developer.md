@@ -13,13 +13,13 @@
 **Frontend**
 - All network calls go through [frontend/src/api/client.ts](frontend/src/api/client.ts) which enforces auth headers, request timeouts, and auto-logout on 401; reuse it for new endpoints.
 - Resource-specific modules in [frontend/src/api](frontend/src/api) pair with hooks in [frontend/src/hooks](frontend/src/hooks); pages like [frontend/src/ContactsPage.tsx](frontend/src/ContactsPage.tsx) consume `{ data, loading, error, refetch }` contracts.
-- Auth helpers in [frontend/src/auth.ts](frontend/src/auth.ts) persist JWTs in localStorage; frontend assumes `REACT_APP_API_URL` when constructing base URLs.
+- Auth helpers in [frontend/src/auth.ts](frontend/src/auth.ts) persist JWTs in localStorage; frontend assumes `VITE_API_URL` when constructing base URLs.
 - Styling blends global CSS (App.css/index.css) with MUI theming; photo uploads land in backend static storage under `static/photos`.
 
 **Workflows**
 - Source backend/my_environment.env to `.env` before running the server
 - Start the backend with `go run main.go` (or `make dev`) from backend/ after `go mod tidy`; migrations are embedded in the binary and auto-run on boot. Use `make migrate-up` or cmd/migrate for manual control during development.
-- Frontend uses Yarn: `yarn install` then `yarn start` from frontend/; CRA proxies should point at the backend URL defined in `.env`.
+- Frontend uses Yarn: `yarn install` then `yarn start` from frontend/; the Vite dev server proxies nothing, so point `VITE_API_URL` at the backend in `.env`.
 - Logs use zerolog via [backend/logger/logger.go](backend/logger/logger.go); set LOG_LEVEL and LOG_PRETTY for debugging, and rely on request IDs threaded through middleware.
 - Rate limiting is IP-based via [backend/middleware/rate_limiter.go](backend/middleware/rate_limiter.go); respect separate auth/general buckets when adding endpoints.
 
@@ -29,7 +29,7 @@
 - Deploy using the pre-built image from GHCR: `docker compose up -d`. Set `IMAGE_TAG` in `.env` to pin a specific version (default: `latest`).
 - Build and run locally instead: uncomment the `build: .` line in [docker-compose.yml](docker-compose.yml), then `docker compose up -d --build` (or plain `docker build -t mycorrhizal-crm .`).
 - Container defaults (`PORT`, `SQLITE_DB_PATH`, `PROFILE_PHOTO_DIR`) are set in the root [Dockerfile](Dockerfile); override via `.env` if needed. `PORT` is the backend's internal bind port (8081) — nginx listens on 8080, which is what's actually exposed from the container.
-- The frontend bundle is built with an empty `REACT_APP_API_URL` so it calls the API on relative paths; nginx (see [docker/nginx.conf](docker/nginx.conf)) proxies `/api`, `/health`, and `/carddav` to the backend on `127.0.0.1:8081`.
+- The frontend bundle is built with an empty `VITE_API_URL` so it calls the API on relative paths; nginx (see [docker/nginx.conf](docker/nginx.conf)) proxies `/api`, `/health`, and `/carddav` to the backend on `127.0.0.1:8081`.
 
 **Testing**
 - Backend Go tests (`go test ./...` or `make test`) spin up in-memory SQLite in helpers like [backend/controllers/activity_controller_test.go](backend/controllers/activity_controller_test.go); mirror that pattern for new suites.

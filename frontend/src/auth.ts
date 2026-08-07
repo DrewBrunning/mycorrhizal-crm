@@ -3,7 +3,10 @@
 // Token is stored in httpOnly cookie (not accessible from JS for security)
 // User info is cached in localStorage for UI purposes
 
-const API_SERVER_URL = process.env.REACT_APP_API_URL || '';
+// `?.` (not just `||`) because this module is also loaded directly by Node in
+// the Playwright harness (e2e imports contacts.ts → client.ts → auth.ts),
+// where import.meta.env is undefined -- Vite always injects it, Node never does.
+const API_SERVER_URL = import.meta.env?.VITE_API_URL || '';
 export const API_BASE_URL = `${API_SERVER_URL}/api/v1`;
 
 const USER_INFO_KEY = 'user_info';
