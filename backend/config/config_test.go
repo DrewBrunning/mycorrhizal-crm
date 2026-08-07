@@ -14,6 +14,7 @@ func validConfig() *Config {
 		ReminderTime:     "12:00",
 		ReminderTimezone: "UTC",
 		FrontendURL:      "https://crm.example.com",
+		CookieSecure:     true,
 		Port:             "8080",
 		JWTSecretKey:     "a-very-long-jwt-secret-key-that-is-32-chars",
 		JWTExpiryHours:   96,
@@ -86,6 +87,50 @@ func TestValidate_EmptyFrontendURLStillRejected(t *testing.T) {
 	errs := cfg.Validate()
 
 	assert.True(t, hasFieldError(errs, "FRONTEND_URL"), "empty FRONTEND_URL should still be rejected regardless of GIN_MODE, got: %v", errs)
+}
+
+func TestValidate_CookieSecureRequiredForHTTPSFrontend(t *testing.T) {
+	cfg := validConfig()
+	cfg.FrontendURL = "https://crm.example.com"
+	cfg.CookieSecure = false
+
+	errs := cfg.Validate()
+
+	assert.True(t, hasFieldError(errs, "COOKIE_SECURE"), "expected a COOKIE_SECURE validation error for an https:// frontend with CookieSecure=false, got: %v", errs)
+}
+
+func TestValidate_CookieSecureNotRequiredForHTTPFrontend(t *testing.T) {
+	cfg := validConfig()
+	cfg.FrontendURL = "http://localhost:7300"
+	cfg.CookieSecure = false
+
+	errs := cfg.Validate()
+
+	assert.False(t, hasFieldError(errs, "COOKIE_SECURE"), "an http:// frontend should not require CookieSecure — that's the default docker-compose/local-dev case, got: %v", errs)
+}
+
+func TestValidate_CookieSecureRequiredForHTTPSFrontend_CaseAndWhitespaceInsensitive(t *testing.T) {
+	// gin-contrib/cors trims and lowercases FRONTEND_URL before comparing it
+	// against the request Origin, so an oddly-cased or padded value still
+	// serves as a real https origin in practice — the guard must catch it
+	// too, not just the canonical lowercase form.
+	cfg := validConfig()
+	cfg.FrontendURL = " HTTPS://crm.example.com "
+	cfg.CookieSecure = false
+
+	errs := cfg.Validate()
+
+	assert.True(t, hasFieldError(errs, "COOKIE_SECURE"), "expected a COOKIE_SECURE validation error for an oddly-cased/padded https:// frontend with CookieSecure=false, got: %v", errs)
+}
+
+func TestValidate_CookieSecureTrueAlwaysAllowed(t *testing.T) {
+	cfg := validConfig()
+	cfg.FrontendURL = "http://localhost:7300"
+	cfg.CookieSecure = true
+
+	errs := cfg.Validate()
+
+	assert.False(t, hasFieldError(errs, "COOKIE_SECURE"), "CookieSecure=true should never itself be a validation error, got: %v", errs)
 }
 
 func TestGetScopesEnv(t *testing.T) {

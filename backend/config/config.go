@@ -319,6 +319,22 @@ func (c *Config) Validate() []ValidationError {
 		})
 	}
 
+	// COOKIE_SECURE defaults to false so plain-HTTP self-hosting (LAN,
+	// localhost, a reverse proxy that hasn't added TLS yet) keeps working
+	// with zero config — unlike the FRONTEND_URL check above, this can't
+	// key off GIN_MODE=release, since that's also true for the default
+	// docker-compose HTTP setup and would refuse to boot the common case.
+	// What's unambiguously a mistake, in dev or prod, is telling the app
+	// the frontend is served over HTTPS while leaving the auth/OIDC/
+	// id_token cookies without the Secure flag: there's no legitimate
+	// reason to want that combination, only a forgotten setting.
+	if strings.HasPrefix(strings.ToLower(strings.TrimSpace(c.FrontendURL)), "https://") && !c.CookieSecure {
+		errors = append(errors, ValidationError{
+			Field:   "COOKIE_SECURE",
+			Message: "COOKIE_SECURE must be true when FRONTEND_URL is https://. Set COOKIE_SECURE=true (see .env.example) — serving over HTTPS with a non-Secure auth cookie has no legitimate use, only a missed setting.",
+		})
+	}
+
 	// Validate JWT Expiry Hours
 	if c.JWTExpiryHours < 1 || c.JWTExpiryHours > 8760 {
 		errors = append(errors, ValidationError{
