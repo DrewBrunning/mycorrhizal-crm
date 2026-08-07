@@ -1360,6 +1360,8 @@
   "gifts": {
     "title": "Cadeaux",
     "placeholder": "Noter une idée de cadeau…",
+    "givenPlaceholder": "Noter un cadeau offert…",
+    "receivedPlaceholder": "Noter un cadeau reçu…",
     "add": "Ajouter",
     "addFull": "Ajouter avec détails",
     "markGiven": "Marquer comme offert",

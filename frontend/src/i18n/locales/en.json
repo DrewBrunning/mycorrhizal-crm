@@ -1360,6 +1360,8 @@
   "gifts": {
     "title": "Gifts",
     "placeholder": "Record a gift idea…",
+    "givenPlaceholder": "Record something given…",
+    "receivedPlaceholder": "Record something received…",
     "add": "Add",
     "addFull": "Add with details",
     "markGiven": "Mark as given",

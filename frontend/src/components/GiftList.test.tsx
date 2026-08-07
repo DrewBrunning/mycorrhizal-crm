@@ -1,5 +1,5 @@
 import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, within, cleanup } from '@testing-library/react';
 import '../i18n/config';
 import GiftList from './GiftList';
 import { Gift } from '../api/gifts';
@@ -9,6 +9,14 @@ import { DateFormatProvider } from '../DateFormatProvider';
 // `globals: true`, setupTests.ts doesn't register it) -- without this, each
 // test's render accumulates in the DOM and later tests see duplicate elements.
 afterEach(cleanup);
+
+// Every status section (Ideas / Given / Received) is an accessible region (T46)
+// named by its header, so tests can target one section's entry points instead
+// of matching the three identical quick-add inputs and "Add with details"
+// buttons by accident.
+function section(name: string) {
+  return within(screen.getByRole('region', { name }));
+}
 
 function item(overrides: Partial<Gift> = {}): Gift {
   return {
@@ -44,15 +52,69 @@ test('shows the empty state when there are no gifts', () => {
   expect(screen.getByText(/No gift ideas or records yet/i)).toBeInTheDocument();
 });
 
-test('capturing is inline: type + click calls onAdd and clears the input', async () => {
+test('all three sections render their header and add row even when empty', () => {
+  // T46: every section always shows its own entry point, so a status has a
+  // first quick path before any item of that status exists. The sections are
+  // the non-empty content here — this is not a T30 "header over nothing".
+  renderList();
+  for (const name of ['Ideas', 'Given', 'Received']) {
+    const s = section(name);
+    expect(s.getByRole('textbox')).toBeInTheDocument();
+    expect(s.getByRole('button', { name: /Add with details/i })).toBeInTheDocument();
+  }
+});
+
+test('a section keeps its entry points once it already has items', () => {
+  // T46 "Done when": recording a second gift at a status must not lose the
+  // row it was recorded from.
+  renderList({
+    items: [
+      item({ status: 'given', description: 'The espresso machine' }),
+      item({ id: 'gift-2', status: 'received', description: 'The scarf they gave me' }),
+    ],
+  });
+
+  for (const name of ['Given', 'Received']) {
+    const s = section(name);
+    expect(s.getByRole('textbox')).toBeInTheDocument();
+    expect(s.getByRole('button', { name: /Add with details/i })).toBeInTheDocument();
+  }
+});
+
+test('capturing an idea is inline: type + click calls onAdd with the idea status and clears the input', async () => {
   const onAdd = vi.fn().mockResolvedValue(undefined);
   renderList({ onAdd });
 
-  const input = screen.getByLabelText('Record a gift idea…');
+  const input = section('Ideas').getByLabelText('Record a gift idea…');
   fireEvent.change(input, { target: { value: 'A nice book about ceramics' } });
-  fireEvent.click(screen.getByLabelText('Add'));
+  fireEvent.click(section('Ideas').getByLabelText('Add'));
 
-  await vi.waitFor(() => expect(onAdd).toHaveBeenCalledWith('A nice book about ceramics'));
+  await vi.waitFor(() => expect(onAdd).toHaveBeenCalledWith('A nice book about ceramics', 'idea'));
+  await vi.waitFor(() => expect(input).toHaveValue(''));
+});
+
+test('the Given quick-add records straight as given, never as an idea', async () => {
+  const onAdd = vi.fn().mockResolvedValue(undefined);
+  renderList({ onAdd });
+
+  const given = section('Given');
+  const input = given.getByLabelText('Record something given…');
+  fireEvent.change(input, { target: { value: 'The espresso machine' } });
+  fireEvent.keyDown(input, { key: 'Enter' });
+
+  await vi.waitFor(() => expect(onAdd).toHaveBeenCalledWith('The espresso machine', 'given'));
+  await vi.waitFor(() => expect(input).toHaveValue(''));
+});
+
+test('the Received quick-add records straight as received', async () => {
+  const onAdd = vi.fn().mockResolvedValue(undefined);
+  renderList({ onAdd });
+
+  const input = section('Received').getByLabelText('Record something received…');
+  fireEvent.change(input, { target: { value: 'The scarf they gave me' } });
+  fireEvent.keyDown(input, { key: 'Enter' });
+
+  await vi.waitFor(() => expect(onAdd).toHaveBeenCalledWith('The scarf they gave me', 'received'));
   await vi.waitFor(() => expect(input).toHaveValue(''));
 });
 
@@ -189,17 +251,21 @@ test('a gift with neither URL nor notes renders neither', () => {
   expect(screen.getByText('She liked the ceramics shop')).toBeInTheDocument();
 });
 
-test('the full-form entry point calls onAddFull without touching the quick-add input', () => {
+test('each section\'s full-form button pre-seeds its own status, leaving the quick-add alone', () => {
   const onAddFull = vi.fn();
   const onAdd = vi.fn().mockResolvedValue(undefined);
   renderList({ onAddFull, onAdd });
 
-  fireEvent.click(screen.getByRole('button', { name: /Add with details/i }));
+  fireEvent.click(section('Ideas').getByRole('button', { name: /Add with details/i }));
+  fireEvent.click(section('Given').getByRole('button', { name: /Add with details/i }));
+  fireEvent.click(section('Received').getByRole('button', { name: /Add with details/i }));
 
-  expect(onAddFull).toHaveBeenCalledTimes(1);
+  expect(onAddFull).toHaveBeenNthCalledWith(1, 'idea');
+  expect(onAddFull).toHaveBeenNthCalledWith(2, 'given');
+  expect(onAddFull).toHaveBeenNthCalledWith(3, 'received');
   expect(onAdd).not.toHaveBeenCalled();
   // The low-friction idea capture stays exactly where it was (T20b's point).
-  expect(screen.getByLabelText('Record a gift idea…')).toBeInTheDocument();
+  expect(section('Ideas').getByLabelText('Record a gift idea…')).toBeInTheDocument();
 });
 
 test('a purchased item still shows the mark-given action', async () => {

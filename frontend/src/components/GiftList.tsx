@@ -17,7 +17,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import RedeemIcon from '@mui/icons-material/Redeem';
 import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
 import { useTranslation } from 'react-i18next';
-import { Gift } from '../api/gifts';
+import { Gift, GiftStatus } from '../api/gifts';
 import { LifeEvent } from '../api/lifeEvents';
 import { Activity } from '../api/activities';
 import { useDateFormat } from '../DateFormatProvider';
@@ -29,11 +29,13 @@ interface GiftListProps {
   // interaction (Activity) name instead of a bare ID.
   lifeEvents?: LifeEvent[];
   activities?: Activity[];
-  onAdd: (description: string) => Promise<void>;
-  // Opens the full GiftDialog for a brand-new gift (T35): the quick-add input
-  // above always creates an idea, so this is the only way to record something
-  // that was already given or received without editing it afterwards.
-  onAddFull: () => void;
+  // Quick-add for one section (T46): the description plus the section's
+  // status, so a gift recorded from the Given row is born given — never an
+  // idea that then needs editing.
+  onAdd: (description: string, status: GiftStatus) => Promise<void>;
+  // Opens the full GiftDialog pre-seeded with the section's status (T46), so
+  // recording something already given/received costs no dropdown detour.
+  onAddFull: (status: GiftStatus) => void;
   onEdit: (gift: Gift) => void;
   onMarkGiven: (gift: Gift) => Promise<void>;
   onDelete: (id: string) => void;
@@ -55,10 +57,132 @@ function formatValue(valueCents: number | undefined, currency: string | undefine
   }
 }
 
-// The contact page's gift surface (T20b): a single inline input at the top for
-// recording an idea opportunistically (no modal — the ticket's low-friction
-// requirement for mid-conversation capture), then open ideas, then the
-// resolved given/received records. "Mark given" is one click on any open item.
+interface GiftSectionProps {
+  // Visible section title (Ideas / Given / Received).
+  title: string;
+  // The quick-add input's placeholder + aria-label, per-section copy.
+  placeholder: string;
+  // The status this section records into: the quick path submits it and the
+  // "Add with details" button pre-seeds the dialog with it.
+  status: GiftStatus;
+  // A leading divider separates this section from the one above it; the first
+  // section skips it because the panel title (or the empty-state hint) already
+  // sits above it.
+  divider?: boolean;
+  items: Gift[];
+  renderItem: (gift: Gift) => React.ReactNode;
+  onAdd: (description: string, status: GiftStatus) => Promise<void>;
+  onAddFull: (status: GiftStatus) => void;
+}
+
+// One status column of the gift list (T46): every section — Ideas, Given,
+// Received — owns the same pair of entry points (inline quick-add + "Add with
+// details"), each pre-seeding that section's status. Sections always render
+// header + add row even when empty, so there is a first entry point into a
+// status before any item of that status exists. The Ideas quick-add keeps the
+// exact low-friction behavior T20b demanded (type + Enter, no modal).
+function GiftSection({
+  title,
+  placeholder,
+  status,
+  divider,
+  items,
+  renderItem,
+  onAdd,
+  onAddFull,
+}: GiftSectionProps) {
+  const { t } = useTranslation();
+  const [draft, setDraft] = useState('');
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState('');
+
+  const handleAdd = async () => {
+    const description = draft.trim();
+    if (!description) return;
+    setAdding(true);
+    setAddError('');
+    try {
+      await onAdd(description, status);
+      setDraft('');
+    } catch {
+      setAddError(t('gifts.validation.addFailed'));
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  return (
+    // An accessible region per status, so both tests and assistive tech can
+    // target "the Given row" precisely instead of matching a repeated button.
+    <Box component="section" aria-label={title} sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+      {divider && <Divider />}
+      <Typography variant="subtitle2" color="text.secondary">
+        {title}
+      </Typography>
+      <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        <TextField
+          sx={{ flex: '1 1 200px' }}
+          size="small"
+          value={draft}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            setAddError('');
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handleAdd();
+            }
+          }}
+          placeholder={placeholder}
+          disabled={adding}
+          slotProps={{
+            htmlInput: { 'aria-label': placeholder },
+          }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <RedeemIcon fontSize="small" color="action" />
+              </InputAdornment>
+            ),
+            endAdornment: (
+              <InputAdornment position="end">
+                <IconButton
+                  size="small"
+                  onClick={handleAdd}
+                  disabled={adding || !draft.trim()}
+                  aria-label={t('gifts.add')}
+                >
+                  <AddIcon />
+                </IconButton>
+              </InputAdornment>
+            ),
+          }}
+        />
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<AddIcon />}
+          onClick={() => onAddFull(status)}
+          sx={{ flexShrink: 0, height: 40, whiteSpace: 'nowrap' }}
+        >
+          {t('gifts.addFull')}
+        </Button>
+      </Box>
+      {addError && (
+        <Typography color="error" variant="body2">
+          {addError}
+        </Typography>
+      )}
+      {items.map(renderItem)}
+    </Box>
+  );
+}
+
+// The contact page's gift surface (T20b + T46): three always-visible status
+// columns — open ideas, then the resolved given/received records — each with
+// its own quick-add input and "Add with details" button. "Mark given" stays a
+// one click on any open item.
 export default function GiftList({
   items,
   lifeEvents = [],
@@ -71,9 +195,6 @@ export default function GiftList({
 }: GiftListProps) {
   const { t } = useTranslation();
   const { formatDate } = useDateFormat();
-  const [draft, setDraft] = useState('');
-  const [adding, setAdding] = useState(false);
-  const [addError, setAddError] = useState('');
 
   const ideas = items.filter((g) => g.status === 'idea' || g.status === 'purchased');
   const given = items.filter((g) => g.status === 'given');
@@ -81,21 +202,6 @@ export default function GiftList({
 
   const lifeEventNames = new Map(lifeEvents.map((e) => [e.id, e]));
   const activityNames = new Map(activities.map((a) => [a.ID, a]));
-
-  const handleAdd = async () => {
-    const description = draft.trim();
-    if (!description) return;
-    setAdding(true);
-    setAddError('');
-    try {
-      await onAdd(description);
-      setDraft('');
-    } catch {
-      setAddError(t('gifts.validation.addFailed'));
-    } finally {
-      setAdding(false);
-    }
-  };
 
   const handleDeleteClick = (id: string) => {
     if (window.confirm(t('gifts.deleteMessage'))) {
@@ -217,102 +323,43 @@ export default function GiftList({
 
   return (
     <Stack spacing={1.5}>
-      {/* Two entry points, deliberately (T35): the inline input stays the
-          low-friction idea capture T20b was built around, and "Add with
-          details" opens the full dialog for anything that already has a status —
-          something given or received that never was an idea first. The row
-          wraps rather than squeezing the input on a narrow screen. */}
-      <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-        <TextField
-          sx={{ flex: '1 1 200px' }}
-          size="small"
-          value={draft}
-          onChange={(e) => {
-            setDraft(e.target.value);
-            setAddError('');
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              handleAdd();
-            }
-          }}
-          placeholder={t('gifts.placeholder')}
-          disabled={adding}
-          slotProps={{
-            htmlInput: { 'aria-label': t('gifts.placeholder') },
-          }}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <RedeemIcon fontSize="small" color="action" />
-              </InputAdornment>
-            ),
-            endAdornment: (
-              <InputAdornment position="end">
-                <IconButton
-                  size="small"
-                  onClick={handleAdd}
-                  disabled={adding || !draft.trim()}
-                  aria-label={t('gifts.add')}
-                >
-                  <AddIcon />
-                </IconButton>
-              </InputAdornment>
-            ),
-          }}
-        />
-        <Button
-          variant="outlined"
-          size="small"
-          startIcon={<AddIcon />}
-          onClick={onAddFull}
-          sx={{ flexShrink: 0, height: 40, whiteSpace: 'nowrap' }}
-        >
-          {t('gifts.addFull')}
-        </Button>
-      </Box>
-      {addError && (
-        <Typography color="error" variant="body2">
-          {addError}
-        </Typography>
-      )}
-
       {items.length === 0 && (
+        // First-run hint, shown only while there are no gifts at all; once any
+        // gift exists each section's own add row replaces it (T46).
         <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
           {t('gifts.empty')}
         </Typography>
       )}
 
-      {ideas.length > 0 && (
-        <>
-          <Divider />
-          <Typography variant="subtitle2" color="text.secondary">
-            {t('gifts.ideasSection')}
-          </Typography>
-          {ideas.map(renderItem)}
-        </>
-      )}
-
-      {given.length > 0 && (
-        <>
-          <Divider />
-          <Typography variant="subtitle2" color="text.secondary">
-            {t('gifts.givenSection')}
-          </Typography>
-          {given.map(renderItem)}
-        </>
-      )}
-
-      {received.length > 0 && (
-        <>
-          <Divider />
-          <Typography variant="subtitle2" color="text.secondary">
-            {t('gifts.receivedSection')}
-          </Typography>
-          {received.map(renderItem)}
-        </>
-      )}
+      <GiftSection
+        title={t('gifts.ideasSection')}
+        placeholder={t('gifts.placeholder')}
+        status="idea"
+        items={ideas}
+        renderItem={renderItem}
+        onAdd={onAdd}
+        onAddFull={onAddFull}
+      />
+      <GiftSection
+        title={t('gifts.givenSection')}
+        placeholder={t('gifts.givenPlaceholder')}
+        status="given"
+        divider
+        items={given}
+        renderItem={renderItem}
+        onAdd={onAdd}
+        onAddFull={onAddFull}
+      />
+      <GiftSection
+        title={t('gifts.receivedSection')}
+        placeholder={t('gifts.receivedPlaceholder')}
+        status="received"
+        divider
+        items={received}
+        renderItem={renderItem}
+        onAdd={onAdd}
+        onAddFull={onAddFull}
+      />
     </Stack>
   );
 }

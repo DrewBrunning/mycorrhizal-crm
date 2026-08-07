@@ -39,6 +39,11 @@ interface GiftDialogProps {
   onClose: () => void;
   onSave: (data: GiftFormData) => Promise<void>;
   gift?: Gift | null;
+  // The status a brand-new gift starts at (T46): each section of the gift
+  // list pre-seeds this so recording something already given/received needs no
+  // dropdown detour. Only used when `gift` is null — editing always keeps the
+  // existing gift's own status.
+  initialStatus?: GiftStatus;
   // The contact's life events / activities, offered as optional "relates to"
   // links. Empty lists just hide the selectors.
   lifeEvents: LifeEvent[];
@@ -65,6 +70,7 @@ export default function GiftDialog({
   onClose,
   onSave,
   gift,
+  initialStatus = 'idea',
   lifeEvents,
   activities,
 }: GiftDialogProps) {
@@ -85,7 +91,7 @@ export default function GiftDialog({
 
   useEffect(() => {
     if (open) {
-      setStatus(gift?.status || 'idea');
+      setStatus(gift ? gift.status : initialStatus);
       setDescription(gift?.description || '');
       setUrl(gift?.url || '');
       setNotes(gift?.notes || '');
@@ -97,7 +103,7 @@ export default function GiftDialog({
       setActivityId(gift?.activity_id != null ? gift.activity_id : '');
       setError('');
     }
-  }, [open, gift]);
+  }, [open, gift, initialStatus]);
 
   const handleSave = async () => {
     const trimmed = description.trim();
