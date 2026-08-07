@@ -1360,6 +1360,8 @@
   "gifts": {
     "title": "Geschenke",
     "placeholder": "Geschenkidee notieren…",
+    "givenPlaceholder": "Verschenktes notieren…",
+    "receivedPlaceholder": "Erhaltenes notieren…",
     "add": "Hinzufügen",
     "addFull": "Mit Details hinzufügen",
     "markGiven": "Als verschenkt markieren",

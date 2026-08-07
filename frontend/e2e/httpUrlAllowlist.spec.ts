@@ -39,7 +39,9 @@ test.describe('Web-link http(s) allowlist', () => {
       await waitForLoading(page);
 
       const gifts = page.locator('#gifts');
-      await gifts.getByRole('button', { name: /Add with details/i }).click();
+      // T46: each status column has its own "Add with details" button, so the
+      // click has to target one section's region instead of a global match.
+      await gifts.getByRole('region', { name: 'Ideas' }).getByRole('button', { name: /Add with details/i }).click();
       const dialog = page.getByRole('dialog');
       await expect(dialog.getByRole('heading', { name: 'Add a gift' })).toBeVisible();
 
@@ -71,7 +73,7 @@ test.describe('Web-link http(s) allowlist', () => {
       await waitForLoading(page);
 
       const gifts = page.locator('#gifts');
-      await gifts.getByRole('button', { name: /Add with details/i }).click();
+      await gifts.getByRole('region', { name: 'Ideas' }).getByRole('button', { name: /Add with details/i }).click();
       const dialog = page.getByRole('dialog');
       await expect(dialog.getByRole('heading', { name: 'Add a gift' })).toBeVisible();
 

@@ -1360,6 +1360,8 @@
   "gifts": {
     "title": "Regali",
     "placeholder": "Registra un'idea regalo…",
+    "givenPlaceholder": "Registra qualcosa di regalato…",
+    "receivedPlaceholder": "Registra qualcosa di ricevuto…",
     "add": "Aggiungi",
     "addFull": "Aggiungi con dettagli",
     "markGiven": "Segna come regalato",

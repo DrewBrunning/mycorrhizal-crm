@@ -104,7 +104,7 @@ import { getOtherPartyId } from './api/relationshipEdges';
 import { LifeEvent } from './api/lifeEvents';
 import { PartialDate } from './api/lifeEvents';
 import { ConversationAgenda } from './api/conversationAgenda';
-import { Gift, GiftInput } from './api/gifts';
+import { Gift, GiftInput, GiftStatus } from './api/gifts';
 import { useSnackbar } from './context/SnackbarContext';
 import { ApiError } from './api/client';
 import { handleFetchError } from './utils/errorHandler';
@@ -532,10 +532,14 @@ export default function ContactDetailPage() {
 
   const [giftDialogOpen, setGiftDialogOpen] = useState(false);
   const [editingGift, setEditingGift] = useState<Gift | null>(null);
+  // What a brand-new gift starts as (T46): the section whose "Add with
+  // details" was clicked pre-seeds the dialog, so recording something already
+  // given/received costs no dropdown change. Irrelevant while editing.
+  const [giftDialogInitialStatus, setGiftDialogInitialStatus] = useState<GiftStatus>('idea');
 
-  const handleAddGiftItem = async (description: string) => {
+  const handleAddGiftItem = async (description: string, status: GiftStatus) => {
     if (!record?.uid) return;
-    await handleCreateGift({ entity_id: record.uid, description });
+    await handleCreateGift({ entity_id: record.uid, description, status });
   };
 
   const handleEditGift = (gift: Gift) => {
@@ -543,11 +547,13 @@ export default function ContactDetailPage() {
     setGiftDialogOpen(true);
   };
 
-  // The full-form entry point (T35): the same dialog as edit, with no gift
-  // behind it, so a gift can be recorded straight as given/received instead of
-  // being created as an idea and immediately edited.
-  const handleAddFullGift = () => {
+  // The full-form entry point (T35 + T46): the same dialog as edit, with no
+  // gift behind it, pre-seeded with the status of the section it was opened
+  // from — so a gift is recorded straight as given/received instead of being
+  // created as an idea and immediately edited.
+  const handleAddFullGift = (status: GiftStatus) => {
     setEditingGift(null);
+    setGiftDialogInitialStatus(status);
     setGiftDialogOpen(true);
   };
 
@@ -1651,6 +1657,7 @@ export default function ContactDetailPage() {
         }}
         onSave={handleSaveGift}
         gift={editingGift}
+        initialStatus={giftDialogInitialStatus}
         lifeEvents={lifeEvents}
         activities={activities}
       />

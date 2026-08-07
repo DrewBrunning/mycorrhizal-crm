@@ -234,6 +234,33 @@ test('the status selector lets a brand-new gift start as given', async () => {
   expect(onSave.mock.calls[0][0]).toMatchObject({ status: 'given', description: 'The scarf' });
 });
 
+// --- T46: per-section initial status ---
+
+test('a brand-new gift opens pre-seeded to the section status, no dropdown detour', async () => {
+  // The Given section's "Add with details" hands the dialog its own status;
+  // saving must submit `given` without the user touching the selector.
+  const onSave = vi.fn().mockResolvedValue(undefined);
+  renderDialog({ gift: null, initialStatus: 'given', onSave });
+
+  fireEvent.change(screen.getByLabelText('What the gift is *'), {
+    target: { value: 'The scarf' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  await vi.waitFor(() => expect(onSave).toHaveBeenCalled());
+  expect(onSave.mock.calls[0][0]).toMatchObject({ status: 'given', description: 'The scarf' });
+});
+
+test('editing ignores initialStatus and keeps the gift\'s own status', async () => {
+  const onSave = vi.fn().mockResolvedValue(undefined);
+  renderDialog({ gift: { ...gift, status: 'received' }, initialStatus: 'given', onSave });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  await vi.waitFor(() => expect(onSave).toHaveBeenCalled());
+  expect(onSave.mock.calls[0][0]).toMatchObject({ status: 'received' });
+});
+
 test('the life event and activity selectors offer the links', () => {
   renderDialog();
   fireEvent.mouseDown(screen.getByLabelText(/Relates to a life event/i));
