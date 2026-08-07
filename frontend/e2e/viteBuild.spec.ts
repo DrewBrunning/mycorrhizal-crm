@@ -40,9 +40,9 @@ test.describe('Vite production build output', () => {
     const sw = await response.text();
 
     // workbox-build replaces self.__WB_MANIFEST with an array of
-    // {url, revision} entries. The hashed entry chunk must be in it.
+    // {url, revision} entries. Any hashed asset from /assets/ must be in it.
     expect(sw).toContain('revision');
-    expect(sw).toMatch(/index-[A-Za-z0-9_-]+\.js/);
+    expect(sw).toMatch(/assets\/[A-Za-z0-9_-]+\.js/);
   });
 
   test('serves the PWA web manifest', async ({ page }) => {

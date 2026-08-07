@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 // T48: the frontend migrated off Create React App (react-scripts) to Vite.
@@ -9,18 +9,29 @@ import { join } from 'node:path';
 // shipping dead configuration. Vite only supports import.meta.env, so any
 // process.env reference in src/ is an anti-pattern regardless of history.
 
-// Vitest runs from the frontend root (yarn test), so process.cwd() is the
-// reliable anchor here; fileURLToPath(import.meta.url) gets rewritten by the
-// vitest transform and cannot be used for path math.
+// Vitest reliably runs from the frontend root (yarn test), but guard against
+// a stray invocation from a different cwd so the test fails with a clear
+// message rather than silently scanning the wrong tree.
 const FRONTEND_ROOT = process.cwd();
+if (!existsSync(join(FRONTEND_ROOT, 'package.json'))) {
+  throw new Error(
+    'craMigrationGuard.test.ts must run from the frontend root (cd frontend && yarn test).\n' +
+    `cwd is ${FRONTEND_ROOT}`
+  );
+}
 
 function collectSourceFiles(dir: string, acc: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {
     const full = join(dir, entry);
-    if (statSync(full).isDirectory()) {
-      collectSourceFiles(full, acc);
-    } else if (/\.(ts|tsx|js|jsx|css)$/.test(entry)) {
-      acc.push(full);
+    try {
+      const stat = statSync(full);
+      if (stat.isDirectory()) {
+        collectSourceFiles(full, acc);
+      } else if (/\.(ts|tsx|js|jsx|css)$/.test(entry)) {
+        acc.push(full);
+      }
+    } catch {
+      // unreadable / broken symlink — skip
     }
   }
   return acc;

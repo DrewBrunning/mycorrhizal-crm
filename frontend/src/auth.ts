@@ -5,7 +5,10 @@
 
 // `?.` (not just `||`) because this module is also loaded directly by Node in
 // the Playwright harness (e2e imports contacts.ts → client.ts → auth.ts),
-// where import.meta.env is undefined -- Vite always injects it, Node never does.
+// where import.meta.env is undefined -- Vite always injects it, Node never
+// does. The optional chain also prevents Vite from statically inlining the
+// env value at build time (the property lookup survives as runtime code),
+// which is a deliberate trade-off for cross-runtime compatibility.
 const API_SERVER_URL = import.meta.env?.VITE_API_URL || '';
 export const API_BASE_URL = `${API_SERVER_URL}/api/v1`;
 
