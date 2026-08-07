@@ -87,8 +87,8 @@ WORKDIR /app
 RUN addgroup -g 1001 -S appgroup && adduser -u 1001 -S appuser -G appgroup
 
 # Runtime directories
-RUN mkdir -p /app/data /app/static/photos /var/log/supervisor /run/nginx && \
-    chown -R appuser:appgroup /app/data /app/static/photos
+RUN mkdir -p /app/data /app/static/photos /app/static/attachments /var/log/supervisor /run/nginx && \
+    chown -R appuser:appgroup /app/data /app/static/photos /app/static/attachments
 
 # Copy Go binary and static assets from the backend builder
 COPY --from=backend-builder /app/mycorrhizal /app/mycorrhizal
@@ -109,6 +109,7 @@ RUN chmod +x /app/entrypoint.sh
 ENV PORT=8081
 ENV SQLITE_DB_PATH=/app/data/mycorrhizal.db
 ENV PROFILE_PHOTO_DIR=/app/static/photos
+ENV ATTACHMENTS_DIR=/app/static/attachments
 ENV GIN_MODE=release
 
 # nginx listens on 8080 (no root needed to bind)

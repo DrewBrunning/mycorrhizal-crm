@@ -1377,6 +1377,16 @@
       "invalidUrl": "Link muss eine http://- oder https://-URL sein."
     }
   },
+  "attachments": {
+    "title": "Anhänge",
+    "description": "Dokumente, Scans und Dateien, die diesem Kontakt angehängt sind.",
+    "upload": "Hochladen",
+    "empty": "Noch keine Anhänge.",
+    "download": "Herunterladen",
+    "delete": "Löschen",
+    "deleteConfirm": "Diesen Anhang löschen?",
+    "tooLarge": "Datei zu groß. Maximale Größe 25MB."
+  },
   "gifts": {
     "title": "Geschenke",
     "placeholder": "Geschenkidee notieren…",

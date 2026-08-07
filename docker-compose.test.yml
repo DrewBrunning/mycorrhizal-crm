@@ -20,6 +20,7 @@ services:
       - SQLITE_DB_PATH=/app/data/test.db
       - JWT_SECRET_KEY=test-secret-key-for-e2e-testing-minimum-32-chars
       - PROFILE_PHOTO_DIR=/app/static/photos
+      - ATTACHMENTS_DIR=/app/static/attachments
       - FRONTEND_URL=http://localhost:7300
       - DISABLE_REGISTRATION=false
       # CalDAV serving (T12b) enabled so the e2e suite can exercise it.
@@ -35,6 +36,7 @@ services:
     volumes:
       - test-data:/app/data
       - test-photos:/app/static/photos
+      - test-attachments:/app/static/attachments
     ports:
       # Frontend and same-origin /api are both served by nginx on 8080
       - "7300:8080"
@@ -48,3 +50,4 @@ services:
 volumes:
   test-data:
   test-photos:
+  test-attachments:

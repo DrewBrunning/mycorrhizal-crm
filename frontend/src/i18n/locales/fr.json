@@ -1377,6 +1377,16 @@
       "invalidUrl": "Le lien doit être une URL http:// ou https://."
     }
   },
+  "attachments": {
+    "title": "Pièces jointes",
+    "description": "Documents, scans et fichiers joints à ce contact.",
+    "upload": "Téléverser",
+    "empty": "Aucune pièce jointe pour l'instant.",
+    "download": "Télécharger",
+    "delete": "Supprimer",
+    "deleteConfirm": "Supprimer cette pièce jointe ?",
+    "tooLarge": "Fichier trop volumineux. Taille maximale 25 Mo."
+  },
   "gifts": {
     "title": "Cadeaux",
     "placeholder": "Noter une idée de cadeau…",

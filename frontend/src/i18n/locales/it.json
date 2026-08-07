@@ -1377,6 +1377,16 @@
       "invalidUrl": "Il link deve essere un URL http:// o https://."
     }
   },
+  "attachments": {
+    "title": "Allegati",
+    "description": "Documenti, scansioni e file allegati a questo contatto.",
+    "upload": "Carica",
+    "empty": "Ancora nessun allegato.",
+    "download": "Scarica",
+    "delete": "Elimina",
+    "deleteConfirm": "Eliminare questo allegato?",
+    "tooLarge": "File troppo grande. Dimensione massima 25MB."
+  },
   "gifts": {
     "title": "Regali",
     "placeholder": "Registra un'idea regalo…",

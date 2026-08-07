@@ -1377,6 +1377,16 @@
       "invalidUrl": "Link must be an http:// or https:// URL."
     }
   },
+  "attachments": {
+    "title": "Attachments",
+    "description": "Documents, scans, and files attached to this contact.",
+    "upload": "Upload",
+    "empty": "No attachments yet.",
+    "download": "Download",
+    "delete": "Delete",
+    "deleteConfirm": "Delete this attachment?",
+    "tooLarge": "File is too large. Maximum size is 25MB."
+  },
   "gifts": {
     "title": "Gifts",
     "placeholder": "Record a gift idea…",
