@@ -68,7 +68,7 @@ export default function EditableField({
         onClick={!isEditing && value ? toggleReveal : undefined}
         role={!isEditing && value ? 'button' : undefined}
         tabIndex={!isEditing && value ? 0 : undefined}
-        onKeyDown={!isEditing && value ? (e) => { if (e.key === 'Enter' || e.key === ' ') toggleReveal(); } : undefined}
+        onKeyDown={!isEditing && value ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleReveal(); } } : undefined}
       >
         {icon}
         <Box sx={{ flex: 1 }}>

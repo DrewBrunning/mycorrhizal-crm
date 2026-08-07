@@ -197,7 +197,7 @@ export default function ContactInformation({
     r.features?.includes(token) || r.contexts?.includes(token) || r.type === token || false;
 
   const renderPhoneList = (rows: ContactValue[] | undefined) => {
-    if (!rows || rows.length === 0) return <Typography variant="body2" color="text.disabled">â€"</Typography>;
+    if (!rows || rows.length === 0) return <Typography variant="body2" color="text.disabled">—</Typography>;
     return (
       <Stack spacing={0.25}>
         {rows.map((r, i) => {
