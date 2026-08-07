@@ -56,3 +56,12 @@ not set `animal` — the owner is presumably human.
 - Hand-verified: from a contact's page, add a relationship of type "pet" (or whatever the
   frontend renders `owned_by`'s synonym as) entering a new name manually, confirm the created
   contact shows as an animal (T27's UI) without manual correction.
+
+## Landing note (2026-08-07)
+
+Landed. `resolveRelationshipEndpoint` now defaults the pet side of an `owned_by`/`owns` pair
+to `CRM.Kind = "animal"` through `ApplyRecordToContact` (never a direct field mutation —
+`BeforeSave` would re-derive and discard it). The full pet/owner matrix (owned_by source,
+owns target, and both owner-side negatives) plus a non-pet control is pinned by
+`TestThinContactPetKind_RealMigratedSchema` against the real migrated schema, and an e2e
+spec creates a pet from a contact's page and confirms the animal badge renders.

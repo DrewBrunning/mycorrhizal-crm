@@ -595,10 +595,23 @@ func DismissAddressHouseholdSuggestion(db *gorm.DB, userID uint, memberVCardUIDs
 	uids := make([]string, len(memberVCardUIDs))
 	copy(uids, memberVCardUIDs)
 	sort.Strings(uids)
+	deduped := uids[:0]
+	for i, uid := range uids {
+		if i == 0 || uid != uids[i-1] {
+			deduped = append(deduped, uid)
+		}
+	}
+	uids = deduped
+	if len(uids) < 2 {
+		return apperrors.ErrInvalidInput("member_vcard_uids", "at least two distinct contacts are required")
+	}
 
 	var contacts []models.Contact
 	if err := db.Where("user_id = ? AND vcard_uid IN ?", userID, uids).Find(&contacts).Error; err != nil {
 		return fmt.Errorf("loading dismissed suggestion members: %w", err)
+	}
+	if len(contacts) != len(uids) {
+		return apperrors.ErrNotFound("Contact")
 	}
 
 	// Recover the shared address key from the members' actual addresses.

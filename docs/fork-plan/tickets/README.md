@@ -27,12 +27,10 @@ the rank.
 | 1 | [N6](26-N6-backup-restore.md) · Full backup restore | 3 | S | — | Ready |
 | 2 | [N7](29-N7-attachments.md) · File / document attachments | 3 | M | — | Ready (coordinate with N6 — not a hard dependency, see its ticket) |
 | 3 | [N8](25-N8-2fa.md) · 2FA / TOTP | 3 | M | — | Ready |
-| 4 | [T40](49-T40-household-suggestions-shared-address.md) · Suggest households from shared address | 3 | M | T1 ✅ | Ready |
-| 5 | [T56](65-T56-bulk-contacts-import-flow.md) · Bulk contacts import (Google Takeout / contacts-app export) in Data Settings | 3 | M | T49 ✅, T50 ✅ | Ready |
-| 6 | [T37](46-T37-pet-relationship-kind-default.md) · Pet relationship should default to animal kind | 2 | S | §3d ✅, T27 ✅ | Ready |
-| 7 | [T12b](35-T12b-caldav-serve.md) · Serve Interactions/LifeEvents as CalDAV | 2 | L | T12a ✅, T5 ✅ | Ready |
-| 8 | [T18](34-T18-audit-trail.md) · Event history / audit trail | 2 | L | T17 ✅ | Ready |
-| 9 | [T13](36-T13-two-way-calendar.md) · Two-way calendar sync ⚠ | 2 | M–L | **T12b** (rank 7, not done) | **Blocked** — do not start before T12b lands |
+| 4 | [T56](65-T56-bulk-contacts-import-flow.md) · Bulk contacts import (Google Takeout / contacts-app export) in Data Settings | 3 | M | T49 ✅, T50 ✅ | Ready |
+| 5 | [T12b](35-T12b-caldav-serve.md) · Serve Interactions/LifeEvents as CalDAV | 2 | L | T12a ✅, T5 ✅ | Ready |
+| 6 | [T18](34-T18-audit-trail.md) · Event history / audit trail | 2 | L | T17 ✅ | Ready |
+| 7 | [T13](36-T13-two-way-calendar.md) · Two-way calendar sync ⚠ | 2 | M–L | **T12b** (rank 5, not done) | **Blocked** — do not start before T12b lands |
 
 ### Deferred — not ranked, no plan to schedule
 
@@ -139,6 +137,8 @@ Kept for reference/lookup, not ranked — order below is roughly the sequence th
 | [T55](64-T55-copy-button-hover-visibility.md) · Copy button should be hidden until hover/tap, matching edit | **DONE** |
 | [T58](77-T58-preferred-phone-email-ui.md) · No UI to see or set "preferred" on phone/email (and URL/IMPP) | **DONE** |
 | [T48](57-T48-migrate-frontend-off-cra-to-vite.md) · Migrate frontend off Create React App to Vite | **DONE** |
+| [T37](46-T37-pet-relationship-kind-default.md) · Pet relationship should default to animal kind | **DONE** |
+| [T40](49-T40-household-suggestions-shared-address.md) · Suggest households from shared address | **DONE** |
 
 ### ⚠ A grooming lesson worth keeping visible
 

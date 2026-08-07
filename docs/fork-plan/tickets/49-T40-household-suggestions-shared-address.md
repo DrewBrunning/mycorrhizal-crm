@@ -82,3 +82,16 @@ if this proves annoying, a "clear rejected suggestions" button can be a follow-u
 - `npx tsc --noEmit` clean, `npx vitest run` green.
 - Hand-verified: two contacts with the same address, not in any household, produce a visible
   suggestion on the Households page; accepting it creates a real `Household` with both as members.
+
+## Landing note (2026-08-07)
+
+Landed. New `dismissed_household_suggestions` table (migration 000014, hard-delete per the
+locked decision), three endpoints (`POST /households/suggest-addresses`,
+`/suggestions/accept`, `/suggestions/dismiss`), and a review surface on the Households page.
+Detection normalizes street/city/region/postal/country (lowercase, punctuation-stripped,
+whitespace-collapsed), excludes already-co-member and dismissed groups, and is strictly
+read-only. Accept re-validates the group server-side from the members' real data (never
+trusting client-supplied hashes/addresses); dismiss recomputes the hash pair and returns a
+checked 409 on duplicates. Covered by a real-migrated-schema controller test (detection,
+normalization, dismissal persistence, cross-user isolation, duplicate guard, accept
+round-trip), a migration up/down test, a component test, and an e2e spec.

@@ -132,24 +132,33 @@ export default function HouseholdsPage() {
   };
 
   const handleAcceptSuggestion = async (suggestion: AddressHouseholdSuggestion) => {
-    await acceptAddressHouseholdSuggestion(suggestion.member_vcard_uids);
-    setAddressSuggestions((prev) =>
-      prev.filter(
-        (s) => !(s.address_hash === suggestion.address_hash && s.member_hash === suggestion.member_hash)
-      )
-    );
-    await refresh();
-    showSuccess(t('household.suggestionAccepted'));
+    try {
+      await acceptAddressHouseholdSuggestion(suggestion.member_vcard_uids);
+      setAddressSuggestions((prev) =>
+        prev.filter(
+          (s) => !(s.address_hash === suggestion.address_hash && s.member_hash === suggestion.member_hash)
+        )
+      );
+      await refresh();
+      showSuccess(t('household.suggestionAccepted'));
+    } catch (err) {
+      handleFetchError(err, 'accepting household suggestion');
+      await handleScanAddressSuggestions();
+    }
   };
 
   const handleDismissSuggestion = async (suggestion: AddressHouseholdSuggestion) => {
-    await dismissAddressHouseholdSuggestion(suggestion.member_vcard_uids);
-    setAddressSuggestions((prev) =>
-      prev.filter(
-        (s) => !(s.address_hash === suggestion.address_hash && s.member_hash === suggestion.member_hash)
-      )
-    );
-    showInfo(t('household.suggestionDismissed'));
+    try {
+      await dismissAddressHouseholdSuggestion(suggestion.member_vcard_uids);
+      setAddressSuggestions((prev) =>
+        prev.filter(
+          (s) => !(s.address_hash === suggestion.address_hash && s.member_hash === suggestion.member_hash)
+        )
+      );
+      showInfo(t('household.suggestionDismissed'));
+    } catch (err) {
+      handleFetchError(err, 'dismissing household suggestion');
+    }
   };
 
   return (

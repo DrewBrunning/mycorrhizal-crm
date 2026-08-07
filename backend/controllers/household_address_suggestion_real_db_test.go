@@ -113,6 +113,13 @@ func TestAddressHouseholdSuggestions_RealMigratedSchema(t *testing.T) {
 	})
 	assert.Equal(t, http.StatusConflict, dismiss2.Code, "duplicate dismissal must be rejected by the unique index")
 
+	// A dismissal referencing a contact that isn't the user's must 404, not
+	// silently record a partial group.
+	dismissPhantom := doJSON("POST", "/households/suggestions/dismiss", models.DismissHouseholdSuggestionInput{
+		MemberVCardUIDs: []string{alice.VCardUID, "00000000-0000-4000-8000-000000000000"},
+	})
+	assert.Equal(t, http.StatusNotFound, dismissPhantom.Code, "a dismissal referencing an unknown contact must 404")
+
 	// Accepting a dismissed group must also be rejected (409), not silently
 	// create the household.
 	acceptDismissed := doJSON("POST", "/households/suggestions/accept", models.AcceptHouseholdSuggestionInput{
