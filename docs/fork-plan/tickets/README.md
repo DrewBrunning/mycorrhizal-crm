@@ -24,14 +24,21 @@ the rank.
 
 | Rank | Ticket | R | Size | Depends on | Ready? |
 |---|---|---|---|---|---|
-| 1 | [N6](26-N6-backup-restore.md) · Full backup restore | 3 | S | — | Ready |
-| 2 | [N7](29-N7-attachments.md) · File / document attachments | 3 | M | — | Ready (coordinate with N6 — not a hard dependency, see its ticket) |
-| 3 | [N8](25-N8-2fa.md) · 2FA / TOTP | 3 | M | — | Ready |
-| 4 | [T40](49-T40-household-suggestions-shared-address.md) · Suggest households from shared address | 3 | M | T1 ✅ | Ready |
-| 5 | [T37](46-T37-pet-relationship-kind-default.md) · Pet relationship should default to animal kind | 2 | S | §3d ✅, T27 ✅ | Ready |
-| 6 | [T12b](35-T12b-caldav-serve.md) · Serve Interactions/LifeEvents as CalDAV | 2 | L | T12a ✅, T5 ✅ | Ready |
-| 7 | [T18](34-T18-audit-trail.md) · Event history / audit trail | 2 | L | T17 ✅ | Ready |
-| 8 | [T13](36-T13-two-way-calendar.md) · Two-way calendar sync ⚠ | 2 | M–L | **T12b** (rank 6, not done) | **Blocked** — do not start before T12b lands |
+| 1 | [T42](51-T42-immich-link-person-error-misclassification.md) · Immich "link a person" fails with "Could not reach Immich" | 4 | S | T15/T16 ✅ | Ready |
+| 2 | [N6](26-N6-backup-restore.md) · Full backup restore | 3 | S | — | Ready |
+| 3 | [T45](54-T45-contact-jump-nav-mobile-dropdown.md) · Contact jump nav should collapse to a dropdown on narrow viewports | 3 | S | T31 ✅ | Ready |
+| 4 | [N7](29-N7-attachments.md) · File / document attachments | 3 | M | — | Ready (coordinate with N6 — not a hard dependency, see its ticket) |
+| 5 | [N8](25-N8-2fa.md) · 2FA / TOTP | 3 | M | — | Ready |
+| 6 | [T40](49-T40-household-suggestions-shared-address.md) · Suggest households from shared address | 3 | M | T1 ✅ | Ready |
+| 7 | [T44](53-T44-link-field-type-registry-not-in-editors.md) · Link field type registry doesn't reach the editors | 3 | M | T34 ✅ | Ready |
+| 8 | [T46](55-T46-gift-add-entry-points-per-status.md) · Gift "add" entry points default to Idea everywhere | 3 | S–M | T35 ✅ | Ready |
+| 9 | [T47](56-T47-field-action-icons-layout-and-tel-link.md) · Field action icons should sit near the edit button; phone should also be a tel: link | 3 | M | T34 ✅ | Ready |
+| 10 | [T48](57-T48-migrate-frontend-off-cra-to-vite.md) · Migrate frontend off Create React App to Vite | 3 | XL | — | Ready |
+| 11 | [T37](46-T37-pet-relationship-kind-default.md) · Pet relationship should default to animal kind | 2 | S | §3d ✅, T27 ✅ | Ready |
+| 12 | [T43](52-T43-link-field-type-custom-icons.md) · Custom link field type icons don't render | 2 | S | T34 ✅ | Ready |
+| 13 | [T12b](35-T12b-caldav-serve.md) · Serve Interactions/LifeEvents as CalDAV | 2 | L | T12a ✅, T5 ✅ | Ready |
+| 14 | [T18](34-T18-audit-trail.md) · Event history / audit trail | 2 | L | T17 ✅ | Ready |
+| 15 | [T13](36-T13-two-way-calendar.md) · Two-way calendar sync ⚠ | 2 | M–L | **T12b** (rank 13, not done) | **Blocked** — do not start before T12b lands |
 
 ### Deferred — not ranked, no plan to schedule
 
