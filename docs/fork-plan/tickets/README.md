@@ -131,8 +131,10 @@ Kept for reference/lookup, not ranked — order below is roughly the sequence th
 | [T39](48-T39-user-management-add-user.md) · Add new users from User Management | **DONE** |
 | [N9](30-N9-notification-channels.md) · Notification channels beyond email | **DONE** |
 | [T41](50-T41-http-url-allowlist.md) · Web-link fields: http(s) allowlist, not a four-scheme blocklist | **DONE** |
+| | **→ ALPHA v0.3.0 — shipped** |
 | [T49](58-T49-vcf-import-merge-corrupts-existing-contact.md) · VCF/CSV import merge silently corrupts and orphans existing contact data ⚠ | **DONE** |
 | [T50](59-T50-vcard21-import-blank-fields.md) · vCard 2.1 import produces blank phone/email/photo | **DONE** |
+| | **→ ALPHA v0.3.1 — shipped** |
 | [T51](60-T51-push-notification-413-payload-too-large.md) · Browser push "Test notification" fails with 413 from the push service | **DONE** |
 | [T42](51-T42-immich-link-person-error-misclassification.md) · Immich "link a person" fails with "Could not reach Immich" | **DONE** |
 | [T44](53-T44-link-field-type-registry-not-in-editors.md) · Link field type registry doesn't reach the editors | **DONE** |
