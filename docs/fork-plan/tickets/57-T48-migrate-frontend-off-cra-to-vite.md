@@ -164,3 +164,83 @@ a regression is easy to bisect to its checkpoint):
 - `react-scripts` and `cra-template-pwa-typescript` fully removed from `package.json`/`yarn.lock`.
 - Post-merge: Dependabot alert count for the eight previously-blocked frontend-toolchain packages
   confirmed at zero via the API, not assumed from the dependency removal alone.
+
+## Landing note — 2026-08-07
+
+Landed on `feature/t48-migrate-frontend-to-vite`, ready for review (not yet pushed).
+
+**Checkpoints** (all four, in the ticket's order):
+
+1. **Core swap.** `vite` + `vite-plugin-pwa` added; `vite.config.ts` pins `server.port: 7300`
+   and `build.outDir: 'build'` (Docker COPY paths and `.gitignore` untouched). `index.html`
+   moved to the project root with `%PUBLIC_URL%` stripped and a `<script type="module"
+   src="/src/index.tsx">` entry. `react-app-env.d.ts` now references `vite/client`. The 7
+   `process.env` sites → `import.meta.env` (`DEV`/`PROD`, `BASE_URL`, `VITE_API_URL`,
+   `VITE_REQUEST_TIMEOUT`); both `.env`/`.env.example` and both Dockerfiles renamed
+   `REACT_APP_*` → `VITE_*`. `PORT` is no longer read by the dev server — the config owns
+   the port.
+2. **PWA parity.** `vite-plugin-pwa` configured with `strategies: 'injectManifest'`, `srcDir:
+   'src'`, `filename: 'service-worker.ts'`, `injectRegister: false` (index.tsx keeps its
+   manual `serviceWorkerRegistration.register()` — the v0.3.0 fix), `manifest: false` (the
+   dark/light `public/manifest.json` stays). Build emits `build/service-worker.js` with the
+   precache manifest injected; `e2e/serviceWorker.spec.ts` passes **unmodified**.
+   `injectManifest.maximumFileSizeToCacheInBytes` raised to 4 MiB: the app ships the entire
+   `@mdi/js` icon set (~2.7 MB) because the free-text link-field-type icon input (T43) does a
+   runtime lookup against the namespace import, so it cannot be tree-shaken — and
+   vite-plugin-pwa defaults `throwMaximumFileSizeToCacheInBytes` to *true* (build-failing),
+   where CRA's workbox default only warned. `build.rollupOptions.output.manualChunks` splits
+   react/mui/icons/i18n/graph vendors to keep per-file precache under the limit and restore
+   CRA's multi-chunk loading.
+3. **Docker/CI/launch.** Both Dockerfiles renamed the build-time var. `launch.json`'s
+   `frontend-dev` drops `FAST_REFRESH=false` — it was a CRA-only knob; scoping found no
+   documented Vite equivalent and nothing in this app motivated forcing it, so Vite's default
+   HMR is used (per the ticket: no speculative workaround). A manual browser HMR check is the
+   one verification I couldn't do headlessly — everything else (build, both images, full e2e)
+   is machine-verified.
+4. **Verification.** `npx tsc --noEmit` clean; `npx vitest run` green (578 tests); `go build/
+   vet/gofmt/test ./...` green (backend untouched, but the image build proves the whole thing
+   still assembles). **Both** Docker images build (all-in-one via buildx, split
+   `frontend/Dockerfile` separately — its own build path, not inferred). Full Playwright suite
+   green (108 tests) against the rebuilt all-in-one image, including both
+   `serviceWorker.spec.ts` assertions and the new `viteBuild.spec.ts`.
+
+**Deviations / notes from scoping:**
+
+- **`"WebWorker"` lib + `declare let self` turned out to need no change.** The SW source's
+  existing `/// <reference lib="webworker" />` + `declare const self: ServiceWorkerGlobalScope`
+  already satisfies both `tsc --noEmit` and vite-plugin-pwa's esbuild-based SW build (esbuild
+  strips TS-only directives/declarations). Verified empirically rather than assumed; no
+  tsconfig `lib` change was made.
+- **`"type": "module"` added to `package.json`** (not in the ticket). Playwright's Node-side
+  harness (global-setup + fixtures) imports `src/api/contacts.ts` for the real wire-shape
+  mapping; that chain now reaches `client.ts`/`auth.ts`, which read `import.meta.env` — a
+  syntax error under the CJS loading the missing `type` field implied. `type: module` makes
+  Node load the transformed TS as ESM. The two cross-loaded env reads use
+  `import.meta.env?.VITE_*` (optional chain) so the modules are inert when Node loads them
+  without Vite. All other `import.meta.env` reads are Vite-only and stay plain.
+- **`workbox-build`/`workbox-window` declared as devDependencies** (ticket said "workbox stays
+  transitive"). They're required peers of vite-plugin-pwa; declaring them removes the
+  `yarn install` peer warnings and makes the dependency honestly explicit. The SW's five
+  `workbox-*` runtime imports stay transitive (bundled into `service-worker.js` at build time),
+  same as today.
+- **Stale CRA cruft removed**: `eslintConfig` (react-app), `browserslist`, `eject` script, and
+  the `resolutions: underscore` pin (its last dependant was react-scripts; the orphaned
+  lockfile entry was pruned by hand — Yarn 1 won't).
+
+**Pre-existing condition, not introduced here:** `tsc -b` (the composite node/e2e project)
+fails on its own — the e2e project imports src files that its `include` doesn't list (TS6307)
+plus assorted spec-file type errors. `tsconfig.node.json` now carries `"vite/client"` in
+`types` so the `import.meta.env` reads in those cross-imported src files don't add to the
+already-failing set. `tsc -b` is not part of CI or the documented `npx tsc --noEmit` flow.
+
+**New tests**: `viteConfig.test.ts` (root, node env) pins dev port / `outDir` / plugin set;
+`src/craMigrationGuard.test.ts` fails if `REACT_APP_*`, `process.env`, `%PUBLIC_URL%`,
+`react-scripts`, or the CRA template resurface; `e2e/viteBuild.spec.ts` asserts the deployed
+shell is a Vite build (module script, hashed assets, no placeholders) and that the workbox
+precache manifest is genuinely in `service-worker.js`. Hand-verified per `/CLAUDE.md`: the
+guard and config tests both fail when their pinned value is reverted, then pass when restored.
+
+**Post-merge (not doable pre-merge):** re-query Dependabot alerts via `gh api
+repos/DrewBrunning/mycorrhizal-crm/dependabot/alerts` and confirm the eight previously-blocked
+frontend-toolchain alerts are gone; manual browser check of dev-mode HMR and the Web Push
+enable flow from Settings against the merged build.
