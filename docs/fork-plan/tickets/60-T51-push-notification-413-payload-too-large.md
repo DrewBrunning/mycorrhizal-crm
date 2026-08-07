@@ -95,11 +95,17 @@ new `fakeChannelServer.lastBodyLen()`). Both were hand-verified to fail against 
 (temporarily reverting the `RecordSize` line reproduced the exact bug: a 4096-byte body regardless
 of the ~20-byte test payload) before being confirmed to pass with the fix restored.
 
-**Not verified**: end-to-end against a real browser + real push service (Firefox desktop/Android,
-the ticket's stated bar). The sandboxed dev-preview browser used for this session can't grant
-Notification permission, so no real `PushSubscription` could be registered from here — the same
-constraint the ticket itself anticipated ("can't be fully verified against a mock... needs a real
-browser subscription against a real push service, not a stubbed HTTP response"). `go build ./... &&
-go vet ./... && gofmt -l . && go test ./...` is green; real-device confirmation (the exact
-Firefox/Ubuntu and Firefox/Android setup that reproduced the bug) is still owed before this is
-fully closed out.
+The sandboxed dev-preview browser used for the automated part of this session can't grant
+Notification permission, so end-to-end confirmation had to happen in the user's own real browser
+instead. That surfaced a second, unrelated dev-environment gap: `yarn start` (CRA's dev server)
+never compiles `service-worker.ts` into a servable `/service-worker.js` — the request falls through
+to the SPA's `index.html` fallback, and Firefox reports that MIME-type mismatch as "The operation is
+insecure," blocking `pushManager.subscribe()` entirely regardless of this fix. Worked around by
+adding a `frontend-prod` entry to `.claude/launch.json` (`yarn build` + `serve -s build`) so a real
+compiled service worker exists to test against on `localhost:7300`.
+
+**Hand-verified end to end against a real browser and a real push service** (2026-08-07, via
+`frontend-prod`): registered a live `PushSubscription`, sent a test notification through the fixed
+`sendPushMessage`, and confirmed it actually arrived — not just that no error was returned.
+`go build ./... && go vet ./... && gofmt -l . && go test ./...` is green. Every item in "Done when"
+is now satisfied.

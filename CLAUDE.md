@@ -60,6 +60,13 @@ Dev server: use the Browser/preview tooling with `.claude/launch.json`'s `fronte
 `npm start` in a shell. The backend needs `JWT_SECRET_KEY`, `PROFILE_PHOTO_DIR`, `SQLITE_DB_PATH`, and
 `FRONTEND_URL` matching the frontend's actual port or CORS will fail.
 
+`frontend-dev` (`yarn start`) never compiles `service-worker.ts` into a real `/service-worker.js` —
+requests for it fall through to the SPA's `index.html` fallback. Registering a service worker
+against that wrong-MIME-type response fails (Firefox reports it as "The operation is insecure"),
+which blocks testing push notifications or any other service-worker-dependent feature under
+`frontend-dev`. Use the `frontend-prod` launch config instead (`yarn build` + `serve -s build`,
+same port) — see T51's landing note.
+
 ## Workflow
 
 - **One branch per concern.** `feature/<thing>`. Implement → verify → commit per concern → push → merge
