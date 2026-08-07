@@ -58,7 +58,7 @@ export async function subscribeBrowserPush(vapidPublicKey: string): Promise<Push
     // called unregister(), and relying on this line alone meant the
     // registration -- and the subscription created below, which the
     // registration owns -- was destroyed on the next page load.
-    const swUrl = `${process.env.PUBLIC_URL || ''}/service-worker.js`;
+    const swUrl = `${import.meta.env.BASE_URL}service-worker.js`;
     registration = await navigator.serviceWorker.register(swUrl);
   }
 

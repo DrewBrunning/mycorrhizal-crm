@@ -4,8 +4,14 @@ import { API_BASE_URL } from '../auth';
 
 export { API_BASE_URL };
 
-// Default request timeout in milliseconds (30 seconds)
-const DEFAULT_TIMEOUT = parseInt(process.env.REACT_APP_REQUEST_TIMEOUT || '30000', 10);
+// Default request timeout in milliseconds (30 seconds). `?.` (not just `||`)
+// because this module is also loaded directly by Node in the Playwright
+// harness (e2e/global-setup.ts imports contacts.ts), where import.meta.env is
+// undefined -- Vite always injects it, Node never does. The optional chain
+// also prevents Vite from statically inlining the env value at build time
+// (the property lookup survives as runtime code), which is a deliberate
+// trade-off for cross-runtime compatibility.
+const DEFAULT_TIMEOUT = parseInt(import.meta.env?.VITE_REQUEST_TIMEOUT || '30000', 10);
 
 // Backend error response structure
 interface BackendErrorResponse {
