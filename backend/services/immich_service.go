@@ -243,6 +243,13 @@ func diagnoseImmichConnectionFailure(stage string, err error) *ImmichConnectionT
 		message = "Immich rejected the API key. Check that it hasn't been revoked, expired, or mistyped."
 	case errors.Is(err, ErrImmichUnreachable):
 		message = fmt.Sprintf("Could not reach the Immich server: %v", err)
+	case errors.Is(err, ErrImmichRequestFailed):
+		status := "an unexpected status"
+		var reqErr *ImmichRequestError
+		if errors.As(err, &reqErr) {
+			status = reqErr.Status
+		}
+		message = fmt.Sprintf("The Immich server is reachable, but this request failed (%s).", status)
 	}
 	return &ImmichConnectionTestResult{OK: false, Stage: stage, Message: message}
 }

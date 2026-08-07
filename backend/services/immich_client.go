@@ -55,12 +55,45 @@ var (
 	ErrImmichNotFound       = errors.New("Immich person was not found")
 	ErrImmichInvalidData    = errors.New("Immich returned data that could not be parsed")
 	ErrImmichPrivateAddress = errors.New("Immich URL resolves to a private or loopback address")
+
+	// ErrImmichRequestFailed is a real HTTP response from Immich carrying a
+	// status this client has no dedicated sentinel for (anything other than
+	// 200/401/403/404/410) — a rejected query parameter, a proxy 5xx, or any
+	// other application-level failure from a live, reachable, correctly-keyed
+	// instance. T42: this used to collapse into ErrImmichUnreachable, which
+	// told users to go check whether their Immich instance was up when it
+	// plainly was (Test Connection had just proved it). Never returned for a
+	// genuine transport failure — see ImmichRequestError for the real status.
+	ErrImmichRequestFailed = errors.New("Immich responded with an unexpected status")
 )
 
 const (
 	immichRequestTimeout = 30 * time.Second
 	maxImmichBodyBytes   = 5 * 1024 * 1024
+	// maxImmichErrorBodyBytes bounds the response body captured alongside
+	// ErrImmichRequestFailed for logging — small, since it's diagnostic only,
+	// never the payload a caller actually consumes.
+	maxImmichErrorBodyBytes = 2048
 )
+
+// ImmichRequestError carries the real HTTP status (and a bounded response
+// body snippet, for logging) behind ErrImmichRequestFailed. Unwrap makes
+// errors.Is(err, ErrImmichRequestFailed) work for callers that only care that
+// it happened; errors.As(err, &ImmichRequestError{}) reaches the status/body
+// for callers that want to report it.
+type ImmichRequestError struct {
+	StatusCode int
+	Status     string
+	Body       string
+}
+
+func (e *ImmichRequestError) Error() string {
+	return fmt.Sprintf("%s: Immich returned %s", ErrImmichRequestFailed, e.Status)
+}
+
+func (e *ImmichRequestError) Unwrap() error {
+	return ErrImmichRequestFailed
+}
 
 // ImmichPerson is the slice of the Immich PeopleResponse DTO this client
 // relies on (GET /api/people). Kept minimal and defensive: only the fields
@@ -188,8 +221,15 @@ func (c *ImmichClient) do(path string) (*http.Response, error) {
 		resp.Body.Close()
 		return nil, ErrImmichNotFound
 	default:
+		// Immich responded — this is not unreachability. Capture a bounded
+		// snippet of the body for diagnosis (never the API key; see the
+		// package comment above do()) and hand back the real status instead
+		// of collapsing it into ErrImmichUnreachable.
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, maxImmichErrorBodyBytes))
 		resp.Body.Close()
-		return nil, fmt.Errorf("%w: Immich returned %s", ErrImmichUnreachable, resp.Status)
+		logger.Debug().Str("url", c.baseURL+path).Int("status", resp.StatusCode).
+			Str("body", string(body)).Msg("Immich API request: unexpected status (Immich responded, not unreachable)")
+		return nil, &ImmichRequestError{StatusCode: resp.StatusCode, Status: resp.Status, Body: string(body)}
 	}
 }
 

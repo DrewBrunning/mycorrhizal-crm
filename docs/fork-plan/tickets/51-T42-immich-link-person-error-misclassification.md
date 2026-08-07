@@ -93,3 +93,21 @@ server is running when the server is fine and already proved so via Test Connect
   code, confirm the fix surfaces it instead of the generic "is the instance up?" message, and
   confirm Test Connection and the people picker now agree when both should succeed.
 - All 5 locale files have real translations for any new user-facing message text.
+
+## Landing note (2026-08-07)
+
+Items 1–3 landed on `feature/t42-immich-link-error-misclassification`: `do()` now returns a new
+`ErrImmichRequestFailed`/`ImmichRequestError` (real status + bounded body) instead of collapsing
+every non-2xx response into `ErrImmichUnreachable`; `abortImmichServiceError` and
+`diagnoseImmichConnectionFailure` both surface it with a distinct message. Table-driven client
+tests pin the status classification (401/403/404/410 unchanged, 400/422/500 → the new sentinel,
+transport failure still → `ErrImmichUnreachable`) and that a mid-pagination failure still surfaces
+instead of returning a partial list; a controller test pins that a stubbed 400 and a stubbed
+connection failure now render distinct messages. No frontend/locale changes needed — the frontend
+renders the backend's message string verbatim and no locale file mirrors it.
+
+Item 4 (root-causing which parameter the reporting user's real instance actually rejects) and the
+real-instance hand-verify bullet above were **deliberately skipped** — no real Immich instance was
+available to test against in this session, and the user chose to close the ticket on the strength
+of the automated tests rather than block on it. If the original "Could not reach Immich" report
+recurs, `LOG_LEVEL=debug` will now log the real upstream status/body, which is what item 4 needs.

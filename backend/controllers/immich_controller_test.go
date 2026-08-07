@@ -238,6 +238,42 @@ func TestListImmichPeople(t *testing.T) {
 	assert.Equal(t, "sekret", fake.LastAPIKey, "the server must receive the user's API key")
 }
 
+// TestListImmichPeople_RequestFailedVsUnreachable pins T42: a stubbed 400
+// response from a live Immich instance must surface a distinct message from a
+// stubbed connection failure — both used to render the same generic "Could
+// not reach Immich. Is the instance up?" text.
+func TestListImmichPeople_RequestFailedVsUnreachable(t *testing.T) {
+	db := seedImmichControllerDB(t)
+	router := immichTestRouter(t, db)
+
+	fake := newImmichTestServer(t, "sekret")
+	fake.FailWithStatus = http.StatusBadRequest
+	enc, err := services.EncryptCredential("test-jwt-secret-0123456789abcdef0123456789abcdef", "sekret")
+	require.NoError(t, err)
+	require.NoError(t, db.Create(&models.ImmichConfig{UserID: 1, BaseURL: fake.URL(), APIKeyEncrypted: enc}).Error)
+
+	w := immichDoJSON(t, router, "GET", "/immich/people", nil)
+	assert.Equal(t, http.StatusServiceUnavailable, w.Code)
+	assert.Contains(t, w.Body.String(), "Immich returned an error (400", w.Body.String())
+	assert.NotContains(t, w.Body.String(), "Could not reach Immich", "a real response from a live instance must not read as unreachable")
+	fake.Close()
+
+	// A second connection pointed at an actually-closed server must still get
+	// the original generic "unreachable" message.
+	unreachable := newImmichTestServer(t, "")
+	unreachableURL := unreachable.URL()
+	unreachable.Close()
+	enc2, err := services.EncryptCredential("test-jwt-secret-0123456789abcdef0123456789abcdef", "k")
+	require.NoError(t, err)
+	require.NoError(t, db.Model(&models.ImmichConfig{}).Where("user_id = ?", uint(1)).Updates(map[string]any{
+		"base_url": unreachableURL, "api_key_encrypted": enc2,
+	}).Error)
+
+	w2 := immichDoJSON(t, router, "GET", "/immich/people", nil)
+	assert.Equal(t, http.StatusServiceUnavailable, w2.Code)
+	assert.Contains(t, w2.Body.String(), "Could not reach Immich")
+}
+
 func TestLinkAndUnlinkImmichContact(t *testing.T) {
 	db := seedImmichControllerDB(t)
 	router := immichTestRouter(t, db)
