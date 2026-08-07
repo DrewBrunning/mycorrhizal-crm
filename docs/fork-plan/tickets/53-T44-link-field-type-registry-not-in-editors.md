@@ -101,3 +101,54 @@ was built for.
 - All 5 locale files have real translations for any new/changed strings.
 - T34's landing note updated (or this ticket's own landing note cross-linked from it) since this
   closes the "IMPP is not routed through the registry" gap it explicitly called out.
+
+## Landing note
+
+Landed on `feature/t44-link-field-type-registry-in-editors`. Frontend-only, no schema/API change.
+
+**`OnlineServiceEditor` service field is now a registry-fed freeSolo `Autocomplete`.**
+Added an optional `linkFieldTypes?: LinkFieldType[]` prop; the service field went from a plain
+`TextField` to an `Autocomplete freeSolo` sourced from the registry's names, rendering each
+option's icon via `resolveLinkFieldTypeIcon` (following `LinkFieldTypesSettings.tsx`'s icon-picker
+pattern, including the `renderOption` key-destructure that avoids React's key-spread warning).
+`freeSolo` stays free-solo: `onInputChange` (reason `'input'`) persists typed text
+keystroke-by-keystroke exactly like the old TextField, and `onChange` accepts both a selected
+`LinkFieldType` object (stores `.name`) and a bare string — an unregistered/one-off service name
+round-trips unchanged. Without the prop the field is exactly the old free-text input.
+
+**Instant Messaging is routed through `OnlineServiceEditor` (its long-dormant `uriOnly` prop's
+first real consumer)** instead of `MultiValueField`/`cardImppToValues`/`valuesToCardImpp`.
+`uriOnly` gives service + Address (no `user` field), exactly the IMPP shape. IMPP now reuses the
+`onlineServicesToRows`/`rowsToOnlineServices` adapter pair the other two fields use — no new
+adapter, and a pre-existing IMPP entry with no `Service` (the vCard/CardDAV import case)
+round-trips unchanged. The IMPP display path moved from `renderUriValueList` to the same
+registry-aware `renderOnlineServices` the other two fields use, so an IMPP entry resolves through
+the user's registry the same way Social Profiles does (full-URI entries still link directly via
+`resolveOnlineServiceLink`'s existing first branch). `renderUriValueList` remains, now used only by
+the raw `links` (Card.Links) field, which has no `service`/`user` to registry-match.
+`renderOnlineServices` gained a `copyLabel` param (the old one hardcoded `contacts.socialProfiles`,
+wrong for IMPP); all three call sites pass their own field label.
+
+**Registry fetch gate widened** to include `imppAddresses` — previously only
+`socialProfiles`/`otherOnlineServices` triggered the lazy `ListLinkFieldTypes` fetch, so a user
+who enabled only IMPP would have gotten an empty Autocomplete. Still lazy (IMPP isn't in
+`DEFAULT_ENABLED_CONTACT_FIELDS`), so accounts that never touch the registry cost nothing.
+
+**No new strings** — the editors reuse `contacts.onlineServices.service`/`.impp`/`.uri`/`.user` and
+`contacts.impps`, all already real translations in all 5 locales.
+
+**Tests:** `OnlineServiceEditor.test.tsx` (new): registry options render with their resolved icon
+path; selecting an option stores the canonical name; typing an unregistered name saves
+(`freeSolo` preserved); `uriOnly` hides `user`; editing preserves `id`/`user`/`label`/`contexts`/
+`pref`. `ContactInformation.test.tsx` (extended): IMPP display links a full URI directly; the IMPP
+editor is `OnlineServiceEditor` in `uriOnly` mode and preserves a pre-existing no-service entry;
+the Social Profiles editor offers the registry with icons once the fetch lands. All unit tests
+hand-verified (reverting `uriOnly` and the Autocomplete respectively fails the new tests).
+`linkFieldTypeEditors.spec.ts` (new e2e): toggles the shared `TEST_USER`'s
+`/users/enabled-contact-fields` to include the three fields for the duration of each test and
+restores in a finally block (serialized via `test.describe.configure({ mode: 'serial' })` — with
+`fullyParallel: true` the file's own tests raced each other's toggle/restore and corrupted the
+setting, caught by checking the post-run state); covers the Social Profiles editor offering a
+custom type with its icon and saving a working link, freeSolo saving an unregistered name, and
+IMPP preserving a pre-existing `xmpp:` entry while gaining a registry service. Full e2e suite
+(101 tests) green, including the parallel run leaving `TEST_USER`'s setting restored to null.

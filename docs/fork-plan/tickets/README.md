@@ -24,26 +24,25 @@ the rank.
 
 | Rank | Ticket | R | Size | Depends on | Ready? |
 |---|---|---|---|---|---|
-| 1 | [T44](53-T44-link-field-type-registry-not-in-editors.md) · Link field type registry doesn't reach the editors | 4 | M | T34 ✅ | Ready |
-| 2 | [T46](55-T46-gift-add-entry-points-per-status.md) · Gift "add" entry points default to Idea everywhere | 4 | S–M | T35 ✅ | Ready |
-| 3 | [N6](26-N6-backup-restore.md) · Full backup restore | 3 | S | — | Ready |
-| 4 | [T45](54-T45-contact-jump-nav-mobile-dropdown.md) · Contact jump nav should collapse to a dropdown on narrow viewports | 3 | S | T31 ✅ | Ready |
-| 5 | [T53](62-T53-contact-detail-delete-action.md) · Delete a contact from its own detail page, not only from the list | 3 | S | — | Ready |
-| 6 | [N7](29-N7-attachments.md) · File / document attachments | 3 | M | — | Ready (coordinate with N6 — not a hard dependency, see its ticket) |
-| 7 | [N8](25-N8-2fa.md) · 2FA / TOTP | 3 | M | — | Ready |
-| 8 | [T40](49-T40-household-suggestions-shared-address.md) · Suggest households from shared address | 3 | M | T1 ✅ | Ready |
-| 9 | [T47](56-T47-field-action-icons-layout-and-tel-link.md) · Field action icons should sit near the edit button; phone should also be a tel: link | 3 | M | T34 ✅ | Ready |
-| 10 | [T52](61-T52-simplify-contact-add-flow.md) · Simplify the contact-add flow to name + contact fields | 3 | M | — | Ready |
-| 11 | [T48](57-T48-migrate-frontend-off-cra-to-vite.md) · Migrate frontend off Create React App to Vite | 3 | XL | — | Ready |
-| 12 | [T56](65-T56-bulk-contacts-import-flow.md) · Bulk contacts import (Google Takeout / contacts-app export) in Data Settings | 3 | M | T49 ✅, T50 ✅ | Ready |
-| 13 | [T37](46-T37-pet-relationship-kind-default.md) · Pet relationship should default to animal kind | 2 | S | §3d ✅, T27 ✅ | Ready |
-| 14 | [T43](52-T43-link-field-type-custom-icons.md) · Custom link field type icons don't render | 2 | S | T34 ✅ | Ready |
-| 15 | [T54](63-T54-contact-header-menu-fixed-position.md) · Contact header's actions menu shifts position when the name wraps | 2 | S | — | Ready |
-| 16 | [T55](64-T55-copy-button-hover-visibility.md) · Copy button should be hidden until hover/tap, matching edit | 2 | S | — | Ready |
-| 17 | [T58](77-T58-preferred-phone-email-ui.md) · No UI to see or set "preferred" on phone/email (and URL/IMPP) | 2 | S | — | Ready |
-| 18 | [T12b](35-T12b-caldav-serve.md) · Serve Interactions/LifeEvents as CalDAV | 2 | L | T12a ✅, T5 ✅ | Ready |
-| 19 | [T18](34-T18-audit-trail.md) · Event history / audit trail | 2 | L | T17 ✅ | Ready |
-| 20 | [T13](36-T13-two-way-calendar.md) · Two-way calendar sync ⚠ | 2 | M–L | **T12b** (rank 18, not done) | **Blocked** — do not start before T12b lands |
+| 1 | [T46](55-T46-gift-add-entry-points-per-status.md) · Gift "add" entry points default to Idea everywhere | 4 | S–M | T35 ✅ | Ready |
+| 2 | [N6](26-N6-backup-restore.md) · Full backup restore | 3 | S | — | Ready |
+| 3 | [T45](54-T45-contact-jump-nav-mobile-dropdown.md) · Contact jump nav should collapse to a dropdown on narrow viewports | 3 | S | T31 ✅ | Ready |
+| 4 | [T53](62-T53-contact-detail-delete-action.md) · Delete a contact from its own detail page, not only from the list | 3 | S | — | Ready |
+| 5 | [N7](29-N7-attachments.md) · File / document attachments | 3 | M | — | Ready (coordinate with N6 — not a hard dependency, see its ticket) |
+| 6 | [N8](25-N8-2fa.md) · 2FA / TOTP | 3 | M | — | Ready |
+| 7 | [T40](49-T40-household-suggestions-shared-address.md) · Suggest households from shared address | 3 | M | T1 ✅ | Ready |
+| 8 | [T47](56-T47-field-action-icons-layout-and-tel-link.md) · Field action icons should sit near the edit button; phone should also be a tel: link | 3 | M | T34 ✅ | Ready |
+| 9 | [T52](61-T52-simplify-contact-add-flow.md) · Simplify the contact-add flow to name + contact fields | 3 | M | — | Ready |
+| 10 | [T48](57-T48-migrate-frontend-off-cra-to-vite.md) · Migrate frontend off Create React App to Vite | 3 | XL | — | Ready |
+| 11 | [T56](65-T56-bulk-contacts-import-flow.md) · Bulk contacts import (Google Takeout / contacts-app export) in Data Settings | 3 | M | T49 ✅, T50 ✅ | Ready |
+| 12 | [T37](46-T37-pet-relationship-kind-default.md) · Pet relationship should default to animal kind | 2 | S | §3d ✅, T27 ✅ | Ready |
+| 13 | [T43](52-T43-link-field-type-custom-icons.md) · Custom link field type icons don't render | 2 | S | T34 ✅ | Ready |
+| 14 | [T54](63-T54-contact-header-menu-fixed-position.md) · Contact header's actions menu shifts position when the name wraps | 2 | S | — | Ready |
+| 15 | [T55](64-T55-copy-button-hover-visibility.md) · Copy button should be hidden until hover/tap, matching edit | 2 | S | — | Ready |
+| 16 | [T58](77-T58-preferred-phone-email-ui.md) · No UI to see or set "preferred" on phone/email (and URL/IMPP) | 2 | S | — | Ready |
+| 17 | [T12b](35-T12b-caldav-serve.md) · Serve Interactions/LifeEvents as CalDAV | 2 | L | T12a ✅, T5 ✅ | Ready |
+| 18 | [T18](34-T18-audit-trail.md) · Event history / audit trail | 2 | L | T17 ✅ | Ready |
+| 19 | [T13](36-T13-two-way-calendar.md) · Two-way calendar sync ⚠ | 2 | M–L | **T12b** (rank 17, not done) | **Blocked** — do not start before T12b lands |
 
 ### Deferred — not ranked, no plan to schedule
 
@@ -137,6 +136,7 @@ Kept for reference/lookup, not ranked — order below is roughly the sequence th
 | [T50](59-T50-vcard21-import-blank-fields.md) · vCard 2.1 import produces blank phone/email/photo | **DONE** |
 | [T51](60-T51-push-notification-413-payload-too-large.md) · Browser push "Test notification" fails with 413 from the push service | **DONE** |
 | [T42](51-T42-immich-link-person-error-misclassification.md) · Immich "link a person" fails with "Could not reach Immich" | **DONE** |
+| [T44](53-T44-link-field-type-registry-not-in-editors.md) · Link field type registry doesn't reach the editors | **DONE** |
 
 ### ⚠ A grooming lesson worth keeping visible
 
