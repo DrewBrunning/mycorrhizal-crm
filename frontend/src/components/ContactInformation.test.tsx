@@ -8,6 +8,7 @@ import ContactInformation from './ContactInformation';
 import { Card, CRMEnvelope } from '../api/contacts';
 import { ContactFieldKey } from '../contactFields';
 import { getLinkFieldTypes } from '../api/linkFieldTypes';
+import { resolveLinkFieldTypeIcon } from '../linkFieldTypeIcons';
 
 // This codebase's vitest setup does not auto-cleanup between tests (no
 // `globals: true`, setupTests.ts doesn't register it) -- without this,
@@ -355,9 +356,7 @@ test('the Social Profiles editor offers the registry as service Autocomplete opt
   await waitFor(() => expect(getLinkFieldTypes).toHaveBeenCalled());
   const option = await screen.findByRole('option', { name: 'WhatsApp' });
   const iconPath = option.querySelector('svg path');
-  expect(iconPath?.getAttribute('d')).toBe(
-    (await import('../linkFieldTypeIcons')).resolveLinkFieldTypeIcon('mdiWhatsapp')
-  );
+  expect(iconPath?.getAttribute('d')).toBe(resolveLinkFieldTypeIcon('mdiWhatsapp'));
 });
 
 // --- T34 regression: adding action buttons must not change the save round trip ---
