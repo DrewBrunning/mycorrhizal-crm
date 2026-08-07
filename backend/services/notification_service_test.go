@@ -1,6 +1,7 @@
 package services
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -12,8 +13,10 @@ import (
 
 	"mycorrhizal/config"
 	"mycorrhizal/database"
+	"mycorrhizal/i18n"
 	"mycorrhizal/models"
 
+	webpush "github.com/SherClockHolmes/webpush-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -43,6 +46,7 @@ type fakeChannelServer struct {
 	server   *httptest.Server
 	mu       sync.Mutex
 	hits     []string
+	bodyLens []int
 	statuses map[string]int
 }
 
@@ -50,9 +54,10 @@ func newFakeChannelServer(t *testing.T, statuses map[string]int) *fakeChannelSer
 	t.Helper()
 	f := &fakeChannelServer{statuses: statuses}
 	f.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		io.ReadAll(r.Body) //nolint:errcheck
+		body, _ := io.ReadAll(r.Body) //nolint:errcheck
 		f.mu.Lock()
 		f.hits = append(f.hits, r.URL.Path)
+		f.bodyLens = append(f.bodyLens, len(body))
 		status := http.StatusOK
 		for prefix, s := range statuses {
 			if strings.HasPrefix(r.URL.Path, prefix) {
@@ -73,6 +78,17 @@ func (f *fakeChannelServer) count() int {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return len(f.hits)
+}
+
+// lastBodyLen returns the byte length of the most recently received request
+// body, or -1 if no request has landed yet.
+func (f *fakeChannelServer) lastBodyLen() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if len(f.bodyLens) == 0 {
+		return -1
+	}
+	return f.bodyLens[len(f.bodyLens)-1]
 }
 
 // newNotificationUser creates a user with the given channel toggles enabled
@@ -478,6 +494,56 @@ func TestTestNotificationChannel(t *testing.T) {
 	err := TestNotificationChannel(db, cfg, other, models.ChannelNtfy)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not configured")
+}
+
+// TestPushRecordSize pins the RecordSize computation (T51): a short payload
+// must produce a record far below webpush-go's 4096-byte MaxRecordSize
+// default, sized to len(payload)+webPushRecordOverhead, and an
+// implausibly large payload must be capped at MaxRecordSize rather than
+// growing unbounded.
+func TestPushRecordSize(t *testing.T) {
+	shortPayload := len(`{"title":"Test notification","body":"This is a test notification"}`)
+	got := pushRecordSize(shortPayload)
+	assert.Equal(t, uint32(shortPayload+webPushRecordOverhead), got)
+	assert.Less(t, got, webpush.MaxRecordSize, "a short payload must not be padded out to the library's 4096-byte default")
+
+	// A payload so large that payload+overhead would exceed MaxRecordSize
+	// must be capped, not left to grow past what push services accept.
+	assert.Equal(t, webpush.MaxRecordSize, pushRecordSize(int(webpush.MaxRecordSize)))
+}
+
+// TestTestNotificationChannel_PushBodySizeMatchesPayload verifies the fix
+// end to end at the wire level (T51): the actual encrypted request body the
+// push service receives for a short test notification is sized to that
+// payload, not padded out to the ~4180-byte body the library's 4096-byte
+// default would have produced regardless of content.
+func TestTestNotificationChannel_PushBodySizeMatchesPayload(t *testing.T) {
+	db := setupNotificationTestDB(t)
+	fake := newFakeChannelServer(t, nil)
+	user := newNotificationUser(t, db, false, false, true, "", "")
+
+	sub := models.PushSubscription{
+		UserID:   user.ID,
+		Endpoint: fake.URL() + "/push",
+		P256dh:   "BNNL5ZaTfK81qhXOx23-wewhigUeFb632jN6LvRWCFH1ubQr77FE_9qV1FuojuRmHP42zmf34rXgW80OvUVDgTk",
+		Auth:     "zqbxT6JKstKSY9JKibZLSQ",
+	}
+	require.NoError(t, db.Create(&sub).Error)
+
+	cfg := config.Config{ReminderTime: "12:00"}
+	require.NoError(t, TestNotificationChannel(db, cfg, user, models.ChannelPush))
+	require.Equal(t, 1, fake.count(), "the test button must send one push notification")
+
+	lang := notificationLanguage(user)
+	payload, err := json.Marshal(map[string]string{
+		"title": i18n.T(lang, "notifications.testTitle"),
+		"body":  i18n.T(lang, "notifications.testBody"),
+	})
+	require.NoError(t, err)
+
+	wantBodyLen := int(pushRecordSize(len(payload)))
+	assert.Equal(t, wantBodyLen, fake.lastBodyLen(), "the wire body must be sized to the actual payload's RecordSize")
+	assert.Less(t, fake.lastBodyLen(), 300, "a short test notification must not be padded out toward the 4096-byte default")
 }
 
 // TestSendReminders_JobLockStillPreventsDoubleSend verifies the N9 rewrite did

@@ -72,3 +72,34 @@ subscription-validity one.
   actually arrives, not just that no error is returned.
 - A unit test on `sendPushMessage`/its `RecordSize` computation pins that a short payload no longer
   gets padded to the library's 4096-byte default.
+
+## Landing note
+
+Added `pushRecordSize` in `services/notification_service.go`, sizing `webpush.Options.RecordSize`
+to `len(payload) + webPushRecordOverhead` (the 103-byte fixed salt/header/pubkey/tag/padding-
+delimiter overhead `webpush-go`'s `aes128gcm` encoding always adds), capped at
+`webpush.MaxRecordSize` for the rare payload that's actually large. `sendPushMessage` now passes it
+instead of leaving `RecordSize` at zero (the library's 4096-byte default). Both the test-button path
+(`TestNotificationChannel`) and the real reminder-delivery path (`Send`) go through
+`sendPushMessage`, so one change covers both, per the ticket's item 2.
+
+Confirmed the 413-misread-as-stale trap doesn't apply: `sendPushMessage`'s status switch still only
+treats 404/410 as stale (unchanged), everything else — including a 413, should one still occur —
+falls through to the generic error path.
+
+Pinned with two tests in `services/notification_service_test.go`:
+`TestPushRecordSize` (pure unit test on the sizing function, including the oversized-payload cap)
+and `TestTestNotificationChannel_PushBodySizeMatchesPayload` (end-to-end through
+`TestNotificationChannel` against a fake push service, asserting the actual wire body length via a
+new `fakeChannelServer.lastBodyLen()`). Both were hand-verified to fail against the pre-fix code
+(temporarily reverting the `RecordSize` line reproduced the exact bug: a 4096-byte body regardless
+of the ~20-byte test payload) before being confirmed to pass with the fix restored.
+
+**Not verified**: end-to-end against a real browser + real push service (Firefox desktop/Android,
+the ticket's stated bar). The sandboxed dev-preview browser used for this session can't grant
+Notification permission, so no real `PushSubscription` could be registered from here — the same
+constraint the ticket itself anticipated ("can't be fully verified against a mock... needs a real
+browser subscription against a real push service, not a stubbed HTTP response"). `go build ./... &&
+go vet ./... && gofmt -l . && go test ./...` is green; real-device confirmation (the exact
+Firefox/Ubuntu and Firefox/Android setup that reproduced the bug) is still owed before this is
+fully closed out.
