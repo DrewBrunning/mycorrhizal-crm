@@ -45,6 +45,9 @@ func PurgeSoftDeletedRows(db *gorm.DB, cfg config.Config) {
 		&models.ConversationAgenda{},
 		&models.Gift{},
 		&models.ImmichConfig{},
+		// N7: attachment files are removed at delete time by the
+		// controllers/cascade, so only the metadata row needs purging here.
+		&models.Attachment{},
 	} {
 		if err := db.Unscoped().Where("deleted_at IS NOT NULL AND deleted_at < ?", cutoff).Delete(model).Error; err != nil {
 			logger.Error().Err(err).Msg("purge: failed to delete soft-deleted rows")

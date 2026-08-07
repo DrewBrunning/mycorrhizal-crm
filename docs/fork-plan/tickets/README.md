@@ -24,8 +24,7 @@ the rank.
 
 | Rank | Ticket | R | Size | Depends on | Ready? |
 |---|---|---|---|---|---|
-| 1 | [N6](26-N6-backup-restore.md) · Full backup restore | 3 | S | — | Ready |
-| 2 | [N7](29-N7-attachments.md) · File / document attachments | 3 | M | — | Ready (coordinate with N6 — not a hard dependency, see its ticket) |
+| 1 | [N6](26-N6-backup-restore.md) · Full backup restore | 3 | S | — | Ready (deferred to v0.5.0 to batch schema/model changes; N7 done, so the board is otherwise empty) |
 
 > **N8 (2FA/TOTP) moved to Feature ideas, 2026-08-07.** For a self-hosted instance
 > going through OIDC the IdP already owns 2FA, so app-level TOTP is redundant there; it only
@@ -146,6 +145,7 @@ Kept for reference/lookup, not ranked — order below is roughly the sequence th
 | [T12b](35-T12b-caldav-serve.md) · Serve Interactions/LifeEvents as CalDAV | **DONE** |
 | [T13](36-T13-two-way-calendar.md) · Two-way calendar sync ⚠ | **DONE** |
 | [T18](34-T18-audit-trail.md) · Event history / audit trail | **DONE** |
+| [N7](29-N7-attachments.md) · File / document attachments | **DONE** |
 
 ### ⚠ A grooming lesson worth keeping visible
 

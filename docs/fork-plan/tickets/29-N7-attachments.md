@@ -67,6 +67,32 @@ something they gave you, a contract, an insurance document, a kid's drawing.
 - Model pattern: a new entity with UserID + ContactVCardUID key. Content is user-authored → soft delete per T26.
 - Backup expansion: attachments live outside SQLite, changing the backup story. Coordinate with N6.
 
+## Landing note (2026-08-07)
+
+Landed. `attachments` table (migration 000017) holds metadata; bytes go to
+disk under a server-generated UUID name in `ATTACHMENTS_DIR` (defaults to a
+sibling of the photo dir; the all-in-one image ships
+`/app/static/attachments` as a writable directory). Endpoints: upload/list
+under `/contacts/:id/attachments`, download + delete under `/attachments/:id`.
+
+Security (the ticket's core): UUID-only stored names with traversal rejected
+in `attachments.StoredPath`; SVG/HTML uploads rejected by content sniffing
+**plus** a byte-level markup signature (`http.DetectContentType` alone
+classifies `<svg>` as text/plain — caught and pinned by a test); downloads
+serve `attachment` by default, inline only for the image/pdf allow-list, with
+`X-Content-Type-Options: nosniff` always; 25MB cap; every endpoint is
+user_id-scoped. Cascade cleanup added to `DeleteContact`,
+`CommitContactMerge`, and `DeleteUser` (soft/hard-delete records + remove the
+on-disk files after the transaction), and soft-deleted attachment rows are
+purged by the T26 job.
+
+Backup/coordination with N6 is the one open thread: N6 must include the
+attachments directory alongside the photo directory when it ships. Deferring
+N7's file-store knowledge into N6's format is exactly why N6 was parked for
+v0.5.0. Real-client hand-verification was done against the all-in-one Docker
+image via the e2e suite (upload → list → delete), plus curl-level checks of
+the serve headers.
+
 ## Flash implementation notes
 
 ### Files to read first
