@@ -212,8 +212,8 @@
       "upload": {
         "title": "Carica File Contatti",
         "description": "Seleziona un file CSV o VCF contenente i tuoi contatti. Un file CSV dovrebbe avere le intestazioni nella prima riga.",
-        "dragDrop": "Trascina qui un file CSV o clicca per selezionare",
-        "maxSize": "Dimensione massima file: 5MB",
+        "dragDrop": "Trascina qui un file CSV o VCF o clicca per selezionare",
+        "maxSize": "Dimensione massima file: 50MB (VCF) / 20MB (CSV)",
         "uploading": "Caricamento in corso...",
         "supportedFormats": "Formati supportati: CSV (foglio di calcolo), VCF (vCard)"
       },
@@ -250,7 +250,10 @@
         "toCreate": "{{count}} da creare",
         "toUpdate": "{{count}} da aggiornare",
         "toSkip": "{{count}} da saltare",
-        "errors": "{{count}} con errori"
+        "errors": "{{count}} con errori",
+        "acceptAll": "Accetta tutti i suggeriti",
+        "skipAll": "Salta tutto",
+        "importing": "Importazione in corso…"
       },
       "result": {
         "title": "Importazione Completata",
@@ -940,7 +943,12 @@
       }
     },
     "data": {
-      "title": "Dati"
+      "title": "Dati",
+      "import": {
+        "title": "Importa contatti",
+        "description": "Importa un'intera rubrica: un export di Google Takeout, un export CSV o VCF di un'altra app di contatti, o un file JSON JSContact. Viene usato lo stesso flusso di revisione della pagina Contatti, con controlli bulk per file di grandi dimensioni.",
+        "importButton": "Importa contatti"
+      }
     },
     "exportFieldPicker": {
       "title": "Esporta contatti — scegli i campi",

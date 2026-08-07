@@ -213,7 +213,7 @@
         "title": "Kontaktedatei hochladen",
         "description": "Wählen Sie eine Datei (CSV oder VCF) mit Ihren Kontakten. Eine CSV-Datei sollte Überschriften in der ersten Zeile haben.",
         "dragDrop": "Datei (CSV oder VCF) hierher ziehen oder klicken zum Auswählen",
-        "maxSize": "Maximale Dateigröße: 5MB",
+        "maxSize": "Maximale Dateigröße: 50MB (VCF) / 20MB (CSV)",
         "uploading": "Hochladen...",
         "supportedFormats": "Unterstützte Formate: CSV (Tabelle), VCF (vCard)"
       },
@@ -250,7 +250,10 @@
         "toCreate": "{{count}} zu erstellen",
         "toUpdate": "{{count}} zu aktualisieren",
         "toSkip": "{{count}} zu überspringen",
-        "errors": "{{count}} mit Fehlern"
+        "errors": "{{count}} mit Fehlern",
+        "acceptAll": "Alle vorgeschlagenen übernehmen",
+        "skipAll": "Alle überspringen",
+        "importing": "Importiere…"
       },
       "result": {
         "title": "Import abgeschlossen",
@@ -940,7 +943,12 @@
       }
     },
     "data": {
-      "title": "Daten"
+      "title": "Daten",
+      "import": {
+        "title": "Kontakte importieren",
+        "description": "Ein komplettes Adressbuch importieren — einen Google-Takeout-Export, einen CSV- oder VCF-Export einer anderen Kontakte-App oder eine JSContact-JSON-Datei. Es wird derselbe Prüfablauf wie auf der Kontakteseite verwendet, mit Sammelaktionen für große Dateien.",
+        "importButton": "Kontakte importieren"
+      }
     },
     "exportFieldPicker": {
       "title": "Kontakte exportieren — Felder auswählen",

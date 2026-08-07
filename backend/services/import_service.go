@@ -21,11 +21,19 @@ import (
 )
 
 // Import limits
+//
+// Sized for T56 (docs/fork-plan/tickets/65-T56-bulk-contacts-import-flow.md):
+// a Google Takeout or other contacts-app full export can run into the
+// hundreds of contacts — and, for VCF, carry a photo per contact — so these
+// caps are generous enough to bring an entire existing address book in one
+// pass, not just a handful at a time. Memory stays bounded because the row
+// caps and the byte-size caps interact: a VCF file can't reach 20000 contacts
+// within the 50MB size cap unless those contacts are tiny.
 const (
-	MaxCSVSize     = 5 * 1024 * 1024  // 5MB
-	MaxVCFSize     = 10 * 1024 * 1024 // 10MB (VCF files can include embedded photos)
-	MaxCSVRows     = 1000
-	MaxVCFContacts = 1000
+	MaxCSVSize     = 20 * 1024 * 1024 // 20MB
+	MaxVCFSize     = 50 * 1024 * 1024 // 50MB (VCF files can include embedded photos)
+	MaxCSVRows     = 20000
+	MaxVCFContacts = 20000
 	SampleRows     = 3 // Number of sample rows to return
 )
 

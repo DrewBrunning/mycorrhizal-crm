@@ -174,6 +174,29 @@ func TestParseVCF_TooManyContacts(t *testing.T) {
 	assert.Contains(t, err.Error(), "too many contacts")
 }
 
+// TestParseVCF_OverLegacyLimitSucceeds pins T56's (docs/fork-plan/tickets/
+// 65-T56-bulk-contacts-import-flow.md) raised ceiling: 1001 contacts — just
+// over the old 1000-contact cap, the size of a real full address-book import
+// — must parse cleanly now instead of being rejected.
+func TestParseVCF_OverLegacyLimitSucceeds(t *testing.T) {
+	db, _ := setupRouter()
+	var user models.User
+	db.First(&user)
+
+	const count = 1001
+	var buf strings.Builder
+	for i := 0; i < count; i++ {
+		buf.WriteString("BEGIN:VCARD\r\nVERSION:4.0\r\nFN:Person\r\nN:;Person;;;\r\nEND:VCARD\r\n")
+	}
+
+	contacts, previews, stats, err := ParseVCF(strings.NewReader(buf.String()), db, user.ID)
+	require.NoError(t, err)
+	require.Len(t, contacts, count)
+	require.Len(t, previews, count)
+	assert.Equal(t, count, stats.ValidCount)
+	assert.Zero(t, stats.ErrorCount)
+}
+
 func TestParseVCF_MalformedBlockSkipped(t *testing.T) {
 	db, _ := setupRouter()
 	var user models.User

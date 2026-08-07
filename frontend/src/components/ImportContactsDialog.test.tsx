@@ -59,7 +59,7 @@ function selectFile(file: File) {
 
 test('shows the upload dropzone by default', () => {
   renderDialog();
-  expect(screen.getByText(/drag and drop a csv file/i)).toBeInTheDocument();
+  expect(screen.getByText(/drag and drop a csv or vcf file/i)).toBeInTheDocument();
 });
 
 test('rejects an unsupported file extension before calling the API', async () => {
@@ -217,5 +217,106 @@ test('an upload failure surfaces the error without advancing the step', async ()
 
   await waitFor(() => expect(screen.getByText('server exploded')).toBeInTheDocument());
   // Still on the upload step — the dropzone is still showing.
-  expect(screen.getByText(/drag and drop a csv file/i)).toBeInTheDocument();
+  expect(screen.getByText(/drag and drop a csv or vcf file/i)).toBeInTheDocument();
+});
+
+// T56 bulk controls: "Accept all suggested" applies each valid row's own
+// suggested action (add for new, update for duplicates) in one click, and
+// "Skip all" marks every valid row as skip — both leave errored rows alone.
+test('accept all suggested applies each row suggested action', async () => {
+  vi.mocked(uploadVCFForImport).mockResolvedValue({
+    session_id: 'sess-bulk',
+    rows: [
+      { row_index: 0, parsed_contact: { firstname: 'New', lastname: 'One', email: '' }, validation_errors: [], duplicate_match: null, suggested_action: 'add' },
+      { row_index: 1, parsed_contact: { firstname: 'Dup', lastname: 'Two', email: '' }, validation_errors: [], duplicate_match: { existing_contact_id: 1, existing_firstname: 'Dup', existing_lastname: 'Two', existing_email: '', match_reason: 'name' }, suggested_action: 'update' },
+      { row_index: 2, parsed_contact: { firstname: 'Bad', lastname: '', email: 'not-an-email' }, validation_errors: ['bad email'], duplicate_match: null, suggested_action: 'skip' },
+    ],
+    total_rows: 3,
+    valid_rows: 2,
+    duplicate_count: 1,
+    error_count: 1,
+  });
+  vi.mocked(confirmVCFImport).mockResolvedValue({ total_processed: 2, created: 1, updated: 1, skipped: 0, errors: [] });
+
+  renderDialog();
+  selectFile(new File(['BEGIN:VCARD\nEND:VCARD'], 'contact.vcf', { type: 'text/vcard' }));
+  await waitFor(() => expect(screen.getByText('1 to create')).toBeInTheDocument());
+
+  // First flatten every valid row to skip, then Accept all must revert them
+  // to their suggested actions — proving the bulk action actually rewrites
+  // the per-row state rather than being a no-op on the initial defaults.
+  fireEvent.click(screen.getByRole('button', { name: /skip all/i }));
+  expect(screen.getByText('3 to skip')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: /accept all suggested/i }));
+  fireEvent.click(screen.getByRole('button', { name: /^import$/i }));
+
+  await waitFor(() => expect(confirmVCFImport).toHaveBeenCalled());
+  const actions = vi.mocked(confirmVCFImport).mock.calls[0][1];
+  expect(actions).toEqual([
+    { row_index: 0, action: 'add' },
+    { row_index: 1, action: 'update' },
+    { row_index: 2, action: 'skip' },
+  ]);
+});
+
+test('skip all marks every valid row as skip', async () => {
+  vi.mocked(uploadVCFForImport).mockResolvedValue({
+    session_id: 'sess-skipall',
+    rows: [
+      { row_index: 0, parsed_contact: { firstname: 'A', lastname: '', email: '' }, validation_errors: [], duplicate_match: null, suggested_action: 'add' },
+      { row_index: 1, parsed_contact: { firstname: 'B', lastname: '', email: '' }, validation_errors: [], duplicate_match: null, suggested_action: 'add' },
+    ],
+    total_rows: 2,
+    valid_rows: 2,
+    duplicate_count: 0,
+    error_count: 0,
+  });
+  vi.mocked(confirmVCFImport).mockResolvedValue({ total_processed: 2, created: 0, updated: 0, skipped: 2, errors: [] });
+
+  renderDialog();
+  selectFile(new File(['BEGIN:VCARD\nEND:VCARD'], 'contact.vcf', { type: 'text/vcard' }));
+  await waitFor(() => expect(screen.getByText('2 to create')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: /skip all/i }));
+  fireEvent.click(screen.getByRole('button', { name: /^import$/i }));
+
+  await waitFor(() => expect(confirmVCFImport).toHaveBeenCalled());
+  const actions = vi.mocked(confirmVCFImport).mock.calls[0][1];
+  expect(actions).toEqual([
+    { row_index: 0, action: 'skip' },
+    { row_index: 1, action: 'skip' },
+  ]);
+});
+
+// T56: the preview table is paginated client-side, so a full address-book
+// import mounts only one page of Selects at a time.
+test('paginates a preview larger than one page', async () => {
+  const rows = Array.from({ length: 45 }, (_, i) => ({
+    row_index: i,
+    parsed_contact: { firstname: `C${i}`, lastname: '', email: '' },
+    validation_errors: [] as string[],
+    duplicate_match: null,
+    suggested_action: 'add' as const,
+  }));
+  vi.mocked(uploadVCFForImport).mockResolvedValue({
+    session_id: 'sess-page',
+    rows,
+    total_rows: 45,
+    valid_rows: 45,
+    duplicate_count: 0,
+    error_count: 0,
+  });
+
+  renderDialog();
+  selectFile(new File(['BEGIN:VCARD\nEND:VCARD'], 'contact.vcf', { type: 'text/vcard' }));
+
+  await waitFor(() => expect(screen.getByText('45 to create')).toBeInTheDocument());
+  // Only the first page's rows render.
+  expect(screen.getByText('C0')).toBeInTheDocument();
+  expect(screen.queryByText('C20')).not.toBeInTheDocument();
+
+  // Advance to page 2 and confirm the next window renders.
+  fireEvent.click(screen.getByRole('button', { name: /next page/i }));
+  await waitFor(() => expect(screen.getByText('C20')).toBeInTheDocument());
+  expect(screen.queryByText('C0')).not.toBeInTheDocument();
 });

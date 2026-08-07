@@ -26,6 +26,8 @@ import {
   LinearProgress,
   IconButton,
   Tooltip,
+  TablePagination,
+  CircularProgress,
 } from '@mui/material';
 import AppDialog from './AppDialog';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
@@ -63,6 +65,11 @@ type ImportType = 'csv' | 'vcf';
 const CSV_STEP_KEYS = ['upload', 'mapColumns', 'review', 'done'] as const;
 const VCF_STEP_KEYS = ['upload', 'review', 'done'] as const;
 
+// T56: the preview table is paginated client-side so a full address-book
+// import (hundreds of rows) stays usable instead of mounting one Select per
+// row.
+const PREVIEW_PAGE_SIZE = 20;
+
 export default function ImportContactsDialog({
   open,
   onClose,
@@ -83,6 +90,7 @@ export default function ImportContactsDialog({
   // Preview state
   const [previewResponse, setPreviewResponse] = useState<ImportPreviewResponse | null>(null);
   const [rowActions, setRowActions] = useState<Map<number, string>>(new Map());
+  const [previewPage, setPreviewPage] = useState(0);
 
   // Result state
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
@@ -101,6 +109,7 @@ export default function ImportContactsDialog({
     setMappings([]);
     setPreviewResponse(null);
     setRowActions(new Map());
+    setPreviewPage(0);
     setImportResult(null);
     setLoading(false);
     setError(null);
@@ -124,7 +133,9 @@ export default function ImportContactsDialog({
       return;
     }
 
-    const maxSize = isVCF ? 10 * 1024 * 1024 : 5 * 1024 * 1024; // 10MB for VCF, 5MB for CSV
+    // Keep in sync with backend/services/import_service.go's MaxVCFSize /
+    // MaxCSVSize (T56 raised them for full address-book imports).
+    const maxSize = isVCF ? 50 * 1024 * 1024 : 20 * 1024 * 1024; // 50MB VCF, 20MB CSV
     if (file.size > maxSize) {
       setError(t('contacts.import.errors.fileTooLarge', 'File is too large. Maximum size is {{size}}MB', {
         size: maxSize / (1024 * 1024),
@@ -141,6 +152,7 @@ export default function ImportContactsDialog({
         setImportType('vcf');
         const response = await uploadVCFForImport(file);
         setPreviewResponse(response);
+        setPreviewPage(0);
 
         // Initialize row actions based on suggested actions
         const initialActions = new Map<number, string>();
@@ -220,6 +232,7 @@ export default function ImportContactsDialog({
     try {
       const response = await getImportPreview(uploadResponse.session_id, mappings);
       setPreviewResponse(response);
+      setPreviewPage(0);
 
       // Initialize row actions based on suggested actions
       const initialActions = new Map<number, string>();
@@ -241,6 +254,28 @@ export default function ImportContactsDialog({
   const handleRowActionChange = (rowIndex: number, action: string) => {
     const newActions = new Map(rowActions);
     newActions.set(rowIndex, action);
+    setRowActions(newActions);
+  };
+
+  // T56 bulk controls: apply one action across the whole preview in a single
+  // step so a full address-book import doesn't need per-row clicks.
+  const handleAcceptAll = () => {
+    if (!previewResponse) return;
+    const newActions = new Map(rowActions);
+    previewResponse.rows.forEach((row) => {
+      // Errors are disabled in the UI and always stay skip; every other row
+      // takes its own suggested action (add for new, update for duplicates).
+      if (row.validation_errors.length === 0) newActions.set(row.row_index, row.suggested_action);
+    });
+    setRowActions(newActions);
+  };
+
+  const handleSkipAll = () => {
+    if (!previewResponse) return;
+    const newActions = new Map(rowActions);
+    previewResponse.rows.forEach((row) => {
+      if (row.validation_errors.length === 0) newActions.set(row.row_index, 'skip');
+    });
     setRowActions(newActions);
   };
 
@@ -331,7 +366,7 @@ export default function ImportContactsDialog({
           {t('contacts.import.upload.supportedFormats', 'Supported formats: CSV (spreadsheet), VCF (vCard)')}
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          {t('contacts.import.upload.maxSize', 'Maximum file size: 10MB')}
+          {t('contacts.import.upload.maxSize', 'Maximum file size: 50MB (VCF) / 20MB (CSV)')}
         </Typography>
       </Box>
     </Box>
@@ -445,10 +480,16 @@ export default function ImportContactsDialog({
     const { toCreate, toUpdate, toSkip } = getSummaryCounts();
     const errorCount = previewResponse.rows.filter((r) => r.validation_errors.length > 0).length;
 
+    // T56: client-side page of the preview table. Rows whose index lands on
+    // the current page are the only ones mounted, so a full address-book
+    // import never mounts hundreds of Selects at once.
+    const pageStart = previewPage * PREVIEW_PAGE_SIZE;
+    const pageRows = previewResponse.rows.slice(pageStart, pageStart + PREVIEW_PAGE_SIZE);
+
     return (
       <Box>
         {/* Summary */}
-        <Box sx={{ mb: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+        <Box sx={{ mb: 2, display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
           <Chip
             icon={<CheckCircleIcon />}
             label={t('contacts.import.preview.toCreate', '{{count}} to create', { count: toCreate })}
@@ -473,6 +514,13 @@ export default function ImportContactsDialog({
               variant="outlined"
             />
           )}
+          <Box sx={{ flexGrow: 1 }} />
+          <Button size="small" onClick={handleAcceptAll}>
+            {t('contacts.import.preview.acceptAll', 'Accept all suggested')}
+          </Button>
+          <Button size="small" onClick={handleSkipAll}>
+            {t('contacts.import.preview.skipAll', 'Skip all')}
+          </Button>
         </Box>
 
         {/* Preview table */}
@@ -489,7 +537,7 @@ export default function ImportContactsDialog({
               </TableRow>
             </TableHead>
             <TableBody>
-              {previewResponse.rows.map((row) => (
+              {pageRows.map((row) => (
                 <TableRow key={row.row_index}>
                   <TableCell>{row.row_index + 1}</TableCell>
                   <TableCell>{row.parsed_contact.firstname || '-'}</TableCell>
@@ -539,6 +587,16 @@ export default function ImportContactsDialog({
             </TableBody>
           </Table>
         </TableContainer>
+        {previewResponse.rows.length > PREVIEW_PAGE_SIZE && (
+          <TablePagination
+            component="div"
+            count={previewResponse.rows.length}
+            page={previewPage}
+            rowsPerPage={PREVIEW_PAGE_SIZE}
+            rowsPerPageOptions={[PREVIEW_PAGE_SIZE]}
+            onPageChange={(_, newPage) => setPreviewPage(newPage)}
+          />
+        )}
       </Box>
     );
   };
@@ -626,24 +684,28 @@ export default function ImportContactsDialog({
       case 'preview':
         return (
           <>
-            <Button onClick={() => {
-              if (importType === 'vcf') {
-                // VCF goes back to upload (no mapping step)
-                setStep('upload');
-                setActiveStep(0);
-                setPreviewResponse(null);
-                setRowActions(new Map());
-              } else {
-                // CSV goes back to mapping
-                setStep('mapping');
-                setActiveStep(1);
-              }
-            }}>
+            <Button
+              onClick={() => {
+                if (importType === 'vcf') {
+                  // VCF goes back to upload (no mapping step)
+                  setStep('upload');
+                  setActiveStep(0);
+                  setPreviewResponse(null);
+                  setRowActions(new Map());
+                  setPreviewPage(0);
+                } else {
+                  // CSV goes back to mapping
+                  setStep('mapping');
+                  setActiveStep(1);
+                }
+              }}
+              disabled={loading}
+            >
               {t('common.back', 'Back')}
             </Button>
-            <Button onClick={handleClose}>{t('common.cancel', 'Cancel')}</Button>
-            <Button variant="contained" onClick={handleConfirmImport} disabled={loading}>
-              {t('contacts.import.button', 'Import')}
+            <Button onClick={handleClose} disabled={loading}>{t('common.cancel', 'Cancel')}</Button>
+            <Button variant="contained" onClick={handleConfirmImport} disabled={loading} startIcon={loading ? <CircularProgress size={16} color="inherit" /> : undefined}>
+              {loading ? t('contacts.import.preview.importing', 'Importing…') : t('contacts.import.button', 'Import')}
             </Button>
           </>
         );
