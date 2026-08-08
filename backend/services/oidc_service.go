@@ -338,6 +338,12 @@ func FindOrProvisionUser(db *gorm.DB, claims *OIDCClaims, cfg *config.Config) (*
 		return nil, fmt.Errorf("failed to create OIDC user: %w", err)
 	}
 
+	// Create the user's default self-contact.
+	if err := EnsureSelfContact(db, &newUser); err != nil {
+		logger.Warn().Err(err).Uint("user_id", newUser.ID).
+			Msg("OIDC: failed to create self contact")
+	}
+
 	return &newUser, nil
 }
 
