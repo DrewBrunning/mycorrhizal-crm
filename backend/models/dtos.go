@@ -432,6 +432,7 @@ type AdminUserResponse struct {
 type CurrentUserResponse struct {
 	AdminUserResponse
 	EnabledContactFields []string `json:"enabled_contact_fields"`
+	SelfContactVCardUID  *string  `json:"self_contact_vcard_uid,omitempty"`
 }
 
 // AdminUserCreateInput - DTO for admin creating a new user. Unlike

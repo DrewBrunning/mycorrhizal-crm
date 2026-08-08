@@ -8,6 +8,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v4"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 var ErrPasswordTooLong = errors.New("password must not exceed 72 characters")
@@ -57,4 +58,28 @@ func GenerateToken(user models.User, cfg *config.Config) (string, error) {
 	}
 
 	return tokenString, nil
+}
+
+// EnsureSelfContact creates a self contact for a user if one doesn't already
+// exist, then stores the VCardUID on the user record. Safe to call multiple
+// times — the second call is a no-op (the contact already exists). Called at
+// registration time (all three paths) so every new user starts with a "Me"
+// contact. Pre-existing users without one are handled lazily when they first
+// hit an endpoint that needs it.
+func EnsureSelfContact(db *gorm.DB, user *models.User) error {
+	if user.SelfContactVCardUID != nil && *user.SelfContactVCardUID != "" {
+		return nil
+	}
+
+	contact := models.Contact{
+		UserID:    user.ID,
+		Firstname: user.Username,
+	}
+	if err := db.Create(&contact).Error; err != nil {
+		return err
+	}
+
+	vcardUID := contact.VCardUID
+	user.SelfContactVCardUID = &vcardUID
+	return db.Model(user).Update("self_contact_vcard_uid", vcardUID).Error
 }

@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { ExternalIdentity } from '../api/externalLinks';
 import { ImmichPerson, ImmichPersonSummary, immichThumbnailUrl } from '../api/immich';
 import ImmichPersonSearchDialog from './ImmichPersonSearchDialog';
+import AuthImg from './AuthImg';
 import { useDateFormat } from '../DateFormatProvider';
 import { isHttpUrlString } from '../utils/linkResolution';
 
@@ -61,10 +62,6 @@ export default function ExternalLinkPanel({
   const { formatDate } = useDateFormat();
   const [searchOpen, setSearchOpen] = useState(false);
   const [error, setError] = useState('');
-  // The proxied thumbnail may 404/503 (Immich down, or the link's person
-  // removed upstream). Hide the broken <img> rather than showing an error
-  // icon — "degrade to no photos rather than erroring" (T16 trap).
-  const [thumbFailed, setThumbFailed] = useState(false);
 
   const immichIdentity = identities.find((i) => i.system === 'immich');
 
@@ -118,15 +115,11 @@ export default function ExternalLinkPanel({
             {immichSummaryLoading ? (
               <CircularProgress size={40} />
             ) : (
-              !thumbFailed && (
-                <Box
-                  component="img"
-                  src={immichThumbnailUrl(contactUid)}
-                  alt=""
-                  onError={() => setThumbFailed(true)}
-                  sx={{ width: 56, height: 56, borderRadius: 1, objectFit: 'cover', bgcolor: 'action.hover' }}
-                />
-              )
+              <AuthImg
+                src={immichThumbnailUrl(contactUid)}
+                alt=""
+                sx={{ width: 56, height: 56, borderRadius: 1, objectFit: 'cover', bgcolor: 'action.hover' }}
+              />
             )}
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>

@@ -27,6 +27,7 @@ export interface UserInfo {
   user_id: number;
   username: string;
   is_admin: boolean;
+  self_contact_vcard_uid?: string | null;
 }
 
 export async function loginUser(identifier: string, password: string): Promise<LoginResponse> {
@@ -66,6 +67,7 @@ export async function fetchAndCacheUserInfo(): Promise<UserInfo | null> {
       user_id: data.ID,
       username: data.Username,
       is_admin: data.is_admin || false,
+      self_contact_vcard_uid: data.self_contact_vcard_uid ?? null,
     };
     localStorage.setItem(USER_INFO_KEY, JSON.stringify(userInfo));
     return userInfo;
