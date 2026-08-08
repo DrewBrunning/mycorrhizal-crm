@@ -68,6 +68,12 @@ func RegisterUser(cfg *config.Config) gin.HandlerFunc {
 			return
 		}
 
+		// Create the user's default self-contact.
+		if err := services.EnsureSelfContact(db, &user); err != nil {
+			logger.FromContext(context).Error().Err(err).Uint("user_id", user.ID).
+				Msg("Failed to create self contact during registration")
+		}
+
 		context.JSON(http.StatusCreated, gin.H{"message": "User registered successfully"})
 	}
 }

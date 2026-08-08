@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { DialogTitle, DialogContent, DialogActions, Button, Box, Typography, CircularProgress, Alert } from '@mui/material';
 import AppDialog from './AppDialog';
 import ImmichPersonSearchDialog from './ImmichPersonSearchDialog';
+import AuthImg from './AuthImg';
 import {
   ImmichPerson,
   ImmichAssetSummary,
@@ -133,8 +134,7 @@ export default function ImmichPhotoPickerDialog({
                 lineHeight: 0,
               }}
             >
-              <Box
-                component="img"
+              <AuthImg
                 src={immichThumbnailUrl(contactUid)}
                 alt={t('immich.photoPicker.primaryPhotoAlt')}
                 sx={{ width: 100, height: 100, objectFit: 'cover', bgcolor: 'action.hover' }}
@@ -157,8 +157,7 @@ export default function ImmichPhotoPickerDialog({
                   lineHeight: 0,
                 }}
               >
-                <Box
-                  component="img"
+                <AuthImg
                   src={immichAssetImageUrl(contactUid, asset.id)}
                   alt={t('immich.photoPicker.photoAlt')}
                   sx={{ width: 100, height: 100, objectFit: 'cover', bgcolor: 'action.hover' }}

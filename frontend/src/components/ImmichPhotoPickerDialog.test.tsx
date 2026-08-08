@@ -12,15 +12,23 @@ afterEach(() => {
 function mockFetchByUrl(handlers: Record<string, (init?: RequestInit) => unknown>) {
   vi.stubGlobal(
     'fetch',
-    vi.fn(async (url: string, init?: RequestInit) => {
+    vi.fn(async (url: string, _init?: RequestInit) => {
       for (const [pattern, respond] of Object.entries(handlers)) {
         if (url.includes(pattern)) {
-          const result = respond(init);
-          if (result instanceof Blob) {
-            return { ok: true, blob: async () => result };
-          }
-          return { ok: true, json: async () => result };
+          const result = respond(_init);
+          const blob = new Blob(['ok'], { type: 'image/png' });
+          return {
+            ok: true,
+            json: async () => (result instanceof Error ? Promise.reject(result) : result),
+            blob: async () => (result instanceof Blob ? result : blob),
+          };
         }
+      }
+      // Fallback: respond with a placeholder blob for any unhandled URL,
+      // so AuthImg's thumbnail/image fetches always succeed in tests.
+      if (url.includes('/thumbnail') || url.includes('/image')) {
+        const blob = new Blob(['ok'], { type: 'image/png' });
+        return { ok: true, blob: async () => blob };
       }
       throw new Error(`unexpected fetch: ${url}`);
     })
@@ -83,8 +91,8 @@ test('an already-linked contact browses photos directly', async () => {
   await waitFor(() => {
     expect(screen.getByText('Choose a photo from Immich')).toBeInTheDocument();
   });
-  expect(screen.getAllByAltText('Photo from Immich')).toHaveLength(1);
-  expect(screen.getByAltText('Current Immich thumbnail')).toBeInTheDocument();
+  await screen.findByAltText('Photo from Immich');
+  await screen.findByAltText('Current Immich thumbnail');
 });
 
 test('a load failure surfaces the real error message', async () => {
@@ -109,8 +117,8 @@ test('picking a photo fetches it and hands back a data URL', async () => {
   const onImageSelected = vi.fn();
   renderPicker({ onImageSelected });
 
-  await waitFor(() => expect(screen.getByAltText('Current Immich thumbnail')).toBeInTheDocument());
-  fireEvent.click(screen.getByAltText('Current Immich thumbnail').closest('button')!);
+  const thumb = await screen.findByAltText('Current Immich thumbnail');
+  fireEvent.click(thumb.closest('button')!);
 
   await waitFor(() => expect(onImageSelected).toHaveBeenCalled());
   expect(onImageSelected.mock.calls[0][0]).toMatch(/^data:/);

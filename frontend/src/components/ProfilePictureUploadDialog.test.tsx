@@ -12,11 +12,21 @@ afterEach(() => {
 function mockFetchByUrl(handlers: Record<string, (init?: RequestInit) => unknown>) {
   vi.stubGlobal(
     'fetch',
-    vi.fn(async (url: string, init?: RequestInit) => {
+    vi.fn(async (url: string, _init?: RequestInit) => {
       for (const [pattern, respond] of Object.entries(handlers)) {
         if (url.includes(pattern)) {
-          return { ok: true, json: async () => respond(init) };
+          const result = respond(_init);
+          const blob = new Blob(['ok'], { type: 'image/png' });
+          return {
+            ok: true,
+            json: async () => (result instanceof Error ? Promise.reject(result) : result),
+            blob: async () => (result instanceof Blob ? result : blob),
+          };
         }
+      }
+      if (url.includes('/thumbnail') || url.includes('/image')) {
+        const blob = new Blob(['ok'], { type: 'image/png' });
+        return { ok: true, blob: async () => blob };
       }
       throw new Error(`unexpected fetch: ${url}`);
     })
@@ -60,14 +70,10 @@ test('the Immich entry point opens the photo picker when configured', async () =
 
 test('picking a photo from Immich flows into the existing crop step', async () => {
   const imageBlob = new Blob(['fake-image-bytes'], { type: 'image/jpeg' });
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async (url: string) => {
-      if (url.includes('/assets')) return { ok: true, json: async () => ({ assets: [] }) };
-      if (url.includes('/thumbnail')) return { ok: true, blob: async () => imageBlob };
-      throw new Error(`unexpected fetch: ${url}`);
-    })
-  );
+  mockFetchByUrl({
+    '/immich/contacts/contact-1/assets': () => ({ assets: [] }),
+    '/thumbnail': () => imageBlob,
+  });
 
   renderDialog({
     immich: {
@@ -80,10 +86,11 @@ test('picking a photo from Immich flows into the existing crop step', async () =
 
   fireEvent.click(screen.getByText('Choose from Immich'));
 
-  await waitFor(() => expect(screen.getByAltText('Current Immich thumbnail')).toBeInTheDocument());
-  fireEvent.click(screen.getByAltText('Current Immich thumbnail').closest('button')!);
+  await waitFor(() => expect(screen.getByText('Choose a photo from Immich')).toBeInTheDocument());
+  await screen.findByAltText('Current Immich thumbnail');
+  const thumb = screen.getByAltText('Current Immich thumbnail');
+  fireEvent.click(thumb.closest('button')!);
 
-  // The picker's data URL becomes imageSrc — the crop UI (zoom slider) appears.
   await waitFor(() => {
     expect(screen.getByLabelText('Zoom')).toBeInTheDocument();
   });

@@ -14,13 +14,9 @@ import (
 )
 
 // equalize response time for non-existing user by using dummy bcrypt value
-var dummyBcryptHash = func() []byte {
-	hash, err := bcrypt.GenerateFromPassword([]byte("mycorrhizal-timing-equalizer"), bcrypt.DefaultCost)
-	if err != nil {
-		panic(err)
-	}
-	return hash
-}()
+// Pre-computed hash of a boilerplate string — hardcoded so a bcrypt failure
+// at init time cannot crash the server before it starts.
+var dummyBcryptHash = []byte("$2a$10$cVbCNN0wW/qssAUweZnd5.Mo6tGVSDzdafdNooU64z7ycj0Ycg7D2")
 
 // BasicAuthMiddleware provides HTTP Basic Authentication for CardDAV
 // It supports both username and email as the login identifier

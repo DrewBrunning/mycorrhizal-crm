@@ -29,9 +29,15 @@ if [ "$(stat -c '%u:%g' "$DATA_DIR")" != "$PUID:$PGID" ] || \
 then
     NEEDS_CHOWN=1
 fi
+if [ -n "$ATTACHMENTS_DIR" ] && [ "$(stat -c '%u:%g' "$ATTACHMENTS_DIR")" != "$PUID:$PGID" ]; then
+    NEEDS_CHOWN=1
+fi
 
 if [ "$NEEDS_CHOWN" = "1" ]; then
     chown -R appuser:appgroup "$DATA_DIR" "$PROFILE_PHOTO_DIR"
+    if [ -n "$ATTACHMENTS_DIR" ]; then
+        chown -R appuser:appgroup "$ATTACHMENTS_DIR"
+    fi
 fi
 
 exec "$@"

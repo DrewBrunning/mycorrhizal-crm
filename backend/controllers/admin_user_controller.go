@@ -71,6 +71,7 @@ func GetCurrentUser(c *gin.Context) {
 			UpdatedAt:  user.UpdatedAt,
 		},
 		EnabledContactFields: user.EnabledContactFields,
+		SelfContactVCardUID:  user.SelfContactVCardUID,
 	})
 }
 
@@ -241,6 +242,12 @@ func CreateUser(c *gin.Context) {
 		log.Error().Err(err).Msg("Failed to create user")
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("create user").WithError(err))
 		return
+	}
+
+	// Create the user's default self-contact.
+	if err := services.EnsureSelfContact(db, &user); err != nil {
+		log.Error().Err(err).Uint("user_id", user.ID).
+			Msg("Failed to create self contact for admin-created user")
 	}
 
 	c.JSON(http.StatusCreated, models.AdminUserResponse{
