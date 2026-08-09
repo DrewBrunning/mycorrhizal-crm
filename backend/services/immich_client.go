@@ -427,10 +427,10 @@ func (c *ImmichClient) RecentAssets(personID string, limit int) ([]ImmichAsset, 
 	sort.SliceStable(assets, func(i, j int) bool {
 		return assetOccurredAt(&assets[i]).After(assetOccurredAt(&assets[j]))
 	})
-	if len(assets) > limit {
-		assets = assets[:limit]
+	if len(flat) > limit {
+		flat = flat[:limit]
 	}
-	return assets, nil
+	return flat, nil
 }
 
 // Thumbnail fetches a person's thumbnail image, returning the bytes and the
