@@ -34,6 +34,10 @@ func main() {
 }
 
 func run() error {
+	if len(os.Args) > 2 {
+		return fmt.Errorf("usage: go run cmd/backup/main.go [OUTPUT_PATH] (or set BACKUP_PATH); got unexpected extra argument %q", os.Args[2])
+	}
+
 	src := dbPath()
 
 	out := ""

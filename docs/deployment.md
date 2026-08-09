@@ -85,11 +85,113 @@ Database migrations run automatically on startup.
 
 ## Backups
 
-Back up the SQLite database file and photo directory:
+A backup is two (or three) independent pieces, and missing any of them means the backup is not a
+backup:
+
+| Piece | Where it lives | Docker volume |
+|---|---|---|
+| SQLite database | `SQLITE_DB_PATH` (default `mycorrhizal.db` / `/app/data/mycorrhizal.db` in the image) | `DATA_PATH` (default `./data`) |
+| Profile photos | `PROFILE_PHOTO_DIR` (default `/app/static/photos`) | `PHOTOS_PATH` (default `./photos`) |
+| Attachments (N7) | `ATTACHMENTS_DIR` (default a sibling of the photos) | `ATTACHMENTS_PATH` (default `./attachments`) |
+
+Photos and attachments live **outside** the SQLite file, so backing up only the `.db` silently loses
+them. They are plain directories; a file-level copy (`rsync`/`cp`) is exactly right for them.
+
+### Why you cannot just copy the `.db` file while the server runs
+
+The database runs in WAL mode. A running server has committed writes sitting in a sidecar
+`-wal` file; copying only `mycorrhizal.db` misses them, and a copy taken mid-write can be torn.
+`VACUUM INTO` (below) produces a single self-contained snapshot that is valid even while the server
+is running — that is the recommended online procedure.
+
+### Online backup (no downtime)
+
+If the backend directory and a Go toolchain are available on the host (e.g. a clone of this repo
+used to operate the instance), `make backup` reads `SQLITE_DB_PATH` (exactly like `make migrate-up`)
+and writes a timestamped `VACUUM INTO` snapshot beside the database:
 
 ```sh
-cp /path/to/data/mycorrhizal.db /backups/mycorrhizal-$(date +%F).db
-rsync -a /path/to/photos/ /backups/photos/
+# inside backend/ with the same environment the server uses
+make backup
+# → Backed up /path/to/data/mycorrhizal.db to /path/to/data/mycorrhizal-20260809-120000.db
 ```
 
-The database can be copied while the app is running (SQLite WAL mode).
+It runs a best-effort WAL checkpoint first (a tidy-up, not a requirement —
+`VACUUM INTO` reads through the WAL, so the snapshot is complete regardless),
+refuses to overwrite an existing file, and verifies the result with
+`PRAGMA integrity_check` before reporting success. Set `BACKUP_PATH` to choose
+the output location instead of the timestamped default:
+
+```sh
+BACKUP_PATH=/backups/mycorrhizal-$(date +%F).db make backup
+```
+
+No Makefile/Go? Any SQLite client works — the operation is a plain SQL statement:
+
+```sh
+sqlite3 /path/to/data/mycorrhizal.db "PRAGMA wal_checkpoint(TRUNCATE); VACUUM INTO '/backups/mycorrhizal.db';"
+```
+
+(If the target already exists, `VACUUM INTO` errors rather than overwriting —
+remove it or pick a fresh path first.)
+
+Then back up the two directories (they cannot be snapshotted via SQLite):
+
+```sh
+rsync -a /path/to/photos/ /backups/photos/
+rsync -a /path/to/attachments/ /backups/attachments/
+```
+
+For the all-in-one Docker image, the host paths are whatever `DATA_PATH`/`PHOTOS_PATH`/
+`ATTACHMENTS_PATH` resolve to (defaults `./data`, `./photos`, `./attachments` next to your
+`docker-compose.yml`), so `make backup` from the host against `SQLITE_DB_PATH=./data/mycorrhizal.db`
+backups up the same file the container writes.
+
+### Offline backup (downtime, simplest)
+
+1. Stop the server: `docker compose stop`. A clean stop checkpoints the
+   WAL, so the `.db` file is then complete on its own.
+2. Copy the database, photos, and attachments:
+   ```sh
+   cp /path/to/data/mycorrhizal.db /backups/mycorrhizal.db
+   rsync -a /path/to/photos/ /backups/photos/
+   rsync -a /path/to/attachments/ /backups/attachments/
+   ```
+3. Start the server again: `docker compose start`.
+
+### Restore
+
+A restore is a deliberate **point-in-time rollback**: it replaces the whole instance with the
+snapshot, so anything created or edited *after* the backup was taken is lost — and anything that had
+been soft-deleted (but not yet purged, see T26) before the backup is resurrected. That is the
+expected meaning of restoring a file-level backup; there is no partial/merge restore.
+
+1. Stop the server: `docker compose stop`.
+2. Replace the three pieces from backup. For a database backup produced by `VACUUM INTO`, the
+   snapshot file is self-contained — drop any `-wal`/`-shm` files that may sit beside the live
+   database first:
+   ```sh
+   rm -f /path/to/data/mycorrhizal.db /path/to/data/mycorrhizal.db-wal /path/to/data/mycorrhizal.db-shm
+   cp /backups/mycorrhizal.db /path/to/data/mycorrhizal.db
+   rsync -a --delete /backups/photos/ /path/to/photos/
+   rsync -a --delete /backups/attachments/ /path/to/attachments/
+   ```
+   `rsync --delete` matters: it removes files that were added to the photo/attachment directories
+   after the backup, so the directories match the snapshot instead of blending old and new.
+3. Start the server: `docker compose start`. Migrations run automatically on startup.
+4. **Verify** — a restore that has never been tested is a hypothesis. Log in and check that a known
+   contact, a recent note, and a reminder are present; for the photo/attachment directories, open a
+   contact's photo and download an attachment. The automated check behind this page's procedure is
+   `frontend/e2e/backupRestore.spec.ts`, which backs up a populated instance, destroys the database
+   and both directories, restores, and asserts every entity type survived.
+
+Sessions are signed with `JWT_SECRET_KEY`, which the restored data has no memory of. If you changed
+it between backup and restore, users simply have to log in again — harmless, but expect it.
+
+### Security notes
+
+- The backup file contains **all** user data at its full sensitivity (including `private`/`secret`
+  fields, email addresses, and anything attached). Treat it like a copy of the database: protect it
+  in transit and at rest (e.g. `age`/`gpg`/encrypted volume) and rotate it off the server.
+- Test restores regularly. The cheapest way is the restore procedure above against a throwaway
+  instance or copy of the data.

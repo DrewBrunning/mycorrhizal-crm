@@ -70,7 +70,7 @@ function backendIsUsable(): boolean {
 
 function buildServer(buildDir: string): string {
   const bin = path.join(buildDir, 'mycorrhizal-server');
-  execSync(`go build -o ${JSON.stringify(bin)} .`, { cwd: BACKEND_DIR, stdio: 'pipe' });
+  execSync(`go build -o ${JSON.stringify(bin)} .`, { cwd: BACKEND_DIR, stdio: 'pipe', timeout: 240_000 });
   return bin;
 }
 
@@ -144,6 +144,26 @@ function stopServer(srv: RunningServer): Promise<void> {
   });
 }
 
+// Starts the backend, retrying on a different free port if the process dies
+// before becoming healthy. freePort() picks a port whose listener is already
+// released, so a fast-closing process can grab it first; the retry makes that
+// race harmless instead of flaky.
+async function startServerWithRetry(bin: string, dataDir: string, attempts = 3): Promise<RunningServer> {
+  let lastErr: Error | undefined;
+  for (let i = 0; i < attempts; i++) {
+    const port = await freePort();
+    const srv = startServer(bin, port, dataDir);
+    try {
+      await waitForHealth(port);
+      return srv;
+    } catch (err) {
+      lastErr = err as Error;
+      await stopServer(srv).catch(() => {});
+    }
+  }
+  throw new Error(`backend failed to start after ${attempts} attempts: ${lastErr?.message}`);
+}
+
 function copyTree(src: string, dest: string): void {
   fs.cpSync(src, dest, { recursive: true });
 }
@@ -161,15 +181,17 @@ test.describe('Full backup/restore (N6)', () => {
       test.skip('go/make toolchain not available on this host; cannot compile and drive the backend');
     }
 
-    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mycorrhizal-backup-e2e-'));
-    const buildDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mycorrhizal-backup-build-'));
-
-    const serverBin = buildServer(buildDir);
-    const port = await freePort();
+    let dataDir: string | undefined;
+    let buildDir: string | undefined;
     let srv: RunningServer | undefined;
 
     try {
-      srv = startServer(serverBin, port, dataDir);
+      dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mycorrhizal-backup-e2e-'));
+      buildDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mycorrhizal-backup-build-'));
+
+      const serverBin = buildServer(buildDir);
+      srv = await startServerWithRetry(serverBin, dataDir);
+      const { port } = srv;
       await waitForHealth(port);
 
       // --- Seed a full instance through the real API -------------------------
@@ -262,6 +284,7 @@ test.describe('Full backup/restore (N6)', () => {
           BACKUP_PATH: backupDb,
         },
         stdio: 'pipe',
+        timeout: 120_000,
       });
       expect(fs.existsSync(backupDb)).toBeTruthy();
       copyTree(srv.photosDir, backupPhotos);
@@ -282,10 +305,8 @@ test.describe('Full backup/restore (N6)', () => {
       copyTree(backupAttachments, srv.attachmentsDir);
 
       // --- Restart and verify everything survived ---------------------------
-      srv = startServer(serverBin, port, dataDir);
-      await waitForHealth(port);
-
-      const api2 = await playwrightRequest.newContext({ baseURL: `http://localhost:${port}` });
+      srv = await startServerWithRetry(serverBin, dataDir);
+      const api2 = await playwrightRequest.newContext({ baseURL: `http://localhost:${srv.port}` });
       const login2 = await api2.post('/api/v1/login', {
         data: { identifier: TEST_USER.username, password: TEST_USER.password },
       });
@@ -338,8 +359,8 @@ test.describe('Full backup/restore (N6)', () => {
       await api2.dispose();
     } finally {
       if (srv) await stopServer(srv).catch(() => {});
-      fs.rmSync(dataDir, { recursive: true, force: true });
-      fs.rmSync(buildDir, { recursive: true, force: true });
+      if (dataDir) fs.rmSync(dataDir, { recursive: true, force: true });
+      if (buildDir) fs.rmSync(buildDir, { recursive: true, force: true });
     }
   });
 });

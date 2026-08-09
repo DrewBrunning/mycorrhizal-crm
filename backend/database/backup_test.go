@@ -180,6 +180,56 @@ func TestBackupSnapshotMissingSourceErrors(t *testing.T) {
 	assert.Contains(t, err.Error(), "does not exist")
 }
 
+// TestDefaultBackupPath pins the timestamped-sibling naming the CLI falls back
+// to when neither an argument nor BACKUP_PATH is set: the snapshot lands next
+// to the source (inside the same Docker bind mount) and keeps the source's
+// basename with a timestamp suffix.
+func TestDefaultBackupPath(t *testing.T) {
+	p := database.DefaultBackupPath("/srv/data/mycorrhizal.db")
+	assert.Equal(t, "/srv/data", filepath.Dir(p))
+	assert.Equal(t, ".db", filepath.Ext(p))
+	base := filepath.Base(p)
+	assert.Regexp(t, `^mycorrhizal-\d{8}-\d{6}\.db$`, base, "default name must be <stem>-<ts>.db")
+
+	// Relative sources (the CLI's default and the Docker host's ./data path)
+	// must keep their directory and stem, only gaining the timestamp.
+	rel := database.DefaultBackupPath("mycorrhizal.db")
+	assert.Equal(t, ".", filepath.Dir(rel))
+	assert.Regexp(t, `^mycorrhizal-\d{8}-\d{6}\.db$`, filepath.Base(rel))
+	relDir := database.DefaultBackupPath("./data/mycorrhizal.db")
+	assert.Equal(t, "data", filepath.Dir(relDir))
+	assert.Regexp(t, `^mycorrhizal-\d{8}-\d{6}\.db$`, filepath.Base(relDir))
+}
+
+// TestBackupSnapshotFailureLeavesNoLitter: a failed backup must not leave a
+// partial output file (or temp litter) behind, and must not block a later
+// retry. The failure is forced deterministically by pointing the source at a
+// file that is not a database: the pre-checks pass, then the checkpoint/VACUUM
+// step fails, which is the moment the temp file may or may not have been
+// created — so the no-litter contract is what is being pinned.
+func TestBackupSnapshotFailureLeavesNoLitter(t *testing.T) {
+	dir := t.TempDir()
+	srcPath := filepath.Join(dir, "not-a-db") // exists, but is not a database
+	require.NoError(t, os.WriteFile(srcPath, []byte("this is not a sqlite database"), 0o644))
+	outPath := filepath.Join(dir, "backup.db")
+
+	err := database.BackupSnapshot(srcPath, outPath)
+	require.Error(t, err, "backing up a non-database must fail")
+
+	// Nothing may be left at the target path or anywhere else in the dir.
+	assert.NoFileExists(t, outPath, "a failed backup must not leave an output file")
+	entries, readErr := os.ReadDir(dir)
+	require.NoError(t, readErr)
+	for _, e := range entries {
+		assert.NotContains(t, e.Name(), ".tmp-", "no temp litter may remain after a failed backup")
+	}
+
+	// A subsequent real backup must not be blocked by the failed attempt.
+	liveDB, _ := liveTestDB(t, "live.db")
+	require.NoError(t, database.BackupSnapshot(liveDB, outPath), "a retry after failure must succeed")
+	require.FileExists(t, outPath)
+}
+
 // TestMakeBackupTarget exercises the real `make backup` Makefile target, not
 // just the library call: it must pick up SQLITE_DB_PATH/BACKUP_PATH from the
 // environment (the same plumbing the migrate targets use) and produce a
