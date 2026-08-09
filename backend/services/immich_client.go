@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -34,16 +35,39 @@ var (
 func getSharedTransport(blockPrivate bool) *http.Transport {
 	if blockPrivate {
 		blockedTransportOnce.Do(func() {
-			blockedTransport = &http.Transport{
-				DialContext: immichPrivateBlockingDialContext,
-			}
+			blockedTransport = newImmichTransport()
+			blockedTransport.DialContext = immichPrivateBlockingDialContext
 		})
 		return blockedTransport
 	}
 	sharedTransportOnce.Do(func() {
-		sharedTransport = &http.Transport{}
+		sharedTransport = newImmichTransport()
 	})
 	return sharedTransport
+}
+
+// newImmichTransport builds an http.Transport tuned for the Immich integration:
+// HTTP/2 is disabled (forced HTTP/1.1) to avoid session-reuse failures that
+// surfaced as spurious "Could not reach Immich" errors when an HTTP/2
+// connection opened by one request went stale before the next request reused
+// it (Caddy at the edge closes idle HTTP/2 sessions before Go notices).  For a
+// low-traffic CRM the multiplexing benefit is negligible; reliability matters
+// more.  Idle connections are closed after 30 s so dead connections from a
+// pooled transport are never handed to a caller.
+func newImmichTransport() *http.Transport {
+	return &http.Transport{
+		// Force HTTP/1.1: clear the ALPN protocol map so Go never upgrades
+		// to HTTP/2.  An empty map still allows the TLS handshake to
+		// negotiate any protocol the server offers; clearing "h2" is what
+		// prevents Go from choosing it.  (TLSNextProto is the canonical
+		// escape hatch — x/net/http2 registers "h2" here at init time.)
+		TLSNextProto: make(map[string]func(authority string, c *tls.Conn) http.RoundTripper),
+
+		IdleConnTimeout:       30 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ResponseHeaderTimeout: 15 * time.Second,
+		MaxIdleConnsPerHost:   4,
+	}
 }
 
 // Sentinel errors for Immich client failures, mapped to API errors in the
