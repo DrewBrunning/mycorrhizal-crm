@@ -23,9 +23,8 @@ size) → **effort** (smaller first). Ticket numbers are stable IDs, not rank �
 the rank.
 
 | Rank | Ticket | R | Size | Depends on | Ready? |
-|---|---|---|---|---|---|
-| 1 | [T59](78-T59-immich-v041-still-broken.md) · Immich still broken in v0.4.1 testing | 4 | S–M | T42 | Ready (recurrence of the T42 item-4 root-cause that was deliberately skipped — the classification fix landed but the real `/api/people` rejection was never diagnosed) |
-| 2 | [N6](26-N6-backup-restore.md) · Full backup restore | 3 | S | — | Ready (deferred to v0.5.0 to batch schema/model changes) |
+|---|---|---|---|---|---|---|
+| 1 | [N6](26-N6-backup-restore.md) · Full backup restore | 3 | S | — | Ready (deferred to v0.5.0 to batch schema/model changes) |
 
 > **N8 (2FA/TOTP) moved to Feature ideas, 2026-08-07.** For a self-hosted instance
 > going through OIDC the IdP already owns 2FA, so app-level TOTP is redundant there; it only
@@ -129,6 +128,7 @@ Kept for reference/lookup, not ranked — order below is roughly the sequence th
 | | **→ ALPHA v0.3.1 — shipped** |
 | [T51](60-T51-push-notification-413-payload-too-large.md) · Browser push "Test notification" fails with 413 from the push service | **DONE** |
 | [T42](51-T42-immich-link-person-error-misclassification.md) · Immich "link a person" fails with "Could not reach Immich" | **DONE** |
+| [T59](78-T59-immich-v041-still-broken.md) · Immich still broken in v0.4.1 testing | **DONE** (2026-08-09 — three root causes found against live Immich v3.1.0: HTTP/2 stale-session reuse, /api/people flat-array response shape, and GET /api/people/:id/assets removed in v3.x) |
 | [T44](53-T44-link-field-type-registry-not-in-editors.md) · Link field type registry doesn't reach the editors | **DONE** |
 | [T46](55-T46-gift-add-entry-points-per-status.md) · Gift "add" entry points default to Idea everywhere | **DONE** |
 | [T43](52-T43-link-field-type-custom-icons.md) · Custom link field type icons don't render | **DONE** |
@@ -148,6 +148,7 @@ Kept for reference/lookup, not ranked — order below is roughly the sequence th
 | [T18](34-T18-audit-trail.md) · Event history / audit trail | **DONE** |
 | [N7](29-N7-attachments.md) · File / document attachments | **DONE** |
 | | **→ ALPHA v0.4.0 — shipped** |
+| [T59](78-T59-immich-v041-still-broken.md) · Immich still broken in v0.4.1 testing | **DONE** |
 
 ### ⚠ A grooming lesson worth keeping visible
 

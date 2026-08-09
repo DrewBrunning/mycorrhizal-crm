@@ -398,39 +398,55 @@ func (c *ImmichClient) GetStatistics(personID string) (int, error) {
 // POST /api/search/metadata (Immich v3.x removed GET /api/people/:id/assets).
 // "Most recent" = newest fileCreatedAt (or createdAt fallback).  Bounded to
 // limit items; a person with no photos returns an empty slice, never an error.
+//
+// Paginated with the nextPage token: the first request sends page "1" and
+// subsequent requests send the token carried in the response's
+// assets.nextPage field.  The loop stops when nextPage is empty or the 100-
+// page safety cap is reached.
 func (c *ImmichClient) RecentAssets(personID string, limit int) ([]ImmichAsset, error) {
-	body := map[string]any{
-		"personIds": []string{personID},
-		"size":      200,
-		"page":      1,
-	}
-	resp, err := c.doPost("/api/search/metadata", body)
-	if err != nil {
-		return nil, err
-	}
-	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxImmichBodyBytes))
-	resp.Body.Close()
-	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrImmichInvalidData, err)
+	var all []ImmichAsset
+	pageToken := "" // first page omits the page parameter
+	for p := 1; p <= 100; p++ {
+		reqBody := map[string]any{
+			"personIds": []string{personID},
+			"size":      200,
+		}
+		if pageToken != "" {
+			reqBody["page"] = pageToken
+		}
+		resp, err := c.doPost("/api/search/metadata", reqBody)
+		if err != nil {
+			return nil, err
+		}
+		raw, err := io.ReadAll(io.LimitReader(resp.Body, maxImmichBodyBytes))
+		resp.Body.Close()
+		if err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrImmichInvalidData, err)
+		}
+
+		var envelope struct {
+			Assets struct {
+				Items    []ImmichAsset `json:"items"`
+				NextPage string        `json:"nextPage"`
+			} `json:"assets"`
+		}
+		if err := json.Unmarshal(raw, &envelope); err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrImmichInvalidData, err)
+		}
+		all = append(all, envelope.Assets.Items...)
+		if envelope.Assets.NextPage == "" {
+			break
+		}
+		pageToken = envelope.Assets.NextPage
 	}
 
-	var envelope struct {
-		Assets struct {
-			Items []ImmichAsset `json:"items"`
-		} `json:"assets"`
-	}
-	if err := json.Unmarshal(raw, &envelope); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrImmichInvalidData, err)
-	}
-
-	assets := envelope.Assets.Items
-	sort.SliceStable(assets, func(i, j int) bool {
-		return assetOccurredAt(&assets[i]).After(assetOccurredAt(&assets[j]))
+	sort.SliceStable(all, func(i, j int) bool {
+		return assetOccurredAt(&all[i]).After(assetOccurredAt(&all[j]))
 	})
-	if len(assets) > limit {
-		assets = assets[:limit]
+	if len(all) > limit {
+		all = all[:limit]
 	}
-	return assets, nil
+	return all, nil
 }
 
 // Thumbnail fetches a person's thumbnail image, returning the bytes and the

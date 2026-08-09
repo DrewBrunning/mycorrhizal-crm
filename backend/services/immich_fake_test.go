@@ -190,9 +190,10 @@ func (f *fakeImmichServer) handleSearchMetadata(w http.ResponseWriter, r *http.R
 	}
 	writeJSON(w, map[string]any{
 		"assets": map[string]any{
-			"items": p.Assets,
-			"total": len(p.Assets),
-			"count": len(p.Assets),
+			"items":    p.Assets,
+			"total":    len(p.Assets),
+			"count":    len(p.Assets),
+			"nextPage": "",
 		},
 	})
 }
