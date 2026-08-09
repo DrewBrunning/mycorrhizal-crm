@@ -2,6 +2,7 @@ package services
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -112,6 +113,8 @@ func (f *fakeImmichServer) handle(w http.ResponseWriter, r *http.Request) {
 		f.handleMe(w)
 	case path == "/people":
 		f.handlePeople(w)
+	case r.Method == http.MethodPost && path == "/search/metadata":
+		f.handleSearchMetadata(w, r)
 	// Checked before the generic person "/thumbnail" suffix case below —
 	// both end in "/thumbnail", and this one is asset-scoped, not
 	// person-scoped (the contact-photo picker's per-photo fetch).
@@ -119,8 +122,6 @@ func (f *fakeImmichServer) handle(w http.ResponseWriter, r *http.Request) {
 		f.handleAssetThumbnail(w, assetIDFromPath(path))
 	case strings.HasSuffix(path, "/statistics"):
 		f.handleStatistics(w, personIDFromPath(path, "/statistics"))
-	case strings.HasSuffix(path, "/assets"):
-		f.handleAssets(w, personIDFromPath(path, "/assets"))
 	case strings.HasSuffix(path, "/thumbnail"):
 		f.handleThumbnail(w, personIDFromPath(path, "/thumbnail"))
 	default:
@@ -172,13 +173,28 @@ func (f *fakeImmichServer) handleStatistics(w http.ResponseWriter, personID stri
 	writeJSON(w, map[string]any{"assets": p.PhotoCount})
 }
 
-func (f *fakeImmichServer) handleAssets(w http.ResponseWriter, personID string) {
+func (f *fakeImmichServer) handleSearchMetadata(w http.ResponseWriter, r *http.Request) {
+	body, _ := io.ReadAll(io.LimitReader(r.Body, 4096))
+	var req struct {
+		PersonIDs []string `json:"personIds"`
+	}
+	if err := json.Unmarshal(body, &req); err != nil || len(req.PersonIDs) == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	personID := req.PersonIDs[0]
 	p, ok := f.People[personID]
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	writeJSON(w, map[string]any{"items": p.Assets, "nextPage": ""})
+	writeJSON(w, map[string]any{
+		"assets": map[string]any{
+			"items": p.Assets,
+			"total": len(p.Assets),
+			"count": len(p.Assets),
+		},
+	})
 }
 
 func (f *fakeImmichServer) handleThumbnail(w http.ResponseWriter, personID string) {
