@@ -352,6 +352,18 @@ func formatDateForUser(t time.Time, dateFormat string) string {
 		return t.Format("01/02/2006") // MM/DD/YYYY
 	case "iso":
 		return t.Format("2006-01-02") // YYYY-MM-DD
+	case "ca":
+		return t.Format("02/01/2006") // DD/MM/YYYY
+	case "eu-hyphen":
+		return t.Format("02-01-2006") // DD-MM-YYYY
+	case "us-mmm":
+		return t.Format("Jan 2, 2006") // MMM D, YYYY
+	case "us-mmmm":
+		return t.Format("January 2, 2006") // MMMM D, YYYY
+	case "eu-mmm":
+		return t.Format("2 Jan, 2006") // D MMM, YYYY
+	case "eu-mmmm":
+		return t.Format("02 January, 2006") // DD MMMM, YYYY
 	default:
 		return t.Format("02.01.2006") // DD.MM.YYYY (EU default)
 	}
@@ -373,6 +385,18 @@ func formatBirthdayForUser(birthday string, dateFormat string) string {
 				return month + "/" + day
 			case "iso":
 				return month + "-" + day
+			case "ca":
+				return day + "/" + month
+			case "eu-hyphen":
+				return day + "-" + month
+			case "us-mmm":
+				return shortMonthName(month) + " " + unpad(day)
+			case "us-mmmm":
+				return fullMonthName(month) + " " + unpad(day)
+			case "eu-mmm":
+				return unpad(day) + " " + shortMonthName(month)
+			case "eu-mmmm":
+				return day + " " + fullMonthName(month)
 			default:
 				return day + "." + month + "."
 			}
@@ -391,12 +415,54 @@ func formatBirthdayForUser(birthday string, dateFormat string) string {
 			return month + "/" + day + "/" + year
 		case "iso":
 			return year + "-" + month + "-" + day
+		case "ca":
+			return day + "/" + month + "/" + year
+		case "eu-hyphen":
+			return day + "-" + month + "-" + year
+		case "us-mmm":
+			return shortMonthName(month) + " " + unpad(day) + ", " + year
+		case "us-mmmm":
+			return fullMonthName(month) + " " + unpad(day) + ", " + year
+		case "eu-mmm":
+			return unpad(day) + " " + shortMonthName(month) + ", " + year
+		case "eu-mmmm":
+			return day + " " + fullMonthName(month) + ", " + year
 		default:
 			return day + "." + month + "." + year
 		}
 	}
 
 	return birthday
+}
+
+// shortMonthName returns the English abbreviated month name for a "01".."12"
+// month string. English by design — the month-name display formats the user
+// picks (us-mmm / eu-mmm, etc.) are the en-US-style tokens, independent of
+// the recipient's UI language.
+func shortMonthName(month string) string {
+	names := []string{"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"}
+	if i, err := strconv.Atoi(month); err == nil && i >= 1 && i <= 12 {
+		return names[i-1]
+	}
+	return month
+}
+
+// fullMonthName returns the English full month name for a "01".."12" month
+// string (see shortMonthName for why English).
+func fullMonthName(month string) string {
+	names := []string{"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"}
+	if i, err := strconv.Atoi(month); err == nil && i >= 1 && i <= 12 {
+		return names[i-1]
+	}
+	return month
+}
+
+// unpad strips a leading zero from a two-digit day string ("07" -> "7").
+func unpad(s string) string {
+	if len(s) == 2 && s[0] == '0' {
+		return s[1:]
+	}
+	return s
 }
 
 // Send email using Resend with daily reminders and upcoming birthdays

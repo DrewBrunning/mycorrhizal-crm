@@ -94,6 +94,7 @@ export default function AttachmentsSection({ contactId }: AttachmentsSectionProp
           startIcon={uploading ? <CircularProgress size={16} color="inherit" /> : <UploadIcon />}
           disabled={uploading}
           onClick={() => fileInputRef.current?.click()}
+          sx={{ px: 2, whiteSpace: 'nowrap' }}
         >
           {t('attachments.upload')}
         </Button>

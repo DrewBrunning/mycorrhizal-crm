@@ -36,6 +36,8 @@ func abortImmichServiceError(c *gin.Context, err error) {
 			status = reqErr.Status
 		}
 		apperrors.AbortWithError(c, apperrors.ErrExternal("Immich", fmt.Sprintf("Immich returned an error (%s). The instance is reachable — this request itself failed.", status)).WithError(err))
+	case errors.Is(err, services.ErrImmichInvalidData):
+		apperrors.AbortWithError(c, apperrors.ErrExternal("Immich", "Immich returned a response that could not be parsed. The API may have changed — check Immich version compatibility.").WithError(err))
 	default:
 		apperrors.AbortWithError(c, apperrors.ErrExternal("Immich", "Could not reach Immich. Is the instance up?").WithError(err))
 	}

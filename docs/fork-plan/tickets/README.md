@@ -24,7 +24,8 @@ the rank.
 
 | Rank | Ticket | R | Size | Depends on | Ready? |
 |---|---|---|---|---|---|
-| 1 | [N6](26-N6-backup-restore.md) · Full backup restore | 3 | S | — | Ready (deferred to v0.5.0 to batch schema/model changes; N7 done, so the board is otherwise empty) |
+| 1 | [T59](78-T59-immich-v041-still-broken.md) · Immich still broken in v0.4.1 testing | 4 | S–M | T42 | Ready (recurrence of the T42 item-4 root-cause that was deliberately skipped — the classification fix landed but the real `/api/people` rejection was never diagnosed) |
+| 2 | [N6](26-N6-backup-restore.md) · Full backup restore | 3 | S | — | Ready (deferred to v0.5.0 to batch schema/model changes) |
 
 > **N8 (2FA/TOTP) moved to Feature ideas, 2026-08-07.** For a self-hosted instance
 > going through OIDC the IdP already owns 2FA, so app-level TOTP is redundant there; it only
