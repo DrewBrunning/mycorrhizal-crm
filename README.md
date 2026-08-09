@@ -3,20 +3,17 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/status-alpha-orange?style=flat-square" alt="Status: Alpha">
+  <img src="https://img.shields.io/badge/status-beta-purple" alt="Status: Beta">
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <a href="https://golang.org"><img src="https://img.shields.io/badge/Backend-Go-00ADD8?logo=go" alt="Backend: Go"></a>
   <a href="https://reactjs.org"><img src="https://img.shields.io/badge/Frontend-React-61DAFB?logo=react" alt="Frontend: React"></a>
 </p>
 
-> **⚠️ Alpha Warning:** This repository is currently in an active exploration and development phase. Breaking changes are expected. If you are looking for a stable, production-ready self-hosted CRM right now, check out upstream [Meerkat](https://github.com/fbuchner/meerkat-crm).
-
 # Mycorrhizal CRM
 
 Mycorrhizal CRM is a self-hosted contact relationship management solution. It is a fork of [Meerkat CRM](https://github.com/fbuchner/meerkat-crm) by Frederic Buchner.
 
-> **⚠️ Structural Fork & Compatibility Notice:** 
-> Mycorrhizal CRM is a **structural fork** of [Meerkat CRM](https://github.com/fbuchner/meerkat-crm). Because this project introduces custom database schemas, modified tables, and expanded data types (such as bidirectional relationships and custom field mappings), **it is not directly database-compatible with upstream Meerkat.** 
+> ⚠️ Mycorrhizal CRM is a **structural fork** of [Meerkat CRM](https://github.com/fbuchner/meerkat-crm). Because this project introduces custom database schemas, modified tables, and expanded data types (such as bidirectional relationships and custom field mappings), **it is not directly database-compatible with upstream Meerkat.** 
 > 
 > * Direct database migrations from upstream Meerkat are **NOT** supported at this time.
 > * Syncing Options: You can sync contacts between Meerkat and Mycorrhizal using CardDAV (though data not supported by standard CardDAV specs will not sync) or by exporting data from one and importing it into the other (though data not defined in the vCard 3.0 RFC is not guaranteed to persist across the export and import).
@@ -33,13 +30,14 @@ Everything in this section is **built and working today**. Things that are plann
 - **Expanded Protocol Support:** In addition to vCard 3.0 and CardDAV/CalDAV, Mycorrhizal adds full support for **vCard 4.0** and **JSContact**.
 - **Flexible Export:** Granular selective field export so you can choose exactly which fields get exported for available formats.
 - **Field Sensitivity:** Mark fields as private or secret to exclude them from exports and external sync entirely.
+- **Serve Interactions as CalDAV:** Expose activities and life events to a calendar client, and eventually two-way calendar sync.
 
 ### Relationships, Households & Pets
 - **Bidirectional Relationship Graphs:** Relationships are no longer strictly unidirectional. Creating a connection automatically maps it both ways and facilitates relationship-based searching.
 - **Multi-Hop Graph Traversal:** Explore how you're connected to someone through intermediaries, not just direct links.
 - **Household Tracking:** Automatically suggests relationships for contacts sharing the same address. Search by a household to pull lists for event invites, mail, or holiday cards.
 - **Pets as Contacts:** Add pets directly to your CRM and search for owners using their pet's name with the relationship support.
-- **Circles & Tags:** Two distinct grouping mechanisms — circles for the social groups a person belongs to, tags for free-form labelling.
+- **Circles & Tags:** Two distinct grouping mechanisms — circles for the social groups a person belongs to, tags for free-form labeling.
 
 ### Data Management & Organization
 - **Contact Merging:** Seamlessly merge duplicate contact records.
@@ -48,6 +46,8 @@ Everything in this section is **built and working today**. Things that are plann
 - **Full-Text Search:** SQLite FTS5 search across contacts, notes and addresses, with relationship synonyms and household scoping.
 - **Bulk Operations:** Apply circle, tag and delete operations across many contacts at once.
 - **One-Time Cross-User Sharing:** Share specific contacts with other users on the same instance, including granular selection of which fields are shared. *(Note: This is a one-time point-in-time copy/share to the target user rather than an ongoing real-time sync).*
+- **Files & Documents:** Upload and associate documents and files with a contact
+- **Full Backup & Restore:** `make backup` produces a consistent online SQLite snapshot (safe while the server runs), with a documented restore procedure covering the database, photos and attachments together. See [Deployment → Backups](https://drewbrunning.github.io/mycorrhizal-crm/deployment.html#backups).
 
 ### Staying In Touch
 - **Cadence & Relationship Health:** Set how often you intend to be in touch with someone and see who has gone quiet. Cadence resets on a real interaction, not on ticking off a task.
@@ -60,16 +60,15 @@ Everything in this section is **built and working today**. Things that are plann
 - **Gift Tracking:** Modeled after [Monica](https://github.com/monicahq/monica), allowing you to track gift ideas, past gifts given, and received items, with links and notes.
 - **Immich Integration:** Link contacts directly to identified persons/faces in an [Immich](https://github.com/immich-app/immich) instance to easily view photos of individuals right from their profile.
 - **External Links:** Deep-link a contact into other systems you run, with a configurable link-type registry (`tel:`, `sms:`, WhatsApp, and anything else you define).
+- **Audit Trail:** A per-record history of what changed and when.
 
 ### On the roadmap
 
 Not built yet. Listed so the feature set above can be read as a description of what exists rather than of what is intended:
 
-- **Files & Documents:** Associating documents and files with a contact, including integrations with Seafile and Paperless-ngx via APIs and OwnCloud/NextCloud via WebDAV.
-- **Full Backup & Restore:** A single-command backup and restore covering the database and photos together. *(Until this lands, back up by copying your data and photo directories, per [Getting Started](https://drewbrunning.github.io/mycorrhizal-crm/getting-started.html#backup).)*
+- **Files & Documents:** Integrations with Seafile and Paperless-ngx via APIs and OwnCloud/NextCloud via WebDAV.
 - **Two-Factor Authentication:** TOTP as a second factor on login. SSO via OIDC is available today as an alternative.
-- **Serving Interactions as CalDAV:** Exposing activities and life events to a calendar client, and eventually two-way calendar sync.
-- **Audit Trail:** A per-record history of what changed and when.
+- Native Android app client
 
 ---
 
@@ -129,7 +128,7 @@ image is required). The easiest way to run it is with Docker Compose:
 ## Contributing
 
 ### Bugs and feature requests
-This application is under development. You're free to note bugs or share ideas as issues, but I can't promise I'll implement them at this point.
+This application is currently in beta. Bugs are expected in testing, but are hopefully few and far-between. Please submit issues via GitHub to note 
 
 ### Development
 To set up this repository for development, follow these steps:

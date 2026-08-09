@@ -22,8 +22,9 @@ ticket blocked on another open ticket ranks below ready ones at the same rating,
 size) → **effort** (smaller first). Ticket numbers are stable IDs, not rank — the table order is
 the rank.
 
-No ranked, ready-to-start tickets are open. Everything left lives in the deferred sections below,
-each waiting for its own design pass (or a concrete need) before it is ranked here again.
+| Rank | Ticket | R | Size | Depends on | Ready? |
+|---|---|---|---|---|---|---|---|
+| 1 | [T60](79-T60-audit-trail-ui.md) · Audit trail UI | 3 | M | — | Ready (backend + OpenAPI shipped in v0.4.0; frontend-only, no schema change, additive) |
 
 > **N8 (2FA/TOTP) moved to Feature ideas, 2026-08-07.** For a self-hosted instance
 > going through OIDC the IdP already owns 2FA, so app-level TOTP is redundant there; it only
