@@ -69,3 +69,31 @@ starting from the diagnostic trail T42 put in place.
 - `go build ./... && go vet ./... && gofmt -l . && go test ./...` green.
 - If a stub/server test was the only feasible verification, the frontend and backend both degrade
   gracefully (no contact page errors) when Immich is down, per T15/T16's traps.
+
+## Landing note (2026-08-09)
+
+Root-caused and fixed against a live Immich v3.1.0 instance. Three independent problems, all
+found via `LOG_LEVEL=debug` (exactly as T42's landing note intended):
+
+1. **HTTP/2 stale-session reuse** (`immich_client.go`): the shared `http.Transport` reused an
+   HTTP/2 connection opened by Test Connection, but Caddy at the edge had already closed the
+   session by the time ListPeople reused it. Forced HTTP/1.1 via `TLSNextProto`, added
+   `IdleConnTimeout` (30s), `TLSHandshakeTimeout` (10s), and `ResponseHeaderTimeout` (15s).
+
+2. **`/api/people` response-shape mismatch** (`immich_client.go`): Immich v3.1.0 returns
+   `{"people": [{id, name}, …]}` (flat array) while the code expected
+   `{"people": {"items": […], "hasNextPage": bool}}`. `ListPeople` now tries the newer shape
+   first and falls back to the flat array.
+
+3. **`GET /api/people/:id/assets` removed in v3.x** (`immich_client.go`): Replaced with
+   `POST /api/search/metadata` using the `personIds` filter and `nextPage`-token pagination.
+   `RecentAssets` paginates through all pages, sorts globally by date, and limits.
+
+Also fixed: `ErrImmichInvalidData` was unhandled in `abortImmichServiceError` and fell through
+to the misleading "Could not reach Immich" default — now surfaces a distinct parse-error message
+(`immich_controller.go`).
+
+End-to-end verified against the user's production instance (`immich.brunning.us`, Immich v3.1.0):
+test connection, browse/link a person, contact-page summary + thumbnail, and profile-photo picker
+all work. Sync was not explicitly re-verified in this session (the sync path was not part of the
+original failure report and is rate-limited on the test instance).
