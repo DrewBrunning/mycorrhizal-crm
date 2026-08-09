@@ -34,4 +34,9 @@ type User struct {
 	NotifyNtfy   bool `gorm:"column:notify_ntfy;not null;default:false" json:"notify_ntfy"`
 	NotifyGotify bool `gorm:"column:notify_gotify;not null;default:false" json:"notify_gotify"`
 	NotifyPush   bool `gorm:"column:notify_push;not null;default:false" json:"notify_push"`
+
+	// Self-contact VCardUID — every user gets a contact representing themselves
+	// on registration (migration 000018). Null for pre-existing users until
+	// they create or are assigned one. References contacts.vcard_uid.
+	SelfContactVCardUID *string `gorm:"column:self_contact_vcard_uid" json:"self_contact_vcard_uid,omitempty"`
 }

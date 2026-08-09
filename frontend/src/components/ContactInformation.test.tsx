@@ -362,12 +362,12 @@ test('the IMPP editor is OnlineServiceEditor (uriOnly) and preserves a pre-exist
 test('the Social Profiles editor offers the registry as service Autocomplete options with icons', async () => {
   vi.mocked(getLinkFieldTypes).mockResolvedValue([
     {
-      id: 'whatsapp-id', name: 'WhatsApp', protocol: 'https://wa.me/{value}', category: 'messaging',
-      is_default: true, position: 0, created_at: '', updated_at: '', icon: 'mdiWhatsapp',
+      id: 'instagram-id', name: 'Instagram', protocol: 'https://instagram.com/{value}', category: 'social',
+      is_default: true, position: 0, created_at: '', updated_at: '', icon: 'mdiInstagram',
     },
   ]);
   renderInformation(
-    { socialProfiles: [{ uri: 'https://wa.me/15551234567' }] },
+    { socialProfiles: [{ uri: 'https://instagram.com/janedoe' }] },
     {},
     { enabledFields: new Set<ContactFieldKey>(['socialProfiles']) }
   );
@@ -377,9 +377,9 @@ test('the Social Profiles editor offers the registry as service Autocomplete opt
   const serviceInput = screen.getByRole('combobox', { name: 'Service' });
   fireEvent.mouseDown(serviceInput);
   await waitFor(() => expect(getLinkFieldTypes).toHaveBeenCalled());
-  const option = await screen.findByRole('option', { name: 'WhatsApp' });
+  const option = await screen.findByRole('option', { name: 'Instagram' });
   const iconPath = option.querySelector('svg path');
-  expect(iconPath?.getAttribute('d')).toBe(resolveLinkFieldTypeIcon('mdiWhatsapp'));
+  expect(iconPath?.getAttribute('d')).toBe(resolveLinkFieldTypeIcon('mdiInstagram'));
 });
 
 // --- T34 regression: adding action buttons must not change the save round trip ---

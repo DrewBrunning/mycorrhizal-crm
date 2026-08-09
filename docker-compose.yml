@@ -19,6 +19,7 @@ services:
     volumes:
       - ${DATA_PATH:-./data}:/app/data
       - ${PHOTOS_PATH:-./photos}:/app/static/photos
+      - ${ATTACHMENTS_PATH:-./attachments}:/app/static/attachments
     ports:
       - "${FRONTEND_PORT:-7300}:8080"
     healthcheck:

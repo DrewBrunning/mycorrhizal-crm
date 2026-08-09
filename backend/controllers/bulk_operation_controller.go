@@ -107,6 +107,27 @@ func BulkContactOperation(c *gin.Context) {
 	// can be removed after the batch (best-effort, like DeleteContact).
 	var deletedContacts []models.Contact
 
+	// Collect attachment stored names for contacts being deleted (N7). File
+	// deletion cannot be rolled back, so they're captured before the
+	// per-contact transactions and removed after the batch — matching the
+	// single-contact DeleteContact pattern.
+	var attachmentNamesByContact map[string][]string
+	if input.Action == "delete" {
+		attachmentNamesByContact = make(map[string][]string, len(uids))
+		for _, uid := range uids {
+			if contact, ok := owned[uid]; ok {
+				var names []string
+				if err := db.Model(&models.Attachment{}).
+					Where("contact_vcard_uid = ? AND user_id = ?", contact.VCardUID, userID).
+					Pluck("stored_name", &names).Error; err != nil {
+					apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to load contact attachments").WithError(err))
+					return
+				}
+				attachmentNamesByContact[uid] = names
+			}
+		}
+	}
+
 	for _, uid := range uids {
 		contact, ok := owned[uid]
 		if !ok {
@@ -129,6 +150,14 @@ func BulkContactOperation(c *gin.Context) {
 	// cannot be rolled back, so it happens after the batch like DeleteContact.
 	for _, contact := range deletedContacts {
 		deleteContactPhotos(c, contact)
+	}
+	// Clean up attachment files for successfully deleted contacts (N7).
+	// File deletion cannot be rolled back, so it happens after the batch
+	// like DeleteContact.
+	for _, contact := range deletedContacts {
+		if names, ok := attachmentNamesByContact[contact.VCardUID]; ok {
+			deleteContactAttachmentFiles(c, names)
+		}
 	}
 
 	c.JSON(http.StatusOK, result)

@@ -73,6 +73,7 @@ import {
   isSafeUrlString,
   looksLikeAbsoluteUri,
 } from '../utils/linkResolution';
+import { resolveLinkFieldTypeIcon } from '../linkFieldTypeIcons';
 
 interface ContactInformationProps {
   card: CardModel;
@@ -369,9 +370,14 @@ export default function ContactInformation({
           const href = resolveOnlineServiceLink(s, linkFieldTypes);
           const suffix = s.contexts?.length ? ` (${s.contexts.join(', ')})` : '';
           const copyValue = s.uri || s.user || label;
+          const matched = s.service
+            ? linkFieldTypes.find((lt) => lt.name.toLowerCase() === s.service!.toLowerCase())
+            : null;
+          const iconPath = resolveLinkFieldTypeIcon(matched?.icon);
           return (
             <Box key={i} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
-              <Box sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+              <Box sx={{ minWidth: 0, overflowWrap: 'anywhere', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <SvgIcon fontSize="small" sx={{ flexShrink: 0 }}><path d={iconPath} /></SvgIcon>
                 {href ? (
                   <Typography variant="body2" component="a" href={href} target="_blank" rel="noopener noreferrer" sx={{ color: 'inherit', wordBreak: 'break-all' }}>
                     {label}{suffix}
@@ -670,7 +676,7 @@ export default function ContactInformation({
                   value={draft}
                   onChange={setDraft}
                   showService
-                  linkFieldTypes={linkFieldTypes}
+                  linkFieldTypes={linkFieldTypes.filter((lt) => lt.category === 'social')}
                 />
               )}
               onSave={(draft) => onUpdateCard({ socialProfiles: draft.length ? draft : undefined })}
@@ -690,7 +696,7 @@ export default function ContactInformation({
                   value={draft}
                   onChange={setDraft}
                   showService
-                  linkFieldTypes={linkFieldTypes}
+                  linkFieldTypes={linkFieldTypes.filter((lt) => lt.category === 'other')}
                 />
               )}
               onSave={(draft) => onUpdateCard({ otherOnlineServices: draft.length ? draft : undefined })}
@@ -710,7 +716,7 @@ export default function ContactInformation({
                   value={draft}
                   onChange={setDraft}
                   uriOnly
-                  linkFieldTypes={linkFieldTypes}
+                  linkFieldTypes={linkFieldTypes.filter((lt) => lt.category === 'messaging')}
                 />
               )}
               onSave={(draft) => onUpdateCard({ imppAddresses: draft.length ? draft : undefined })}
