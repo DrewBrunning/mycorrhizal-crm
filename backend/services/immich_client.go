@@ -1,6 +1,7 @@
 package services
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/json"
@@ -222,19 +223,40 @@ func immichPrivateBlockingDialContext(ctx context.Context, network, addr string)
 // half of the fix for the swallowed-error bug users hit when a connection
 // silently doesn't work.
 func (c *ImmichClient) do(path string) (*http.Response, error) {
-	req, err := http.NewRequest(http.MethodGet, c.baseURL+path, nil)
+	return c.doRequest(http.MethodGet, path, nil)
+}
+
+// doPost performs a POST against the Immich API with a JSON body. The
+// status-code mapping is the same as do().
+func (c *ImmichClient) doPost(path string, body any) (*http.Response, error) {
+	return c.doRequest(http.MethodPost, path, body)
+}
+
+func (c *ImmichClient) doRequest(method, path string, body any) (*http.Response, error) {
+	var bodyReader io.Reader
+	if body != nil {
+		b, err := json.Marshal(body)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrImmichInvalidURL, err)
+		}
+		bodyReader = bytes.NewReader(b)
+	}
+	req, err := http.NewRequest(method, c.baseURL+path, bodyReader)
 	if err != nil {
 		return nil, ErrImmichInvalidURL
 	}
 	req.Header.Set("x-api-key", c.apiKey)
 	req.Header.Set("Accept", "application/json")
+	if bodyReader != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		logger.Debug().Err(err).Str("url", c.baseURL+path).Msg("Immich API request failed")
+		logger.Debug().Err(err).Str("method", method).Str("url", c.baseURL+path).Msg("Immich API request failed")
 		return nil, fmt.Errorf("%w: %v", ErrImmichUnreachable, err)
 	}
-	logger.Debug().Str("url", c.baseURL+path).Int("status", resp.StatusCode).Msg("Immich API request")
+	logger.Debug().Str("method", method).Str("url", c.baseURL+path).Int("status", resp.StatusCode).Msg("Immich API request")
 	switch resp.StatusCode {
 	case http.StatusOK:
 		return resp, nil
@@ -245,13 +267,9 @@ func (c *ImmichClient) do(path string) (*http.Response, error) {
 		resp.Body.Close()
 		return nil, ErrImmichNotFound
 	default:
-		// Immich responded — this is not unreachability. Capture a bounded
-		// snippet of the body for diagnosis (never the API key; see the
-		// package comment above do()) and hand back the real status instead
-		// of collapsing it into ErrImmichUnreachable.
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, maxImmichErrorBodyBytes))
 		resp.Body.Close()
-		logger.Debug().Str("url", c.baseURL+path).Int("status", resp.StatusCode).
+		logger.Debug().Str("method", method).Str("url", c.baseURL+path).Int("status", resp.StatusCode).
 			Str("body", string(body)).Msg("Immich API request: unexpected status (Immich responded, not unreachable)")
 		return nil, &ImmichRequestError{StatusCode: resp.StatusCode, Status: resp.Status, Body: string(body)}
 	}
@@ -377,52 +395,42 @@ func (c *ImmichClient) GetStatistics(personID string) (int, error) {
 }
 
 // RecentAssets returns a person's most recent assets, newest first, from
-// GET /api/people/:id/assets. "Most recent" = newest fileCreatedAt (or
-// createdAt fallback). Bounded to limit items; a person with no photos
-// returns an empty slice, never an error.
-//
-// Like ListPeople, this handles two Immich response shapes:
-//
-//	Newer: {"items": [...]}
-//	Older:  [...]
+// POST /api/search/metadata (Immich v3.x removed GET /api/people/:id/assets).
+// "Most recent" = newest fileCreatedAt (or createdAt fallback).  Bounded to
+// limit items; a person with no photos returns an empty slice, never an error.
 func (c *ImmichClient) RecentAssets(personID string, limit int) ([]ImmichAsset, error) {
-	resp, err := c.do("/api/people/" + url.PathEscape(personID) + "/assets?size=200")
+	body := map[string]any{
+		"personIds": []string{personID},
+		"size":      200,
+		"page":      1,
+	}
+	resp, err := c.doPost("/api/search/metadata", body)
 	if err != nil {
 		return nil, err
 	}
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxImmichBodyBytes))
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxImmichBodyBytes))
 	resp.Body.Close()
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrImmichInvalidData, err)
 	}
 
-	// Try the newer object-wrapped shape first.
-	var wrapped struct {
-		Items []ImmichAsset `json:"items"`
+	var envelope struct {
+		Assets struct {
+			Items []ImmichAsset `json:"items"`
+		} `json:"assets"`
 	}
-	if json.Unmarshal(body, &wrapped) == nil && len(wrapped.Items) > 0 {
-		assets := wrapped.Items
-		sort.SliceStable(assets, func(i, j int) bool {
-			return assetOccurredAt(&assets[i]).After(assetOccurredAt(&assets[j]))
-		})
-		if len(assets) > limit {
-			assets = assets[:limit]
-		}
-		return assets, nil
-	}
-
-	// Fall back to the older flat-array shape.
-	var flat []ImmichAsset
-	if err := json.Unmarshal(body, &flat); err != nil {
+	if err := json.Unmarshal(raw, &envelope); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrImmichInvalidData, err)
 	}
-	sort.SliceStable(flat, func(i, j int) bool {
-		return assetOccurredAt(&flat[i]).After(assetOccurredAt(&flat[j]))
+
+	assets := envelope.Assets.Items
+	sort.SliceStable(assets, func(i, j int) bool {
+		return assetOccurredAt(&assets[i]).After(assetOccurredAt(&assets[j]))
 	})
-	if len(flat) > limit {
-		flat = flat[:limit]
+	if len(assets) > limit {
+		assets = assets[:limit]
 	}
-	return flat, nil
+	return assets, nil
 }
 
 // Thumbnail fetches a person's thumbnail image, returning the bytes and the
