@@ -1,4 +1,4 @@
-.PHONY: migrate-up migrate-down migrate-create migrate-status migrate-force migrate-version help
+.PHONY: migrate-up migrate-down migrate-create migrate-status migrate-force migrate-version backup help
 
 # Database path. The migration CLI reads SQLITE_DB_PATH (the same variable the
 # server reads), so every target below EXPORTS this rather than just echoing
@@ -53,6 +53,10 @@ migrate-force: ## Force set migration version (usage: make migrate-force VERSION
 migrate-version: ## Show available migration files
 	@echo "Available migration files:"
 	@ls -1 $(MIGRATIONS_DIR)/*.sql 2>/dev/null || echo "No migration files found"
+
+backup: ## Create a consistent online snapshot of the SQLite database (VACUUM INTO; safe while the server runs)
+	@echo "Backing up $(DB_PATH)..."
+	@go run cmd/backup/main.go
 
 # Version stamping. /health serves these so a bug report can be tied to the
 # binary that produced it. Override APP_VERSION on a release build; the commit

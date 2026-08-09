@@ -17,12 +17,14 @@ var migrationsFS embed.FS
 
 // openDSN appends this app's standard connection pragmas to a plain file
 // path:
-//   - journal_mode(WAL): what makes docs/deployment.md's backup instructions
-//     ("copy the database file while the app is running") actually safe --
-//     the default rollback journal can leave a plain `cp` with a torn,
-//     inconsistent file mid-write. Persisted in the database file itself
-//     once set, so this only needs to run against a real file, never
-//     ":memory:".
+//   - journal_mode(WAL): the SQLite concurrency mode this app runs in. It is
+//     what allows readers and a writer to coexist without blocking, but it is
+//     also why a plain `cp` of the .db file is NOT a valid online backup --
+//     committed writes can sit in a -wal sidecar that the copy never sees.
+//     The documented online backup uses VACUUM INTO (see database/backup.go
+//     and docs/deployment.md's Backups section), which snapshots the live
+//     database consistently. Persisted in the database file itself once set,
+//     so this only needs to run against a real file, never ":memory:".
 //   - foreign_keys(1): turns on real FK enforcement (Tier 3c item 8) --
 //     unlike journal_mode this is a per-connection setting, not persisted in
 //     the file, so it must be supplied via the DSN (applied by the driver on
