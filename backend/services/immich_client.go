@@ -275,26 +275,55 @@ func decodeJSON(resp *http.Response, out any) error {
 // side until exhausted). The frontend filters/search matches by name — Immich
 // has no stable name-search endpoint across versions, so this pins the stable
 // GET /api/people pagination instead.
+//
+// Immich's /api/people response shape varies by version:
+//
+//	Newer: {"people": {"items": [...], "hasNextPage": bool, "total": N}}
+//	Older:  {"people": [...], "total": N}
+//
+// decodeJSON is not used here because the two shapes need different structs.
 func (c *ImmichClient) ListPeople() ([]ImmichPerson, error) {
 	var people []ImmichPerson
 	page := 1
 	for {
-		var envelope struct {
+		resp, err := c.do(fmt.Sprintf("/api/people?withHidden=false&size=500&page=%d", page))
+		if err != nil {
+			return nil, err
+		}
+		body, err := io.ReadAll(io.LimitReader(resp.Body, maxImmichBodyBytes))
+		resp.Body.Close()
+		if err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrImmichInvalidData, err)
+		}
+
+		// Try the newer object-wrapped shape first.
+		var paginated struct {
 			People struct {
 				Items       []ImmichPerson `json:"items"`
 				HasNextPage bool           `json:"hasNextPage"`
 			} `json:"people"`
 		}
-		resp, err := c.do(fmt.Sprintf("/api/people?withHidden=false&size=500&page=%d", page))
-		if err != nil {
-			return nil, err
-		}
-		if err := decodeJSON(resp, &envelope); err != nil {
-			return nil, err
-		}
-		people = append(people, envelope.People.Items...)
-		if !envelope.People.HasNextPage {
-			break
+		if json.Unmarshal(body, &paginated) == nil && len(paginated.People.Items) > 0 {
+			people = append(people, paginated.People.Items...)
+			if !paginated.People.HasNextPage {
+				break
+			}
+		} else {
+			// Fall back to the older flat-array shape.
+			var flat struct {
+				People []ImmichPerson `json:"people"`
+				Total  int            `json:"total"`
+			}
+			if err := json.Unmarshal(body, &flat); err != nil {
+				return nil, fmt.Errorf("%w: %v", ErrImmichInvalidData, err)
+			}
+			people = append(people, flat.People...)
+			if flat.Total > 0 && len(people) >= flat.Total {
+				break
+			}
+			if len(flat.People) < 500 {
+				break
+			}
 		}
 		page++
 		if page > 100 {
