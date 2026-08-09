@@ -18,7 +18,7 @@ test.describe('Immich integration', () => {
     await waitForLoading(page);
 
     await expect(page.getByText('Immich').first()).toBeVisible();
-    await expect(page.getByLabel(/Base URL/i)).toBeVisible();
+    await expect(page.getByLabel(/Base URL$/i)).toBeVisible();
     await expect(page.getByLabel(/API Key/i)).toBeVisible();
     await expect(page.getByRole('button', { name: /Save connection/i })).toBeVisible();
   });
@@ -29,7 +29,7 @@ test.describe('Immich integration', () => {
     await page.goto('/settings');
     await waitForLoading(page);
 
-    await page.getByLabel(/Base URL/i).fill('ftp://immich.example');
+    await page.getByLabel(/Base URL$/i).fill('ftp://immich.example');
     await page.getByLabel(/API Key/i).fill('test-key-123');
     await page.getByRole('button', { name: /Save connection/i }).click();
 
@@ -40,7 +40,7 @@ test.describe('Immich integration', () => {
     await page.goto('/settings');
     await waitForLoading(page);
 
-    await page.getByLabel(/Base URL/i).fill('https://immich.example');
+    await page.getByLabel(/Base URL$/i).fill('https://immich.example');
     await page.getByLabel(/API Key/i).fill('test-api-key-abc');
     await page.getByRole('button', { name: /Save connection/i }).click();
 
@@ -51,9 +51,15 @@ test.describe('Immich integration', () => {
     await page.reload();
     await waitForLoading(page);
 
-    await expect(page.getByLabel(/Base URL/i)).toHaveValue('https://immich.example');
+    // The Immich config is fetched asynchronously on mount — wait for the
+    // field to repopulate rather than asserting immediately.
+    await expect(page.getByLabel(/Base URL$/i)).toHaveValue('https://immich.example', {
+      timeout: 10000,
+    });
     await expect(page.getByRole('button', { name: /Remove connection/i })).toBeVisible();
-    await expect(page.getByLabel(/Automatically sync photo appearances/i)).toBeVisible();
+    await expect(
+      page.getByLabel(/Automatically sync photo appearances/i),
+    ).toBeVisible();
   });
 
   test('shows sync toggle and remove button after configuration', async ({
@@ -68,7 +74,9 @@ test.describe('Immich integration', () => {
     await waitForLoading(page);
 
     await expect(page.getByRole('button', { name: /Remove connection/i })).toBeVisible();
-    await expect(page.getByLabel(/Automatically sync photo appearances/i)).toBeVisible();
+    await expect(
+      page.getByLabel(/Automatically sync photo appearances/i),
+    ).toBeVisible();
   });
 
   test('test connection reports a diagnosed failure when Immich is unreachable', async ({
@@ -77,7 +85,7 @@ test.describe('Immich integration', () => {
     await page.goto('/settings');
     await waitForLoading(page);
 
-    await page.getByLabel(/Base URL/i).fill('https://127.0.0.1:1');
+    await page.getByLabel(/Base URL$/i).fill('https://127.0.0.1:1');
     await page.getByLabel(/API Key/i).fill('any-key');
     await page.getByRole('button', { name: /Save connection/i }).click();
     await expect(page.getByRole('button', { name: /Remove connection/i })).toBeVisible({
@@ -102,7 +110,6 @@ test.describe('Immich integration', () => {
     await page.goto('/settings');
     await waitForLoading(page);
 
-    // window.confirm() is used — dismiss the native dialog
     page.once('dialog', (dialog) => dialog.accept());
 
     await page.getByRole('button', { name: /Remove connection/i }).click();
@@ -126,10 +133,14 @@ test.describe('Immich integration', () => {
     expect(contactList.length).toBeGreaterThan(0);
     const first = contactList[0];
 
-    await page.goto(`/contact/${first.vcard_uid ?? first.uid}`);
+    await page.goto(`/contacts/${first.ID}`);
     await waitForLoading(page);
 
-    await expect(page.getByText('Link a person').first()).toBeVisible({ timeout: 5000 });
+    // The Immich config fetch runs in a useEffect on the contact page —
+    // wait for the "Link a person" button to appear after the async fetch.
+    await expect(
+      page.getByRole('button', { name: /Link a person/i }),
+    ).toBeVisible({ timeout: 10000 });
   });
 
   test('shows no Immich prompt on contact page when not configured', async ({
@@ -141,10 +152,15 @@ test.describe('Immich integration', () => {
     expect(contactList.length).toBeGreaterThan(0);
     const first = contactList[0];
 
-    await page.goto(`/contact/${first.vcard_uid ?? first.uid}`);
+    await page.goto(`/contacts/${first.ID}`);
     await waitForLoading(page);
 
-    await expect(page.getByText(/Link a person/i)).not.toBeVisible({ timeout: 3000 });
+    // When no Immich config exists, the External Link panel renders
+    // without the Immich-specific section — the "Link a person" button
+    // must not appear.
+    await expect(
+      page.getByRole('button', { name: /Link a person/i }),
+    ).not.toBeVisible({ timeout: 3000 });
   });
 
   // ── URL allowlist ───────────────────────────────────────────────
@@ -171,13 +187,14 @@ test.describe('Immich integration', () => {
     expect(contactList.length).toBeGreaterThan(0);
     const first = contactList[0];
 
-    await page.goto(`/contact/${first.vcard_uid ?? first.uid}`);
+    await page.goto(`/contacts/${first.ID}`);
     await waitForLoading(page);
 
-    // The page must render its main sections even when Immich is down
-    // (T15/T16 trap: an unavailable instance must degrade, not crash).
+    // The page must render the contact name heading even when the Immich
+    // summary fetch fails (T15/T16 trap: an unavailable instance must
+    // degrade, not crash the entire contact page).
     await expect(
-      page.getByRole('heading', { name: /contact|notes|timeline/i }).first(),
+      page.getByRole('heading', { name: new RegExp(first.firstname) }),
     ).toBeVisible({ timeout: 10000 });
   });
 
@@ -187,7 +204,7 @@ test.describe('Immich integration', () => {
     await page.goto('/settings');
     await waitForLoading(page);
 
-    await page.getByLabel(/Base URL/i).fill('https://127.0.0.1:1');
+    await page.getByLabel(/Base URL$/i).fill('https://127.0.0.1:1');
     await page.getByLabel(/API Key/i).fill('any-key');
     await page.getByRole('button', { name: /Save connection/i }).click();
     await expect(page.getByRole('button', { name: /Remove connection/i })).toBeVisible({
@@ -199,19 +216,19 @@ test.describe('Immich integration', () => {
     expect(contactList.length).toBeGreaterThan(0);
     const first = contactList[0];
 
-    await page.goto(`/contact/${first.vcard_uid ?? first.uid}`);
+    await page.goto(`/contacts/${first.ID}`);
     await waitForLoading(page);
 
-    // Click "Link a person" to open the person picker dialog
+    // Click "Link a person" — the config exists so the button renders.
+    // The person picker fires ListPeople on open, which fails because
+    // the Immich server is unreachable. The error must be surfaced as
+    // an Alert inside the dialog, not a page crash.
     const linkButton = page.getByRole('button', { name: /Link a person/i });
-    if (await linkButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await linkButton.click();
+    await expect(linkButton).toBeVisible({ timeout: 10000 });
+    await linkButton.click();
 
-      // The dialog fires ListPeople on open — expect an error surfaced
-      // in the UI (Alert), not a page crash or blank dialog.
-      await expect(
-        page.getByText(/could not reach|not be reached|is the instance up/i),
-      ).toBeVisible({ timeout: 15000 });
-    }
+    await expect(
+      page.getByText(/could not reach|not be reached|is the instance up/i),
+    ).toBeVisible({ timeout: 15000 });
   });
 });
