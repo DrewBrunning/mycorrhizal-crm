@@ -18,10 +18,10 @@ import (
 // liveTestDB opens a real migrated database (never AutoMigrate — see
 // CLAUDE.md trap 1) and seeds it exactly the way a running server would have,
 // with the final write deliberately left uncheckpointed.
-func liveTestDB(t *testing.T, name string) (dbPath string, keepOpen bool) {
+func liveTestDB(t *testing.T, name string) string {
 	t.Helper()
 	dir := t.TempDir()
-	dbPath = filepath.Join(dir, name)
+	dbPath := filepath.Join(dir, name)
 
 	db, err := database.InitDB(dbPath)
 	require.NoError(t, err, "migrations must apply before backup")
@@ -41,19 +41,18 @@ func liveTestDB(t *testing.T, name string) (dbPath string, keepOpen bool) {
 	recent := models.Note{UserID: user.ID, Content: "recent note still only in the WAL", Date: time.Now()}
 	require.NoError(t, db.Create(&recent).Error)
 
-	keepOpen = true
 	t.Cleanup(func() {
 		sqlDB, err := db.DB()
 		if err == nil {
 			sqlDB.Close()
 		}
 	})
-	return dbPath, keepOpen
+	return dbPath
 }
 
-// openDB verifies data survived into a freshly-opened database at dbPath —
-// InitDB runs migrations too, so a snapshot that is not a valid database fails
-// here as loudly as it would on a real restore.
+// assertSeededData verifies data survived into a freshly-opened database at
+// dbPath — InitDB runs migrations too, so a snapshot that is not a valid
+// database fails here as loudly as it would on a real restore.
 func assertSeededData(t *testing.T, dbPath string) {
 	t.Helper()
 	db, err := database.InitDB(dbPath)
@@ -86,7 +85,7 @@ func assertSeededData(t *testing.T, dbPath string) {
 // copied to a fresh path and opened there, so no hidden -wal/-shm sidecar is
 // doing any of the work.
 func TestBackupSnapshotOnlineCapturesRecentWrites(t *testing.T) {
-	srcPath, _ := liveTestDB(t, "live.db")
+	srcPath := liveTestDB(t, "live.db")
 	dir := filepath.Dir(srcPath)
 	backupPath := filepath.Join(dir, "backup.db")
 
@@ -106,7 +105,7 @@ func TestBackupSnapshotOnlineCapturesRecentWrites(t *testing.T) {
 // out the live database — the source still opens, still has every row, and
 // still accepts writes afterwards.
 func TestBackupSnapshotDoesNotDisturbSource(t *testing.T) {
-	srcPath, _ := liveTestDB(t, "live.db")
+	srcPath := liveTestDB(t, "live.db")
 	backupPath := filepath.Join(filepath.Dir(srcPath), "backup.db")
 
 	require.NoError(t, database.BackupSnapshot(srcPath, backupPath))
@@ -136,7 +135,7 @@ func TestBackupSnapshotDoesNotDisturbSource(t *testing.T) {
 // WAL sidecars) exactly as a data-loss incident would, put the snapshot back
 // in its place, and confirm every row is present.
 func TestBackupSnapshotRestoreRoundTrip(t *testing.T) {
-	srcPath, _ := liveTestDB(t, "live.db")
+	srcPath := liveTestDB(t, "live.db")
 	backupPath := filepath.Join(filepath.Dir(srcPath), "backup.db")
 
 	require.NoError(t, database.BackupSnapshot(srcPath, backupPath))
@@ -158,7 +157,7 @@ func TestBackupSnapshotRestoreRoundTrip(t *testing.T) {
 // an existing file — the operator is expected to pick a fresh path (or let the
 // timestamped default do it). The pre-existing file must be left untouched.
 func TestBackupSnapshotRefusesToOverwrite(t *testing.T) {
-	srcPath, _ := liveTestDB(t, "live.db")
+	srcPath := liveTestDB(t, "live.db")
 	backupPath := filepath.Join(filepath.Dir(srcPath), "existing.db")
 
 	require.NoError(t, os.WriteFile(backupPath, []byte("precious data"), 0o644))
@@ -225,7 +224,7 @@ func TestBackupSnapshotFailureLeavesNoLitter(t *testing.T) {
 	}
 
 	// A subsequent real backup must not be blocked by the failed attempt.
-	liveDB, _ := liveTestDB(t, "live.db")
+	liveDB := liveTestDB(t, "live.db")
 	require.NoError(t, database.BackupSnapshot(liveDB, outPath), "a retry after failure must succeed")
 	require.FileExists(t, outPath)
 }
@@ -240,7 +239,7 @@ func TestMakeBackupTarget(t *testing.T) {
 		t.Skip("make not available; cannot exercise the Makefile target")
 	}
 
-	srcPath, _ := liveTestDB(t, "live.db")
+	srcPath := liveTestDB(t, "live.db")
 	dir := filepath.Dir(srcPath)
 	backupPath := filepath.Join(dir, "make-backup.db")
 

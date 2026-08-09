@@ -185,8 +185,10 @@ expected meaning of restoring a file-level backup; there is no partial/merge res
    `frontend/e2e/backupRestore.spec.ts`, which backs up a populated instance, destroys the database
    and both directories, restores, and asserts every entity type survived.
 
-Sessions are signed with `JWT_SECRET_KEY`, which the restored data has no memory of. If you changed
-it between backup and restore, users simply have to log in again — harmless, but expect it.
+The JWT secret key lives in your environment (`.env`), not in the database — restoring a
+backup does not change which key the server uses. If you rotated `JWT_SECRET_KEY` between backup and
+restore, any session tokens issued under the old key are unrecognized, so users simply have to log
+in again. That is harmless.
 
 ### Security notes
 
