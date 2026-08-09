@@ -148,6 +148,7 @@ Kept for reference/lookup, not ranked — order below is roughly the sequence th
 | [T18](34-T18-audit-trail.md) · Event history / audit trail | **DONE** |
 | [N7](29-N7-attachments.md) · File / document attachments | **DONE** |
 | | **→ ALPHA v0.4.0 — shipped** |
+| [T59](78-T59-immich-v041-still-broken.md) · Immich still broken in v0.4.1 testing | **DONE** |
 
 ### ⚠ A grooming lesson worth keeping visible
 
