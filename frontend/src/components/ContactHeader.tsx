@@ -101,10 +101,12 @@ export default function ContactHeader({
   const [actionsMenuAnchor, setActionsMenuAnchor] = useState<HTMLElement | null>(null);
   const actionsMenuOpen = Boolean(actionsMenuAnchor);
   // Collapse the text buttons (stay in touch / merge / export / archive) into
-  // a single overflow menu at phone widths where they cannot fit beside the
-  // name. The edit pencil stays visible at every size.
+  // a single overflow menu below the `md` breakpoint. The buttons overflow the
+  // viewport well above phone widths as the window shrinks (v0.4.1 testing),
+  // so the collapse point is md, not sm. The edit pencil stays visible at
+  // every size.
   const theme = useTheme();
-  const compactActions = useMediaQuery(theme.breakpoints.down('sm'));
+  const compactActions = useMediaQuery(theme.breakpoints.down('md'));
   const isOn = (key: ContactFieldKey) => enabled.has(key);
 
   const card = record.card || {};

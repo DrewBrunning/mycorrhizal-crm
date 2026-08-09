@@ -421,7 +421,9 @@
       "notes": "Notizen",
       "overview": "Übersicht",
       "people": "Personen",
-      "cadence": "Rhythmus & Nachverfolgung"
+      "cadence": "Rhythmus & Nachverfolgung",
+      "metadataExpand": "Karten-Metadaten aufklappen",
+      "metadataCollapse": "Karten-Metadaten zuklappen"
     },
     "email": "E-Mail",
     "phone": "Telefon",
@@ -783,7 +785,13 @@
       "options": {
         "eu": "Europäisch (TT.MM.JJJJ)",
         "us": "US (MM/TT/JJJJ)",
-        "iso": "ISO (JJJJ-MM-TT)"
+        "iso": "ISO (JJJJ-MM-TT)",
+        "ca": "Kanada (TT/MM/JJJJ)",
+        "eu-hyphen": "Europäisch mit Bindestrichen (TT-MM-JJJJ)",
+        "us-mmm": "US abgekürzt (MMM T, JJJJ)",
+        "us-mmmm": "US ausgeschrieben (MMMM T, JJJJ)",
+        "eu-mmm": "Europäisch abgekürzt (T MMM, JJJJ)",
+        "eu-mmmm": "Europäisch ausgeschrieben (TT MMMM, JJJJ)"
       }
     },
     "theme": {

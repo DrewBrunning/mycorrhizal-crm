@@ -160,3 +160,54 @@ test.describe('Contact detail jump-nav at mobile width (T45)', () => {
     }
   });
 });
+
+// v0.4.1: the header's action buttons (stay in touch / merge / export /
+// archive) must collapse into the overflow menu below the md breakpoint,
+// because they overflow the viewport at mid sizes well before phone width.
+// This is a viewport-driven regression — the mocked-matchMedia unit test
+// cannot reproduce it, so it needs a real layout width.
+test.describe('Contact header action overflow (v0.4.1)', () => {
+  // 800px is below md (900px) but well above phone width — the exact range
+  // where the buttons used to overflow instead of collapsing.
+  test.use({ viewport: { width: 800, height: 900 } });
+
+  test('collapses the action buttons into the overflow menu below md', async ({ page }) => {
+    const contact = await createTestContact(page.request);
+
+    try {
+      await page.goto(`/contacts/${contact.ID}`);
+      await waitForLoading(page);
+
+      // The overflow menu button is present; the standalone text buttons are not.
+      await expect(page.getByLabel('Actions')).toBeVisible();
+      await expect(page.getByText('Export vCard')).not.toBeVisible();
+      await expect(page.getByText('Stay in Touch')).not.toBeVisible();
+
+      // Opening the menu exposes the actions.
+      await page.getByLabel('Actions').click();
+      await expect(page.getByText('Stay in Touch')).toBeVisible();
+      await expect(page.getByText('vCard 4.0')).toBeVisible();
+    } finally {
+      await deleteTestContact(page.request, contact.ID);
+    }
+  });
+});
+
+test.describe('Contact header action overflow at desktop (v0.4.1)', () => {
+  // Default Playwright viewport (1280x720) is above md — the buttons render
+  // inline and the overflow menu button is absent.
+  test('renders the standalone action buttons at md and above', async ({ page }) => {
+    const contact = await createTestContact(page.request);
+
+    try {
+      await page.goto(`/contacts/${contact.ID}`);
+      await waitForLoading(page);
+
+      await expect(page.getByText('Export vCard')).toBeVisible();
+      await expect(page.getByText('Stay in Touch')).toBeVisible();
+      await expect(page.getByLabel('Actions')).not.toBeAttached();
+    } finally {
+      await deleteTestContact(page.request, contact.ID);
+    }
+  });
+});

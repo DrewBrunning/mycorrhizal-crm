@@ -108,7 +108,7 @@ function mockMatchMedia(matches: boolean) {
   }));
 }
 
-test('collapses the action buttons into an overflow menu at phone widths (T28)', () => {
+test('collapses the action buttons into an overflow menu below the md breakpoint (T28)', () => {
   mockMatchMedia(true);
   renderHeader({ onStayInTouch: vi.fn(), onMergeContact: vi.fn(), onArchiveContact: vi.fn() });
 
@@ -123,7 +123,7 @@ test('collapses the action buttons into an overflow menu at phone widths (T28)',
   expect(screen.getByText('vCard 4.0')).toBeInTheDocument();
 });
 
-test('renders the standalone action buttons above phone widths (T28)', () => {
+test('renders the standalone action buttons at md and above (T28)', () => {
   mockMatchMedia(false);
   renderHeader({ onStayInTouch: vi.fn(), onMergeContact: vi.fn(), onArchiveContact: vi.fn() });
 

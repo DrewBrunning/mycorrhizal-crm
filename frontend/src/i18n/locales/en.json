@@ -421,7 +421,9 @@
       "notes": "Notes",
       "overview": "Overview",
       "people": "People",
-      "cadence": "Cadence & follow-up"
+      "cadence": "Cadence & follow-up",
+      "metadataExpand": "Expand card metadata",
+      "metadataCollapse": "Collapse card metadata"
     },
     "email": "Email",
     "phone": "Phone",
@@ -810,7 +812,13 @@
       "options": {
         "eu": "European (DD.MM.YYYY)",
         "us": "US (MM/DD/YYYY)",
-        "iso": "ISO (YYYY-MM-DD)"
+        "iso": "ISO (YYYY-MM-DD)",
+        "ca": "Canada (DD/MM/YYYY)",
+        "eu-hyphen": "European with hyphens (DD-MM-YYYY)",
+        "us-mmm": "US abbreviated (MMM D, YYYY)",
+        "us-mmmm": "US full (MMMM D, YYYY)",
+        "eu-mmm": "European abbreviated (D MMM, YYYY)",
+        "eu-mmmm": "European full (DD MMMM, YYYY)"
       }
     },
     "theme": {

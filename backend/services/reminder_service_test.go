@@ -633,34 +633,52 @@ func TestReleaseJobLock_LockTakenByAnotherInstance(t *testing.T) {
 	assert.NotNil(t, reloaded.LockedAt, "lock should still be held since our instance never owned it")
 }
 
-// TestFormatDateForUser covers all three date-format branches.
+// TestFormatDateForUser covers all the date-format branches.
 func TestFormatDateForUser(t *testing.T) {
 	ts := time.Date(2026, 3, 7, 0, 0, 0, 0, time.UTC)
 
 	assert.Equal(t, "03/07/2026", formatDateForUser(ts, "us"))
 	assert.Equal(t, "2026-03-07", formatDateForUser(ts, "iso"))
 	assert.Equal(t, "07.03.2026", formatDateForUser(ts, "eu"))
+	assert.Equal(t, "07/03/2026", formatDateForUser(ts, "ca"))
+	assert.Equal(t, "07-03-2026", formatDateForUser(ts, "eu-hyphen"))
+	assert.Equal(t, "Mar 7, 2026", formatDateForUser(ts, "us-mmm"))
+	assert.Equal(t, "March 7, 2026", formatDateForUser(ts, "us-mmmm"))
+	assert.Equal(t, "7 Mar, 2026", formatDateForUser(ts, "eu-mmm"))
+	assert.Equal(t, "07 March, 2026", formatDateForUser(ts, "eu-mmmm"))
 	assert.Equal(t, "07.03.2026", formatDateForUser(ts, ""), "unrecognized/empty format should fall back to EU default")
 }
 
 // TestFormatBirthdayForUser covers the empty-string guard, both the
-// year-unknown (--MM-DD) and full (YYYY-MM-DD) branches across all three
+// year-unknown (--MM-DD) and full (YYYY-MM-DD) branches across all
 // date formats, and the too-short fallbacks that return the raw string.
 func TestFormatBirthdayForUser(t *testing.T) {
 	assert.Equal(t, "", formatBirthdayForUser("", "us"), "empty birthday returns empty string")
 
-	// Year-unknown format, all three date formats.
+	// Year-unknown format, all date formats.
 	assert.Equal(t, "03/07", formatBirthdayForUser("--03-07", "us"))
 	assert.Equal(t, "03-07", formatBirthdayForUser("--03-07", "iso"))
 	assert.Equal(t, "07.03.", formatBirthdayForUser("--03-07", "eu"))
+	assert.Equal(t, "07/03", formatBirthdayForUser("--03-07", "ca"))
+	assert.Equal(t, "07-03", formatBirthdayForUser("--03-07", "eu-hyphen"))
+	assert.Equal(t, "Mar 7", formatBirthdayForUser("--03-07", "us-mmm"))
+	assert.Equal(t, "March 7", formatBirthdayForUser("--03-07", "us-mmmm"))
+	assert.Equal(t, "7 Mar", formatBirthdayForUser("--03-07", "eu-mmm"))
+	assert.Equal(t, "07 March", formatBirthdayForUser("--03-07", "eu-mmmm"))
 
 	// Year-unknown but too short to extract month/day - returned as-is.
 	assert.Equal(t, "--03", formatBirthdayForUser("--03", "us"))
 
-	// Full YYYY-MM-DD format, all three date formats.
+	// Full YYYY-MM-DD format, all date formats.
 	assert.Equal(t, "03/07/2020", formatBirthdayForUser("2020-03-07", "us"))
 	assert.Equal(t, "2020-03-07", formatBirthdayForUser("2020-03-07", "iso"))
 	assert.Equal(t, "07.03.2020", formatBirthdayForUser("2020-03-07", "eu"))
+	assert.Equal(t, "07/03/2020", formatBirthdayForUser("2020-03-07", "ca"))
+	assert.Equal(t, "07-03-2020", formatBirthdayForUser("2020-03-07", "eu-hyphen"))
+	assert.Equal(t, "Mar 7, 2020", formatBirthdayForUser("2020-03-07", "us-mmm"))
+	assert.Equal(t, "March 7, 2020", formatBirthdayForUser("2020-03-07", "us-mmmm"))
+	assert.Equal(t, "7 Mar, 2020", formatBirthdayForUser("2020-03-07", "eu-mmm"))
+	assert.Equal(t, "07 March, 2020", formatBirthdayForUser("2020-03-07", "eu-mmmm"))
 
 	// Neither prefix pattern nor long enough - returned as-is.
 	assert.Equal(t, "2020-3-7", formatBirthdayForUser("2020-3-7", "us"))
