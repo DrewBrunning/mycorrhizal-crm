@@ -380,26 +380,49 @@ func (c *ImmichClient) GetStatistics(personID string) (int, error) {
 // GET /api/people/:id/assets. "Most recent" = newest fileCreatedAt (or
 // createdAt fallback). Bounded to limit items; a person with no photos
 // returns an empty slice, never an error.
+//
+// Like ListPeople, this handles two Immich response shapes:
+//
+//	Newer: {"items": [...]}
+//	Older:  [...]
 func (c *ImmichClient) RecentAssets(personID string, limit int) ([]ImmichAsset, error) {
-	var envelope struct {
-		Items []ImmichAsset `json:"items"`
-	}
 	resp, err := c.do("/api/people/" + url.PathEscape(personID) + "/assets?size=200")
 	if err != nil {
 		return nil, err
 	}
-	if err := decodeJSON(resp, &envelope); err != nil {
-		return nil, err
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxImmichBodyBytes))
+	resp.Body.Close()
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrImmichInvalidData, err)
 	}
 
-	assets := envelope.Items
-	sort.SliceStable(assets, func(i, j int) bool {
-		return assetOccurredAt(&assets[i]).After(assetOccurredAt(&assets[j]))
-	})
-	if len(assets) > limit {
-		assets = assets[:limit]
+	// Try the newer object-wrapped shape first.
+	var wrapped struct {
+		Items []ImmichAsset `json:"items"`
 	}
-	return assets, nil
+	if json.Unmarshal(body, &wrapped) == nil && len(wrapped.Items) > 0 {
+		assets := wrapped.Items
+		sort.SliceStable(assets, func(i, j int) bool {
+			return assetOccurredAt(&assets[i]).After(assetOccurredAt(&assets[j]))
+		})
+		if len(assets) > limit {
+			assets = assets[:limit]
+		}
+		return assets, nil
+	}
+
+	// Fall back to the older flat-array shape.
+	var flat []ImmichAsset
+	if err := json.Unmarshal(body, &flat); err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrImmichInvalidData, err)
+	}
+	sort.SliceStable(flat, func(i, j int) bool {
+		return assetOccurredAt(&flat[i]).After(assetOccurredAt(&flat[j]))
+	})
+	if len(flat) > limit {
+		flat = flat[:limit]
+	}
+	return flat, nil
 }
 
 // Thumbnail fetches a person's thumbnail image, returning the bytes and the
