@@ -6552,7 +6552,7 @@ components:
       type: object
       required: [date_format]
       properties:
-        date_format: { type: string, enum: [eu, us, iso] }
+        date_format: { type: string, enum: [eu, us, iso, ca, eu-hyphen, us-mmm, us-mmmm, eu-mmm, eu-mmmm] }
     EnabledContactFieldsInput:
       type: object
       properties:

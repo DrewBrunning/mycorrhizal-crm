@@ -1,5 +1,6 @@
-import { useMemo, useEffect } from 'react';
-import { Card, CardContent, Divider, Stack, Box, Typography, SvgIcon, IconButton, Tooltip } from '@mui/material';
+import { useMemo, useEffect, useState } from 'react';
+import { Card, CardContent, Divider, Stack, Box, Typography, SvgIcon, IconButton, Tooltip, Collapse, Button } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import EmailIcon from '@mui/icons-material/Email';
 import PhoneIcon from '@mui/icons-material/Phone';
 import SmsOutlinedIcon from '@mui/icons-material/SmsOutlined';
@@ -170,6 +171,11 @@ export default function ContactInformation({
   // empty card (T30's original report: "Card Metadata showing when all fields
   // are hidden").
   const showMetadata = hasImportedResources(card) || hasRelatedToOrMembers(card);
+  // Imported-resource lists (media, cryptoKeys, relatedTo, members, ...) can
+  // grow arbitrarily large (a vCard can carry hundreds of entries), so the
+  // whole section collapses behind its heading by default (v0.4.1). The data
+  // is never lost — it just takes a click to reveal.
+  const [metadataExpanded, setMetadataExpanded] = useState(false);
 
   // Gender is a top-level record field (not part of the Card/CRM envelope), so
   // it is passed in separately and shown here next to pronouns/grammatical
@@ -486,7 +492,10 @@ export default function ContactInformation({
     return (
       <Stack spacing={0.25}>
         {rows.map((a, i) => {
-          const date = formatAnniversaryDate(a.date);
+          // Raw ISO (YYYY-MM-DD or --MM-DD) is what the copy button shares;
+          // the displayed text honors the user's selected date format.
+          const iso = formatAnniversaryDate(a.date);
+          const date = iso ? formatBirthday(iso) : undefined;
           return (
             <Box key={i} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
               <Box sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
@@ -496,7 +505,7 @@ export default function ContactInformation({
                 </Typography>
               </Box>
               <Box sx={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 0.25 }}>
-                {date && <CopyButton value={date} label={t('contacts.anniversaries')} />}
+                {iso && <CopyButton value={iso} label={t('contacts.anniversaries')} />}
               </Box>
             </Box>
           );
@@ -906,10 +915,45 @@ export default function ContactInformation({
               sections (WP7/WP8) — present to prevent silent data loss and to
               make imported data visible, not editable (full editing UI is
               T29b). Grouped under the same "Card metadata" heading the header
-              and Add-dialog use for language/contact-kind. */}
-          {showMetadata && <SectionHeading label={t('contactDetail.section.metadata')} />}
-          <ImportedResourcesSection card={card} />
-          <RelatedToMembersSection card={card} />
+              and Add-dialog use for language/contact-kind. Collapsible because
+              these lists can grow arbitrarily large (v0.4.1). */}
+          {showMetadata && (
+            <Box>
+              <Button
+                fullWidth
+                onClick={() => setMetadataExpanded((v) => !v)}
+                aria-expanded={metadataExpanded}
+                aria-label={
+                  metadataExpanded
+                    ? t('contactDetail.section.metadataCollapse')
+                    : t('contactDetail.section.metadataExpand')
+                }
+                endIcon={
+                  <ExpandMoreIcon
+                    sx={{ transform: metadataExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}
+                  />
+                }
+                sx={{
+                  justifyContent: 'space-between',
+                  px: 0,
+                  py: 0.5,
+                  color: 'text.secondary',
+                  textTransform: 'none',
+                  fontWeight: 'inherit',
+                  '&:hover': { bgcolor: 'transparent', color: 'text.primary' },
+                }}
+              >
+                <Typography variant="overline" sx={{ letterSpacing: 0.08, fontSize: '0.72rem' }}>
+                  {t('contactDetail.section.metadata')}
+                </Typography>
+              </Button>
+              <Divider sx={{ mt: 0.5 }} />
+              <Collapse in={metadataExpanded}>
+                <ImportedResourcesSection card={card} />
+                <RelatedToMembersSection card={card} />
+              </Collapse>
+            </Box>
+          )}
         </Stack>
       </CardContent>
     </Card>

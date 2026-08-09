@@ -421,7 +421,9 @@
       "notes": "Notas",
       "overview": "Resumen",
       "people": "Personas",
-      "cadence": "Cadencia y seguimiento"
+      "cadence": "Cadencia y seguimiento",
+      "metadataExpand": "Expandir metadatos de la tarjeta",
+      "metadataCollapse": "Contraer metadatos de la tarjeta"
     },
     "email": "Email",
     "phone": "Teléfono",
@@ -783,7 +785,13 @@
       "options": {
         "eu": "Europeo (DD.MM.AAAA)",
         "us": "EE.UU. (MM/DD/AAAA)",
-        "iso": "ISO (AAAA-MM-DD)"
+        "iso": "ISO (AAAA-MM-DD)",
+        "ca": "Canadá (DD/MM/AAAA)",
+        "eu-hyphen": "Europeo con guiones (DD-MM-AAAA)",
+        "us-mmm": "EE.UU. abreviado (MMM D, AAAA)",
+        "us-mmmm": "EE.UU. completo (MMMM D, AAAA)",
+        "eu-mmm": "Europeo abreviado (D MMM, AAAA)",
+        "eu-mmmm": "Europeo completo (DD MMMM, AAAA)"
       }
     },
     "theme": {

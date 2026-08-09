@@ -142,6 +142,29 @@ test('shows the Card metadata heading when the card has related entities', () =>
   expect(screen.getByText('Card metadata')).toBeInTheDocument();
 });
 
+// v0.4.1: the Card metadata section can grow arbitrarily large (imported
+// resource lists, relatedTo/members), so it collapses behind its heading by
+// default and expands on click.
+test('Card metadata content is collapsed by default (v0.4.1)', () => {
+  renderInformation({ media: [{ uri: 'https://example.com/photo.jpg' }] });
+  expect(screen.getByText('Card metadata')).toBeInTheDocument();
+  // The expand affordance is present, the heavy content is not visible.
+  expect(screen.getByLabelText('Expand card metadata')).toBeInTheDocument();
+  expect(screen.queryByText('Imported Resources')).not.toBeVisible();
+  expect(screen.queryByText('https://example.com/photo.jpg')).not.toBeVisible();
+});
+
+test('clicking the Card metadata heading expands the section (v0.4.1)', () => {
+  renderInformation({ media: [{ uri: 'https://example.com/photo.jpg' }] });
+
+  const toggle = screen.getByLabelText('Expand card metadata');
+  fireEvent.click(toggle);
+
+  expect(screen.getByText('Imported Resources')).toBeInTheDocument();
+  expect(screen.getByText('https://example.com/photo.jpg')).toBeInTheDocument();
+  expect(screen.getByLabelText('Collapse card metadata')).toBeInTheDocument();
+});
+
 test('long unbroken email addresses wrap instead of overflowing (T28)', () => {
   const email = 'averyveryveryverylongunbrokenword@example.com';
   renderInformation({ emails: [{ address: email, contexts: ['home'] }] });
@@ -373,4 +396,29 @@ test('editing and saving a phone unchanged still round-trips through the same ad
   expect(onUpdateCard).toHaveBeenCalledWith({
     phones: [{ number: '+15551234567', features: ['cell'], contexts: ['cell'], pref: undefined, label: undefined }],
   });
+});
+
+// --- v0.4.1: anniversary rows honor the selected date format, not raw ISO ---
+
+test('anniversary rows render in the selected date format (not YYYY-MM-DD)', () => {
+  // Default provider format is "eu" (DD.MM.YYYY).
+  renderInformation(
+    { anniversaries: [{ kind: 'wedding', date: { partial: { year: 2015, month: 6, day: 1 } } }] },
+    {},
+    { enabledFields: new Set<ContactFieldKey>(['anniversaries']) }
+  );
+  expect(screen.getByText(/01\.06\.2015/)).toBeInTheDocument();
+  expect(screen.queryByText(/2015-06-01/)).toBeNull();
+});
+
+test('anniversary rows honor a US (MM/DD/YYYY) date format', () => {
+  window.localStorage.setItem('dateFormat', 'us');
+  renderInformation(
+    { anniversaries: [{ kind: 'wedding', date: { partial: { year: 2015, month: 6, day: 1 } } }] },
+    {},
+    { enabledFields: new Set<ContactFieldKey>(['anniversaries']) }
+  );
+  expect(screen.getByText(/06\/01\/2015/)).toBeInTheDocument();
+  expect(screen.queryByText(/2015-06-01/)).toBeNull();
+  window.localStorage.removeItem('dateFormat');
 });

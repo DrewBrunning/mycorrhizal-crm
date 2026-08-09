@@ -421,7 +421,9 @@
       "notes": "Note",
       "overview": "Panoramica",
       "people": "Persone",
-      "cadence": "Cadenza e follow-up"
+      "cadence": "Cadenza e follow-up",
+      "metadataExpand": "Espandi metadati della scheda",
+      "metadataCollapse": "Comprimi metadati della scheda"
     },
     "email": "Email",
     "phone": "Telefono",
@@ -783,7 +785,13 @@
       "options": {
         "eu": "Europeo (GG.MM.AAAA)",
         "us": "Americano (MM/GG/AAAA)",
-        "iso": "ISO (AAAA-MM-GG)"
+        "iso": "ISO (AAAA-MM-GG)",
+        "ca": "Canada (GG/MM/AAAA)",
+        "eu-hyphen": "Europeo con trattini (GG-MM-AAAA)",
+        "us-mmm": "Americano abbreviato (MMM G, AAAA)",
+        "us-mmmm": "Americano esteso (MMMM G, AAAA)",
+        "eu-mmm": "Europeo abbreviato (G MMM, AAAA)",
+        "eu-mmmm": "Europeo esteso (GG MMMM, AAAA)"
       }
     },
     "theme": {

@@ -421,7 +421,9 @@
       "notes": "Notes",
       "overview": "Aperçu",
       "people": "Personnes",
-      "cadence": "Cadence et suivi"
+      "cadence": "Cadence et suivi",
+      "metadataExpand": "Développer les métadonnées de la carte",
+      "metadataCollapse": "Replier les métadonnées de la carte"
     },
     "email": "E-mail",
     "phone": "Téléphone",
@@ -783,7 +785,13 @@
       "options": {
         "eu": "Européen (JJ.MM.AAAA)",
         "us": "États-Unis (MM/JJ/AAAA)",
-        "iso": "ISO (AAAA-MM-JJ)"
+        "iso": "ISO (AAAA-MM-JJ)",
+        "ca": "Canada (JJ/MM/AAAA)",
+        "eu-hyphen": "Européen avec tirets (JJ-MM-AAAA)",
+        "us-mmm": "États-Unis abrégé (MMM J, AAAA)",
+        "us-mmmm": "États-Unis complet (MMMM J, AAAA)",
+        "eu-mmm": "Européen abrégé (J MMM, AAAA)",
+        "eu-mmmm": "Européen complet (JJ MMMM, AAAA)"
       }
     },
     "theme": {

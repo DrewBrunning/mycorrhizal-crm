@@ -280,6 +280,12 @@ export default function SettingsPage() {
               <MenuItem value="eu" >{t('settings.dateFormat.options.eu' )}</MenuItem>
               <MenuItem value="us" >{t('settings.dateFormat.options.us' )}</MenuItem>
               <MenuItem value="iso">{t('settings.dateFormat.options.iso')}</MenuItem>
+              <MenuItem value="ca">{t('settings.dateFormat.options.ca')}</MenuItem>
+              <MenuItem value="eu-hyphen">{t('settings.dateFormat.options.eu-hyphen')}</MenuItem>
+              <MenuItem value="us-mmm">{t('settings.dateFormat.options.us-mmm')}</MenuItem>
+              <MenuItem value="us-mmmm">{t('settings.dateFormat.options.us-mmmm')}</MenuItem>
+              <MenuItem value="eu-mmm">{t('settings.dateFormat.options.eu-mmm')}</MenuItem>
+              <MenuItem value="eu-mmmm">{t('settings.dateFormat.options.eu-mmmm')}</MenuItem>
             </Select>
           </FormControl>
 

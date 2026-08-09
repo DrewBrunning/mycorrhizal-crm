@@ -661,6 +661,31 @@ func TestUpdateDateFormat_Succeeds(t *testing.T) {
 	assert.Equal(t, "iso", updated.DateFormat)
 }
 
+func TestUpdateDateFormat_AcceptsNewFormats(t *testing.T) {
+	db, router := setupRouter()
+	var user models.User
+	db.First(&user)
+
+	router.PATCH("/date-format", func(c *gin.Context) {
+		c.Set("username", user.Username)
+		UpdateDateFormat(c)
+	})
+
+	for _, format := range []string{"ca", "eu-hyphen", "us-mmm", "us-mmmm", "eu-mmm", "eu-mmmm"} {
+		req, _ := http.NewRequest("PATCH", "/date-format", bytes.NewBufferString(`{"date_format":"`+format+`"}`))
+		req.Header.Set("Content-Type", "application/json")
+
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code, "format %s should be accepted", format)
+
+		var updated models.User
+		db.First(&updated, user.ID)
+		assert.Equal(t, format, updated.DateFormat, "format %s should be persisted", format)
+	}
+}
+
 func TestUpdateDateFormat_RejectsUnsupportedFormat(t *testing.T) {
 	db, router := setupRouter()
 	var user models.User
