@@ -67,3 +67,46 @@ The procedure must cover:
   all survive.
 - If a `make backup` target is built: test it against a running instance and confirm the output file
   restores cleanly.
+
+## Landing note (2026-08-09)
+
+Landed. `docs/deployment.md`'s Backups section now documents the tested online (`VACUUM INTO`) and
+offline (stop → copy) procedures, the restore steps with a verification step, and the photo +
+attachments directories that live outside the SQLite file. `getting-started.md`'s one-line Backup
+blurb was corrected to point at it (it used to recommend copying the live `.db`, which WAL mode makes
+unsafe).
+
+`make backup` (backend/Makefile) produces a consistent online snapshot via
+`database.BackupSnapshot` (checkpoint → `VACUUM INTO` → `PRAGMA integrity_check`), refusing to
+overwrite an existing output, building at a temp name and moving into place atomically so a failed
+run leaves no partial file and can never delete a file it didn't create. A `cmd/backup` CLI mirrors
+the `cmd/migrate` shape: reads `SQLITE_DB_PATH`, output from a positional arg / `BACKUP_PATH` /
+timestamped sibling.
+
+**Two deliberate deviations from this ticket's suggestions, both for correctness in the actual
+deployment:**
+
+1. **`make backup` is a Go CLI, not a `sqlite3` shell-out.** The shipped image has no `sqlite3`
+   binary (backend/Dockerfile's runtime deps), so the target could not have worked in the documented
+   Docker deployment. `VACUUM INTO` is a plain SQL statement the app's own driver handles normally —
+   the ticket's stated rationale for the target — so the CLI just runs it.
+2. **The checkpoint is `wal_checkpoint(PASSIVE)`, not `wal_checkpoint(TRUNCATE)`.** The ticket's trap
+   premise ("VACUUM INTO may not include uncheckpointed WAL frames") does not hold on the bundled
+   SQLite (≥3.51.3; verified empirically that VACUUM INTO reads through the WAL), and TRUNCATE
+   returns busy=1 the moment any connection holds a read transaction — which would make the "online
+   backup" fail exactly when a live server is busy, the one situation it exists for. PASSIVE never
+   returns busy; the checkpoint is kept as a best-effort tidy-up and VACUUM INTO is the actual
+   correctness guarantee.
+
+**Tests** (all hand-verified by breaking the code): real-migrated-DB Go tests for online capture of
+recent WAL writes, the destroy-and-restore round trip, source-untouched, overwrite refusal,
+no-litter-on-failure, default naming, and the real `make backup` target; plus
+`frontend/e2e/backupRestore.spec.ts`, a Playwright e2e that builds the backend from source, seeds a
+user + contact + note + activity + reminder + relationship + photo + attachment through the real API,
+runs the real `make backup`, destroys the `.db` and both directories, restores, restarts, and
+asserts every entity and every byte survived. The e2e CI job now provisions Go for that spec.
+
+T26's cross-ticket note ("a restore should not resurrect rows pending purge — decide and document")
+is answered in deployment.md's Restore section: a file-level restore is a deliberate point-in-time
+rollback, and resurrecting soft-deleted (not-yet-purged) rows is inherent to it — documented as the
+expected semantics, with no partial/merge restore.

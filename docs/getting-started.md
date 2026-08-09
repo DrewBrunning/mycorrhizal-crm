@@ -57,4 +57,7 @@ To get started you need to register a user. The first user will automatically re
 
 ## Backup
 
-Make regular backups of your data by copying the database file in your data directory as well as the contents of the photo directory to a separate device.
+Make regular backups of your data: the SQLite database **and** the photo and attachments
+directories (they live outside the database file). See [Deployment → Backups](deployment.html#backups)
+for the tested online and offline procedures — in particular, do not copy the `.db` file while the
+server is running, since the database uses WAL mode.

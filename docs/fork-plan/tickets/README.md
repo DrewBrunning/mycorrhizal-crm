@@ -23,15 +23,15 @@ size) → **effort** (smaller first). Ticket numbers are stable IDs, not rank �
 the rank.
 
 | Rank | Ticket | R | Size | Depends on | Ready? |
-|---|---|---|---|---|---|---|
-| 1 | [N6](26-N6-backup-restore.md) · Full backup restore | 3 | S | — | Ready (deferred to v0.5.0 to batch schema/model changes) |
+|---|---|---|---|---|---|---|---|
+| 1 | [T60](79-T60-audit-trail-ui.md) · Audit trail UI | 3 | M | — | Ready (backend + OpenAPI shipped in v0.4.0; frontend-only, no schema change, additive) |
 
 > **N8 (2FA/TOTP) moved to Feature ideas, 2026-08-07.** For a self-hosted instance
 > going through OIDC the IdP already owns 2FA, so app-level TOTP is redundant there; it only
 > matters for local password accounts, which a single-operator instance rarely has. Not dropped —
-> it's genuinely more likely than the live-sync/Dawarich ideas below — just not scheduled while
-> N7 (the last task before the v0.4.0 alpha cut) and N6 (deferred to v0.5.0 to batch schema/model
-> changes) remain.
+> it's genuinely more likely than the live-sync/Dawarich ideas below — just not scheduled. (N7, the
+> last task before the v0.4.0 alpha cut, and N6, deferred to v0.5.0 to batch schema/model changes,
+> have since both shipped — the two tickets this note originally deferred N8 behind are done.)
 
 ### Deferred — not ranked, no plan to schedule
 
@@ -149,6 +149,7 @@ Kept for reference/lookup, not ranked — order below is roughly the sequence th
 | [N7](29-N7-attachments.md) · File / document attachments | **DONE** |
 | | **→ ALPHA v0.4.0 — shipped** |
 | [T59](78-T59-immich-v041-still-broken.md) · Immich still broken in v0.4.1 testing | **DONE** |
+| [N6](26-N6-backup-restore.md) · Full backup restore | **DONE** (2026-08-09 — tested `VACUUM INTO` online backup via `make backup` + restore procedure; see the ticket's landing note for the two deliberate deviations from its implementation suggestions) |
 
 ### ⚠ A grooming lesson worth keeping visible
 

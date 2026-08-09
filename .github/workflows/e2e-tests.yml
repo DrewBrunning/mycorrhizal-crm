@@ -47,6 +47,14 @@ jobs:
           cache: 'yarn'
           cache-dependency-path: frontend/yarn.lock
 
+      # backupRestore.spec.ts (N6) compiles the backend from source and drives
+      # the real `make backup` target, so the e2e host needs the same Go
+      # toolchain the backend CI uses.
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+
       - name: Install frontend dependencies
         working-directory: frontend
         run: yarn install --frozen-lockfile
