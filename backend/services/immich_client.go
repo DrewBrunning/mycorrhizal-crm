@@ -275,26 +275,55 @@ func decodeJSON(resp *http.Response, out any) error {
 // side until exhausted). The frontend filters/search matches by name — Immich
 // has no stable name-search endpoint across versions, so this pins the stable
 // GET /api/people pagination instead.
+//
+// Immich's /api/people response shape varies by version:
+//
+//	Newer: {"people": {"items": [...], "hasNextPage": bool, "total": N}}
+//	Older:  {"people": [...], "total": N}
+//
+// decodeJSON is not used here because the two shapes need different structs.
 func (c *ImmichClient) ListPeople() ([]ImmichPerson, error) {
 	var people []ImmichPerson
 	page := 1
 	for {
-		var envelope struct {
+		resp, err := c.do(fmt.Sprintf("/api/people?withHidden=false&size=500&page=%d", page))
+		if err != nil {
+			return nil, err
+		}
+		body, err := io.ReadAll(io.LimitReader(resp.Body, maxImmichBodyBytes))
+		resp.Body.Close()
+		if err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrImmichInvalidData, err)
+		}
+
+		// Try the newer object-wrapped shape first.
+		var paginated struct {
 			People struct {
 				Items       []ImmichPerson `json:"items"`
 				HasNextPage bool           `json:"hasNextPage"`
 			} `json:"people"`
 		}
-		resp, err := c.do(fmt.Sprintf("/api/people?withHidden=false&size=500&page=%d", page))
-		if err != nil {
-			return nil, err
-		}
-		if err := decodeJSON(resp, &envelope); err != nil {
-			return nil, err
-		}
-		people = append(people, envelope.People.Items...)
-		if !envelope.People.HasNextPage {
-			break
+		if json.Unmarshal(body, &paginated) == nil && len(paginated.People.Items) > 0 {
+			people = append(people, paginated.People.Items...)
+			if !paginated.People.HasNextPage {
+				break
+			}
+		} else {
+			// Fall back to the older flat-array shape.
+			var flat struct {
+				People []ImmichPerson `json:"people"`
+				Total  int            `json:"total"`
+			}
+			if err := json.Unmarshal(body, &flat); err != nil {
+				return nil, fmt.Errorf("%w: %v", ErrImmichInvalidData, err)
+			}
+			people = append(people, flat.People...)
+			if flat.Total > 0 && len(people) >= flat.Total {
+				break
+			}
+			if len(flat.People) < 500 {
+				break
+			}
 		}
 		page++
 		if page > 100 {
@@ -351,26 +380,49 @@ func (c *ImmichClient) GetStatistics(personID string) (int, error) {
 // GET /api/people/:id/assets. "Most recent" = newest fileCreatedAt (or
 // createdAt fallback). Bounded to limit items; a person with no photos
 // returns an empty slice, never an error.
+//
+// Like ListPeople, this handles two Immich response shapes:
+//
+//	Newer: {"items": [...]}
+//	Older:  [...]
 func (c *ImmichClient) RecentAssets(personID string, limit int) ([]ImmichAsset, error) {
-	var envelope struct {
-		Items []ImmichAsset `json:"items"`
-	}
 	resp, err := c.do("/api/people/" + url.PathEscape(personID) + "/assets?size=200")
 	if err != nil {
 		return nil, err
 	}
-	if err := decodeJSON(resp, &envelope); err != nil {
-		return nil, err
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxImmichBodyBytes))
+	resp.Body.Close()
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrImmichInvalidData, err)
 	}
 
-	assets := envelope.Items
-	sort.SliceStable(assets, func(i, j int) bool {
-		return assetOccurredAt(&assets[i]).After(assetOccurredAt(&assets[j]))
-	})
-	if len(assets) > limit {
-		assets = assets[:limit]
+	// Try the newer object-wrapped shape first.
+	var wrapped struct {
+		Items []ImmichAsset `json:"items"`
 	}
-	return assets, nil
+	if json.Unmarshal(body, &wrapped) == nil && len(wrapped.Items) > 0 {
+		assets := wrapped.Items
+		sort.SliceStable(assets, func(i, j int) bool {
+			return assetOccurredAt(&assets[i]).After(assetOccurredAt(&assets[j]))
+		})
+		if len(assets) > limit {
+			assets = assets[:limit]
+		}
+		return assets, nil
+	}
+
+	// Fall back to the older flat-array shape.
+	var flat []ImmichAsset
+	if err := json.Unmarshal(body, &flat); err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrImmichInvalidData, err)
+	}
+	sort.SliceStable(flat, func(i, j int) bool {
+		return assetOccurredAt(&flat[i]).After(assetOccurredAt(&flat[j]))
+	})
+	if len(flat) > limit {
+		flat = flat[:limit]
+	}
+	return flat, nil
 }
 
 // Thumbnail fetches a person's thumbnail image, returning the bytes and the

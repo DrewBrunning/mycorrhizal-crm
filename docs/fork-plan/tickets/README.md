@@ -147,6 +147,7 @@ Kept for reference/lookup, not ranked — order below is roughly the sequence th
 | [T13](36-T13-two-way-calendar.md) · Two-way calendar sync ⚠ | **DONE** |
 | [T18](34-T18-audit-trail.md) · Event history / audit trail | **DONE** |
 | [N7](29-N7-attachments.md) · File / document attachments | **DONE** |
+| | **→ ALPHA v0.4.0 — shipped** |
 
 ### ⚠ A grooming lesson worth keeping visible
 
