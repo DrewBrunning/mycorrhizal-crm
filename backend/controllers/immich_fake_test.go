@@ -187,9 +187,10 @@ func (f *fakeImmichController) handleSearchMetadata(w http.ResponseWriter, r *ht
 	}
 	writeControllerJSON(w, map[string]any{
 		"assets": map[string]any{
-			"items": p.Assets,
-			"total": len(p.Assets),
-			"count": len(p.Assets),
+			"items":    p.Assets,
+			"total":    len(p.Assets),
+			"count":    len(p.Assets),
+			"nextPage": "",
 		},
 	})
 }
