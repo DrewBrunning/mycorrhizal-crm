@@ -30,7 +30,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.mycorrhizal.crm.ui.theme.MycorrhizalTypography
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,7 +60,7 @@ fun ActivityFormScreen(
                 title = {
                     Text(
                         text = if (state.isEdit) "Edit activity" else "New activity",
-                        style = MycorrhizalTypography.appBarTitle,
+                        style = MaterialTheme.typography.titleLarge,
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

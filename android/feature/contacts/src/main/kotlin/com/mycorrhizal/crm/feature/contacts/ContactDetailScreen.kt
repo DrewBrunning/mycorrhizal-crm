@@ -54,7 +54,7 @@ import com.mycorrhizal.crm.model.network.Phone
 import com.mycorrhizal.crm.model.util.DateFormat.display
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
-import com.mycorrhizal.crm.ui.theme.MycorrhizalTypography
+import com.mycorrhizal.crm.ui.theme.AppTypography
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,7 +87,7 @@ fun ContactDetailScreen(
                 title = {
                     Text(
                         text = state.contact?.card?.name?.full ?: "Contact",
-                        style = MycorrhizalTypography.appBarTitle,
+                        style = MaterialTheme.typography.titleLarge,
                     )
                 },
                 actions = {
@@ -283,7 +283,7 @@ private fun EmailRow(email: Email) {
     ) {
         Text(
             text = address,
-            style = MycorrhizalTypography.mono,
+            style = AppTypography.mono,
             modifier = Modifier.weight(1f),
         )
         email.label?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -308,7 +308,7 @@ private fun PhoneRow(phone: Phone) {
     ) {
         Text(
             text = number,
-            style = MycorrhizalTypography.mono,
+            style = AppTypography.mono,
             modifier = Modifier.weight(1f),
         )
         val features = phone.features?.joinToString(", ").orEmpty()

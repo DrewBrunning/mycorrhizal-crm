@@ -51,7 +51,6 @@ import coil3.compose.AsyncImage
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
-import com.mycorrhizal.crm.ui.theme.MycorrhizalTypography
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -114,7 +113,7 @@ fun ContactListScreenContent(
         topBar = {
             TopAppBar(
                 title = {
-                    Text("Contacts", style = MycorrhizalTypography.appBarTitle)
+                    Text("Contacts", style = MaterialTheme.typography.titleLarge)
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,

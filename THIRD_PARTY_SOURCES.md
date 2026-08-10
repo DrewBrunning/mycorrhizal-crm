@@ -25,6 +25,13 @@ This project incorporates content, assets, and libraries from the following thir
 
 ---
 
+## 4. IBM Plex Mono
+* **Author:** IBM Corporation (https://github.com/IBM/plex)
+* **License:** SIL Open Font License, Version 1.1
+* **License URL:** https://scripts.sil.org/OFL
+
+---
+
 ### SIL Open Font License (OFL) Summary
 The fonts listed above are released under the SIL Open Font License. Rectification, bundling, or redistribution of these fonts is permitted under the conditions that the copyright holders' notices remain intact, and derivative fonts do not use reserved font names without explicit permission. Full text of the SIL OFL is available at https://scripts.sil.org/OFL.
 

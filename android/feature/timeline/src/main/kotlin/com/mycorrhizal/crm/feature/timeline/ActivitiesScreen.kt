@@ -30,7 +30,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
-import com.mycorrhizal.crm.ui.theme.MycorrhizalTypography
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,7 +51,7 @@ fun ActivitiesScreen(
                     }
                 },
                 title = {
-                    Text("Activities", style = MycorrhizalTypography.appBarTitle)
+                    Text("Activities", style = MaterialTheme.typography.titleLarge)
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
