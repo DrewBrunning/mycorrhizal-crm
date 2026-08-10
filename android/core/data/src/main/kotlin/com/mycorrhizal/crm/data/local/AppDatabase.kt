@@ -13,11 +13,12 @@ import androidx.room.TypeConverters
 @Database(
     entities = [
         CachedContact::class,
+        CachedContactFts::class,
         CachedActivity::class,
         CachedNote::class,
         CachedReminder::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)

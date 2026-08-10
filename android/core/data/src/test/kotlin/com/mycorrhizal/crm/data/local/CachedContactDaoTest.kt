@@ -86,6 +86,52 @@ class CachedContactDaoTest {
     }
 
     @Test
+    fun `searchFts matches via the FTS mirror with prefix semantics`() = runBlocking {
+        dao.upsertAll(
+            listOf(
+                testContact(1, "David Smith").copy(primaryEmail = "david@example.com"),
+                testContact(2, "Bob Jones"),
+            ),
+        )
+
+        // FTS MATCH is case-insensitive and prefix-expanded by the '*'.
+        val byPrefix = dao.searchFts("dav")
+        assertEquals(1, byPrefix.size)
+        assertEquals("David Smith", byPrefix[0].fn)
+
+        val byEmail = dao.searchFts("david@example.com")
+        assertEquals(1, byEmail.size)
+        assertEquals(1, byEmail[0].id)
+    }
+
+    @Test
+    fun `searchFts excludes soft-deleted rows`() = runBlocking {
+        dao.upsertAll(
+            listOf(
+                testContact(1, "David Smith"),
+                testContact(2, "Dan").copy(deleted = true),
+            ),
+        )
+
+        val result = dao.searchFts("da")
+        assertEquals(1, result.size)
+        assertEquals(1, result[0].id)
+    }
+
+    @Test
+    fun `searchFts stays in sync after a replace`() = runBlocking {
+        dao.upsert(testContact(1, "Alice Smith"))
+        dao.upsert(testContact(1, "Alice Jones"))
+
+        // The FTS mirror must reflect the updated row, not the old one.
+        val result = dao.searchFts("smith")
+        assertEquals(0, result.size)
+        val jones = dao.searchFts("jones")
+        assertEquals(1, jones.size)
+        assertEquals("Alice Jones", jones[0].fn)
+    }
+
+    @Test
     fun `deleteByIds removes the listed rows`() = runBlocking {
         dao.upsertAll(listOf(testContact(1, "Alice"), testContact(2, "Bob")))
         dao.deleteByIds(listOf(1))

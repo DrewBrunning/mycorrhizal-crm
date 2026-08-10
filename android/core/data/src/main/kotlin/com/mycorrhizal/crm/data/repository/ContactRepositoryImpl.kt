@@ -109,6 +109,16 @@ class ContactRepositoryImpl @Inject constructor(
             emit(dao.getAll().map { it.toSummary() })
         }
 
+    override suspend fun searchLocal(query: String): List<ContactSummary> {
+        val trimmed = query.trim()
+        if (trimmed.isEmpty()) return dao.getAll().map { it.toSummary() }
+        // Sanitize FTS syntax: a plain search term should never be able to
+        // inject FTS operators. Tokens outside double quotes are treated as a
+        // single phrase.
+        val safe = trimmed.replace("\"", " ").trim()
+        return dao.searchFts(safe).map { it.toSummary() }
+    }
+
     override fun observeContact(id: Int): Flow<ContactRecordResponse?> =
         flow {
             emit(dao.getById(id)?.toRecord())

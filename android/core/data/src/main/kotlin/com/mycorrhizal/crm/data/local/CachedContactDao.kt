@@ -41,6 +41,23 @@ interface CachedContactDao {
     )
     suspend fun search(query: String): List<CachedContact>
 
+    /**
+     * FTS4 search over the cached contact mirror (Phase 2 item 13). The FTS
+     * table's rowid aliases cached_contacts.id; a MATCH on the joined columns
+     * returns the matching cached rows. `query` is a single search term —
+     * FTS' prefix syntax is applied so "dav" also matches "David".
+     */
+    @Query(
+        """
+        SELECT c.* FROM cached_contacts_fts f
+        JOIN cached_contacts c ON c.id = f.rowid
+        WHERE cached_contacts_fts MATCH :query || '*'
+          AND c.deleted = 0
+        ORDER BY c.fn COLLATE NOCASE ASC
+        """,
+    )
+    suspend fun searchFts(query: String): List<CachedContact>
+
     @Query("DELETE FROM cached_contacts")
     suspend fun deleteAll()
 

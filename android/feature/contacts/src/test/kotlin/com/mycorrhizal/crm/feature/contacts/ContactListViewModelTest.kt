@@ -30,6 +30,7 @@ class ContactListViewModelTest {
     private fun newViewModel(): Pair<ContactListViewModel, ContactRepository> {
         val repo = mockk<ContactRepository>()
         coEvery { repo.observeContacts() } returns emptyFlow()
+        coEvery { repo.searchLocal(any()) } returns emptyList()
         return ContactListViewModel(repo) to repo
     }
 
@@ -160,5 +161,33 @@ class ContactListViewModelTest {
             assertTrue(event is ContactListEvent.NavigateToContact)
             assertEquals(42, (event as ContactListEvent.NavigateToContact).contactId)
         }
+    }
+
+    @Test
+    fun `network failure falls back to the local FTS cache for the query`() = runTest(mainDispatcherRule.testDispatcher) {
+        val (viewModel, contactRepository) = newViewModel()
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "dav") } returns
+            Result.failure(ApiError.Network(java.io.IOException("offline")))
+        coEvery { contactRepository.searchLocal("dav") } returns
+            listOf(ContactSummary(id = 1, fn = "David Smith"))
+
+        viewModel.onSearchQueryChange("dav")
+        advanceUntilIdle()
+
+        // The offline FTS results surface into the list.
+        assertEquals("David Smith", viewModel.uiState.value.contacts.firstOrNull()?.fn)
+    }
+
+    @Test
+    fun `network failure with no local matches leaves the list empty`() = runTest(mainDispatcherRule.testDispatcher) {
+        val (viewModel, contactRepository) = newViewModel()
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "zzz") } returns
+            Result.failure(ApiError.Network(java.io.IOException("offline")))
+        coEvery { contactRepository.searchLocal("zzz") } returns emptyList()
+
+        viewModel.onSearchQueryChange("zzz")
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.contacts.isEmpty())
     }
 }

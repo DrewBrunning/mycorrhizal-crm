@@ -222,4 +222,46 @@ class ContactRepositoryImplTest {
         val error = result.exceptionOrNull() as ApiError
         assertEquals(400, (error as ApiError.Client).code)
     }
+
+    @Test
+    fun `searchLocal matches cached rows via FTS`() = runTest {
+        db.cachedContactDao().upsertAll(
+            listOf(
+                com.mycorrhizal.crm.data.local.CachedContact(id = 1, fn = "David Smith"),
+                com.mycorrhizal.crm.data.local.CachedContact(id = 2, fn = "Bob Jones"),
+            ),
+        )
+
+        val result = repository.searchLocal("dav")
+
+        assertEquals(1, result.size)
+        assertEquals("David Smith", result[0].fn)
+    }
+
+    @Test
+    fun `searchLocal with a blank query returns the whole cache`() = runTest {
+        db.cachedContactDao().upsertAll(
+            listOf(
+                com.mycorrhizal.crm.data.local.CachedContact(id = 1, fn = "Alice"),
+                com.mycorrhizal.crm.data.local.CachedContact(id = 2, fn = "Bob"),
+            ),
+        )
+
+        val result = repository.searchLocal("")
+
+        assertEquals(2, result.size)
+    }
+
+    @Test
+    fun `searchLocal strips FTS operator characters from the query`() = runTest {
+        db.cachedContactDao().upsertAll(
+            listOf(com.mycorrhizal.crm.data.local.CachedContact(id = 1, fn = "David Smith")),
+        )
+
+        // A quote would otherwise break the FTS MATCH expression.
+        val result = repository.searchLocal("\"smith\"")
+
+        assertEquals(1, result.size)
+        assertEquals("David Smith", result[0].fn)
+    }
 }

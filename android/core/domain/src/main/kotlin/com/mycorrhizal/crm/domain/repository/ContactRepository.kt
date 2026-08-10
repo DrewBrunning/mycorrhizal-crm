@@ -42,6 +42,14 @@ interface ContactRepository {
     /** Cached contact list summaries as a reactive stream (list + offline). */
     fun observeContacts(): Flow<List<ContactSummary>>
 
+    /**
+     * Local full-text search over the Room cache (Phase 2 item 13). Returns
+     * cached rows matching [query] via the FTS mirror; empty query returns
+     * the whole cached list. Used as the offline fallback when the server is
+     * unreachable.
+     */
+    suspend fun searchLocal(query: String): List<ContactSummary>
+
     /** Cached contact detail as a reactive stream. */
     fun observeContact(id: Int): Flow<ContactRecordResponse?>
 }

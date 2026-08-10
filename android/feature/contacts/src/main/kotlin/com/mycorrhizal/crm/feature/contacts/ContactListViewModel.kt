@@ -96,6 +96,7 @@ class ContactListViewModel @Inject constructor(
                             isLoading = false,
                             contacts = if (it.contacts.isEmpty()) {
                                 // Fall back to the Room cache so offline list view still works.
+                                // A search query matches locally via the FTS mirror (Phase 2 item 13).
                                 emptyList()
                             } else {
                                 it.contacts
@@ -104,6 +105,15 @@ class ContactListViewModel @Inject constructor(
                         )
                     }
                     handleAuthError(error)
+                    // Surface cached rows for the current query (FTS) so the
+                    // offline list isn't blank when the fetch fails.
+                    val query = _uiState.value.searchQuery
+                    viewModelScope.launch {
+                        val cached = contactRepository.searchLocal(query)
+                        if (cached.isNotEmpty()) {
+                            _uiState.update { it.copy(contacts = cached) }
+                        }
+                    }
                 },
             )
         }
