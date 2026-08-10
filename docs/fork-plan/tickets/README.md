@@ -70,6 +70,7 @@ Planned features that these get built at all.
 | [P2f](75-P2f-audiobookshelf-integration.md) · Audiobookshelf integration | R1. Same shape of idea as P2e, for Audiobookshelf. |
 | [P3](76-P3-ai-ollama-layer.md) · AI / Ollama layer | R1. Summarization, entity/relationship extraction, memory-curator suggestions. Gated on the propose-then-approve pattern; `90` D1 is explicit this is not an AI-first project. |
 | [T61](80-T61-contact-picker-api.md) · W3C Contact Picker API for PWA import | R1. Lets the PWA read device contacts directly (Chrome on Android only) instead of requiring a file export first. Narrow audience — Android + PWA + no native app installed. |
+| [N10](81-N10-fcm-push.md) · FCM push for the Android app | R3. Real-time reminder/cadence/birthday push to the native Android client, replacing the polling workers on Play-Services devices (polling stays as fallback). Backend FCM channel + Android FirebaseMessagingService. Gated on M1's later phases. |
 
 ## Done
 
