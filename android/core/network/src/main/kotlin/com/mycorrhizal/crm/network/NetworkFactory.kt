@@ -1,7 +1,7 @@
 package com.mycorrhizal.crm.network
 
+import com.mycorrhizal.crm.model.MoshiProvider
 import com.squareup.moshi.Moshi
-import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
 
@@ -14,9 +14,7 @@ object NetworkFactory {
     const val CONNECT_TIMEOUT_SECONDS = 30L
     const val READ_TIMEOUT_SECONDS = 30L
 
-    fun moshi(): Moshi = Moshi.Builder()
-        .add(KotlinJsonAdapterFactory())
-        .build()
+    fun moshi(): Moshi = MoshiProvider.get()
 
     fun okHttpClient(
         tokenProvider: TokenProvider,

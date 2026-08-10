@@ -56,12 +56,13 @@ class DefaultSessionManager(
     }
 
     override suspend fun setProfile(profile: SessionState) {
-        sessionState.value = sessionState.value.copy(
-            userId = profile.userId,
-            username = profile.username,
+        val current = sessionState.value
+        sessionState.value = current.copy(
+            userId = profile.userId ?: current.userId,
+            username = profile.username ?: current.username,
             isAdmin = profile.isAdmin,
-            language = profile.language,
-            dateFormat = profile.dateFormat,
+            language = profile.language ?: current.language,
+            dateFormat = profile.dateFormat ?: current.dateFormat,
         )
     }
 

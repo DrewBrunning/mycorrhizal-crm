@@ -63,9 +63,7 @@ data class Card(
     val localizations: Map<String, Any?>? = null,
 ) {
     val displayName: String
-        get() = name?.full?.takeIf { it.isNotBlank() } ?: "Contact #$uid-or-id".let { it }
-    private val uidOrId: String
-        get() = uid ?: "?"
+        get() = name?.full?.takeIf { it.isNotBlank() } ?: "Contact #${uid ?: "?"}"
 }
 
 /** Mycorrhizal-specific data outside any contact-exchange standard. */

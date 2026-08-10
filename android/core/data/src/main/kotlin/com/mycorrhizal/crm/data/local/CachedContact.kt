@@ -2,15 +2,14 @@ package com.mycorrhizal.crm.data.local
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.mycorrhizal.crm.model.network.CRMEnvelope
+import com.mycorrhizal.crm.model.network.Card
 
 /**
  * Local cache of a contact's list-projection fields plus the full neutral
- * Card/CRM JSON captured from the detail endpoint. The cache is read-only
- * fallback data — writes always go to the server first (online-first).
- *
- * `cardJson`/`crmJson` hold the raw ContactRecordResponse.card / .crm
- * payloads so an offline detail screen can render the full Card without a
- * second network round-trip.
+ * Card/CRM for the detail screen. The cache is read-only fallback data —
+ * writes always go to the server first (online-first). `card` and `crm`
+ * hold the nested models, JSON-encoded by [Converters].
  */
 @Entity(tableName = "cached_contacts")
 data class CachedContact(
@@ -25,11 +24,11 @@ data class CachedContact(
     val birthday: String? = null,
     val org: String? = null,
     val photoThumbnail: String? = null,
-    val circlesJson: String? = null,
+    val circles: List<String>? = null,
     val archived: Boolean = false,
     val deleted: Boolean = false,
-    val cardJson: String? = null,
-    val crmJson: String? = null,
+    val card: Card? = null,
+    val crm: CRMEnvelope? = null,
     /** Server-side updated_at, used for cache freshness decisions. */
     val updatedAt: String? = null,
 ) {

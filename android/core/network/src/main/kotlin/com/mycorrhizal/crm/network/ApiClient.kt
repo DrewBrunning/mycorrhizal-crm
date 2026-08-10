@@ -55,7 +55,7 @@ class ApiClient(
         search: String? = null,
         includeArchived: Boolean? = null,
     ): Result<ContactsPage> {
-        val urlBuilder = CONTACTS_PATH.toHttpUrl().newBuilder()
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$CONTACTS_PATH".toHttpUrl().newBuilder()
         cursor?.let { urlBuilder.addQueryParameter("cursor", it) }
         limit?.let { urlBuilder.addQueryParameter("limit", it.toString()) }
         search?.let { urlBuilder.addQueryParameter("search", it) }
@@ -67,7 +67,7 @@ class ApiClient(
 
     /** GET /api/v1/contacts/{id} (full neutral Record/Card). */
     suspend fun getContact(id: Int): Result<ContactRecordResponse> =
-        executeGet("$CONTACTS_PATH/$id") { _, body ->
+        executeGet("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$id") { _, body ->
             moshi.adapter(ContactRecordResponse::class.java).fromJson(body)
         }
 
@@ -77,7 +77,7 @@ class ApiClient(
         mapper: (okhttp3.Response, String) -> T?,
     ): Result<T> {
         val request = Request.Builder()
-            .url(path.toHttpUrl())
+            .url("$PLACEHOLDER_ORIGIN$path".toHttpUrl())
             .apply {
                 if (body != null) {
                     val json = moshi.adapter<Any>(body.javaClass).toJson(body)

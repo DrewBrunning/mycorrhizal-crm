@@ -1,22 +1,21 @@
 package com.mycorrhizal.crm.data.local
 
-import androidx.room.ProvidedTypeConverter
 import com.mycorrhizal.crm.model.network.CRMEnvelope
 import com.mycorrhizal.crm.model.network.Card
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 
 /**
  * Room stores only primitives; complex fields need adapters. The cache is
  * read-only mirror data, so we keep it simple: JSON-encode composite values
- * to TEXT, dates to epoch millis / ISO strings.
+ * to TEXT, dates to epoch millis / ISO strings. Registered on the database
+ * via `@TypeConverters(Converters::class)` (ticket §3.4).
  */
-@ProvidedTypeConverter
-class Converters(private val moshi: Moshi) {
+class Converters {
+    private val moshi: Moshi = com.mycorrhizal.crm.model.MoshiProvider.get()
+
     @androidx.room.TypeConverter
     fun fromStringList(value: List<String>?): String? =
         value?.let { moshi.adapter<List<String>>(STRING_LIST_TYPE).toJson(it) }
@@ -56,10 +55,6 @@ class Converters(private val moshi: Moshi) {
     @androidx.room.TypeConverter
     fun toLocalDate(value: String?): LocalDate? =
         value?.let { LocalDate.parse(it) }
-
-    @androidx.room.TypeConverter
-    fun fromLocalDateTimeMillis(value: Long?): String? =
-        value?.let { Instant.fromEpochMilliseconds(it).toLocalDateTime(TimeZone.UTC).toString() }
 
     companion object {
         private val STRING_LIST_TYPE = Types.newParameterizedType(List::class.java, String::class.java)

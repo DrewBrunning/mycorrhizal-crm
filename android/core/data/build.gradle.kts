@@ -24,6 +24,7 @@ dependencies {
     implementation(libs.androidx.security.crypto)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.moshi)
+    implementation(libs.moshi.kotlin)
     ksp(libs.moshi.kotlin.codegen)
 
     testImplementation(libs.room.testing)

@@ -29,12 +29,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -63,7 +65,31 @@ fun ContactListScreen(
         }
     }
 
-    var search by rememberSaveable { mutableStateOf(state.searchQuery) }
+    ContactListScreenContent(
+        uiState = state,
+        onSearchQueryChange = viewModel::onSearchQueryChange,
+        onContactClick = { id ->
+            viewModel.onContactClick(id)
+            onContactClick(id)
+        },
+        onErrorShown = viewModel::onErrorShown,
+    )
+}
+
+/**
+ * Stateless screen content — the four canonical states (loading / empty /
+ * error / populated) are testable directly via this composable (ticket §10.4).
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ContactListScreenContent(
+    uiState: ContactListUiState,
+    onSearchQueryChange: (String) -> Unit,
+    onContactClick: (Int) -> Unit,
+    onErrorShown: () -> Unit = {},
+) {
+    val snackbarHostState = remember { SnackbarHostState() }
+    var search by rememberSaveable { mutableStateOf(uiState.searchQuery) }
 
     Scaffold(
         topBar = {
@@ -87,7 +113,7 @@ fun ContactListScreen(
                 value = search,
                 onValueChange = {
                     search = it
-                    viewModel.onSearchQueryChange(it)
+                    onSearchQueryChange(it)
                 },
                 label = { Text("Search contacts") },
                 singleLine = true,
@@ -97,13 +123,15 @@ fun ContactListScreen(
             )
 
             when {
-                state.isLoading -> LoadingSkeleton()
-                state.contacts.isEmpty() && state.error == null ->
+                uiState.isLoading -> LoadingSkeleton(
+                    modifier = Modifier.testTag("contact-list-loading"),
+                )
+                uiState.contacts.isEmpty() && uiState.error == null ->
                     EmptyState(message = "No contacts yet")
-                state.contacts.isEmpty() && state.error != null -> {
+                uiState.contacts.isEmpty() && uiState.error != null -> {
                     Box(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
                         Text(
-                            text = state.error.orEmpty(),
+                            text = uiState.error.orEmpty(),
                             color = MaterialTheme.colorScheme.error,
                             modifier = Modifier.align(Alignment.Center),
                         )
@@ -111,13 +139,13 @@ fun ContactListScreen(
                 }
                 else -> {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(state.contacts, key = { it.id }) { contact ->
+                        items(uiState.contacts, key = { it.id }) { contact ->
                             ContactListItem(
                                 contact = contact,
-                                onClick = { viewModel.onContactClick(contact.id) },
+                                onClick = { onContactClick(contact.id) },
                             )
                         }
-                        if (state.pagination.isLoadingMore) {
+                        if (uiState.pagination.isLoadingMore) {
                             item {
                                 Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                                     CircularProgressIndicator(
@@ -132,10 +160,10 @@ fun ContactListScreen(
         }
     }
 
-    state.error?.let { message ->
+    uiState.error?.let { message ->
         LaunchedEffect(message) {
             snackbarHostState.showSnackbar(message)
-            viewModel.onErrorShown()
+            onErrorShown()
         }
     }
 }

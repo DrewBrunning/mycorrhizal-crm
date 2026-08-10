@@ -27,7 +27,6 @@ data class PaginationState(
 data class ContactListUiState(
     val contacts: List<ContactSummary> = emptyList(),
     val isLoading: Boolean = false,
-    val isLoadingMore: Boolean = false,
     val error: String? = null,
     val searchQuery: String = "",
     val pagination: PaginationState = PaginationState(),
@@ -98,9 +97,9 @@ class ContactListViewModel @Inject constructor(
 
     fun loadNextPage() {
         val state = _uiState.value
-        if (state.isLoading || state.isLoadingMore || !state.pagination.hasMore) return
+        if (state.isLoading || state.pagination.isLoadingMore || !state.pagination.hasMore) return
+        _uiState.update { it.copy(pagination = it.pagination.copy(isLoadingMore = true)) }
         viewModelScope.launch {
-            _uiState.update { it.copy(pagination = it.pagination.copy(isLoadingMore = true)) }
             val page = contactRepository.listContacts(
                 cursor = state.pagination.nextCursor,
                 limit = state.pagination.limit,
@@ -131,9 +130,7 @@ class ContactListViewModel @Inject constructor(
 
     fun onSearchQueryChange(query: String) {
         _uiState.update { it.copy(searchQuery = query) }
-        if (query.isBlank()) {
-            loadContacts()
-        }
+        loadContacts()
     }
 
     fun onContactClick(contactId: Int) {

@@ -10,7 +10,6 @@ import com.mycorrhizal.crm.model.network.SyncInfo
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.toApiError
-import com.squareup.moshi.Moshi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -24,7 +23,6 @@ import javax.inject.Inject
 class ContactRepositoryImpl @Inject constructor(
     private val apiClient: ApiClient,
     private val dao: CachedContactDao,
-    private val moshi: Moshi,
 ) : ContactRepository {
 
     override suspend fun listContacts(
@@ -103,7 +101,7 @@ class ContactRepositoryImpl @Inject constructor(
         birthday = birthday,
         org = org,
         photoThumbnail = photoThumbnail,
-        circlesJson = circles?.let { moshi.adapter<List<String>>(STRING_LIST).toJson(it) },
+        circles = circles,
         archived = archived,
         deleted = deleted,
     )
@@ -119,8 +117,10 @@ class ContactRepositoryImpl @Inject constructor(
         primaryPhone = card?.phones?.firstOrNull()?.number,
         org = card?.organizations?.firstOrNull()?.name,
         photoThumbnail = photoThumbnail,
+        circles = crm?.circles,
         archived = archived,
-        cardJson = card?.let { moshi.adapter(ContactRecordResponse::class.java).toJson(this) },
+        card = card,
+        crm = crm,
     )
 
     private fun CachedContact.toSummary(): ContactSummary = ContactSummary(
@@ -135,22 +135,20 @@ class ContactRepositoryImpl @Inject constructor(
         birthday = birthday,
         org = org,
         photoThumbnail = photoThumbnail,
+        circles = circles,
         archived = archived,
         deleted = deleted,
     )
 
     private fun CachedContact.toRecord(): ContactRecordResponse? {
-        val json = cardJson ?: return null
-        return try {
-            moshi.adapter(ContactRecordResponse::class.java).fromJson(json)
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    companion object {
-        private val STRING_LIST = com.squareup.moshi.Types.newParameterizedType(
-            List::class.java, String::class.java,
+        val c = card ?: return null
+        return ContactRecordResponse(
+            id = id,
+            uid = uid,
+            card = c,
+            crm = crm,
+            photoThumbnail = photoThumbnail,
+            archived = archived,
         )
     }
 }

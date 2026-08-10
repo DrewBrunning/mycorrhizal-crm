@@ -82,7 +82,7 @@ fun ContactDetailScreen(
 }
 
 @Composable
-private fun ContactDetailContent(contact: ContactRecordResponse) {
+fun ContactDetailContent(contact: ContactRecordResponse) {
     val card = contact.card
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item {
@@ -163,13 +163,15 @@ private fun ContactHeader(contact: ContactRecordResponse, card: Card?) {
                 modifier = Modifier.size(96.dp),
             )
         }
-        card?.name?.full?.let {
-            Text(
-                text = it,
-                style = MaterialTheme.typography.titleLarge,
-                textAlign = TextAlign.Center,
-            )
-        }
+        val displayName = card?.name?.full
+            ?: listOfNotNull(card?.name?.components?.firstOrNull { it.kind == "given" }?.value)
+                .joinToString(" ")
+                .ifBlank { "Contact" }
+        Text(
+            text = displayName,
+            style = MaterialTheme.typography.titleLarge,
+            textAlign = TextAlign.Center,
+        )
         card?.nicknames?.firstOrNull()?.name?.let { nickname ->
             Text(
                 text = "\"$nickname\"",

@@ -2,7 +2,6 @@ package com.mycorrhizal.crm.data.di
 
 import com.mycorrhizal.crm.data.local.AppDatabase
 import com.mycorrhizal.crm.data.local.CachedContactDao
-import com.mycorrhizal.crm.data.local.Converters
 import com.mycorrhizal.crm.data.repository.AuthRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ContactRepositoryImpl
 import com.mycorrhizal.crm.data.session.DefaultSessionManager
@@ -58,10 +57,6 @@ object DataModule {
 
     @Provides
     fun provideCachedContactDao(db: AppDatabase): CachedContactDao = db.cachedContactDao()
-
-    @Provides
-    @Singleton
-    fun provideConverters(moshi: Moshi): Converters = Converters(moshi)
 
     @Provides
     @Singleton

@@ -15,5 +15,7 @@ dependencies {
     implementation(libs.moshi.kotlin)
     implementation(libs.kotlinx.coroutines.core)
     api(libs.kotlinx.datetime)
-    ksp(libs.moshi.kotlin.codegen)
+
+    testImplementation(libs.mockwebserver)
+    testImplementation(libs.kotlinx.coroutines.test)
 }
