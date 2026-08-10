@@ -12,6 +12,9 @@ interface ActivityRepository {
     /** A contact's activities. */
     suspend fun listForContact(contactId: Int): Result<List<Activity>>
 
+    /** A single activity (with its participants). */
+    suspend fun get(id: Int): Result<Activity>
+
     /** Create an activity; returns the created record. */
     suspend fun create(input: ActivityInput): Result<Activity>
 

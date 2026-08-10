@@ -114,6 +114,12 @@ class ApiClient(
             moshi.adapter(Activity::class.java).fromJson(body)
         }
 
+    /** GET /api/v1/activities/{id} — a single activity (with participants). */
+    suspend fun getActivity(id: Int): Result<Activity> =
+        executeGet("$PLACEHOLDER_ORIGIN$ACTIVITIES_PATH/$id") { _, body ->
+            moshi.adapter(Activity::class.java).fromJson(body)
+        }
+
     /** GET /api/v1/activities (cursor-paginated, all activities). */
     suspend fun listActivities(cursor: String? = null, limit: Int? = null): Result<ActivitiesPage> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$ACTIVITIES_PATH".toHttpUrl().newBuilder()

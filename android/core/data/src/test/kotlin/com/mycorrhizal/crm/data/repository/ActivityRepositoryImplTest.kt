@@ -79,6 +79,18 @@ class ActivityRepositoryImplTest {
     }
 
     @Test
+    fun `get returns the single activity`() = runTest {
+        coEvery { apiClient.getActivity(7) } returns Result.success(
+            Activity(id = 7, title = "Lunch", type = "meal"),
+        )
+
+        val result = repository.get(7)
+
+        assertTrue(result.isSuccess)
+        assertEquals("Lunch", result.getOrThrow().title)
+    }
+
+    @Test
     fun `create caches the created activity`() = runTest {
         val created = Activity(id = 7, title = "Lunch", type = "meal")
         coEvery { apiClient.createActivity(any()) } returns Result.success(created)

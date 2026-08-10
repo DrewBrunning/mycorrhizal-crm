@@ -385,6 +385,36 @@ class ApiClientTest {
     }
 
     @Test
+    fun `get activity parses a single activity with participants`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "ID": 7,
+                      "title": "Lunch",
+                      "type": "meal",
+                      "contacts": [{"ID": 5, "firstname": "Dana"}, {"ID": 9, "firstname": "Carol"}],
+                      "external_ref": "cal-event-42"
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        val result = client.getActivity(7)
+
+        assertTrue(result.isSuccess)
+        val activity = result.getOrThrow()
+        assertEquals(7, activity.id)
+        assertEquals(listOf(5, 9), activity.contacts?.mapNotNull { it.id.takeIf { id -> id != 0 } })
+        assertEquals("cal-event-42", activity.externalRef)
+
+        val request = server.takeRequest()
+        assertEquals("/api/v1/activities/7", request.path)
+    }
+
+    @Test
     fun `list activities parses the cursor page`() = runBlocking {
         server.enqueue(
             MockResponse()

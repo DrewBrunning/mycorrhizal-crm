@@ -28,8 +28,16 @@ data class ActivityFormState(
     val date: String = "",
     val description: String = "",
     val location: String = "",
+    val isLoading: Boolean = false,
     val isSaving: Boolean = false,
     val error: String? = null,
+    /** Participant contact IDs carried from the loaded activity. When editing,
+     *  the full participant set is preserved (an activity may span contacts);
+     *  only a brand-new activity defaults to the current contact. */
+    private val participantIds: List<Int> = emptyList(),
+    /** Carried from the loaded activity so an edit doesn't wipe an external
+     *  ref the form doesn't render (e.g. a calendar/ExternalActivity link). */
+    private val externalRef: String? = null,
 ) {
     val isEdit: Boolean get() = activityId != null
     val hasTitle: Boolean get() = title.isNotBlank()
@@ -40,12 +48,23 @@ data class ActivityFormState(
         date = date.trim().ifBlank { null },
         description = description.trim().ifBlank { null },
         location = location.trim().ifBlank { null },
-        contactIds = listOf(contactId).takeIf { contactId != 0 },
+        contactIds = (participantIds.takeIf { it.isNotEmpty() } ?: listOf(contactId).takeIf { contactId != 0 }),
+        externalRef = externalRef,
     )
 
     fun validate(): String? = when {
         !hasTitle -> "Title is required"
+        date.isNotBlank() && !date.matches(ISO_DATETIME_REGEX) ->
+            "Date must be ISO 8601, e.g. 2026-08-10T14:00:00Z"
         else -> null
+    }
+
+    companion object {
+        /** Loose RFC 3339 / ISO 8601 date-time check matching the backend's
+         *  time.Time unmarshal (which requires a 'T' separator and offset). */
+        val ISO_DATETIME_REGEX = Regex(
+            """\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})""",
+        )
     }
 }
 
@@ -76,22 +95,19 @@ class ActivityFormViewModel @Inject constructor(
     val events: StateFlow<ActivityFormEvent?> = _events
 
     init {
-        // Edit mode hydrates from the contact's activities (the backend has no
-        // per-activity GET that fits a simple edit flow here; the list carries
-        // the full record).
         if (activityId != null) loadExisting()
     }
 
     fun loadExisting() {
+        val id = activityId ?: return
         viewModelScope.launch {
-            activityRepository.listForContact(contactId).foldApiError(
-                onSuccess = { activities ->
-                    activities.firstOrNull { it.id == activityId }?.let { activity ->
-                        _uiState.update { it.toFormState(activity) }
-                    }
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            activityRepository.get(id).foldApiError(
+                onSuccess = { activity ->
+                    _uiState.update { it.toFormState(activity).copy(isLoading = false) }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(error = error.displayMessage) }
+                    _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
                 },
             )
         }
@@ -141,5 +157,7 @@ class ActivityFormViewModel @Inject constructor(
         date = activity.date.orEmpty(),
         description = activity.description.orEmpty(),
         location = activity.location.orEmpty(),
+        participantIds = activity.contacts.orEmpty().mapNotNull { it.id.takeIf { id -> id != 0 } },
+        externalRef = activity.externalRef,
     )
 }

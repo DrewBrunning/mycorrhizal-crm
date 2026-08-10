@@ -28,6 +28,8 @@ class ActivityRepositoryImpl @Inject constructor(
         return result.map { response -> response.activities }
     }
 
+    override suspend fun get(id: Int): Result<Activity> = apiClient.getActivity(id)
+
     override suspend fun create(input: ActivityInput): Result<Activity> {
         val result = apiClient.createActivity(input)
         result.getOrNull()?.let { dao.upsert(it.toCached()) }
