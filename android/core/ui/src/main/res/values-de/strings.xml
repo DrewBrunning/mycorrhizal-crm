@@ -8,6 +8,7 @@
     <string name="nav_activities">Aktivitäten</string>
     <string name="nav_home">Start</string>
     <string name="nav_settings">Einstellungen</string>
+    <string name="nav_tags">Tags</string>
     <string name="nav_circles">Kreise</string>
     <string name="nav_network">Netzwerk</string>
     <string name="nav_households">Haushalte</string>
@@ -172,4 +173,16 @@
     <string name="action_cancel">Abbrechen</string>
     <string name="action_add">Hinzufügen</string>
     <string name="action_rename">Umbenennen</string>
+
+
+    <!-- Tags -->
+    <string name="tags_title">Tags</string>
+    <string name="tags_new">Neues Tag</string>
+    <string name="tags_rename">Tag umbenennen</string>
+    <string name="tags_name">Name</string>
+    <string name="tags_delete_title">Tag löschen?</string>
+    <string name="tags_delete_confirm">„%1$s“ löschen? Dadurch werden das Tag und seine Kontakt-Taggings entfernt.</string>
+    <string name="tags_add_contact">Kontakt taggen</string>
+    <string name="tags_remove_contact">Tag vom Kontakt entfernen</string>
+    <string name="tags_contact_vcard_uid">Kontakt-VCard-UID</string>
 </resources>

@@ -8,6 +8,7 @@
     <string name="nav_activities">Activités</string>
     <string name="nav_home">Accueil</string>
     <string name="nav_settings">Paramètres</string>
+    <string name="nav_tags">Étiquettes</string>
     <string name="nav_circles">Cercles</string>
     <string name="nav_network">Réseau</string>
     <string name="nav_households">Foyers</string>
@@ -172,4 +173,16 @@
     <string name="action_cancel">Annuler</string>
     <string name="action_add">Ajouter</string>
     <string name="action_rename">Renommer</string>
+
+
+    <!-- Tags -->
+    <string name="tags_title">Étiquettes</string>
+    <string name="tags_new">Nouvelle étiquette</string>
+    <string name="tags_rename">Renommer l\'étiquette</string>
+    <string name="tags_name">Nom</string>
+    <string name="tags_delete_title">Supprimer l\'étiquette ?</string>
+    <string name="tags_delete_confirm">Supprimer « %1$s » ? Cela retire l\'étiquette et ses étiquetages de contact.</string>
+    <string name="tags_add_contact">Étiqueter le contact</string>
+    <string name="tags_remove_contact">Retirer l\'étiquette du contact</string>
+    <string name="tags_contact_vcard_uid">UID VCard du contact</string>
 </resources>

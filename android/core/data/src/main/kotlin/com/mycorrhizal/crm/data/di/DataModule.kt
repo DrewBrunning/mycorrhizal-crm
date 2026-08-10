@@ -5,14 +5,17 @@ import com.mycorrhizal.crm.data.local.CachedActivityDao
 import com.mycorrhizal.crm.data.local.CachedCircleDao
 import com.mycorrhizal.crm.data.local.CachedCircleMemberDao
 import com.mycorrhizal.crm.data.local.CachedContactDao
+import com.mycorrhizal.crm.data.local.CachedContactTagDao
 import com.mycorrhizal.crm.data.local.CachedNoteDao
 import com.mycorrhizal.crm.data.local.CachedReminderDao
+import com.mycorrhizal.crm.data.local.CachedTagDao
 import com.mycorrhizal.crm.data.repository.ActivityRepositoryImpl
 import com.mycorrhizal.crm.data.repository.AuthRepositoryImpl
 import com.mycorrhizal.crm.data.repository.CircleRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ContactRepositoryImpl
 import com.mycorrhizal.crm.data.repository.NoteRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ReminderRepositoryImpl
+import com.mycorrhizal.crm.data.repository.TagRepositoryImpl
 import com.mycorrhizal.crm.data.session.DefaultSessionManager
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.data.session.SessionPrefsStorage
@@ -23,6 +26,7 @@ import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.NoteRepository
 import com.mycorrhizal.crm.domain.repository.ReminderRepository
+import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.BaseUrlProvider
 import com.mycorrhizal.crm.network.NetworkFactory
@@ -92,6 +96,13 @@ object DataModule {
         db.cachedCircleMemberDao()
 
     @Provides
+    fun provideCachedTagDao(db: AppDatabase): CachedTagDao = db.cachedTagDao()
+
+    @Provides
+    fun provideCachedContactTagDao(db: AppDatabase): CachedContactTagDao =
+        db.cachedContactTagDao()
+
+    @Provides
     @Singleton
     fun provideSessionManager(
         tokenStorage: TokenStorage,
@@ -143,4 +154,8 @@ abstract class DataBindsModule {
     @Binds
     @Singleton
     abstract fun bindCircleRepository(impl: CircleRepositoryImpl): CircleRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindTagRepository(impl: TagRepositoryImpl): TagRepository
 }

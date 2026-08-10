@@ -11,6 +11,7 @@
     <string name="nav_network">Network</string>
     <string name="nav_households">Households</string>
     <string name="nav_circles">Circles</string>
+    <string name="nav_tags">Tags</string>
     <string name="coming_soon">%1$s — coming in a later phase</string>
     <string name="cd_menu">Menu</string>
     <string name="cd_back">Back</string>
@@ -173,4 +174,15 @@
     <string name="action_cancel">Cancel</string>
     <string name="action_add">Add</string>
     <string name="action_rename">Rename</string>
+
+    <!-- Tags -->
+    <string name="tags_title">Tags</string>
+    <string name="tags_new">New tag</string>
+    <string name="tags_rename">Rename tag</string>
+    <string name="tags_name">Name</string>
+    <string name="tags_delete_title">Delete tag?</string>
+    <string name="tags_delete_confirm">Delete “%1$s”? This removes the tag and its contact taggings.</string>
+    <string name="tags_add_contact">Tag contact</string>
+    <string name="tags_remove_contact">Remove tag from contact</string>
+    <string name="tags_contact_vcard_uid">Contact VCard UID</string>
 </resources>

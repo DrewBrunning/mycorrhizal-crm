@@ -47,6 +47,8 @@ import com.mycorrhizal.crm.feature.contacts.ContactDetailScreen
 import com.mycorrhizal.crm.feature.contacts.ContactFormScreen
 import com.mycorrhizal.crm.feature.contacts.ContactListScreen
 import com.mycorrhizal.crm.feature.settings.SettingsScreen
+import com.mycorrhizal.crm.feature.tags.TagDetailScreen
+import com.mycorrhizal.crm.feature.tags.TagsScreen
 import kotlinx.coroutines.launch
 import com.mycorrhizal.crm.feature.timeline.ActivitiesScreen
 import com.mycorrhizal.crm.feature.timeline.ActivityFormScreen
@@ -135,6 +137,16 @@ private fun MainScaffold() {
                     onClick = {
                         scope.launch { drawerState.close() }
                         navController.navigate("circles")
+                    },
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                )
+                NavigationDrawerItem(
+                    label = { Text(stringResource(R.string.nav_tags)) },
+                    selected = currentDestination?.route == "tags" ||
+                        currentDestination?.route?.startsWith("tags/") == true,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        navController.navigate("tags")
                     },
                     modifier = Modifier.padding(horizontal = 8.dp),
                 )
@@ -343,6 +355,20 @@ private fun MainScaffold() {
                 arguments = listOf(navArgument("circleId") { type = NavType.StringType }),
             ) {
                 CircleDetailScreen(
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            composable("tags") {
+                TagsScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenTag = { id -> navController.navigate("tags/$id") },
+                )
+            }
+            composable(
+                route = "tags/{tagId}",
+                arguments = listOf(navArgument("tagId") { type = NavType.StringType }),
+            ) {
+                TagDetailScreen(
                     onBack = { navController.popBackStack() },
                 )
             }

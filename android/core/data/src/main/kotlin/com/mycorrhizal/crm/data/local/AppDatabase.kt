@@ -19,8 +19,10 @@ import androidx.room.TypeConverters
         CachedReminder::class,
         CachedCircle::class,
         CachedCircleMember::class,
+        CachedTag::class,
+        CachedContactTag::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -31,4 +33,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun cachedReminderDao(): CachedReminderDao
     abstract fun cachedCircleDao(): CachedCircleDao
     abstract fun cachedCircleMemberDao(): CachedCircleMemberDao
+    abstract fun cachedTagDao(): CachedTagDao
+    abstract fun cachedContactTagDao(): CachedContactTagDao
 }

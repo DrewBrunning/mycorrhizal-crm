@@ -4,6 +4,7 @@ import com.mycorrhizal.crm.model.network.ActivitiesPage
 import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ActivityInput
 import com.mycorrhizal.crm.model.network.AddCircleMemberResponse
+import com.mycorrhizal.crm.model.network.AddContactTagResponse
 import com.mycorrhizal.crm.model.network.BackendError
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.CircleDetailResponse
@@ -16,18 +17,25 @@ import com.mycorrhizal.crm.model.network.ContactNotesResponse
 import com.mycorrhizal.crm.model.network.ContactRecordInput
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ContactRemindersResponse
+import com.mycorrhizal.crm.model.network.ContactTag
+import com.mycorrhizal.crm.model.network.ContactTagInput
 import com.mycorrhizal.crm.model.network.ContactsPage
 import com.mycorrhizal.crm.model.network.CreateActivityResponse
 import com.mycorrhizal.crm.model.network.CreateCircleResponse
 import com.mycorrhizal.crm.model.network.CreateContactResponse
 import com.mycorrhizal.crm.model.network.CreateNoteResponse
 import com.mycorrhizal.crm.model.network.CreateReminderResponse
+import com.mycorrhizal.crm.model.network.CreateTagResponse
 import com.mycorrhizal.crm.model.network.LoginRequest
 import com.mycorrhizal.crm.model.network.LoginResponse
 import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.model.network.NoteInput
 import com.mycorrhizal.crm.model.network.Reminder
 import com.mycorrhizal.crm.model.network.ReminderCompleteResponse
+import com.mycorrhizal.crm.model.network.Tag
+import com.mycorrhizal.crm.model.network.TagDetailResponse
+import com.mycorrhizal.crm.model.network.TagInput
+import com.mycorrhizal.crm.model.network.TagsPage
 import com.mycorrhizal.crm.model.network.UserProfile
 import com.squareup.moshi.Moshi
 import kotlinx.coroutines.Dispatchers
@@ -247,6 +255,53 @@ class ApiClient(
     suspend fun removeCircleMember(circleId: String, vcardUid: String): Result<Unit> =
         executeDelete("$PLACEHOLDER_ORIGIN$CIRCLES_PATH/$circleId/members/$vcardUid")
 
+    /** GET /api/v1/tags — cursor-paginated; contacts when include_contacts=true. */
+    suspend fun listTags(
+        cursor: String? = null,
+        limit: Int? = null,
+        includeContacts: Boolean = false,
+    ): Result<TagsPage> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$TAGS_PATH".toHttpUrl().newBuilder()
+        cursor?.let { urlBuilder.addQueryParameter("cursor", it) }
+        limit?.let { urlBuilder.addQueryParameter("limit", it.toString()) }
+        if (includeContacts) urlBuilder.addQueryParameter("include_contacts", "true")
+        return executeGet(urlBuilder.build().toString()) { _, body ->
+            moshi.adapter(TagsPage::class.java).fromJson(body)
+        }
+    }
+
+    /** GET /api/v1/tags/{id} — `{ tag, contacts }`. */
+    suspend fun getTag(id: String): Result<TagDetailResponse> =
+        executeGet("$PLACEHOLDER_ORIGIN$TAGS_PATH/$id") { _, body ->
+            moshi.adapter(TagDetailResponse::class.java).fromJson(body)
+        }
+
+    /** POST /api/v1/tags — wrapped `{ message, tag }`, unwrapped here. */
+    suspend fun createTag(input: TagInput): Result<Tag> =
+        executePost(TAGS_PATH, input) { _, body ->
+            moshi.adapter(CreateTagResponse::class.java).fromJson(body)?.tag
+        }
+
+    /** PUT /api/v1/tags/{id} — raw Tag response. */
+    suspend fun updateTag(id: String, input: TagInput): Result<Tag> =
+        executePut("$PLACEHOLDER_ORIGIN$TAGS_PATH/$id", input) { _, body ->
+            moshi.adapter(Tag::class.java).fromJson(body)
+        }
+
+    /** DELETE /api/v1/tags/{id}. */
+    suspend fun deleteTag(id: String): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$TAGS_PATH/$id")
+
+    /** POST /api/v1/tags/{id}/contacts — wrapped `{ message, tagging }`. */
+    suspend fun addContactTag(tagId: String, input: ContactTagInput): Result<ContactTag> =
+        executePost("$TAGS_PATH/$tagId/contacts", input) { _, body ->
+            moshi.adapter(AddContactTagResponse::class.java).fromJson(body)?.tagging
+        }
+
+    /** DELETE /api/v1/tags/{id}/contacts/{vcard_uid}. */
+    suspend fun removeContactTag(tagId: String, vcardUid: String): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$TAGS_PATH/$tagId/contacts/$vcardUid")
+
     private suspend fun <T> executeGet(
         url: String,
         mapper: (okhttp3.Response, String) -> T?,
@@ -358,6 +413,7 @@ class ApiClient(
         private const val NOTES_PATH = "$API_V1/notes"
         private const val REMINDERS_PATH = "$API_V1/reminders"
         private const val CIRCLES_PATH = "$API_V1/circles"
+        private const val TAGS_PATH = "$API_V1/tags"
         private const val AUTH_COOKIE = "auth_token"
     }
 }
