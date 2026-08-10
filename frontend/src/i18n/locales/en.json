@@ -19,7 +19,8 @@
     "profile": "Settings",
     "users": "Users",
     "data": "Data",
-    "shares": "Shares"
+    "shares": "Shares",
+    "audit": "Audit log"
   },
   "household": {
     "title": "Households",
@@ -1573,6 +1574,50 @@
       "deleteDeviceConfirm": "Remove this device ({{label}})? You will stop receiving push notifications here.",
       "deviceDeleted": "Device removed",
       "deviceDeleteFailed": "Failed to remove the device."
+    }
+  },
+  "audit": {
+    "title": "Audit log",
+    "description": "Every create, update and delete across your contacts and records, newest first. Changes older than the retention window are purged.",
+    "contactUnnamed": "Unnamed contact",
+    "filters": {
+      "entityType": "Entity type",
+      "entityTypeAll": "All types",
+      "entityId": "Entity ID",
+      "clear": "Clear filters"
+    },
+    "columns": {
+      "timestamp": "When",
+      "entityType": "Entity",
+      "operation": "Operation",
+      "entityId": "Entity ID",
+      "actions": "Actions"
+    },
+    "operations": {
+      "create": "Created",
+      "update": "Updated",
+      "delete": "Deleted"
+    },
+    "entityTypes": {
+      "contact": "Contact",
+      "note": "Note",
+      "activity": "Activity",
+      "life_event": "Life event",
+      "gift": "Gift",
+      "circle": "Circle",
+      "tag": "Tag",
+      "household": "Household",
+      "reminder": "Reminder"
+    },
+    "empty": "No audit events match your filters.",
+    "emptyNoFilters": "No audit events yet. Changes you make to your contacts and other records will appear here.",
+    "undo": {
+      "button": "Undo",
+      "confirmTitle": "Undo this change?",
+      "confirmMessage": "Restore the {{entity}} to its previous state as of {{date}}?",
+      "confirm": "Undo",
+      "success": "Contact restored to its previous state",
+      "retentionGone": "This event is past its retention window and can no longer be undone"
     }
   }
 }

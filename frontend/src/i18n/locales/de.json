@@ -19,7 +19,8 @@
     "profile": "Einstellungen",
     "users": "Benutzer",
     "data": "Daten",
-    "shares": "Freigaben"
+    "shares": "Freigaben",
+    "audit": "Audit-Protokoll"
   },
   "household": {
     "title": "Haushalte",
@@ -1573,6 +1574,50 @@
       "deleteDeviceConfirm": "Dieses Gerät ({{label}}) entfernen? Du erhältst hier keine Push-Benachrichtigungen mehr.",
       "deviceDeleted": "Gerät entfernt",
       "deviceDeleteFailed": "Das Gerät konnte nicht entfernt werden."
+    }
+  },
+  "audit": {
+    "title": "Audit-Protokoll",
+    "description": "Alle Erstellungen, Änderungen und Löschungen Ihrer Kontakte und Einträge, neueste zuerst. Änderungen, die älter als das Aufbewahrungsfenster sind, werden entfernt.",
+    "contactUnnamed": "Unbenannter Kontakt",
+    "filters": {
+      "entityType": "Entitätstyp",
+      "entityTypeAll": "Alle Typen",
+      "entityId": "Entitäts-ID",
+      "clear": "Filter löschen"
+    },
+    "columns": {
+      "timestamp": "Wann",
+      "entityType": "Entität",
+      "operation": "Vorgang",
+      "entityId": "Entitäts-ID",
+      "actions": "Aktionen"
+    },
+    "operations": {
+      "create": "Erstellt",
+      "update": "Aktualisiert",
+      "delete": "Gelöscht"
+    },
+    "entityTypes": {
+      "contact": "Kontakt",
+      "note": "Notiz",
+      "activity": "Aktivität",
+      "life_event": "Lebensereignis",
+      "gift": "Geschenk",
+      "circle": "Kreis",
+      "tag": "Tag",
+      "household": "Haushalt",
+      "reminder": "Erinnerung"
+    },
+    "empty": "Keine Audit-Ereignisse entsprechen Ihren Filtern.",
+    "emptyNoFilters": "Noch keine Audit-Ereignisse. Änderungen an Ihren Kontakten und anderen Einträgen werden hier erscheinen.",
+    "undo": {
+      "button": "Rückgängig",
+      "confirmTitle": "Diese Änderung rückgängig machen?",
+      "confirmMessage": "{{entity}} auf den Stand vom {{date}} zurücksetzen?",
+      "confirm": "Rückgängig",
+      "success": "Kontakt auf den vorherigen Stand zurückgesetzt",
+      "retentionGone": "Dieses Ereignis liegt außerhalb des Aufbewahrungsfensters und kann nicht mehr rückgängig gemacht werden"
     }
   }
 }

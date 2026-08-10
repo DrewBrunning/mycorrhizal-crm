@@ -19,7 +19,8 @@
     "profile": "Configuración",
     "users": "Usuarios",
     "data": "Datos",
-    "shares": "Comparticiones"
+    "shares": "Comparticiones",
+    "audit": "Registro de auditoría"
   },
   "household": {
     "title": "Hogares",
@@ -1573,6 +1574,50 @@
       "deleteDeviceConfirm": "¿Eliminar este dispositivo ({{label}})? Dejarás de recibir notificaciones push aquí.",
       "deviceDeleted": "Dispositivo eliminado",
       "deviceDeleteFailed": "No se pudo eliminar el dispositivo."
+    }
+  },
+  "audit": {
+    "title": "Registro de auditoría",
+    "description": "Todas las creaciones, modificaciones y eliminaciones de tus contactos y registros, de más reciente a más antiguo. Los cambios anteriores a la ventana de retención se eliminan.",
+    "contactUnnamed": "Contacto sin nombre",
+    "filters": {
+      "entityType": "Tipo de entidad",
+      "entityTypeAll": "Todos los tipos",
+      "entityId": "ID de entidad",
+      "clear": "Limpiar filtros"
+    },
+    "columns": {
+      "timestamp": "Cuándo",
+      "entityType": "Entidad",
+      "operation": "Operación",
+      "entityId": "ID de entidad",
+      "actions": "Acciones"
+    },
+    "operations": {
+      "create": "Creado",
+      "update": "Actualizado",
+      "delete": "Eliminado"
+    },
+    "entityTypes": {
+      "contact": "Contacto",
+      "note": "Nota",
+      "activity": "Actividad",
+      "life_event": "Acontecimiento vital",
+      "gift": "Regalo",
+      "circle": "Círculo",
+      "tag": "Etiqueta",
+      "household": "Hogar",
+      "reminder": "Recordatorio"
+    },
+    "empty": "Ningún evento de auditoría coincide con tus filtros.",
+    "emptyNoFilters": "Aún no hay eventos de auditoría. Los cambios que hagas en tus contactos y otros registros aparecerán aquí.",
+    "undo": {
+      "button": "Deshacer",
+      "confirmTitle": "¿Deshacer este cambio?",
+      "confirmMessage": "¿Restaurar {{entity}} a su estado anterior del {{date}}?",
+      "confirm": "Deshacer",
+      "success": "Contacto restaurado a su estado anterior",
+      "retentionGone": "Este evento está fuera de su ventana de retención y ya no se puede deshacer"
     }
   }
 }
