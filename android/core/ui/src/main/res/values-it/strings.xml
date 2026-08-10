@@ -46,6 +46,7 @@
     <string name="contact_activities">Attività</string>
     <string name="contact_notes">Note</string>
     <string name="contact_merge">Unisci contatti</string>
+    <string name="contact_open_in_contacts">Apri in Contatti</string>
     <string name="contact_relationships">Relazioni</string>
     <string name="contact_life_events">Eventi di vita</string>
     <string name="contact_gifts">Regali</string>
@@ -102,6 +103,13 @@
         <string name="settings_tracking">Monitoraggio e notifiche</string>
     <string name="settings_call_tracking">Registra chiamate come attività</string>
     <string name="settings_sms_tracking">Registra messaggi come attività</string>
+        <string name="custom_links_title">Azioni link personalizzate</string>
+    <string name="custom_links_new">Nuova azione</string>
+    <string name="custom_links_empty">Nessuna azione link personalizzata.</string>
+    <string name="custom_links_protocol">Protocollo (es. matrix)</string>
+    <string name="custom_links_label">Etichetta</string>
+    <string name="custom_links_mime">MIMETYPE</string>
+    <string name="custom_links_template">URI intent ({handle})</string>
     <string name="settings_notifications">Mostra notifiche</string>
     <string name="settings_cancel">Annulla</string>
 
@@ -255,4 +263,13 @@
     <string name="bulk_confirm_body">Eseguire l\'azione su %1$d contatti selezionati?</string>
     <string name="bulk_result">Fatto: %1$d riusciti, %2$d falliti.</string>
     <string name="action_confirm">Conferma</string>
+
+
+    <!-- Import -->
+    <string name="import_title">Importa contatti</string>
+    <string name="import_empty">Nessun contatto del dispositivo da importare.</string>
+    <string name="import_unnamed">(senza nome)</string>
+    <string name="import_button">Importa %1$d selezionati (%2$d possibili duplicati)</string>
+    <string name="import_done">%1$d contatti importati.</string>
+    <string name="import_duplicate">Possibile duplicato di %1$s</string>
 </resources>

@@ -64,6 +64,10 @@ interface CachedContactDao {
     @Query("DELETE FROM cached_contacts WHERE id IN (:ids)")
     suspend fun deleteByIds(ids: List<Int>)
 
+    /** Records the device LOOKUP_KEY after a T57 import (§7.5.4). */
+    @Query("UPDATE cached_contacts SET deviceLookupKey = :lookupKey WHERE id = :id")
+    suspend fun setDeviceLookupKey(id: Int, lookupKey: String?)
+
     /**
      * Best-effort phone match for call/SMS tracking (§6.1/6.2): the device
      * number and the cached primaryPhone are both normalized to digits-only
@@ -81,4 +85,14 @@ interface CachedContactDao {
         """,
     )
     suspend fun findByPhoneDigits(phone: String): CachedContact?
+
+    @Query(
+        """
+        SELECT * FROM cached_contacts
+        WHERE deleted = 0
+          AND primaryEmail = :email COLLATE NOCASE
+        LIMIT 1
+        """,
+    )
+    suspend fun findByEmail(email: String): CachedContact?
 }

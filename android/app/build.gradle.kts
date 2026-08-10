@@ -5,6 +5,17 @@ plugins {
 
 android {
     namespace = "com.mycorrhizal.crm"
+
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+        }
+    }
 }
 
 dependencies {
@@ -19,6 +30,7 @@ dependencies {
     implementation(project(":feature:relationships"))
     implementation(project(":feature:timelineentities"))
     implementation(project(":feature:tracking"))
+    implementation(project(":feature:import"))
     implementation(project(":feature:timeline"))
     implementation(project(":feature:settings"))
 

@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -62,6 +63,7 @@ fun ContactListScreen(
     onContactClick: (Int) -> Unit,
     onCreateContact: () -> Unit = {},
     onMenuClick: () -> Unit = {},
+    onImportContacts: () -> Unit = {},
     viewModel: ContactListViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -95,6 +97,7 @@ fun ContactListScreen(
         onContactClick = viewModel::onContactClick,
         onCreateContact = onCreateContact,
         onMenuClick = onMenuClick,
+        onImportContacts = onImportContacts,
         onErrorShown = viewModel::onErrorShown,
     )
 }
@@ -111,6 +114,7 @@ fun ContactListScreenContent(
     onContactClick: (Int) -> Unit,
     onCreateContact: () -> Unit = {},
     onMenuClick: () -> Unit = {},
+    onImportContacts: () -> Unit = {},
     onErrorShown: () -> Unit = {},
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -162,7 +166,15 @@ fun ContactListScreenContent(
                     modifier = Modifier.testTag("contact-list-loading"),
                 )
                 uiState.contacts.isEmpty() && uiState.error == null ->
-                    EmptyState(message = "No contacts yet")
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.fillMaxWidth().padding(24.dp),
+                    ) {
+                        EmptyState(message = stringResource(R.string.contacts_empty))
+                        Button(onClick = onImportContacts) {
+                            Text(stringResource(R.string.import_title))
+                        }
+                    }
                 uiState.contacts.isEmpty() && uiState.error != null -> {
                     Box(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
                         Text(

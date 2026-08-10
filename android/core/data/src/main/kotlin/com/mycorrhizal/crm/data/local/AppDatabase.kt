@@ -29,8 +29,9 @@ import androidx.room.TypeConverters
         CachedPreference::class,
         CachedConversationAgenda::class,
         PendingInteraction::class,
+        CustomLinkAction::class,
     ],
-    version = 11,
+    version = 13,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -51,4 +52,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun cachedPreferenceDao(): CachedPreferenceDao
     abstract fun cachedConversationAgendaDao(): CachedConversationAgendaDao
     abstract fun pendingInteractionDao(): PendingInteractionDao
+    abstract fun customLinkActionDao(): CustomLinkActionDao
 }

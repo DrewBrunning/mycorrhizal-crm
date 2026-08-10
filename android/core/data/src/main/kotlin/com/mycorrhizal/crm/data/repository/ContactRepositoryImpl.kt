@@ -112,6 +112,16 @@ class ContactRepositoryImpl @Inject constructor(
     override suspend fun findByPhone(phone: String): ContactSummary? =
         dao.findByPhoneDigits(phone)?.toSummary()
 
+    override suspend fun findByEmail(email: String): ContactSummary? =
+        dao.findByEmail(email)?.toSummary()
+
+    override suspend fun setDeviceLookupKey(id: Int, lookupKey: String) {
+        dao.setDeviceLookupKey(id, lookupKey)
+    }
+
+    override suspend fun getDeviceLookupKey(id: Int): String? =
+        dao.getById(id)?.deviceLookupKey
+
     override suspend fun searchLocal(query: String): List<ContactSummary> {
         val trimmed = query.trim()
         if (trimmed.isEmpty()) return dao.getAll().map { it.toSummary() }
@@ -183,6 +193,7 @@ class ContactRepositoryImpl @Inject constructor(
         circles = circles,
         archived = archived,
         deleted = deleted,
+        deviceLookupKey = deviceLookupKey,
     )
 
     private fun ContactRecordResponse.toCached(): CachedContact = CachedContact(
@@ -217,6 +228,7 @@ class ContactRepositoryImpl @Inject constructor(
         circles = circles,
         archived = archived,
         deleted = deleted,
+        deviceLookupKey = deviceLookupKey,
     )
 
     private fun CachedContact.toRecord(): ContactRecordResponse? {

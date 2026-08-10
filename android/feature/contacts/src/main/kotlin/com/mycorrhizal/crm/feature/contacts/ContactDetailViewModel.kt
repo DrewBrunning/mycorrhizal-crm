@@ -20,6 +20,7 @@ import javax.inject.Inject
 
 data class ContactDetailUiState(
     val contact: ContactRecordResponse? = null,
+    val deviceLookupKey: String? = null,
     val isLoading: Boolean = false,
     @StringRes val errorRes: Int? = null,
     val error: String? = null,
@@ -51,9 +52,12 @@ class ContactDetailViewModel @Inject constructor(
         }
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
+            val lookupKey = contactRepository.getDeviceLookupKey(contactId)
             contactRepository.getContact(contactId).foldApiError(
                 onSuccess = { contact ->
-                    _uiState.update { it.copy(isLoading = false, contact = contact) }
+                    _uiState.update {
+                        it.copy(isLoading = false, contact = contact, deviceLookupKey = lookupKey)
+                    }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }

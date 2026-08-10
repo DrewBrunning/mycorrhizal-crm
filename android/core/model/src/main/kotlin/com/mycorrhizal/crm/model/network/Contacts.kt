@@ -27,6 +27,8 @@ data class ContactSummary(
     val archived: Boolean = false,
     /** Change-feed tombstone marker (T17): true only via ?since=. */
     val deleted: Boolean = false,
+    /** Device Contacts LOOKUP_KEY after a T57 import (§7.5.4); null otherwise. */
+    @Json(name = "device_lookup_key") val deviceLookupKey: String? = null,
 ) {
     val displayName: String
         get() = fn?.takeIf { it.isNotBlank() }

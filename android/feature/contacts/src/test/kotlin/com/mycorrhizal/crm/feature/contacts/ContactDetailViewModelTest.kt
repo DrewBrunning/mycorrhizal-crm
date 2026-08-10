@@ -28,8 +28,10 @@ class ContactDetailViewModelTest {
     private val contactRepository = mockk<ContactRepository>()
     private val reminderRepository = mockk<ReminderRepository>()
 
-    private fun viewModel(id: Int): ContactDetailViewModel =
-        ContactDetailViewModel(contactRepository, reminderRepository, SavedStateHandle(mapOf("contactId" to id)))
+    private fun viewModel(id: Int): ContactDetailViewModel {
+        coEvery { contactRepository.getDeviceLookupKey(any()) } returns null
+        return ContactDetailViewModel(contactRepository, reminderRepository, SavedStateHandle(mapOf("contactId" to id)))
+    }
 
     @Test
     fun `loads the contact on init`() = runTest(mainDispatcherRule.testDispatcher) {
@@ -59,6 +61,7 @@ class ContactDetailViewModelTest {
         // is declared; the ViewModel must tolerate both shapes.
         val record = ContactRecordResponse(id = 9, card = Card(name = Name(full = "Erin")))
         coEvery { contactRepository.getContact(9) } returns Result.success(record)
+        coEvery { contactRepository.getDeviceLookupKey(9) } returns null
 
         val vm = ContactDetailViewModel(
             contactRepository,

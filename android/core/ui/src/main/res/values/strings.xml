@@ -48,6 +48,7 @@
     <string name="contact_reminders">Reminders</string>
     <string name="contact_relationships">Relationships</string>
     <string name="contact_merge">Merge contacts</string>
+    <string name="contact_open_in_contacts">Open in Contacts</string>
     <string name="contact_life_events">Life events</string>
     <string name="contact_gifts">Gifts</string>
     <string name="contact_preferences">Preferences</string>
@@ -105,6 +106,13 @@
     <string name="settings_call_tracking">Log calls as activities</string>
     <string name="settings_sms_tracking">Log messages as activities</string>
     <string name="settings_notifications">Show notifications</string>
+    <string name="custom_links_title">Custom link actions</string>
+    <string name="custom_links_new">New action</string>
+    <string name="custom_links_empty">No custom link actions yet.</string>
+    <string name="custom_links_protocol">Protocol (e.g. matrix)</string>
+    <string name="custom_links_label">Label</string>
+    <string name="custom_links_mime">MIMETYPE</string>
+    <string name="custom_links_template">Intent URI ({handle})</string>
 
     <!-- Activities -->
     <string name="activities_title">Activities</string>
@@ -251,4 +259,12 @@
     <string name="bulk_confirm_body">Run the action on %1$d selected contacts?</string>
     <string name="bulk_result">Done: %1$d succeeded, %2$d failed.</string>
     <string name="action_confirm">Confirm</string>
+
+    <!-- Import (T57) -->
+    <string name="import_title">Import contacts</string>
+    <string name="import_empty">No device contacts to import.</string>
+    <string name="import_unnamed">(unnamed)</string>
+    <string name="import_button">Import %1$d selected (%2$d possible duplicates)</string>
+    <string name="import_done">Imported %1$d contacts.</string>
+    <string name="import_duplicate">Possible duplicate of %1$s</string>
 </resources>

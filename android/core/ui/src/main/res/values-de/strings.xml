@@ -46,6 +46,7 @@
     <string name="contact_activities">Aktivitäten</string>
     <string name="contact_notes">Notizen</string>
     <string name="contact_merge">Kontakte zusammenführen</string>
+    <string name="contact_open_in_contacts">In Kontakten öffnen</string>
     <string name="contact_relationships">Beziehungen</string>
     <string name="contact_life_events">Lebensereignisse</string>
     <string name="contact_gifts">Geschenke</string>
@@ -102,6 +103,13 @@
         <string name="settings_tracking">Tracking und Benachrichtigungen</string>
     <string name="settings_call_tracking">Anrufe als Aktivitäten protokollieren</string>
     <string name="settings_sms_tracking">Nachrichten als Aktivitäten protokollieren</string>
+        <string name="custom_links_title">Benutzerdefinierte Link-Aktionen</string>
+    <string name="custom_links_new">Neue Aktion</string>
+    <string name="custom_links_empty">Noch keine benutzerdefinierten Link-Aktionen.</string>
+    <string name="custom_links_protocol">Protokoll (z. B. matrix)</string>
+    <string name="custom_links_label">Bezeichnung</string>
+    <string name="custom_links_mime">MIMETYPE</string>
+    <string name="custom_links_template">Intent-URI ({handle})</string>
     <string name="settings_notifications">Benachrichtigungen anzeigen</string>
     <string name="settings_cancel">Abbrechen</string>
 
@@ -255,4 +263,13 @@
     <string name="bulk_confirm_body">Aktion auf %1$d ausgewählte Kontakte ausführen?</string>
     <string name="bulk_result">Fertig: %1$d erfolgreich, %2$d fehlgeschlagen.</string>
     <string name="action_confirm">Bestätigen</string>
+
+
+    <!-- Import -->
+    <string name="import_title">Kontakte importieren</string>
+    <string name="import_empty">Keine Gerätekontakte zum Importieren.</string>
+    <string name="import_unnamed">(unbenannt)</string>
+    <string name="import_button">%1$d ausgewählte importieren (%2$d mögliche Duplikate)</string>
+    <string name="import_done">%1$d Kontakte importiert.</string>
+    <string name="import_duplicate">Mögliches Duplikat von %1$s</string>
 </resources>

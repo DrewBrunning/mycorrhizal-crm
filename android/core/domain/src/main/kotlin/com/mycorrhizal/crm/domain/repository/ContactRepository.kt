@@ -45,6 +45,15 @@ interface ContactRepository {
     /** Local phone-match for call/SMS tracking (digits-normalized). */
     suspend fun findByPhone(phone: String): ContactSummary?
 
+    /** Local email match (case-insensitive) for T57 dedup. */
+    suspend fun findByEmail(email: String): ContactSummary?
+
+    /** Records the device Contacts LOOKUP_KEY for a contact after T57 import. */
+    suspend fun setDeviceLookupKey(id: Int, lookupKey: String)
+
+    /** Reads a contact's cached device LOOKUP_KEY, if any (§7.5.4). */
+    suspend fun getDeviceLookupKey(id: Int): String?
+
     /**
      * Local full-text search over the Room cache (Phase 2 item 13). Returns
      * cached rows matching [query] via the FTS mirror; empty query returns

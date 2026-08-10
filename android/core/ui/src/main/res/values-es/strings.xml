@@ -46,6 +46,7 @@
     <string name="contact_activities">Actividades</string>
     <string name="contact_notes">Notas</string>
     <string name="contact_merge">Fusionar contactos</string>
+    <string name="contact_open_in_contacts">Abrir en Contactos</string>
     <string name="contact_relationships">Relaciones</string>
     <string name="contact_life_events">Acontecimientos vitales</string>
     <string name="contact_gifts">Regalos</string>
@@ -102,6 +103,13 @@
         <string name="settings_tracking">Seguimiento y notificaciones</string>
     <string name="settings_call_tracking">Registrar llamadas como actividades</string>
     <string name="settings_sms_tracking">Registrar mensajes como actividades</string>
+        <string name="custom_links_title">Acciones de enlace personalizadas</string>
+    <string name="custom_links_new">Nueva acción</string>
+    <string name="custom_links_empty">Aún no hay acciones de enlace personalizadas.</string>
+    <string name="custom_links_protocol">Protocolo (p. ej. matrix)</string>
+    <string name="custom_links_label">Etiqueta</string>
+    <string name="custom_links_mime">MIMETYPE</string>
+    <string name="custom_links_template">URI de intent ({handle})</string>
     <string name="settings_notifications">Mostrar notificaciones</string>
     <string name="settings_cancel">Cancelar</string>
 
@@ -255,4 +263,13 @@
     <string name="bulk_confirm_body">¿Ejecutar la acción en %1$d contactos seleccionados?</string>
     <string name="bulk_result">Hecho: %1$d correctos, %2$d fallidos.</string>
     <string name="action_confirm">Confirmar</string>
+
+
+    <!-- Import -->
+    <string name="import_title">Importar contactos</string>
+    <string name="import_empty">No hay contactos del dispositivo para importar.</string>
+    <string name="import_unnamed">(sin nombre)</string>
+    <string name="import_button">Importar %1$d seleccionados (%2$d posibles duplicados)</string>
+    <string name="import_done">%1$d contactos importados.</string>
+    <string name="import_duplicate">Posible duplicado de %1$s</string>
 </resources>

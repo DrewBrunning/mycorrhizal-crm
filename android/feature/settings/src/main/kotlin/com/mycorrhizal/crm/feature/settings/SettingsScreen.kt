@@ -40,6 +40,7 @@ import com.mycorrhizal.crm.ui.R
 fun SettingsScreen(
     onBack: () -> Unit,
     onLoggedOut: () -> Unit,
+    onCustomLinks: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -71,6 +72,7 @@ fun SettingsScreen(
     ) { padding ->
         SettingsContent(
             state = state,
+            onCustomLinks = onCustomLinks,
             onCallTrackingChange = viewModel::setCallTrackingEnabled,
             onSmsTrackingChange = viewModel::setSmsTrackingEnabled,
             onNotificationsChange = viewModel::setNotificationsEnabled,
@@ -83,6 +85,7 @@ fun SettingsScreen(
 @Composable
 fun SettingsContent(
     state: SettingsUiState,
+    onCustomLinks: () -> Unit = {},
     onCallTrackingChange: (Boolean) -> Unit = {},
     onSmsTrackingChange: (Boolean) -> Unit = {},
     onNotificationsChange: (Boolean) -> Unit = {},
@@ -121,6 +124,12 @@ fun SettingsContent(
             checked = state.notificationsEnabled,
             onCheckedChange = onNotificationsChange,
         )
+        Button(
+            onClick = onCustomLinks,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(stringResource(R.string.custom_links_title))
+        }
 
         Button(
             onClick = { confirmLogout = true },

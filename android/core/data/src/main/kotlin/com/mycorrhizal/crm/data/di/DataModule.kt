@@ -5,6 +5,7 @@ import com.mycorrhizal.crm.data.local.CachedActivityDao
 import com.mycorrhizal.crm.data.local.CachedCircleDao
 import com.mycorrhizal.crm.data.local.CachedCircleMemberDao
 import com.mycorrhizal.crm.data.local.CachedContactDao
+import com.mycorrhizal.crm.data.local.CustomLinkActionDao
 import com.mycorrhizal.crm.data.local.CachedContactTagDao
 import com.mycorrhizal.crm.data.local.CachedConversationAgendaDao
 import com.mycorrhizal.crm.data.local.CachedGiftDao
@@ -20,6 +21,7 @@ import com.mycorrhizal.crm.data.local.PendingInteractionDao
 import com.mycorrhizal.crm.data.repository.ActivityRepositoryImpl
 import com.mycorrhizal.crm.data.repository.AuthRepositoryImpl
 import com.mycorrhizal.crm.data.repository.CircleRepositoryImpl
+import com.mycorrhizal.crm.data.repository.CustomLinkActionRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ContactRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ConversationAgendaRepositoryImpl
 import com.mycorrhizal.crm.data.repository.GiftRepositoryImpl
@@ -42,6 +44,7 @@ import com.mycorrhizal.crm.domain.repository.ActivityRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.BulkOperationRepository
 import com.mycorrhizal.crm.domain.repository.CircleRepository
+import com.mycorrhizal.crm.domain.repository.CustomLinkActionRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ConversationAgendaRepository
 import com.mycorrhizal.crm.domain.repository.GiftRepository
@@ -160,6 +163,10 @@ object DataModule {
         db.pendingInteractionDao()
 
     @Provides
+    fun provideCustomLinkActionDao(db: AppDatabase): CustomLinkActionDao =
+        db.customLinkActionDao()
+
+    @Provides
     @Singleton
     fun provideSessionManager(
         tokenStorage: TokenStorage,
@@ -251,6 +258,10 @@ abstract class DataBindsModule {
     @Binds
     @Singleton
     abstract fun bindPendingInteractionRepository(impl: PendingInteractionRepositoryImpl): PendingInteractionRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindCustomLinkActionRepository(impl: CustomLinkActionRepositoryImpl): CustomLinkActionRepository
 
     @Binds
     @Singleton

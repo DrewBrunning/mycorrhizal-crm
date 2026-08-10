@@ -50,7 +50,9 @@ import com.mycorrhizal.crm.feature.contacts.BulkOperationsScreen
 import com.mycorrhizal.crm.feature.contacts.MergeContactsScreen
 import com.mycorrhizal.crm.feature.households.HouseholdDetailScreen
 import com.mycorrhizal.crm.feature.households.HouseholdsScreen
+import com.mycorrhizal.crm.feature.imports.ImportContactsScreen
 import com.mycorrhizal.crm.feature.relationships.RelationshipsScreen
+import com.mycorrhizal.crm.feature.settings.CustomLinkActionsScreen
 import com.mycorrhizal.crm.feature.settings.SettingsScreen
 import com.mycorrhizal.crm.feature.timelineentities.ConversationAgendaScreen
 import com.mycorrhizal.crm.feature.timelineentities.GiftsScreen
@@ -178,6 +180,15 @@ private fun MainScaffold() {
                     },
                     modifier = Modifier.padding(horizontal = 8.dp),
                 )
+                NavigationDrawerItem(
+                    label = { Text(stringResource(R.string.import_title)) },
+                    selected = currentDestination?.route == "import",
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        navController.navigate("import")
+                    },
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                )
             }
         },
     ) {
@@ -215,11 +226,18 @@ private fun MainScaffold() {
                     onContactClick = { id -> navController.navigate("contacts/$id") },
                     onCreateContact = { navController.navigate("contacts/new") },
                     onMenuClick = { scope.launch { drawerState.open() } },
+                    onImportContacts = { navController.navigate("import") },
                 )
             }
             composable("bulk") {
                 BulkOperationsScreen(
                     onBack = { navController.popBackStack() },
+                )
+            }
+            composable("import") {
+                ImportContactsScreen(
+                    onBack = { navController.popBackStack() },
+                    onImported = {},
                 )
             }
             composable(
@@ -244,6 +262,9 @@ private fun MainScaffold() {
                     onViewNotes = { id -> navController.navigate("contacts/$id/notes") },
                     onViewReminders = { id -> navController.navigate("contacts/$id/reminders") },
                     onViewRelationships = { id -> navController.navigate("contacts/$id/relationships") },
+                    onOpenInContacts = { lookupKey ->
+                        openInContacts(navController.context, lookupKey)
+                    },
                     onMerge = { id -> navController.navigate("merge/$id") },
                     onViewLifeEvents = { id -> navController.navigate("contacts/$id/life-events") },
                     onViewGifts = { id -> navController.navigate("contacts/$id/gifts") },
@@ -414,6 +435,12 @@ private fun MainScaffold() {
                 SettingsScreen(
                     onBack = { navController.popBackStack() },
                     onLoggedOut = { navController.popBackStack() },
+                    onCustomLinks = { navController.navigate("custom-links") },
+                )
+            }
+            composable("custom-links") {
+                CustomLinkActionsScreen(
+                    onBack = { navController.popBackStack() },
                 )
             }
             composable("circles") {
@@ -471,5 +498,19 @@ private fun PlaceholderScreen(@StringRes titleRes: Int) {
             text = stringResource(R.string.coming_soon, stringResource(titleRes)),
             style = MaterialTheme.typography.bodyLarge,
         )
+    }
+}
+
+/** Launches the native Contacts QuickContact card for an imported contact (§7.5.4). */
+private fun openInContacts(context: android.content.Context, lookupKey: String) {
+    val lookupUri = com.mycorrhizal.crm.feature.imports.DeviceContactLink.quickContactLookupUri(lookupKey)
+        ?: return
+    val intent = android.content.Intent(android.provider.ContactsContract.QuickContact.ACTION_QUICK_CONTACT).apply {
+        data = lookupUri
+    }
+    try {
+        context.startActivity(intent)
+    } catch (_: Exception) {
+        // No handler / missing contact — nothing to do.
     }
 }

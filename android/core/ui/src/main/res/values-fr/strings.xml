@@ -46,6 +46,7 @@
     <string name="contact_activities">Activités</string>
     <string name="contact_notes">Notes</string>
     <string name="contact_merge">Fusionner des contacts</string>
+    <string name="contact_open_in_contacts">Ouvrir dans Contacts</string>
     <string name="contact_relationships">Relations</string>
     <string name="contact_life_events">Événements de vie</string>
     <string name="contact_gifts">Cadeaux</string>
@@ -102,6 +103,13 @@
         <string name="settings_tracking">Suivi et notifications</string>
     <string name="settings_call_tracking">Journaliser les appels comme activités</string>
     <string name="settings_sms_tracking">Journaliser les messages comme activités</string>
+        <string name="custom_links_title">Actions de lien personnalisées</string>
+    <string name="custom_links_new">Nouvelle action</string>
+    <string name="custom_links_empty">Aucune action de lien personnalisée pour le moment.</string>
+    <string name="custom_links_protocol">Protocole (p. ex. matrix)</string>
+    <string name="custom_links_label">Libellé</string>
+    <string name="custom_links_mime">MIMETYPE</string>
+    <string name="custom_links_template">URI d\'intention ({handle})</string>
     <string name="settings_notifications">Afficher les notifications</string>
     <string name="settings_cancel">Annuler</string>
 
@@ -255,4 +263,13 @@
     <string name="bulk_confirm_body">Exécuter l\'action sur %1$d contacts sélectionnés ?</string>
     <string name="bulk_result">Terminé : %1$d réussis, %2$d échoués.</string>
     <string name="action_confirm">Confirmer</string>
+
+
+    <!-- Import -->
+    <string name="import_title">Importer des contacts</string>
+    <string name="import_empty">Aucun contact de l\'appareil à importer.</string>
+    <string name="import_unnamed">(sans nom)</string>
+    <string name="import_button">Importer %1$d sélectionnés (%2$d doublons possibles)</string>
+    <string name="import_done">%1$d contacts importés.</string>
+    <string name="import_duplicate">Doublon possible de %1$s</string>
 </resources>

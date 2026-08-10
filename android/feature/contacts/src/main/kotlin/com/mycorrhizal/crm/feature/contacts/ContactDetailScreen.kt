@@ -85,6 +85,7 @@ fun ContactDetailScreen(
     onViewNotes: (Int) -> Unit = {},
     onViewReminders: (Int) -> Unit = {},
     onViewRelationships: (Int) -> Unit = {},
+    onOpenInContacts: (String) -> Unit = {},
     onMerge: (Int) -> Unit = {},
     onViewLifeEvents: (Int) -> Unit = {},
     onViewGifts: (Int) -> Unit = {},
@@ -142,6 +143,8 @@ fun ContactDetailScreen(
                 state.contact == null -> EmptyState("Contact not found")
                 else -> ContactDetailContent(
                     contact = state.contact!!,
+                    deviceLookupKey = state.deviceLookupKey,
+                    onOpenInContacts = onOpenInContacts,
                     onViewActivities = onViewActivities,
                     onViewNotes = onViewNotes,
                     onViewReminders = onViewReminders,
@@ -164,6 +167,8 @@ fun ContactDetailScreen(
 @Composable
 fun ContactDetailContent(
     contact: ContactRecordResponse,
+    deviceLookupKey: String? = null,
+    onOpenInContacts: (String) -> Unit = {},
     onViewActivities: (Int) -> Unit = {},
     onViewNotes: (Int) -> Unit = {},
     onViewReminders: (Int) -> Unit = {},
@@ -194,6 +199,20 @@ fun ContactDetailContent(
                 onEditReminder = onEditReminder,
                 onCompleteReminder = onCompleteReminder,
             )
+        }
+        if (deviceLookupKey != null) {
+            item {
+                androidx.compose.material3.ListItem(
+                    headlineContent = { Text(stringResource(R.string.contact_open_in_contacts), style = MaterialTheme.typography.bodyLarge) },
+                    trailingContent = {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
+                            contentDescription = null,
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth().clickable { onOpenInContacts(deviceLookupKey) },
+                )
+            }
         }
         item {
             // Entry points to the per-type list screens (full management view).
