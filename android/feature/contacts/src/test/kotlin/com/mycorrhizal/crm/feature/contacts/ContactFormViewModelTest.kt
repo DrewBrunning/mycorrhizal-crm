@@ -92,6 +92,7 @@ class ContactFormViewModelTest {
         vm.onGivenNameChange("Carol")
         vm.onSurnameChange("King")
         vm.onEmailsChange(listOf("carol@example.com"))
+        vm.onPhonesChange(listOf("+1-555-0100"))
         vm.save()
         advanceUntilIdle()
 
@@ -106,6 +107,32 @@ class ContactFormViewModelTest {
         }
         assertEquals(ContactFormEvent.Saved, vm.events.value)
         assertFalse(vm.uiState.value.isSaving)
+    }
+
+    @Test
+    fun `saved phones default to the cell label`() = runTest(mainDispatcherRule.testDispatcher) {
+        // Write-parity with the web form's MultiValueField `defaultType="cell"`:
+        // without a label the backend stores ContactPhone.Type="", buildPhones
+        // emits a bare Phone{number}, and the detail screen can't detect it as
+        // mobile (no SMS action).
+        val created = ContactRecordResponse(id = 9, card = Card(name = Name(full = "Carol King")))
+        coEvery { contactRepository.createContact(any()) } returns Result.success(created)
+
+        val vm = createViewModel()
+        vm.onGivenNameChange("Carol")
+        vm.onSurnameChange("King")
+        vm.onPhonesChange(listOf("+1-555-0100"))
+        vm.save()
+        advanceUntilIdle()
+
+        coVerify {
+            contactRepository.createContact(
+                match<ContactRecordInput> { input ->
+                    input.card?.phones?.firstOrNull()?.number == "+1-555-0100" &&
+                        input.card?.phones?.firstOrNull()?.label == "cell"
+                },
+            )
+        }
     }
 
     @Test

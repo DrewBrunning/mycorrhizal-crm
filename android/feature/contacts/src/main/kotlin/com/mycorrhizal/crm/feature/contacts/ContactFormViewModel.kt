@@ -84,7 +84,14 @@ data class ContactFormState(
                 .map { Email(address = it) }
                 .ifEmpty { null },
             phones = phones.mapNotNull { it.trim().takeIf(String::isNotBlank) }
-                .map { Phone(number = it) }
+                // Default the phone type to "cell", matching the web form's
+                // MultiValueField `defaultType="cell"`. Without a type the
+                // backend stores ContactPhone.Type="" and buildPhones emits a
+                // bare Phone{number} with no features/contexts/label, so the
+                // detail screen can never show an SMS action for a phone the
+                // form created (T34 phone-feature detection). The label is the
+                // field the backend round-trips into ContactPhone.Type.
+                .map { Phone(number = it, label = "cell") }
                 .ifEmpty { null },
             anniversaries = mergeBirthday(baseCard.anniversaries, birthday),
             notes = if (notes.isNotBlank()) {

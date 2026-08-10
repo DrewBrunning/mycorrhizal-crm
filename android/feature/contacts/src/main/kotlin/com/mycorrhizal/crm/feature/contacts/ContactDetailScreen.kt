@@ -386,8 +386,13 @@ private fun PhoneRow(phone: Phone) {
             IconButton(onClick = { context.startActivity(FieldActions.dialIntent(number)) }) {
                 Icon(Icons.Outlined.Call, contentDescription = stringResource(R.string.cd_call))
             }
-            // SMS only for mobile numbers (T34: phone feature detection).
-            if (phone.features?.contains("cell") == true) {
+            // SMS for mobile numbers (T34 phone detection). Mirrors the web
+            // app's `phoneHasToken` (ContactInformation.tsx): a phone is SMS-able
+            // if `features`, `contexts`, or the type/label carries a cell/mobile
+            // token. The backend populates `features` only on vCard import —
+            // CRM-created contacts carry the type in `label`, so checking only
+            // `features` (as this did) hid the SMS button for those.
+            if (phone.isMobile()) {
                 IconButton(onClick = { context.startActivity(FieldActions.smsIntent(number)) }) {
                     Icon(Icons.Outlined.Message, contentDescription = stringResource(R.string.cd_text))
                 }
@@ -397,6 +402,13 @@ private fun PhoneRow(phone: Phone) {
             }
         }
     }
+}
+
+/** T34 phone-feature detection, mirroring the web app's `phoneHasToken`. */
+private fun Phone.isMobile(): Boolean {
+    val tokens = (features.orEmpty() + contexts.orEmpty() + listOfNotNull(label))
+        .map { it.trim().lowercase() }
+    return tokens.any { it == "cell" || it == "mobile" }
 }
 
 @Composable

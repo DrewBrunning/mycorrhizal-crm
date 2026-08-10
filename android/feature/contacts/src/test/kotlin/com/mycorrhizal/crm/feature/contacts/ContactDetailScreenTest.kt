@@ -117,6 +117,42 @@ class ContactDetailScreenTest {
     }
 
     @Test
+    fun `phone with cell context renders an sms action`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(
+                name = Name(full = "Dana White"),
+                phones = listOf(Phone(number = "+1-555-0100", contexts = listOf("cell"))),
+            ),
+        )
+        setContent(ContactDetailUiState(contact = contact))
+
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasContentDescription("Text"))
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun `phone typed as mobile via label renders an sms action`() {
+        // CRM-created contacts carry the phone type in `label` (the backend's
+        // buildPhones maps ContactPhone.Type -> Phone.Label) with empty
+        // features/contexts — the web app's phoneHasToken covers this via
+        // `r.type === token`; the Android client must too.
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(
+                name = Name(full = "Dana White"),
+                phones = listOf(Phone(number = "+1-555-0100", label = "mobile")),
+            ),
+        )
+        setContent(ContactDetailUiState(contact = contact))
+
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasContentDescription("Text"))
+            .assertIsDisplayed()
+    }
+
+    @Test
     fun `email row renders compose and copy actions`() {
         val contact = ContactRecordResponse(
             id = 5,
