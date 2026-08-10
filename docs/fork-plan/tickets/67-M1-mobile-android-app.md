@@ -5,7 +5,7 @@
 | **Rating** | 2 |
 | **Source** | v0.3.0 post-release planning, 2026-08-06 |
 | **This document** | Full-scope technical design, 2026-08-09 |
-| **Status** | **Phase 1 shipped 2026-08-10, Phase 2 in progress** — see the landing note at the bottom. The full-scope design below remains the plan for Phases 2–5. |
+| **Status** | **Phase 1 + Phase 2 shipped 2026-08-10, Phase 3 next** — see the landing note at the bottom. The full-scope design below remains the plan for Phases 3–5. |
 
 ## Why this exists
 
@@ -2860,15 +2860,37 @@ sub-resources (circles/tags/households/edges), native features (call/SMS trackin
 quick-capture, notifications, WorkManager sync), and T57 import + polish. The module structure,
 Room cache, session, and auth foundations Phase 1 built are the substrate all of them land on.
 
-**Phase 2 status (2026-08-10):**
-- **Item 6 — contact create/edit shipped** (read/write parity's foundation): full Card write path
-  (POST/PUT /contacts) with `ContactRecordInput`/`CreateContactResponse` DTOs, the §2.6 wrapped-
-  POST unwrap in the ApiClient, repository create/update with Room caching, a
-  `ContactFormViewModel` (create + edit modes, backend-aligned validation, birthday → PartialDate
-  conversion), and a `ContactFormScreen` with MultiValueField-style email/phone editors. Wired via
-  a list FAB and a detail edit action. Edits **merge onto the loaded record** so fields the form
-  doesn't model (addresses, orgs, personalInfo, links, …) survive the backend's full-overwrite PUT.
-  List and detail reload on return from the form. 155 tests green.
-- **Item 11 (tappable link-field actions) is the natural next slice** — it only touches the
-  existing detail screen's field rendering (Android Intents for tel:/sms:/mailto:/geo:/copy) and
-  needs no new backend or Room surface.
+**Phase 2 status (2026-08-10): COMPLETE** — read/write parity for the contact core is shipped
+in `:feature:contacts` + the new `:feature:timeline` module (activities/notes/reminders' shared
+home, per §1.2). 263 tests green.
+
+- **Item 6 — contact create/edit** — full Card write path (POST/PUT /contacts) with the §2.6
+  wrapped-POST unwrap, repository create/update with Room caching, a create/edit form
+  (`ContactFormViewModel` + `ContactFormScreen`) with backend-aligned validation and
+  birthday → PartialDate conversion. Edits **merge onto the loaded record** so fields the form
+  doesn't model survive the backend's full-overwrite PUT. List + detail reload on return.
+- **Item 7 — activity list + create/edit** — `Activity`/`ActivityInput` DTOs, ApiClient CRUD,
+  `CachedActivity` Room cache, `ActivitiesViewModel`/`ActivityFormViewModel` + screens (with an
+  add FAB). Editing preserves a multi-contact activity's participants and its external ref;
+  the ISO-8601 date is validated client-side to match the backend.
+- **Item 8 — note list + create/edit** — same pattern for `Note` (content + required date).
+- **Item 9 — reminder list + create/complete** — `Reminder` (doubles as the create body),
+  list with recurrence labels, create/edit form (recurrence dropdown, by-mail switch), and a
+  complete action: once-reminders drop out, recurring ones reschedule in place.
+- **Item 10 — unified timeline** — the contact detail now renders a merged, newest-first
+  timeline of activities/notes/reminders (the backend detail response already preloads all
+  three), with kind icons, tap-to-edit, and inline reminder-complete. The per-type list screens
+  remain as the full management view below it.
+- **Item 11 — tappable link-field actions** — tel:/sms:/mailto:/geo:/browser intents + copy on
+  every detail field (Android equivalents of T34/T47), with SMS only on `cell`-featured phones.
+- **Item 13 — search** — server search was already debounced + cursor-paginated in Phase 1; this
+  adds local full-text search over the Room cache via an FTS4 mirror (`CachedContactFts`,
+  auto-synced), used as the offline fallback for a search query.
+- **Item 12 (mobile link-action enrichment — ContactsContract MIMETYPE resolution) is deferred
+  to a device pass.** It needs `READ_CONTACTS` + third-party apps installed to resolve which
+  Signal/WhatsApp/Telegram actions are available; the client-side `MobileLinkRegistry` (§7.6)
+  can't be meaningfully built or tested without a device. Not blocked by anything here.
+
+Architecture review performed on the activities/notes/reminders slices; all findings fixed
+(participant/external-ref preservation on edit, the reminder-complete wiring gap, required-date
+validation, once-reminder cache drop, double error display, FTS query sanitization).
