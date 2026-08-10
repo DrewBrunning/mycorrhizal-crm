@@ -7,6 +7,8 @@ import com.mycorrhizal.crm.model.network.ContactRecordInput
 import com.mycorrhizal.crm.model.network.LoginResponse
 import com.mycorrhizal.crm.model.network.Name
 import com.mycorrhizal.crm.model.network.NoteInput
+import com.mycorrhizal.crm.model.network.Reminder
+import com.mycorrhizal.crm.model.network.ReminderRecurrence
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import okhttp3.OkHttpClient
@@ -528,5 +530,101 @@ class ApiClientTest {
 
         assertTrue(result.isSuccess)
         assertEquals("Loves climbing", result.getOrThrow().content)
+    }
+
+    @Test
+    fun `list contact reminders parses the wrapped reminders array`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "reminders": [
+                        {"ID": 1, "message": "Call Dana", "remind_at": "2026-08-10T14:00:00Z", "recurrence": "weekly"},
+                        {"ID": 2, "message": "Birthday gift", "remind_at": "2026-08-15T09:00:00Z", "recurrence": "yearly"}
+                      ]
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        val result = client.listContactReminders(5)
+
+        assertTrue(result.isSuccess)
+        val reminders = result.getOrThrow().reminders
+        assertEquals(2, reminders.size)
+        assertEquals("Call Dana", reminders[0].message)
+        assertEquals("weekly", reminders[0].recurrence)
+
+        val request = server.takeRequest()
+        assertEquals("/api/v1/contacts/5/reminders", request.path)
+    }
+
+    @Test
+    fun `create reminder posts and unwraps the wrapped response`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "message": "Reminder created successfully",
+                      "reminder": {"ID": 1, "message": "Call Dana", "recurrence": "once"}
+                    }
+                    """.trimIndent(),
+                ),
+        )
+        val reminder = Reminder(
+            message = "Call Dana",
+            remindAt = "2026-08-10T14:00:00Z",
+            recurrence = ReminderRecurrence.ONCE,
+            contactId = 5,
+        )
+
+        val result = client.createReminder(5, reminder)
+
+        assertTrue(result.isSuccess)
+        assertEquals(1, result.getOrThrow().id)
+
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/contacts/5/reminders", request.path)
+    }
+
+    @Test
+    fun `complete reminder parses the complete response`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """{"message": "Reminder completed", "reminder": {"ID": 1, "message": "Call Dana", "completed": false}}""",
+                ),
+        )
+
+        val result = client.completeReminder(1)
+
+        assertTrue(result.isSuccess)
+        assertEquals(1, result.getOrThrow().reminder?.id)
+
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/reminders/1/complete", request.path)
+    }
+
+    @Test
+    fun `get reminder parses a single reminder`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """{"ID": 1, "message": "Call Dana", "recurrence": "weekly"}""",
+                ),
+        )
+
+        val result = client.getReminder(1)
+
+        assertTrue(result.isSuccess)
+        assertEquals("Call Dana", result.getOrThrow().message)
     }
 }

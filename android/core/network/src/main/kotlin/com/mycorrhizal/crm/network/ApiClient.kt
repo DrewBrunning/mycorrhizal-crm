@@ -8,14 +8,18 @@ import com.mycorrhizal.crm.model.network.ContactActivitiesResponse
 import com.mycorrhizal.crm.model.network.ContactNotesResponse
 import com.mycorrhizal.crm.model.network.ContactRecordInput
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
+import com.mycorrhizal.crm.model.network.ContactRemindersResponse
 import com.mycorrhizal.crm.model.network.ContactsPage
 import com.mycorrhizal.crm.model.network.CreateActivityResponse
 import com.mycorrhizal.crm.model.network.CreateContactResponse
 import com.mycorrhizal.crm.model.network.CreateNoteResponse
+import com.mycorrhizal.crm.model.network.CreateReminderResponse
 import com.mycorrhizal.crm.model.network.LoginRequest
 import com.mycorrhizal.crm.model.network.LoginResponse
 import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.model.network.NoteInput
+import com.mycorrhizal.crm.model.network.Reminder
+import com.mycorrhizal.crm.model.network.ReminderCompleteResponse
 import com.mycorrhizal.crm.model.network.UserProfile
 import com.squareup.moshi.Moshi
 import kotlinx.coroutines.Dispatchers
@@ -158,6 +162,36 @@ class ApiClient(
             moshi.adapter(Note::class.java).fromJson(body)
         }
 
+    /** GET /api/v1/contacts/{id}/reminders — a contact's reminders. */
+    suspend fun listContactReminders(contactId: Int): Result<ContactRemindersResponse> =
+        executeGet("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/reminders") { _, body ->
+            moshi.adapter(ContactRemindersResponse::class.java).fromJson(body)
+        }
+
+    /** POST /api/v1/contacts/{id}/reminders — wrapped `{ message, reminder }`, unwrapped here. */
+    suspend fun createReminder(contactId: Int, reminder: Reminder): Result<Reminder> =
+        executePost("$CONTACTS_PATH/$contactId/reminders", reminder) { _, body ->
+            moshi.adapter(CreateReminderResponse::class.java).fromJson(body)?.reminder
+        }
+
+    /** PUT /api/v1/reminders/{id} — raw Reminder response. */
+    suspend fun updateReminder(id: Int, reminder: Reminder): Result<Reminder> =
+        executePut("$PLACEHOLDER_ORIGIN$REMINDERS_PATH/$id", reminder) { _, body ->
+            moshi.adapter(Reminder::class.java).fromJson(body)
+        }
+
+    /** POST /api/v1/reminders/{id}/complete — completes a reminder (no body). */
+    suspend fun completeReminder(id: Int): Result<ReminderCompleteResponse> =
+        executePostEmpty("$REMINDERS_PATH/$id/complete") { _, body ->
+            moshi.adapter(ReminderCompleteResponse::class.java).fromJson(body)
+        }
+
+    /** GET /api/v1/reminders/{id} — a single reminder. */
+    suspend fun getReminder(id: Int): Result<Reminder> =
+        executeGet("$PLACEHOLDER_ORIGIN$REMINDERS_PATH/$id") { _, body ->
+            moshi.adapter(Reminder::class.java).fromJson(body)
+        }
+
     private suspend fun <T> executeGet(
         url: String,
         mapper: (okhttp3.Response, String) -> T?,
@@ -174,6 +208,17 @@ class ApiClient(
         val request = Request.Builder()
             .url("$PLACEHOLDER_ORIGIN$path".toHttpUrl())
             .post(body.toJsonBody())
+            .build()
+        return execute(request, mapper)
+    }
+
+    private suspend fun <T> executePostEmpty(
+        path: String,
+        mapper: (okhttp3.Response, String) -> T?,
+    ): Result<T> {
+        val request = Request.Builder()
+            .url("$PLACEHOLDER_ORIGIN$path".toHttpUrl())
+            .post(okhttp3.RequestBody.create(null, ByteArray(0)))
             .build()
         return execute(request, mapper)
     }
@@ -245,6 +290,7 @@ class ApiClient(
         private const val CONTACTS_PATH = "$API_V1/contacts"
         private const val ACTIVITIES_PATH = "$API_V1/activities"
         private const val NOTES_PATH = "$API_V1/notes"
+        private const val REMINDERS_PATH = "$API_V1/reminders"
         private const val AUTH_COOKIE = "auth_token"
     }
 }

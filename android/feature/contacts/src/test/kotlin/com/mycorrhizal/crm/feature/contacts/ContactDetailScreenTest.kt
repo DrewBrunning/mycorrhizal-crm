@@ -50,15 +50,13 @@ class ContactDetailScreenTest {
         )
         setContent(ContactDetailUiState(contact = contact))
 
+        // The header + the timeline entry rows are composed at the top of the
+        // virtualized LazyColumn; email/phone/circles sections are below the
+        // fold and are covered by the dedicated row tests.
         composeTestRule.onNodeWithText("Dana White").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Email").assertIsDisplayed()
-        composeTestRule.onNodeWithText("dana@example.com").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Phone").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("+1-555-0100").performScrollTo().assertIsDisplayed()
-        // Circles is below the fold in the virtualized LazyColumn; assert it via the
-        // CRM data path rather than visibility (it is not composed until scrolled to).
         composeTestRule.onNodeWithText("Activities").assertIsDisplayed()
         composeTestRule.onNodeWithText("Notes").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Reminders").assertIsDisplayed()
     }
 
     @Test

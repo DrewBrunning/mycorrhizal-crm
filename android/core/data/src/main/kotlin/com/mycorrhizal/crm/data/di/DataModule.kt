@@ -4,10 +4,12 @@ import com.mycorrhizal.crm.data.local.AppDatabase
 import com.mycorrhizal.crm.data.local.CachedActivityDao
 import com.mycorrhizal.crm.data.local.CachedContactDao
 import com.mycorrhizal.crm.data.local.CachedNoteDao
+import com.mycorrhizal.crm.data.local.CachedReminderDao
 import com.mycorrhizal.crm.data.repository.ActivityRepositoryImpl
 import com.mycorrhizal.crm.data.repository.AuthRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ContactRepositoryImpl
 import com.mycorrhizal.crm.data.repository.NoteRepositoryImpl
+import com.mycorrhizal.crm.data.repository.ReminderRepositoryImpl
 import com.mycorrhizal.crm.data.session.DefaultSessionManager
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.data.session.SessionPrefsStorage
@@ -16,6 +18,7 @@ import com.mycorrhizal.crm.domain.repository.ActivityRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.NoteRepository
+import com.mycorrhizal.crm.domain.repository.ReminderRepository
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.BaseUrlProvider
 import com.mycorrhizal.crm.network.NetworkFactory
@@ -75,6 +78,9 @@ object DataModule {
     fun provideCachedNoteDao(db: AppDatabase): CachedNoteDao = db.cachedNoteDao()
 
     @Provides
+    fun provideCachedReminderDao(db: AppDatabase): CachedReminderDao = db.cachedReminderDao()
+
+    @Provides
     @Singleton
     fun provideSessionManager(
         tokenStorage: TokenStorage,
@@ -118,4 +124,8 @@ abstract class DataBindsModule {
     @Binds
     @Singleton
     abstract fun bindNoteRepository(impl: NoteRepositoryImpl): NoteRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindReminderRepository(impl: ReminderRepositoryImpl): ReminderRepository
 }

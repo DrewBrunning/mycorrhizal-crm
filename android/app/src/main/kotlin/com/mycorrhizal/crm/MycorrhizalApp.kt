@@ -38,6 +38,8 @@ import com.mycorrhizal.crm.feature.timeline.ActivitiesScreen
 import com.mycorrhizal.crm.feature.timeline.ActivityFormScreen
 import com.mycorrhizal.crm.feature.timeline.NoteFormScreen
 import com.mycorrhizal.crm.feature.timeline.NotesScreen
+import com.mycorrhizal.crm.feature.timeline.ReminderFormScreen
+import com.mycorrhizal.crm.feature.timeline.RemindersScreen
 
 private data class BottomNavItem(
     val route: String,
@@ -124,6 +126,7 @@ private fun MainScaffold() {
                     onEdit = { id -> navController.navigate("contacts/$id/edit") },
                     onViewActivities = { id -> navController.navigate("contacts/$id/activities") },
                     onViewNotes = { id -> navController.navigate("contacts/$id/notes") },
+                    onViewReminders = { id -> navController.navigate("contacts/$id/reminders") },
                 )
             }
             composable(
@@ -207,6 +210,41 @@ private fun MainScaffold() {
                 ),
             ) {
                 NoteFormScreen(
+                    onSaved = { navController.popBackStack() },
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            composable(
+                route = "contacts/{contactId}/reminders",
+                arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            ) { entry ->
+                val contactId = entry.arguments?.getInt("contactId") ?: 0
+                RemindersScreen(
+                    onBack = { navController.popBackStack() },
+                    onCreateReminder = { navController.navigate("contacts/$contactId/reminders/new") },
+                    onEditReminder = { reminderId ->
+                        navController.navigate("contacts/$contactId/reminders/$reminderId/edit")
+                    },
+                    onCompleteReminder = { /* handled by the ViewModel */ },
+                )
+            }
+            composable(
+                route = "contacts/{contactId}/reminders/new",
+                arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            ) {
+                ReminderFormScreen(
+                    onSaved = { navController.popBackStack() },
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            composable(
+                route = "contacts/{contactId}/reminders/{reminderId}/edit",
+                arguments = listOf(
+                    navArgument("contactId") { type = NavType.IntType },
+                    navArgument("reminderId") { type = NavType.IntType },
+                ),
+            ) {
+                ReminderFormScreen(
                     onSaved = { navController.popBackStack() },
                     onBack = { navController.popBackStack() },
                 )

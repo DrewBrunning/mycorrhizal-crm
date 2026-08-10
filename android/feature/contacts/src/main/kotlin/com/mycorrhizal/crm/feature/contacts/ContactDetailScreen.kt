@@ -63,6 +63,7 @@ fun ContactDetailScreen(
     onEdit: (Int) -> Unit = {},
     onViewActivities: (Int) -> Unit = {},
     onViewNotes: (Int) -> Unit = {},
+    onViewReminders: (Int) -> Unit = {},
     viewModel: ContactDetailViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -113,6 +114,7 @@ fun ContactDetailScreen(
                     contact = state.contact!!,
                     onViewActivities = onViewActivities,
                     onViewNotes = onViewNotes,
+                    onViewReminders = onViewReminders,
                 )
             }
         }
@@ -124,6 +126,7 @@ fun ContactDetailContent(
     contact: ContactRecordResponse,
     onViewActivities: (Int) -> Unit = {},
     onViewNotes: (Int) -> Unit = {},
+    onViewReminders: (Int) -> Unit = {},
 ) {
     val card = contact.card
     LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -151,6 +154,16 @@ fun ContactDetailContent(
                     )
                 },
                 modifier = Modifier.fillMaxWidth().clickable { onViewNotes(contact.id) },
+            )
+            androidx.compose.material3.ListItem(
+                headlineContent = { Text("Reminders", style = MaterialTheme.typography.bodyLarge) },
+                trailingContent = {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
+                        contentDescription = null,
+                    )
+                },
+                modifier = Modifier.fillMaxWidth().clickable { onViewReminders(contact.id) },
             )
         }
         if (!card?.emails.isNullOrEmpty()) {

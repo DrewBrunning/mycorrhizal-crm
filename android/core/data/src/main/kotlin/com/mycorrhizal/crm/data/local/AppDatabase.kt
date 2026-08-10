@@ -15,8 +15,9 @@ import androidx.room.TypeConverters
         CachedContact::class,
         CachedActivity::class,
         CachedNote::class,
+        CachedReminder::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -24,4 +25,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun cachedContactDao(): CachedContactDao
     abstract fun cachedActivityDao(): CachedActivityDao
     abstract fun cachedNoteDao(): CachedNoteDao
+    abstract fun cachedReminderDao(): CachedReminderDao
 }
