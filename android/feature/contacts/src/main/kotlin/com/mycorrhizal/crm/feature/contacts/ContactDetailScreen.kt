@@ -12,7 +12,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Call
+import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.Map
+import androidx.compose.material.icons.outlined.Message
+import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -29,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -127,6 +134,14 @@ fun ContactDetailContent(contact: ContactRecordResponse) {
             item {
                 SectionTitle("Address")
                 card?.addresses?.forEach { AddressRow(it) }
+            }
+        }
+        if (!card?.links.isNullOrEmpty()) {
+            item {
+                SectionTitle("Links")
+                card?.links?.forEach { link ->
+                    LinkRow(uri = link.uri.orEmpty(), label = link.label ?: link.uri.orEmpty())
+                }
             }
         }
         if (!card?.organizations.isNullOrEmpty()) {
@@ -238,27 +253,39 @@ private fun InfoRow(text: String) {
 
 @Composable
 private fun EmailRow(email: Email) {
+    val context = LocalContext.current
+    val address = email.address.orEmpty()
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = email.address.orEmpty(),
+            text = address,
             style = MycorrhizalTypography.mono,
             modifier = Modifier.weight(1f),
         )
         email.label?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        if (address.isNotBlank()) {
+            IconButton(onClick = { context.startActivity(FieldActions.emailIntent(address)) }) {
+                Icon(Icons.Outlined.Email, contentDescription = "Compose email")
+            }
+            IconButton(onClick = { FieldActions.copyText(context, "email", address) }) {
+                Icon(Icons.Outlined.ContentCopy, contentDescription = "Copy email")
+            }
+        }
     }
 }
 
 @Composable
 private fun PhoneRow(phone: Phone) {
+    val context = LocalContext.current
+    val number = phone.number.orEmpty()
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = phone.number.orEmpty(),
+            text = number,
             style = MycorrhizalTypography.mono,
             modifier = Modifier.weight(1f),
         )
@@ -266,13 +293,71 @@ private fun PhoneRow(phone: Phone) {
         if (features.isNotBlank()) {
             Text(features, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        if (number.isNotBlank()) {
+            IconButton(onClick = { context.startActivity(FieldActions.dialIntent(number)) }) {
+                Icon(Icons.Outlined.Call, contentDescription = "Call")
+            }
+            // SMS only for mobile numbers (T34: phone feature detection).
+            if (phone.features?.contains("cell") == true) {
+                IconButton(onClick = { context.startActivity(FieldActions.smsIntent(number)) }) {
+                    Icon(Icons.Outlined.Message, contentDescription = "Text")
+                }
+            }
+            IconButton(onClick = { FieldActions.copyText(context, "phone", number) }) {
+                Icon(Icons.Outlined.ContentCopy, contentDescription = "Copy phone number")
+            }
+        }
     }
 }
 
 @Composable
 private fun AddressRow(address: Address) {
+    val context = LocalContext.current
     val text = address.full
         ?: address.components?.joinToString(", ") { it.value.orEmpty() }
         ?: ""
-    InfoRow(text)
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f),
+        )
+        if (text.isNotBlank()) {
+            IconButton(onClick = { context.startActivity(FieldActions.mapIntent(text)) }) {
+                Icon(Icons.Outlined.Map, contentDescription = "Open in maps")
+            }
+            IconButton(onClick = { FieldActions.copyText(context, "address", text) }) {
+                Icon(Icons.Outlined.ContentCopy, contentDescription = "Copy address")
+            }
+        }
+    }
+}
+
+@Composable
+private fun LinkRow(uri: String, label: String) {
+    val context = LocalContext.current
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.primary,
+            maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        if (uri.isNotBlank()) {
+            IconButton(onClick = { context.startActivity(FieldActions.browserIntent(uri)) }) {
+                Icon(Icons.Outlined.OpenInNew, contentDescription = "Open link")
+            }
+            IconButton(onClick = { FieldActions.copyText(context, "url", uri) }) {
+                Icon(Icons.Outlined.ContentCopy, contentDescription = "Copy link")
+            }
+        }
+    }
 }
