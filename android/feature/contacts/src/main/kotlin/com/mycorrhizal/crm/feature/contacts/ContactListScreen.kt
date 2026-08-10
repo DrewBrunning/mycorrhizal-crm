@@ -14,11 +14,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -57,6 +59,7 @@ import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 fun ContactListScreen(
     onContactClick: (Int) -> Unit,
     onCreateContact: () -> Unit = {},
+    onMenuClick: () -> Unit = {},
     viewModel: ContactListViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -89,6 +92,7 @@ fun ContactListScreen(
         // above performs the actual navigation so each tap navigates once.
         onContactClick = viewModel::onContactClick,
         onCreateContact = onCreateContact,
+        onMenuClick = onMenuClick,
         onErrorShown = viewModel::onErrorShown,
     )
 }
@@ -104,6 +108,7 @@ fun ContactListScreenContent(
     onSearchQueryChange: (String) -> Unit,
     onContactClick: (Int) -> Unit,
     onCreateContact: () -> Unit = {},
+    onMenuClick: () -> Unit = {},
     onErrorShown: () -> Unit = {},
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -112,6 +117,11 @@ fun ContactListScreenContent(
     Scaffold(
         topBar = {
             TopAppBar(
+                navigationIcon = {
+                    IconButton(onClick = onMenuClick) {
+                        Icon(Icons.Outlined.Menu, contentDescription = "Menu")
+                    }
+                },
                 title = {
                     Text("Contacts", style = MaterialTheme.typography.titleLarge)
                 },

@@ -10,16 +10,24 @@ import androidx.compose.material.icons.outlined.EventNote
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Icon
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.rememberDrawerState
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -34,6 +42,8 @@ import com.mycorrhizal.crm.feature.auth.LoginScreen
 import com.mycorrhizal.crm.feature.contacts.ContactDetailScreen
 import com.mycorrhizal.crm.feature.contacts.ContactFormScreen
 import com.mycorrhizal.crm.feature.contacts.ContactListScreen
+import com.mycorrhizal.crm.feature.settings.SettingsScreen
+import kotlinx.coroutines.launch
 import com.mycorrhizal.crm.feature.timeline.ActivitiesScreen
 import com.mycorrhizal.crm.feature.timeline.ActivityFormScreen
 import com.mycorrhizal.crm.feature.timeline.NoteFormScreen
@@ -76,46 +86,91 @@ private fun MainScaffold() {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
 
     val showBottomBar = bottomNavItems.any { item ->
         currentDestination?.hierarchy?.any { it.route == item.route } == true
     }
 
-    Scaffold(
-        bottomBar = {
-            if (showBottomBar) {
-                NavigationBar {
-                    bottomNavItems.forEach { item ->
-                        NavigationBarItem(
-                            selected = currentDestination?.hierarchy?.any { it.route == item.route } == true,
-                            onClick = {
-                                navController.navigate(item.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
-                            icon = { Icon(item.icon, contentDescription = item.label) },
-                            label = { Text(item.label) },
-                        )
-                    }
-                }
-            }
-        },
-    ) { padding ->
-        NavHost(
-            navController = navController,
-            startDestination = "contacts",
-            modifier = Modifier.padding(padding),
-        ) {
-            composable("contacts") {
-                ContactListScreen(
-                    onContactClick = { id -> navController.navigate("contacts/$id") },
-                    onCreateContact = { navController.navigate("contacts/new") },
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet {
+                Text(
+                    text = "Mycorrhizal",
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(16.dp),
+                )
+                HorizontalDivider()
+                NavigationDrawerItem(
+                    label = { Text("Settings") },
+                    selected = currentDestination?.route == "settings",
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        navController.navigate("settings")
+                    },
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                )
+                // Phase-3 destinations (network/households/shares/users land with
+                // their sub-resource screens; for now they are placeholders).
+                NavigationDrawerItem(
+                    label = { Text("Network") },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        navController.navigate("network")
+                    },
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                )
+                NavigationDrawerItem(
+                    label = { Text("Households") },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        navController.navigate("households")
+                    },
+                    modifier = Modifier.padding(horizontal = 8.dp),
                 )
             }
+        },
+    ) {
+        Scaffold(
+            bottomBar = {
+                if (showBottomBar) {
+                    NavigationBar {
+                        bottomNavItems.forEach { item ->
+                            NavigationBarItem(
+                                selected = currentDestination?.hierarchy?.any { it.route == item.route } == true,
+                                onClick = {
+                                    navController.navigate(item.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                },
+                                icon = { Icon(item.icon, contentDescription = item.label) },
+                                label = { Text(item.label) },
+                            )
+                        }
+                    }
+                }
+            },
+        ) { padding ->
+            NavHost(
+                navController = navController,
+                startDestination = "contacts",
+                modifier = Modifier.padding(padding),
+            ) {
+                composable("contacts") {
+                    ContactListScreen(
+                        onContactClick = { id -> navController.navigate("contacts/$id") },
+                        onCreateContact = { navController.navigate("contacts/new") },
+                        onMenuClick = { scope.launch { drawerState.open() } },
+                    )
+                }
             composable(
                 route = "contacts/{contactId}",
                 arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
@@ -255,6 +310,16 @@ private fun MainScaffold() {
             composable("notes") { PlaceholderScreen("Notes") }
             composable("activities") { PlaceholderScreen("Activities") }
             composable("home") { PlaceholderScreen("Home") }
+
+            composable("settings") {
+                SettingsScreen(
+                    onBack = { navController.popBackStack() },
+                    onLoggedOut = { navController.popBackStack() },
+                )
+            }
+            composable("network") { PlaceholderScreen("Network") }
+            composable("households") { PlaceholderScreen("Households") }
+        }
         }
     }
 }
