@@ -1,0 +1,131 @@
+package com.mycorrhizal.crm
+
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Contacts
+import androidx.compose.material.icons.outlined.EditNote
+import androidx.compose.material.icons.outlined.EventNote
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import com.mycorrhizal.crm.feature.auth.LoginScreen
+import com.mycorrhizal.crm.feature.contacts.ContactDetailScreen
+import com.mycorrhizal.crm.feature.contacts.ContactListScreen
+import androidx.hilt.navigation.compose.hiltViewModel
+
+private data class BottomNavItem(
+    val route: String,
+    val label: String,
+    val icon: ImageVector,
+)
+
+private val bottomNavItems = listOf(
+    BottomNavItem("contacts", "Contacts", Icons.Outlined.Contacts),
+    BottomNavItem("search", "Search", Icons.Outlined.Search),
+    BottomNavItem("notes", "Notes", Icons.Outlined.EditNote),
+    BottomNavItem("activities", "Activities", Icons.Outlined.EventNote),
+    BottomNavItem("home", "Home", Icons.Outlined.Home),
+)
+
+@Composable
+fun MycorrhizalApp(
+    mainViewModel: MainViewModel = hiltViewModel(),
+) {
+    val session by mainViewModel.session.collectAsStateWithLifecycle()
+
+    if (!session.isLoggedIn) {
+        LoginScreen(
+            onLoggedIn = { /* session flow flips isLoggedIn, recomposition swaps the tree */ },
+        )
+        return
+    }
+
+    MainScaffold()
+}
+
+@Composable
+private fun MainScaffold() {
+    val navController = rememberNavController()
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val currentDestination = backStackEntry?.destination
+
+    val showBottomBar = bottomNavItems.any { item ->
+        currentDestination?.hierarchy?.any { it.route == item.route } == true
+    }
+
+    Scaffold(
+        bottomBar = {
+            if (showBottomBar) {
+                NavigationBar {
+                    bottomNavItems.forEach { item ->
+                        NavigationBarItem(
+                            selected = currentDestination?.hierarchy?.any { it.route == item.route } == true,
+                            onClick = {
+                                navController.navigate(item.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            },
+                            icon = { Icon(item.icon, contentDescription = item.label) },
+                            label = { Text(item.label) },
+                        )
+                    }
+                }
+            }
+        },
+    ) { padding ->
+        NavHost(
+            navController = navController,
+            startDestination = "contacts",
+            modifier = Modifier.padding(padding),
+        ) {
+            composable("contacts") {
+                ContactListScreen(
+                    onContactClick = { id -> navController.navigate("contacts/$id") },
+                )
+            }
+            composable("contacts/{contactId}") { entry ->
+                ContactDetailScreen(
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            composable("search") { PlaceholderScreen("Search") }
+            composable("notes") { PlaceholderScreen("Notes") }
+            composable("activities") { PlaceholderScreen("Activities") }
+            composable("home") { PlaceholderScreen("Home") }
+        }
+    }
+}
+
+@Composable
+private fun PlaceholderScreen(title: String) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text(
+            text = "$title — coming in a later phase",
+            style = MaterialTheme.typography.bodyLarge,
+        )
+    }
+}
