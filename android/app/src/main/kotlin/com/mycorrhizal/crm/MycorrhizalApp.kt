@@ -7,22 +7,33 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.Contacts
 import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material.icons.outlined.EventNote
+import androidx.compose.material.icons.outlined.FileUpload
+import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.HomeWork
+import androidx.compose.material.icons.outlined.Label
+import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.Icon
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -34,8 +45,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.rememberDrawerState
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavDestination
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
@@ -73,19 +85,45 @@ import com.mycorrhizal.crm.feature.timeline.ReminderFormScreen
 import com.mycorrhizal.crm.feature.timeline.RemindersScreen
 import com.mycorrhizal.crm.ui.R
 
-private data class BottomNavItem(
+private data class DrawerDestination(
     val route: String,
     @StringRes val labelRes: Int,
     val icon: ImageVector,
 )
 
-private val bottomNavItems = listOf(
-    BottomNavItem("home", R.string.nav_dashboard, Icons.Outlined.Home),
-    BottomNavItem("contacts", R.string.nav_contacts, Icons.Outlined.Contacts),
-    BottomNavItem("search", R.string.nav_search, Icons.Outlined.Search),
-    BottomNavItem("activities", R.string.nav_activities, Icons.Outlined.EventNote),
-    BottomNavItem("notes", R.string.nav_notes, Icons.Outlined.EditNote),
+/** Primary navigation, matching the web's order. Reachable from the drawer. */
+private val primaryDestinations = listOf(
+    DrawerDestination("home", R.string.nav_dashboard, Icons.Outlined.Home),
+    DrawerDestination("contacts", R.string.nav_contacts, Icons.Outlined.Contacts),
+    DrawerDestination("activities", R.string.nav_activities, Icons.Outlined.EventNote),
+    DrawerDestination("notes", R.string.nav_notes, Icons.Outlined.EditNote),
+    DrawerDestination("search", R.string.nav_search, Icons.Outlined.Search),
 )
+
+/** Secondary destinations, below the primary set in the drawer. */
+private val secondaryDestinations = listOf(
+    DrawerDestination("network", R.string.nav_network, Icons.Outlined.Share),
+    DrawerDestination("circles", R.string.nav_circles, Icons.Outlined.Group),
+    DrawerDestination("tags", R.string.nav_tags, Icons.Outlined.Label),
+    DrawerDestination("households", R.string.nav_households, Icons.Outlined.HomeWork),
+    DrawerDestination("bulk", R.string.nav_bulk, Icons.Outlined.Checklist),
+    DrawerDestination("import", R.string.import_title, Icons.Outlined.FileUpload),
+    DrawerDestination("settings", R.string.nav_settings, Icons.Outlined.Settings),
+)
+
+/** True when the current destination is inside a [DrawerDestination]'s route. */
+private fun isSelected(currentDestination: NavDestination?, item: DrawerDestination): Boolean {
+    val route = currentDestination?.route ?: return false
+    return route == item.route || route.startsWith("${item.route}/")
+}
+
+private fun androidx.compose.ui.graphics.Color.toArgbCompat(): Int =
+    android.graphics.Color.argb(
+        (alpha * 255).toInt(),
+        (red * 255).toInt(),
+        (green * 255).toInt(),
+        (blue * 255).toInt(),
+    )
 
 @Composable
 fun MycorrhizalApp(
@@ -117,8 +155,17 @@ private fun MainScaffold() {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
-    val showBottomBar = bottomNavItems.any { item ->
-        currentDestination?.hierarchy?.any { it.route == item.route } == true
+    // Default status bar for the always-green app-bar screens: brand green
+    // background with light (white) icons. The contact detail overrides this
+    // per its collapse state. Runs after composition so enableEdgeToEdge's
+    // default (transparent + dark icons in light mode) is superseded.
+    val activity = LocalContext.current as android.app.Activity
+    DisposableEffect(Unit) {
+        activity.window.statusBarColor =
+            com.mycorrhizal.crm.ui.theme.MycorrhizalColors.mycelium.toArgbCompat()
+        WindowCompat.getInsetsController(activity.window, activity.window.decorView)
+            .isAppearanceLightStatusBars = false
+        onDispose {}
     }
 
     ModalNavigationDrawer(
@@ -131,106 +178,46 @@ private fun MainScaffold() {
                     modifier = Modifier.padding(16.dp),
                 )
                 HorizontalDivider()
-                NavigationDrawerItem(
-                    label = { Text(stringResource(R.string.nav_settings)) },
-                    selected = currentDestination?.route == "settings",
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        navController.navigate("settings")
-                    },
-                    modifier = Modifier.padding(horizontal = 8.dp),
-                )
-                // Phase-3 destinations (network/households/shares/users land with
-                // their sub-resource screens; for now they are placeholders).
-                NavigationDrawerItem(
-                    label = { Text(stringResource(R.string.nav_network)) },
-                    selected = false,
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        navController.navigate("network")
-                    },
-                    modifier = Modifier.padding(horizontal = 8.dp),
-                )
-                NavigationDrawerItem(
-                    label = { Text(stringResource(R.string.nav_circles)) },
-                    selected = currentDestination?.route == "circles" ||
-                        currentDestination?.route?.startsWith("circles/") == true,
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        navController.navigate("circles")
-                    },
-                    modifier = Modifier.padding(horizontal = 8.dp),
-                )
-                NavigationDrawerItem(
-                    label = { Text(stringResource(R.string.nav_tags)) },
-                    selected = currentDestination?.route == "tags" ||
-                        currentDestination?.route?.startsWith("tags/") == true,
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        navController.navigate("tags")
-                    },
-                    modifier = Modifier.padding(horizontal = 8.dp),
-                )
-                NavigationDrawerItem(
-                    label = { Text(stringResource(R.string.nav_households)) },
-                    selected = currentDestination?.route == "households" ||
-                        currentDestination?.route?.startsWith("households/") == true,
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        navController.navigate("households")
-                    },
-                    modifier = Modifier.padding(horizontal = 8.dp),
-                )
-                NavigationDrawerItem(
-                    label = { Text(stringResource(R.string.nav_bulk)) },
-                    selected = currentDestination?.route == "bulk",
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        navController.navigate("bulk")
-                    },
-                    modifier = Modifier.padding(horizontal = 8.dp),
-                )
-                NavigationDrawerItem(
-                    label = { Text(stringResource(R.string.import_title)) },
-                    selected = currentDestination?.route == "import",
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        navController.navigate("import")
-                    },
-                    modifier = Modifier.padding(horizontal = 8.dp),
-                )
+                primaryDestinations.forEach { item ->
+                    NavigationDrawerItem(
+                        label = { Text(stringResource(item.labelRes)) },
+                        selected = isSelected(currentDestination, item),
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            navController.navigate(item.route) {
+                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
+                        icon = { Icon(item.icon, contentDescription = null) },
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                    )
+                }
+                HorizontalDivider()
+                secondaryDestinations.forEach { item ->
+                    NavigationDrawerItem(
+                        label = { Text(stringResource(item.labelRes)) },
+                        selected = isSelected(currentDestination, item),
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            navController.navigate(item.route) {
+                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
+                        icon = { Icon(item.icon, contentDescription = null) },
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                    )
+                }
             }
         },
     ) {
-        Scaffold(
-            bottomBar = {
-                if (showBottomBar) {
-                    NavigationBar {
-                        bottomNavItems.forEach { item ->
-                            NavigationBarItem(
-                                selected = currentDestination?.hierarchy?.any { it.route == item.route } == true,
-                                onClick = {
-                                    navController.navigate(item.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) {
-                                            saveState = true
-                                        }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                },
-                                icon = { Icon(item.icon, contentDescription = stringResource(item.labelRes)) },
-                                label = { Text(stringResource(item.labelRes)) },
-                            )
-                        }
-                    }
-                }
-            },
-        ) { padding ->
-            NavHost(
-                navController = navController,
-                startDestination = "contacts",
-                modifier = Modifier.padding(padding),
-            ) {
+        NavHost(
+            navController = navController,
+            startDestination = "home",
+        ) {
             composable("contacts") {
                 ContactListScreen(
                     onContactClick = { id -> navController.navigate("contacts/$id") },
@@ -436,10 +423,10 @@ private fun MainScaffold() {
             ) {
                 ConversationAgendaScreen(onBack = { navController.popBackStack() })
             }
-            composable("search") { PlaceholderScreen(R.string.nav_search) }
-            composable("notes") { PlaceholderScreen(R.string.nav_notes) }
-            composable("activities") { PlaceholderScreen(R.string.nav_activities) }
-            composable("home") { DashboardScreen() }
+            composable("search") { PlaceholderScreen(R.string.nav_search) { scope.launch { drawerState.open() } } }
+            composable("notes") { PlaceholderScreen(R.string.nav_notes) { scope.launch { drawerState.open() } } }
+            composable("activities") { PlaceholderScreen(R.string.nav_activities) { scope.launch { drawerState.open() } } }
+            composable("home") { DashboardScreen(onMenuClick = { scope.launch { drawerState.open() } }) }
 
             composable("settings") {
                 SettingsScreen(
@@ -481,7 +468,7 @@ private fun MainScaffold() {
                     onBack = { navController.popBackStack() },
                 )
             }
-            composable("network") { PlaceholderScreen(R.string.nav_network) }
+            composable("network") { PlaceholderScreen(R.string.nav_network) { scope.launch { drawerState.open() } } }
             composable("households") {
                 HouseholdsScreen(
                     onBack = { navController.popBackStack() },
@@ -497,17 +484,41 @@ private fun MainScaffold() {
                 )
             }
         }
-        }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PlaceholderScreen(@StringRes titleRes: Int) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(
-            text = stringResource(R.string.coming_soon, stringResource(titleRes)),
-            style = MaterialTheme.typography.bodyLarge,
-        )
+private fun PlaceholderScreen(
+    @StringRes titleRes: Int,
+    onMenuClick: () -> Unit = {},
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                navigationIcon = {
+                    IconButton(onClick = onMenuClick) {
+                        Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
+                    }
+                },
+                title = {
+                    Text(stringResource(titleRes), style = MaterialTheme.typography.titleLarge)
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                ),
+            )
+        },
+    ) { padding ->
+        Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+            Text(
+                text = stringResource(R.string.coming_soon, stringResource(titleRes)),
+                style = MaterialTheme.typography.bodyLarge,
+            )
+        }
     }
 }
 

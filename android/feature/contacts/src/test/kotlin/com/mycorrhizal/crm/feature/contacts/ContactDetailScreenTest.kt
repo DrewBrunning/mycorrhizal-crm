@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.contacts
 
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
@@ -29,6 +30,7 @@ import org.robolectric.annotation.GraphicsMode
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
+@OptIn(ExperimentalMaterial3Api::class)
 class ContactDetailScreenTest {
 
     @get:Rule
@@ -55,10 +57,8 @@ class ContactDetailScreenTest {
         )
         setContent(ContactDetailUiState(contact = contact))
 
-        // The header + the timeline entry rows are composed at the top of the
-        // virtualized LazyColumn; email/phone/circles sections are below the
-        // fold and are covered by the dedicated row tests.
-        composeTestRule.onNodeWithText("Dana White").assertIsDisplayed()
+        // The name is owned by the collapsing app bar (ContactDetailScreen);
+        // the body composable renders the timeline + section rows.
         composeTestRule.onNodeWithText("Activities").assertIsDisplayed()
         composeTestRule.onNodeWithText("Notes").assertIsDisplayed()
         composeTestRule.onNodeWithText("Reminders").assertIsDisplayed()
@@ -68,7 +68,9 @@ class ContactDetailScreenTest {
     fun `renders empty name fallback when no name present`() {
         val contact = ContactRecordResponse(id = 5, card = Card())
         setContent(ContactDetailUiState(contact = contact))
-        composeTestRule.onNodeWithText("Contact").assertIsDisplayed()
+        // No nickname/birthday/name in the body for a nameless contact — the
+        // list still renders (timeline + management entries).
+        composeTestRule.onNodeWithText("Timeline").assertIsDisplayed()
     }
 
     @Test

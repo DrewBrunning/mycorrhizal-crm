@@ -65,7 +65,11 @@ private val LightColors = lightColorScheme(
     onSurface = MycorrhizalColors.bark,
     surfaceVariant = MycorrhizalColors.parchment,
     onSurfaceVariant = MycorrhizalColors.soil,
-    surfaceContainerHighest = MycorrhizalColors.paper,
+    // Cards render parchment (the web's background.paper), matching the 3-tier
+    // bone/parchment/paper layering: bone page, parchment cards, paper dialogs.
+    surfaceContainerHighest = MycorrhizalColors.parchment,
+    surfaceContainerHigh = MycorrhizalColors.paper,
+    surfaceContainer = MycorrhizalColors.paper,
     error = MycorrhizalColors.russula,
     onError = Color.White,
     outline = MycorrhizalColors.soil,
@@ -87,7 +91,9 @@ private val DarkColors = darkColorScheme(
     onSurface = MycorrhizalColors.barkDark,
     surfaceVariant = MycorrhizalColors.parchmentDark,
     onSurfaceVariant = MycorrhizalColors.soilDark,
-    surfaceContainerHighest = MycorrhizalColors.paperDark,
+    surfaceContainerHighest = MycorrhizalColors.parchmentDark,
+    surfaceContainerHigh = MycorrhizalColors.paperDark,
+    surfaceContainer = MycorrhizalColors.paperDark,
     error = MycorrhizalColors.russulaDark,
     onError = MycorrhizalColors.boneDark,
     outline = MycorrhizalColors.soilDark,
@@ -129,17 +135,20 @@ object MycorrhizalFonts {
  * the data-field slots.
  */
 val MycorrhizalTypography = Typography(
-    // Brand serif for the biggest roles.
+    // Brand serif for the biggest roles only — matching the web, which uses
+    // EB Garamond solely for the app-bar brand header (frontend/src/App.css
+    // .App-header). Every UI title/label/body is IBM Plex Sans.
     displayLarge = TextStyle(fontFamily = MycorrhizalFonts.serif, fontSize = 57.sp, fontWeight = FontWeight.Normal),
     displayMedium = TextStyle(fontFamily = MycorrhizalFonts.serif, fontSize = 45.sp, fontWeight = FontWeight.Normal),
     displaySmall = TextStyle(fontFamily = MycorrhizalFonts.serif, fontSize = 36.sp, fontWeight = FontWeight.Normal),
     headlineLarge = TextStyle(fontFamily = MycorrhizalFonts.serif, fontSize = 32.sp, fontWeight = FontWeight.Normal),
     headlineMedium = TextStyle(fontFamily = MycorrhizalFonts.serif, fontSize = 28.sp, fontWeight = FontWeight.Normal),
     headlineSmall = TextStyle(fontFamily = MycorrhizalFonts.serif, fontSize = 24.sp, fontWeight = FontWeight.Normal),
-    // App bars and titles — EB Garamond 22sp per ticket §4.4.
-    titleLarge = TextStyle(fontFamily = MycorrhizalFonts.serif, fontSize = 22.sp, fontWeight = FontWeight.Normal),
-    titleMedium = TextStyle(fontFamily = MycorrhizalFonts.serif, fontSize = 16.sp, fontWeight = FontWeight.Medium),
-    titleSmall = TextStyle(fontFamily = MycorrhizalFonts.serif, fontSize = 14.sp, fontWeight = FontWeight.Medium),
+    // App bars and titles — IBM Plex Sans (the web's MUI typography is
+    // entirely Plex; Garamond is only the brand header).
+    titleLarge = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 22.sp, fontWeight = FontWeight.Medium),
+    titleMedium = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 16.sp, fontWeight = FontWeight.Medium),
+    titleSmall = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 14.sp, fontWeight = FontWeight.Medium),
     // Body — IBM Plex Sans.
     bodyLarge = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 16.sp, fontWeight = FontWeight.Normal, lineHeight = 24.sp),
     bodyMedium = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 14.sp, fontWeight = FontWeight.Normal, lineHeight = 20.sp),
@@ -157,8 +166,8 @@ val MycorrhizalTypography = Typography(
  * (`MaterialTheme.typography.titleLarge` etc.) for new code.
  */
 object AppTypography {
-    /** App bar title — EB Garamond serif, 22sp (ticket §4.4). */
-    val appBarTitle = TextStyle(fontFamily = MycorrhizalFonts.serif, fontSize = 22.sp, fontWeight = FontWeight.Normal)
+    /** App bar title — IBM Plex Sans, 22sp (the web's MUI app-bar titles). */
+    val appBarTitle = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 22.sp, fontWeight = FontWeight.Medium)
 
     /** Data fields (phones, emails, IDs) — IBM Plex Mono. */
     val mono = TextStyle(fontFamily = MycorrhizalFonts.mono, fontSize = 14.sp, fontWeight = FontWeight.Normal)

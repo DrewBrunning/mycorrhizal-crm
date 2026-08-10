@@ -1,4 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.Mycorrhizal" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.Mycorrhizal" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- Brand-green status bar with light (white) status icons, so the
+             whole top reads as one mycelium band. Screens that collapse their
+             app bar (contact detail) override this at runtime via the scroll
+             state (bone at the top, green once collapsed). -->
+        <item name="android:statusBarColor">#3E543E</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:navigationBarColor">#FAF5EA</item>
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
 </resources>
