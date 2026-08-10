@@ -2935,3 +2935,15 @@ these are role-placement and rendering choices, not missing assets.
 
 Anything in this list that turns out to be *functional* (a field the web shows that Android
 can't render or edit) is elevated to a Phase-3 blocker — flag it rather than folding it in.
+
+**Phase 3 status (2026-08-10): IN PROGRESS** — sub-resources. The backend surface for all of
+items 14–19 already exists; the Android side is being built out feature-by-feature.
+
+- **Item 14 — Circle CRUD + member management: DONE** (committed `27f1275`). New `:feature:circles`
+  module following the full pattern: models + wrapper DTOs in `:core:model`, ApiClient methods
+  (cursor list, get-with-members, create/rename/delete, add/remove member), `CachedCircle` +
+  `CachedCircleMember` Room cache (join rows hard-delete), `CircleRepository`, `CirclesScreen`
+  (list + create dialog + rename + delete confirm) and `CircleDetailScreen` (members add/remove),
+  wired into the app drawer + NavHost, strings in all 5 locales, 9 ViewModel tests hand-verified.
+  Verified on-device (Pixel 8a): create → list → detail → delete round-trips against the real
+  backend.
