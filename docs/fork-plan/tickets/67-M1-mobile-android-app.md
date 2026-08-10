@@ -2987,3 +2987,22 @@ notifications; then T57 import + polish incl. the recorded UI-deviation checklis
 Note: on-device FGS start + overlay need the special/runtime permissions granted (SYSTEM_ALERT_WINDOW,
 FOREGROUND_SERVICE_PHONE_CALL) — opt-in by design. Remaining Phase-5 work: T57 import UI, the recorded
 UI-deviation checklist, and the full in-overlay quick-capture sheet.
+
+**Phase 5 (2026-08-10): DONE (core)** — T57 import + polish shipped. 349 tests green.
+
+- **Item 25 — device contacts import:** `:feature:import` (namespace `imports` — `import` is a
+  Java keyword) — `DeviceContactsReader` (Contacts + generic Data query), `DeviceContactMapper`
+  → neutral Card, `ImportContactsScreen` with multi-select. Verified on-device: reads real device
+  contacts.
+- **Item 26 — LOOKUP_KEY:** `CachedContact.deviceLookupKey` (schema v12), set post-import.
+- **Item 27 — QuickContact:** `DeviceContactLink` + "Open in Contacts" on the contact detail.
+- **Item 28 — first-run prompt:** contact-list empty state offers Import.
+- **Item 29 — dedup UI:** import flags possible duplicates (email/phone) against the cache.
+- **Item 30 — custom link actions:** `CustomLinkAction` Room + Settings editor (§7.6.6); schema
+  v12->v13.
+- **Item 33 — R8:** release buildType minify+shrink, proguard-rules.pro (Moshi/Hilt/Room/
+  WorkManager/Tink). Verified: 4MB release APK.
+- **Item 31 (tablet) + 32 (accessibility):** deferred into the review/polish pass (the screens
+  already carry contentDescriptions; a dedicated tablet two-pane layout is the remaining work).
+
+Phase 5 is followed by the review / UI-polish / testing pass the user planned.
