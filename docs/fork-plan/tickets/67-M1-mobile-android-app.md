@@ -5,7 +5,7 @@
 | **Rating** | 2 |
 | **Source** | v0.3.0 post-release planning, 2026-08-06 |
 | **This document** | Full-scope technical design, 2026-08-09 |
-| **Status** | **Phase 1 (core client) shipped 2026-08-10** — see the landing note at the bottom. The full-scope design below remains the plan for Phases 2–5. |
+| **Status** | **Phase 1 shipped 2026-08-10, Phase 2 in progress** — see the landing note at the bottom. The full-scope design below remains the plan for Phases 2–5. |
 
 ## Why this exists
 
@@ -2853,9 +2853,22 @@ attached to the configured host, userinfo rejected in server URLs, no backup eli
 saveable instance state, cleartext forbidden with system-CAs-only + debug user-CA overrides,
 POST never retried. Zero `Log.*`/println of the token anywhere.
 
-### Phases 2–5 (not started — follow the design above)
+### Phases 2–5 (in progress — follow the design above)
 
 Read/write parity (contact create/edit, activities/notes/reminders, tappable field actions),
 sub-resources (circles/tags/households/edges), native features (call/SMS tracking,
 quick-capture, notifications, WorkManager sync), and T57 import + polish. The module structure,
-Room cache, session, and auth foundations this phase built are the substrate all of them land on.
+Room cache, session, and auth foundations Phase 1 built are the substrate all of them land on.
+
+**Phase 2 status (2026-08-10):**
+- **Item 6 — contact create/edit shipped** (read/write parity's foundation): full Card write path
+  (POST/PUT /contacts) with `ContactRecordInput`/`CreateContactResponse` DTOs, the §2.6 wrapped-
+  POST unwrap in the ApiClient, repository create/update with Room caching, a
+  `ContactFormViewModel` (create + edit modes, backend-aligned validation, birthday → PartialDate
+  conversion), and a `ContactFormScreen` with MultiValueField-style email/phone editors. Wired via
+  a list FAB and a detail edit action. Edits **merge onto the loaded record** so fields the form
+  doesn't model (addresses, orgs, personalInfo, links, …) survive the backend's full-overwrite PUT.
+  List and detail reload on return from the form. 155 tests green.
+- **Item 11 (tappable link-field actions) is the natural next slice** — it only touches the
+  existing detail screen's field rendering (Android Intents for tel:/sms:/mailto:/geo:/copy) and
+  needs no new backend or Room surface.
