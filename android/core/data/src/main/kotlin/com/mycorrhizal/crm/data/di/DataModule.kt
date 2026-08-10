@@ -6,6 +6,8 @@ import com.mycorrhizal.crm.data.local.CachedCircleDao
 import com.mycorrhizal.crm.data.local.CachedCircleMemberDao
 import com.mycorrhizal.crm.data.local.CachedContactDao
 import com.mycorrhizal.crm.data.local.CachedContactTagDao
+import com.mycorrhizal.crm.data.local.CachedHouseholdDao
+import com.mycorrhizal.crm.data.local.CachedHouseholdMemberDao
 import com.mycorrhizal.crm.data.local.CachedNoteDao
 import com.mycorrhizal.crm.data.local.CachedReminderDao
 import com.mycorrhizal.crm.data.local.CachedTagDao
@@ -13,6 +15,7 @@ import com.mycorrhizal.crm.data.repository.ActivityRepositoryImpl
 import com.mycorrhizal.crm.data.repository.AuthRepositoryImpl
 import com.mycorrhizal.crm.data.repository.CircleRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ContactRepositoryImpl
+import com.mycorrhizal.crm.data.repository.HouseholdRepositoryImpl
 import com.mycorrhizal.crm.data.repository.NoteRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ReminderRepositoryImpl
 import com.mycorrhizal.crm.data.repository.TagRepositoryImpl
@@ -24,6 +27,7 @@ import com.mycorrhizal.crm.domain.repository.ActivityRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
+import com.mycorrhizal.crm.domain.repository.HouseholdRepository
 import com.mycorrhizal.crm.domain.repository.NoteRepository
 import com.mycorrhizal.crm.domain.repository.ReminderRepository
 import com.mycorrhizal.crm.domain.repository.TagRepository
@@ -103,6 +107,14 @@ object DataModule {
         db.cachedContactTagDao()
 
     @Provides
+    fun provideCachedHouseholdDao(db: AppDatabase): CachedHouseholdDao =
+        db.cachedHouseholdDao()
+
+    @Provides
+    fun provideCachedHouseholdMemberDao(db: AppDatabase): CachedHouseholdMemberDao =
+        db.cachedHouseholdMemberDao()
+
+    @Provides
     @Singleton
     fun provideSessionManager(
         tokenStorage: TokenStorage,
@@ -158,4 +170,8 @@ abstract class DataBindsModule {
     @Binds
     @Singleton
     abstract fun bindTagRepository(impl: TagRepositoryImpl): TagRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindHouseholdRepository(impl: HouseholdRepositoryImpl): HouseholdRepository
 }

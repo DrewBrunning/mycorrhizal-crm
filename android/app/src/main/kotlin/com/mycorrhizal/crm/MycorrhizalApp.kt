@@ -46,6 +46,8 @@ import com.mycorrhizal.crm.feature.circles.CirclesScreen
 import com.mycorrhizal.crm.feature.contacts.ContactDetailScreen
 import com.mycorrhizal.crm.feature.contacts.ContactFormScreen
 import com.mycorrhizal.crm.feature.contacts.ContactListScreen
+import com.mycorrhizal.crm.feature.households.HouseholdDetailScreen
+import com.mycorrhizal.crm.feature.households.HouseholdsScreen
 import com.mycorrhizal.crm.feature.settings.SettingsScreen
 import com.mycorrhizal.crm.feature.tags.TagDetailScreen
 import com.mycorrhizal.crm.feature.tags.TagsScreen
@@ -152,7 +154,8 @@ private fun MainScaffold() {
                 )
                 NavigationDrawerItem(
                     label = { Text(stringResource(R.string.nav_households)) },
-                    selected = false,
+                    selected = currentDestination?.route == "households" ||
+                        currentDestination?.route?.startsWith("households/") == true,
                     onClick = {
                         scope.launch { drawerState.close() }
                         navController.navigate("households")
@@ -373,7 +376,20 @@ private fun MainScaffold() {
                 )
             }
             composable("network") { PlaceholderScreen(R.string.nav_network) }
-            composable("households") { PlaceholderScreen(R.string.nav_households) }
+            composable("households") {
+                HouseholdsScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenHousehold = { id -> navController.navigate("households/$id") },
+                )
+            }
+            composable(
+                route = "households/{householdId}",
+                arguments = listOf(navArgument("householdId") { type = NavType.StringType }),
+            ) {
+                HouseholdDetailScreen(
+                    onBack = { navController.popBackStack() },
+                )
+            }
         }
         }
     }

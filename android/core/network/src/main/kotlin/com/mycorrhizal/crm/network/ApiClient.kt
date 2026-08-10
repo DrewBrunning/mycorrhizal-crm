@@ -5,6 +5,7 @@ import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ActivityInput
 import com.mycorrhizal.crm.model.network.AddCircleMemberResponse
 import com.mycorrhizal.crm.model.network.AddContactTagResponse
+import com.mycorrhizal.crm.model.network.AddHouseholdMemberResponse
 import com.mycorrhizal.crm.model.network.BackendError
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.CircleDetailResponse
@@ -25,7 +26,14 @@ import com.mycorrhizal.crm.model.network.CreateCircleResponse
 import com.mycorrhizal.crm.model.network.CreateContactResponse
 import com.mycorrhizal.crm.model.network.CreateNoteResponse
 import com.mycorrhizal.crm.model.network.CreateReminderResponse
+import com.mycorrhizal.crm.model.network.CreateHouseholdResponse
 import com.mycorrhizal.crm.model.network.CreateTagResponse
+import com.mycorrhizal.crm.model.network.Household
+import com.mycorrhizal.crm.model.network.HouseholdDetailResponse
+import com.mycorrhizal.crm.model.network.HouseholdInput
+import com.mycorrhizal.crm.model.network.HouseholdMember
+import com.mycorrhizal.crm.model.network.HouseholdMemberInput
+import com.mycorrhizal.crm.model.network.HouseholdsPage
 import com.mycorrhizal.crm.model.network.LoginRequest
 import com.mycorrhizal.crm.model.network.LoginResponse
 import com.mycorrhizal.crm.model.network.Note
@@ -302,6 +310,57 @@ class ApiClient(
     suspend fun removeContactTag(tagId: String, vcardUid: String): Result<Unit> =
         executeDelete("$PLACEHOLDER_ORIGIN$TAGS_PATH/$tagId/contacts/$vcardUid")
 
+    /** GET /api/v1/households — cursor-paginated; members when include_members=true. */
+    suspend fun listHouseholds(
+        cursor: String? = null,
+        limit: Int? = null,
+        includeMembers: Boolean = false,
+    ): Result<HouseholdsPage> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$HOUSEHOLDS_PATH".toHttpUrl().newBuilder()
+        cursor?.let { urlBuilder.addQueryParameter("cursor", it) }
+        limit?.let { urlBuilder.addQueryParameter("limit", it.toString()) }
+        if (includeMembers) urlBuilder.addQueryParameter("include_members", "true")
+        return executeGet(urlBuilder.build().toString()) { _, body ->
+            moshi.adapter(HouseholdsPage::class.java).fromJson(body)
+        }
+    }
+
+    /** GET /api/v1/households/{id} — `{ household, members }`. */
+    suspend fun getHousehold(id: String): Result<HouseholdDetailResponse> =
+        executeGet("$PLACEHOLDER_ORIGIN$HOUSEHOLDS_PATH/$id") { _, body ->
+            moshi.adapter(HouseholdDetailResponse::class.java).fromJson(body)
+        }
+
+    /** POST /api/v1/households — wrapped `{ message, household }`, unwrapped here. */
+    suspend fun createHousehold(input: HouseholdInput): Result<Household> =
+        executePost(HOUSEHOLDS_PATH, input) { _, body ->
+            moshi.adapter(CreateHouseholdResponse::class.java).fromJson(body)?.household
+        }
+
+    /** PUT /api/v1/households/{id} — raw Household response. */
+    suspend fun updateHousehold(id: String, input: HouseholdInput): Result<Household> =
+        executePut("$PLACEHOLDER_ORIGIN$HOUSEHOLDS_PATH/$id", input) { _, body ->
+            moshi.adapter(Household::class.java).fromJson(body)
+        }
+
+    /** DELETE /api/v1/households/{id}. */
+    suspend fun deleteHousehold(id: String): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$HOUSEHOLDS_PATH/$id")
+
+    /** POST /api/v1/households/{id}/members — wrapped `{ message, member }`. */
+    suspend fun addHouseholdMember(id: String, input: HouseholdMemberInput): Result<HouseholdMember> =
+        executePost("$HOUSEHOLDS_PATH/$id/members", input) { _, body ->
+            moshi.adapter(AddHouseholdMemberResponse::class.java).fromJson(body)?.member
+        }
+
+    /** DELETE /api/v1/households/{id}/members/{vcard_uid}. */
+    suspend fun removeHouseholdMember(id: String, vcardUid: String): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$HOUSEHOLDS_PATH/$id/members/$vcardUid")
+
+    /** PATCH /api/v1/households/{id}/members/{vcard_uid} — update role/since/until. */
+    suspend fun updateHouseholdMember(id: String, vcardUid: String, input: HouseholdMemberInput): Result<Unit> =
+        executePatch("$PLACEHOLDER_ORIGIN$HOUSEHOLDS_PATH/$id/members/$vcardUid", input)
+
     private suspend fun <T> executeGet(
         url: String,
         mapper: (okhttp3.Response, String) -> T?,
@@ -341,6 +400,18 @@ class ApiClient(
         val request = Request.Builder()
             .url(url.toHttpUrl())
             .put(body.toJsonBody())
+            .build()
+        return execute(request, mapper)
+    }
+
+    private suspend fun <T> executePatch(
+        url: String,
+        body: Any,
+        mapper: (okhttp3.Response, String) -> T? = { _, _ -> Unit as T },
+    ): Result<T> {
+        val request = Request.Builder()
+            .url(url.toHttpUrl())
+            .patch(body.toJsonBody())
             .build()
         return execute(request, mapper)
     }
@@ -414,6 +485,7 @@ class ApiClient(
         private const val REMINDERS_PATH = "$API_V1/reminders"
         private const val CIRCLES_PATH = "$API_V1/circles"
         private const val TAGS_PATH = "$API_V1/tags"
+        private const val HOUSEHOLDS_PATH = "$API_V1/households"
         private const val AUTH_COOKIE = "auth_token"
     }
 }

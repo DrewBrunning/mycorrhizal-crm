@@ -185,4 +185,18 @@
     <string name="tags_add_contact">Etichetta contatto</string>
     <string name="tags_remove_contact">Rimuovi etichetta dal contatto</string>
     <string name="tags_contact_vcard_uid">UID VCard del contatto</string>
+
+
+    <!-- Households -->
+    <string name="households_title">Famiglie</string>
+    <string name="households_new">Nuova famiglia</string>
+    <string name="households_edit">Modifica famiglia</string>
+    <string name="households_name">Nome</string>
+    <string name="households_type">Tipo</string>
+    <string name="households_delete_title">Eliminare la famiglia?</string>
+    <string name="households_delete_confirm">Eliminare «%1$s»? Questo rimuove la famiglia e le sue appartenenze.</string>
+    <string name="households_add_member">Aggiungi membro</string>
+    <string name="households_remove_member">Rimuovi membro</string>
+    <string name="households_member_vcard_uid">UID VCard del contatto</string>
+    <string name="households_role">Ruolo (facoltativo)</string>
 </resources>

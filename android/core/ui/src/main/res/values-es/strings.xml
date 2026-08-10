@@ -185,4 +185,18 @@
     <string name="tags_add_contact">Etiquetar contacto</string>
     <string name="tags_remove_contact">Quitar etiqueta del contacto</string>
     <string name="tags_contact_vcard_uid">UID de VCard del contacto</string>
+
+
+    <!-- Households -->
+    <string name="households_title">Hogares</string>
+    <string name="households_new">Nuevo hogar</string>
+    <string name="households_edit">Editar hogar</string>
+    <string name="households_name">Nombre</string>
+    <string name="households_type">Tipo</string>
+    <string name="households_delete_title">¿Eliminar hogar?</string>
+    <string name="households_delete_confirm">¿Eliminar «%1$s»? Esto quita el hogar y sus membresías.</string>
+    <string name="households_add_member">Añadir miembro</string>
+    <string name="households_remove_member">Quitar miembro</string>
+    <string name="households_member_vcard_uid">UID de VCard del contacto</string>
+    <string name="households_role">Rol (opcional)</string>
 </resources>
