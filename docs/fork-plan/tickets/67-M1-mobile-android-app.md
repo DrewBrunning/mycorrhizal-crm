@@ -2966,3 +2966,24 @@ items 14–19 already exists; the Android side is being built out feature-by-fea
 
 Phases 4–5 remain planned (Android-native features: call/SMS tracking, quick-capture,
 notifications; then T57 import + polish incl. the recorded UI-deviation checklist).
+
+**Phase 4 (2026-08-10): DONE** — Android-native features shipped in `:feature:tracking`. 343 tests green.
+
+- **Item 20 — Call log tracking:** `CallLogReader` + `CallLogSyncWorker` (stages calls since a watermark),
+  `PhoneStateReceiver`, digits-normalized contact phone match, `PendingInteraction` Room staging.
+- **Item 21 — SMS tracking:** `SmsReceiver` + `SmsReader`; only address+timestamp captured, never the body
+  (§6.2 privacy boundary — hand-verified by a test that fails if a description leaks).
+- **Item 22 — Interaction sync pipeline:** `InteractionSyncWorker` (periodic 15min) converts pending rows to
+  server Activities; `TrackingWorkerScheduler` + `BootReceiver`; HiltWorker DI via `Configuration.Provider`.
+- **Item 24 — Local notifications:** channels (reminders/cadence/birthdays) + hourly/4h/daily workers over
+  `/reminders/upcoming`, `/cadence-policies/overdue`, `/contacts/birthdays`, using the brand icon (moved to
+  `:core:ui`).
+- **Item 23 — Quick-capture:** `CallDetectionService` (FGS, phoneCall type) + `QuickCaptureOverlay`
+  (SYSTEM_ALERT_WINDOW pill after a call ends, taps deep-link into the app). The full in-overlay Compose
+  form is a follow-up; the overlay itself is opt-in.
+- Settings gained three tracking/notification toggles (opt-in per §8.3); enabling call tracking starts the FGS.
+- Permissions + telephony uses-feature + receivers + service declared.
+
+Note: on-device FGS start + overlay need the special/runtime permissions granted (SYSTEM_ALERT_WINDOW,
+FOREGROUND_SERVICE_PHONE_CALL) — opt-in by design. Remaining Phase-5 work: T57 import UI, the recorded
+UI-deviation checklist, and the full in-overlay quick-capture sheet.
