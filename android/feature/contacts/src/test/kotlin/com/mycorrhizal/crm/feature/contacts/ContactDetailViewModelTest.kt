@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm.feature.contacts
 
 import com.mycorrhizal.crm.domain.repository.ContactRepository
+import com.mycorrhizal.crm.domain.repository.ReminderRepository
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.Name
@@ -24,9 +25,10 @@ class ContactDetailViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val contactRepository = mockk<ContactRepository>()
+    private val reminderRepository = mockk<ReminderRepository>()
 
     private fun viewModel(id: Int): ContactDetailViewModel =
-        ContactDetailViewModel(contactRepository, SavedStateHandle(mapOf("contactId" to id)))
+        ContactDetailViewModel(contactRepository, reminderRepository, SavedStateHandle(mapOf("contactId" to id)))
 
     @Test
     fun `loads the contact on init`() = runTest(mainDispatcherRule.testDispatcher) {
@@ -59,6 +61,7 @@ class ContactDetailViewModelTest {
 
         val vm = ContactDetailViewModel(
             contactRepository,
+            reminderRepository,
             SavedStateHandle(mapOf("contactId" to "9")),
         )
         advanceUntilIdle()
@@ -94,5 +97,38 @@ class ContactDetailViewModelTest {
 
         vm.onErrorShown()
         assertNull(vm.uiState.value.error)
+    }
+
+    @Test
+    fun `completeReminder reloads the contact`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { reminderRepository.complete(7) } returns Result.success(null)
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+
+        vm.completeReminder(7)
+        advanceUntilIdle()
+
+        // complete() succeeded -> load() was re-run; the contact is still present.
+        assertEquals("Dana White", vm.uiState.value.contact?.card?.name?.full)
+    }
+
+    @Test
+    fun `completeReminder failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { reminderRepository.complete(7) } returns Result.failure(
+            ApiError.Client(404, "Reminder not found"),
+        )
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+
+        vm.completeReminder(7)
+        advanceUntilIdle()
+
+        assertEquals("Not found", vm.uiState.value.error)
     }
 }

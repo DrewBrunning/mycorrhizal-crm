@@ -5,8 +5,9 @@ import com.squareup.moshi.JsonClass
 
 /**
  * Full neutral detail-view response for GET/POST/PUT /contacts — matches the
- * OpenAPI ContactRecordResponse. `notes`/`activities`/`reminders` are typed
- * as opaque objects because the spec does not pin their sub-schema.
+ * OpenAPI ContactRecordResponse. `notes`/`activities`/`reminders` are the
+ * contact's sub-resource rows (the detail endpoint preloads them), so the
+ * unified timeline is a pure client-side merge of these three arrays.
  */
 @JsonClass(generateAdapter = true)
 data class ContactRecordResponse(
@@ -20,9 +21,9 @@ data class ContactRecordResponse(
     val photo: String? = null,
     @Json(name = "photo_thumbnail") val photoThumbnail: String? = null,
     val archived: Boolean = false,
-    val notes: List<Map<String, Any?>>? = null,
-    val activities: List<Map<String, Any?>>? = null,
-    val reminders: List<Map<String, Any?>>? = null,
+    val notes: List<Note>? = null,
+    val activities: List<Activity>? = null,
+    val reminders: List<Reminder>? = null,
 )
 
 /** Neutral superset of a contact's standardized data (RFC 9553 JSContact + vCard registry). */

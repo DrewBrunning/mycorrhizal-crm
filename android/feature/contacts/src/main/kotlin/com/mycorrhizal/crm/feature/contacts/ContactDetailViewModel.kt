@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.ContactRepository
+import com.mycorrhizal.crm.domain.repository.ReminderRepository
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
@@ -24,6 +25,7 @@ data class ContactDetailUiState(
 @HiltViewModel
 class ContactDetailViewModel @Inject constructor(
     private val contactRepository: ContactRepository,
+    private val reminderRepository: ReminderRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -52,6 +54,18 @@ class ContactDetailViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
+                },
+            )
+        }
+    }
+
+    /** Complete a reminder from the timeline; reload the contact so the list refreshes. */
+    fun completeReminder(id: Int) {
+        viewModelScope.launch {
+            reminderRepository.complete(id).foldApiError(
+                onSuccess = { load() },
+                onError = { error ->
+                    _uiState.update { it.copy(error = error.displayMessage) }
                 },
             )
         }

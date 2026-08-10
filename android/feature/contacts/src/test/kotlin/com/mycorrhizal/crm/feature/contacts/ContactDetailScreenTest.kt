@@ -1,10 +1,13 @@
 package com.mycorrhizal.crm.feature.contacts
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.CRMEnvelope
@@ -77,8 +80,10 @@ class ContactDetailScreenTest {
         )
         setContent(ContactDetailUiState(contact = contact))
 
-        composeTestRule.onNodeWithContentDescription("Call").assertIsDisplayed()
-        composeTestRule.onNodeWithContentDescription("Copy phone number").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasContentDescription("Call"))
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Copy phone number").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -92,7 +97,9 @@ class ContactDetailScreenTest {
         )
         setContent(ContactDetailUiState(contact = contact))
 
-        composeTestRule.onNodeWithContentDescription("Text").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasContentDescription("Text"))
+            .assertIsDisplayed()
     }
 
     @Test
@@ -120,8 +127,10 @@ class ContactDetailScreenTest {
         )
         setContent(ContactDetailUiState(contact = contact))
 
-        composeTestRule.onNodeWithContentDescription("Compose email").assertIsDisplayed()
-        composeTestRule.onNodeWithContentDescription("Copy email").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasContentDescription("Compose email"))
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Copy email").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -135,9 +144,10 @@ class ContactDetailScreenTest {
         )
         setContent(ContactDetailUiState(contact = contact))
 
-        composeTestRule.onNodeWithText("123 Main St").assertIsDisplayed()
-        composeTestRule.onNodeWithContentDescription("Open in maps").assertIsDisplayed()
-        composeTestRule.onNodeWithContentDescription("Copy address").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasContentDescription("Open in maps"))
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Copy address").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -151,9 +161,10 @@ class ContactDetailScreenTest {
         )
         setContent(ContactDetailUiState(contact = contact))
 
-        composeTestRule.onNodeWithText("Links").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Website").assertIsDisplayed()
-        composeTestRule.onNodeWithContentDescription("Open link").assertIsDisplayed()
-        composeTestRule.onNodeWithContentDescription("Copy link").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasContentDescription("Open link"))
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("Website").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Copy link").performScrollTo().assertIsDisplayed()
     }
 }

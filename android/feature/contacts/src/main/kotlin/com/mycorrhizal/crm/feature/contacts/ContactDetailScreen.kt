@@ -39,6 +39,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -55,6 +56,8 @@ import com.mycorrhizal.crm.model.util.DateFormat.display
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.theme.AppTypography
+import com.mycorrhizal.crm.feature.timeline.TimelineSection
+import com.mycorrhizal.crm.feature.timeline.toTimelineItems
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,6 +67,9 @@ fun ContactDetailScreen(
     onViewActivities: (Int) -> Unit = {},
     onViewNotes: (Int) -> Unit = {},
     onViewReminders: (Int) -> Unit = {},
+    onEditActivity: (Int) -> Unit = {},
+    onEditNote: (Int) -> Unit = {},
+    onEditReminder: (Int) -> Unit = {},
     viewModel: ContactDetailViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -115,6 +121,10 @@ fun ContactDetailScreen(
                     onViewActivities = onViewActivities,
                     onViewNotes = onViewNotes,
                     onViewReminders = onViewReminders,
+                    onEditActivity = onEditActivity,
+                    onEditNote = onEditNote,
+                    onEditReminder = onEditReminder,
+                    onCompleteReminder = viewModel::completeReminder,
                 )
             }
         }
@@ -127,14 +137,30 @@ fun ContactDetailContent(
     onViewActivities: (Int) -> Unit = {},
     onViewNotes: (Int) -> Unit = {},
     onViewReminders: (Int) -> Unit = {},
+    onEditActivity: (Int) -> Unit = {},
+    onEditNote: (Int) -> Unit = {},
+    onEditReminder: (Int) -> Unit = {},
+    onCompleteReminder: (Int) -> Unit = {},
 ) {
     val card = contact.card
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
+    LazyColumn(modifier = Modifier.fillMaxSize().testTag("contact-detail-list")) {
         item {
             ContactHeader(contact = contact, card = card)
         }
         item {
-            // Entry points to the contact's activity + note lists (Phase 2).
+            // Unified timeline: the contact's activities/notes/reminders merged
+            // newest-first (Phase 2 item 10). Tapping a row routes to its edit form.
+            SectionTitle("Timeline")
+            TimelineSection(
+                items = contact.toTimelineItems(),
+                onEditActivity = onEditActivity,
+                onEditNote = onEditNote,
+                onEditReminder = onEditReminder,
+                onCompleteReminder = onCompleteReminder,
+            )
+        }
+        item {
+            // Entry points to the per-type list screens (full management view).
             androidx.compose.material3.ListItem(
                 headlineContent = { Text("Activities", style = MaterialTheme.typography.bodyLarge) },
                 trailingContent = {

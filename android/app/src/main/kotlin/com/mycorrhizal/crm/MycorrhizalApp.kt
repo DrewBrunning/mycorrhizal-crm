@@ -127,6 +127,9 @@ private fun MainScaffold() {
                     onViewActivities = { id -> navController.navigate("contacts/$id/activities") },
                     onViewNotes = { id -> navController.navigate("contacts/$id/notes") },
                     onViewReminders = { id -> navController.navigate("contacts/$id/reminders") },
+                    onEditActivity = { id -> navController.navigate("contacts/$contactId/activities/$id/edit") },
+                    onEditNote = { id -> navController.navigate("contacts/$contactId/notes/$id/edit") },
+                    onEditReminder = { id -> navController.navigate("contacts/$contactId/reminders/$id/edit") },
                 )
             }
             composable(
