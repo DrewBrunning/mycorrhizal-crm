@@ -1,8 +1,10 @@
 package com.mycorrhizal.crm.network
 
 import com.mycorrhizal.crm.model.network.BackendError
+import com.mycorrhizal.crm.model.network.ContactRecordInput
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ContactsPage
+import com.mycorrhizal.crm.model.network.CreateContactResponse
 import com.mycorrhizal.crm.model.network.LoginRequest
 import com.mycorrhizal.crm.model.network.LoginResponse
 import com.mycorrhizal.crm.model.network.UserProfile
@@ -34,7 +36,7 @@ class ApiClient(
 
     /** POST /api/v1/login — captures the auth_token JWT from the Set-Cookie header. */
     suspend fun login(identifier: String, password: String): Result<LoginResult> =
-        execute(LOGIN_PATH, LoginRequest(identifier = identifier, password = password)) { response, body ->
+        executePost(LOGIN_PATH, LoginRequest(identifier = identifier, password = password)) { response, body ->
             val loginResponse = moshi.adapter(LoginResponse::class.java).fromJson(body)
             val token = extractCookie(response.headers("Set-Cookie"), AUTH_COOKIE)
             LoginResult(
@@ -46,7 +48,7 @@ class ApiClient(
 
     /** GET /api/v1/users/me. */
     suspend fun currentUser(): Result<UserProfile> =
-        execute(ME_PATH, null) { _, body ->
+        executeGet("$PLACEHOLDER_ORIGIN$ME_PATH") { _, body ->
             moshi.adapter(UserProfile::class.java).fromJson(body)
         }
 
@@ -73,24 +75,21 @@ class ApiClient(
             moshi.adapter(ContactRecordResponse::class.java).fromJson(body)
         }
 
-    private suspend fun <T> execute(
-        path: String,
-        body: Any?,
-        mapper: (okhttp3.Response, String) -> T?,
-    ): Result<T> {
-        val request = Request.Builder()
-            .url("$PLACEHOLDER_ORIGIN$path".toHttpUrl())
-            .apply {
-                if (body != null) {
-                    val json = moshi.adapter<Any>(body.javaClass).toJson(body)
-                    post(json.toRequestBody(jsonMediaType))
-                } else {
-                    get()
-                }
-            }
-            .build()
-        return execute(request, mapper)
-    }
+    /**
+     * POST /api/v1/contacts. The create endpoint wraps its response as
+     * `{ message, contact }` (ticket §2.6 asymmetry) — this method unwraps it
+     * so callers receive the bare ContactRecordResponse.
+     */
+    suspend fun createContact(input: ContactRecordInput): Result<ContactRecordResponse> =
+        executePost(CONTACTS_PATH, input) { _, body ->
+            moshi.adapter(CreateContactResponse::class.java).fromJson(body)?.contact
+        }
+
+    /** PUT /api/v1/contacts/{id} — returns the raw ContactRecordResponse (200). */
+    suspend fun updateContact(id: Int, input: ContactRecordInput): Result<ContactRecordResponse> =
+        executePut("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$id", input) { _, body ->
+            moshi.adapter(ContactRecordResponse::class.java).fromJson(body)
+        }
 
     private suspend fun <T> executeGet(
         url: String,
@@ -99,6 +98,33 @@ class ApiClient(
         val request = Request.Builder().url(url).get().build()
         return execute(request, mapper)
     }
+
+    private suspend fun <T> executePost(
+        path: String,
+        body: Any,
+        mapper: (okhttp3.Response, String) -> T?,
+    ): Result<T> {
+        val request = Request.Builder()
+            .url("$PLACEHOLDER_ORIGIN$path".toHttpUrl())
+            .post(body.toJsonBody())
+            .build()
+        return execute(request, mapper)
+    }
+
+    private suspend fun <T> executePut(
+        url: String,
+        body: Any,
+        mapper: (okhttp3.Response, String) -> T?,
+    ): Result<T> {
+        val request = Request.Builder()
+            .url(url.toHttpUrl())
+            .put(body.toJsonBody())
+            .build()
+        return execute(request, mapper)
+    }
+
+    private fun Any.toJsonBody(): okhttp3.RequestBody =
+        moshi.adapter<Any>(javaClass).toJson(this).toRequestBody(jsonMediaType)
 
     private suspend fun <T> execute(
         request: Request,

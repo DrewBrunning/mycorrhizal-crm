@@ -7,6 +7,7 @@ import com.mycorrhizal.crm.data.local.AppDatabase
 import com.mycorrhizal.crm.domain.repository.ContactsPage
 import com.mycorrhizal.crm.model.network.CRMEnvelope
 import com.mycorrhizal.crm.model.network.Card
+import com.mycorrhizal.crm.model.network.ContactRecordInput
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.Name
@@ -180,5 +181,45 @@ class ContactRepositoryImplTest {
 
         assertEquals(2, observed.size)
         assertEquals("Alice", observed[0].fn)
+    }
+
+    @Test
+    fun `createContact caches the created record`() = runTest {
+        val created = ContactRecordResponse(id = 9, uid = "u9", card = Card(name = Name(full = "Carol King")))
+        coEvery { apiClient.createContact(any()) } returns Result.success(created)
+        val input = ContactRecordInput(card = Card(name = Name(full = "Carol King")))
+
+        val result = repository.createContact(input)
+
+        assertTrue(result.isSuccess)
+        assertEquals(9, result.getOrThrow().id)
+        val cached = db.cachedContactDao().getById(9)
+        assertEquals("u9", cached?.uid)
+    }
+
+    @Test
+    fun `updateContact caches the updated record`() = runTest {
+        val updated = ContactRecordResponse(id = 9, uid = "u9", card = Card(name = Name(full = "Carol King Renamed")))
+        coEvery { apiClient.updateContact(9, any()) } returns Result.success(updated)
+        val input = ContactRecordInput(card = Card(name = Name(full = "Carol King Renamed")))
+
+        val result = repository.updateContact(9, input)
+
+        assertTrue(result.isSuccess)
+        val cached = db.cachedContactDao().getById(9)
+        assertEquals("Carol King Renamed", cached?.card?.name?.full)
+    }
+
+    @Test
+    fun `createContact propagates a validation failure`() = runTest {
+        coEvery { apiClient.createContact(any()) } returns Result.failure(
+            ApiError.Client(400, "at least one name component (kind=given) or name.full is required"),
+        )
+
+        val result = repository.createContact(ContactRecordInput(card = Card()))
+
+        assertTrue(result.isFailure)
+        val error = result.exceptionOrNull() as ApiError
+        assertEquals(400, (error as ApiError.Client).code)
     }
 }

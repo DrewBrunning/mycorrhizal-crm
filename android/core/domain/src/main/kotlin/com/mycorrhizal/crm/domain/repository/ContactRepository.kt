@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.domain.repository
 
+import com.mycorrhizal.crm.model.network.ContactRecordInput
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.SyncInfo
@@ -31,6 +32,12 @@ interface ContactRepository {
 
     /** Fetch one contact from the server, falling back to the cached copy. */
     suspend fun getContact(id: Int): Result<ContactRecordResponse>
+
+    /** Create a contact on the server; returns the created record (writes online-first). */
+    suspend fun createContact(input: ContactRecordInput): Result<ContactRecordResponse>
+
+    /** Update a contact on the server; returns the updated record. */
+    suspend fun updateContact(id: Int, input: ContactRecordInput): Result<ContactRecordResponse>
 
     /** Cached contact list summaries as a reactive stream (list + offline). */
     fun observeContacts(): Flow<List<ContactSummary>>

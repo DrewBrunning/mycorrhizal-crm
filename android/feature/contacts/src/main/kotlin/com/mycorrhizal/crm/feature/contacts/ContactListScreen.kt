@@ -13,9 +13,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -51,6 +53,7 @@ import com.mycorrhizal.crm.ui.theme.MycorrhizalTypography
 @Composable
 fun ContactListScreen(
     onContactClick: (Int) -> Unit,
+    onCreateContact: () -> Unit = {},
     viewModel: ContactListViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -71,6 +74,7 @@ fun ContactListScreen(
         // A click only routes through the ViewModel event; the LaunchedEffect
         // above performs the actual navigation so each tap navigates once.
         onContactClick = viewModel::onContactClick,
+        onCreateContact = onCreateContact,
         onErrorShown = viewModel::onErrorShown,
     )
 }
@@ -85,6 +89,7 @@ fun ContactListScreenContent(
     uiState: ContactListUiState,
     onSearchQueryChange: (String) -> Unit,
     onContactClick: (Int) -> Unit,
+    onCreateContact: () -> Unit = {},
     onErrorShown: () -> Unit = {},
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -100,6 +105,11 @@ fun ContactListScreenContent(
                     containerColor = MaterialTheme.colorScheme.surface,
                 ),
             )
+        },
+        floatingActionButton = {
+            FloatingActionButton(onClick = onCreateContact) {
+                Icon(Icons.Outlined.Add, contentDescription = "New contact")
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->

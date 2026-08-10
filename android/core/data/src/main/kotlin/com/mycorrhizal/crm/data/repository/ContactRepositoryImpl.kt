@@ -4,6 +4,7 @@ import com.mycorrhizal.crm.data.local.CachedContact
 import com.mycorrhizal.crm.data.local.CachedContactDao
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ContactsPage
+import com.mycorrhizal.crm.model.network.ContactRecordInput
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.SyncInfo
@@ -78,6 +79,28 @@ class ContactRepositoryImpl @Inject constructor(
                 if (fromCache != null) Result.success(fromCache)
                 else Result.failure(error)
             },
+        )
+    }
+
+    override suspend fun createContact(input: ContactRecordInput): Result<ContactRecordResponse> {
+        val result = apiClient.createContact(input)
+        return result.fold(
+            onSuccess = { record ->
+                dao.upsert(record.toCached())
+                Result.success(record)
+            },
+            onFailure = { error -> Result.failure(error) },
+        )
+    }
+
+    override suspend fun updateContact(id: Int, input: ContactRecordInput): Result<ContactRecordResponse> {
+        val result = apiClient.updateContact(id, input)
+        return result.fold(
+            onSuccess = { record ->
+                dao.upsert(record.toCached())
+                Result.success(record)
+            },
+            onFailure = { error -> Result.failure(error) },
         )
     }
 

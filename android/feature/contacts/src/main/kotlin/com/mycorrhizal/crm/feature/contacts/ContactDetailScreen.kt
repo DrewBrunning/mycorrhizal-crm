@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -46,6 +47,7 @@ import com.mycorrhizal.crm.ui.theme.MycorrhizalTypography
 @Composable
 fun ContactDetailScreen(
     onBack: () -> Unit,
+    onEdit: (Int) -> Unit = {},
     viewModel: ContactDetailViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -63,6 +65,13 @@ fun ContactDetailScreen(
                         text = state.contact?.card?.name?.full ?: "Contact",
                         style = MycorrhizalTypography.appBarTitle,
                     )
+                },
+                actions = {
+                    state.contact?.let { contact ->
+                        IconButton(onClick = { onEdit(contact.id) }) {
+                            Icon(Icons.Outlined.Edit, contentDescription = "Edit contact")
+                        }
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,

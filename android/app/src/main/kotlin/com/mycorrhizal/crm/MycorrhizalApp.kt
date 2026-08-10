@@ -32,6 +32,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.mycorrhizal.crm.feature.auth.LoginScreen
 import com.mycorrhizal.crm.feature.contacts.ContactDetailScreen
+import com.mycorrhizal.crm.feature.contacts.ContactFormScreen
 import com.mycorrhizal.crm.feature.contacts.ContactListScreen
 
 private data class BottomNavItem(
@@ -106,6 +107,7 @@ private fun MainScaffold() {
             composable("contacts") {
                 ContactListScreen(
                     onContactClick = { id -> navController.navigate("contacts/$id") },
+                    onCreateContact = { navController.navigate("contacts/new") },
                 )
             }
             composable(
@@ -113,6 +115,24 @@ private fun MainScaffold() {
                 arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
             ) { entry ->
                 ContactDetailScreen(
+                    onBack = { navController.popBackStack() },
+                    onEdit = { id -> navController.navigate("contacts/$id/edit") },
+                )
+            }
+            composable(
+                route = "contacts/new",
+            ) {
+                ContactFormScreen(
+                    onSaved = { navController.popBackStack() },
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            composable(
+                route = "contacts/{contactId}/edit",
+                arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            ) {
+                ContactFormScreen(
+                    onSaved = { navController.popBackStack() },
                     onBack = { navController.popBackStack() },
                 )
             }

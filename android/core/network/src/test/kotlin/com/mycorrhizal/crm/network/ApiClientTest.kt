@@ -1,6 +1,10 @@
 package com.mycorrhizal.crm.network
 
+import com.mycorrhizal.crm.model.network.CRMEnvelope
+import com.mycorrhizal.crm.model.network.Card
+import com.mycorrhizal.crm.model.network.ContactRecordInput
 import com.mycorrhizal.crm.model.network.LoginResponse
+import com.mycorrhizal.crm.model.network.Name
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import okhttp3.OkHttpClient
@@ -217,5 +221,88 @@ class ApiClientTest {
         assertTrue(result.isFailure)
         val error = result.exceptionOrNull()
         assertNotNull(error)
+    }
+
+    @Test
+    fun `create contact sends a POST body and unwraps the wrapped response`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(201)
+                .setBody(
+                    """
+                    {
+                      "message": "Contact created successfully",
+                      "contact": {
+                        "id": 9,
+                        "uid": "u9",
+                        "card": {"name": {"full": "Carol King"}},
+                        "crm": {"circles": ["friends"]}
+                      }
+                    }
+                    """.trimIndent(),
+                ),
+        )
+        val input = ContactRecordInput(
+            card = Card(name = Name(full = "Carol King")),
+            crm = CRMEnvelope(circles = listOf("friends")),
+        )
+
+        val result = client.createContact(input)
+
+        assertTrue(result.isSuccess)
+        // §2.6: the POST wrapper is unwrapped; callers get the bare record.
+        assertEquals(9, result.getOrThrow().id)
+        assertEquals("Carol King", result.getOrThrow().card?.name?.full)
+
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/contacts", request.path)
+        // Body carries the neutral Card; check for the given-name component.
+        assertTrue(request.body.readUtf8().contains("Carol"))
+    }
+
+    @Test
+    fun `create contact with a 400 validation error maps to Client error`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(400)
+                .setBody(
+                    """{"error":{"code":"validation_failed","message":"at least one name component (kind=given) or name.full is required"}}""",
+                ),
+        )
+
+        val result = client.createContact(ContactRecordInput(card = Card()))
+
+        assertTrue(result.isFailure)
+        val error = result.exceptionOrNull() as ApiError
+        assertTrue(error is ApiError.Client)
+        assertEquals(400, (error as ApiError.Client).code)
+    }
+
+    @Test
+    fun `update contact sends a PUT to the contact path`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "id": 9,
+                      "uid": "u9",
+                      "card": {"name": {"full": "Carol King Renamed"}}
+                    }
+                    """.trimIndent(),
+                ),
+        )
+        val input = ContactRecordInput(card = Card(name = Name(full = "Carol King Renamed")))
+
+        val result = client.updateContact(9, input)
+
+        assertTrue(result.isSuccess)
+        assertEquals("Carol King Renamed", result.getOrThrow().card?.name?.full)
+
+        val request = server.takeRequest()
+        assertEquals("PUT", request.method)
+        assertEquals("/api/v1/contacts/9", request.path)
     }
 }
