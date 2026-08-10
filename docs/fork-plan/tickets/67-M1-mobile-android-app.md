@@ -2894,9 +2894,16 @@ home, per §1.2). 263 tests green.
   behind an injectable `ContentResolver` so the *registry + resolution* are unit-tested without
   a device (Robolectric + a fake contacts `ContentProvider`, 12 tests). The contact detail's
   `LinkRow` now renders `AssistChip`s for each resolved action (§7.6.5), falling back to the
-  plain link + copy when nothing resolves or `READ_CONTACTS` is denied. **Still on-device:**
-  verifying the real MIMETYPE strings against actual installed apps, and the user-extensible
-  custom-link-action editor (§7.6.6).
+  plain link + copy when nothing resolves or `READ_CONTACTS` is denied. **On-device status
+  (2026-08-10, Pixel 8a):** the resolver's `ContactsContract.Data` query is unreachable because
+  the manifest does not declare `READ_CONTACTS` (the app's only runtime permissions are none —
+  it's not requested until Phase 5's import, per §8.2). The chips therefore always degrade to
+  plain link + copy on-device, and the real MIMETYPE strings were verified only in the Robolectric
+  fake-provider tests. **Decision needed before Phase 3:** either declare `READ_CONTACTS` now and
+  request it inline (with graceful degradation, matching §8.3's "denied permissions are simply
+  unavailable") so item 12 is actually exercisable on-device, or defer the whole feature's
+  on-device verification to Phase 5 and stop claiming item 12 is done. The custom-link-action
+  editor (§7.6.6) remains Phase 5 (item 30).
 
 Architecture review performed on the activities/notes/reminders slices; all findings fixed
 (participant/external-ref preservation on edit, the reminder-complete wiring gap, required-date
