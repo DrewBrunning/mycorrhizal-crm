@@ -15,8 +15,13 @@ import org.gradle.api.artifacts.VersionCatalogsExtension
 
 /**
  * Shared Android configuration for both library and application modules:
- * compileSdk/minSdk/targetSdk, JVM target, and the common test stack
+ * compileSdk/minSdk, JVM target, and the common test stack
  * (JUnit 4 + Robolectric + MockK + Turbine + kotlinx-coroutines-test).
+ *
+ * AGP 9 note: `CommonExtension` is non-generic and exposes only getters for the
+ * DSL objects (`defaultConfig`, `compileOptions`, `testOptions`); the `{}` block
+ * forms live on the concrete `Application`/`Library` extensions. This shared
+ * function mutates through the getter objects so it works on either.
  */
 internal object AndroidConfig {
     const val COMPILE_SDK = 35
@@ -26,20 +31,14 @@ internal object AndroidConfig {
 
 /** Applies the Android/JVM/test baseline to any android module. */
 internal fun Project.configureAndroidCommon(
-    extension: CommonExtension<*, *, *, *, *, *>,
+    extension: CommonExtension,
 ) {
     extension.apply {
         compileSdk = AndroidConfig.COMPILE_SDK
-        defaultConfig {
-            minSdk = AndroidConfig.MIN_SDK
-        }
-        compileOptions {
-            sourceCompatibility = JavaVersion.VERSION_17
-            targetCompatibility = JavaVersion.VERSION_17
-        }
-        testOptions {
-            unitTests.isIncludeAndroidResources = true
-        }
+        defaultConfig.minSdk = AndroidConfig.MIN_SDK
+        compileOptions.sourceCompatibility = JavaVersion.VERSION_17
+        compileOptions.targetCompatibility = JavaVersion.VERSION_17
+        testOptions.unitTests.isIncludeAndroidResources = true
     }
 
     extensions.configure<KotlinAndroidProjectExtension>("kotlin") {
