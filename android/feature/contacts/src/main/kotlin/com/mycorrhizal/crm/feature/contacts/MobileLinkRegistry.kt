@@ -14,6 +14,12 @@ import android.net.Uri
  * This registry is the Android equivalent of the frontend's hardcoded
  * enum-mirror convention: it must stay in sync with the `LinkFieldType`
  * protocols the server seeds (plus any a user's instance creates).
+ *
+ * MIMETYPE verification status (2026-08-10, Pixel 8a): the Signal, WhatsApp,
+ * and Google Meet strings below were read from a real device's
+ * `ContactsContract.Data` rows. Telegram/Zoom/Discord are educated guesses
+ * from each app's public CONTACT mime-type registration and only appear once
+ * a handle is actually saved to a device contact — treat them as unverified.
  */
 enum class MobileActionKind { MESSAGE, VOICE_CALL, VIDEO_CALL, APP_OPEN, APP_CALL }
 
@@ -57,7 +63,7 @@ object MobileLinkRegistry {
             MobileLinkAction(
                 label = "Message",
                 kind = MobileActionKind.MESSAGE,
-                mimeTypes = listOf("vnd.android.cursor.item/vnd.org.thoughtcrime.securesms"),
+                mimeTypes = listOf("vnd.android.cursor.item/vnd.org.thoughtcrime.securesms.contact"),
                 intentBuilder = { handle -> sendTo("smsto:$handle", "org.thoughtcrime.securesms") },
             ),
             MobileLinkAction(
@@ -69,7 +75,7 @@ object MobileLinkRegistry {
             MobileLinkAction(
                 label = "Video Call",
                 kind = MobileActionKind.VIDEO_CALL,
-                mimeTypes = listOf("vnd.android.cursor.item/vnd.org.thoughtcrime.securesms.video"),
+                mimeTypes = listOf("vnd.android.cursor.item/vnd.org.thoughtcrime.securesms.videocall"),
                 intentBuilder = { handle -> view("sgnl://video.call?recipient=$handle", "org.thoughtcrime.securesms") },
             ),
         ),
@@ -132,7 +138,13 @@ object MobileLinkRegistry {
             MobileLinkAction(
                 label = "Video Call",
                 kind = MobileActionKind.VIDEO_CALL,
-                mimeTypes = listOf("vnd.android.cursor.item/vnd.com.google.android.apps.tachyon"),
+                mimeTypes = listOf(
+                    // Verified on-device (Pixel 8a): Google Meet registers these
+                    // Data MIMETYPEs when a Meet handle is saved to a contact.
+                    "vnd.android.cursor.item/com.google.android.apps.tachyon.phone.meet",
+                    "vnd.android.cursor.item/com.google.android.apps.tachyon.phone.meet.audio",
+                    "vnd.android.cursor.item/com.google.android.apps.tachyon.email.meet",
+                ),
                 intentBuilder = { handle -> view("https://meet.google.com/$handle") },
             ),
         ),

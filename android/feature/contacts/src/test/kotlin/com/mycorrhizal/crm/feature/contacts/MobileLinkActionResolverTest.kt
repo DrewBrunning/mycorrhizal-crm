@@ -55,7 +55,7 @@ class MobileLinkActionResolverTest {
     @Test
     fun `returns only actions whose app is installed`() = runTest {
         // Signal message app installed; call/video apps not.
-        setUpProvider(listOf("vnd.android.cursor.item/vnd.org.thoughtcrime.securesms"))
+        setUpProvider(listOf("vnd.android.cursor.item/vnd.org.thoughtcrime.securesms.contact"))
         val resolver = MobileLinkActionResolver(contentResolver())
 
         val available = resolver.resolveAvailableActions(
@@ -70,9 +70,9 @@ class MobileLinkActionResolverTest {
     fun `returns all actions when full suite installed`() = runTest {
         setUpProvider(
             listOf(
-                "vnd.android.cursor.item/vnd.org.thoughtcrime.securesms",
+                "vnd.android.cursor.item/vnd.org.thoughtcrime.securesms.contact",
                 "vnd.android.cursor.item/vnd.org.thoughtcrime.securesms.call",
-                "vnd.android.cursor.item/vnd.org.thoughtcrime.securesms.video",
+                "vnd.android.cursor.item/vnd.org.thoughtcrime.securesms.videocall",
             ),
         )
         val resolver = MobileLinkActionResolver(contentResolver())

@@ -2,6 +2,7 @@ package com.mycorrhizal.crm.feature.contacts
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -13,6 +14,7 @@ import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.CRMEnvelope
 import com.mycorrhizal.crm.model.network.Email
 import com.mycorrhizal.crm.model.network.Name
+import com.mycorrhizal.crm.model.network.OnlineService
 import com.mycorrhizal.crm.model.network.Phone
 import com.mycorrhizal.crm.model.network.Resource
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
@@ -202,5 +204,24 @@ class ContactDetailScreenTest {
             .assertIsDisplayed()
         composeTestRule.onNodeWithText("Website").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription("Copy link").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `online service row renders service name and handle`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(
+                name = Name(full = "Dana White"),
+                imppAddresses = listOf(
+                    OnlineService(service = "Signal", uri = "6085142711"),
+                ),
+            ),
+        )
+        setContent(ContactDetailUiState(contact = contact))
+
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasText("Signal"))
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("6085142711").assertIsDisplayed()
     }
 }

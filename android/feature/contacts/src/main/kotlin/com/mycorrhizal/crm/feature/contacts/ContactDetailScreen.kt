@@ -1,5 +1,9 @@
 package com.mycorrhizal.crm.feature.contacts
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,6 +43,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,6 +55,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -59,6 +65,7 @@ import com.mycorrhizal.crm.model.network.Address
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.Email
+import com.mycorrhizal.crm.model.network.OnlineService
 import com.mycorrhizal.crm.model.network.Phone
 import com.mycorrhizal.crm.model.util.DateFormat.display
 import com.mycorrhizal.crm.ui.components.EmptyState
@@ -67,6 +74,7 @@ import com.mycorrhizal.crm.ui.theme.AppTypography
 import com.mycorrhizal.crm.feature.timeline.TimelineSection
 import com.mycorrhizal.crm.feature.timeline.toTimelineItems
 import com.mycorrhizal.crm.ui.R
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -218,6 +226,15 @@ fun ContactDetailContent(
             item {
                 SectionTitle("Address")
                 card?.addresses?.forEach { AddressRow(it) }
+            }
+        }
+        val onlineServices = (card?.imppAddresses.orEmpty() +
+            card?.socialProfiles.orEmpty() +
+            card?.otherOnlineServices.orEmpty())
+        if (onlineServices.isNotEmpty()) {
+            item {
+                SectionTitle("Online services")
+                onlineServices.forEach { OnlineServiceRow(it) }
             }
         }
         if (!card?.links.isNullOrEmpty()) {
@@ -438,31 +455,55 @@ private fun AddressRow(address: Address) {
 }
 
 @Composable
+private fun OnlineServiceRow(service: OnlineService) {
+    val context = LocalContext.current
+    val handle = service.uri ?: service.user.orEmpty()
+    val serviceName = service.service ?: service.label.orEmpty()
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                if (serviceName.isNotBlank()) {
+                    Text(
+                        text = serviceName,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (handle.isNotBlank()) {
+                    Text(
+                        text = handle,
+                        style = MaterialTheme.typography.bodyLarge,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            if (handle.isNotBlank()) {
+                IconButton(onClick = { FieldActions.copyText(context, "url", handle) }) {
+                    Icon(Icons.Outlined.ContentCopy, contentDescription = stringResource(R.string.cd_copy_link))
+                }
+            }
+        }
+        // Item 12 (§7.6) enrichment: the service (e.g. "Signal") maps to a
+        // registry protocol, whose actions show once the app is detected.
+        MobileLinkRegistry.forProtocol(serviceName)?.let { linkType ->
+            if (handle.isNotBlank()) {
+                MobileLinkActions(linkType = linkType, handle = handle)
+            }
+        }
+    }
+}
+
+@Composable
 private fun LinkRow(
     uri: String,
     label: String,
     linkType: MobileLinkType?,
 ) {
     val context = LocalContext.current
-    // Enrichment (ticket §7.6): for a known protocol, query the device's
-    // ContactsContract.Data for the app's MIMETYPEs and show only the actions
-    // whose apps are installed. This requires READ_CONTACTS at runtime; without
-    // it (or without a matching app) the row degrades to the web app's plain
-    // link + copy.
-    var availableActions by remember { mutableStateOf<List<MobileLinkAction>>(emptyList()) }
-    LaunchedEffect(linkType, uri) {
-        if (linkType == null) {
-            availableActions = emptyList()
-        } else {
-            availableActions = try {
-                val resolver = MobileLinkActionResolver(context.contentResolver)
-                resolver.resolveAvailableActions(linkType, uri)
-            } catch (_: SecurityException) {
-                emptyList()
-            }
-        }
-    }
-
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -485,24 +526,74 @@ private fun LinkRow(
                 }
             }
         }
-        if (availableActions.isNotEmpty()) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(top = 4.dp),
-            ) {
-                availableActions.forEach { action ->
-                    AssistChip(
-                        onClick = {
-                            try {
-                                context.startActivity(action.intentBuilder(uri))
-                            } catch (_: Exception) {
-                                // No handler for the deep link — fall back to the browser.
-                                context.startActivity(FieldActions.browserIntent(uri))
-                            }
-                        },
-                        label = { Text(action.label) },
-                        leadingIcon = {
-                            Icon(
+        if (linkType != null) {
+            MobileLinkActions(linkType = linkType, handle = uri)
+        }
+    }
+}
+
+/**
+ * Item 12 (§7.6) enrichment chips for a known-protocol link. Requests
+ * READ_CONTACTS inline (not at startup, per §8.3) so the resolver can query
+ * ContactsContract.Data for the installed-app MIMETYPEs; a denied permission
+ * degrades to nothing (the caller already shows the plain link + copy row).
+ */
+@Composable
+private fun MobileLinkActions(
+    linkType: MobileLinkType,
+    handle: String,
+) {
+    val context = LocalContext.current
+    var availableActions by remember { mutableStateOf<List<MobileLinkAction>>(emptyList()) }
+    var permissionAsked by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        permissionAsked = true
+        if (granted) {
+            scope.launch {
+                val resolver = MobileLinkActionResolver(context.contentResolver)
+                availableActions = resolver.resolveAvailableActions(linkType, handle)
+            }
+        }
+    }
+
+    LaunchedEffect(linkType, handle) {
+        val granted = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.READ_CONTACTS,
+        ) == PackageManager.PERMISSION_GRANTED
+        if (granted) {
+            val resolver = MobileLinkActionResolver(context.contentResolver)
+            availableActions = try {
+                resolver.resolveAvailableActions(linkType, handle)
+            } catch (_: SecurityException) {
+                emptyList()
+            }
+        } else if (!permissionAsked) {
+            permissionLauncher.launch(Manifest.permission.READ_CONTACTS)
+        }
+    }
+
+    if (availableActions.isNotEmpty()) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(top = 4.dp),
+        ) {
+            availableActions.forEach { action ->
+                AssistChip(
+                    onClick = {
+                        try {
+                            context.startActivity(action.intentBuilder(handle))
+                        } catch (_: Exception) {
+                            // No handler for the deep link — fall back to the browser.
+                            context.startActivity(FieldActions.browserIntent(handle))
+                        }
+                    },
+                    label = { Text(action.label) },
+                    leadingIcon = {
+                        Icon(
                                 imageVector = when (action.kind) {
                                     MobileActionKind.MESSAGE -> Icons.Outlined.Message
                                     MobileActionKind.VOICE_CALL -> Icons.Outlined.Call
@@ -520,4 +611,3 @@ private fun LinkRow(
             }
         }
     }
-}
