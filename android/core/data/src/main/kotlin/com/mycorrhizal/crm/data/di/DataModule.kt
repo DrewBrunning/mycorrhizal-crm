@@ -24,8 +24,10 @@ import com.mycorrhizal.crm.data.repository.ConversationAgendaRepositoryImpl
 import com.mycorrhizal.crm.data.repository.GiftRepositoryImpl
 import com.mycorrhizal.crm.data.repository.HouseholdRepositoryImpl
 import com.mycorrhizal.crm.data.repository.LifeEventRepositoryImpl
+import com.mycorrhizal.crm.data.repository.MergeRepositoryImpl
 import com.mycorrhizal.crm.data.repository.NoteRepositoryImpl
 import com.mycorrhizal.crm.data.repository.PreferenceRepositoryImpl
+import com.mycorrhizal.crm.data.repository.BulkOperationRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ReminderRepositoryImpl
 import com.mycorrhizal.crm.data.repository.RelationshipEdgeRepositoryImpl
 import com.mycorrhizal.crm.data.repository.TagRepositoryImpl
@@ -35,12 +37,14 @@ import com.mycorrhizal.crm.data.session.SessionPrefsStorage
 import com.mycorrhizal.crm.data.session.TokenStorage
 import com.mycorrhizal.crm.domain.repository.ActivityRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
+import com.mycorrhizal.crm.domain.repository.BulkOperationRepository
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ConversationAgendaRepository
 import com.mycorrhizal.crm.domain.repository.GiftRepository
 import com.mycorrhizal.crm.domain.repository.HouseholdRepository
 import com.mycorrhizal.crm.domain.repository.LifeEventRepository
+import com.mycorrhizal.crm.domain.repository.MergeRepository
 import com.mycorrhizal.crm.domain.repository.NoteRepository
 import com.mycorrhizal.crm.domain.repository.PreferenceRepository
 import com.mycorrhizal.crm.domain.repository.ReminderRepository
@@ -226,4 +230,12 @@ abstract class DataBindsModule {
     @Binds
     @Singleton
     abstract fun bindConversationAgendaRepository(impl: ConversationAgendaRepositoryImpl): ConversationAgendaRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindMergeRepository(impl: MergeRepositoryImpl): MergeRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindBulkOperationRepository(impl: BulkOperationRepositoryImpl): BulkOperationRepository
 }

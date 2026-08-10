@@ -9,6 +9,7 @@
     <string name="nav_home">Inicio</string>
     <string name="nav_settings">Ajustes</string>
     <string name="nav_tags">Etiquetas</string>
+    <string name="nav_bulk">Operaciones masivas</string>
     <string name="nav_circles">Círculos</string>
     <string name="nav_network">Red</string>
     <string name="nav_households">Hogares</string>
@@ -44,6 +45,7 @@
     <string name="contact_timeline">Cronología</string>
     <string name="contact_activities">Actividades</string>
     <string name="contact_notes">Notas</string>
+    <string name="contact_merge">Fusionar contactos</string>
     <string name="contact_relationships">Relaciones</string>
     <string name="contact_life_events">Acontecimientos vitales</string>
     <string name="contact_gifts">Regalos</string>
@@ -232,4 +234,21 @@
     <string name="agenda_title">Agenda de conversación</string>
     <string name="agenda_new">Nuevo elemento</string>
     <string name="agenda_content">Contenido</string>
+
+
+    <!-- Merge & bulk -->
+    <string name="merge_title">Fusionar contactos</string>
+    <string name="merge_other_id">ID del otro contacto</string>
+    <string name="merge_preview">Vista previa de fusión</string>
+    <string name="merge_summary">Se moverán %1$d notas, %2$d actividades y %3$d relaciones al contacto conservado.</string>
+    <string name="merge_no_conflicts">Sin conflictos de campos — la fusión está lista.</string>
+    <string name="merge_commit">Fusionar</string>
+    <string name="merge_done">Contactos fusionados.</string>
+    <string name="bulk_title">Operaciones masivas</string>
+    <string name="bulk_archive">Archivar</string>
+    <string name="bulk_unarchive">Desarchivar</string>
+    <string name="bulk_confirm_title">¿Confirmar acción masiva?</string>
+    <string name="bulk_confirm_body">¿Ejecutar la acción en %1$d contactos seleccionados?</string>
+    <string name="bulk_result">Hecho: %1$d correctos, %2$d fallidos.</string>
+    <string name="action_confirm">Confirmar</string>
 </resources>

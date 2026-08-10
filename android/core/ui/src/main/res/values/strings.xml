@@ -12,6 +12,7 @@
     <string name="nav_households">Households</string>
     <string name="nav_circles">Circles</string>
     <string name="nav_tags">Tags</string>
+    <string name="nav_bulk">Bulk operations</string>
     <string name="coming_soon">%1$s — coming in a later phase</string>
     <string name="cd_menu">Menu</string>
     <string name="cd_back">Back</string>
@@ -46,6 +47,7 @@
     <string name="contact_notes">Notes</string>
     <string name="contact_reminders">Reminders</string>
     <string name="contact_relationships">Relationships</string>
+    <string name="contact_merge">Merge contacts</string>
     <string name="contact_life_events">Life events</string>
     <string name="contact_gifts">Gifts</string>
     <string name="contact_preferences">Preferences</string>
@@ -229,4 +231,20 @@
     <string name="agenda_title">Conversation agenda</string>
     <string name="agenda_new">New item</string>
     <string name="agenda_content">Content</string>
+
+    <!-- Merge & bulk -->
+    <string name="merge_title">Merge contacts</string>
+    <string name="merge_other_id">Other contact ID to merge</string>
+    <string name="merge_preview">Preview merge</string>
+    <string name="merge_summary">%1$d notes, %2$d activities, %3$d relationship edges will be moved to the kept contact.</string>
+    <string name="merge_no_conflicts">No field conflicts — merge is ready.</string>
+    <string name="merge_commit">Merge</string>
+    <string name="merge_done">Contacts merged.</string>
+    <string name="bulk_title">Bulk operations</string>
+    <string name="bulk_archive">Archive</string>
+    <string name="bulk_unarchive">Unarchive</string>
+    <string name="bulk_confirm_title">Confirm bulk action?</string>
+    <string name="bulk_confirm_body">Run the action on %1$d selected contacts?</string>
+    <string name="bulk_result">Done: %1$d succeeded, %2$d failed.</string>
+    <string name="action_confirm">Confirm</string>
 </resources>

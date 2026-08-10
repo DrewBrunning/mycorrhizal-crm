@@ -9,6 +9,7 @@
     <string name="nav_home">Home</string>
     <string name="nav_settings">Impostazioni</string>
     <string name="nav_tags">Etichette</string>
+    <string name="nav_bulk">Operazioni in blocco</string>
     <string name="nav_circles">Cerchi</string>
     <string name="nav_network">Rete</string>
     <string name="nav_households">Nuclei familiari</string>
@@ -44,6 +45,7 @@
     <string name="contact_timeline">Cronologia</string>
     <string name="contact_activities">Attività</string>
     <string name="contact_notes">Note</string>
+    <string name="contact_merge">Unisci contatti</string>
     <string name="contact_relationships">Relazioni</string>
     <string name="contact_life_events">Eventi di vita</string>
     <string name="contact_gifts">Regali</string>
@@ -232,4 +234,21 @@
     <string name="agenda_title">Ordine del giorno</string>
     <string name="agenda_new">Nuovo elemento</string>
     <string name="agenda_content">Contenuto</string>
+
+
+    <!-- Merge & bulk -->
+    <string name="merge_title">Unisci contatti</string>
+    <string name="merge_other_id">ID dell\'altro contatto</string>
+    <string name="merge_preview">Anteprima unione</string>
+    <string name="merge_summary">%1$d note, %2$d attività e %3$d relazioni saranno spostate sul contatto mantenuto.</string>
+    <string name="merge_no_conflicts">Nessun conflitto di campi — l\'unione è pronta.</string>
+    <string name="merge_commit">Unisci</string>
+    <string name="merge_done">Contatti uniti.</string>
+    <string name="bulk_title">Operazioni in blocco</string>
+    <string name="bulk_archive">Archivia</string>
+    <string name="bulk_unarchive">Annulla archiviazione</string>
+    <string name="bulk_confirm_title">Confermare l\'azione in blocco?</string>
+    <string name="bulk_confirm_body">Eseguire l\'azione su %1$d contatti selezionati?</string>
+    <string name="bulk_result">Fatto: %1$d riusciti, %2$d falliti.</string>
+    <string name="action_confirm">Conferma</string>
 </resources>

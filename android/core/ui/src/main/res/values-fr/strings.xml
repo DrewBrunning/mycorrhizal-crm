@@ -9,6 +9,7 @@
     <string name="nav_home">Accueil</string>
     <string name="nav_settings">Paramètres</string>
     <string name="nav_tags">Étiquettes</string>
+    <string name="nav_bulk">Opérations groupées</string>
     <string name="nav_circles">Cercles</string>
     <string name="nav_network">Réseau</string>
     <string name="nav_households">Foyers</string>
@@ -44,6 +45,7 @@
     <string name="contact_timeline">Chronologie</string>
     <string name="contact_activities">Activités</string>
     <string name="contact_notes">Notes</string>
+    <string name="contact_merge">Fusionner des contacts</string>
     <string name="contact_relationships">Relations</string>
     <string name="contact_life_events">Événements de vie</string>
     <string name="contact_gifts">Cadeaux</string>
@@ -232,4 +234,21 @@
     <string name="agenda_title">Ordre du jour</string>
     <string name="agenda_new">Nouvel élément</string>
     <string name="agenda_content">Contenu</string>
+
+
+    <!-- Merge & bulk -->
+    <string name="merge_title">Fusionner des contacts</string>
+    <string name="merge_other_id">ID de l\'autre contact</string>
+    <string name="merge_preview">Aperçu de la fusion</string>
+    <string name="merge_summary">%1$d notes, %2$d activités et %3$d relations seront déplacées vers le contact conservé.</string>
+    <string name="merge_no_conflicts">Aucun conflit de champs — la fusion est prête.</string>
+    <string name="merge_commit">Fusionner</string>
+    <string name="merge_done">Contacts fusionnés.</string>
+    <string name="bulk_title">Opérations groupées</string>
+    <string name="bulk_archive">Archiver</string>
+    <string name="bulk_unarchive">Désarchiver</string>
+    <string name="bulk_confirm_title">Confirmer l\'action groupée ?</string>
+    <string name="bulk_confirm_body">Exécuter l\'action sur %1$d contacts sélectionnés ?</string>
+    <string name="bulk_result">Terminé : %1$d réussis, %2$d échoués.</string>
+    <string name="action_confirm">Confirmer</string>
 </resources>

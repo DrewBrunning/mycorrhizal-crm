@@ -36,6 +36,11 @@ import com.mycorrhizal.crm.model.network.CreateTagResponse
 import com.mycorrhizal.crm.model.network.ConversationAgenda
 import com.mycorrhizal.crm.model.network.ConversationAgendaInput
 import com.mycorrhizal.crm.model.network.ConversationAgendaPage
+import com.mycorrhizal.crm.model.network.BulkContactOperationInput
+import com.mycorrhizal.crm.model.network.BulkOperationResult
+import com.mycorrhizal.crm.model.network.ContactMergeCommitResponse
+import com.mycorrhizal.crm.model.network.ContactMergePreviewResponse
+import com.mycorrhizal.crm.model.network.ContactMergeRequest
 import com.mycorrhizal.crm.model.network.Gift
 import com.mycorrhizal.crm.model.network.GiftInput
 import com.mycorrhizal.crm.model.network.GiftsPage
@@ -45,6 +50,10 @@ import com.mycorrhizal.crm.model.network.HouseholdInput
 import com.mycorrhizal.crm.model.network.HouseholdMember
 import com.mycorrhizal.crm.model.network.HouseholdMemberInput
 import com.mycorrhizal.crm.model.network.HouseholdsPage
+import com.mycorrhizal.crm.model.network.ImportConfirmRequest
+import com.mycorrhizal.crm.model.network.ImportPreviewResponse
+import com.mycorrhizal.crm.model.network.ImportResult
+import com.mycorrhizal.crm.model.network.ImportUploadResponse
 import com.mycorrhizal.crm.model.network.LifeEvent
 import com.mycorrhizal.crm.model.network.LifeEventInput
 import com.mycorrhizal.crm.model.network.LifeEventsPage
@@ -70,6 +79,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -536,6 +546,47 @@ class ApiClient(
             moshi.adapter(ConversationAgenda::class.java).fromJson(body)
         }
 
+    // --- Contact merge ---
+
+    suspend fun previewMerge(request: ContactMergeRequest): Result<ContactMergePreviewResponse> =
+        executePost("$CONTACTS_PATH/merge/preview", request) { _, body ->
+            moshi.adapter(ContactMergePreviewResponse::class.java).fromJson(body)
+        }
+
+    suspend fun commitMerge(request: ContactMergeRequest): Result<ContactRecordResponse> =
+        executePost("$CONTACTS_PATH/merge", request) { _, body ->
+            moshi.adapter(ContactMergeCommitResponse::class.java).fromJson(body)?.contact
+        }
+
+    // --- Bulk operations ---
+
+    suspend fun bulkOperation(input: BulkContactOperationInput): Result<BulkOperationResult> =
+        executePost("$CONTACTS_PATH/bulk", input) { _, body ->
+            moshi.adapter(BulkOperationResult::class.java).fromJson(body)
+        }
+
+    // --- Import (CSV / VCF / JSContact) ---
+
+    suspend fun uploadCsvImport(fileBytes: ByteArray, fileName: String): Result<ImportUploadResponse> =
+        executeMultipartUpload("$CONTACTS_PATH/import/upload", fileBytes, fileName) { _, body ->
+            moshi.adapter(ImportUploadResponse::class.java).fromJson(body)
+        }
+
+    suspend fun uploadVcfImport(fileBytes: ByteArray, fileName: String): Result<ImportPreviewResponse> =
+        executeMultipartUpload("$CONTACTS_PATH/import/vcf/upload", fileBytes, fileName) { _, body ->
+            moshi.adapter(ImportPreviewResponse::class.java).fromJson(body)
+        }
+
+    suspend fun previewCsvImport(request: ImportConfirmRequest): Result<ImportPreviewResponse> =
+        executePost("$CONTACTS_PATH/import/preview", request) { _, body ->
+            moshi.adapter(ImportPreviewResponse::class.java).fromJson(body)
+        }
+
+    suspend fun confirmImport(request: ImportConfirmRequest): Result<ImportResult> =
+        executePost("$CONTACTS_PATH/import/confirm", request) { _, body ->
+            moshi.adapter(ImportResult::class.java).fromJson(body)
+        }
+
     private suspend fun <T> executeGet(
         url: String,
         mapper: (okhttp3.Response, String) -> T?,
@@ -598,6 +649,23 @@ class ApiClient(
         val request = Request.Builder()
             .url(url.toHttpUrl())
             .patch(okhttp3.RequestBody.create(null, ByteArray(0)))
+            .build()
+        return execute(request, mapper)
+    }
+
+    private suspend fun <T> executeMultipartUpload(
+        path: String,
+        fileBytes: ByteArray,
+        fileName: String,
+        mapper: (okhttp3.Response, String) -> T?,
+    ): Result<T> {
+        val body = MultipartBody.Builder()
+            .setType(MultipartBody.FORM)
+            .addFormDataPart("file", fileName, fileBytes.toRequestBody("application/octet-stream".toMediaType()))
+            .build()
+        val request = Request.Builder()
+            .url("$PLACEHOLDER_ORIGIN$path".toHttpUrl())
+            .post(body)
             .build()
         return execute(request, mapper)
     }
@@ -677,8 +745,7 @@ class ApiClient(
         private const val GIFTS_PATH = "$API_V1/gifts"
         private const val PREFERENCES_PATH = "$API_V1/preferences"
         private const val CONVERSATION_AGENDA_PATH = "$API_V1/conversation-agenda"
-        private const val AUTH_COOKIE = "auth_token"
-    }
+        private const val AUTH_COOKIE = "auth_token"    }
 }
 
 /** Successful login: the bearer JWT (captured from the httpOnly cookie) plus profile prefs. */

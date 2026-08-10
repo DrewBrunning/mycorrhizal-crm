@@ -46,6 +46,8 @@ import com.mycorrhizal.crm.feature.circles.CirclesScreen
 import com.mycorrhizal.crm.feature.contacts.ContactDetailScreen
 import com.mycorrhizal.crm.feature.contacts.ContactFormScreen
 import com.mycorrhizal.crm.feature.contacts.ContactListScreen
+import com.mycorrhizal.crm.feature.contacts.BulkOperationsScreen
+import com.mycorrhizal.crm.feature.contacts.MergeContactsScreen
 import com.mycorrhizal.crm.feature.households.HouseholdDetailScreen
 import com.mycorrhizal.crm.feature.households.HouseholdsScreen
 import com.mycorrhizal.crm.feature.relationships.RelationshipsScreen
@@ -167,6 +169,15 @@ private fun MainScaffold() {
                     },
                     modifier = Modifier.padding(horizontal = 8.dp),
                 )
+                NavigationDrawerItem(
+                    label = { Text(stringResource(R.string.nav_bulk)) },
+                    selected = currentDestination?.route == "bulk",
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        navController.navigate("bulk")
+                    },
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                )
             }
         },
     ) {
@@ -199,13 +210,28 @@ private fun MainScaffold() {
                 startDestination = "contacts",
                 modifier = Modifier.padding(padding),
             ) {
-                composable("contacts") {
-                    ContactListScreen(
-                        onContactClick = { id -> navController.navigate("contacts/$id") },
-                        onCreateContact = { navController.navigate("contacts/new") },
-                        onMenuClick = { scope.launch { drawerState.open() } },
-                    )
-                }
+            composable("contacts") {
+                ContactListScreen(
+                    onContactClick = { id -> navController.navigate("contacts/$id") },
+                    onCreateContact = { navController.navigate("contacts/new") },
+                    onMenuClick = { scope.launch { drawerState.open() } },
+                )
+            }
+            composable("bulk") {
+                BulkOperationsScreen(
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            composable(
+                route = "merge/{keepId}",
+                arguments = listOf(navArgument("keepId") { type = NavType.LongType }),
+            ) { entry ->
+                val keepId = entry.arguments?.getLong("keepId") ?: 0L
+                MergeContactsScreen(
+                    onBack = { navController.popBackStack() },
+                    keepId = keepId,
+                )
+            }
             composable(
                 route = "contacts/{contactId}",
                 arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
@@ -218,6 +244,7 @@ private fun MainScaffold() {
                     onViewNotes = { id -> navController.navigate("contacts/$id/notes") },
                     onViewReminders = { id -> navController.navigate("contacts/$id/reminders") },
                     onViewRelationships = { id -> navController.navigate("contacts/$id/relationships") },
+                    onMerge = { id -> navController.navigate("merge/$id") },
                     onViewLifeEvents = { id -> navController.navigate("contacts/$id/life-events") },
                     onViewGifts = { id -> navController.navigate("contacts/$id/gifts") },
                     onViewPreferences = { id -> navController.navigate("contacts/$id/preferences") },

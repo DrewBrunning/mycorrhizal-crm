@@ -9,6 +9,7 @@
     <string name="nav_home">Start</string>
     <string name="nav_settings">Einstellungen</string>
     <string name="nav_tags">Tags</string>
+    <string name="nav_bulk">Stapeloperationen</string>
     <string name="nav_circles">Kreise</string>
     <string name="nav_network">Netzwerk</string>
     <string name="nav_households">Haushalte</string>
@@ -44,6 +45,7 @@
     <string name="contact_timeline">Zeitleiste</string>
     <string name="contact_activities">Aktivitäten</string>
     <string name="contact_notes">Notizen</string>
+    <string name="contact_merge">Kontakte zusammenführen</string>
     <string name="contact_relationships">Beziehungen</string>
     <string name="contact_life_events">Lebensereignisse</string>
     <string name="contact_gifts">Geschenke</string>
@@ -232,4 +234,21 @@
     <string name="agenda_title">Gesprächsagenda</string>
     <string name="agenda_new">Neuer Punkt</string>
     <string name="agenda_content">Inhalt</string>
+
+
+    <!-- Merge & bulk -->
+    <string name="merge_title">Kontakte zusammenführen</string>
+    <string name="merge_other_id">ID des anderen Kontakts</string>
+    <string name="merge_preview">Zusammenführung anzeigen</string>
+    <string name="merge_summary">%1$d Notizen, %2$d Aktivitäten, %3$d Beziehungen werden zum behaltenen Kontakt verschoben.</string>
+    <string name="merge_no_conflicts">Keine Feldkonflikte — Zusammenführung bereit.</string>
+    <string name="merge_commit">Zusammenführen</string>
+    <string name="merge_done">Kontakte zusammengeführt.</string>
+    <string name="bulk_title">Stapeloperationen</string>
+    <string name="bulk_archive">Archivieren</string>
+    <string name="bulk_unarchive">Archiv aufheben</string>
+    <string name="bulk_confirm_title">Stapelaktion bestätigen?</string>
+    <string name="bulk_confirm_body">Aktion auf %1$d ausgewählte Kontakte ausführen?</string>
+    <string name="bulk_result">Fertig: %1$d erfolgreich, %2$d fehlgeschlagen.</string>
+    <string name="action_confirm">Bestätigen</string>
 </resources>
