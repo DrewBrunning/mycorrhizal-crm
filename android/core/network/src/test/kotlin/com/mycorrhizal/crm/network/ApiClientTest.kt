@@ -497,18 +497,19 @@ class ApiClientTest {
     }
 
     @Test
-    fun `update note sends a PUT to the note path`() = runBlocking {
+    fun `update note sends a PUT and unwraps the wrapped response`() = runBlocking {
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
                 .setBody(
-                    """{"ID": 3, "content": "Loves rock climbing"}""",
+                    """{"message": "Note updated successfully", "note": {"ID": 3, "content": "Loves rock climbing"}}""",
                 ),
         )
 
         val result = client.updateNote(3, NoteInput(content = "Loves rock climbing"))
 
         assertTrue(result.isSuccess)
+        assertEquals(3, result.getOrThrow().id)
         assertEquals("Loves rock climbing", result.getOrThrow().content)
 
         val request = server.takeRequest()
@@ -610,6 +611,30 @@ class ApiClientTest {
         val request = server.takeRequest()
         assertEquals("POST", request.method)
         assertEquals("/api/v1/reminders/1/complete", request.path)
+    }
+
+    @Test
+    fun `update reminder sends a PUT and unwraps the wrapped response`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """{"message": "Reminder updated successfully", "reminder": {"ID": 1, "message": "Call Dana weekly", "recurrence": "weekly"}}""",
+                ),
+        )
+
+        val result = client.updateReminder(
+            1,
+            Reminder(message = "Call Dana weekly", recurrence = ReminderRecurrence.WEEKLY),
+        )
+
+        assertTrue(result.isSuccess)
+        assertEquals(1, result.getOrThrow().id)
+        assertEquals("Call Dana weekly", result.getOrThrow().message)
+
+        val request = server.takeRequest()
+        assertEquals("PUT", request.method)
+        assertEquals("/api/v1/reminders/1", request.path)
     }
 
     @Test

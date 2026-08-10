@@ -112,11 +112,22 @@ class ContactRepositoryImpl @Inject constructor(
     override suspend fun searchLocal(query: String): List<ContactSummary> {
         val trimmed = query.trim()
         if (trimmed.isEmpty()) return dao.getAll().map { it.toSummary() }
-        // Sanitize FTS syntax: a plain search term should never be able to
-        // inject FTS operators. Tokens outside double quotes are treated as a
-        // single phrase.
-        val safe = trimmed.replace("\"", " ").trim()
-        return dao.searchFts(safe).map { it.toSummary() }
+        // Sanitize the query so a plain search term can never break the FTS
+        // MATCH expression (unbalanced parens or a bare NEAR throw
+        // "malformed MATCH expression" and crash the offline path).
+        val safe = trimmed
+            .replace("\"", " ")
+            .replace(Regex("""[()*:\-]"""), " ")
+            .replace(Regex("""\b(AND|OR|NOT|NEAR)\b""", RegexOption.IGNORE_CASE), " ")
+            .replace(Regex("""\s+"""), " ")
+            .trim()
+        if (safe.isEmpty()) return dao.getAll().map { it.toSummary() }
+        return try {
+            dao.searchFts(safe).map { it.toSummary() }
+        } catch (_: Exception) {
+            // FTS rejected the expression after all — fall back to the LIKE scan.
+            dao.search(trimmed).map { it.toSummary() }
+        }
     }
 
     override fun observeContact(id: Int): Flow<ContactRecordResponse?> =

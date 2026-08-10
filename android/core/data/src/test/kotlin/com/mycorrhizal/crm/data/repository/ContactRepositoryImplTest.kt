@@ -264,4 +264,23 @@ class ContactRepositoryImplTest {
         assertEquals(1, result.size)
         assertEquals("David Smith", result[0].fn)
     }
+
+    @Test
+    fun `searchLocal tolerates unbalanced parens and NEAR without crashing`() = runTest {
+        db.cachedContactDao().upsertAll(
+            listOf(com.mycorrhizal.crm.data.local.CachedContact(id = 1, fn = "David Smith")),
+        )
+
+        // Unbalanced parens or a bare NEAR throw "malformed MATCH expression"
+        // in FTS4; searchLocal must sanitize (or fall back to LIKE), never crash.
+        val parens = repository.searchLocal("Wilson (office")
+        val near = repository.searchLocal("NEAR")
+        val smith = repository.searchLocal("smith")
+
+        // No exception; results are the sanitized MATCH (multi-token returns 0
+        // for a single-token row) or the full cache for a fully-stripped query.
+        assertEquals(0, parens.size)
+        assertEquals(1, near.size)
+        assertEquals("David Smith", smith[0].fn)
+    }
 }

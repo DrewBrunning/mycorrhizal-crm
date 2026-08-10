@@ -6,10 +6,13 @@ import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
 
 /**
- * Builds the OkHttp stack and Moshi instance. Interceptor order follows the
- * ticket (§2.2): Auth → BaseUrl → Retry, with HTTP logging appended for debug
- * builds — OkHttp runs interceptors in registration order, so the retry
- * interceptor wraps each attempt and logging sees only successful sends.
+ * Builds the OkHttp stack and Moshi instance. Interceptor order:
+ * BaseUrl → Auth → Retry, with HTTP logging appended for debug builds.
+ *
+ * OkHttp runs interceptors in registration order. BaseUrl must run before
+ * Auth: Auth's host check compares the request URL against the configured
+ * server, so it has to see the rewritten URL (requests are built against a
+ * placeholder origin) rather than the placeholder.
  */
 object NetworkFactory {
     const val CONNECT_TIMEOUT_SECONDS = 30L
@@ -23,8 +26,8 @@ object NetworkFactory {
         debug: Boolean = false,
     ): OkHttpClient {
         val builder = OkHttpClient.Builder()
-            .addInterceptor(AuthInterceptor(tokenProvider, baseUrlProvider))
             .addInterceptor(BaseUrlInterceptor(baseUrlProvider))
+            .addInterceptor(AuthInterceptor(tokenProvider, baseUrlProvider))
             .addInterceptor(RetryInterceptor())
             .connectTimeout(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .readTimeout(READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)

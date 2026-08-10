@@ -150,10 +150,10 @@ class ApiClient(
             moshi.adapter(CreateNoteResponse::class.java).fromJson(body)?.note
         }
 
-    /** PUT /api/v1/notes/{id} — raw Note response. */
+    /** PUT /api/v1/notes/{id} — wrapped `{ message, note }`, unwrapped here. */
     suspend fun updateNote(id: Int, input: NoteInput): Result<Note> =
         executePut("$PLACEHOLDER_ORIGIN$NOTES_PATH/$id", input) { _, body ->
-            moshi.adapter(Note::class.java).fromJson(body)
+            moshi.adapter(CreateNoteResponse::class.java).fromJson(body)?.note
         }
 
     /** GET /api/v1/notes/{id} — a single note. */
@@ -174,10 +174,10 @@ class ApiClient(
             moshi.adapter(CreateReminderResponse::class.java).fromJson(body)?.reminder
         }
 
-    /** PUT /api/v1/reminders/{id} — raw Reminder response. */
+    /** PUT /api/v1/reminders/{id} — wrapped `{ message, reminder }`, unwrapped here. */
     suspend fun updateReminder(id: Int, reminder: Reminder): Result<Reminder> =
         executePut("$PLACEHOLDER_ORIGIN$REMINDERS_PATH/$id", reminder) { _, body ->
-            moshi.adapter(Reminder::class.java).fromJson(body)
+            moshi.adapter(CreateReminderResponse::class.java).fromJson(body)?.reminder
         }
 
     /** POST /api/v1/reminders/{id}/complete — completes a reminder (no body). */
