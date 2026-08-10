@@ -33,7 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.mycorrhizal.crm.model.network.Reminder
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
@@ -45,7 +45,7 @@ fun RemindersScreen(
     onBack: () -> Unit,
     onCreateReminder: () -> Unit,
     onEditReminder: (Int) -> Unit,
-    viewModel: RemindersViewModel = viewModel(),
+    viewModel: RemindersViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }

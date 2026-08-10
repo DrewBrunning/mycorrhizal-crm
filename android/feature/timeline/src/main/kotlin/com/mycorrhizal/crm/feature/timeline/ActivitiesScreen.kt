@@ -29,7 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
@@ -41,7 +41,7 @@ fun ActivitiesScreen(
     onBack: () -> Unit,
     onCreateActivity: () -> Unit,
     onEditActivity: (Int) -> Unit,
-    viewModel: ActivitiesViewModel = viewModel(),
+    viewModel: ActivitiesViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }

@@ -49,7 +49,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.ui.components.EmptyState
@@ -62,10 +62,10 @@ fun ContactListScreen(
     onContactClick: (Int) -> Unit,
     onCreateContact: () -> Unit = {},
     onMenuClick: () -> Unit = {},
-    viewModel: ContactListViewModel = viewModel(),
+    viewModel: ContactListViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val snackbarHostState = rememberSaveable { SnackbarHostState() }
+    val snackbarHostState = remember { SnackbarHostState() }
 
     // Reload when returning from the create/edit form so a newly added or
     // renamed contact shows up without a manual refresh.

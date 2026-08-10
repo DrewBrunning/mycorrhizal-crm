@@ -53,7 +53,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import com.mycorrhizal.crm.model.network.Address
 import com.mycorrhizal.crm.model.network.Card
@@ -79,7 +79,7 @@ fun ContactDetailScreen(
     onEditActivity: (Int) -> Unit = {},
     onEditNote: (Int) -> Unit = {},
     onEditReminder: (Int) -> Unit = {},
-    viewModel: ContactDetailViewModel = viewModel(),
+    viewModel: ContactDetailViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
