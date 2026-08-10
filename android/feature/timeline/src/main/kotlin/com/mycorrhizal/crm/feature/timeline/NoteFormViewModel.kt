@@ -39,6 +39,7 @@ data class NoteFormState(
 
     fun validate(): String? = when {
         !hasContent -> "Note content is required"
+        date.isBlank() -> "Date is required"
         date.isNotBlank() && !date.matches(ISO_DATETIME_REGEX) ->
             "Date must be ISO 8601, e.g. 2026-08-10T14:00:00Z"
         else -> null
@@ -46,7 +47,7 @@ data class NoteFormState(
 
     companion object {
         val ISO_DATETIME_REGEX = Regex(
-            """\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})""",
+            """\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})""",
         )
     }
 }

@@ -101,6 +101,17 @@ class NoteFormViewModelTest {
     }
 
     @Test
+    fun `save without a date is blocked`() = runTest(mainDispatcherRule.testDispatcher) {
+        val vm = createViewModel()
+        vm.onContentChange("Loves climbing")
+        vm.save()
+        advanceUntilIdle()
+
+        assertEquals("Date is required", vm.uiState.value.error)
+        coVerify(exactly = 0) { noteRepository.create(any(), any()) }
+    }
+
+    @Test
     fun `save in create mode calls create with the contact id`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { noteRepository.create(5, any()) } returns Result.success(Note(id = 3, content = "Loves climbing"))
 
@@ -125,7 +136,9 @@ class NoteFormViewModelTest {
 
     @Test
     fun `save in edit mode hydrates and calls update`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { noteRepository.get(3) } returns Result.success(Note(id = 3, content = "Loves climbing"))
+        coEvery { noteRepository.get(3) } returns Result.success(
+            Note(id = 3, content = "Loves climbing", date = "2026-08-10T14:00:00Z"),
+        )
         coEvery { noteRepository.update(3, any()) } returns Result.success(Note(id = 3, content = "Loves climbing"))
 
         val vm = createViewModel(noteId = 3)
@@ -166,6 +179,7 @@ class NoteFormViewModelTest {
 
         val vm = createViewModel()
         vm.onContentChange("Loves climbing")
+        vm.onDateChange("2026-08-10T14:00:00Z")
         vm.save()
         advanceUntilIdle()
 

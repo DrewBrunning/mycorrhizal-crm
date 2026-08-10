@@ -89,9 +89,13 @@ fun NotesScreen(
         }
     }
 
-    state.error?.let { message ->
-        LaunchedEffect(message) {
-            snackbarHostState.showSnackbar(message)
+    // When the list is empty the error text is the persistent body content
+    // (EmptyState above), so don't toast-and-clear it into a misleading
+    // "No notes yet". Only surface a snackbar for errors over a populated list.
+    val listError = state.error
+    if (listError != null && state.notes.isNotEmpty()) {
+        LaunchedEffect(listError) {
+            snackbarHostState.showSnackbar(listError)
             viewModel.onErrorShown()
         }
     }

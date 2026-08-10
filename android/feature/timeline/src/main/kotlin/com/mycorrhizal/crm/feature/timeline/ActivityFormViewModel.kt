@@ -63,7 +63,7 @@ data class ActivityFormState(
         /** Loose RFC 3339 / ISO 8601 date-time check matching the backend's
          *  time.Time unmarshal (which requires a 'T' separator and offset). */
         val ISO_DATETIME_REGEX = Regex(
-            """\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})""",
+            """\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})""",
         )
     }
 }

@@ -41,11 +41,17 @@ class ReminderRepositoryImpl @Inject constructor(
 
     override suspend fun complete(id: Int): Result<Reminder?> {
         val result = apiClient.completeReminder(id)
-        result.getOrNull()?.reminder?.let { dao.upsert(it.toCached()) }
-        // A completed once-reminder is soft-deleted server-side; drop it from
-        // the cache so it disappears from the list.
-        if (result.getOrNull()?.reminder == null) {
-            dao.upsert(CachedReminder(id = id, completed = true, message = null))
+        val response = result.getOrNull()
+        val rescheduled = response?.reminder
+        if (response != null) {
+            if (rescheduled != null) {
+                // Recurring reminder: rescheduled, replace the cached row.
+                dao.upsert(rescheduled.toCached())
+            } else {
+                // Once reminder: soft-deleted server-side, drop it from the cache
+                // so it doesn't reappear as a blank row on offline reads.
+                dao.deleteByIds(listOf(id))
+            }
         }
         return result.map { it.reminder }
     }

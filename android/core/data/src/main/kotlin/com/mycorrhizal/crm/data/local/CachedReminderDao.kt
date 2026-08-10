@@ -19,6 +19,9 @@ interface CachedReminderDao {
     @Query("SELECT * FROM cached_reminders WHERE id = :id")
     suspend fun getById(id: Int): CachedReminder?
 
+    @Query("DELETE FROM cached_reminders WHERE id IN (:ids)")
+    suspend fun deleteByIds(ids: List<Int>)
+
     @Query("DELETE FROM cached_reminders")
     suspend fun deleteAll()
 }

@@ -22,11 +22,6 @@ data class RemindersUiState(
     val error: String? = null,
 )
 
-sealed interface RemindersEvent {
-    data class ShowMessage(val message: String) : RemindersEvent
-    data class ShowError(val message: String) : RemindersEvent
-}
-
 @HiltViewModel
 class RemindersViewModel @Inject constructor(
     private val reminderRepository: ReminderRepository,

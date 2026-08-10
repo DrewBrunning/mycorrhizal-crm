@@ -43,7 +43,6 @@ fun RemindersScreen(
     onBack: () -> Unit,
     onCreateReminder: () -> Unit,
     onEditReminder: (Int) -> Unit,
-    onCompleteReminder: (Int) -> Unit,
     viewModel: RemindersViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -85,7 +84,7 @@ fun RemindersScreen(
                             ReminderListItem(
                                 reminder = reminder,
                                 onClick = { onEditReminder(reminder.id) },
-                                onComplete = { onCompleteReminder(reminder.id) },
+                                onComplete = { viewModel.complete(reminder.id) },
                                 isCompleting = state.completingId == reminder.id,
                             )
                         }
@@ -95,9 +94,13 @@ fun RemindersScreen(
         }
     }
 
-    state.error?.let { message ->
-        LaunchedEffect(message) {
-            snackbarHostState.showSnackbar(message)
+    // When the list is empty the error text is the persistent body content
+    // (EmptyState above), so don't toast-and-clear it into a misleading
+    // "No reminders yet". Only surface a snackbar for errors over a populated list.
+    val listError = state.error
+    if (listError != null && state.reminders.isNotEmpty()) {
+        LaunchedEffect(listError) {
+            snackbarHostState.showSnackbar(listError)
             viewModel.onErrorShown()
         }
     }

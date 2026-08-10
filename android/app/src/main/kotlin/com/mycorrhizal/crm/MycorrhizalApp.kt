@@ -225,7 +225,6 @@ private fun MainScaffold() {
                     onEditReminder = { reminderId ->
                         navController.navigate("contacts/$contactId/reminders/$reminderId/edit")
                     },
-                    onCompleteReminder = { /* handled by the ViewModel */ },
                 )
             }
             composable(

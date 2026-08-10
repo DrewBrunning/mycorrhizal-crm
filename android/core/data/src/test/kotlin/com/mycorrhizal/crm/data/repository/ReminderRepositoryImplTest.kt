@@ -90,7 +90,10 @@ class ReminderRepositoryImplTest {
     }
 
     @Test
-    fun `complete of a once reminder returns null`() = runTest {
+    fun `complete of a once reminder returns null and drops the cached row`() = runTest {
+        db.cachedReminderDao().upsert(
+            com.mycorrhizal.crm.data.local.CachedReminder(id = 1, message = "Call Dana"),
+        )
         coEvery { apiClient.completeReminder(1) } returns Result.success(
             ReminderCompleteResponse(message = "Reminder completed", reminder = null),
         )
@@ -99,6 +102,8 @@ class ReminderRepositoryImplTest {
 
         assertTrue(result.isSuccess)
         assertNull(result.getOrThrow())
+        // The once reminder is soft-deleted server-side; the cache row is gone too.
+        assertNull(db.cachedReminderDao().getById(1))
     }
 
     @Test
