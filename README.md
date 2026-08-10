@@ -3,10 +3,11 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/status-beta-purple" alt="Status: Beta">
+  <img src="https://img.shields.io/badge/Status-Beta-purple" alt="Status: Beta">
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <a href="https://golang.org"><img src="https://img.shields.io/badge/Backend-Go-00ADD8?logo=go" alt="Backend: Go"></a>
   <a href="https://reactjs.org"><img src="https://img.shields.io/badge/Frontend-React-61DAFB?logo=react" alt="Frontend: React"></a>
+  <a href="https://kotlinlang.org/"><img src="https://img.shields.io/badge/Android-Kotlin-B125EA?logo=kotlin" alt="Android: Kotlin"></a>
 </p>
 
 # Mycorrhizal CRM
