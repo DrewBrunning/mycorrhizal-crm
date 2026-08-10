@@ -22,9 +22,8 @@ ticket blocked on another open ticket ranks below ready ones at the same rating,
 size) → **effort** (smaller first). Ticket numbers are stable IDs, not rank — the table order is
 the rank.
 
-| Rank | Ticket | R | Size | Depends on | Ready? |
-|---|---|---|---|---|---|---|---|
-| 1 | [T60](79-T60-audit-trail-ui.md) · Audit trail UI | 3 | M | — | Ready (backend + OpenAPI shipped in v0.4.0; frontend-only, no schema change, additive) |
+**Empty as of 2026-08-09** — T60 (the last ranked ticket) shipped. Everything left is parked in
+Deferred / Feature ideas below; pull something up here only when it becomes worth scheduling.
 
 > **N8 (2FA/TOTP) moved to Feature ideas, 2026-08-07.** For a self-hosted instance
 > going through OIDC the IdP already owns 2FA, so app-level TOTP is redundant there; it only
@@ -150,6 +149,7 @@ Kept for reference/lookup, not ranked — order below is roughly the sequence th
 | | **→ ALPHA v0.4.0 — shipped** |
 | [T59](78-T59-immich-v041-still-broken.md) · Immich still broken in v0.4.1 testing | **DONE** |
 | [N6](26-N6-backup-restore.md) · Full backup restore | **DONE** (2026-08-09 — tested `VACUUM INTO` online backup via `make backup` + restore procedure; see the ticket's landing note for the two deliberate deviations from its implementation suggestions) |
+| [T60](79-T60-audit-trail-ui.md) · Audit trail UI | **DONE** (2026-08-09 — new `/audit` page + API module + hook over T18's shipped backend: event list with server-side entity_type/entity_id filters, contact-only Undo with confirmation dialog, contact uid→detail-page links, all five locales; see the ticket's landing note for the decisions taken) |
 
 ### ⚠ A grooming lesson worth keeping visible
 
