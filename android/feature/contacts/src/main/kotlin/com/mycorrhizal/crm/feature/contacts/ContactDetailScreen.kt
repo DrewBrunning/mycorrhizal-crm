@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,7 +23,9 @@ import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Message
 import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -32,7 +35,11 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -217,7 +224,12 @@ fun ContactDetailContent(
             item {
                 SectionTitle("Links")
                 card?.links?.forEach { link ->
-                    LinkRow(uri = link.uri.orEmpty(), label = link.label ?: link.uri.orEmpty())
+                    val uri = link.uri.orEmpty()
+                    LinkRow(
+                        uri = uri,
+                        label = link.label ?: uri,
+                        linkType = MobileLinkRegistry.forProtocol(link.label),
+                    )
                 }
             }
         }
@@ -414,26 +426,85 @@ private fun AddressRow(address: Address) {
 }
 
 @Composable
-private fun LinkRow(uri: String, label: String) {
+private fun LinkRow(
+    uri: String,
+    label: String,
+    linkType: MobileLinkType?,
+) {
     val context = LocalContext.current
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.primary,
-            maxLines = 1,
-            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
-        if (uri.isNotBlank()) {
-            IconButton(onClick = { context.startActivity(FieldActions.browserIntent(uri)) }) {
-                Icon(Icons.Outlined.OpenInNew, contentDescription = stringResource(R.string.cd_open_link))
+    // Enrichment (ticket §7.6): for a known protocol, query the device's
+    // ContactsContract.Data for the app's MIMETYPEs and show only the actions
+    // whose apps are installed. This requires READ_CONTACTS at runtime; without
+    // it (or without a matching app) the row degrades to the web app's plain
+    // link + copy.
+    var availableActions by remember { mutableStateOf<List<MobileLinkAction>>(emptyList()) }
+    LaunchedEffect(linkType, uri) {
+        if (linkType == null) {
+            availableActions = emptyList()
+        } else {
+            availableActions = try {
+                val resolver = MobileLinkActionResolver(context.contentResolver)
+                resolver.resolveAvailableActions(linkType, uri)
+            } catch (_: SecurityException) {
+                emptyList()
             }
-            IconButton(onClick = { FieldActions.copyText(context, "url", uri) }) {
-                Icon(Icons.Outlined.ContentCopy, contentDescription = stringResource(R.string.cd_copy_link))
+        }
+    }
+
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            if (uri.isNotBlank()) {
+                IconButton(onClick = { context.startActivity(FieldActions.browserIntent(uri)) }) {
+                    Icon(Icons.Outlined.OpenInNew, contentDescription = stringResource(R.string.cd_open_link))
+                }
+                IconButton(onClick = { FieldActions.copyText(context, "url", uri) }) {
+                    Icon(Icons.Outlined.ContentCopy, contentDescription = stringResource(R.string.cd_copy_link))
+                }
+            }
+        }
+        if (availableActions.isNotEmpty()) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(top = 4.dp),
+            ) {
+                availableActions.forEach { action ->
+                    AssistChip(
+                        onClick = {
+                            try {
+                                context.startActivity(action.intentBuilder(uri))
+                            } catch (_: Exception) {
+                                // No handler for the deep link — fall back to the browser.
+                                context.startActivity(FieldActions.browserIntent(uri))
+                            }
+                        },
+                        label = { Text(action.label) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = when (action.kind) {
+                                    MobileActionKind.MESSAGE -> Icons.Outlined.Message
+                                    MobileActionKind.VOICE_CALL -> Icons.Outlined.Call
+                                    MobileActionKind.VIDEO_CALL -> Icons.Outlined.Videocam
+                                    MobileActionKind.APP_OPEN -> Icons.Outlined.OpenInNew
+                                    MobileActionKind.APP_CALL -> Icons.Outlined.Call
+                                },
+                                contentDescription = action.label,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        },
+                        modifier = Modifier.height(32.dp),
+                    )
+                }
             }
         }
     }

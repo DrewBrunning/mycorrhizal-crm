@@ -2886,10 +2886,17 @@ home, per §1.2). 263 tests green.
 - **Item 13 — search** — server search was already debounced + cursor-paginated in Phase 1; this
   adds local full-text search over the Room cache via an FTS4 mirror (`CachedContactFts`,
   auto-synced), used as the offline fallback for a search query.
-- **Item 12 (mobile link-action enrichment — ContactsContract MIMETYPE resolution) is deferred
-  to a device pass.** It needs `READ_CONTACTS` + third-party apps installed to resolve which
-  Signal/WhatsApp/Telegram actions are available; the client-side `MobileLinkRegistry` (§7.6)
-  can't be meaningfully built or tested without a device. Not blocked by anything here.
+- **Item 12 — mobile link-action enrichment (ContactsContract MIMETYPE resolution)** — the
+  client-side `MobileLinkRegistry` (§7.6.2/7.6.3) ships: seeded `MobileLinkType`s for signal,
+  whatsapp, telegram, google-meet, zoom, discord, each with their per-action MIMETYPEs and
+  intent builders. `MobileLinkActionResolver` (§7.6.4) queries `ContactsContract.Data` for
+  those MIMETYPEs and returns only the actions whose apps are actually installed; it's built
+  behind an injectable `ContentResolver` so the *registry + resolution* are unit-tested without
+  a device (Robolectric + a fake contacts `ContentProvider`, 12 tests). The contact detail's
+  `LinkRow` now renders `AssistChip`s for each resolved action (§7.6.5), falling back to the
+  plain link + copy when nothing resolves or `READ_CONTACTS` is denied. **Still on-device:**
+  verifying the real MIMETYPE strings against actual installed apps, and the user-extensible
+  custom-link-action editor (§7.6.6).
 
 Architecture review performed on the activities/notes/reminders slices; all findings fixed
 (participant/external-ref preservation on edit, the reminder-complete wiring gap, required-date
