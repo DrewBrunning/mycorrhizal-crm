@@ -45,6 +45,7 @@
     <string name="contact_activities">Activities</string>
     <string name="contact_notes">Notes</string>
     <string name="contact_reminders">Reminders</string>
+    <string name="contact_relationships">Relationships</string>
     <string name="contact_email">Email</string>
     <string name="contact_phone">Phone</string>
     <string name="contact_address">Address</string>
@@ -198,4 +199,13 @@
     <string name="households_remove_member">Remove member</string>
     <string name="households_member_vcard_uid">Contact VCard UID</string>
     <string name="households_role">Role (optional)</string>
+
+    <!-- Relationships -->
+    <string name="relationships_title">Relationships</string>
+    <string name="relationships_new">New relationship</string>
+    <string name="relationships_type">Type</string>
+    <string name="relationships_other_vcard_uid">Other contact VCard UID (optional)</string>
+    <string name="relationships_other_name">Other contact name (optional)</string>
+    <string name="relationships_accept">Accept</string>
+    <string name="relationships_suggested">Suggested</string>
 </resources>

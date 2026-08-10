@@ -44,6 +44,7 @@
     <string name="contact_timeline">Cronología</string>
     <string name="contact_activities">Actividades</string>
     <string name="contact_notes">Notas</string>
+    <string name="contact_relationships">Relaciones</string>
     <string name="contact_reminders">Recordatorios</string>
     <string name="contact_email">Correo electrónico</string>
     <string name="contact_phone">Teléfono</string>
@@ -199,4 +200,14 @@
     <string name="households_remove_member">Quitar miembro</string>
     <string name="households_member_vcard_uid">UID de VCard del contacto</string>
     <string name="households_role">Rol (opcional)</string>
+
+
+    <!-- Relationships -->
+    <string name="relationships_title">Relaciones</string>
+    <string name="relationships_new">Nueva relación</string>
+    <string name="relationships_type">Tipo</string>
+    <string name="relationships_other_vcard_uid">UID de VCard del otro contacto (opcional)</string>
+    <string name="relationships_other_name">Nombre del otro contacto (opcional)</string>
+    <string name="relationships_accept">Aceptar</string>
+    <string name="relationships_suggested">Sugerido</string>
 </resources>

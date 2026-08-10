@@ -24,9 +24,10 @@ import com.mycorrhizal.crm.model.network.ContactsPage
 import com.mycorrhizal.crm.model.network.CreateActivityResponse
 import com.mycorrhizal.crm.model.network.CreateCircleResponse
 import com.mycorrhizal.crm.model.network.CreateContactResponse
-import com.mycorrhizal.crm.model.network.CreateNoteResponse
-import com.mycorrhizal.crm.model.network.CreateReminderResponse
 import com.mycorrhizal.crm.model.network.CreateHouseholdResponse
+import com.mycorrhizal.crm.model.network.CreateNoteResponse
+import com.mycorrhizal.crm.model.network.CreateRelationshipEdgeResponse
+import com.mycorrhizal.crm.model.network.CreateReminderResponse
 import com.mycorrhizal.crm.model.network.CreateTagResponse
 import com.mycorrhizal.crm.model.network.Household
 import com.mycorrhizal.crm.model.network.HouseholdDetailResponse
@@ -38,6 +39,9 @@ import com.mycorrhizal.crm.model.network.LoginRequest
 import com.mycorrhizal.crm.model.network.LoginResponse
 import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.model.network.NoteInput
+import com.mycorrhizal.crm.model.network.RelationshipEdge
+import com.mycorrhizal.crm.model.network.RelationshipEdgeInput
+import com.mycorrhizal.crm.model.network.RelationshipEdgesPage
 import com.mycorrhizal.crm.model.network.Reminder
 import com.mycorrhizal.crm.model.network.ReminderCompleteResponse
 import com.mycorrhizal.crm.model.network.Tag
@@ -361,6 +365,39 @@ class ApiClient(
     suspend fun updateHouseholdMember(id: String, vcardUid: String, input: HouseholdMemberInput): Result<Unit> =
         executePatch("$PLACEHOLDER_ORIGIN$HOUSEHOLDS_PATH/$id/members/$vcardUid", input)
 
+    /** GET /api/v1/relationship-edges — cursor-paginated, filtered by contact. */
+    suspend fun listRelationshipEdges(
+        contactId: String,
+        status: String? = null,
+        cursor: String? = null,
+        limit: Int? = null,
+    ): Result<RelationshipEdgesPage> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$RELATIONSHIP_EDGES_PATH".toHttpUrl().newBuilder()
+        urlBuilder.addQueryParameter("contact_id", contactId)
+        status?.let { urlBuilder.addQueryParameter("status", it) }
+        cursor?.let { urlBuilder.addQueryParameter("cursor", it) }
+        limit?.let { urlBuilder.addQueryParameter("limit", it.toString()) }
+        return executeGet(urlBuilder.build().toString()) { _, body ->
+            moshi.adapter(RelationshipEdgesPage::class.java).fromJson(body)
+        }
+    }
+
+    /** POST /api/v1/relationship-edges — wrapped `{ relationship_edge }`, unwrapped here. */
+    suspend fun createRelationshipEdge(input: RelationshipEdgeInput): Result<RelationshipEdge> =
+        executePost(RELATIONSHIP_EDGES_PATH, input) { _, body ->
+            moshi.adapter(CreateRelationshipEdgeResponse::class.java).fromJson(body)?.relationshipEdge
+        }
+
+    /** PATCH /api/v1/relationship-edges/{id}/accept — promotes a suggestion; raw edge. */
+    suspend fun acceptRelationshipEdge(id: String): Result<RelationshipEdge> =
+        executePatchEmpty("$PLACEHOLDER_ORIGIN$RELATIONSHIP_EDGES_PATH/$id/accept") { _, body ->
+            moshi.adapter(RelationshipEdge::class.java).fromJson(body)
+        }
+
+    /** DELETE /api/v1/relationship-edges/{id} — doubles as reject for suggestions. */
+    suspend fun deleteRelationshipEdge(id: String): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$RELATIONSHIP_EDGES_PATH/$id")
+
     private suspend fun <T> executeGet(
         url: String,
         mapper: (okhttp3.Response, String) -> T?,
@@ -412,6 +449,17 @@ class ApiClient(
         val request = Request.Builder()
             .url(url.toHttpUrl())
             .patch(body.toJsonBody())
+            .build()
+        return execute(request, mapper)
+    }
+
+    private suspend fun <T> executePatchEmpty(
+        url: String,
+        mapper: (okhttp3.Response, String) -> T?,
+    ): Result<T> {
+        val request = Request.Builder()
+            .url(url.toHttpUrl())
+            .patch(okhttp3.RequestBody.create(null, ByteArray(0)))
             .build()
         return execute(request, mapper)
     }
@@ -486,6 +534,7 @@ class ApiClient(
         private const val CIRCLES_PATH = "$API_V1/circles"
         private const val TAGS_PATH = "$API_V1/tags"
         private const val HOUSEHOLDS_PATH = "$API_V1/households"
+        private const val RELATIONSHIP_EDGES_PATH = "$API_V1/relationship-edges"
         private const val AUTH_COOKIE = "auth_token"
     }
 }

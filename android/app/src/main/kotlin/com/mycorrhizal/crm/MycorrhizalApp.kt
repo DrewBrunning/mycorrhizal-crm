@@ -48,6 +48,7 @@ import com.mycorrhizal.crm.feature.contacts.ContactFormScreen
 import com.mycorrhizal.crm.feature.contacts.ContactListScreen
 import com.mycorrhizal.crm.feature.households.HouseholdDetailScreen
 import com.mycorrhizal.crm.feature.households.HouseholdsScreen
+import com.mycorrhizal.crm.feature.relationships.RelationshipsScreen
 import com.mycorrhizal.crm.feature.settings.SettingsScreen
 import com.mycorrhizal.crm.feature.tags.TagDetailScreen
 import com.mycorrhizal.crm.feature.tags.TagsScreen
@@ -212,6 +213,7 @@ private fun MainScaffold() {
                     onViewActivities = { id -> navController.navigate("contacts/$id/activities") },
                     onViewNotes = { id -> navController.navigate("contacts/$id/notes") },
                     onViewReminders = { id -> navController.navigate("contacts/$id/reminders") },
+                    onViewRelationships = { id -> navController.navigate("contacts/$id/relationships") },
                     onEditActivity = { id -> navController.navigate("contacts/$contactId/activities/$id/edit") },
                     onEditNote = { id -> navController.navigate("contacts/$contactId/notes/$id/edit") },
                     onEditReminder = { id -> navController.navigate("contacts/$contactId/reminders/$id/edit") },
@@ -333,6 +335,14 @@ private fun MainScaffold() {
             ) {
                 ReminderFormScreen(
                     onSaved = { navController.popBackStack() },
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            composable(
+                route = "contacts/{contactId}/relationships",
+                arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            ) {
+                RelationshipsScreen(
                     onBack = { navController.popBackStack() },
                 )
             }

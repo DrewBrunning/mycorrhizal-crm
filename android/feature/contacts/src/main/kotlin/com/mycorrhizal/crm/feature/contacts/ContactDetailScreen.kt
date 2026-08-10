@@ -84,6 +84,7 @@ fun ContactDetailScreen(
     onViewActivities: (Int) -> Unit = {},
     onViewNotes: (Int) -> Unit = {},
     onViewReminders: (Int) -> Unit = {},
+    onViewRelationships: (Int) -> Unit = {},
     onEditActivity: (Int) -> Unit = {},
     onEditNote: (Int) -> Unit = {},
     onEditReminder: (Int) -> Unit = {},
@@ -139,6 +140,7 @@ fun ContactDetailScreen(
                     onViewActivities = onViewActivities,
                     onViewNotes = onViewNotes,
                     onViewReminders = onViewReminders,
+                    onViewRelationships = onViewRelationships,
                     onEditActivity = onEditActivity,
                     onEditNote = onEditNote,
                     onEditReminder = onEditReminder,
@@ -155,6 +157,7 @@ fun ContactDetailContent(
     onViewActivities: (Int) -> Unit = {},
     onViewNotes: (Int) -> Unit = {},
     onViewReminders: (Int) -> Unit = {},
+    onViewRelationships: (Int) -> Unit = {},
     onEditActivity: (Int) -> Unit = {},
     onEditNote: (Int) -> Unit = {},
     onEditReminder: (Int) -> Unit = {},
@@ -208,6 +211,16 @@ fun ContactDetailContent(
                     )
                 },
                 modifier = Modifier.fillMaxWidth().clickable { onViewReminders(contact.id) },
+            )
+            androidx.compose.material3.ListItem(
+                headlineContent = { Text(stringResource(R.string.contact_relationships), style = MaterialTheme.typography.bodyLarge) },
+                trailingContent = {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
+                        contentDescription = null,
+                    )
+                },
+                modifier = Modifier.fillMaxWidth().clickable { onViewRelationships(contact.id) },
             )
         }
         if (!card?.emails.isNullOrEmpty()) {

@@ -9,6 +9,7 @@ import com.mycorrhizal.crm.data.local.CachedContactTagDao
 import com.mycorrhizal.crm.data.local.CachedHouseholdDao
 import com.mycorrhizal.crm.data.local.CachedHouseholdMemberDao
 import com.mycorrhizal.crm.data.local.CachedNoteDao
+import com.mycorrhizal.crm.data.local.CachedRelationshipEdgeDao
 import com.mycorrhizal.crm.data.local.CachedReminderDao
 import com.mycorrhizal.crm.data.local.CachedTagDao
 import com.mycorrhizal.crm.data.repository.ActivityRepositoryImpl
@@ -18,6 +19,7 @@ import com.mycorrhizal.crm.data.repository.ContactRepositoryImpl
 import com.mycorrhizal.crm.data.repository.HouseholdRepositoryImpl
 import com.mycorrhizal.crm.data.repository.NoteRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ReminderRepositoryImpl
+import com.mycorrhizal.crm.data.repository.RelationshipEdgeRepositoryImpl
 import com.mycorrhizal.crm.data.repository.TagRepositoryImpl
 import com.mycorrhizal.crm.data.session.DefaultSessionManager
 import com.mycorrhizal.crm.data.session.SessionManager
@@ -30,6 +32,7 @@ import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.HouseholdRepository
 import com.mycorrhizal.crm.domain.repository.NoteRepository
 import com.mycorrhizal.crm.domain.repository.ReminderRepository
+import com.mycorrhizal.crm.domain.repository.RelationshipEdgeRepository
 import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.BaseUrlProvider
@@ -115,6 +118,10 @@ object DataModule {
         db.cachedHouseholdMemberDao()
 
     @Provides
+    fun provideCachedRelationshipEdgeDao(db: AppDatabase): CachedRelationshipEdgeDao =
+        db.cachedRelationshipEdgeDao()
+
+    @Provides
     @Singleton
     fun provideSessionManager(
         tokenStorage: TokenStorage,
@@ -174,4 +181,8 @@ abstract class DataBindsModule {
     @Binds
     @Singleton
     abstract fun bindHouseholdRepository(impl: HouseholdRepositoryImpl): HouseholdRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindRelationshipEdgeRepository(impl: RelationshipEdgeRepositoryImpl): RelationshipEdgeRepository
 }
