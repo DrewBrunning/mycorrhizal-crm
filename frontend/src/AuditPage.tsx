@@ -1,0 +1,322 @@
+import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link as RouterLink } from 'react-router';
+import {
+  Box,
+  Paper,
+  Typography,
+  TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Button,
+  Chip,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+} from '@mui/material';
+import { SelectChangeEvent } from '@mui/material/Select';
+import UndoIcon from '@mui/icons-material/Undo';
+import ClearIcon from '@mui/icons-material/Clear';
+import { useAudit } from './hooks/useAudit';
+import { useDebouncedValue } from './hooks/useDebounce';
+import { AuditEvent, AuditEntityType, AUDIT_ENTITY_TYPES } from './api/audit';
+import { getContactsByUid } from './api/contacts';
+import { useSnackbar } from './context/SnackbarContext';
+import { ListSkeleton } from './components/LoadingSkeletons';
+import { ApiError } from './api/client';
+import { getErrorMessage } from './utils/errorHandler';
+
+const OPERATION_COLORS: Record<AuditEvent['operation'], 'success' | 'info' | 'error'> = {
+  create: 'success',
+  update: 'info',
+  delete: 'error',
+};
+
+// T60 (docs/fork-plan/tickets/79-T60-audit-trail-ui.md): the read-only audit
+// log backed by T18's already-shipped GET /audit. Reverse-chronological list
+// with an entity-type/entity-id filter toolbar and a Contact-only Undo
+// affordance on update events (POST /audit/:id/undo; every other entity or a
+// delete event is 400 server-side, so the button is gated to match).
+export default function AuditPage() {
+  const { t } = useTranslation();
+  const { showSuccess, showError } = useSnackbar();
+
+  const {
+    events,
+    loading,
+    error,
+    entityType,
+    applyEntityType,
+    applyEntityId,
+    clearFilters,
+    handleUndo,
+    canLoadMore,
+    loadMore,
+  } = useAudit();
+
+  // The entity_id field filters server-side but is debounced so every keystroke
+  // doesn't fire a request.
+  const [entityIdInput, setEntityIdInput] = useState('');
+  const debouncedEntityId = useDebouncedValue(entityIdInput, 350);
+  useEffect(() => {
+    applyEntityId(debouncedEntityId);
+  }, [debouncedEntityId, applyEntityId]);
+
+  const [pendingUndo, setPendingUndo] = useState<AuditEvent | null>(null);
+  const [undoing, setUndoing] = useState(false);
+
+  // Resolve the event's contact vcard_uids to (numeric-ID, name) pairs so the
+  // entity cell links to /contacts/:id when the contact still exists. The API
+  // includes archived contacts but not deleted ones, so a deleted contact falls
+  // back to its raw uid as plain text.
+  const contactsByUid = useContactsForEvents(events);
+  const hasFilters = entityType !== '' || entityIdInput.trim() !== '';
+
+  const handleEntityTypeChange = (event: SelectChangeEvent<string>) => {
+    applyEntityType(event.target.value as AuditEntityType | '');
+  };
+
+  const handleClearFilters = () => {
+    setEntityIdInput('');
+    clearFilters();
+  };
+
+  const handleUndoConfirm = async () => {
+    if (!pendingUndo) return;
+    setUndoing(true);
+    try {
+      await handleUndo(pendingUndo.id);
+      showSuccess(t('audit.undo.success'));
+      setPendingUndo(null);
+    } catch (err) {
+      // 410: the event has aged past AUDIT_RETENTION_DAYS and the purge has
+      // removed it -- there is nothing left to undo. Every other failure shows
+      // the server's own message (400 delete/unsupported entity, 404 gone).
+      if (err instanceof ApiError && err.status === 410) {
+        showError(t('audit.undo.retentionGone'));
+      } else {
+        showError(getErrorMessage(err));
+      }
+    } finally {
+      setUndoing(false);
+    }
+  };
+
+  return (
+    <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 2, p: 2 }}>
+      <Typography variant="h5" gutterBottom sx={{ mb: 1.5 }}>
+        {t('audit.title')}
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        {t('audit.description')}
+      </Typography>
+
+      <Paper sx={{ p: 1.5, mb: 2 }}>
+        <Box display="flex" gap={2} flexWrap="wrap" alignItems="center">
+          <FormControl size="small" sx={{ minWidth: 180 }}>
+            <InputLabel id="audit-entity-type-label">{t('audit.filters.entityType')}</InputLabel>
+            <Select
+              labelId="audit-entity-type-label"
+              label={t('audit.filters.entityType')}
+              value={entityType}
+              onChange={handleEntityTypeChange}
+            >
+              <MenuItem value="">{t('audit.filters.entityTypeAll')}</MenuItem>
+              {AUDIT_ENTITY_TYPES.map((type) => (
+                <MenuItem key={type} value={type}>
+                  {t(`audit.entityTypes.${type}`)}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <TextField
+            size="small"
+            label={t('audit.filters.entityId')}
+            value={entityIdInput}
+            onChange={(e) => setEntityIdInput(e.target.value)}
+            variant="outlined"
+            sx={{ flex: 1, minWidth: 200 }}
+          />
+          <Button
+            variant="outlined"
+            size="medium"
+            startIcon={<ClearIcon />}
+            onClick={handleClearFilters}
+            disabled={!hasFilters}
+          >
+            {t('audit.filters.clear')}
+          </Button>
+        </Box>
+      </Paper>
+
+      {error && (
+        <Paper sx={{ p: 2, mb: 2 }}>
+          <Typography color="error">{error}</Typography>
+        </Paper>
+      )}
+
+      {loading && events.length === 0 ? (
+        <ListSkeleton count={8} />
+      ) : events.length === 0 ? (
+        <Paper sx={{ p: 4, textAlign: 'center' }}>
+          <Typography variant="body1" color="text.secondary">
+            {hasFilters ? t('audit.empty') : t('audit.emptyNoFilters')}
+          </Typography>
+        </Paper>
+      ) : (
+        <TableContainer component={Paper}>
+          <Table size="small" sx={{ minWidth: 640 }}>
+            <TableHead>
+              <TableRow>
+                <TableCell>{t('audit.columns.timestamp')}</TableCell>
+                <TableCell>{t('audit.columns.entityType')}</TableCell>
+                <TableCell>{t('audit.columns.operation')}</TableCell>
+                <TableCell>{t('audit.columns.entityId')}</TableCell>
+                <TableCell align="right">{t('audit.columns.actions')}</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {events.map((event) => (
+                <TableRow key={event.id} hover>
+                  <TableCell>
+                    <Typography variant="body2">{formatDateTime(event.created_at)}</Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Chip size="small" variant="outlined" label={t(`audit.entityTypes.${event.entity_type}`)} />
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      size="small"
+                      color={OPERATION_COLORS[event.operation]}
+                      label={t(`audit.operations.${event.operation}`)}
+                    />
+                  </TableCell>
+                  <TableCell sx={{ overflowWrap: 'anywhere' }}>
+                    <EntityIdCell event={event} contact={contactsByUid.get(event.entity_id)} />
+                  </TableCell>
+                  <TableCell align="right">
+                    {event.operation === 'update' && event.entity_type === 'contact' && (
+                      <Button
+                        size="small"
+                        color="inherit"
+                        startIcon={<UndoIcon />}
+                        onClick={() => setPendingUndo(event)}
+                      >
+                        {t('audit.undo.button')}
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+
+      {canLoadMore && (
+        <Box display="flex" justifyContent="center" mt={3}>
+          <Button variant="outlined" onClick={loadMore} disabled={loading}>
+            {t('common.loadMore')}
+          </Button>
+        </Box>
+      )}
+
+      <Dialog open={!!pendingUndo} onClose={() => setPendingUndo(null)}>
+        <DialogTitle>{t('audit.undo.confirmTitle')}</DialogTitle>
+        <DialogContent>
+          <Typography>
+            {pendingUndo &&
+              t('audit.undo.confirmMessage', {
+                entity: t(`audit.entityTypes.${pendingUndo.entity_type}`),
+                date: formatDateTime(pendingUndo.created_at),
+              })}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPendingUndo(null)} disabled={undoing}>
+            {t('common.cancel')}
+          </Button>
+          <Button variant="contained" color="error" onClick={handleUndoConfirm} disabled={undoing}>
+            {t('audit.undo.confirm')}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+}
+
+// Fetches the numeric ID + display name for the events' contact uids. This is
+// the only entity with a navigable per-entity route, so only contact events
+// resolve to a link; every other entity_type renders its raw ID.
+function useContactsForEvents(events: AuditEvent[]) {
+  const [contactsByUid, setContactsByUid] = useState<Map<string, { ID: number; name: string }>>(new Map());
+
+  const contactUids = useMemo(
+    () => [...new Set(events.filter((e) => e.entity_type === 'contact').map((e) => e.entity_id))],
+    [events]
+  );
+
+  useEffect(() => {
+    if (contactUids.length === 0) {
+      setContactsByUid(new Map());
+      return;
+    }
+    let cancelled = false;
+    getContactsByUid(contactUids)
+      .then((byUid) => {
+        if (cancelled) return;
+        const next = new Map<string, { ID: number; name: string }>();
+        for (const [uid, contact] of byUid) {
+          next.set(uid, { ID: contact.ID, name: `${contact.firstname} ${contact.lastname}`.trim() });
+        }
+        setContactsByUid(next);
+      })
+      .catch(() => {
+        // Resolution is a nicety -- the raw uid is still rendered, so a
+        // failure here degrades to plain text rather than an error.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [contactUids]);
+
+  return contactsByUid;
+}
+
+function EntityIdCell({ event, contact }: { event: AuditEvent; contact?: { ID: number; name: string } }) {
+  const { t } = useTranslation();
+  if (event.entity_type === 'contact' && contact) {
+    return (
+      <Typography
+        variant="body2"
+        component={RouterLink}
+        to={`/contacts/${contact.ID}`}
+        sx={{ textDecoration: 'none', color: 'primary.main' }}
+      >
+        {contact.name || t('audit.contactUnnamed')}
+      </Typography>
+    );
+  }
+  return (
+    <Typography variant="body2" component="span" sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>
+      {event.entity_id}
+    </Typography>
+  );
+}
+
+// Audit timestamps need date + time (multiple events can share a day), so this
+// uses the user's locale rather than the date-only DateFormat preference.
+function formatDateTime(iso: string): string {
+  const date = new Date(iso);
+  if (isNaN(date.getTime())) return iso;
+  return date.toLocaleString();
+}

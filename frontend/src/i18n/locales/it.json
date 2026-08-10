@@ -19,7 +19,8 @@
     "profile": "Impostazioni",
     "users": "Utenti",
     "data": "Dati",
-    "shares": "Condivisioni"
+    "shares": "Condivisioni",
+    "audit": "Registro di controllo"
   },
   "household": {
     "title": "Nuclei familiari",
@@ -1573,6 +1574,50 @@
       "deleteDeviceConfirm": "Rimuovere questo dispositivo ({{label}})? Non riceverai più notifiche push qui.",
       "deviceDeleted": "Dispositivo rimosso",
       "deviceDeleteFailed": "Impossibile rimuovere il dispositivo."
+    }
+  },
+  "audit": {
+    "title": "Registro di controllo",
+    "description": "Tutte le creazioni, modifiche ed eliminazioni dei tuoi contatti e registrazioni, dalla più recente alla più vecchia. Le modifiche più vecchie della finestra di conservazione vengono eliminate.",
+    "contactUnnamed": "Contatto senza nome",
+    "filters": {
+      "entityType": "Tipo di entità",
+      "entityTypeAll": "Tutti i tipi",
+      "entityId": "ID entità",
+      "clear": "Cancella filtri"
+    },
+    "columns": {
+      "timestamp": "Quando",
+      "entityType": "Entità",
+      "operation": "Operazione",
+      "entityId": "ID entità",
+      "actions": "Azioni"
+    },
+    "operations": {
+      "create": "Creato",
+      "update": "Aggiornato",
+      "delete": "Eliminato"
+    },
+    "entityTypes": {
+      "contact": "Contatto",
+      "note": "Nota",
+      "activity": "Attività",
+      "life_event": "Evento di vita",
+      "gift": "Regalo",
+      "circle": "Cerchia",
+      "tag": "Etichetta",
+      "household": "Famiglia",
+      "reminder": "Promemoria"
+    },
+    "empty": "Nessun evento di controllo corrisponde ai tuoi filtri.",
+    "emptyNoFilters": "Ancora nessun evento di controllo. Le modifiche apportate ai tuoi contatti e ad altre registrazioni appariranno qui.",
+    "undo": {
+      "button": "Annulla",
+      "confirmTitle": "Annullare questa modifica?",
+      "confirmMessage": "Ripristinare {{entity}} allo stato precedente del {{date}}?",
+      "confirm": "Annulla",
+      "success": "Contatto ripristinato allo stato precedente",
+      "retentionGone": "Questo evento è oltre la sua finestra di conservazione e non può più essere annullato"
     }
   }
 }

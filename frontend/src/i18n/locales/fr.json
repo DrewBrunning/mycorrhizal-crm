@@ -19,7 +19,8 @@
     "profile": "Paramètres",
     "users": "Utilisateurs",
     "data": "Données",
-    "shares": "Partages"
+    "shares": "Partages",
+    "audit": "Journal d'audit"
   },
   "household": {
     "title": "Foyers",
@@ -1573,6 +1574,50 @@
       "deleteDeviceConfirm": "Retirer cet appareil ({{label}}) ? Vous ne recevrez plus de notifications push ici.",
       "deviceDeleted": "Appareil retiré",
       "deviceDeleteFailed": "Impossible de retirer l'appareil."
+    }
+  },
+  "audit": {
+    "title": "Journal d'audit",
+    "description": "Toutes les créations, modifications et suppressions de vos contacts et enregistrements, des plus récentes aux plus anciennes. Les modifications plus anciennes que la fenêtre de conservation sont purgées.",
+    "contactUnnamed": "Contact sans nom",
+    "filters": {
+      "entityType": "Type d'entité",
+      "entityTypeAll": "Tous les types",
+      "entityId": "ID d'entité",
+      "clear": "Effacer les filtres"
+    },
+    "columns": {
+      "timestamp": "Quand",
+      "entityType": "Entité",
+      "operation": "Opération",
+      "entityId": "ID d'entité",
+      "actions": "Actions"
+    },
+    "operations": {
+      "create": "Créé",
+      "update": "Modifié",
+      "delete": "Supprimé"
+    },
+    "entityTypes": {
+      "contact": "Contact",
+      "note": "Note",
+      "activity": "Activité",
+      "life_event": "Événement de vie",
+      "gift": "Cadeau",
+      "circle": "Cercle",
+      "tag": "Étiquette",
+      "household": "Foyer",
+      "reminder": "Rappel"
+    },
+    "empty": "Aucun événement d'audit ne correspond à vos filtres.",
+    "emptyNoFilters": "Aucun événement d'audit pour le moment. Les modifications apportées à vos contacts et autres enregistrements apparaîtront ici.",
+    "undo": {
+      "button": "Annuler",
+      "confirmTitle": "Annuler cette modification ?",
+      "confirmMessage": "Restaurer {{entity}} dans son état antérieur du {{date}} ?",
+      "confirm": "Annuler",
+      "success": "Contact restauré dans son état antérieur",
+      "retentionGone": "Cet événement est hors de sa fenêtre de conservation et ne peut plus être annulé"
     }
   }
 }
