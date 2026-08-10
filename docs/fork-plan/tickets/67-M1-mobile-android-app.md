@@ -2947,3 +2947,22 @@ items 14–19 already exists; the Android side is being built out feature-by-fea
   wired into the app drawer + NavHost, strings in all 5 locales, 9 ViewModel tests hand-verified.
   Verified on-device (Pixel 8a): create → list → detail → delete round-trips against the real
   backend.
+
+**Phase 3 (2026-08-10): COMPLETE** — all sub-resources shipped in `android/`. 337 tests green.
+
+- **Item 14 — Circles: DONE** (`27f1275`). CRUD + member management; verified on-device.
+- **Item 15 — Tags: DONE** (`583266e`). CRUD + contact tagging; verified on-device.
+- **Item 16 — Households: DONE** (`3f8c3a4`). CRUD + member management with type + roles;
+  verified on-device. Address-based suggestion endpoints (suggest-addresses/accept/dismiss)
+  deferred — backend-only, separate concern.
+- **Item 17 — Relationship edges: DONE** (`39394be`). List/create/accept/delete with the 15-token
+  type registry mirror and web-matching direction semantics (effective type inverts when the
+  viewed contact is the source); verified on-device.
+- **Item 18 — Life events/gifts/preferences/agenda: DONE** (`6458666`). Four identical-pattern
+  contact-scoped entities (list/create/delete + agenda discuss PATCH); verified on-device.
+- **Item 19 — Merge + bulk: DONE** (`0fc9569`). Merge preview/resolve-conflicts/commit and bulk
+  archive/unarchive/delete; the full import/export API client + DTOs are ready but the import UI
+  (file picker) is deferred to T57 / Phase 5. Verified on-device.
+
+Phases 4–5 remain planned (Android-native features: call/SMS tracking, quick-capture,
+notifications; then T57 import + polish incl. the recorded UI-deviation checklist).
