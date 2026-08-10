@@ -1,11 +1,13 @@
 package com.mycorrhizal.crm.feature.auth
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.domain.usecase.LoginUseCase
 import com.mycorrhizal.crm.domain.usecase.LoginWithApiTokenUseCase
 import com.mycorrhizal.crm.model.util.Validators
+import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,6 +22,9 @@ data class LoginUiState(
     val serverUrl: String = "",
     val mode: LoginMode = LoginMode.PASSWORD,
     val isLoading: Boolean = false,
+    /** Static validation error as a string resource id, resolved in the UI. */
+    @StringRes val errorRes: Int? = null,
+    /** Dynamic server error text (e.g. "Invalid credentials"). */
     val error: String? = null,
 )
 
@@ -48,7 +53,7 @@ class LoginViewModel @Inject constructor(
     }
 
     fun onModeChange(mode: LoginMode) {
-        _uiState.update { it.copy(mode = mode, error = null) }
+        _uiState.update { it.copy(mode = mode, errorRes = null, error = null) }
     }
 
     /**
@@ -67,12 +72,31 @@ class LoginViewModel @Inject constructor(
         val trimmedUrl = serverUrl.trim().trimEnd('/')
         if (!Validators.isValidServerUrl(trimmedUrl)) {
             _uiState.update {
-                it.copy(error = "Enter a valid server URL, e.g. https://crm.example.com")
+                it.copy(errorRes = R.string.login_error_valid_server_url, error = null)
             }
             return
         }
 
-        _uiState.update { it.copy(isLoading = true, error = null) }
+        // Field-level validation (blank checks, token prefix) is a UI concern —
+        // these are localized here, not in the domain use cases.
+        val validationError = when (_uiState.value.mode) {
+            LoginMode.PASSWORD -> when {
+                identifier.isBlank() -> R.string.login_error_identifier_required
+                password.isBlank() -> R.string.login_error_password_required
+                else -> null
+            }
+            LoginMode.API_TOKEN -> when {
+                apiToken.isBlank() -> R.string.login_error_token_required
+                !apiToken.startsWith("mycorrhizal_") -> R.string.login_error_token_prefix
+                else -> null
+            }
+        }
+        if (validationError != null) {
+            _uiState.update { it.copy(errorRes = validationError, error = null) }
+            return
+        }
+
+        _uiState.update { it.copy(isLoading = true, errorRes = null, error = null) }
         viewModelScope.launch {
             sessionManager.setServerUrl(trimmedUrl)
             _events.send(LoginEvent.ServerUrlUpdated)
@@ -102,6 +126,6 @@ class LoginViewModel @Inject constructor(
     }
 
     fun onErrorShown() {
-        _uiState.update { it.copy(error = null) }
+        _uiState.update { it.copy(errorRes = null, error = null) }
     }
 }

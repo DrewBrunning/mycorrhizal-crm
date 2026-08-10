@@ -35,10 +35,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mycorrhizal.crm.model.network.ReminderRecurrence
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,7 +65,7 @@ fun ReminderFormScreen(
             TopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                     }
                 },
                 title = {
@@ -93,7 +95,8 @@ fun ReminderFormScreen(
         }
     }
 
-    state.error?.let { message ->
+    val errorMessage = state.errorRes?.let { stringResource(it) } ?: state.error
+    errorMessage?.let { message ->
         LaunchedEffect(message) {
             snackbarHostState.showSnackbar(message)
             viewModel.onErrorShown()
@@ -124,15 +127,15 @@ fun ReminderFormContent(
         OutlinedTextField(
             value = state.message,
             onValueChange = onMessageChange,
-            label = { Text("Message") },
+            label = { Text(stringResource(R.string.reminder_message)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
         OutlinedTextField(
             value = state.remindAt,
             onValueChange = onRemindAtChange,
-            label = { Text("Remind at (ISO 8601)") },
-            placeholder = { Text("2026-08-10T14:00:00Z") },
+            label = { Text(stringResource(R.string.reminder_remind_at)) },
+            placeholder = { Text(stringResource(R.string.activity_date_hint)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -144,7 +147,7 @@ fun ReminderFormContent(
                 value = state.recurrence,
                 onValueChange = {},
                 readOnly = true,
-                label = { Text("Recurrence") },
+                label = { Text(stringResource(R.string.reminder_recurrence)) },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = recurrenceExpanded) },
                 modifier = Modifier.fillMaxWidth().menuAnchor(),
             )
@@ -164,7 +167,7 @@ fun ReminderFormContent(
             }
         }
         androidx.compose.material3.ListItem(
-            headlineContent = { Text("Email reminder", style = MaterialTheme.typography.bodyLarge) },
+            headlineContent = { Text(stringResource(R.string.reminder_email), style = MaterialTheme.typography.bodyLarge) },
             trailingContent = {
                 Switch(checked = state.byMail, onCheckedChange = onByMailChange)
             },

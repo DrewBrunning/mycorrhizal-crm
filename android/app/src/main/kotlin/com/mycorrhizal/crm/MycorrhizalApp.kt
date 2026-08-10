@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -26,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.rememberDrawerState
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -50,19 +52,20 @@ import com.mycorrhizal.crm.feature.timeline.NoteFormScreen
 import com.mycorrhizal.crm.feature.timeline.NotesScreen
 import com.mycorrhizal.crm.feature.timeline.ReminderFormScreen
 import com.mycorrhizal.crm.feature.timeline.RemindersScreen
+import com.mycorrhizal.crm.ui.R
 
 private data class BottomNavItem(
     val route: String,
-    val label: String,
+    @StringRes val labelRes: Int,
     val icon: ImageVector,
 )
 
 private val bottomNavItems = listOf(
-    BottomNavItem("contacts", "Contacts", Icons.Outlined.Contacts),
-    BottomNavItem("search", "Search", Icons.Outlined.Search),
-    BottomNavItem("notes", "Notes", Icons.Outlined.EditNote),
-    BottomNavItem("activities", "Activities", Icons.Outlined.EventNote),
-    BottomNavItem("home", "Home", Icons.Outlined.Home),
+    BottomNavItem("contacts", R.string.nav_contacts, Icons.Outlined.Contacts),
+    BottomNavItem("search", R.string.nav_search, Icons.Outlined.Search),
+    BottomNavItem("notes", R.string.nav_notes, Icons.Outlined.EditNote),
+    BottomNavItem("activities", R.string.nav_activities, Icons.Outlined.EventNote),
+    BottomNavItem("home", R.string.nav_home, Icons.Outlined.Home),
 )
 
 @Composable
@@ -98,13 +101,13 @@ private fun MainScaffold() {
         drawerContent = {
             ModalDrawerSheet {
                 Text(
-                    text = "Mycorrhizal",
+                    text = stringResource(R.string.app_name),
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.padding(16.dp),
                 )
                 HorizontalDivider()
                 NavigationDrawerItem(
-                    label = { Text("Settings") },
+                    label = { Text(stringResource(R.string.nav_settings)) },
                     selected = currentDestination?.route == "settings",
                     onClick = {
                         scope.launch { drawerState.close() }
@@ -115,7 +118,7 @@ private fun MainScaffold() {
                 // Phase-3 destinations (network/households/shares/users land with
                 // their sub-resource screens; for now they are placeholders).
                 NavigationDrawerItem(
-                    label = { Text("Network") },
+                    label = { Text(stringResource(R.string.nav_network)) },
                     selected = false,
                     onClick = {
                         scope.launch { drawerState.close() }
@@ -124,7 +127,7 @@ private fun MainScaffold() {
                     modifier = Modifier.padding(horizontal = 8.dp),
                 )
                 NavigationDrawerItem(
-                    label = { Text("Households") },
+                    label = { Text(stringResource(R.string.nav_households)) },
                     selected = false,
                     onClick = {
                         scope.launch { drawerState.close() }
@@ -151,8 +154,8 @@ private fun MainScaffold() {
                                         restoreState = true
                                     }
                                 },
-                                icon = { Icon(item.icon, contentDescription = item.label) },
-                                label = { Text(item.label) },
+                                icon = { Icon(item.icon, contentDescription = stringResource(item.labelRes)) },
+                                label = { Text(stringResource(item.labelRes)) },
                             )
                         }
                     }
@@ -306,10 +309,10 @@ private fun MainScaffold() {
                     onBack = { navController.popBackStack() },
                 )
             }
-            composable("search") { PlaceholderScreen("Search") }
-            composable("notes") { PlaceholderScreen("Notes") }
-            composable("activities") { PlaceholderScreen("Activities") }
-            composable("home") { PlaceholderScreen("Home") }
+            composable("search") { PlaceholderScreen(R.string.nav_search) }
+            composable("notes") { PlaceholderScreen(R.string.nav_notes) }
+            composable("activities") { PlaceholderScreen(R.string.nav_activities) }
+            composable("home") { PlaceholderScreen(R.string.nav_home) }
 
             composable("settings") {
                 SettingsScreen(
@@ -317,18 +320,18 @@ private fun MainScaffold() {
                     onLoggedOut = { navController.popBackStack() },
                 )
             }
-            composable("network") { PlaceholderScreen("Network") }
-            composable("households") { PlaceholderScreen("Households") }
+            composable("network") { PlaceholderScreen(R.string.nav_network) }
+            composable("households") { PlaceholderScreen(R.string.nav_households) }
         }
         }
     }
 }
 
 @Composable
-private fun PlaceholderScreen(title: String) {
+private fun PlaceholderScreen(@StringRes titleRes: Int) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Text(
-            text = "$title — coming in a later phase",
+            text = stringResource(R.string.coming_soon, stringResource(titleRes)),
             style = MaterialTheme.typography.bodyLarge,
         )
     }

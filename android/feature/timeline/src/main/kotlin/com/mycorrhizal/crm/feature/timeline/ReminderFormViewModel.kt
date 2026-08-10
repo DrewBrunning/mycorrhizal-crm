@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.timeline
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -7,6 +8,7 @@ import com.mycorrhizal.crm.domain.repository.ReminderRepository
 import com.mycorrhizal.crm.model.network.Reminder
 import com.mycorrhizal.crm.model.network.ReminderRecurrence
 import com.mycorrhizal.crm.network.foldApiError
+import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,6 +30,7 @@ data class ReminderFormState(
     val byMail: Boolean = false,
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
+    @StringRes val errorRes: Int? = null,
     val error: String? = null,
 ) {
     val isEdit: Boolean get() = reminderId != null
@@ -42,12 +45,11 @@ data class ReminderFormState(
         contactId = contactId.takeIf { it != 0 },
     )
 
-    fun validate(): String? = when {
-        !hasMessage -> "Message is required"
-        remindAt.isBlank() -> "Remind date is required"
-        remindAt.isNotBlank() && !remindAt.matches(ISO_DATETIME_REGEX) ->
-            "Remind date must be ISO 8601, e.g. 2026-08-10T14:00:00Z"
-        recurrence !in ReminderRecurrence.ALL -> "Unknown recurrence"
+    fun validate(): Int? = when {
+        !hasMessage -> R.string.reminder_error_message
+        remindAt.isBlank() -> R.string.reminder_error_remind_at_required
+        remindAt.isNotBlank() && !remindAt.matches(ISO_DATETIME_REGEX) -> R.string.reminder_error_remind_at
+        recurrence !in ReminderRecurrence.ALL -> R.string.reminder_error_recurrence
         else -> null
     }
 
@@ -91,7 +93,7 @@ class ReminderFormViewModel @Inject constructor(
     fun loadExisting() {
         val id = reminderId ?: return
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(isLoading = true, errorRes = null, error = null) }
             reminderRepository.get(id).foldApiError(
                 onSuccess = { reminder ->
                     _uiState.update { it.toFormState(reminder).copy(isLoading = false) }
@@ -107,7 +109,7 @@ class ReminderFormViewModel @Inject constructor(
     fun onRemindAtChange(value: String) = _uiState.update { it.copy(remindAt = value) }
     fun onRecurrenceChange(value: String) = _uiState.update { it.copy(recurrence = value) }
     fun onByMailChange(value: Boolean) = _uiState.update { it.copy(byMail = value) }
-    fun onErrorShown() = _uiState.update { it.copy(error = null) }
+    fun onErrorShown() = _uiState.update { it.copy(errorRes = null, error = null) }
 
     fun save() {
         val state = _uiState.value
@@ -115,12 +117,12 @@ class ReminderFormViewModel @Inject constructor(
 
         val problem = state.validate()
         if (problem != null) {
-            _uiState.update { it.copy(error = problem) }
+            _uiState.update { it.copy(errorRes = problem, error = null) }
             return
         }
 
         val reminder = state.toReminder()
-        _uiState.update { it.copy(isSaving = true, error = null) }
+        _uiState.update { it.copy(isSaving = true, errorRes = null, error = null) }
         viewModelScope.launch {
             val result = if (state.reminderId != null) {
                 reminderRepository.update(state.reminderId, reminder)

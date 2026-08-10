@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.timeline
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -7,6 +8,7 @@ import com.mycorrhizal.crm.domain.repository.ActivityRepository
 import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ActivityInput
 import com.mycorrhizal.crm.network.foldApiError
+import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,6 +32,7 @@ data class ActivityFormState(
     val location: String = "",
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
+    @StringRes val errorRes: Int? = null,
     val error: String? = null,
     /** Participant contact IDs carried from the loaded activity. When editing,
      *  the full participant set is preserved (an activity may span contacts);
@@ -52,10 +55,9 @@ data class ActivityFormState(
         externalRef = externalRef,
     )
 
-    fun validate(): String? = when {
-        !hasTitle -> "Title is required"
-        date.isNotBlank() && !date.matches(ISO_DATETIME_REGEX) ->
-            "Date must be ISO 8601, e.g. 2026-08-10T14:00:00Z"
+    fun validate(): Int? = when {
+        !hasTitle -> R.string.activity_error_title
+        date.isNotBlank() && !date.matches(ISO_DATETIME_REGEX) -> R.string.activity_error_date
         else -> null
     }
 
@@ -101,7 +103,7 @@ class ActivityFormViewModel @Inject constructor(
     fun loadExisting() {
         val id = activityId ?: return
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(isLoading = true, errorRes = null, error = null) }
             activityRepository.get(id).foldApiError(
                 onSuccess = { activity ->
                     _uiState.update { it.toFormState(activity).copy(isLoading = false) }
@@ -118,7 +120,7 @@ class ActivityFormViewModel @Inject constructor(
     fun onDateChange(value: String) = _uiState.update { it.copy(date = value) }
     fun onDescriptionChange(value: String) = _uiState.update { it.copy(description = value) }
     fun onLocationChange(value: String) = _uiState.update { it.copy(location = value) }
-    fun onErrorShown() = _uiState.update { it.copy(error = null) }
+    fun onErrorShown() = _uiState.update { it.copy(errorRes = null, error = null) }
 
     fun save() {
         val state = _uiState.value
@@ -126,12 +128,12 @@ class ActivityFormViewModel @Inject constructor(
 
         val problem = state.validate()
         if (problem != null) {
-            _uiState.update { it.copy(error = problem) }
+            _uiState.update { it.copy(errorRes = problem, error = null) }
             return
         }
 
         val input = state.toInput()
-        _uiState.update { it.copy(isSaving = true, error = null) }
+        _uiState.update { it.copy(isSaving = true, errorRes = null, error = null) }
         viewModelScope.launch {
             val result = if (state.activityId != null) {
                 activityRepository.update(state.activityId, input)

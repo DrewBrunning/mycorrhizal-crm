@@ -18,6 +18,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.mycorrhizal.crm.ui.R
 
 /**
  * The unified timeline section for a contact detail page (Phase 2 item 10).
@@ -38,7 +40,7 @@ fun TimelineSection(
     Column(modifier = modifier) {
         if (items.isEmpty()) {
             Text(
-                text = "No timeline entries yet",
+                text = stringResource(R.string.timeline_empty),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -105,7 +107,7 @@ private fun TimelineRowBase(
 @Composable
 private fun TimelineActivityRow(title: String, type: String, onClick: () -> Unit) {
     TimelineRowBase(
-        icon = { Icon(Icons.Outlined.EventNote, contentDescription = "Activity") },
+        icon = { Icon(Icons.Outlined.EventNote, contentDescription = stringResource(R.string.cd_activity)) },
         title = title,
         subtitle = type,
         onClick = onClick,
@@ -115,7 +117,7 @@ private fun TimelineActivityRow(title: String, type: String, onClick: () -> Unit
 @Composable
 private fun TimelineNoteRow(content: String, onClick: () -> Unit) {
     TimelineRowBase(
-        icon = { Icon(Icons.Outlined.StickyNote2, contentDescription = "Note") },
+        icon = { Icon(Icons.Outlined.StickyNote2, contentDescription = stringResource(R.string.cd_note)) },
         title = content,
         subtitle = "",
         onClick = onClick,
@@ -131,7 +133,7 @@ private fun TimelineReminderRow(
     onComplete: () -> Unit,
 ) {
     TimelineRowBase(
-        icon = { Icon(Icons.Outlined.Notifications, contentDescription = "Reminder") },
+        icon = { Icon(Icons.Outlined.Notifications, contentDescription = stringResource(R.string.cd_reminder)) },
         title = message,
         subtitle = recurrence ?: "",
         onClick = onClick,
@@ -139,7 +141,7 @@ private fun TimelineReminderRow(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (!completed) {
                     androidx.compose.material3.IconButton(onClick = onComplete) {
-                        Icon(Icons.Outlined.CalendarToday, contentDescription = "Complete reminder")
+                        Icon(Icons.Outlined.CalendarToday, contentDescription = stringResource(R.string.cd_complete_reminder))
                     }
                 }
             }

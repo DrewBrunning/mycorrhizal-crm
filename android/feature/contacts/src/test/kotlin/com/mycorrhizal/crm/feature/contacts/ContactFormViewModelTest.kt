@@ -12,6 +12,7 @@ import com.mycorrhizal.crm.model.network.Email
 import com.mycorrhizal.crm.model.network.Phone
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
+import com.mycorrhizal.crm.ui.R
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -141,7 +142,7 @@ class ContactFormViewModelTest {
         vm.save()
         advanceUntilIdle()
 
-        assertEquals("At least one given name is required", vm.uiState.value.error)
+        assertEquals(R.string.contact_error_given_name, vm.uiState.value.errorRes)
         coVerify(exactly = 0) { contactRepository.createContact(any()) }
     }
 

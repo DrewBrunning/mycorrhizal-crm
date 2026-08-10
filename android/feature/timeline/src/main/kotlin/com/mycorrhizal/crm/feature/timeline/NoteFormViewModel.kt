@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.timeline
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -7,6 +8,7 @@ import com.mycorrhizal.crm.domain.repository.NoteRepository
 import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.model.network.NoteInput
 import com.mycorrhizal.crm.network.foldApiError
+import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,6 +28,7 @@ data class NoteFormState(
     val date: String = "",
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
+    @StringRes val errorRes: Int? = null,
     val error: String? = null,
 ) {
     val isEdit: Boolean get() = noteId != null
@@ -37,11 +40,10 @@ data class NoteFormState(
         contactId = contactId.takeIf { it != 0 },
     )
 
-    fun validate(): String? = when {
-        !hasContent -> "Note content is required"
-        date.isBlank() -> "Date is required"
-        date.isNotBlank() && !date.matches(ISO_DATETIME_REGEX) ->
-            "Date must be ISO 8601, e.g. 2026-08-10T14:00:00Z"
+    fun validate(): Int? = when {
+        !hasContent -> R.string.note_error_content
+        date.isBlank() -> R.string.note_error_date_required
+        date.isNotBlank() && !date.matches(ISO_DATETIME_REGEX) -> R.string.note_error_date
         else -> null
     }
 
@@ -85,7 +87,7 @@ class NoteFormViewModel @Inject constructor(
     fun loadExisting() {
         val id = noteId ?: return
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(isLoading = true, errorRes = null, error = null) }
             noteRepository.get(id).foldApiError(
                 onSuccess = { note ->
                     _uiState.update { it.toFormState(note).copy(isLoading = false) }
@@ -99,7 +101,7 @@ class NoteFormViewModel @Inject constructor(
 
     fun onContentChange(value: String) = _uiState.update { it.copy(content = value) }
     fun onDateChange(value: String) = _uiState.update { it.copy(date = value) }
-    fun onErrorShown() = _uiState.update { it.copy(error = null) }
+    fun onErrorShown() = _uiState.update { it.copy(errorRes = null, error = null) }
 
     fun save() {
         val state = _uiState.value
@@ -107,12 +109,12 @@ class NoteFormViewModel @Inject constructor(
 
         val problem = state.validate()
         if (problem != null) {
-            _uiState.update { it.copy(error = problem) }
+            _uiState.update { it.copy(errorRes = problem, error = null) }
             return
         }
 
         val input = state.toInput()
-        _uiState.update { it.copy(isSaving = true, error = null) }
+        _uiState.update { it.copy(isSaving = true, errorRes = null, error = null) }
         viewModelScope.launch {
             val result = if (state.noteId != null) {
                 noteRepository.update(state.noteId, input)

@@ -6,6 +6,7 @@ import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.model.network.NoteInput
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
+import com.mycorrhizal.crm.ui.R
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -49,7 +50,7 @@ class NotesViewModelTest {
         val vm = viewModel(contactId = 0)
         advanceUntilIdle()
 
-        assertEquals("Missing contact id", vm.uiState.value.error)
+        assertEquals(R.string.note_error_missing_id, vm.uiState.value.errorRes)
     }
 
     @Test
@@ -96,7 +97,7 @@ class NoteFormViewModelTest {
         vm.save()
         advanceUntilIdle()
 
-        assertEquals("Note content is required", vm.uiState.value.error)
+        assertEquals(R.string.note_error_content, vm.uiState.value.errorRes)
         coVerify(exactly = 0) { noteRepository.create(any(), any()) }
     }
 
@@ -107,7 +108,7 @@ class NoteFormViewModelTest {
         vm.save()
         advanceUntilIdle()
 
-        assertEquals("Date is required", vm.uiState.value.error)
+        assertEquals(R.string.note_error_date_required, vm.uiState.value.errorRes)
         coVerify(exactly = 0) { noteRepository.create(any(), any()) }
     }
 
@@ -167,7 +168,7 @@ class NoteFormViewModelTest {
         vm.save()
         advanceUntilIdle()
 
-        assertEquals("Date must be ISO 8601, e.g. 2026-08-10T14:00:00Z", vm.uiState.value.error)
+        assertEquals(R.string.note_error_date, vm.uiState.value.errorRes)
         coVerify(exactly = 0) { noteRepository.create(any(), any()) }
     }
 

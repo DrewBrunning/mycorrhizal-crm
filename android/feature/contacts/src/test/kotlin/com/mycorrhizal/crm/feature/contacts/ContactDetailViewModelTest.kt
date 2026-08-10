@@ -7,6 +7,7 @@ import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.Name
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
+import com.mycorrhizal.crm.ui.R
 import androidx.lifecycle.SavedStateHandle
 import io.mockk.coEvery
 import io.mockk.mockk
@@ -49,7 +50,7 @@ class ContactDetailViewModelTest {
         val vm = viewModel(0)
         advanceUntilIdle()
 
-        assertEquals("Missing contact id", vm.uiState.value.error)
+        assertEquals(R.string.contact_error_missing_id, vm.uiState.value.errorRes)
     }
 
     @Test

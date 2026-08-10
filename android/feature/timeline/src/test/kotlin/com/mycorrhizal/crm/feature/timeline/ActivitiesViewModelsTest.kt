@@ -6,6 +6,7 @@ import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ActivityInput
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
+import com.mycorrhizal.crm.ui.R
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -49,7 +50,7 @@ class ActivitiesViewModelTest {
         val vm = viewModel(contactId = 0)
         advanceUntilIdle()
 
-        assertEquals("Missing contact id", vm.uiState.value.error)
+        assertEquals(R.string.activity_error_missing_id, vm.uiState.value.errorRes)
     }
 
     @Test
@@ -96,7 +97,7 @@ class ActivityFormViewModelTest {
         vm.save()
         advanceUntilIdle()
 
-        assertEquals("Title is required", vm.uiState.value.error)
+        assertEquals(R.string.activity_error_title, vm.uiState.value.errorRes)
         coVerify(exactly = 0) { activityRepository.create(any()) }
     }
 
@@ -209,7 +210,7 @@ class ActivityFormViewModelTest {
         vm.save()
         advanceUntilIdle()
 
-        assertEquals("Date must be ISO 8601, e.g. 2026-08-10T14:00:00Z", vm.uiState.value.error)
+        assertEquals(R.string.activity_error_date, vm.uiState.value.errorRes)
         coVerify(exactly = 0) { activityRepository.create(any()) }
     }
 

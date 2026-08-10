@@ -31,11 +31,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mycorrhizal.crm.model.network.Reminder
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,11 +55,11 @@ fun RemindersScreen(
             TopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                     }
                 },
                 title = {
-                    Text("Reminders", style = MaterialTheme.typography.titleLarge)
+                    Text(stringResource(R.string.reminders_title), style = MaterialTheme.typography.titleLarge)
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
@@ -66,7 +68,7 @@ fun RemindersScreen(
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onCreateReminder) {
-                Icon(Icons.Outlined.Add, contentDescription = "New reminder")
+                Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.cd_new_reminder))
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -76,8 +78,8 @@ fun RemindersScreen(
                 state.isLoading -> LoadingSkeleton()
                 state.reminders.isEmpty() && state.error == null ->
                     EmptyState(message = "No reminders yet")
-                state.reminders.isEmpty() && state.error != null ->
-                    EmptyState(state.error.orEmpty())
+                state.reminders.isEmpty() && (state.errorRes != null || state.error != null) ->
+                    EmptyState(state.errorRes?.let { stringResource(it) } ?: state.error.orEmpty())
                 else -> {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
                         items(state.reminders, key = { it.id }) { reminder ->
@@ -137,7 +139,7 @@ fun ReminderListItem(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (!reminder.completed) {
                     IconButton(onClick = onComplete, enabled = !isCompleting) {
-                        Icon(Icons.Outlined.Check, contentDescription = "Complete reminder")
+                        Icon(Icons.Outlined.Check, contentDescription = stringResource(R.string.cd_complete_reminder))
                     }
                 }
             }

@@ -45,6 +45,7 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -53,6 +54,7 @@ import coil3.compose.AsyncImage
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -119,11 +121,11 @@ fun ContactListScreenContent(
             TopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onMenuClick) {
-                        Icon(Icons.Outlined.Menu, contentDescription = "Menu")
+                        Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
                     }
                 },
                 title = {
-                    Text("Contacts", style = MaterialTheme.typography.titleLarge)
+                    Text(stringResource(R.string.nav_contacts), style = MaterialTheme.typography.titleLarge)
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
@@ -132,7 +134,7 @@ fun ContactListScreenContent(
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onCreateContact) {
-                Icon(Icons.Outlined.Add, contentDescription = "New contact")
+                Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.contacts_new))
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -148,7 +150,7 @@ fun ContactListScreenContent(
                     search = it
                     onSearchQueryChange(it)
                 },
-                label = { Text("Search contacts") },
+                label = { Text(stringResource(R.string.contacts_search_hint)) },
                 singleLine = true,
                 modifier = Modifier
                     .fillMaxWidth()

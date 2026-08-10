@@ -1,11 +1,13 @@
 package com.mycorrhizal.crm.feature.timeline
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.ActivityRepository
 import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.network.foldApiError
+import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,8 +20,10 @@ data class ActivitiesUiState(
     val contactId: Int = 0,
     val activities: List<Activity> = emptyList(),
     val isLoading: Boolean = false,
+    @StringRes val errorRes: Int? = null,
     val error: String? = null,
 )
+
 
 @HiltViewModel
 class ActivitiesViewModel @Inject constructor(
@@ -41,7 +45,7 @@ class ActivitiesViewModel @Inject constructor(
 
     fun load() {
         if (contactId == 0) {
-            _uiState.update { it.copy(isLoading = false, error = "Missing contact id") }
+            _uiState.update { it.copy(isLoading = false, errorRes = R.string.activity_error_missing_id, error = null) }
             return
         }
         viewModelScope.launch {
@@ -58,6 +62,6 @@ class ActivitiesViewModel @Inject constructor(
     }
 
     fun onErrorShown() {
-        _uiState.update { it.copy(error = null) }
+        _uiState.update { it.copy(errorRes = null, error = null) }
     }
 }

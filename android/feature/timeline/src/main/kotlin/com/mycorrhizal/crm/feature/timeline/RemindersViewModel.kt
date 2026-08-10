@@ -1,11 +1,13 @@
 package com.mycorrhizal.crm.feature.timeline
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.ReminderRepository
 import com.mycorrhizal.crm.model.network.Reminder
 import com.mycorrhizal.crm.network.foldApiError
+import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,6 +21,7 @@ data class RemindersUiState(
     val reminders: List<Reminder> = emptyList(),
     val isLoading: Boolean = false,
     val completingId: Int? = null,
+    @StringRes val errorRes: Int? = null,
     val error: String? = null,
 )
 
@@ -42,7 +45,7 @@ class RemindersViewModel @Inject constructor(
 
     fun load() {
         if (contactId == 0) {
-            _uiState.update { it.copy(isLoading = false, error = "Missing contact id") }
+            _uiState.update { it.copy(isLoading = false, errorRes = R.string.reminder_error_missing_id, error = null) }
             return
         }
         viewModelScope.launch {
@@ -90,6 +93,6 @@ class RemindersViewModel @Inject constructor(
     }
 
     fun onErrorShown() {
-        _uiState.update { it.copy(error = null) }
+        _uiState.update { it.copy(errorRes = null, error = null) }
     }
 }

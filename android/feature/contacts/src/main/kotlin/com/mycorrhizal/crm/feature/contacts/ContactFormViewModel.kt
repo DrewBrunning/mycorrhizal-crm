@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.contacts
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -19,6 +20,7 @@ import com.mycorrhizal.crm.model.network.PartialDate
 import com.mycorrhizal.crm.model.network.CardNote
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
+import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -47,6 +49,7 @@ data class ContactFormState(
     val circlesText: String = "",
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
+    @StringRes val errorRes: Int? = null,
     val error: String? = null,
 ) {
     val isEdit: Boolean get() = contactId != null
@@ -103,9 +106,9 @@ data class ContactFormState(
         )
     }
 
-    /** Validate the form; returns the first problem or null if valid. */
-    fun validate(): String? = when {
-        !hasName -> "At least one given name is required"
+    /** Validate the form; returns the first problem's string resource id or null if valid. */
+    fun validate(): Int? = when {
+        !hasName -> R.string.contact_error_given_name
         else -> null
     }
 
@@ -187,7 +190,7 @@ class ContactFormViewModel @Inject constructor(
     fun loadExisting() {
         val id = contactId ?: return
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(isLoading = true, errorRes = null, error = null) }
             contactRepository.getContact(id).foldApiError(
                 onSuccess = { record ->
                     baseRecord = record
@@ -208,7 +211,7 @@ class ContactFormViewModel @Inject constructor(
     fun onBirthdayChange(value: String) = _uiState.update { it.copy(birthday = value) }
     fun onNotesChange(value: String) = _uiState.update { it.copy(notes = value) }
     fun onCirclesTextChange(value: String) = _uiState.update { it.copy(circlesText = value) }
-    fun onErrorShown() = _uiState.update { it.copy(error = null) }
+    fun onErrorShown() = _uiState.update { it.copy(errorRes = null, error = null) }
 
     fun save() {
         val state = _uiState.value
@@ -216,13 +219,13 @@ class ContactFormViewModel @Inject constructor(
 
         val problem = state.validate()
         if (problem != null) {
-            _uiState.update { it.copy(error = problem) }
+            _uiState.update { it.copy(errorRes = problem, error = null) }
             return
         }
 
         // Snapshot the input up front so edits typed mid-save don't race it.
         val input = state.toInput(baseRecord)
-        _uiState.update { it.copy(isSaving = true, error = null) }
+        _uiState.update { it.copy(isSaving = true, errorRes = null, error = null) }
         viewModelScope.launch {
             val result = if (state.contactId != null) {
                 contactRepository.updateContact(state.contactId, input)

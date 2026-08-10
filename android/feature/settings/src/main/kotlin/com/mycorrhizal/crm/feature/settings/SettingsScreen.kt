@@ -27,9 +27,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mycorrhizal.crm.ui.theme.AppTypography
+import com.mycorrhizal.crm.ui.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,11 +55,11 @@ fun SettingsScreen(
             TopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                     }
                 },
                 title = {
-                    Text("Settings", style = AppTypography.appBarTitle)
+                    Text(stringResource(R.string.settings_title), style = AppTypography.appBarTitle)
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
@@ -88,7 +90,7 @@ fun SettingsContent(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text("Session", style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.settings_session), style = MaterialTheme.typography.titleMedium)
         InfoRow("Server", state.session.serverUrl ?: "—")
         InfoRow("Username", state.session.username ?: "—")
         InfoRow("Language", state.session.language ?: "—")
@@ -103,23 +105,23 @@ fun SettingsContent(
             if (state.isLoggingOut) {
                 CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
             }
-            Text("Log out")
+            Text(stringResource(R.string.settings_log_out))
         }
     }
 
     if (confirmLogout) {
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { confirmLogout = false },
-            title = { Text("Log out?") },
-            text = { Text("You will need to sign in again to access this server.") },
+            title = { Text(stringResource(R.string.settings_log_out_title)) },
+            text = { Text(stringResource(R.string.settings_log_out_body)) },
             confirmButton = {
                 Button(onClick = { confirmLogout = false; onLogout() }) {
-                    Text("Log out")
+                    Text(stringResource(R.string.settings_log_out))
                 }
             },
             dismissButton = {
                 androidx.compose.material3.TextButton(onClick = { confirmLogout = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.settings_cancel))
                 }
             },
         )

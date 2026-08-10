@@ -42,6 +42,7 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -58,6 +59,7 @@ import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.theme.AppTypography
 import com.mycorrhizal.crm.feature.timeline.TimelineSection
 import com.mycorrhizal.crm.feature.timeline.toTimelineItems
+import com.mycorrhizal.crm.ui.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,7 +91,7 @@ fun ContactDetailScreen(
             TopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                     }
                 },
                 title = {
@@ -101,7 +103,7 @@ fun ContactDetailScreen(
                 actions = {
                     state.contact?.let { contact ->
                         IconButton(onClick = { onEdit(contact.id) }) {
-                            Icon(Icons.Outlined.Edit, contentDescription = "Edit contact")
+                            Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.contact_edit))
                         }
                     }
                 },
@@ -114,7 +116,8 @@ fun ContactDetailScreen(
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when {
                 state.isLoading -> LoadingSkeleton()
-                state.contact == null && state.error != null -> EmptyState(state.error.orEmpty())
+                state.contact == null && (state.errorRes != null || state.error != null) ->
+                    EmptyState(state.errorRes?.let { stringResource(it) } ?: state.error.orEmpty())
                 state.contact == null -> EmptyState("Contact not found")
                 else -> ContactDetailContent(
                     contact = state.contact!!,
@@ -162,7 +165,7 @@ fun ContactDetailContent(
         item {
             // Entry points to the per-type list screens (full management view).
             androidx.compose.material3.ListItem(
-                headlineContent = { Text("Activities", style = MaterialTheme.typography.bodyLarge) },
+                headlineContent = { Text(stringResource(R.string.contact_activities), style = MaterialTheme.typography.bodyLarge) },
                 trailingContent = {
                     Icon(
                         imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
@@ -172,7 +175,7 @@ fun ContactDetailContent(
                 modifier = Modifier.fillMaxWidth().clickable { onViewActivities(contact.id) },
             )
             androidx.compose.material3.ListItem(
-                headlineContent = { Text("Notes", style = MaterialTheme.typography.bodyLarge) },
+                headlineContent = { Text(stringResource(R.string.contact_notes), style = MaterialTheme.typography.bodyLarge) },
                 trailingContent = {
                     Icon(
                         imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
@@ -182,7 +185,7 @@ fun ContactDetailContent(
                 modifier = Modifier.fillMaxWidth().clickable { onViewNotes(contact.id) },
             )
             androidx.compose.material3.ListItem(
-                headlineContent = { Text("Reminders", style = MaterialTheme.typography.bodyLarge) },
+                headlineContent = { Text(stringResource(R.string.contact_reminders), style = MaterialTheme.typography.bodyLarge) },
                 trailingContent = {
                     Icon(
                         imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
@@ -341,10 +344,10 @@ private fun EmailRow(email: Email) {
         email.label?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         if (address.isNotBlank()) {
             IconButton(onClick = { context.startActivity(FieldActions.emailIntent(address)) }) {
-                Icon(Icons.Outlined.Email, contentDescription = "Compose email")
+                Icon(Icons.Outlined.Email, contentDescription = stringResource(R.string.cd_compose_email))
             }
             IconButton(onClick = { FieldActions.copyText(context, "email", address) }) {
-                Icon(Icons.Outlined.ContentCopy, contentDescription = "Copy email")
+                Icon(Icons.Outlined.ContentCopy, contentDescription = stringResource(R.string.cd_copy_email))
             }
         }
     }
@@ -369,16 +372,16 @@ private fun PhoneRow(phone: Phone) {
         }
         if (number.isNotBlank()) {
             IconButton(onClick = { context.startActivity(FieldActions.dialIntent(number)) }) {
-                Icon(Icons.Outlined.Call, contentDescription = "Call")
+                Icon(Icons.Outlined.Call, contentDescription = stringResource(R.string.cd_call))
             }
             // SMS only for mobile numbers (T34: phone feature detection).
             if (phone.features?.contains("cell") == true) {
                 IconButton(onClick = { context.startActivity(FieldActions.smsIntent(number)) }) {
-                    Icon(Icons.Outlined.Message, contentDescription = "Text")
+                    Icon(Icons.Outlined.Message, contentDescription = stringResource(R.string.cd_text))
                 }
             }
             IconButton(onClick = { FieldActions.copyText(context, "phone", number) }) {
-                Icon(Icons.Outlined.ContentCopy, contentDescription = "Copy phone number")
+                Icon(Icons.Outlined.ContentCopy, contentDescription = stringResource(R.string.cd_copy_phone))
             }
         }
     }
@@ -401,10 +404,10 @@ private fun AddressRow(address: Address) {
         )
         if (text.isNotBlank()) {
             IconButton(onClick = { context.startActivity(FieldActions.mapIntent(text)) }) {
-                Icon(Icons.Outlined.Map, contentDescription = "Open in maps")
+                Icon(Icons.Outlined.Map, contentDescription = stringResource(R.string.cd_open_maps))
             }
             IconButton(onClick = { FieldActions.copyText(context, "address", text) }) {
-                Icon(Icons.Outlined.ContentCopy, contentDescription = "Copy address")
+                Icon(Icons.Outlined.ContentCopy, contentDescription = stringResource(R.string.cd_copy_address))
             }
         }
     }
@@ -427,10 +430,10 @@ private fun LinkRow(uri: String, label: String) {
         )
         if (uri.isNotBlank()) {
             IconButton(onClick = { context.startActivity(FieldActions.browserIntent(uri)) }) {
-                Icon(Icons.Outlined.OpenInNew, contentDescription = "Open link")
+                Icon(Icons.Outlined.OpenInNew, contentDescription = stringResource(R.string.cd_open_link))
             }
             IconButton(onClick = { FieldActions.copyText(context, "url", uri) }) {
-                Icon(Icons.Outlined.ContentCopy, contentDescription = "Copy link")
+                Icon(Icons.Outlined.ContentCopy, contentDescription = stringResource(R.string.cd_copy_link))
             }
         }
     }

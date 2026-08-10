@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App / navigation -->
+    <string name="app_name">Mycorrhizal</string>
+    <string name="nav_contacts">Contatti</string>
+    <string name="nav_search">Cerca</string>
+    <string name="nav_notes">Note</string>
+    <string name="nav_activities">Attività</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_settings">Impostazioni</string>
+    <string name="nav_network">Rete</string>
+    <string name="nav_households">Nuclei familiari</string>
+    <string name="coming_soon">%1$s — disponibile in una fase successiva</string>
+    <string name="cd_menu">Menu</string>
+    <string name="cd_back">Indietro</string>
+
+    <!-- Login -->
+    <string name="login_connect_to_server">Connettiti al tuo server Mycorrhizal</string>
+    <string name="login_server_url">URL del server</string>
+    <string name="login_server_url_hint">https://crm.example.com</string>
+    <string name="login_mode_password">Password</string>
+    <string name="login_mode_api_token">Token API</string>
+    <string name="login_username_or_email">Nome utente o email</string>
+    <string name="login_api_token">Token API</string>
+    <string name="login_api_token_hint">mycorrhizal_…</string>
+    <string name="login_sign_in">Accedi</string>
+    <string name="login_error_valid_server_url">Inserisci un URL del server valido, es. https://crm.example.com</string>
+    <string name="login_error_identifier_required">Nome utente o email richiesti</string>
+    <string name="login_error_password_required">La password è obbligatoria</string>
+    <string name="login_error_token_required">Il token API è obbligatorio</string>
+    <string name="login_error_token_prefix">I token API iniziano con \'mycorrhizal_\'</string>
+
+    <!-- Contact list -->
+    <string name="contacts_search_hint">Cerca contatti</string>
+    <string name="contacts_empty">Ancora nessun contatto</string>
+    <string name="contacts_new">Nuovo contatto</string>
+    <string name="contacts_photo_description">Foto di %1$s</string>
+
+    <!-- Contact detail -->
+    <string name="contact_title_fallback">Contatto</string>
+    <string name="contact_not_found">Contatto non trovato</string>
+    <string name="contact_timeline">Cronologia</string>
+    <string name="contact_activities">Attività</string>
+    <string name="contact_notes">Note</string>
+    <string name="contact_reminders">Promemoria</string>
+    <string name="contact_email">Email</string>
+    <string name="contact_phone">Telefono</string>
+    <string name="contact_address">Indirizzo</string>
+    <string name="contact_links">Link</string>
+    <string name="contact_organization">Organizzazione</string>
+    <string name="contact_personal_info">Informazioni personali</string>
+    <string name="contact_circles">Cerchie</string>
+    <string name="contact_edit">Modifica contatto</string>
+    <string name="cd_call">Chiama</string>
+    <string name="cd_text">Messaggio</string>
+    <string name="cd_compose_email">Scrivi email</string>
+    <string name="cd_copy_email">Copia email</string>
+    <string name="cd_copy_phone">Copia numero di telefono</string>
+    <string name="cd_open_maps">Apri nelle mappe</string>
+    <string name="cd_copy_address">Copia indirizzo</string>
+    <string name="cd_open_link">Apri link</string>
+    <string name="cd_copy_link">Copia link</string>
+
+    <!-- Contact form -->
+    <string name="contact_new">Nuovo contatto</string>
+    <string name="contact_edit_title">Modifica contatto</string>
+    <string name="contact_given_name">Nome</string>
+    <string name="contact_surname">Cognome</string>
+    <string name="contact_nickname">Soprannome</string>
+    <string name="contact_birthday">Data di nascita</string>
+    <string name="contact_birthday_hint">1990-06-15 or --12-25</string>
+    <string name="contact_value_n">Valore %1$d</string>
+    <string name="contact_circles_label">Cerchie (separate da virgole)</string>
+    <string name="contact_remove">Rimuovi</string>
+    <string name="contact_add">Aggiungi</string>
+    <string name="contact_create">Crea contatto</string>
+    <string name="contact_save">Salva modifiche</string>
+    <string name="contact_error_given_name">È richiesto almeno un nome</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Impostazioni</string>
+    <string name="settings_session">Sessione</string>
+    <string name="settings_server">Server</string>
+    <string name="settings_username">Nome utente</string>
+    <string name="settings_language">Lingua</string>
+    <string name="settings_date_format">Formato data</string>
+    <string name="settings_admin">Admin</string>
+    <string name="settings_yes">Sì</string>
+    <string name="settings_no">No</string>
+    <string name="settings_log_out">Esci</string>
+    <string name="settings_log_out_title">Uscire?</string>
+    <string name="settings_log_out_body">Dovrai accedere di nuovo per usare questo server.</string>
+    <string name="settings_cancel">Annulla</string>
+
+    <!-- Activities -->
+    <string name="activities_title">Attività</string>
+    <string name="activities_empty">Ancora nessuna attività</string>
+    <string name="activity_new">Nuova attività</string>
+    <string name="activity_edit">Modifica attività</string>
+    <string name="activity_title">Titolo</string>
+    <string name="activity_type">Tipo</string>
+    <string name="activity_type_hint">call, visit, meal, message, gift, …</string>
+    <string name="activity_date">Data (ISO 8601)</string>
+    <string name="activity_date_hint">2026-08-10T14:00:00Z</string>
+    <string name="activity_location">Posizione</string>
+    <string name="activity_description">Descrizione</string>
+    <string name="activity_create">Crea attività</string>
+    <string name="activity_save">Salva modifiche</string>
+    <string name="activity_error_title">Il titolo è obbligatorio</string>
+    <string name="activity_error_date">La data deve essere in formato ISO 8601, es. 2026-08-10T14:00:00Z</string>
+    <string name="cd_new_activity">Nuova attività</string>
+
+    <!-- Notes -->
+    <string name="notes_title">Note</string>
+    <string name="notes_empty">Ancora nessuna nota</string>
+    <string name="note_new">Nuova nota</string>
+    <string name="note_edit">Modifica nota</string>
+    <string name="note_content">Nota</string>
+    <string name="note_date">Data (ISO 8601)</string>
+    <string name="note_date_hint">2026-08-10T14:00:00Z</string>
+    <string name="note_create">Crea nota</string>
+    <string name="note_save">Salva modifiche</string>
+    <string name="note_error_content">Il contenuto della nota è obbligatorio</string>
+    <string name="note_error_date_required">La data è obbligatoria</string>
+    <string name="note_error_date">La data deve essere in formato ISO 8601, es. 2026-08-10T14:00:00Z</string>
+    <string name="contact_error_missing_id">ID contatto mancante</string>
+    <string name="activity_error_missing_id">ID contatto mancante</string>
+    <string name="note_error_missing_id">ID contatto mancante</string>
+    <string name="reminder_error_missing_id">ID contatto mancante</string>
+    <string name="cd_new_note">Nuova nota</string>
+
+    <!-- Reminders -->
+    <string name="reminders_title">Promemoria</string>
+    <string name="reminders_empty">Ancora nessun promemoria</string>
+    <string name="reminder_new">Nuovo promemoria</string>
+    <string name="reminder_edit">Modifica promemoria</string>
+    <string name="reminder_message">Messaggio</string>
+    <string name="reminder_remind_at">Promemoria alle (ISO 8601)</string>
+    <string name="reminder_remind_at_hint">2026-08-10T14:00:00Z</string>
+    <string name="reminder_recurrence">Ricorrenza</string>
+    <string name="reminder_email">Promemoria via email</string>
+    <string name="reminder_create">Crea promemoria</string>
+    <string name="reminder_save">Salva modifiche</string>
+    <string name="reminder_error_message">Il messaggio è obbligatorio</string>
+    <string name="reminder_error_remind_at_required">La data del promemoria è obbligatoria</string>
+    <string name="reminder_error_remind_at">La data del promemoria deve essere in formato ISO 8601, es. 2026-08-10T14:00:00Z</string>
+    <string name="reminder_error_recurrence">Ricorrenza sconosciuta</string>
+    <string name="cd_complete_reminder">Completa promemoria</string>
+    <string name="cd_new_reminder">Nuovo promemoria</string>
+
+    <!-- Timeline -->
+    <string name="timeline_empty">Ancora nessuna voce nella cronologia</string>
+    <string name="cd_activity">Attività</string>
+    <string name="cd_note">Nota</string>
+    <string name="cd_reminder">Promemoria</string>
+</resources>

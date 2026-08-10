@@ -28,8 +28,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.mycorrhizal.crm.ui.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,7 +56,7 @@ fun ActivityFormScreen(
             TopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                     }
                 },
                 title = {
@@ -82,7 +84,8 @@ fun ActivityFormScreen(
         )
     }
 
-    state.error?.let { message ->
+    val errorMessage = state.errorRes?.let { stringResource(it) } ?: state.error
+    errorMessage?.let { message ->
         LaunchedEffect(message) {
             snackbarHostState.showSnackbar(message)
             viewModel.onErrorShown()
@@ -111,37 +114,37 @@ fun ActivityFormContent(
         OutlinedTextField(
             value = state.title,
             onValueChange = onTitleChange,
-            label = { Text("Title") },
+            label = { Text(stringResource(R.string.activity_title)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
         OutlinedTextField(
             value = state.type,
             onValueChange = onTypeChange,
-            label = { Text("Type") },
-            placeholder = { Text("call, visit, meal, message, gift, …") },
+            label = { Text(stringResource(R.string.activity_type)) },
+            placeholder = { Text(stringResource(R.string.activity_type_hint)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
         OutlinedTextField(
             value = state.date,
             onValueChange = onDateChange,
-            label = { Text("Date (ISO 8601)") },
-            placeholder = { Text("2026-08-10T14:00:00Z") },
+            label = { Text(stringResource(R.string.activity_date)) },
+            placeholder = { Text(stringResource(R.string.activity_date_hint)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
         OutlinedTextField(
             value = state.location,
             onValueChange = onLocationChange,
-            label = { Text("Location") },
+            label = { Text(stringResource(R.string.activity_location)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
         OutlinedTextField(
             value = state.description,
             onValueChange = onDescriptionChange,
-            label = { Text("Description") },
+            label = { Text(stringResource(R.string.activity_description)) },
             minLines = 3,
             modifier = Modifier.fillMaxWidth(),
         )

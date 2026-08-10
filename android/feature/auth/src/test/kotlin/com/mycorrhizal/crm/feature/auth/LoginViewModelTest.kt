@@ -7,6 +7,7 @@ import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.domain.usecase.LoginUseCase
 import com.mycorrhizal.crm.domain.usecase.LoginWithApiTokenUseCase
 import com.mycorrhizal.crm.testing.MainDispatcherRule
+import com.mycorrhizal.crm.ui.R
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -68,7 +69,7 @@ class LoginViewModelTest {
         val h = harness()
         submit(h, serverUrl = "")
 
-        assertEquals("Enter a valid server URL, e.g. https://crm.example.com", h.viewModel.uiState.value.error)
+        assertEquals(R.string.login_error_valid_server_url, h.viewModel.uiState.value.errorRes)
     }
 
     @Test
@@ -77,7 +78,7 @@ class LoginViewModelTest {
         submit(h, serverUrl = "https://attacker@crm.example.com")
         advanceUntilIdle()
 
-        assertEquals("Enter a valid server URL, e.g. https://crm.example.com", h.viewModel.uiState.value.error)
+        assertEquals(R.string.login_error_valid_server_url, h.viewModel.uiState.value.errorRes)
         coVerify(exactly = 0) { h.authRepository.login(any(), any()) }
     }
 
@@ -96,7 +97,7 @@ class LoginViewModelTest {
         submit(h, identifier = "")
         advanceUntilIdle()
 
-        assertEquals("Username or email is required", h.viewModel.uiState.value.error)
+        assertEquals(R.string.login_error_identifier_required, h.viewModel.uiState.value.errorRes)
         coVerify(exactly = 0) { h.authRepository.login(any(), any()) }
     }
 
@@ -136,7 +137,7 @@ class LoginViewModelTest {
         submit(h, apiToken = "not-a-token")
         advanceUntilIdle()
 
-        assertEquals("API tokens start with 'mycorrhizal_'", h.viewModel.uiState.value.error)
+        assertEquals(R.string.login_error_token_prefix, h.viewModel.uiState.value.errorRes)
         coVerify(exactly = 0) { h.authRepository.loginWithApiToken(any()) }
     }
 

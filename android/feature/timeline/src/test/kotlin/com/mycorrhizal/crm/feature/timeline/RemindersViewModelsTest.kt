@@ -6,6 +6,7 @@ import com.mycorrhizal.crm.model.network.Reminder
 import com.mycorrhizal.crm.model.network.ReminderRecurrence
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
+import com.mycorrhizal.crm.ui.R
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -52,7 +53,7 @@ class RemindersViewModelTest {
         val vm = viewModel(contactId = 0)
         advanceUntilIdle()
 
-        assertEquals("Missing contact id", vm.uiState.value.error)
+        assertEquals(R.string.reminder_error_missing_id, vm.uiState.value.errorRes)
     }
 
     @Test
@@ -138,7 +139,7 @@ class ReminderFormViewModelTest {
         vm.save()
         advanceUntilIdle()
 
-        assertEquals("Message is required", vm.uiState.value.error)
+        assertEquals(R.string.reminder_error_message, vm.uiState.value.errorRes)
         coVerify(exactly = 0) { reminderRepository.create(any(), any()) }
     }
 
@@ -203,7 +204,7 @@ class ReminderFormViewModelTest {
         vm.save()
         advanceUntilIdle()
 
-        assertEquals("Remind date must be ISO 8601, e.g. 2026-08-10T14:00:00Z", vm.uiState.value.error)
+        assertEquals(R.string.reminder_error_remind_at, vm.uiState.value.errorRes)
         coVerify(exactly = 0) { reminderRepository.create(any(), any()) }
     }
 

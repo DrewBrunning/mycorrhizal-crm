@@ -33,9 +33,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,7 +62,7 @@ fun ContactFormScreen(
             TopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                     }
                 },
                 title = {
@@ -93,7 +95,8 @@ fun ContactFormScreen(
         }
     }
 
-    state.error?.let { message ->
+    val errorMessage = state.errorRes?.let { stringResource(it) } ?: state.error
+    errorMessage?.let { message ->
         LaunchedEffect(message) {
             snackbarHostState.showSnackbar(message)
             viewModel.onErrorShown()
@@ -126,14 +129,14 @@ fun ContactFormContent(
             OutlinedTextField(
                 value = state.givenName,
                 onValueChange = onGivenNameChange,
-                label = { Text("Given name") },
+                label = { Text(stringResource(R.string.contact_given_name)) },
                 singleLine = true,
                 modifier = Modifier.weight(1f),
             )
             OutlinedTextField(
                 value = state.surname,
                 onValueChange = onSurnameChange,
-                label = { Text("Surname") },
+                label = { Text(stringResource(R.string.contact_surname)) },
                 singleLine = true,
                 modifier = Modifier.weight(1f),
             )
@@ -141,7 +144,7 @@ fun ContactFormContent(
         OutlinedTextField(
             value = state.nickname,
             onValueChange = onNicknameChange,
-            label = { Text("Nickname") },
+            label = { Text(stringResource(R.string.contact_nickname)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -165,8 +168,8 @@ fun ContactFormContent(
         OutlinedTextField(
             value = state.birthday,
             onValueChange = onBirthdayChange,
-            label = { Text("Birthday") },
-            placeholder = { Text("1990-06-15 or --12-25") },
+            label = { Text(stringResource(R.string.contact_birthday)) },
+            placeholder = { Text(stringResource(R.string.contact_birthday_hint)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -174,7 +177,7 @@ fun ContactFormContent(
         OutlinedTextField(
             value = state.notes,
             onValueChange = onNotesChange,
-            label = { Text("Notes") },
+            label = { Text(stringResource(R.string.nav_notes)) },
             minLines = 3,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -182,7 +185,7 @@ fun ContactFormContent(
         OutlinedTextField(
             value = state.circlesText,
             onValueChange = onCirclesTextChange,
-            label = { Text("Circles (comma-separated)") },
+            label = { Text(stringResource(R.string.contact_circles_label)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -229,7 +232,7 @@ private fun StringListEditor(
                     onValueChange = { updated ->
                         onValuesChange(values.toMutableList().apply { this[index] = updated })
                     },
-                    label = { Text("Value ${index + 1}") },
+                    label = { Text(stringResource(R.string.contact_value_n, index + 1)) },
                     placeholder = { Text(placeholder) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
@@ -240,7 +243,7 @@ private fun StringListEditor(
                         onValuesChange(values.toMutableList().apply { removeAt(index) })
                     }
                 }) {
-                    Icon(Icons.Outlined.Delete, contentDescription = "Remove")
+                    Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.contact_remove))
                 }
             }
         }

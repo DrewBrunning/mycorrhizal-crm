@@ -28,11 +28,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,11 +52,11 @@ fun NotesScreen(
             TopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                     }
                 },
                 title = {
-                    Text("Notes", style = MaterialTheme.typography.titleLarge)
+                    Text(stringResource(R.string.nav_notes), style = MaterialTheme.typography.titleLarge)
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
@@ -63,7 +65,7 @@ fun NotesScreen(
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onCreateNote) {
-                Icon(Icons.Outlined.Add, contentDescription = "New note")
+                Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.cd_new_note))
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -73,8 +75,8 @@ fun NotesScreen(
                 state.isLoading -> LoadingSkeleton()
                 state.notes.isEmpty() && state.error == null ->
                     EmptyState(message = "No notes yet")
-                state.notes.isEmpty() && state.error != null ->
-                    EmptyState(state.error.orEmpty())
+                state.notes.isEmpty() && (state.errorRes != null || state.error != null) ->
+                    EmptyState(state.errorRes?.let { stringResource(it) } ?: state.error.orEmpty())
                 else -> {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
                         items(state.notes, key = { it.id }) { note ->

@@ -28,9 +28,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,7 +57,7 @@ fun NoteFormScreen(
             TopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                     }
                 },
                 title = {
@@ -83,7 +85,8 @@ fun NoteFormScreen(
         }
     }
 
-    state.error?.let { message ->
+    val errorMessage = state.errorRes?.let { stringResource(it) } ?: state.error
+    errorMessage?.let { message ->
         LaunchedEffect(message) {
             snackbarHostState.showSnackbar(message)
             viewModel.onErrorShown()
@@ -109,15 +112,15 @@ fun NoteFormContent(
         OutlinedTextField(
             value = state.content,
             onValueChange = onContentChange,
-            label = { Text("Note") },
+            label = { Text(stringResource(R.string.note_content)) },
             minLines = 6,
             modifier = Modifier.fillMaxWidth(),
         )
         OutlinedTextField(
             value = state.date,
             onValueChange = onDateChange,
-            label = { Text("Date (ISO 8601)") },
-            placeholder = { Text("2026-08-10T14:00:00Z") },
+            label = { Text(stringResource(R.string.activity_date)) },
+            placeholder = { Text(stringResource(R.string.activity_date_hint)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )

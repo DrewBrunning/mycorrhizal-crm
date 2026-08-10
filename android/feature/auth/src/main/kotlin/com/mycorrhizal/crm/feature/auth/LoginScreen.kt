@@ -31,8 +31,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.mycorrhizal.crm.ui.R
 
 @Composable
 fun LoginScreen(
@@ -92,19 +94,19 @@ fun LoginScreenContent(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(
-                text = "Mycorrhizal",
+                text = stringResource(R.string.app_name),
                 style = MaterialTheme.typography.titleLarge,
             )
             Text(
-                text = "Connect to your Mycorrhizal server",
+                text = stringResource(R.string.login_connect_to_server),
                 style = MaterialTheme.typography.bodyLarge,
             )
 
             OutlinedTextField(
                 value = serverUrl,
                 onValueChange = { serverUrl = it; onServerUrlChange(it) },
-                label = { Text("Server URL") },
-                placeholder = { Text("https://crm.example.com") },
+                label = { Text(stringResource(R.string.login_server_url)) },
+                placeholder = { Text(stringResource(R.string.login_server_url_hint)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                 modifier = Modifier.fillMaxWidth(),
@@ -115,26 +117,26 @@ fun LoginScreenContent(
                     selected = uiState.mode == LoginMode.PASSWORD,
                     onClick = { onModeChange(LoginMode.PASSWORD) },
                     shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                ) { Text("Password") }
+                ) { Text(stringResource(R.string.login_mode_password)) }
                 SegmentedButton(
                     selected = uiState.mode == LoginMode.API_TOKEN,
                     onClick = { onModeChange(LoginMode.API_TOKEN) },
                     shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                ) { Text("API token") }
+                ) { Text(stringResource(R.string.login_api_token)) }
             }
 
             if (uiState.mode == LoginMode.PASSWORD) {
                 OutlinedTextField(
                     value = identifier,
                     onValueChange = { identifier = it },
-                    label = { Text("Username or email") },
+                    label = { Text(stringResource(R.string.login_username_or_email)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
-                    label = { Text("Password") },
+                    label = { Text(stringResource(R.string.login_mode_password)) },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth(),
@@ -143,8 +145,8 @@ fun LoginScreenContent(
                 OutlinedTextField(
                     value = apiToken,
                     onValueChange = { apiToken = it },
-                    label = { Text("API token") },
-                    placeholder = { Text("mycorrhizal_…") },
+                    label = { Text(stringResource(R.string.login_api_token)) },
+                    placeholder = { Text(stringResource(R.string.login_api_token_hint)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -159,11 +161,12 @@ fun LoginScreenContent(
                     },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Sign in")
+                    Text(stringResource(R.string.login_sign_in))
                 }
             }
 
-            uiState.error?.let { message ->
+            val errorMessage = uiState.errorRes?.let { stringResource(it) } ?: uiState.error
+            errorMessage?.let { message ->
                 LaunchedEffect(message) {
                     snackbarHostState.showSnackbar(message)
                     onErrorShown()
