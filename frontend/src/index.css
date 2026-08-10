@@ -7,6 +7,5 @@ body {
 }
 
 code {
-  font-family: 'Fira Code', 'Fira Mono', 'IBM Plex Mono', Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+  font-family: 'IBM Plex Mono', Menlo, Monaco, Consolas, 'Courier New', monospace;
 }

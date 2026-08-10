@@ -7,6 +7,8 @@ mobile clients (which should use the TTFs here directly rather than duplicating 
   Medium (500), SemiBold (600). No italic.
 - **IBM Plex Sans** — everything else (all functional UI). Weights: Regular (400), Medium (500),
   SemiBold (600), Bold (700), plus italic for all four.
+- **IBM Plex Mono** — monospace UI (audit IDs, build version, webhook tokens). Weights: Regular (400)
+  only so far.
 
 Both are SIL Open Font License 1.1 — free to embed and redistribute, including in a mobile app bundle.
 
@@ -20,8 +22,8 @@ The static per-weight files were extracted with [fonttools](https://github.com/f
 instancer, which pins the axis to a fixed value without touching glyph coverage (unlike subsetting, this
 doesn't drop any characters — full latin/accented-character coverage for all five UI locales is intact).
 
-IBM Plex Sans ships as static per-weight files upstream; these were converted directly to WOFF2 without
-subsetting, retaining full glyph coverage.
+IBM Plex Sans and IBM Plex Mono ship as static per-weight files upstream; these were converted directly
+to WOFF2 without subsetting, retaining full glyph coverage.
 
 ```bash
 pip install fonttools brotli
