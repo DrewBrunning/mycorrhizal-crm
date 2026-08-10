@@ -62,6 +62,7 @@ fun ContactDetailScreen(
     onBack: () -> Unit,
     onEdit: (Int) -> Unit = {},
     onViewActivities: (Int) -> Unit = {},
+    onViewNotes: (Int) -> Unit = {},
     viewModel: ContactDetailViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -111,6 +112,7 @@ fun ContactDetailScreen(
                 else -> ContactDetailContent(
                     contact = state.contact!!,
                     onViewActivities = onViewActivities,
+                    onViewNotes = onViewNotes,
                 )
             }
         }
@@ -121,6 +123,7 @@ fun ContactDetailScreen(
 fun ContactDetailContent(
     contact: ContactRecordResponse,
     onViewActivities: (Int) -> Unit = {},
+    onViewNotes: (Int) -> Unit = {},
 ) {
     val card = contact.card
     LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -128,7 +131,7 @@ fun ContactDetailContent(
             ContactHeader(contact = contact, card = card)
         }
         item {
-            // Entry point to the contact's activity list (Phase 2 item 7).
+            // Entry points to the contact's activity + note lists (Phase 2).
             androidx.compose.material3.ListItem(
                 headlineContent = { Text("Activities", style = MaterialTheme.typography.bodyLarge) },
                 trailingContent = {
@@ -138,6 +141,16 @@ fun ContactDetailContent(
                     )
                 },
                 modifier = Modifier.fillMaxWidth().clickable { onViewActivities(contact.id) },
+            )
+            androidx.compose.material3.ListItem(
+                headlineContent = { Text("Notes", style = MaterialTheme.typography.bodyLarge) },
+                trailingContent = {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
+                        contentDescription = null,
+                    )
+                },
+                modifier = Modifier.fillMaxWidth().clickable { onViewNotes(contact.id) },
             )
         }
         if (!card?.emails.isNullOrEmpty()) {

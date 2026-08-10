@@ -36,6 +36,8 @@ import com.mycorrhizal.crm.feature.contacts.ContactFormScreen
 import com.mycorrhizal.crm.feature.contacts.ContactListScreen
 import com.mycorrhizal.crm.feature.timeline.ActivitiesScreen
 import com.mycorrhizal.crm.feature.timeline.ActivityFormScreen
+import com.mycorrhizal.crm.feature.timeline.NoteFormScreen
+import com.mycorrhizal.crm.feature.timeline.NotesScreen
 
 private data class BottomNavItem(
     val route: String,
@@ -121,6 +123,7 @@ private fun MainScaffold() {
                     onBack = { navController.popBackStack() },
                     onEdit = { id -> navController.navigate("contacts/$id/edit") },
                     onViewActivities = { id -> navController.navigate("contacts/$id/activities") },
+                    onViewNotes = { id -> navController.navigate("contacts/$id/notes") },
                 )
             }
             composable(
@@ -172,6 +175,38 @@ private fun MainScaffold() {
                 ),
             ) {
                 ActivityFormScreen(
+                    onSaved = { navController.popBackStack() },
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            composable(
+                route = "contacts/{contactId}/notes",
+                arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            ) { entry ->
+                val contactId = entry.arguments?.getInt("contactId") ?: 0
+                NotesScreen(
+                    onBack = { navController.popBackStack() },
+                    onCreateNote = { navController.navigate("contacts/$contactId/notes/new") },
+                    onEditNote = { noteId -> navController.navigate("contacts/$contactId/notes/$noteId/edit") },
+                )
+            }
+            composable(
+                route = "contacts/{contactId}/notes/new",
+                arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            ) {
+                NoteFormScreen(
+                    onSaved = { navController.popBackStack() },
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            composable(
+                route = "contacts/{contactId}/notes/{noteId}/edit",
+                arguments = listOf(
+                    navArgument("contactId") { type = NavType.IntType },
+                    navArgument("noteId") { type = NavType.IntType },
+                ),
+            ) {
+                NoteFormScreen(
                     onSaved = { navController.popBackStack() },
                     onBack = { navController.popBackStack() },
                 )

@@ -6,6 +6,7 @@ import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordInput
 import com.mycorrhizal.crm.model.network.LoginResponse
 import com.mycorrhizal.crm.model.network.Name
+import com.mycorrhizal.crm.model.network.NoteInput
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import okhttp3.OkHttpClient
@@ -436,5 +437,96 @@ class ApiClientTest {
         val page = result.getOrThrow()
         assertEquals(1, page.activities.size)
         assertEquals("cursor-9", page.nextCursor)
+    }
+
+    @Test
+    fun `list contact notes parses the wrapped notes array`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "notes": [
+                        {"ID": 3, "content": "Loves climbing", "date": "2026-08-01T10:00:00Z"},
+                        {"ID": 4, "content": "Met at conference", "date": "2026-08-02T11:00:00Z"}
+                      ]
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        val result = client.listContactNotes(5)
+
+        assertTrue(result.isSuccess)
+        val notes = result.getOrThrow().notes
+        assertEquals(2, notes.size)
+        assertEquals(3, notes[0].id)
+        assertEquals("Loves climbing", notes[0].content)
+
+        val request = server.takeRequest()
+        assertEquals("/api/v1/contacts/5/notes", request.path)
+    }
+
+    @Test
+    fun `create note posts to the contact path and unwraps`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "message": "Note created successfully",
+                      "note": {"ID": 3, "content": "Loves climbing"}
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        val result = client.createNote(5, NoteInput(content = "Loves climbing"))
+
+        assertTrue(result.isSuccess)
+        assertEquals(3, result.getOrThrow().id)
+        assertEquals("Loves climbing", result.getOrThrow().content)
+
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/contacts/5/notes", request.path)
+    }
+
+    @Test
+    fun `update note sends a PUT to the note path`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """{"ID": 3, "content": "Loves rock climbing"}""",
+                ),
+        )
+
+        val result = client.updateNote(3, NoteInput(content = "Loves rock climbing"))
+
+        assertTrue(result.isSuccess)
+        assertEquals("Loves rock climbing", result.getOrThrow().content)
+
+        val request = server.takeRequest()
+        assertEquals("PUT", request.method)
+        assertEquals("/api/v1/notes/3", request.path)
+    }
+
+    @Test
+    fun `get note parses a single note`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """{"ID": 3, "content": "Loves climbing", "date": "2026-08-01T10:00:00Z"}""",
+                ),
+        )
+
+        val result = client.getNote(3)
+
+        assertTrue(result.isSuccess)
+        assertEquals("Loves climbing", result.getOrThrow().content)
     }
 }

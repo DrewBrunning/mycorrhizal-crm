@@ -5,13 +5,17 @@ import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ActivityInput
 import com.mycorrhizal.crm.model.network.BackendError
 import com.mycorrhizal.crm.model.network.ContactActivitiesResponse
+import com.mycorrhizal.crm.model.network.ContactNotesResponse
 import com.mycorrhizal.crm.model.network.ContactRecordInput
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ContactsPage
 import com.mycorrhizal.crm.model.network.CreateActivityResponse
 import com.mycorrhizal.crm.model.network.CreateContactResponse
+import com.mycorrhizal.crm.model.network.CreateNoteResponse
 import com.mycorrhizal.crm.model.network.LoginRequest
 import com.mycorrhizal.crm.model.network.LoginResponse
+import com.mycorrhizal.crm.model.network.Note
+import com.mycorrhizal.crm.model.network.NoteInput
 import com.mycorrhizal.crm.model.network.UserProfile
 import com.squareup.moshi.Moshi
 import kotlinx.coroutines.Dispatchers
@@ -130,6 +134,30 @@ class ApiClient(
         }
     }
 
+    /** GET /api/v1/contacts/{id}/notes — a contact's notes. */
+    suspend fun listContactNotes(contactId: Int): Result<ContactNotesResponse> =
+        executeGet("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/notes") { _, body ->
+            moshi.adapter(ContactNotesResponse::class.java).fromJson(body)
+        }
+
+    /** POST /api/v1/contacts/{id}/notes — wrapped `{ message, note }`, unwrapped here. */
+    suspend fun createNote(contactId: Int, input: NoteInput): Result<Note> =
+        executePost("$CONTACTS_PATH/$contactId/notes", input) { _, body ->
+            moshi.adapter(CreateNoteResponse::class.java).fromJson(body)?.note
+        }
+
+    /** PUT /api/v1/notes/{id} — raw Note response. */
+    suspend fun updateNote(id: Int, input: NoteInput): Result<Note> =
+        executePut("$PLACEHOLDER_ORIGIN$NOTES_PATH/$id", input) { _, body ->
+            moshi.adapter(Note::class.java).fromJson(body)
+        }
+
+    /** GET /api/v1/notes/{id} — a single note. */
+    suspend fun getNote(id: Int): Result<Note> =
+        executeGet("$PLACEHOLDER_ORIGIN$NOTES_PATH/$id") { _, body ->
+            moshi.adapter(Note::class.java).fromJson(body)
+        }
+
     private suspend fun <T> executeGet(
         url: String,
         mapper: (okhttp3.Response, String) -> T?,
@@ -216,6 +244,7 @@ class ApiClient(
         private const val ME_PATH = "$API_V1/users/me"
         private const val CONTACTS_PATH = "$API_V1/contacts"
         private const val ACTIVITIES_PATH = "$API_V1/activities"
+        private const val NOTES_PATH = "$API_V1/notes"
         private const val AUTH_COOKIE = "auth_token"
     }
 }

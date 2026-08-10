@@ -53,11 +53,12 @@ class ContactDetailScreenTest {
         composeTestRule.onNodeWithText("Dana White").assertIsDisplayed()
         composeTestRule.onNodeWithText("Email").assertIsDisplayed()
         composeTestRule.onNodeWithText("dana@example.com").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Phone").assertIsDisplayed()
-        composeTestRule.onNodeWithText("+1-555-0100").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Phone").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("+1-555-0100").performScrollTo().assertIsDisplayed()
         // Circles is below the fold in the virtualized LazyColumn; assert it via the
         // CRM data path rather than visibility (it is not composed until scrolled to).
         composeTestRule.onNodeWithText("Activities").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Notes").assertIsDisplayed()
     }
 
     @Test
