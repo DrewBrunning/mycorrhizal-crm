@@ -44,7 +44,7 @@ stability rather than on demand for the idea itself.
 
 | Ticket | Notes |
 |---|---|
-| [M1](67-M1-mobile-android-app.md) · Native Android app (Kotlin, Jetpack Compose) | R2. Automated call/SMS/contact-interaction tracking is the actual point, not just a native UI. Gated on API-surface stability — earliest realistic entry is the move from beta to a real v1.0.0. |
+| [M1](67-M1-mobile-android-app.md) · Native Android app (Kotlin, Jetpack Compose) | R2. Automated call/SMS/contact-interaction tracking is the actual point, not just a native UI. Gated on API-surface stability — earliest realistic entry is the move from beta to a real v1.0.0. **2026-08-09: Full 850-line technical design written, including build config, Room schema, Compose component tree, state management, call/SMS tracking architecture, WorkManager jobs, permission model, and phased implementation plan.** |
 | [T57](66-T57-bulk-import-api-for-external-clients.md) · Documented/stable bulk-import API for external clients | R1–2. A named sub-piece of M1 — a repeatable contact-import contract the mobile app calls from both a first-run prompt and a standing "Import from contacts" entry point in Data, not a one-shot setup-only call. No concrete consumer until M1 starts. |
 | [P4](68-P4-local-model-pilot.md) · Local-model code-gen pilot | R1. Re-enters scope specifically when M1's work begins, independent of the rest of this roadmap. |
 
@@ -68,6 +68,7 @@ Planned features that these get built at all.
 | [P2e](74-P2e-jellyfin-integration.md) · Jellyfin integration | R1. Least-defined idea in this list — not even scoped enough to say what it would do. |
 | [P2f](75-P2f-audiobookshelf-integration.md) · Audiobookshelf integration | R1. Same shape of idea as P2e, for Audiobookshelf. |
 | [P3](76-P3-ai-ollama-layer.md) · AI / Ollama layer | R1. Summarization, entity/relationship extraction, memory-curator suggestions. Gated on the propose-then-approve pattern; `90` D1 is explicit this is not an AI-first project. |
+| [T61](80-T61-contact-picker-api.md) · W3C Contact Picker API for PWA import | R1. Lets the PWA read device contacts directly (Chrome on Android only) instead of requiring a file export first. Narrow audience — Android + PWA + no native app installed. |
 
 ## Done
 
