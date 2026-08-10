@@ -2895,16 +2895,43 @@ home, per §1.2). 263 tests green.
   a device (Robolectric + a fake contacts `ContentProvider`, 12 tests). The contact detail's
   `LinkRow` now renders `AssistChip`s for each resolved action (§7.6.5), falling back to the
   plain link + copy when nothing resolves or `READ_CONTACTS` is denied. **On-device status
-  (2026-08-10, Pixel 8a):** the resolver's `ContactsContract.Data` query is unreachable because
-  the manifest does not declare `READ_CONTACTS` (the app's only runtime permissions are none —
-  it's not requested until Phase 5's import, per §8.2). The chips therefore always degrade to
-  plain link + copy on-device, and the real MIMETYPE strings were verified only in the Robolectric
-  fake-provider tests. **Decision needed before Phase 3:** either declare `READ_CONTACTS` now and
-  request it inline (with graceful degradation, matching §8.3's "denied permissions are simply
-  unavailable") so item 12 is actually exercisable on-device, or defer the whole feature's
-  on-device verification to Phase 5 and stop claiming item 12 is done. The custom-link-action
-  editor (§7.6.6) remains Phase 5 (item 30).
+  (2026-08-10, Pixel 8a): DONE.** `READ_CONTACTS` is now declared and requested inline from
+  `MobileLinkActions` when a known-protocol link renders (§8.3, graceful degradation on denial).
+  The detail screen gained an Online services section (`imppAddresses`/`socialProfiles`/
+  `otherOnlineServices` — real contacts carry handles there, not in `links`), and the Signal /
+  Google Meet MIMETYPEs in the registry were corrected to the actual `ContactsContract.Data`
+  strings read off the device (WhatsApp was already right; Telegram/Zoom/Discord remain
+  unverified guesses pending a contact row per app). Verified on-device: Elizabeth Brunning's
+  Signal handle renders Message / Voice Call / Video Call chips resolved from real MIMETYPE
+  rows after granting READ_CONTACTS. The custom-link-action editor (§7.6.6) remains Phase 5
+  (item 30).
 
 Architecture review performed on the activities/notes/reminders slices; all findings fixed
 (participant/external-ref preservation on edit, the reminder-complete wiring gap, required-date
 validation, once-reminder cache drop, double error display, FTS query sanitization).
+
+### UI deviations from the web (recorded 2026-08-10 — fix in a consolidated polish pass, not now)
+
+Known cosmetic differences spotted on-device against the web app. Deliberately parked out of the
+Phase-3 gate; none of these block sub-resources. Revisit as a dedicated polish pass (Phase 5):
+the fonts are already bundled (`Theme.kt` uses EB Garamond / IBM Plex Sans / IBM Plex Mono), so
+these are role-placement and rendering choices, not missing assets.
+
+1. **Contact photo does not display.** `ContactListItem`/detail only render `photoThumbnail`
+   when it is a `data:` URL (the list endpoint's thumbnail). Full-size `photo` URLs / the
+   detail's `photo` field are ignored. Web loads both. Check whether the detail response sends
+   a usable URL and whether Coil can load it over the auth'd server (needs the same host-gating
+   the API client uses).
+2. **Last name not shown in the list/detail.** The list shows `displayName` (vCard `fn`), and
+   Elizabeth renders as just "Elizabeth" — the backend's `fn` is her given name only. Web shows
+   "Firstname Lastname" (derives a display name from name components when `fn` is short).
+   Android should do the same derivation (`components` given+surname) as a fallback.
+3. **Font role placement.** Android's M3 scale puts EB Garamond on `display*` roles and IBM
+   Plex Sans on `body*`; the web uses IBM Plex Sans as the app-wide default with Garamond only
+   in a few brand spots. The detail/list bodies currently read Garamond-heavy where the web
+   reads Plex. Align which roles use which font.
+4. **Section styling details** (dividers, spacing, avatar size, empty-state placement) differ
+   slightly from web — low priority, fold into the polish pass.
+
+Anything in this list that turns out to be *functional* (a field the web shows that Android
+can't render or edit) is elevated to a Phase-3 blocker — flag it rather than folding it in.
