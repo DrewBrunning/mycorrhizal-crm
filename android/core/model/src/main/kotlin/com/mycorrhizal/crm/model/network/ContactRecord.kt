@@ -64,7 +64,21 @@ data class Card(
     val localizations: Map<String, Any?>? = null,
 ) {
     val displayName: String
-        get() = name?.full?.takeIf { it.isNotBlank() } ?: "Contact #${uid ?: "?"}"
+        get() {
+            // Prefer given + surname components (the web's nameComponentValue
+            // pattern) — `full` is often only the given name for CRM contacts.
+            val components = name?.components.orEmpty()
+            val given = components.firstOrNull { it.kind == "given" }?.value.orEmpty()
+            val surname = components.firstOrNull { it.kind == "surname" }?.value.orEmpty()
+            val joined = listOfNotNull(given, surname).joinToString(" ").trim()
+            if (joined.isNotBlank()) return joined
+            return name?.full?.takeIf { it.isNotBlank() } ?: "Contact"
+        }
+
+    /** The photo media entry's URI (kind=photo), if any — the detail endpoint
+     *  populates card.media via buildMedia, so this is the reliable source. */
+    val photoUri: String?
+        get() = media?.firstOrNull { it.kind == "photo" }?.uri?.takeIf { it.isNotBlank() }
 }
 
 /** Mycorrhizal-specific data outside any contact-exchange standard. */

@@ -6,6 +6,10 @@
     <string name="nav_search">Recherche</string>
     <string name="nav_notes">Notes</string>
     <string name="nav_activities">Activités</string>
+        <string name="nav_dashboard">Tableau de bord</string>
+    <string name="dashboard_birthdays">Anniversaires à venir</string>
+    <string name="dashboard_reminders">Rappels à venir</string>
+    <string name="dashboard_empty">Rien à venir.</string>
     <string name="nav_home">Accueil</string>
     <string name="nav_settings">Paramètres</string>
     <string name="nav_tags">Étiquettes</string>
@@ -26,6 +30,7 @@
     <string name="login_username_or_email">Nom d\'utilisateur ou e-mail</string>
     <string name="login_api_token">Jeton API</string>
     <string name="login_api_token_hint">mycorrhizal_…</string>
+    <string name="login_sso">Se connecter avec SSO</string>
     <string name="login_sign_in">Se connecter</string>
     <string name="login_error_valid_server_url">Saisissez une URL de serveur valide, p. ex. https://crm.example.com</string>
     <string name="login_error_identifier_required">Le nom d\'utilisateur ou l\'e-mail est requis</string>

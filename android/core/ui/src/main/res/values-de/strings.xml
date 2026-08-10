@@ -6,6 +6,10 @@
     <string name="nav_search">Suche</string>
     <string name="nav_notes">Notizen</string>
     <string name="nav_activities">Aktivitäten</string>
+        <string name="nav_dashboard">Dashboard</string>
+    <string name="dashboard_birthdays">Kommende Geburtstage</string>
+    <string name="dashboard_reminders">Kommende Erinnerungen</string>
+    <string name="dashboard_empty">Nichts anstehend.</string>
     <string name="nav_home">Start</string>
     <string name="nav_settings">Einstellungen</string>
     <string name="nav_tags">Tags</string>
@@ -26,6 +30,7 @@
     <string name="login_username_or_email">Benutzername oder E-Mail</string>
     <string name="login_api_token">API-Token</string>
     <string name="login_api_token_hint">mycorrhizal_…</string>
+    <string name="login_sso">Mit SSO anmelden</string>
     <string name="login_sign_in">Anmelden</string>
     <string name="login_error_valid_server_url">Gib eine gültige Server-URL ein, z. B. https://crm.example.com</string>
     <string name="login_error_identifier_required">Benutzername oder E-Mail ist erforderlich</string>

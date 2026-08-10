@@ -51,7 +51,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
-import coil3.compose.AsyncImage
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
@@ -229,22 +228,11 @@ fun ContactListItem(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        val thumbnail = contact.photoThumbnail
-        if (thumbnail != null && thumbnail.startsWith("data:")) {
-            AsyncImage(
-                model = thumbnail,
-                contentDescription = "Photo of ${contact.displayName}",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.size(40.dp).clip(CircleShape),
-            )
-        } else {
-            Icon(
-                imageVector = Icons.Outlined.Person,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(40.dp),
-            )
-        }
+        ContactAvatar(
+            photoUri = contact.photoThumbnail,
+            contentDescription = "Photo of ${contact.displayName}",
+            size = 40.dp,
+        )
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = contact.displayName,

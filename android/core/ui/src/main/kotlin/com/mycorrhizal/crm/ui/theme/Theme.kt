@@ -168,6 +168,9 @@ private val MycorrhizalShapes = Shapes(
     small = RoundedCornerShape(10.dp),
     medium = RoundedCornerShape(10.dp),
     large = RoundedCornerShape(10.dp),
+    // FloatingActionButton uses Shapes.extraLarge; CircleShape gives the
+    // circular FAB the brand wants instead of M3's rounded-square default.
+    extraLarge = androidx.compose.foundation.shape.CircleShape,
 )
 
 @Composable

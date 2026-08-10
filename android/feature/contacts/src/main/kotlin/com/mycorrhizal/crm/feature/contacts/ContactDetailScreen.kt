@@ -60,7 +60,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
-import coil3.compose.AsyncImage
 import com.mycorrhizal.crm.model.network.Address
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
@@ -118,7 +117,7 @@ fun ContactDetailScreen(
                 },
                 title = {
                     Text(
-                        text = state.contact?.card?.name?.full ?: "Contact",
+                        text = state.contact?.card?.displayName ?: stringResource(R.string.contact_title_fallback),
                         style = MaterialTheme.typography.titleLarge,
                     )
                 },
@@ -388,26 +387,13 @@ private fun ContactHeader(contact: ContactRecordResponse, card: Card?) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        val photo = contact.photoThumbnail
-        if (photo != null && photo.startsWith("data:")) {
-            AsyncImage(
-                model = photo,
-                contentDescription = "Photo of ${card?.name?.full.orEmpty()}",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.size(96.dp).clip(CircleShape),
-            )
-        } else {
-            Icon(
-                imageVector = Icons.Outlined.Person,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(96.dp),
-            )
-        }
-        val displayName = card?.name?.full
-            ?: listOfNotNull(card?.name?.components?.firstOrNull { it.kind == "given" }?.value)
-                .joinToString(" ")
-                .ifBlank { "Contact" }
+        val photoUri = card?.photoUri ?: contact.photoThumbnail
+        ContactAvatar(
+            photoUri = photoUri,
+            contentDescription = "Photo of ${card?.name?.full.orEmpty()}",
+            size = 96.dp,
+        )
+        val displayName = card?.displayName ?: "Contact"
         Text(
             text = displayName,
             style = MaterialTheme.typography.titleLarge,

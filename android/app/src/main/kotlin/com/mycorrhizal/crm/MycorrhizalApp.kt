@@ -1,6 +1,8 @@
 package com.mycorrhizal.crm
 
 import androidx.annotation.StringRes
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -26,6 +28,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.compose.material3.DrawerValue
@@ -46,6 +49,7 @@ import com.mycorrhizal.crm.feature.circles.CirclesScreen
 import com.mycorrhizal.crm.feature.contacts.ContactDetailScreen
 import com.mycorrhizal.crm.feature.contacts.ContactFormScreen
 import com.mycorrhizal.crm.feature.contacts.ContactListScreen
+import com.mycorrhizal.crm.feature.contacts.DashboardScreen
 import com.mycorrhizal.crm.feature.contacts.BulkOperationsScreen
 import com.mycorrhizal.crm.feature.contacts.MergeContactsScreen
 import com.mycorrhizal.crm.feature.households.HouseholdDetailScreen
@@ -76,11 +80,11 @@ private data class BottomNavItem(
 )
 
 private val bottomNavItems = listOf(
+    BottomNavItem("home", R.string.nav_dashboard, Icons.Outlined.Home),
     BottomNavItem("contacts", R.string.nav_contacts, Icons.Outlined.Contacts),
     BottomNavItem("search", R.string.nav_search, Icons.Outlined.Search),
-    BottomNavItem("notes", R.string.nav_notes, Icons.Outlined.EditNote),
     BottomNavItem("activities", R.string.nav_activities, Icons.Outlined.EventNote),
-    BottomNavItem("home", R.string.nav_home, Icons.Outlined.Home),
+    BottomNavItem("notes", R.string.nav_notes, Icons.Outlined.EditNote),
 )
 
 @Composable
@@ -90,8 +94,14 @@ fun MycorrhizalApp(
     val session by mainViewModel.session.collectAsStateWithLifecycle()
 
     if (!session.isLoggedIn) {
+        val context = LocalContext.current
         LoginScreen(
             onLoggedIn = { /* session flow flips isLoggedIn, recomposition swaps the tree */ },
+            onSignInWithSso = { serverUrl ->
+                val url = serverUrl.trim().trimEnd('/') + "/api/v1/auth/oidc/login"
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                runCatching { context.startActivity(intent) }
+            },
         )
         return
     }
@@ -429,7 +439,7 @@ private fun MainScaffold() {
             composable("search") { PlaceholderScreen(R.string.nav_search) }
             composable("notes") { PlaceholderScreen(R.string.nav_notes) }
             composable("activities") { PlaceholderScreen(R.string.nav_activities) }
-            composable("home") { PlaceholderScreen(R.string.nav_home) }
+            composable("home") { DashboardScreen() }
 
             composable("settings") {
                 SettingsScreen(

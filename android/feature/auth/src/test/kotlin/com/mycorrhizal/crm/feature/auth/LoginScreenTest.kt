@@ -47,8 +47,8 @@ class LoginScreenTest {
     fun `renders server url and credential fields`() {
         setContent()
         composeTestRule.onNodeWithText("Server URL").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Username or email").assertIsDisplayed()
-        composeTestRule.onNode(hasText("Password") and hasSetTextAction()).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Username or email").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNode(hasText("Password") and hasSetTextAction()).performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Sign in").performScrollTo().assertIsDisplayed()
     }
 

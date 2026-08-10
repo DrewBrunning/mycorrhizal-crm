@@ -7,6 +7,10 @@
     <string name="nav_notes">Notes</string>
     <string name="nav_activities">Activities</string>
     <string name="nav_home">Home</string>
+    <string name="nav_dashboard">Dashboard</string>
+    <string name="dashboard_birthdays">Upcoming birthdays</string>
+    <string name="dashboard_reminders">Upcoming reminders</string>
+    <string name="dashboard_empty">Nothing coming up.</string>
     <string name="nav_settings">Settings</string>
     <string name="nav_network">Network</string>
     <string name="nav_households">Households</string>
@@ -27,6 +31,7 @@
     <string name="login_api_token">API token</string>
     <string name="login_api_token_hint">mycorrhizal_…</string>
     <string name="login_sign_in">Sign in</string>
+    <string name="login_sso">Sign in with SSO</string>
     <string name="login_error_valid_server_url">Enter a valid server URL, e.g. https://crm.example.com</string>
     <string name="login_error_identifier_required">Username or email is required</string>
     <string name="login_error_password_required">Password is required</string>

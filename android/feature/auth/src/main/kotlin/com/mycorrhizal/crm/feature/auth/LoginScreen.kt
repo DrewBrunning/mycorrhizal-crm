@@ -1,10 +1,12 @@
 package com.mycorrhizal.crm.feature.auth
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -19,6 +21,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -31,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -39,6 +43,7 @@ import com.mycorrhizal.crm.ui.R
 @Composable
 fun LoginScreen(
     onLoggedIn: () -> Unit,
+    onSignInWithSso: (String) -> Unit = {},
     viewModel: LoginViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -57,6 +62,7 @@ fun LoginScreen(
         onServerUrlChange = viewModel::onServerUrlChange,
         onModeChange = viewModel::onModeChange,
         onSubmit = viewModel::onSubmit,
+        onSignInWithSso = onSignInWithSso,
         onErrorShown = viewModel::onErrorShown,
     )
 }
@@ -72,6 +78,7 @@ fun LoginScreenContent(
     onServerUrlChange: (String) -> Unit,
     onModeChange: (LoginMode) -> Unit,
     onSubmit: (serverUrl: String, identifier: String, password: String, apiToken: String) -> Unit,
+    onSignInWithSso: (String) -> Unit = {},
     onErrorShown: () -> Unit = {},
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -93,6 +100,11 @@ fun LoginScreenContent(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            Image(
+                painter = painterResource(id = R.drawable.ic_brand_logo),
+                contentDescription = stringResource(R.string.app_name),
+                modifier = Modifier.size(96.dp),
+            )
             Text(
                 text = stringResource(R.string.app_name),
                 style = MaterialTheme.typography.titleLarge,
@@ -163,6 +175,14 @@ fun LoginScreenContent(
                 ) {
                     Text(stringResource(R.string.login_sign_in))
                 }
+            }
+
+            TextButton(
+                onClick = { onSignInWithSso(serverUrl) },
+                enabled = serverUrl.isNotBlank(),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.login_sso))
             }
 
             val errorMessage = uiState.errorRes?.let { stringResource(it) } ?: uiState.error
