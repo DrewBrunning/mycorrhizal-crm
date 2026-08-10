@@ -68,7 +68,7 @@ Not built yet. Listed so the feature set above can be read as a description of w
 
 - **Files & Documents:** Integrations with Seafile and Paperless-ngx via APIs and OwnCloud/NextCloud via WebDAV.
 - **Two-Factor Authentication:** TOTP as a second factor on login. SSO via OIDC is available today as an alternative.
-- Native Android app client
+- **Native Android app client:** Phase 1 (core client) shipped 2026-08-10 in `android/` — login against the beta backend, contact list + detail, offline cache. Call/SMS tracking, quick-capture, and device-contacts import are planned follow-up phases.
 
 ---
 

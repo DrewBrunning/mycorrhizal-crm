@@ -39,13 +39,14 @@ ticket — pulled in only when a concrete need arises, never implemented straigh
 into three categories, 2026-08-06, because "deferred" was hiding a real difference in how solidified
 each idea actually is.
 
-**Mobile clients** — a real, intended project (a native Android app), just gated on API-contract
-stability rather than on demand for the idea itself.
+**Mobile clients** — a real, intended project (a native Android app). **M1's Phase 1 (core client)
+shipped 2026-08-10** (see its landing note); the remaining phases and the mobile-only features
+(call/SMS tracking, quick-capture, T57 import) are still deferred on API-surface stability as
+later phases of the same ticket.
 
 | Ticket | Notes |
 |---|---|
-| [M1](67-M1-mobile-android-app.md) · Native Android app (Kotlin, Jetpack Compose) | R2. Automated call/SMS/contact-interaction tracking is the actual point, not just a native UI. Gated on API-surface stability — earliest realistic entry is the move from beta to a real v1.0.0. **2026-08-09: Full 850-line technical design written, including build config, Room schema, Compose component tree, state management, call/SMS tracking architecture, WorkManager jobs, permission model, and phased implementation plan.** |
-| [T57](66-T57-bulk-import-api-for-external-clients.md) · Documented/stable bulk-import API for external clients | R1–2. A named sub-piece of M1 — a repeatable contact-import contract the mobile app calls from both a first-run prompt and a standing "Import from contacts" entry point in Data, not a one-shot setup-only call. No concrete consumer until M1 starts. |
+| [T57](66-T57-bulk-import-api-for-external-clients.md) · Documented/stable bulk-import API for external clients | R1–2. A named sub-piece of M1 — a repeatable contact-import contract the mobile app calls from both a first-run prompt and a standing "Import from contacts" entry point in Data, not a one-shot setup-only call. No concrete consumer until M1's later phases. |
 | [P4](68-P4-local-model-pilot.md) · Local-model code-gen pilot | R1. Re-enters scope specifically when M1's work begins, independent of the rest of this roadmap. |
 
 **Planned features** — concrete, scoped-enough-to-name integrations; higher confidence they'll
@@ -151,6 +152,7 @@ Kept for reference/lookup, not ranked — order below is roughly the sequence th
 | [T59](78-T59-immich-v041-still-broken.md) · Immich still broken in v0.4.1 testing | **DONE** |
 | [N6](26-N6-backup-restore.md) · Full backup restore | **DONE** (2026-08-09 — tested `VACUUM INTO` online backup via `make backup` + restore procedure; see the ticket's landing note for the two deliberate deviations from its implementation suggestions) |
 | [T60](79-T60-audit-trail-ui.md) · Audit trail UI | **DONE** (2026-08-09 — new `/audit` page + API module + hook over T18's shipped backend: event list with server-side entity_type/entity_id filters, contact-only Undo with confirmation dialog, contact uid→detail-page links, all five locales; see the ticket's landing note for the decisions taken) |
+| [M1](67-M1-mobile-android-app.md) · Native Android app (Kotlin, Jetpack Compose) | **Phase 1 DONE** (2026-08-10 — working core client in `android/`: Gradle multi-module build, JWT/API-token auth against the beta backend, contact list with cursor pagination + search, contact detail rendering the neutral Card, Room offline cache, 133 hand-verified tests, CI workflow. Phases 2–5 (read/write parity, sub-resources, call/SMS tracking, T57 import) remain planned in the same ticket; see its landing note for the deliberate deviations) |
 
 ### ⚠ A grooming lesson worth keeping visible
 

@@ -5,7 +5,7 @@
 | **Rating** | 2 |
 | **Source** | v0.3.0 post-release planning, 2026-08-06 |
 | **This document** | Full-scope technical design, 2026-08-09 |
-| **Status** | Scoped, not scheduled. Gated on API-contract stability (v1.0.0). |
+| **Status** | **Phase 1 (core client) shipped 2026-08-10** — see the landing note at the bottom. The full-scope design below remains the plan for Phases 2–5. |
 
 ## Why this exists
 
@@ -2773,3 +2773,89 @@ These remain unresolved — they're design decisions for the implementation phas
 - **Push notifications from server**: Requires FCM integration on the backend, ticketed separately
 - **Wear OS companion**: Out of scope
 - **iOS client**: This document is Android-only by design
+
+---
+
+## Landing note — 2026-08-10
+
+**Phase 1 (core client) shipped** — a working native Android app to test against the beta backend,
+built exactly to the §1.2 module layout with a Kotlin-2.1 / Compose / Hilt / Room / Moshi / OkHttp
+stack. Everything below this line is the Phase-1 status; the design above remains the Phase-2–5 plan.
+
+### What shipped
+
+- **Multi-module Gradle build** in `android/` — Kotlin DSL, version catalog (`gradle/libs.versions.toml`),
+  `build-logic/` convention plugins (`mycorrhizal.android.application|library|hilt`), modules
+  `:app`, `:core:model`, `:core:network`, `:core:data`, `:core:domain`, `:core:ui`,
+  `:feature:auth`, `:feature:contacts`. `./gradlew testDebugUnitTest`, `lintDebug`, and
+  `assembleDebug` are all green.
+- **Auth** — login screen (server URL + username/password, plus API-token mode), JWT captured
+  from the login `auth_token` httpOnly cookie and replayed as `Authorization: Bearer`
+  (`AuthInterceptor`), stored in EncryptedSharedPreferences; `mycorrhizal_` API-token entry path.
+  The interceptor chain matches §2.2 (Auth → BaseUrl → Retry, debug logging).
+- **Contacts** — list with T17 cursor pagination + debounced search, and a detail screen
+  rendering the neutral `Card`/`CRMEnvelope`. Online-first repositories mirror into a Room cache
+  (`CachedContact` + `@TypeConverters`) with offline fallback for the list and detail, and
+  T17 `incremental` sync deletions are applied.
+- **Session** — `DefaultSessionManager` (DataStore server URL + encrypted JWT), hydrated at
+  startup so returning users stay logged in; `SessionState` drives a login-vs-main navigation gate.
+- **Theme** — `:core:ui` `MycorrhizalTheme` with the §4.4 M3 tokens hand-pinned (light + dark),
+  serif app-bar title, 10dp shapes; system fonts stand in for EB Garamond/IBM Plex Sans until the
+  font assets are bundled.
+- **Tests — 133, all green**, hand-verified per `/CLAUDE.md` (broke the auth-token guard, the
+  DAO search, the pagination guard, the empty-state string, the host check, and the userinfo
+  validation — each failed, restore re-greened):
+  - `:core:model` — `ValidatorsTest` (mirrors `backend/middleware/validation.go` exactly),
+    `DateFormatTest` (PartialDate display, eu/us/iso + yearless).
+  - `:core:network` — `ApiClientTest` (MockWebServer: login cookie capture, list/detail parsing,
+    query params, error mapping), `AuthInterceptorTest` (Bearer add/omit/cross-host),
+    `BaseUrlInterceptorTest`, `RetryInterceptorTest` (POST never retried), `ApiErrorTest`.
+  - `:core:data` — `CachedContactDaoTest` (Robolectric in-memory Room: upsert/get/search/delete,
+    converter round-trip), repository tests (online-first caching, incremental sync deletes,
+    list-refresh-doesn't-clobber-detail, offline fallback, 404 does not fall back),
+    `DefaultSessionManagerTest`.
+  - `:feature:auth` + `:feature:contacts` — ViewModel state-machine tests (MockK + Turbine +
+    `MainDispatcherRule`), Compose UI tests (Robolectric + `createComposeRule`) over the hoisted
+    stateless `*ScreenContent` composables covering loading/empty/error/populated per §10.4.
+
+### Deliberate deviations from the design (recorded for the reviewer)
+
+1. **Hand-written API client, not openapi-generator output.** The §1.3 generator pass is deferred:
+   the spec's `allOf`/`oneOf` schemas (noted in §1.3 as needing pre-fixing) aren't flattened yet,
+   and Phase 1 only needs login/me/contacts. `:core:network`'s `ApiClient` is small and
+   endpoint-focused, so swapping in generated code later is a local replacement. Also uses Moshi
+   `@JsonClass` codegen via `KotlinJsonAdapterFactory` (the library-sanctioned discovery path for
+   R8-friendly generated adapters) rather than manual adapter registration.
+2. **Room entities live in `:core:data`, not `:core:model`.** The §1.2 layout puts entities in the
+   model module, but model is deliberately dependency-free and Room annotations are an Android
+   concern; keeping entities with their DAOs in data is the standard layering and keeps the
+   module graph clean.
+3. **Repositories are `@Singleton`, not `@ViewModelScoped`.** They are stateless wrappers over
+   `ApiClient` + DAO + `SessionManager` with no mutable UI state, so the scopes are functionally
+   identical; noted in `DataModule`'s doc comment. Revisit if a repository ever grows per-session
+   in-memory state.
+4. **JUnit 4, not JUnit 5.** Robolectric + Compose `createComposeRule` are JUnit4-native; the
+   ticket's own §10.3/§10.5 samples use `@RunWith(AndroidJUnit4::class)`. Turbine/MockK are
+   framework-agnostic.
+5. **Validators mirror the backend exactly, including `omitempty` semantics.** The §4.5 snippets
+   for `phone`/`birthday`/`safeurl` diverge from `backend/middleware/validation.go` (which has a
+   `safeurl` *blocklist* and a separate `httpurl` *allowlist*, plus 5–20 digit phone and no
+   day-range birthday check). The Android copies match the server byte-for-byte so the client
+   never rejects a value the server accepts.
+6. **Search, notes, activities, home tabs are placeholders.** Bottom-nav scaffold exists
+   (§4.1); only Contacts has content in Phase 1.
+
+### Security review (performed, findings all fixed)
+
+Full review of the auth/interceptor/storage/manifest surface. Key hardening shipped: JWT only
+attached to the configured host, userinfo rejected in server URLs, no backup eligibility
+(`allowBackup=false` + `dataExtractionRules`), credentials never stored in ViewModel state or
+saveable instance state, cleartext forbidden with system-CAs-only + debug user-CA overrides,
+POST never retried. Zero `Log.*`/println of the token anywhere.
+
+### Phases 2–5 (not started — follow the design above)
+
+Read/write parity (contact create/edit, activities/notes/reminders, tappable field actions),
+sub-resources (circles/tags/households/edges), native features (call/SMS tracking,
+quick-capture, notifications, WorkManager sync), and T57 import + polish. The module structure,
+Room cache, session, and auth foundations this phase built are the substrate all of them land on.
