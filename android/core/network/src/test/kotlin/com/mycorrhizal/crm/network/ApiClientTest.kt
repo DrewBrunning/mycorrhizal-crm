@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.network
 
+import com.mycorrhizal.crm.model.network.ActivityInput
 import com.mycorrhizal.crm.model.network.CRMEnvelope
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordInput
@@ -304,5 +305,106 @@ class ApiClientTest {
         val request = server.takeRequest()
         assertEquals("PUT", request.method)
         assertEquals("/api/v1/contacts/9", request.path)
+    }
+
+    @Test
+    fun `list contact activities parses the bare activities array`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "activities": [
+                        {"ID": 1, "title": "Coffee with Dana", "type": "visit", "date": "2026-08-01T10:00:00Z"},
+                        {"ID": 2, "title": "Phone call", "type": "call", "date": "2026-08-02T11:00:00Z"}
+                      ]
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        val result = client.listContactActivities(5)
+
+        assertTrue(result.isSuccess)
+        val activities = result.getOrThrow().activities
+        assertEquals(2, activities.size)
+        assertEquals(1, activities[0].id)
+        assertEquals("Coffee with Dana", activities[0].title)
+        assertEquals("call", activities[1].type)
+
+        val request = server.takeRequest()
+        assertEquals("/api/v1/contacts/5/activities", request.path)
+    }
+
+    @Test
+    fun `create activity posts and unwraps the wrapped response`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "message": "Activity created successfully",
+                      "activity": {"ID": 7, "title": "Lunch", "type": "meal"}
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        val result = client.createActivity(ActivityInput(title = "Lunch", type = "meal", contactIds = listOf(5)))
+
+        assertTrue(result.isSuccess)
+        assertEquals(7, result.getOrThrow().id)
+        assertEquals("Lunch", result.getOrThrow().title)
+
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/activities", request.path)
+        assertTrue(request.body.readUtf8().contains("5"))
+    }
+
+    @Test
+    fun `update activity sends a PUT and parses the raw activity`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """{"ID": 7, "title": "Lunch and coffee", "type": "meal"}""",
+                ),
+        )
+
+        val result = client.updateActivity(7, ActivityInput(title = "Lunch and coffee"))
+
+        assertTrue(result.isSuccess)
+        assertEquals("Lunch and coffee", result.getOrThrow().title)
+
+        val request = server.takeRequest()
+        assertEquals("PUT", request.method)
+        assertEquals("/api/v1/activities/7", request.path)
+    }
+
+    @Test
+    fun `list activities parses the cursor page`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "activities": [{"ID": 1, "title": "Visit"}],
+                      "next_cursor": "cursor-9",
+                      "limit": 25
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        val result = client.listActivities(cursor = "cursor-9", limit = 25)
+
+        assertTrue(result.isSuccess)
+        val page = result.getOrThrow()
+        assertEquals(1, page.activities.size)
+        assertEquals("cursor-9", page.nextCursor)
     }
 }

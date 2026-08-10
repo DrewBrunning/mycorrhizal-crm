@@ -34,6 +34,8 @@ import com.mycorrhizal.crm.feature.auth.LoginScreen
 import com.mycorrhizal.crm.feature.contacts.ContactDetailScreen
 import com.mycorrhizal.crm.feature.contacts.ContactFormScreen
 import com.mycorrhizal.crm.feature.contacts.ContactListScreen
+import com.mycorrhizal.crm.feature.timeline.ActivitiesScreen
+import com.mycorrhizal.crm.feature.timeline.ActivityFormScreen
 
 private data class BottomNavItem(
     val route: String,
@@ -114,9 +116,11 @@ private fun MainScaffold() {
                 route = "contacts/{contactId}",
                 arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
             ) { entry ->
+                val contactId = entry.arguments?.getInt("contactId") ?: 0
                 ContactDetailScreen(
                     onBack = { navController.popBackStack() },
                     onEdit = { id -> navController.navigate("contacts/$id/edit") },
+                    onViewActivities = { id -> navController.navigate("contacts/$id/activities") },
                 )
             }
             composable(
@@ -132,6 +136,42 @@ private fun MainScaffold() {
                 arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
             ) {
                 ContactFormScreen(
+                    onSaved = { navController.popBackStack() },
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            composable(
+                route = "contacts/{contactId}/activities",
+                arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            ) { entry ->
+                val contactId = entry.arguments?.getInt("contactId") ?: 0
+                ActivitiesScreen(
+                    onBack = { navController.popBackStack() },
+                    onCreateActivity = {
+                        navController.navigate("contacts/$contactId/activities/new")
+                    },
+                    onEditActivity = { activityId ->
+                        navController.navigate("contacts/$contactId/activities/$activityId/edit")
+                    },
+                )
+            }
+            composable(
+                route = "contacts/{contactId}/activities/new",
+                arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            ) {
+                ActivityFormScreen(
+                    onSaved = { navController.popBackStack() },
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            composable(
+                route = "contacts/{contactId}/activities/{activityId}/edit",
+                arguments = listOf(
+                    navArgument("contactId") { type = NavType.IntType },
+                    navArgument("activityId") { type = NavType.IntType },
+                ),
+            ) {
+                ActivityFormScreen(
                     onSaved = { navController.popBackStack() },
                     onBack = { navController.popBackStack() },
                 )

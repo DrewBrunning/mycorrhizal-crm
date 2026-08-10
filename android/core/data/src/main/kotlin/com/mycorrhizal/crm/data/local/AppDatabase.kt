@@ -13,11 +13,13 @@ import androidx.room.TypeConverters
 @Database(
     entities = [
         CachedContact::class,
+        CachedActivity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun cachedContactDao(): CachedContactDao
+    abstract fun cachedActivityDao(): CachedActivityDao
 }

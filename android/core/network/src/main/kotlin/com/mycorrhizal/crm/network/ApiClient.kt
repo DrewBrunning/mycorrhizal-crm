@@ -1,9 +1,14 @@
 package com.mycorrhizal.crm.network
 
+import com.mycorrhizal.crm.model.network.ActivitiesPage
+import com.mycorrhizal.crm.model.network.Activity
+import com.mycorrhizal.crm.model.network.ActivityInput
 import com.mycorrhizal.crm.model.network.BackendError
+import com.mycorrhizal.crm.model.network.ContactActivitiesResponse
 import com.mycorrhizal.crm.model.network.ContactRecordInput
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ContactsPage
+import com.mycorrhizal.crm.model.network.CreateActivityResponse
 import com.mycorrhizal.crm.model.network.CreateContactResponse
 import com.mycorrhizal.crm.model.network.LoginRequest
 import com.mycorrhizal.crm.model.network.LoginResponse
@@ -91,6 +96,34 @@ class ApiClient(
             moshi.adapter(ContactRecordResponse::class.java).fromJson(body)
         }
 
+    /** GET /api/v1/contacts/{id}/activities — a contact's activities. */
+    suspend fun listContactActivities(contactId: Int): Result<ContactActivitiesResponse> =
+        executeGet("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/activities") { _, body ->
+            moshi.adapter(ContactActivitiesResponse::class.java).fromJson(body)
+        }
+
+    /** POST /api/v1/activities — wrapped `{ message, activity }`, unwrapped here. */
+    suspend fun createActivity(input: ActivityInput): Result<Activity> =
+        executePost(ACTIVITIES_PATH, input) { _, body ->
+            moshi.adapter(CreateActivityResponse::class.java).fromJson(body)?.activity
+        }
+
+    /** PUT /api/v1/activities/{id} — raw Activity response. */
+    suspend fun updateActivity(id: Int, input: ActivityInput): Result<Activity> =
+        executePut("$PLACEHOLDER_ORIGIN$ACTIVITIES_PATH/$id", input) { _, body ->
+            moshi.adapter(Activity::class.java).fromJson(body)
+        }
+
+    /** GET /api/v1/activities (cursor-paginated, all activities). */
+    suspend fun listActivities(cursor: String? = null, limit: Int? = null): Result<ActivitiesPage> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$ACTIVITIES_PATH".toHttpUrl().newBuilder()
+        cursor?.let { urlBuilder.addQueryParameter("cursor", it) }
+        limit?.let { urlBuilder.addQueryParameter("limit", it.toString()) }
+        return executeGet(urlBuilder.build().toString()) { _, body ->
+            moshi.adapter(ActivitiesPage::class.java).fromJson(body)
+        }
+    }
+
     private suspend fun <T> executeGet(
         url: String,
         mapper: (okhttp3.Response, String) -> T?,
@@ -176,6 +209,7 @@ class ApiClient(
         private const val LOGIN_PATH = "$API_V1/login"
         private const val ME_PATH = "$API_V1/users/me"
         private const val CONTACTS_PATH = "$API_V1/contacts"
+        private const val ACTIVITIES_PATH = "$API_V1/activities"
         private const val AUTH_COOKIE = "auth_token"
     }
 }

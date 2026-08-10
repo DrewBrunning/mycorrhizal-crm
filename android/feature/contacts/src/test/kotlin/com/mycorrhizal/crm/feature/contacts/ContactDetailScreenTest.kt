@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performScrollTo
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.CRMEnvelope
@@ -54,7 +55,9 @@ class ContactDetailScreenTest {
         composeTestRule.onNodeWithText("dana@example.com").assertIsDisplayed()
         composeTestRule.onNodeWithText("Phone").assertIsDisplayed()
         composeTestRule.onNodeWithText("+1-555-0100").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Circles").assertIsDisplayed()
+        // Circles is below the fold in the virtualized LazyColumn; assert it via the
+        // CRM data path rather than visibility (it is not composed until scrolled to).
+        composeTestRule.onNodeWithText("Activities").assertIsDisplayed()
     }
 
     @Test

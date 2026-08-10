@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.contacts
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Call
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Edit
@@ -59,6 +61,7 @@ import com.mycorrhizal.crm.ui.theme.MycorrhizalTypography
 fun ContactDetailScreen(
     onBack: () -> Unit,
     onEdit: (Int) -> Unit = {},
+    onViewActivities: (Int) -> Unit = {},
     viewModel: ContactDetailViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -105,18 +108,37 @@ fun ContactDetailScreen(
                 state.isLoading -> LoadingSkeleton()
                 state.contact == null && state.error != null -> EmptyState(state.error.orEmpty())
                 state.contact == null -> EmptyState("Contact not found")
-                else -> ContactDetailContent(contact = state.contact!!)
+                else -> ContactDetailContent(
+                    contact = state.contact!!,
+                    onViewActivities = onViewActivities,
+                )
             }
         }
     }
 }
 
 @Composable
-fun ContactDetailContent(contact: ContactRecordResponse) {
+fun ContactDetailContent(
+    contact: ContactRecordResponse,
+    onViewActivities: (Int) -> Unit = {},
+) {
     val card = contact.card
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item {
             ContactHeader(contact = contact, card = card)
+        }
+        item {
+            // Entry point to the contact's activity list (Phase 2 item 7).
+            androidx.compose.material3.ListItem(
+                headlineContent = { Text("Activities", style = MaterialTheme.typography.bodyLarge) },
+                trailingContent = {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
+                        contentDescription = null,
+                    )
+                },
+                modifier = Modifier.fillMaxWidth().clickable { onViewActivities(contact.id) },
+            )
         }
         if (!card?.emails.isNullOrEmpty()) {
             item {

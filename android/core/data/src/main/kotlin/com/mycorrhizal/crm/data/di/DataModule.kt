@@ -1,13 +1,16 @@
 package com.mycorrhizal.crm.data.di
 
 import com.mycorrhizal.crm.data.local.AppDatabase
+import com.mycorrhizal.crm.data.local.CachedActivityDao
 import com.mycorrhizal.crm.data.local.CachedContactDao
+import com.mycorrhizal.crm.data.repository.ActivityRepositoryImpl
 import com.mycorrhizal.crm.data.repository.AuthRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ContactRepositoryImpl
 import com.mycorrhizal.crm.data.session.DefaultSessionManager
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.data.session.SessionPrefsStorage
 import com.mycorrhizal.crm.data.session.TokenStorage
+import com.mycorrhizal.crm.domain.repository.ActivityRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.network.ApiClient
@@ -63,6 +66,9 @@ object DataModule {
     fun provideCachedContactDao(db: AppDatabase): CachedContactDao = db.cachedContactDao()
 
     @Provides
+    fun provideCachedActivityDao(db: AppDatabase): CachedActivityDao = db.cachedActivityDao()
+
+    @Provides
     @Singleton
     fun provideSessionManager(
         tokenStorage: TokenStorage,
@@ -98,4 +104,8 @@ abstract class DataBindsModule {
     @Binds
     @Singleton
     abstract fun bindContactRepository(impl: ContactRepositoryImpl): ContactRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindActivityRepository(impl: ActivityRepositoryImpl): ActivityRepository
 }
