@@ -6,6 +6,9 @@ captures/
 .externalNativeBuild/
 .cxx/
 
+# Machine-local Gradle daemon JVM selection (AS-generated, pins a local JDK)
+gradle/gradle-daemon-jvm.properties
+
 # IDE
 .idea/
 *.iml
