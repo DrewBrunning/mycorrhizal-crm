@@ -71,6 +71,7 @@ Planned features that these get built at all.
 | [P3](76-P3-ai-ollama-layer.md) · AI / Ollama layer | R1. Summarization, entity/relationship extraction, memory-curator suggestions. Gated on the propose-then-approve pattern; `90` D1 is explicit this is not an AI-first project. |
 | [T61](80-T61-contact-picker-api.md) · W3C Contact Picker API for PWA import | R1. Lets the PWA read device contacts directly (Chrome on Android only) instead of requiring a file export first. Narrow audience — Android + PWA + no native app installed. |
 | [N10](81-N10-fcm-push.md) · FCM push for the Android app | R3. Real-time reminder/cadence/birthday push to the native Android client, replacing the polling workers on Play-Services devices (polling stays as fallback). Backend FCM channel + Android FirebaseMessagingService. Gated on M1's later phases. |
+| [M1 endpoints](82-M1-missing-endpoints.md) · Backend endpoints the Android app needs (photo URL, dashboard, user prefs, OIDC native return) | R2. From the M1 Phase-5 review: expose the profile-picture URL in list/detail payloads, one-call `GET /dashboard`, `PATCH /users/me`, and a `client=android` OIDC callback that returns the token via a custom-scheme deep link. FCM is separate (N10). |
 
 ## Done
 
