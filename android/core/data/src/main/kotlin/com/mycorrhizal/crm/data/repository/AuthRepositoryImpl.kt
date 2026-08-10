@@ -29,6 +29,18 @@ class AuthRepositoryImpl @Inject constructor(
             return Result.failure(ApiError.Parse("Login succeeded but no auth token was returned"))
         }
 
+        // Persist the token BEFORE the profile fetch: the OkHttp stack's
+        // AuthInterceptor reads bearerToken() synchronously, so currentUser()
+        // below would otherwise go out with no Authorization header (and come
+        // back 401 "Authorization token required") — the password flow had this
+        // exact ordering bug while loginWithApiToken, which sets the session
+        // first, did not.
+        sessionManager.setSession(
+            serverUrl = sessionManager.serverUrl().orEmpty(),
+            token = token,
+            state = SessionState(),
+        )
+
         val profile = apiClient.currentUser().getOrElse { return Result.failure(it.toApiError()) }
 
         persistSession(token, profile)

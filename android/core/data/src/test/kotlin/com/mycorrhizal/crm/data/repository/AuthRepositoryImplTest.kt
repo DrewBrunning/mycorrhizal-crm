@@ -49,6 +49,29 @@ class AuthRepositoryImplTest {
     }
 
     @Test
+    fun `login persists the token before fetching the profile`() = runTest {
+        val h = Harness()
+        h.sessionManager.setServerUrl("https://crm.example.com")
+        coEvery { h.apiClient.login(any(), any()) } returns Result.success(
+            LoginResult(token = "jwt-123", language = "en", dateFormat = "eu"),
+        )
+        // The profile fetch must observe the token already in the session — the
+        // AuthInterceptor reads bearerToken() synchronously, so if the token is
+        // persisted only after currentUser() the request goes out unauthenticated
+        // and the backend answers 401 "Authorization token required".
+        var tokenSeenDuringProfileFetch: String? = null
+        coEvery { h.apiClient.currentUser() } answers {
+            tokenSeenDuringProfileFetch = h.sessionManager.bearerToken()
+            Result.success(UserProfile(id = 7, username = "alice"))
+        }
+
+        val result = h.repository.login("alice", "secret")
+
+        assertTrue(result.isSuccess)
+        assertEquals("jwt-123", tokenSeenDuringProfileFetch)
+    }
+
+    @Test
     fun `login propagates failure when server rejects credentials`() = runTest {
         val h = Harness()
         coEvery { h.apiClient.login(any(), any()) } returns Result.failure(
