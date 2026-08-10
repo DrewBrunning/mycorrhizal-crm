@@ -140,4 +140,36 @@ class ValidatorsTest {
     fun `bare host port is invalid httpurl`() {
         assertFalse(Validators.isValidHttpUrl("example.com:8080"))
     }
+
+    @Test
+    fun `https server url is valid`() {
+        assertTrue(Validators.isValidServerUrl("https://crm.example.com"))
+    }
+
+    @Test
+    fun `http server url is valid`() {
+        assertTrue(Validators.isValidServerUrl("http://192.168.1.10:8080"))
+    }
+
+    @Test
+    fun `server url with userinfo is rejected`() {
+        assertFalse(Validators.isValidServerUrl("https://user:pass@crm.example.com"))
+        assertFalse(Validators.isValidServerUrl("https://attacker@crm.example.com"))
+    }
+
+    @Test
+    fun `server url without scheme is rejected`() {
+        assertFalse(Validators.isValidServerUrl("crm.example.com"))
+    }
+
+    @Test
+    fun `server url with javascript scheme is rejected`() {
+        assertFalse(Validators.isValidServerUrl("javascript:alert(1)"))
+    }
+
+    @Test
+    fun `blank server url is rejected`() {
+        assertFalse(Validators.isValidServerUrl(""))
+        assertFalse(Validators.isValidServerUrl("   "))
+    }
 }

@@ -68,4 +68,23 @@ object Validators {
     /** Mirrors backend normalizeSchemeURL: strip control chars, lowercase. */
     private fun normalizeSchemeUrl(raw: String): String =
         raw.trim().filter { it.code > 0x20 }.lowercase()
+
+    /**
+     * Validates a user-entered server origin before any credential is sent to
+     * it. Rejects userinfo (so `https://user:pass@host` — and the
+     * `https://realname@evil.com` phishing trick it enables — can never route
+     * the JWT to the wrong host) and non-http(s) schemes.
+     */
+    fun isValidServerUrl(value: String): Boolean {
+        val trimmed = value.trim().trimEnd('/')
+        if (trimmed.isEmpty()) return false
+        return try {
+            val uri = java.net.URI(trimmed)
+            (uri.scheme == "http" || uri.scheme == "https") &&
+                !uri.host.isNullOrBlank() &&
+                uri.userInfo == null
+        } catch (_: Exception) {
+            false
+        }
+    }
 }

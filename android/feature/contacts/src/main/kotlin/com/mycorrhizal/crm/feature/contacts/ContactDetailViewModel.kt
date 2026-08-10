@@ -4,8 +4,6 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.ContactRepository
-import com.mycorrhizal.crm.model.network.CRMEnvelope
-import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
@@ -29,7 +27,10 @@ class ContactDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
-    private val contactId: Int = savedStateHandle["contactId"] ?: 0
+    private val contactId: Int = run {
+        val raw: Any? = savedStateHandle["contactId"]
+        (raw as? Int) ?: (raw as? String)?.toIntOrNull() ?: 0
+    }
 
     private val _uiState = MutableStateFlow(ContactDetailUiState())
     val uiState: StateFlow<ContactDetailUiState> = _uiState.asStateFlow()
@@ -60,7 +61,3 @@ class ContactDetailViewModel @Inject constructor(
         _uiState.update { it.copy(error = null) }
     }
 }
-
-// Convenience accessors used by the detail screen.
-val ContactRecordResponse.cardOrNull: Card? get() = card
-val ContactRecordResponse.crmOrNull: CRMEnvelope? get() = crm

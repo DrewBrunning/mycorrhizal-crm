@@ -24,6 +24,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -31,7 +33,6 @@ import androidx.navigation.compose.rememberNavController
 import com.mycorrhizal.crm.feature.auth.LoginScreen
 import com.mycorrhizal.crm.feature.contacts.ContactDetailScreen
 import com.mycorrhizal.crm.feature.contacts.ContactListScreen
-import androidx.hilt.navigation.compose.hiltViewModel
 
 private data class BottomNavItem(
     val route: String,
@@ -107,7 +108,10 @@ private fun MainScaffold() {
                     onContactClick = { id -> navController.navigate("contacts/$id") },
                 )
             }
-            composable("contacts/{contactId}") { entry ->
+            composable(
+                route = "contacts/{contactId}",
+                arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            ) { entry ->
                 ContactDetailScreen(
                     onBack = { navController.popBackStack() },
                 )

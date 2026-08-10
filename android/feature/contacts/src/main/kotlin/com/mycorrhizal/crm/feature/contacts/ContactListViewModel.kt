@@ -9,6 +9,8 @@ import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -49,6 +51,18 @@ class ContactListViewModel @Inject constructor(
     val events = _events.receiveAsFlow()
 
     init {
+        // Keep the list populated from the local cache even when the network
+        // is unreachable (online-first with graceful offline degradation).
+        viewModelScope.launch {
+            contactRepository.observeContacts().collect { cached ->
+                // Only surface cached rows when the live list is empty (i.e.
+                // the fetch has not populated it yet) — never override fresh
+                // network results with stale cache.
+                _uiState.update {
+                    if (it.contacts.isEmpty()) it.copy(contacts = cached) else it
+                }
+            }
+        }
         loadContacts()
     }
 
@@ -128,9 +142,21 @@ class ContactListViewModel @Inject constructor(
         }
     }
 
+    private var searchJob: Job? = null
+
     fun onSearchQueryChange(query: String) {
         _uiState.update { it.copy(searchQuery = query) }
-        loadContacts()
+        // Debounce keystrokes so a fast typist doesn't fire one request per
+        // character; also reload immediately when cleared.
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            if (query.isBlank()) {
+                loadContacts()
+            } else {
+                delay(SEARCH_DEBOUNCE_MS)
+                loadContacts()
+            }
+        }
     }
 
     fun onContactClick(contactId: Int) {
@@ -145,5 +171,9 @@ class ContactListViewModel @Inject constructor(
         if (error is ApiError.Client && error.code == 401) {
             viewModelScope.launch { _events.send(ContactListEvent.ForceLogout) }
         }
+    }
+
+    companion object {
+        private const val SEARCH_DEBOUNCE_MS = 300L
     }
 }

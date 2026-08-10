@@ -25,10 +25,14 @@ class AuthInterceptorTest {
         server.shutdown()
     }
 
+    private fun interceptor(token: String?): AuthInterceptor = AuthInterceptor(
+        tokenProvider = TokenProvider { token },
+        baseUrlProvider = BaseUrlProvider { server.url("/").toString().trimEnd('/') },
+    )
+
     @Test
     fun `adds Bearer header when a token is present`() {
-        val interceptor = AuthInterceptor(TokenProvider { "test-jwt" })
-        val client = OkHttpClient.Builder().addInterceptor(interceptor).build()
+        val client = OkHttpClient.Builder().addInterceptor(interceptor("test-jwt")).build()
         server.enqueue(MockResponse().setResponseCode(200))
 
         client.newCall(Request.Builder().url(server.url("/test")).build()).execute()
@@ -39,8 +43,7 @@ class AuthInterceptorTest {
 
     @Test
     fun `omits header when no token is stored`() {
-        val interceptor = AuthInterceptor(TokenProvider { null })
-        val client = OkHttpClient.Builder().addInterceptor(interceptor).build()
+        val client = OkHttpClient.Builder().addInterceptor(interceptor(null)).build()
         server.enqueue(MockResponse().setResponseCode(200))
 
         client.newCall(Request.Builder().url(server.url("/test")).build()).execute()
@@ -51,8 +54,7 @@ class AuthInterceptorTest {
 
     @Test
     fun `omits header when token is blank`() {
-        val interceptor = AuthInterceptor(TokenProvider { "  " })
-        val client = OkHttpClient.Builder().addInterceptor(interceptor).build()
+        val client = OkHttpClient.Builder().addInterceptor(interceptor("  ")).build()
         server.enqueue(MockResponse().setResponseCode(200))
 
         client.newCall(Request.Builder().url(server.url("/test")).build()).execute()
@@ -63,8 +65,7 @@ class AuthInterceptorTest {
 
     @Test
     fun `does not overwrite an existing Authorization header`() {
-        val interceptor = AuthInterceptor(TokenProvider { "token" })
-        val client = OkHttpClient.Builder().addInterceptor(interceptor).build()
+        val client = OkHttpClient.Builder().addInterceptor(interceptor("token")).build()
         server.enqueue(MockResponse().setResponseCode(200))
 
         val request = Request.Builder()
@@ -75,5 +76,38 @@ class AuthInterceptorTest {
 
         val recorded = server.takeRequest()
         assertEquals("Basic abc", recorded.getHeader("Authorization"))
+    }
+
+    @Test
+    fun `omits header when the request targets a different host`() {
+        // The configured origin never receives a request here; the actual
+        // request goes to the mock server whose host differs — the JWT must
+        // not be attached to a host other than the configured origin.
+        val auth = AuthInterceptor(
+            tokenProvider = TokenProvider { "secret-jwt" },
+            baseUrlProvider = BaseUrlProvider { "https://configured.example.com" },
+        )
+        val client = OkHttpClient.Builder().addInterceptor(auth).build()
+        server.enqueue(MockResponse().setResponseCode(200))
+
+        client.newCall(Request.Builder().url(server.url("/x")).build()).execute()
+
+        val recorded = server.takeRequest()
+        assertNull(recorded.getHeader("Authorization"))
+    }
+
+    @Test
+    fun `omits header when the base url is not configured`() {
+        val auth = AuthInterceptor(
+            tokenProvider = TokenProvider { "secret-jwt" },
+            baseUrlProvider = BaseUrlProvider { "" },
+        )
+        val client = OkHttpClient.Builder().addInterceptor(auth).build()
+        server.enqueue(MockResponse().setResponseCode(200))
+
+        client.newCall(Request.Builder().url(server.url("/x")).build()).execute()
+
+        val recorded = server.takeRequest()
+        assertNull(recorded.getHeader("Authorization"))
     }
 }

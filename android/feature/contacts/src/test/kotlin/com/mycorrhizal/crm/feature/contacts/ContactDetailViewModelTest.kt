@@ -51,6 +51,22 @@ class ContactDetailViewModelTest {
     }
 
     @Test
+    fun `string contact id from navigation is parsed as an int`() = runTest(mainDispatcherRule.testDispatcher) {
+        // Navigation Compose stores route args as Strings unless NavType.IntType
+        // is declared; the ViewModel must tolerate both shapes.
+        val record = ContactRecordResponse(id = 9, card = Card(name = Name(full = "Erin")))
+        coEvery { contactRepository.getContact(9) } returns Result.success(record)
+
+        val vm = ContactDetailViewModel(
+            contactRepository,
+            SavedStateHandle(mapOf("contactId" to "9")),
+        )
+        advanceUntilIdle()
+
+        assertEquals("Erin", vm.uiState.value.contact?.card?.name?.full)
+    }
+
+    @Test
     fun `server failure surfaces the error message`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { contactRepository.getContact(5) } returns Result.failure(
             ApiError.Client(404, "Contact not found"),

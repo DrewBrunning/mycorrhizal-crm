@@ -28,20 +28,14 @@ class LoginScreenTest {
     private fun setContent(
         uiState: LoginUiState = LoginUiState(),
         onServerUrlChange: (String) -> Unit = {},
-        onIdentifierChange: (String) -> Unit = {},
-        onPasswordChange: (String) -> Unit = {},
-        onApiTokenChange: (String) -> Unit = {},
         onModeChange: (LoginMode) -> Unit = {},
-        onSubmit: () -> Unit = {},
+        onSubmit: (String, String, String, String) -> Unit = { _, _, _, _ -> },
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 LoginScreenContent(
                     uiState = uiState,
                     onServerUrlChange = onServerUrlChange,
-                    onIdentifierChange = onIdentifierChange,
-                    onPasswordChange = onPasswordChange,
-                    onApiTokenChange = onApiTokenChange,
                     onModeChange = onModeChange,
                     onSubmit = onSubmit,
                 )
@@ -75,15 +69,21 @@ class LoginScreenTest {
     }
 
     @Test
-    fun `submit invokes the callback`() {
-        var submitted = false
-        setContent(onSubmit = { submitted = true })
+    fun `submit passes the entered values to the callback`() {
+        var captured: List<String>? = null
+        setContent(onSubmit = { serverUrl, identifier, password, apiToken ->
+            captured = listOf(serverUrl, identifier, password, apiToken)
+        })
+        composeTestRule.onNodeWithText("Server URL").performTextInput("https://crm.example.com")
+        composeTestRule.onNodeWithText("Username or email").performTextInput("alice")
+        composeTestRule.onNode(hasText("Password") and hasSetTextAction()).performTextInput("secret")
         composeTestRule.onNodeWithText("Sign in").performScrollTo().performClick()
-        assertEquals(true, submitted)
+
+        assertEquals(listOf("https://crm.example.com", "alice", "secret", ""), captured)
     }
 
     @Test
-    fun `loading state hides the submit button and shows a spinner`() {
+    fun `loading state hides the submit button`() {
         setContent(uiState = LoginUiState(isLoading = true))
         composeTestRule.onNodeWithText("Sign in").assertDoesNotExist()
     }

@@ -45,6 +45,16 @@ class LoginViewModelTest {
         return Harness(viewModel, authRepository, sessionManager)
     }
 
+    private fun submit(
+        h: Harness,
+        serverUrl: String = "https://crm.example.com",
+        identifier: String = "alice",
+        password: String = "secret",
+        apiToken: String = "",
+    ) {
+        h.viewModel.onSubmit(serverUrl, identifier, password, apiToken)
+    }
+
     @Test
     fun `initial state is empty`() {
         val h = harness()
@@ -56,16 +66,34 @@ class LoginViewModelTest {
     @Test
     fun `submit with blank server url shows error`() = runTest(mainDispatcherRule.testDispatcher) {
         val h = harness()
-        h.viewModel.onSubmit()
+        submit(h, serverUrl = "")
 
-        assertEquals("Server URL is required", h.viewModel.uiState.value.error)
+        assertEquals("Enter a valid server URL, e.g. https://crm.example.com", h.viewModel.uiState.value.error)
+    }
+
+    @Test
+    fun `server url with userinfo is rejected before any request`() = runTest(mainDispatcherRule.testDispatcher) {
+        val h = harness()
+        submit(h, serverUrl = "https://attacker@crm.example.com")
+        advanceUntilIdle()
+
+        assertEquals("Enter a valid server URL, e.g. https://crm.example.com", h.viewModel.uiState.value.error)
+        coVerify(exactly = 0) { h.authRepository.login(any(), any()) }
+    }
+
+    @Test
+    fun `credentials are not part of the UI state`() {
+        val h = harness()
+        val state = h.viewModel.uiState.value
+        // LoginUiState carries no credential fields; passwords/tokens are
+        // passed straight to submit and never retained.
+        assertEquals(LoginUiState().copy(mode = state.mode), state)
     }
 
     @Test
     fun `blank identifier shows validation error without calling repository`() = runTest(mainDispatcherRule.testDispatcher) {
         val h = harness()
-        h.viewModel.onServerUrlChange("https://crm.example.com")
-        h.viewModel.onSubmit()
+        submit(h, identifier = "")
         advanceUntilIdle()
 
         assertEquals("Username or email is required", h.viewModel.uiState.value.error)
@@ -77,12 +105,8 @@ class LoginViewModelTest {
         val h = harness()
         coEvery { h.authRepository.login("alice", "secret") } returns Result.success(Unit)
 
-        h.viewModel.onServerUrlChange("https://crm.example.com/")
-        h.viewModel.onIdentifierChange("alice")
-        h.viewModel.onPasswordChange("secret")
-
         h.viewModel.events.test {
-            h.viewModel.onSubmit()
+            submit(h, serverUrl = "https://crm.example.com/")
             assertTrue(awaitItem() is LoginEvent.ServerUrlUpdated)
             assertTrue(awaitItem() is LoginEvent.LoggedIn)
         }
@@ -97,10 +121,7 @@ class LoginViewModelTest {
             Exception("Invalid credentials"),
         )
 
-        h.viewModel.onServerUrlChange("https://crm.example.com")
-        h.viewModel.onIdentifierChange("alice")
-        h.viewModel.onPasswordChange("wrong")
-        h.viewModel.onSubmit()
+        submit(h, password = "wrong")
         advanceUntilIdle()
 
         // LoginUseCase maps the failure to its message.
@@ -111,10 +132,8 @@ class LoginViewModelTest {
     @Test
     fun `api token mode validates the token prefix`() = runTest(mainDispatcherRule.testDispatcher) {
         val h = harness()
-        h.viewModel.onServerUrlChange("https://crm.example.com")
         h.viewModel.onModeChange(LoginMode.API_TOKEN)
-        h.viewModel.onApiTokenChange("not-a-token")
-        h.viewModel.onSubmit()
+        submit(h, apiToken = "not-a-token")
         advanceUntilIdle()
 
         assertEquals("API tokens start with 'mycorrhizal_'", h.viewModel.uiState.value.error)
@@ -126,12 +145,9 @@ class LoginViewModelTest {
         val h = harness()
         coEvery { h.authRepository.loginWithApiToken("mycorrhizal_abc") } returns Result.success(Unit)
 
-        h.viewModel.onServerUrlChange("https://crm.example.com")
         h.viewModel.onModeChange(LoginMode.API_TOKEN)
-        h.viewModel.onApiTokenChange("mycorrhizal_abc")
-
         h.viewModel.events.test {
-            h.viewModel.onSubmit()
+            submit(h, apiToken = "mycorrhizal_abc")
             assertTrue(awaitItem() is LoginEvent.ServerUrlUpdated)
             assertTrue(awaitItem() is LoginEvent.LoggedIn)
         }

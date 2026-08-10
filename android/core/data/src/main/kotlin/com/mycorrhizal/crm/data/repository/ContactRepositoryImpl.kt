@@ -39,7 +39,10 @@ class ContactRepositoryImpl @Inject constructor(
             // Network failure: serve whatever is cached for this search term.
             return Result.failure(error.toApiError())
         }
-        val rows = page.contacts.map { it.toCached() }
+        val rows = page.contacts.map { it.toCached() }.toMutableList()
+        // A list row only carries the summary projection; preserve any cached
+        // full detail (card/crm) so a list refresh doesn't wipe offline detail.
+        mergePreservingDetail(rows)
         dao.upsertAll(rows)
         applySync(page.sync)
         return Result.success(
@@ -60,11 +63,20 @@ class ContactRepositoryImpl @Inject constructor(
                 Result.success(record)
             },
             onFailure = { error ->
-                // Offline / server error: try the cache.
+                // Only fall back to the cache for connectivity-class failures.
+                // A 404 means the contact is gone server-side; serving stale
+                // cached data for a deleted contact would be misleading.
+                val shouldUseCache = error is ApiError.Network ||
+                    error is ApiError.Timeout ||
+                    error is ApiError.Unknown ||
+                    error is ApiError.Server
+                if (!shouldUseCache) {
+                    return@fold Result.failure(error)
+                }
                 val cached = dao.getById(id)
                 val fromCache = cached?.let { it.toRecord() }
                 if (fromCache != null) Result.success(fromCache)
-                else Result.failure(error.toApiError())
+                else Result.failure(error)
             },
         )
     }
@@ -87,6 +99,26 @@ class ContactRepositoryImpl @Inject constructor(
         if (ids.isNotEmpty()) dao.deleteByIds(ids)
         // full_resync handling is a Phase-3 concern (multi-table); the
         // contact table is always replaced by the fetched page anyway.
+    }
+
+    /**
+     * A list page's rows are summaries with null `card`/`crm`. Before
+     * upserting, carry over the cached full detail for rows we already hold,
+     * so a plain list refresh never destroys offline-usable detail.
+     */
+    private suspend fun mergePreservingDetail(rows: MutableList<CachedContact>) {
+        if (rows.isEmpty()) return
+        val cachedById = dao.getByIds(rows.map { it.id })
+            .associateBy { it.id }
+        for (i in rows.indices) {
+            val cached = cachedById[rows[i].id] ?: continue
+            val row = rows[i]
+            rows[i] = row.copy(
+                card = row.card ?: cached.card,
+                crm = row.crm ?: cached.crm,
+                photoThumbnail = row.photoThumbnail ?: cached.photoThumbnail,
+            )
+        }
     }
 
     private fun ContactSummary.toCached(): CachedContact = CachedContact(

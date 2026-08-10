@@ -22,7 +22,6 @@ internal object AndroidConfig {
     const val COMPILE_SDK = 35
     const val MIN_SDK = 26
     const val TARGET_SDK = 35
-    const val JDK_TARGET = "17"
 }
 
 /** Applies the Android/JVM/test baseline to any android module. */

@@ -53,9 +53,6 @@ fun LoginScreen(
     LoginScreenContent(
         uiState = state,
         onServerUrlChange = viewModel::onServerUrlChange,
-        onIdentifierChange = viewModel::onIdentifierChange,
-        onPasswordChange = viewModel::onPasswordChange,
-        onApiTokenChange = viewModel::onApiTokenChange,
         onModeChange = viewModel::onModeChange,
         onSubmit = viewModel::onSubmit,
         onErrorShown = viewModel::onErrorShown,
@@ -64,20 +61,23 @@ fun LoginScreen(
 
 /**
  * Stateless login form — the screen's canonical states are testable directly
- * (ticket §10.4).
+ * (ticket §10.4). Field text lives in local `remember` state; credentials
+ * (password/API token) are never saveable and are passed up on submit.
  */
 @Composable
 fun LoginScreenContent(
     uiState: LoginUiState,
     onServerUrlChange: (String) -> Unit,
-    onIdentifierChange: (String) -> Unit,
-    onPasswordChange: (String) -> Unit,
-    onApiTokenChange: (String) -> Unit,
     onModeChange: (LoginMode) -> Unit,
-    onSubmit: () -> Unit,
+    onSubmit: (serverUrl: String, identifier: String, password: String, apiToken: String) -> Unit,
     onErrorShown: () -> Unit = {},
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
+
+    var serverUrl by rememberSaveable { mutableStateOf(uiState.serverUrl) }
+    var identifier by rememberSaveable { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var apiToken by remember { mutableStateOf("") }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -100,7 +100,6 @@ fun LoginScreenContent(
                 style = MaterialTheme.typography.bodyLarge,
             )
 
-            var serverUrl by rememberSaveable { mutableStateOf(uiState.serverUrl) }
             OutlinedTextField(
                 value = serverUrl,
                 onValueChange = { serverUrl = it; onServerUrlChange(it) },
@@ -125,28 +124,25 @@ fun LoginScreenContent(
             }
 
             if (uiState.mode == LoginMode.PASSWORD) {
-                var identifier by rememberSaveable { mutableStateOf(uiState.identifier) }
                 OutlinedTextField(
                     value = identifier,
-                    onValueChange = { identifier = it; onIdentifierChange(it) },
+                    onValueChange = { identifier = it },
                     label = { Text("Username or email") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                var password by rememberSaveable { mutableStateOf(uiState.password) }
                 OutlinedTextField(
                     value = password,
-                    onValueChange = { password = it; onPasswordChange(it) },
+                    onValueChange = { password = it },
                     label = { Text("Password") },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth(),
                 )
             } else {
-                var apiToken by rememberSaveable { mutableStateOf(uiState.apiToken) }
                 OutlinedTextField(
                     value = apiToken,
-                    onValueChange = { apiToken = it; onApiTokenChange(it) },
+                    onValueChange = { apiToken = it },
                     label = { Text("API token") },
                     placeholder = { Text("mycorrhizal_…") },
                     singleLine = true,
@@ -158,7 +154,9 @@ fun LoginScreenContent(
                 CircularProgressIndicator()
             } else {
                 Button(
-                    onClick = onSubmit,
+                    onClick = {
+                        onSubmit(serverUrl, identifier, password, apiToken)
+                    },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("Sign in")

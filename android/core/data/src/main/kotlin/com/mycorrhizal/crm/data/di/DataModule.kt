@@ -21,6 +21,10 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import javax.inject.Singleton
 
 /**
@@ -63,7 +67,13 @@ object DataModule {
     fun provideSessionManager(
         tokenStorage: TokenStorage,
         prefsStorage: SessionPrefsStorage,
-    ): DefaultSessionManager = DefaultSessionManager(tokenStorage, prefsStorage)
+    ): DefaultSessionManager {
+        val manager = DefaultSessionManager(tokenStorage, prefsStorage)
+        // Hydrate the stored JWT/server URL into memory asynchronously so a
+        // returning user is already logged in on launch (H3 review fix).
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch { manager.init() }
+        return manager
+    }
 }
 
 @Module

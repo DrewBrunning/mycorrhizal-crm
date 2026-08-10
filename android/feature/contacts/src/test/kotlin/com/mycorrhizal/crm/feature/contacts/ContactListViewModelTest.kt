@@ -23,17 +23,22 @@ class ContactListViewModelTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
-    private val contactRepository = mockk<ContactRepository>()
-
     private fun page(vararg contacts: ContactSummary, nextCursor: String? = null): ContactsPage =
         ContactsPage(contacts = contacts.toList(), nextCursor = nextCursor, limit = 50, sync = null)
 
+    /** Fresh repository mock + ViewModel; stubs the cache stream the VM collects on init. */
+    private fun newViewModel(): Pair<ContactListViewModel, ContactRepository> {
+        val repo = mockk<ContactRepository>()
+        coEvery { repo.observeContacts() } returns emptyFlow()
+        return ContactListViewModel(repo) to repo
+    }
+
     @Test
     fun `initial load fetches the first page`() = runTest(mainDispatcherRule.testDispatcher) {
+        val (viewModel, contactRepository) = newViewModel()
         coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
             Result.success(page(ContactSummary(id = 1, fn = "Alice")))
 
-        val viewModel = ContactListViewModel(contactRepository)
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -44,10 +49,10 @@ class ContactListViewModelTest {
 
     @Test
     fun `error state sets the display message`() = runTest(mainDispatcherRule.testDispatcher) {
+        val (viewModel, contactRepository) = newViewModel()
         coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
             Result.failure(ApiError.Server(500, "boom"))
 
-        val viewModel = ContactListViewModel(contactRepository)
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -57,10 +62,10 @@ class ContactListViewModelTest {
 
     @Test
     fun `401 error emits ForceLogout`() = runTest(mainDispatcherRule.testDispatcher) {
+        val (viewModel, contactRepository) = newViewModel()
         coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
             Result.failure(ApiError.Client(401, "Invalid token"))
 
-        val viewModel = ContactListViewModel(contactRepository)
         viewModel.events.test {
             advanceUntilIdle()
             val event = awaitItem()
@@ -70,12 +75,12 @@ class ContactListViewModelTest {
 
     @Test
     fun `cursor pagination appends to the existing list`() = runTest(mainDispatcherRule.testDispatcher) {
+        val (viewModel, contactRepository) = newViewModel()
         coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
             Result.success(page(ContactSummary(id = 1, fn = "Alice"), nextCursor = "cursor2"))
         coEvery { contactRepository.listContacts(cursor = "cursor2", limit = 50, search = null) } returns
             Result.success(page(ContactSummary(id = 2, fn = "Bob"), nextCursor = null))
 
-        val viewModel = ContactListViewModel(contactRepository)
         advanceUntilIdle()
         assertEquals(1, viewModel.uiState.value.contacts.size)
 
@@ -89,12 +94,12 @@ class ContactListViewModelTest {
 
     @Test
     fun `loadNextPage is a no-op while already loading`() = runTest(mainDispatcherRule.testDispatcher) {
+        val (viewModel, contactRepository) = newViewModel()
         coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
             Result.success(page(ContactSummary(id = 1, fn = "Alice"), nextCursor = "cursor2"))
         coEvery { contactRepository.listContacts(cursor = "cursor2", limit = 50, search = null) } returns
             Result.success(page(ContactSummary(id = 2, fn = "Bob"), nextCursor = null))
 
-        val viewModel = ContactListViewModel(contactRepository)
         advanceUntilIdle()
 
         viewModel.loadNextPage()
@@ -107,12 +112,12 @@ class ContactListViewModelTest {
 
     @Test
     fun `search query is forwarded to the repository`() = runTest(mainDispatcherRule.testDispatcher) {
+        val (viewModel, contactRepository) = newViewModel()
         coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
             Result.success(page())
         coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "ali") } returns
             Result.success(page(ContactSummary(id = 3, fn = "Alicia")))
 
-        val viewModel = ContactListViewModel(contactRepository)
         advanceUntilIdle()
 
         viewModel.onSearchQueryChange("ali")
@@ -126,12 +131,12 @@ class ContactListViewModelTest {
 
     @Test
     fun `clearing the search reloads the full list`() = runTest(mainDispatcherRule.testDispatcher) {
+        val (viewModel, contactRepository) = newViewModel()
         coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
             Result.success(page(ContactSummary(id = 1, fn = "Alice")))
         coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "bob") } returns
             Result.success(page())
 
-        val viewModel = ContactListViewModel(contactRepository)
         advanceUntilIdle()
         viewModel.onSearchQueryChange("bob")
         advanceUntilIdle()
@@ -144,10 +149,10 @@ class ContactListViewModelTest {
 
     @Test
     fun `clicking a contact emits navigation event`() = runTest(mainDispatcherRule.testDispatcher) {
+        val (viewModel, contactRepository) = newViewModel()
         coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
             Result.success(page(ContactSummary(id = 42, fn = "Alice")))
 
-        val viewModel = ContactListViewModel(contactRepository)
         viewModel.events.test {
             advanceUntilIdle()
             viewModel.onContactClick(42)

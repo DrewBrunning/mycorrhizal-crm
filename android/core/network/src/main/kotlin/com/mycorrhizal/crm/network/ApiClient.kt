@@ -7,6 +7,8 @@ import com.mycorrhizal.crm.model.network.LoginRequest
 import com.mycorrhizal.crm.model.network.LoginResponse
 import com.mycorrhizal.crm.model.network.UserProfile
 import com.squareup.moshi.Moshi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -101,13 +103,13 @@ class ApiClient(
     private suspend fun <T> execute(
         request: Request,
         mapper: (okhttp3.Response, String) -> T?,
-    ): Result<T> {
-        return try {
+    ): Result<T> = withContext(Dispatchers.IO) {
+        try {
             val response = okHttpClient.newCall(request).execute()
             response.use {
                 val body = it.body?.string().orEmpty()
                 if (!it.isSuccessful) {
-                    return Result.failure(parseError(it.code, body))
+                    return@withContext Result.failure(parseError(it.code, body))
                 }
                 val mapped = mapper(it, body)
                 if (mapped == null) {

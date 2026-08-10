@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.domain.usecase.LoginUseCase
 import com.mycorrhizal.crm.domain.usecase.LoginWithApiTokenUseCase
+import com.mycorrhizal.crm.model.util.Validators
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,9 +18,6 @@ import javax.inject.Inject
 
 data class LoginUiState(
     val serverUrl: String = "",
-    val identifier: String = "",
-    val password: String = "",
-    val apiToken: String = "",
     val mode: LoginMode = LoginMode.PASSWORD,
     val isLoading: Boolean = false,
     val error: String? = null,
@@ -49,40 +47,39 @@ class LoginViewModel @Inject constructor(
         _uiState.update { it.copy(serverUrl = value) }
     }
 
-    fun onIdentifierChange(value: String) {
-        _uiState.update { it.copy(identifier = value) }
-    }
-
-    fun onPasswordChange(value: String) {
-        _uiState.update { it.copy(password = value) }
-    }
-
-    fun onApiTokenChange(value: String) {
-        _uiState.update { it.copy(apiToken = value) }
-    }
-
     fun onModeChange(mode: LoginMode) {
         _uiState.update { it.copy(mode = mode, error = null) }
     }
 
-    fun onSubmit() {
-        val state = _uiState.value
-        if (state.isLoading) return
+    /**
+     * Authenticate with the given credentials. The values are deliberately
+     * passed in rather than stored in [LoginUiState] — a password or API token
+     * must not linger in ViewModel state after the attempt (security).
+     */
+    fun onSubmit(
+        serverUrl: String,
+        identifier: String,
+        password: String,
+        apiToken: String,
+    ) {
+        if (_uiState.value.isLoading) return
 
-        val serverUrl = state.serverUrl.trim().trimEnd('/')
-        if (serverUrl.isBlank()) {
-            _uiState.update { it.copy(error = "Server URL is required") }
+        val trimmedUrl = serverUrl.trim().trimEnd('/')
+        if (!Validators.isValidServerUrl(trimmedUrl)) {
+            _uiState.update {
+                it.copy(error = "Enter a valid server URL, e.g. https://crm.example.com")
+            }
             return
         }
 
         _uiState.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
-            sessionManager.setServerUrl(serverUrl)
+            sessionManager.setServerUrl(trimmedUrl)
             _events.send(LoginEvent.ServerUrlUpdated)
 
-            val result = when (state.mode) {
-                LoginMode.PASSWORD -> loginUseCase(state.identifier, state.password)
-                LoginMode.API_TOKEN -> loginWithApiTokenUseCase(state.apiToken)
+            val result = when (_uiState.value.mode) {
+                LoginMode.PASSWORD -> loginUseCase(identifier, password)
+                LoginMode.API_TOKEN -> loginWithApiTokenUseCase(apiToken)
             }
 
             when (result) {

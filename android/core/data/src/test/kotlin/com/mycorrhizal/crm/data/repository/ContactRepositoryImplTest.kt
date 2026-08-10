@@ -144,6 +144,30 @@ class ContactRepositoryImplTest {
     }
 
     @Test
+    fun `list refresh does not clobber cached detail`() = runTest {
+        // Detail cached first with a full Card.
+        db.cachedContactDao().upsert(
+            com.mycorrhizal.crm.data.local.CachedContact(
+                id = 1,
+                fn = "Alice",
+                card = Card(name = Name(full = "Alice Full Name")),
+            ),
+        )
+        coEvery { apiClient.listContacts(any(), any(), any(), any()) } returns Result.success(
+            com.mycorrhizal.crm.model.network.ContactsPage(
+                contacts = listOf(summary(1, "Alice")),
+                nextCursor = "",
+            ),
+        )
+
+        repository.listContacts()
+
+        val cached = db.cachedContactDao().getById(1)
+        // The summary page must not have wiped the cached card.
+        assertEquals("Alice Full Name", cached?.card?.name?.full)
+    }
+
+    @Test
     fun `observeContacts surfaces cached summaries`() = runTest {
         db.cachedContactDao().upsertAll(
             listOf(

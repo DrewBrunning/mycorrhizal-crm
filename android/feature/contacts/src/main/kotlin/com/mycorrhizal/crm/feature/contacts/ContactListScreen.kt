@@ -68,10 +68,9 @@ fun ContactListScreen(
     ContactListScreenContent(
         uiState = state,
         onSearchQueryChange = viewModel::onSearchQueryChange,
-        onContactClick = { id ->
-            viewModel.onContactClick(id)
-            onContactClick(id)
-        },
+        // A click only routes through the ViewModel event; the LaunchedEffect
+        // above performs the actual navigation so each tap navigates once.
+        onContactClick = viewModel::onContactClick,
         onErrorShown = viewModel::onErrorShown,
     )
 }

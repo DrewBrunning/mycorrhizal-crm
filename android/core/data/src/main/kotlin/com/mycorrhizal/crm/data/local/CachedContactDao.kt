@@ -16,6 +16,9 @@ interface CachedContactDao {
     @Query("SELECT * FROM cached_contacts WHERE id = :id")
     suspend fun getById(id: Int): CachedContact?
 
+    @Query("SELECT * FROM cached_contacts WHERE id IN (:ids)")
+    suspend fun getByIds(ids: List<Int>): List<CachedContact>
+
     @Query("SELECT * FROM cached_contacts WHERE deleted = 0 ORDER BY fn COLLATE NOCASE ASC")
     suspend fun getAll(): List<CachedContact>
 
