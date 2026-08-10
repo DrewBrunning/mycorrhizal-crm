@@ -88,7 +88,7 @@ fun ContactFormScreen(
                 onPhonesChange = viewModel::onPhonesChange,
                 onBirthdayChange = viewModel::onBirthdayChange,
                 onNotesChange = viewModel::onNotesChange,
-                onCirclesChange = viewModel::onCirclesChange,
+                onCirclesTextChange = viewModel::onCirclesTextChange,
                 onSave = viewModel::save,
             )
         }
@@ -112,7 +112,7 @@ fun ContactFormContent(
     onPhonesChange: (List<String>) -> Unit,
     onBirthdayChange: (String) -> Unit,
     onNotesChange: (String) -> Unit,
-    onCirclesChange: (String) -> Unit,
+    onCirclesTextChange: (String) -> Unit,
     onSave: () -> Unit,
 ) {
     Column(
@@ -181,8 +181,8 @@ fun ContactFormContent(
         )
 
         OutlinedTextField(
-            value = state.circles.joinToString(", "),
-            onValueChange = onCirclesChange,
+            value = state.circlesText,
+            onValueChange = onCirclesTextChange,
             label = { Text("Circles (comma-separated)") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),

@@ -39,7 +39,7 @@ class ContactFormScreenTest {
                     onPhonesChange = {},
                     onBirthdayChange = {},
                     onNotesChange = {},
-                    onCirclesChange = {},
+                    onCirclesTextChange = {},
                     onSave = onSave,
                 )
             }

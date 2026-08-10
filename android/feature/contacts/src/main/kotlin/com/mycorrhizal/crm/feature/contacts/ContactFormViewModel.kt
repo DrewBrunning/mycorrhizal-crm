@@ -7,11 +7,16 @@ import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.model.network.CRMEnvelope
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordInput
+import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.Email
 import com.mycorrhizal.crm.model.network.Name
 import com.mycorrhizal.crm.model.network.NameComponent
+import com.mycorrhizal.crm.model.network.Nickname
 import com.mycorrhizal.crm.model.network.Phone
-import com.mycorrhizal.crm.model.util.Validators
+import com.mycorrhizal.crm.model.network.Anniversary
+import com.mycorrhizal.crm.model.network.AnniversaryDate
+import com.mycorrhizal.crm.model.network.PartialDate
+import com.mycorrhizal.crm.model.network.CardNote
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -26,6 +31,9 @@ import javax.inject.Inject
  * Editable form state for a contact's core Card fields. Field text lives
  * here (single source of truth for the form screen); [toInput] assembles the
  * neutral Card/CRM the backend accepts.
+ *
+ * `circlesText` is the raw comma-separated field text; it is parsed only on
+ * save (parsing on every keystroke corrupts typed input).
  */
 data class ContactFormState(
     val contactId: Int? = null,
@@ -36,49 +44,105 @@ data class ContactFormState(
     val phones: List<String> = listOf(""),
     val birthday: String = "",
     val notes: String = "",
-    val circles: List<String> = emptyList(),
+    val circlesText: String = "",
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
     val error: String? = null,
 ) {
     val isEdit: Boolean get() = contactId != null
 
-    /** True when the form has at least one given name or full name — the
-     *  backend's invariant (controller checks firstname != ""). */
+    /** True when the form has at least one given name — the backend's
+     *  invariant (controller checks firstname != ""). */
     val hasName: Boolean get() = givenName.isNotBlank()
 
-    fun toInput(): ContactRecordInput {
+    /**
+     * Assemble the ContactRecordInput to send. In edit mode this merges onto
+     * [base] so fields the form does not model (addresses, organizations,
+     * titles, personalInfo, links, media, extra nicknames/notes, email/phone
+     * contexts…) survive a save — the backend PUT is a full overwrite, so a
+     * rebuild-from-scratch would silently delete them. In create mode [base]
+     * is null and everything comes from the form.
+     */
+    fun toInput(base: ContactRecordResponse?): ContactRecordInput {
+        val baseCard = base?.card ?: Card()
+        val baseCrm = base?.crm ?: CRMEnvelope()
+
+        val card = baseCard.copy(
+            name = mergeName(baseCard.name, givenName, surname),
+            nicknames = if (nickname.isNotBlank()) {
+                (baseCard.nicknames.orEmpty().let { existing ->
+                    if (existing.isEmpty()) listOf(Nickname(name = nickname.trim()))
+                    else listOf(existing.first().copy(name = nickname.trim())) + existing.drop(1)
+                })
+            } else {
+                baseCard.nicknames
+            },
+            emails = emails.mapNotNull { it.trim().takeIf(String::isNotBlank) }
+                .map { Email(address = it) }
+                .ifEmpty { null },
+            phones = phones.mapNotNull { it.trim().takeIf(String::isNotBlank) }
+                .map { Phone(number = it) }
+                .ifEmpty { null },
+            anniversaries = mergeBirthday(baseCard.anniversaries, birthday),
+            notes = if (notes.isNotBlank()) {
+                val note = CardNote(note = notes.trim())
+                baseCard.notes.orEmpty().let { if (it.isEmpty()) listOf(note) else listOf(note) + it.drop(1) }
+            } else {
+                baseCard.notes
+            },
+        )
+        val crm = if (circlesText.isBlank()) {
+            baseCrm
+        } else {
+            baseCrm.copy(circles = circlesText.split(",").map(String::trim).filter(String::isNotEmpty))
+        }
+        return ContactRecordInput(
+            gender = base?.gender,
+            card = card,
+            crm = crm,
+        )
+    }
+
+    /** Validate the form; returns the first problem or null if valid. */
+    fun validate(): String? = when {
+        !hasName -> "At least one given name is required"
+        else -> null
+    }
+
+    /** Merge form given/surname onto the base name, preserving other name
+     *  components (title, given2, generation…) and rebuilding `full`. */
+    private fun mergeName(base: Name?, givenName: String, surname: String): Name {
+        val baseComponents = base?.components.orEmpty()
+        val kept = baseComponents.filter { it.kind != "given" && it.kind != "surname" }
         val components = buildList {
+            addAll(kept)
             if (givenName.isNotBlank()) add(NameComponent(kind = "given", value = givenName.trim()))
             if (surname.isNotBlank()) add(NameComponent(kind = "surname", value = surname.trim()))
         }
-        val fullName = listOf(givenName.trim(), surname.trim())
-            .filter { it.isNotBlank() }
-            .joinToString(" ")
-            .ifBlank { null }
-
-        val card = Card(
-            name = Name(components = components.ifEmpty { null }, full = fullName),
-            nicknames = nickname.takeIf { it.isNotBlank() }?.let { listOf(com.mycorrhizal.crm.model.network.Nickname(name = it.trim())) },
-            emails = emails.mapNotNull { it.trim().takeIf(String::isNotBlank) }.map { Email(address = it) }.ifEmpty { null },
-            phones = phones.mapNotNull { it.trim().takeIf(String::isNotBlank) }.map { Phone(number = it) }.ifEmpty { null },
-            anniversaries = birthday.takeIf { it.isNotBlank() }?.let { birthday ->
-                val (year, month, day) = parseBirthday(birthday)
-                listOf(
-                    com.mycorrhizal.crm.model.network.Anniversary(
-                        kind = "birth",
-                        date = com.mycorrhizal.crm.model.network.AnniversaryDate(
-                            partial = com.mycorrhizal.crm.model.network.PartialDate(
-                                year = year, month = month, day = day,
-                            ),
-                        ),
-                    ),
-                )
-            },
-            notes = notes.takeIf { it.isNotBlank() }?.let { listOf(com.mycorrhizal.crm.model.network.CardNote(note = it.trim())) },
+        val full = components.mapNotNull { it.value }.filter { it.isNotBlank() }.joinToString(" ")
+        return Name(
+            components = components.ifEmpty { null },
+            full = full.ifBlank { null },
+            sortAs = base?.sortAs,
+            isOrdered = base?.isOrdered,
+            defaultSeparator = base?.defaultSeparator,
+            phoneticSystem = base?.phoneticSystem,
+            phoneticScript = base?.phoneticScript,
         )
-        val crm = CRMEnvelope(circles = circles.map { it.trim() }.filter { it.isNotBlank() }.ifEmpty { null })
-        return ContactRecordInput(card = card, crm = crm)
+    }
+
+    /** Set/keep the birth anniversary: a blank form field preserves the base
+     *  (so year-only partials aren't silently deleted), a filled one replaces
+     *  it while keeping non-birth anniversaries. */
+    private fun mergeBirthday(base: List<Anniversary>?, birthday: String): List<Anniversary>? {
+        if (birthday.isBlank()) return base
+        val (year, month, day) = parseBirthday(birthday)
+        val birth = Anniversary(
+            kind = "birth",
+            date = AnniversaryDate(partial = PartialDate(year = year, month = month, day = day)),
+        )
+        val others = base.orEmpty().filter { it.kind != "birth" }
+        return others + birth
     }
 
     private fun parseBirthday(value: String): Triple<Int?, Int?, Int?> {
@@ -89,16 +153,6 @@ data class ContactFormState(
         }
         val parts = clean.split("-")
         return Triple(parts.getOrNull(0)?.toIntOrNull(), parts.getOrNull(1)?.toIntOrNull(), parts.getOrNull(2)?.toIntOrNull())
-    }
-
-    /** Validate the form; returns the first problem or null if valid. */
-    fun validate(): String? = when {
-        !hasName -> "At least one given name is required"
-        phones.any { it.isNotBlank() && !Validators.isValidPhone(it) } ->
-            "Enter a valid phone number"
-        birthday.isNotBlank() && !Validators.isValidBirthday(birthday) ->
-            "Birthday must be YYYY-MM-DD or --MM-DD"
-        else -> null
     }
 }
 
@@ -123,6 +177,9 @@ class ContactFormViewModel @Inject constructor(
     private val _events = MutableStateFlow<ContactFormEvent?>(null)
     val events: StateFlow<ContactFormEvent?> = _events
 
+    /** The record this form was loaded from; used to preserve unmodeled data on save. */
+    private var baseRecord: ContactRecordResponse? = null
+
     init {
         if (contactId != null) loadExisting()
     }
@@ -132,7 +189,10 @@ class ContactFormViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             contactRepository.getContact(id).foldApiError(
-                onSuccess = { record -> _uiState.update { it.toFormState(record).copy(isLoading = false) } },
+                onSuccess = { record ->
+                    baseRecord = record
+                    _uiState.update { it.toFormState(record).copy(isLoading = false) }
+                },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
                 },
@@ -147,9 +207,7 @@ class ContactFormViewModel @Inject constructor(
     fun onPhonesChange(phones: List<String>) = _uiState.update { it.copy(phones = phones) }
     fun onBirthdayChange(value: String) = _uiState.update { it.copy(birthday = value) }
     fun onNotesChange(value: String) = _uiState.update { it.copy(notes = value) }
-    fun onCirclesChange(value: String) = _uiState.update {
-        it.copy(circles = value.split(",").map(String::trim).filter(String::isNotEmpty))
-    }
+    fun onCirclesTextChange(value: String) = _uiState.update { it.copy(circlesText = value) }
     fun onErrorShown() = _uiState.update { it.copy(error = null) }
 
     fun save() {
@@ -162,11 +220,12 @@ class ContactFormViewModel @Inject constructor(
             return
         }
 
+        // Snapshot the input up front so edits typed mid-save don't race it.
+        val input = state.toInput(baseRecord)
         _uiState.update { it.copy(isSaving = true, error = null) }
         viewModelScope.launch {
-            val input = _uiState.value.toInput()
-            val result = if (_uiState.value.contactId != null) {
-                contactRepository.updateContact(_uiState.value.contactId!!, input)
+            val result = if (state.contactId != null) {
+                contactRepository.updateContact(state.contactId, input)
             } else {
                 contactRepository.createContact(input)
             }
@@ -184,7 +243,7 @@ class ContactFormViewModel @Inject constructor(
     }
 
     /** Map a fetched record back into editable form fields. */
-    private fun ContactFormState.toFormState(record: com.mycorrhizal.crm.model.network.ContactRecordResponse): ContactFormState {
+    private fun ContactFormState.toFormState(record: ContactRecordResponse): ContactFormState {
         val card = record.card
         val name = card?.name
         val given = name?.components?.firstOrNull { it.kind == "given" }?.value ?: ""
@@ -196,7 +255,7 @@ class ContactFormViewModel @Inject constructor(
             formatPartialDate(it)
         } ?: ""
         val notes = card?.notes?.firstOrNull()?.note ?: ""
-        val circles = record.crm?.circles ?: emptyList()
+        val circlesText = (record.crm?.circles ?: emptyList()).joinToString(", ")
         return copy(
             givenName = given,
             surname = surname,
@@ -205,14 +264,17 @@ class ContactFormViewModel @Inject constructor(
             phones = phones,
             birthday = birthday,
             notes = notes,
-            circles = circles,
+            circlesText = circlesText,
         )
     }
 
-    private fun formatPartialDate(p: com.mycorrhizal.crm.model.network.PartialDate): String {
-        val year = p.year?.toString() ?: "--"
+    /** Format a partial date for the input field; yearless (`--MM-DD`) and full
+     *  round-trip exactly, year-only/month-only partials render blank (and are
+     *  preserved on save by [ContactFormState.toInput]'s merge). */
+    private fun formatPartialDate(p: PartialDate): String {
         val month = p.month?.toString()?.padStart(2, '0')
         val day = p.day?.toString()?.padStart(2, '0')
-        return if (month != null && day != null) "$year-$month-$day" else ""
+        if (month == null || day == null) return ""
+        return if (p.year == null) "--$month-$day" else "${p.year}-$month-$day"
     }
 }
