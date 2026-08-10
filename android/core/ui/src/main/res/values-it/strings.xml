@@ -45,6 +45,10 @@
     <string name="contact_activities">Attività</string>
     <string name="contact_notes">Note</string>
     <string name="contact_relationships">Relazioni</string>
+    <string name="contact_life_events">Eventi di vita</string>
+    <string name="contact_gifts">Regali</string>
+    <string name="contact_preferences">Preferenze</string>
+    <string name="contact_agenda">Ordine del giorno</string>
     <string name="contact_reminders">Promemoria</string>
     <string name="contact_email">Email</string>
     <string name="contact_phone">Telefono</string>
@@ -210,4 +214,22 @@
     <string name="relationships_other_name">Nome dell\'altro contatto (facoltativo)</string>
     <string name="relationships_accept">Accetta</string>
     <string name="relationships_suggested">Suggerito</string>
+
+
+    <!-- Timeline entities -->
+    <string name="entities_empty">Niente ancora qui</string>
+    <string name="life_events_title">Eventi di vita</string>
+    <string name="life_events_new">Nuovo evento</string>
+    <string name="life_events_type">Tipo</string>
+    <string name="life_events_description">Descrizione</string>
+    <string name="gifts_title">Regali</string>
+    <string name="gifts_new">Nuovo regalo</string>
+    <string name="gifts_description">Descrizione</string>
+    <string name="preferences_title">Preferenze</string>
+    <string name="preferences_new">Nuova preferenza</string>
+    <string name="preferences_category">Categoria</string>
+    <string name="preferences_value">Valore</string>
+    <string name="agenda_title">Ordine del giorno</string>
+    <string name="agenda_new">Nuovo elemento</string>
+    <string name="agenda_content">Contenuto</string>
 </resources>

@@ -6,9 +6,13 @@ import com.mycorrhizal.crm.data.local.CachedCircleDao
 import com.mycorrhizal.crm.data.local.CachedCircleMemberDao
 import com.mycorrhizal.crm.data.local.CachedContactDao
 import com.mycorrhizal.crm.data.local.CachedContactTagDao
+import com.mycorrhizal.crm.data.local.CachedConversationAgendaDao
+import com.mycorrhizal.crm.data.local.CachedGiftDao
 import com.mycorrhizal.crm.data.local.CachedHouseholdDao
 import com.mycorrhizal.crm.data.local.CachedHouseholdMemberDao
+import com.mycorrhizal.crm.data.local.CachedLifeEventDao
 import com.mycorrhizal.crm.data.local.CachedNoteDao
+import com.mycorrhizal.crm.data.local.CachedPreferenceDao
 import com.mycorrhizal.crm.data.local.CachedRelationshipEdgeDao
 import com.mycorrhizal.crm.data.local.CachedReminderDao
 import com.mycorrhizal.crm.data.local.CachedTagDao
@@ -16,8 +20,12 @@ import com.mycorrhizal.crm.data.repository.ActivityRepositoryImpl
 import com.mycorrhizal.crm.data.repository.AuthRepositoryImpl
 import com.mycorrhizal.crm.data.repository.CircleRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ContactRepositoryImpl
+import com.mycorrhizal.crm.data.repository.ConversationAgendaRepositoryImpl
+import com.mycorrhizal.crm.data.repository.GiftRepositoryImpl
 import com.mycorrhizal.crm.data.repository.HouseholdRepositoryImpl
+import com.mycorrhizal.crm.data.repository.LifeEventRepositoryImpl
 import com.mycorrhizal.crm.data.repository.NoteRepositoryImpl
+import com.mycorrhizal.crm.data.repository.PreferenceRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ReminderRepositoryImpl
 import com.mycorrhizal.crm.data.repository.RelationshipEdgeRepositoryImpl
 import com.mycorrhizal.crm.data.repository.TagRepositoryImpl
@@ -29,8 +37,12 @@ import com.mycorrhizal.crm.domain.repository.ActivityRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
+import com.mycorrhizal.crm.domain.repository.ConversationAgendaRepository
+import com.mycorrhizal.crm.domain.repository.GiftRepository
 import com.mycorrhizal.crm.domain.repository.HouseholdRepository
+import com.mycorrhizal.crm.domain.repository.LifeEventRepository
 import com.mycorrhizal.crm.domain.repository.NoteRepository
+import com.mycorrhizal.crm.domain.repository.PreferenceRepository
 import com.mycorrhizal.crm.domain.repository.ReminderRepository
 import com.mycorrhizal.crm.domain.repository.RelationshipEdgeRepository
 import com.mycorrhizal.crm.domain.repository.TagRepository
@@ -122,6 +134,19 @@ object DataModule {
         db.cachedRelationshipEdgeDao()
 
     @Provides
+    fun provideCachedLifeEventDao(db: AppDatabase): CachedLifeEventDao = db.cachedLifeEventDao()
+
+    @Provides
+    fun provideCachedGiftDao(db: AppDatabase): CachedGiftDao = db.cachedGiftDao()
+
+    @Provides
+    fun provideCachedPreferenceDao(db: AppDatabase): CachedPreferenceDao = db.cachedPreferenceDao()
+
+    @Provides
+    fun provideCachedConversationAgendaDao(db: AppDatabase): CachedConversationAgendaDao =
+        db.cachedConversationAgendaDao()
+
+    @Provides
     @Singleton
     fun provideSessionManager(
         tokenStorage: TokenStorage,
@@ -185,4 +210,20 @@ abstract class DataBindsModule {
     @Binds
     @Singleton
     abstract fun bindRelationshipEdgeRepository(impl: RelationshipEdgeRepositoryImpl): RelationshipEdgeRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindLifeEventRepository(impl: LifeEventRepositoryImpl): LifeEventRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindGiftRepository(impl: GiftRepositoryImpl): GiftRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindPreferenceRepository(impl: PreferenceRepositoryImpl): PreferenceRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindConversationAgendaRepository(impl: ConversationAgendaRepositoryImpl): ConversationAgendaRepository
 }

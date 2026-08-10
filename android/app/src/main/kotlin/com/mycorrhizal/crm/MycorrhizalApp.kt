@@ -50,6 +50,10 @@ import com.mycorrhizal.crm.feature.households.HouseholdDetailScreen
 import com.mycorrhizal.crm.feature.households.HouseholdsScreen
 import com.mycorrhizal.crm.feature.relationships.RelationshipsScreen
 import com.mycorrhizal.crm.feature.settings.SettingsScreen
+import com.mycorrhizal.crm.feature.timelineentities.ConversationAgendaScreen
+import com.mycorrhizal.crm.feature.timelineentities.GiftsScreen
+import com.mycorrhizal.crm.feature.timelineentities.LifeEventsScreen
+import com.mycorrhizal.crm.feature.timelineentities.PreferencesScreen
 import com.mycorrhizal.crm.feature.tags.TagDetailScreen
 import com.mycorrhizal.crm.feature.tags.TagsScreen
 import kotlinx.coroutines.launch
@@ -214,6 +218,10 @@ private fun MainScaffold() {
                     onViewNotes = { id -> navController.navigate("contacts/$id/notes") },
                     onViewReminders = { id -> navController.navigate("contacts/$id/reminders") },
                     onViewRelationships = { id -> navController.navigate("contacts/$id/relationships") },
+                    onViewLifeEvents = { id -> navController.navigate("contacts/$id/life-events") },
+                    onViewGifts = { id -> navController.navigate("contacts/$id/gifts") },
+                    onViewPreferences = { id -> navController.navigate("contacts/$id/preferences") },
+                    onViewAgenda = { id -> navController.navigate("contacts/$id/agenda") },
                     onEditActivity = { id -> navController.navigate("contacts/$contactId/activities/$id/edit") },
                     onEditNote = { id -> navController.navigate("contacts/$contactId/notes/$id/edit") },
                     onEditReminder = { id -> navController.navigate("contacts/$contactId/reminders/$id/edit") },
@@ -345,6 +353,30 @@ private fun MainScaffold() {
                 RelationshipsScreen(
                     onBack = { navController.popBackStack() },
                 )
+            }
+            composable(
+                route = "contacts/{contactId}/life-events",
+                arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            ) {
+                LifeEventsScreen(onBack = { navController.popBackStack() })
+            }
+            composable(
+                route = "contacts/{contactId}/gifts",
+                arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            ) {
+                GiftsScreen(onBack = { navController.popBackStack() })
+            }
+            composable(
+                route = "contacts/{contactId}/preferences",
+                arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            ) {
+                PreferencesScreen(onBack = { navController.popBackStack() })
+            }
+            composable(
+                route = "contacts/{contactId}/agenda",
+                arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            ) {
+                ConversationAgendaScreen(onBack = { navController.popBackStack() })
             }
             composable("search") { PlaceholderScreen(R.string.nav_search) }
             composable("notes") { PlaceholderScreen(R.string.nav_notes) }

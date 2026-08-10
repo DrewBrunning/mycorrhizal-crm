@@ -85,6 +85,10 @@ fun ContactDetailScreen(
     onViewNotes: (Int) -> Unit = {},
     onViewReminders: (Int) -> Unit = {},
     onViewRelationships: (Int) -> Unit = {},
+    onViewLifeEvents: (Int) -> Unit = {},
+    onViewGifts: (Int) -> Unit = {},
+    onViewPreferences: (Int) -> Unit = {},
+    onViewAgenda: (Int) -> Unit = {},
     onEditActivity: (Int) -> Unit = {},
     onEditNote: (Int) -> Unit = {},
     onEditReminder: (Int) -> Unit = {},
@@ -141,6 +145,10 @@ fun ContactDetailScreen(
                     onViewNotes = onViewNotes,
                     onViewReminders = onViewReminders,
                     onViewRelationships = onViewRelationships,
+                    onViewLifeEvents = onViewLifeEvents,
+                    onViewGifts = onViewGifts,
+                    onViewPreferences = onViewPreferences,
+                    onViewAgenda = onViewAgenda,
                     onEditActivity = onEditActivity,
                     onEditNote = onEditNote,
                     onEditReminder = onEditReminder,
@@ -158,6 +166,10 @@ fun ContactDetailContent(
     onViewNotes: (Int) -> Unit = {},
     onViewReminders: (Int) -> Unit = {},
     onViewRelationships: (Int) -> Unit = {},
+    onViewLifeEvents: (Int) -> Unit = {},
+    onViewGifts: (Int) -> Unit = {},
+    onViewPreferences: (Int) -> Unit = {},
+    onViewAgenda: (Int) -> Unit = {},
     onEditActivity: (Int) -> Unit = {},
     onEditNote: (Int) -> Unit = {},
     onEditReminder: (Int) -> Unit = {},
@@ -221,6 +233,46 @@ fun ContactDetailContent(
                     )
                 },
                 modifier = Modifier.fillMaxWidth().clickable { onViewRelationships(contact.id) },
+            )
+            androidx.compose.material3.ListItem(
+                headlineContent = { Text(stringResource(R.string.contact_life_events), style = MaterialTheme.typography.bodyLarge) },
+                trailingContent = {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
+                        contentDescription = null,
+                    )
+                },
+                modifier = Modifier.fillMaxWidth().clickable { onViewLifeEvents(contact.id) },
+            )
+            androidx.compose.material3.ListItem(
+                headlineContent = { Text(stringResource(R.string.contact_gifts), style = MaterialTheme.typography.bodyLarge) },
+                trailingContent = {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
+                        contentDescription = null,
+                    )
+                },
+                modifier = Modifier.fillMaxWidth().clickable { onViewGifts(contact.id) },
+            )
+            androidx.compose.material3.ListItem(
+                headlineContent = { Text(stringResource(R.string.contact_preferences), style = MaterialTheme.typography.bodyLarge) },
+                trailingContent = {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
+                        contentDescription = null,
+                    )
+                },
+                modifier = Modifier.fillMaxWidth().clickable { onViewPreferences(contact.id) },
+            )
+            androidx.compose.material3.ListItem(
+                headlineContent = { Text(stringResource(R.string.contact_agenda), style = MaterialTheme.typography.bodyLarge) },
+                trailingContent = {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
+                        contentDescription = null,
+                    )
+                },
+                modifier = Modifier.fillMaxWidth().clickable { onViewAgenda(contact.id) },
             )
         }
         if (!card?.emails.isNullOrEmpty()) {

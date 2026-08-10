@@ -24,21 +24,37 @@ import com.mycorrhizal.crm.model.network.ContactsPage
 import com.mycorrhizal.crm.model.network.CreateActivityResponse
 import com.mycorrhizal.crm.model.network.CreateCircleResponse
 import com.mycorrhizal.crm.model.network.CreateContactResponse
+import com.mycorrhizal.crm.model.network.CreateConversationAgendaResponse
+import com.mycorrhizal.crm.model.network.CreateGiftResponse
 import com.mycorrhizal.crm.model.network.CreateHouseholdResponse
+import com.mycorrhizal.crm.model.network.CreateLifeEventResponse
 import com.mycorrhizal.crm.model.network.CreateNoteResponse
+import com.mycorrhizal.crm.model.network.CreatePreferenceResponse
 import com.mycorrhizal.crm.model.network.CreateRelationshipEdgeResponse
 import com.mycorrhizal.crm.model.network.CreateReminderResponse
 import com.mycorrhizal.crm.model.network.CreateTagResponse
+import com.mycorrhizal.crm.model.network.ConversationAgenda
+import com.mycorrhizal.crm.model.network.ConversationAgendaInput
+import com.mycorrhizal.crm.model.network.ConversationAgendaPage
+import com.mycorrhizal.crm.model.network.Gift
+import com.mycorrhizal.crm.model.network.GiftInput
+import com.mycorrhizal.crm.model.network.GiftsPage
 import com.mycorrhizal.crm.model.network.Household
 import com.mycorrhizal.crm.model.network.HouseholdDetailResponse
 import com.mycorrhizal.crm.model.network.HouseholdInput
 import com.mycorrhizal.crm.model.network.HouseholdMember
 import com.mycorrhizal.crm.model.network.HouseholdMemberInput
 import com.mycorrhizal.crm.model.network.HouseholdsPage
+import com.mycorrhizal.crm.model.network.LifeEvent
+import com.mycorrhizal.crm.model.network.LifeEventInput
+import com.mycorrhizal.crm.model.network.LifeEventsPage
 import com.mycorrhizal.crm.model.network.LoginRequest
 import com.mycorrhizal.crm.model.network.LoginResponse
 import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.model.network.NoteInput
+import com.mycorrhizal.crm.model.network.Preference
+import com.mycorrhizal.crm.model.network.PreferenceInput
+import com.mycorrhizal.crm.model.network.PreferencesPage
 import com.mycorrhizal.crm.model.network.RelationshipEdge
 import com.mycorrhizal.crm.model.network.RelationshipEdgeInput
 import com.mycorrhizal.crm.model.network.RelationshipEdgesPage
@@ -398,6 +414,128 @@ class ApiClient(
     suspend fun deleteRelationshipEdge(id: String): Result<Unit> =
         executeDelete("$PLACEHOLDER_ORIGIN$RELATIONSHIP_EDGES_PATH/$id")
 
+    // --- Life events ---
+
+    suspend fun listLifeEvents(
+        entityId: String? = null,
+        cursor: String? = null,
+        limit: Int? = null,
+    ): Result<LifeEventsPage> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$LIFE_EVENTS_PATH".toHttpUrl().newBuilder()
+        entityId?.let { urlBuilder.addQueryParameter("entity_id", it) }
+        cursor?.let { urlBuilder.addQueryParameter("cursor", it) }
+        limit?.let { urlBuilder.addQueryParameter("limit", it.toString()) }
+        return executeGet(urlBuilder.build().toString()) { _, body ->
+            moshi.adapter(LifeEventsPage::class.java).fromJson(body)
+        }
+    }
+
+    suspend fun createLifeEvent(input: LifeEventInput): Result<LifeEvent> =
+        executePost(LIFE_EVENTS_PATH, input) { _, body ->
+            moshi.adapter(CreateLifeEventResponse::class.java).fromJson(body)?.lifeEvent
+        }
+
+    suspend fun updateLifeEvent(id: String, input: LifeEventInput): Result<LifeEvent> =
+        executePut("$PLACEHOLDER_ORIGIN$LIFE_EVENTS_PATH/$id", input) { _, body ->
+            moshi.adapter(LifeEvent::class.java).fromJson(body)
+        }
+
+    suspend fun deleteLifeEvent(id: String): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$LIFE_EVENTS_PATH/$id")
+
+    // --- Gifts ---
+
+    suspend fun listGifts(
+        entityId: String? = null,
+        cursor: String? = null,
+        limit: Int? = null,
+    ): Result<GiftsPage> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$GIFTS_PATH".toHttpUrl().newBuilder()
+        entityId?.let { urlBuilder.addQueryParameter("entity_id", it) }
+        cursor?.let { urlBuilder.addQueryParameter("cursor", it) }
+        limit?.let { urlBuilder.addQueryParameter("limit", it.toString()) }
+        return executeGet(urlBuilder.build().toString()) { _, body ->
+            moshi.adapter(GiftsPage::class.java).fromJson(body)
+        }
+    }
+
+    suspend fun createGift(input: GiftInput): Result<Gift> =
+        executePost(GIFTS_PATH, input) { _, body ->
+            moshi.adapter(CreateGiftResponse::class.java).fromJson(body)?.gift
+        }
+
+    suspend fun updateGift(id: String, input: GiftInput): Result<Gift> =
+        executePut("$PLACEHOLDER_ORIGIN$GIFTS_PATH/$id", input) { _, body ->
+            moshi.adapter(Gift::class.java).fromJson(body)
+        }
+
+    suspend fun deleteGift(id: String): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$GIFTS_PATH/$id")
+
+    // --- Preferences ---
+
+    suspend fun listPreferences(
+        entityId: String? = null,
+        cursor: String? = null,
+        limit: Int? = null,
+    ): Result<PreferencesPage> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$PREFERENCES_PATH".toHttpUrl().newBuilder()
+        entityId?.let { urlBuilder.addQueryParameter("entity_id", it) }
+        cursor?.let { urlBuilder.addQueryParameter("cursor", it) }
+        limit?.let { urlBuilder.addQueryParameter("limit", it.toString()) }
+        return executeGet(urlBuilder.build().toString()) { _, body ->
+            moshi.adapter(PreferencesPage::class.java).fromJson(body)
+        }
+    }
+
+    suspend fun createPreference(input: PreferenceInput): Result<Preference> =
+        executePost(PREFERENCES_PATH, input) { _, body ->
+            moshi.adapter(CreatePreferenceResponse::class.java).fromJson(body)?.preference
+        }
+
+    suspend fun updatePreference(id: String, input: PreferenceInput): Result<Preference> =
+        executePut("$PLACEHOLDER_ORIGIN$PREFERENCES_PATH/$id", input) { _, body ->
+            moshi.adapter(Preference::class.java).fromJson(body)
+        }
+
+    suspend fun deletePreference(id: String): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$PREFERENCES_PATH/$id")
+
+    // --- Conversation agenda ---
+
+    suspend fun listConversationAgenda(
+        entityId: String? = null,
+        cursor: String? = null,
+        limit: Int? = null,
+    ): Result<ConversationAgendaPage> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$CONVERSATION_AGENDA_PATH".toHttpUrl().newBuilder()
+        entityId?.let { urlBuilder.addQueryParameter("entity_id", it) }
+        cursor?.let { urlBuilder.addQueryParameter("cursor", it) }
+        limit?.let { urlBuilder.addQueryParameter("limit", it.toString()) }
+        return executeGet(urlBuilder.build().toString()) { _, body ->
+            moshi.adapter(ConversationAgendaPage::class.java).fromJson(body)
+        }
+    }
+
+    suspend fun createConversationAgenda(input: ConversationAgendaInput): Result<ConversationAgenda> =
+        executePost(CONVERSATION_AGENDA_PATH, input) { _, body ->
+            moshi.adapter(CreateConversationAgendaResponse::class.java).fromJson(body)?.conversationAgenda
+        }
+
+    suspend fun updateConversationAgenda(id: String, input: ConversationAgendaInput): Result<ConversationAgenda> =
+        executePut("$PLACEHOLDER_ORIGIN$CONVERSATION_AGENDA_PATH/$id", input) { _, body ->
+            moshi.adapter(ConversationAgenda::class.java).fromJson(body)
+        }
+
+    suspend fun deleteConversationAgenda(id: String): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$CONVERSATION_AGENDA_PATH/$id")
+
+    /** PATCH /api/v1/conversation-agenda/{id}/discuss — marks an item discussed. */
+    suspend fun discussConversationAgenda(id: String): Result<ConversationAgenda> =
+        executePatchEmpty("$PLACEHOLDER_ORIGIN$CONVERSATION_AGENDA_PATH/$id/discuss") { _, body ->
+            moshi.adapter(ConversationAgenda::class.java).fromJson(body)
+        }
+
     private suspend fun <T> executeGet(
         url: String,
         mapper: (okhttp3.Response, String) -> T?,
@@ -535,6 +673,10 @@ class ApiClient(
         private const val TAGS_PATH = "$API_V1/tags"
         private const val HOUSEHOLDS_PATH = "$API_V1/households"
         private const val RELATIONSHIP_EDGES_PATH = "$API_V1/relationship-edges"
+        private const val LIFE_EVENTS_PATH = "$API_V1/life-events"
+        private const val GIFTS_PATH = "$API_V1/gifts"
+        private const val PREFERENCES_PATH = "$API_V1/preferences"
+        private const val CONVERSATION_AGENDA_PATH = "$API_V1/conversation-agenda"
         private const val AUTH_COOKIE = "auth_token"
     }
 }

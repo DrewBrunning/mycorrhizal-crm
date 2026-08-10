@@ -24,8 +24,12 @@ import androidx.room.TypeConverters
         CachedHousehold::class,
         CachedHouseholdMember::class,
         CachedRelationshipEdge::class,
+        CachedLifeEvent::class,
+        CachedGift::class,
+        CachedPreference::class,
+        CachedConversationAgenda::class,
     ],
-    version = 9,
+    version = 10,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -41,4 +45,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun cachedHouseholdDao(): CachedHouseholdDao
     abstract fun cachedHouseholdMemberDao(): CachedHouseholdMemberDao
     abstract fun cachedRelationshipEdgeDao(): CachedRelationshipEdgeDao
+    abstract fun cachedLifeEventDao(): CachedLifeEventDao
+    abstract fun cachedGiftDao(): CachedGiftDao
+    abstract fun cachedPreferenceDao(): CachedPreferenceDao
+    abstract fun cachedConversationAgendaDao(): CachedConversationAgendaDao
 }
