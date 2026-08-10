@@ -16,6 +16,7 @@ import com.mycorrhizal.crm.data.local.CachedPreferenceDao
 import com.mycorrhizal.crm.data.local.CachedRelationshipEdgeDao
 import com.mycorrhizal.crm.data.local.CachedReminderDao
 import com.mycorrhizal.crm.data.local.CachedTagDao
+import com.mycorrhizal.crm.data.local.PendingInteractionDao
 import com.mycorrhizal.crm.data.repository.ActivityRepositoryImpl
 import com.mycorrhizal.crm.data.repository.AuthRepositoryImpl
 import com.mycorrhizal.crm.data.repository.CircleRepositoryImpl
@@ -28,9 +29,11 @@ import com.mycorrhizal.crm.data.repository.MergeRepositoryImpl
 import com.mycorrhizal.crm.data.repository.NoteRepositoryImpl
 import com.mycorrhizal.crm.data.repository.PreferenceRepositoryImpl
 import com.mycorrhizal.crm.data.repository.BulkOperationRepositoryImpl
+import com.mycorrhizal.crm.data.repository.PendingInteractionRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ReminderRepositoryImpl
 import com.mycorrhizal.crm.data.repository.RelationshipEdgeRepositoryImpl
 import com.mycorrhizal.crm.data.repository.TagRepositoryImpl
+import com.mycorrhizal.crm.data.repository.TrackingSettingsRepositoryImpl
 import com.mycorrhizal.crm.data.session.DefaultSessionManager
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.data.session.SessionPrefsStorage
@@ -46,10 +49,12 @@ import com.mycorrhizal.crm.domain.repository.HouseholdRepository
 import com.mycorrhizal.crm.domain.repository.LifeEventRepository
 import com.mycorrhizal.crm.domain.repository.MergeRepository
 import com.mycorrhizal.crm.domain.repository.NoteRepository
+import com.mycorrhizal.crm.domain.repository.PendingInteractionRepository
 import com.mycorrhizal.crm.domain.repository.PreferenceRepository
 import com.mycorrhizal.crm.domain.repository.ReminderRepository
 import com.mycorrhizal.crm.domain.repository.RelationshipEdgeRepository
 import com.mycorrhizal.crm.domain.repository.TagRepository
+import com.mycorrhizal.crm.domain.repository.TrackingSettingsRepository
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.BaseUrlProvider
 import com.mycorrhizal.crm.network.NetworkFactory
@@ -151,6 +156,10 @@ object DataModule {
         db.cachedConversationAgendaDao()
 
     @Provides
+    fun providePendingInteractionDao(db: AppDatabase): PendingInteractionDao =
+        db.pendingInteractionDao()
+
+    @Provides
     @Singleton
     fun provideSessionManager(
         tokenStorage: TokenStorage,
@@ -238,4 +247,12 @@ abstract class DataBindsModule {
     @Binds
     @Singleton
     abstract fun bindBulkOperationRepository(impl: BulkOperationRepositoryImpl): BulkOperationRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindPendingInteractionRepository(impl: PendingInteractionRepositoryImpl): PendingInteractionRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindTrackingSettingsRepository(impl: TrackingSettingsRepositoryImpl): TrackingSettingsRepository
 }

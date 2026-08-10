@@ -28,8 +28,9 @@ import androidx.room.TypeConverters
         CachedGift::class,
         CachedPreference::class,
         CachedConversationAgenda::class,
+        PendingInteraction::class,
     ],
-    version = 10,
+    version = 11,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -49,4 +50,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun cachedGiftDao(): CachedGiftDao
     abstract fun cachedPreferenceDao(): CachedPreferenceDao
     abstract fun cachedConversationAgendaDao(): CachedConversationAgendaDao
+    abstract fun pendingInteractionDao(): PendingInteractionDao
 }

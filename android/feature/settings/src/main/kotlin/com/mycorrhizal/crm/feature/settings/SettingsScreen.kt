@@ -2,6 +2,7 @@ package com.mycorrhizal.crm.feature.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -16,6 +17,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -69,6 +71,9 @@ fun SettingsScreen(
     ) { padding ->
         SettingsContent(
             state = state,
+            onCallTrackingChange = viewModel::setCallTrackingEnabled,
+            onSmsTrackingChange = viewModel::setSmsTrackingEnabled,
+            onNotificationsChange = viewModel::setNotificationsEnabled,
             onLogout = viewModel::logout,
             modifier = Modifier.padding(padding),
         )
@@ -78,6 +83,9 @@ fun SettingsScreen(
 @Composable
 fun SettingsContent(
     state: SettingsUiState,
+    onCallTrackingChange: (Boolean) -> Unit = {},
+    onSmsTrackingChange: (Boolean) -> Unit = {},
+    onNotificationsChange: (Boolean) -> Unit = {},
     onLogout: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -96,6 +104,23 @@ fun SettingsContent(
         InfoRow("Language", state.session.language ?: "—")
         InfoRow("Date format", state.session.dateFormat ?: "—")
         InfoRow("Admin", if (state.session.isAdmin) "Yes" else "No")
+
+        Text(stringResource(R.string.settings_tracking), style = MaterialTheme.typography.titleMedium)
+        ToggleRow(
+            label = stringResource(R.string.settings_call_tracking),
+            checked = state.callTrackingEnabled,
+            onCheckedChange = onCallTrackingChange,
+        )
+        ToggleRow(
+            label = stringResource(R.string.settings_sms_tracking),
+            checked = state.smsTrackingEnabled,
+            onCheckedChange = onSmsTrackingChange,
+        )
+        ToggleRow(
+            label = stringResource(R.string.settings_notifications),
+            checked = state.notificationsEnabled,
+            onCheckedChange = onNotificationsChange,
+        )
 
         Button(
             onClick = { confirmLogout = true },
@@ -137,5 +162,23 @@ private fun InfoRow(label: String, value: String) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(text = value, style = MaterialTheme.typography.bodyLarge)
+    }
+}
+
+@Composable
+private fun ToggleRow(
+    label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }

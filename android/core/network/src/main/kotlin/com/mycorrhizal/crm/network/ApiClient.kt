@@ -7,6 +7,8 @@ import com.mycorrhizal.crm.model.network.AddCircleMemberResponse
 import com.mycorrhizal.crm.model.network.AddContactTagResponse
 import com.mycorrhizal.crm.model.network.AddHouseholdMemberResponse
 import com.mycorrhizal.crm.model.network.BackendError
+import com.mycorrhizal.crm.model.network.BirthdaysResponse
+import com.mycorrhizal.crm.model.network.OverdueCadencesResponse
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.CircleDetailResponse
 import com.mycorrhizal.crm.model.network.CircleInput
@@ -240,10 +242,34 @@ class ApiClient(
             moshi.adapter(ReminderCompleteResponse::class.java).fromJson(body)
         }
 
+    /** GET /api/v1/reminders — all reminders for the user. */
+    suspend fun listReminders(): Result<ContactRemindersResponse> =
+        executeGet("$PLACEHOLDER_ORIGIN$REMINDERS_PATH") { _, body ->
+            moshi.adapter(ContactRemindersResponse::class.java).fromJson(body)
+        }
+
+    /** GET /api/v1/reminders/upcoming — reminders due within ~7 days. */
+    suspend fun listUpcomingReminders(): Result<ContactRemindersResponse> =
+        executeGet("$PLACEHOLDER_ORIGIN$REMINDERS_PATH/upcoming") { _, body ->
+            moshi.adapter(ContactRemindersResponse::class.java).fromJson(body)
+        }
+
     /** GET /api/v1/reminders/{id} — a single reminder. */
     suspend fun getReminder(id: Int): Result<Reminder> =
         executeGet("$PLACEHOLDER_ORIGIN$REMINDERS_PATH/$id") { _, body ->
             moshi.adapter(Reminder::class.java).fromJson(body)
+        }
+
+    /** GET /api/v1/contacts/birthdays — upcoming birthdays. */
+    suspend fun listUpcomingBirthdays(): Result<BirthdaysResponse> =
+        executeGet("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/birthdays") { _, body ->
+            moshi.adapter(BirthdaysResponse::class.java).fromJson(body)
+        }
+
+    /** GET /api/v1/cadence-policies/overdue — overdue cadences. */
+    suspend fun listOverdueCadences(): Result<OverdueCadencesResponse> =
+        executeGet("$PLACEHOLDER_ORIGIN$CADENCE_POLICIES_PATH/overdue") { _, body ->
+            moshi.adapter(OverdueCadencesResponse::class.java).fromJson(body)
         }
 
     /** GET /api/v1/circles — cursor-paginated; members when include_members=true. */
@@ -745,6 +771,7 @@ class ApiClient(
         private const val GIFTS_PATH = "$API_V1/gifts"
         private const val PREFERENCES_PATH = "$API_V1/preferences"
         private const val CONVERSATION_AGENDA_PATH = "$API_V1/conversation-agenda"
+        private const val CADENCE_POLICIES_PATH = "$API_V1/cadence-policies"
         private const val AUTH_COOKIE = "auth_token"    }
 }
 

@@ -99,6 +99,10 @@
     <string name="settings_log_out">Esci</string>
     <string name="settings_log_out_title">Uscire?</string>
     <string name="settings_log_out_body">Dovrai accedere di nuovo per usare questo server.</string>
+        <string name="settings_tracking">Monitoraggio e notifiche</string>
+    <string name="settings_call_tracking">Registra chiamate come attività</string>
+    <string name="settings_sms_tracking">Registra messaggi come attività</string>
+    <string name="settings_notifications">Mostra notifiche</string>
     <string name="settings_cancel">Annulla</string>
 
     <!-- Activities -->

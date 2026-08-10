@@ -42,6 +42,9 @@ interface ContactRepository {
     /** Cached contact list summaries as a reactive stream (list + offline). */
     fun observeContacts(): Flow<List<ContactSummary>>
 
+    /** Local phone-match for call/SMS tracking (digits-normalized). */
+    suspend fun findByPhone(phone: String): ContactSummary?
+
     /**
      * Local full-text search over the Room cache (Phase 2 item 13). Returns
      * cached rows matching [query] via the FTS mirror; empty query returns

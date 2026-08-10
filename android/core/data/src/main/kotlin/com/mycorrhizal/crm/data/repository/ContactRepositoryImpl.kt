@@ -109,6 +109,9 @@ class ContactRepositoryImpl @Inject constructor(
             emit(dao.getAll().map { it.toSummary() })
         }
 
+    override suspend fun findByPhone(phone: String): ContactSummary? =
+        dao.findByPhoneDigits(phone)?.toSummary()
+
     override suspend fun searchLocal(query: String): List<ContactSummary> {
         val trimmed = query.trim()
         if (trimmed.isEmpty()) return dao.getAll().map { it.toSummary() }

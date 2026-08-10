@@ -99,6 +99,10 @@
     <string name="settings_log_out">Se déconnecter</string>
     <string name="settings_log_out_title">Se déconnecter ?</string>
     <string name="settings_log_out_body">Vous devrez vous connecter à nouveau pour accéder à ce serveur.</string>
+        <string name="settings_tracking">Suivi et notifications</string>
+    <string name="settings_call_tracking">Journaliser les appels comme activités</string>
+    <string name="settings_sms_tracking">Journaliser les messages comme activités</string>
+    <string name="settings_notifications">Afficher les notifications</string>
     <string name="settings_cancel">Annuler</string>
 
     <!-- Activities -->

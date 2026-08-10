@@ -63,4 +63,22 @@ interface CachedContactDao {
 
     @Query("DELETE FROM cached_contacts WHERE id IN (:ids)")
     suspend fun deleteByIds(ids: List<Int>)
+
+    /**
+     * Best-effort phone match for call/SMS tracking (§6.1/6.2): the device
+     * number and the cached primaryPhone are both normalized to digits-only
+     * before comparison, so formatting differences (spaces/dashes/parens)
+     * don't hide a match. Exact digit-match only; international-prefix
+     * normalization is a deliberate non-goal here (see §12 open question 1).
+     */
+    @Query(
+        """
+        SELECT * FROM cached_contacts
+        WHERE deleted = 0
+          AND REPLACE(REPLACE(REPLACE(REPLACE(primaryPhone, ' ', ''), '-', ''), '(', ''), ')', '')
+              = REPLACE(REPLACE(REPLACE(REPLACE(:phone, ' ', ''), '-', ''), '(', ''), ')', '')
+        LIMIT 1
+        """,
+    )
+    suspend fun findByPhoneDigits(phone: String): CachedContact?
 }

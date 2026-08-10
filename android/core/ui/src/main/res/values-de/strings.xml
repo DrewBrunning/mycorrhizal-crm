@@ -99,6 +99,10 @@
     <string name="settings_log_out">Abmelden</string>
     <string name="settings_log_out_title">Abmelden?</string>
     <string name="settings_log_out_body">Du musst dich erneut anmelden, um auf diesen Server zuzugreifen.</string>
+        <string name="settings_tracking">Tracking und Benachrichtigungen</string>
+    <string name="settings_call_tracking">Anrufe als Aktivitäten protokollieren</string>
+    <string name="settings_sms_tracking">Nachrichten als Aktivitäten protokollieren</string>
+    <string name="settings_notifications">Benachrichtigungen anzeigen</string>
     <string name="settings_cancel">Abbrechen</string>
 
     <!-- Aktivitäten -->

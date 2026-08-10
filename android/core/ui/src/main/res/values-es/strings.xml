@@ -99,6 +99,10 @@
     <string name="settings_log_out">Cerrar sesión</string>
     <string name="settings_log_out_title">¿Cerrar sesión?</string>
     <string name="settings_log_out_body">Deberás iniciar sesión de nuevo para acceder a este servidor.</string>
+        <string name="settings_tracking">Seguimiento y notificaciones</string>
+    <string name="settings_call_tracking">Registrar llamadas como actividades</string>
+    <string name="settings_sms_tracking">Registrar mensajes como actividades</string>
+    <string name="settings_notifications">Mostrar notificaciones</string>
     <string name="settings_cancel">Cancelar</string>
 
     <!-- Actividades -->

@@ -18,6 +18,7 @@ dependencies {
     implementation(project(":feature:households"))
     implementation(project(":feature:relationships"))
     implementation(project(":feature:timelineentities"))
+    implementation(project(":feature:tracking"))
     implementation(project(":feature:timeline"))
     implementation(project(":feature:settings"))
 
@@ -27,6 +28,9 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.work.runtime)
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)

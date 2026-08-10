@@ -101,6 +101,10 @@
     <string name="settings_log_out_title">Log out?</string>
     <string name="settings_log_out_body">You will need to sign in again to access this server.</string>
     <string name="settings_cancel">Cancel</string>
+    <string name="settings_tracking">Tracking &amp; notifications</string>
+    <string name="settings_call_tracking">Log calls as activities</string>
+    <string name="settings_sms_tracking">Log messages as activities</string>
+    <string name="settings_notifications">Show notifications</string>
 
     <!-- Activities -->
     <string name="activities_title">Activities</string>
