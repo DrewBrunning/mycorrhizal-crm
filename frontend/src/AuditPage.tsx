@@ -245,7 +245,7 @@ export default function AuditPage() {
           <Button onClick={() => setPendingUndo(null)} disabled={undoing}>
             {t('common.cancel')}
           </Button>
-          <Button variant="contained" color="error" onClick={handleUndoConfirm} disabled={undoing}>
+          <Button variant="contained" color="primary" onClick={handleUndoConfirm} disabled={undoing}>
             {t('audit.undo.confirm')}
           </Button>
         </DialogActions>
@@ -257,19 +257,29 @@ export default function AuditPage() {
 // Fetches the numeric ID + display name for the events' contact uids. This is
 // the only entity with a navigable per-entity route, so only contact events
 // resolve to a link; every other entity_type renders its raw ID.
+//
+// The uid set is stringified as a sorted-comma key so the effect only re-fires
+// when the actual set of contact uids changes — not on every events-array
+// mutation (Load more, filter change, undo refresh).
 function useContactsForEvents(events: AuditEvent[]) {
   const [contactsByUid, setContactsByUid] = useState<Map<string, { ID: number; name: string }>>(new Map());
 
-  const contactUids = useMemo(
-    () => [...new Set(events.filter((e) => e.entity_type === 'contact').map((e) => e.entity_id))],
-    [events]
-  );
+  // A stable string key derived from the sorted unique uid set. Two consecutive
+  // events arrays that carry the same contact uids produce the same string,
+  // which Object.is treats as equal → the effect does not re-fire (the only way
+  // to skip the batch GET /contacts?… call when nothing changed without a ref).
+  const contactUidsKey = useMemo(() => {
+    const uids = events.filter((e) => e.entity_type === 'contact').map((e) => e.entity_id);
+    if (uids.length === 0) return '';
+    return [...new Set(uids)].sort().join(',');
+  }, [events]);
 
   useEffect(() => {
-    if (contactUids.length === 0) {
+    if (!contactUidsKey) {
       setContactsByUid(new Map());
       return;
     }
+    const contactUids = contactUidsKey.split(',');
     let cancelled = false;
     getContactsByUid(contactUids)
       .then((byUid) => {
@@ -287,7 +297,7 @@ function useContactsForEvents(events: AuditEvent[]) {
     return () => {
       cancelled = true;
     };
-  }, [contactUids]);
+  }, [contactUidsKey]);
 
   return contactsByUid;
 }
