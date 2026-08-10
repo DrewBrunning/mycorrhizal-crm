@@ -10,6 +10,7 @@
     <string name="nav_settings">Settings</string>
     <string name="nav_network">Network</string>
     <string name="nav_households">Households</string>
+    <string name="nav_circles">Circles</string>
     <string name="coming_soon">%1$s — coming in a later phase</string>
     <string name="cd_menu">Menu</string>
     <string name="cd_back">Back</string>
@@ -153,4 +154,23 @@
     <string name="cd_activity">Activity</string>
     <string name="cd_note">Note</string>
     <string name="cd_reminder">Reminder</string>
+
+    <!-- Circles -->
+    <string name="circles_title">Circles</string>
+    <string name="circles_new">New circle</string>
+    <string name="circles_rename">Rename circle</string>
+    <string name="circles_name">Name</string>
+    <string name="circles_delete_title">Delete circle?</string>
+    <string name="circles_delete_confirm">Delete “%1$s”? This removes the circle and its memberships.</string>
+    <string name="circles_add_member">Add member</string>
+    <string name="circles_remove_member">Remove member</string>
+    <string name="circles_member_vcard_uid">Contact VCard UID</string>
+
+    <!-- Shared actions -->
+    <string name="action_create">Create</string>
+    <string name="action_save">Save</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_add">Add</string>
+    <string name="action_rename">Rename</string>
 </resources>

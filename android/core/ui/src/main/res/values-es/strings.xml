@@ -8,6 +8,7 @@
     <string name="nav_activities">Actividades</string>
     <string name="nav_home">Inicio</string>
     <string name="nav_settings">Ajustes</string>
+    <string name="nav_circles">Círculos</string>
     <string name="nav_network">Red</string>
     <string name="nav_households">Hogares</string>
     <string name="coming_soon">%1$s — disponible en una fase posterior</string>
@@ -153,4 +154,22 @@
     <string name="cd_activity">Actividad</string>
     <string name="cd_note">Nota</string>
     <string name="cd_reminder">Recordatorio</string>
+
+
+    <!-- Circles -->
+    <string name="circles_title">Círculos</string>
+    <string name="circles_new">Nuevo círculo</string>
+    <string name="circles_rename">Renombrar círculo</string>
+    <string name="circles_name">Nombre</string>
+    <string name="circles_delete_title">¿Eliminar círculo?</string>
+    <string name="circles_delete_confirm">¿Eliminar «%1$s»? Esto quita el círculo y sus membresías.</string>
+    <string name="circles_add_member">Añadir miembro</string>
+    <string name="circles_remove_member">Quitar miembro</string>
+    <string name="circles_member_vcard_uid">UID de VCard del contacto</string>
+    <string name="action_create">Crear</string>
+    <string name="action_save">Guardar</string>
+    <string name="action_delete">Eliminar</string>
+    <string name="action_cancel">Cancelar</string>
+    <string name="action_add">Añadir</string>
+    <string name="action_rename">Renombrar</string>
 </resources>

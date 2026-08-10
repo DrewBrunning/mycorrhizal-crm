@@ -41,6 +41,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.mycorrhizal.crm.feature.auth.LoginScreen
+import com.mycorrhizal.crm.feature.circles.CircleDetailScreen
+import com.mycorrhizal.crm.feature.circles.CirclesScreen
 import com.mycorrhizal.crm.feature.contacts.ContactDetailScreen
 import com.mycorrhizal.crm.feature.contacts.ContactFormScreen
 import com.mycorrhizal.crm.feature.contacts.ContactListScreen
@@ -123,6 +125,16 @@ private fun MainScaffold() {
                     onClick = {
                         scope.launch { drawerState.close() }
                         navController.navigate("network")
+                    },
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                )
+                NavigationDrawerItem(
+                    label = { Text(stringResource(R.string.nav_circles)) },
+                    selected = currentDestination?.route == "circles" ||
+                        currentDestination?.route?.startsWith("circles/") == true,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        navController.navigate("circles")
                     },
                     modifier = Modifier.padding(horizontal = 8.dp),
                 )
@@ -318,6 +330,20 @@ private fun MainScaffold() {
                 SettingsScreen(
                     onBack = { navController.popBackStack() },
                     onLoggedOut = { navController.popBackStack() },
+                )
+            }
+            composable("circles") {
+                CirclesScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenCircle = { id -> navController.navigate("circles/$id") },
+                )
+            }
+            composable(
+                route = "circles/{circleId}",
+                arguments = listOf(navArgument("circleId") { type = NavType.StringType }),
+            ) {
+                CircleDetailScreen(
+                    onBack = { navController.popBackStack() },
                 )
             }
             composable("network") { PlaceholderScreen(R.string.nav_network) }

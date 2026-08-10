@@ -3,7 +3,14 @@ package com.mycorrhizal.crm.network
 import com.mycorrhizal.crm.model.network.ActivitiesPage
 import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ActivityInput
+import com.mycorrhizal.crm.model.network.AddCircleMemberResponse
 import com.mycorrhizal.crm.model.network.BackendError
+import com.mycorrhizal.crm.model.network.Circle
+import com.mycorrhizal.crm.model.network.CircleDetailResponse
+import com.mycorrhizal.crm.model.network.CircleInput
+import com.mycorrhizal.crm.model.network.CircleMember
+import com.mycorrhizal.crm.model.network.CircleMemberInput
+import com.mycorrhizal.crm.model.network.CirclesPage
 import com.mycorrhizal.crm.model.network.ContactActivitiesResponse
 import com.mycorrhizal.crm.model.network.ContactNotesResponse
 import com.mycorrhizal.crm.model.network.ContactRecordInput
@@ -11,6 +18,7 @@ import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ContactRemindersResponse
 import com.mycorrhizal.crm.model.network.ContactsPage
 import com.mycorrhizal.crm.model.network.CreateActivityResponse
+import com.mycorrhizal.crm.model.network.CreateCircleResponse
 import com.mycorrhizal.crm.model.network.CreateContactResponse
 import com.mycorrhizal.crm.model.network.CreateNoteResponse
 import com.mycorrhizal.crm.model.network.CreateReminderResponse
@@ -192,6 +200,53 @@ class ApiClient(
             moshi.adapter(Reminder::class.java).fromJson(body)
         }
 
+    /** GET /api/v1/circles — cursor-paginated; members when include_members=true. */
+    suspend fun listCircles(
+        cursor: String? = null,
+        limit: Int? = null,
+        includeMembers: Boolean = false,
+    ): Result<CirclesPage> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$CIRCLES_PATH".toHttpUrl().newBuilder()
+        cursor?.let { urlBuilder.addQueryParameter("cursor", it) }
+        limit?.let { urlBuilder.addQueryParameter("limit", it.toString()) }
+        if (includeMembers) urlBuilder.addQueryParameter("include_members", "true")
+        return executeGet(urlBuilder.build().toString()) { _, body ->
+            moshi.adapter(CirclesPage::class.java).fromJson(body)
+        }
+    }
+
+    /** GET /api/v1/circles/{id} — `{ circle, members }`. */
+    suspend fun getCircle(id: String): Result<CircleDetailResponse> =
+        executeGet("$PLACEHOLDER_ORIGIN$CIRCLES_PATH/$id") { _, body ->
+            moshi.adapter(CircleDetailResponse::class.java).fromJson(body)
+        }
+
+    /** POST /api/v1/circles — wrapped `{ message, circle }`, unwrapped here. */
+    suspend fun createCircle(input: CircleInput): Result<Circle> =
+        executePost(CIRCLES_PATH, input) { _, body ->
+            moshi.adapter(CreateCircleResponse::class.java).fromJson(body)?.circle
+        }
+
+    /** PUT /api/v1/circles/{id} — raw Circle response. */
+    suspend fun updateCircle(id: String, input: CircleInput): Result<Circle> =
+        executePut("$PLACEHOLDER_ORIGIN$CIRCLES_PATH/$id", input) { _, body ->
+            moshi.adapter(Circle::class.java).fromJson(body)
+        }
+
+    /** DELETE /api/v1/circles/{id}. */
+    suspend fun deleteCircle(id: String): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$CIRCLES_PATH/$id")
+
+    /** POST /api/v1/circles/{id}/members — wrapped `{ message, member }`. */
+    suspend fun addCircleMember(circleId: String, input: CircleMemberInput): Result<CircleMember> =
+        executePost("$CIRCLES_PATH/$circleId/members", input) { _, body ->
+            moshi.adapter(AddCircleMemberResponse::class.java).fromJson(body)?.member
+        }
+
+    /** DELETE /api/v1/circles/{id}/members/{vcard_uid}. */
+    suspend fun removeCircleMember(circleId: String, vcardUid: String): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$CIRCLES_PATH/$circleId/members/$vcardUid")
+
     private suspend fun <T> executeGet(
         url: String,
         mapper: (okhttp3.Response, String) -> T?,
@@ -237,6 +292,17 @@ class ApiClient(
 
     private fun Any.toJsonBody(): okhttp3.RequestBody =
         moshi.adapter<Any>(javaClass).toJson(this).toRequestBody(jsonMediaType)
+
+    private suspend fun <T> executeDelete(
+        url: String,
+        mapper: (okhttp3.Response, String) -> T? = { _, _ -> Unit as T },
+    ): Result<T> {
+        val request = Request.Builder()
+            .url(url.toHttpUrl())
+            .delete()
+            .build()
+        return execute(request, mapper)
+    }
 
     private suspend fun <T> execute(
         request: Request,
@@ -291,6 +357,7 @@ class ApiClient(
         private const val ACTIVITIES_PATH = "$API_V1/activities"
         private const val NOTES_PATH = "$API_V1/notes"
         private const val REMINDERS_PATH = "$API_V1/reminders"
+        private const val CIRCLES_PATH = "$API_V1/circles"
         private const val AUTH_COOKIE = "auth_token"
     }
 }

@@ -2,11 +2,14 @@ package com.mycorrhizal.crm.data.di
 
 import com.mycorrhizal.crm.data.local.AppDatabase
 import com.mycorrhizal.crm.data.local.CachedActivityDao
+import com.mycorrhizal.crm.data.local.CachedCircleDao
+import com.mycorrhizal.crm.data.local.CachedCircleMemberDao
 import com.mycorrhizal.crm.data.local.CachedContactDao
 import com.mycorrhizal.crm.data.local.CachedNoteDao
 import com.mycorrhizal.crm.data.local.CachedReminderDao
 import com.mycorrhizal.crm.data.repository.ActivityRepositoryImpl
 import com.mycorrhizal.crm.data.repository.AuthRepositoryImpl
+import com.mycorrhizal.crm.data.repository.CircleRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ContactRepositoryImpl
 import com.mycorrhizal.crm.data.repository.NoteRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ReminderRepositoryImpl
@@ -16,6 +19,7 @@ import com.mycorrhizal.crm.data.session.SessionPrefsStorage
 import com.mycorrhizal.crm.data.session.TokenStorage
 import com.mycorrhizal.crm.domain.repository.ActivityRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
+import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.NoteRepository
 import com.mycorrhizal.crm.domain.repository.ReminderRepository
@@ -81,6 +85,13 @@ object DataModule {
     fun provideCachedReminderDao(db: AppDatabase): CachedReminderDao = db.cachedReminderDao()
 
     @Provides
+    fun provideCachedCircleDao(db: AppDatabase): CachedCircleDao = db.cachedCircleDao()
+
+    @Provides
+    fun provideCachedCircleMemberDao(db: AppDatabase): CachedCircleMemberDao =
+        db.cachedCircleMemberDao()
+
+    @Provides
     @Singleton
     fun provideSessionManager(
         tokenStorage: TokenStorage,
@@ -128,4 +139,8 @@ abstract class DataBindsModule {
     @Binds
     @Singleton
     abstract fun bindReminderRepository(impl: ReminderRepositoryImpl): ReminderRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindCircleRepository(impl: CircleRepositoryImpl): CircleRepository
 }

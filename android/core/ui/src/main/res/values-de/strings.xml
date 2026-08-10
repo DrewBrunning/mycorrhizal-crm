@@ -8,6 +8,7 @@
     <string name="nav_activities">Aktivitäten</string>
     <string name="nav_home">Start</string>
     <string name="nav_settings">Einstellungen</string>
+    <string name="nav_circles">Kreise</string>
     <string name="nav_network">Netzwerk</string>
     <string name="nav_households">Haushalte</string>
     <string name="coming_soon">%1$s — in einer späteren Phase verfügbar</string>
@@ -153,4 +154,22 @@
     <string name="cd_activity">Aktivität</string>
     <string name="cd_note">Notiz</string>
     <string name="cd_reminder">Erinnerung</string>
+
+
+    <!-- Circles -->
+    <string name="circles_title">Kreise</string>
+    <string name="circles_new">Neuer Kreis</string>
+    <string name="circles_rename">Kreis umbenennen</string>
+    <string name="circles_name">Name</string>
+    <string name="circles_delete_title">Kreis löschen?</string>
+    <string name="circles_delete_confirm">„%1$s“ löschen? Dadurch werden der Kreis und seine Mitgliedschaften entfernt.</string>
+    <string name="circles_add_member">Mitglied hinzufügen</string>
+    <string name="circles_remove_member">Mitglied entfernen</string>
+    <string name="circles_member_vcard_uid">Kontakt-VCard-UID</string>
+    <string name="action_create">Erstellen</string>
+    <string name="action_save">Speichern</string>
+    <string name="action_delete">Löschen</string>
+    <string name="action_cancel">Abbrechen</string>
+    <string name="action_add">Hinzufügen</string>
+    <string name="action_rename">Umbenennen</string>
 </resources>
