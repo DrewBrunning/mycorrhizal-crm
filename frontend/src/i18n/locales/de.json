@@ -1562,7 +1562,9 @@
         "enabling": "Wird aktiviert…",
         "devices": "Registrierte Geräte",
         "noDevices": "Noch keine Geräte registriert.",
-        "removeDevice": "Dieses Gerät entfernen"
+        "removeDevice": "Dieses Gerät entfernen",
+        "mobileDevicesTitle": "Mobilgeräte",
+        "noMobileDevices": "Noch keine Mobilgeräte registriert."
       },
       "pushEnabled": "Browser-Benachrichtigungen aktiviert",
       "pushPermissionDenied": "Die Benachrichtigungsberechtigung wurde verweigert. Erlaube sie in deinem Browser und versuche es erneut.",

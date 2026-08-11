@@ -22,6 +22,7 @@ import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import DeleteIcon from '@mui/icons-material/Delete';
 import NotificationsIcon from '@mui/icons-material/Notifications';
+import PhoneIphoneIcon from '@mui/icons-material/PhoneIphone';
 import { useSnackbar } from '../context/SnackbarContext';
 import {
   getNotificationConfig,
@@ -30,9 +31,12 @@ import {
   getPushSubscriptions,
   deletePushSubscription,
   createPushSubscription,
+  getDeviceRegistrations,
+  deleteDeviceRegistration,
   NotificationConfig,
   NotificationChannel,
   PushSubscription,
+  DeviceRegistration,
 } from '../api/notifications';
 import { subscribeBrowserPush, browserSupportsPush } from '../pushSubscription';
 
@@ -86,6 +90,9 @@ export default function NotificationSettings() {
   const [subsLoading, setSubsLoading] = useState(false);
   const [enablingPush, setEnablingPush] = useState(false);
 
+  const [devices, setDevices] = useState<DeviceRegistration[]>([]);
+  const [devicesLoading, setDevicesLoading] = useState(false);
+
   const loadConfig = useCallback(async () => {
     try {
       setLoadError('');
@@ -116,10 +123,22 @@ export default function NotificationSettings() {
     }
   }, []);
 
+  const loadDevices = useCallback(async () => {
+    setDevicesLoading(true);
+    try {
+      setDevices(await getDeviceRegistrations());
+    } catch {
+      // Mobile device list failure is non-fatal; the rest of the card still works.
+    } finally {
+      setDevicesLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadConfig();
     loadSubscriptions();
-  }, [loadConfig, loadSubscriptions]);
+    loadDevices();
+  }, [loadConfig, loadSubscriptions, loadDevices]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -214,6 +233,19 @@ export default function NotificationSettings() {
     try {
       await deletePushSubscription(sub.id);
       setSubscriptions(prev => prev.filter(s => s.id !== sub.id));
+      showSuccess(t('notifications.settings.deviceDeleted'));
+    } catch (err) {
+      showError(err instanceof Error ? err.message : t('notifications.settings.deviceDeleteFailed'));
+    }
+  };
+
+  const handleDeleteMobileDevice = async (device: DeviceRegistration) => {
+    if (!window.confirm(t('notifications.settings.deleteDeviceConfirm', { label: device.device_label || device.client }))) {
+      return;
+    }
+    try {
+      await deleteDeviceRegistration(device.id);
+      setDevices(prev => prev.filter(d => d.id !== device.id));
       showSuccess(t('notifications.settings.deviceDeleted'));
     } catch (err) {
       showError(err instanceof Error ? err.message : t('notifications.settings.deviceDeleteFailed'));
@@ -428,11 +460,53 @@ export default function NotificationSettings() {
                     size="small"
                     startIcon={<PlayArrowIcon />}
                     onClick={() => handleTest('push')}
-                    disabled={testing === 'push' || !notifyPush || subscriptions.length === 0}
+                    disabled={testing === 'push' || !notifyPush || (subscriptions.length === 0 && devices.length === 0)}
                   >
                     {testing === 'push' ? t('notifications.settings.testing') : t('notifications.settings.test')}
                   </Button>
                 </Box>
+              </Box>
+
+              <Box sx={{ mt: 1.5 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    {t('notifications.settings.push.mobileDevicesTitle')}
+                  </Typography>
+                  {devicesLoading && <CircularProgress size={14} />}
+                </Box>
+                {devices.length === 0 ? (
+                  <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                    {t('notifications.settings.push.noMobileDevices')}
+                  </Typography>
+                ) : (
+                  <List dense sx={{ py: 0 }}>
+                    {devices.map(device => (
+                      <ListItem
+                        key={device.id}
+                        sx={{ px: 0, py: 0.5 }}
+                        secondaryAction={
+                          <IconButton
+                            edge="end"
+                            size="small"
+                            color="error"
+                            onClick={() => handleDeleteMobileDevice(device)}
+                            title={t('notifications.settings.push.removeDevice')}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        }
+                      >
+                        <PhoneIphoneIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
+                        <ListItemText
+                          primary={device.device_label || device.client.toUpperCase()}
+                          primaryTypographyProps={{ component: 'div', variant: 'body2' }}
+                          secondary={new Date(device.created_at).toLocaleString()}
+                          secondaryTypographyProps={{ component: 'div', variant: 'caption' }}
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+                )}
               </Box>
             </Box>
 

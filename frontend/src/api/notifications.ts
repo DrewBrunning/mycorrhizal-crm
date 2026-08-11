@@ -50,6 +50,20 @@ export interface NotificationTestResult {
   error?: string;
 }
 
+// DeviceRegistration is a mobile push device token registered by a native
+// client (M2, docs/fork-plan/tickets/81-M2-fcm-mobile-push.md) — the FCM/APNS
+// counterpart to PushSubscription's Web Push (VAPID) shape. The web app never
+// registers a device; it only lists/deletes the ones the Android/iOS app
+// registered.
+export interface DeviceRegistration {
+  id: number;
+  token: string;
+  client: 'fcm' | 'apns';
+  device_label: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export async function getNotificationConfig(): Promise<NotificationConfig> {
   const response = await apiFetch(`${API_BASE_URL}/notifications/config`, { headers: getAuthHeaders() });
   if (!response.ok) throw await parseErrorResponse(response);
@@ -98,6 +112,24 @@ export async function createPushSubscription(input: PushSubscriptionInput): Prom
 
 export async function deletePushSubscription(id: number): Promise<void> {
   const response = await apiFetch(`${API_BASE_URL}/notifications/push-subscriptions/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) throw await parseErrorResponse(response);
+}
+
+// Mobile device registrations (M2). No create here — enrollment happens on
+// the native client after it obtains a platform push token; the web app only
+// views and deletes.
+export async function getDeviceRegistrations(): Promise<DeviceRegistration[]> {
+  const response = await apiFetch(`${API_BASE_URL}/notifications/devices`, { headers: getAuthHeaders() });
+  if (!response.ok) throw await parseErrorResponse(response);
+  const result = await response.json();
+  return result.devices || [];
+}
+
+export async function deleteDeviceRegistration(id: number): Promise<void> {
+  const response = await apiFetch(`${API_BASE_URL}/notifications/devices/${id}`, {
     method: 'DELETE',
     headers: getAuthHeaders(),
   });
