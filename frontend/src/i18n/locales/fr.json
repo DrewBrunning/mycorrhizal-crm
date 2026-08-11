@@ -1030,9 +1030,6 @@
       }
     }
   },
-  "pages": {
-    "reminders": "Page des rappels"
-  },
   "network": {
     "title": "Réseau de contacts",
     "filterByCircle": "Filtrer par cercle",
