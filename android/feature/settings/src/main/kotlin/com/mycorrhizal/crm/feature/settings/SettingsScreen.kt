@@ -32,7 +32,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.mycorrhizal.crm.ui.theme.AppTypography
 import com.mycorrhizal.crm.ui.R
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -62,7 +61,7 @@ fun SettingsScreen(
                     }
                 },
                 title = {
-                    Text(stringResource(R.string.settings_title), style = AppTypography.appBarTitle)
+                    Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.titleLarge)
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,

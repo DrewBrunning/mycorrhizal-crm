@@ -164,3 +164,21 @@ question for icon buttons and hyperlinks — see below.
   router context). Hand-verified live: set a `window` marker before clicking the link, confirmed the
   marker survived the navigation (proving client-side routing, not a full reload) and the page landed
   on the correct contact.
+
+**2026-08-11 (Android port, `feature/t62-t63-android-parity`).** Ported the same color decisions to
+the Kotlin/Compose Android app. Found the palette already hand-pinned hex-for-hex to the web theme
+(pre-existing, referencing "ticket §4.4"), and most of T62's own decisions already the shipped state
+by construction: no chip UI exists yet to de-color, and every "Add X" action already goes through a
+shared `BrandFab` that's already solid brand green. Actual gaps fixed:
+- **Interactive icons → brand green**: copy-to-clipboard, edit, and field-action icons (dial/SMS/
+  compose-email/open-maps/open-in-browser, `ContactDetailScreen.kt`) plus per-item rename icons
+  (`TagsScreen.kt`/`CirclesScreen.kt`/`HouseholdsScreen.kt`) were all untinted grey — now
+  `tint = MaterialTheme.colorScheme.primary`. Decorative icons (leading `Label`/`Person` glyphs) and
+  action chips (`AssistChip`s) confirmed already correctly left alone.
+- **Gift/agenda links — built, not just recolored**: `gift.url`/`conversationAgenda.referenceUrl`
+  weren't rendered as links *at all* on Android (missing from the item label entirely). Added
+  `EntityItem.url`, plumbed through both ViewModels, and rendered as a second line + `OpenInNew`
+  `IconButton` (`LocalUriHandler.openUri`, no cross-module dependency needed) in the shared
+  `EntityListScaffold` row, colored brand green matching `LinkRow`'s existing pattern.
+Verified: `./gradlew testDebugUnitTest lintDebug assembleDebug` green; new ViewModel tests for the
+url pass-through hand-verified to fail first (temporarily reverted, confirmed failure, restored).

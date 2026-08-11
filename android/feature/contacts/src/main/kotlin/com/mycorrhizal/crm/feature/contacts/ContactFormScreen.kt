@@ -38,6 +38,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.theme.MycorrhizalFonts
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -220,9 +221,12 @@ fun ContactFormContent(
 
 @Composable
 private fun SectionLabel(text: String) {
+    // T63 Android port: see ContactDetailScreen.kt's SectionCard comment —
+    // same field-group-caption-gets-Mono treatment, scoped here rather than
+    // through the shared labelLarge role.
     Text(
         text = text,
-        style = MaterialTheme.typography.labelLarge,
+        style = MaterialTheme.typography.labelLarge.copy(fontFamily = MycorrhizalFonts.mono),
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(top = 8.dp),
     )

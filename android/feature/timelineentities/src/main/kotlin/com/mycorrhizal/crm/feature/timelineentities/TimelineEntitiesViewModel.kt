@@ -36,7 +36,7 @@ class ContactUidResolver(private val contactRepository: ContactRepository) {
         contactRepository.getContact(contactId).getOrNull()?.card?.uid
 }
 
-data class EntityItem(val id: String, val label: String)
+data class EntityItem(val id: String, val label: String, val url: String? = null)
 
 data class EntityListUiState(
     val entityId: String = "",
@@ -134,7 +134,7 @@ class GiftsViewModel @Inject constructor(
             _uiState.update { it.copy(entityId = uid) }
             giftRepository.listForContact(uid).foldApiError(
                 onSuccess = { items ->
-                    _uiState.update { it.copy(isLoading = false, items = items.map { g -> EntityItem(g.id, giftLabel(g)) }) }
+                    _uiState.update { it.copy(isLoading = false, items = items.map { g -> EntityItem(g.id, giftLabel(g), url = g.url) }) }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
@@ -256,7 +256,7 @@ class ConversationAgendaViewModel @Inject constructor(
             _uiState.update { it.copy(entityId = uid) }
             agendaRepository.listForContact(uid).foldApiError(
                 onSuccess = { items ->
-                    _uiState.update { it.copy(isLoading = false, items = items.map { a -> EntityItem(a.id, agendaLabel(a)) }) }
+                    _uiState.update { it.copy(isLoading = false, items = items.map { a -> EntityItem(a.id, agendaLabel(a), url = a.referenceUrl) }) }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }

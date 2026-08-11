@@ -132,23 +132,36 @@ object MycorrhizalFonts {
 /**
  * Full Material 3 type scale over the brand fonts. Overriding the whole scale
  * (not just titleLarge/bodyLarge) keeps every M3 role — labels, body, buttons,
- * chips — on IBM Plex Sans instead of the default Roboto. EB Garamond is used
- * for the largest display/title roles (the brand serif); IBM Plex Mono backs
- * the data-field slots.
+ * chips — on IBM Plex Sans instead of the default Roboto.
+ *
+ * T63 (web) narrowed EB Garamond to exactly one role: page-level headings
+ * (`typography.h5` in `frontend/src/theme.ts`) — deliberately NOT a blanket
+ * heading-scale override, because MUI's `DialogTitle` defaults to a heading
+ * variant too, and a blanket override would put Garamond on every dialog
+ * title. `titleLarge` is Android's equivalent of that one safe role — it's
+ * used exclusively for TopAppBar titles and the contact-name heading
+ * (confirmed zero other call sites), and M3's `AlertDialog` title defaults to
+ * `headlineSmall`, not `titleLarge`, so this override cannot leak into
+ * dialogs. `display*`/`headlineLarge/Medium/Small` (6 roles) previously also
+ * carried the brand serif, which is what caused the M3 default -- every
+ * `AlertDialog` in the app rendered its title in Garamond, the exact "looks
+ * bad on modals" problem T63 was written to avoid; confirmed no app code
+ * outside this file referenced any of those six roles, so reverting them to
+ * sans is a pure fix with no other effect.
  */
 val MycorrhizalTypography = Typography(
-    // Brand serif for the biggest roles only — matching the web, which uses
-    // EB Garamond solely for the app-bar brand header (frontend/src/App.css
-    // .App-header). Every UI title/label/body is IBM Plex Sans.
-    displayLarge = TextStyle(fontFamily = MycorrhizalFonts.serif, fontSize = 57.sp, fontWeight = FontWeight.Normal),
-    displayMedium = TextStyle(fontFamily = MycorrhizalFonts.serif, fontSize = 45.sp, fontWeight = FontWeight.Normal),
-    displaySmall = TextStyle(fontFamily = MycorrhizalFonts.serif, fontSize = 36.sp, fontWeight = FontWeight.Normal),
-    headlineLarge = TextStyle(fontFamily = MycorrhizalFonts.serif, fontSize = 32.sp, fontWeight = FontWeight.Normal),
-    headlineMedium = TextStyle(fontFamily = MycorrhizalFonts.serif, fontSize = 28.sp, fontWeight = FontWeight.Normal),
-    headlineSmall = TextStyle(fontFamily = MycorrhizalFonts.serif, fontSize = 24.sp, fontWeight = FontWeight.Normal),
-    // App bars and titles — IBM Plex Sans (the web's MUI typography is
-    // entirely Plex; Garamond is only the brand header).
-    titleLarge = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 22.sp, fontWeight = FontWeight.Medium),
+    // See titleLarge below for the brand-serif role -- display*/headline*
+    // stay sans so AlertDialog titles (which default to headlineSmall)
+    // don't inherit Garamond.
+    displayLarge = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 57.sp, fontWeight = FontWeight.Normal),
+    displayMedium = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 45.sp, fontWeight = FontWeight.Normal),
+    displaySmall = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 36.sp, fontWeight = FontWeight.Normal),
+    headlineLarge = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 32.sp, fontWeight = FontWeight.Normal),
+    headlineMedium = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 28.sp, fontWeight = FontWeight.Normal),
+    headlineSmall = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 24.sp, fontWeight = FontWeight.Normal),
+    // App bars and page titles — EB Garamond (T63's one safe brand-serif
+    // role; see the class doc above). Matches web's typography.h5.
+    titleLarge = TextStyle(fontFamily = MycorrhizalFonts.serif, fontSize = 22.sp, fontWeight = FontWeight.Medium),
     titleMedium = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 16.sp, fontWeight = FontWeight.Medium),
     titleSmall = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 14.sp, fontWeight = FontWeight.Medium),
     // Body — IBM Plex Sans.
@@ -162,15 +175,13 @@ val MycorrhizalTypography = Typography(
 )
 
 /**
- * Named convenience styles for the places that previously referenced
- * `MycorrhizalTypography.appBarTitle` / `.mono` directly, so call sites read
- * their intent rather than guessing an M3 slot. Prefer the M3 roles
- * (`MaterialTheme.typography.titleLarge` etc.) for new code.
+ * Named convenience styles for call sites that want to read their intent
+ * rather than guess an M3 slot. `appBarTitle` was removed (T63 Android port)
+ * once its one remaining consumer (`SettingsScreen`) migrated to
+ * `MaterialTheme.typography.titleLarge`, the standard pattern every other
+ * screen already used — prefer the M3 roles for new code.
  */
 object AppTypography {
-    /** App bar title — IBM Plex Sans, 22sp (the web's MUI app-bar titles). */
-    val appBarTitle = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 22.sp, fontWeight = FontWeight.Medium)
-
     /** Data fields (phones, emails, IDs) — IBM Plex Mono. */
     val mono = TextStyle(fontFamily = MycorrhizalFonts.mono, fontSize = 14.sp, fontWeight = FontWeight.Normal)
 }
