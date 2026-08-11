@@ -1057,9 +1057,6 @@
       }
     }
   },
-  "pages": {
-    "reminders": "Reminders Page"
-  },
   "network": {
     "title": "Contact Network",
     "filterByCircle": "Filter by Circle",

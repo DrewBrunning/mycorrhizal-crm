@@ -1030,9 +1030,6 @@
       }
     }
   },
-  "pages": {
-    "reminders": "Erinnerungen Seite"
-  },
   "network": {
     "title": "Kontakt-Netzwerk",
     "filterByCircle": "Nach Kreis filtern",

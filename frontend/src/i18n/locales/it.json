@@ -1030,9 +1030,6 @@
       }
     }
   },
-  "pages": {
-    "reminders": "Pagina Promemoria"
-  },
   "network": {
     "title": "Rete di Contatti",
     "filterByCircle": "Filtra per Cerchia",

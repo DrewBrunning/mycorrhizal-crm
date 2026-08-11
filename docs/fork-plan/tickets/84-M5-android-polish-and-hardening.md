@@ -12,6 +12,11 @@ This is the Android-client counterpart to the M-series backend tickets: [M2](81-
 [M4](83-M4-contact-detail-composite.md) (`GET /contacts/:id/detail`) are all backend-side; this is
 the app-side work, and where those tickets' Android consumers live.
 
+Two Android gaps are **not** here, filed 2026-08-11 after this ticket was written:
+[M7](88-M7-android-contact-record-coverage.md) — the contact editor covers 8 of ~30 `Card` field
+groups — and [M8](89-M8-web-android-parity-audit.md) — the web↔Android parity audit. This ticket is
+deferred *polish*; those two are missing *functionality*, which is a different bar.
+
 ## Why this exists
 
 M1's five phases shipped a genuinely working Android client, and its landing note honestly records

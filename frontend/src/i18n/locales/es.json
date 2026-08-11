@@ -1030,9 +1030,6 @@
       }
     }
   },
-  "pages": {
-    "reminders": "Página de Recordatorios"
-  },
   "network": {
     "title": "Red de Contactos",
     "filterByCircle": "Filtrar por Círculo",

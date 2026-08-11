@@ -488,7 +488,6 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
           <Route path="/users" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><UsersPage /></Suspense>} />
           <Route path="/api-tokens" element={<Navigate to="/settings" replace />} />
           <Route path="/circle-tag-triage" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><CircleTagTriagePage /></Suspense>} />
-          <Route path="/reminders" element={<div>{t('pages.reminders')}</div>} />
           <Route path="/" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><DashboardPage /></Suspense>} />
           <Route path="/login" element={<Navigate to="/" replace />} />
           <Route path="/register" element={<Navigate to="/" replace />} />
