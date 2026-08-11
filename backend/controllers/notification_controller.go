@@ -287,7 +287,7 @@ func DeleteDeviceRegistration(c *gin.Context) {
 		return
 	}
 
-	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	id, err := strconv.ParseUint(c.Param("id"), 10, strconv.IntSize)
 	if err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("id", "must be a positive integer"))
 		return
