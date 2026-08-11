@@ -631,7 +631,7 @@ export default function ContactHeader({
                   <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1, mb: 1 }}>
                     {contactTags.length > 0 ? (
                       contactTags.map((t) => (
-                        <Chip key={t.id} label={t.name} size="small" icon={<LocalOfferIcon />} color="secondary"
+                        <Chip key={t.id} label={t.name} size="small" icon={<LocalOfferIcon />}
                           onDelete={() => onRemoveTag(t)} />
                       ))
                     ) : (
@@ -665,7 +665,7 @@ export default function ContactHeader({
                 <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1 }}>
                   {contactTags.length > 0 ? (
                     contactTags.map((t) => (
-                      <Chip key={t.id} label={t.name} size="small" icon={<LocalOfferIcon />} color="secondary" />
+                      <Chip key={t.id} label={t.name} size="small" icon={<LocalOfferIcon />} />
                     ))
                   ) : (
                     <Typography variant="caption" color="text.secondary">{t('contactDetail.noTags')}</Typography>

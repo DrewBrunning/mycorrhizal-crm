@@ -44,6 +44,8 @@ the app lives in `android/` as of M1, 2026-08-10. Corrected 2026-08-11.)
 | [M2](81-M2-fcm-mobile-push.md) · Mobile push device registration (token+client) + FCM delivery | **BACKEND DONE** — frontend Settings UI split off, not started |
 | [M3](82-M3-dashboard-overview-endpoint.md) · `GET /dashboard` today/overview composite | **TO BE DONE** |
 | [M4](83-M4-contact-detail-composite.md) · `GET /contacts/:id/detail` composite | **TO BE DONE** |
+| [T63](87-T63-typography-roles-garamond-mono.md) · EB Garamond/IBM Plex Mono are loaded but essentially unused — apply the role split mobile testing found | **TO BE DONE** — needs a short scoping pass first (see ticket) |
+| [T62](86-T62-badge-and-button-color-system.md) · Chip/badge color system overloads brand/status colors | **TO BE DONE** — needs a design decision first (see ticket); clothing_size duplication + Tag chip color already fixed ad-hoc 2026-08-10 |
 
 > **N8 (2FA/TOTP) moved to Feature ideas, 2026-08-07.** For a self-hosted instance
 > going through OIDC the IdP already owns 2FA, so app-level TOTP is redundant there; it only

@@ -1408,7 +1408,10 @@ export default function ContactDetailPage() {
           }
         >
           <PreferenceList
-            preferences={preferences}
+            // clothing_size preferences get their own dedicated editor in the
+            // Gifts tab (ClothingSizesPanel below) -- showing them here too
+            // duplicated every size as a second, redundant "Other" row.
+            preferences={preferences.filter((p) => p.category !== PREFERENCE_CLOTHING_SIZE)}
             onEdit={handleEditPreference}
             onDelete={handlePreferenceDelete}
           />
@@ -1446,7 +1449,11 @@ export default function ContactDetailPage() {
         <PanelCard
           title={t('contactDetail.timeline')}
           actions={
-            <>
+            // PanelCard lays title/actions out with justify-content: space-between;
+            // a bare fragment here made Add Note/Add Activity two more flex
+            // siblings, so space-between spread all three evenly instead of
+            // grouping the two buttons together on the right.
+            <Box sx={{ display: 'flex', gap: 1 }}>
               <Button
                 startIcon={<SvgIcon><path d={mdiNotePlusOutline} /></SvgIcon>}
                 onClick={() => setNoteDialogOpen(true)}
@@ -1463,7 +1470,7 @@ export default function ContactDetailPage() {
               >
                 {t('contactDetail.addActivity')}
               </Button>
-            </>
+            </Box>
           }
         >
           <ContactTimeline
