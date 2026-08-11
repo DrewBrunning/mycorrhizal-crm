@@ -3006,3 +3006,57 @@ UI-deviation checklist, and the full in-overlay quick-capture sheet.
   already carry contentDescriptions; a dedicated tablet two-pane layout is the remaining work).
 
 Phase 5 is followed by the review / UI-polish / testing pass the user planned.
+
+---
+
+## Review pass — 2026-08-11
+
+A full read of `android/` after Phases 1–5. Everything that was an outright **defect** is fixed on
+this branch; everything that is **deferred scope** moved to
+[M5](84-M5-android-polish-and-hardening.md) so it stops living only inside this design document.
+Tests 349 → 358, `testDebugUnitTest` + `lintDebug` + `assembleDebug` green.
+
+### Fixed here
+
+1. **Android CI had never once been green.** `.github/workflows/android-tests.yml` runs `lintDebug`
+   as a required step, and lint had two errors, so every run since the app merged failed — the PR
+   that landed the app, the merge to `main`, and the open `feature/mobile-api` PR. The unit tests
+   were always passing; the redness was entirely lint.
+   - `android:windowLightNavigationBar` requires API 27, `minSdk` is 26 [NewApi]. Split into a
+     `Base.Theme.Mycorrhizal` in `values/` plus a `values-v27/` override.
+   - `Expecting at most 1 <debug-overrides>` [NetworkSecurityConfig]. Both the production and the
+     debug-variant network-security configs declared one; lint sees both source files in the debug
+     variant's resource model. Removed from the production file, where it is inert anyway.
+2. **`BootReceiver` could never fire** — `RECEIVE_BOOT_COMPLETED` was never declared, and Android
+   will not deliver `BOOT_COMPLETED` without it. The periodic tracking workers were therefore not
+   re-registered after a reboot, despite the receiver being wired up and documented.
+3. **`:app` held a stale duplicate of `:core:ui`'s resources** — all 125 string keys plus the five
+   `ic_stat_mycorrhizal` densities, left behind when they moved to `:core:ui`. Resource merging is
+   per-qualifier and app beats library, so `:app`'s copy won for English while translations still
+   resolved from `:core:ui`: any future edit to an English string in `:core:ui` would have silently
+   done nothing. Also the source of all 116 `UnusedResources` warnings.
+4. **The contact detail ignored the user's `date_format`**, hardcoding `birthday.display("eu")`
+   even though the session already carried the preference.
+5. **`InteractionSyncWorker` had a read-then-write-back no-op** on a watermark it does not own
+   (`CallLogSyncWorker` does), and gated `deleteSynced()` on the whole batch succeeding — so one
+   failed upload left every already-synced row behind until some later run happened to be clean.
+6. **`QuickCaptureOverlay` leaked a Context** — an `object` holding a `View` in a static field for
+   the life of the process. Now an instance owned by `CallDetectionService`, dropped in `onDestroy`.
+7. **~80 user-facing strings were hardcoded English.** The app looked fully localized (237 keys ×
+   5 locales, with `LocalesConsistencyTest` enforcing them) but a large slice of the UI never
+   reached `strings.xml`, so the test could not see it — including every notification title and
+   body, the notification channel names that appear in Android's own system Settings, every empty
+   state, and every form title. Migrated to `:core:ui` with real de/es/fr/it translations
+   (237 → 276 keys). `LocalesConsistencyTest` gained a key-prefix-namespace check so this class of
+   gap is catchable. `InteractionSyncWorker`'s Activity titles were deliberately left in English —
+   they are written to the server as data, and localizing them would make one interaction read
+   differently depending on which device synced it.
+
+### Not fixed here — see M5
+
+Tablet layout and the accessibility audit (items 31/32), the four UI deviations recorded above
+(contact photos, which also need Coil wired to the authenticated OkHttp client and relative-URL
+support; last-name derivation; font roles; section styling), the in-overlay quick-capture sheet,
+the Android clients for `82-M1-missing-endpoints`, the absent `androidTest` tier (there are zero
+instrumented tests and CI runs none), release signing, and the unverified Telegram/Zoom/Discord
+MIMETYPEs.
