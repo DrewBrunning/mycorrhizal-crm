@@ -481,6 +481,28 @@ paths:
                         id: { type: integer }
                         username: { type: string }
 
+  # --- Dashboard (M3) ---
+  /dashboard:
+    get:
+      summary: "Dashboard today/overview composite (M3)"
+      operationId: getDashboard
+      description: >
+        Read-only aggregation of the four blocks the dashboard ("today")
+        screen needs in one call: upcoming birthdays, a handful of random
+        contacts, upcoming reminders (with each reminder's contact display
+        name embedded, so no per-reminder follow-up fetch is needed), and
+        overdue cadences. Same pattern as the N2 briefing composite
+        (GET /contacts/{id}/briefing) — pure aggregation, no writes, no
+        cache. Every collection block is always present and serializes as
+        `[]` when empty, never `null`/absent.
+      responses:
+        "200":
+          description: The dashboard composite.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardResponse"
+
   # --- Contacts ---
   /contacts:
     get:
@@ -6775,6 +6797,35 @@ components:
         notes: { type: array, items: { type: object } }
         activities: { type: array, items: { type: object } }
         reminders: { type: array, items: { type: object } }
+    DashboardResponse:
+      type: object
+      description: >
+        Read-only M3 dashboard composite (GET /dashboard). Pure aggregation
+        of existing per-user queries; every block is always present and
+        serializes as `[]` when empty, never `null`/absent.
+      properties:
+        birthdays:
+          type: array
+          items: { $ref: "#/components/schemas/Birthday" }
+        random_contacts:
+          type: array
+          items: { $ref: "#/components/schemas/ContactResponse" }
+        upcoming_reminders:
+          type: array
+          items: { $ref: "#/components/schemas/DashboardReminder" }
+        overdue:
+          type: array
+          items: { $ref: "#/components/schemas/OverdueCadence" }
+    DashboardReminder:
+      description: >
+        A Reminder enriched with its contact's display name (nickname-
+        preferred, falling back to firstname+lastname), so the dashboard
+        composite's consumer never needs a second per-reminder fetch.
+      allOf:
+        - $ref: "#/components/schemas/Reminder"
+        - type: object
+          properties:
+            contact_name: { type: string }
     ContactBriefing:
       type: object
       description: >

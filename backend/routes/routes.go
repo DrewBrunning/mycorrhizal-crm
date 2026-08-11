@@ -59,6 +59,11 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// admin-only ListUsers (id+username only).
 			protected.GET("/users/directory", controllers.ListUserDirectory)
 
+			// M3 dashboard composite (docs/fork-plan/tickets/
+			// 82-M3-dashboard-overview-endpoint.md): birthdays + random
+			// contacts + upcoming reminders + overdue cadences in one call.
+			protected.GET("/dashboard", controllers.GetDashboard)
+
 			// Contact routes
 			protected.GET("/contacts", controllers.GetContacts)
 			protected.GET("/contacts/circles", controllers.GetCircles)

@@ -345,6 +345,39 @@ func SendReminders(db *gorm.DB, config config.Config) error {
 	return nil
 }
 
+// GetUpcomingReminders returns all of a user's incomplete reminders due
+// within the next 7 days of `now` when that set exceeds five; otherwise it
+// falls back to at least the next five upcoming reminders overall (so a
+// quiet week doesn't show an empty dashboard). Shared by
+// GetUpcomingReminders (reminder_controller.go) and the M3 dashboard
+// composite (dashboard_controller.go) — one place for this rule so the two
+// callers can never drift apart (docs/fork-plan/tickets/
+// 82-M3-dashboard-overview-endpoint.md's "reuse the exact semantics" trap).
+func GetUpcomingReminders(db *gorm.DB, userID uint, now time.Time) ([]models.Reminder, error) {
+	sevenDaysFromNow := now.AddDate(0, 0, 7)
+
+	var remindersNext7Days []models.Reminder
+	if err := db.Where("user_id = ? AND remind_at <= ? AND completed = ?", userID, sevenDaysFromNow, false).
+		Order("remind_at ASC").
+		Find(&remindersNext7Days).Error; err != nil {
+		return nil, err
+	}
+
+	if len(remindersNext7Days) > 5 {
+		return remindersNext7Days, nil
+	}
+
+	var remindersNext5 []models.Reminder
+	if err := db.Where("user_id = ? AND completed = ?", userID, false).
+		Order("remind_at ASC").
+		Limit(5).
+		Find(&remindersNext5).Error; err != nil {
+		return nil, err
+	}
+
+	return remindersNext5, nil
+}
+
 // formatDateForUser formats a time.Time according to user's date format preference
 func formatDateForUser(t time.Time, dateFormat string) string {
 	switch dateFormat {
