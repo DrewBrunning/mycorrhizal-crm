@@ -15,7 +15,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -40,7 +42,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -55,11 +56,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -78,6 +81,7 @@ import com.mycorrhizal.crm.model.network.OnlineService
 import com.mycorrhizal.crm.model.network.Phone
 import com.mycorrhizal.crm.model.util.DateFormat.display
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.LocalDrawerOpen
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.theme.AppTypography
 import com.mycorrhizal.crm.feature.timeline.TimelineSection
@@ -92,6 +96,21 @@ private fun androidx.compose.ui.graphics.Color.toArgbCompat(): Int =
         (green * 255).toInt(),
         (blue * 255).toInt(),
     )
+
+/**
+ * The scroll window over which the contact name cross-fades out of the content
+ * and into the collapsing app bar.
+ *
+ * This spans the two previous behaviors. A 96dp snap threshold felt "too
+ * aggressive" (the bar switched while the photo still dominated), and waiting
+ * for the whole ~204dp header block (photo + name + nickname + birthday) to
+ * leave felt "too delayed". Fading across 120–180dp puts the midpoint at
+ * ~150dp — exactly where the name reaches the top edge (24dp top padding +
+ * 120dp photo + 8dp spacing = 152dp) — so the transfer reads as seamless and
+ * tracks the scroll gesture continuously like an iOS interactive transition.
+ */
+private val HeaderFadeStartDp = 120.dp
+private val HeaderFadeEndDp = 180.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -126,30 +145,51 @@ fun ContactDetailScreen(
     }
 
     // Drives the collapsing app bar: at the top the bar is transparent so the
-    // large photo + name (the first list item) sit on the bone surface; once
-    // the user scrolls, the bar turns green and shows a small avatar + name
-    // (Android Contacts pattern).
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
-    val collapsed by remember {
-        derivedStateOf { scrollBehavior.state.collapsedFraction > 0.5f }
+    // large photo + name (the first list item) sit on the bone surface; as the
+    // user scrolls, the name cross-fades out of the content and into the bar
+    // while it turns green (Android Contacts / iOS-style interactive gesture —
+    // the transition tracks the scroll position continuously, not a binary
+    // show/hide).
+    //
+    // The fade spans the window between the two previous behaviors: it starts
+    // at 120dp (where a 96dp threshold felt "too aggressive" — it switched
+    // while the photo was still dominant) and completes at 180dp (where waiting
+    // for the whole ~204dp header block felt "too delayed"). Midpoint is 150dp
+    // — the point where the name reaches the top edge (24dp padding + 120dp
+    // photo + 8dp spacing), so the transfer reads as seamless.
+    val listState = rememberLazyListState()
+    val collapseStartPx = with(LocalDensity.current) { HeaderFadeStartDp.toPx() }
+    val collapseEndPx = with(LocalDensity.current) { HeaderFadeEndDp.toPx() }
+    val collapseProgress by remember {
+        derivedStateOf {
+            if (listState.firstVisibleItemIndex > 0) {
+                1f
+            } else {
+                ((listState.firstVisibleItemScrollOffset - collapseStartPx) /
+                    (collapseEndPx - collapseStartPx)).coerceIn(0f, 1f)
+            }
+        }
     }
     // Icon color: dark over the bone surface at the top, white once the green
-    // bar collapses in (this M3 version has no scrolled icon color slots).
+    // bar collapses in — lerped continuously so the tint follows the drag.
     val onSurface = MaterialTheme.colorScheme.onSurface
     val onPrimary = MaterialTheme.colorScheme.onPrimary
-    val barIconColor by remember {
-        derivedStateOf { if (collapsed) onPrimary else onSurface }
-    }
+    val barIconColor = lerp(onSurface, onPrimary, collapseProgress)
 
     // The status bar follows the collapse: bone with dark icons at the top,
     // brand green with light icons once the bar collapses in (overrides the
     // theme's default green for this screen). isAppearanceLightStatusBars=true
     // means dark icons (for the light bone bar); false means white icons.
+    // While the navigation drawer is open, the app-level scaffold owns the
+    // status bar (parchment + dark icons), so this screen stays out of the way
+    // and re-applies its own state when the drawer closes.
+    val drawerOpen = LocalDrawerOpen.current
     val window = (LocalContext.current as android.app.Activity).window
-    LaunchedEffect(scrollBehavior.state) {
-        snapshotFlow { scrollBehavior.state.collapsedFraction }
-            .collect { fraction ->
-                val collapsedNow = fraction > 0.5f
+    LaunchedEffect(drawerOpen) {
+        if (drawerOpen) return@LaunchedEffect
+        snapshotFlow { collapseProgress }
+            .collect { progress ->
+                val collapsedNow = progress > 0.5f
                 window.statusBarColor = if (collapsedNow) {
                     com.mycorrhizal.crm.ui.theme.MycorrhizalColors.mycelium.toArgbCompat()
                 } else {
@@ -185,26 +225,28 @@ fun ContactDetailScreen(
                     }
                 },
                 title = {
-                    if (collapsed) {
-                        state.contact?.let { contact ->
-                            val card = contact.card
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            ) {
-                                ContactAvatar(
-                                    photoUri = card?.photoUri ?: contact.photoThumbnail,
-                                    contentDescription = "Photo of ${card?.displayName.orEmpty()}",
-                                    size = 36.dp,
-                                )
-                                Text(
-                                    text = card?.displayName ?: stringResource(R.string.contact_title_fallback),
-                                    style = MaterialTheme.typography.titleLarge,
-                                    color = barIconColor,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
+                    // Always composed so it can cross-fade in with the scroll;
+                    // the alpha tracks collapseProgress (0 = hidden over the
+                    // bone surface, 1 = fully shown once the bar is green).
+                    state.contact?.let { contact ->
+                        val card = contact.card
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.graphicsLayer { alpha = collapseProgress },
+                        ) {
+                            ContactAvatar(
+                                photoUri = card?.photoUri ?: contact.photoThumbnail,
+                                contentDescription = "Photo of ${card?.displayName.orEmpty()}",
+                                size = 36.dp,
+                            )
+                            Text(
+                                text = card?.displayName ?: stringResource(R.string.contact_title_fallback),
+                                style = MaterialTheme.typography.titleLarge,
+                                color = barIconColor,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
                         }
                     }
                 },
@@ -220,15 +262,16 @@ fun ContactDetailScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    // Transparent until scrolled, then green. The nav/title/
-                    // action icons are tinted explicitly from the scroll state.
-                    containerColor = Color.Transparent,
+                    // Transparent at the top, brand green once collapsed —
+                    // lerped continuously so the color follows the drag rather
+                    // than snapping. The nav/title/action icons are tinted
+                    // explicitly from the same continuous progress.
+                    containerColor = lerp(Color.Transparent, MaterialTheme.colorScheme.primary, collapseProgress),
                     scrolledContainerColor = MaterialTheme.colorScheme.primary,
                     navigationIconContentColor = barIconColor,
                     titleContentColor = barIconColor,
                     actionIconContentColor = barIconColor,
                 ),
-                scrollBehavior = scrollBehavior,
             )
         },
     ) { padding ->
@@ -240,7 +283,8 @@ fun ContactDetailScreen(
                 state.contact == null -> EmptyState("Contact not found")
                 else -> ContactDetailContent(
                     contact = state.contact!!,
-                    scrollBehavior = scrollBehavior,
+                    listState = listState,
+                    headerContentAlpha = 1f - collapseProgress,
                     deviceLookupKey = state.deviceLookupKey,
                     onOpenInContacts = onOpenInContacts,
                     onViewActivities = onViewActivities,
@@ -266,7 +310,9 @@ fun ContactDetailScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 fun ContactDetailContent(
     contact: ContactRecordResponse,
-    scrollBehavior: TopAppBarScrollBehavior? = null,
+    listState: LazyListState = rememberLazyListState(),
+    /** 0→1 as the name fades out of the content into the collapsing app bar. */
+    headerContentAlpha: Float = 1f,
     deviceLookupKey: String? = null,
     onOpenInContacts: (String) -> Unit = {},
     onViewActivities: (Int) -> Unit = {},
@@ -287,21 +333,20 @@ fun ContactDetailContent(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .testTag("contact-detail-list")
-            .then(
-                if (scrollBehavior != null) {
-                    Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
-                } else {
-                    Modifier
-                },
-            ),
+            .testTag("contact-detail-list"),
+        state = listState,
     ) {
         item {
             // Large photo + name header on the bone surface. It sits under the
             // transparent app bar; scrolling collapses the app bar over it
             // (Android Contacts pattern).
             Column(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 24.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 24.dp)
+                    // Cross-fade the large header out as the name transfers
+                    // into the collapsing app bar (mirrors the bar-title alpha).
+                    .graphicsLayer { alpha = headerContentAlpha },
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -331,6 +376,85 @@ fun ContactDetailContent(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                }
+            }
+        }
+        if (!card?.personalInfo.isNullOrEmpty()) {
+            item {
+                SectionCard("Personal information") {
+                    card?.personalInfo?.forEach { info ->
+                        InfoRow("${info.kind.orEmpty()}: ${info.value.orEmpty()}")
+                    }
+                }
+            }
+        }
+        if (!card?.phones.isNullOrEmpty()) {
+            item {
+                SectionCard("Phone") {
+                    card?.phones?.forEach { PhoneRow(it) }
+                }
+            }
+        }
+        if (!card?.addresses.isNullOrEmpty()) {
+            item {
+                SectionCard("Address") {
+                    card?.addresses?.forEach { AddressRow(it) }
+                }
+            }
+        }
+        if (!card?.emails.isNullOrEmpty()) {
+            item {
+                SectionCard("Email") {
+                    card?.emails?.forEach { EmailRow(it) }
+                }
+            }
+        }
+        val onlineServices = (card?.imppAddresses.orEmpty() +
+            card?.socialProfiles.orEmpty() +
+            card?.otherOnlineServices.orEmpty())
+        if (onlineServices.isNotEmpty()) {
+            item {
+                SectionCard("Online services") {
+                    onlineServices.forEach { OnlineServiceRow(it) }
+                }
+            }
+        }
+        if (!card?.links.isNullOrEmpty()) {
+            item {
+                SectionCard("Links") {
+                card?.links?.forEach { link ->
+                    val uri = link.uri.orEmpty()
+                    LinkRow(
+                        uri = uri,
+                        label = link.label ?: uri,
+                        linkType = MobileLinkRegistry.forProtocol(link.label),
+                    )
+                }
+                }
+            }
+        }
+        if (!card?.organizations.isNullOrEmpty()) {
+            item {
+                SectionCard("Organization") {
+                    card?.organizations?.forEach { org ->
+                        org.name?.let { InfoRow(it) }
+                    }
+                }
+            }
+        }
+        if (!card?.notes.isNullOrEmpty()) {
+            item {
+                SectionCard("Notes") {
+                    card?.notes?.forEach { note ->
+                        note.note?.let { InfoRow(it) }
+                    }
+                }
+            }
+        }
+        if (!contact.crm?.circles.isNullOrEmpty()) {
+            item {
+                SectionCard("Circles") {
+                    InfoRow(contact.crm?.circles?.joinToString(", ").orEmpty())
                 }
             }
         }
@@ -452,85 +576,6 @@ fun ContactDetailContent(
                 },
                 modifier = Modifier.fillMaxWidth().clickable { onViewAgenda(contact.id) },
             )
-        }
-        if (!card?.emails.isNullOrEmpty()) {
-            item {
-                SectionCard("Email") {
-                    card?.emails?.forEach { EmailRow(it) }
-                }
-            }
-        }
-        if (!card?.phones.isNullOrEmpty()) {
-            item {
-                SectionCard("Phone") {
-                    card?.phones?.forEach { PhoneRow(it) }
-                }
-            }
-        }
-        if (!card?.addresses.isNullOrEmpty()) {
-            item {
-                SectionCard("Address") {
-                    card?.addresses?.forEach { AddressRow(it) }
-                }
-            }
-        }
-        val onlineServices = (card?.imppAddresses.orEmpty() +
-            card?.socialProfiles.orEmpty() +
-            card?.otherOnlineServices.orEmpty())
-        if (onlineServices.isNotEmpty()) {
-            item {
-                SectionCard("Online services") {
-                    onlineServices.forEach { OnlineServiceRow(it) }
-                }
-            }
-        }
-        if (!card?.links.isNullOrEmpty()) {
-            item {
-                SectionCard("Links") {
-                card?.links?.forEach { link ->
-                    val uri = link.uri.orEmpty()
-                    LinkRow(
-                        uri = uri,
-                        label = link.label ?: uri,
-                        linkType = MobileLinkRegistry.forProtocol(link.label),
-                    )
-                }
-                }
-            }
-        }
-        if (!card?.organizations.isNullOrEmpty()) {
-            item {
-                SectionCard("Organization") {
-                    card?.organizations?.forEach { org ->
-                        org.name?.let { InfoRow(it) }
-                    }
-                }
-            }
-        }
-        if (!card?.notes.isNullOrEmpty()) {
-            item {
-                SectionCard("Notes") {
-                    card?.notes?.forEach { note ->
-                        note.note?.let { InfoRow(it) }
-                    }
-                }
-            }
-        }
-        if (!card?.personalInfo.isNullOrEmpty()) {
-            item {
-                SectionCard("Personal information") {
-                    card?.personalInfo?.forEach { info ->
-                        InfoRow("${info.kind.orEmpty()}: ${info.value.orEmpty()}")
-                    }
-                }
-            }
-        }
-        if (!contact.crm?.circles.isNullOrEmpty()) {
-            item {
-                SectionCard("Circles") {
-                    InfoRow(contact.crm?.circles?.joinToString(", ").orEmpty())
-                }
-            }
         }
         item { Box(modifier = Modifier.size(32.dp)) }
     }

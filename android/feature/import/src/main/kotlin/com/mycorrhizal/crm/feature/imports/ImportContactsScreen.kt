@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
@@ -42,7 +42,7 @@ import com.mycorrhizal.crm.ui.R
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImportContactsScreen(
-    onBack: () -> Unit,
+    onMenuClick: () -> Unit,
     onImported: () -> Unit = {},
     viewModel: ImportContactsViewModel = hiltViewModel(),
 ) {
@@ -55,8 +55,8 @@ fun ImportContactsScreen(
         topBar = {
             TopAppBar(
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                    IconButton(onClick = onMenuClick) {
+                        Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
                     }
                 },
                 title = {

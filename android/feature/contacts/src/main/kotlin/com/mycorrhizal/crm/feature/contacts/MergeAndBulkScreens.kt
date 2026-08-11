@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Merge
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -168,7 +169,7 @@ private fun ConflictRow(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BulkOperationsScreen(
-    onBack: () -> Unit,
+    onMenuClick: () -> Unit,
     viewModel: BulkOperationsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -179,8 +180,8 @@ fun BulkOperationsScreen(
         topBar = {
             TopAppBar(
                 navigationIcon = {
-                    androidx.compose.material3.IconButton(onClick = onBack) {
-                        androidx.compose.material3.Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                    androidx.compose.material3.IconButton(onClick = onMenuClick) {
+                        androidx.compose.material3.Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
                     }
                 },
                 title = { Text(stringResource(R.string.bulk_title), style = MaterialTheme.typography.titleLarge) },

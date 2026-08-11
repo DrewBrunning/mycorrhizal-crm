@@ -57,8 +57,11 @@ class ContactDetailScreenTest {
         )
         setContent(ContactDetailUiState(contact = contact))
 
-        // The name is owned by the collapsing app bar (ContactDetailScreen);
-        // the body composable renders the timeline + section rows.
+        // The name is owned by the collapsing app bar (ContactDetailScreen).
+        // The body renders the overview info first (web order), then the
+        // timeline, then the management entry rows — scroll the list to them.
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasText("Activities"))
         composeTestRule.onNodeWithText("Activities").assertIsDisplayed()
         composeTestRule.onNodeWithText("Notes").assertIsDisplayed()
         composeTestRule.onNodeWithText("Reminders").assertIsDisplayed()

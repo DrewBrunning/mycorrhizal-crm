@@ -33,7 +33,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -84,6 +86,7 @@ import com.mycorrhizal.crm.feature.timeline.NotesScreen
 import com.mycorrhizal.crm.feature.timeline.ReminderFormScreen
 import com.mycorrhizal.crm.feature.timeline.RemindersScreen
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.LocalDrawerOpen
 
 private data class DrawerDestination(
     val route: String,
@@ -157,18 +160,26 @@ private fun MainScaffold() {
 
     // Default status bar for the always-green app-bar screens: brand green
     // background with light (white) icons. The contact detail overrides this
-    // per its collapse state. Runs after composition so enableEdgeToEdge's
-    // default (transparent + dark icons in light mode) is superseded.
+    // per its collapse state. When the drawer is open its parchment surface
+    // shows under the status bar, so the status bar becomes parchment with
+    // dark icons (other apps do the same inversion).
     val activity = LocalContext.current as android.app.Activity
-    DisposableEffect(Unit) {
-        activity.window.statusBarColor =
-            com.mycorrhizal.crm.ui.theme.MycorrhizalColors.mycelium.toArgbCompat()
-        WindowCompat.getInsetsController(activity.window, activity.window.decorView)
-            .isAppearanceLightStatusBars = false
-        onDispose {}
+    LaunchedEffect(drawerState.isOpen) {
+        if (drawerState.isOpen) {
+            activity.window.statusBarColor =
+                com.mycorrhizal.crm.ui.theme.MycorrhizalColors.parchment.toArgbCompat()
+            WindowCompat.getInsetsController(activity.window, activity.window.decorView)
+                .isAppearanceLightStatusBars = true
+        } else {
+            activity.window.statusBarColor =
+                com.mycorrhizal.crm.ui.theme.MycorrhizalColors.mycelium.toArgbCompat()
+            WindowCompat.getInsetsController(activity.window, activity.window.decorView)
+                .isAppearanceLightStatusBars = false
+        }
     }
 
-    ModalNavigationDrawer(
+    CompositionLocalProvider(LocalDrawerOpen provides drawerState.isOpen) {
+        ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet {
@@ -194,7 +205,6 @@ private fun MainScaffold() {
                         modifier = Modifier.padding(horizontal = 8.dp),
                     )
                 }
-                HorizontalDivider()
                 secondaryDestinations.forEach { item ->
                     NavigationDrawerItem(
                         label = { Text(stringResource(item.labelRes)) },
@@ -228,12 +238,12 @@ private fun MainScaffold() {
             }
             composable("bulk") {
                 BulkOperationsScreen(
-                    onBack = { navController.popBackStack() },
+                    onMenuClick = { scope.launch { drawerState.open() } },
                 )
             }
             composable("import") {
                 ImportContactsScreen(
-                    onBack = { navController.popBackStack() },
+                    onMenuClick = { scope.launch { drawerState.open() } },
                     onImported = {},
                 )
             }
@@ -430,7 +440,7 @@ private fun MainScaffold() {
 
             composable("settings") {
                 SettingsScreen(
-                    onBack = { navController.popBackStack() },
+                    onMenuClick = { scope.launch { drawerState.open() } },
                     onLoggedOut = { navController.popBackStack() },
                     onCustomLinks = { navController.navigate("custom-links") },
                 )
@@ -442,7 +452,7 @@ private fun MainScaffold() {
             }
             composable("circles") {
                 CirclesScreen(
-                    onBack = { navController.popBackStack() },
+                    onMenuClick = { scope.launch { drawerState.open() } },
                     onOpenCircle = { id -> navController.navigate("circles/$id") },
                 )
             }
@@ -456,7 +466,7 @@ private fun MainScaffold() {
             }
             composable("tags") {
                 TagsScreen(
-                    onBack = { navController.popBackStack() },
+                    onMenuClick = { scope.launch { drawerState.open() } },
                     onOpenTag = { id -> navController.navigate("tags/$id") },
                 )
             }
@@ -471,7 +481,7 @@ private fun MainScaffold() {
             composable("network") { PlaceholderScreen(R.string.nav_network) { scope.launch { drawerState.open() } } }
             composable("households") {
                 HouseholdsScreen(
-                    onBack = { navController.popBackStack() },
+                    onMenuClick = { scope.launch { drawerState.open() } },
                     onOpenHousehold = { id -> navController.navigate("households/$id") },
                 )
             }
@@ -482,9 +492,10 @@ private fun MainScaffold() {
                 HouseholdDetailScreen(
                     onBack = { navController.popBackStack() },
                 )
-            }
         }
     }
+    }
+}
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

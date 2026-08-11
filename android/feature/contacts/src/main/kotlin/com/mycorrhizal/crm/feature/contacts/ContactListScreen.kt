@@ -52,6 +52,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.R
@@ -139,7 +140,7 @@ fun ContactListScreenContent(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onCreateContact) {
+            BrandFab(onClick = onCreateContact) {
                 Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.contacts_new))
             }
         },

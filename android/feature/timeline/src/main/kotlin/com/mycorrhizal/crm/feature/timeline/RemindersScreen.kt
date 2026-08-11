@@ -35,6 +35,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mycorrhizal.crm.model.network.Reminder
+import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.R
@@ -70,7 +71,7 @@ fun RemindersScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onCreateReminder) {
+            BrandFab(onClick = onCreateReminder) {
                 Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.cd_new_reminder))
             }
         },

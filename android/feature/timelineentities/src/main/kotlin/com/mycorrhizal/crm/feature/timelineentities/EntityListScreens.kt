@@ -40,6 +40,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.R
@@ -76,7 +77,7 @@ private fun EntityListScaffold(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onAdd) {
+            BrandFab(onClick = onAdd) {
                 Icon(Icons.Outlined.Add, contentDescription = addLabel)
             }
         },

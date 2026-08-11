@@ -84,6 +84,7 @@ fun ContactFormScreen(
         when {
             state.isLoading -> LoadingSkeleton()
             else -> ContactFormContent(
+                modifier = Modifier.padding(padding),
                 state = state,
                 onGivenNameChange = viewModel::onGivenNameChange,
                 onSurnameChange = viewModel::onSurnameChange,
@@ -119,9 +120,10 @@ fun ContactFormContent(
     onNotesChange: (String) -> Unit,
     onCirclesTextChange: (String) -> Unit,
     onSave: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),

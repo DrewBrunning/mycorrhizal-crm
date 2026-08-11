@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Debug-build override of the production network security config (the main
+    file lives in src/main/res/xml/). Debug builds additionally allow plain
+    HTTP to the Android emulator's host loopback (10.0.2.2) so `adb`-driven
+    local-backend testing works. This file never ships in a release build —
+    the production config forbids cleartext unconditionally.
+
+    Note: <debug-overrides> may only contain <trust-anchors>, so the cleartext
+    exception lives in the base-config here rather than inside debug-overrides.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </debug-overrides>
+</network-security-config>

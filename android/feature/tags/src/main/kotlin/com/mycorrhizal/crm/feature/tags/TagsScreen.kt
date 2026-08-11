@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mycorrhizal.crm.model.network.Tag
+import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.R
@@ -50,7 +51,7 @@ import com.mycorrhizal.crm.ui.R
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TagsScreen(
-    onBack: () -> Unit,
+    onMenuClick: () -> Unit,
     onOpenTag: (String) -> Unit,
     viewModel: TagsViewModel = hiltViewModel(),
 ) {
@@ -62,8 +63,8 @@ fun TagsScreen(
         topBar = {
             TopAppBar(
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                    IconButton(onClick = onMenuClick) {
+                        Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
                     }
                 },
                 title = {
@@ -78,7 +79,7 @@ fun TagsScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showCreateDialog = true }) {
+            BrandFab(onClick = { showCreateDialog = true }) {
                 Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.tags_new))
             }
         },

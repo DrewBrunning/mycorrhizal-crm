@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -38,7 +38,7 @@ import com.mycorrhizal.crm.ui.R
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    onBack: () -> Unit,
+    onMenuClick: () -> Unit,
     onLoggedOut: () -> Unit,
     onCustomLinks: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
@@ -57,8 +57,8 @@ fun SettingsScreen(
         topBar = {
             TopAppBar(
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                    IconButton(onClick = onMenuClick) {
+                        Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
                     }
                 },
                 title = {
