@@ -99,6 +99,9 @@ func TestOpenAPISpecValidates(t *testing.T) {
 		"GraphResponse", "GraphNode", "GraphEdge",
 		// M3 dashboard composite.
 		"DashboardResponse", "DashboardReminder",
+		// M4 contact-detail composite.
+		"ContactDetailResponse", "ContactDetailUser", "ContactDetailLifeEvent",
+		"ContactDetailImmich",
 	}
 	for _, name := range wantSchemas {
 		if _, ok := doc.Components.Schemas[name]; !ok {
