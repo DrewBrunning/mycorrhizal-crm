@@ -78,6 +78,7 @@ type Config struct {
 	APIRateLimitBurst       int           // Bucket size, i.e. the largest instantaneous burst allowed
 	ImmichSyncIntervalHours int           // Interval in hours for the scheduled Immich enrichment sync (T16)
 	ImmichBlockPrivateURLs  bool          // Block Immich fetches to private/loopback addresses (useful for cloud deployments)
+	FCMServiceAccountFile   string        // Path to the Firebase service-account JSON for FCM mobile push delivery (M2)
 	OIDC                    OIDCConfig
 }
 
@@ -134,6 +135,7 @@ func LoadConfig() *Config {
 		APIRateLimitBurst:       getIntEnv("API_RATE_LIMIT_BURST", 1000),
 		ImmichSyncIntervalHours: getIntEnv("IMMICH_SYNC_INTERVAL_HOURS", 6),
 		ImmichBlockPrivateURLs:  getBoolEnv("IMMICH_BLOCK_PRIVATE_URLS", false),
+		FCMServiceAccountFile:   getEnv("FCM_SERVICE_ACCOUNT_FILE", ""),
 	}
 
 	if cfg.CalDAVSyncIntervalHours < 1 {
@@ -410,6 +412,19 @@ func (c *Config) Validate() []ValidationError {
 	}
 	if oidcSet > 0 && oidcSet < 3 {
 		log.Println("WARN: OIDC is partially configured. Set OIDC_PROVIDER_URL, OIDC_CLIENT_ID, and OIDC_CLIENT_SECRET to enable SSO.")
+	}
+
+	// M2: the FCM service account file is parsed and fully validated by the
+	// services package at delivery time (config cannot import services without
+	// a cycle). Here we only fail fast on the unambiguous mistake of pointing
+	// at a path that doesn't exist.
+	if fcmPath := c.FCMServiceAccountFile; fcmPath != "" {
+		if _, err := os.Stat(fcmPath); err != nil {
+			errors = append(errors, ValidationError{
+				Field:   "FCM_SERVICE_ACCOUNT_FILE",
+				Message: fmt.Sprintf("FCM service account file '%s' does not exist: %v. Unset it to disable mobile push, or point it at a valid Firebase service-account JSON.", fcmPath, err),
+			})
+		}
 	}
 
 	// Validate Resend configuration if emails are enabled

@@ -125,6 +125,64 @@ type PushSubscriptionInput struct {
 	DeviceLabel string `json:"device_label" validate:"max=200"`
 }
 
+// PushClient is the wire name of one mobile push platform. The registration
+// API is deliberately platform-agnostic: a client identifies itself by string
+// so an iOS client can register APNS tokens against the same endpoint without
+// a contract change (M2). Delivery dispatch keys on this value; only fcm has a
+// sender implementation today, apns registrations are accepted but their
+// delivery is a logged skip until an APNS sender exists.
+type PushClient string
+
+const (
+	// PushClientFCM is Firebase Cloud Messaging (Android).
+	PushClientFCM PushClient = "fcm"
+	// PushClientAPNS is Apple Push Notification Service (iOS) — accepted at
+	// registration, delivery not yet implemented (M2 design decision 2).
+	PushClientAPNS PushClient = "apns"
+)
+
+// AllPushClients is the complete registry of accepted mobile push clients, in
+// dispatch order. Keep in sync with the CHECK constraint in migration 000019
+// and any frontend copies (there is no dynamic type-list endpoint, by design).
+var AllPushClients = []PushClient{
+	PushClientFCM,
+	PushClientAPNS,
+}
+
+// DeviceRegistration is one mobile device registered for platform push (FCM
+// today, APNS accepted-but-undelivered). Token is the platform push service's
+// device token; Client identifies the platform. Unlike PushSubscription, the
+// registration is just a token + client — there are no encryption keys to
+// store, the platform push service (Google/Apple) does the message encryption.
+//
+// Hard-delete (transient device state, not user-authored content — a stale
+// registration is auto-removed when the push service reports the token dead,
+// and tombstones would accumulate for nothing). No DeletedAt field; ID is
+// explicit so the JSON response is the clean {id, created_at, ...} shape the
+// API clients expect.
+//
+// The unique key is (client, token), not (user_id, client, token) — see
+// migration 000019's comment. Re-registering an existing token reassigns the
+// row's UserID rather than creating a second row for the new owner.
+type DeviceRegistration struct {
+	ID          uint      `gorm:"primaryKey" json:"id"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	UserID      uint      `gorm:"not null;index" json:"-"`
+	Token       string    `gorm:"not null" json:"token"`
+	Client      string    `gorm:"not null;size:16" json:"client"`
+	DeviceLabel string    `gorm:"not null;default:''" json:"device_label"`
+}
+
+// DeviceRegistrationInput is the DTO for registering a mobile device push
+// token. Client is restricted to the known push platforms (fcm, apns); Token
+// is opaque but bounded.
+type DeviceRegistrationInput struct {
+	Token       string `json:"token" validate:"required,max=1024"`
+	Client      string `json:"client" validate:"required,oneof=fcm apns"`
+	DeviceLabel string `json:"device_label" validate:"max=200"`
+}
+
 // ServerSetting is one key/value row in the server-global settings store
 // (currently: the generated Web Push VAPID keypair).
 type ServerSetting struct {

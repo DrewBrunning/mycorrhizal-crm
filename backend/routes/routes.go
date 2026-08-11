@@ -329,6 +329,15 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.POST("/notifications/push-subscriptions", middleware.ValidateJSONMiddleware(&models.PushSubscriptionInput{}), controllers.CreatePushSubscription)
 			protected.DELETE("/notifications/push-subscriptions/:id", controllers.DeletePushSubscription)
 
+			// Mobile push device registrations (M2 — docs/fork-plan/tickets/
+			// 81-M2-fcm-mobile-push.md). Platform-agnostic: a device registers
+			// a token + client (fcm today, apns accepted), the backend
+			// dispatches delivery by client. The web app never enrolls
+			// devices; it lists and deletes them in Settings.
+			protected.GET("/notifications/devices", controllers.ListDeviceRegistrations)
+			protected.POST("/notifications/devices", middleware.ValidateJSONMiddleware(&models.DeviceRegistrationInput{}), controllers.CreateDeviceRegistration)
+			protected.DELETE("/notifications/devices/:id", controllers.DeleteDeviceRegistration)
+
 			// Calendar subscription routes (CalDAV/iCS activity import)
 			protected.GET("/calendars", controllers.ListCalendarSubscriptions)
 			protected.POST("/calendars", middleware.ValidateJSONMiddleware(&models.CalendarSubscriptionInput{}), controllers.CreateCalendarSubscription)

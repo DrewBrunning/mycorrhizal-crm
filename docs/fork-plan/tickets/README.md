@@ -22,8 +22,17 @@ ticket blocked on another open ticket ranks below ready ones at the same rating,
 size) → **effort** (smaller first). Ticket numbers are stable IDs, not rank — the table order is
 the rank.
 
-**Empty as of 2026-08-09** — T60 (the last ranked ticket) shipped. Everything left is parked in
-Deferred / Feature ideas below; pull something up here only when it becomes worth scheduling.
+**Three mobile-API tickets filed 2026-08-10** (see the Deferred table's M1 row): M1's Android app
+is being built, and this session pulls the backend/web API additions it needs out as their own
+ranked tickets — M2 (mobile push device registration + FCM delivery), M3 (dashboard
+today/overview composite), M4 (contact-detail composite). All three are backend + web only; the
+Android client itself is external to this repo.
+
+| Ticket | Status |
+|---|---|
+| [M2](81-M2-fcm-mobile-push.md) · Mobile push device registration (token+client) + FCM delivery | **BACKEND DONE** — frontend Settings UI split off, not started |
+| [M3](82-M3-dashboard-overview-endpoint.md) · `GET /dashboard` today/overview composite | **TO BE DONE** |
+| [M4](83-M4-contact-detail-composite.md) · `GET /contacts/:id/detail` composite | **TO BE DONE** |
 
 > **N8 (2FA/TOTP) moved to Feature ideas, 2026-08-07.** For a self-hosted instance
 > going through OIDC the IdP already owns 2FA, so app-level TOTP is redundant there; it only

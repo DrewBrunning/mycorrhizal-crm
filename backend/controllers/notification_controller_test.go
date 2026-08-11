@@ -294,6 +294,114 @@ func TestPushSubscription_CreateOwnershipScoped(t *testing.T) {
 	assert.Empty(t, listResp.Subscriptions, "a user must only ever see their own subscriptions")
 }
 
+func TestDeviceRegistration_CRUD(t *testing.T) {
+	db, router := setupRouter()
+	router.GET("/notifications/devices", ListDeviceRegistrations)
+	router.POST("/notifications/devices", withValidated(func() any { return &models.DeviceRegistrationInput{} }), CreateDeviceRegistration)
+	router.DELETE("/notifications/devices/:id", DeleteDeviceRegistration)
+
+	body, _ := json.Marshal(models.DeviceRegistrationInput{
+		Token:       "fcm-token-123",
+		Client:      "fcm",
+		DeviceLabel: "Pixel 8",
+	})
+	req, _ := http.NewRequest("POST", "/notifications/devices", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusCreated, w.Code)
+
+	var created models.DeviceRegistration
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &created))
+	assert.Equal(t, "fcm-token-123", created.Token)
+	assert.Equal(t, "fcm", created.Client)
+
+	req, _ = http.NewRequest("GET", "/notifications/devices", nil)
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+	var listResp struct {
+		Devices []models.DeviceRegistration `json:"devices"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &listResp))
+	require.Len(t, listResp.Devices, 1)
+
+	req, _ = http.NewRequest("DELETE", "/notifications/devices/"+itoa(created.ID), nil)
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var remaining int64
+	require.NoError(t, db.Model(&models.DeviceRegistration{}).Count(&remaining).Error)
+	assert.Zero(t, remaining)
+}
+
+func TestDeviceRegistration_InvalidClientRejected(t *testing.T) {
+	_, router := setupRouter()
+	router.POST("/notifications/devices", middleware.ValidateJSONMiddleware(&models.DeviceRegistrationInput{}), CreateDeviceRegistration)
+
+	// The middleware's oneof validator rejects an unknown push client — the
+	// registration surface must not grow ad-hoc platform strings.
+	body, _ := json.Marshal(models.DeviceRegistrationInput{
+		Token:  "token",
+		Client: "bogus",
+	})
+	req, _ := http.NewRequest("POST", "/notifications/devices", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestDeviceRegistration_DeleteOwnershipScoping(t *testing.T) {
+	db, router := setupRouter()
+	router.DELETE("/notifications/devices/:id", DeleteDeviceRegistration)
+
+	other := models.User{Username: "other", Password: "password123", Email: "other@example.com"}
+	require.NoError(t, db.Create(&other).Error)
+	others := models.DeviceRegistration{
+		UserID: other.ID,
+		Token:  "fcm-other",
+		Client: "fcm",
+	}
+	require.NoError(t, db.Create(&others).Error)
+
+	req, _ := http.NewRequest("DELETE", "/notifications/devices/"+itoa(others.ID), nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+
+	var stillThere models.DeviceRegistration
+	require.NoError(t, db.First(&stillThere, others.ID).Error)
+	assert.Equal(t, others.Token, stillThere.Token)
+}
+
+func TestDeviceRegistration_ListOwnershipScoped(t *testing.T) {
+	db, router := setupRouter()
+	router.GET("/notifications/devices", ListDeviceRegistrations)
+
+	other := models.User{Username: "other", Password: "password123", Email: "other@example.com"}
+	require.NoError(t, db.Create(&other).Error)
+	others := models.DeviceRegistration{
+		UserID: other.ID,
+		Token:  "fcm-other",
+		Client: "fcm",
+	}
+	require.NoError(t, db.Create(&others).Error)
+
+	req, _ := http.NewRequest("GET", "/notifications/devices", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	var listResp struct {
+		Devices []models.DeviceRegistration `json:"devices"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &listResp))
+	assert.Empty(t, listResp.Devices, "a user must only ever see their own device registrations")
+}
+
 func itoa(id uint) string {
 	return strconv.FormatUint(uint64(id), 10)
 }
