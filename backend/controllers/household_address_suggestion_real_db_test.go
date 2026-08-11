@@ -188,6 +188,41 @@ func TestAddressHouseholdSuggestions_RealMigratedSchema(t *testing.T) {
 	assert.Equal(t, http.StatusConflict, acceptAgain.Code, "accepting an already-co-member group must be rejected")
 }
 
+// TestAddressHouseholdSuggestions_EmptyResultIsJSONArrayNotNull is T64
+// (docs/fork-plan/tickets/90-T64-household-suggestions-null-crash.md): an
+// account with zero qualifying groups must get back literal `"suggestions":[]`
+// in the raw response body, not `"suggestions":null`. Decoding into a Go
+// struct would make `null` and `[]` indistinguishable (both unmarshal into a
+// nil/empty slice depending on the target's zero value) — that's exactly why
+// this shipped unnoticed — so this test asserts against the raw bytes.
+func TestAddressHouseholdSuggestions_EmptyResultIsJSONArrayNotNull(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "addr-suggest-empty.db")
+	db, err := database.InitDB(dbPath)
+	require.NoError(t, err)
+
+	user := models.User{Username: "addrsuggestempty", Password: "password123!A", Email: "addrsuggestempty@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.Default()
+	router.Use(func(c *gin.Context) {
+		c.Set("db", db)
+		c.Set("userID", user.ID)
+		c.Next()
+	})
+	router.POST("/households/suggest-addresses", SuggestAddressHouseholds)
+
+	req, _ := http.NewRequest("POST", "/households/suggest-addresses", nil)
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	assert.JSONEq(t, `{"suggestions":[],"total":0}`, w.Body.String())
+	assert.Contains(t, w.Body.String(), `"suggestions":[]`, "must serialize as an empty array, not null")
+	assert.NotContains(t, w.Body.String(), `"suggestions":null`)
+}
+
 // servicesAddressSuggestion mirrors services.AddressSuggestion for decoding.
 type servicesAddressSuggestion struct {
 	AddressHash     string   `json:"address_hash"`
