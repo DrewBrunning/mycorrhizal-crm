@@ -87,6 +87,7 @@ import com.mycorrhizal.crm.feature.timeline.ReminderFormScreen
 import com.mycorrhizal.crm.feature.timeline.RemindersScreen
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.LocalDrawerOpen
+import com.mycorrhizal.crm.ui.theme.MycorrhizalFonts
 
 private data class DrawerDestination(
     val route: String,
@@ -191,7 +192,16 @@ private fun MainScaffold() {
                 HorizontalDivider()
                 primaryDestinations.forEach { item ->
                     NavigationDrawerItem(
-                        label = { Text(stringResource(item.labelRes)) },
+                        // T63 Android port: matches web's App.tsx nav-list
+                        // fix — the label falls through to labelLarge by
+                        // default (also the Button/Snackbar default, so not
+                        // safe to retheme globally), scoped here instead.
+                        label = {
+                            Text(
+                                stringResource(item.labelRes),
+                                style = MaterialTheme.typography.labelLarge.copy(fontFamily = MycorrhizalFonts.serif),
+                            )
+                        },
                         selected = isSelected(currentDestination, item),
                         onClick = {
                             scope.launch { drawerState.close() }
@@ -207,7 +217,14 @@ private fun MainScaffold() {
                 }
                 secondaryDestinations.forEach { item ->
                     NavigationDrawerItem(
-                        label = { Text(stringResource(item.labelRes)) },
+                        // T63 Android port: see the primaryDestinations loop's
+                        // matching comment above.
+                        label = {
+                            Text(
+                                stringResource(item.labelRes),
+                                style = MaterialTheme.typography.labelLarge.copy(fontFamily = MycorrhizalFonts.serif),
+                            )
+                        },
                         selected = isSelected(currentDestination, item),
                         onClick = {
                             scope.launch { drawerState.close() }

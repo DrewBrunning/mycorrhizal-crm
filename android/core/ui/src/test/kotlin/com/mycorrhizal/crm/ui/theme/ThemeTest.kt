@@ -5,6 +5,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertSame
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -42,5 +43,39 @@ class ThemeTest {
         assertEquals(Color(0xFF9EB698), MycorrhizalColors.myceliumDark)
         assertEquals(Color(0xFF1E1A13), MycorrhizalColors.boneDark)
         assertEquals(Color(0xFFEAE4DA), MycorrhizalColors.barkDark)
+    }
+
+    // T63 Android port: titleLarge is the one role EB Garamond is safe on
+    // (exclusively page titles/contact-name headings, no dialog collision).
+    // headlineSmall must stay sans specifically because M3's AlertDialog
+    // defaults its title slot to headlineSmall -- serif there was a real,
+    // shipping bug (every dialog title rendered in Garamond) this test pins
+    // against regressing.
+    @Test
+    fun `titleLarge is brand serif`() {
+        assertSame(MycorrhizalFonts.serif, MycorrhizalTypography.titleLarge.fontFamily)
+    }
+
+    @Test
+    fun `headlineSmall stays sans so AlertDialog titles don't inherit serif`() {
+        assertSame(MycorrhizalFonts.sans, MycorrhizalTypography.headlineSmall.fontFamily)
+    }
+
+    @Test
+    fun `display and headline roles stay sans`() {
+        assertSame(MycorrhizalFonts.sans, MycorrhizalTypography.displayLarge.fontFamily)
+        assertSame(MycorrhizalFonts.sans, MycorrhizalTypography.displayMedium.fontFamily)
+        assertSame(MycorrhizalFonts.sans, MycorrhizalTypography.displaySmall.fontFamily)
+        assertSame(MycorrhizalFonts.sans, MycorrhizalTypography.headlineLarge.fontFamily)
+        assertSame(MycorrhizalFonts.sans, MycorrhizalTypography.headlineMedium.fontFamily)
+    }
+
+    // labelLarge is also M3's default Button-label and Snackbar-action-label
+    // font -- it must never carry a brand font globally (the nav-drawer and
+    // section-header serif/mono treatments are applied per-call-site instead,
+    // not through this shared role).
+    @Test
+    fun `labelLarge stays sans`() {
+        assertSame(MycorrhizalFonts.sans, MycorrhizalTypography.labelLarge.fontFamily)
     }
 }

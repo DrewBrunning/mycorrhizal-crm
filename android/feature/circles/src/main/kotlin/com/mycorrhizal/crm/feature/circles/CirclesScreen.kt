@@ -193,7 +193,11 @@ private fun CircleListItem(
             modifier = Modifier.weight(1f),
         )
         IconButton(onClick = { renaming = true }) {
-            Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.action_rename))
+            Icon(
+                Icons.Outlined.Edit,
+                contentDescription = stringResource(R.string.action_rename),
+                tint = MaterialTheme.colorScheme.primary,
+            )
         }
         IconButton(onClick = { deleting = true }) {
             Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.action_delete))
