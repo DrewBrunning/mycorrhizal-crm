@@ -1,5 +1,6 @@
 import { test, expect, vi, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
+import { MemoryRouter } from 'react-router';
 import '../i18n/config';
 import RelationshipEdgeDialog from './RelationshipEdgeDialog';
 import { RelationshipEdge } from '../api/relationshipEdges';
@@ -18,11 +19,13 @@ function renderDialog(props: Partial<React.ComponentProps<typeof RelationshipEdg
     ...props,
   };
   return render(
-    <DateFormatProvider>
-      <SnackbarProvider>
-        <RelationshipEdgeDialog {...defaults} />
-      </SnackbarProvider>
-    </DateFormatProvider>
+    <MemoryRouter>
+      <DateFormatProvider>
+        <SnackbarProvider>
+          <RelationshipEdgeDialog {...defaults} />
+        </SnackbarProvider>
+      </DateFormatProvider>
+    </MemoryRouter>
   );
 }
 

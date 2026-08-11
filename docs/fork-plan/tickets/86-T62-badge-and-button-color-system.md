@@ -153,6 +153,14 @@ question for icon buttons and hyperlinks — see below.
   (real dev-DB contact/reminder/gift data) in both light and dark mode: Add-buttons render solid
   green, copy/edit icons render green, the previously-broken dark-mode chip flattening is fixed, and
   the gift-URL link renders green/underlined instead of browser blue.
-- **Found but out of scope, flagged separately:** `RelationshipEdgeDialog.tsx:247` uses a plain
-  `href` for an internal `/contacts/:id` route instead of react-router's `Link to=`, causing a full
-  page reload — a routing bug, not a color bug.
+- **Bonus fix, folded in:** `RelationshipEdgeDialog.tsx:247` used a plain MUI `Link href=` for an
+  internal `/contacts/:id` route instead of composing with react-router's `Link`
+  (`component={RouterLink} to=`), causing a full page reload instead of client-side navigation — a
+  routing bug, not a color bug, found incidentally during the link audit. Small enough to fix inline
+  rather than spin off separately; fixed by importing `Link as RouterLink` from `react-router` and
+  switching `href` to `component={RouterLink} to=`, matching the pattern already used elsewhere
+  (`AuditPage.tsx`, `DashboardPage.tsx`, `OverdueCadenceList.tsx`). `RelationshipEdgeDialog.test.tsx`
+  needed a `MemoryRouter` wrapper added (it previously never rendered a react-router `Link`, so had no
+  router context). Hand-verified live: set a `window` marker before clicking the link, confirmed the
+  marker survived the navigation (proving client-side routing, not a full reload) and the page landed
+  on the correct contact.

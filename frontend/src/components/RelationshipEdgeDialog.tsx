@@ -19,6 +19,7 @@ import {
   Typography,
   Link,
 } from '@mui/material';
+import { Link as RouterLink } from 'react-router';
 import AppDialog from './AppDialog';
 import { useTranslation } from 'react-i18next';
 import {
@@ -244,7 +245,7 @@ export default function RelationshipEdgeDialog({
             <Box>
               <Typography variant="body2" color="text.secondary">
                 {otherPartyContact ? (
-                  <Link href={`/contacts/${otherPartyContact.ID}`}>{otherPartyLabel}</Link>
+                  <Link component={RouterLink} to={`/contacts/${otherPartyContact.ID}`}>{otherPartyLabel}</Link>
                 ) : (
                   t('relationships.unknownContact')
                 )}
