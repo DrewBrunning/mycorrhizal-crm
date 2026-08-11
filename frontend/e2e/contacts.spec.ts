@@ -74,8 +74,10 @@ test.describe('Contacts', () => {
 
       const lastName = page.getByLabel('Last Name', { exact: true });
       await lastName.fill('After');
-      // Save is the only primary-coloured icon button in the header card.
-      await page.locator('.MuiCard-root').first().locator('.MuiIconButton-colorPrimary').click();
+      // T62 gave the Circles/Tags section pencils `color="primary"` too, so
+      // the header card now has more than one primary-coloured icon button —
+      // target Save by its accessible name instead of a CSS-class count.
+      await page.getByRole('button', { name: 'Save' }).click();
 
       await expect(page.getByRole('heading', { name: `${contact.firstname} After` })).toBeVisible();
     } finally {
