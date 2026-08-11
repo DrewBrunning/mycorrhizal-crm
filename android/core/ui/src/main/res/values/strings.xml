@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App / navigation -->
+    <string name="app_name">Mycorrhizal</string>
+    <string name="nav_contacts">Contacts</string>
+    <string name="nav_search">Search</string>
+    <string name="nav_notes">Notes</string>
+    <string name="nav_activities">Activities</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_dashboard">Dashboard</string>
+    <string name="dashboard_birthdays">Upcoming birthdays</string>
+    <string name="dashboard_reminders">Upcoming reminders</string>
+    <string name="dashboard_empty">Nothing coming up.</string>
+    <string name="nav_settings">Settings</string>
+    <string name="nav_network">Network</string>
+    <string name="nav_households">Households</string>
+    <string name="nav_circles">Circles</string>
+    <string name="nav_tags">Tags</string>
+    <string name="nav_bulk">Bulk operations</string>
+    <string name="coming_soon">%1$s — coming in a later phase</string>
+    <string name="cd_menu">Menu</string>
+    <string name="cd_back">Back</string>
+
+    <!-- Login -->
+    <string name="login_connect_to_server">Connect to your Mycorrhizal server</string>
+    <string name="login_server_url">Server URL</string>
+    <string name="login_server_url_hint">https://crm.example.com</string>
+    <string name="login_mode_password">Password</string>
+    <string name="login_mode_api_token">API token</string>
+    <string name="login_username_or_email">Username or email</string>
+    <string name="login_api_token">API token</string>
+    <string name="login_api_token_hint">mycorrhizal_…</string>
+    <string name="login_sign_in">Sign in</string>
+    <string name="login_sso">Sign in with SSO</string>
+    <string name="login_error_valid_server_url">Enter a valid server URL, e.g. https://crm.example.com</string>
+    <string name="login_error_identifier_required">Username or email is required</string>
+    <string name="login_error_password_required">Password is required</string>
+    <string name="login_error_token_required">API token is required</string>
+    <string name="login_error_token_prefix">API tokens start with \'mycorrhizal_\'</string>
+
+    <!-- Contact list -->
+    <string name="contacts_search_hint">Search contacts</string>
+    <string name="contacts_empty">No contacts yet</string>
+    <string name="contacts_new">New contact</string>
+    <string name="contacts_photo_description">Photo of %1$s</string>
+
+    <!-- Contact detail -->
+    <string name="contact_title_fallback">Contact</string>
+    <string name="contact_not_found">Contact not found</string>
+    <string name="contact_timeline">Timeline</string>
+    <string name="contact_activities">Activities</string>
+    <string name="contact_notes">Notes</string>
+    <string name="contact_reminders">Reminders</string>
+    <string name="contact_relationships">Relationships</string>
+    <string name="contact_merge">Merge contacts</string>
+    <string name="contact_open_in_contacts">Open in Contacts</string>
+    <string name="contact_life_events">Life events</string>
+    <string name="contact_gifts">Gifts</string>
+    <string name="contact_preferences">Preferences</string>
+    <string name="contact_agenda">Conversation agenda</string>
+    <string name="contact_email">Email</string>
+    <string name="contact_phone">Phone</string>
+    <string name="contact_address">Address</string>
+    <string name="contact_links">Links</string>
+    <string name="contact_organization">Organization</string>
+    <string name="contact_personal_info">Personal information</string>
+    <string name="contact_circles">Circles</string>
+    <string name="contact_edit">Edit contact</string>
+    <string name="cd_call">Call</string>
+    <string name="cd_text">Text</string>
+    <string name="cd_compose_email">Compose email</string>
+    <string name="cd_copy_email">Copy email</string>
+    <string name="cd_copy_phone">Copy phone number</string>
+    <string name="cd_open_maps">Open in maps</string>
+    <string name="cd_copy_address">Copy address</string>
+    <string name="cd_open_link">Open link</string>
+    <string name="cd_copy_link">Copy link</string>
+
+    <!-- Contact form -->
+    <string name="contact_new">New contact</string>
+    <string name="contact_edit_title">Edit contact</string>
+    <string name="contact_given_name">Given name</string>
+    <string name="contact_surname">Surname</string>
+    <string name="contact_nickname">Nickname</string>
+    <string name="contact_birthday">Birthday</string>
+    <string name="contact_birthday_hint">1990-06-15 or --12-25</string>
+    <string name="contact_value_n">Value %1$d</string>
+    <string name="contact_circles_label">Circles (comma-separated)</string>
+    <string name="contact_remove">Remove</string>
+    <string name="contact_add">Add</string>
+    <string name="contact_create">Create contact</string>
+    <string name="contact_save">Save changes</string>
+    <string name="contact_error_given_name">At least one given name is required</string>
+    <string name="contact_error_missing_id">Missing contact id</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_session">Session</string>
+    <string name="settings_server">Server</string>
+    <string name="settings_username">Username</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_date_format">Date format</string>
+    <string name="settings_admin">Admin</string>
+    <string name="settings_yes">Yes</string>
+    <string name="settings_no">No</string>
+    <string name="settings_log_out">Log out</string>
+    <string name="settings_log_out_title">Log out?</string>
+    <string name="settings_log_out_body">You will need to sign in again to access this server.</string>
+    <string name="settings_cancel">Cancel</string>
+    <string name="settings_tracking">Tracking &amp; notifications</string>
+    <string name="settings_call_tracking">Log calls as activities</string>
+    <string name="settings_sms_tracking">Log messages as activities</string>
+    <string name="settings_notifications">Show notifications</string>
+    <string name="custom_links_title">Custom link actions</string>
+    <string name="custom_links_new">New action</string>
+    <string name="custom_links_empty">No custom link actions yet.</string>
+    <string name="custom_links_protocol">Protocol (e.g. matrix)</string>
+    <string name="custom_links_label">Label</string>
+    <string name="custom_links_mime">MIMETYPE</string>
+    <string name="custom_links_template">Intent URI ({handle})</string>
+
+    <!-- Activities -->
+    <string name="activities_title">Activities</string>
+    <string name="activities_empty">No activities yet</string>
+    <string name="activity_new">New activity</string>
+    <string name="activity_edit">Edit activity</string>
+    <string name="activity_title">Title</string>
+    <string name="activity_type">Type</string>
+    <string name="activity_type_hint">call, visit, meal, message, gift, …</string>
+    <string name="activity_date">Date (ISO 8601)</string>
+    <string name="activity_date_hint">2026-08-10T14:00:00Z</string>
+    <string name="activity_location">Location</string>
+    <string name="activity_description">Description</string>
+    <string name="activity_create">Create activity</string>
+    <string name="activity_save">Save changes</string>
+    <string name="activity_error_title">Title is required</string>
+    <string name="activity_error_date">Date must be ISO 8601, e.g. 2026-08-10T14:00:00Z</string>
+    <string name="activity_error_missing_id">Missing contact id</string>
+    <string name="cd_new_activity">New activity</string>
+
+    <!-- Notes -->
+    <string name="notes_title">Notes</string>
+    <string name="notes_empty">No notes yet</string>
+    <string name="note_new">New note</string>
+    <string name="note_edit">Edit note</string>
+    <string name="note_content">Note</string>
+    <string name="note_date">Date (ISO 8601)</string>
+    <string name="note_date_hint">2026-08-10T14:00:00Z</string>
+    <string name="note_create">Create note</string>
+    <string name="note_save">Save changes</string>
+    <string name="note_error_content">Note content is required</string>
+    <string name="note_error_date_required">Date is required</string>
+    <string name="note_error_date">Date must be ISO 8601, e.g. 2026-08-10T14:00:00Z</string>
+    <string name="note_error_missing_id">Missing contact id</string>
+    <string name="cd_new_note">New note</string>
+
+    <!-- Reminders -->
+    <string name="reminders_title">Reminders</string>
+    <string name="reminders_empty">No reminders yet</string>
+    <string name="reminder_new">New reminder</string>
+    <string name="reminder_edit">Edit reminder</string>
+    <string name="reminder_message">Message</string>
+    <string name="reminder_remind_at">Remind at (ISO 8601)</string>
+    <string name="reminder_remind_at_hint">2026-08-10T14:00:00Z</string>
+    <string name="reminder_recurrence">Recurrence</string>
+    <string name="reminder_email">Email reminder</string>
+    <string name="reminder_create">Create reminder</string>
+    <string name="reminder_save">Save changes</string>
+    <string name="reminder_error_message">Message is required</string>
+    <string name="reminder_error_remind_at_required">Remind date is required</string>
+    <string name="reminder_error_remind_at">Remind date must be ISO 8601, e.g. 2026-08-10T14:00:00Z</string>
+    <string name="reminder_error_recurrence">Unknown recurrence</string>
+    <string name="reminder_error_missing_id">Missing contact id</string>
+    <string name="cd_complete_reminder">Complete reminder</string>
+    <string name="cd_new_reminder">New reminder</string>
+
+    <!-- Timeline -->
+    <string name="timeline_empty">No timeline entries yet</string>
+    <string name="cd_activity">Activity</string>
+    <string name="cd_note">Note</string>
+    <string name="cd_reminder">Reminder</string>
+
+    <!-- Circles -->
+    <string name="circles_title">Circles</string>
+    <string name="circles_new">New circle</string>
+    <string name="circles_rename">Rename circle</string>
+    <string name="circles_name">Name</string>
+    <string name="circles_delete_title">Delete circle?</string>
+    <string name="circles_delete_confirm">Delete “%1$s”? This removes the circle and its memberships.</string>
+    <string name="circles_add_member">Add member</string>
+    <string name="circles_remove_member">Remove member</string>
+    <string name="circles_member_vcard_uid">Contact VCard UID</string>
+
+    <!-- Shared actions -->
+    <string name="action_create">Create</string>
+    <string name="action_save">Save</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_add">Add</string>
+    <string name="action_rename">Rename</string>
+
+    <!-- Tags -->
+    <string name="tags_title">Tags</string>
+    <string name="tags_new">New tag</string>
+    <string name="tags_rename">Rename tag</string>
+    <string name="tags_name">Name</string>
+    <string name="tags_delete_title">Delete tag?</string>
+    <string name="tags_delete_confirm">Delete “%1$s”? This removes the tag and its contact taggings.</string>
+    <string name="tags_add_contact">Tag contact</string>
+    <string name="tags_remove_contact">Remove tag from contact</string>
+    <string name="tags_contact_vcard_uid">Contact VCard UID</string>
+
+    <!-- Households -->
+    <string name="households_title">Households</string>
+    <string name="households_new">New household</string>
+    <string name="households_edit">Edit household</string>
+    <string name="households_name">Name</string>
+    <string name="households_type">Type</string>
+    <string name="households_delete_title">Delete household?</string>
+    <string name="households_delete_confirm">Delete “%1$s”? This removes the household and its memberships.</string>
+    <string name="households_add_member">Add member</string>
+    <string name="households_remove_member">Remove member</string>
+    <string name="households_member_vcard_uid">Contact VCard UID</string>
+    <string name="households_role">Role (optional)</string>
+
+    <!-- Relationships -->
+    <string name="relationships_title">Relationships</string>
+    <string name="relationships_new">New relationship</string>
+    <string name="relationships_type">Type</string>
+    <string name="relationships_other_vcard_uid">Other contact VCard UID (optional)</string>
+    <string name="relationships_other_name">Other contact name (optional)</string>
+    <string name="relationships_accept">Accept</string>
+    <string name="relationships_suggested">Suggested</string>
+
+    <!-- Timeline entities (life events / gifts / preferences / agenda) -->
+    <string name="entities_empty">Nothing here yet</string>
+    <string name="life_events_title">Life events</string>
+    <string name="life_events_new">New life event</string>
+    <string name="life_events_type">Type</string>
+    <string name="life_events_description">Description</string>
+    <string name="gifts_title">Gifts</string>
+    <string name="gifts_new">New gift</string>
+    <string name="gifts_description">Description</string>
+    <string name="preferences_title">Preferences</string>
+    <string name="preferences_new">New preference</string>
+    <string name="preferences_category">Category</string>
+    <string name="preferences_value">Value</string>
+    <string name="agenda_title">Conversation agenda</string>
+    <string name="agenda_new">New item</string>
+    <string name="agenda_content">Content</string>
+
+    <!-- Merge & bulk -->
+    <string name="merge_title">Merge contacts</string>
+    <string name="merge_other_id">Other contact ID to merge</string>
+    <string name="merge_preview">Preview merge</string>
+    <string name="merge_summary">%1$d notes, %2$d activities, %3$d relationship edges will be moved to the kept contact.</string>
+    <string name="merge_no_conflicts">No field conflicts — merge is ready.</string>
+    <string name="merge_commit">Merge</string>
+    <string name="merge_done">Contacts merged.</string>
+    <string name="bulk_title">Bulk operations</string>
+    <string name="bulk_archive">Archive</string>
+    <string name="bulk_unarchive">Unarchive</string>
+    <string name="bulk_confirm_title">Confirm bulk action?</string>
+    <string name="bulk_confirm_body">Run the action on %1$d selected contacts?</string>
+    <string name="bulk_result">Done: %1$d succeeded, %2$d failed.</string>
+    <string name="action_confirm">Confirm</string>
+
+    <!-- Import (T57) -->
+    <string name="import_title">Import contacts</string>
+    <string name="import_empty">No device contacts to import.</string>
+    <string name="import_unnamed">(unnamed)</string>
+    <string name="import_button">Import %1$d selected (%2$d possible duplicates)</string>
+    <string name="import_done">Imported %1$d contacts.</string>
+    <string name="import_duplicate">Possible duplicate of %1$s</string>
+</resources>

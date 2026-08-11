@@ -1,0 +1,40 @@
+name: Android Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    permissions:
+      contents: read
+    name: Android (Gradle)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Unit + integration tests (incl. Robolectric)
+        working-directory: android
+        run: ./gradlew testDebugUnitTest
+
+      - name: Lint
+        working-directory: android
+        run: ./gradlew lintDebug
+
+      - name: Assemble debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug

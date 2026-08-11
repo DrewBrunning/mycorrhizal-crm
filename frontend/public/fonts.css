@@ -1,6 +1,7 @@
 /* Self-hosted brand/UI fonts. Source TTFs + regeneration steps: assets/fonts/README.md.
    EB Garamond -- branding only (the wordmark in the top app bar).
-   IBM Plex Sans -- everything else (the theme's default typeface). */
+   IBM Plex Sans -- everything else (the theme's default typeface).
+   IBM Plex Mono -- monospace UI (audit IDs, build version, webhook tokens). */
 
 @font-face {
   font-family: 'EB Garamond';
@@ -87,5 +88,13 @@
   src: url('/fonts/IBMPlexSans-BoldItalic.woff2') format('woff2');
   font-weight: 700;
   font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('/fonts/IBMPlexMono-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
   font-display: swap;
 }

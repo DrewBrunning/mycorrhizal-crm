@@ -1,0 +1,280 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App / Navigation -->
+    <string name="app_name">Mycorrhizal</string>
+    <string name="nav_contacts">Kontakte</string>
+    <string name="nav_search">Suche</string>
+    <string name="nav_notes">Notizen</string>
+    <string name="nav_activities">Aktivitäten</string>
+        <string name="nav_dashboard">Dashboard</string>
+    <string name="dashboard_birthdays">Kommende Geburtstage</string>
+    <string name="dashboard_reminders">Kommende Erinnerungen</string>
+    <string name="dashboard_empty">Nichts anstehend.</string>
+    <string name="nav_home">Start</string>
+    <string name="nav_settings">Einstellungen</string>
+    <string name="nav_tags">Tags</string>
+    <string name="nav_bulk">Stapeloperationen</string>
+    <string name="nav_circles">Kreise</string>
+    <string name="nav_network">Netzwerk</string>
+    <string name="nav_households">Haushalte</string>
+    <string name="coming_soon">%1$s — in einer späteren Phase verfügbar</string>
+    <string name="cd_menu">Menü</string>
+    <string name="cd_back">Zurück</string>
+
+    <!-- Anmeldung -->
+    <string name="login_connect_to_server">Mit deinem Mycorrhizal-Server verbinden</string>
+    <string name="login_server_url">Server-URL</string>
+    <string name="login_server_url_hint">https://crm.example.com</string>
+    <string name="login_mode_password">Passwort</string>
+    <string name="login_mode_api_token">API-Token</string>
+    <string name="login_username_or_email">Benutzername oder E-Mail</string>
+    <string name="login_api_token">API-Token</string>
+    <string name="login_api_token_hint">mycorrhizal_…</string>
+    <string name="login_sso">Mit SSO anmelden</string>
+    <string name="login_sign_in">Anmelden</string>
+    <string name="login_error_valid_server_url">Gib eine gültige Server-URL ein, z. B. https://crm.example.com</string>
+    <string name="login_error_identifier_required">Benutzername oder E-Mail ist erforderlich</string>
+    <string name="login_error_password_required">Passwort ist erforderlich</string>
+    <string name="login_error_token_required">API-Token ist erforderlich</string>
+    <string name="login_error_token_prefix">API-Token beginnen mit \'mycorrhizal_\'</string>
+
+    <!-- Kontaktliste -->
+    <string name="contacts_search_hint">Kontakte suchen</string>
+    <string name="contacts_empty">Noch keine Kontakte</string>
+    <string name="contacts_new">Neuer Kontakt</string>
+    <string name="contacts_photo_description">Foto von %1$s</string>
+
+    <!-- Kontaktdetails -->
+    <string name="contact_title_fallback">Kontakt</string>
+    <string name="contact_not_found">Kontakt nicht gefunden</string>
+    <string name="contact_timeline">Zeitleiste</string>
+    <string name="contact_activities">Aktivitäten</string>
+    <string name="contact_notes">Notizen</string>
+    <string name="contact_merge">Kontakte zusammenführen</string>
+    <string name="contact_open_in_contacts">In Kontakten öffnen</string>
+    <string name="contact_relationships">Beziehungen</string>
+    <string name="contact_life_events">Lebensereignisse</string>
+    <string name="contact_gifts">Geschenke</string>
+    <string name="contact_preferences">Vorlieben</string>
+    <string name="contact_agenda">Gesprächsagenda</string>
+    <string name="contact_reminders">Erinnerungen</string>
+    <string name="contact_email">E-Mail</string>
+    <string name="contact_phone">Telefon</string>
+    <string name="contact_address">Adresse</string>
+    <string name="contact_links">Links</string>
+    <string name="contact_organization">Organisation</string>
+    <string name="contact_personal_info">Persönliche Informationen</string>
+    <string name="contact_circles">Kreise</string>
+    <string name="contact_edit">Kontakt bearbeiten</string>
+    <string name="cd_call">Anrufen</string>
+    <string name="cd_text">Nachricht</string>
+    <string name="cd_compose_email">E-Mail verfassen</string>
+    <string name="cd_copy_email">E-Mail kopieren</string>
+    <string name="cd_copy_phone">Telefonnummer kopieren</string>
+    <string name="cd_open_maps">In Karten öffnen</string>
+    <string name="cd_copy_address">Adresse kopieren</string>
+    <string name="cd_open_link">Link öffnen</string>
+    <string name="cd_copy_link">Link kopieren</string>
+
+    <!-- Kontaktformular -->
+    <string name="contact_new">Neuer Kontakt</string>
+    <string name="contact_edit_title">Kontakt bearbeiten</string>
+    <string name="contact_given_name">Vorname</string>
+    <string name="contact_surname">Nachname</string>
+    <string name="contact_nickname">Spitzname</string>
+    <string name="contact_birthday">Geburtstag</string>
+    <string name="contact_birthday_hint">1990-06-15 or --12-25</string>
+    <string name="contact_value_n">Wert %1$d</string>
+    <string name="contact_circles_label">Kreise (durch Kommas getrennt)</string>
+    <string name="contact_remove">Entfernen</string>
+    <string name="contact_add">Hinzufügen</string>
+    <string name="contact_create">Kontakt erstellen</string>
+    <string name="contact_save">Änderungen speichern</string>
+    <string name="contact_error_given_name">Mindestens ein Vorname ist erforderlich</string>
+
+    <!-- Einstellungen -->
+    <string name="settings_title">Einstellungen</string>
+    <string name="settings_session">Sitzung</string>
+    <string name="settings_server">Server</string>
+    <string name="settings_username">Benutzername</string>
+    <string name="settings_language">Sprache</string>
+    <string name="settings_date_format">Datumsformat</string>
+    <string name="settings_admin">Administrator</string>
+    <string name="settings_yes">Ja</string>
+    <string name="settings_no">Nein</string>
+    <string name="settings_log_out">Abmelden</string>
+    <string name="settings_log_out_title">Abmelden?</string>
+    <string name="settings_log_out_body">Du musst dich erneut anmelden, um auf diesen Server zuzugreifen.</string>
+        <string name="settings_tracking">Tracking und Benachrichtigungen</string>
+    <string name="settings_call_tracking">Anrufe als Aktivitäten protokollieren</string>
+    <string name="settings_sms_tracking">Nachrichten als Aktivitäten protokollieren</string>
+        <string name="custom_links_title">Benutzerdefinierte Link-Aktionen</string>
+    <string name="custom_links_new">Neue Aktion</string>
+    <string name="custom_links_empty">Noch keine benutzerdefinierten Link-Aktionen.</string>
+    <string name="custom_links_protocol">Protokoll (z. B. matrix)</string>
+    <string name="custom_links_label">Bezeichnung</string>
+    <string name="custom_links_mime">MIMETYPE</string>
+    <string name="custom_links_template">Intent-URI ({handle})</string>
+    <string name="settings_notifications">Benachrichtigungen anzeigen</string>
+    <string name="settings_cancel">Abbrechen</string>
+
+    <!-- Aktivitäten -->
+    <string name="activities_title">Aktivitäten</string>
+    <string name="activities_empty">Noch keine Aktivitäten</string>
+    <string name="activity_new">Neue Aktivität</string>
+    <string name="activity_edit">Aktivität bearbeiten</string>
+    <string name="activity_title">Titel</string>
+    <string name="activity_type">Art</string>
+    <string name="activity_type_hint">call, visit, meal, message, gift, …</string>
+    <string name="activity_date">Datum (ISO 8601)</string>
+    <string name="activity_date_hint">2026-08-10T14:00:00Z</string>
+    <string name="activity_location">Ort</string>
+    <string name="activity_description">Beschreibung</string>
+    <string name="activity_create">Aktivität erstellen</string>
+    <string name="activity_save">Änderungen speichern</string>
+    <string name="activity_error_title">Ein Titel ist erforderlich</string>
+    <string name="activity_error_date">Das Datum muss dem Format ISO 8601 entsprechen, z. B. 2026-08-10T14:00:00Z</string>
+    <string name="cd_new_activity">Neue Aktivität</string>
+
+    <!-- Notizen -->
+    <string name="notes_title">Notizen</string>
+    <string name="notes_empty">Noch keine Notizen</string>
+    <string name="note_new">Neue Notiz</string>
+    <string name="note_edit">Notiz bearbeiten</string>
+    <string name="note_content">Notiz</string>
+    <string name="note_date">Datum (ISO 8601)</string>
+    <string name="note_date_hint">2026-08-10T14:00:00Z</string>
+    <string name="note_create">Notiz erstellen</string>
+    <string name="note_save">Änderungen speichern</string>
+    <string name="note_error_content">Der Notizinhalt ist erforderlich</string>
+    <string name="note_error_date_required">Ein Datum ist erforderlich</string>
+    <string name="note_error_date">Das Datum muss dem Format ISO 8601 entsprechen, z. B. 2026-08-10T14:00:00Z</string>
+    <string name="contact_error_missing_id">Fehlende Kontakt-ID</string>
+    <string name="activity_error_missing_id">Fehlende Kontakt-ID</string>
+    <string name="note_error_missing_id">Fehlende Kontakt-ID</string>
+    <string name="reminder_error_missing_id">Fehlende Kontakt-ID</string>
+    <string name="cd_new_note">Neue Notiz</string>
+
+    <!-- Erinnerungen -->
+    <string name="reminders_title">Erinnerungen</string>
+    <string name="reminders_empty">Noch keine Erinnerungen</string>
+    <string name="reminder_new">Neue Erinnerung</string>
+    <string name="reminder_edit">Erinnerung bearbeiten</string>
+    <string name="reminder_message">Nachricht</string>
+    <string name="reminder_remind_at">Erinnern am (ISO 8601)</string>
+    <string name="reminder_remind_at_hint">2026-08-10T14:00:00Z</string>
+    <string name="reminder_recurrence">Wiederholung</string>
+    <string name="reminder_email">E-Mail-Erinnerung</string>
+    <string name="reminder_create">Erinnerung erstellen</string>
+    <string name="reminder_save">Änderungen speichern</string>
+    <string name="reminder_error_message">Eine Nachricht ist erforderlich</string>
+    <string name="reminder_error_remind_at_required">Ein Erinnerungsdatum ist erforderlich</string>
+    <string name="reminder_error_remind_at">Das Erinnerungsdatum muss dem Format ISO 8601 entsprechen, z. B. 2026-08-10T14:00:00Z</string>
+    <string name="reminder_error_recurrence">Unbekannte Wiederholung</string>
+    <string name="cd_complete_reminder">Erinnerung abschließen</string>
+    <string name="cd_new_reminder">Neue Erinnerung</string>
+
+    <!-- Zeitleiste -->
+    <string name="timeline_empty">Noch keine Zeitleisten-Einträge</string>
+    <string name="cd_activity">Aktivität</string>
+    <string name="cd_note">Notiz</string>
+    <string name="cd_reminder">Erinnerung</string>
+
+
+    <!-- Circles -->
+    <string name="circles_title">Kreise</string>
+    <string name="circles_new">Neuer Kreis</string>
+    <string name="circles_rename">Kreis umbenennen</string>
+    <string name="circles_name">Name</string>
+    <string name="circles_delete_title">Kreis löschen?</string>
+    <string name="circles_delete_confirm">„%1$s“ löschen? Dadurch werden der Kreis und seine Mitgliedschaften entfernt.</string>
+    <string name="circles_add_member">Mitglied hinzufügen</string>
+    <string name="circles_remove_member">Mitglied entfernen</string>
+    <string name="circles_member_vcard_uid">Kontakt-VCard-UID</string>
+    <string name="action_create">Erstellen</string>
+    <string name="action_save">Speichern</string>
+    <string name="action_delete">Löschen</string>
+    <string name="action_cancel">Abbrechen</string>
+    <string name="action_add">Hinzufügen</string>
+    <string name="action_rename">Umbenennen</string>
+
+
+    <!-- Tags -->
+    <string name="tags_title">Tags</string>
+    <string name="tags_new">Neues Tag</string>
+    <string name="tags_rename">Tag umbenennen</string>
+    <string name="tags_name">Name</string>
+    <string name="tags_delete_title">Tag löschen?</string>
+    <string name="tags_delete_confirm">„%1$s“ löschen? Dadurch werden das Tag und seine Kontakt-Taggings entfernt.</string>
+    <string name="tags_add_contact">Kontakt taggen</string>
+    <string name="tags_remove_contact">Tag vom Kontakt entfernen</string>
+    <string name="tags_contact_vcard_uid">Kontakt-VCard-UID</string>
+
+
+    <!-- Households -->
+    <string name="households_title">Haushalte</string>
+    <string name="households_new">Neuer Haushalt</string>
+    <string name="households_edit">Haushalt bearbeiten</string>
+    <string name="households_name">Name</string>
+    <string name="households_type">Typ</string>
+    <string name="households_delete_title">Haushalt löschen?</string>
+    <string name="households_delete_confirm">„%1$s“ löschen? Dadurch werden der Haushalt und seine Mitgliedschaften entfernt.</string>
+    <string name="households_add_member">Mitglied hinzufügen</string>
+    <string name="households_remove_member">Mitglied entfernen</string>
+    <string name="households_member_vcard_uid">Kontakt-VCard-UID</string>
+    <string name="households_role">Rolle (optional)</string>
+
+
+    <!-- Relationships -->
+    <string name="relationships_title">Beziehungen</string>
+    <string name="relationships_new">Neue Beziehung</string>
+    <string name="relationships_type">Typ</string>
+    <string name="relationships_other_vcard_uid">VCard-UID des anderen Kontakts (optional)</string>
+    <string name="relationships_other_name">Name des anderen Kontakts (optional)</string>
+    <string name="relationships_accept">Akzeptieren</string>
+    <string name="relationships_suggested">Vorgeschlagen</string>
+
+
+    <!-- Timeline entities -->
+    <string name="entities_empty">Noch nichts hier</string>
+    <string name="life_events_title">Lebensereignisse</string>
+    <string name="life_events_new">Neues Lebensereignis</string>
+    <string name="life_events_type">Typ</string>
+    <string name="life_events_description">Beschreibung</string>
+    <string name="gifts_title">Geschenke</string>
+    <string name="gifts_new">Neues Geschenk</string>
+    <string name="gifts_description">Beschreibung</string>
+    <string name="preferences_title">Vorlieben</string>
+    <string name="preferences_new">Neue Vorliebe</string>
+    <string name="preferences_category">Kategorie</string>
+    <string name="preferences_value">Wert</string>
+    <string name="agenda_title">Gesprächsagenda</string>
+    <string name="agenda_new">Neuer Punkt</string>
+    <string name="agenda_content">Inhalt</string>
+
+
+    <!-- Merge & bulk -->
+    <string name="merge_title">Kontakte zusammenführen</string>
+    <string name="merge_other_id">ID des anderen Kontakts</string>
+    <string name="merge_preview">Zusammenführung anzeigen</string>
+    <string name="merge_summary">%1$d Notizen, %2$d Aktivitäten, %3$d Beziehungen werden zum behaltenen Kontakt verschoben.</string>
+    <string name="merge_no_conflicts">Keine Feldkonflikte — Zusammenführung bereit.</string>
+    <string name="merge_commit">Zusammenführen</string>
+    <string name="merge_done">Kontakte zusammengeführt.</string>
+    <string name="bulk_title">Stapeloperationen</string>
+    <string name="bulk_archive">Archivieren</string>
+    <string name="bulk_unarchive">Archiv aufheben</string>
+    <string name="bulk_confirm_title">Stapelaktion bestätigen?</string>
+    <string name="bulk_confirm_body">Aktion auf %1$d ausgewählte Kontakte ausführen?</string>
+    <string name="bulk_result">Fertig: %1$d erfolgreich, %2$d fehlgeschlagen.</string>
+    <string name="action_confirm">Bestätigen</string>
+
+
+    <!-- Import -->
+    <string name="import_title">Kontakte importieren</string>
+    <string name="import_empty">Keine Gerätekontakte zum Importieren.</string>
+    <string name="import_unnamed">(unbenannt)</string>
+    <string name="import_button">%1$d ausgewählte importieren (%2$d mögliche Duplikate)</string>
+    <string name="import_done">%1$d Kontakte importiert.</string>
+    <string name="import_duplicate">Mögliches Duplikat von %1$s</string>
+</resources>

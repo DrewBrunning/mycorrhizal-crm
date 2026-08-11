@@ -5,7 +5,7 @@
 | **Rating** | 2 |
 | **Source** | v0.3.0 post-release planning, 2026-08-06 |
 | **This document** | Full-scope technical design, 2026-08-09 |
-| **Status** | Scoped, not scheduled. Gated on API-contract stability (v1.0.0). |
+| **Status** | **Phase 1 + Phase 2 shipped 2026-08-10, Phase 3 next** — see the landing note at the bottom. The full-scope design below remains the plan for Phases 3–5. |
 
 ## Why this exists
 
@@ -2773,3 +2773,236 @@ These remain unresolved — they're design decisions for the implementation phas
 - **Push notifications from server**: Requires FCM integration on the backend, ticketed separately
 - **Wear OS companion**: Out of scope
 - **iOS client**: This document is Android-only by design
+
+---
+
+## Landing note — 2026-08-10
+
+**Phase 1 (core client) shipped** — a working native Android app to test against the beta backend,
+built exactly to the §1.2 module layout with a Kotlin-2.1 / Compose / Hilt / Room / Moshi / OkHttp
+stack. Everything below this line is the Phase-1 status; the design above remains the Phase-2–5 plan.
+
+### What shipped
+
+- **Multi-module Gradle build** in `android/` — Kotlin DSL, version catalog (`gradle/libs.versions.toml`),
+  `build-logic/` convention plugins (`mycorrhizal.android.application|library|hilt`), modules
+  `:app`, `:core:model`, `:core:network`, `:core:data`, `:core:domain`, `:core:ui`,
+  `:feature:auth`, `:feature:contacts`. `./gradlew testDebugUnitTest`, `lintDebug`, and
+  `assembleDebug` are all green.
+- **Auth** — login screen (server URL + username/password, plus API-token mode), JWT captured
+  from the login `auth_token` httpOnly cookie and replayed as `Authorization: Bearer`
+  (`AuthInterceptor`), stored in EncryptedSharedPreferences; `mycorrhizal_` API-token entry path.
+  The interceptor chain matches §2.2 (Auth → BaseUrl → Retry, debug logging).
+- **Contacts** — list with T17 cursor pagination + debounced search, and a detail screen
+  rendering the neutral `Card`/`CRMEnvelope`. Online-first repositories mirror into a Room cache
+  (`CachedContact` + `@TypeConverters`) with offline fallback for the list and detail, and
+  T17 `incremental` sync deletions are applied.
+- **Session** — `DefaultSessionManager` (DataStore server URL + encrypted JWT), hydrated at
+  startup so returning users stay logged in; `SessionState` drives a login-vs-main navigation gate.
+- **Theme** — `:core:ui` `MycorrhizalTheme` with the §4.4 M3 tokens hand-pinned (light + dark),
+  serif app-bar title, 10dp shapes; system fonts stand in for EB Garamond/IBM Plex Sans until the
+  font assets are bundled.
+- **Tests — 133, all green**, hand-verified per `/CLAUDE.md` (broke the auth-token guard, the
+  DAO search, the pagination guard, the empty-state string, the host check, and the userinfo
+  validation — each failed, restore re-greened):
+  - `:core:model` — `ValidatorsTest` (mirrors `backend/middleware/validation.go` exactly),
+    `DateFormatTest` (PartialDate display, eu/us/iso + yearless).
+  - `:core:network` — `ApiClientTest` (MockWebServer: login cookie capture, list/detail parsing,
+    query params, error mapping), `AuthInterceptorTest` (Bearer add/omit/cross-host),
+    `BaseUrlInterceptorTest`, `RetryInterceptorTest` (POST never retried), `ApiErrorTest`.
+  - `:core:data` — `CachedContactDaoTest` (Robolectric in-memory Room: upsert/get/search/delete,
+    converter round-trip), repository tests (online-first caching, incremental sync deletes,
+    list-refresh-doesn't-clobber-detail, offline fallback, 404 does not fall back),
+    `DefaultSessionManagerTest`.
+  - `:feature:auth` + `:feature:contacts` — ViewModel state-machine tests (MockK + Turbine +
+    `MainDispatcherRule`), Compose UI tests (Robolectric + `createComposeRule`) over the hoisted
+    stateless `*ScreenContent` composables covering loading/empty/error/populated per §10.4.
+
+### Deliberate deviations from the design (recorded for the reviewer)
+
+1. **Hand-written API client, not openapi-generator output.** The §1.3 generator pass is deferred:
+   the spec's `allOf`/`oneOf` schemas (noted in §1.3 as needing pre-fixing) aren't flattened yet,
+   and Phase 1 only needs login/me/contacts. `:core:network`'s `ApiClient` is small and
+   endpoint-focused, so swapping in generated code later is a local replacement. Also uses Moshi
+   `@JsonClass` codegen via `KotlinJsonAdapterFactory` (the library-sanctioned discovery path for
+   R8-friendly generated adapters) rather than manual adapter registration.
+2. **Room entities live in `:core:data`, not `:core:model`.** The §1.2 layout puts entities in the
+   model module, but model is deliberately dependency-free and Room annotations are an Android
+   concern; keeping entities with their DAOs in data is the standard layering and keeps the
+   module graph clean.
+3. **Repositories are `@Singleton`, not `@ViewModelScoped`.** They are stateless wrappers over
+   `ApiClient` + DAO + `SessionManager` with no mutable UI state, so the scopes are functionally
+   identical; noted in `DataModule`'s doc comment. Revisit if a repository ever grows per-session
+   in-memory state.
+4. **JUnit 4, not JUnit 5.** Robolectric + Compose `createComposeRule` are JUnit4-native; the
+   ticket's own §10.3/§10.5 samples use `@RunWith(AndroidJUnit4::class)`. Turbine/MockK are
+   framework-agnostic.
+5. **Validators mirror the backend exactly, including `omitempty` semantics.** The §4.5 snippets
+   for `phone`/`birthday`/`safeurl` diverge from `backend/middleware/validation.go` (which has a
+   `safeurl` *blocklist* and a separate `httpurl` *allowlist*, plus 5–20 digit phone and no
+   day-range birthday check). The Android copies match the server byte-for-byte so the client
+   never rejects a value the server accepts.
+6. **Search, notes, activities, home tabs are placeholders.** Bottom-nav scaffold exists
+   (§4.1); only Contacts has content in Phase 1.
+
+### Security review (performed, findings all fixed)
+
+Full review of the auth/interceptor/storage/manifest surface. Key hardening shipped: JWT only
+attached to the configured host, userinfo rejected in server URLs, no backup eligibility
+(`allowBackup=false` + `dataExtractionRules`), credentials never stored in ViewModel state or
+saveable instance state, cleartext forbidden with system-CAs-only + debug user-CA overrides,
+POST never retried. Zero `Log.*`/println of the token anywhere.
+
+### Phases 2–5 (in progress — follow the design above)
+
+Read/write parity (contact create/edit, activities/notes/reminders, tappable field actions),
+sub-resources (circles/tags/households/edges), native features (call/SMS tracking,
+quick-capture, notifications, WorkManager sync), and T57 import + polish. The module structure,
+Room cache, session, and auth foundations Phase 1 built are the substrate all of them land on.
+
+**Phase 2 status (2026-08-10): COMPLETE** — read/write parity for the contact core is shipped
+in `:feature:contacts` + the new `:feature:timeline` module (activities/notes/reminders' shared
+home, per §1.2). 263 tests green.
+
+- **Item 6 — contact create/edit** — full Card write path (POST/PUT /contacts) with the §2.6
+  wrapped-POST unwrap, repository create/update with Room caching, a create/edit form
+  (`ContactFormViewModel` + `ContactFormScreen`) with backend-aligned validation and
+  birthday → PartialDate conversion. Edits **merge onto the loaded record** so fields the form
+  doesn't model survive the backend's full-overwrite PUT. List + detail reload on return.
+- **Item 7 — activity list + create/edit** — `Activity`/`ActivityInput` DTOs, ApiClient CRUD,
+  `CachedActivity` Room cache, `ActivitiesViewModel`/`ActivityFormViewModel` + screens (with an
+  add FAB). Editing preserves a multi-contact activity's participants and its external ref;
+  the ISO-8601 date is validated client-side to match the backend.
+- **Item 8 — note list + create/edit** — same pattern for `Note` (content + required date).
+- **Item 9 — reminder list + create/complete** — `Reminder` (doubles as the create body),
+  list with recurrence labels, create/edit form (recurrence dropdown, by-mail switch), and a
+  complete action: once-reminders drop out, recurring ones reschedule in place.
+- **Item 10 — unified timeline** — the contact detail now renders a merged, newest-first
+  timeline of activities/notes/reminders (the backend detail response already preloads all
+  three), with kind icons, tap-to-edit, and inline reminder-complete. The per-type list screens
+  remain as the full management view below it.
+- **Item 11 — tappable link-field actions** — tel:/sms:/mailto:/geo:/browser intents + copy on
+  every detail field (Android equivalents of T34/T47), with SMS only on `cell`-featured phones.
+- **Item 13 — search** — server search was already debounced + cursor-paginated in Phase 1; this
+  adds local full-text search over the Room cache via an FTS4 mirror (`CachedContactFts`,
+  auto-synced), used as the offline fallback for a search query.
+- **Item 12 — mobile link-action enrichment (ContactsContract MIMETYPE resolution)** — the
+  client-side `MobileLinkRegistry` (§7.6.2/7.6.3) ships: seeded `MobileLinkType`s for signal,
+  whatsapp, telegram, google-meet, zoom, discord, each with their per-action MIMETYPEs and
+  intent builders. `MobileLinkActionResolver` (§7.6.4) queries `ContactsContract.Data` for
+  those MIMETYPEs and returns only the actions whose apps are actually installed; it's built
+  behind an injectable `ContentResolver` so the *registry + resolution* are unit-tested without
+  a device (Robolectric + a fake contacts `ContentProvider`, 12 tests). The contact detail's
+  `LinkRow` now renders `AssistChip`s for each resolved action (§7.6.5), falling back to the
+  plain link + copy when nothing resolves or `READ_CONTACTS` is denied. **On-device status
+  (2026-08-10, Pixel 8a): DONE.** `READ_CONTACTS` is now declared and requested inline from
+  `MobileLinkActions` when a known-protocol link renders (§8.3, graceful degradation on denial).
+  The detail screen gained an Online services section (`imppAddresses`/`socialProfiles`/
+  `otherOnlineServices` — real contacts carry handles there, not in `links`), and the Signal /
+  Google Meet MIMETYPEs in the registry were corrected to the actual `ContactsContract.Data`
+  strings read off the device (WhatsApp was already right; Telegram/Zoom/Discord remain
+  unverified guesses pending a contact row per app). Verified on-device: Elizabeth Brunning's
+  Signal handle renders Message / Voice Call / Video Call chips resolved from real MIMETYPE
+  rows after granting READ_CONTACTS. The custom-link-action editor (§7.6.6) remains Phase 5
+  (item 30).
+
+Architecture review performed on the activities/notes/reminders slices; all findings fixed
+(participant/external-ref preservation on edit, the reminder-complete wiring gap, required-date
+validation, once-reminder cache drop, double error display, FTS query sanitization).
+
+### UI deviations from the web (recorded 2026-08-10 — fix in a consolidated polish pass, not now)
+
+Known cosmetic differences spotted on-device against the web app. Deliberately parked out of the
+Phase-3 gate; none of these block sub-resources. Revisit as a dedicated polish pass (Phase 5):
+the fonts are already bundled (`Theme.kt` uses EB Garamond / IBM Plex Sans / IBM Plex Mono), so
+these are role-placement and rendering choices, not missing assets.
+
+1. **Contact photo does not display.** `ContactListItem`/detail only render `photoThumbnail`
+   when it is a `data:` URL (the list endpoint's thumbnail). Full-size `photo` URLs / the
+   detail's `photo` field are ignored. Web loads both. Check whether the detail response sends
+   a usable URL and whether Coil can load it over the auth'd server (needs the same host-gating
+   the API client uses).
+2. **Last name not shown in the list/detail.** The list shows `displayName` (vCard `fn`), and
+   Elizabeth renders as just "Elizabeth" — the backend's `fn` is her given name only. Web shows
+   "Firstname Lastname" (derives a display name from name components when `fn` is short).
+   Android should do the same derivation (`components` given+surname) as a fallback.
+3. **Font role placement.** Android's M3 scale puts EB Garamond on `display*` roles and IBM
+   Plex Sans on `body*`; the web uses IBM Plex Sans as the app-wide default with Garamond only
+   in a few brand spots. The detail/list bodies currently read Garamond-heavy where the web
+   reads Plex. Align which roles use which font.
+4. **Section styling details** (dividers, spacing, avatar size, empty-state placement) differ
+   slightly from web — low priority, fold into the polish pass.
+
+Anything in this list that turns out to be *functional* (a field the web shows that Android
+can't render or edit) is elevated to a Phase-3 blocker — flag it rather than folding it in.
+
+**Phase 3 status (2026-08-10): IN PROGRESS** — sub-resources. The backend surface for all of
+items 14–19 already exists; the Android side is being built out feature-by-feature.
+
+- **Item 14 — Circle CRUD + member management: DONE** (committed `27f1275`). New `:feature:circles`
+  module following the full pattern: models + wrapper DTOs in `:core:model`, ApiClient methods
+  (cursor list, get-with-members, create/rename/delete, add/remove member), `CachedCircle` +
+  `CachedCircleMember` Room cache (join rows hard-delete), `CircleRepository`, `CirclesScreen`
+  (list + create dialog + rename + delete confirm) and `CircleDetailScreen` (members add/remove),
+  wired into the app drawer + NavHost, strings in all 5 locales, 9 ViewModel tests hand-verified.
+  Verified on-device (Pixel 8a): create → list → detail → delete round-trips against the real
+  backend.
+
+**Phase 3 (2026-08-10): COMPLETE** — all sub-resources shipped in `android/`. 337 tests green.
+
+- **Item 14 — Circles: DONE** (`27f1275`). CRUD + member management; verified on-device.
+- **Item 15 — Tags: DONE** (`583266e`). CRUD + contact tagging; verified on-device.
+- **Item 16 — Households: DONE** (`3f8c3a4`). CRUD + member management with type + roles;
+  verified on-device. Address-based suggestion endpoints (suggest-addresses/accept/dismiss)
+  deferred — backend-only, separate concern.
+- **Item 17 — Relationship edges: DONE** (`39394be`). List/create/accept/delete with the 15-token
+  type registry mirror and web-matching direction semantics (effective type inverts when the
+  viewed contact is the source); verified on-device.
+- **Item 18 — Life events/gifts/preferences/agenda: DONE** (`6458666`). Four identical-pattern
+  contact-scoped entities (list/create/delete + agenda discuss PATCH); verified on-device.
+- **Item 19 — Merge + bulk: DONE** (`0fc9569`). Merge preview/resolve-conflicts/commit and bulk
+  archive/unarchive/delete; the full import/export API client + DTOs are ready but the import UI
+  (file picker) is deferred to T57 / Phase 5. Verified on-device.
+
+Phases 4–5 remain planned (Android-native features: call/SMS tracking, quick-capture,
+notifications; then T57 import + polish incl. the recorded UI-deviation checklist).
+
+**Phase 4 (2026-08-10): DONE** — Android-native features shipped in `:feature:tracking`. 343 tests green.
+
+- **Item 20 — Call log tracking:** `CallLogReader` + `CallLogSyncWorker` (stages calls since a watermark),
+  `PhoneStateReceiver`, digits-normalized contact phone match, `PendingInteraction` Room staging.
+- **Item 21 — SMS tracking:** `SmsReceiver` + `SmsReader`; only address+timestamp captured, never the body
+  (§6.2 privacy boundary — hand-verified by a test that fails if a description leaks).
+- **Item 22 — Interaction sync pipeline:** `InteractionSyncWorker` (periodic 15min) converts pending rows to
+  server Activities; `TrackingWorkerScheduler` + `BootReceiver`; HiltWorker DI via `Configuration.Provider`.
+- **Item 24 — Local notifications:** channels (reminders/cadence/birthdays) + hourly/4h/daily workers over
+  `/reminders/upcoming`, `/cadence-policies/overdue`, `/contacts/birthdays`, using the brand icon (moved to
+  `:core:ui`).
+- **Item 23 — Quick-capture:** `CallDetectionService` (FGS, phoneCall type) + `QuickCaptureOverlay`
+  (SYSTEM_ALERT_WINDOW pill after a call ends, taps deep-link into the app). The full in-overlay Compose
+  form is a follow-up; the overlay itself is opt-in.
+- Settings gained three tracking/notification toggles (opt-in per §8.3); enabling call tracking starts the FGS.
+- Permissions + telephony uses-feature + receivers + service declared.
+
+Note: on-device FGS start + overlay need the special/runtime permissions granted (SYSTEM_ALERT_WINDOW,
+FOREGROUND_SERVICE_PHONE_CALL) — opt-in by design. Remaining Phase-5 work: T57 import UI, the recorded
+UI-deviation checklist, and the full in-overlay quick-capture sheet.
+
+**Phase 5 (2026-08-10): DONE (core)** — T57 import + polish shipped. 349 tests green.
+
+- **Item 25 — device contacts import:** `:feature:import` (namespace `imports` — `import` is a
+  Java keyword) — `DeviceContactsReader` (Contacts + generic Data query), `DeviceContactMapper`
+  → neutral Card, `ImportContactsScreen` with multi-select. Verified on-device: reads real device
+  contacts.
+- **Item 26 — LOOKUP_KEY:** `CachedContact.deviceLookupKey` (schema v12), set post-import.
+- **Item 27 — QuickContact:** `DeviceContactLink` + "Open in Contacts" on the contact detail.
+- **Item 28 — first-run prompt:** contact-list empty state offers Import.
+- **Item 29 — dedup UI:** import flags possible duplicates (email/phone) against the cache.
+- **Item 30 — custom link actions:** `CustomLinkAction` Room + Settings editor (§7.6.6); schema
+  v12->v13.
+- **Item 33 — R8:** release buildType minify+shrink, proguard-rules.pro (Moshi/Hilt/Room/
+  WorkManager/Tink). Verified: 4MB release APK.
+- **Item 31 (tablet) + 32 (accessibility):** deferred into the review/polish pass (the screens
+  already carry contentDescriptions; a dedicated tablet two-pane layout is the remaining work).
+
+Phase 5 is followed by the review / UI-polish / testing pass the user planned.
