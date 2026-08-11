@@ -96,3 +96,41 @@ happen"), just via a nil slice rather than an `omitempty` tag — same root shap
 - Hand-verified live: an account with zero contacts (or any contacts, none sharing an address) can
   click "Suggest Households" without crashing, and sees the existing "no suggestions" empty state
   instead.
+
+## Landing note — 2026-08-11
+
+Done. Both flagged nil-slice call sites fixed: `GenerateAddressHouseholdSuggestions` (the reported
+crash) and, per the ticket's own trap note, `GenerateHouseholdSuggestions`'s sibling `created`
+slice — `var x []T` → `x := []T{}` in both, so an empty result always marshals as `[]`. New raw-JSON
+backend test (`TestAddressHouseholdSuggestions_EmptyResultIsJSONArrayNotNull`) hand-verified to fail
+against the pre-fix code (`suggestions:null`) before passing. Frontend guarded in both places the
+ticket named — `AddressHouseholdSuggestions.tsx`'s prop and `HouseholdsPage.tsx`'s
+`setAddressSuggestions` call — plus a new null-prop regression test, also hand-verified failing first
+(reproduced the exact `TypeError: Cannot read properties of null (reading 'flatMap')` from the
+report).
+
+**A second, more interesting bug surfaced during verification, not in the ticket's own text.** The
+first version of the frontend guard — `const suggestions = suggestionsProp ?? [];` inline in the
+component body — passed `tsc`, passed `go test`, and passed the new test *in isolation*, but hung
+`npx vitest run`'s full suite indefinitely (confirmed pegged at 100%+ CPU for 24+ minutes before being
+killed). Root cause: `?? []` evaluates a **fresh** array literal on every render when the prop is
+null/undefined, whereas an explicit `[]` prop keeps a stable reference across a component's own
+internal re-renders. That fed a `useMemo`/`useEffect`/`setState` chain further down (member-name
+resolution) that depends on referential equality — a new array every render meant the memo never
+stabilized, the effect never stopped re-firing, and `setState` never stopped forcing another render.
+Explicit `[]` props never triggered it because `??` only evaluates its right side when the left is
+null/undefined. Fixed by hoisting a single module-level `EMPTY_SUGGESTIONS` constant and falling back
+to that instead of a fresh literal — see the comment at its declaration in
+`AddressHouseholdSuggestions.tsx`. Root-caused with a bisection: minimal-repro test files (deleted
+after use) narrowed it from "the whole suite hangs" down to "two back-to-back renders with an
+undefined/null prop, in a component using this exact `useMemo` → `useEffect` → `setState` shape,
+hang; two back-to-back renders with an explicit `[]` prop don't." Worth remembering as its own trap —
+a `prop ?? []` fallback is not the same as a stable `[]`, once anything downstream keys a memo or
+effect off that value's identity.
+
+Full verification: backend (`go build`/`vet`/`gofmt`/`test`) green; frontend (`tsc --noEmit`, full
+`vitest run` — 83 files / 623 tests) green, confirmed not hanging after the `EMPTY_SUGGESTIONS` fix;
+hand-verified live against the local dev server (fresh account, zero households) — raw response body
+`{"suggestions":[],"total":0}`, empty-state UI renders with no console errors, survived three repeated
+clicks of "Suggest Households" (the scenario that would have re-exposed the render-loop bug had the
+fix been wrong).

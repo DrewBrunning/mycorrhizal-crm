@@ -120,7 +120,11 @@ export default function HouseholdsPage() {
     setSuggestionsError('');
     try {
       const result = await suggestAddressHouseholds();
-      setAddressSuggestions(result.suggestions);
+      // T64: the backend can send `null` for an empty result (a nil Go slice
+      // marshals that way) even though the TS type says non-nullable —
+      // normalize before it enters state so a `null` never reaches a
+      // consumer expecting an array.
+      setAddressSuggestions(result.suggestions ?? []);
       setSuggestionsLoaded(true);
     } catch (err) {
       handleFetchError(err, 'scanning for shared-address suggestions');

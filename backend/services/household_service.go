@@ -69,7 +69,7 @@ func GenerateHouseholdSuggestions(db *gorm.DB, household models.Household) ([]mo
 		return nil, fmt.Errorf("loading members for household id=%s: %w", household.ID, err)
 	}
 	if len(members) < 2 {
-		return nil, nil
+		return []models.RelationshipEdge{}, nil
 	}
 
 	classified := make([]classifiedMember, 0, len(members))
@@ -81,7 +81,7 @@ func GenerateHouseholdSuggestions(db *gorm.DB, household models.Household) ([]mo
 		classified = append(classified, classifiedMember{vcardUID: m.MemberVCardUID, class: classifyMember(m.Role, contact)})
 	}
 
-	var created []models.RelationshipEdge
+	created := []models.RelationshipEdge{}
 	suggest := func(sourceID, targetID, edgeType string, confidence float64) error {
 		edge, err := suggestEdgeIfNew(db, household.UserID, sourceID, targetID, edgeType, confidence)
 		if err != nil {
@@ -340,7 +340,7 @@ func GenerateAddressHouseholdSuggestions(db *gorm.DB, userID uint) ([]AddressSug
 		}
 	}
 
-	var suggestions []AddressSuggestion
+	suggestions := []AddressSuggestion{}
 	for key, members := range groups {
 		members = dedupeContacts(members)
 		if len(members) < 2 {
