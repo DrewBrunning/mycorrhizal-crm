@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.circles
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -7,6 +8,7 @@ import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.CircleMember
 import com.mycorrhizal.crm.network.foldApiError
+import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,6 +24,7 @@ data class CircleDetailUiState(
     val isLoading: Boolean = false,
     val removingUid: String? = null,
     val error: String? = null,
+    @StringRes val errorRes: Int? = null,
 )
 
 @HiltViewModel
@@ -44,11 +47,11 @@ class CircleDetailViewModel @Inject constructor(
 
     fun load() {
         if (circleId.isBlank()) {
-            _uiState.update { it.copy(isLoading = false, error = "Missing circle id") }
+            _uiState.update { it.copy(isLoading = false, errorRes = R.string.circles_error_missing_id, error = null) }
             return
         }
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(isLoading = true, error = null, errorRes = null) }
             circleRepository.getWithMembers(circleId).foldApiError(
                 onSuccess = { detail ->
                     _uiState.update {
@@ -98,6 +101,6 @@ class CircleDetailViewModel @Inject constructor(
     }
 
     fun onErrorShown() {
-        _uiState.update { it.copy(error = null) }
+        _uiState.update { it.copy(error = null, errorRes = null) }
     }
 }

@@ -61,6 +61,7 @@ fun RelationshipsScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var showCreateDialog by remember { mutableStateOf(false) }
+    val errorMessage = state.errorRes?.let { stringResource(it) } ?: state.error
 
     Scaffold(
         topBar = {
@@ -91,11 +92,11 @@ fun RelationshipsScreen(
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when {
                 state.isLoading -> LoadingSkeleton()
-                state.edges.isEmpty() && state.error == null ->
-                    EmptyState(message = "No relationships yet")
-                state.edges.isEmpty() && state.error != null -> {
+                state.edges.isEmpty() && errorMessage == null ->
+                    EmptyState(message = stringResource(R.string.relationships_empty))
+                state.edges.isEmpty() && errorMessage != null -> {
                     Text(
-                        text = state.error.orEmpty(),
+                        text = errorMessage,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.align(Alignment.Center),
                     )
@@ -124,7 +125,7 @@ fun RelationshipsScreen(
         )
     }
 
-    state.error?.let { message ->
+    errorMessage?.let { message ->
         LaunchedEffect(message) {
             snackbarHostState.showSnackbar(message)
             viewModel.onErrorShown()

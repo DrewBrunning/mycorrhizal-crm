@@ -4,6 +4,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
+import com.mycorrhizal.crm.ui.R
 
 /** The three user-facing notification channels (§6.8), distinct importance. */
 object MycorrhizalNotificationChannels {
@@ -18,10 +19,10 @@ object MycorrhizalNotificationChannels {
         manager.createNotificationChannel(
             NotificationChannel(
                 REMINDERS,
-                "Reminders",
+                context.getString(R.string.notification_channel_reminders_name),
                 NotificationManager.IMPORTANCE_HIGH,
             ).apply {
-                description = "Contact reminders and follow-ups"
+                description = context.getString(R.string.notification_channel_reminders_description)
                 enableVibration(true)
             },
         )
@@ -29,10 +30,10 @@ object MycorrhizalNotificationChannels {
         manager.createNotificationChannel(
             NotificationChannel(
                 CADENCE,
-                "Cadence alerts",
+                context.getString(R.string.notification_channel_cadence_name),
                 NotificationManager.IMPORTANCE_DEFAULT,
             ).apply {
-                description = "Overdue relationship cadence warnings"
+                description = context.getString(R.string.notification_channel_cadence_description)
                 enableVibration(true)
             },
         )
@@ -40,10 +41,10 @@ object MycorrhizalNotificationChannels {
         manager.createNotificationChannel(
             NotificationChannel(
                 BIRTHDAYS,
-                "Birthdays",
+                context.getString(R.string.notification_channel_birthdays_name),
                 NotificationManager.IMPORTANCE_DEFAULT,
             ).apply {
-                description = "Upcoming contact birthdays"
+                description = context.getString(R.string.notification_channel_birthdays_description)
                 enableVibration(false)
                 setShowBadge(true)
             },

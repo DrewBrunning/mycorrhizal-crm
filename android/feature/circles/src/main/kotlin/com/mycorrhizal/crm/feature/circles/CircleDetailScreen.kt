@@ -51,6 +51,7 @@ fun CircleDetailScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var showAddDialog by remember { mutableStateOf(false) }
+    val errorMessage = state.errorRes?.let { stringResource(it) } ?: state.error
 
     Scaffold(
         topBar = {
@@ -84,11 +85,11 @@ fun CircleDetailScreen(
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when {
                 state.isLoading -> LoadingSkeleton()
-                state.members.isEmpty() && state.error == null ->
-                    EmptyState(message = "No members yet")
-                state.members.isEmpty() && state.error != null -> {
+                state.members.isEmpty() && errorMessage == null ->
+                    EmptyState(message = stringResource(R.string.circles_members_empty))
+                state.members.isEmpty() && errorMessage != null -> {
                     Text(
-                        text = state.error.orEmpty(),
+                        text = errorMessage,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.align(Alignment.Center),
                     )
@@ -118,7 +119,7 @@ fun CircleDetailScreen(
         )
     }
 
-    state.error?.let { message ->
+    errorMessage?.let { message ->
         androidx.compose.runtime.LaunchedEffect(message) {
             snackbarHostState.showSnackbar(message)
             viewModel.onErrorShown()

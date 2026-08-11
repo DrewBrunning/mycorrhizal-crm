@@ -89,7 +89,7 @@ fun TagsScreen(
             when {
                 state.isLoading -> LoadingSkeleton()
                 state.tags.isEmpty() && state.error == null ->
-                    EmptyState(message = "No tags yet")
+                    EmptyState(message = stringResource(R.string.tags_empty))
                 state.tags.isEmpty() && state.error != null -> {
                     Text(
                         text = state.error.orEmpty(),

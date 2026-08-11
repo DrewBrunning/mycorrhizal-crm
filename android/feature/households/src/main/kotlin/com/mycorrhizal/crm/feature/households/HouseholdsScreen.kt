@@ -95,7 +95,7 @@ fun HouseholdsScreen(
             when {
                 state.isLoading -> LoadingSkeleton()
                 state.households.isEmpty() && state.error == null ->
-                    EmptyState(message = "No households yet")
+                    EmptyState(message = stringResource(R.string.households_empty))
                 state.households.isEmpty() && state.error != null -> {
                     Text(
                         text = state.error.orEmpty(),

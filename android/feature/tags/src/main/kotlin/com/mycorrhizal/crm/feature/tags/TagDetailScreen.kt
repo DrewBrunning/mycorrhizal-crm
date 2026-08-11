@@ -54,6 +54,7 @@ fun TagDetailScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var showAddDialog by remember { mutableStateOf(false) }
+    val errorMessage = state.errorRes?.let { stringResource(it) } ?: state.error
 
     Scaffold(
         topBar = {
@@ -87,11 +88,11 @@ fun TagDetailScreen(
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when {
                 state.isLoading -> LoadingSkeleton()
-                state.contacts.isEmpty() && state.error == null ->
-                    EmptyState(message = "No contacts tagged")
-                state.contacts.isEmpty() && state.error != null -> {
+                state.contacts.isEmpty() && errorMessage == null ->
+                    EmptyState(message = stringResource(R.string.tags_contacts_empty))
+                state.contacts.isEmpty() && errorMessage != null -> {
                     Text(
-                        text = state.error.orEmpty(),
+                        text = errorMessage,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.align(Alignment.Center),
                     )
@@ -121,7 +122,7 @@ fun TagDetailScreen(
         )
     }
 
-    state.error?.let { message ->
+    errorMessage?.let { message ->
         LaunchedEffect(message) {
             snackbarHostState.showSnackbar(message)
             viewModel.onErrorShown()

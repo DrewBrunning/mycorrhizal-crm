@@ -78,7 +78,7 @@ fun NotesScreen(
             when {
                 state.isLoading -> LoadingSkeleton()
                 state.notes.isEmpty() && state.error == null ->
-                    EmptyState(message = "No notes yet")
+                    EmptyState(message = stringResource(R.string.notes_empty))
                 state.notes.isEmpty() && (state.errorRes != null || state.error != null) ->
                     EmptyState(state.errorRes?.let { stringResource(it) } ?: state.error.orEmpty())
                 else -> {

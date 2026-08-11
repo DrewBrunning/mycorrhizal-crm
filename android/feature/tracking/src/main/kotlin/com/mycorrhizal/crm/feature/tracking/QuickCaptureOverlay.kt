@@ -9,6 +9,7 @@ import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
 import android.widget.TextView
+import com.mycorrhizal.crm.ui.R
 
 /**
  * A lightweight `SYSTEM_ALERT_WINDOW` overlay shown briefly after a call ends
@@ -35,7 +36,7 @@ class QuickCaptureOverlay {
         dismiss()
         val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
         val pill = TextView(context).apply {
-            text = "Mycorrhizal — log interaction"
+            text = context.getString(R.string.quick_capture_pill_text, context.getString(R.string.app_name))
             setTextColor(0xFFFFFFFF.toInt())
             setPadding(48, 32, 48, 32)
             background = android.graphics.drawable.GradientDrawable().apply {

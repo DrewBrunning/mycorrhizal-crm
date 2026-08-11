@@ -67,7 +67,11 @@ fun ContactFormScreen(
                 },
                 title = {
                     Text(
-                        text = if (state.isEdit) "Edit contact" else "New contact",
+                        text = if (state.isEdit) {
+                            stringResource(R.string.contact_edit_title)
+                        } else {
+                            stringResource(R.string.contact_new)
+                        },
                         style = MaterialTheme.typography.titleLarge,
                     )
                 },
@@ -129,7 +133,7 @@ fun ContactFormContent(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        SectionLabel("Name")
+        SectionLabel(stringResource(R.string.contact_name_section))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
                 value = state.givenName,
@@ -154,7 +158,7 @@ fun ContactFormContent(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        SectionLabel("Email")
+        SectionLabel(stringResource(R.string.contact_email))
         StringListEditor(
             values = state.emails,
             onValuesChange = onEmailsChange,
@@ -162,7 +166,7 @@ fun ContactFormContent(
             keyboardType = KeyboardType.Email,
         )
 
-        SectionLabel("Phone")
+        SectionLabel(stringResource(R.string.contact_phone))
         StringListEditor(
             values = state.phones,
             onValuesChange = onPhonesChange,
@@ -203,7 +207,13 @@ fun ContactFormContent(
             if (state.isSaving) {
                 CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
             }
-            Text(if (state.isEdit) "Save changes" else "Create contact")
+            Text(
+                if (state.isEdit) {
+                    stringResource(R.string.contact_save)
+                } else {
+                    stringResource(R.string.contact_create)
+                },
+            )
         }
     }
 }
@@ -253,7 +263,7 @@ private fun StringListEditor(
             }
         }
         IconButton(onClick = { onValuesChange(values + "") }) {
-            Icon(Icons.Outlined.Add, contentDescription = "Add")
+            Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.contact_add))
         }
     }
 }

@@ -106,7 +106,7 @@ fun DashboardScreen(
                                 ) {
                                     Icon(Icons.Outlined.Notifications, contentDescription = null)
                                     Text(
-                                        reminder.message ?: "Reminder",
+                                        reminder.message ?: stringResource(R.string.reminder_title_fallback),
                                         style = MaterialTheme.typography.bodyLarge,
                                         modifier = Modifier.padding(start = 12.dp),
                                     )

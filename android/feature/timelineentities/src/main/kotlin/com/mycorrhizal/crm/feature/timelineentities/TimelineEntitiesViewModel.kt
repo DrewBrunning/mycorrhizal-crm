@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.timelineentities
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -17,6 +18,7 @@ import com.mycorrhizal.crm.model.network.LifeEventInput
 import com.mycorrhizal.crm.model.network.Preference
 import com.mycorrhizal.crm.model.network.PreferenceInput
 import com.mycorrhizal.crm.network.foldApiError
+import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -41,6 +43,7 @@ data class EntityListUiState(
     val items: List<EntityItem> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
+    @StringRes val errorRes: Int? = null,
     val deletingId: String? = null,
 )
 
@@ -59,10 +62,12 @@ class LifeEventsViewModel @Inject constructor(
 
     fun load() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(isLoading = true, error = null, errorRes = null) }
             val uid = resolver.resolve(contactId)
             if (uid.isNullOrBlank()) {
-                _uiState.update { it.copy(isLoading = false, error = "Contact has no VCard UID") }
+                _uiState.update {
+                    it.copy(isLoading = false, errorRes = R.string.entities_error_no_vcard_uid, error = null)
+                }
                 return@launch
             }
             _uiState.update { it.copy(entityId = uid) }
@@ -100,7 +105,7 @@ class LifeEventsViewModel @Inject constructor(
         }
     }
 
-    fun onErrorShown() { _uiState.update { it.copy(error = null) } }
+    fun onErrorShown() { _uiState.update { it.copy(error = null, errorRes = null) } }
 }
 
 @HiltViewModel
@@ -118,10 +123,12 @@ class GiftsViewModel @Inject constructor(
 
     fun load() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(isLoading = true, error = null, errorRes = null) }
             val uid = resolver.resolve(contactId)
             if (uid.isNullOrBlank()) {
-                _uiState.update { it.copy(isLoading = false, error = "Contact has no VCard UID") }
+                _uiState.update {
+                    it.copy(isLoading = false, errorRes = R.string.entities_error_no_vcard_uid, error = null)
+                }
                 return@launch
             }
             _uiState.update { it.copy(entityId = uid) }
@@ -159,7 +166,7 @@ class GiftsViewModel @Inject constructor(
         }
     }
 
-    fun onErrorShown() { _uiState.update { it.copy(error = null) } }
+    fun onErrorShown() { _uiState.update { it.copy(error = null, errorRes = null) } }
 }
 
 @HiltViewModel
@@ -177,10 +184,12 @@ class PreferencesViewModel @Inject constructor(
 
     fun load() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(isLoading = true, error = null, errorRes = null) }
             val uid = resolver.resolve(contactId)
             if (uid.isNullOrBlank()) {
-                _uiState.update { it.copy(isLoading = false, error = "Contact has no VCard UID") }
+                _uiState.update {
+                    it.copy(isLoading = false, errorRes = R.string.entities_error_no_vcard_uid, error = null)
+                }
                 return@launch
             }
             _uiState.update { it.copy(entityId = uid) }
@@ -218,7 +227,7 @@ class PreferencesViewModel @Inject constructor(
         }
     }
 
-    fun onErrorShown() { _uiState.update { it.copy(error = null) } }
+    fun onErrorShown() { _uiState.update { it.copy(error = null, errorRes = null) } }
 }
 
 @HiltViewModel
@@ -236,10 +245,12 @@ class ConversationAgendaViewModel @Inject constructor(
 
     fun load() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(isLoading = true, error = null, errorRes = null) }
             val uid = resolver.resolve(contactId)
             if (uid.isNullOrBlank()) {
-                _uiState.update { it.copy(isLoading = false, error = "Contact has no VCard UID") }
+                _uiState.update {
+                    it.copy(isLoading = false, errorRes = R.string.entities_error_no_vcard_uid, error = null)
+                }
                 return@launch
             }
             _uiState.update { it.copy(entityId = uid) }
@@ -277,7 +288,7 @@ class ConversationAgendaViewModel @Inject constructor(
         }
     }
 
-    fun onErrorShown() { _uiState.update { it.copy(error = null) } }
+    fun onErrorShown() { _uiState.update { it.copy(error = null, errorRes = null) } }
 }
 
 // --- display helpers ---

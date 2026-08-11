@@ -9,6 +9,7 @@ import android.os.Looper
 import android.telephony.PhoneStateListener
 import android.telephony.TelephonyManager
 import androidx.core.content.ContextCompat
+import com.mycorrhizal.crm.ui.R
 
 /**
  * Foreground service that shows the quick-capture overlay when a call ends
@@ -46,7 +47,11 @@ class CallDetectionService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startForeground(
             NOTIFICATION_ID,
-            NotificationBuilder.cadence(applicationContext, "Mycorrhizal", "Listening for calls"),
+            NotificationBuilder.cadence(
+                applicationContext,
+                applicationContext.getString(R.string.app_name),
+                applicationContext.getString(R.string.call_service_notification_text),
+            ),
         )
         val telephonyManager = getSystemService(TelephonyManager::class.java)
         telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_CALL_STATE)

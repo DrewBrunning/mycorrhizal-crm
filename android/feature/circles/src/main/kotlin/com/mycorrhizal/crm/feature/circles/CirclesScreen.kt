@@ -90,7 +90,7 @@ fun CirclesScreen(
             when {
                 state.isLoading -> LoadingSkeleton()
                 state.circles.isEmpty() && state.error == null ->
-                    EmptyState(message = "No circles yet")
+                    EmptyState(message = stringResource(R.string.circles_empty))
                 state.circles.isEmpty() && state.error != null -> {
                     Text(
                         text = state.error.orEmpty(),

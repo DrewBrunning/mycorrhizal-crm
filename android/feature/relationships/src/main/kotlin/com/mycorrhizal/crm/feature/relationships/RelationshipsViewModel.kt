@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.relationships
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -10,6 +11,7 @@ import com.mycorrhizal.crm.model.network.RelationshipEdgeInput
 import com.mycorrhizal.crm.model.network.RelationshipEdgeStatuses
 import com.mycorrhizal.crm.model.network.RelationshipEdgeTypes
 import com.mycorrhizal.crm.network.foldApiError
+import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,6 +27,7 @@ data class RelationshipsUiState(
     val acceptingId: String? = null,
     val deletingId: String? = null,
     val error: String? = null,
+    @StringRes val errorRes: Int? = null,
 )
 
 @HiltViewModel
@@ -48,16 +51,20 @@ class RelationshipsViewModel @Inject constructor(
 
     fun load() {
         if (contactId == 0) {
-            _uiState.update { it.copy(isLoading = false, error = "Missing contact id") }
+            _uiState.update {
+                it.copy(isLoading = false, errorRes = R.string.relationships_error_missing_contact_id, error = null)
+            }
             return
         }
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(isLoading = true, error = null, errorRes = null) }
             // The graph invariants use the contact's VCardUID, so resolve it
             // from the record before listing edges.
             val uid = contactRepository.getContact(contactId).getOrNull()?.card?.uid
             if (uid.isNullOrBlank()) {
-                _uiState.update { it.copy(isLoading = false, error = "Contact has no VCard UID") }
+                _uiState.update {
+                    it.copy(isLoading = false, errorRes = R.string.relationships_error_no_vcard_uid, error = null)
+                }
                 return@launch
             }
             _uiState.update { it.copy(contactVCardUid = uid) }
@@ -148,7 +155,7 @@ class RelationshipsViewModel @Inject constructor(
     }
 
     fun onErrorShown() {
-        _uiState.update { it.copy(error = null) }
+        _uiState.update { it.copy(error = null, errorRes = null) }
     }
 }
 

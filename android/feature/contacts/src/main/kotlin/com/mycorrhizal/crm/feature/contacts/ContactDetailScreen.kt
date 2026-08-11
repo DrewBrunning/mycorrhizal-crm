@@ -238,7 +238,10 @@ fun ContactDetailScreen(
                         ) {
                             ContactAvatar(
                                 photoUri = card?.photoUri ?: contact.photoThumbnail,
-                                contentDescription = "Photo of ${card?.displayName.orEmpty()}",
+                                contentDescription = stringResource(
+                                    R.string.contacts_photo_description,
+                                    card?.displayName.orEmpty(),
+                                ),
                                 size = 36.dp,
                             )
                             Text(
@@ -281,7 +284,7 @@ fun ContactDetailScreen(
                 state.isLoading -> LoadingSkeleton()
                 state.contact == null && (state.errorRes != null || state.error != null) ->
                     EmptyState(state.errorRes?.let { stringResource(it) } ?: state.error.orEmpty())
-                state.contact == null -> EmptyState("Contact not found")
+                state.contact == null -> EmptyState(stringResource(R.string.contact_not_found))
                 else -> ContactDetailContent(
                     contact = state.contact!!,
                     listState = listState,
@@ -356,7 +359,10 @@ fun ContactDetailContent(
             ) {
                 ContactAvatar(
                     photoUri = card?.photoUri ?: contact.photoThumbnail,
-                    contentDescription = "Photo of ${card?.displayName.orEmpty()}",
+                    contentDescription = stringResource(
+                        R.string.contacts_photo_description,
+                        card?.displayName.orEmpty(),
+                    ),
                     size = 120.dp,
                 )
                 Text(
@@ -376,7 +382,10 @@ fun ContactDetailContent(
                 }
                 if (birthday != null) {
                     Text(
-                        text = "Birthday: ${birthday.display(dateFormat ?: DateFormat.EU)}",
+                        text = stringResource(
+                            R.string.contact_birthday_label,
+                            birthday.display(dateFormat ?: DateFormat.EU),
+                        ),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -385,7 +394,7 @@ fun ContactDetailContent(
         }
         if (!card?.personalInfo.isNullOrEmpty()) {
             item {
-                SectionCard("Personal information") {
+                SectionCard(stringResource(R.string.contact_personal_info)) {
                     card?.personalInfo?.forEach { info ->
                         InfoRow("${info.kind.orEmpty()}: ${info.value.orEmpty()}")
                     }
@@ -394,21 +403,21 @@ fun ContactDetailContent(
         }
         if (!card?.phones.isNullOrEmpty()) {
             item {
-                SectionCard("Phone") {
+                SectionCard(stringResource(R.string.contact_phone)) {
                     card?.phones?.forEach { PhoneRow(it) }
                 }
             }
         }
         if (!card?.addresses.isNullOrEmpty()) {
             item {
-                SectionCard("Address") {
+                SectionCard(stringResource(R.string.contact_address)) {
                     card?.addresses?.forEach { AddressRow(it) }
                 }
             }
         }
         if (!card?.emails.isNullOrEmpty()) {
             item {
-                SectionCard("Email") {
+                SectionCard(stringResource(R.string.contact_email)) {
                     card?.emails?.forEach { EmailRow(it) }
                 }
             }
@@ -418,14 +427,14 @@ fun ContactDetailContent(
             card?.otherOnlineServices.orEmpty())
         if (onlineServices.isNotEmpty()) {
             item {
-                SectionCard("Online services") {
+                SectionCard(stringResource(R.string.contact_online_services)) {
                     onlineServices.forEach { OnlineServiceRow(it) }
                 }
             }
         }
         if (!card?.links.isNullOrEmpty()) {
             item {
-                SectionCard("Links") {
+                SectionCard(stringResource(R.string.contact_links)) {
                 card?.links?.forEach { link ->
                     val uri = link.uri.orEmpty()
                     LinkRow(
@@ -439,7 +448,7 @@ fun ContactDetailContent(
         }
         if (!card?.organizations.isNullOrEmpty()) {
             item {
-                SectionCard("Organization") {
+                SectionCard(stringResource(R.string.contact_organization)) {
                     card?.organizations?.forEach { org ->
                         org.name?.let { InfoRow(it) }
                     }
@@ -448,7 +457,7 @@ fun ContactDetailContent(
         }
         if (!card?.notes.isNullOrEmpty()) {
             item {
-                SectionCard("Notes") {
+                SectionCard(stringResource(R.string.contact_notes)) {
                     card?.notes?.forEach { note ->
                         note.note?.let { InfoRow(it) }
                     }
@@ -457,7 +466,7 @@ fun ContactDetailContent(
         }
         if (!contact.crm?.circles.isNullOrEmpty()) {
             item {
-                SectionCard("Circles") {
+                SectionCard(stringResource(R.string.contact_circles)) {
                     InfoRow(contact.crm?.circles?.joinToString(", ").orEmpty())
                 }
             }
@@ -465,7 +474,7 @@ fun ContactDetailContent(
         item {
             // Unified timeline: the contact's activities/notes/reminders merged
             // newest-first (Phase 2 item 10). Tapping a row routes to its edit form.
-            SectionTitle("Timeline")
+            SectionTitle(stringResource(R.string.contact_timeline))
             TimelineSection(
                 items = contact.toTimelineItems(),
                 onEditActivity = onEditActivity,
@@ -858,7 +867,7 @@ private fun MobileLinkActions(
                             context.startActivity(FieldActions.browserIntent(handle))
                         }
                     },
-                    label = { Text(action.label) },
+                    label = { Text(stringResource(action.label)) },
                     leadingIcon = {
                         Icon(
                                 imageVector = when (action.kind) {
@@ -868,7 +877,7 @@ private fun MobileLinkActions(
                                     MobileActionKind.APP_OPEN -> Icons.Outlined.OpenInNew
                                     MobileActionKind.APP_CALL -> Icons.Outlined.Call
                                 },
-                                contentDescription = action.label,
+                                contentDescription = stringResource(action.label),
                                 modifier = Modifier.size(18.dp),
                             )
                         },
