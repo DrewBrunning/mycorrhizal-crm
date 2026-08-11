@@ -85,6 +85,7 @@ import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.LocalDrawerOpen
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.theme.AppTypography
+import com.mycorrhizal.crm.ui.theme.MycorrhizalFonts
 import com.mycorrhizal.crm.feature.timeline.TimelineSection
 import com.mycorrhizal.crm.feature.timeline.toTimelineItems
 import com.mycorrhizal.crm.ui.R
@@ -602,9 +603,15 @@ private fun SectionCard(title: String, content: @Composable () -> Unit) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
     ) {
         Column(modifier = Modifier.padding(vertical = 8.dp)) {
+            // T63 Android port: field-group captions ("Phone", "Address",
+            // "Email", ...) get IBM Plex Mono, mirroring the web's
+            // EditableField/EditableArrayField caption treatment (contrast
+            // against the sans/mono field values below). labelLarge itself
+            // stays global-sans (it's also the Button/NavigationDrawerItem
+            // default) -- scoped here via .copy(fontFamily = ...) instead.
             Text(
                 text = title,
-                style = MaterialTheme.typography.labelLarge,
+                style = MaterialTheme.typography.labelLarge.copy(fontFamily = MycorrhizalFonts.mono),
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
@@ -615,9 +622,10 @@ private fun SectionCard(title: String, content: @Composable () -> Unit) {
 
 @Composable
 private fun SectionTitle(text: String) {
+    // T63 Android port: see SectionCard's matching comment above.
     Text(
         text = text,
-        style = MaterialTheme.typography.labelLarge,
+        style = MaterialTheme.typography.labelLarge.copy(fontFamily = MycorrhizalFonts.mono),
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
     )}
@@ -649,10 +657,18 @@ private fun EmailRow(email: Email) {
         email.label?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         if (address.isNotBlank()) {
             IconButton(onClick = { context.startActivity(FieldActions.emailIntent(address)) }) {
-                Icon(Icons.Outlined.Email, contentDescription = stringResource(R.string.cd_compose_email))
+                Icon(
+                    Icons.Outlined.Email,
+                    contentDescription = stringResource(R.string.cd_compose_email),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
             }
             IconButton(onClick = { FieldActions.copyText(context, "email", address) }) {
-                Icon(Icons.Outlined.ContentCopy, contentDescription = stringResource(R.string.cd_copy_email))
+                Icon(
+                    Icons.Outlined.ContentCopy,
+                    contentDescription = stringResource(R.string.cd_copy_email),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
             }
         }
     }
@@ -677,7 +693,11 @@ private fun PhoneRow(phone: Phone) {
         }
         if (number.isNotBlank()) {
             IconButton(onClick = { context.startActivity(FieldActions.dialIntent(number)) }) {
-                Icon(Icons.Outlined.Call, contentDescription = stringResource(R.string.cd_call))
+                Icon(
+                    Icons.Outlined.Call,
+                    contentDescription = stringResource(R.string.cd_call),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
             }
             // SMS for mobile numbers (T34 phone detection). Mirrors the web
             // app's `phoneHasToken` (ContactInformation.tsx): a phone is SMS-able
@@ -687,11 +707,19 @@ private fun PhoneRow(phone: Phone) {
             // `features` (as this did) hid the SMS button for those.
             if (phone.isMobile()) {
                 IconButton(onClick = { context.startActivity(FieldActions.smsIntent(number)) }) {
-                    Icon(Icons.Outlined.Message, contentDescription = stringResource(R.string.cd_text))
+                    Icon(
+                        Icons.Outlined.Message,
+                        contentDescription = stringResource(R.string.cd_text),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
                 }
             }
             IconButton(onClick = { FieldActions.copyText(context, "phone", number) }) {
-                Icon(Icons.Outlined.ContentCopy, contentDescription = stringResource(R.string.cd_copy_phone))
+                Icon(
+                    Icons.Outlined.ContentCopy,
+                    contentDescription = stringResource(R.string.cd_copy_phone),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
             }
         }
     }
@@ -721,10 +749,18 @@ private fun AddressRow(address: Address) {
         )
         if (text.isNotBlank()) {
             IconButton(onClick = { context.startActivity(FieldActions.mapIntent(text)) }) {
-                Icon(Icons.Outlined.Map, contentDescription = stringResource(R.string.cd_open_maps))
+                Icon(
+                    Icons.Outlined.Map,
+                    contentDescription = stringResource(R.string.cd_open_maps),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
             }
             IconButton(onClick = { FieldActions.copyText(context, "address", text) }) {
-                Icon(Icons.Outlined.ContentCopy, contentDescription = stringResource(R.string.cd_copy_address))
+                Icon(
+                    Icons.Outlined.ContentCopy,
+                    contentDescription = stringResource(R.string.cd_copy_address),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
             }
         }
     }
@@ -759,7 +795,11 @@ private fun OnlineServiceRow(service: OnlineService) {
             }
             if (handle.isNotBlank()) {
                 IconButton(onClick = { FieldActions.copyText(context, "url", handle) }) {
-                    Icon(Icons.Outlined.ContentCopy, contentDescription = stringResource(R.string.cd_copy_link))
+                    Icon(
+                        Icons.Outlined.ContentCopy,
+                        contentDescription = stringResource(R.string.cd_copy_link),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
                 }
             }
         }
@@ -795,10 +835,18 @@ private fun LinkRow(
             )
             if (uri.isNotBlank()) {
                 IconButton(onClick = { context.startActivity(FieldActions.browserIntent(uri)) }) {
-                    Icon(Icons.Outlined.OpenInNew, contentDescription = stringResource(R.string.cd_open_link))
+                    Icon(
+                        Icons.Outlined.OpenInNew,
+                        contentDescription = stringResource(R.string.cd_open_link),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
                 }
                 IconButton(onClick = { FieldActions.copyText(context, "url", uri) }) {
-                    Icon(Icons.Outlined.ContentCopy, contentDescription = stringResource(R.string.cd_copy_link))
+                    Icon(
+                        Icons.Outlined.ContentCopy,
+                        contentDescription = stringResource(R.string.cd_copy_link),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
                 }
             }
         }

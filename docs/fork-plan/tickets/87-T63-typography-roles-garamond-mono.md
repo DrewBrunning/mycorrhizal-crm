@@ -145,3 +145,28 @@ instance, just not sufficient on its own. Hand-verified live: "Birthday"/"Phone"
 render in Mono, the field values themselves stay sans, and unrelated captions elsewhere (e.g.
 `ContactHeader.tsx`'s "Circles"/"Tags" labels) are confirmed untouched. `npx tsc --noEmit` and
 `npx vitest run` (622/622) still green.
+
+**2026-08-11 (Android port, `feature/t62-t63-android-parity`).** Ported the same typography decisions
+to the Kotlin/Compose Android app. Found the brand fonts already bundled as Android font resources
+with `FontFamily` objects already defined (pre-existing) — but the theme applied serif far *more*
+broadly than web ever did: `display*`/`headline*` (6 whole M3 type roles) were globally serif, and
+since M3's `AlertDialog` defaults its title to `headlineSmall`, **all 18 dialog titles in the app were
+already rendering in Garamond** — the exact "looks bad on modals" problem T63 was written to avoid.
+Confirmed with the user and fixed as part of this port (not left as pre-existing scope):
+- Reverted `display*`/`headline*` to sans (confirmed zero app code wanted serif there — it was dead
+  weight, only reachable via the dialog-title collision).
+- `titleLarge` — the one role used exclusively for TopAppBar titles and the contact-name heading, zero
+  collisions — is now the sole EB Garamond carrier, matching web's `typography.h5` exactly. One stray
+  call site (`SettingsScreen.kt`) was bypassing it via a separate `AppTypography.appBarTitle` constant;
+  migrated to the standard `MaterialTheme.typography.titleLarge` pattern every other screen already
+  used, and removed the now-fully-unused constant.
+- Nav drawer item labels (`MycorrhizalApp.kt`, both primary/secondary `NavigationDrawerItem`s) → scoped
+  serif override, matching web's `App.tsx` nav-list fix — `labelLarge` (their implicit default) stays
+  global-sans since it's also the M3 default for `Button`/`Snackbar` labels.
+- Field-group captions → scoped Mono override on the three composables playing that role on Android
+  (`ContactDetailScreen.kt`'s `SectionCard`/`SectionTitle`, `ContactFormScreen.kt`'s `SectionLabel`) —
+  Android groups by field type into cards rather than repeating a caption per value, so the group
+  header ("Phone," "Address," "Email," ...) is the closest analog to web's per-field caption role.
+Added regression tests (`ThemeTest.kt`) pinning `titleLarge`→serif and `headlineSmall`/`labelLarge`→
+sans; hand-verified by temporarily reverting the fix and confirming both new tests fail before
+restoring. `./gradlew testDebugUnitTest lintDebug assembleDebug` green.

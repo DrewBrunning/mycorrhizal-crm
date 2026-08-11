@@ -165,17 +165,20 @@ question for icon buttons and hyperlinks — see below.
   marker survived the navigation (proving client-side routing, not a full reload) and the page landed
   on the correct contact.
 
-**2026-08-11 (Playwright e2e fix).** Giving the Circles/Tags section pencils `color="primary"` (Part C
-above) broke `contacts.spec.ts`'s "should edit a contact name" test: it located the profile Save button
-via `.locator('.MuiCard-root').first().locator('.MuiIconButton-colorPrimary')` on the assumption Save
-was the *only* primary-coloured icon button in the header card — no longer true once the Circles/Tags
-pencils (siblings in the same card, always in the DOM regardless of hover state) also carry
-`color="primary"`, so the locator now matches 3 elements and Playwright's strict mode refuses to click
-it. Fixed by giving the Save/Cancel `IconButton`s real `aria-label`s (`ContactHeader.tsx`, previously
-missing — a real a11y gap, not just a test workaround) and switching the test to
-`getByRole('button', { name: 'Save' })`. Audited every other spec for the same class of breakage
-(button-variant/chip-color/hover-visibility selectors) — this was the only one; everything else already
-used text/role/aria-label-based selectors, robust to the color changes. Verified against the real
-`docker-compose.test.yml` stack (nginx + backend, same-origin `/api`, matching what CI runs): full
-`npx playwright test` — 127/129 pass, the other 2 (`immich.spec.ts`, unrelated to this ticket) pass
-cleanly in isolation and are pre-existing parallel-worker flakiness, not a regression.
+**2026-08-11 (Android port, `feature/t62-t63-android-parity`).** Ported the same color decisions to
+the Kotlin/Compose Android app. Found the palette already hand-pinned hex-for-hex to the web theme
+(pre-existing, referencing "ticket §4.4"), and most of T62's own decisions already the shipped state
+by construction: no chip UI exists yet to de-color, and every "Add X" action already goes through a
+shared `BrandFab` that's already solid brand green. Actual gaps fixed:
+- **Interactive icons → brand green**: copy-to-clipboard, edit, and field-action icons (dial/SMS/
+  compose-email/open-maps/open-in-browser, `ContactDetailScreen.kt`) plus per-item rename icons
+  (`TagsScreen.kt`/`CirclesScreen.kt`/`HouseholdsScreen.kt`) were all untinted grey — now
+  `tint = MaterialTheme.colorScheme.primary`. Decorative icons (leading `Label`/`Person` glyphs) and
+  action chips (`AssistChip`s) confirmed already correctly left alone.
+- **Gift/agenda links — built, not just recolored**: `gift.url`/`conversationAgenda.referenceUrl`
+  weren't rendered as links *at all* on Android (missing from the item label entirely). Added
+  `EntityItem.url`, plumbed through both ViewModels, and rendered as a second line + `OpenInNew`
+  `IconButton` (`LocalUriHandler.openUri`, no cross-module dependency needed) in the shared
+  `EntityListScaffold` row, colored brand green matching `LinkRow`'s existing pattern.
+Verified: `./gradlew testDebugUnitTest lintDebug assembleDebug` green; new ViewModel tests for the
+url pass-through hand-verified to fail first (temporarily reverted, confirmed failure, restored).

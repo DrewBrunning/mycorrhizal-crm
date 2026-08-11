@@ -50,6 +50,9 @@ class LifeEventsViewModelTest {
         assertEquals(UID, vm.uiState.value.entityId)
         assertEquals(1, vm.uiState.value.items.size)
         assertNull(vm.uiState.value.error)
+        // LifeEvent has no url-like field — EntityItem.url must default to
+        // null, not carry over stale data from another entity type.
+        assertNull(vm.uiState.value.items[0].url)
     }
 
     @Test fun `create posts the entity id`() = runTest(mainDispatcherRule.testDispatcher) {
@@ -73,11 +76,14 @@ class GiftsViewModelTest {
     @Test fun `loads gifts and deletes by id`() = runTest(mainDispatcherRule.testDispatcher) {
         stubContact(contacts)
         coEvery { repo.listForContact(UID) } returns Result.success(
-            listOf(Gift(id = "g1", entityId = UID, description = "Socks")),
+            listOf(Gift(id = "g1", entityId = UID, description = "Socks", url = "https://example.com/socks")),
         )
         val vm = vm(); advanceUntilIdle()
         assertEquals(1, vm.uiState.value.items.size)
         assertEquals("Socks", vm.uiState.value.items[0].label)
+        // T62 Android port: the gift's url must reach EntityItem so the list
+        // screen can render it as a clickable link (EntityListScreens.kt).
+        assertEquals("https://example.com/socks", vm.uiState.value.items[0].url)
 
         coEvery { repo.listForContact(UID) } returns Result.success(emptyList())
         coEvery { repo.delete("g1") } returns Result.success(Unit)
@@ -120,9 +126,19 @@ class ConversationAgendaViewModelTest {
     @Test fun `loads agenda items`() = runTest(mainDispatcherRule.testDispatcher) {
         stubContact(contacts)
         coEvery { repo.listForContact(UID) } returns Result.success(
-            listOf(ConversationAgenda(id = "a1", entityId = UID, content = "Ask about the move")),
+            listOf(
+                ConversationAgenda(
+                    id = "a1",
+                    entityId = UID,
+                    content = "Ask about the move",
+                    referenceUrl = "https://example.com/listing",
+                ),
+            ),
         )
         val vm = vm(); advanceUntilIdle()
         assertEquals("Ask about the move", vm.uiState.value.items[0].label)
+        // T62 Android port: referenceUrl must reach EntityItem the same way
+        // Gift.url does — see GiftsViewModelTest's matching assertion.
+        assertEquals("https://example.com/listing", vm.uiState.value.items[0].url)
     }
 }
