@@ -77,7 +77,7 @@ fun ActivitiesScreen(
             when {
                 state.isLoading -> LoadingSkeleton()
                 state.activities.isEmpty() && state.error == null ->
-                    EmptyState(message = "No activities yet")
+                    EmptyState(message = stringResource(R.string.activities_empty))
                 state.activities.isEmpty() && (state.errorRes != null || state.error != null) ->
                     EmptyState(state.errorRes?.let { stringResource(it) } ?: state.error.orEmpty())
                 else -> {

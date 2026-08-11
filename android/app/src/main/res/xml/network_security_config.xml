@@ -6,9 +6,13 @@
     self-signed certs are handled via the KeyChain import flow (installCustomCertificate),
     never by disabling TLS verification.
 
-    Debug builds additionally trust user-installed CAs (Settings → Security →
-    Install certificate) so a developer's self-signed dev cert works in the
-    debug APK without shipping any trust override to production.
+    This is the config a RELEASE build actually uses. Debug builds don't use
+    this file at all — the debug source set fully replaces it with
+    app/src/debug/res/xml/network_security_config.xml, which is where the
+    debug-only <debug-overrides> trusting user-installed CAs lives. Do not add
+    a <debug-overrides> block here: lint flags it as a duplicate against the
+    debug variant's own block ("Expecting at most 1 <debug-overrides>"), since
+    the debug build's resource model merges both files.
 -->
 <network-security-config>
     <base-config cleartextTrafficPermitted="false">
@@ -16,11 +20,4 @@
             <certificates src="system" />
         </trust-anchors>
     </base-config>
-
-    <debug-overrides>
-        <trust-anchors>
-            <certificates src="system" />
-            <certificates src="user" />
-        </trust-anchors>
-    </debug-overrides>
 </network-security-config>

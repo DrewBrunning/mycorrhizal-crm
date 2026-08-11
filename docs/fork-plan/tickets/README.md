@@ -25,8 +25,19 @@ the rank.
 **Three mobile-API tickets filed 2026-08-10** (see the Deferred table's M1 row): M1's Android app
 is being built, and this session pulls the backend/web API additions it needs out as their own
 ranked tickets — M2 (mobile push device registration + FCM delivery), M3 (dashboard
-today/overview composite), M4 (contact-detail composite). All three are backend + web only; the
-Android client itself is external to this repo.
+today/overview composite), M4 (contact-detail composite). All three are backend + web only — their
+Android-side consumers are [M5](84-M5-android-polish-and-hardening.md). (The note filed with these
+said "the Android client itself is external to this repo"; that was already untrue when written —
+the app lives in `android/` as of M1, 2026-08-10. Corrected 2026-08-11.)
+
+> **Numbering cleanup, 2026-08-11.** Filing M2/M3/M4 at 81/82/83 left the tickets they overlapped
+> in place, so `main` briefly carried two `81-` and two `82-` files. Resolved: `81-N10-fcm-push`
+> was fully superseded and is retired — its backend became M2, and its Android half (the
+> `FirebaseMessagingService`, the keep-polling-for-de-Googled-devices constraint, and the
+> double-notify idempotence key) moved to [M5](84-M5-android-polish-and-hardening.md) §5a rather
+> than being dropped. `82-M1-missing-endpoints` was only *partly* superseded — M3 took its
+> dashboard item, its other three are still live — so it is renumbered
+> [85/M6](85-M6-photo-url-user-prefs-oidc.md). Old links to either old filename will not resolve.
 
 | Ticket | Status |
 |---|---|
@@ -79,8 +90,8 @@ Planned features that these get built at all.
 | [P2f](75-P2f-audiobookshelf-integration.md) · Audiobookshelf integration | R1. Same shape of idea as P2e, for Audiobookshelf. |
 | [P3](76-P3-ai-ollama-layer.md) · AI / Ollama layer | R1. Summarization, entity/relationship extraction, memory-curator suggestions. Gated on the propose-then-approve pattern; `90` D1 is explicit this is not an AI-first project. |
 | [T61](80-T61-contact-picker-api.md) · W3C Contact Picker API for PWA import | R1. Lets the PWA read device contacts directly (Chrome on Android only) instead of requiring a file export first. Narrow audience — Android + PWA + no native app installed. |
-| [N10](81-N10-fcm-push.md) · FCM push for the Android app | R3. Real-time reminder/cadence/birthday push to the native Android client, replacing the polling workers on Play-Services devices (polling stays as fallback). Backend FCM channel + Android FirebaseMessagingService. Gated on M1's later phases. |
-| [M1 endpoints](82-M1-missing-endpoints.md) · Backend endpoints the Android app needs (photo URL, dashboard, user prefs, OIDC native return) | R2. From the M1 Phase-5 review: expose the profile-picture URL in list/detail payloads, one-call `GET /dashboard`, `PATCH /users/me`, and a `client=android` OIDC callback that returns the token via a custom-scheme deep link. FCM is separate (N10). |
+| [M6](85-M6-photo-url-user-prefs-oidc.md) · Backend endpoints the Android app needs (photo URL, user prefs, OIDC native return) | R2. From the M1 Phase-5 review: expose the profile-picture URL in list/detail payloads, `PATCH /users/me`, and a `client=android` OIDC callback that returns the token via a custom-scheme deep link. Was `82-M1-missing-endpoints`; renumbered 2026-08-11 to clear the duplicate `82-`, and its fourth item (the dashboard composite) is now M3. |
+| [M5](84-M5-android-polish-and-hardening.md) · Android app: deferred polish, native-endpoint consumers, and the missing test tier | R3. The **Android-client counterpart to M2/M3/M4**, which are all backend-side. The work M1 shipped without: tablet layout + accessibility audit (M1 items 31/32, explicitly deferred), the four recorded UI deviations from the web, the in-overlay quick-capture sheet, the app-side clients for M2 (unblocked now — M2's backend is merged), M3, M4 and the M1-endpoints items, and a decision about the absent instrumented-test tier. A container of independently shippable sections, not an all-or-nothing gate. Filed 2026-08-11 after a full review pass of `android/` — that pass's *defect* fixes landed separately, see M1's review-pass note. |
 
 ## Done
 
@@ -163,7 +174,7 @@ Kept for reference/lookup, not ranked — order below is roughly the sequence th
 | [T59](78-T59-immich-v041-still-broken.md) · Immich still broken in v0.4.1 testing | **DONE** |
 | [N6](26-N6-backup-restore.md) · Full backup restore | **DONE** (2026-08-09 — tested `VACUUM INTO` online backup via `make backup` + restore procedure; see the ticket's landing note for the two deliberate deviations from its implementation suggestions) |
 | [T60](79-T60-audit-trail-ui.md) · Audit trail UI | **DONE** (2026-08-09 — new `/audit` page + API module + hook over T18's shipped backend: event list with server-side entity_type/entity_id filters, contact-only Undo with confirmation dialog, contact uid→detail-page links, all five locales; see the ticket's landing note for the decisions taken) |
-| [M1](67-M1-mobile-android-app.md) · Native Android app (Kotlin, Jetpack Compose) | **Phases 1–5 core DONE** (2026-08-10 — working core client in `android/`: Gradle multi-module build, JWT/API-token auth, contacts list/detail/create/edit, activities/notes/reminders + unified timeline, tappable field actions + link-action enrichment (on-device verified), local FTS search, 349 hand-verified tests, CI workflow. Phase 3 sub-resources, Phase 4 native call/SMS tracking + notifications + quick-capture, Phase 5 T57 device-contacts import + QuickContact + custom link actions + R8. Tablet layout + final polish are in the review pass) |
+| [M1](67-M1-mobile-android-app.md) · Native Android app (Kotlin, Jetpack Compose) | **Phases 1–5 core DONE** (2026-08-10 — working core client in `android/`: Gradle multi-module build, JWT/API-token auth, contacts list/detail/create/edit, activities/notes/reminders + unified timeline, tappable field actions + link-action enrichment (on-device verified), local FTS search, 349 hand-verified tests, CI workflow. Phase 3 sub-resources, Phase 4 native call/SMS tracking + notifications + quick-capture, Phase 5 T57 device-contacts import + QuickContact + custom link actions + R8. **Review pass 2026-08-11** — see the ticket's review-pass note: Android CI had never been green (two lint errors), `BootReceiver` could never fire, `:app` shadowed `:core:ui`'s resources, and ~80 strings were unlocalized; all fixed, 358 tests. Deferred polish moved to [M5](84-M5-android-polish-and-hardening.md)) |
 
 ### ⚠ A grooming lesson worth keeping visible
 

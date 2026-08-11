@@ -7,6 +7,7 @@
 | **Depends on** | [N9](30-N9-notification-channels.md) (done — owns the channel abstraction and push sender) |
 | **Source** | M1's open question 5 / §13 ("Push notifications from server: requires FCM integration on the backend, ticketed separately") + the 2026-08-10 mobile-API work session |
 | **Status** | **Backend done; frontend Settings UI split off, not started** |
+| **Supersedes** | `81-N10-fcm-push.md` (retired 2026-08-11 — same feature, filed earlier). Its **Android** half is not here: `MyFirebaseMessagingService`, token registration on login/logout, the requirement that WorkManager polling stays as the only path on de-Googled devices, and the poll-boundary double-notify idempotence key all moved to [M5](84-M5-android-polish-and-hardening.md) §5a. |
 
 ## Why this exists
 

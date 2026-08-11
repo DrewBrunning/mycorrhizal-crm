@@ -105,11 +105,15 @@ fun SettingsContent(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(stringResource(R.string.settings_session), style = MaterialTheme.typography.titleMedium)
-        InfoRow("Server", state.session.serverUrl ?: "—")
-        InfoRow("Username", state.session.username ?: "—")
-        InfoRow("Language", state.session.language ?: "—")
-        InfoRow("Date format", state.session.dateFormat ?: "—")
-        InfoRow("Admin", if (state.session.isAdmin) "Yes" else "No")
+        val dash = stringResource(R.string.settings_value_placeholder)
+        InfoRow(stringResource(R.string.settings_server), state.session.serverUrl ?: dash)
+        InfoRow(stringResource(R.string.settings_username), state.session.username ?: dash)
+        InfoRow(stringResource(R.string.settings_language), state.session.language ?: dash)
+        InfoRow(stringResource(R.string.settings_date_format), state.session.dateFormat ?: dash)
+        InfoRow(
+            stringResource(R.string.settings_admin),
+            if (state.session.isAdmin) stringResource(R.string.settings_yes) else stringResource(R.string.settings_no),
+        )
 
         Text(stringResource(R.string.settings_tracking), style = MaterialTheme.typography.titleMedium)
         ToggleRow(

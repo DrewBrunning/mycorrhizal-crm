@@ -1,13 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.Mycorrhizal" parent="android:Theme.Material.Light.NoActionBar">
+    <style name="Base.Theme.Mycorrhizal" parent="android:Theme.Material.Light.NoActionBar">
         <!-- Brand-green status bar with light (white) status icons, so the
              whole top reads as one mycelium band. Screens that collapse their
              app bar (contact detail) override this at runtime via the scroll
-             state (bone at the top, green once collapsed). -->
+             state (bone at the top, green once collapsed). The bone-colored
+             navigation bar gets dark (light-appearance) icons/buttons via
+             android:windowLightNavigationBar, but that attribute requires API
+             27+ (min is 26), so it's added on top of this base theme in
+             values-v27/themes.xml instead of here. -->
         <item name="android:statusBarColor">#3E543E</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:navigationBarColor">#FAF5EA</item>
-        <item name="android:windowLightNavigationBar">true</item>
     </style>
+
+    <!-- Identity theme for API < 27; values-v27/themes.xml overrides this
+         with the windowLightNavigationBar addition on API 27+. -->
+    <style name="Theme.Mycorrhizal" parent="Base.Theme.Mycorrhizal" />
 </resources>

@@ -11,6 +11,7 @@ import com.mycorrhizal.crm.model.network.RelationshipEdgeStatuses
 import com.mycorrhizal.crm.model.network.RelationshipEdgeTypes
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
+import com.mycorrhizal.crm.ui.R
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -66,7 +67,7 @@ class RelationshipsViewModelTest {
         advanceUntilIdle()
 
         assertFalse(vm.uiState.value.isLoading)
-        assertEquals("Missing contact id", vm.uiState.value.error)
+        assertEquals(R.string.relationships_error_missing_contact_id, vm.uiState.value.errorRes)
     }
 
     @Test

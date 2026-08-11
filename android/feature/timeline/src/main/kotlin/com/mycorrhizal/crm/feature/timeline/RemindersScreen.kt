@@ -81,7 +81,7 @@ fun RemindersScreen(
             when {
                 state.isLoading -> LoadingSkeleton()
                 state.reminders.isEmpty() && state.error == null ->
-                    EmptyState(message = "No reminders yet")
+                    EmptyState(message = stringResource(R.string.reminders_empty))
                 state.reminders.isEmpty() && (state.errorRes != null || state.error != null) ->
                     EmptyState(state.errorRes?.let { stringResource(it) } ?: state.error.orEmpty())
                 else -> {

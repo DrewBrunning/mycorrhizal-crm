@@ -64,8 +64,14 @@
     <string name="contact_links">Enlaces</string>
     <string name="contact_organization">Organización</string>
     <string name="contact_personal_info">Información personal</string>
+    <string name="contact_online_services">Servicios en línea</string>
     <string name="contact_circles">Círculos</string>
     <string name="contact_edit">Editar contacto</string>
+    <string name="contact_birthday_label">Cumpleaños: %1$s</string>
+    <string name="mobile_link_message">Mensaje</string>
+    <string name="mobile_link_voice_call">Llamada de voz</string>
+    <string name="mobile_link_video_call">Videollamada</string>
+    <string name="mobile_link_meeting">Reunión</string>
     <string name="cd_call">Llamar</string>
     <string name="cd_text">Mensaje</string>
     <string name="cd_compose_email">Redactar correo</string>
@@ -79,6 +85,7 @@
     <!-- Formulario de contacto -->
     <string name="contact_new">Nuevo contacto</string>
     <string name="contact_edit_title">Editar contacto</string>
+    <string name="contact_name_section">Nombre</string>
     <string name="contact_given_name">Nombre</string>
     <string name="contact_surname">Apellidos</string>
     <string name="contact_nickname">Apodo</string>
@@ -115,7 +122,24 @@
     <string name="custom_links_label">Etiqueta</string>
     <string name="custom_links_mime">MIMETYPE</string>
     <string name="custom_links_template">URI de intent ({handle})</string>
+
+    <!-- Notifications (tracking alerts / channels) -->
+    <string name="notification_channel_reminders_name">Recordatorios</string>
+    <string name="notification_channel_reminders_description">Recordatorios de contacto y seguimientos</string>
+    <string name="notification_channel_cadence_name">Alertas de cadencia</string>
+    <string name="notification_channel_cadence_description">Avisos de cadencia de relación vencida</string>
+    <string name="notification_channel_birthdays_name">Cumpleaños</string>
+    <string name="notification_channel_birthdays_description">Próximos cumpleaños de contactos</string>
+    <string name="notification_cadence_overdue_title">Cadencia vencida</string>
+    <string name="notification_cadence_overdue_body">Contacto atrasado con %1$s.</string>
+    <string name="notification_birthday_upcoming_title">Próximo cumpleaños</string>
+    <string name="notification_birthday_upcoming_body">El cumpleaños de %1$s se acerca.</string>
+    <string name="notification_someone_fallback">Alguien</string>
+    <string name="notification_contact_fallback">un contacto</string>
+    <string name="call_service_notification_text">Esperando llamadas</string>
+    <string name="quick_capture_pill_text">%1$s — registrar interacción</string>
     <string name="settings_notifications">Mostrar notificaciones</string>
+    <string name="settings_value_placeholder">—</string>
     <string name="settings_cancel">Cancelar</string>
 
     <!-- Actividades -->
@@ -153,6 +177,7 @@
     <string name="activity_error_missing_id">Falta el ID del contacto</string>
     <string name="note_error_missing_id">Falta el ID del contacto</string>
     <string name="reminder_error_missing_id">Falta el ID del contacto</string>
+    <string name="reminder_title_fallback">Recordatorio</string>
     <string name="cd_new_note">Nueva nota</string>
 
     <!-- Recordatorios -->
@@ -191,6 +216,9 @@
     <string name="circles_add_member">Añadir miembro</string>
     <string name="circles_remove_member">Quitar miembro</string>
     <string name="circles_member_vcard_uid">UID de VCard del contacto</string>
+    <string name="circles_empty">Aún no hay círculos</string>
+    <string name="circles_members_empty">Aún no hay miembros</string>
+    <string name="circles_error_missing_id">Falta el ID del círculo</string>
     <string name="action_create">Crear</string>
     <string name="action_save">Guardar</string>
     <string name="action_delete">Eliminar</string>
@@ -209,6 +237,9 @@
     <string name="tags_add_contact">Etiquetar contacto</string>
     <string name="tags_remove_contact">Quitar etiqueta del contacto</string>
     <string name="tags_contact_vcard_uid">UID de VCard del contacto</string>
+    <string name="tags_empty">Aún no hay etiquetas</string>
+    <string name="tags_contacts_empty">Ningún contacto etiquetado</string>
+    <string name="tags_error_missing_id">Falta el ID de la etiqueta</string>
 
 
     <!-- Households -->
@@ -223,6 +254,12 @@
     <string name="households_remove_member">Quitar miembro</string>
     <string name="households_member_vcard_uid">UID de VCard del contacto</string>
     <string name="households_role">Rol (opcional)</string>
+    <string name="households_empty">Aún no hay hogares</string>
+    <string name="households_members_empty">Aún no hay miembros</string>
+    <string name="households_error_missing_id">Falta el ID del hogar</string>
+    <string name="household_type_family_unit">Unidad familiar</string>
+    <string name="household_type_roommates">Compañeros de piso</string>
+    <string name="household_type_other">Otro</string>
 
 
     <!-- Relationships -->
@@ -233,10 +270,14 @@
     <string name="relationships_other_name">Nombre del otro contacto (opcional)</string>
     <string name="relationships_accept">Aceptar</string>
     <string name="relationships_suggested">Sugerido</string>
+    <string name="relationships_empty">Aún no hay relaciones</string>
+    <string name="relationships_error_missing_contact_id">Falta el ID del contacto</string>
+    <string name="relationships_error_no_vcard_uid">El contacto no tiene UID de VCard</string>
 
 
     <!-- Timeline entities -->
     <string name="entities_empty">Nada por aquí todavía</string>
+    <string name="entities_error_no_vcard_uid">El contacto no tiene UID de VCard</string>
     <string name="life_events_title">Acontecimientos vitales</string>
     <string name="life_events_new">Nuevo acontecimiento</string>
     <string name="life_events_type">Tipo</string>

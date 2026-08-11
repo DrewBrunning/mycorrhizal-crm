@@ -9,6 +9,7 @@ import android.os.Looper
 import android.telephony.PhoneStateListener
 import android.telephony.TelephonyManager
 import androidx.core.content.ContextCompat
+import com.mycorrhizal.crm.ui.R
 
 /**
  * Foreground service that shows the quick-capture overlay when a call ends
@@ -22,6 +23,11 @@ class CallDetectionService : Service() {
 
     private val handler = Handler(Looper.getMainLooper())
 
+    // Owned by this service instance (not a static/singleton holder) so the
+    // View it retains while shown is scoped to the service's lifetime;
+    // dismiss()'d and dropped in onDestroy.
+    private var quickCaptureOverlay: QuickCaptureOverlay? = null
+
     private val phoneStateListener = object : PhoneStateListener() {
         override fun onCallStateChanged(state: Int, phoneNumber: String?) {
             if (state == TelephonyManager.CALL_STATE_IDLE) {
@@ -30,7 +36,8 @@ class CallDetectionService : Service() {
                     android.Manifest.permission.SYSTEM_ALERT_WINDOW,
                 ) == PackageManager.PERMISSION_GRANTED
                 if (hasOverlayPermission) {
-                    QuickCaptureOverlay.show(this@CallDetectionService)
+                    (quickCaptureOverlay ?: QuickCaptureOverlay().also { quickCaptureOverlay = it })
+                        .show(this@CallDetectionService)
                 }
                 resetSelfStop()
             }
@@ -40,7 +47,11 @@ class CallDetectionService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startForeground(
             NOTIFICATION_ID,
-            NotificationBuilder.cadence(applicationContext, "Mycorrhizal", "Listening for calls"),
+            NotificationBuilder.cadence(
+                applicationContext,
+                applicationContext.getString(R.string.app_name),
+                applicationContext.getString(R.string.call_service_notification_text),
+            ),
         )
         val telephonyManager = getSystemService(TelephonyManager::class.java)
         telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_CALL_STATE)
@@ -55,7 +66,8 @@ class CallDetectionService : Service() {
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
-        QuickCaptureOverlay.dismiss()
+        quickCaptureOverlay?.dismiss()
+        quickCaptureOverlay = null
         val telephonyManager = getSystemService(TelephonyManager::class.java)
         telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_NONE)
         super.onDestroy()

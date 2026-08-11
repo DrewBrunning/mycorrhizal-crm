@@ -1,11 +1,18 @@
-# M1 mobile — missing backend endpoints: photo URL serving, dashboard, user prefs, OIDC native return
+# M6 — missing backend endpoints for the Android app: photo URL serving, user prefs, OIDC native return
 
 | | |
 |---|---|
 | **Rating** | 2 |
 | **Source** | M1 Phase-5 review pass, 2026-08-10 (on-device findings + the Android app's missing pieces) |
-| **Depends on** | M1 Phases 1–5 (shipped). FCM endpoints are **not** here — they're scoped in [N10](81-N10-fcm-push.md). |
-| **Status** | Scoped. Backend + web + cross-platform tickets follow this one; Android picks up again after. |
+| **Depends on** | M1 Phases 1–5 (shipped). FCM endpoints are **not** here — they're [M2](81-M2-fcm-mobile-push.md). |
+| **Status** | Scoped. Three of its original four gaps are still live; §2 (dashboard) was taken over by [M3](82-M3-dashboard-overview-endpoint.md). |
+
+> **Renumbered 2026-08-11**, from `82-M1-missing-endpoints.md` to `85`/`M6`. The 2026-08-10
+> mobile-API session filed M2/M3/M4 at 81/82/83 without retiring the tickets they overlapped, so
+> `main` briefly carried two `81-` and two `82-` files. This ticket keeps its three live gaps and
+> moves clear of M3's number; the fully-superseded `81-N10-fcm-push.md` was retired into
+> [M2](81-M2-fcm-mobile-push.md) (backend) and [M5](84-M5-android-polish-and-hardening.md) §5
+> (its Android half). Old links to `82-M1-missing-endpoints.md` will not resolve.
 
 ## Why this exists
 
@@ -37,21 +44,13 @@ primitive, but the list/detail payloads don't expose a URL to it.
 Backend test bar: the list/detail responses expose the URL (not a raw disk path), a photo-less
 contact omits it, and `?thumbnail=true` still serves bytes.
 
-### 2. Dashboard aggregation — one round-trip instead of three
+### 2. Dashboard aggregation — **SUPERSEDED by [M3](82-M3-dashboard-overview-endpoint.md)**
 
-**Problem.** The Android Dashboard (added in the Phase-5 review to mirror the web's) fetches
-upcoming birthdays, upcoming reminders, and overdue cadences with three separate authenticated
-requests on every open. The web does the same, but a mobile first-tab that costs 3 requests is
-wasteful and slow on flaky networks.
-
-**Proposal — new endpoint:**
-- `GET /api/v1/dashboard` → `{ birthdays: [...], reminders: [...], overdue_cadences: [...], as_of: <timestamp> }`.
-  Each array is the same shape those endpoints already return, so the Android client reuses its
-  existing DTOs. Cacheable for a short TTL (`Cache-Control: private, max-age=60`) since the
-  dashboard is a glance, not a live read.
-
-Backend test bar: aggregates the three sources, omits empty arrays, owner-scoped like every other
-endpoint.
+This gap ("the Android Dashboard costs three authenticated requests on every open — collapse
+`GET /reminders/upcoming` + `/cadence-policies/overdue` + `/contacts/birthdays` into one call")
+was re-scoped in full as [M3](82-M3-dashboard-overview-endpoint.md) on 2026-08-10, which also
+picked up the equivalent web `DashboardPage` fan-out. **Build it from M3, not from here.** The
+heading is kept so §3/§4's numbering still matches anything that cited it.
 
 ### 3. User preferences update — Android can't change language/date-format
 
@@ -93,18 +92,19 @@ unchanged; state/nonce/PKCE still enforced on the callback regardless of client.
 
 ## Out of scope
 
-- **FCM** — fully scoped in [N10](81-N10-fcm-push.md). Reference it for the push channel.
+- **FCM** — [M2](81-M2-fcm-mobile-push.md), backend already done.
+- **The dashboard composite** — [M3](82-M3-dashboard-overview-endpoint.md); see §2 above.
 - Web-push subscription changes — N9 shapes stay untouched.
-- Any Android UI for these — the Android client changes that consume them land after this ticket
-  (photo Coil URL, dashboard one-call, editable settings rows, deep-link auth) and are tracked in
-  the M1 ticket / follow-up commits.
+- Any Android UI for these — the Android client changes that consume them (photo Coil URL +
+  authenticated image loader, editable settings rows, deep-link auth) are
+  [M5](84-M5-android-polish-and-hardening.md) §3 and §5. That is now a real ticket; this section
+  previously said they were "tracked in the M1 ticket / follow-up commits", which meant untracked.
 
 ## Done when
 
 - Backend `go build ./... && go vet ./... && gofmt -l . && go test ./...` green.
 - List/detail responses expose the photo URL (not a raw disk path); `?thumbnail=true` still serves
   bytes; photo-less contacts omit the field.
-- `GET /dashboard` aggregates the three sources, owner-scoped, empty arrays omitted.
 - `PATCH /users/me` updates language/date-format with enum validation.
 - `client=android` OIDC flow returns the token via the custom-scheme deep link; the web flow is
   byte-for-byte unchanged; state/nonce/PKCE enforced on both.

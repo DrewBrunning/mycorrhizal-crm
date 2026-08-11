@@ -234,7 +234,7 @@ fun ContactListItem(
     ) {
         ContactAvatar(
             photoUri = contact.photoThumbnail,
-            contentDescription = "Photo of ${contact.displayName}",
+            contentDescription = stringResource(R.string.contacts_photo_description, contact.displayName),
             size = 40.dp,
         )
         Column(modifier = Modifier.weight(1f)) {

@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.tags
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -7,6 +8,7 @@ import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.model.network.ContactTag
 import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.network.foldApiError
+import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -119,6 +121,7 @@ data class TagDetailUiState(
     val isLoading: Boolean = false,
     val removingUid: String? = null,
     val error: String? = null,
+    @StringRes val errorRes: Int? = null,
 )
 
 @HiltViewModel
@@ -141,11 +144,11 @@ class TagDetailViewModel @Inject constructor(
 
     fun load() {
         if (tagId.isBlank()) {
-            _uiState.update { it.copy(isLoading = false, error = "Missing tag id") }
+            _uiState.update { it.copy(isLoading = false, errorRes = R.string.tags_error_missing_id, error = null) }
             return
         }
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(isLoading = true, error = null, errorRes = null) }
             tagRepository.getWithContacts(tagId).foldApiError(
                 onSuccess = { detail ->
                     _uiState.update {
@@ -195,6 +198,6 @@ class TagDetailViewModel @Inject constructor(
     }
 
     fun onErrorShown() {
-        _uiState.update { it.copy(error = null) }
+        _uiState.update { it.copy(error = null, errorRes = null) }
     }
 }

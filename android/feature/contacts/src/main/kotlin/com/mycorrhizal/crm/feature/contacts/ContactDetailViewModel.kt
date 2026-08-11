@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ReminderRepository
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
@@ -24,12 +25,15 @@ data class ContactDetailUiState(
     val isLoading: Boolean = false,
     @StringRes val errorRes: Int? = null,
     val error: String? = null,
+    /** The signed-in user's `date_format` preference (see `SessionState`); null until loaded. */
+    val dateFormat: String? = null,
 )
 
 @HiltViewModel
 class ContactDetailViewModel @Inject constructor(
     private val contactRepository: ContactRepository,
     private val reminderRepository: ReminderRepository,
+    private val authRepository: AuthRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -43,6 +47,11 @@ class ContactDetailViewModel @Inject constructor(
 
     init {
         load()
+        viewModelScope.launch {
+            authRepository.observeSession().collect { session ->
+                _uiState.update { it.copy(dateFormat = session.dateFormat) }
+            }
+        }
     }
 
     fun load() {

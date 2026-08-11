@@ -1,7 +1,9 @@
 package com.mycorrhizal.crm.feature.contacts
 
+import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ReminderRepository
+import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.Name
@@ -10,7 +12,9 @@ import com.mycorrhizal.crm.testing.MainDispatcherRule
 import com.mycorrhizal.crm.ui.R
 import androidx.lifecycle.SavedStateHandle
 import io.mockk.coEvery
+import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -27,10 +31,17 @@ class ContactDetailViewModelTest {
 
     private val contactRepository = mockk<ContactRepository>()
     private val reminderRepository = mockk<ReminderRepository>()
+    private val authRepository = mockk<AuthRepository>()
 
-    private fun viewModel(id: Int): ContactDetailViewModel {
+    private fun viewModel(id: Int, dateFormat: String? = null): ContactDetailViewModel {
         coEvery { contactRepository.getDeviceLookupKey(any()) } returns null
-        return ContactDetailViewModel(contactRepository, reminderRepository, SavedStateHandle(mapOf("contactId" to id)))
+        every { authRepository.observeSession() } returns flowOf(SessionState(dateFormat = dateFormat))
+        return ContactDetailViewModel(
+            contactRepository,
+            reminderRepository,
+            authRepository,
+            SavedStateHandle(mapOf("contactId" to id)),
+        )
     }
 
     @Test
@@ -62,15 +73,39 @@ class ContactDetailViewModelTest {
         val record = ContactRecordResponse(id = 9, card = Card(name = Name(full = "Erin")))
         coEvery { contactRepository.getContact(9) } returns Result.success(record)
         coEvery { contactRepository.getDeviceLookupKey(9) } returns null
+        every { authRepository.observeSession() } returns flowOf(SessionState())
 
         val vm = ContactDetailViewModel(
             contactRepository,
             reminderRepository,
+            authRepository,
             SavedStateHandle(mapOf("contactId" to "9")),
         )
         advanceUntilIdle()
 
         assertEquals("Erin", vm.uiState.value.contact?.card?.name?.full)
+    }
+
+    @Test
+    fun `dateFormat reflects the signed-in user's date_format preference`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+        val vm = viewModel(5, dateFormat = "us")
+        advanceUntilIdle()
+
+        assertEquals("us", vm.uiState.value.dateFormat)
+    }
+
+    @Test
+    fun `dateFormat is null when the session carries no preference`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+        val vm = viewModel(5, dateFormat = null)
+        advanceUntilIdle()
+
+        assertNull(vm.uiState.value.dateFormat)
     }
 
     @Test

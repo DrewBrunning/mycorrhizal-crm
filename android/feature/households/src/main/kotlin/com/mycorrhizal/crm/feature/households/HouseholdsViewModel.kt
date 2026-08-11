@@ -1,5 +1,8 @@
 package com.mycorrhizal.crm.feature.households
 
+import androidx.annotation.StringRes
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -8,6 +11,7 @@ import com.mycorrhizal.crm.model.network.Household
 import com.mycorrhizal.crm.model.network.HouseholdMember
 import com.mycorrhizal.crm.model.network.HouseholdTypes
 import com.mycorrhizal.crm.network.foldApiError
+import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -121,6 +125,7 @@ data class HouseholdDetailUiState(
     val isLoading: Boolean = false,
     val removingUid: String? = null,
     val error: String? = null,
+    @StringRes val errorRes: Int? = null,
 )
 
 @HiltViewModel
@@ -143,11 +148,13 @@ class HouseholdDetailViewModel @Inject constructor(
 
     fun load() {
         if (householdId.isBlank()) {
-            _uiState.update { it.copy(isLoading = false, error = "Missing household id") }
+            _uiState.update {
+                it.copy(isLoading = false, errorRes = R.string.households_error_missing_id, error = null)
+            }
             return
         }
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(isLoading = true, error = null, errorRes = null) }
             householdRepository.getWithMembers(householdId).foldApiError(
                 onSuccess = { detail ->
                     _uiState.update {
@@ -197,14 +204,15 @@ class HouseholdDetailViewModel @Inject constructor(
     }
 
     fun onErrorShown() {
-        _uiState.update { it.copy(error = null) }
+        _uiState.update { it.copy(error = null, errorRes = null) }
     }
 }
 
 object HouseholdTypeLabels {
+    @Composable
     fun label(type: String): String = when (type) {
-        HouseholdTypes.FAMILY_UNIT -> "Family unit"
-        HouseholdTypes.ROOMMATES -> "Roommates"
-        else -> "Other"
+        HouseholdTypes.FAMILY_UNIT -> stringResource(R.string.household_type_family_unit)
+        HouseholdTypes.ROOMMATES -> stringResource(R.string.household_type_roommates)
+        else -> stringResource(R.string.household_type_other)
     }
 }

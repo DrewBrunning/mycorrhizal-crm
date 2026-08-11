@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- android:windowLightNavigationBar requires API 27+; min is 26, so this
+         API-27+-only override layers dark (light-appearance) navigation bar
+         icons/buttons on top of the bone-colored navigation bar defined by
+         Base.Theme.Mycorrhizal in values/themes.xml. -->
+    <style name="Theme.Mycorrhizal" parent="Base.Theme.Mycorrhizal">
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
+</resources>

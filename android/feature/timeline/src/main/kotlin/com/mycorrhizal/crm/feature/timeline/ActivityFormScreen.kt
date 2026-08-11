@@ -61,7 +61,11 @@ fun ActivityFormScreen(
                 },
                 title = {
                     Text(
-                        text = if (state.isEdit) "Edit activity" else "New activity",
+                        text = if (state.isEdit) {
+                            stringResource(R.string.activity_edit)
+                        } else {
+                            stringResource(R.string.activity_new)
+                        },
                         style = MaterialTheme.typography.titleLarge,
                     )
                 },
@@ -159,7 +163,7 @@ fun ActivityFormContent(
             if (state.isSaving) {
                 CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
             }
-            Text(if (state.isEdit) "Save changes" else "Create activity")
+            Text(if (state.isEdit) stringResource(R.string.activity_save) else stringResource(R.string.activity_create))
         }
     }
 }

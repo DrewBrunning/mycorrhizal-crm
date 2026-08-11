@@ -64,8 +64,14 @@
     <string name="contact_links">Links</string>
     <string name="contact_organization">Organization</string>
     <string name="contact_personal_info">Personal information</string>
+    <string name="contact_online_services">Online services</string>
     <string name="contact_circles">Circles</string>
     <string name="contact_edit">Edit contact</string>
+    <string name="contact_birthday_label">Birthday: %1$s</string>
+    <string name="mobile_link_message">Message</string>
+    <string name="mobile_link_voice_call">Voice Call</string>
+    <string name="mobile_link_video_call">Video Call</string>
+    <string name="mobile_link_meeting">Meeting</string>
     <string name="cd_call">Call</string>
     <string name="cd_text">Text</string>
     <string name="cd_compose_email">Compose email</string>
@@ -79,6 +85,7 @@
     <!-- Contact form -->
     <string name="contact_new">New contact</string>
     <string name="contact_edit_title">Edit contact</string>
+    <string name="contact_name_section">Name</string>
     <string name="contact_given_name">Given name</string>
     <string name="contact_surname">Surname</string>
     <string name="contact_nickname">Nickname</string>
@@ -111,6 +118,7 @@
     <string name="settings_call_tracking">Log calls as activities</string>
     <string name="settings_sms_tracking">Log messages as activities</string>
     <string name="settings_notifications">Show notifications</string>
+    <string name="settings_value_placeholder">—</string>
     <string name="custom_links_title">Custom link actions</string>
     <string name="custom_links_new">New action</string>
     <string name="custom_links_empty">No custom link actions yet.</string>
@@ -118,6 +126,22 @@
     <string name="custom_links_label">Label</string>
     <string name="custom_links_mime">MIMETYPE</string>
     <string name="custom_links_template">Intent URI ({handle})</string>
+
+    <!-- Notifications (tracking alerts / channels) -->
+    <string name="notification_channel_reminders_name">Reminders</string>
+    <string name="notification_channel_reminders_description">Contact reminders and follow-ups</string>
+    <string name="notification_channel_cadence_name">Cadence alerts</string>
+    <string name="notification_channel_cadence_description">Overdue relationship cadence warnings</string>
+    <string name="notification_channel_birthdays_name">Birthdays</string>
+    <string name="notification_channel_birthdays_description">Upcoming contact birthdays</string>
+    <string name="notification_cadence_overdue_title">Cadence overdue</string>
+    <string name="notification_cadence_overdue_body">%1$s is overdue for contact.</string>
+    <string name="notification_birthday_upcoming_title">Upcoming birthday</string>
+    <string name="notification_birthday_upcoming_body">%1$s\'s birthday is coming up.</string>
+    <string name="notification_someone_fallback">Someone</string>
+    <string name="notification_contact_fallback">a contact</string>
+    <string name="call_service_notification_text">Listening for calls</string>
+    <string name="quick_capture_pill_text">%1$s — log interaction</string>
 
     <!-- Activities -->
     <string name="activities_title">Activities</string>
@@ -171,6 +195,7 @@
     <string name="reminder_error_remind_at">Remind date must be ISO 8601, e.g. 2026-08-10T14:00:00Z</string>
     <string name="reminder_error_recurrence">Unknown recurrence</string>
     <string name="reminder_error_missing_id">Missing contact id</string>
+    <string name="reminder_title_fallback">Reminder</string>
     <string name="cd_complete_reminder">Complete reminder</string>
     <string name="cd_new_reminder">New reminder</string>
 
@@ -190,6 +215,9 @@
     <string name="circles_add_member">Add member</string>
     <string name="circles_remove_member">Remove member</string>
     <string name="circles_member_vcard_uid">Contact VCard UID</string>
+    <string name="circles_empty">No circles yet</string>
+    <string name="circles_members_empty">No members yet</string>
+    <string name="circles_error_missing_id">Missing circle id</string>
 
     <!-- Shared actions -->
     <string name="action_create">Create</string>
@@ -209,6 +237,9 @@
     <string name="tags_add_contact">Tag contact</string>
     <string name="tags_remove_contact">Remove tag from contact</string>
     <string name="tags_contact_vcard_uid">Contact VCard UID</string>
+    <string name="tags_empty">No tags yet</string>
+    <string name="tags_contacts_empty">No contacts tagged</string>
+    <string name="tags_error_missing_id">Missing tag id</string>
 
     <!-- Households -->
     <string name="households_title">Households</string>
@@ -222,6 +253,12 @@
     <string name="households_remove_member">Remove member</string>
     <string name="households_member_vcard_uid">Contact VCard UID</string>
     <string name="households_role">Role (optional)</string>
+    <string name="households_empty">No households yet</string>
+    <string name="households_members_empty">No members yet</string>
+    <string name="households_error_missing_id">Missing household id</string>
+    <string name="household_type_family_unit">Family unit</string>
+    <string name="household_type_roommates">Roommates</string>
+    <string name="household_type_other">Other</string>
 
     <!-- Relationships -->
     <string name="relationships_title">Relationships</string>
@@ -231,9 +268,13 @@
     <string name="relationships_other_name">Other contact name (optional)</string>
     <string name="relationships_accept">Accept</string>
     <string name="relationships_suggested">Suggested</string>
+    <string name="relationships_empty">No relationships yet</string>
+    <string name="relationships_error_missing_contact_id">Missing contact id</string>
+    <string name="relationships_error_no_vcard_uid">Contact has no VCard UID</string>
 
     <!-- Timeline entities (life events / gifts / preferences / agenda) -->
     <string name="entities_empty">Nothing here yet</string>
+    <string name="entities_error_no_vcard_uid">Contact has no VCard UID</string>
     <string name="life_events_title">Life events</string>
     <string name="life_events_new">New life event</string>
     <string name="life_events_type">Type</string>

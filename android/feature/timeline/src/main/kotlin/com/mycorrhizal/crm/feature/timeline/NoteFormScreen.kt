@@ -62,7 +62,11 @@ fun NoteFormScreen(
                 },
                 title = {
                     Text(
-                        text = if (state.isEdit) "Edit note" else "New note",
+                        text = if (state.isEdit) {
+                            stringResource(R.string.note_edit)
+                        } else {
+                            stringResource(R.string.note_new)
+                        },
                         style = MaterialTheme.typography.titleLarge,
                     )
                 },
@@ -135,7 +139,7 @@ fun NoteFormContent(
             if (state.isSaving) {
                 CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
             }
-            Text(if (state.isEdit) "Save changes" else "Create note")
+            Text(if (state.isEdit) stringResource(R.string.note_save) else stringResource(R.string.note_create))
         }
     }
 }

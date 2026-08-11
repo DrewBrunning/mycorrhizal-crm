@@ -2,6 +2,8 @@ package com.mycorrhizal.crm.feature.contacts
 
 import android.content.Intent
 import android.net.Uri
+import androidx.annotation.StringRes
+import com.mycorrhizal.crm.ui.R
 
 /**
  * Mobile link-action enrichment (ticket §7.6). The server owns the existence
@@ -24,7 +26,13 @@ import android.net.Uri
 enum class MobileActionKind { MESSAGE, VOICE_CALL, VIDEO_CALL, APP_OPEN, APP_CALL }
 
 data class MobileLinkAction(
-    val label: String,
+    /**
+     * A string resource id, not raw text — resolve with `stringResource()` at
+     * the call site. Kept named `label` (not `labelRes`) because
+     * [MobileLinkRegistryTest] interpolates `action.label` into an assertion
+     * message; renaming the field would require touching that test file.
+     */
+    @StringRes val label: Int,
     val kind: MobileActionKind,
     /** ContactsContract.Data MIMETYPEs that prove the app is installed. */
     val mimeTypes: List<String>,
@@ -61,19 +69,19 @@ object MobileLinkRegistry {
         category = MobileLinkCategory.MESSAGING,
         actions = listOf(
             MobileLinkAction(
-                label = "Message",
+                label = R.string.mobile_link_message,
                 kind = MobileActionKind.MESSAGE,
                 mimeTypes = listOf("vnd.android.cursor.item/vnd.org.thoughtcrime.securesms.contact"),
                 intentBuilder = { handle -> sendTo("smsto:$handle", "org.thoughtcrime.securesms") },
             ),
             MobileLinkAction(
-                label = "Voice Call",
+                label = R.string.mobile_link_voice_call,
                 kind = MobileActionKind.VOICE_CALL,
                 mimeTypes = listOf("vnd.android.cursor.item/vnd.org.thoughtcrime.securesms.call"),
                 intentBuilder = { handle -> view("sgnl://signal.me/#p/$handle", "org.thoughtcrime.securesms") },
             ),
             MobileLinkAction(
-                label = "Video Call",
+                label = R.string.mobile_link_video_call,
                 kind = MobileActionKind.VIDEO_CALL,
                 mimeTypes = listOf("vnd.android.cursor.item/vnd.org.thoughtcrime.securesms.videocall"),
                 intentBuilder = { handle -> view("sgnl://video.call?recipient=$handle", "org.thoughtcrime.securesms") },
@@ -86,7 +94,7 @@ object MobileLinkRegistry {
         category = MobileLinkCategory.MESSAGING,
         actions = listOf(
             MobileLinkAction(
-                label = "Message",
+                label = R.string.mobile_link_message,
                 kind = MobileActionKind.MESSAGE,
                 mimeTypes = listOf("vnd.android.cursor.item/vnd.com.whatsapp.profile"),
                 intentBuilder = { handle ->
@@ -94,7 +102,7 @@ object MobileLinkRegistry {
                 },
             ),
             MobileLinkAction(
-                label = "Voice Call",
+                label = R.string.mobile_link_voice_call,
                 kind = MobileActionKind.VOICE_CALL,
                 mimeTypes = listOf("vnd.android.cursor.item/vnd.com.whatsapp.voip.call"),
                 intentBuilder = { handle ->
@@ -102,7 +110,7 @@ object MobileLinkRegistry {
                 },
             ),
             MobileLinkAction(
-                label = "Video Call",
+                label = R.string.mobile_link_video_call,
                 kind = MobileActionKind.VIDEO_CALL,
                 mimeTypes = listOf("vnd.android.cursor.item/vnd.com.whatsapp.video.call"),
                 intentBuilder = { handle ->
@@ -117,13 +125,13 @@ object MobileLinkRegistry {
         category = MobileLinkCategory.MESSAGING,
         actions = listOf(
             MobileLinkAction(
-                label = "Message",
+                label = R.string.mobile_link_message,
                 kind = MobileActionKind.MESSAGE,
                 mimeTypes = listOf("vnd.android.cursor.item/vnd.org.telegram.messenger.android.profile"),
                 intentBuilder = { handle -> view("tg://resolve?phone=$handle", "org.telegram.messenger") },
             ),
             MobileLinkAction(
-                label = "Voice Call",
+                label = R.string.mobile_link_voice_call,
                 kind = MobileActionKind.VOICE_CALL,
                 mimeTypes = listOf("vnd.android.cursor.item/vnd.org.telegram.messenger.android.call"),
                 intentBuilder = { handle -> view("tg://call?phone=$handle", "org.telegram.messenger") },
@@ -136,7 +144,7 @@ object MobileLinkRegistry {
         category = MobileLinkCategory.MEETING,
         actions = listOf(
             MobileLinkAction(
-                label = "Video Call",
+                label = R.string.mobile_link_video_call,
                 kind = MobileActionKind.VIDEO_CALL,
                 mimeTypes = listOf(
                     // Verified on-device (Pixel 8a): Google Meet registers these
@@ -155,7 +163,7 @@ object MobileLinkRegistry {
         category = MobileLinkCategory.MEETING,
         actions = listOf(
             MobileLinkAction(
-                label = "Meeting",
+                label = R.string.mobile_link_meeting,
                 kind = MobileActionKind.VIDEO_CALL,
                 mimeTypes = listOf("vnd.android.cursor.item/vnd.com.zoom.video.call"),
                 intentBuilder = { handle -> view("zoommtg://zoom.us/start?confno=$handle") },
@@ -168,13 +176,13 @@ object MobileLinkRegistry {
         category = MobileLinkCategory.SOCIAL,
         actions = listOf(
             MobileLinkAction(
-                label = "Message",
+                label = R.string.mobile_link_message,
                 kind = MobileActionKind.MESSAGE,
                 mimeTypes = listOf("vnd.android.cursor.item/vnd.com.discord"),
                 intentBuilder = { handle -> view("discord://discord.com/users/$handle", "com.discord") },
             ),
             MobileLinkAction(
-                label = "Voice Call",
+                label = R.string.mobile_link_voice_call,
                 kind = MobileActionKind.VOICE_CALL,
                 mimeTypes = listOf("vnd.android.cursor.item/vnd.com.discord.call"),
                 intentBuilder = { handle -> view("discord://discord.com/channels/$handle", "com.discord") },

@@ -72,10 +72,14 @@ class InteractionSyncWorker @AssistedInject constructor(
             }
         }
 
-        if (syncedCount == pending.size) {
-            pendingInteractionRepository.deleteSynced()
-        }
-        trackingSettings.setLastCallLogTimestamp(trackingSettings.lastCallLogTimestamp())
+        // deleteSynced() only ever removes rows already marked synced=1 (a
+        // per-row flag set individually above), so it is safe to run every
+        // time regardless of whether this batch fully succeeded. Gating it on
+        // syncedCount == pending.size left already-synced rows undeleted (and
+        // therefore unbounded growth in the local table) after any partial
+        // failure, since a later run's condition would only pass again once a
+        // whole batch cleanly succeeded.
+        pendingInteractionRepository.deleteSynced()
         return Result.success()
     }
 

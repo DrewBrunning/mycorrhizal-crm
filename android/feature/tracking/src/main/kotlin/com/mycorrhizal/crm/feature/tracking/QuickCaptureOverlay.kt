@@ -1,6 +1,5 @@
 package com.mycorrhizal.crm.feature.tracking
 
-import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.graphics.PixelFormat
@@ -10,6 +9,7 @@ import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
 import android.widget.TextView
+import com.mycorrhizal.crm.ui.R
 
 /**
  * A lightweight `SYSTEM_ALERT_WINDOW` overlay shown briefly after a call ends
@@ -18,10 +18,16 @@ import android.widget.TextView
  * after [DISPLAY_MS] or on tap. The overlay requires the SYSTEM_ALERT_WINDOW
  * special permission; without it, nothing is shown (graceful degradation).
  *
+ * An instance (not a singleton `object`) so the View it retains is scoped to
+ * its owner's lifetime rather than the process's — [CallDetectionService]
+ * owns one and calls [dismiss] from `onDestroy`. A static/singleton holder
+ * here would pin a Context-carrying View for as long as the process runs
+ * (lint: StaticFieldLeak).
+ *
  * A full in-overlay Compose sheet (pre-filled activity form) is the natural
  * extension; the current version keeps the overlay minimal and testable.
  */
-object QuickCaptureOverlay {
+class QuickCaptureOverlay {
 
     private var view: View? = null
     private val handler = Handler(Looper.getMainLooper())
@@ -30,7 +36,7 @@ object QuickCaptureOverlay {
         dismiss()
         val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
         val pill = TextView(context).apply {
-            text = "Mycorrhizal — log interaction"
+            text = context.getString(R.string.quick_capture_pill_text, context.getString(R.string.app_name))
             setTextColor(0xFFFFFFFF.toInt())
             setPadding(48, 32, 48, 32)
             background = android.graphics.drawable.GradientDrawable().apply {
@@ -78,5 +84,9 @@ object QuickCaptureOverlay {
         }
     }
 
-    private const val DISPLAY_MS = 30_000L
+    internal fun isShowingForTest(): Boolean = view != null
+
+    private companion object {
+        const val DISPLAY_MS = 30_000L
+    }
 }

@@ -58,6 +58,7 @@ private fun EntityListScaffold(
     dialog: @Composable () -> Unit,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
+    val errorMessage = uiState.errorRes?.let { stringResource(it) } ?: uiState.error
 
     Scaffold(
         topBar = {
@@ -86,11 +87,11 @@ private fun EntityListScaffold(
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when {
                 uiState.isLoading -> LoadingSkeleton()
-                uiState.items.isEmpty() && uiState.error == null ->
+                uiState.items.isEmpty() && errorMessage == null ->
                     EmptyState(message = stringResource(R.string.entities_empty))
-                uiState.items.isEmpty() && uiState.error != null -> {
+                uiState.items.isEmpty() && errorMessage != null -> {
                     Text(
-                        text = uiState.error.orEmpty(),
+                        text = errorMessage,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.align(Alignment.Center),
                     )
@@ -123,7 +124,7 @@ private fun EntityListScaffold(
 
     dialog()
 
-    uiState.error?.let { message ->
+    errorMessage?.let { message ->
         LaunchedEffect(message) {
             snackbarHostState.showSnackbar(message)
             onErrorShown()
