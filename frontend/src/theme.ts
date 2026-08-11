@@ -75,6 +75,21 @@ export const lightTheme = createTheme({
     body2: {
       color: "#595148", // soil
     },
+    // T63: h5 is used exclusively for page-level headings app-wide (every
+    // page's own title, the contact-name heading) -- confirmed no live
+    // collision with MuiDialogTitle (defaults to h6, not h5) or any error/
+    // warning surface. Safe to theme globally, unlike h6/subtitle1/subtitle2/
+    // body2, which are all reused too widely (including inside dialogs) for
+    // a blanket override.
+    h5: {
+      fontFamily: '"EB Garamond", serif',
+    },
+    // T63: overline is used exclusively for section-subheading labels (e.g.
+    // "Food & Drink Preferences", "Clothing Sizes") -- same reasoning, no
+    // dialog/error collision.
+    overline: {
+      fontFamily: '"IBM Plex Mono", monospace',
+    },
   },
 
   components: {
@@ -195,6 +210,14 @@ export const darkTheme = createTheme({
 
     body2: {
       color: "#B5ADA2", // soil
+    },
+    // T63: see lightTheme's matching h5/overline comments -- both createTheme
+    // calls are independent, so these need to be set in each block.
+    h5: {
+      fontFamily: '"EB Garamond", serif',
+    },
+    overline: {
+      fontFamily: '"IBM Plex Mono", monospace',
     },
   },
 

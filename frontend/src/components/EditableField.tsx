@@ -57,7 +57,11 @@ export default function EditableField({
       >
         {icon}
         <Box sx={{ flex: 1 }}>
-          <Typography variant="caption" color="text.secondary">
+          {/* T63: field-name label gets IBM Plex Mono to contrast against the
+              IBM Plex Sans field value below it -- component-scoped since
+              "caption" is reused 60+ times elsewhere (timestamps, hints,
+              error text) and isn't safe to retheme globally. */}
+          <Typography variant="caption" color="text.secondary" sx={{ fontFamily: '"IBM Plex Mono", monospace' }}>
             {label}
           </Typography>
           {isEditing ? (
