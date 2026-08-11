@@ -6,7 +6,7 @@
 | **Size** | L |
 | **Depends on** | — |
 | **Source** | 2026-08-10 mobile-API work session — the frontend-per-screen audit found `ContactDetailPage.tsx` fires ~21 distinct endpoints to render one screen |
-| **Status** | **To be done** |
+| **Status** | **DONE** (2026-08-11) |
 
 ## Why this exists
 
@@ -135,4 +135,34 @@ obvious mobile shape.
 
 ## Landing note
 
-(empty until shipped)
+**Shipped 2026-08-11** (branch `feature/m2-m3-m4-mobile-composites`, alongside M2's frontend
+finish and M3). Landed per spec, with one deliberate deviation: **controller tests use the
+existing `setupRouter()` AutoMigrate harness** (`controllers/contact_detail_controller_test.go`),
+not `database.InitDB`, for the same reason recorded on M3's landing note — `briefing_controller_
+test.go`, the reference pattern this ticket names explicitly, already uses `setupRouter()`, and
+this composite adds no new persisted columns for a real-schema test to catch drift on.
+
+`attachBriefingRelationships` (briefing_controller.go) was refactored into a shared
+`resolveConfirmedRelationships` returning `[]models.BriefingRelationship` directly, so the
+briefing composite and this one call the exact same confirmed-only, secret-excluded,
+other-party-name-resolved query instead of maintaining two copies. Verified the refactor didn't
+change behavior: `TestGetContactBriefing_*` all stayed green afterward.
+
+Circles/Tags were built as **this contact's memberships** (via the `circle_members`/
+`contact_tags` join tables), not the global per-user lists `GET /circles`/`GET /tags` return —
+the ticket's own DTO field list didn't disambiguate this, but returning the full per-user circle/
+tag universe on every single contact-detail fetch would contradict the ticket's own stated
+purpose ("21 round-trips is unacceptable on a phone"). Documented explicitly in both the Go doc
+comments and the OpenAPI schema description.
+
+All five hand-verification passes (empty-slice normalization, full composition including both
+name-resolution enrichments, secret-edge exclusion, cross-user 404, and all three Immich states)
+were confirmed to actually fail when the corresponding code was temporarily broken, then restored
+— per CLAUDE.md's "hand-verify your tests." Hand-verified against the real dev backend/DB: `GET
+/contacts/5/detail` returns 200 with every collection block present as `[]`; the `immich` key is
+absent, consistent with `GET /immich/config`'s own view that this account has no config; the
+`contact` block's `id`/`uid`/`card.name` match `GET /contacts/5` exactly. The dev DB only has one
+contact with no sub-resource data, so a diff against individual endpoints for a *populated*
+contact wasn't possible live — the Go test suite's `TestGetContactDetail_ComposesAllBlocks`
+covers that ground instead, asserting exact field values (contact_name, other-party name,
+related-entity name) against real query results for one row per block.
