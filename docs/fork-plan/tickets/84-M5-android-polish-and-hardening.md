@@ -7,12 +7,10 @@
 | **Depends on** | M1 Phases 1–5 (shipped). Items §3 and §5 are gated on the backend tickets noted inline. |
 | **Status** | Scoped, not started. |
 
-> **Numbering note.** This is filed as `84`/`M5` rather than `83`/`M2` because the open PR
-> [#81](https://github.com/drewbrunning/mycorrhizal-crm/pull/81) (`feature/mobile-api`) already
-> claims M2/M3/M4 and renumbers `81-N10-fcm-push.md` → `81-M2-fcm-mobile-push.md`,
-> `82-M1-missing-endpoints.md` → `82-M3-dashboard-overview-endpoint.md`, and adds
-> `83-M4-contact-detail-composite.md`. If that PR is ever abandoned, `83` is a free slot and this
-> file can be renumbered; until then this numbering is the one that doesn't collide.
+This is the Android-client counterpart to the M-series backend tickets: [M2](81-M2-fcm-mobile-push.md)
+(FCM push), [M3](82-M3-dashboard-overview-endpoint.md) (`GET /dashboard`), and
+[M4](83-M4-contact-detail-composite.md) (`GET /contacts/:id/detail`) are all backend-side; this is
+the app-side work, and where those tickets' Android consumers live.
 
 ## Why this exists
 
@@ -65,7 +63,7 @@ M1's landing note lists four cosmetic differences spotted on-device against the 
 
 1. **Contact photos still do not display** — and this is now a three-part problem, not one:
    - The backend does not yet return a usable photo URL. That is the photo-serving item in
-     `82-M1-missing-endpoints.md` (renamed `82-M3-...` by PR #81) — **gated on it**.
+     [`82-M1-missing-endpoints.md`](82-M1-missing-endpoints.md) — **gated on it**.
    - `ContactAvatar` only accepts an *absolute* `http(s)` URL (`uri.startsWith("http")`). The
      proposed wire value is a **relative** URL (`/api/v1/contacts/{id}/profile_picture?thumbnail=true`),
      which will fall straight through to the person-icon fallback. It needs to resolve relative
@@ -95,20 +93,27 @@ Note the overlay was converted from a singleton `object` to a service-owned inst
 
 ## 5. Consume the backend endpoints once they land
 
-`82-M1-missing-endpoints.md` says its Android consumers are "tracked in the M1 ticket / follow-up
-commits", which in practice means untracked. They are:
+[`82-M1-missing-endpoints.md`](82-M1-missing-endpoints.md) says its Android consumers are "tracked
+in the M1 ticket / follow-up commits", which in practice means untracked. They are:
 
-- **Photo URL** → §3.1 above.
-- **`GET /dashboard`** → the Android Dashboard currently makes three separate authenticated
-  requests (birthdays, reminders, overdue cadences) on every open. Collapse to one call.
-- **`PATCH /users/me`** → Settings shows Language and Date format as read-only rows. Make them
-  editable. (The read path is already wired, and the date-format preference is now actually
-  *used* — the contact detail honours it as of the 2026-08-11 pass.)
-- **OIDC native return** → the app has no SSO path at all today; the deep-link handling
-  (`mycorrhizal://oidc/callback`) and its intent filter land here once the backend's
-  `client=android` branch exists.
+- **Photo URL** ([M1 endpoints](82-M1-missing-endpoints.md) §1) → §3.1 above.
+- **`GET /dashboard`** ([M3](82-M3-dashboard-overview-endpoint.md)) → the Android Dashboard
+  currently makes three separate authenticated requests (birthdays, reminders, overdue cadences)
+  on every open. Collapse to one call.
+- **`GET /contacts/:id/detail`** ([M4](83-M4-contact-detail-composite.md)) → not in the original
+  M1-endpoints list; adopt the composite on the contact detail once it exists.
+- **`PATCH /users/me`** ([M1 endpoints](82-M1-missing-endpoints.md) §3) → Settings shows Language
+  and Date format as read-only rows. Make them editable. (The read path is already wired, and the
+  date-format preference is now actually *used* — the contact detail honours it as of the
+  2026-08-11 pass.)
+- **OIDC native return** ([M1 endpoints](82-M1-missing-endpoints.md) §4) → the app has no SSO path
+  at all today; the deep-link handling (`mycorrhizal://oidc/callback`) and its intent filter land
+  here once the backend's `client=android` branch exists.
+- **FCM device registration** ([M2](81-M2-fcm-mobile-push.md), backend already done) → the app
+  polls via WorkManager today. The `FirebaseMessagingService` and device-token registration are
+  the Android half, and M2's backend is merged, so this one is **unblocked now**.
 
-Each is gated on its backend half. FCM is **not** here — that is `81-N10`/`81-M2`.
+Each of the others is gated on its backend half.
 
 ## 6. There is no instrumented-test tier at all
 
@@ -148,9 +153,11 @@ Do not leave it implicit.
 
 ## Out of scope
 
-- **FCM push** — `81-N10` / `81-M2`.
-- **Backend endpoint work** — `82-M1-missing-endpoints` / `82-M3` / `83-M4`. This ticket is only
-  the Android side of consuming them.
+- **The FCM backend channel** — [M2](81-M2-fcm-mobile-push.md), already done. Its Android half is
+  in §5 above, not out of scope.
+- **Backend endpoint work** — [M1 endpoints](82-M1-missing-endpoints.md),
+  [M3](82-M3-dashboard-overview-endpoint.md), [M4](83-M4-contact-detail-composite.md). This ticket
+  is only the Android side of consuming them.
 - **iOS / Wear OS** — out of scope per M1 §13.
 
 ## Done when

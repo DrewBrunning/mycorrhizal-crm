@@ -3057,6 +3057,9 @@ Tests 349 → 358, `testDebugUnitTest` + `lintDebug` + `assembleDebug` green.
 Tablet layout and the accessibility audit (items 31/32), the four UI deviations recorded above
 (contact photos, which also need Coil wired to the authenticated OkHttp client and relative-URL
 support; last-name derivation; font roles; section styling), the in-overlay quick-capture sheet,
-the Android clients for `82-M1-missing-endpoints`, the absent `androidTest` tier (there are zero
+the Android clients for the M-series backend tickets ([M2](81-M2-fcm-mobile-push.md) — whose
+backend is already merged, so the app-side FCM work is unblocked —
+[M3](82-M3-dashboard-overview-endpoint.md), [M4](83-M4-contact-detail-composite.md) and
+[M1 endpoints](82-M1-missing-endpoints.md)), the absent `androidTest` tier (there are zero
 instrumented tests and CI runs none), release signing, and the unverified Telegram/Zoom/Discord
 MIMETYPEs.

@@ -25,8 +25,10 @@ the rank.
 **Three mobile-API tickets filed 2026-08-10** (see the Deferred table's M1 row): M1's Android app
 is being built, and this session pulls the backend/web API additions it needs out as their own
 ranked tickets — M2 (mobile push device registration + FCM delivery), M3 (dashboard
-today/overview composite), M4 (contact-detail composite). All three are backend + web only; the
-Android client itself is external to this repo.
+today/overview composite), M4 (contact-detail composite). All three are backend + web only — their
+Android-side consumers are [M5](84-M5-android-polish-and-hardening.md). (The note filed with these
+said "the Android client itself is external to this repo"; that was already untrue when written —
+the app lives in `android/` as of M1, 2026-08-10. Corrected 2026-08-11.)
 
 | Ticket | Status |
 |---|---|
@@ -81,7 +83,7 @@ Planned features that these get built at all.
 | [T61](80-T61-contact-picker-api.md) · W3C Contact Picker API for PWA import | R1. Lets the PWA read device contacts directly (Chrome on Android only) instead of requiring a file export first. Narrow audience — Android + PWA + no native app installed. |
 | [N10](81-N10-fcm-push.md) · FCM push for the Android app | R3. Real-time reminder/cadence/birthday push to the native Android client, replacing the polling workers on Play-Services devices (polling stays as fallback). Backend FCM channel + Android FirebaseMessagingService. Gated on M1's later phases. |
 | [M1 endpoints](82-M1-missing-endpoints.md) · Backend endpoints the Android app needs (photo URL, dashboard, user prefs, OIDC native return) | R2. From the M1 Phase-5 review: expose the profile-picture URL in list/detail payloads, one-call `GET /dashboard`, `PATCH /users/me`, and a `client=android` OIDC callback that returns the token via a custom-scheme deep link. FCM is separate (N10). |
-| [M5](84-M5-android-polish-and-hardening.md) · Android app: deferred polish, native-endpoint consumers, and the missing test tier | R3. The Android-side work M1 shipped without: tablet layout + accessibility audit (M1 items 31/32, explicitly deferred), the four recorded UI deviations from the web, the in-overlay quick-capture sheet, the clients for the M1-endpoints work above, and a decision about the absent instrumented-test tier. A container of independently shippable sections, not an all-or-nothing gate. Filed 2026-08-11 after a full review pass of `android/` — that pass's *defect* fixes landed separately, see M1's landing note. |
+| [M5](84-M5-android-polish-and-hardening.md) · Android app: deferred polish, native-endpoint consumers, and the missing test tier | R3. The **Android-client counterpart to M2/M3/M4**, which are all backend-side. The work M1 shipped without: tablet layout + accessibility audit (M1 items 31/32, explicitly deferred), the four recorded UI deviations from the web, the in-overlay quick-capture sheet, the app-side clients for M2 (unblocked now — M2's backend is merged), M3, M4 and the M1-endpoints items, and a decision about the absent instrumented-test tier. A container of independently shippable sections, not an all-or-nothing gate. Filed 2026-08-11 after a full review pass of `android/` — that pass's *defect* fixes landed separately, see M1's review-pass note. |
 
 ## Done
 
