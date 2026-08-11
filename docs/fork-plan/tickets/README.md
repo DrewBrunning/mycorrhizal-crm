@@ -39,11 +39,37 @@ the app lives in `android/` as of M1, 2026-08-10. Corrected 2026-08-11.)
 > dashboard item, its other three are still live — so it is renumbered
 > [85/M6](85-M6-photo-url-user-prefs-oidc.md). Old links to either old filename will not resolve.
 
+**M8 landed 2026-08-11** (see its own file for the full matrix) and filed the 19 tickets below —
+M9–M26 (Android build-out) plus T65 (a web-side wiring gap the audit found in passing). Target
+agreed at sign-off: parity is the default, every gap becomes a ticket unless explicitly marked
+"deliberately not on mobile" — 8 surfaces were (Immich config, API-token + link-field-type registry
+management, custom field schema authoring, calendar sync, contact-field visibility toggle, CSV/VCF/
+JSContact export, admin user management, CSV/VCF file import). Everything else defaults to build-it,
+including webhooks, notification-channel config, circle/tag triage, and registration.
+
 | Ticket | Status |
 |---|---|
-| [M8](89-M8-web-android-parity-audit.md) · Web ↔ Android parity audit — screen-by-screen matrix, then tickets from its gaps | **PROPOSED** — needs a yes on its method and its target before anyone starts. M1 was built against its own design doc, never against the web app, so "Phases 1–5 done" was never measured against the product. A short pass already found 4 drawer routes that are literal placeholders and 7 web pages with no Android equivalent (incl. the N2 prep view and the T10 graph). Carries an open question about whether literal 100% parity is the right target — parity is not one-directional. |
+| [M11](93-M11-android-prep-view.md) · Prep view (N2) for Android | **TO BE DONE**. R5. Zero Android footprint today for a rating-5 web capability — not even a placeholder route. |
+| [M12](94-M12-android-cadence-policy.md) · Cadence policy panel for Android | **TO BE DONE**. R5. Whole feature absent — no screen, ViewModel, repo, or route. Feeds M11's health card and M10's overdue-cadences widget. |
+| [M9](91-M9-android-wire-up-existing-screens.md) · Wire up already-built Android screens & dead code | **TO BE DONE**. R4. Cheap: global Notes/Activities routes, bulk circle/tag actions, contact-list pagination past page 1, and VCF-upload wiring are all implemented and just unreachable. |
+| [M17](99-M17-android-entity-scaffold-edit-delete-confirm.md) · Android entity-list scaffold: add edit + delete-confirmation | **TO BE DONE**. R4. One shared-scaffold fix resolves Life Events/Gifts/Preferences/Agenda at once. Unblocks M18. |
+| [M13](95-M13-android-real-search.md) · Real full-text search on Android | **TO BE DONE**. R4. Placeholder route; the embedded contact-list search bar is a different, weaker naive-LIKE mechanism, not T11's FTS5 endpoint. |
+| [M10](92-M10-android-dashboard-composite.md) · Android Dashboard: actually consume the M3 composite endpoint | **TO BE DONE**. R4. Android never was rewired onto M3 — still calls two legacy endpoints and is missing 2 of 4 widgets plus reminder complete/skip actions. |
+| [M20](102-M20-android-reminders-depth.md) · Reminders depth on Android | **TO BE DONE**. R4. No delete, no overdue styling, no reoccur-from-completion, no auto-date-from-recurrence. |
+| [M21](103-M21-android-relationships-depth.md) · Relationships depth on Android | **TO BE DONE**. R4. Other-party names render as raw vCard UIDs, not resolved/tappable — likely the highest-value single item in the ticket. Also missing search-based linking, edit, sensitivity. |
+| [M19](101-M19-android-notes-activities-depth.md) · Notes/Activities depth on Android | **TO BE DONE**. R4. No search/date-filter/pagination/delete per-contact; activities silently can't have more than one participant on Android. |
+| [M24](106-M24-android-contact-form-detail-actions.md) · Contact form & detail-page actions on Android | **TO BE DONE**. R4. Delete and archive/unarchive don't exist at the repository level, not just missing UI — a real gap, not polish. |
 | [M7](88-M7-android-contact-record-coverage.md) · Android contact record: the editor covers 8 of ~30 field groups | **TO BE DONE**. R4. Addresses, organizations, titles, online services, links and personal info are *rendered on the detail screen but not editable*; `how_we_met`/`work_information`/`contact_information` appear nowhere. Not a data-loss risk — edits merge onto the loaded record — but the ceiling on Android is "don't break it". Also fixes emails/phones silently discarding type/label/preferred on edit. Needs a reusable multi-value editor decided first. |
 | [T66](110-T66-contact-timeline-bounded-view-and-explorer.md) · Contact timeline: bounded default view + full-timeline explorer with filters | **Scoped, not started**. R3. Today's M4 composite fetches every note/activity/completion/life-event/external-activity/gift for a contact unbounded on every page load, and Immich's photo-appearance rows compound it fast. Wants: 5-most-recent default + a "View all" explorer (modal on web) with type + recency filters, backed by real cursor pagination (reusing T17's primitives) instead of continuing to merge unbounded fetches client-side. No defined vision yet — design questions recorded in the ticket. |
+| [T65](109-T65-web-circle-tag-rename-delete.md) · Wire up circle/tag rename & delete on web | **TO BE DONE**. R3. The whole stack (backend, API client, hooks) already exists — no page calls it. Web's mirror of M9's "wire it up" bucket. |
+| [M15](97-M15-android-contact-sharing.md) · Contact sharing (P1) on Android | **TO BE DONE**. R3. Zero footprint, including the entry point on a contact's own header. |
+| [M16](98-M16-android-audit-trail.md) · Audit trail + undo (T60) on Android | **TO BE DONE**. R3. Zero footprint. |
+| [M22](104-M22-android-household-depth.md) · Household management depth on Android | **TO BE DONE**. R3. Core CRUD has parity; role-editing, name resolution, AI suggestions, and T40 address-based suggestions don't. |
+| [M23](105-M23-android-contact-list-bulk-breadth.md) · Contact list & bulk breadth on Android | **TO BE DONE**. R3. No circle filter or archived toggle on the main list; merge requires typing a raw numeric ID instead of searching. |
+| [M25](107-M25-android-settings-profile-channels.md) · Settings: profile & channels on Android | **TO BE DONE**. R3. Language/date-format are read-only; theme, password change, webhooks, and ntfy/Gotify config don't exist at all. |
+| [M14](96-M14-android-network-graph.md) · Network graph on Android | **TO BE DONE**. R3. Placeholder route. Needs a mobile-appropriate interaction design first — not a straight port of the desktop force-graph. |
+| [M18](100-M18-android-entity-field-richness.md) · Field richness: Life Events/Gifts/Preferences/Agenda on Android | **TO BE DONE**. R3. Blocked on M17 (edit needs to exist before these fields are worth adding to an edit form). |
+| [M26](108-M26-android-registration-triage.md) · Registration + circle/tag triage on Android | **TO BE DONE**. R2. Both real but low-frequency: one-time account creation, one-time legacy cleanup. |
 
 > **N8 (2FA/TOTP) moved to Feature ideas, 2026-08-07.** For a self-hosted instance
 > going through OIDC the IdP already owns 2FA, so app-level TOTP is redundant there; it only
@@ -181,6 +207,7 @@ Kept for reference/lookup, not ranked — order below is roughly the sequence th
 | [M3](82-M3-dashboard-overview-endpoint.md) · `GET /dashboard` today/overview composite | **DONE** (2026-08-11 — new composite endpoint aggregating birthdays/random contacts/upcoming reminders (contact name embedded)/overdue cadences; `DashboardPage` rewired off it, dropping the four-request fan-out plus its per-reminder N+1) |
 | [M4](83-M4-contact-detail-composite.md) · `GET /contacts/:id/detail` composite | **DONE** (2026-08-11 — new composite aggregating the ~21 endpoints `ContactDetailPage.tsx` fires per contact, incl. relationship-edge and life-event name resolution and the one-config-check Immich block; web `api/contactDetail.ts` module ships as the Android client's target, `ContactDetailPage.tsx` itself deliberately not rewired per the ticket) |
 | [T64](90-T64-household-suggestions-null-crash.md) · "Suggest Households" crashes the whole app when there's nothing to suggest | **DONE** (2026-08-11 — nil-slice fix in both flagged backend functions + frontend guard in both named call sites, raw-JSON and null-prop regression tests, hand-verified live; see the ticket's landing note for a second render-loop bug the first guard attempt introduced and how it was found) |
+| [M8](89-M8-web-android-parity-audit.md) · Web ↔ Android parity audit — screen-by-screen matrix, then tickets from its gaps | **DONE** (2026-08-11 — six parallel research passes covered every web route and user-initiated action against real Android source; target agreed at sign-off was parity-by-default, exclusions decided explicitly rather than inferred. Filed 19 tickets: M9–M26 plus T65. See the ticket's landing note for the full matrix and structural findings — notably that Android's Dashboard never was rewired onto M3, Cadence (T19, rating 5) has zero Android footprint, and a shared entity-list scaffold is missing edit/delete-confirm across four entity types at once) |
 
 ### ⚠ A grooming lesson worth keeping visible
 
