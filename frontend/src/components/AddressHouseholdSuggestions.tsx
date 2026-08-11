@@ -18,8 +18,18 @@ interface AddressHouseholdSuggestionsProps {
   busy: boolean;
 }
 
+// T64 (docs/fork-plan/tickets/90-T64-household-suggestions-null-crash.md):
+// module-scope, not a `[] ` literal inside the component body. `suggestionsProp
+// ?? []` looks equivalent but isn't: when suggestionsProp is null/undefined,
+// the `[]` on the right of `??` is a fresh array on *every* render, which
+// changes identity each time and never settles — the useMemo below keyed on
+// it recomputes every render, its result feeds the useEffect further down,
+// which calls setState, which triggers the next render, which builds another
+// new `[]`, forever. A stable module-level reference breaks that loop.
+const EMPTY_SUGGESTIONS: AddressHouseholdSuggestion[] = [];
+
 export default function AddressHouseholdSuggestions({
-  suggestions,
+  suggestions: suggestionsProp,
   onAccept,
   onDismiss,
   busy,
@@ -27,6 +37,12 @@ export default function AddressHouseholdSuggestions({
   const { t } = useTranslation();
   const [contactsByUid, setContactsByUid] = useState<Map<string, Contact>>(new Map());
   const [pendingUid, setPendingUid] = useState<string | null>(null);
+
+  // The API's TS type promises a non-nullable array, but a Go nil slice
+  // marshals as `null`, not `[]` — normalize once here so the rest of this
+  // component can trust `suggestions` unconditionally, even if the backend
+  // (or a future/mocked caller) sends `null` again.
+  const suggestions = suggestionsProp ?? EMPTY_SUGGESTIONS;
 
   // Resolve member VCardUIDs to display names. The suggestion's membership is
   // a set of contacts, so a single getContactsByUid call covers all of them.

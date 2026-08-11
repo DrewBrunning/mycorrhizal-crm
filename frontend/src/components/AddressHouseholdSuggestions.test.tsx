@@ -89,3 +89,15 @@ test('shows the empty state with no suggestions', () => {
     screen.getByText('No shared-address suggestions found. Add addresses to more contacts to find groups here.')
   ).toBeInTheDocument();
 });
+
+// T64 (docs/fork-plan/tickets/90-T64-household-suggestions-null-crash.md): the
+// TS type promises a non-nullable array, but a Go nil slice marshals as
+// `null`, and that reached this component unguarded. `as any` simulates the
+// malformed API response the real bug produced — the assertion is that this
+// renders the empty state instead of throwing on `null.flatMap`.
+test('renders the empty state instead of throwing when suggestions is null', () => {
+  renderSuggestions({ suggestions: null as unknown as AddressHouseholdSuggestion[] });
+  expect(
+    screen.getByText('No shared-address suggestions found. Add addresses to more contacts to find groups here.')
+  ).toBeInTheDocument();
+});
