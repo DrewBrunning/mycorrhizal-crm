@@ -2,7 +2,10 @@ package services
 
 import (
 	"bytes"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -12,10 +15,12 @@ import (
 	"mycorrhizal/models"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/SherClockHolmes/webpush-go"
+	"github.com/golang-jwt/jwt/v4"
 	"gorm.io/gorm"
 )
 
@@ -350,16 +355,37 @@ type pushNotificationSender struct{}
 
 func (pushNotificationSender) Channel() models.NotificationChannel { return models.ChannelPush }
 
-func (pushNotificationSender) Enabled(db *gorm.DB, _ config.Config, user models.User) bool {
+func (pushNotificationSender) Enabled(db *gorm.DB, cfg config.Config, user models.User) bool {
 	if !user.NotifyPush {
 		return false
 	}
-	var count int64
-	if err := db.Model(&models.PushSubscription{}).Where("user_id = ?", user.ID).Count(&count).Error; err != nil {
+	var webCount int64
+	if err := db.Model(&models.PushSubscription{}).Where("user_id = ?", user.ID).Count(&webCount).Error; err != nil {
 		logger.Warn().Err(err).Uint("user_id", user.ID).Msg("Failed to count push subscriptions for enablement")
 		return false
 	}
-	return count > 0
+	if webCount > 0 {
+		return true
+	}
+	// No browser subscriptions: the channel is enabled only if the user has a
+	// mobile FCM device AND the server is configured to deliver to it (M2 —
+	// an fcm registration alone is inert until FCM_SERVICE_ACCOUNT_FILE is set).
+	var deviceCount int64
+	if err := db.Model(&models.DeviceRegistration{}).
+		Where("user_id = ? AND client = ?", user.ID, string(models.PushClientFCM)).
+		Count(&deviceCount).Error; err != nil {
+		logger.Warn().Err(err).Uint("user_id", user.ID).Msg("Failed to count FCM device registrations for enablement")
+		return false
+	}
+	if deviceCount == 0 {
+		return false
+	}
+	sa, err := LoadFCMServiceAccount(cfg.FCMServiceAccountFile)
+	if err != nil {
+		logger.Warn().Err(err).Uint("user_id", user.ID).Msg("FCM service account misconfigured")
+		return false
+	}
+	return sa != nil
 }
 
 // webPushRecordOverhead is the fixed non-payload overhead webpush-go's
@@ -436,13 +462,29 @@ func (pushNotificationSender) Send(db *gorm.DB, cfg config.Config, user models.U
 	if err := db.Where("user_id = ?", user.ID).Find(&subs).Error; err != nil {
 		return fmt.Errorf("failed to load push subscriptions: %w", err)
 	}
-	if len(subs) == 0 {
+	var devices []models.DeviceRegistration
+	if err := db.Where("user_id = ?", user.ID).Find(&devices).Error; err != nil {
+		return fmt.Errorf("failed to load device registrations: %w", err)
+	}
+	if len(subs) == 0 && len(devices) == 0 {
 		return fmt.Errorf("no push devices registered")
 	}
 
 	vapidPublic, vapidPrivate, err := GetVAPIDKeys(db)
 	if err != nil {
 		return fmt.Errorf("failed to load VAPID keys: %w", err)
+	}
+
+	// FCM service account is loaded once per run; nil when the server isn't
+	// configured for mobile push delivery (M2). An fcm device is only
+	// deliverable when it's non-nil; otherwise the device is skipped and the
+	// reminder stays due for push (so enabling FCM later picks it up).
+	var fcmAccount *fcmServiceAccount
+	if cfg.FCMServiceAccountFile != "" {
+		fcmAccount, err = LoadFCMServiceAccount(cfg.FCMServiceAccountFile)
+		if err != nil {
+			logger.Warn().Err(err).Msg("FCM service account misconfigured; mobile push delivery skipped")
+		}
 	}
 
 	lang := notificationLanguage(user)
@@ -472,7 +514,277 @@ func (pushNotificationSender) Send(db *gorm.DB, cfg config.Config, user models.U
 			recordNotificationDelivery(db, r.ID, models.ChannelPush, true, "")
 		}
 	}
+
+	for _, device := range devices {
+		switch models.PushClient(device.Client) {
+		case models.PushClientAPNS:
+			// Accepted at registration but delivery is not implemented (M2
+			// design decision 2). Logged, never marked sent — so the reminder
+			// stays due for push and an eventual APNS sender picks it up
+			// without a contract change.
+			logger.Warn().Uint("device_id", device.ID).Msg("APNS delivery is not implemented; skipping mobile push device")
+			continue
+		case models.PushClientFCM:
+			if fcmAccount == nil {
+				continue
+			}
+		}
+		for _, r := range reminders {
+			body := notificationShortBody(r, contactMap)
+			stale, err := sendFCMMessage(cfg, fcmAccount, device.Token, title, body)
+			if err != nil {
+				recordNotificationDelivery(db, r.ID, models.ChannelPush, false, err.Error())
+				if sendErr == nil {
+					sendErr = err
+				}
+				continue
+			}
+			if stale {
+				if delErr := db.Delete(&device).Error; delErr != nil {
+					logger.Warn().Err(delErr).Uint("device_id", device.ID).Msg("Failed to delete stale FCM device registration")
+				} else {
+					logger.Info().Uint("device_id", device.ID).Msg("Removed stale FCM device registration (404 from FCM)")
+				}
+				continue
+			}
+			recordNotificationDelivery(db, r.ID, models.ChannelPush, true, "")
+		}
+	}
+
 	return sendErr
+}
+
+// ---------------------------------------------------------------------------
+// Mobile push (FCM) — M2
+// ---------------------------------------------------------------------------
+
+// fcmMessagingScope is the OAuth2 scope required to call the FCM HTTP v1 API.
+const fcmMessagingScope = "https://www.googleapis.com/auth/firebase.messaging"
+
+// fcmTokenEndpoint and fcmSendEndpoint are package vars so tests can redirect
+// them at a fake Google server (the fakeChannelServer pattern) — the production
+// values are Google's real endpoints.
+var (
+	fcmTokenEndpoint = "https://oauth2.googleapis.com/token"
+	fcmSendEndpoint  = "https://fcm.googleapis.com/v1"
+)
+
+// fcmServiceAccount is the subset of a Firebase service-account JSON that FCM
+// delivery needs: the project ID (to address the v1 API), and the client
+// email + private key (to mint the OAuth2 JWT that exchanges for an access
+// token). Everything else in the JSON (client_id, token_uri, ...) is ignored.
+type fcmServiceAccount struct {
+	ProjectID   string `json:"project_id"`
+	ClientEmail string `json:"client_email"`
+	PrivateKey  string `json:"private_key"`
+}
+
+// ErrFCMInvalidServiceAccount is returned when FCM_SERVICE_ACCOUNT_FILE points
+// at a file that is set but unreadable or missing a required field — rejected
+// at boot (config load) rather than failing the first send, per M2's design
+// decision 4.
+var ErrFCMInvalidServiceAccount = errors.New("FCM service account file is invalid")
+
+// LoadFCMServiceAccount reads and validates the Firebase service-account JSON
+// at path. Empty path returns (nil, nil) — FCM delivery is simply not
+// configured. A set-but-invalid path returns ErrFCMInvalidServiceAccount so
+// the server refuses to boot with a misconfiguration instead of discovering it
+// on the first reminder.
+func LoadFCMServiceAccount(path string) (*fcmServiceAccount, error) {
+	if path == "" {
+		return nil, nil
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrFCMInvalidServiceAccount, err)
+	}
+	var sa fcmServiceAccount
+	if err := json.Unmarshal(data, &sa); err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrFCMInvalidServiceAccount, err)
+	}
+	if sa.ProjectID == "" || sa.ClientEmail == "" || sa.PrivateKey == "" {
+		return nil, fmt.Errorf("%w: missing project_id, client_email, or private_key", ErrFCMInvalidServiceAccount)
+	}
+	return &sa, nil
+}
+
+// sendFCMMessage delivers one notification to one device token via the FCM
+// HTTP v1 API. Returns stale=true when FCM no longer knows the token
+// (404 NOT_FOUND) — the caller should drop the registration, mirroring
+// sendPushMessage's 404/410 handling for web push subscriptions.
+//
+// Auth: mints an RS256 JWT signed with the service account's private key and
+// exchanges it for a short-lived OAuth2 access token at Google's token
+// endpoint (github.com/golang-jwt/jwt/v4 — already a dependency). The access
+// token is minted fresh per call; reminder dispatch is a low-frequency daily
+// job, so caching adds complexity for no measurable win.
+func sendFCMMessage(cfg config.Config, sa *fcmServiceAccount, token, title, message string) (stale bool, err error) {
+	accessToken, err := fcmAccessToken(cfg, sa)
+	if err != nil {
+		return false, err
+	}
+
+	payload, err := json.Marshal(map[string]interface{}{
+		"message": map[string]interface{}{
+			"token": token,
+			"notification": map[string]string{
+				"title": title,
+				"body":  message,
+			},
+		},
+	})
+	if err != nil {
+		return false, err
+	}
+
+	target := fcmSendEndpoint + "/projects/" + sa.ProjectID + "/messages:send"
+	req, err := http.NewRequest("POST", target, bytes.NewReader(payload))
+	if err != nil {
+		return false, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+
+	resp, err := clientFor(cfg).Do(req)
+	if err != nil {
+		return false, err
+	}
+	defer func() {
+		io.Copy(io.Discard, resp.Body) //nolint:errcheck
+		resp.Body.Close()
+	}()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return true, nil
+	}
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		return false, nil
+	}
+	bodyBytes, _ := io.ReadAll(resp.Body)
+	return false, fmt.Errorf("unexpected status %d from FCM: %s", resp.StatusCode, strings.TrimSpace(string(bodyBytes)))
+}
+
+// fcmAccessToken obtains a short-lived OAuth2 access token for the FCM API by
+// minting a signed JWT from the service account's private key and exchanging
+// it at Google's token endpoint (the two-legged OAuth2 JWT flow, RFC 7523).
+// Uses clientFor(cfg) so the webhook SSRF dialer policy governs the call.
+func fcmAccessToken(cfg config.Config, sa *fcmServiceAccount) (string, error) {
+	block, _ := pem.Decode([]byte(sa.PrivateKey))
+	if block == nil {
+		return "", fmt.Errorf("failed to decode FCM service account private key")
+	}
+	parsed, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse FCM service account private key: %w", err)
+	}
+	rsaKey, ok := parsed.(*rsa.PrivateKey)
+	if !ok {
+		return "", fmt.Errorf("FCM service account private key is not an RSA key")
+	}
+
+	now := time.Now()
+	claims := jwt.MapClaims{
+		"iss":   sa.ClientEmail,
+		"scope": fcmMessagingScope,
+		"aud":   "https://oauth2.googleapis.com/token",
+		"iat":   now.Unix(),
+		"exp":   now.Add(time.Hour).Unix(),
+	}
+	signed, err := jwt.NewWithClaims(jwt.SigningMethodRS256, claims).SignedString(rsaKey)
+	if err != nil {
+		return "", fmt.Errorf("failed to sign FCM access token JWT: %w", err)
+	}
+
+	form := url.Values{}
+	form.Set("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer")
+	form.Set("assertion", signed)
+
+	req, err := http.NewRequest("POST", fcmTokenEndpoint, strings.NewReader(form.Encode()))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := clientFor(cfg).Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer func() {
+		io.Copy(io.Discard, resp.Body) //nolint:errcheck
+		resp.Body.Close()
+	}()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("unexpected status %d from Google token endpoint: %s", resp.StatusCode, strings.TrimSpace(string(bodyBytes)))
+	}
+	var tokenResp struct {
+		AccessToken string `json:"access_token"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
+		return "", fmt.Errorf("failed to decode Google token response: %w", err)
+	}
+	if tokenResp.AccessToken == "" {
+		return "", fmt.Errorf("Google token response contained no access_token")
+	}
+	return tokenResp.AccessToken, nil
+}
+
+// ---------------------------------------------------------------------------
+// Device registrations (M2)
+// ---------------------------------------------------------------------------
+
+// ListDeviceRegistrations returns the user's registered mobile push devices.
+func ListDeviceRegistrations(db *gorm.DB, userID uint) ([]models.DeviceRegistration, error) {
+	var devices []models.DeviceRegistration
+	if err := db.Where("user_id = ?", userID).Order("created_at DESC").Find(&devices).Error; err != nil {
+		return nil, err
+	}
+	return devices, nil
+}
+
+// CreateDeviceRegistration registers a mobile device push token. Re-registering
+// the same (client, token) reassigns the existing row's UserID (and label)
+// instead of duplicating it: a device re-registers on every app launch, and
+// the token identifies a physical app install, not a person — if a device
+// logs out of one user and into another, the second registration must move
+// the row rather than leaving a stale row that still pushes the first user's
+// reminders to it. See migration 000019's comment.
+func CreateDeviceRegistration(db *gorm.DB, userID uint, input models.DeviceRegistrationInput) (*models.DeviceRegistration, error) {
+	var existing models.DeviceRegistration
+	if err := db.Where("client = ? AND token = ?", input.Client, input.Token).First(&existing).Error; err == nil {
+		existing.UserID = userID
+		existing.DeviceLabel = input.DeviceLabel
+		if err := db.Save(&existing).Error; err != nil {
+			return nil, err
+		}
+		return &existing, nil
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, err
+	}
+
+	device := models.DeviceRegistration{
+		UserID:      userID,
+		Token:       input.Token,
+		Client:      input.Client,
+		DeviceLabel: input.DeviceLabel,
+	}
+	if err := db.Create(&device).Error; err != nil {
+		return nil, err
+	}
+	return &device, nil
+}
+
+// DeleteDeviceRegistration removes one of the user's mobile push devices.
+func DeleteDeviceRegistration(db *gorm.DB, userID uint, id uint) error {
+	result := db.Where("id = ? AND user_id = ?", id, userID).Delete(&models.DeviceRegistration{})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 // ---------------------------------------------------------------------------
@@ -664,31 +976,79 @@ func TestNotificationChannel(db *gorm.DB, cfg config.Config, user models.User, c
 		return sendGotifyMessage(cfg, nc, title, message)
 
 	case models.ChannelPush:
+		// M2: the test button probes every registered push endpoint — browser
+		// Web Push subscriptions AND FCM mobile devices — mirroring
+		// pushNotificationSender.Send's dispatch (design decision 5: one
+		// "push" channel, tested as one unit).
 		var subs []models.PushSubscription
 		if err := db.Where("user_id = ?", user.ID).Find(&subs).Error; err != nil {
 			return err
 		}
-		if len(subs) == 0 {
-			return fmt.Errorf("no push devices registered — enable browser notifications in a supported browser first")
-		}
-		vapidPublic, vapidPrivate, err := GetVAPIDKeys(db)
-		if err != nil {
+		var devices []models.DeviceRegistration
+		if err := db.Where("user_id = ? AND client = ?", user.ID, string(models.PushClientFCM)).Find(&devices).Error; err != nil {
 			return err
 		}
+		if len(subs) == 0 && len(devices) == 0 {
+			return fmt.Errorf("no push devices registered — enable browser notifications or register a mobile device first")
+		}
+
 		var sendErr error
-		for _, sub := range subs {
-			stale, err := sendPushMessage(db, cfg, user, sub, vapidPublic, vapidPrivate, title, message)
+		var attempted bool
+
+		if len(subs) > 0 {
+			vapidPublic, vapidPrivate, err := GetVAPIDKeys(db)
 			if err != nil {
-				if sendErr == nil {
-					sendErr = err
-				}
-				continue
+				return err
 			}
-			if stale {
-				if delErr := db.Delete(&sub).Error; delErr != nil {
-					logger.Warn().Err(delErr).Uint("subscription_id", sub.ID).Msg("Failed to delete stale push subscription")
+			for _, sub := range subs {
+				attempted = true
+				stale, err := sendPushMessage(db, cfg, user, sub, vapidPublic, vapidPrivate, title, message)
+				if err != nil {
+					if sendErr == nil {
+						sendErr = err
+					}
+					continue
+				}
+				if stale {
+					if delErr := db.Delete(&sub).Error; delErr != nil {
+						logger.Warn().Err(delErr).Uint("subscription_id", sub.ID).Msg("Failed to delete stale push subscription")
+					}
 				}
 			}
+		}
+
+		if len(devices) > 0 {
+			fcmAccount, err := LoadFCMServiceAccount(cfg.FCMServiceAccountFile)
+			if err != nil || fcmAccount == nil {
+				if len(subs) == 0 {
+					// Nothing else was even attempted — a silent no-op would
+					// look like success. Surface the missing config instead.
+					return fmt.Errorf("mobile push delivery is not configured on this server (FCM_SERVICE_ACCOUNT_FILE unset)")
+				}
+				// A web subscription was already probed above; an
+				// unconfigured FCM device is inert-by-design (M2 design
+				// decision 4), not a failure of the channel as a whole.
+			} else {
+				for _, device := range devices {
+					attempted = true
+					stale, err := sendFCMMessage(cfg, fcmAccount, device.Token, title, message)
+					if err != nil {
+						if sendErr == nil {
+							sendErr = err
+						}
+						continue
+					}
+					if stale {
+						if delErr := db.Delete(&device).Error; delErr != nil {
+							logger.Warn().Err(delErr).Uint("device_id", device.ID).Msg("Failed to delete stale FCM device registration")
+						}
+					}
+				}
+			}
+		}
+
+		if !attempted {
+			return fmt.Errorf("no push devices registered — enable browser notifications or register a mobile device first")
 		}
 		return sendErr
 

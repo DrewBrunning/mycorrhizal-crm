@@ -2,10 +2,15 @@ package services
 
 import (
 	"bytes"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -708,4 +713,453 @@ func TestDeleteNotificationDeliveries(t *testing.T) {
 	assert.Equal(t, int64(1), remaining, "other reminders' deliveries must be untouched")
 
 	require.NoError(t, DeleteNotificationDeliveries(db, nil), "a nil id set must be a no-op")
+}
+
+// ---------------------------------------------------------------------------
+// M2 — mobile device registrations + FCM delivery
+// ---------------------------------------------------------------------------
+
+// newFCMServiceAccount builds a valid in-memory service-account struct with a
+// real generated RSA key, so the JWT-minting path actually signs.
+func newFCMServiceAccount(t *testing.T) *fcmServiceAccount {
+	t.Helper()
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+	der, err := x509.MarshalPKCS8PrivateKey(key)
+	require.NoError(t, err)
+	pemBytes := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der})
+	return &fcmServiceAccount{
+		ProjectID:   "my-project",
+		ClientEmail: "firebase-adminsdk@my-project.iam.gserviceaccount.com",
+		PrivateKey:  string(pemBytes),
+	}
+}
+
+// TestCreateDeviceRegistration_DedupeToken verifies that re-registering the
+// same (client, token) for the SAME user updates the existing row instead of
+// duplicating it — a device re-registers on every app launch.
+func TestCreateDeviceRegistration_DedupeToken(t *testing.T) {
+	db := setupNotificationTestDB(t)
+	user := newNotificationUser(t, db, false, false, false, "", "")
+
+	first, err := CreateDeviceRegistration(db, user.ID, models.DeviceRegistrationInput{
+		Token:       "fcm-token-123",
+		Client:      "fcm",
+		DeviceLabel: "Pixel 8",
+	})
+	require.NoError(t, err)
+
+	second, err := CreateDeviceRegistration(db, user.ID, models.DeviceRegistrationInput{
+		Token:       "fcm-token-123",
+		Client:      "fcm",
+		DeviceLabel: "Pixel 8 (renamed)",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, first.ID, second.ID, "re-registering the same token must update the same row")
+	assert.Equal(t, "Pixel 8 (renamed)", second.DeviceLabel)
+
+	var count int64
+	require.NoError(t, db.Model(&models.DeviceRegistration{}).Where("user_id = ?", user.ID).Count(&count).Error)
+	assert.Equal(t, int64(1), count)
+
+	// A different client with the same token string is a distinct device
+	// (an iOS app is a different registration than an Android app).
+	_, err = CreateDeviceRegistration(db, user.ID, models.DeviceRegistrationInput{
+		Token:  "fcm-token-123",
+		Client: "apns",
+	})
+	require.NoError(t, err)
+	require.NoError(t, db.Model(&models.DeviceRegistration{}).Where("user_id = ?", user.ID).Count(&count).Error)
+	assert.Equal(t, int64(2), count)
+}
+
+// TestCreateDeviceRegistration_ReassignsAcrossUsers verifies the fix for the
+// cross-user token leak: the same physical device logging out of user A and
+// into user B must move the single (client, token) row to B, not accumulate a
+// second live row that keeps pushing A's reminders to B's device. See
+// migration 000019's comment.
+func TestCreateDeviceRegistration_ReassignsAcrossUsers(t *testing.T) {
+	db := setupNotificationTestDB(t)
+	userA := newNotificationUser(t, db, false, false, false, "", "")
+	userB := models.User{Username: "n9-user-b", Password: "password123", Email: "n9-b@example.com"}
+	require.NoError(t, db.Create(&userB).Error)
+
+	first, err := CreateDeviceRegistration(db, userA.ID, models.DeviceRegistrationInput{
+		Token:       "shared-device-token",
+		Client:      "fcm",
+		DeviceLabel: "Family tablet (A)",
+	})
+	require.NoError(t, err)
+
+	second, err := CreateDeviceRegistration(db, userB.ID, models.DeviceRegistrationInput{
+		Token:       "shared-device-token",
+		Client:      "fcm",
+		DeviceLabel: "Family tablet (B)",
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, first.ID, second.ID, "the same token must reassign the existing row, not create a second one")
+	assert.Equal(t, userB.ID, second.UserID)
+	assert.Equal(t, "Family tablet (B)", second.DeviceLabel)
+
+	var count int64
+	require.NoError(t, db.Model(&models.DeviceRegistration{}).Where("token = ? AND client = ?", "shared-device-token", "fcm").Count(&count).Error)
+	assert.Equal(t, int64(1), count, "only one row must exist for the token — user A must no longer own it")
+
+	aDevices, err := ListDeviceRegistrations(db, userA.ID)
+	require.NoError(t, err)
+	assert.Empty(t, aDevices, "user A's reminders must not keep targeting a device now owned by user B")
+
+	bDevices, err := ListDeviceRegistrations(db, userB.ID)
+	require.NoError(t, err)
+	require.Len(t, bDevices, 1)
+	assert.Equal(t, "shared-device-token", bDevices[0].Token)
+}
+
+// TestDeleteDeviceRegistration_OwnershipScoped verifies the service-level
+// ownership scoping: another user's device cannot be deleted.
+func TestDeleteDeviceRegistration_OwnershipScoped(t *testing.T) {
+	db := setupNotificationTestDB(t)
+	user := newNotificationUser(t, db, false, false, false, "", "")
+	other := models.User{Username: "n9-other-owner", Password: "password123", Email: "n9-other@example.com"}
+	require.NoError(t, db.Create(&other).Error)
+
+	others, err := CreateDeviceRegistration(db, other.ID, models.DeviceRegistrationInput{Token: "t", Client: "fcm"})
+	require.NoError(t, err)
+
+	err = DeleteDeviceRegistration(db, user.ID, others.ID)
+	assert.ErrorIs(t, err, gorm.ErrRecordNotFound, "another user's device must be untouchable")
+
+	var remaining int64
+	require.NoError(t, db.Model(&models.DeviceRegistration{}).Where("id = ?", others.ID).Count(&remaining).Error)
+	assert.Equal(t, int64(1), remaining, "the other user's device must survive the attempt")
+}
+
+// TestLoadFCMServiceAccount covers config-file loading: empty path is a clean
+// nil, a valid file loads, a set-but-invalid file is rejected.
+func TestLoadFCMServiceAccount(t *testing.T) {
+	sa, err := LoadFCMServiceAccount("")
+	require.NoError(t, err)
+	assert.Nil(t, sa, "empty path must mean FCM is not configured")
+
+	path := filepath.Join(t.TempDir(), "service-account.json")
+	valid := `{"project_id":"p","client_email":"e@example.com","private_key":"-----BEGIN PRIVATE KEY-----\nZm9v\n-----END PRIVATE KEY-----\n"}`
+	require.NoError(t, os.WriteFile(path, []byte(valid), 0o600))
+
+	sa, err = LoadFCMServiceAccount(path)
+	require.NoError(t, err)
+	require.NotNil(t, sa)
+	assert.Equal(t, "p", sa.ProjectID)
+	assert.Equal(t, "e@example.com", sa.ClientEmail)
+
+	// Missing a required field.
+	badPath := filepath.Join(t.TempDir(), "bad.json")
+	require.NoError(t, os.WriteFile(badPath, []byte(`{"project_id":"p"}`), 0o600))
+	_, err = LoadFCMServiceAccount(badPath)
+	assert.ErrorIs(t, err, ErrFCMInvalidServiceAccount)
+
+	// Unreadable path.
+	_, err = LoadFCMServiceAccount(filepath.Join(t.TempDir(), "nope.json"))
+	assert.ErrorIs(t, err, ErrFCMInvalidServiceAccount)
+}
+
+// TestSendFCMMessage_HappyPath delivers a test message through a fake
+// Google token + FCM endpoint, asserting the full request flow (token
+// exchange, then messages:send) and the 404-stale path.
+func TestSendFCMMessage_HappyPath(t *testing.T) {
+	sa := newFCMServiceAccount(t)
+
+	// The token exchange needs an access_token in the response — a dedicated
+	// fake Google token server.
+	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "application/x-www-form-urlencoded", r.Header.Get("Content-Type"))
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"access_token":"fake-access-token","expires_in":3600}`))
+	}))
+	defer tokenServer.Close()
+	originalTokenURL := fcmTokenEndpoint
+	fcmTokenEndpoint = tokenServer.URL
+	defer func() { fcmTokenEndpoint = originalTokenURL }()
+
+	// The messages:send call goes to the recorded fake channel server.
+	fake := newFakeChannelServer(t, nil)
+	originalSendURL := fcmSendEndpoint
+	fcmSendEndpoint = fake.URL()
+	defer func() { fcmSendEndpoint = originalSendURL }()
+
+	stale, err := sendFCMMessage(config.Config{ReminderTime: "12:00"}, sa, "device-token", "Title", "Body")
+	require.NoError(t, err)
+	assert.False(t, stale)
+	require.Equal(t, 1, fake.count())
+	assert.Equal(t, "/projects/my-project/messages:send", fake.hits[0])
+}
+
+// TestSendFCMMessage_StaleToken verifies the 404 → stale path: a token FCM no
+// longer knows must be reported as stale so the caller drops the registration.
+func TestSendFCMMessage_StaleToken(t *testing.T) {
+	sa := newFCMServiceAccount(t)
+
+	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"access_token":"fake-access-token"}`))
+	}))
+	defer tokenServer.Close()
+	fcmTokenEndpoint = tokenServer.URL
+
+	fake := newFakeChannelServer(t, map[string]int{"/projects": 404})
+	originalSendURL := fcmSendEndpoint
+	fcmSendEndpoint = fake.URL()
+	defer func() { fcmSendEndpoint = originalSendURL }()
+
+	stale, err := sendFCMMessage(config.Config{ReminderTime: "12:00"}, sa, "dead-token", "T", "B")
+	require.NoError(t, err)
+	assert.True(t, stale, "a 404 from FCM must be reported as stale")
+}
+
+// TestSendReminders_FCMDelivers verifies the push channel dispatches to an FCM
+// device registration end to end: one message:send per due reminder, a 'sent'
+// delivery row, and the registration surviving.
+func TestSendReminders_FCMDelivers(t *testing.T) {
+	db := setupNotificationTestDB(t)
+	user := newNotificationUser(t, db, false, false, true, "", "")
+	reminder := newDueReminder(t, db, user, "Push via FCM")
+	sa := newFCMServiceAccount(t)
+
+	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"access_token":"fake-access-token"}`))
+	}))
+	defer tokenServer.Close()
+	fcmTokenEndpoint = tokenServer.URL
+
+	fake := newFakeChannelServer(t, nil)
+	fcmSendEndpoint = fake.URL()
+
+	device, err := CreateDeviceRegistration(db, user.ID, models.DeviceRegistrationInput{Token: "fcm-token", Client: "fcm", DeviceLabel: "Pixel"})
+	require.NoError(t, err)
+
+	originalSender := sendReminderEmailFn
+	sendReminderEmailFn = func(u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error { return nil }
+	defer func() { sendReminderEmailFn = originalSender }()
+
+	// Write the service account to a temp file so SendReminders can load it
+	// via cfg.FCMServiceAccountFile.
+	saJSON := map[string]string{
+		"project_id":   sa.ProjectID,
+		"client_email": sa.ClientEmail,
+		"private_key":  sa.PrivateKey,
+	}
+	data, err := json.Marshal(saJSON)
+	require.NoError(t, err)
+	saPath := filepath.Join(t.TempDir(), "sa.json")
+	require.NoError(t, os.WriteFile(saPath, data, 0o600))
+
+	cfg := config.Config{ReminderTime: "12:00", FCMServiceAccountFile: saPath}
+	require.NoError(t, SendReminders(db, cfg))
+
+	require.Equal(t, 1, fake.count(), "the FCM endpoint must receive one messages:send")
+	assert.Equal(t, "/projects/my-project/messages:send", fake.hits[0])
+
+	var deliveries []models.NotificationDelivery
+	require.NoError(t, db.Where("reminder_id = ?", reminder.ID).Find(&deliveries).Error)
+	require.Len(t, deliveries, 1)
+	assert.Equal(t, "push", deliveries[0].Channel)
+	assert.Equal(t, "sent", deliveries[0].Status)
+
+	var remaining int64
+	require.NoError(t, db.Model(&models.DeviceRegistration{}).Where("id = ?", device.ID).Count(&remaining).Error)
+	assert.Equal(t, int64(1), remaining, "a successful send must keep the registration")
+}
+
+// TestSendReminders_FCMStaleRegistrationDropped verifies the dead-token path:
+// a 404 from FCM drops the registration and the reminder stays due for push.
+func TestSendReminders_FCMStaleRegistrationDropped(t *testing.T) {
+	db := setupNotificationTestDB(t)
+	user := newNotificationUser(t, db, false, false, true, "", "")
+	newDueReminder(t, db, user, "Dead device")
+	sa := newFCMServiceAccount(t)
+
+	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"access_token":"fake-access-token"}`))
+	}))
+	defer tokenServer.Close()
+	fcmTokenEndpoint = tokenServer.URL
+
+	fake := newFakeChannelServer(t, map[string]int{"/projects": 404})
+	fcmSendEndpoint = fake.URL()
+
+	device, err := CreateDeviceRegistration(db, user.ID, models.DeviceRegistrationInput{Token: "dead-token", Client: "fcm"})
+	require.NoError(t, err)
+
+	originalSender := sendReminderEmailFn
+	sendReminderEmailFn = func(u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error { return nil }
+	defer func() { sendReminderEmailFn = originalSender }()
+
+	saJSON := map[string]string{
+		"project_id":   sa.ProjectID,
+		"client_email": sa.ClientEmail,
+		"private_key":  sa.PrivateKey,
+	}
+	data, _ := json.Marshal(saJSON)
+	saPath := filepath.Join(t.TempDir(), "sa.json")
+	require.NoError(t, os.WriteFile(saPath, data, 0o600))
+
+	cfg := config.Config{ReminderTime: "12:00", FCMServiceAccountFile: saPath}
+	require.NoError(t, SendReminders(db, cfg))
+
+	var remaining int64
+	require.NoError(t, db.Model(&models.DeviceRegistration{}).Where("id = ?", device.ID).Count(&remaining).Error)
+	assert.Zero(t, remaining, "a 404 registration must be dropped")
+
+	var deliveries []models.NotificationDelivery
+	require.NoError(t, db.Find(&deliveries).Error)
+	assert.Empty(t, deliveries, "a stale-token send must not be recorded as sent — it stays due")
+}
+
+// TestSendReminders_APNSNeverMarkedSent verifies M2 design decision 2: an apns
+// registration is accepted but its delivery is a logged skip, never a marked-
+// sent delivery row.
+func TestSendReminders_APNSNeverMarkedSent(t *testing.T) {
+	db := setupNotificationTestDB(t)
+	user := newNotificationUser(t, db, false, false, true, "", "")
+	newDueReminder(t, db, user, "iOS device")
+
+	_, err := CreateDeviceRegistration(db, user.ID, models.DeviceRegistrationInput{Token: "apns-token", Client: "apns"})
+	require.NoError(t, err)
+
+	originalSender := sendReminderEmailFn
+	sendReminderEmailFn = func(u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error { return nil }
+	defer func() { sendReminderEmailFn = originalSender }()
+
+	cfg := config.Config{ReminderTime: "12:00"}
+	require.NoError(t, SendReminders(db, cfg))
+
+	var deliveries []models.NotificationDelivery
+	require.NoError(t, db.Find(&deliveries).Error)
+	assert.Empty(t, deliveries, "an apns-only device must never produce a sent delivery row")
+}
+
+// TestSendReminders_PushChannelDispatchToBoth verifies the push channel
+// dispatches to both a browser web subscription and an FCM device in one run.
+func TestSendReminders_PushChannelDispatchToBoth(t *testing.T) {
+	db := setupNotificationTestDB(t)
+	user := newNotificationUser(t, db, false, false, true, "", "")
+	reminder := newDueReminder(t, db, user, "Both devices")
+	sa := newFCMServiceAccount(t)
+
+	// Browser web subscription against the fake push service.
+	fake := newFakeChannelServer(t, nil)
+	sub := models.PushSubscription{
+		UserID:   user.ID,
+		Endpoint: fake.URL() + "/push",
+		P256dh:   "BNNL5ZaTfK81qhXOx23-wewhigUeFb632jN6LvRWCFH1ubQr77FE_9qV1FuojuRmHP42zmf34rXgW80OvUVDgTk",
+		Auth:     "zqbxT6JKstKSY9JKibZLSQ",
+	}
+	require.NoError(t, db.Create(&sub).Error)
+
+	// FCM device against the same fake server's /projects path.
+	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"access_token":"fake-access-token"}`))
+	}))
+	defer tokenServer.Close()
+	fcmTokenEndpoint = tokenServer.URL
+	fcmSendEndpoint = fake.URL()
+
+	_, err := CreateDeviceRegistration(db, user.ID, models.DeviceRegistrationInput{Token: "fcm-token", Client: "fcm"})
+	require.NoError(t, err)
+
+	originalSender := sendReminderEmailFn
+	sendReminderEmailFn = func(u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error { return nil }
+	defer func() { sendReminderEmailFn = originalSender }()
+
+	saJSON := map[string]string{
+		"project_id":   sa.ProjectID,
+		"client_email": sa.ClientEmail,
+		"private_key":  sa.PrivateKey,
+	}
+	data, _ := json.Marshal(saJSON)
+	saPath := filepath.Join(t.TempDir(), "sa.json")
+	require.NoError(t, os.WriteFile(saPath, data, 0o600))
+
+	cfg := config.Config{ReminderTime: "12:00", FCMServiceAccountFile: saPath}
+	require.NoError(t, SendReminders(db, cfg))
+
+	// The web push POST goes to /push, the FCM send to /projects/...
+	webHits, fcmHits := 0, 0
+	for _, p := range fake.hits {
+		if strings.HasPrefix(p, "/push") {
+			webHits++
+		}
+		if strings.HasPrefix(p, "/projects") {
+			fcmHits++
+		}
+	}
+	assert.Equal(t, 1, webHits, "the web subscription must receive one push")
+	assert.Equal(t, 1, fcmHits, "the FCM device must receive one messages:send")
+
+	var deliveries []models.NotificationDelivery
+	require.NoError(t, db.Where("reminder_id = ?", reminder.ID).Find(&deliveries).Error)
+	assert.Equal(t, 2, len(deliveries), "one delivery row per push endpoint type (web + fcm)")
+}
+
+// TestTestNotificationChannel_ProbesFCMDevice pins M2 design decision 5: the
+// Settings "test" button probes an FCM device, not just browser Web Push
+// subscriptions — the gap that shipped without a test the first time around.
+func TestTestNotificationChannel_ProbesFCMDevice(t *testing.T) {
+	db := setupNotificationTestDB(t)
+	user := newNotificationUser(t, db, false, false, true, "", "")
+	sa := newFCMServiceAccount(t)
+
+	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"access_token":"fake-access-token"}`))
+	}))
+	defer tokenServer.Close()
+	originalTokenURL := fcmTokenEndpoint
+	fcmTokenEndpoint = tokenServer.URL
+	defer func() { fcmTokenEndpoint = originalTokenURL }()
+
+	fake := newFakeChannelServer(t, nil)
+	originalSendURL := fcmSendEndpoint
+	fcmSendEndpoint = fake.URL()
+	defer func() { fcmSendEndpoint = originalSendURL }()
+
+	_, err := CreateDeviceRegistration(db, user.ID, models.DeviceRegistrationInput{Token: "fcm-token", Client: "fcm", DeviceLabel: "Pixel"})
+	require.NoError(t, err)
+
+	saJSON := map[string]string{"project_id": sa.ProjectID, "client_email": sa.ClientEmail, "private_key": sa.PrivateKey}
+	data, marshalErr := json.Marshal(saJSON)
+	require.NoError(t, marshalErr)
+	saPath := filepath.Join(t.TempDir(), "sa.json")
+	require.NoError(t, os.WriteFile(saPath, data, 0o600))
+
+	cfg := config.Config{ReminderTime: "12:00", FCMServiceAccountFile: saPath}
+	require.NoError(t, TestNotificationChannel(db, cfg, user, models.ChannelPush))
+	require.Equal(t, 1, fake.count(), "the test button must reach the FCM endpoint for a registered device")
+	assert.Equal(t, "/projects/my-project/messages:send", fake.hits[0])
+
+	// No reminder-scoped delivery rows are written by a test notification,
+	// same invariant as every other channel's test path.
+	var deliveries []models.NotificationDelivery
+	require.NoError(t, db.Find(&deliveries).Error)
+	assert.Empty(t, deliveries)
+}
+
+// TestTestNotificationChannel_FCMDeviceWithoutServerConfig verifies that an
+// FCM-only user testing the push channel on a server with no
+// FCM_SERVICE_ACCOUNT_FILE gets a descriptive "not configured" error instead
+// of a silent false-positive "ok: true".
+func TestTestNotificationChannel_FCMDeviceWithoutServerConfig(t *testing.T) {
+	db := setupNotificationTestDB(t)
+	user := newNotificationUser(t, db, false, false, true, "", "")
+	_, err := CreateDeviceRegistration(db, user.ID, models.DeviceRegistrationInput{Token: "fcm-token", Client: "fcm"})
+	require.NoError(t, err)
+
+	cfg := config.Config{ReminderTime: "12:00"} // FCMServiceAccountFile unset
+	err = TestNotificationChannel(db, cfg, user, models.ChannelPush)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not configured")
 }

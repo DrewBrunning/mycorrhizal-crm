@@ -70,6 +70,18 @@ func main() {
 	logger.Info().Msg("Validating configuration...")
 	cfg.ValidateOrPanic()
 
+	// M2: config.Validate only checks that FCM_SERVICE_ACCOUNT_FILE exists
+	// (config cannot import services without an import cycle). The content
+	// check — valid JSON with project_id/client_email/private_key — lives
+	// here so a malformed service-account file still fails boot, per the
+	// M2 design decision ("reject at boot rather than failing the first
+	// send"), instead of only surfacing as a warning on the first reminder run.
+	if cfg.FCMServiceAccountFile != "" {
+		if _, err := services.LoadFCMServiceAccount(cfg.FCMServiceAccountFile); err != nil {
+			logger.Fatal().Err(err).Msg("Invalid FCM service account file")
+		}
+	}
+
 	logger.Info().Msg("Loading database and running migrations...")
 	db, err := database.InitDB(cfg.DBPath)
 	if err != nil {

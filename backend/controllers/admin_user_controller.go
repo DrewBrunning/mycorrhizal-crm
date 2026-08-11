@@ -597,6 +597,12 @@ func DeleteUser(c *gin.Context) {
 			return err
 		}
 
+		// Mobile push device registrations (M2 — account gone, no tombstoning
+		// needed; matches PushSubscription above)
+		if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.DeviceRegistration{}).Error; err != nil {
+			return err
+		}
+
 		// Delete link field types (hard — user account gone, no
 		// tombstoning needed; matches the other DeletedAt-bearing entities
 		// above, e.g. CadencePolicy/Preference/LifeEvent)

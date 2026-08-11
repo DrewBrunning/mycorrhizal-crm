@@ -234,3 +234,72 @@ func loadNotificationUser(c *gin.Context, db *gorm.DB, userID uint) (models.User
 	}
 	return user, true
 }
+
+// ListDeviceRegistrations returns the current user's registered mobile push
+// devices (M2). Platform-agnostic: each row carries its client (fcm, apns) so
+// an iOS client later appears in the same list.
+func ListDeviceRegistrations(c *gin.Context) {
+	db := c.MustGet("db").(*gorm.DB)
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+
+	devices, err := services.ListDeviceRegistrations(db, userID)
+	if err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to load device registrations").WithError(err))
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"devices": devices})
+}
+
+// CreateDeviceRegistration registers a mobile device push token for the
+// current user (called by the native app after the platform push service hands
+// out a token). Re-registering the same (user, client, token) updates the
+// existing row instead of duplicating it.
+func CreateDeviceRegistration(c *gin.Context) {
+	db := c.MustGet("db").(*gorm.DB)
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+
+	input, appErr := middleware.GetValidated[models.DeviceRegistrationInput](c)
+	if appErr != nil {
+		apperrors.AbortWithError(c, appErr)
+		return
+	}
+
+	device, err := services.CreateDeviceRegistration(db, userID, *input)
+	if err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to register device").WithError(err))
+		return
+	}
+	c.JSON(http.StatusCreated, device)
+}
+
+// DeleteDeviceRegistration removes one of the current user's mobile push
+// devices.
+func DeleteDeviceRegistration(c *gin.Context) {
+	db := c.MustGet("db").(*gorm.DB)
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("id", "must be a positive integer"))
+		return
+	}
+
+	if err := services.DeleteDeviceRegistration(db, userID, uint(id)); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			apperrors.AbortWithError(c, apperrors.ErrNotFound("Device registration"))
+		} else {
+			apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to delete device registration").WithError(err))
+		}
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Device registration deleted"})
+}

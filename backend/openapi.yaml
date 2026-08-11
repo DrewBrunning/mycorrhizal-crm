@@ -5233,6 +5233,77 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /notifications/devices:
+    get:
+      summary: List the user's registered mobile push devices
+      description: M2 — platform-agnostic mobile device push registrations (FCM today, APNS accepted).
+      operationId: listDeviceRegistrations
+      responses:
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: The user's registered mobile devices.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  devices:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/DeviceRegistrationResponse"
+    post:
+      summary: Register a mobile device push token
+      description: Called by the native app after the platform push service (FCM/APNS) hands out a token. Re-registering the same (client, token) reassigns the row to the calling user instead of duplicating it — the token identifies a physical app install, not a person.
+      operationId: createDeviceRegistration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeviceRegistrationInput"
+      responses:
+        "201":
+          description: The registered device.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceRegistrationResponse"
+        "400":
+          description: Validation failed (e.g. an unknown client).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /notifications/devices/{id}:
+    delete:
+      summary: Remove one of the user's mobile push devices
+      operationId: deleteDeviceRegistration
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Device registration removed.
+        "400":
+          description: Non-integer id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Device registration not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   # --- Calendar subscriptions ---
   /calendars:
     get:
@@ -7998,6 +8069,21 @@ components:
         endpoint: { type: string }
         p256dh: { type: string }
         auth: { type: string }
+        device_label: { type: string }
+        created_at: { type: string, format: date-time }
+    DeviceRegistrationInput:
+      type: object
+      required: [token, client]
+      properties:
+        token: { type: string, maxLength: 1024, description: "The platform push service's device token (FCM registration token, or an APNS device token)." }
+        client: { type: string, enum: [fcm, apns] }
+        device_label: { type: string, maxLength: 200 }
+    DeviceRegistrationResponse:
+      type: object
+      properties:
+        id: { type: integer }
+        token: { type: string }
+        client: { type: string, enum: [fcm, apns] }
         device_label: { type: string }
         created_at: { type: string, format: date-time }
 
