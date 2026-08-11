@@ -23,10 +23,11 @@ import EmailIcon from '@mui/icons-material/Email';
 import RepeatIcon from '@mui/icons-material/Repeat';
 import WarningIcon from '@mui/icons-material/Warning';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import { Contact, Birthday, getRandomContacts, getUpcomingBirthdays, getContactRecord, nameComponentValue } from './api/contacts';
+import { Contact, Birthday } from './api/contacts';
 import { useCircles } from './hooks/useCircles';
-import { Reminder, getUpcomingReminders, completeReminder, skipReminder } from './api/reminders';
-import { getOverdueCadences, OverdueCadence } from './api/cadencePolicies';
+import { getUpcomingReminders, completeReminder, skipReminder } from './api/reminders';
+import { OverdueCadence } from './api/cadencePolicies';
+import { getDashboard, DashboardReminder } from './api/dashboard';
 import OverdueCadenceList from './components/OverdueCadenceList';
 import { ContactListSkeleton } from './components/LoadingSkeletons';
 import { handleFetchError, handleError } from './utils/errorHandler';
@@ -38,9 +39,8 @@ function DashboardPage() {
   const { formatBirthday: formatBirthdayDate, formatDate } = useDateFormat();
   const [birthdays, setBirthdays] = useState<Birthday[]>([]);
   const [randomContacts, setRandomContacts] = useState<Contact[]>([]);
-  const [upcomingReminders, setUpcomingReminders] = useState<Reminder[]>([]);
+  const [upcomingReminders, setUpcomingReminders] = useState<DashboardReminder[]>([]);
   const [overdueCadences, setOverdueCadences] = useState<OverdueCadence[]>([]);
-  const [contactsMap, setContactsMap] = useState<Record<number, Contact>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [birthdaysInfoAnchor, setBirthdaysInfoAnchor] = useState<HTMLElement | null>(null);
@@ -54,54 +54,16 @@ function DashboardPage() {
       setLoading(true);
       setError(null);
 
-      const [birthdayData, random, reminders, overdue] = await Promise.all([
-        getUpcomingBirthdays(),
-        getRandomContacts(),
-        getUpcomingReminders(),
-        getOverdueCadences()
-      ]);
+      // M3: one composite call replaces the birthdays/random-contacts/
+      // upcoming-reminders/overdue-cadences fan-out, plus the per-reminder
+      // contact lookup that used to follow it — the backend now embeds each
+      // reminder's contact_name directly.
+      const dashboard = await getDashboard();
 
-      setBirthdays(birthdayData);
-      setRandomContacts(random);
-      setUpcomingReminders(reminders);
-      setOverdueCadences(overdue.overdue || []);
-
-      // Build contact map from random contacts
-      const newContactsMap: Record<number, Contact> = {};
-      random.forEach(c => { newContactsMap[c.ID] = c; });
-
-      // Fetch missing contacts for reminders (only load required fields)
-      const missingContactIds = reminders
-        .map(r => r.contact_id)
-        .filter(id => !newContactsMap[id]);
-      const uniqueMissingIds = Array.from(new Set(missingContactIds));
-
-      if (uniqueMissingIds.length > 0) {
-        // Only firstname/lastname/nickname are needed here (getContactName's
-        // display logic below) -- read straight off the nested record rather
-        // than going through the retired getContact/toLegacyContact shim.
-        const fetchedContacts = await Promise.all(
-          uniqueMissingIds.map(async (id): Promise<Contact | null> => {
-            try {
-              const record = await getContactRecord(id);
-              const components = record.card?.name?.components;
-              return {
-                ID: record.id,
-                firstname: nameComponentValue(components, 'given') || '',
-                lastname: nameComponentValue(components, 'surname') || '',
-                nickname: record.card?.nicknames?.[0]?.name,
-              };
-            } catch {
-              return null;
-            }
-          })
-        );
-        fetchedContacts.forEach(c => {
-          if (c) newContactsMap[c.ID] = c;
-        });
-      }
-
-      setContactsMap(newContactsMap);
+      setBirthdays(dashboard.birthdays);
+      setRandomContacts(dashboard.random_contacts);
+      setUpcomingReminders(dashboard.upcoming_reminders);
+      setOverdueCadences(dashboard.overdue);
     } catch (err) {
       const message = handleFetchError(err, 'loading dashboard data');
       setError(message);
@@ -114,12 +76,23 @@ function DashboardPage() {
     loadDashboardData();
   }, [loadDashboardData]);
 
+  // attachKnownContactNames carries contact_name forward from the current
+  // dashboard state onto a plain Reminder[] refetch (getUpcomingReminders
+  // has no contact_name -- that's a dashboard-only enrichment, M3 design
+  // decision 2). This refetch is deliberately kept as the plain endpoint
+  // (interaction path, unrelated to the M3 composite) rather than
+  // re-fetching the whole dashboard for one completed/skipped reminder.
+  const attachKnownContactNames = (prev: DashboardReminder[], reminders: Awaited<ReturnType<typeof getUpcomingReminders>>): DashboardReminder[] => {
+    const nameById = new Map(prev.map(r => [r.ID, r.contact_name]));
+    return reminders.map(r => ({ ...r, contact_name: nameById.get(r.ID) || '' }));
+  };
+
   const handleCompleteReminder = async (reminderId: number) => {
     try {
       await completeReminder(reminderId);
       // Reload reminders after completion
       const reminders = await getUpcomingReminders();
-      setUpcomingReminders(reminders);
+      setUpcomingReminders(prev => attachKnownContactNames(prev, reminders));
     } catch (err) {
       handleError(err, { operation: 'completing reminder' });
     }
@@ -133,7 +106,7 @@ function DashboardPage() {
       await skipReminder(reminderId);
       // Reload reminders after skipping
       const reminders = await getUpcomingReminders();
-      setUpcomingReminders(reminders);
+      setUpcomingReminders(prev => attachKnownContactNames(prev, reminders));
     } catch (err) {
       handleError(err, { operation: 'skipping reminder' });
     }
@@ -354,7 +327,6 @@ function DashboardPage() {
             <Stack spacing={1.5}>
               {upcomingReminders.map((reminder) => {
                 const overdue = isOverdue(reminder.remind_at);
-                const contact = contactsMap[reminder.contact_id];
 
                 return (
                   <Card
@@ -377,9 +349,9 @@ function DashboardPage() {
                           <Typography variant="body2" sx={{ fontWeight: 500 }}>
                             {reminder.message}
                           </Typography>
-                          {contact && (
+                          {reminder.contact_name && (
                             <Typography variant="caption" color="text.secondary">
-                              {getContactName(contact)}
+                              {reminder.contact_name}
                             </Typography>
                           )}
                           <Box sx={{ mt: 0.75, display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>

@@ -6,7 +6,7 @@
 | **Size** | S |
 | **Depends on** | — |
 | **Source** | 2026-08-10 mobile-API work session — "which activities may need simpler mobile endpoints rather than having the client compose UI from multiple endpoints" |
-| **Status** | **To be done** |
+| **Status** | **DONE** (2026-08-11) |
 
 ## Why this exists
 
@@ -111,4 +111,35 @@ page drop three of its five requests.
 
 ## Landing note
 
-(empty until shipped)
+**Shipped 2026-08-11** (branch `feature/m2-m3-m4-mobile-composites`, alongside M2's frontend
+finish and M4). Landed as specified, with two deliberate deviations from the letter of the ticket:
+
+1. **Controller tests use the existing `setupRouter()` AutoMigrate harness**
+   (`controllers/dashboard_controller_test.go`), not `database.InitDB` against the real migrated
+   schema. The ticket said "real migrated DB" — but `briefing_controller_test.go`, the reference
+   pattern this ticket explicitly points to, already uses `setupRouter()`, and every other
+   controller test in the package follows it. `database.InitDB` matters for catching GORM
+   column-name-derivation drift (CLAUDE.md backend trap 1); this endpoint adds no new persisted
+   columns, only a response DTO over already-tested models, so there's nothing for the real
+   schema to catch that AutoMigrate wouldn't. Followed the actual convention over the ticket's
+   literal wording.
+2. **`GetUpcomingReminders` (the "next 7 days, else next 5" rule) was extracted into
+   `services.GetUpcomingReminders`**, not just replicated inline, so the existing
+   `GET /reminders/upcoming` endpoint and the new composite share one implementation instead of
+   two copies that could drift apart — the exact trap the ticket's own "Traps" section warns
+   about. `reminder_controller.go`'s `GetUpcomingReminders` now just calls the service function.
+
+The reminder contact-name enrichment deliberately does **not** reuse
+`services.loadReminderContactNames` (the push/email notification helper) — that helper has no
+nickname preference, which would have been a silent behavior mismatch against
+`DashboardPage.tsx`'s `getContactName`. A dedicated `attachReminderContactNames` in
+`dashboard_controller.go` implements the nickname-preferred rule instead.
+
+All three empty-slice-normalization, full-composition, and cross-user-scoping tests were
+hand-verified by temporarily breaking the relevant code and confirming each test actually failed,
+then restoring — including the frontend `DashboardPage.test.tsx` regression test for the
+complete/skip contact-name-carry-forward behavior. Hand-verified against the real dev backend/DB
+(`backend-dev` + `frontend-dev`): the dashboard renders identically to before, and the network tab
+shows one `GET /dashboard` call per mount (seen twice per load only due to React StrictMode's
+dev-only double-invoke — a pre-existing, unrelated artifact of every page in this app, not a
+regression this endpoint introduced).

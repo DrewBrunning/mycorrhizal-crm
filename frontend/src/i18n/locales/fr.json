@@ -1562,7 +1562,9 @@
         "enabling": "Activation…",
         "devices": "Appareils enregistrés",
         "noDevices": "Aucun appareil enregistré pour le moment.",
-        "removeDevice": "Retirer cet appareil"
+        "removeDevice": "Retirer cet appareil",
+        "mobileDevicesTitle": "Appareils mobiles",
+        "noMobileDevices": "Aucun appareil mobile enregistré pour le moment."
       },
       "pushEnabled": "Notifications du navigateur activées",
       "pushPermissionDenied": "L'autorisation de notification a été refusée. Autorisez-la dans votre navigateur puis réessayez.",

@@ -1562,7 +1562,9 @@
         "enabling": "Attivazione…",
         "devices": "Dispositivi registrati",
         "noDevices": "Nessun dispositivo registrato.",
-        "removeDevice": "Rimuovi questo dispositivo"
+        "removeDevice": "Rimuovi questo dispositivo",
+        "mobileDevicesTitle": "Dispositivi mobili",
+        "noMobileDevices": "Nessun dispositivo mobile registrato."
       },
       "pushEnabled": "Notifiche del browser attivate",
       "pushPermissionDenied": "Permesso di notifica negato. Consenti le notifiche nel browser e riprova.",

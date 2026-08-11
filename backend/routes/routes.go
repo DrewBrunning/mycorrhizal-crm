@@ -59,6 +59,11 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// admin-only ListUsers (id+username only).
 			protected.GET("/users/directory", controllers.ListUserDirectory)
 
+			// M3 dashboard composite (docs/fork-plan/tickets/
+			// 82-M3-dashboard-overview-endpoint.md): birthdays + random
+			// contacts + upcoming reminders + overdue cadences in one call.
+			protected.GET("/dashboard", controllers.GetDashboard)
+
 			// Contact routes
 			protected.GET("/contacts", controllers.GetContacts)
 			protected.GET("/contacts/circles", controllers.GetCircles)
@@ -76,6 +81,12 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// GET /contacts/:id so the literal /briefing path is never
 			// captured as a contact ID.
 			protected.GET("/contacts/:id/briefing", controllers.GetContactBriefing)
+			// M4 contact-detail composite (docs/fork-plan/tickets/
+			// 83-M4-contact-detail-composite.md): everything the contact
+			// detail screen renders, in one call. Same ordering note as
+			// /briefing above — registered after GET /contacts/:id so the
+			// literal /detail path is never captured as a contact ID.
+			protected.GET("/contacts/:id/detail", controllers.GetContactDetail)
 			protected.PUT("/contacts/:id", middleware.ValidateJSONMiddleware(&models.ContactRecordInput{}), controllers.UpdateContact)
 			protected.DELETE("/contacts/:id", controllers.DeleteContact)
 			protected.POST("/contacts/:id/archive", controllers.ArchiveContact)

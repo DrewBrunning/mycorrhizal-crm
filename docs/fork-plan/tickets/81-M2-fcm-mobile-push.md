@@ -6,7 +6,7 @@
 | **Size** | M |
 | **Depends on** | [N9](30-N9-notification-channels.md) (done — owns the channel abstraction and push sender) |
 | **Source** | M1's open question 5 / §13 ("Push notifications from server: requires FCM integration on the backend, ticketed separately") + the 2026-08-10 mobile-API work session |
-| **Status** | **Backend done; frontend Settings UI split off, not started** |
+| **Status** | **DONE** (2026-08-11 — web Settings UI landed; backend landed 2026-08-10) |
 | **Supersedes** | `81-N10-fcm-push.md` (retired 2026-08-11 — same feature, filed earlier). Its **Android** half is not here: `MyFirebaseMessagingService`, token registration on login/logout, the requirement that WorkManager polling stays as the only path on de-Googled devices, and the poll-boundary double-notify idempotence key all moved to [M5](84-M5-android-polish-and-hardening.md) §5a. |
 
 ## Why this exists
@@ -170,9 +170,9 @@ exists.
       missing from the first implementation pass, see landing note); config boot fails clearly on
       an invalid service-account file (wired into `main.go`, not just `config.Validate`'s
       file-exists check — see landing note).
-- [ ] Web Settings shows the mobile device list with delete; all five locales have real
-      translations. **Deferred** — split into its own follow-on, not part of this branch.
-- [ ] `npx tsc --noEmit` and `npx vitest run` green in `frontend/`. **Deferred** with the above.
+- [x] Web Settings shows the mobile device list with delete; all five locales have real
+      translations.
+- [x] `npx tsc --noEmit` and `npx vitest run` green in `frontend/`.
 - [x] OpenAPI updated with the three device endpoints + schemas; the existing drift test green.
 - [ ] Hand-verify the FCM happy path against a real Firebase project — **not done**, needs a real
       Firebase project + service-account credentials, which this environment doesn't have. The
@@ -219,3 +219,17 @@ test actually fails:
 
 `go build/vet/gofmt/test` all green. Frontend Settings UI (mobile device list + 5-locale i18n)
 and the real-Firebase-project hand-verification remain open — see the unchecked Done-when items.
+
+**Web Settings UI landed 2026-08-11** (branch `feature/m2-m3-m4-mobile-composites`, alongside M3
+and M4). `NotificationSettings.tsx` gained a "Mobile devices" list under the existing Web Push
+section — `api/notifications.ts`'s `getDeviceRegistrations`/`deleteDeviceRegistration` mirror the
+`PushSubscription` trio exactly, view+delete only (enrollment stays Android-only). Per design
+decision 5, the push test button's disabled condition now checks `subscriptions.length === 0 &&
+devices.length === 0` instead of just the browser list — hand-verified by reverting to the old
+condition and confirming the new test (`registered mobile devices (M2) are listed, can be
+removed, and unblock the push test button`) actually fails. All five locales have real
+translations for the two new keys (`push.mobileDevicesTitle`, `push.noMobileDevices`); the rest
+reuse the existing generic device-row keys. `npx tsc --noEmit` and `npx vitest run` green.
+Hand-verified in the browser against the real dev backend: Settings renders "Mobile devices — No
+mobile devices registered yet." without error. The real-Firebase-project hand-verification is
+still open — unrelated to this frontend work, remains the one unchecked Done-when item.

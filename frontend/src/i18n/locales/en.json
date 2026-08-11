@@ -1562,7 +1562,9 @@
         "enabling": "Enabling…",
         "devices": "Registered devices",
         "noDevices": "No devices registered yet.",
-        "removeDevice": "Remove this device"
+        "removeDevice": "Remove this device",
+        "mobileDevicesTitle": "Mobile devices",
+        "noMobileDevices": "No mobile devices registered yet."
       },
       "pushEnabled": "Browser notifications enabled",
       "pushPermissionDenied": "Notification permission was denied. Allow it in your browser and try again.",

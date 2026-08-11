@@ -218,16 +218,32 @@ func normalizeBriefingSlices(b *models.ContactBriefing) {
 // sensitivity tiers gate sharing/exposure (exports, sync, shared views), none
 // of which this endpoint is.
 func attachBriefingRelationships(db *gorm.DB, userID uint, contact *models.Contact, briefing *models.ContactBriefing) error {
+	rels, err := resolveConfirmedRelationships(db, userID, contact)
+	if err != nil {
+		return err
+	}
+	briefing.Relationships = rels
+	return nil
+}
+
+// resolveConfirmedRelationships is attachBriefingRelationships' underlying
+// query, factored out so the M4 contact-detail composite
+// (contact_detail_controller.go) can reuse the exact same confirmed-only,
+// secret-excluded, other-party-name-resolved logic rather than re-deriving
+// it. Only status:confirmed edges are included; suggested edges are never
+// fact. Sensitivity: only `secret` edges are excluded (91.13) — see
+// attachBriefingRelationships' doc comment for the full reasoning.
+func resolveConfirmedRelationships(db *gorm.DB, userID uint, contact *models.Contact) ([]models.BriefingRelationship, error) {
 	var edges []models.RelationshipEdge
 	if err := db.Where(
 		"user_id = ? AND status = ? AND sensitivity != ? AND (source_id = ? OR target_id = ?)",
 		userID, models.RelationshipStatusConfirmed, models.RelationshipSensitivitySecret,
 		contact.VCardUID, contact.VCardUID,
 	).Find(&edges).Error; err != nil {
-		return err
+		return nil, err
 	}
 	if len(edges) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	// Resolve the other-party display names in one query. The "other party"
@@ -243,7 +259,7 @@ func attachBriefingRelationships(db *gorm.DB, userID uint, contact *models.Conta
 	}
 	var others []models.Contact
 	if err := db.Where("user_id = ? AND vcard_uid IN ?", userID, otherUIDs).Find(&others).Error; err != nil {
-		return err
+		return nil, err
 	}
 	nameByUID := make(map[string]string, len(others))
 	idByUID := make(map[string]uint, len(others))
@@ -252,10 +268,10 @@ func attachBriefingRelationships(db *gorm.DB, userID uint, contact *models.Conta
 		idByUID[o.VCardUID] = o.ID
 	}
 
-	briefing.Relationships = make([]models.BriefingRelationship, 0, len(edges))
+	rels := make([]models.BriefingRelationship, 0, len(edges))
 	for _, e := range edges {
 		otherUID := otherPartyUID(e, contact.VCardUID)
-		briefing.Relationships = append(briefing.Relationships, models.BriefingRelationship{
+		rels = append(rels, models.BriefingRelationship{
 			Edge:                e,
 			OtherPartyContactID: idByUID[otherUID],
 			OtherPartyName:      nameByUID[otherUID],
@@ -263,7 +279,7 @@ func attachBriefingRelationships(db *gorm.DB, userID uint, contact *models.Conta
 			DisplayToken:        displayTokenFor(e, contact.VCardUID),
 		})
 	}
-	return nil
+	return rels, nil
 }
 
 // otherPartyUID returns whichever of SourceID/TargetID is not the viewed

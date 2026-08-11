@@ -481,6 +481,28 @@ paths:
                         id: { type: integer }
                         username: { type: string }
 
+  # --- Dashboard (M3) ---
+  /dashboard:
+    get:
+      summary: "Dashboard today/overview composite (M3)"
+      operationId: getDashboard
+      description: >
+        Read-only aggregation of the four blocks the dashboard ("today")
+        screen needs in one call: upcoming birthdays, a handful of random
+        contacts, upcoming reminders (with each reminder's contact display
+        name embedded, so no per-reminder follow-up fetch is needed), and
+        overdue cadences. Same pattern as the N2 briefing composite
+        (GET /contacts/{id}/briefing) — pure aggregation, no writes, no
+        cache. Every collection block is always present and serializes as
+        `[]` when empty, never `null`/absent.
+      responses:
+        "200":
+          description: The dashboard composite.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardResponse"
+
   # --- Contacts ---
   /contacts:
     get:
@@ -1016,6 +1038,42 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ContactBriefing"
+        "404":
+          description: Contact not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /contacts/{id}/detail:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      summary: Get the contact-detail composite (M4)
+      operationId: getContactDetail
+      description: >
+        Read-only aggregation of everything the contact detail screen renders
+        for one contact: the full contact record, notes, activities,
+        reminder completions, reminders, confirmed relationship edges (other-
+        party name resolved), life events (related-contact names resolved),
+        conversation agenda, gifts, custom field values, external identities
+        and activities, this contact's circle memberships and tags, the
+        current user's enabled-fields, and (when the user has an Immich
+        config) an Immich summary block. Pure aggregation, no writes, no
+        cache; every collection block is always present and serializes as
+        `[]` when empty, never `null`/absent. Sub-blocks are deliberately
+        unpaginated — the client gets the whole screen in one shot. The
+        profile picture is NOT included (GET /contacts/{id}/profile_picture
+        stays a separate request).
+      responses:
+        "200":
+          description: The contact-detail composite.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactDetailResponse"
         "404":
           description: Contact not found.
           content:
@@ -6775,6 +6833,118 @@ components:
         notes: { type: array, items: { type: object } }
         activities: { type: array, items: { type: object } }
         reminders: { type: array, items: { type: object } }
+    DashboardResponse:
+      type: object
+      description: >
+        Read-only M3 dashboard composite (GET /dashboard). Pure aggregation
+        of existing per-user queries; every block is always present and
+        serializes as `[]` when empty, never `null`/absent.
+      properties:
+        birthdays:
+          type: array
+          items: { $ref: "#/components/schemas/Birthday" }
+        random_contacts:
+          type: array
+          items: { $ref: "#/components/schemas/ContactResponse" }
+        upcoming_reminders:
+          type: array
+          items: { $ref: "#/components/schemas/DashboardReminder" }
+        overdue:
+          type: array
+          items: { $ref: "#/components/schemas/OverdueCadence" }
+    DashboardReminder:
+      description: >
+        A Reminder enriched with its contact's display name (nickname-
+        preferred, falling back to firstname+lastname), so the dashboard
+        composite's consumer never needs a second per-reminder fetch.
+      allOf:
+        - $ref: "#/components/schemas/Reminder"
+        - type: object
+          properties:
+            contact_name: { type: string }
+    ContactDetailResponse:
+      type: object
+      description: >
+        Read-only M4 contact-detail composite (GET /contacts/{id}/detail).
+        Pure aggregation of existing per-contact queries; every collection
+        block is always present and serializes as `[]` when empty, never
+        `null`/absent. `immich` is the one legitimately-absent block (present
+        only when the user has an Immich config at all).
+      properties:
+        contact:
+          $ref: "#/components/schemas/ContactRecordResponse"
+        user:
+          $ref: "#/components/schemas/ContactDetailUser"
+        notes:
+          type: array
+          items: { $ref: "#/components/schemas/Note" }
+        activities:
+          type: array
+          items: { $ref: "#/components/schemas/Activity" }
+        completions:
+          type: array
+          items: { $ref: "#/components/schemas/ReminderCompletion" }
+        reminders:
+          type: array
+          items: { $ref: "#/components/schemas/Reminder" }
+        relationship_edges:
+          type: array
+          items: { $ref: "#/components/schemas/BriefingRelationship" }
+        life_events:
+          type: array
+          items: { $ref: "#/components/schemas/ContactDetailLifeEvent" }
+        agenda:
+          type: array
+          items: { $ref: "#/components/schemas/ConversationAgenda" }
+        gifts:
+          type: array
+          items: { $ref: "#/components/schemas/Gift" }
+        field_values:
+          type: array
+          items: { $ref: "#/components/schemas/FieldValue" }
+        external_identities:
+          type: array
+          items: { $ref: "#/components/schemas/ExternalIdentity" }
+        external_activities:
+          type: array
+          items: { $ref: "#/components/schemas/ExternalActivity" }
+        circles:
+          type: array
+          description: This contact's circle memberships (not the global per-user list GET /circles returns).
+          items: { $ref: "#/components/schemas/Circle" }
+        tags:
+          type: array
+          description: This contact's tags (not the global per-user list GET /tags returns).
+          items: { $ref: "#/components/schemas/Tag" }
+        immich:
+          $ref: "#/components/schemas/ContactDetailImmich"
+    ContactDetailUser:
+      type: object
+      description: The current user's fields the detail screen needs — deliberately thinner than the admin user object.
+      properties:
+        enabled_contact_fields:
+          type: array
+          items: { type: string }
+    ContactDetailLifeEvent:
+      description: A LifeEvent enriched with its RelatedEntityIDs' display names, batch-resolved once per contact.
+      allOf:
+        - $ref: "#/components/schemas/LifeEvent"
+        - type: object
+          properties:
+            related_entity_names:
+              type: object
+              additionalProperties: { type: string }
+              description: Keyed by Contact.VCardUID.
+    ContactDetailImmich:
+      type: object
+      description: >
+        Present only when the requesting user has an Immich config, regardless
+        of whether this particular contact is linked to an Immich person yet.
+      properties:
+        summary:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ImmichPersonSummary"
     ContactBriefing:
       type: object
       description: >

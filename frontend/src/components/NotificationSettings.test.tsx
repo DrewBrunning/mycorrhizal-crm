@@ -43,6 +43,7 @@ test('renders the settings card with all three channels', async () => {
   mockFetchByUrl({
     '/notifications/config': () => emptyConfig,
     '/notifications/push-subscriptions': () => ({ subscriptions: [] }),
+    '/notifications/devices': () => ({ devices: [] }),
   });
 
   render(
@@ -78,6 +79,7 @@ test('saving posts the channel config and per-user toggles', async () => {
       return emptyConfig;
     },
     '/notifications/push-subscriptions': () => ({ subscriptions: [] }),
+    '/notifications/devices': () => ({ devices: [] }),
   });
 
   render(
@@ -104,6 +106,7 @@ test('warns about a private ntfy URL before it is saved', async () => {
   mockFetchByUrl({
     '/notifications/config': () => emptyConfig,
     '/notifications/push-subscriptions': () => ({ subscriptions: [] }),
+    '/notifications/devices': () => ({ devices: [] }),
   });
 
   render(
@@ -142,6 +145,7 @@ test('test notification shows the backend-diagnosed success', async () => {
       vapid_public_key: 'public-key-abc',
     }),
     '/notifications/push-subscriptions': () => ({ subscriptions: [] }),
+    '/notifications/devices': () => ({ devices: [] }),
   });
 
   render(
@@ -172,6 +176,7 @@ test('test failure surfaces the backend reason, not a generic message', async ()
       vapid_public_key: 'public-key-abc',
     }),
     '/notifications/push-subscriptions': () => ({ subscriptions: [] }),
+    '/notifications/devices': () => ({ devices: [] }),
   });
 
   render(
@@ -212,6 +217,9 @@ test('registered devices are listed and can be removed', async () => {
           }),
         };
       }
+      if (String(url).includes('/notifications/devices')) {
+        return { ok: true, json: async () => ({ devices: [] }) };
+      }
       throw new Error(`unexpected fetch: ${url}`);
     })
   );
@@ -235,6 +243,7 @@ test('the push enable button is disabled when the browser lacks push support', a
   mockFetchByUrl({
     '/notifications/config': () => emptyConfig,
     '/notifications/push-subscriptions': () => ({ subscriptions: [] }),
+    '/notifications/devices': () => ({ devices: [] }),
   });
 
   render(
@@ -246,4 +255,53 @@ test('the push enable button is disabled when the browser lacks push support', a
   await waitFor(() => expect(screen.getByText('Enable browser notifications')).toBeInTheDocument());
   // jsdom has no serviceWorker/PushManager, so the button must be disabled.
   expect(screen.getByRole('button', { name: 'Enable browser notifications' })).toBeDisabled();
+});
+
+test('registered mobile devices (M2) are listed, can be removed, and unblock the push test button', async () => {
+  let deleteId: number | null = null;
+  mockFetchByUrl({
+    '/notifications/config': () => ({ ...emptyConfig, notify_push: true }),
+    '/notifications/push-subscriptions': () => ({ subscriptions: [] }),
+    '/notifications/devices': (init?: RequestInit) => {
+      if (init && init.method === 'DELETE') {
+        return {};
+      }
+      return {
+        devices: [
+          { id: 3, token: 'fcm-token-abc', client: 'fcm', device_label: "Drew's Pixel", created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z' },
+        ],
+      };
+    },
+  });
+  // The DELETE response body is never read; override fetch for that one case
+  // so the id makes it out of the mock (mockFetchByUrl's json() is lazy).
+  const realFetch = globalThis.fetch;
+  vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+    if (String(url).includes('/notifications/devices/') && init?.method === 'DELETE') {
+      deleteId = Number(String(url).split('/').pop());
+      return { ok: true, json: async () => ({}) };
+    }
+    return realFetch(url, init);
+  }));
+
+  const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+  render(
+    <SnackbarProvider>
+      <NotificationSettings />
+    </SnackbarProvider>
+  );
+
+  await waitFor(() => expect(screen.getByText("Drew's Pixel")).toBeInTheDocument());
+  // No browser subscriptions but one mobile device: the push test button must
+  // be enabled (M2 design decision 5 — the test button probes both). The
+  // three "Send test notification" buttons are ntfy/Gotify/push in that
+  // document order; the push one is last.
+  const testButtons = screen.getAllByRole('button', { name: 'Send test notification' });
+  expect(testButtons[testButtons.length - 1]).not.toBeDisabled();
+
+  fireEvent.click(screen.getByTitle('Remove this device'));
+  await waitFor(() => expect(deleteId).toBe(3));
+
+  confirmSpy.mockRestore();
 });

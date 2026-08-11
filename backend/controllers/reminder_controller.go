@@ -236,37 +236,14 @@ func GetUpcomingReminders(c *gin.Context) {
 		return
 	}
 
-	sevenDaysFromNow := time.Now().AddDate(0, 0, 7)
-
-	// Get reminders due (or overdue) within the next 7 days
-	var remindersNext7Days []models.Reminder
-	if err := db.Where("user_id = ? AND remind_at <= ? AND completed = ?", userID, sevenDaysFromNow, false).
-		Order("remind_at ASC").
-		Find(&remindersNext7Days).Error; err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve reminders").WithError(err))
-		return
-	}
-
-	// If more than five reminders are due soon, return all of them
-	if len(remindersNext7Days) > 5 {
-		c.JSON(http.StatusOK, gin.H{
-			"reminders": remindersNext7Days,
-		})
-		return
-	}
-
-	// Otherwise, ensure we return at least the next five reminders overall
-	var remindersNext5 []models.Reminder
-	if err := db.Where("user_id = ? AND completed = ?", userID, false).
-		Order("remind_at ASC").
-		Limit(5).
-		Find(&remindersNext5).Error; err != nil {
+	reminders, err := services.GetUpcomingReminders(db, userID, time.Now())
+	if err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve reminders").WithError(err))
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"reminders": remindersNext5,
+		"reminders": reminders,
 	})
 }
 
