@@ -10,6 +10,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
+import com.mycorrhizal.crm.model.network.Anniversary
+import com.mycorrhizal.crm.model.network.AnniversaryDate
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.CRMEnvelope
@@ -17,6 +19,7 @@ import com.mycorrhizal.crm.model.network.Email
 import com.mycorrhizal.crm.model.network.Name
 import com.mycorrhizal.crm.model.network.OnlineService
 import com.mycorrhizal.crm.model.network.Phone
+import com.mycorrhizal.crm.model.network.PartialDate
 import com.mycorrhizal.crm.model.network.Resource
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
@@ -209,6 +212,46 @@ class ContactDetailScreenTest {
             .assertIsDisplayed()
         composeTestRule.onNodeWithText("Website").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription("Copy link").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `birthday renders using the eu format by default`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(
+                name = Name(full = "Dana White"),
+                anniversaries = listOf(
+                    Anniversary(kind = "birth", date = AnniversaryDate(partial = PartialDate(year = 1990, month = 6, day = 15))),
+                ),
+            ),
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(contact = contact)
+            }
+        }
+
+        composeTestRule.onNodeWithText("Birthday: 15 June 1990").assertIsDisplayed()
+    }
+
+    @Test
+    fun `birthday honors the user's date_format preference`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(
+                name = Name(full = "Dana White"),
+                anniversaries = listOf(
+                    Anniversary(kind = "birth", date = AnniversaryDate(partial = PartialDate(year = 1990, month = 6, day = 15))),
+                ),
+            ),
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(contact = contact, dateFormat = "us")
+            }
+        }
+
+        composeTestRule.onNodeWithText("Birthday: June 15, 1990").assertIsDisplayed()
     }
 
     @Test

@@ -79,6 +79,7 @@ import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.Email
 import com.mycorrhizal.crm.model.network.OnlineService
 import com.mycorrhizal.crm.model.network.Phone
+import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.model.util.DateFormat.display
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.LocalDrawerOpen
@@ -286,6 +287,7 @@ fun ContactDetailScreen(
                     listState = listState,
                     headerContentAlpha = 1f - collapseProgress,
                     deviceLookupKey = state.deviceLookupKey,
+                    dateFormat = state.dateFormat,
                     onOpenInContacts = onOpenInContacts,
                     onViewActivities = onViewActivities,
                     onViewNotes = onViewNotes,
@@ -314,6 +316,8 @@ fun ContactDetailContent(
     /** 0→1 as the name fades out of the content into the collapsing app bar. */
     headerContentAlpha: Float = 1f,
     deviceLookupKey: String? = null,
+    /** The signed-in user's `date_format` preference; falls back to "eu" when absent. */
+    dateFormat: String? = null,
     onOpenInContacts: (String) -> Unit = {},
     onViewActivities: (Int) -> Unit = {},
     onViewNotes: (Int) -> Unit = {},
@@ -372,7 +376,7 @@ fun ContactDetailContent(
                 }
                 if (birthday != null) {
                     Text(
-                        text = "Birthday: ${birthday.display("eu")}",
+                        text = "Birthday: ${birthday.display(dateFormat ?: DateFormat.EU)}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

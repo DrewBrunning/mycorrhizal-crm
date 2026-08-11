@@ -150,6 +150,53 @@ class InteractionSyncWorkerLogicTest {
     }
 
     @Test
+    fun `deleteSynced runs even when one upload in the batch fails`() = runTest {
+        // Two pending interactions; only the first upload succeeds. Previously
+        // deleteSynced() was gated on syncedCount == pending.size, so a single
+        // failure left the successfully-synced row undeleted forever (it is
+        // marked synced=1 and excluded from future unsynced() batches, so it
+        // would only ever be cleaned up by a later fully-successful run).
+        coEvery { trackingSettings.callTrackingEnabled() } returns true
+        coEvery { trackingSettings.smsTrackingEnabled() } returns true
+        coEvery { pendingRepo.unsynced() } returns listOf(
+            PendingInteraction(
+                id = 10,
+                timestampMillis = 1_700_000_000_000,
+                kind = InteractionCapture.KIND_CALL,
+                direction = InteractionCapture.DIR_INCOMING,
+                phoneNumber = "+15550100",
+            ),
+            PendingInteraction(
+                id = 11,
+                timestampMillis = 1_700_000_001_000,
+                kind = InteractionCapture.KIND_CALL,
+                direction = InteractionCapture.DIR_INCOMING,
+                phoneNumber = "+15550101",
+            ),
+        )
+        coEvery {
+            apiClient.createActivity(match { it.externalRef == "device:10" })
+        } returns Result.success(com.mycorrhizal.crm.model.network.Activity(id = 200))
+        coEvery {
+            apiClient.createActivity(match { it.externalRef == "device:11" })
+        } returns Result.failure(RuntimeException("network error"))
+        coEvery { pendingRepo.markSynced(10, any()) } returns Unit
+        coEvery { pendingRepo.deleteSynced() } returns Unit
+
+        val worker = InteractionSyncWorker(
+            appContext = mockk(relaxed = true),
+            workerParams = mockk(relaxed = true),
+            pendingInteractionRepository = pendingRepo,
+            trackingSettings = trackingSettings,
+            apiClient = apiClient,
+        )
+        worker.doWork()
+
+        coVerify { pendingRepo.markSynced(10, any()) }
+        coVerify(exactly = 1) { pendingRepo.deleteSynced() }
+    }
+
+    @Test
     fun `date is formatted as ISO 8601`() {
         // 1_700_000_000_000 = 2023-11-14T22:13:20Z
         val worker = InteractionSyncWorker(

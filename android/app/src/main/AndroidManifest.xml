@@ -20,6 +20,10 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" />
+    <!-- Required for BootReceiver below: without this, Android never delivers
+         BOOT_COMPLETED to the app, and the periodic tracking workers are never
+         re-registered after a reboot. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!-- The tracking permissions imply telephony/SMS hardware; mark them as
          not required so non-phone devices (tablets, ChromeOS) can still install. -->
