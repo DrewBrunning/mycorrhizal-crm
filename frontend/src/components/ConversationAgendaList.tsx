@@ -9,6 +9,7 @@ import {
   InputAdornment,
   Chip,
   Divider,
+  Link,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -126,9 +127,9 @@ export default function ConversationAgendaList({
                   validator or arrived without one is shown as plain text
                   rather than turned into an unsafe href. */}
               {isHttpUrlString(item.reference_url) ? (
-                <a href={item.reference_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+                <Link href={item.reference_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
                   {item.reference_url}
-                </a>
+                </Link>
               ) : (
                 item.reference_url
               )}

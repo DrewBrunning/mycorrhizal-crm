@@ -274,10 +274,10 @@ export default function ContactHeader({
                 )}
                 <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
                   <Box sx={{ display: 'flex', gap: 1 }}>
-                    <IconButton size="small" color="primary" onClick={onSaveProfile}>
+                    <IconButton size="small" color="primary" onClick={onSaveProfile} aria-label={t('common.save')}>
                       <SaveIcon />
                     </IconButton>
-                    <IconButton size="small" onClick={onCancelEditProfile}>
+                    <IconButton size="small" onClick={onCancelEditProfile} aria-label={t('common.cancel')}>
                       <CloseIcon />
                     </IconButton>
                   </Box>
@@ -313,6 +313,7 @@ export default function ContactHeader({
                       <IconButton
                         className="edit-icon"
                         size="small"
+                        color="primary"
                         onClick={onStartEditProfile}
                         sx={{
                           ml: 1,
@@ -430,6 +431,7 @@ export default function ContactHeader({
                       <IconButton
                         className="edit-icon"
                         size="small"
+                        color="primary"
                         onClick={onStartEditProfile}
                         sx={{
                           ml: 1,
@@ -559,7 +561,7 @@ export default function ContactHeader({
                 <Typography variant="caption" color="text.secondary">
                   {t('contactDetail.circles')}
                 </Typography>
-                <IconButton className="edit-icon" size="small" onClick={() => setEditingCircles(!editingCircles)}
+                <IconButton className="edit-icon" size="small" color="primary" onClick={() => setEditingCircles(!editingCircles)}
                   sx={{ ml: 'auto', opacity: 0, transition: 'opacity 0.2s' }}>
                   <EditIcon fontSize="small" />
                 </IconButton>
@@ -570,7 +572,7 @@ export default function ContactHeader({
                   <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1, mb: 1 }}>
                     {contactCircles.length > 0 ? (
                       contactCircles.map((c) => (
-                        <Chip key={c.id} label={c.name} size="small" icon={<GroupIcon />} color="primary"
+                        <Chip key={c.id} label={c.name} size="small" icon={<GroupIcon />}
                           onDelete={() => onRemoveCircle(c)} />
                       ))
                     ) : (
@@ -604,7 +606,7 @@ export default function ContactHeader({
                 <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1 }}>
                   {contactCircles.length > 0 ? (
                     contactCircles.map((c) => (
-                      <Chip key={c.id} label={c.name} size="small" icon={<GroupIcon />} color="primary" />
+                      <Chip key={c.id} label={c.name} size="small" icon={<GroupIcon />} />
                     ))
                   ) : (
                     <Typography variant="caption" color="text.secondary">{t('contactDetail.noCircles')}</Typography>
@@ -620,7 +622,7 @@ export default function ContactHeader({
                 <Typography variant="caption" color="text.secondary">
                   {t('contactDetail.tags')}
                 </Typography>
-                <IconButton className="edit-icon" size="small" onClick={() => setEditingTags(!editingTags)}
+                <IconButton className="edit-icon" size="small" color="primary" onClick={() => setEditingTags(!editingTags)}
                   sx={{ ml: 'auto', opacity: 0, transition: 'opacity 0.2s' }}>
                   <EditIcon fontSize="small" />
                 </IconButton>

@@ -25,7 +25,7 @@
   "household": {
     "title": "Foyers",
     "description": "Regroupe les personnes (et animaux) de votre vie par résidence partagée. Les foyers sont distincts des cercles et du graphe relationnel — confirmer ou rejeter une relation suggérée reste toujours votre choix.",
-    "newHousehold": "Nouveau foyer",
+    "newHousehold": "Ajouter un foyer",
     "createHousehold": "Créer un foyer",
     "editHousehold": "Modifier le foyer",
     "name": "Nom",
@@ -62,7 +62,7 @@
     "created": "Foyer créé",
     "updated": "Foyer mis à jour",
     "deleted": "Foyer supprimé",
-    "suggestAddresses": "Suggérer des foyers avec adresse partagée",
+    "suggestAddresses": "Suggérer des foyers",
     "scanning": "Analyse en cours…",
     "scanFailed": "Impossible d'analyser les adresses partagées",
     "addressSuggestions": "Suggestions d'adresse partagée",

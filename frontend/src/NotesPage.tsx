@@ -178,7 +178,7 @@ const NotesPage: React.FC = () => {
             <InfoOutlinedIcon fontSize="small" />
           </IconButton>
         </Box>
-        <Button variant="outlined" startIcon={<SvgIcon><path d={mdiNotePlusOutline} /></SvgIcon>} onClick={handleAddNote}>
+        <Button variant="contained" color="primary" startIcon={<SvgIcon><path d={mdiNotePlusOutline} /></SvgIcon>} onClick={handleAddNote}>
           {t('notes.addNote')}
         </Button>
       </Box>

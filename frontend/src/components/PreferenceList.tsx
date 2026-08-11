@@ -47,15 +47,11 @@ export default function PreferenceList({ preferences, onEdit, onDelete }: Prefer
             <Chip
               label={t(`preference.categories.${pref.category}`, pref.category)}
               size="small"
-              color="primary"
-              variant="outlined"
             />
             {pref.key && (
               <Chip
                 label={t(`preference.keys.${pref.key}`, pref.key)}
                 size="small"
-                color="info"
-                variant="outlined"
               />
             )}
             {pref.sensitivity !== 'normal' && (

@@ -225,7 +225,8 @@ export default function WebhooksSettings() {
               </Typography>
             </Box>
             <Button
-              variant="outlined"
+              variant="contained"
+              color="primary"
               size="small"
               startIcon={<AddIcon />}
               onClick={openCreate}

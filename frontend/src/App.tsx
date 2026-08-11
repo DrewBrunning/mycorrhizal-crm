@@ -199,7 +199,10 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
               }}
             >
               <ListItemIcon>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.text} />
+              <ListItemText
+                primary={item.text}
+                slotProps={{ primary: { sx: { fontFamily: '"EB Garamond", serif' } } }}
+              />
             </ListItemButton>
           </ListItem>
         ))}

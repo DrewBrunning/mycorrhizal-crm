@@ -39,7 +39,7 @@ export default function CopyButton({ value, label, className }: CopyButtonProps)
 
   return (
     <Tooltip title={t('common.copy')}>
-      <IconButton size="small" onClick={handleCopy} aria-label={ariaLabel} className={className}>
+      <IconButton size="small" color="primary" onClick={handleCopy} aria-label={ariaLabel} className={className}>
         <ContentCopyIcon fontSize="inherit" />
       </IconButton>
     </Tooltip>

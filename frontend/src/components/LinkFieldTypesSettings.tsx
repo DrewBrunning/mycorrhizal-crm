@@ -137,7 +137,7 @@ export default function LinkFieldTypesSettings() {
                 {t('settings.linkFieldTypes.title')}
               </Typography>
             </Box>
-            <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={openCreate}>
+            <Button variant="contained" color="primary" size="small" startIcon={<AddIcon />} onClick={openCreate}>
               {t('settings.linkFieldTypes.add')}
             </Button>
           </Box>

@@ -310,7 +310,6 @@ export default function UsersPage() {
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
                       <Chip
                         label={user.is_admin ? t('users.roles.admin') : t('users.roles.user')}
-                        color={user.is_admin ? 'primary' : 'default'}
                         size="small"
                       />
                       <Typography variant="caption" color="text.secondary">
@@ -377,7 +376,6 @@ export default function UsersPage() {
                   <TableCell>
                     <Chip
                       label={user.is_admin ? t('users.roles.admin') : t('users.roles.user')}
-                      color={user.is_admin ? 'primary' : 'default'}
                       size="small"
                     />
                   </TableCell>

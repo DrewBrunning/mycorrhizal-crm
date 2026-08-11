@@ -81,3 +81,67 @@ This needs the same kind of short design/scoping pass as T62 before wiring anyth
 - `cd frontend && npx tsc --noEmit && npx vitest run` green.
 - Hand-verified on a real mobile viewport (the environment the original observation came from), not
   just desktop devtools resize.
+
+## Landing note
+
+**2026-08-11 (landed):** Role list settled via two parallel Explore audits plus user answers:
+
+- **"The side bar"** = the app's persistent left nav only (`App.tsx`) — the contact-detail page's own
+  jump nav (Overview/People/Timeline/...) was considered and explicitly excluded.
+- **"Activity titles"** = literally each page's own top-level heading ("Dashboard," "Contacts,"
+  "Search," etc, and the contact-detail page's own heading — the contact's name). `PanelCard` section
+  titles ("Preferences"/"Timeline"), individual timeline-entry titles, and the standalone Activities
+  list's `activity.title` were all considered and excluded — they stay plain sans.
+
+**The mechanism ended up different from this ticket's own guess**, and turned out to matter a lot:
+
+- `h5` is used *exclusively* for page-level headings app-wide (confirmed zero live collisions — MUI's
+  `DialogTitle` defaults to `h6`, not `h5`) — safe for a clean `theme.ts typography.h5` override, both
+  light and dark blocks.
+- `overline` (the Mono subheading candidate) is likewise used exclusively for the section-label role
+  ("Food & Drink Preferences," "Clothing Sizes," 5 more) — safe for a clean `theme.ts
+  typography.overline` override, both blocks.
+- The persistent nav renders via a bare `ListItemText primary=` with **no** variant — it implicitly
+  falls through to MUI's global `body1` default, which is reused 19+ times explicitly plus is the
+  fallback for every unstyled Typography/ListItemText/MenuItem app-wide. **Not safe to theme
+  globally** — wired instead via `slotProps.primary.sx` scoped to just this one `App.tsx` nav list
+  (using MUI v7's current `slotProps` API, not the deprecated `primaryTypographyProps`, per explicit
+  instruction to prefer current APIs).
+- Every other candidate the ticket floated (`h6`, `subtitle1`, `subtitle2`, `body2`, `Button`
+  typography) turned out to have real collisions if reassigned globally — `h6` hits all ~40 live
+  `DialogTitle`s, `subtitle2` hits a `color="error"` site inside a dialog, `subtitle1`/`body2`/`button`
+  are each reused dozens-to-hundreds of times for unrelated things. Moot here since none of those
+  variants ended up in scope, but worth remembering if a future ticket wants to extend either font's
+  reach.
+
+No `MuiDialogTitle`/`MuiAlert` re-exclusion override was needed — `h5` and `overline` never touch a
+variant `DialogTitle`/`Alert` use, so there was nothing to exclude. `AlertTitle` in particular can
+never pick up `h5`: it renders via `Typography` with no `variant` prop passed, so it always falls
+through to MUI's own default (`body1`), regardless of anything in this app's theme.
+
+Hand-verified live (browser preview, real dev-DB data, both light and dark mode, desktop docked drawer
+and mobile hamburger drawer): every page heading and the contact-name heading render in EB Garamond;
+the nav list (both drawer variants) renders in EB Garamond; "Food & Drink Preferences" and "Clothing
+Sizes" render in IBM Plex Mono; the "Add Preference" `DialogTitle` stays plain sans, confirming no
+leak. `npx tsc --noEmit` and `npx vitest run` (622/622) green.
+
+`public/fonts.css`'s top-of-file comment updated to describe the real final roles instead of the
+stale "branding only" / "audit IDs, build version, webhook tokens" description (the latter was never
+actually true — Mono rendered nowhere live before this ticket).
+
+**2026-08-11 (follow-up).** User feedback after hand-testing: the `overline`-only Mono placement was
+too easy to miss (it only appears on the two niche section labels named above, which don't show up
+on a contact with no preferences/clothing sizes set — plausibly why it read as "not seeing Mono
+anywhere"). The actually-expected role was per-field captions on the contact detail page — "Birthday,"
+"Phone," "Address," etc — to contrast against the IBM Plex Sans field values below them. Checked
+first: `caption` (the variant those labels use) is reused 69 times app-wide, including error text and
+dialog content, so — same reasoning as the `h5`/`overline` decision above — not safe for a blanket
+`theme.ts typography.caption` override. Fixed with a component-scoped `sx` override instead, on the
+two shared components that render every field-row caption on the contact page:
+`EditableField.tsx:60` (single-value fields) and `EditableArrayField.tsx:83` (multi-value fields,
+phone/address/email/etc) — together these cover all 23 field rows in `ContactInformation.tsx`. The
+`overline` section-label treatment was kept, not reverted — it's still a correct, harmless "subheading"
+instance, just not sufficient on its own. Hand-verified live: "Birthday"/"Phone"/"Address"/"Email"/etc
+render in Mono, the field values themselves stay sans, and unrelated captions elsewhere (e.g.
+`ContactHeader.tsx`'s "Circles"/"Tags" labels) are confirmed untouched. `npx tsc --noEmit` and
+`npx vitest run` (622/622) still green.

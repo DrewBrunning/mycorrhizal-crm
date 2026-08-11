@@ -80,7 +80,8 @@ export default function EditableArrayField<T>({
     >
       {icon}
       <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-        <Typography variant="caption" color="text.secondary">
+        {/* T63: see EditableField.tsx's matching comment -- same reasoning. */}
+        <Typography variant="caption" color="text.secondary" sx={{ fontFamily: '"IBM Plex Mono", monospace' }}>
           {label}
         </Typography>
         <Box sx={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{renderDisplay(value)}</Box>

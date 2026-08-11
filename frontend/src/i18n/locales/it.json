@@ -25,7 +25,7 @@
   "household": {
     "title": "Nuclei familiari",
     "description": "Raggruppa le persone (e gli animali) della tua vita per residenza condivisa. I nuclei familiari sono separati dai cerchi e dal grafo delle relazioni — confermare o rifiutare una relazione suggerita è sempre una tua scelta.",
-    "newHousehold": "Nuovo nucleo",
+    "newHousehold": "Aggiungi nucleo",
     "createHousehold": "Crea nucleo familiare",
     "editHousehold": "Modifica nucleo familiare",
     "name": "Nome",
@@ -62,7 +62,7 @@
     "created": "Nucleo familiare creato",
     "updated": "Nucleo familiare aggiornato",
     "deleted": "Nucleo familiare eliminato",
-    "suggestAddresses": "Suggerisci nuclei familiari con indirizzo condiviso",
+    "suggestAddresses": "Suggerisci nuclei",
     "scanning": "Ricerca in corso…",
     "scanFailed": "Impossibile cercare gli indirizzi condivisi",
     "addressSuggestions": "Suggerimenti con indirizzo condiviso",

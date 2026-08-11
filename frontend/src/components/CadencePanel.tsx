@@ -38,7 +38,7 @@ export default function CadencePanel({ policy, loading, onAdd, onEdit, onDelete 
         <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
           {t('cadence.noPolicy')}
         </Typography>
-        <Button startIcon={<AddIcon />} onClick={onAdd} variant="outlined" size="small">
+        <Button startIcon={<AddIcon />} onClick={onAdd} variant="contained" color="primary" size="small">
           {t('cadence.add')}
         </Button>
       </Paper>

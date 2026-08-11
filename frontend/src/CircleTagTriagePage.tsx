@@ -333,7 +333,7 @@ export default function CircleTagTriagePage() {
               </Typography>
               <Box display="flex" flexWrap="wrap" gap={0.5} mt={0.5}>
                 {circles.map((c) => (
-                  <Chip key={c.name} label={`${c.name} (${c.contactCount})`} color="primary" size="small" />
+                  <Chip key={c.name} label={`${c.name} (${c.contactCount})`} size="small" />
                 ))}
               </Box>
             </Box>
@@ -346,7 +346,7 @@ export default function CircleTagTriagePage() {
               </Typography>
               <Box display="flex" flexWrap="wrap" gap={0.5} mt={0.5}>
                 {tags.map((t) => (
-                  <Chip key={t.name} label={`${t.name} (${t.contactCount})`} color="secondary" size="small" />
+                  <Chip key={t.name} label={`${t.name} (${t.contactCount})`} size="small" />
                 ))}
               </Box>
             </Box>

@@ -25,7 +25,7 @@
   "household": {
     "title": "Households",
     "description": "Group the people (and pets) in your life by shared residence. Households stay separate from circles and the relationship graph — confirming or rejecting a suggested relationship is always your choice.",
-    "newHousehold": "New Household",
+    "newHousehold": "Add Household",
     "createHousehold": "Create Household",
     "editHousehold": "Edit Household",
     "name": "Name",
@@ -62,7 +62,7 @@
     "created": "Household created",
     "updated": "Household updated",
     "deleted": "Household deleted",
-    "suggestAddresses": "Suggest households from shared address",
+    "suggestAddresses": "Suggest Households",
     "scanning": "Scanning…",
     "scanFailed": "Couldn't scan shared addresses",
     "addressSuggestions": "Shared-address suggestions",

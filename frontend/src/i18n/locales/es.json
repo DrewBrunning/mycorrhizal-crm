@@ -25,7 +25,7 @@
   "household": {
     "title": "Hogares",
     "description": "Agrupa a las personas (y mascotas) de tu vida por residencia compartida. Los hogares están separados de los círculos y del grafo de relaciones — confirmar o rechazar una relación sugerida siempre es tu decisión.",
-    "newHousehold": "Nuevo hogar",
+    "newHousehold": "Agregar hogar",
     "createHousehold": "Crear hogar",
     "editHousehold": "Editar hogar",
     "name": "Nombre",
@@ -62,7 +62,7 @@
     "created": "Hogar creado",
     "updated": "Hogar actualizado",
     "deleted": "Hogar eliminado",
-    "suggestAddresses": "Sugerir hogares con dirección compartida",
+    "suggestAddresses": "Sugerir hogares",
     "scanning": "Buscando…",
     "scanFailed": "No se pudieron buscar las direcciones compartidas",
     "addressSuggestions": "Sugerencias con dirección compartida",

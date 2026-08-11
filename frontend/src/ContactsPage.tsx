@@ -204,7 +204,8 @@ export default function ContactsPage() {
           {t('contacts.import.button', 'Import')}
         </Button>
         <Button
-          variant="outlined"
+          variant="contained"
+          color="primary"
           startIcon={<PersonAddIcon />}
           onClick={() => setAddDialogOpen(true)}
           sx={{ whiteSpace: 'nowrap' }}

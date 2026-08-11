@@ -1,7 +1,10 @@
 /* Self-hosted brand/UI fonts. Source TTFs + regeneration steps: assets/fonts/README.md.
-   EB Garamond -- branding only (the wordmark in the top app bar).
+   EB Garamond -- the wordmark, plus every page-level heading (theme.ts typography.h5) and the
+     persistent left nav (App.tsx).
    IBM Plex Sans -- everything else (the theme's default typeface).
-   IBM Plex Mono -- monospace UI (audit IDs, build version, webhook tokens). */
+   IBM Plex Mono -- overline-variant subheading labels (theme.ts typography.overline), e.g. "Food &
+     Drink Preferences," "Clothing Sizes." Also still wired to the bare <code> tag (index.css) for any
+     future monospace content, though nothing renders through it live today. */
 
 @font-face {
   font-family: 'EB Garamond';

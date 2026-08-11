@@ -24,7 +24,7 @@ test.describe('Address-based household suggestions', () => {
 
     try {
       await page.goto('/households');
-      await page.getByRole('button', { name: /suggest households from shared address/i }).click();
+      await page.getByRole('button', { name: /suggest households/i }).click();
 
       // The suggestion card renders the shared address and both members.
       await expect(

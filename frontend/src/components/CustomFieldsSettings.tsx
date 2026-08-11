@@ -160,7 +160,7 @@ export default function CustomFieldsSettings() {
                 )}
 
                 <Box>
-                  <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={openCreate}>
+                  <Button variant="contained" color="primary" size="small" startIcon={<AddIcon />} onClick={openCreate}>
                     {t('settings.customFields.add')}
                   </Button>
                 </Box>

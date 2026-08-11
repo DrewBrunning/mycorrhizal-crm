@@ -25,7 +25,7 @@
   "household": {
     "title": "Haushalte",
     "description": "Gruppiere die Menschen (und Haustiere) in deinem Leben nach gemeinsamem Wohnort. Haushalte sind getrennt von Kreisen und dem Beziehungsgraphen — ob du eine vorgeschlagene Beziehung bestätigst oder ablehnst, ist immer deine Entscheidung.",
-    "newHousehold": "Neuer Haushalt",
+    "newHousehold": "Haushalt hinzufügen",
     "createHousehold": "Haushalt erstellen",
     "editHousehold": "Haushalt bearbeiten",
     "name": "Name",
@@ -62,7 +62,7 @@
     "created": "Haushalt erstellt",
     "updated": "Haushalt aktualisiert",
     "deleted": "Haushalt gelöscht",
-    "suggestAddresses": "Haushalte über gemeinsame Adresse vorschlagen",
+    "suggestAddresses": "Haushalte vorschlagen",
     "scanning": "Suche läuft…",
     "scanFailed": "Gemeinsame Adressen konnten nicht durchsucht werden",
     "addressSuggestions": "Vorschläge mit gemeinsamer Adresse",

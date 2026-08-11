@@ -312,6 +312,8 @@ export default function HouseholdList({
               ) : (
                 <Button
                   size="small"
+                  variant="contained"
+                  color="primary"
                   startIcon={<PersonAddIcon />}
                   onClick={() => setAddOpenFor(household.id)}
                 >

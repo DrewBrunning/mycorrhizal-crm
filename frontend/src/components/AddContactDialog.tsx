@@ -276,7 +276,6 @@ export default function AddContactDialog({
                   key={c.id || c.name}
                   label={c.name}
                   onDelete={() => handleRemoveCircle(c)}
-                  color="primary"
                   size="small"
                 />
               ))}
@@ -333,7 +332,6 @@ export default function AddContactDialog({
                   key={t.id || t.name}
                   label={t.name}
                   onDelete={() => handleRemoveTag(t)}
-                  color="secondary"
                   size="small"
                 />
               ))}

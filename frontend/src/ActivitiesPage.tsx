@@ -199,7 +199,7 @@ const ActivitiesPage: React.FC = () => {
             <InfoOutlinedIcon fontSize="small" />
           </IconButton>
         </Box>
-        <Button variant="outlined" startIcon={<SvgIcon><path d={mdiCalendarPlus} /></SvgIcon>} onClick={handleAddActivity}>
+        <Button variant="contained" color="primary" startIcon={<SvgIcon><path d={mdiCalendarPlus} /></SvgIcon>} onClick={handleAddActivity}>
           {t('activities.addActivity')}
         </Button>
       </Box>
