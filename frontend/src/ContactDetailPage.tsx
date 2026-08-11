@@ -1402,7 +1402,7 @@ export default function ContactDetailPage() {
         <PanelCard
           title={t('preference.title')}
           actions={
-            <Button startIcon={<AddIcon />} onClick={handleAddPreference} variant="outlined" size="small">
+            <Button startIcon={<AddIcon />} onClick={handleAddPreference} variant="contained" color="primary" size="small">
               {t('preference.add')}
             </Button>
           }
@@ -1423,7 +1423,7 @@ export default function ContactDetailPage() {
         <PanelCard
           title={t('relationships.title')}
           actions={
-            <Button startIcon={<AddIcon />} onClick={handleAddRelationshipEdge} variant="outlined" size="small">
+            <Button startIcon={<AddIcon />} onClick={handleAddRelationshipEdge} variant="contained" color="primary" size="small">
               {t('relationships.addRelationship')}
             </Button>
           }
@@ -1457,7 +1457,8 @@ export default function ContactDetailPage() {
               <Button
                 startIcon={<SvgIcon><path d={mdiNotePlusOutline} /></SvgIcon>}
                 onClick={() => setNoteDialogOpen(true)}
-                variant="outlined"
+                variant="contained"
+                color="primary"
                 size="small"
               >
                 {t('contactDetail.addNote')}
@@ -1465,7 +1466,8 @@ export default function ContactDetailPage() {
               <Button
                 startIcon={<SvgIcon><path d={mdiCalendarPlus} /></SvgIcon>}
                 onClick={() => setActivityDialogOpen(true)}
-                variant="outlined"
+                variant="contained"
+                color="primary"
                 size="small"
               >
                 {t('contactDetail.addActivity')}
@@ -1482,7 +1484,7 @@ export default function ContactDetailPage() {
         <PanelCard
           title={t('lifeEvent.title')}
           actions={
-            <Button startIcon={<AddIcon />} onClick={handleAddLifeEvent} variant="outlined" size="small">
+            <Button startIcon={<AddIcon />} onClick={handleAddLifeEvent} variant="contained" color="primary" size="small">
               {t('lifeEvent.add')}
             </Button>
           }
@@ -1519,7 +1521,7 @@ export default function ContactDetailPage() {
         <PanelCard
           title={t('reminders.title')}
           actions={
-            <Button startIcon={<NotificationsActiveIcon />} onClick={handleAddReminder} variant="outlined" size="small">
+            <Button startIcon={<NotificationsActiveIcon />} onClick={handleAddReminder} variant="contained" color="primary" size="small">
               {t('reminders.add')}
             </Button>
           }

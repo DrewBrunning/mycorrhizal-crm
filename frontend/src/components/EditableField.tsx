@@ -99,6 +99,7 @@ export default function EditableField({
             <IconButton
               className="edit-icon"
               size="small"
+              color="primary"
               onClick={() => onEditStart(field, value)}
               sx={{
                 opacity: 0,

@@ -144,8 +144,6 @@ export default function ReminderList({
                         <Chip
                           label={t('reminders.flexible')}
                           size="small"
-                          variant="outlined"
-                          color="info"
                         />
                       </Tooltip>
                     )}

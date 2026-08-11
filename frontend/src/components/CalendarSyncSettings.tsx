@@ -225,7 +225,7 @@ export default function CalendarSyncSettings() {
                 {t('settings.calendarSync.title')}
               </Typography>
             </Box>
-            <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={openCreate}>
+            <Button variant="contained" color="primary" size="small" startIcon={<AddIcon />} onClick={openCreate}>
               {t('settings.calendarSync.add')}
             </Button>
           </Box>

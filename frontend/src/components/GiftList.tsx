@@ -10,6 +10,7 @@ import {
   InputAdornment,
   Chip,
   Divider,
+  Link,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -160,7 +161,8 @@ function GiftSection({
           }}
         />
         <Button
-          variant="outlined"
+          variant="contained"
+          color="primary"
           size="small"
           startIcon={<AddIcon />}
           onClick={() => onAddFull(status)}
@@ -297,9 +299,9 @@ export default function GiftList({
                     scheme-less value to https, so this fallback is for values
                     written by something other than the dialog. */}
                 {isHttpUrlString(url) ? (
-                  <a href={url} target="_blank" rel="noopener noreferrer">
+                  <Link href={url} target="_blank" rel="noopener noreferrer">
                     {url}
-                  </a>
+                  </Link>
                 ) : (
                   url
                 )}

@@ -236,12 +236,24 @@ export const darkTheme = createTheme({
     },
 
     MuiChip: {
-      styleOverrides: {
-        root: {
-          backgroundColor: "#45423B", // hypha
-          color: "#EAE4DA", // bark
+      // T62: this used to be an unconditional `styleOverrides.root` override,
+      // which applied to every Chip regardless of `color` -- silently
+      // flattening legitimately color="warning"/"error"/"success"/"info"
+      // chips (e.g. an overdue reminder's date chip, audit log operation
+      // badges) to plain hypha/bark grey in dark mode only. Scoped to
+      // `color="default"` via `variants` so only undecorated/category-style
+      // chips get the hypha/bark treatment; semantic-colored chips fall
+      // through to MUI's normal palette-derived dark-mode colors, matching
+      // light mode (which never had this override).
+      variants: [
+        {
+          props: { color: "default" },
+          style: {
+            backgroundColor: "#45423B", // hypha
+            color: "#EAE4DA", // bark
+          },
         },
-      },
+      ],
     },
 
     MuiDialog: {

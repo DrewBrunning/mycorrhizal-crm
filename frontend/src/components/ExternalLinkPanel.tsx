@@ -96,7 +96,8 @@ export default function ExternalLinkPanel({
             </Box>
             <Button
               size="small"
-              variant="outlined"
+              variant="contained"
+              color="primary"
               startIcon={<AddIcon />}
               onClick={() => setSearchOpen(true)}
             >

@@ -112,3 +112,47 @@ attached:
 
 The remaining scope above (the categorical color-system decision, and the button-affordance
 question) is still open.
+
+**2026-08-11 (landed):** Decisions recorded and implemented. Scope grew during triage beyond the
+original chip/button question to cover the same underlying "where does color mean tappable/brand"
+question for icon buttons and hyperlinks — see below.
+
+- **Chips: Option A (neutral).** Dropped `color="primary"/"secondary"/"info"` from every read-only
+  category/type/attribute badge: `PreferenceList.tsx`'s category and key chips, `ContactHeader.tsx`'s
+  Circle chips (both edit and view mode — no longer a deliberate exception), `CircleTagTriagePage.tsx`'s
+  preview chips, `PrepViewPage.tsx`'s "animal" badge, `ReminderList.tsx`'s "flexible" chip,
+  `LifeEventList.tsx`'s "remind" flag, `UsersPage.tsx`'s role chip, and `AddContactDialog.tsx`'s
+  selected circle/tag chips. Left untouched: `AddNoteDialog.tsx`'s contact-identity chip,
+  `NotesPage.tsx`'s unfiled-count badge, and every chip already carrying genuine semantic meaning
+  (audit log operation colors, share status, import results, "suggested" relationship badges,
+  interactive/filter/autocomplete chips).
+- **Buttons: real actions get explicit brand green.** ~17 section/panel-level "Add X" actions switched
+  from `variant="outlined"` to `variant="contained" color="primary"` (`ContactDetailPage.tsx`'s six
+  `PanelCard` add actions, `ContactsPage.tsx`, `NotesPage.tsx`, `ActivitiesPage.tsx`,
+  `HouseholdList.tsx`, `CadencePanel.tsx`, the four Settings "Add" buttons, `GiftList.tsx`,
+  `ExternalLinkPanel.tsx`, `AttachmentsSection.tsx`). Deliberately deferred: the small, densely-repeated
+  "add another value" buttons inside multi-value field editors and their icon-only `+` adornment
+  cousins — solid green on every one of those would overload rather than clarify.
+- **Icon buttons: Material Design's interactive/decorative split**, extended from the button decision
+  during scoping — decorative field-type glyphs (already `text.secondary`) stay neutral; genuinely
+  interactive, previously-colorless utility icons (`CopyButton.tsx`, `EditableField.tsx`'s edit icon,
+  `ContactHeader.tsx`'s circle/tag/name edit icons, `ContactInformation.tsx`'s phone-row call/text
+  buttons) now get `color="primary"`.
+- **Links: fixed the two that rendered browser-default blue.** `GiftList.tsx` and
+  `ConversationAgendaList.tsx` converted their raw `<a href>` to MUI `<Link>`, matching
+  `ExternalLinkPanel.tsx`'s existing correct pattern — resolves to brand green for free.
+  `ContactInformation.tsx`'s deliberate `color: 'inherit'` value-is-the-tappable-target pattern is
+  untouched (a different, already-reasoned design).
+- **Dark-mode bug found and fixed along the way:** `theme.ts`'s dark `MuiChip` override was
+  unconditional (`styleOverrides.root`), silently flattening every semantically-colored chip
+  (warning/error/success/info) to plain hypha/bark grey in dark mode only — confirmed live with a
+  real overdue reminder's date chip. Rescoped to `variants: [{ props: { color: 'default' }, ... }]`
+  so only undecorated chips get the hypha/bark treatment; semantic chips now render their real palette
+  colors in dark mode again, matching light mode.
+- Verified: `npx tsc --noEmit` and `npx vitest run` (622/622) green. Hand-verified live in the browser
+  (real dev-DB contact/reminder/gift data) in both light and dark mode: Add-buttons render solid
+  green, copy/edit icons render green, the previously-broken dark-mode chip flattening is fixed, and
+  the gift-URL link renders green/underlined instead of browser blue.
+- **Found but out of scope, flagged separately:** `RelationshipEdgeDialog.tsx:247` uses a plain
+  `href` for an internal `/contacts/:id` route instead of react-router's `Link to=`, causing a full
+  page reload — a routing bug, not a color bug.

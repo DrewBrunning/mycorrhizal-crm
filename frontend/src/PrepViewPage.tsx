@@ -112,7 +112,7 @@ export default function PrepViewPage() {
             </Typography>
           </Box>
           {briefing.kind === 'animal' && (
-            <Chip label={t('contactDetail.animal')} size="small" color="secondary" />
+            <Chip label={t('contactDetail.animal')} size="small" />
           )}
         </CardContent>
       </Card>

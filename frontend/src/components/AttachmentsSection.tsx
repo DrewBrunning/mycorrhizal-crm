@@ -90,7 +90,8 @@ export default function AttachmentsSection({ contactId }: AttachmentsSectionProp
         <input ref={fileInputRef} type="file" style={{ display: 'none' }} onChange={handleFileChange} />
         <Button
           size="small"
-          variant="outlined"
+          variant="contained"
+          color="primary"
           startIcon={uploading ? <CircularProgress size={16} color="inherit" /> : <UploadIcon />}
           disabled={uploading}
           onClick={() => fileInputRef.current?.click()}

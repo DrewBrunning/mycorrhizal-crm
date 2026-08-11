@@ -233,14 +233,14 @@ export default function ContactInformation({
               <Box sx={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 0.25 }}>
                 {!isFax && (
                   <Tooltip title={t('contactDetail.call')}>
-                    <IconButton size="small" component="a" href={buildTelLink(r.value)} aria-label={`${t('contactDetail.call')} ${r.value}`}>
+                    <IconButton size="small" color="primary" component="a" href={buildTelLink(r.value)} aria-label={`${t('contactDetail.call')} ${r.value}`}>
                       <PhoneIcon fontSize="inherit" />
                     </IconButton>
                   </Tooltip>
                 )}
                 {isCell && (
                   <Tooltip title={t('contactDetail.text')}>
-                    <IconButton size="small" component="a" href={buildSmsLink(r.value)} aria-label={`${t('contactDetail.text')} ${r.value}`}>
+                    <IconButton size="small" color="primary" component="a" href={buildSmsLink(r.value)} aria-label={`${t('contactDetail.text')} ${r.value}`}>
                       <SmsOutlinedIcon fontSize="inherit" />
                     </IconButton>
                   </Tooltip>

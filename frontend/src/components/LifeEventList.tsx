@@ -55,7 +55,7 @@ export default function LifeEventList({
                 />
                 {event.remind && (
                   <Tooltip title={t('lifeEvent.remindTooltip')}>
-                    <Chip label={t('lifeEvent.remind')} size="small" color="primary" />
+                    <Chip label={t('lifeEvent.remind')} size="small" />
                   </Tooltip>
                 )}
               </Box>
