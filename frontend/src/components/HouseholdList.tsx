@@ -174,9 +174,14 @@ export default function HouseholdList({
         const isAddOpen = addOpenFor === household.id;
         return (
           <Paper key={household.id} variant="outlined" sx={{ p: 2 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {/* On narrow viewports a long household name has to share the row
+                with three icon buttons, which squeezed the name into a sliver
+                a few characters wide. Below sm, drop the actions to their own
+                row instead (same idea as ContactsPage's card layout) so the
+                name gets the full card width. */}
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'flex-start' }, gap: 1 }}>
+              <Box sx={{ minWidth: 0 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                   <Typography variant="h6" component="span">
                     {household.name}
                   </Typography>
@@ -190,7 +195,7 @@ export default function HouseholdList({
                   {t('household.members', { count: householdMembers.length })}
                 </Typography>
               </Box>
-              <Box sx={{ display: 'flex', gap: 0.5 }}>
+              <Box sx={{ display: 'flex', gap: 0.5, justifyContent: { xs: 'flex-end', sm: 'flex-start' } }}>
                 <Tooltip title={t('household.suggestRelationships')}>
                   <span>
                     <IconButton
