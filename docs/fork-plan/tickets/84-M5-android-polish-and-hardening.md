@@ -63,7 +63,7 @@ M1's landing note lists four cosmetic differences spotted on-device against the 
 
 1. **Contact photos still do not display** — and this is now a three-part problem, not one:
    - The backend does not yet return a usable photo URL. That is the photo-serving item in
-     [`82-M1-missing-endpoints.md`](82-M1-missing-endpoints.md) — **gated on it**.
+     [M6](85-M6-photo-url-user-prefs-oidc.md) — **gated on it**.
    - `ContactAvatar` only accepts an *absolute* `http(s)` URL (`uri.startsWith("http")`). The
      proposed wire value is a **relative** URL (`/api/v1/contacts/{id}/profile_picture?thumbnail=true`),
      which will fall straight through to the person-icon fallback. It needs to resolve relative
@@ -93,27 +93,53 @@ Note the overlay was converted from a singleton `object` to a service-owned inst
 
 ## 5. Consume the backend endpoints once they land
 
-[`82-M1-missing-endpoints.md`](82-M1-missing-endpoints.md) says its Android consumers are "tracked
-in the M1 ticket / follow-up commits", which in practice means untracked. They are:
+[M6](85-M6-photo-url-user-prefs-oidc.md) originally said its Android consumers were "tracked in the
+M1 ticket / follow-up commits", which in practice meant untracked. This section is where they now
+live:
 
-- **Photo URL** ([M1 endpoints](82-M1-missing-endpoints.md) §1) → §3.1 above.
+- **Photo URL** ([M6](85-M6-photo-url-user-prefs-oidc.md) §1) → §3.1 above.
 - **`GET /dashboard`** ([M3](82-M3-dashboard-overview-endpoint.md)) → the Android Dashboard
   currently makes three separate authenticated requests (birthdays, reminders, overdue cadences)
   on every open. Collapse to one call.
 - **`GET /contacts/:id/detail`** ([M4](83-M4-contact-detail-composite.md)) → not in the original
   M1-endpoints list; adopt the composite on the contact detail once it exists.
-- **`PATCH /users/me`** ([M1 endpoints](82-M1-missing-endpoints.md) §3) → Settings shows Language
+- **`PATCH /users/me`** ([M6](85-M6-photo-url-user-prefs-oidc.md) §3) → Settings shows Language
   and Date format as read-only rows. Make them editable. (The read path is already wired, and the
   date-format preference is now actually *used* — the contact detail honours it as of the
   2026-08-11 pass.)
-- **OIDC native return** ([M1 endpoints](82-M1-missing-endpoints.md) §4) → the app has no SSO path
+- **OIDC native return** ([M6](85-M6-photo-url-user-prefs-oidc.md) §4) → the app has no SSO path
   at all today; the deep-link handling (`mycorrhizal://oidc/callback`) and its intent filter land
   here once the backend's `client=android` branch exists.
-- **FCM device registration** ([M2](81-M2-fcm-mobile-push.md), backend already done) → the app
-  polls via WorkManager today. The `FirebaseMessagingService` and device-token registration are
-  the Android half, and M2's backend is merged, so this one is **unblocked now**.
 
-Each of the others is gated on its backend half.
+Each of the above is gated on its backend half. The FCM client below is not.
+
+### 5a. FCM client — unblocked now ([M2](81-M2-fcm-mobile-push.md)'s backend is merged)
+
+Absorbed from the retired `81-N10-fcm-push.md`, whose backend half became M2. This is the Android
+half, and nothing is blocking it:
+
+- **Firebase messaging dependency** (`com.google.firebase:firebase-messaging`) +
+  `google-services.json` wiring.
+- **`MyFirebaseMessagingService`** — `onMessageReceived` handles the `data` payload, maps
+  `deep_link` → a `PendingIntent` (M1 §6.6 pattern), and posts via the existing channel constants
+  (`reminders`/`cadence`/`birthdays`, M1 §6.8). `onNewToken` re-registers with the API.
+- **Token registration on login, deletion on logout** — `POST /notifications/devices` with
+  `{token, client:"fcm", device_label}` and `DELETE /notifications/devices/:id`, per M2's landing
+  note. The web app never enrolls devices; it only views and deletes them.
+
+Two constraints from N10 that must survive the move, because they are the whole reason this app
+is self-hosted-friendly:
+
+- **The WorkManager polling workers stay.** FCM short-circuits the common case; polling remains
+  the safety net and the *only* path on de-Googled devices. Degrade gracefully when Play Services
+  is absent — do **not** make FCM the sole path.
+- **A device may briefly double-notify at the poll boundary.** Pick one idempotence key
+  (`reminder_id` + due time) so the second display is suppressed rather than duplicated.
+
+Test bar (also from N10): a handler test for data payload → deep-link `PendingIntent`, a
+token-registration ViewModel test, and a fallback-to-polling test on missing Play Services. Plus
+an end-to-end hand-verification against a real Firebase project — server pushes a due reminder,
+the device shows it, tapping deep-links to the contact. Mocks alone do not close this.
 
 ## 6. There is no instrumented-test tier at all
 
@@ -155,7 +181,7 @@ Do not leave it implicit.
 
 - **The FCM backend channel** — [M2](81-M2-fcm-mobile-push.md), already done. Its Android half is
   in §5 above, not out of scope.
-- **Backend endpoint work** — [M1 endpoints](82-M1-missing-endpoints.md),
+- **Backend endpoint work** — [M6](85-M6-photo-url-user-prefs-oidc.md),
   [M3](82-M3-dashboard-overview-endpoint.md), [M4](83-M4-contact-detail-composite.md). This ticket
   is only the Android side of consuming them.
 - **iOS / Wear OS** — out of scope per M1 §13.
