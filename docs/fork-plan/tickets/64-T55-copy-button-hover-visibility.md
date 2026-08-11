@@ -55,3 +55,11 @@ silently becomes unreachable on a phone.
 - Hand-verified on both a desktop (hover) and a touch/mobile viewport in the browser preview: copy
   is discoverable and usable on both, hidden by default on both.
 - The stale T34 comment is updated to describe the new, actual behavior.
+
+## Reverted — 2026-08-11
+
+The hover/tap-to-reveal treatment only worked well for scalar fields; multi-value and non-obvious
+tap targets made the copy button unreliable to discover. Removed the reveal state and
+`copy-icon`/`&:hover .copy-icon` CSS from `EditableField.tsx` — the copy button is unconditionally
+visible again whenever a field has a value, restoring the original T34 behavior. The edit icon's
+hover-only treatment is untouched.

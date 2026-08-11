@@ -164,7 +164,7 @@ Kept for reference/lookup, not ranked — order below is roughly the sequence th
 | [T52](61-T52-simplify-contact-add-flow.md) · Simplify the contact-add flow to name + contact fields | **DONE** |
 | [T53](62-T53-contact-detail-delete-action.md) · Delete a contact from its own detail page, not only from the list | **DONE** |
 | [T54](63-T54-contact-header-menu-fixed-position.md) · Contact header's actions menu shifts position when the name wraps | **DONE** |
-| [T55](64-T55-copy-button-hover-visibility.md) · Copy button should be hidden until hover/tap, matching edit | **DONE** |
+| [T55](64-T55-copy-button-hover-visibility.md) · Copy button should be hidden until hover/tap, matching edit | **REVERTED** |
 | [T58](77-T58-preferred-phone-email-ui.md) · No UI to see or set "preferred" on phone/email (and URL/IMPP) | **DONE** |
 | [T48](57-T48-migrate-frontend-off-cra-to-vite.md) · Migrate frontend off Create React App to Vite | **DONE** |
 | [T37](46-T37-pet-relationship-kind-default.md) · Pet relationship should default to animal kind | **DONE** |

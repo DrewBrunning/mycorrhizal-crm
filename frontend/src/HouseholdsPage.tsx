@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Box, Typography, Button, Alert, LinearProgress, Stack } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
-import LocationSearchingIcon from '@mui/icons-material/LocationSearching';
+import { Box, Typography, Button, Alert, LinearProgress, Stack, SvgIcon } from '@mui/material';
+import { mdiHomePlusOutline, mdiMapMarkerMultipleOutline } from '@mdi/js';
 import HouseholdDialog, { HouseholdFormData } from './components/HouseholdDialog';
 import HouseholdList from './components/HouseholdList';
 import AddressHouseholdSuggestions from './components/AddressHouseholdSuggestions';
@@ -163,18 +162,31 @@ export default function HouseholdsPage() {
 
   return (
     <Box sx={{ maxWidth: 960, mx: 'auto', mt: 2, p: 2 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', md: 'row' },
+          justifyContent: 'space-between',
+          alignItems: { xs: 'stretch', md: 'center' },
+          gap: 1,
+          mb: 1,
+        }}
+      >
         <Typography variant="h5">{t('household.title')}</Typography>
         <Stack direction="row" spacing={1}>
           <Button
             variant="outlined"
-            startIcon={<LocationSearchingIcon />}
+            startIcon={<SvgIcon><path d={mdiMapMarkerMultipleOutline} /></SvgIcon>}
             onClick={handleScanAddressSuggestions}
             disabled={suggestionsLoading}
           >
             {suggestionsLoading ? t('household.scanning') : t('household.suggestAddresses')}
           </Button>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreate}>
+          <Button
+            variant="contained"
+            startIcon={<SvgIcon><path d={mdiHomePlusOutline} /></SvgIcon>}
+            onClick={handleOpenCreate}
+          >
             {t('household.newHousehold')}
           </Button>
         </Stack>
