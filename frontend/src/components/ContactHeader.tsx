@@ -274,10 +274,10 @@ export default function ContactHeader({
                 )}
                 <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
                   <Box sx={{ display: 'flex', gap: 1 }}>
-                    <IconButton size="small" color="primary" onClick={onSaveProfile}>
+                    <IconButton size="small" color="primary" onClick={onSaveProfile} aria-label={t('common.save')}>
                       <SaveIcon />
                     </IconButton>
-                    <IconButton size="small" onClick={onCancelEditProfile}>
+                    <IconButton size="small" onClick={onCancelEditProfile} aria-label={t('common.cancel')}>
                       <CloseIcon />
                     </IconButton>
                   </Box>

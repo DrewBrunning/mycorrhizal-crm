@@ -164,3 +164,18 @@ question for icon buttons and hyperlinks — see below.
   router context). Hand-verified live: set a `window` marker before clicking the link, confirmed the
   marker survived the navigation (proving client-side routing, not a full reload) and the page landed
   on the correct contact.
+
+**2026-08-11 (Playwright e2e fix).** Giving the Circles/Tags section pencils `color="primary"` (Part C
+above) broke `contacts.spec.ts`'s "should edit a contact name" test: it located the profile Save button
+via `.locator('.MuiCard-root').first().locator('.MuiIconButton-colorPrimary')` on the assumption Save
+was the *only* primary-coloured icon button in the header card — no longer true once the Circles/Tags
+pencils (siblings in the same card, always in the DOM regardless of hover state) also carry
+`color="primary"`, so the locator now matches 3 elements and Playwright's strict mode refuses to click
+it. Fixed by giving the Save/Cancel `IconButton`s real `aria-label`s (`ContactHeader.tsx`, previously
+missing — a real a11y gap, not just a test workaround) and switching the test to
+`getByRole('button', { name: 'Save' })`. Audited every other spec for the same class of breakage
+(button-variant/chip-color/hover-visibility selectors) — this was the only one; everything else already
+used text/role/aria-label-based selectors, robust to the color changes. Verified against the real
+`docker-compose.test.yml` stack (nginx + backend, same-origin `/api`, matching what CI runs): full
+`npx playwright test` — 127/129 pass, the other 2 (`immich.spec.ts`, unrelated to this ticket) pass
+cleanly in isolation and are pre-existing parallel-worker flakiness, not a regression.
