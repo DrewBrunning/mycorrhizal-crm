@@ -58,13 +58,24 @@ type ContactIMPP struct {
 }
 
 // ContactAddress is a single structured postal address (vCard ADR).
+//
+// T79 (docs/fork-plan/tickets/123-T79-flat-address-projection-too-narrow.md)
+// widened this from the original five fields with the sub-street slots a vCard
+// ADR can carry and a person actually types: POBox (vCard ADR position 1),
+// Apartment (position 2, the "extended address" / address-line-2 slot), and
+// Floor (RFC 9554). The remaining nine RFC 9553 kinds (room, building, block,
+// number, district, subdistrict, direction, landmark, separator) stay
+// nested-only — no editor demand, and they would make the form unusable.
 type ContactAddress struct {
-	Type    string `json:"type" validate:"max=30"`
-	Street  string `json:"street" validate:"max=500"`
-	City    string `json:"city" validate:"max=200"`
-	Region  string `json:"region" validate:"max=200"`
-	Postal  string `json:"postal" validate:"max=30"`
-	Country string `json:"country" validate:"max=100"`
+	Type      string `json:"type" validate:"max=30"`
+	Street    string `json:"street" validate:"max=500"`
+	City      string `json:"city" validate:"max=200"`
+	Region    string `json:"region" validate:"max=200"`
+	Postal    string `json:"postal" validate:"max=30"`
+	Country   string `json:"country" validate:"max=100"`
+	POBox     string `json:"pobox" validate:"max=200"`
+	Apartment string `json:"apartment" validate:"max=200"`
+	Floor     string `json:"floor" validate:"max=100"`
 }
 
 type Contact struct {
@@ -200,9 +211,13 @@ type Contact struct {
 }
 
 // renders a structured address as a single human-readable line, used to keep the legacy Address scalar in sync for search/list views.
+// T79 (docs/fork-plan/tickets/123-T79-flat-address-projection-too-narrow.md):
+// the sub-street parts (PO box / apartment / floor) sit between street and
+// city, the conventional ordering. Migration 000022's SQL backfill mirrors
+// this exact component order.
 func FormatAddress(a ContactAddress) string {
 	parts := []string{}
-	for _, p := range []string{a.Street, a.City, a.Region, a.Postal, a.Country} {
+	for _, p := range []string{a.Street, a.POBox, a.Apartment, a.Floor, a.City, a.Region, a.Postal, a.Country} {
 		if strings.TrimSpace(p) != "" {
 			parts = append(parts, p)
 		}
@@ -215,7 +230,10 @@ func FormatAddress(a ContactAddress) string {
 // addresses joined with a space. It feeds the denormalized AddressesFlat
 // column (T38), which contacts_fts indexes — mirroring how FormatAddress
 // keeps the legacy Address scalar in sync, but over the whole array rather
-// than just the first entry.
+// than just the first entry. Since FormatAddress carries the T79 sub-street
+// parts (PO box / apartment / floor), an imported apartment or PO box is
+// findable by search. Migration 000022's SQL backfill mirrors this exact
+// shape for pre-existing rows.
 func FlattenAddresses(addresses []ContactAddress) string {
 	parts := make([]string, 0, len(addresses))
 	for _, a := range addresses {

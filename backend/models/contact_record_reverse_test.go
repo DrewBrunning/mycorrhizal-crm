@@ -111,8 +111,9 @@ func TestApplyRecordToContact_RoundTrip(t *testing.T) {
 	}
 
 	// Addresses: exact match expected here too, since fullyPopulatedContact's
-	// one address has real structured components (not the Full-only fallback
-	// case documented as lossy in applyAddresses).
+	// one address has real structured components including the T79 sub-street
+	// parts (PO box / apartment / floor) — not the Full-only fallback case
+	// documented as lossy in applyAddresses.
 	if !reflect.DeepEqual(got.Addresses, original.Addresses) {
 		t.Errorf("Addresses = %+v, want %+v", got.Addresses, original.Addresses)
 	}
@@ -158,6 +159,60 @@ func TestApplyRecordToContact_RoundTrip(t *testing.T) {
 	// doesn't clobber the Card/CRM/Passthrough we just asserted above.
 	if !got.cardSetDirectly {
 		t.Error("got.cardSetDirectly = false, want true after ApplyRecordToContact")
+	}
+}
+
+// TestAddressMapping_RoundTripsSubStreetFields pins T79
+// (docs/fork-plan/tickets/123-T79-flat-address-projection-too-narrow.md):
+// the flat ContactAddress gained PO box / apartment / floor slots, so both
+// directions of the flat<->neutral mapping must carry them. A vCard-imported
+// address holding those components must land on the flat struct (and back
+// onto the card on the next derivation) instead of being silently dropped by
+// the "five fields the flat projection can store" narrowing this ticket
+// closes.
+func TestAddressMapping_RoundTripsSubStreetFields(t *testing.T) {
+	neutral := contactmodel.Address{
+		Components: []contactmodel.AddressComponent{
+			{Kind: "postOfficeBox", Value: "PO Box 42"},
+			{Kind: "apartment", Value: "Apt 3B"},
+			{Kind: "floor", Value: "Floor 2"},
+			{Kind: "name", Value: "742 Clark St"},
+			{Kind: "locality", Value: "Springfield"},
+			{Kind: "region", Value: "IL"},
+			{Kind: "postcode", Value: "62701"},
+			{Kind: "country", Value: "USA"},
+		},
+		Contexts: []string{"home"},
+	}
+
+	flat := contactAddressFromNeutral(neutral)
+	if flat.POBox != "PO Box 42" || flat.Apartment != "Apt 3B" || flat.Floor != "Floor 2" {
+		t.Errorf("contactAddressFromNeutral dropped sub-street parts: %+v", flat)
+	}
+	if flat.Street != "742 Clark St" || flat.City != "Springfield" {
+		t.Errorf("contactAddressFromNeutral lost an existing projected field: %+v", flat)
+	}
+	if flat.Type != "home" {
+		t.Errorf("contactAddressFromNeutral type = %q, want contexts[0]", flat.Type)
+	}
+
+	// The forward direction re-emits all three kinds (postOfficeBox /
+	// apartment / floor) as components.
+	roundTripped := AddressFromContactAddress(flat)
+	kinds := map[string]string{}
+	for _, c := range roundTripped.Components {
+		kinds[c.Kind] = c.Value
+	}
+	for _, tc := range []struct{ kind, want string }{
+		{"postOfficeBox", "PO Box 42"},
+		{"apartment", "Apt 3B"},
+		{"floor", "Floor 2"},
+		{"name", "742 Clark St"},
+		{"locality", "Springfield"},
+	} {
+		if kinds[tc.kind] != tc.want {
+			t.Errorf("AddressFromContactAddress component %q = %q, want %q (components=%v)", tc.kind, kinds[tc.kind], tc.want, kinds)
+		}
 	}
 }
 

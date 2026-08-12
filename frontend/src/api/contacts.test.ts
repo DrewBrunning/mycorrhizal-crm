@@ -114,6 +114,43 @@ describe('address conversion', () => {
       {
         components: [
           { kind: 'name', value: '123 Main St' },
+          { kind: 'room', value: 'Loft' },
+          { kind: 'building', value: 'North Tower' },
+          { kind: 'locality', value: 'Springfield' },
+          { kind: 'region', value: 'IL' },
+          { kind: 'postcode', value: '62704' },
+          { kind: 'country', value: 'USA' },
+        ],
+        contexts: ['home'],
+      },
+    ];
+    const values = cardAddressesToValues(card);
+    expect(values[0].street).toBe('123 Main St');
+    expect(values[0].passthrough).toEqual([
+      { kind: 'room', value: 'Loft' },
+      { kind: 'building', value: 'North Tower' },
+    ]);
+    // Full round-trip preserves non-standard components (order may differ).
+    const result = valuesToCardAddresses(values);
+    const resultComps = result[0].components || [];
+    expect(resultComps).toEqual(expect.arrayContaining([
+      { kind: 'name', value: '123 Main St' },
+      { kind: 'room', value: 'Loft' },
+      { kind: 'building', value: 'North Tower' },
+      { kind: 'locality', value: 'Springfield' },
+      { kind: 'region', value: 'IL' },
+      { kind: 'postcode', value: '62704' },
+      { kind: 'country', value: 'USA' },
+    ]));
+    expect(result[0].contexts).toEqual(['home']);
+  });
+
+  test('round-trips PO box / apartment / floor as first-class flat fields (T79)', () => {
+    const card: CardAddress[] = [
+      {
+        components: [
+          { kind: 'name', value: '123 Main St' },
+          { kind: 'postOfficeBox', value: 'PO Box 42' },
           { kind: 'apartment', value: '3B' },
           { kind: 'floor', value: '4' },
           { kind: 'locality', value: 'Springfield' },
@@ -126,15 +163,16 @@ describe('address conversion', () => {
     ];
     const values = cardAddressesToValues(card);
     expect(values[0].street).toBe('123 Main St');
-    expect(values[0].passthrough).toEqual([
-      { kind: 'apartment', value: '3B' },
-      { kind: 'floor', value: '4' },
-    ]);
-    // Full round-trip preserves non-standard components (order may differ).
+    expect(values[0].pobox).toBe('PO Box 42');
+    expect(values[0].apartment).toBe('3B');
+    expect(values[0].floor).toBe('4');
+    // The three kinds no longer ride passthrough — they have flat slots now.
+    expect(values[0].passthrough).toBeUndefined();
     const result = valuesToCardAddresses(values);
     const resultComps = result[0].components || [];
     expect(resultComps).toEqual(expect.arrayContaining([
       { kind: 'name', value: '123 Main St' },
+      { kind: 'postOfficeBox', value: 'PO Box 42' },
       { kind: 'apartment', value: '3B' },
       { kind: 'floor', value: '4' },
       { kind: 'locality', value: 'Springfield' },
@@ -143,6 +181,14 @@ describe('address conversion', () => {
       { kind: 'country', value: 'USA' },
     ]));
     expect(result[0].contexts).toEqual(['home']);
+  });
+
+  test('keeps an address whose only non-blank part is a sub-street field (T79)', () => {
+    expect(
+      valuesToCardAddresses([{ type: 'home', street: '', city: '', region: '', postal: '', country: '', pobox: 'PO Box 42' }])
+    ).toEqual([
+      { components: [{ kind: 'postOfficeBox', value: 'PO Box 42' }], contexts: ['home'] },
+    ]);
   });
 
   test('drops an address with every field blank', () => {

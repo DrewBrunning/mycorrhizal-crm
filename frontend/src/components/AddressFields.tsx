@@ -28,6 +28,9 @@ const EMPTY_ADDRESS: ContactAddress = {
   region: '',
   postal: '',
   country: '',
+  pobox: '',
+  apartment: '',
+  floor: '',
 };
 
 export default function AddressFields({ label, value, onChange }: AddressFieldsProps) {

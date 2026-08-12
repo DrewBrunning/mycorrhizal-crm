@@ -1,0 +1,10 @@
+-- T79 (docs/fork-plan/tickets/123-T79-flat-address-projection-too-narrow.md)
+-- Deliberate no-op.
+--
+-- 000022 is a one-way data recovery, not a schema change: there is no column
+-- to drop and no constraint to revert. Stripping the recovered keys back out
+-- of `contacts.addresses` on a rollback would be actively harmful -- the card
+-- column still holds the components, so the next plain save's T75 merge
+-- (models/contact_card_merge.go) would see the (now) unprojected card data
+-- and destroy it. Leaving the recovered data in place is the only rollback
+-- that does not set up future data loss.

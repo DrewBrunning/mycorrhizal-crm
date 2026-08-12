@@ -203,13 +203,16 @@ func unionIMPPs(a, b []models.ContactIMPP) []models.ContactIMPP {
 
 // unionAddresses dedups on every field lowercased+trimmed -- a postal
 // address has no single "value" to normalize on; its identity is the whole
-// tuple.
+// tuple. The T79 sub-street fields (PO box / apartment / floor) are part of
+// that tuple: two addresses that differ only in apartment are genuinely
+// different, and since T79 gave the flat struct a slot for them, collapsing
+// them here would be real data loss the projection can now prevent.
 func unionAddresses(a, b []models.ContactAddress) []models.ContactAddress {
 	seen := map[string]bool{}
 	var out []models.ContactAddress
 	norm := func(s string) string { return strings.ToLower(strings.TrimSpace(s)) }
 	add := func(addr models.ContactAddress) {
-		key := strings.Join([]string{norm(addr.Type), norm(addr.Street), norm(addr.City), norm(addr.Region), norm(addr.Postal), norm(addr.Country)}, "|")
+		key := strings.Join([]string{norm(addr.Type), norm(addr.Street), norm(addr.POBox), norm(addr.Apartment), norm(addr.Floor), norm(addr.City), norm(addr.Region), norm(addr.Postal), norm(addr.Country)}, "|")
 		if seen[key] {
 			return
 		}

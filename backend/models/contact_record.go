@@ -612,10 +612,12 @@ func buildAddresses(c *Contact) []contactmodel.Address {
 
 // AddressFromContactAddress maps a flat ContactAddress (the legacy stored
 // shape) onto the neutral contactmodel.Address shape, mirroring the vCard ADR
-// row mapping ("name"/"locality"/"region"/"postcode"/"country" components +
-// a FormatAddress Full line). Exported so T40's household-suggestion service
-// can reuse it for the household it creates from a shared address instead of
-// duplicating the mapping.
+// row mapping ("name"/"locality"/"region"/"postcode"/"country" components,
+// plus — since T79 — the "postOfficeBox"/"apartment"/"floor" sub-street
+// components the flat projection can now carry, and a FormatAddress Full
+// line). Exported so T40's household-suggestion service can reuse it for the
+// household it creates from a shared address instead of duplicating the
+// mapping.
 func AddressFromContactAddress(a ContactAddress) contactmodel.Address {
 	var components []contactmodel.AddressComponent
 	addComp := func(kind, value string) {
@@ -624,6 +626,9 @@ func AddressFromContactAddress(a ContactAddress) contactmodel.Address {
 		}
 	}
 	addComp("name", a.Street) // JSContact "name" component = street name
+	addComp("postOfficeBox", a.POBox)
+	addComp("apartment", a.Apartment)
+	addComp("floor", a.Floor)
 	addComp("locality", a.City)
 	addComp("region", a.Region)
 	addComp("postcode", a.Postal)

@@ -127,9 +127,12 @@ export function resolveOnlineServiceLink(
 // The single-line human-readable rendering of an address, shared by the
 // display link's copy value and the map-search fallback query — reuses the
 // same non-empty-parts join every other address renderer in this codebase
-// uses (backend's FormatAddress, this file's own former duplicate).
-export function formatAddressLine(address: Pick<ContactAddress, 'street' | 'city' | 'region' | 'postal' | 'country'>): string {
-  return [address.street, address.city, address.region, address.postal, address.country]
+// uses (backend's FormatAddress, this file's own former duplicate). T79
+// added the sub-street parts between street and city, matching the backend.
+export function formatAddressLine(
+  address: Pick<ContactAddress, 'street' | 'pobox' | 'apartment' | 'floor' | 'city' | 'region' | 'postal' | 'country'>
+): string {
+  return [address.street, address.pobox, address.apartment, address.floor, address.city, address.region, address.postal, address.country]
     .filter((part) => part && part.trim())
     .join(', ');
 }

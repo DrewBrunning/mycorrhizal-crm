@@ -21,10 +21,17 @@ export interface ContactAddress {
   region: string;
   postal: string;
   country: string;
-  // passthrough preserves address components whose kind is not one of the five
-  // rendered fields above (apartment, floor, district, building, room,
-  // landmark, etc.) so they survive an edit-and-save cycle through the flat
-  // editing shape (T25).
+  // Sub-street parts (T79, backend ticket 123): vCard ADR slots 1-2 (PO box /
+  // extended address) plus RFC 9554's floor, the ones a person actually
+  // types. The remaining kinds (room, building, block, district, number,
+  // ...) have no flat slot and ride `passthrough` instead. Keep in sync with
+  // backend/models/contact.go's ContactAddress.
+  pobox?: string;
+  apartment?: string;
+  floor?: string;
+  // passthrough preserves address components whose kind is not one of the
+  // fields rendered above (room, building, district, landmark, etc.) so they
+  // survive an edit-and-save cycle through the flat editing shape (T25).
   passthrough?: CardAddressComponent[];
   // Rich-field passthrough (WP11, T29): coordinates/timeZone/pref/full etc.
   // are carried alongside and re-emitted on save rather than dropped.
@@ -524,9 +531,10 @@ export function cardAddressesToValues(addresses: CardAddress[] | undefined): Con
   return (addresses || []).map((a) => {
     const comps = a.components || [];
     const find = (kind: string) => comps.find((c) => c.kind === kind)?.value || '';
-    // Preserve components not mapped to the five rendered fields so they
-    // survive an edit-and-save round trip (T25).
-    const knownKinds = new Set(['name', 'number', 'locality', 'region', 'postcode', 'country']);
+    // Preserve components not mapped to the rendered fields so they survive
+    // an edit-and-save round trip (T25). T79 added the three sub-street kinds
+    // to the flat shape, so they no longer ride passthrough.
+    const knownKinds = new Set(['name', 'number', 'locality', 'region', 'postcode', 'country', 'postOfficeBox', 'apartment', 'floor']);
     const passthrough = comps.filter((c) => !knownKinds.has(c.kind));
     return {
       type: a.contexts?.[0] || '',
@@ -535,6 +543,9 @@ export function cardAddressesToValues(addresses: CardAddress[] | undefined): Con
       region: find('region'),
       postal: find('postcode'),
       country: find('country') || a.countryCode || '',
+      pobox: find('postOfficeBox') || undefined,
+      apartment: find('apartment') || undefined,
+      floor: find('floor') || undefined,
       passthrough: passthrough.length > 0 ? passthrough : undefined,
       coordinates: a.coordinates,
       timeZone: a.timeZone,
@@ -545,10 +556,14 @@ export function cardAddressesToValues(addresses: CardAddress[] | undefined): Con
 }
 export function valuesToCardAddresses(values: ContactAddress[]): CardAddress[] {
   return values
-    .filter((a) => a.street.trim() || a.city.trim() || a.region.trim() || a.postal.trim() || a.country.trim())
+    .filter((a) => a.street.trim() || a.city.trim() || a.region.trim() || a.postal.trim() || a.country.trim() ||
+      a.pobox?.trim() || a.apartment?.trim() || a.floor?.trim())
     .map((a) => {
       const components: CardAddressComponent[] = [];
       if (a.street) components.push({ kind: 'name', value: a.street });
+      if (a.pobox) components.push({ kind: 'postOfficeBox', value: a.pobox });
+      if (a.apartment) components.push({ kind: 'apartment', value: a.apartment });
+      if (a.floor) components.push({ kind: 'floor', value: a.floor });
       if (a.city) components.push({ kind: 'locality', value: a.city });
       if (a.region) components.push({ kind: 'region', value: a.region });
       if (a.postal) components.push({ kind: 'postcode', value: a.postal });

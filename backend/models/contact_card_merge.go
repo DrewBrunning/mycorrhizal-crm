@@ -15,11 +15,13 @@ import (
 // BeforeSave used to overwrite the loaded Card/CRM/Passthrough wholesale with
 // the fresh flat-field derivation, which silently destroyed every member that
 // has no flat-field home — pronouns (SpeakToAs), hobbies/expertise
-// (PersonalInfo), address components outside the flat five-field projection
-// (apartment, floor, postOfficeBox, ...), rich per-entry metadata (pref,
-// features, extra contexts, entry ids), CRMEnvelope.Kind (T27's pet/animal
-// marker), and the whole Passthrough column. The merge rule, chosen and
-// documented 2026-08-12 (T75 item 2):
+// (PersonalInfo), address components outside the flat projection (the nine
+// kinds with no editor demand: room, building, block, district,
+// subdistrict, direction, landmark, number, separator — the PO box /
+// apartment / floor kinds gained a flat home in T79), rich per-entry metadata
+// (pref, features, extra contexts, entry ids), CRMEnvelope.Kind (T27's
+// pet/animal marker), and the whole Passthrough column. The merge rule,
+// chosen and documented 2026-08-12 (T75 item 2):
 //
 //   - The flat fields are the source of truth for everything they can
 //     express; the loaded Card is the source of truth for everything they

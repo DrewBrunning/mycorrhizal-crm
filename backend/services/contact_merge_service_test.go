@@ -199,3 +199,15 @@ func TestUnionAddresses_DistinctAddressesBothSurvive(t *testing.T) {
 
 	assert.Len(t, out, 2)
 }
+
+func TestUnionAddresses_SubStreetFieldsArePartOfTheTuple(t *testing.T) {
+	// T79: the flat struct now carries PO box / apartment / floor, so two
+	// addresses that differ only in apartment must NOT dedup -- collapsing
+	// them would be real data loss the projection can now prevent.
+	a := []models.ContactAddress{{Type: "home", Street: "123 Main St", Apartment: "Apt 3B", City: "Springfield"}}
+	b := []models.ContactAddress{{Type: "home", Street: "123 Main St", Apartment: "Apt 4B", City: "Springfield"}}
+
+	out := unionAddresses(a, b)
+
+	assert.Len(t, out, 2, "addresses differing only in apartment are distinct")
+}

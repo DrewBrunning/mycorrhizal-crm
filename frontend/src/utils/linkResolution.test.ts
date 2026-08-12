@@ -164,6 +164,13 @@ test('formatAddressLine joins non-empty parts and skips blanks', () => {
   expect(formatAddressLine({ street: '', city: '', region: '', postal: '', country: '' })).toBe('');
 });
 
+test('formatAddressLine places sub-street parts between street and city (T79)', () => {
+  expect(
+    formatAddressLine({ street: '742 Clark St', pobox: 'PO Box 42', apartment: 'Apt 3B', floor: 'Floor 2', city: 'Springfield', region: 'IL', postal: '62701', country: 'USA' })
+  ).toBe('742 Clark St, PO Box 42, Apt 3B, Floor 2, Springfield, IL, 62701, USA');
+  expect(formatAddressLine({ street: '', pobox: 'PO Box 42', city: 'Springfield', region: '', postal: '', country: '' })).toBe('PO Box 42, Springfield');
+});
+
 test('buildAddressLink prefers a geo: URI when coordinates are present', () => {
   const href = buildAddressLink({ type: '', street: '', city: 'Springfield', region: '', postal: '', country: '', coordinates: 'geo:39.78,-89.65' });
   expect(href).toBe('geo:39.78,-89.65');
