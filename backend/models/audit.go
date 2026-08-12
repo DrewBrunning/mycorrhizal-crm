@@ -74,6 +74,17 @@ var auditDenyList = map[string]bool{
 	"smtppassword":         true,
 }
 
+// auditSnapshotProvider is implemented by an audited entity whose before-
+// snapshot must be marshaled from something other than json.Marshal(&model).
+// Contact implements it to include its nested Card/CRM/Passthrough columns,
+// which are json:"-" on the struct (so the REST API serves the nested model
+// through ContactRecordResponse rather than leaking the storage shape) and
+// were therefore never captured by the audit trail — see T82 (docs/fork-plan/
+// tickets/126-T82-audit-snapshots-miss-nested-contact-data.md).
+type auditSnapshotProvider interface {
+	auditSnapshot() any
+}
+
 // auditLogger is the package-level recorder that persists audit events
 // fire-and-forget from GORM hooks: a separate goroutine on its own session
 // (never the hook's transaction), so an audit failure can never roll back the
@@ -159,7 +170,7 @@ func auditBeforeSave[T any](tx *gorm.DB, entityType string, entityID any, isNew 
 	if !isNew {
 		var old T
 		if err := tx.Session(&gorm.Session{NewDB: true}).Where("id = ?", entityID).First(&old).Error; err == nil {
-			if raw, err := redactedJSON(&old); err == nil {
+			if raw, err := redactedJSONForAudit(&old); err == nil {
 				state.before = raw
 			}
 		}
@@ -192,11 +203,22 @@ func auditAfterDelete(tx *gorm.DB, entityType, entityID string, userID uint, mod
 	if tx == nil {
 		return
 	}
-	raw, err := redactedJSON(model)
+	raw, err := redactedJSONForAudit(model)
 	if err != nil {
 		return
 	}
 	auditRecorder.record(entityType, entityID, AuditOpDelete, userID, raw)
+}
+
+// redactedJSONForAudit marshals a model's before-snapshot, honoring the
+// auditSnapshotProvider interface so an entity whose JSON tags omit data
+// (Contact's json:"-" Card/CRM/Passthrough, T82) can supply a purpose-built
+// snapshot shape. Falls back to plain json.Marshal for every other entity.
+func redactedJSONForAudit(v interface{}) (string, error) {
+	if p, ok := v.(auditSnapshotProvider); ok {
+		return redactedJSON(p.auditSnapshot())
+	}
+	return redactedJSON(v)
 }
 
 // redactJSON walks a parsed JSON document and returns it with every key whose
