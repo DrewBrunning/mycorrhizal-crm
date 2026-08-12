@@ -18,15 +18,21 @@ test.describe('Contacts list sort control (T77)', () => {
 
     // The control is present and defaults to alphabetical (the frontend's own
     // default — the server keeps updated_at for other API consumers).
-    await expect(page.getByLabel('Sort')).toBeVisible();
+    await expect(page.getByRole('combobox', { name: 'Sort' })).toBeVisible();
     await expect(page.getByText('Name (A–Z)')).toBeVisible();
 
-    await page.getByLabel('Sort').click();
+    // Target the combobox itself, never getByLabel('Sort'): MUI's open/closed
+    // menu renders a <ul role="listbox"> that shares the same aria-labelledby
+    // as the select, so the label resolves to two elements while a menu is
+    // mounted, and the contact-selection checkboxes' "Select …" labels are
+    // substring-matched by "Sort" once any list contains a name with it
+    // (e.g. the T77Sort fixtures). Both tripped strict mode.
+    await page.getByRole('combobox', { name: 'Sort' }).click();
     await page.getByRole('option', { name: 'Recently edited (newest first)' }).click();
     await expect(page).toHaveURL(/sort=updated_at/);
     await expect(page).toHaveURL(/order=desc/);
 
-    await page.getByLabel('Sort').click();
+    await page.getByRole('combobox', { name: 'Sort' }).click();
     await page.getByRole('option', { name: 'Name (Z–A)' }).click();
     await expect(page).toHaveURL(/sort=name/);
     await expect(page).toHaveURL(/order=desc/);
@@ -62,7 +68,7 @@ test.describe('Contacts list sort control (T77)', () => {
       await expect(firstCard).toContainText('T77Alpha');
 
       // Flip to descending: T77Zulu moves to the top.
-      await page.getByLabel('Sort').click();
+      await page.getByRole('combobox', { name: 'Sort' }).click();
       await page.getByRole('option', { name: 'Name (Z–A)' }).click();
       await expect(firstCard).toContainText('T77Zulu');
     } finally {
