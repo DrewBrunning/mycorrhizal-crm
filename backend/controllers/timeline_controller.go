@@ -621,13 +621,15 @@ func GetContactTimeline(c *gin.Context) {
 	}
 
 	entries := make([]timelineEntry, 0, 6*(limit+1))
-	var err error
 	if include[models.TimelineTypeLifeEvent] {
-		var life []timelineEntry
-		if life, err = composer.fetchLifeEvents(); err == nil {
-			entries = append(entries, life...)
+		life, lifeErr := composer.fetchLifeEvents()
+		if lifeErr != nil {
+			apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve contact timeline").WithError(lifeErr))
+			return
 		}
+		entries = append(entries, life...)
 	}
+	var err error
 	for _, t := range types {
 		if t == models.TimelineTypeLifeEvent {
 			continue
