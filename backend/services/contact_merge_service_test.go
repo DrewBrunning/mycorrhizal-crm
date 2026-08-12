@@ -100,6 +100,15 @@ func TestComputeContactMergeResolution_PhoneEmptyKeyDoesNotMatchEmptyKey(t *test
 	assert.Len(t, res.Phones, 2, "two numbers both too short to key must not compare equal through a shared empty string")
 }
 
+func TestComputeContactMergeResolution_PhoneIdenticalShortValuesNotDeduped(t *testing.T) {
+	keeper := &models.Contact{Phones: []models.ContactPhone{{Type: "cell", Value: "1234"}}}
+	loser := &models.Contact{Phones: []models.ContactPhone{{Type: "cell", Value: "1234"}}}
+
+	res := ComputeContactMergeResolution(keeper, loser)
+
+	assert.Len(t, res.Phones, 2, "identical values below the 7-digit threshold are not deduped — PhoneKey returns \"\" so the seen map is bypassed for all sub-7-digit entries")
+}
+
 func TestComputeContactMergeResolution_ScalarOnlyOneSideSet(t *testing.T) {
 	keeper := &models.Contact{Firstname: "Alice"}
 	loser := &models.Contact{Lastname: "Smith"}
