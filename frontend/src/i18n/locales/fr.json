@@ -1616,7 +1616,8 @@
       "confirmMessage": "Restaurer {{entity}} dans son état antérieur du {{date}} ?",
       "confirm": "Annuler",
       "success": "Contact restauré dans son état antérieur",
-      "retentionGone": "Cet événement est hors de sa fenêtre de conservation et ne peut plus être annulé"
+      "retentionGone": "Cet événement est hors de sa fenêtre de conservation et ne peut plus être annulé",
+      "partialNote": "Les détails qui n'ont jamais été enregistrés dans cette entrée (pronoms, informations personnelles, détails d'adresse) sont conservés tels quels."
     }
   }
 }

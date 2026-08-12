@@ -100,6 +100,20 @@ func UndoAuditEvent(c *gin.Context) {
 }
 
 // undoContact restores a Contact from the event's before snapshot.
+//
+// T75 (docs/fork-plan/tickets/119-T75-plain-save-destroys-card-only-data.md):
+// the before snapshot never contained Card/CRM/Passthrough (all json:"-",
+// see T82), so it can only restore the flat fields. The stopgap restores
+// exactly those — copying the snapshot's flat state onto the live contact
+// and letting BeforeSave's merge (contact.go) rebuild the flat-owned Card
+// sub-structures from it while carrying the contact's current Card-only
+// members through (SpeakToAs, PersonalInfo, unprojected address components,
+// CRMEnvelope.Kind, ...). The result is honest rather than complete: undo
+// reverts everything the snapshot actually recorded and leaves everything
+// else as it is. Before this change undo overwrote the contact's Card with a
+// Record rebuilt from a snapshot that never carried one, deleting what it
+// could not restore. T82 (audit snapshots capturing nested data) makes undo
+// full-fidelity afterwards.
 func undoContact(c *gin.Context, db *gorm.DB, userID uint, event models.AuditEvent) {
 	var before models.Contact
 	if err := json.Unmarshal([]byte(event.BeforeSnapshot), &before); err != nil {
@@ -117,11 +131,10 @@ func undoContact(c *gin.Context, db *gorm.DB, userID uint, event models.AuditEve
 		return
 	}
 
-	// Rebuild the neutral Record from the before snapshot's flat fields and
-	// apply it through the canonical path — ApplyRecordToContact marks the
-	// contact so BeforeSave does not re-derive and truncate on this save.
-	record := models.RecordFromContact(&before, models.DefaultPhotoDir)
-	models.ApplyRecordToContact(&current, record, "")
+	// Restore the snapshot's flat state onto the loaded contact; BeforeSave's
+	// merge then rebuilds the flat-owned neutral columns from it without
+	// touching the Card-only data no snapshot has ever carried.
+	current.RestoreFlatStateFrom(&before)
 
 	if err := db.Save(&current).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to undo contact update").WithError(err))

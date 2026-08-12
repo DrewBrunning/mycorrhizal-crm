@@ -240,6 +240,9 @@ export default function AuditPage() {
                 date: formatDateTime(pendingUndo.created_at),
               })}
           </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            {t('audit.undo.partialNote')}
+          </Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setPendingUndo(null)} disabled={undoing}>
