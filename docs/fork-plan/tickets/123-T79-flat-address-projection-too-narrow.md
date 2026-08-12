@@ -6,7 +6,7 @@
 | **Rating** | 3 — no loss for hand-typed addresses, real invisibility for imported ones |
 | **Size** | S–M — a JSON-shape widening plus four mapping functions |
 | **Depends on** | Nothing, but see the ordering note under Traps re: [T75](119-T75-plain-save-destroys-card-only-data.md). Blocks [T80](124-T80-web-address-editor-line-two.md). |
-| **Status** | TO BE DONE |
+| **Status** | DONE (2026-08-12) |
 | **Source** | User question during the 2026-08-11 grooming pass: *"do we support postOfficeBox, apartment, and floor? I don't see an address line 2 in the web UI."* |
 
 ## Why this exists
@@ -100,3 +100,43 @@ save. That ticket stops the deletion; this one is what makes the data reachable 
   unchanged.
 - The new parts appear in the formatted display line and in the `addresses_flat` search string.
 - `cd backend && go build ./... && go vet ./... && gofmt -l . && go test ./...` green.
+
+## Shipped
+
+**Done, 2026-08-12.** `ContactAddress` now carries `POBox`/`Apartment`/`Floor` (vCard ADR
+positions 1–2 plus RFC 9554's floor), and all four mapping functions round-trip them in both
+directions — `contactAddressFromNeutral`/`AddressFromContactAddress` move the three kinds between
+the flat struct and `Card.Addresses` components, and `FormatAddress` renders them between street
+and city (the conventional ordering), which automatically puts them in the legacy `Address` scalar
+and, via `FlattenAddresses`, into the searchable `addresses_flat` column. The T75 per-entry merge
+projection widens with it, so editing a street no longer destroys an untouched apartment, while
+deliberately clearing the flat apartment still drops it (that "rebuilt from flat" semantics test
+was updated to pin the new behavior).
+
+**Migration `000022`** recovers real data with no schema change: for rows whose `card` still holds
+stranded `postOfficeBox`/`apartment`/`floor` components (VCF imports that predate the widening), it
+re-derives the flat `addresses` JSON and `addresses_flat` from the authoritative card, guarded to
+touch only those rows and leave every other byte-for-byte alone. The FTS index needs no rebuild —
+the 000010 triggers re-index the updated rows, with the `deleted_at IS NULL` guard intact. The
+down is a deliberate no-op: stripping the recovered keys back out while the card still holds them
+would set up T75-style destruction on the next save.
+
+**Two deliberate consequences, documented at the call sites:** import merge's `unionAddresses`
+treats the sub-street fields as part of an address's identity (two addresses differing only in
+apartment no longer collapse — that would now be real data loss the projection can prevent), while
+T40's household-suggestion key deliberately does *not* include them (same street = same building,
+and keeping them out preserves suggestion recall). CSV import got no new columns — the ticket is
+about the projection, and CSV never carried sub-street parts to lose.
+
+Frontend mirrors the widened contract: the flat `ContactAddress` type, the `card<->flat` adapters
+(`pobox`/`apartment`/`floor` now first-class fields, the remaining nine kinds still riding
+`passthrough`), and `formatAddressLine` (the display line, matching the backend ordering) so an
+imported apartment is visible in the contact detail. The address *editor* inputs stay five fields —
+that is [T80](124-T80-web-address-editor-line-two.md)'s job, now unblocked.
+
+Coverage: mapping round-trip, `FormatAddress`/`FlattenAddresses` ordering, a real
+`database.InitDB` vCard import → save → export round trip (PO box + extended address), the
+`000022` backfill against a pre-`000022` schema (control rows untouched, FTS finds the recovered
+parts), updated T75 merge semantics, import-merge address identity, and a new Playwright spec
+driving display, FTS search by apartment, and VCF export round trip. Hand-verified live against a
+scratch backend: search and export both carry the sub-street parts.

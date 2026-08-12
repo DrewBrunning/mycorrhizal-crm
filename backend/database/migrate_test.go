@@ -528,6 +528,7 @@ func TestFlatAddressSubStreetMigrationBackfillsStrandedCardData(t *testing.T) {
 	assert.Contains(t, addresses, "Apt 3B", "flat addresses must hold the recovered apartment")
 	assert.Contains(t, addresses, "Floor 2", "flat addresses must hold the recovered floor")
 	assert.Contains(t, addresses, `"street":"742 Clark St"`, "the projected street must be preserved")
+	assert.Contains(t, addresses, `"type":"home"`, "the type derived from contexts[0] must be preserved")
 
 	// The searchable column now carries the recovered parts (between street
 	// and city, the FormatAddress ordering), and the FTS index (maintained by
