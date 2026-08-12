@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"fmt"
 	"mycorrhizal/config"
 	"mycorrhizal/models"
 	"net/http"
@@ -156,7 +157,9 @@ func TestImmichClient_NotFound(t *testing.T) {
 func TestImmichClient_RecentAssetsOrdersByOccurrence(t *testing.T) {
 	fake := newFakeImmichServer(t, "")
 	defer fake.Close()
-	// Deliberately out of order on the wire: the client must re-sort.
+	// The fake serves in Immich's fileCreatedAt-desc order; the client
+	// re-sorts by assetOccurredAt (fileCreatedAt, else createdAt fallback) as
+	// a safety net over what it fetched (T83).
 	fake.addPerson("p1", "Alice", 3, []fakeImmichAsset{
 		{ID: "old", FileCreatedAt: "2026-01-01T10:00:00Z"},
 		{ID: "new", FileCreatedAt: "2026-08-03T10:00:00Z"},
@@ -173,11 +176,104 @@ func TestImmichClient_RecentAssetsOrdersByOccurrence(t *testing.T) {
 	assert.Equal(t, "mid", assets[1].ID)
 	assert.Equal(t, "old", assets[2].ID)
 
-	// Bounded to limit.
+	// Bounded to limit: size is requested as the limit, so a limit-1 call
+	// gets the server's newest-taken asset on a single request.
+	fake.SearchPages = nil
 	limited, err := client.RecentAssets("p1", 1)
 	require.NoError(t, err)
 	require.Len(t, limited, 1)
 	assert.Equal(t, "new", limited[0].ID)
+	assert.Equal(t, []int{1}, fake.SearchPages, "limit 1 must be one request, not a walk")
+}
+
+// T83: the client re-sorts what it fetched by assetOccurredAt (fileCreatedAt,
+// falling back to createdAt only when the taken date is unparseable — a photo
+// with no EXIF). The fake serves in Immich's fileCreatedAt order, so the two
+// can only diverge for a no-EXIF asset: the server pages it last (empty
+// fileCreatedAt), while the client's fallback to createdAt reorders it ahead.
+// This pins the safety net working over the fetched set, and the limit-1
+// approximation that a no-EXIF asset deeper in the server order is missed.
+func TestImmichClient_RecentAssetsSafetyNetSortOnDivergence(t *testing.T) {
+	fake := newFakeImmichServer(t, "")
+	defer fake.Close()
+	fake.addPerson("p1", "Alice", 2, []fakeImmichAsset{
+		{ID: "noexif", CreatedAt: "2026-08-10T10:00:00Z"},
+		{ID: "taken", FileCreatedAt: "2026-08-03T10:00:00Z"},
+	}, nil)
+
+	client, err := NewImmichClient(fake.URL(), "", false)
+	require.NoError(t, err)
+
+	// Fetched-then-sorted: with both assets in hand the client's fallback
+	// reorders the no-EXIF asset ahead of the taken-date order.
+	assets, err := client.RecentAssets("p1", 25)
+	require.NoError(t, err)
+	require.Len(t, assets, 2)
+	assert.Equal(t, "noexif", assets[0].ID, "the createdAt fallback sorts ahead once both assets are fetched")
+
+	// Early-stop: with size=limit, only the server's newest-taken asset is
+	// fetched, so the no-EXIF asset (paged last by an empty fileCreatedAt) is
+	// missed. This is T83's documented, accepted approximation.
+	fake.SearchPages = nil
+	limited, err := client.RecentAssets("p1", 1)
+	require.NoError(t, err)
+	require.Len(t, limited, 1)
+	assert.Equal(t, "taken", limited[0].ID, "limit 1 trusts the server order and stops immediately")
+	assert.Equal(t, []int{1}, fake.SearchPages)
+}
+
+// T83: the core fix — the pagination loop must stop as soon as the caller's
+// limit is in hand, and it must pass that limit down as the page size. The
+// fake's PageSize forces a server that pages *smaller* than requested, making
+// the early-stop observable mid-walk; a future change that reintroduces the
+// full walk fails here.
+func TestImmichClient_RecentAssetsRequestCountBoundedByLimit(t *testing.T) {
+	t.Run("limit 1 is a single request", func(t *testing.T) {
+		fake := newFakeImmichServer(t, "")
+		defer fake.Close()
+		fake.addPerson("p1", "Alice", 100, makeFakeAssets(100), nil)
+		fake.People["p1"].PageSize = 10
+
+		client, err := NewImmichClient(fake.URL(), "", false)
+		require.NoError(t, err)
+
+		got, err := client.RecentAssets("p1", 1)
+		require.NoError(t, err)
+		require.Len(t, got, 1)
+		assert.Equal(t, []int{1}, fake.SearchPages, "a limit-1 summary must never walk the library")
+		assert.Equal(t, []int{1}, fake.SearchSizes, "the caller's limit must be passed down as the page size")
+		assert.Equal(t, []string{"desc"}, fake.SearchOrders, "order must be requested explicitly, not left to the server default")
+	})
+
+	t.Run("limit 25 stops mid-walk once enough are in hand", func(t *testing.T) {
+		fake := newFakeImmichServer(t, "")
+		defer fake.Close()
+		fake.addPerson("p1", "Alice", 100, makeFakeAssets(100), nil)
+		fake.People["p1"].PageSize = 10
+
+		client, err := NewImmichClient(fake.URL(), "", false)
+		require.NoError(t, err)
+
+		// 25 assets at 10/page => pages 1, 2, 3 (10+10+10), not all 10.
+		got, err := client.RecentAssets("p1", 25)
+		require.NoError(t, err)
+		require.Len(t, got, 25)
+		assert.Equal(t, []int{1, 2, 3}, fake.SearchPages, "stop once 25 are in hand, don't walk to the end")
+		assert.Equal(t, []int{25, 25, 25}, fake.SearchSizes)
+	})
+}
+
+// makeFakeAssets builds n distinct assets with valid RFC3339 timestamps, for
+// tests that need a library big enough to force pagination.
+func makeFakeAssets(n int) []fakeImmichAsset {
+	assets := make([]fakeImmichAsset, n)
+	for i := range assets {
+		assets[i] = fakeImmichAsset{
+			ID:            fmt.Sprintf("a%03d", i),
+			FileCreatedAt: fmt.Sprintf("2026-%02d-%02dT10:00:00Z", (i%12)+1, (i%27)+1),
+		}
+	}
+	return assets
 }
 
 // T70: a person with more than one page of assets must paginate correctly.
@@ -575,6 +671,29 @@ func TestFetchImmichPersonSummary_LiveAndCachedDegradation(t *testing.T) {
 	degraded := FetchImmichPersonSummary(db, immichTestConfig(), user.ID, &identity)
 	assert.Equal(t, "Alice", degraded.PersonName, "the name is still available from cached metadata")
 	assert.EqualValues(t, 7, degraded.PhotoCount, "photo count degrades to the cache on failure")
+}
+
+// T83: contactImmichSummary asks RecentAssets for limit 1 on every contact
+// page load, synchronously. The summary must not walk a large library to
+// answer it — exactly one search request on a person big enough that the old
+// code would have paged many times.
+func TestFetchImmichPersonSummary_RecentAssetsIsASingleRequest(t *testing.T) {
+	db := newImmichTestDB(t)
+	user, contact := seedImmichUser(t, db)
+
+	fake := newFakeImmichServer(t, "")
+	defer fake.Close()
+	fake.addPerson("person-alice", "Alice", 50, makeFakeAssets(50), nil)
+	fake.People["person-alice"].PageSize = 10
+
+	connectImmichForUser(t, db, user.ID, contact.VCardUID, fake.URL(), "")
+	var identity models.ExternalIdentity
+	require.NoError(t, db.Where("user_id = ? AND system = ?", user.ID, ExternalSystemImmich).First(&identity).Error)
+
+	summary := FetchImmichPersonSummary(db, immichTestConfig(), user.ID, &identity)
+	require.NotNil(t, summary.LatestAssetID, "the live summary must resolve the newest asset")
+	assert.Equal(t, []int{1}, fake.SearchPages, "a limit-1 summary must be exactly one search request")
+	assert.Equal(t, []int{1}, fake.SearchSizes, "and that request must ask for size 1, not 200")
 }
 
 func TestListImmichRecentAssetsForContact(t *testing.T) {
