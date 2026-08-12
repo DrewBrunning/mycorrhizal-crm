@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -24,8 +25,11 @@ type fakeImmichPerson struct {
 	Assets     []fakeImmichAsset
 	Thumbnail  []byte
 	// PageSize, when > 0, makes /api/search/metadata paginate this person's
-	// assets that many per page and advertise a nextPage token (T70). Zero
-	// keeps the original single-page behavior every other test assumes.
+	// assets that many per page and advertise a nextPage token (T70),
+	// overriding the request's `size` so a test can force a server that pages
+	// *smaller* than requested — which is what makes the client's early-stop
+	// observable (T83). Zero honors the requested size (single page when the
+	// person fits), the behavior every other test assumes.
 	PageSize int
 }
 
@@ -64,8 +68,17 @@ type fakeImmichServer struct {
 	LastAPIKey string
 	// SearchPages records the resolved `page` of every /api/search/metadata
 	// request, in order, so a test can assert the pagination loop actually
-	// walked pages 1, 2, 3 rather than looping on one (T70).
+	// walked pages 1, 2, 3 rather than looping on one (T70) — and that it
+	// stopped early once a limit was met (T83).
 	SearchPages []int
+	// SearchSizes records the `size` of every /api/search/metadata request,
+	// so a test can pin that the caller's limit is passed down as the page
+	// size (T83).
+	SearchSizes []int
+	// SearchOrders records the `order` of every /api/search/metadata request,
+	// pinning that the client requests newest-first explicitly rather than
+	// relying on the server default (T83).
+	SearchOrders []string
 }
 
 // newFakeImmichServer builds a started fake Immich instance.
@@ -182,51 +195,72 @@ func (f *fakeImmichServer) handleStatistics(w http.ResponseWriter, personID stri
 	writeJSON(w, map[string]any{"assets": p.PhotoCount})
 }
 
-// handleSearchMetadata mimics POST /api/search/metadata, including the two
-// behaviors T70 turned on:
+// handleSearchMetadata mimics POST /api/search/metadata, including the three
+// behaviors the real endpoint has and this integration relies on:
 //
 //   - `page` is validated as a NUMBER.  A JSON string is rejected 400 with
 //     Immich's real validation body.  This is the bug T70 fixed: the client
 //     used to echo the string-typed nextPage straight back.
 //   - assets.nextPage is serialized as a JSON *string* on the way out, the
 //     way v3.x does, so the round-trip asymmetry is reproduced faithfully.
+//   - `size` and `order` are honored: `size` bounds each page, and `order`
+//     ("asc"/"desc", default desc) sets the fileCreatedAt direction with id as
+//     the tiebreak — the ordering SearchRepository applies — so a size-limited
+//     desc request yields the newest-taken assets, and a limit-1 request
+//     returns exactly the one the client's early-stop expects (T83).
 //
-// Pagination activates only when PageSize is set on the fake person; otherwise
-// every asset is returned on one page with no nextPage, preserving the
-// single-page behavior every pre-existing test relies on.
+// Pagination activates when PageSize is set on the fake person: it overrides
+// the requested size so a test can force a server that pages *smaller* than
+// requested, which is what makes the early-stop observable. Otherwise every
+// page returns up to the requested size, preserving the single-page behavior
+// every pre-existing test relies on.
 func (f *fakeImmichServer) handleSearchMetadata(w http.ResponseWriter, r *http.Request) {
 	body, _ := io.ReadAll(io.LimitReader(r.Body, 4096))
 	var req struct {
-		PersonIDs []string        `json:"personIds"`
-		Page      json.RawMessage `json:"page"`
+		PersonIDs []string `json:"personIds"`
+		Page      any      `json:"page"`
+		Size      *int     `json:"size"`
+		Order     string   `json:"order"`
 	}
 	if err := json.Unmarshal(body, &req); err != nil || len(req.PersonIDs) == 0 {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	// The real DTO validates size as an int in [1, 1000] and order as
+	// "asc"/"desc"; reject what Immich would reject so a client regression
+	// (e.g. size 0, or an order we don't request) is caught rather than
+	// silently served. A size that is simply absent keeps the original
+	// single-page "return everything" behavior.
+	if req.Size != nil && (*req.Size < 1 || *req.Size > 1000) {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	if req.Order != "" && req.Order != "asc" && req.Order != "desc" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 
 	page := 1
-	if raw := strings.TrimSpace(string(req.Page)); raw != "" && raw != "null" {
-		if strings.HasPrefix(raw, `"`) {
-			// Exactly what the real instance returned for T70.
+	switch raw := req.Page.(type) {
+	case string:
+		// Exactly what the real instance returned for T70: a string page.
+		w.WriteHeader(http.StatusBadRequest)
+		writeJSON(w, map[string]any{
+			"message": "Validation failed",
+			"errors": []map[string]any{{
+				"expected": "number",
+				"code":     "invalid_type",
+				"path":     []string{"page"},
+				"message":  "Invalid input: expected number, received string",
+			}},
+		})
+		return
+	case float64:
+		if raw < 1 {
 			w.WriteHeader(http.StatusBadRequest)
-			writeJSON(w, map[string]any{
-				"message": "Validation failed",
-				"errors": []map[string]any{{
-					"expected": "number",
-					"code":     "invalid_type",
-					"path":     []string{"page"},
-					"message":  "Invalid input: expected number, received string",
-				}},
-			})
 			return
 		}
-		n, err := strconv.Atoi(raw)
-		if err != nil || n < 1 {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		page = n
+		page = int(raw)
 	}
 
 	personID := req.PersonIDs[0]
@@ -236,24 +270,36 @@ func (f *fakeImmichServer) handleSearchMetadata(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	items := p.Assets
+	// Real Immich answers ordered by fileCreatedAt (id as tiebreak) in the
+	// requested direction, so the fake must too for a size-limited response to
+	// be meaningful (T83).
+	items := sortedAssetsForSearch(p.Assets, req.Order)
 	nextPage := ""
+	pageSize := len(items)
+	if req.Size != nil {
+		pageSize = *req.Size
+	}
 	if p.PageSize > 0 {
-		start := (page - 1) * p.PageSize
-		if start > len(items) {
-			start = len(items)
-		}
-		end := start + p.PageSize
-		if end > len(items) {
-			end = len(items)
-		}
-		items = items[start:end]
-		if end < len(p.Assets) {
-			nextPage = strconv.Itoa(page + 1) // string, as v3.x sends it
-		}
+		pageSize = p.PageSize
+	}
+	start := (page - 1) * pageSize
+	if start > len(items) {
+		start = len(items)
+	}
+	end := start + pageSize
+	if end > len(items) {
+		end = len(items)
+	}
+	items = items[start:end]
+	if end < len(p.Assets) {
+		nextPage = strconv.Itoa(page + 1) // string, as v3.x sends it
 	}
 
 	f.SearchPages = append(f.SearchPages, page)
+	if req.Size != nil {
+		f.SearchSizes = append(f.SearchSizes, *req.Size)
+	}
+	f.SearchOrders = append(f.SearchOrders, req.Order)
 	writeJSON(w, map[string]any{
 		"assets": map[string]any{
 			"items":    items,
@@ -262,6 +308,31 @@ func (f *fakeImmichServer) handleSearchMetadata(w http.ResponseWriter, r *http.R
 			"nextPage": nextPage,
 		},
 	})
+}
+
+// sortedAssetsForSearch returns the person's assets in the order real Immich's
+// /api/search/metadata returns them: fileCreatedAt ordered by the request's
+// `order` (asc/desc, default desc), id ordered the same way as the tiebreak —
+// SearchRepository.searchMetadata's ORDER BY. RFC3339 strings sort
+// lexicographically in timestamp order, which is exact for the UTC-form
+// timestamps these tests use.
+func sortedAssetsForSearch(assets []fakeImmichAsset, order string) []fakeImmichAsset {
+	out := make([]fakeImmichAsset, len(assets))
+	copy(out, assets)
+	ascending := order == "asc"
+	sort.SliceStable(out, func(i, j int) bool {
+		if out[i].FileCreatedAt != out[j].FileCreatedAt {
+			if ascending {
+				return out[i].FileCreatedAt < out[j].FileCreatedAt
+			}
+			return out[i].FileCreatedAt > out[j].FileCreatedAt
+		}
+		if ascending {
+			return out[i].ID < out[j].ID
+		}
+		return out[i].ID > out[j].ID
+	})
+	return out
 }
 
 func (f *fakeImmichServer) handleThumbnail(w http.ResponseWriter, personID string) {
