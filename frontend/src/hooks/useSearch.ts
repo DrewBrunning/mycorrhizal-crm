@@ -5,7 +5,9 @@ import { handleFetchError } from '../utils/errorHandler';
 // useSearch backs the cross-entity (notes/activities) half of search. After
 // T86 the standalone search page is gone; the Contacts page fires this in
 // parallel with the contacts list so note/activity hits stay findable without
-// a second contact list. Debounced at the call site, not here.
+// a second contact list. There is no debounce here — the caller feeds it the
+// already-debounced `?search=` term (the search field debounces input into the
+// URL, and this effect keys off that committed value).
 export function useSearch() {
   const [result, setResult] = useState<SearchResult | null>(null);
   const [loading, setLoading] = useState(false);

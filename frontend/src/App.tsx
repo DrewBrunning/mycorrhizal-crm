@@ -85,7 +85,7 @@ function ScrollToTop() {
 // `q` param is only ever read here, never written.
 function SearchRedirect() {
   const [searchParams] = useSearchParams();
-  const q = searchParams.get('q') || '';
+  const q = (searchParams.get('q') || '').trim();
   return <Navigate to={q ? `/contacts?search=${encodeURIComponent(q)}` : '/contacts'} replace />;
 }
 

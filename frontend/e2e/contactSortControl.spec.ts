@@ -52,20 +52,19 @@ test.describe('Contacts list sort control (T77)', () => {
       await page.goto(`/contacts?search=${encodeURIComponent(search)}`);
       await waitForLoading(page);
 
-      const alpha = page.getByText('T77Alpha').first();
-      const zulu = page.getByText('T77Zulu').first();
-      await expect(alpha).toBeVisible();
-      await expect(zulu).toBeVisible();
+      // The three contacts are the only cards on the page (search isolates
+      // them); the name sort orders them by sort_name, so the first card tells
+      // us the current direction. Assert on the first card so the check
+      // auto-retries through the refetch the sort change triggers.
+      const firstCard = page.locator('.MuiCard-root').first();
 
-      // Default name ascending: T77Alpha renders above T77Zulu.
-      expect((await alpha.boundingBox())!.y).toBeLessThan((await zulu.boundingBox())!.y);
+      // Default name ascending: T77Alpha first.
+      await expect(firstCard).toContainText('T77Alpha');
 
-      // Flip to descending: T77Zulu renders above T77Alpha.
+      // Flip to descending: T77Zulu moves to the top.
       await page.getByLabel('Sort').click();
       await page.getByRole('option', { name: 'Name (Z–A)' }).click();
-      await waitForLoading(page);
-
-      expect((await zulu.boundingBox())!.y).toBeLessThan((await alpha.boundingBox())!.y);
+      await expect(firstCard).toContainText('T77Zulu');
     } finally {
       for (const c of created) await deleteTestContact(request, c.ID);
     }

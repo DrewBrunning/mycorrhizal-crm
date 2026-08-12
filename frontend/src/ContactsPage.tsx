@@ -283,7 +283,7 @@ export default function ContactsPage() {
           },
         }}
       />
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} mb={2} alignItems="center">
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} mb={2} alignItems="center" flexWrap="wrap">
         <FormControl sx={{ minWidth: 180 }} size="small">
           <InputLabel id="circle-select-label">{t('contacts.filterByCircle')}</InputLabel>
           <Select
