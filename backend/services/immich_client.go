@@ -100,6 +100,13 @@ const (
 	// ErrImmichRequestFailed for logging — small, since it's diagnostic only,
 	// never the payload a caller actually consumes.
 	maxImmichErrorBodyBytes = 2048
+	// maxImmichSearchPages bounds RecentAssets' pagination loop. It is a pure
+	// non-termination guard, not a correctness knob (T83): the loop requests
+	// size=limit and stops as soon as limit assets are in hand, so a
+	// well-behaved server is walked at most two pages. Only a server that
+	// pages smaller than requested while still advertising a nextPage ever
+	// approaches this cap.
+	maxImmichSearchPages = 100
 )
 
 // ImmichRequestError carries the real HTTP status (and a bounded response
@@ -149,8 +156,9 @@ type ImmichUser struct {
 type ImmichAsset struct {
 	ID string `json:"id"`
 	// FileCreatedAt is when the photo was taken; CreatedAt when it was
-	// uploaded. Latest *appearance* is best approximated by the newer of the
-	// two (a backfilled old photo uploads later).
+	// uploaded. assetOccurredAt prefers the taken date and falls back to the
+	// upload date only when the taken date is unparseable (a photo with no
+	// EXIF) — so "latest appearance" tracks newest *taken* for normal photos.
 	FileCreatedAt string `json:"fileCreatedAt"`
 	CreatedAt     string `json:"createdAt"`
 }
@@ -424,10 +432,10 @@ func parseImmichPage(raw json.RawMessage) (int, bool) {
 // "Most recent" = newest fileCreatedAt (or createdAt fallback).  Bounded to
 // limit items; a person with no photos returns an empty slice, never an error.
 //
-// Paginated: the first request omits the page parameter and subsequent
+// Pagination: the first request omits the page parameter and subsequent
 // requests send the page number carried in the response's assets.nextPage
-// field.  The loop stops when there is no next page or the 100-page safety
-// cap is reached.
+// field.  The loop stops as soon as limit assets are in hand, or when there
+// is no next page, or at the maxImmichSearchPages non-termination cap.
 //
 // T70: nextPage must be sent back as a NUMBER, not echoed verbatim.  Immich
 // v3.x serializes assets.nextPage as a JSON *string* ("2"), but
@@ -438,7 +446,32 @@ func parseImmichPage(raw json.RawMessage) (int, bool) {
 // with more than one page of assets (>200), which is why it survived T59's
 // end-to-end verification and had no test coverage.  parseImmichPage accepts
 // either JSON shape on the way in; the request always sends a number out.
+//
+// T83: why early-stop is safe.  The caller's limit is requested as the page
+// size and the sort order is requested explicitly, so a single request
+// answers the call whenever the person has at least limit assets.  That
+// trusts /api/search/metadata's ordering, which is genuinely newest-first:
+// in Immich v3.1.0 (the version this integration pins) SearchRepository
+// orders by `asset.fileCreatedAt` DESC by default and the HTTP DTO accepts an
+// explicit `order` ("desc"/"asc"), with the field fixed server-side to
+// fileCreatedAt — there is no way to request createdAt ordering.  The client
+// still re-sorts what it fetched (assetOccurredAt) as a cheap safety net, but
+// that sort no longer drives the walk.
+//
+// Approximation accepted and documented here so it is a decision, not a
+// surprise: "latest appearance" means newest by fileCreatedAt, the same field
+// the server orders by.  assetOccurredAt only diverges from the server's
+// order for an asset whose taken date is unparseable (no EXIF): the server
+// pages it by its DB fileCreatedAt, while the client's fallback to createdAt
+// can rank it higher than its page position — such an asset deeper than the
+// fetched window is missed.  Real Immich photos always carry fileCreatedAt,
+// so in practice the two orders agree and the fetched window is the correct
+// answer.  Full correctness for no-EXIF assets requires the entire walk this
+// early-stop exists to eliminate.
 func (c *ImmichClient) RecentAssets(personID string, limit int) ([]ImmichAsset, error) {
+	if limit < 1 {
+		limit = 1
+	}
 	var all []ImmichAsset
 	// The first request IS page 1, but sends no `page` parameter (Immich
 	// defaults to it). Tracking that as pageNum=1 rather than 0 is what lets
@@ -446,10 +479,16 @@ func (c *ImmichClient) RecentAssets(personID string, limit int) ([]ImmichAsset, 
 	// with nextPage=1 — which is a non-advancement, not a second page.
 	pageNum := 1
 	sendPage := false
-	for p := 1; p <= 100; p++ {
+	for p := 1; p <= maxImmichSearchPages; p++ {
 		reqBody := map[string]any{
 			"personIds": []string{personID},
-			"size":      200,
+			// size = the caller's limit (T83): requesting 200 to satisfy
+			// limit:1 is wasteful even on a single page. The endpoint's size
+			// cap is 1000, which every current caller (1/25/30) is far under.
+			"size": limit,
+			// order made explicit so the early-stop never depends on the
+			// server's default changing under us.
+			"order": "desc",
 		}
 		if sendPage {
 			reqBody["page"] = pageNum
@@ -477,9 +516,16 @@ func (c *ImmichClient) RecentAssets(personID string, limit int) ([]ImmichAsset, 
 			return nil, fmt.Errorf("%w: %v", ErrImmichInvalidData, err)
 		}
 		all = append(all, envelope.Assets.Items...)
+		// Early stop (T83): the server answers newest-first, so once limit
+		// assets are in hand every remaining page is necessarily older. No
+		// need to ask for it. The safety-net sort below only ever reorders
+		// what this loop has collected.
+		if len(all) >= limit {
+			break
+		}
 		next, ok := parseImmichPage(envelope.Assets.NextPage)
 		// Must advance: a server that echoes the current page (or an earlier
-		// one) would otherwise refetch it until the 100-iteration cap, silently
+		// one) would otherwise refetch it until the cap, silently
 		// accumulating duplicate assets rather than erroring. The cap alone
 		// bounds the requests but not the duplication.
 		if !ok || next <= pageNum {

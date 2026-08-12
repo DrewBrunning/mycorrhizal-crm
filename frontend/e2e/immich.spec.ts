@@ -146,6 +146,47 @@ test.describe('Immich integration', () => {
     await deleteTestContact(request, contact.ID);
   });
 
+  // T83: the contact-page Immich summary (`FetchImmichPersonSummary`, the
+  // limit-1 RecentAssets caller) is what renders this linked-person row. The
+  // e2e environment has no reachable Immich, so the live fetch degrades to
+  // the identity's cached metadata — which is the meaningful assertion here:
+  // a *linked* person's contact page renders its Immich surface from that
+  // cache without crashing, the exact path T83's request bounding serves.
+  test('linked person renders on the contact page from cached metadata', async ({
+    page,
+    request,
+  }) => {
+    await request.put(`${API_BASE_URL}/immich/config`, {
+      data: { base_url: 'https://immich.example', api_key: 'key' },
+    });
+
+    const contact = await createTestContact(request, {
+      firstname: 'ImmichTest',
+      lastname: 'LinkedSummary',
+    });
+
+    // Link without browsing: the link endpoint only persists the
+    // ExternalIdentity, it never calls Immich (which is unreachable here).
+    const link = await request.post(
+      `${API_BASE_URL}/immich/contacts/${contact.uid}/link`,
+      { data: { person_id: 'person-linked', person_name: 'Linked Person Name' } }
+    );
+    expect(link.ok(), await link.text()).toBeTruthy();
+
+    await page.goto(`/contacts/${contact.ID}`);
+    await waitForLoading(page);
+
+    // The linked person's name comes from the summary's cached metadata (the
+    // Immich instance is unreachable, so the live fetch degrades); the
+    // "Immich" chip marks the row. The page must render both without errors.
+    await expect(page.getByText('Linked Person Name')).toBeVisible({
+      timeout: 10000,
+    });
+    await expect(page.getByText('Immich', { exact: true }).first()).toBeVisible();
+
+    await deleteTestContact(request, contact.ID);
+  });
+
   // ── URL allowlist ───────────────────────────────────────────────
 
   test('API rejects a non-http scheme on immich/config PUT', async ({ request }) => {
