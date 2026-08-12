@@ -579,7 +579,7 @@ export default function ContactHeader({
                       <Typography variant="caption" color="text.secondary">{t('contactDetail.noCircles')}</Typography>
                     )}
                   </Stack>
-                  <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                  <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1, mt: 1 }}>
                     <Autocomplete
                       size="small"
                       options={allCircles.filter(c => !contactCircles.find(cc => cc.id === c.id))}
@@ -587,7 +587,7 @@ export default function ContactHeader({
                       value={null}
                       onChange={(_, value) => { if (value) onAddCircle(value); }}
                       blurOnSelect
-                      sx={{ minWidth: 200 }}
+                      sx={{ minWidth: { xs: '100%', sm: 200 } }}
                       renderInput={(params) => (
                         <TextField {...params} label={t('contacts.selectCircle')} size="small" />
                       )}
@@ -595,7 +595,7 @@ export default function ContactHeader({
                     <TextField size="small" placeholder={t('contactDetail.newCircle')}
                       value={newCircleName} onChange={(e) => setNewCircleName(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter' && newCircleName.trim()) { onAddCircle({ id: '', created_at: '', updated_at: '', name: newCircleName.trim() }); setNewCircleName(''); }}}
-                      sx={{ flexGrow: 1 }} />
+                      sx={{ flexGrow: 1, minWidth: 0 }} />
                     <Button size="small" variant="contained" disabled={!newCircleName.trim()}
                       onClick={() => { onAddCircle({ id: '', created_at: '', updated_at: '', name: newCircleName.trim() }); setNewCircleName(''); }}>
                       {t('contactDetail.add')}
@@ -640,7 +640,7 @@ export default function ContactHeader({
                       <Typography variant="caption" color="text.secondary">{t('contactDetail.noTags')}</Typography>
                     )}
                   </Stack>
-                  <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                  <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1, mt: 1 }}>
                     <Autocomplete
                       size="small"
                       options={allTags.filter(t => !contactTags.find(ct => ct.id === t.id))}
@@ -648,7 +648,7 @@ export default function ContactHeader({
                       value={null}
                       onChange={(_, value) => { if (value) onAddTag(value); }}
                       blurOnSelect
-                      sx={{ minWidth: 200 }}
+                      sx={{ minWidth: { xs: '100%', sm: 200 } }}
                       renderInput={(params) => (
                         <TextField {...params} label={t('contactDetail.selectTag')} size="small" />
                       )}
@@ -656,7 +656,7 @@ export default function ContactHeader({
                     <TextField size="small" placeholder={t('contactDetail.newTag')}
                       value={newTagName} onChange={(e) => setNewTagName(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter' && newTagName.trim()) { onAddTag({ id: '', created_at: '', updated_at: '', name: newTagName.trim() }); setNewTagName(''); }}}
-                      sx={{ flexGrow: 1 }} />
+                      sx={{ flexGrow: 1, minWidth: 0 }} />
                     <Button size="small" variant="contained" disabled={!newTagName.trim()}
                       onClick={() => { onAddTag({ id: '', created_at: '', updated_at: '', name: newTagName.trim() }); setNewTagName(''); }}>
                       {t('contactDetail.add')}
