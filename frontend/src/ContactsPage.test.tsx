@@ -311,3 +311,49 @@ test('a search change clears an in-progress selection', async () => {
 
   await waitFor(() => expect(screen.queryByText('1 selected')).not.toBeInTheDocument());
 });
+
+test('defaults to name (alphabetical) sort', async () => {
+  mockTwoPages();
+  renderPage();
+  await screen.findByLabelText('Select Alice');
+
+  expect(getContacts).toHaveBeenCalledWith(
+    expect.objectContaining({ sort: 'name', order: 'asc' })
+  );
+});
+
+test('changing the sort control refetches with the chosen sort and direction', async () => {
+  mockTwoPages();
+  renderPage();
+  await screen.findByLabelText('Select Alice');
+
+  fireEvent.mouseDown(screen.getByLabelText('Sort'));
+  fireEvent.click(await screen.findByRole('option', { name: 'Recently edited (newest first)' }));
+
+  await waitFor(() =>
+    expect(getContacts).toHaveBeenCalledWith(
+      expect.objectContaining({ sort: 'updated_at', order: 'desc' })
+    )
+  );
+});
+
+test('changing the sort does not clear an in-progress selection', async () => {
+  mockTwoPages();
+  renderPage();
+  await screen.findByLabelText('Select Alice');
+
+  fireEvent.click(screen.getByLabelText('Select Alice'));
+  expect(screen.getByText('1 selected')).toBeInTheDocument();
+
+  fireEvent.mouseDown(screen.getByLabelText('Sort'));
+  fireEvent.click(await screen.findByRole('option', { name: 'Recently edited (newest first)' }));
+
+  await waitFor(() =>
+    expect(getContacts).toHaveBeenCalledWith(
+      expect.objectContaining({ sort: 'updated_at', order: 'desc' })
+    )
+  );
+  // Sorting reorders the list but not which contacts are visible — the
+  // selection is still valid and must survive (T77 trap).
+  expect(screen.getByText('1 selected')).toBeInTheDocument();
+});

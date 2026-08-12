@@ -717,7 +717,10 @@ export interface GetContactsParams {
   limit?: number;
   search?: string;
   circle?: string;
-  // Direction for the (updated_at, id) cursor order ("desc" default).
+  // Sort key (T73): "updated_at" (default, the (updated_at, id) cursor) or
+  // "name" (the denormalized sort_name key, (sort_name, id) cursor).
+  sort?: 'updated_at' | 'name';
+  // Direction for the chosen sort's cursor order ("desc" default server-side).
   order?: 'asc' | 'desc';
   includeArchived?: boolean;
   archived?: boolean;
@@ -727,7 +730,7 @@ export interface GetContactsParams {
 export async function getContacts(
   params: GetContactsParams
 ): Promise<ContactsResponse> {
-  const { cursor, limit = 25, search = '', circle = '', order, includeArchived, archived } = params;
+  const { cursor, limit = 25, search = '', circle = '', sort, order, includeArchived, archived } = params;
 
   const queryParams = new URLSearchParams({
     limit: limit.toString(),
@@ -736,6 +739,7 @@ export async function getContacts(
   if (cursor) queryParams.append('cursor', cursor);
   if (search) queryParams.append('search', search);
   if (circle) queryParams.append('circle', circle);
+  if (sort) queryParams.append('sort', sort);
   if (order) queryParams.append('order', order);
   if (includeArchived) queryParams.append('include_archived', 'true');
   if (archived !== undefined) queryParams.append('archived', archived.toString());

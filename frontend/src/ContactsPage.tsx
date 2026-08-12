@@ -102,21 +102,51 @@ export default function ContactsPage() {
   // filter/search/archived change swaps `contacts` for an unrelated page,
   // so a stale selection would let a bulk action (including delete) run
   // against contacts the user can no longer see. Clear it here rather than
-  // in useContacts, which has no concept of selection.
+  // in useContacts, which has no concept of selection. Sort is deliberately
+  // NOT a dependency (T77): changing the order changes which page a contact
+  // is on, not which contacts are selected — clearing on a sort would throw
+  // away a valid selection for no reason.
   useEffect(() => {
     setSelectedUids(new Set());
   }, [searchQuery, selectedCircle, showArchived]);
 
-  // T17: cursor pagination — the list pages by (updated_at, id) DESC and the
-  // "load more" button appends the next_cursor page. There is no page number
-  // or exact total anymore.
+  // T77 sort control: the URL's ?sort= and ?order= params own the list order
+  // (same persistence mechanism as T86's ?search=). The web client opts into
+  // name (alphabetical) as its default; the server keeps updated_at for
+  // existing API consumers. The Select below encodes both dimensions in one
+  // "sort:order" value.
+  const sort = searchParams.get('sort') === 'updated_at' ? 'updated_at' : 'name';
+  // Direction default follows the sort key's natural expectation: name opens
+  // A→Z, recently-edited opens newest-first (matching the server's desc
+  // default) — only relevant for a hand-crafted URL, since the Select below
+  // always writes both params together.
+  const orderParam = searchParams.get('order');
+  const order = orderParam === 'desc' || orderParam === 'asc'
+    ? orderParam
+    : (sort === 'name' ? 'asc' : 'desc');
+
+  const setSortSelection = (value: string) => {
+    const [nextSort, nextOrder] = value.split(':');
+    setSearchParams((prev) => {
+      const nextParams = new URLSearchParams(prev);
+      nextParams.set('sort', nextSort);
+      nextParams.set('order', nextOrder);
+      return nextParams;
+    }, { replace: true });
+  };
+
+  // T17/T73: cursor pagination — the list pages by the chosen sort's cursor
+  // key ((updated_at, id) DESC by default, or (sort_name, id) under
+  // ?sort=name) and the "load more" button appends the next_cursor page.
+  // There is no page number or exact total anymore.
   const contactParams = useMemo(() => ({
     limit: pageSize,
     search: searchQuery,
     circle: selectedCircle,
-    order: 'desc' as const,
+    sort: sort as 'updated_at' | 'name',
+    order: order as 'asc' | 'desc',
     includeArchived: showArchived,
-  }), [searchQuery, selectedCircle, showArchived]);
+  }), [searchQuery, selectedCircle, showArchived, sort, order]);
 
   // Use custom hook for fetching contacts
   const { contacts, nextCursor, loading, refetch, loadMore } = useContacts(contactParams);
@@ -266,6 +296,20 @@ export default function ContactsPage() {
             {circles.map(c => (
               <MenuItem key={c.id} value={c.name}>{c.name}</MenuItem>
             ))}
+          </Select>
+        </FormControl>
+        <FormControl sx={{ minWidth: 220 }} size="small">
+          <InputLabel id="sort-select-label">{t('contacts.sortBy')}</InputLabel>
+          <Select
+            labelId="sort-select-label"
+            value={`${sort}:${order}`}
+            label={t('contacts.sortBy')}
+            onChange={e => setSortSelection(e.target.value)}
+          >
+            <MenuItem value="name:asc">{t('contacts.sortNameAsc')}</MenuItem>
+            <MenuItem value="name:desc">{t('contacts.sortNameDesc')}</MenuItem>
+            <MenuItem value="updated_at:desc">{t('contacts.sortUpdatedDesc')}</MenuItem>
+            <MenuItem value="updated_at:asc">{t('contacts.sortUpdatedAsc')}</MenuItem>
           </Select>
         </FormControl>
         <FormControlLabel
