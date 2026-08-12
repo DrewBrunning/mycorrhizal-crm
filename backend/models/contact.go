@@ -229,6 +229,18 @@ func FlattenAddresses(addresses []ContactAddress) string {
 // so this is a no-op for them, not a silent blank-out. FN and Org are new
 // columns with no prior value and no back-compat concern, so they are always
 // assigned directly.
+//
+// T75 address-merge rule (docs/fork-plan/tickets/119-T75-plain-save-destroys-
+// card-only-data.md): on the non-cardSetDirectly path, the fresh Card
+// derivation is MERGED onto the loaded Card, not substituted for it. Flat
+// fields are authoritative for what they can express; the loaded Card is
+// authoritative for what they cannot. Flat-owned Card sub-structures are
+// compared per-entry against the loaded Card's flat projection — an entry
+// whose projection is unchanged survives whole (unprojected address
+// components included); a changed or newly-appended entry is rebuilt from
+// flat. Card members with no flat representation (SpeakToAs, PersonalInfo,
+// CRMEnvelope.Kind, ...) are preserved unconditionally. The full rule with
+// its rationale lives on mergeRecordFromFlat in contact_card_merge.go.
 func (c *Contact) BeforeSave(tx *gorm.DB) error {
 	if len(c.Emails) > 0 {
 		c.Email = c.Emails[0].Value
@@ -253,7 +265,20 @@ func (c *Contact) BeforeSave(tx *gorm.DB) error {
 		record = &contactmodel.Record{Card: c.Card, Envelope: c.CRM, Passthrough: c.Passthrough}
 		c.cardSetDirectly = false // one-shot: only guards the save that immediately follows ApplyRecordToContact
 	} else {
-		record = RecordFromContact(c, DefaultPhotoDir)
+		// T75: merge the fresh flat-field derivation onto the loaded
+		// full-fidelity Card/CRM/Passthrough rather than replacing it
+		// wholesale, so Card-only data with no flat home (SpeakToAs,
+		// PersonalInfo, unprojected address components, rich per-entry
+		// metadata, CRMEnvelope.Kind, Passthrough) survives a plain save.
+		// The exact merge rule is documented on mergeRecordFromFlat
+		// (contact_card_merge.go) — flat fields are authoritative for what
+		// they can express, loaded Card for what they cannot.
+		fresh := RecordFromContact(c, DefaultPhotoDir)
+		merged := mergeRecordFromFlat(
+			contactmodel.Record{Card: c.Card, Envelope: c.CRM, Passthrough: c.Passthrough},
+			*fresh,
+		)
+		record = &merged
 		c.Card = record.Card
 		c.CRM = record.Envelope
 		c.Passthrough = record.Passthrough

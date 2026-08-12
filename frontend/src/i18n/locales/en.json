@@ -1616,7 +1616,8 @@
       "confirmMessage": "Restore the {{entity}} to its previous state as of {{date}}?",
       "confirm": "Undo",
       "success": "Contact restored to its previous state",
-      "retentionGone": "This event is past its retention window and can no longer be undone"
+      "retentionGone": "This event is past its retention window and can no longer be undone",
+      "partialNote": "Details that were never captured in this record (pronouns, personal information, address details) are preserved unchanged."
     }
   }
 }

@@ -1616,7 +1616,8 @@
       "confirmMessage": "¿Restaurar {{entity}} a su estado anterior del {{date}}?",
       "confirm": "Deshacer",
       "success": "Contacto restaurado a su estado anterior",
-      "retentionGone": "Este evento está fuera de su ventana de retención y ya no se puede deshacer"
+      "retentionGone": "Este evento está fuera de su ventana de retención y ya no se puede deshacer",
+      "partialNote": "Los detalles que nunca se registraron en esta entrada (pronombres, información personal, detalles de dirección) se conservan sin cambios."
     }
   }
 }
