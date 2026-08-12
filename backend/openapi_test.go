@@ -124,11 +124,11 @@ func TestOpenAPISpecValidates(t *testing.T) {
 
 	// GET /contacts must document the cursor-pagination + change-feed query
 	// mechanics T17 requires (cursor/since/limit/order plus the surviving
-	// search/archive/circle/includes filters) and must NOT document the
-	// removed page/sort params or fields= (Gap 3: removed, not just
-	// undocumented-but-still-there).
+	// search/archive/circle/includes filters), the sort= control T73 adds,
+	// and must NOT document the removed page/fields params (Gap 3: removed,
+	// not just undocumented-but-still-there).
 	contactsGet := doc.Paths.Find("/contacts").Get
-	wantParams := []string{"cursor", "since", "limit", "order", "search", "include_archived", "archived", "circle", "includes"}
+	wantParams := []string{"cursor", "since", "limit", "order", "sort", "search", "include_archived", "archived", "circle", "includes"}
 	gotParams := map[string]bool{}
 	for _, p := range contactsGet.Parameters {
 		gotParams[p.Value.Name] = true
@@ -138,9 +138,18 @@ func TestOpenAPISpecValidates(t *testing.T) {
 			t.Errorf("GET /contacts is missing documented query param %q", name)
 		}
 	}
-	for _, gone := range []string{"fields", "page", "sort"} {
+	for _, gone := range []string{"fields", "page"} {
 		if gotParams[gone] {
 			t.Errorf("GET /contacts still documents %q, which T17 removed", gone)
+		}
+	}
+	// T73: sort= is documented with exactly the two accepted tokens.
+	if sortParam := contactsGet.Parameters.GetByInAndName("query", "sort"); sortParam == nil {
+		t.Error("GET /contacts must document the T73 sort query param")
+	} else {
+		if enum := sortParam.Schema.Value.Enum; len(enum) != 2 ||
+			enum[0] != "updated_at" || enum[1] != "name" {
+			t.Errorf("sort param enum = %v, want [updated_at name]", enum)
 		}
 	}
 

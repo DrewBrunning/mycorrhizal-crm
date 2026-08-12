@@ -622,3 +622,53 @@ func TestFlattenPhones(t *testing.T) {
 		t.Errorf("FlattenPhones(no-digits) = %q, want empty", blank)
 	}
 }
+
+// TestDeriveSortName pins the Go-side derivation that feeds the denormalized
+// sort_name column (T73): lower(trim(lastname)) when non-empty, else
+// lower(trim(firstname)). Migration 000021's SQL backfill deliberately
+// mirrors this exact shape for pre-existing rows, so this test is what keeps
+// the two from silently diverging (which would make new-contact and
+// pre-existing-contact sort behavior differ).
+func TestDeriveSortName(t *testing.T) {
+	cases := []struct {
+		name                string
+		lastname, firstname string
+		want                string
+	}{
+		{"lastname wins and is lowercased", "Johnson", "Alice", "johnson"},
+		{"firstname fallback is lowercased", "", "Alice", "alice"},
+		{"mixed-case lastname lowercases", "De La Cruz", "Ana", "de la cruz"},
+		{"lastname whitespace is trimmed", "  Smith  ", "Bob", "smith"},
+		{"firstname whitespace is trimmed on fallback", "", "  Eve  ", "eve"},
+		{"blank lastname falls back", "   ", "Eve", "eve"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := DeriveSortName(tc.lastname, tc.firstname); got != tc.want {
+				t.Errorf("DeriveSortName(%q, %q) = %q, want %q", tc.lastname, tc.firstname, got, tc.want)
+			}
+		})
+	}
+}
+
+// TestBeforeSave_DerivesSortName asserts BeforeSave populates SortName from
+// the final Firstname/Lastname (after the projection block), mirroring how
+// it keeps the AddressesFlat/PhonesNormalized derived columns in sync.
+func TestBeforeSave_DerivesSortName(t *testing.T) {
+	c := &Contact{Firstname: "Jane", Lastname: " Doe "}
+	if err := c.BeforeSave(nil); err != nil {
+		t.Fatalf("BeforeSave returned error: %v", err)
+	}
+	if c.SortName != "doe" {
+		t.Errorf("c.SortName = %q, want %q", c.SortName, "doe")
+	}
+
+	// No lastname: falls back to the (lowercased, trimmed) firstname.
+	firstOnly := &Contact{Firstname: "  Madonna "}
+	if err := firstOnly.BeforeSave(nil); err != nil {
+		t.Fatalf("BeforeSave returned error: %v", err)
+	}
+	if firstOnly.SortName != "madonna" {
+		t.Errorf("first-only c.SortName = %q, want %q", firstOnly.SortName, "madonna")
+	}
+}

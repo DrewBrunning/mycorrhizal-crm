@@ -6,7 +6,7 @@
 | **Rating** | 3 — real UX gap, has a live workaround (search/filter) |
 | **Size** | S–M — migration + query param + a second cursor shape |
 | **Depends on** | Nothing. Blocks [T77](121-T77-web-contacts-list-sort-control.md), the web control that consumes it. |
-| **Status** | TO BE DONE |
+| **Status** | DONE (2026-08-12) |
 | **Source** | Testing notes, 2026-08-11: "Contacts sort by most recently edited" |
 
 ## Why this exists
@@ -95,6 +95,47 @@ shape untouched.
 - **Keep `updated_at` as the default.** This ticket adds a missing control; changing the default for
   existing users is [T77](121-T77-web-contacts-list-sort-control.md)'s decision to make on the web
   side, and only for new sessions.
+
+### Landing note (2026-08-12)
+
+Built exactly to the decided design, with no deviations: migration `000021` adds
+`contacts.sort_name` (`lower(trim(lastname))` else `lower(trim(firstname))`, `COALESCE`-guarded so a
+NULL lastname — legal in the schema — falls back to the firstname instead of writing NULL into the
+NOT NULL column and aborting the migration), backfilled in SQL and indexed on
+`(user_id, sort_name, id)` mirroring `idx_contacts_feed`. `models.DeriveSortName` keeps the Go-side
+derivation in lockstep (the same testable-function pattern as `FlattenPhones`/`FlattenAddresses`),
+populated by `Contact.BeforeSave` after the projection block so it reflects the final
+Firstname/Lastname.
+
+The controller adds `?sort=updated_at|name` (anything else is a 400 via `ErrInvalidInput`, not a
+silent fallback) with a **second cursor shape** — `NameCursor` encoded as
+`base64url("sort_name|id")` — used only when `sort=name`. `GetCursorParams` was refactored into a
+shared `cursorParams(c, kind)` with `GetCursorParams` (time shape, byte-identical behavior for every
+existing list endpoint) and the new `GetCursorParamsForSort` (name shape for the contacts list).
+`?since=` is always decoded time-shaped, and `sort=name` + `?since=` is an explicit 400 per the
+decision — the change feed is sync state, never name-ordered. Cross-shaped cursors fail loudly in
+both directions (`DecodeNameCursor` rejects a timestamp-shaped payload; the time decoder already
+rejects a name-shaped one), so a cursor minted under one sort can never be silently misapplied under
+the other.
+
+Tests: `TestDeriveSortName` + `TestBeforeSave_DerivesSortName` (models), migration shape + data-safe
+backfill tests incl. the NULL-lastname row (`database/migrate_test.go`), `NameCursor` round-trip /
+malformed / cross-shape decode tests, and a controller suite (`contact_sort_test.go`) covering both
+directions, the exhaustive paging-total-order proof (three-way `sort_name` tie + two no-lastname
+contacts straddling page boundaries at `limit=2`/`limit=3`), the unknown-sort 400, the since+sort
+400, the cross-shape-cursor 400, sort composing with `search`, and a `database.InitDB` real-migrated
+schema test (trap #1). Four Playwright e2e tests (`contactSort.spec.ts`) drive the API through the
+real stack: name order both directions, a full name-sorted page walk returning every created contact
+exactly once, and the two 400 paths. All hand-verified to fail against broken implementations
+(uppercase sort key, `sort_name` removed from the ORDER BY, backfill stripped to `''`).
+
+One near-miss caught by the full-suite gate during development: the hand-verification `sed` that
+restored `nameCursorOrderBy`'s `sort_name` also rewrote `cursorOrderBy` to order by `sort_name`,
+which would have broken **every** other list endpoint (activities, notes, circles, …) — caught by
+`TestGetActivities` in the full `go test ./...` run before any commit. The whole backend suite,
+`npx tsc --noEmit`, `npx vitest run`, and the full Playwright suite are green; the only full-run
+e2e failures were two `immich.spec.ts` tests that pass in isolation (a pre-existing shared-config
+race between parallel workers, unrelated to this change).
 
 ## Done when
 

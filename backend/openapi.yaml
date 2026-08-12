@@ -518,21 +518,41 @@ paths:
         changed after the cursor — including soft-deleted rows marked
         deleted:true — for incremental sync. An exact `total` count is
         deliberately gone. The fields= partial-projection param is gone (Gap
-        3) and has no effect if sent.
+        3) and has no effect if sent. A `sort` query (T73) selects the
+        cursor order: the default (updated_at, id) feed key, or a
+        name-ordered (sort_name, id) key — sort=name never combines with
+        ?since=, which is sync state (400), and any other sort value is a
+        400, not a silent fallback.
       parameters:
+        - name: sort
+          in: query
+          description: >
+            Cursor order for the list. updated_at (default) is T17's
+            (updated_at, id) feed key — most-recently-edited first when
+            combined with the default order=desc. name orders by the
+            denormalized sort_name key (lower(trim(lastname)) else
+            lower(trim(firstname))), resume cursors taking the
+            (sort_name, id) shape. Valid only on ?cursor= browsing: ?since=
+            combined with sort=name is a 400, and an unrecognized value is a
+            400. Changing the default is the web control's call (T77), not
+            the server's.
+          schema: { type: string, enum: [updated_at, name], default: updated_at }
         - name: cursor
           in: query
           description: >
             Opaque resume token returned as next_cursor by the previous page.
-            Resumes the list after that (updated_at, id) position. Ignored
-            when since is present.
+            Resumes the list after that position in the selected sort's key
+            ((updated_at, id), or (sort_name, id) under sort=name). Ignored
+            when since is present. A cursor from one sort used under the
+            other is rejected (400) rather than silently misapplied.
           schema: { type: string }
         - name: since
           in: query
           description: >
             Change-feed cursor: return every row changed after this position —
             created, updated, AND soft-deleted (deleted:true) — ordered
-            forward, ignoring search/circle/archive filters. A cursor older
+            forward, ignoring search/circle/archive filters and always in the
+            (updated_at, id) feed order (never name order). A cursor older
             than DELETED_RETENTION_DAYS returns 410 Gone (tombstones were
             purged; full resync required).
           schema: { type: string }
@@ -541,7 +561,7 @@ paths:
           schema: { type: integer, minimum: 1, default: 25 }
         - name: order
           in: query
-          description: Direction for the (updated_at, id) cursor order. since forces asc.
+          description: Direction for the selected sort's cursor order (updated_at, id) or (sort_name, id). since forces asc.
           schema: { type: string, enum: [asc, desc], default: desc }
         - name: search
           in: query
@@ -588,7 +608,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "400":
-          description: Malformed cursor or since value.
+          description: Malformed cursor or since value, an unrecognized sort value, or sort=name combined with since.
           content:
             application/json:
               schema:

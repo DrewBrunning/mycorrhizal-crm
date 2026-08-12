@@ -75,6 +75,22 @@ func parsePositiveOrDefault(raw string, fallback int) int {
 	return value
 }
 
+// parseContactSort normalizes GET /contacts' ?sort= query param (T73):
+// "updated_at" (default — today's (updated_at, id) cursor order) or "name"
+// (the denormalized sort_name key). Anything else is a 400, not a silent
+// fallback — an explicitly-set parameter that is ignored is the worse
+// failure (the same policy the handler applies to sort=name combined with
+// ?since=).
+func parseContactSort(c *gin.Context) (string, *apperrors.AppError) {
+	sort := c.DefaultQuery("sort", "updated_at")
+	switch sort {
+	case "updated_at", "name":
+		return sort, nil
+	default:
+		return "", apperrors.ErrInvalidInput("sort", "must be one of: updated_at, name")
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Cursor pagination + change feeds (T17 — docs/fork-plan/tickets/
 // 17-T17-change-feeds.md).
@@ -135,6 +151,18 @@ type Cursor struct {
 	ID        string
 }
 
+// NameCursor is one position in the (sort_name, id) total order used by
+// GET /contacts?sort=name (T73) — the same opaque "resume after this row"
+// idea as Cursor, but the leading component is the denormalized name-sort key
+// (models.DeriveSortName) rather than a timestamp. Kept as a separate shape
+// rather than a generalized Cursor because the two have different wire
+// encodings and the name sort is deliberately local to the contacts list
+// (T73 — never a feed, never any other list endpoint).
+type NameCursor struct {
+	SortName string
+	ID       string
+}
+
 // EncodeCursor renders a cursor as an opaque base64url string. id may be any
 // of the PK types (uint, uint64, string); it is rendered with fmt.Sprint.
 //
@@ -170,6 +198,42 @@ func DecodeCursor(raw string) (*Cursor, error) {
 	return &Cursor{UpdatedAt: t, ID: parts[1]}, nil
 }
 
+// EncodeNameCursor renders a T73 name-sort cursor as an opaque base64url
+// string: base64url("sort_name|id"). Same wire idiom as EncodeCursor; only
+// the leading component differs (a sort name instead of a timestamp).
+func EncodeNameCursor(sortName string, id any) string {
+	return base64.RawURLEncoding.EncodeToString(
+		[]byte(sortName + "|" + fmt.Sprint(id)),
+	)
+}
+
+// DecodeNameCursor parses a T73 name-sort cursor back into its
+// (sort_name, id) position. Returns an error for anything that is not a
+// well-formed name cursor. The timestamp-shape rejection exists so a cursor
+// minted by an updated_at-sorted request fails loudly here instead of being
+// silently treated as a sort name and matching nothing — the same explicit
+// failure DecodeCursor gives a name-shaped cursor in the other direction.
+//
+// The separator is the LAST "|", not the first: the id is always the trailing
+// numeric component, so a (pathological but legal) sort name that itself
+// contains the delimiter still round-trips instead of being mis-split.
+func DecodeNameCursor(raw string) (*NameCursor, error) {
+	decoded, err := base64.RawURLEncoding.DecodeString(raw)
+	if err != nil {
+		return nil, errors.New("cursor is not valid base64url")
+	}
+	s := string(decoded)
+	sep := strings.LastIndex(s, "|")
+	if sep <= 0 || sep == len(s)-1 {
+		return nil, errors.New("cursor is malformed")
+	}
+	sortName := s[:sep]
+	if _, err := time.Parse(time.RFC3339Nano, sortName); err == nil {
+		return nil, errors.New("cursor is a time-based cursor; expected a name-sorted cursor")
+	}
+	return &NameCursor{SortName: sortName, ID: s[sep+1:]}, nil
+}
+
 // CursorParams is the sanitized set of pagination controls shared by every
 // list handler.
 type CursorParams struct {
@@ -178,17 +242,57 @@ type CursorParams struct {
 	// Order is "asc" or "desc" (default "desc"). The change feed (?since=)
 	// always resolves to "asc" so a replica replays history forward.
 	Order string
-	// Cursor is the resume-after position supplied via ?cursor= or ?since=.
+	// Cursor is the resume-after position supplied via ?cursor= or ?since=,
+	// in the (updated_at, id) shape. Only one of Cursor/NameCursor is ever
+	// set.
 	Cursor *Cursor
+	// NameCursor is the T73 resume-after position supplied via ?cursor= when
+	// the request is GET /contacts?sort=name — the (sort_name, id) shape.
+	// Every other list endpoint leaves it nil.
+	NameCursor *NameCursor
 	// Since is true when the request was a ?since= change-feed request.
 	Since bool
 }
 
+// cursorKind selects which ?cursor= shape GetCursorParams decodes: the
+// time-based (updated_at, id) Cursor (every list endpoint, and the ?since=
+// feed) or the T73 name-based (sort_name, id) NameCursor. The name shape is
+// deliberately opt-in per caller — see GetCursorParamsForSort.
+type cursorKind int
+
+const (
+	cursorUpdatedAt cursorKind = iota
+	cursorName
+)
+
 // GetCursorParams extracts cursor pagination controls from the request,
 // sharing defaults/bounds with the legacy offset parser above. A malformed
 // ?cursor= or ?since= is an error (caller aborts with 400); both are
-// exclusive-of-the-position "resume after this row" predicates.
+// exclusive-of-the-position "resume after this row" predicates. The ?cursor=
+// value is decoded as a time-based cursor — the shape every endpoint except
+// GET /contacts?sort=name uses. Since only GetContacts (via
+// GetCursorParamsForSort) needs the name shape, the switch never leaks it
+// anywhere else.
 func GetCursorParams(c *gin.Context) (CursorParams, *apperrors.AppError) {
+	return cursorParams(c, cursorUpdatedAt)
+}
+
+// GetCursorParamsForSort is the T73 variant of GetCursorParams for the
+// contacts list: when sort is "name", a ?cursor= value is decoded as a
+// (sort_name, id) NameCursor instead of a time-based Cursor. ?since= is
+// ALWAYS decoded as time-based — the change feed is sync state ordered by
+// (updated_at, id), never by name — and GetContacts rejects sort=name+since
+// before this matters. Any other sort value falls through to the time-based
+// shape.
+func GetCursorParamsForSort(c *gin.Context, sort string) (CursorParams, *apperrors.AppError) {
+	kind := cursorUpdatedAt
+	if sort == "name" {
+		kind = cursorName
+	}
+	return cursorParams(c, kind)
+}
+
+func cursorParams(c *gin.Context, kind cursorKind) (CursorParams, *apperrors.AppError) {
 	limit := parsePositiveOrDefault(c.DefaultQuery("limit", "25"), defaultLimit)
 	if limit > maxLimit {
 		limit = maxLimit
@@ -203,11 +307,20 @@ func GetCursorParams(c *gin.Context) (CursorParams, *apperrors.AppError) {
 	}
 
 	if raw := c.Query("cursor"); raw != "" {
-		cur, err := DecodeCursor(raw)
-		if err != nil {
-			return params, apperrors.ErrInvalidInput("cursor", err.Error())
+		switch kind {
+		case cursorName:
+			cur, err := DecodeNameCursor(raw)
+			if err != nil {
+				return params, apperrors.ErrInvalidInput("cursor", err.Error())
+			}
+			params.NameCursor = cur
+		default:
+			cur, err := DecodeCursor(raw)
+			if err != nil {
+				return params, apperrors.ErrInvalidInput("cursor", err.Error())
+			}
+			params.Cursor = cur
 		}
-		params.Cursor = cur
 	}
 	if raw := c.Query("since"); raw != "" {
 		cur, err := DecodeCursor(raw)
@@ -260,6 +373,17 @@ func cursorPredicate(table string, cursor *Cursor, id any, desc bool) (string, a
 	return fmt.Sprintf("(%s.updated_at, %s.id) %s (?, ?)", table, table, op), cursor.UpdatedAt, id
 }
 
+// nameCursorPredicate is the T73 name-sort analog of cursorPredicate: the
+// row-value predicate over the (sort_name, id) key. Same "strictly after
+// (asc) / strictly before (desc)" semantics and same explicit-id rule.
+func nameCursorPredicate(table string, cursor *NameCursor, id any, desc bool) (string, any, any) {
+	op := ">"
+	if desc {
+		op = "<"
+	}
+	return fmt.Sprintf("(%s.sort_name, %s.id) %s (?, ?)", table, table, op), cursor.SortName, id
+}
+
 // cursorOrderBy orders a query by the (updated_at, id) feed key in the given
 // direction — the order that makes cursor pagination total and stable.
 func cursorOrderBy(q *gorm.DB, table string, desc bool) *gorm.DB {
@@ -270,9 +394,26 @@ func cursorOrderBy(q *gorm.DB, table string, desc bool) *gorm.DB {
 	return q.Order(table + ".updated_at " + dir).Order(table + ".id " + dir)
 }
 
+// nameCursorOrderBy is the T73 name-sort analog of cursorOrderBy: order by
+// the (sort_name, id) key in the given direction, the tiebreak-by-id making
+// the order total for contacts sharing a sort_name.
+func nameCursorOrderBy(q *gorm.DB, table string, desc bool) *gorm.DB {
+	dir := "ASC"
+	if desc {
+		dir = "DESC"
+	}
+	return q.Order(table + ".sort_name " + dir).Order(table + ".id " + dir)
+}
+
 // parseCursorID re-types a cursor's string ID to a uint PK column value.
 func parseCursorID(cursor *Cursor) (uint, bool) {
-	id, err := strconv.ParseUint(cursor.ID, 10, 64)
+	return parseUintID(cursor.ID)
+}
+
+// parseUintID re-types a cursor's string ID to a uint PK column value,
+// shared by the time-based and name-based cursor shapes.
+func parseUintID(raw string) (uint, bool) {
+	id, err := strconv.ParseUint(raw, 10, 64)
 	if err != nil {
 		return 0, false
 	}

@@ -73,6 +73,46 @@ func getContactsPage(t *testing.T, router *gin.Engine, query string) contactsRes
 	return resp
 }
 
+// TestNameCursorEncodeDecodeRoundTrip proves a T73 name-sort cursor survives
+// the base64url round trip with both the sort name and id intact, for both
+// PK types the contacts list actually uses.
+func TestNameCursorEncodeDecodeRoundTrip(t *testing.T) {
+	for _, id := range []any{uint(7), uint64(42)} {
+		raw := EncodeNameCursor("smith", id)
+		cur, err := DecodeNameCursor(raw)
+		require.NoError(t, err)
+		assert.Equal(t, "smith", cur.SortName, "sort name must survive the round trip")
+		assert.Equal(t, fmt.Sprint(id), cur.ID, "id must survive the round trip")
+	}
+
+	// A sort name containing the "|" delimiter must still round-trip: the id
+	// is always the trailing numeric component, so the split must be on the
+	// LAST delimiter, not the first.
+	raw := EncodeNameCursor("a|b|c", uint(9))
+	cur, err := DecodeNameCursor(raw)
+	require.NoError(t, err)
+	assert.Equal(t, "a|b|c", cur.SortName, "a sort name containing the delimiter must round-trip intact")
+	assert.Equal(t, "9", cur.ID)
+}
+
+// TestNameCursorDecodeRejectsMalformed pins the T73 400 path for the name
+// cursor: garbage, truncated base64url, a missing id, and — the cross-shape
+// case — a valid TIME cursor must all fail decode, so a cursor minted by an
+// updated_at-sorted request can never be silently misapplied under sort=name.
+func TestNameCursorDecodeRejectsMalformed(t *testing.T) {
+	timeCursor := EncodeCursor(time.Date(2026, 8, 2, 18, 7, 19, 0, time.UTC), uint(7))
+	for _, raw := range []string{
+		"",
+		"!!!not-base64url!!!",
+		encodeRawURL("smith|"), // missing id
+		"aGVsbG8=",             // decodes but has no | separator
+		timeCursor,             // a time-based cursor is the wrong shape
+	} {
+		_, err := DecodeNameCursor(raw)
+		assert.Error(t, err, "cursor %q should fail to decode", raw)
+	}
+}
+
 // TestCursorEncodeDecodeRoundTrip proves a cursor survives the base64url
 // round trip with both timestamp and id intact, and that the timestamp keeps
 // its offset (the DATETIME-as-text comparison depends on the bound value
