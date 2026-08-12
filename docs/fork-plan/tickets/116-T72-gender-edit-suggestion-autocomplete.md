@@ -6,7 +6,7 @@
 | **Rating** | 3 — UX consistency/polish, self-contained |
 | **Size** | S — one shared component + one call site |
 | **Depends on** | Nothing |
-| **Status** | TO BE DONE |
+| **Status** | **DONE**, 2026-08-12. `EditableField` gained an opt-in `options?: string[]` + `getOptionLabel?` pair; when set, edit mode renders a `freeSolo` MUI `Autocomplete` (mirroring the pre-T52 `AddContactDialog` gender widget verbatim) instead of the plain `TextField`. Wired at `ContactInformation.tsx`'s one gender call site with `options={[...GENDER_OPTIONS]}`, the same `t(\`contacts.${v}\`)` label mapping `genderDisplay` already used, and the pre-existing `contacts.selectGender` placeholder key. No other `EditableField` consumer passes `options`, so they're untouched — hand-confirmed `How We Met` (a multiline consumer) still renders its plain `<textarea>`, not an `Autocomplete`. Hand-verified in the browser: focusing Gender lists all six translated suggestions, selecting one saves and displays correctly, and typing arbitrary free text ("Two-Spirit") also saves and displays verbatim. Landed as part of the T71/T72/T78 web rollup branch. |
 | **Source** | Testing notes, 2026-08-11: "Gender editing on a Contact doesn't have the defaults pop up the way it does on Contact entry (add)" |
 
 ## Why this exists
