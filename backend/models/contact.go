@@ -166,6 +166,15 @@ type Contact struct {
 	// rows by migration 000020.
 	PhonesNormalized string `gorm:"column:phones_normalized;type:text" json:"-"`
 
+	// SortName is the denormalized, pre-lowercased key the name-sorted
+	// contacts list orders by (T73): lower(trim(lastname)) when the contact
+	// has a lastname, else lower(trim(firstname)) — see DeriveSortName. Kept
+	// in sync by BeforeSave like the AddressesFlat/PhonesNormalized derived
+	// columns; backfilled for pre-existing rows by migration 000021. Derived
+	// data — rebuildable at any time — so it is deliberately not part of the
+	// API surface. Never empty for a valid contact (Firstname is required).
+	SortName string `gorm:"column:sort_name;type:text" json:"-"`
+
 	// cardSetDirectly is a transient, in-memory-only marker (unexported, so
 	// GORM ignores it entirely — no column, nothing to tag) set by
 	// ApplyRecordToContact (contact_record_reverse.go, WP-71/P2) to tell
@@ -241,11 +250,27 @@ func FlattenPhones(phones []ContactPhone) string {
 	return strings.Join(parts, " ")
 }
 
+// DeriveSortName computes the denormalized name-sort key a name-ordered
+// contacts list orders by (T73): lower(trim(lastname)) when non-empty, else
+// lower(trim(firstname)). Pre-lowercased so SQLite collation never
+// participates in the ORDER BY or its cursor predicate, and never empty for a
+// valid contact (Firstname is required). Migration 000021's SQL backfill
+// deliberately mirrors this exact shape for pre-existing rows, so this
+// testable function is what keeps new-contact and pre-existing-contact sort
+// behavior from silently diverging.
+func DeriveSortName(lastname, firstname string) string {
+	if trimmed := strings.TrimSpace(lastname); trimmed != "" {
+		return strings.ToLower(trimmed)
+	}
+	return strings.ToLower(strings.TrimSpace(firstname))
+}
+
 // BeforeSave keeps the denormalized primary scalars (Email/Phone/Address),
-// the searchable AddressesFlat column (T38) and PhonesNormalized column (T69)
-// in sync with the JSON arrays, and keeps the neutral Card/CRM/Passthrough
-// representation (and its own derived projection scalars) in sync with the
-// legacy fields on every create/update.
+// the searchable AddressesFlat column (T38), PhonesNormalized column (T69),
+// and the name-sort SortName column (T73) in sync with the JSON arrays and
+// names, and keeps the neutral Card/CRM/Passthrough representation (and its
+// own derived projection scalars) in sync with the legacy fields on every
+// create/update.
 //
 // RecordFromContact + contactmodel.DeriveProjection is now the single source
 // of truth for Firstname/Lastname/Email/Phone/Birthday/FN/Org: the old
@@ -340,6 +365,11 @@ func (c *Contact) BeforeSave(tx *gorm.DB) error {
 	}
 	c.FN = proj.FN
 	c.Org = proj.Org
+
+	// T73: the name-sort key must be derived from the FINAL Firstname/
+	// Lastname (the projection assignments above may have just replaced
+	// them), so it is computed here, after them.
+	c.SortName = DeriveSortName(c.Lastname, c.Firstname)
 
 	// T18 audit: mark create-vs-update and capture the pre-update snapshot.
 	auditBeforeSave[Contact](tx, AuditEntityContact, c.ID, c.ID == 0)

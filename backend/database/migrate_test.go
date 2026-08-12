@@ -2,6 +2,7 @@ package database
 
 import (
 	"database/sql"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -558,6 +559,108 @@ func TestPhonesNormalizedMigrationBackfillsExistingRows(t *testing.T) {
 		"SELECT firstname FROM contacts WHERE vcard_uid = 'vcard-t69'",
 	).Scan(&firstname))
 	assert.Equal(t, "Pre", firstname, "a rollback must not destroy the contact")
+}
+
+// TestMigrationsAddContactSortName pins the T73 migration's shape: the
+// denormalized sort_name column exists on contacts, and the (user_id,
+// sort_name, id) composite index exists to serve the name-sorted cursor
+// query (the same pattern as idx_contacts_feed).
+func TestMigrationsAddContactSortName(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "contact-sort-name.db")
+	db, err := InitDB(dbPath)
+	require.NoError(t, err)
+	defer func() {
+		sqlDB, err := db.DB()
+		require.NoError(t, err)
+		require.NoError(t, sqlDB.Close())
+	}()
+
+	assert.True(t, columnExists(t, dbPath, "contacts", "sort_name"),
+		"contacts.sort_name must be added by the T73 migration")
+
+	var count int64
+	require.NoError(t, db.Raw(
+		"SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = 'idx_contacts_sort_name'",
+	).Scan(&count).Error)
+	assert.EqualValues(t, 1, count, "migration 000021 must create idx_contacts_sort_name")
+}
+
+// TestContactSortNameMigrationBackfillsExistingRows is the T73 data-safety
+// test: contacts whose names predate migration 000021 (rows that were never
+// saved through GORM/BeforeSave) must have sort_name populated by the
+// migration's own backfill — lastname when non-empty, firstname otherwise,
+// lowercased and trimmed — without waiting for their next edit.
+func TestContactSortNameMigrationBackfillsExistingRows(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "t73-backfill.db")
+	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
+	require.NoError(t, err)
+	defer sqlDB.Close()
+
+	m, err := newMigrator(sqlDB)
+	require.NoError(t, err)
+	// Apply everything up to but NOT including 000021, so the contacts below
+	// genuinely predate the new column.
+	require.NoError(t, m.Steps(20))
+
+	_, err = sqlDB.Exec(
+		"INSERT INTO users (created_at, updated_at, username, password, email) VALUES (datetime('now'), datetime('now'), 't73', 'x', 't73@example.com')")
+	require.NoError(t, err)
+	var userID int64
+	require.NoError(t, sqlDB.QueryRow("SELECT id FROM users WHERE username = 't73'").Scan(&userID))
+
+	// Four pre-existing contacts, written raw (no GORM, no BeforeSave):
+	// mixed-case lastname, whitespace-padded lastname, firstname-only, and
+	// a blank-names edge case (should fall back to the firstname anyway).
+	rows := [][2]string{
+		{"Johnson", "Alice"}, // -> "johnson"
+		{"  SMITH  ", "Bob"}, // -> "smith"
+		{"", "Carol"},        // -> "carol"
+		{"  ", "David"},      // -> "david"
+	}
+	for i, names := range rows {
+		_, err := sqlDB.Exec(
+			"INSERT INTO contacts (created_at, updated_at, firstname, lastname, user_id, vcard_uid) VALUES (datetime('now'), datetime('now'), ?, ?, ?, ?)",
+			names[1], names[0], userID, fmt.Sprintf("vcard-t73-%d", i))
+		require.NoError(t, err)
+	}
+	// A NULL lastname — the schema allows it (nullable, unlike firstname) and
+	// GORM scans it as "", so the backfill must treat it as empty and fall
+	// back to the firstname rather than writing NULL into the NOT NULL column.
+	_, err = sqlDB.Exec(
+		"INSERT INTO contacts (created_at, updated_at, firstname, lastname, user_id, vcard_uid) VALUES (datetime('now'), datetime('now'), 'Ellen', NULL, ?, 'vcard-t73-4')",
+		userID)
+	require.NoError(t, err)
+
+	require.NoError(t, m.Steps(1))
+
+	got := func(vcard string) string {
+		var sortName string
+		require.NoError(t, sqlDB.QueryRow(
+			"SELECT sort_name FROM contacts WHERE vcard_uid = ?", vcard,
+		).Scan(&sortName))
+		return sortName
+	}
+	assert.Equal(t, "johnson", got("vcard-t73-0"), "backfill must lowercase and use the lastname")
+	assert.Equal(t, "smith", got("vcard-t73-1"), "backfill must trim whitespace before lowercasing")
+	assert.Equal(t, "carol", got("vcard-t73-2"), "a contact with no lastname must fall back to the firstname")
+	assert.Equal(t, "david", got("vcard-t73-3"), "a blank lastname must fall back to the firstname")
+	assert.Equal(t, "ellen", got("vcard-t73-4"), "a NULL lastname must be treated as empty and fall back to the firstname")
+
+	// Down: rolling back exactly this migration drops the column; the
+	// contacts themselves survive. Checked through the still-open raw
+	// connection rather than columnExists, because columnExists opens via
+	// InitDB, which would re-apply the up migration and mask the rollback.
+	require.NoError(t, MigrateDown(dbPath))
+
+	var colCount int64
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM pragma_table_info('contacts') WHERE name = 'sort_name'",
+	).Scan(&colCount))
+	assert.Zero(t, colCount, "the down migration must remove contacts.sort_name")
+
+	var rowCount int64
+	require.NoError(t, sqlDB.QueryRow("SELECT COUNT(*) FROM contacts WHERE user_id = ?", userID).Scan(&rowCount))
+	assert.EqualValues(t, 5, rowCount, "a rollback must not destroy the contacts")
 }
 
 // TestMigrationsAddLifeEventCategories pins the T36 migration's shape: an

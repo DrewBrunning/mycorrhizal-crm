@@ -35,6 +35,10 @@ var contactSummaryColumns = []string{
 // per var so appends can never leak into contactSummaryColumns' backing array.
 var contactListColumns = append(append([]string{}, contactSummaryColumns...), "updated_at")
 
+// contactNameSortedColumns additionally selects sort_name — the T73 name-sort
+// cursor (sort_name, id) needs it to build the response's next_cursor.
+var contactNameSortedColumns = append(append([]string{}, contactListColumns...), "sort_name")
+
 // contactFeedColumns additionally selects deleted_at so the ?since= change
 // feed can mark tombstones (Unscoped rows whose deleted_at is set).
 var contactFeedColumns = append(append([]string{}, contactListColumns...), "deleted_at")
@@ -183,9 +187,32 @@ func GetContacts(c *gin.Context) {
 	// is deliberately gone from this endpoint — it is expensive on the
 	// unboundedly-growing contacts table, and that is the usual thing cursor
 	// pagination gives up.
-	params, err := GetCursorParams(c)
+	//
+	// T73: an optional ?sort= adds a second cursor shape — "name" orders by
+	// the denormalized sort_name key (a second cursor shape, not a generalized
+	// one). Default stays "updated_at"; changing the web default is T77's
+	// call, and only for new sessions.
+	sort, err := parseContactSort(c)
 	if err != nil {
 		apperrors.AbortWithError(c, err)
+		return
+	}
+	nameSorted := sort == "name"
+
+	params, err := GetCursorParamsForSort(c, sort)
+	if err != nil {
+		apperrors.AbortWithError(c, err)
+		return
+	}
+
+	// T73: the ?since= change feed is sync state, not browsing — it has no
+	// name-ordered cursor to resume from and no UpdatedAt for the purge
+	// retention window to age-check against (CheckFeedCursorAge below).
+	// Decided: sort=name combined with ?since= is a 400, NOT a silent
+	// fallback to (updated_at, id) — a sync client would believe it held a
+	// name-ordered feed and quietly diverge.
+	if params.Since && nameSorted {
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("sort", "sort=name cannot be combined with since="))
 		return
 	}
 	if err := CheckFeedCursorAge(c, params); err != nil {
@@ -265,9 +292,15 @@ func GetContacts(c *gin.Context) {
 	includeArchived := c.Query("include_archived") == "true"
 	archivedOnly := c.Query("archived") == "true"
 
+	// T73: name sort needs sort_name in the projection (to build the
+	// next_cursor) and in the ORDER BY.
+	columns := contactListColumns
+	if nameSorted {
+		columns = contactNameSortedColumns
+	}
 	var contacts []models.Contact
 	query := db.Model(&models.Contact{}).Where("user_id = ?", userID).
-		Select(contactListColumns)
+		Select(columns)
 
 	// Apply archive filtering
 	if !includeArchived {
@@ -278,10 +311,19 @@ func GetContacts(c *gin.Context) {
 		}
 	}
 
-	// T17: resume-after cursor. Order is (updated_at, id), so the cursor
-	// position maps directly onto the ordering.
+	// T17: resume-after cursor. Default order is (updated_at, id), so the
+	// cursor position maps directly onto the ordering. T73: sort=name uses
+	// the (sort_name, id) key and its own cursor shape — never mixed.
 	desc := params.Order == "desc"
-	if params.Cursor != nil {
+	if params.NameCursor != nil {
+		id, ok := parseUintID(params.NameCursor.ID)
+		if !ok {
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed"))
+			return
+		}
+		pred, t, idv := nameCursorPredicate("contacts", params.NameCursor, id, desc)
+		query = query.Where(pred, t, idv)
+	} else if params.Cursor != nil {
 		id, ok := parseCursorID(params.Cursor)
 		if !ok {
 			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed"))
@@ -327,7 +369,12 @@ func GetContacts(c *gin.Context) {
 	// Execute query. Fetch one extra row so next_cursor presence is exact:
 	// a full page may still be the last page, and a partial page never has
 	// more.
-	query = cursorOrderBy(query, "contacts", desc).Limit(params.Limit + 1)
+	if nameSorted {
+		query = nameCursorOrderBy(query, "contacts", desc)
+	} else {
+		query = cursorOrderBy(query, "contacts", desc)
+	}
+	query = query.Limit(params.Limit + 1)
 	if err := query.Find(&contacts).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve contacts").WithError(err))
 		return
@@ -335,7 +382,12 @@ func GetContacts(c *gin.Context) {
 	nextCursor := ""
 	if len(contacts) > params.Limit {
 		contacts = contacts[:params.Limit]
-		nextCursor = EncodeCursor(contacts[len(contacts)-1].UpdatedAt, contacts[len(contacts)-1].ID)
+		last := contacts[len(contacts)-1]
+		if nameSorted {
+			nextCursor = EncodeNameCursor(last.SortName, last.ID)
+		} else {
+			nextCursor = EncodeCursor(last.UpdatedAt, last.ID)
+		}
 	}
 
 	// Map contacts to the slim ContactSummary shape (Gap 2/3): plain
