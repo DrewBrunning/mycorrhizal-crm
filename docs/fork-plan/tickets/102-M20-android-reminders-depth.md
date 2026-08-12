@@ -32,3 +32,52 @@ send-by-email natively. What's missing:
 - Hand-verified on-device: create a recurring reminder both ways, delete one, confirm overdue
   styling appears once a reminder's date passes.
 - New strings translated in all five locales.
+
+---
+
+## Implementation contract (added 2026-08-12)
+
+Added in the readiness pass: this ticket came out of the [M8](89-M8-web-android-parity-audit.md)
+parity audit, whose job was to prove a gap was real — not to specify the build. Endpoints, test
+cases and the CI gate below close that difference.
+
+### Endpoints
+
+| Need | Route | In `ApiClient`? |
+|---|---|---|
+| Delete a reminder | `DELETE /reminders/:id` | **No** |
+| Per-contact completions | `GET /contacts/:id/reminder-completions` | **No** |
+| Undo a completion | `DELETE /reminder-completions/:id` | **No** |
+| Complete | `POST /reminders/:id/complete` | Yes (`completeReminder`) |
+| Update | `PUT /reminders/:id` | Yes (`updateReminder`) |
+
+Three new client methods.
+
+### Reoccur-from-completion is server behavior
+
+"Reoccur from completion" and "auto-date-from-recurrence" are recurrence semantics the backend owns.
+Read what `POST /reminders/:id/complete` returns before implementing anything date-related on-device
+— if it returns the next occurrence, the client displays it rather than computing it.
+
+### Test cases
+
+1. **Delete round-trip**, confirmed before firing.
+2. **Overdue styling** is driven by the server's due date against now, and a reminder due today is
+   **not** styled overdue (the off-by-one worth pinning).
+3. **Completion → next occurrence** — completing a recurring reminder shows the next occurrence as
+   the server returned it, not a locally computed date.
+4. **Undo a completion** restores the reminder to its pre-completion state.
+
+### Gate
+
+- `./gradlew testDebugUnitTest`, `./gradlew lintDebug`, `./gradlew assembleDebug` — the exact three
+  steps `.github/workflows/android-tests.yml` runs. CI has been green since M1's review pass; keep it.
+- Every new user-facing string in all five locales (`values`, `values-de/es/fr/it`). M1's review pass
+  had to retrofit ~80 unlocalized strings — don't rebuild that debt.
+
+### Test conventions (this repo, not generic)
+
+JUnit4 + MockK (`mockk`/`coEvery`) + Turbine + `runTest` with `MainDispatcherRule`. ViewModel tests
+mock the repository — `feature/contacts/.../ContactListViewModelTest.kt` is the reference. New
+`ApiClient` methods get a MockWebServer test in `core/network` — `ApiClientTest.kt` is the reference.
+Hand-verify per `/CLAUDE.md`: break the code, confirm the new test fails, restore.

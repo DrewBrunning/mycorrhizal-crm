@@ -1,11 +1,13 @@
-# T66 — Contact timeline: bounded default view + full-timeline explorer with filters
+# T66 — Contact timeline: bound the composite + paginated filterable timeline endpoint (backend)
 
 | | |
 |---|---|
+| **Platform** | Backend |
 | **Rating** | 3 — not urgent today, but the underlying fetch is already unbounded and Immich is actively compounding it |
-| **Source** | User request, 2026-08-11 |
-| **Depends on** | Nothing. [T17](17-T17-change-feeds.md)'s cursor-pagination primitives (`cursorPredicate`/`cursorOrderBy`) already exist and are reused here rather than invented fresh. |
-| **Status** | Scoped, not started. No defined vision yet — see the design questions below before implementing. |
+| **Size** | M |
+| **Source** | User request, 2026-08-11. Split into backend (this) + web ([T78](122-T78-web-timeline-bounded-view-explorer.md)) on 2026-08-11. |
+| **Depends on** | Nothing. [T17](17-T17-change-feeds.md)'s cursor-pagination primitives (`cursorPredicate`/`cursorOrderBy`) already exist and are reused here rather than invented fresh. Blocks [T78](122-T78-web-timeline-bounded-view-explorer.md). |
+| **Status** | TO BE DONE — design questions below settled 2026-08-11. |
 
 ## Why this exists
 
@@ -40,52 +42,49 @@ source, not assumed:
   Android side later; this ticket is web + backend only.)
 - Inside that explorer: filter by **event type** and by **how long ago it happened**.
 
-## Design questions to settle before implementing
+## Design decisions — settled 2026-08-11
 
-Flagging these rather than guessing, per the "no defined vision yet" starting point:
+1. **Type filter granularity: the six raw types.** `note`/`activity`/`completion`/`life_event`/
+   `external_activity`/`gift`, matching the data model 1:1. Revisit only if a second
+   external-activity source ever ships alongside Immich.
+2. **Recency filter: fixed buckets, not a range picker.** Last 7 / 30 / 90 days, this year, all
+   time. A free-form date-range picker is more UI and more query surface for a filter whose job is
+   "recent-ish vs. everything".
+3. **Merge strategy: per-table bounded fetch, merged in Go (option b).** The original draft
+   recommended (b) but described its downside as "a page split evenly across six
+   independently-limited queries can undercount when one type dominates." **That downside is not
+   real, provided each table is asked for a full page rather than a share of one.**
 
-1. **Type filter granularity.** The six raw types (`note`/`activity`/`completion`/`life_event`/
-   `external_activity`/`gift`) mirror the backend model, but some may deserve grouping or splitting
-   in the filter UI — e.g. is "external activity" one filter option, or does it eventually need to
-   distinguish Immich from a future second integration? Recommend starting with the six raw types
-   (cheapest, matches the data model 1:1) and revisiting only if a second external-activity source
-   ships.
-2. **Recency filter buckets.** Not specified by the request — pick concrete buckets during
-   implementation (e.g. last 7/30/90 days, this year, all time) rather than a free-form date-range
-   picker, unless a range picker turns out to be just as cheap given whatever backend query shape
-   gets built.
-3. **Cursor design across heterogeneous tables.** T17's existing cursor pagination
-   (`cursorPredicate`/`cursorOrderBy`) is built for a single table's `(updated_at, id)` ordering. A
-   merged timeline spans six tables with different PK types (uint vs. UUID-string) and different
-   date columns (`date`, `completed_at`, `occurred_at`, partial dates on life events). Decide the
-   merge strategy up front — likely candidates: (a) a real `UNION`-backed query keyed on a
-   normalized `(event_date, type, id)` tuple, or (b) fetch a bounded page from each table
-   independently and merge/truncate in Go. (b) is simpler and reuses T17's per-table primitives
-   as-is; (a) is more correct at the boundary (a page split evenly across six independently-limited
-   queries can undercount when one type dominates). Recommend (b) to start, since it's a much
-   smaller change and the failure mode (a slightly short page when one type dominates) is cheap to
-   detect and fix later if it matters in practice.
-4. **Does the 5-item default preview need its own bounded backend call, or is trimming the M4
-   composite's existing arrays to 5-per-type-then-merge-and-slice sufficient?** The latter doesn't
-   fix problem #1 above (the composite still fetches everything, just displays less) — worth doing
-   properly: either cap the composite's underlying queries at a small multiple of 5 (e.g. `.Limit(20)`
-   per type, which safely covers "flat top 5 across 6 types" even in a worst-case single-type
-   skew), or have the composite call the same bounded-timeline logic the explorer uses. Prefer
-   actually bounding the composite's queries — the point of this ticket is fixing the unbounded
-   fetch, not just hiding it behind a shorter render.
+   Fetch `N` from each of the six tables (where `N` is the requested page size), merge, take the top
+   `N`. This is *exactly* correct, not approximate: if item X belongs in the true global top N but
+   wasn't returned, X's own table must have had N items ranked above it — all of which are also
+   globally above X, so X was never in the top N. Contradiction. The only cost is fetching up to
+   `6N` rows to return `N`, which at a page size of 25 is trivial.
+
+   The failure mode to actually avoid is the tempting one: asking each table for `N/6`. That *does*
+   undercount. Write the reasoning into the function's doc comment so nobody later "optimizes" it
+   into being wrong.
+
+   The cursor is a normalized `(event_date, type, id)` tuple — `type` is needed in the key because
+   two rows in different tables can share a date, and `id` because two rows in the same table can
+   too. PK types differ across the six tables (uint vs. UUID-string), so the cursor carries `id` as
+   a string and each per-table predicate re-types it, the way `parseCursorID` already does.
+4. **Bound the M4 composite's own queries** rather than trimming its output. `.Limit(N)` per type
+   with the same N-per-table reasoning as above — with a 5-item preview, 5 per type is provably
+   sufficient. Trimming client-side would leave problem #1 (the unbounded fetch) entirely unfixed,
+   which is the actual point of this ticket.
 
 ## Done when
 
 - `GetContactDetail` (M4 composite) no longer issues unbounded `.Find()` calls for
   timeline-eligible types — each is capped at a small, explicit limit sufficient to build the
   default 5-item preview correctly regardless of type distribution.
-- A new paginated, filterable timeline endpoint (or equivalent query shape) exists, filterable by
-  type and by a recency bucket, using T17's cursor-pagination primitives rather than offset
-  pagination.
-- Contact detail page shows the 5 most recent timeline items by default, with a "View all" control.
-- "View all" opens a modal/dialog with working type and recency filters, paginated (not one giant
-  unbounded fetch even inside the explorer).
-- Hand-verified against a contact with 50+ mixed timeline items spanning all six types, confirming
-  both the default view and the explorer behave correctly and the network payload for a normal
-  contact-page load is visibly smaller than before.
-- New strings translated in all five locales.
+- A new paginated timeline endpoint exists, filterable by type and by a recency bucket, using T17's
+  cursor-pagination primitives rather than offset pagination.
+- A test proves the merge is correct under skew: a contact whose timeline is dominated by one type
+  (say 200 `external_activity` rows and 3 notes) still returns a full, correctly-ordered page, and
+  paging all the way through returns every item exactly once.
+- The composite's response payload for a contact with a long history is measurably smaller than
+  before — record the before/after in the landing note.
+- OpenAPI spec updated ([T8](16-T8-openapi.md)'s drift test will fail otherwise).
+- `cd backend && go build ./... && go vet ./... && gofmt -l . && go test ./...` green.

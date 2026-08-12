@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -394,25 +395,64 @@ func (c *ImmichClient) GetStatistics(personID string) (int, error) {
 	return stats.Assets, nil
 }
 
+// parseImmichPage reads Immich's assets.nextPage value, which is a JSON
+// string ("2") on v3.x but is permitted here to be a bare number too, and
+// reports the next page to request.  ok is false for every "stop paginating"
+// shape: absent, null, "", 0, or anything non-numeric.
+//
+// A non-numeric token deliberately stops the loop rather than erroring: the
+// endpoint requires a numeric `page` (T70), so a token that isn't a number is
+// one this client cannot send back under any encoding.  Stopping yields the
+// assets gathered so far; erroring would fail the whole person's sync.
+func parseImmichPage(raw json.RawMessage) (int, bool) {
+	s := strings.TrimSpace(string(raw))
+	if s == "" || s == "null" {
+		return 0, false
+	}
+	if unquoted, err := strconv.Unquote(s); err == nil {
+		s = unquoted
+	}
+	n, err := strconv.Atoi(strings.TrimSpace(s))
+	if err != nil || n <= 0 {
+		return 0, false
+	}
+	return n, true
+}
+
 // RecentAssets returns a person's most recent assets, newest first, from
 // POST /api/search/metadata (Immich v3.x removed GET /api/people/:id/assets).
 // "Most recent" = newest fileCreatedAt (or createdAt fallback).  Bounded to
 // limit items; a person with no photos returns an empty slice, never an error.
 //
-// Paginated with the nextPage token: the first request sends page "1" and
-// subsequent requests send the token carried in the response's
-// assets.nextPage field.  The loop stops when nextPage is empty or the 100-
-// page safety cap is reached.
+// Paginated: the first request omits the page parameter and subsequent
+// requests send the page number carried in the response's assets.nextPage
+// field.  The loop stops when there is no next page or the 100-page safety
+// cap is reached.
+//
+// T70: nextPage must be sent back as a NUMBER, not echoed verbatim.  Immich
+// v3.x serializes assets.nextPage as a JSON *string* ("2"), but
+// /api/search/metadata's request validator requires `page` to be a number --
+// sending the token back as received is rejected with
+// `{"expected":"number","code":"invalid_type","path":["page"]}`.  Since the
+// first page omits the parameter entirely, this only ever fired for a person
+// with more than one page of assets (>200), which is why it survived T59's
+// end-to-end verification and had no test coverage.  parseImmichPage accepts
+// either JSON shape on the way in; the request always sends a number out.
 func (c *ImmichClient) RecentAssets(personID string, limit int) ([]ImmichAsset, error) {
 	var all []ImmichAsset
-	pageToken := "" // first page omits the page parameter
+	// The first request IS page 1, but sends no `page` parameter (Immich
+	// defaults to it). Tracking that as pageNum=1 rather than 0 is what lets
+	// the advance check below catch a server that answers the first request
+	// with nextPage=1 — which is a non-advancement, not a second page.
+	pageNum := 1
+	sendPage := false
 	for p := 1; p <= 100; p++ {
 		reqBody := map[string]any{
 			"personIds": []string{personID},
 			"size":      200,
 		}
-		if pageToken != "" {
-			reqBody["page"] = pageToken
+		if sendPage {
+			reqBody["page"] = pageNum
 		}
 		resp, err := c.doPost("/api/search/metadata", reqBody)
 		if err != nil {
@@ -426,18 +466,27 @@ func (c *ImmichClient) RecentAssets(personID string, limit int) ([]ImmichAsset, 
 
 		var envelope struct {
 			Assets struct {
-				Items    []ImmichAsset `json:"items"`
-				NextPage string        `json:"nextPage"`
+				Items []ImmichAsset `json:"items"`
+				// RawMessage, not string: tolerate both the JSON-string form
+				// v3.x sends and a bare number, rather than failing the whole
+				// sync with ErrImmichInvalidData on a version difference.
+				NextPage json.RawMessage `json:"nextPage"`
 			} `json:"assets"`
 		}
 		if err := json.Unmarshal(raw, &envelope); err != nil {
 			return nil, fmt.Errorf("%w: %v", ErrImmichInvalidData, err)
 		}
 		all = append(all, envelope.Assets.Items...)
-		if envelope.Assets.NextPage == "" {
+		next, ok := parseImmichPage(envelope.Assets.NextPage)
+		// Must advance: a server that echoes the current page (or an earlier
+		// one) would otherwise refetch it until the 100-iteration cap, silently
+		// accumulating duplicate assets rather than erroring. The cap alone
+		// bounds the requests but not the duplication.
+		if !ok || next <= pageNum {
 			break
 		}
-		pageToken = envelope.Assets.NextPage
+		pageNum = next
+		sendPage = true
 	}
 
 	sort.SliceStable(all, func(i, j int) bool {

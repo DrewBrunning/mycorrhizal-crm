@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -22,6 +23,10 @@ type fakeImmichPerson struct {
 	PhotoCount int
 	Assets     []fakeImmichAsset
 	Thumbnail  []byte
+	// PageSize, when > 0, makes /api/search/metadata paginate this person's
+	// assets that many per page and advertise a nextPage token (T70). Zero
+	// keeps the original single-page behavior every other test assumes.
+	PageSize int
 }
 
 // fakeImmichMe is the server-side state for GET /users/me (Test Connection's
@@ -57,6 +62,10 @@ type fakeImmichServer struct {
 	// LastAPIKey records the last x-api-key header seen, for asserting the
 	// client sends the right credentials.
 	LastAPIKey string
+	// SearchPages records the resolved `page` of every /api/search/metadata
+	// request, in order, so a test can assert the pagination loop actually
+	// walked pages 1, 2, 3 rather than looping on one (T70).
+	SearchPages []int
 }
 
 // newFakeImmichServer builds a started fake Immich instance.
@@ -173,27 +182,84 @@ func (f *fakeImmichServer) handleStatistics(w http.ResponseWriter, personID stri
 	writeJSON(w, map[string]any{"assets": p.PhotoCount})
 }
 
+// handleSearchMetadata mimics POST /api/search/metadata, including the two
+// behaviors T70 turned on:
+//
+//   - `page` is validated as a NUMBER.  A JSON string is rejected 400 with
+//     Immich's real validation body.  This is the bug T70 fixed: the client
+//     used to echo the string-typed nextPage straight back.
+//   - assets.nextPage is serialized as a JSON *string* on the way out, the
+//     way v3.x does, so the round-trip asymmetry is reproduced faithfully.
+//
+// Pagination activates only when PageSize is set on the fake person; otherwise
+// every asset is returned on one page with no nextPage, preserving the
+// single-page behavior every pre-existing test relies on.
 func (f *fakeImmichServer) handleSearchMetadata(w http.ResponseWriter, r *http.Request) {
 	body, _ := io.ReadAll(io.LimitReader(r.Body, 4096))
 	var req struct {
-		PersonIDs []string `json:"personIds"`
+		PersonIDs []string        `json:"personIds"`
+		Page      json.RawMessage `json:"page"`
 	}
 	if err := json.Unmarshal(body, &req); err != nil || len(req.PersonIDs) == 0 {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+
+	page := 1
+	if raw := strings.TrimSpace(string(req.Page)); raw != "" && raw != "null" {
+		if strings.HasPrefix(raw, `"`) {
+			// Exactly what the real instance returned for T70.
+			w.WriteHeader(http.StatusBadRequest)
+			writeJSON(w, map[string]any{
+				"message": "Validation failed",
+				"errors": []map[string]any{{
+					"expected": "number",
+					"code":     "invalid_type",
+					"path":     []string{"page"},
+					"message":  "Invalid input: expected number, received string",
+				}},
+			})
+			return
+		}
+		n, err := strconv.Atoi(raw)
+		if err != nil || n < 1 {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		page = n
+	}
+
 	personID := req.PersonIDs[0]
 	p, ok := f.People[personID]
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+
+	items := p.Assets
+	nextPage := ""
+	if p.PageSize > 0 {
+		start := (page - 1) * p.PageSize
+		if start > len(items) {
+			start = len(items)
+		}
+		end := start + p.PageSize
+		if end > len(items) {
+			end = len(items)
+		}
+		items = items[start:end]
+		if end < len(p.Assets) {
+			nextPage = strconv.Itoa(page + 1) // string, as v3.x sends it
+		}
+	}
+
+	f.SearchPages = append(f.SearchPages, page)
 	writeJSON(w, map[string]any{
 		"assets": map[string]any{
-			"items":    p.Assets,
+			"items":    items,
 			"total":    len(p.Assets),
-			"count":    len(p.Assets),
-			"nextPage": "",
+			"count":    len(items),
+			"nextPage": nextPage,
 		},
 	})
 }

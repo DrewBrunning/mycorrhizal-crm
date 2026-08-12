@@ -35,3 +35,51 @@ it with this ticket's scope.
 - Hand-verified on-device with a synonym query (e.g. a relation term) and confirmed against web's
   result set for the same query on the same account.
 - New strings translated in all five locales.
+
+---
+
+## Implementation contract (added 2026-08-12)
+
+Added in the readiness pass: this ticket came out of the [M8](89-M8-web-android-parity-audit.md)
+parity audit, whose job was to prove a gap was real — not to specify the build. Endpoints, test
+cases and the CI gate below close that difference.
+
+### Endpoints
+
+| Need | Route | In `ApiClient`? |
+|---|---|---|
+| Full-text search | `GET /search?q=&limit=` | **No.** Add `search`. |
+
+Optional `household_id` scopes contact hits to one household (T11's household-scoped half).
+
+### The distinction this ticket exists for
+
+The contact-list search bar uses Room's local FTS (`CachedContactDao.searchFts`) — offline, cached
+rows, contacts only. This screen is T11's server-side FTS5 across **contacts, notes and activities**
+with snippets and relation-synonym resolution. They are different mechanisms with different results;
+do not quietly route one into the other.
+
+### Test cases
+
+1. **Grouped response parses** — MockWebServer: contacts, notes and activities each populate, with
+   snippets, and `resolved_relation` is surfaced when the query is a relation synonym ("mom").
+2. **Two-character gate** — a one-character query issues **no** request, matching the backend's own
+   gate rather than relying on it.
+3. **Debounce** — rapid typing produces one request, not one per keystroke.
+4. **Empty result** — a query matching nothing renders an empty state, not an error.
+5. See [T76](120-T76-android-local-fts-phone-search.md) for the phone-number tokenization bug in the
+   *local* index — different screen, different bug, don't conflate them.
+
+### Gate
+
+- `./gradlew testDebugUnitTest`, `./gradlew lintDebug`, `./gradlew assembleDebug` — the exact three
+  steps `.github/workflows/android-tests.yml` runs. CI has been green since M1's review pass; keep it.
+- Every new user-facing string in all five locales (`values`, `values-de/es/fr/it`). M1's review pass
+  had to retrofit ~80 unlocalized strings — don't rebuild that debt.
+
+### Test conventions (this repo, not generic)
+
+JUnit4 + MockK (`mockk`/`coEvery`) + Turbine + `runTest` with `MainDispatcherRule`. ViewModel tests
+mock the repository — `feature/contacts/.../ContactListViewModelTest.kt` is the reference. New
+`ApiClient` methods get a MockWebServer test in `core/network` — `ApiClientTest.kt` is the reference.
+Hand-verify per `/CLAUDE.md`: break the code, confirm the new test fails, restore.

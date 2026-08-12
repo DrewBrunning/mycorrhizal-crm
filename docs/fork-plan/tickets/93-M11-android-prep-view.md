@@ -32,3 +32,45 @@ someone reaches for on their phone right before a call or a visit, more than at 
 - Hand-verified on-device against a contact with cadence, agenda items, notes, relationships, life
   events, and reminders all populated, per `/CLAUDE.md`'s workflow section.
 - New strings translated in all five locales.
+
+---
+
+## Implementation contract (added 2026-08-12)
+
+Added in the readiness pass: this ticket came out of the [M8](89-M8-web-android-parity-audit.md)
+parity audit, whose job was to prove a gap was real — not to specify the build. Endpoints, test
+cases and the CI gate below close that difference.
+
+### Endpoints
+
+| Need | Route | In `ApiClient`? |
+|---|---|---|
+| The briefing | `GET /contacts/:id/briefing` | **No.** Add `getBriefing`. |
+
+One endpoint. N2's backend does all the assembly; the Android side is a read.
+
+### Test cases
+
+1. **Empty history must not crash** — MockWebServer: a briefing whose history/collection fields are
+   **absent** from the JSON parses, and the screen renders an empty state. This is not hypothetical:
+   the identical bug took web's prep view into the ErrorBoundary for any contact with no history
+   (`/CLAUDE.md` frontend trap #8). Assert against raw JSON with the key omitted, not a Kotlin object
+   with an empty list — those are indistinguishable once decoded, which is exactly why web's test passed.
+2. **State machine** — loading → success populates; a network failure yields the error state with a
+   retry that re-issues the call.
+3. **Health card** — the cadence/health block reads server-provided fields rather than recomputing
+   locally (see [M12](94-M12-android-cadence-policy.md), which supplies it).
+
+### Gate
+
+- `./gradlew testDebugUnitTest`, `./gradlew lintDebug`, `./gradlew assembleDebug` — the exact three
+  steps `.github/workflows/android-tests.yml` runs. CI has been green since M1's review pass; keep it.
+- Every new user-facing string in all five locales (`values`, `values-de/es/fr/it`). M1's review pass
+  had to retrofit ~80 unlocalized strings — don't rebuild that debt.
+
+### Test conventions (this repo, not generic)
+
+JUnit4 + MockK (`mockk`/`coEvery`) + Turbine + `runTest` with `MainDispatcherRule`. ViewModel tests
+mock the repository — `feature/contacts/.../ContactListViewModelTest.kt` is the reference. New
+`ApiClient` methods get a MockWebServer test in `core/network` — `ApiClientTest.kt` is the reference.
+Hand-verify per `/CLAUDE.md`: break the code, confirm the new test fails, restore.

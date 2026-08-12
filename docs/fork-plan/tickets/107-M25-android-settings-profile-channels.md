@@ -44,3 +44,52 @@ of scope here).
   password and confirm re-login with the new one works; create+test a webhook and confirm delivery
   on the receiving end.
 - New strings translated in all five locales.
+
+---
+
+## Implementation contract (added 2026-08-12)
+
+Added in the readiness pass: this ticket came out of the [M8](89-M8-web-android-parity-audit.md)
+parity audit, whose job was to prove a gap was real — not to specify the build. Endpoints, test
+cases and the CI gate below close that difference.
+
+### Endpoints
+
+| Need | Route | In `ApiClient`? |
+|---|---|---|
+| Set language | `PATCH /users/language` | **No** |
+| Set date format | `PATCH /users/date-format` | **No** |
+| Change password | `POST /users/change-password` | **No** |
+| Notification config | `GET,PUT /notifications/config` | **No** |
+| Test a channel | `POST /notifications/config/test` | **No** |
+| Webhooks CRUD | `GET,POST /webhooks`, `PUT,DELETE /webhooks/:id` | **No** |
+| Test a webhook | `POST /webhooks/:id/test` | **No** |
+| Read current user | `GET /users/me` | Yes (`currentUser`) |
+
+Ten new client methods — the language and date-format PATCHes are why those settings are currently
+read-only. Theme is a local preference with no endpoint.
+
+### Test cases
+
+1. **Language and date format** persist to the server and the UI reflects the change without a
+   restart.
+2. **Change password** — a wrong current password surfaces the server's error rather than a generic
+   failure; success does not leave the new password in any log or state holder.
+3. **Notification channels** — config round-trips, and "test" reports success and failure distinctly.
+4. **Webhooks** — create/edit/delete round-trip; deletion is confirmed first.
+5. **Secrets** — webhook secrets and passwords are never written to logs. Grep-level assertion is
+   fine; the point is to make it deliberate.
+
+### Gate
+
+- `./gradlew testDebugUnitTest`, `./gradlew lintDebug`, `./gradlew assembleDebug` — the exact three
+  steps `.github/workflows/android-tests.yml` runs. CI has been green since M1's review pass; keep it.
+- Every new user-facing string in all five locales (`values`, `values-de/es/fr/it`). M1's review pass
+  had to retrofit ~80 unlocalized strings — don't rebuild that debt.
+
+### Test conventions (this repo, not generic)
+
+JUnit4 + MockK (`mockk`/`coEvery`) + Turbine + `runTest` with `MainDispatcherRule`. ViewModel tests
+mock the repository — `feature/contacts/.../ContactListViewModelTest.kt` is the reference. New
+`ApiClient` methods get a MockWebServer test in `core/network` — `ApiClientTest.kt` is the reference.
+Hand-verify per `/CLAUDE.md`: break the code, confirm the new test fails, restore.

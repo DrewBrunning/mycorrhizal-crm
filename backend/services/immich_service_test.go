@@ -180,6 +180,73 @@ func TestImmichClient_RecentAssetsOrdersByOccurrence(t *testing.T) {
 	assert.Equal(t, "new", limited[0].ID)
 }
 
+// T70: a person with more than one page of assets must paginate correctly.
+// The bug: assets.nextPage arrives as a JSON string ("2") and used to be sent
+// straight back as `page`, but /api/search/metadata validates `page` as a
+// number and answered 400 "expected number, received string". The first page
+// omits `page` entirely, so this only ever fired for people with >200 assets —
+// which is why T59 verified Immich end-to-end without hitting it, and why the
+// fake server (which always returned nextPage:"") never exercised the branch.
+func TestImmichClient_RecentAssetsPaginatesAcrossPages(t *testing.T) {
+	fake := newFakeImmichServer(t, "")
+	defer fake.Close()
+
+	// 5 assets at 2 per page => pages 1, 2, 3 (the last one short).
+	assets := []fakeImmichAsset{
+		{ID: "a1", FileCreatedAt: "2026-01-01T10:00:00Z"},
+		{ID: "a2", FileCreatedAt: "2026-02-01T10:00:00Z"},
+		{ID: "a3", FileCreatedAt: "2026-03-01T10:00:00Z"},
+		{ID: "a4", FileCreatedAt: "2026-04-01T10:00:00Z"},
+		{ID: "a5", FileCreatedAt: "2026-05-01T10:00:00Z"},
+	}
+	fake.addPerson("p1", "Alice", len(assets), assets, nil)
+	fake.People["p1"].PageSize = 2
+
+	client, err := NewImmichClient(fake.URL(), "", false)
+	require.NoError(t, err)
+
+	got, err := client.RecentAssets("p1", 25)
+	require.NoError(t, err, "pagination must not fail — a 400 here is the T70 regression")
+	require.Len(t, got, 5, "every page's assets must be collected, not just the first")
+	assert.Equal(t, "a5", got[0].ID, "still sorted newest-first across pages")
+	assert.Equal(t, "a1", got[4].ID)
+
+	// The loop must actually walk forward. Looping on page 1 would still
+	// return assets, so assert the pages requested rather than only the result.
+	assert.Equal(t, []int{1, 2, 3}, fake.SearchPages)
+}
+
+// T70: nextPage shapes that cannot be sent back as a number must stop the loop
+// and return what was gathered, not fail the person's whole sync.
+func TestImmichClient_RecentAssetsStopsOnUnusablePageToken(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		nextPage string
+	}{
+		{"opaque cursor", `"eyJvZmZzZXQiOjJ9"`},
+		{"explicit null", `null`},
+		{"zero", `0`},
+		// A server echoing page 1 forever: the loop must refuse to go
+		// backwards or sideways, or it accumulates the same assets 100 times.
+		{"non-advancing page", `"1"`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"assets":{"items":[{"id":"a1","fileCreatedAt":"2026-01-01T10:00:00Z"}],"nextPage":` + tc.nextPage + `}}`))
+			}))
+			defer srv.Close()
+
+			client, err := NewImmichClient(srv.URL, "", false)
+			require.NoError(t, err)
+
+			got, err := client.RecentAssets("p1", 25)
+			require.NoError(t, err, "an unusable token must not fail the sync")
+			require.Len(t, got, 1, "assets gathered before stopping must be returned")
+		})
+	}
+}
+
 func TestImmichClient_Thumbnail(t *testing.T) {
 	fake := newFakeImmichServer(t, "")
 	defer fake.Close()

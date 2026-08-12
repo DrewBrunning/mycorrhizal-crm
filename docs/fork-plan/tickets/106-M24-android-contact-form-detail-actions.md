@@ -53,3 +53,53 @@ interface level today, not just missing UI:
   contact, confirm the standard soft-delete/undo story holds (check against T60's audit undo once
   M16 lands, or against the web audit page in the meantime).
 - New strings translated in all five locales.
+
+---
+
+## Implementation contract (added 2026-08-12)
+
+Added in the readiness pass: this ticket came out of the [M8](89-M8-web-android-parity-audit.md)
+parity audit, whose job was to prove a gap was real — not to specify the build. Endpoints, test
+cases and the CI gate below close that difference.
+
+### Endpoints
+
+| Need | Route | In `ApiClient`? |
+|---|---|---|
+| Delete a contact | `DELETE /contacts/:id` | **No** |
+| Archive | `POST /contacts/:id/archive` | **No** |
+| Unarchive | `POST /contacts/:id/unarchive` | **No** |
+
+**All three absent from the client** — confirming the ticket's claim that this is a repository-level
+gap, not missing UI. Verified by diffing `ApiClient`'s 83 methods against the route table.
+
+### Delete semantics
+
+`Contact` **soft-deletes** (`/CLAUDE.md`: content the user authored soft-deletes; the row is someone's
+undo). Do not present it as permanent, and do not expect the row to vanish from a backend count —
+`Unscoped()` is what distinguishes gone from marked.
+
+### Test cases
+
+1. **Delete round-trip** — MockWebServer; the contact leaves the list, and on failure it stays and an
+   error surfaces.
+2. **Delete is confirmed first**, and the confirmation names the contact. Deleting the wrong contact
+   from a list is the failure mode.
+3. **Archive/unarchive** round-trip and flip the contact's presence in the default (non-archived)
+   list.
+4. **Post-delete navigation** — deleting from the detail screen navigates back rather than leaving a
+   screen bound to a deleted contact.
+
+### Gate
+
+- `./gradlew testDebugUnitTest`, `./gradlew lintDebug`, `./gradlew assembleDebug` — the exact three
+  steps `.github/workflows/android-tests.yml` runs. CI has been green since M1's review pass; keep it.
+- Every new user-facing string in all five locales (`values`, `values-de/es/fr/it`). M1's review pass
+  had to retrofit ~80 unlocalized strings — don't rebuild that debt.
+
+### Test conventions (this repo, not generic)
+
+JUnit4 + MockK (`mockk`/`coEvery`) + Turbine + `runTest` with `MainDispatcherRule`. ViewModel tests
+mock the repository — `feature/contacts/.../ContactListViewModelTest.kt` is the reference. New
+`ApiClient` methods get a MockWebServer test in `core/network` — `ApiClientTest.kt` is the reference.
+Hand-verify per `/CLAUDE.md`: break the code, confirm the new test fails, restore.

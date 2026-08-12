@@ -17,10 +17,23 @@ data-safety rules, binding on every open ticket below.
 
 ## To be done
 
-Ranked by, in order: **rating** (highest first) → **whether it's actually ready to start** (a
-ticket blocked on another open ticket ranks below ready ones at the same rating, regardless of
-size) → **effort** (smaller first). Ticket numbers are stable IDs, not rank — the table order is
-the rank.
+**Restructured into three platform lists, 2026-08-11.** Previously one global ranking, which kept
+producing an order that disagreed with how the work actually gets done — Android parity tickets
+inherited the rating of the web capability they port, so two of them sat above every open bug.
+
+The rule now:
+
+- **One list per platform: Backend, Web, Android.** A ticket spanning platforms is **split** into a
+  per-platform ticket, each ranked on its own list, with the dependent half marked blocked. T66/T78
+  and T73/T77 were split this way in this pass.
+- **Within a list, rank by user impact first, then by relative size** (smaller first at equal
+  impact). Ratings are still recorded on each ticket, but the list order is impact, not rating.
+- **Platform order is Backend → Web → Android** as a general work-order heuristic, not a hard gate:
+  a blocked web ticket doesn't stop an unblocked Android one.
+
+Ticket numbers are stable IDs, not rank — the table order is the rank. Tickets touched in this pass
+carry a **Platform** row in their header table; the `M`-series are Android by definition and were
+not edited just to add one.
 
 **Three mobile-API tickets filed 2026-08-10** (see the Deferred table's M1 row): M1's Android app
 is being built, and this session pulls the backend/web API additions it needs out as their own
@@ -47,29 +60,110 @@ management, custom field schema authoring, calendar sync, contact-field visibili
 JSContact export, admin user management, CSV/VCF file import). Everything else defaults to build-it,
 including webhooks, notification-channel config, circle/tag triage, and registration.
 
+**T67–T74 filed 2026-08-11** from a batch of testing notes — triaged with parallel research agents
+per file before writing (see each ticket's "Why this exists" for root-cause detail; the phone
+complaint split into two tickets, T68 dedup vs T69 search, since they're separate code paths sharing
+one root cause). The "combine Contacts and Search" suggestion from the same batch was a product/IA
+idea, not a bug — filed in Deferred → Feature ideas instead, not ranked here.
+
+> **Grooming pass, 2026-08-11** (after the above). Restructured this table into the three platform
+> lists documented above, and worked the open design questions rather than leaving them to
+> implementation time. What changed:
+>
+> - **[T75](119-T75-plain-save-destroys-card-only-data.md) filed, R5** — found while checking T67's
+>   claim that the backend "silently drops unmatched address kinds." That claim was wrong in a much
+>   more interesting way: the drop is correct for invalid kinds, but *valid* Card-only data is
+>   destroyed by any plain `db.Save` on a loaded contact. Reproduced against a `database.InitDB`
+>   schema, with two live triggers on real production data. Nothing on the board covered it.
+> - **T68, T69, T73, T66 and T74 had their deferred design decisions made**, with the reasoning
+>   recorded in each ticket. T74's was a full design pass, per the user's request.
+> - **T69 was re-scoped** after finding three phone-search code paths where the ticket assumed one;
+>   the third became [T76](120-T76-android-local-fts-phone-search.md).
+> - **T73→T77 and T66→T78 split** along the platform boundary, per the new structure.
+> - **[T79](123-T79-flat-address-projection-too-narrow.md)/[T80](124-T80-web-address-editor-line-two.md) filed**
+>   from a user question about apartment/PO-box support: hand-typed addresses lose nothing (nothing
+>   parses them), but VCF-imported sub-street parts are invisible and uneditable.
+> - **The i18n open question was closed** — see below.
+>
+> **Second pass, same day** — the two remaining design passes ([M7](88-M7-android-contact-record-coverage.md)'s
+> multi-value editor, [M14](96-M14-android-network-graph.md)'s graph interaction) were completed, and
+> each turned up something the design work exposed:
+>
+> - **[T81](125-T81-android-contact-edit-corrupts-phone-email-metadata.md) filed** out of M7 — the
+>   Android form reconstructs email/phone objects on save, so editing a contact's *name* rewrites
+>   every phone's label to `cell` and clears T58's preferred flag.
+> - **[T82](126-T82-audit-snapshots-miss-nested-contact-data.md) filed** out of a T75 re-read — the
+>   audit trail has never captured nested contact data, which is why T75's third trigger (the Undo
+>   button) exists. T75 stops the bleed; T82 makes undo complete.
+> - **M14's design shrank the ticket**: `/graph/connections` already returns resolved names and
+>   per-hop relation chains, so the mobile view needs no layout engine at all.
+>
+> **Readiness pass, 2026-08-12.** A ticket-by-ticket audit found the T-series ready but the 19
+> M-series tickets short of the bar: **0 of 19** named the CI gate, **18 of 19** had no defined test
+> cases, and **15 of 19** had no API contract. Not a defect in M8 — those files came out of a *parity
+> audit*, whose job was to prove a gap was real, not to specify the build. The difference only showed
+> once they were ranked as work.
+>
+> Every M-series ticket now carries an **Implementation contract** section: the exact endpoints it
+> needs, diffed against `ApiClient`'s 83 existing methods so "already there" vs "must be added" is
+> stated rather than discovered; concrete test cases; and the three tasks
+> `.github/workflows/android-tests.yml` actually runs. Several diffs were informative in their own
+> right — M17 and M26's triage half need **no new endpoints at all** (pure UI gaps), while M25 needs
+> ten and M15 seven. The gate wording in T67/T76/T81 was corrected too: `./gradlew test lint` is not
+> what CI runs.
+
+### Backend
+
 | Ticket | Status |
 |---|---|
-| [M11](93-M11-android-prep-view.md) · Prep view (N2) for Android | **TO BE DONE**. R5. Zero Android footprint today for a rating-5 web capability — not even a placeholder route. |
-| [M12](94-M12-android-cadence-policy.md) · Cadence policy panel for Android | **TO BE DONE**. R5. Whole feature absent — no screen, ViewModel, repo, or route. Feeds M11's health card and M10's overdue-cadences widget. |
-| [M9](91-M9-android-wire-up-existing-screens.md) · Wire up already-built Android screens & dead code | **TO BE DONE**. R4. Cheap: global Notes/Activities routes, bulk circle/tag actions, contact-list pagination past page 1, and VCF-upload wiring are all implemented and just unreachable. |
-| [M17](99-M17-android-entity-scaffold-edit-delete-confirm.md) · Android entity-list scaffold: add edit + delete-confirmation | **TO BE DONE**. R4. One shared-scaffold fix resolves Life Events/Gifts/Preferences/Agenda at once. Unblocks M18. |
-| [M13](95-M13-android-real-search.md) · Real full-text search on Android | **TO BE DONE**. R4. Placeholder route; the embedded contact-list search bar is a different, weaker naive-LIKE mechanism, not T11's FTS5 endpoint. |
-| [M10](92-M10-android-dashboard-composite.md) · Android Dashboard: actually consume the M3 composite endpoint | **TO BE DONE**. R4. Android never was rewired onto M3 — still calls two legacy endpoints and is missing 2 of 4 widgets plus reminder complete/skip actions. |
-| [M20](102-M20-android-reminders-depth.md) · Reminders depth on Android | **TO BE DONE**. R4. No delete, no overdue styling, no reoccur-from-completion, no auto-date-from-recurrence. |
-| [M21](103-M21-android-relationships-depth.md) · Relationships depth on Android | **TO BE DONE**. R4. Other-party names render as raw vCard UIDs, not resolved/tappable — likely the highest-value single item in the ticket. Also missing search-based linking, edit, sensitivity. |
-| [M19](101-M19-android-notes-activities-depth.md) · Notes/Activities depth on Android | **TO BE DONE**. R4. No search/date-filter/pagination/delete per-contact; activities silently can't have more than one participant on Android. |
-| [M24](106-M24-android-contact-form-detail-actions.md) · Contact form & detail-page actions on Android | **TO BE DONE**. R4. Delete and archive/unarchive don't exist at the repository level, not just missing UI — a real gap, not polish. |
-| [M7](88-M7-android-contact-record-coverage.md) · Android contact record: the editor covers 8 of ~30 field groups | **TO BE DONE**. R4. Addresses, organizations, titles, online services, links and personal info are *rendered on the detail screen but not editable*; `how_we_met`/`work_information`/`contact_information` appear nowhere. Not a data-loss risk — edits merge onto the loaded record — but the ceiling on Android is "don't break it". Also fixes emails/phones silently discarding type/label/preferred on edit. Needs a reusable multi-value editor decided first. |
-| [T66](110-T66-contact-timeline-bounded-view-and-explorer.md) · Contact timeline: bounded default view + full-timeline explorer with filters | **Scoped, not started**. R3. Today's M4 composite fetches every note/activity/completion/life-event/external-activity/gift for a contact unbounded on every page load, and Immich's photo-appearance rows compound it fast. Wants: 5-most-recent default + a "View all" explorer (modal on web) with type + recency filters, backed by real cursor pagination (reusing T17's primitives) instead of continuing to merge unbounded fetches client-side. No defined vision yet — design questions recorded in the ticket. |
-| [T65](109-T65-web-circle-tag-rename-delete.md) · Wire up circle/tag rename & delete on web | **TO BE DONE**. R3. The whole stack (backend, API client, hooks) already exists — no page calls it. Web's mirror of M9's "wire it up" bucket. |
-| [M15](97-M15-android-contact-sharing.md) · Contact sharing (P1) on Android | **TO BE DONE**. R3. Zero footprint, including the entry point on a contact's own header. |
-| [M16](98-M16-android-audit-trail.md) · Audit trail + undo (T60) on Android | **TO BE DONE**. R3. Zero footprint. |
-| [M22](104-M22-android-household-depth.md) · Household management depth on Android | **TO BE DONE**. R3. Core CRUD has parity; role-editing, name resolution, AI suggestions, and T40 address-based suggestions don't. |
-| [M23](105-M23-android-contact-list-bulk-breadth.md) · Contact list & bulk breadth on Android | **TO BE DONE**. R3. No circle filter or archived toggle on the main list; merge requires typing a raw numeric ID instead of searching. |
-| [M25](107-M25-android-settings-profile-channels.md) · Settings: profile & channels on Android | **TO BE DONE**. R3. Language/date-format are read-only; theme, password change, webhooks, and ntfy/Gotify config don't exist at all. |
-| [M14](96-M14-android-network-graph.md) · Network graph on Android | **TO BE DONE**. R3. Placeholder route. Needs a mobile-appropriate interaction design first — not a straight port of the desktop force-graph. |
-| [M18](100-M18-android-entity-field-richness.md) · Field richness: Life Events/Gifts/Preferences/Agenda on Android | **TO BE DONE**. R3. Blocked on M17 (edit needs to exist before these fields are worth adding to an edit form). |
-| [M26](108-M26-android-registration-triage.md) · Registration + circle/tag triage on Android | **TO BE DONE**. R2. Both real but low-frequency: one-time account creation, one-time legacy cleanup. |
+| [T75](119-T75-plain-save-destroys-card-only-data.md) · A plain `db.Save` on a loaded contact silently destroys all Card-only data ⚠ | **TO BE DONE**. R5. **Reproduced against the real migrated schema**, not inferred: `BeforeSave` rebuilds `Card` from the flat columns whenever `cardSetDirectly` is false — which is always, for a row loaded from the DB — so pronouns (`SpeakToAs`), hobbies/expertise (`PersonalInfo`) and every address component outside the flat 6-field projection (`apartment`, `floor`, `postOfficeBox`, …) are wiped. **Three** confirmed live triggers on real data: profile-photo upload, VCF/CSV import merge into an existing contact, and — found on second pass — **the [T60](79-T60-audit-trail-ui.md) Undo button**, whose snapshot never contained a Card to restore, so the one control meant for recovery deletes pronouns, personal info and pet/animal kind. Nothing already lost is recoverable: `Card` is `json:"-"`, so the audit trail never captured it. Scoped 2026-08-11 as two tickets — this stops all three bleeds (undo becomes non-destructive but partial), [T82](126-T82-audit-snapshots-miss-nested-contact-data.md) makes undo complete. Found during grooming, 2026-08-11. |
+| [T83](127-T83-immich-recentassets-walks-every-page.md) · `RecentAssets` walks a person's entire library to return one asset ⚠ | **TO BE DONE**. R4. Filed 2026-08-12 while reviewing [T70](114-T70-immich-sync-400-diagnosis.md) before commit. `RecentAssets` paginates every page (up to 100 requests / 20,000 assets) before trimming to the caller's limit — and `contactImmichSummary` calls it with `limit: 1` **synchronously during a contact-page load**. The full walk has never run in production: T70's 400 was aborting it after two requests for anyone with >200 assets, acting as an accidental circuit breaker. Fixing T70 removes it. **Treat as a release gate for T70.** Whether it can stop early depends on whether Immich's result order is trustworthy — verify with a debug capture first, don't guess. |
+| [T68](112-T68-phone-dedup-country-code-normalization.md) · Phone comparison doesn't reconcile country code, so real duplicates go undetected | **TO BE DONE**. R4. S. `+18005551234` vs `8005551234` don't dedupe on import or manual merge. Approach decided 2026-08-11: a last-10-significant-digits canonical key, no phone-parsing library — see the ticket for why over the alternatives. Defines the function T69 indexes, so land it first. |
+| [T69](113-T69-phone-search-tokenization.md) · Phone search misses results because nothing normalizes phone numbers | **TO BE DONE**. R3. M. Blocked on T68. Re-scoped 2026-08-11: there are **three** phone-search paths, not one — FTS5 global search, the contacts-list `LIKE` search bar, and Android's own index ([T76](120-T76-android-local-fts-phone-search.md)). This ticket covers the two backend ones, plus the gap that `contacts_fts` indexes only the *primary* phone. Approach decided: a normalized shadow column following T38/migration `000010`'s proven template. |
+| [T82](126-T82-audit-snapshots-miss-nested-contact-data.md) · Audit snapshots never capture Card/CRM/Passthrough | **BLOCKED** on [T75](119-T75-plain-save-destroys-card-only-data.md). R3. M. Split from T75 on 2026-08-11. `Card`/`CRM`/`Passthrough` are `json:"-"` and `auditBeforeSave` uses `json.Marshal`, so T18's history has **never** recorded nested contact data — editing a pronoun writes an audit event with no visible change — and T60's undo can't restore it. T75 makes undo non-destructive; this makes it complete. The work is the decisions around it: snapshot size on the most-updated entity in the product, and whether `private`/`secret` data belongs in a snapshot that outlives its own deletion. |
+| [T73](117-T73-contacts-list-sort-control.md) · Contacts list can only be sorted by most-recently-edited | **TO BE DONE**. R3. S–M. No `sort` param exists server-side — the field is compile-time fixed to `updated_at` by T17's cursor choice. Design decided 2026-08-11: a denormalized `sort_name` column (avoids a `COLLATE NOCASE` cursor-correctness trap), a second cursor shape rather than a generalized one, and `sort` valid on `?cursor=` only — never `?since=`, which is sync state. Blocks [T77](121-T77-web-contacts-list-sort-control.md). |
+| [T79](123-T79-flat-address-projection-too-narrow.md) · The flat address projection has no slot for apartment / PO box / floor | **TO BE DONE**. R3. S–M. Filed 2026-08-11 from a user question. The neutral model and both vCard adapters carry all 17 RFC 9553 component kinds; the flat `ContactAddress` carries five, and four mapping functions encode that narrowing. **Hand-typed addresses lose nothing** — there is no parsing anywhere, so `123 Fake St, Apt 456` survives verbatim as the street string. **Imported ones do**: a VCF's PO Box and extended-address parts land in `Card` correctly, then are invisible, uneditable, unsearchable — and destroyed by [T75](119-T75-plain-save-destroys-card-only-data.md). Blocks [T80](124-T80-web-address-editor-line-two.md). |
+| [T66](110-T66-contact-timeline-bounded-view-and-explorer.md) · Contact timeline: bound the M4 composite + paginated filterable endpoint | **TO BE DONE**. R3. M. The composite fetches every note/activity/completion/life-event/external-activity/gift unbounded on every contact-page load; Immich's photo-appearance rows compound it fast. All four design questions settled 2026-08-11 — including a correction: the recommended per-table merge is *exactly* correct, not approximate, as long as each table is asked for a full page rather than a share of one. Blocks [T78](122-T78-web-timeline-bounded-view-explorer.md). |
+
+### Web
+
+| Ticket | Status |
+|---|---|
+| [T71](115-T71-mobile-circles-tags-add-row-overflow.md) · Mobile web: circles/tags "add" row overflows the screen, blocking use | **TO BE DONE**. R4. S. `ContactHeader.tsx`'s edit-mode add-row lacks flex-wrap and has a hard-coded 200px Autocomplete floor — blocks the whole add-circle/add-tag interaction on phone widths. CSS-only fix, with an in-repo precedent to copy. |
+| [T65](109-T65-web-circle-tag-rename-delete.md) · Wire up circle/tag rename & delete on web | **TO BE DONE**. R3. S. The whole stack (backend, API client, hooks) already exists — no page calls it. Web's mirror of M9's "wire it up" bucket. |
+| [T74](118-T74-desktop-field-row-action-distance.md) · Field action buttons sit too far from their field on wide desktop screens | **TO BE DONE**. R3. M. **Design pass completed 2026-08-11** — direction chosen: two columns at `lg`+. The pass found that card-level two-column alone *doesn't* fix it, because the worst offender (`ContactInformation`, all ~30 field groups) is a single card — so the fix is two-level: a field-row grid inside that card (the actual fix, ~1136px → ~530px, and `EditableField`/`EditableArrayField` need no changes) plus a per-section card grid (the reclaimed space). Mobile and T31/T47 explicitly unchanged. |
+| [T72](116-T72-gender-edit-suggestion-autocomplete.md) · Gender edit is a bare text field, not the suggestion-autocomplete Add used to have | **TO BE DONE**. R3. S. Edit has always been a plain `TextField`. Scoped to fixing Edit only — restoring gender to Add would reopen T52's deliberate simplification, out of scope per 2026-08-11 confirmation. |
+| [T77](121-T77-web-contacts-list-sort-control.md) · Contacts page has no sort control | **BLOCKED** on [T73](117-T73-contacts-list-sort-control.md). R3. S. Split out of T73 on 2026-08-11. Defaults to alphabetical on web while the server keeps `updated_at` for existing API consumers. |
+| [T80](124-T80-web-address-editor-line-two.md) · Address editor has no line 2 / PO box / floor field | **BLOCKED** on [T79](123-T79-flat-address-projection-too-narrow.md). R3. S. `AddressFields.tsx` renders five inputs, so an apartment has nowhere to go but the street line. Watch the interaction with [T74](118-T74-desktop-field-row-action-distance.md) — a grown address editor renders in a ~530px column once that lands. |
+| [T78](122-T78-web-timeline-bounded-view-explorer.md) · Contact timeline: 5-item default + "View all" explorer | **BLOCKED** on [T66](110-T66-contact-timeline-bounded-view-and-explorer.md). R3. M. Split out of T66 on 2026-08-11. Filter vocabulary (six types; 7/30/90/this-year/all buckets) is fixed by T66 — match it exactly. |
+
+### Android
+
+| Ticket | Status |
+|---|---|
+| [T67](111-T67-android-address-import-parsing.md) · Device-contacts import loses address data | **TO BE DONE**. R4. S. Two compounding bugs — the reader treats `DATA9` (POSTCODE) as the formatted address, and the mapper emits kinds `"street"`/`"city"` that don't exist in the registry (it's `"name"`/`"locality"`) — so a typical imported address arrives empty. Re-scoped 2026-08-11: the third "backend drops unmatched kinds" bug turned out to be correct behavior for invalid input, and the *real* backend problems underneath it are now [T75](119-T75-plain-save-destroys-card-only-data.md). Android-only; web VCF/CSV import is unaffected. |
+| [T81](125-T81-android-contact-edit-corrupts-phone-email-metadata.md) · Editing any contact relabels every phone "cell" and drops email/phone metadata ⚠ | **TO BE DONE**. R4. S. Split out of [M7](88-M7-android-contact-record-coverage.md) during its 2026-08-11 design pass. The form holds emails/phones as `List<String>` and *reconstructs* the nested objects on save, so editing a contact's **name** rewrites every phone's label to `cell`, clears T58's `preferred` flag, and drops `contexts`, `features` (T34's SMS detection) and each entry's `id`. Not a discard — a wrong value written over a right one. Fix preserves the loaded objects; the UI for those fields stays M7's job. |
+| [M21](103-M21-android-relationships-depth.md) · Relationships depth | **TO BE DONE**. R4. Other-party names render as raw vCard UIDs, not resolved/tappable — visibly broken, and the highest-value single item in the ticket. Also missing search-based linking, edit, sensitivity. |
+| [M9](91-M9-android-wire-up-existing-screens.md) · Wire up already-built screens & dead code | **TO BE DONE**. R4. Cheapest impact on the list: global Notes/Activities routes, bulk circle/tag actions, contact-list pagination past page 1, and VCF-upload wiring are all implemented and just unreachable. |
+| [M24](106-M24-android-contact-form-detail-actions.md) · Contact form & detail-page actions | **TO BE DONE**. R4. Delete and archive/unarchive don't exist at the repository level, not just missing UI — a real gap, not polish. |
+| [M11](93-M11-android-prep-view.md) · Prep view (N2) | **TO BE DONE**. R5 capability, zero Android footprint — not even a placeholder route. |
+| [M12](94-M12-android-cadence-policy.md) · Cadence policy panel | **TO BE DONE**. R5 capability, whole feature absent — no screen, ViewModel, repo, or route. Feeds M11's health card and M10's overdue-cadences widget. |
+| [M10](92-M10-android-dashboard-composite.md) · Dashboard: actually consume the M3 composite endpoint | **TO BE DONE**. R4. Never was rewired onto M3 — still calls two legacy endpoints and is missing 2 of 4 widgets plus reminder complete/skip actions. |
+| [M17](99-M17-android-entity-scaffold-edit-delete-confirm.md) · Entity-list scaffold: add edit + delete-confirmation | **TO BE DONE**. R4. One shared-scaffold fix resolves Life Events/Gifts/Preferences/Agenda at once. Unblocks M18. |
+| [M13](95-M13-android-real-search.md) · Real full-text search | **TO BE DONE**. R4. Placeholder route; the embedded contact-list search bar is a different, weaker mechanism, not T11's FTS5 endpoint. |
+| [T76](120-T76-android-local-fts-phone-search.md) · Offline search can't find a contact by phone number either | **TO BE DONE**. R3. S. Filed 2026-08-11 during grooming — Android's Room FTS4 index has the same tokenization bug as [T69](113-T69-phone-search-tokenization.md) and fixing the backend does nothing for it, since offline search answers from cached rows. Also indexes only the primary phone, and passes unsanitized input to `MATCH`. |
+| [M7](88-M7-android-contact-record-coverage.md) · Contact record: the editor covers 8 of ~30 field groups | **TO BE DONE**. R4. **Design pass completed 2026-08-11** — one generic `MultiValueEditor<T>` driven by a per-type spec covers Email/Phone/OnlineService (and Title/PersonalInfo with `kind` bound instead of `label`); `Address` gets its own editor since it's structurally different; `Organization` needs none. The load-bearing rule is *edit entries in place via `.copy()`, never reconstruct* — the client-side mirror of backend traps #2/#3. The corruption that rule prevents was split out as [T81](125-T81-android-contact-edit-corrupts-phone-email-metadata.md) so it can ship first. Addresses/organizations/titles/online services/links/personal info are rendered but not editable; `how_we_met`/`work_information`/`contact_information` appear nowhere. |
+| [M19](101-M19-android-notes-activities-depth.md) · Notes/Activities depth | **TO BE DONE**. R4. No search/date-filter/pagination/delete per-contact; activities silently can't have more than one participant. |
+| [M20](102-M20-android-reminders-depth.md) · Reminders depth | **TO BE DONE**. R4. No delete, no overdue styling, no reoccur-from-completion, no auto-date-from-recurrence. |
+| [M23](105-M23-android-contact-list-bulk-breadth.md) · Contact list & bulk breadth | **TO BE DONE**. R3. No circle filter or archived toggle on the main list; merge requires typing a raw numeric ID instead of searching. |
+| [M22](104-M22-android-household-depth.md) · Household management depth | **TO BE DONE**. R3. Core CRUD has parity; role-editing, name resolution, AI suggestions, and T40 address-based suggestions don't. |
+| [M25](107-M25-android-settings-profile-channels.md) · Settings: profile & channels | **TO BE DONE**. R3. Language/date-format are read-only; theme, password change, webhooks, and ntfy/Gotify config don't exist at all. |
+| [T84](128-T84-android-custom-field-values.md) · Custom field values are entirely absent on Android | **TO BE DONE**. R3. S–M. Filed 2026-08-12 in the readiness pass. M8 excluded custom field *definitions* (schema authoring) as deliberately-not-on-mobile, but never addressed custom field **values**, which web renders on the contact record itself. `ApiClient` has none of `GET /field-definitions`, `GET/PUT /contacts/:id/field-values` — so a field defined on web is invisible on the phone. Filed rather than assumed excluded; **if it should be excluded, decide that explicitly and close it.** |
+| [M15](97-M15-android-contact-sharing.md) · Contact sharing (P1) | **TO BE DONE**. R3. Zero footprint, including the entry point on a contact's own header. |
+| [M16](98-M16-android-audit-trail.md) · Audit trail + undo (T60) | **TO BE DONE**. R3. Zero footprint. |
+| [M14](96-M14-android-network-graph.md) · Network graph | **TO BE DONE**. R3. M. **Design pass completed 2026-08-11** — ego-centric and list-first over `GET /graph/connections`, not a force-graph. That endpoint (T10) already returns resolved names and per-hop relation chains with inverses applied, so the hard part is server-side and the client needs no layout engine, canvas, or gesture arbitration — and every row is TalkBack-readable, which a drawn graph never is. Activity nodes are a deliberate v1 exclusion (the timeline answers that better on a phone); a radial view is deferred, not rejected. |
+| [M18](100-M18-android-entity-field-richness.md) · Field richness: Life Events/Gifts/Preferences/Agenda | **BLOCKED** on M17 (edit needs to exist before these fields are worth adding to an edit form). R3. |
+| [M26](108-M26-android-registration-triage.md) · Registration + circle/tag triage | **TO BE DONE**. R2. Both real but low-frequency: one-time account creation, one-time legacy cleanup. |
 
 > **N8 (2FA/TOTP) moved to Feature ideas, 2026-08-07.** For a self-hosted instance
 > going through OIDC the IdP already owns 2FA, so app-level TOTP is redundant there; it only
@@ -109,6 +203,7 @@ Planned features that these get built at all.
 
 | Ticket | Notes |
 |---|---|
+| N/A · Combine Contacts and Search into one search bar | R2–3, unfiled. From 2026-08-11 testing notes: no real UX benefit to separating contacts-browsing from search as distinct activities. Real idea, but an IA change to a core nav surface needs its own design pass (what happens to the circle/archived filters currently only on Contacts, does search-as-you-type replace the list default) before it's ticket-ready — not started. |
 | [N8](25-N8-2fa.md) · 2FA / TOTP | R3. Highest-confidence item here — moved down from the ranked table 2026-08-07 because OIDC already covers 2FA for IdP-backed instances (see the note on the To-be-done table). Pulled in if local-account instances ever matter. |
 | [P1b](69-P1b-standing-contact-share.md) · Standing/live contact share + permission model (true synced contacts across users) | R1–2. XL. The closest existing formalization of "true sync," not a one-time copy like the done [P1](31-P1-contact-sharing.md). |
 | [P2d](73-P2d-dawarich-geopulse-integration.md) · Dawarich / GeoPulse integration | R1–2. Location-history correlation into life-event/activity suggestions — an L4 idea, not a simple link. |
@@ -177,7 +272,6 @@ Kept for reference/lookup, not ranked — order below is roughly the sequence th
 | | **→ ALPHA v0.3.1 — shipped** |
 | [T51](60-T51-push-notification-413-payload-too-large.md) · Browser push "Test notification" fails with 413 from the push service | **DONE** |
 | [T42](51-T42-immich-link-person-error-misclassification.md) · Immich "link a person" fails with "Could not reach Immich" | **DONE** |
-| [T59](78-T59-immich-v041-still-broken.md) · Immich still broken in v0.4.1 testing | **DONE** (2026-08-09 — three root causes found against live Immich v3.1.0: HTTP/2 stale-session reuse, /api/people flat-array response shape, and GET /api/people/:id/assets removed in v3.x) |
 | [T44](53-T44-link-field-type-registry-not-in-editors.md) · Link field type registry doesn't reach the editors | **DONE** |
 | [T46](55-T46-gift-add-entry-points-per-status.md) · Gift "add" entry points default to Idea everywhere | **DONE** |
 | [T43](52-T43-link-field-type-custom-icons.md) · Custom link field type icons don't render | **DONE** |
@@ -197,16 +291,21 @@ Kept for reference/lookup, not ranked — order below is roughly the sequence th
 | [T18](34-T18-audit-trail.md) · Event history / audit trail | **DONE** |
 | [N7](29-N7-attachments.md) · File / document attachments | **DONE** |
 | | **→ ALPHA v0.4.0 — shipped** |
-| [T59](78-T59-immich-v041-still-broken.md) · Immich still broken in v0.4.1 testing | **DONE** |
+| [T59](78-T59-immich-v041-still-broken.md) · Immich still broken in v0.4.1 testing | **DONE** (2026-08-09 — three root causes found against live Immich v3.1.0: HTTP/2 stale-session reuse, /api/people flat-array response shape, and GET /api/people/:id/assets removed in v3.x. Sync itself was explicitly *not* re-verified — that gap is now [T70](114-T70-immich-sync-400-diagnosis.md)) |
+| | **→ v0.4.4 — shipped** |
 | [N6](26-N6-backup-restore.md) · Full backup restore | **DONE** (2026-08-09 — tested `VACUUM INTO` online backup via `make backup` + restore procedure; see the ticket's landing note for the two deliberate deviations from its implementation suggestions) |
 | [T60](79-T60-audit-trail-ui.md) · Audit trail UI | **DONE** (2026-08-09 — new `/audit` page + API module + hook over T18's shipped backend: event list with server-side entity_type/entity_id filters, contact-only Undo with confirmation dialog, contact uid→detail-page links, all five locales; see the ticket's landing note for the decisions taken) |
+| | **→ v0.5.0 — shipped** |
 | [M1](67-M1-mobile-android-app.md) · Native Android app (Kotlin, Jetpack Compose) | **Phases 1–5 core DONE** (2026-08-10 — working core client in `android/`: Gradle multi-module build, JWT/API-token auth, contacts list/detail/create/edit, activities/notes/reminders + unified timeline, tappable field actions + link-action enrichment (on-device verified), local FTS search, 349 hand-verified tests, CI workflow. Phase 3 sub-resources, Phase 4 native call/SMS tracking + notifications + quick-capture, Phase 5 T57 device-contacts import + QuickContact + custom link actions + R8. **Review pass 2026-08-11** — see the ticket's review-pass note: Android CI had never been green (two lint errors), `BootReceiver` could never fire, `:app` shadowed `:core:ui`'s resources, and ~80 strings were unlocalized; all fixed, 358 tests. Deferred polish moved to [M5](84-M5-android-polish-and-hardening.md)) |
+| | **→ v0.5.1 — shipped** |
 | [T62](86-T62-badge-and-button-color-system.md) · Chip/badge color system overloads brand/status colors | **DONE** (2026-08-11 — chips go neutral, "Add X" buttons + interactive icons + gift/agenda links go brand green, dark-mode chip-flattening bug fixed) |
 | [T63](87-T63-typography-roles-garamond-mono.md) · EB Garamond/IBM Plex Mono are loaded but essentially unused — apply the role split mobile testing found | **DONE** (2026-08-11 — Garamond on page headings (h5) + persistent nav; Mono on `overline` section subheadings *and*, per follow-up feedback, on per-field labels like "Birthday"/"Phone"/"Address" to contrast against the sans field content) |
 | [M2](81-M2-fcm-mobile-push.md) · Mobile push device registration (token+client) + FCM delivery | **DONE** (2026-08-11 — web Settings UI landed: mobile-device list + delete under the existing Web Push section, test button now probes both browser and mobile devices, 5-locale i18n. Backend landed 2026-08-10.) |
 | [M3](82-M3-dashboard-overview-endpoint.md) · `GET /dashboard` today/overview composite | **DONE** (2026-08-11 — new composite endpoint aggregating birthdays/random contacts/upcoming reminders (contact name embedded)/overdue cadences; `DashboardPage` rewired off it, dropping the four-request fan-out plus its per-reminder N+1) |
 | [M4](83-M4-contact-detail-composite.md) · `GET /contacts/:id/detail` composite | **DONE** (2026-08-11 — new composite aggregating the ~21 endpoints `ContactDetailPage.tsx` fires per contact, incl. relationship-edge and life-event name resolution and the one-config-check Immich block; web `api/contactDetail.ts` module ships as the Android client's target, `ContactDetailPage.tsx` itself deliberately not rewired per the ticket) |
 | [T64](90-T64-household-suggestions-null-crash.md) · "Suggest Households" crashes the whole app when there's nothing to suggest | **DONE** (2026-08-11 — nil-slice fix in both flagged backend functions + frontend guard in both named call sites, raw-JSON and null-prop regression tests, hand-verified live; see the ticket's landing note for a second render-loop bug the first guard attempt introduced and how it was found) |
+| | **→ v0.5.2 — shipped** |
+| [T70](114-T70-immich-sync-400-diagnosis.md) · Immich sync reports a 400 error | **DONE** (2026-08-12 — hypothesis #1 confirmed by a single `LOG_LEVEL=debug` capture: Immich serializes `assets.nextPage` as a JSON *string* but `/api/search/metadata` validates `page` as a *number*, so every page past the first was rejected. Only ever fired for a person with >200 assets, and the fake server always returned `nextPage:""` — so the branch had never been executed by any test. Fake now rejects a string `page` with Immich's real 400 body; two new tests, one asserting the loop actually walked pages [1 2 3]. **Live re-verification still outstanding** — see the landing note) |
 | [M8](89-M8-web-android-parity-audit.md) · Web ↔ Android parity audit — screen-by-screen matrix, then tickets from its gaps | **DONE** (2026-08-11 — six parallel research passes covered every web route and user-initiated action against real Android source; target agreed at sign-off was parity-by-default, exclusions decided explicitly rather than inferred. Filed 19 tickets: M9–M26 plus T65. See the ticket's landing note for the full matrix and structural findings — notably that Android's Dashboard never was rewired onto M3, Cadence (T19, rating 5) has zero Android footprint, and a shared entity-list scaffold is missing edit/delete-confirm across four entity types at once) |
 
 ### ⚠ A grooming lesson worth keeping visible
@@ -235,9 +334,11 @@ Reviewed against Monica's feature set and rejected, with reasons, so they don't 
 
 ### Open questions
 
-- **Keep i18n across 5 locales?** (unresolved) Inherited from the original Meerkat fork. Every
-  user-facing string in every ticket costs 5 translations — a real, permanent drag, and every
-  ticket in this folder currently assumes the answer is "yes" (each one's "Done when" requires
-  real translations in all 5 locale files). Defensible for a shared fork, harder to justify for a
-  one-or-two-person instance. Worth a deliberate keep-or-drop rather than continuing by default —
-  flagging here since it would change the "done when" bar on every open ticket above, not just one.
+*(None open.)*
+
+- **Keep i18n across 5 locales? — RESOLVED 2026-08-11: keep.** Inherited from the original Meerkat
+  fork, and it stays. Every user-facing string costs 5 real translations, enforced by
+  `src/i18n/locales.test.ts`; every ticket's "Done when" continues to require them. This was open
+  for months on the grounds that it's a permanent drag on a one-or-two-person instance — decided
+  deliberately rather than by default, and recorded here so it stops re-surfacing each grooming
+  pass. Dropping locales is a one-way door once translations rot; the drag is real but bounded.
