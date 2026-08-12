@@ -68,6 +68,43 @@ func TestUndoAuditEvent_RestoresContact(t *testing.T) {
 	assert.Equal(t, "Original", reloaded.Firstname, "undo must restore the pre-update firstname")
 }
 
+// TestUndoAuditEvent_PreservesCardOnlyData pins T75 trigger 3 at the handler
+// level: undoContact rebuilds from the event's before snapshot, which has
+// never carried Card/CRM/Passthrough (all json:"-", see T82). Before T75 the
+// stopgap's predecessor overwrote the contact's Card with a Record rebuilt
+// from that snapshot, deleting every Card-only member; the T75 stopgap
+// restores only the flat state and lets BeforeSave's merge carry the
+// Card-only data through.
+func TestUndoAuditEvent_PreservesCardOnlyData(t *testing.T) {
+	db, router, user := setupAuditRouter(t, config.Config{AuditRetentionDays: 90})
+	models.AuditFlush()
+
+	contact := &models.Contact{UserID: user.ID}
+	models.ApplyRecordToContact(contact, richCardOnlyRecordCtrl(), "")
+	require.NoError(t, db.Create(contact).Error)
+	models.AuditFlush()
+
+	// A flat-only edit produces an update event whose snapshot can express
+	// only flat fields.
+	contact.Firstname = "Changed"
+	require.NoError(t, db.Save(contact).Error)
+	models.AuditFlush()
+
+	var event models.AuditEvent
+	require.NoError(t, db.Where("entity_type = ? AND entity_id = ? AND operation = ?",
+		models.AuditEntityContact, contact.VCardUID, models.AuditOpUpdate).Order("id desc").First(&event).Error)
+
+	req, _ := http.NewRequest("POST", "/audit/"+auditItoa(event.ID)+"/undo", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var reloaded models.Contact
+	require.NoError(t, db.Where("vcard_uid = ?", contact.VCardUID).First(&reloaded).Error)
+	assert.Equal(t, "Ada", reloaded.Firstname, "undo must restore the pre-update firstname from the flat snapshot")
+	assertCardOnlyDataPreserved(t, reloaded)
+}
+
 func TestUndoAuditEvent_RejectsDeleteOperation(t *testing.T) {
 	db, router, user := setupAuditRouter(t, config.Config{AuditRetentionDays: 90})
 

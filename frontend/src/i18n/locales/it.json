@@ -1616,7 +1616,8 @@
       "confirmMessage": "Ripristinare {{entity}} allo stato precedente del {{date}}?",
       "confirm": "Annulla",
       "success": "Contatto ripristinato allo stato precedente",
-      "retentionGone": "Questo evento è oltre la sua finestra di conservazione e non può più essere annullato"
+      "retentionGone": "Questo evento è oltre la sua finestra di conservazione e non può più essere annullato",
+      "partialNote": "I dettagli mai registrati in questa voce (pronomi, informazioni personali, dettagli dell'indirizzo) vengono conservati invariati."
     }
   }
 }

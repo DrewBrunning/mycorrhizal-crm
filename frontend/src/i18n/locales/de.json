@@ -1616,7 +1616,8 @@
       "confirmMessage": "{{entity}} auf den Stand vom {{date}} zurücksetzen?",
       "confirm": "Rückgängig",
       "success": "Kontakt auf den vorherigen Stand zurückgesetzt",
-      "retentionGone": "Dieses Ereignis liegt außerhalb des Aufbewahrungsfensters und kann nicht mehr rückgängig gemacht werden"
+      "retentionGone": "Dieses Ereignis liegt außerhalb des Aufbewahrungsfensters und kann nicht mehr rückgängig gemacht werden",
+      "partialNote": "Details, die in diesem Eintrag nie erfasst wurden (Pronomen, persönliche Informationen, Adressdetails), bleiben unverändert."
     }
   }
 }
