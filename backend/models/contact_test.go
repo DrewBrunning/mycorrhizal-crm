@@ -55,7 +55,7 @@ func fullyPopulatedContact() *Contact {
 			{Type: "cell", Value: "+15551234567"},
 		},
 		Addresses: []ContactAddress{
-			{Type: "home", Street: "1 Main St", City: "Springfield", Region: "IL", Postal: "62704", Country: "US"},
+			{Type: "home", Street: "1 Main St", POBox: "PO Box 42", Apartment: "Apt 3B", Floor: "Floor 2", City: "Springfield", Region: "IL", Postal: "62704", Country: "US"},
 		},
 		URLs: []ContactURL{
 			{Type: "personal", Value: "https://jane.example.com"},
@@ -169,11 +169,14 @@ func TestRecordFromContact_FullyPopulated(t *testing.T) {
 	}
 	addr := card.Addresses[0]
 	wantAddrComponents := map[string]string{
-		"name":     "1 Main St",
-		"locality": "Springfield",
-		"region":   "IL",
-		"postcode": "62704",
-		"country":  "US",
+		"name":          "1 Main St",
+		"postOfficeBox": "PO Box 42",
+		"apartment":     "Apt 3B",
+		"floor":         "Floor 2",
+		"locality":      "Springfield",
+		"region":        "IL",
+		"postcode":      "62704",
+		"country":       "US",
 	}
 	gotAddrComponents := map[string]string{}
 	for _, comp := range addr.Components {
@@ -563,19 +566,45 @@ func TestContactETagBulkUpdateOnZeroValueReceiverDoesNotCorrupt(t *testing.T) {
 	}
 }
 
+// TestFormatAddress pins the human-readable display line used to keep the
+// legacy Address scalar (and, through FlattenAddresses, the searchable
+// AddressesFlat column) in sync with the structured Addresses[] JSON. T79
+// (docs/fork-plan/tickets/123-T79-flat-address-projection-too-narrow.md)
+// widened the projection with the sub-street parts a vCard ADR can carry, and
+// the conventional display ordering puts them between street and city.
+func TestFormatAddress(t *testing.T) {
+	full := ContactAddress{Type: "home", Street: "742 Clark St", POBox: "PO Box 42", Apartment: "Apt 3B", Floor: "Floor 2", City: "Springfield", Region: "IL", Postal: "62701", Country: "USA"}
+	if got := FormatAddress(full); got != "742 Clark St, PO Box 42, Apt 3B, Floor 2, Springfield, IL, 62701, USA" {
+		t.Errorf("FormatAddress(full) = %q", got)
+	}
+
+	// Sub-street parts without a street still render (a PO-box-only address
+	// has no street to precede them).
+	poboxOnly := ContactAddress{POBox: "PO Box 42", City: "Springfield", Region: "IL"}
+	if got := FormatAddress(poboxOnly); got != "PO Box 42, Springfield, IL" {
+		t.Errorf("FormatAddress(pobox-only) = %q", got)
+	}
+
+	if blank := FormatAddress(ContactAddress{}); blank != "" {
+		t.Errorf("FormatAddress(blank) = %q, want empty", blank)
+	}
+}
+
 // TestFlattenAddresses pins the Go-side derivation that feeds the searchable
 // AddressesFlat column (T38): each address's non-empty components joined with
 // ", ", addresses joined with a space. Migration 000010's SQL backfill
 // deliberately mirrors this exact shape for pre-existing rows, so this test
 // is what keeps the two from silently diverging (which would make new-contact
-// and pre-existing-contact search behavior differ).
+// and pre-existing-contact search behavior differ). The sub-street parts the
+// projection gained in T79 must appear in the flattened string (that is what
+// makes an imported PO box / apartment findable by search).
 func TestFlattenAddresses(t *testing.T) {
 	addresses := []ContactAddress{
-		{Type: "home", Street: "742 Clark St", City: "Springfield", Region: "IL", Postal: "62701", Country: "USA"},
+		{Type: "home", Street: "742 Clark St", POBox: "PO Box 42", Apartment: "Apt 3B", Floor: "Floor 2", City: "Springfield", Region: "IL", Postal: "62701", Country: "USA"},
 		{Type: "work", Street: "", City: "Chicago"},
 	}
 	got := FlattenAddresses(addresses)
-	want := "742 Clark St, Springfield, IL, 62701, USA Chicago"
+	want := "742 Clark St, PO Box 42, Apt 3B, Floor 2, Springfield, IL, 62701, USA Chicago"
 	if got != want {
 		t.Errorf("FlattenAddresses = %q, want %q", got, want)
 	}

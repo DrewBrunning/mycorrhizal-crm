@@ -452,6 +452,119 @@ func TestSearchAddressesMigrationBackfillsExistingRows(t *testing.T) {
 	assert.Equal(t, "Pre", firstname, "a rollback must not destroy the contact")
 }
 
+// TestFlatAddressSubStreetMigrationBackfillsStrandedCardData is the T79
+// (docs/fork-plan/tickets/123-T79-flat-address-projection-too-narrow.md)
+// data-recovery test: a contact whose card still holds postOfficeBox/
+// apartment/floor components — imported from a VCF before the flat projection
+// gained slots for them — must have that detail recovered into the flat
+// addresses JSON AND the searchable addresses_flat column by migration 000022,
+// without waiting for its next edit. Rows whose card has no such stranded
+// data must be left untouched.
+func TestFlatAddressSubStreetMigrationBackfillsStrandedCardData(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "t79-backfill.db")
+	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
+	require.NoError(t, err)
+	defer sqlDB.Close()
+
+	m, err := newMigrator(sqlDB)
+	require.NoError(t, err)
+	// Apply everything up to but NOT including 000022, so the contacts below
+	// genuinely predate the backfill.
+	require.NoError(t, m.Steps(21))
+
+	_, err = sqlDB.Exec(
+		"INSERT INTO users (created_at, updated_at, username, password, email) VALUES (datetime('now'), datetime('now'), 't79', 'x', 't79@example.com')")
+	require.NoError(t, err)
+	var userID int64
+	require.NoError(t, sqlDB.QueryRow("SELECT id FROM users WHERE username = 't79'").Scan(&userID))
+
+	// Stranded: the card carries postOfficeBox/apartment/floor components the
+	// flat addresses JSON lacks (exactly what a VCF import produced before
+	// T79 gave the projection slots for them).
+	_, err = sqlDB.Exec(`
+		INSERT INTO contacts (created_at, updated_at, firstname, lastname, user_id, vcard_uid, addresses, card)
+		VALUES (datetime('now'), datetime('now'), 'Stranded', 'Guy', ?, 'vcard-t79-stranded', ?, ?)`,
+		userID,
+		`[{"type":"home","street":"742 Clark St","city":"Springfield","region":"IL","postal":"62701","country":"USA"}]`,
+		`{"name":{"components":[{"kind":"given","value":"Stranded"}]},"addresses":[{"components":[
+			{"kind":"name","value":"742 Clark St"},
+			{"kind":"postOfficeBox","value":"PO Box 42"},
+			{"kind":"apartment","value":"Apt 3B"},
+			{"kind":"floor","value":"Floor 2"},
+			{"kind":"locality","value":"Springfield"},
+			{"kind":"region","value":"IL"},
+			{"kind":"postcode","value":"62701"},
+			{"kind":"country","value":"USA"}],"contexts":["home"]}]}`,
+	)
+	require.NoError(t, err)
+
+	// Untouched-by-design controls: a row with a card but no sub-street kinds,
+	// and a row with no card at all.
+	_, err = sqlDB.Exec(`
+		INSERT INTO contacts (created_at, updated_at, firstname, lastname, user_id, vcard_uid, addresses, card)
+		VALUES (datetime('now'), datetime('now'), 'Plain', 'Guy', ?, 'vcard-t79-plain', ?, ?)`,
+		userID,
+		`[{"type":"home","street":"999 Oak Ave","city":"Shelbyville"}]`,
+		`{"name":{"components":[{"kind":"given","value":"Plain"}]},"addresses":[{"components":[{"kind":"name","value":"999 Oak Ave"},{"kind":"locality","value":"Shelbyville"}],"contexts":["home"]}]}`,
+	)
+	require.NoError(t, err)
+	_, err = sqlDB.Exec(`
+		INSERT INTO contacts (created_at, updated_at, firstname, lastname, user_id, vcard_uid, addresses)
+		VALUES (datetime('now'), datetime('now'), 'NoCard', 'Guy', ?, 'vcard-t79-nocard', ?)`,
+		userID,
+		`[{"type":"home","street":"111 Pine Rd","city":"Ogdenville"}]`,
+	)
+	require.NoError(t, err)
+
+	// Apply exactly 000022.
+	require.NoError(t, m.Steps(1))
+
+	// The stranded row's flat addresses JSON gained the three sub-street keys.
+	var addresses string
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT addresses FROM contacts WHERE vcard_uid = 'vcard-t79-stranded'",
+	).Scan(&addresses))
+	assert.Contains(t, addresses, "PO Box 42", "flat addresses must hold the recovered PO box")
+	assert.Contains(t, addresses, "Apt 3B", "flat addresses must hold the recovered apartment")
+	assert.Contains(t, addresses, "Floor 2", "flat addresses must hold the recovered floor")
+	assert.Contains(t, addresses, `"street":"742 Clark St"`, "the projected street must be preserved")
+	assert.Contains(t, addresses, `"type":"home"`, "the type derived from contexts[0] must be preserved")
+
+	// The searchable column now carries the recovered parts (between street
+	// and city, the FormatAddress ordering), and the FTS index (maintained by
+	// the 000010 triggers) finds the apartment without any manual rebuild.
+	var flat string
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT addresses_flat FROM contacts WHERE vcard_uid = 'vcard-t79-stranded'",
+	).Scan(&flat))
+	assert.Contains(t, flat, "PO Box 42")
+	assert.Contains(t, flat, "Apt 3B")
+
+	var ftsCount int64
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM contacts_fts WHERE contacts_fts MATCH 'apt' AND user_id = ?", userID,
+	).Scan(&ftsCount))
+	assert.Equal(t, int64(1), ftsCount, "the recovered apartment must be findable through the FTS index")
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM contacts_fts WHERE contacts_fts MATCH 'box' AND user_id = ?", userID,
+	).Scan(&ftsCount))
+	assert.Equal(t, int64(1), ftsCount, "the recovered PO box must be findable through the FTS index")
+
+	// The control rows were not rewritten.
+	var plainAddresses string
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT addresses FROM contacts WHERE vcard_uid = 'vcard-t79-plain'",
+	).Scan(&plainAddresses))
+	assert.Equal(t, `[{"type":"home","street":"999 Oak Ave","city":"Shelbyville"}]`, plainAddresses,
+		"a card without sub-street kinds must not be rewritten")
+	var noCardAddresses string
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT addresses FROM contacts WHERE vcard_uid = 'vcard-t79-nocard'",
+	).Scan(&noCardAddresses))
+	assert.Equal(t, `[{"type":"home","street":"111 Pine Rd","city":"Ogdenville"}]`, noCardAddresses,
+		"a row without a card must not be rewritten")
+}
+
 // TestMigrationsAddPhonesNormalized pins the T69 migration's shape: the
 // denormalized phones_normalized column exists on contacts, and contacts_fts
 // (dropped and recreated by 000020 because FTS5 cannot ALTER TABLE) indexes

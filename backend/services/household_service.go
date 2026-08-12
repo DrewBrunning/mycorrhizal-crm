@@ -225,11 +225,14 @@ func normalizeAddressPart(s string) string {
 // AddressNormalizedKey is T40's canonical identity for a structured address:
 // the normalized street/city/region/postal/country parts joined by "|",
 // omitting empty parts. The ticket's documented comparison scope (street +
-// city/region + postal) plus country as a disambiguator; the flat
-// ContactAddress model has no unit/apartment sub-component, so there is
-// nothing further to ignore. Address Type (home/work) is deliberately NOT
-// part of the key — a "work" address matching someone's "home" address is
-// still the same physical residence.
+// city/region + postal) plus country as a disambiguator. The sub-street parts
+// the flat model gained in T79 (PO box / apartment / floor) are deliberately
+// NOT part of the key: two addresses sharing a street but differing in
+// apartment are still the same building, and a household suggestion is about
+// shared residence — keeping them out preserves T40's recall instead of
+// narrowing it. Address Type (home/work) is likewise deliberately NOT part of
+// the key — a "work" address matching someone's "home" address is still the
+// same physical residence.
 func AddressNormalizedKey(a models.ContactAddress) string {
 	parts := []string{
 		normalizeAddressPart(a.Street),

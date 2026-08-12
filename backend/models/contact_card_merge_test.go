@@ -16,9 +16,13 @@ import (
 // richCardOnlyRecord builds a neutral Record whose Card-only data has no
 // flat-field home, mirroring what a VCF/JSContact import or the nested REST
 // API produces: SpeakToAs (pronouns), PersonalInfo (hobbies), address
-// components outside the flat five-field projection (apartment, floor,
-// postOfficeBox), rich per-entry phone/email metadata (pref, features,
-// contexts), a CRMEnvelope.Kind, and an imported Passthrough property.
+// components outside the flat projection (the nine kinds with no editor
+// demand — room, building, block, etc.), rich per-entry phone/email metadata
+// (pref, features, contexts), a CRMEnvelope.Kind, and an imported Passthrough
+// property. (PO box / apartment / floor DO have a flat home since T79, but
+// they stay in the fixture as unprojected members of a card that was never
+// round-tripped through the flat shape, so the merge tests keep exercising
+// the preservation path.)
 func richCardOnlyRecord() *contactmodel.Record {
 	return &contactmodel.Record{
 		Card: contactmodel.Card{
@@ -176,11 +180,13 @@ func TestBeforeSave_FlatArrayAppendPreservesUntouchedEntries(t *testing.T) {
 	}
 }
 
-// TestBeforeSave_EditedFlatEntryRebuildsFromFlat pins the other half of the
-// rule: when the caller edits a flat entry's projected field (the street
-// here), that entry is deliberately rebuilt from flat — losing its
-// unprojected components is correct, because the caller expressed intent
-// through the lossy shape.
+// TestBeforeSave_EditedFlatEntryRebuildsFromFlat pins the per-entry dirty-
+// comparison rule's "rebuilt from flat" half: when the caller edits a flat
+// entry's projected field, the entry is rebuilt from flat. Since T79 the
+// apartment has a flat home, so editing the street preserves it (the flat
+// entry still carries it) — but a caller who deliberately clears the flat
+// apartment expresses intent through the shape and gets it dropped from the
+// card, exactly like any other projected field.
 func TestBeforeSave_EditedFlatEntryRebuildsFromFlat(t *testing.T) {
 	db := newT75TestDB(t)
 	user := User{Username: "t75-edit", Password: "password123!A", Email: "t75-edit@example.com"}
@@ -192,6 +198,9 @@ func TestBeforeSave_EditedFlatEntryRebuildsFromFlat(t *testing.T) {
 
 	var loaded Contact
 	require.NoError(t, db.First(&loaded, contact.ID).Error)
+	// The reloaded flat address carries the apartment (T79 widened the flat
+	// projection), so editing only the street must NOT destroy it.
+	require.Equal(t, "Apt 3B", loaded.Addresses[0].Apartment, "the reloaded flat address must carry the apartment")
 	loaded.Addresses[0].Street = "999 Changed St"
 	require.NoError(t, db.Save(&loaded).Error)
 
@@ -205,8 +214,25 @@ func TestBeforeSave_EditedFlatEntryRebuildsFromFlat(t *testing.T) {
 	if components["name"] != "999 Changed St" {
 		t.Errorf("street = %q, want the edited value reflected in the card", components["name"])
 	}
-	if components["apartment"] != "" {
-		t.Errorf("apartment = %q, want it dropped (the caller edited the flat entry, so it is rebuilt from flat)", components["apartment"])
+	if components["apartment"] != "Apt 3B" {
+		t.Errorf("apartment = %q, want it preserved — the flat shape owns it since T79 (components=%v)", components["apartment"], components)
+	}
+
+	// Deliberately clearing the flat apartment IS an intent expressed through
+	// the (now lossy for that field) shape: the rebuilt entry drops it.
+	var cleared Contact
+	require.NoError(t, db.First(&cleared, contact.ID).Error)
+	cleared.Addresses[0].Apartment = ""
+	require.NoError(t, db.Save(&cleared).Error)
+
+	var afterClear Contact
+	require.NoError(t, db.First(&afterClear, contact.ID).Error)
+	clearedComps := map[string]string{}
+	for _, comp := range afterClear.Card.Addresses[0].Components {
+		clearedComps[comp.Kind] = comp.Value
+	}
+	if clearedComps["apartment"] != "" {
+		t.Errorf("apartment = %q, want dropped — the caller cleared it in the flat shape", clearedComps["apartment"])
 	}
 }
 

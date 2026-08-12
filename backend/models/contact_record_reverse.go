@@ -257,7 +257,9 @@ func applyLinks(c *Contact, card contactmodel.Card) {
 
 // applyAddresses is the inverse of buildAddresses/addressFromContactAddress:
 // Card.Addresses[] -> Addresses[] ("adr" row), reconstructing the flat
-// ContactAddress fields from AddressComponent kinds. Also mirrors the first
+// ContactAddress fields from AddressComponent kinds — the five original
+// projected fields plus, since T79, the postOfficeBox/apartment/floor
+// sub-street slots (contactAddressFromNeutral). Also mirrors the first
 // entry into the legacy Address scalar via FormatAddress, same as
 // BeforeSave's existing sync logic.
 //
@@ -286,6 +288,12 @@ func contactAddressFromNeutral(a contactmodel.Address) ContactAddress {
 		switch comp.Kind {
 		case "name":
 			out.Street = comp.Value
+		case "postOfficeBox":
+			out.POBox = comp.Value
+		case "apartment":
+			out.Apartment = comp.Value
+		case "floor":
+			out.Floor = comp.Value
 		case "locality":
 			out.City = comp.Value
 		case "region":

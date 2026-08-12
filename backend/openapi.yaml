@@ -7267,9 +7267,18 @@ components:
         value: { type: string, maxLength: 200 }
     ContactAddress:
       type: object
+      description: >
+        One structured postal address in the flat legacy shape. The three
+        sub-street fields (PO box, apartment, floor) were added in T79
+        (docs/fork-plan/tickets/123-T79-flat-address-projection-too-narrow.md);
+        the remaining RFC 9553 component kinds ride the nested Card shape's
+        AddressComponent kinds instead.
       properties:
         type: { type: string, maxLength: 30 }
         street: { type: string, maxLength: 500 }
+        pobox: { type: string, maxLength: 200 }
+        apartment: { type: string, maxLength: 200 }
+        floor: { type: string, maxLength: 100 }
         city: { type: string, maxLength: 200 }
         region: { type: string, maxLength: 200 }
         postal: { type: string, maxLength: 30 }

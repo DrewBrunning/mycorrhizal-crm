@@ -112,6 +112,34 @@ func TestMergeImportedContact_ArrayFieldsIgnoreBlankIncomingEntries(t *testing.T
 	assert.Equal(t, []models.ContactPhone{{Type: "home", Value: "555-0000"}}, existing.Phones)
 }
 
+// TestMergeImportedContact_SubStreetFieldsDistinguishAddresses pins the T79
+// consequence for import merges: the address identity key (contactAddressKey,
+// a lowercased FormatAddress) now carries the PO box / apartment / floor
+// parts, so a re-import of a contact whose flat addresses gained those parts
+// must keep two addresses that differ only in apartment apart — collapsing
+// them would be real data loss the projection can now prevent. An exact
+// repeat (the T49 no-duplicate rule) still dedups.
+func TestMergeImportedContact_SubStreetFieldsDistinguishAddresses(t *testing.T) {
+	existing := &models.Contact{
+		Addresses: []models.ContactAddress{{Type: "home", Street: "123 Main St", Apartment: "Apt 3B", City: "Springfield"}},
+	}
+	incoming := &models.Contact{
+		Addresses: []models.ContactAddress{
+			{Type: "home", Street: "123 Main St", Apartment: "Apt 3B", City: "Springfield"}, // exact repeat -> dedup
+			{Type: "home", Street: "123 Main St", Apartment: "Apt 4B", City: "Springfield"}, // same building, different unit -> distinct
+		},
+	}
+
+	MergeImportedContact(existing, incoming)
+
+	if len(existing.Addresses) != 2 {
+		t.Fatalf("Addresses = %+v, want the repeat deduped and the different-apartment address appended", existing.Addresses)
+	}
+	if existing.Addresses[1].Apartment != "Apt 4B" {
+		t.Errorf("Addresses = %+v, want Apt 4B appended (a different unit is a different address)", existing.Addresses)
+	}
+}
+
 // TestMergeImportedContact_NeverReassignsVCardUID pins the other half of T49's reproduction:
 // an existing contact's VCardUID (its identity, keyed on by every graph-adjacent table's
 // entity_id) must survive a merge even when the incoming side carries its own (freshly minted,

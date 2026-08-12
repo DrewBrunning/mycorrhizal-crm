@@ -199,8 +199,12 @@ export interface SuggestAddressHouseholdsResponse {
 }
 
 // Renders a suggestion's address as a single display line (street, locality,
-// region, postcode, country — mirroring the backend's FormatAddress order),
-// falling back to the full text when present.
+// region, postcode, country), falling back to the full text when present.
+// The T79 sub-street parts (PO box / apartment / floor) are deliberately NOT
+// rendered here: a suggestion's address is a *building*-level shared address
+// (matching backend AddressNormalizedKey's scope, which also excludes them),
+// so showing one member's apartment would mislead. Backend FormatAddress
+// includes them on individual contact display; this is the household surface.
 export function formatSuggestionAddress(address: AddressHouseholdSuggestion['address']): string {
   if (address.full) return address.full;
   const byKind: Record<string, string> = {};
