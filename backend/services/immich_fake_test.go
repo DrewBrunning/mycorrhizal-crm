@@ -203,11 +203,11 @@ func (f *fakeImmichServer) handleStatistics(w http.ResponseWriter, personID stri
 //     used to echo the string-typed nextPage straight back.
 //   - assets.nextPage is serialized as a JSON *string* on the way out, the
 //     way v3.x does, so the round-trip asymmetry is reproduced faithfully.
-//   - `size` and `order` are honored, and items are returned ordered by
-//     fileCreatedAt DESC (id DESC as tiebreak) — the ordering SearchRepository
-//     applies — so a size-limited request yields the newest-taken assets, and
-//     a limit-1 request returns exactly the one the client's early-stop
-//     expects (T83).
+//   - `size` and `order` are honored: `size` bounds each page, and `order`
+//     ("asc"/"desc", default desc) sets the fileCreatedAt direction with id as
+//     the tiebreak — the ordering SearchRepository applies — so a size-limited
+//     desc request yields the newest-taken assets, and a limit-1 request
+//     returns exactly the one the client's early-stop expects (T83).
 //
 // Pagination activates when PageSize is set on the fake person: it overrides
 // the requested size so a test can force a server that pages *smaller* than
@@ -270,9 +270,10 @@ func (f *fakeImmichServer) handleSearchMetadata(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	// Real Immich answers ordered by fileCreatedAt DESC, so the fake must too
-	// for a size-limited response to be meaningful (T83).
-	items := sortedAssetsForSearch(p.Assets)
+	// Real Immich answers ordered by fileCreatedAt (id as tiebreak) in the
+	// requested direction, so the fake must too for a size-limited response to
+	// be meaningful (T83).
+	items := sortedAssetsForSearch(p.Assets, req.Order)
 	nextPage := ""
 	pageSize := len(items)
 	if req.Size != nil {
@@ -310,16 +311,24 @@ func (f *fakeImmichServer) handleSearchMetadata(w http.ResponseWriter, r *http.R
 }
 
 // sortedAssetsForSearch returns the person's assets in the order real Immich's
-// /api/search/metadata returns them: fileCreatedAt DESC, id DESC as the
-// tiebreak (SearchRepository.searchMetadata's ORDER BY). RFC3339 strings sort
+// /api/search/metadata returns them: fileCreatedAt ordered by the request's
+// `order` (asc/desc, default desc), id ordered the same way as the tiebreak —
+// SearchRepository.searchMetadata's ORDER BY. RFC3339 strings sort
 // lexicographically in timestamp order, which is exact for the UTC-form
 // timestamps these tests use.
-func sortedAssetsForSearch(assets []fakeImmichAsset) []fakeImmichAsset {
+func sortedAssetsForSearch(assets []fakeImmichAsset, order string) []fakeImmichAsset {
 	out := make([]fakeImmichAsset, len(assets))
 	copy(out, assets)
+	ascending := order == "asc"
 	sort.SliceStable(out, func(i, j int) bool {
 		if out[i].FileCreatedAt != out[j].FileCreatedAt {
+			if ascending {
+				return out[i].FileCreatedAt < out[j].FileCreatedAt
+			}
 			return out[i].FileCreatedAt > out[j].FileCreatedAt
+		}
+		if ascending {
+			return out[i].ID < out[j].ID
 		}
 		return out[i].ID > out[j].ID
 	})
