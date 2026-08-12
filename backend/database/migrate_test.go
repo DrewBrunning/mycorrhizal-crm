@@ -451,6 +451,115 @@ func TestSearchAddressesMigrationBackfillsExistingRows(t *testing.T) {
 	assert.Equal(t, "Pre", firstname, "a rollback must not destroy the contact")
 }
 
+// TestMigrationsAddPhonesNormalized pins the T69 migration's shape: the
+// denormalized phones_normalized column exists on contacts, and contacts_fts
+// (dropped and recreated by 000020 because FTS5 cannot ALTER TABLE) indexes
+// it so a cross-format phone search can hit.
+func TestMigrationsAddPhonesNormalized(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "search-phones.db")
+	assert.True(t, columnExists(t, dbPath, "contacts", "phones_normalized"),
+		"contacts.phones_normalized must be added by the T69 migration")
+
+	db, err := InitDB(dbPath)
+	require.NoError(t, err)
+	defer func() {
+		sqlDB, err := db.DB()
+		require.NoError(t, err)
+		require.NoError(t, sqlDB.Close())
+	}()
+
+	var sql string
+	require.NoError(t, db.Raw(
+		"SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'contacts_fts'",
+	).Scan(&sql).Error)
+	assert.Contains(t, sql, "phones_normalized",
+		"contacts_fts must index phones_normalized so cross-format phone search works")
+
+	// The FTS triggers must reference the new column too — a trigger that
+	// still used the old column list would silently never index phones.
+	var triggerSQL string
+	require.NoError(t, db.Raw(
+		"SELECT sql FROM sqlite_master WHERE type = 'trigger' AND name = 'contacts_fts_ai'",
+	).Scan(&triggerSQL).Error)
+	assert.Contains(t, triggerSQL, "phones_normalized",
+		"the contacts insert trigger must populate phones_normalized")
+}
+
+// TestPhonesNormalizedMigrationBackfillsExistingRows is the T69 data-safety
+// test: contacts whose phones predate migration 000020 (rows that were never
+// saved through GORM/BeforeSave) must have phones_normalized populated by the
+// migration's own backfill — both the full digit string and the last-10
+// PhoneKey — and become searchable through the rebuilt FTS index without
+// waiting for their next edit.
+func TestPhonesNormalizedMigrationBackfillsExistingRows(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "t69-backfill.db")
+	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
+	require.NoError(t, err)
+	defer sqlDB.Close()
+
+	m, err := newMigrator(sqlDB)
+	require.NoError(t, err)
+	// Apply everything up to but NOT including 000020, so the contact below
+	// genuinely predates the new column.
+	require.NoError(t, m.Steps(19))
+
+	_, err = sqlDB.Exec(
+		"INSERT INTO users (created_at, updated_at, username, password, email) VALUES (datetime('now'), datetime('now'), 't69', 'x', 't69@example.com')")
+	require.NoError(t, err)
+	var userID int64
+	require.NoError(t, sqlDB.QueryRow("SELECT id FROM users WHERE username = 't69'").Scan(&userID))
+
+	// A pre-existing contact with JSON phones, written raw (no GORM, no
+	// BeforeSave), exactly like a row created before this migration shipped.
+	// The +1-prefixed number exercises the >10-digit key token; the plain
+	// second entry exercises a 10-digit number whose key equals its digits.
+	_, err = sqlDB.Exec(`
+		INSERT INTO contacts (created_at, updated_at, firstname, lastname, user_id, vcard_uid, phones)
+		VALUES (datetime('now'), datetime('now'), 'Pre', 'Existing', ?, 'vcard-t69', ?)`,
+		userID, `[{"type":"cell","value":"+18005551234"},{"type":"home","value":"(800) 555-1234"}]`)
+	require.NoError(t, err)
+
+	// Apply exactly 000020 — not m.Up(), which would also run every migration
+	// after it and make the MigrateDown below roll back the wrong one.
+	require.NoError(t, m.Steps(1))
+
+	// The backfill derived phones_normalized from the JSON array (mirroring
+	// models.FlattenPhones: full digit string + last-10 key when it differs).
+	var normalized string
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT phones_normalized FROM contacts WHERE vcard_uid = 'vcard-t69'",
+	).Scan(&normalized))
+	assert.Contains(t, normalized, "18005551234", "backfilled full digit string must be present")
+	assert.Contains(t, normalized, "8005551234", "backfilled PhoneKey token must be present")
+
+	// The migration's own index rebuild makes the phone findable by its key
+	// (the cross-format case) without any additional re-index step.
+	var ftsCount int64
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM contacts_fts WHERE contacts_fts MATCH '8005551234' AND user_id = ?", userID,
+	).Scan(&ftsCount))
+	assert.Equal(t, int64(1), ftsCount, "the migration-rebuilt FTS index must find the backfilled phone by its key")
+
+	// Down: rolling back exactly this migration drops the column and reverts
+	// contacts_fts; the contact's data itself survives. Checked through the
+	// still-open raw connection rather than columnExists, because columnExists
+	// opens via InitDB, which would re-apply the up migration and mask the
+	// rollback.
+	require.NoError(t, MigrateDown(dbPath))
+
+	var colCount int64
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM pragma_table_info('contacts') WHERE name = 'phones_normalized'",
+	).Scan(&colCount))
+	assert.Equal(t, int64(0), colCount, "the down migration must remove contacts.phones_normalized")
+
+	var firstname string
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT firstname FROM contacts WHERE vcard_uid = 'vcard-t69'",
+	).Scan(&firstname))
+	assert.Equal(t, "Pre", firstname, "a rollback must not destroy the contact")
+}
+
 // TestMigrationsAddLifeEventCategories pins the T36 migration's shape: an
 // additive nullable life_events.category column.
 func TestMigrationsAddLifeEventCategories(t *testing.T) {

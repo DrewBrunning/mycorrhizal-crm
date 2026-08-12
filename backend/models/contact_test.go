@@ -587,3 +587,38 @@ func TestFlattenAddresses(t *testing.T) {
 		t.Errorf("FlattenAddresses(all-blank) = %q, want empty", blank)
 	}
 }
+
+// TestFlattenPhones pins the Go-side derivation that feeds the searchable
+// PhonesNormalized column (T69): per entry, the full digit string plus the
+// PhoneKey (last-10-digits) when it differs, joined with a space. Migration
+// 000020's SQL backfill deliberately mirrors this exact shape for pre-existing
+// rows, so this test is what keeps the two from silently diverging (which
+// would make new-contact and pre-existing-contact search behavior differ).
+func TestFlattenPhones(t *testing.T) {
+	phones := []ContactPhone{
+		{Type: "cell", Value: "+18005551234"},   // 11 digits → full + key
+		{Type: "home", Value: "(800) 555-1234"}, // 10 digits → key == full, one token
+	}
+	got := FlattenPhones(phones)
+	want := "18005551234 8005551234 8005551234"
+	if got != want {
+		t.Errorf("FlattenPhones = %q, want %q", got, want)
+	}
+
+	// A short number keys to nothing beyond its digits.
+	if got := FlattenPhones([]ContactPhone{{Type: "cell", Value: "5551"}}); got != "5551" {
+		t.Errorf("FlattenPhones(short) = %q, want %q", got, "5551")
+	}
+
+	// UK trunk-prefix pair collapses to the same key.
+	if got := FlattenPhones([]ContactPhone{{Type: "work", Value: "020 7946 0958"}}); got != "02079460958 2079460958" {
+		t.Errorf("FlattenPhones(uk) = %q, want %q", got, "02079460958 2079460958")
+	}
+
+	if empty := FlattenPhones(nil); empty != "" {
+		t.Errorf("FlattenPhones(nil) = %q, want empty", empty)
+	}
+	if blank := FlattenPhones([]ContactPhone{{Type: "cell", Value: "  "}}); blank != "" {
+		t.Errorf("FlattenPhones(no-digits) = %q, want empty", blank)
+	}
+}

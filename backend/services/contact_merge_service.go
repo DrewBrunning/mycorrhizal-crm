@@ -132,13 +132,13 @@ func unionEmails(a, b []models.ContactEmail) []models.ContactEmail {
 }
 
 // unionPhones unions on (case-insensitive type, canonical phone key) -- reuses
-// PhoneKey (import_service.go, same package) so "phone equality" means the
-// same thing here as it already does for DetectDuplicate's phone-match path.
+// models.PhoneKey so "phone equality" means the same thing here as it already
+// does for DetectDuplicate's phone-match path.
 func unionPhones(a, b []models.ContactPhone) []models.ContactPhone {
 	seen := map[string]bool{}
 	var out []models.ContactPhone
 	add := func(p models.ContactPhone) {
-		phoneKey := PhoneKey(p.Value)
+		phoneKey := models.PhoneKey(p.Value)
 		if phoneKey == "" {
 			out = append(out, p)
 			return

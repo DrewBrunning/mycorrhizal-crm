@@ -10,9 +10,10 @@ import (
 
 // Full-text search over contacts, notes, and interactions (T11 / WP-86,
 // docs/fork-plan/tickets/24-T11-search-fts5.md; addresses added by T38,
-// docs/fork-plan/tickets/47-T38-search-address-fields.md). Backed by FTS5
-// virtual tables kept in sync by triggers (migrations 000007 + 000010); the
-// index is derived data and can be rebuilt at any time via
+// docs/fork-plan/tickets/47-T38-search-address-fields.md; phones added by T69,
+// docs/fork-plan/tickets/113-T69-phone-search-tokenization.md). Backed by FTS5
+// virtual tables kept in sync by triggers (migrations 000007 + 000010 +
+// 000020); the index is derived data and can be rebuilt at any time via
 // RebuildSearchIndex.
 //
 // Contact addresses are searchable through the denormalized
@@ -20,6 +21,14 @@ import (
 // backfilled by migration 000010), indexed into contacts_fts like the other
 // flat fields — the ticket's lowest-friction option, consistent with how the
 // rest of the index works.
+//
+// Contact phones are searchable through the denormalized
+// contacts.phones_normalized column (maintained by Contact.BeforeSave from
+// every Phones[] entry and backfilled by migration 000020), indexed into
+// contacts_fts as each number's full digit string plus its PhoneKey. A
+// phone-shaped query (PhoneQueryTokens) is matched against the same two
+// normalized forms, so a query typed with different punctuation, grouping, or
+// country code than the stored value still finds the contact.
 //
 // Scoping: each FTS row carries user_id (UNINDEXED), and every query filters
 // on it — the highest-risk correctness rule of the ticket, pinned by
@@ -89,6 +98,41 @@ func ftsQuery(term string) string {
 	return strings.Join(quoted, " ")
 }
 
+// PhoneQueryTokens normalizes a phone-shaped query term. It returns the term's
+// full digit string (models.NormalizePhoneDigits) and its PhoneKey, and
+// reports whether the term is phone-shaped at all: mostly digits, with every
+// non-digit character drawn from the ones phone numbers are written with —
+// + ( ) - . / and whitespace. A term like "alice" or "800 flowers" is not
+// phone-shaped, so ordinary text search is untouched. The two-token shape
+// mirrors the phones_normalized index column (T69): a query of the full digits
+// ("18005551234") or of the canonical key ("8005551234") both resolve.
+func PhoneQueryTokens(term string) (digits, key string, ok bool) {
+	digits = models.NormalizePhoneDigits(term)
+	if digits == "" {
+		return "", "", false
+	}
+	for _, r := range term {
+		if r >= '0' && r <= '9' || strings.ContainsRune("+()-./ \t", r) {
+			continue
+		}
+		return "", "", false
+	}
+	return digits, models.PhoneKey(term), true
+}
+
+// phoneFTSMatch builds the FTS5 MATCH expression for a phone-shaped query: an
+// OR of prefix-matches on the query's normalized digit string and its PhoneKey
+// (deduped when they coincide). Because stored numbers are indexed under both
+// tokens (see models.FlattenPhones), a query written in any format finds a
+// contact stored in any other format.
+func phoneFTSMatch(digits, key string) string {
+	tokens := []string{`"` + digits + `"*`}
+	if key != "" && key != digits {
+		tokens = append(tokens, `"`+key+`"*`)
+	}
+	return strings.Join(tokens, " OR ")
+}
+
 // Search runs a full-text query across the user's contacts, notes, and
 // interactions. Empty/whitespace queries return an empty result. A query
 // shorter than two characters also returns empty (avoiding a noisy index
@@ -126,6 +170,18 @@ func Search(db *gorm.DB, userID uint, term string, limit int, householdID *strin
 
 	match := ftsQuery(term)
 
+	// T69: a phone-shaped term is matched against the normalized digit/key
+	// tokens of phones_normalized rather than through the raw-tokenizer path
+	// (which splits "(800) 555-1234" into three tokens that "8005551234"
+	// never prefix-matches). Only the contacts index carries the normalized
+	// column, so only the contacts query gets the phone-shaped expression;
+	// notes and activities keep the plain text match (their raw fields are
+	// not normalized).
+	contactMatch := match
+	if digits, key, ok := PhoneQueryTokens(term); ok {
+		contactMatch = phoneFTSMatch(digits, key)
+	}
+
 	// Optional household scope: restrict contact hits to members of one
 	// household (T11's "everyone in the Smith household").
 	householdClause := ""
@@ -141,7 +197,7 @@ func Search(db *gorm.DB, userID uint, term string, limit int, householdID *strin
 		models.Contact
 		Snippet string
 	}
-	contactArgs := append([]interface{}{match, userID, userID}, householdArgs...)
+	contactArgs := append([]interface{}{contactMatch, userID, userID}, householdArgs...)
 	contactArgs = append(contactArgs, limit)
 	err := db.Raw(`
 		SELECT c.*, snippet(contacts_fts, 0, '…', '…', '…', 20) AS snippet
@@ -231,19 +287,20 @@ func Search(db *gorm.DB, userID uint, term string, limit int, householdID *strin
 
 // RebuildSearchIndex truncates the three FTS virtual tables and re-inserts
 // every live row from the base tables, including the address text in
-// contacts.addresses_flat. Idempotent and re-runnable — call it after any
+// contacts.addresses_flat and the normalized phone tokens in
+// contacts.phones_normalized. Idempotent and re-runnable — call it after any
 // bulk data change that bypassed the triggers (raw SQL migrations,
-// backfills), and to make pre-existing contacts' addresses searchable after
-// migration 000010. Runs in one transaction so a failure cannot leave a
-// half-built index.
+// backfills), and to make pre-existing contacts' addresses/phones searchable
+// after migrations 000010/000020. Runs in one transaction so a failure cannot
+// leave a half-built index.
 func RebuildSearchIndex(db *gorm.DB) error {
 	return db.Transaction(func(tx *gorm.DB) error {
 		for _, stmt := range []string{
 			"DELETE FROM contacts_fts",
 			"DELETE FROM notes_fts",
 			"DELETE FROM activities_fts",
-			`INSERT INTO contacts_fts(rowid, user_id, firstname, lastname, nickname, email, phone, org, addresses_flat)
-			 SELECT id, user_id, firstname, lastname, nickname, email, phone, org, addresses_flat
+			`INSERT INTO contacts_fts(rowid, user_id, firstname, lastname, nickname, email, phone, org, addresses_flat, phones_normalized)
+			 SELECT id, user_id, firstname, lastname, nickname, email, phone, org, addresses_flat, phones_normalized
 			 FROM contacts WHERE deleted_at IS NULL`,
 			`INSERT INTO notes_fts(rowid, user_id, content)
 			 SELECT id, user_id, content

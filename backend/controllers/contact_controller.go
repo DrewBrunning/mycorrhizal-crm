@@ -92,19 +92,40 @@ func CreateContact(c *gin.Context) {
 // filters a contacts query by a free-text term
 func applyContactSearch(query *gorm.DB, searchTerm string) *gorm.DB {
 	like := "%" + searchTerm + "%"
-	return query.Where(
-		"firstname LIKE ? OR lastname LIKE ? OR nickname LIKE ? "+
-			"OR (firstname || ' ' || lastname) LIKE ? OR (nickname || ' ' || lastname) LIKE ? "+
-			"OR email LIKE ? OR phone LIKE ? "+
-			// T38: address text is searchable through the denormalized
-			// addresses_flat column (populated by Contact.BeforeSave and
-			// backfilled by migration 000010), the same flat-column surface
-			// contacts_fts indexes.
-			"OR addresses_flat LIKE ? "+
-			"OR (json_valid(emails) AND EXISTS (SELECT 1 FROM json_each(contacts.emails) WHERE json_extract(json_each.value, '$.value') LIKE ?)) "+
-			"OR (json_valid(phones) AND EXISTS (SELECT 1 FROM json_each(contacts.phones) WHERE json_extract(json_each.value, '$.value') LIKE ?))",
-		like, like, like, like, like, like, like, like, like, like,
-	)
+
+	clause := "firstname LIKE ? OR lastname LIKE ? OR nickname LIKE ? " +
+		"OR (firstname || ' ' || lastname) LIKE ? OR (nickname || ' ' || lastname) LIKE ? " +
+		"OR email LIKE ? OR phone LIKE ? " +
+		// T38: address text is searchable through the denormalized
+		// addresses_flat column (populated by Contact.BeforeSave and
+		// backfilled by migration 000010), the same flat-column surface
+		// contacts_fts indexes.
+		"OR addresses_flat LIKE ? " +
+		"OR (json_valid(emails) AND EXISTS (SELECT 1 FROM json_each(contacts.emails) WHERE json_extract(json_each.value, '$.value') LIKE ?))"
+	args := []interface{}{like, like, like, like, like, like, like, like, like}
+
+	// T69: phone matching goes through the denormalized phones_normalized
+	// column (populated by Contact.BeforeSave from every Phones[] entry,
+	// backfilled by migration 000020). A raw substring match on the normalized
+	// column already covers the flat primary scalar's digits; when the search
+	// term is itself phone-shaped, it is additionally normalized to its digit
+	// string + PhoneKey so punctuation/grouping/country-code differences
+	// between the query and the stored value no longer hide a match.
+	// The flat `phone LIKE ?` clause above is kept for rows that only ever had
+	// the legacy scalar set (their phones JSON, and hence their normalized
+	// column, may be empty).
+	clause += " OR phones_normalized LIKE ?"
+	args = append(args, like)
+	if digits, key, ok := services.PhoneQueryTokens(searchTerm); ok {
+		clause += " OR phones_normalized LIKE ?"
+		args = append(args, "%"+digits+"%")
+		if key != "" && key != digits {
+			clause += " OR phones_normalized LIKE ?"
+			args = append(args, "%"+key+"%")
+		}
+	}
+
+	return query.Where(clause, args...)
 }
 
 func GetContacts(c *gin.Context) {
