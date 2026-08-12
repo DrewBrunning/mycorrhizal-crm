@@ -12,12 +12,11 @@ import CircleTagTriagePage from './CircleTagTriagePage';
 import DataSettingsPage from './DataSettingsPage';
 import HouseholdsPage from './HouseholdsPage';
 import ContactSharesPage from './ContactSharesPage';
-import SearchPage from './SearchPage';
 import AuditPage from './AuditPage';
 import LoginPage from './LoginPage';
 import RegisterPage from './RegisterPage';
 import { getToken, logoutAndRedirect, isAdmin, fetchAndCacheUserInfo } from './auth';
-import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate, Navigate } from 'react-router';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate, Navigate, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import {
   AppBar,
@@ -67,7 +66,7 @@ const drawerWidth = 180;
 // T33 nav classification: which destinations are "primary" (kept as icons in
 // the phone AppBar) and which are "account-level" (collapsed into the account
 // menu). Everything else is secondary and lives in the hamburger drawer.
-const PRIMARY_NAV_PATHS = ['/contacts', '/search', '/notes'];
+const PRIMARY_NAV_PATHS = ['/contacts', '/notes'];
 const ACCOUNT_NAV_PATHS = ['/settings', '/settings/data', '/users'];
 
 // Scroll to top on route change
@@ -79,6 +78,15 @@ function ScrollToTop() {
   }, [pathname]);
 
   return null;
+}
+
+// T86: /search is folded into /contacts, so old bookmarks and deep links to
+// /search?q=X keep working by redirecting to the canonical ?search= form. The
+// `q` param is only ever read here, never written.
+function SearchRedirect() {
+  const [searchParams] = useSearchParams();
+  const q = searchParams.get('q') || '';
+  return <Navigate to={q ? `/contacts?search=${encodeURIComponent(q)}` : '/contacts'} replace />;
 }
 
 // Inner component that can use useLocation (must be inside Router)
@@ -132,7 +140,7 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
 
   const handleSearchSubmit = () => {
     if (searchQuery.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      navigate(`/contacts?search=${encodeURIComponent(searchQuery.trim())}`);
       setSearchQuery('');
       setSearchResults([]);
     }
@@ -145,7 +153,6 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
     const items = [
       { text: t('nav.dashboard'), icon: <DashboardIcon />, path: '/' },
       { text: t('nav.contacts'), icon: <ContactsIcon />, path: '/contacts' },
-      { text: t('nav.search'), icon: <SearchIcon />, path: '/search' },
       { text: t('nav.activities'), icon: <EventNoteIcon />, path: '/activities' },
       { text: t('nav.notes'), icon: <SvgIcon><path d={mdiNotebookOutline} /></SvgIcon>, path: '/notes' },
       { text: t('nav.network'), icon: <SvgIcon><path d={mdiGraphOutline} /></SvgIcon>, path: '/network' },
@@ -165,7 +172,7 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
   // destinations. Each is classified so the mobile AppBar knows where it
   // lives:
   //   primary  — used constantly, kept as visible icons in the AppBar below sm
-  //              (Contacts, Search, Notes)
+  //              (Contacts, Notes)
   //   account  — Settings, Data settings, User Management; collapsed into the
   //              account menu instead of the main nav row
   //   everything else is secondary and lives in the hamburger drawer.
@@ -392,10 +399,6 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
                         onClick={() => {
                           setSearchQuery('');
                           setSearchResults([]);
-                          // Clear search filter if on contacts page
-                          if (location.pathname.startsWith('/contacts')) {
-                            navigate('/contacts');
-                          }
                         }}
                         sx={{ color: 'rgba(255, 255, 255, 0.7)', p: 0.5 }}
                       >
@@ -486,7 +489,7 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
           <Route path="/network" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><NetworkPage /></Suspense>} />
           <Route path="/households" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><HouseholdsPage /></Suspense>} />
           <Route path="/shares" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><ContactSharesPage /></Suspense>} />
-          <Route path="/search" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><SearchPage /></Suspense>} />
+          <Route path="/search" element={<SearchRedirect />} />
           <Route path="/audit" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><AuditPage /></Suspense>} />
           <Route path="/users" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><UsersPage /></Suspense>} />
           <Route path="/api-tokens" element={<Navigate to="/settings" replace />} />

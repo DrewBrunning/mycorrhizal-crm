@@ -2,8 +2,10 @@ import { useState, useCallback } from 'react';
 import { searchAll, SearchResult } from '../api/search';
 import { handleFetchError } from '../utils/errorHandler';
 
-// useSearch backs the global search page (T11): debounced full-text search
-// across contacts, notes, and interactions.
+// useSearch backs the cross-entity (notes/activities) half of search. After
+// T86 the standalone search page is gone; the Contacts page fires this in
+// parallel with the contacts list so note/activity hits stay findable without
+// a second contact list. Debounced at the call site, not here.
 export function useSearch() {
   const [result, setResult] = useState<SearchResult | null>(null);
   const [loading, setLoading] = useState(false);
