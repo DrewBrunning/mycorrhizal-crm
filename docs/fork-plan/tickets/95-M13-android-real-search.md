@@ -1,5 +1,15 @@
 # M13 — Real full-text search on Android
 
+> **SUPERSEDED by [T87](131-T87-android-fold-search-into-contact-list.md), 2026-08-12.** Not dropped —
+> the capability below is still wanted, but its destination changed. This ticket specifies a separate
+> search screen mirroring `SearchPage.tsx`; [T86](130-T86-web-fold-search-into-contacts.md) deletes
+> `SearchPage.tsx` and folds web's search into the Contacts list, so building M13 as written would
+> ship an Android screen that exists nowhere else. T87 delivers the same payload — server-side FTS5
+> across contacts/notes/activities with synonym resolution — into the contact list instead, and
+> carries this file's endpoint contract, test cases and test conventions over. **Implement T87, not
+> this.** Kept for provenance; the "Leave the existing contact-list-embedded naive search bar as-is"
+> instruction below is explicitly reversed by T87.
+
 | | |
 |---|---|
 | **Platform** | Android |
