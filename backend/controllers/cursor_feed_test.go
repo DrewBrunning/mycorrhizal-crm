@@ -84,6 +84,15 @@ func TestNameCursorEncodeDecodeRoundTrip(t *testing.T) {
 		assert.Equal(t, "smith", cur.SortName, "sort name must survive the round trip")
 		assert.Equal(t, fmt.Sprint(id), cur.ID, "id must survive the round trip")
 	}
+
+	// A sort name containing the "|" delimiter must still round-trip: the id
+	// is always the trailing numeric component, so the split must be on the
+	// LAST delimiter, not the first.
+	raw := EncodeNameCursor("a|b|c", uint(9))
+	cur, err := DecodeNameCursor(raw)
+	require.NoError(t, err)
+	assert.Equal(t, "a|b|c", cur.SortName, "a sort name containing the delimiter must round-trip intact")
+	assert.Equal(t, "9", cur.ID)
 }
 
 // TestNameCursorDecodeRejectsMalformed pins the T73 400 path for the name

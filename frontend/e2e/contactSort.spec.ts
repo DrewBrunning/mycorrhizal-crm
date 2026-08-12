@@ -28,19 +28,20 @@ test.describe('Contacts list name sort (T73)', () => {
     ]);
 
     try {
-      const asc = await fetchNameSorted(request, 'asc', 50);
-      const ours = asc.filter((c) => c.firstname.startsWith(`E2EFixtureT73Sort`));
+      // search= isolates this spec's contacts so the assertions can't be
+      // pushed off the page by the many other contacts a full parallel run
+      // creates at the same time.
+      const asc = await fetchNameSorted(request, 'asc', 'E2EFixtureT73Sort');
       const byKey = (c: { firstname: string; lastname?: string }) =>
         (c.lastname || '').trim().toLowerCase() || c.firstname.trim().toLowerCase();
 
-      expect(ours.map((c) => byKey(c))).toEqual(
+      expect(asc.map((c) => byKey(c))).toEqual(
         created.map((c) => byKey(c)).sort(),
         'ascending name sort must order by lower(trim(lastname)) else lower(trim(firstname))'
       );
 
-      const desc = await fetchNameSorted(request, 'desc', 50);
-      const oursDesc = desc.filter((c) => c.firstname.startsWith(`E2EFixtureT73Sort`));
-      expect(oursDesc.map((c) => byKey(c))).toEqual(
+      const desc = await fetchNameSorted(request, 'desc', 'E2EFixtureT73Sort');
+      expect(desc.map((c) => byKey(c))).toEqual(
         created.map((c) => byKey(c)).sort().reverse(),
         'descending name sort must reverse the ascending order'
       );
@@ -52,8 +53,9 @@ test.describe('Contacts list name sort (T73)', () => {
   test('pages through a name-sorted list returning every contact exactly once', async ({ request }) => {
     const ts = Date.now();
     // Two contacts share a lastname (a sort_name tie — the case the id
-    // tiebreak exists for); one has no lastname at all. limit=2 forces the
-    // page boundaries through and inside the tie run.
+    // tiebreak exists for); one has no lastname at all. limit=3 makes the
+    // tied pair straddle a page boundary (one ends page 1, the other starts
+    // page 2), so the id tiebreak is what keeps them ordered across pages.
     const created = await Promise.all([
       createTestContact(request, { firstname: `E2EFixtureT73PageA${ts}`, lastname: 'T73Shared' }),
       createTestContact(request, { firstname: `E2EFixtureT73PageB${ts}`, lastname: 'T73Alpha' }),
@@ -62,25 +64,24 @@ test.describe('Contacts list name sort (T73)', () => {
     ]);
 
     try {
-      const walked = await walkNameSortedPages(request, 'asc', 2);
-      const ours = walked.filter((c) => c.firstname.startsWith('E2EFixtureT73Page'));
+      const walked = await walkNameSortedPages(request, 'asc', 3, 'E2EFixtureT73Page');
 
-      expect(ours.length).toBe(4);
+      expect(walked.length).toBe(4);
       // Exactly once each.
-      const ids = ours.map((c) => c.id);
+      const ids = walked.map((c) => c.id);
       expect(new Set(ids).size).toBe(4);
 
       // In (sort_key, id) order — the id tiebreak inside the Shared run.
       const byKey = (c: { firstname: string; lastname?: string }) =>
         (c.lastname || '').trim().toLowerCase() || c.firstname.trim().toLowerCase();
-      const expected = [...ours].sort((a, b) => {
+      const expected = [...walked].sort((a, b) => {
         const ka = byKey(a);
         const kb = byKey(b);
         if (ka < kb) return -1;
         if (ka > kb) return 1;
         return a.id - b.id;
       });
-      expect(ours.map((c) => c.id)).toEqual(expected.map((c) => c.id));
+      expect(walked.map((c) => c.id)).toEqual(expected.map((c) => c.id));
     } finally {
       for (const c of created) await deleteTestContact(request, c.ID);
     }
@@ -123,9 +124,11 @@ test.describe('Contacts list name sort (T73)', () => {
 async function fetchNameSorted(
   request: import('@playwright/test').APIRequestContext,
   order: 'asc' | 'desc',
-  limit: number
+  search: string
 ): Promise<Array<{ id: number; firstname: string; lastname?: string }>> {
-  const response = await request.get(`${API_BASE_URL}/contacts?sort=name&order=${order}&limit=${limit}`);
+  const response = await request.get(
+    `${API_BASE_URL}/contacts?sort=name&order=${order}&limit=100&search=${encodeURIComponent(search)}`
+  );
   expect(response.ok()).toBeTruthy();
   const body = await response.json();
   return body.contacts;
@@ -134,12 +137,13 @@ async function fetchNameSorted(
 async function walkNameSortedPages(
   request: import('@playwright/test').APIRequestContext,
   order: 'asc' | 'desc',
-  limit: number
+  limit: number,
+  search: string
 ): Promise<Array<{ id: number; firstname: string; lastname?: string }>> {
   const all: Array<{ id: number; firstname: string; lastname?: string }> = [];
   let cursor = '';
   for (let page = 0; page < 20; page++) {
-    const query = `sort=name&order=${order}&limit=${limit}${cursor ? `&cursor=${cursor}` : ''}`;
+    const query = `sort=name&order=${order}&limit=${limit}&search=${encodeURIComponent(search)}${cursor ? `&cursor=${cursor}` : ''}`;
     const response = await request.get(`${API_BASE_URL}/contacts?${query}`);
     expect(response.ok()).toBeTruthy();
     const body = await response.json();

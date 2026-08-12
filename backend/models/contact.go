@@ -258,6 +258,12 @@ func FlattenPhones(phones []ContactPhone) string {
 // deliberately mirrors this exact shape for pre-existing rows, so this
 // testable function is what keeps new-contact and pre-existing-contact sort
 // behavior from silently diverging.
+//
+// Note: strings.ToLower folds Unicode, while SQLite's built-in lower() in the
+// migration backfill is ASCII-only — so for a non-ASCII name the two paths
+// produce slightly different sort keys until the contact is next saved. That
+// is a cosmetic ordering difference only (pagination stays total, see the
+// migration's KNOWN LIMITATION note), not a correctness problem.
 func DeriveSortName(lastname, firstname string) string {
 	if trimmed := strings.TrimSpace(lastname); trimmed != "" {
 		return strings.ToLower(trimmed)

@@ -22,6 +22,15 @@
 -- here for rows that predate the migration and will never be re-saved.
 -- Not added to contacts_fts: sort_name is for ordering, not search.
 --
+-- KNOWN LIMITATION: SQLite's built-in lower() only folds ASCII A–Z, so a
+-- non-ASCII name (e.g. "Öberg") is NOT lowercased by this backfill the way
+-- Go's strings.ToLower in DeriveSortName lowercases it on save. The two paths
+-- therefore order such a name slightly differently until its next save. This
+-- is cosmetic only — each row's sort_name is a single value compared under
+-- the same BINARY collation by both the ORDER BY and the cursor predicate,
+-- so pagination stays total — and it affects no correct behavior; an ICU
+-- build (needed for Unicode case-folding in SQL) is out of scope.
+--
 -- The index mirrors the (user_id, updated_at, id) feed-index pattern
 -- (idx_contacts_feed): a name-sorted page is ordered by
 -- (sort_name, id) under a user scope, so it needs the same composite shape

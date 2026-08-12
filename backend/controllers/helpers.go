@@ -213,19 +213,25 @@ func EncodeNameCursor(sortName string, id any) string {
 // minted by an updated_at-sorted request fails loudly here instead of being
 // silently treated as a sort name and matching nothing — the same explicit
 // failure DecodeCursor gives a name-shaped cursor in the other direction.
+//
+// The separator is the LAST "|", not the first: the id is always the trailing
+// numeric component, so a (pathological but legal) sort name that itself
+// contains the delimiter still round-trips instead of being mis-split.
 func DecodeNameCursor(raw string) (*NameCursor, error) {
 	decoded, err := base64.RawURLEncoding.DecodeString(raw)
 	if err != nil {
 		return nil, errors.New("cursor is not valid base64url")
 	}
-	parts := strings.SplitN(string(decoded), "|", 2)
-	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+	s := string(decoded)
+	sep := strings.LastIndex(s, "|")
+	if sep <= 0 || sep == len(s)-1 {
 		return nil, errors.New("cursor is malformed")
 	}
-	if _, err := time.Parse(time.RFC3339Nano, parts[0]); err == nil {
+	sortName := s[:sep]
+	if _, err := time.Parse(time.RFC3339Nano, sortName); err == nil {
 		return nil, errors.New("cursor is a time-based cursor; expected a name-sorted cursor")
 	}
-	return &NameCursor{SortName: parts[0], ID: parts[1]}, nil
+	return &NameCursor{SortName: sortName, ID: s[sep+1:]}, nil
 }
 
 // CursorParams is the sanitized set of pagination controls shared by every
