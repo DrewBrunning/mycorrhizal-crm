@@ -134,19 +134,51 @@ function fullDateFromPartial(d: PartialDate): string | undefined {
 // unit (a titled, bordered card); SectionGroup is the anchor a jump-nav link
 // scrolls to; ContactJumpNav is the sticky in-page menu that keeps "which
 // section is this under" from becoming "scroll past everything else".
-function SectionGroup({ id, children }: { id: string; children: ReactNode }) {
+// T74 Level 2: twoColumn lays a section's PanelCards out 2-up at lg+ (the
+// "people", "timeline" and "cadence" sections opt in below) via a grid
+// inside the section, not masonry across the page -- so every section stays
+// a full-width block and T31's anchor targets / scrollMarginTop keep working
+// unchanged. Sections that omit it (overview, gifts, external-links,
+// attachments) stay exactly as they render today.
+function SectionGroup({ id, twoColumn, children }: { id: string; twoColumn?: boolean; children: ReactNode }) {
   return (
     // scrollMarginTop must clear the AppBar (64) plus the sticky jump nav (~40)
     // so an anchor click lands a section's title below the nav, not under it.
-    <Box component="section" id={id} sx={{ scrollMarginTop: 112, mb: 1 }}>
+    <Box
+      component="section"
+      id={id}
+      sx={{
+        scrollMarginTop: 112,
+        mb: 1,
+        ...(twoColumn && {
+          display: 'grid',
+          gridTemplateColumns: { xs: '1fr', lg: 'repeat(2, 1fr)' },
+          columnGap: 3,
+          alignItems: 'start',
+        }),
+      }}
+    >
       {children}
     </Box>
   );
 }
 
-function PanelCard({ title, actions, children }: { title: string; actions?: ReactNode; children: ReactNode }) {
+function PanelCard({
+  title,
+  actions,
+  children,
+  fullWidth,
+}: {
+  title: string;
+  actions?: ReactNode;
+  children: ReactNode;
+  // T74: for a card that needs the section's full width even inside a
+  // twoColumn SectionGroup (a graph, the merged timeline) -- a no-op unless
+  // the parent SectionGroup is actually a grid.
+  fullWidth?: boolean;
+}) {
   return (
-    <Card sx={{ mb: 2 }}>
+    <Card sx={{ mb: 2, ...(fullWidth && { gridColumn: { lg: '1 / -1' } }) }}>
       <CardContent sx={{ py: 2 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1 }}>
           <Typography variant="subtitle1" component="h3" sx={{ fontWeight: 600 }}>
@@ -1419,7 +1451,7 @@ export default function ContactDetailPage() {
       </SectionGroup>
 
       {/* People — relationships + connections/graph */}
-      <SectionGroup id="people">
+      <SectionGroup id="people" twoColumn>
         <PanelCard
           title={t('relationships.title')}
           actions={
@@ -1439,15 +1471,21 @@ export default function ContactDetailPage() {
             onReject={handleRejectSuggestion}
           />
         </PanelCard>
-        <PanelCard title={t('connections.title')}>
+        {/* fullWidth: the force-graph needs real width to be usable, so it
+            gets its own full-width row below Relationships rather than
+            squeezing into a ~530px column. */}
+        <PanelCard title={t('connections.title')} fullWidth>
           <ConnectionsPanel contactUid={record.uid} />
         </PanelCard>
       </SectionGroup>
 
       {/* Timeline — merged timeline, life events, conversation agenda */}
-      <SectionGroup id="timeline">
+      <SectionGroup id="timeline" twoColumn>
+        {/* fullWidth: "the merged timeline" per T74's design -- Life Events
+            and Conversation Agenda pair up 2-up in the row below it instead. */}
         <PanelCard
           title={t('contactDetail.timeline')}
+          fullWidth
           actions={
             // PanelCard lays title/actions out with justify-content: space-between;
             // a bare fragment here made Add Note/Add Activity two more flex
@@ -1508,7 +1546,7 @@ export default function ContactDetailPage() {
       </SectionGroup>
 
       {/* Cadence & follow-up — cadence policy + upcoming reminders */}
-      <SectionGroup id="cadence">
+      <SectionGroup id="cadence" twoColumn>
         <PanelCard title={t('cadence.title')}>
           <CadencePanel
             policy={cadencePolicy}

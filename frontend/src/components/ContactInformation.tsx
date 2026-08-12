@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useState } from 'react';
+import { useMemo, useEffect, useState, ReactNode } from 'react';
 import { Card, CardContent, Divider, Stack, Box, Typography, SvgIcon, IconButton, Tooltip, Collapse, Button } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import EmailIcon from '@mui/icons-material/Email';
@@ -99,13 +99,23 @@ const cloneValues = <T extends object>(v: T[]): T[] => v.map((x) => ({ ...x }));
 
 // Small section headings for the General Info tab, matching the caption-style
 // group labels the header uses for circles/tags.
+// T74: always spans both of Level 1's grid columns at lg+ -- a heading
+// belongs above the fields it introduces, not squeezed into one column
+// beside them. Harmless below lg, where the parent isn't a grid.
 const SectionHeading = ({ label }: { label: string }) => (
-  <Box sx={{ pt: 1 }}>
+  <Box sx={{ pt: 1, gridColumn: { lg: '1 / -1' } }}>
     <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 0.08, fontSize: '0.72rem' }}>
       {label}
     </Typography>
     <Divider sx={{ mt: 0.5 }} />
   </Box>
+);
+
+// T74 Level 1: wraps a field whose editor is too wide/tall to share a
+// ~530px column with its neighbor (multi-line text, SpeakToAs' two lists,
+// card notes) so it spans both grid columns instead of narrowing.
+const FullSpanField = ({ children }: { children: ReactNode }) => (
+  <Box sx={{ gridColumn: { lg: '1 / -1' } }}>{children}</Box>
 );
 
 export default function ContactInformation({
@@ -523,7 +533,21 @@ export default function ContactInformation({
   return (
     <Card sx={{ minWidth: 0 }}>
       <CardContent sx={{ py: 2 }}>
-        <Stack spacing={2}>
+        {/* T74 Level 1: two-column field-row grid at lg+ so a field's action
+            cluster lands ~530px from its value instead of ~1136px. A plain
+            Box with gridAutoFlow: 'row' (the default) preserves the current
+            top-to-bottom, left-to-right field order -- gap replaces Stack's
+            margin-based spacing, so this can't double up with it. Below lg
+            it's a single column, byte-identical to today. */}
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', lg: 'repeat(2, 1fr)' },
+            columnGap: 3,
+            rowGap: 2,
+            alignItems: 'start',
+          }}
+        >
           {showAbout && <SectionHeading label={t('contactDetail.section.about')} />}
 
           {isOn('birthday') && (
@@ -760,22 +784,24 @@ export default function ContactInformation({
           )}
 
           {isOn('speakToAs') && (
-            <EditableArrayField<CardSpeakToAs>
-              icon={<BadgeIcon sx={iconSx} />}
-              label={t('contacts.speakToAsLabel')}
-              value={card.speakToAs || { grammaticalGenders: [], pronouns: [] }}
-              cloneValue={(v) => ({
-                grammaticalGenders: (v.grammaticalGenders || []).map((g) => ({ ...g })),
-                pronouns: (v.pronouns || []).map((p) => ({ ...p })),
-              })}
-              renderDisplay={renderSpeakToAs}
-              renderEditor={(draft, setDraft) => (
-                <SpeakToAsEditor value={draft} onChange={setDraft} />
-              )}
-              onSave={(draft) => onUpdateCard({
-                speakToAs: draft.pronouns?.length || draft.grammaticalGenders?.length ? draft : undefined,
-              })}
-            />
+            <FullSpanField>
+              <EditableArrayField<CardSpeakToAs>
+                icon={<BadgeIcon sx={iconSx} />}
+                label={t('contacts.speakToAsLabel')}
+                value={card.speakToAs || { grammaticalGenders: [], pronouns: [] }}
+                cloneValue={(v) => ({
+                  grammaticalGenders: (v.grammaticalGenders || []).map((g) => ({ ...g })),
+                  pronouns: (v.pronouns || []).map((p) => ({ ...p })),
+                })}
+                renderDisplay={renderSpeakToAs}
+                renderEditor={(draft, setDraft) => (
+                  <SpeakToAsEditor value={draft} onChange={setDraft} />
+                )}
+                onSave={(draft) => onUpdateCard({
+                  speakToAs: draft.pronouns?.length || draft.grammaticalGenders?.length ? draft : undefined,
+                })}
+              />
+            </FullSpanField>
           )}
 
           {showProfessional && <SectionHeading label={t('contactDetail.section.professional')} />}
@@ -843,70 +869,78 @@ export default function ContactInformation({
           )}
 
           {isOn('work_information') && (
-            <EditableField
-              icon={<WorkIcon sx={{ ...iconSx, mt: 0.5 }} />}
-              label={t('contactDetail.workInfo')}
-              field="work_information"
-              value={crm.work_information || ''}
-              multiline
-              isEditing={editingField === 'work_information'}
-              editValue={editValue}
-              validationError={validationError}
-              onEditStart={onEditStart}
-              onEditCancel={onEditCancel}
-              onEditSave={onEditSave}
-              onEditValueChange={onEditValueChange}
-            />
+            <FullSpanField>
+              <EditableField
+                icon={<WorkIcon sx={{ ...iconSx, mt: 0.5 }} />}
+                label={t('contactDetail.workInfo')}
+                field="work_information"
+                value={crm.work_information || ''}
+                multiline
+                isEditing={editingField === 'work_information'}
+                editValue={editValue}
+                validationError={validationError}
+                onEditStart={onEditStart}
+                onEditCancel={onEditCancel}
+                onEditSave={onEditSave}
+                onEditValueChange={onEditValueChange}
+              />
+            </FullSpanField>
           )}
 
           {showNotes && <SectionHeading label={t('contactDetail.section.notes')} />}
 
           {isOn('cardNotes') && (
-            <EditableArrayField<CardNote[]>
-              icon={<SvgIcon sx={iconSx}><path d={mdiNoteMultipleOutline} /></SvgIcon>}
-              label={t('contacts.cardNotesLabel')}
-              value={card.notes || []}
-              cloneValue={(v) => v.map((x) => ({ ...x, author: x.author ? { ...x.author } : undefined }))}
-              renderDisplay={renderCardNotes}
-              renderEditor={(draft, setDraft) => (
-                <CardNotesEditor label={t('contacts.cardNotesLabel')} value={draft} onChange={setDraft} />
-              )}
-              onSave={(draft) => onUpdateCard({ notes: draft.length ? draft : undefined })}
-            />
+            <FullSpanField>
+              <EditableArrayField<CardNote[]>
+                icon={<SvgIcon sx={iconSx}><path d={mdiNoteMultipleOutline} /></SvgIcon>}
+                label={t('contacts.cardNotesLabel')}
+                value={card.notes || []}
+                cloneValue={(v) => v.map((x) => ({ ...x, author: x.author ? { ...x.author } : undefined }))}
+                renderDisplay={renderCardNotes}
+                renderEditor={(draft, setDraft) => (
+                  <CardNotesEditor label={t('contacts.cardNotesLabel')} value={draft} onChange={setDraft} />
+                )}
+                onSave={(draft) => onUpdateCard({ notes: draft.length ? draft : undefined })}
+              />
+            </FullSpanField>
           )}
 
           {isOn('how_we_met') && (
-            <EditableField
-              icon={<PeopleIcon sx={{ ...iconSx, mt: 0.5 }} />}
-              label={t('contactDetail.howWeMet')}
-              field="how_we_met"
-              value={crm.how_we_met || ''}
-              multiline
-              isEditing={editingField === 'how_we_met'}
-              editValue={editValue}
-              validationError={validationError}
-              onEditStart={onEditStart}
-              onEditCancel={onEditCancel}
-              onEditSave={onEditSave}
-              onEditValueChange={onEditValueChange}
-            />
+            <FullSpanField>
+              <EditableField
+                icon={<PeopleIcon sx={{ ...iconSx, mt: 0.5 }} />}
+                label={t('contactDetail.howWeMet')}
+                field="how_we_met"
+                value={crm.how_we_met || ''}
+                multiline
+                isEditing={editingField === 'how_we_met'}
+                editValue={editValue}
+                validationError={validationError}
+                onEditStart={onEditStart}
+                onEditCancel={onEditCancel}
+                onEditSave={onEditSave}
+                onEditValueChange={onEditValueChange}
+              />
+            </FullSpanField>
           )}
 
           {isOn('contact_information') && (
-            <EditableField
-              icon={<SvgIcon sx={{ ...iconSx, mt: 0.5 }}><path d={mdiNoteMultipleOutline} /></SvgIcon>}
-              label={t('contactDetail.additionalInfo')}
-              field="contact_information"
-              value={crm.contact_information || ''}
-              multiline
-              isEditing={editingField === 'contact_information'}
-              editValue={editValue}
-              validationError={validationError}
-              onEditStart={onEditStart}
-              onEditCancel={onEditCancel}
-              onEditSave={onEditSave}
-              onEditValueChange={onEditValueChange}
-            />
+            <FullSpanField>
+              <EditableField
+                icon={<SvgIcon sx={{ ...iconSx, mt: 0.5 }}><path d={mdiNoteMultipleOutline} /></SvgIcon>}
+                label={t('contactDetail.additionalInfo')}
+                field="contact_information"
+                value={crm.contact_information || ''}
+                multiline
+                isEditing={editingField === 'contact_information'}
+                editValue={editValue}
+                validationError={validationError}
+                onEditStart={onEditStart}
+                onEditCancel={onEditCancel}
+                onEditSave={onEditSave}
+                onEditValueChange={onEditValueChange}
+              />
+            </FullSpanField>
           )}
 
           {/* Custom Fields (v2, T6/T7): one row per FieldDefinition, rendered
@@ -927,7 +961,7 @@ export default function ContactInformation({
               and Add-dialog use for language/contact-kind. Collapsible because
               these lists can grow arbitrarily large (v0.4.1). */}
           {showMetadata && (
-            <Box>
+            <Box sx={{ gridColumn: { lg: '1 / -1' } }}>
               <Button
                 fullWidth
                 onClick={() => setMetadataExpanded((v) => !v)}
@@ -963,7 +997,7 @@ export default function ContactInformation({
               </Collapse>
             </Box>
           )}
-        </Stack>
+        </Box>
       </CardContent>
     </Card>
   );
