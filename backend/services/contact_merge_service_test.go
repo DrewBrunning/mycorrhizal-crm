@@ -32,17 +32,72 @@ func TestComputeContactMergeResolution_EmailDedupCaseInsensitive(t *testing.T) {
 }
 
 func TestComputeContactMergeResolution_PhoneDedupByNormalizedDigits(t *testing.T) {
-	// normalizePhoneForComparison strips non-digit punctuation but does not
-	// reconcile an explicit country code against its absence -- these two
-	// forms carry the same digit sequence and formatting only, matching
-	// exactly what normalizePhoneForComparison already treats as equal for
-	// DetectDuplicate's own phone-match path.
 	keeper := &models.Contact{Phones: []models.ContactPhone{{Type: "mobile", Value: "(555) 123-4567"}}}
 	loser := &models.Contact{Phones: []models.ContactPhone{{Type: "mobile", Value: "5551234567"}}}
 
 	res := ComputeContactMergeResolution(keeper, loser)
 
-	assert.Len(t, res.Phones, 1, "phones equal after normalizePhoneForComparison must dedup")
+	assert.Len(t, res.Phones, 1, "phones equal after PhoneKey normalization must dedup")
+}
+
+func TestComputeContactMergeResolution_PhoneDedupByCountryCodeReconciliation(t *testing.T) {
+	keeper := &models.Contact{Phones: []models.ContactPhone{{Type: "cell", Value: "+18005551234"}}}
+	loser := &models.Contact{Phones: []models.ContactPhone{{Type: "cell", Value: "(800) 555-1234"}}}
+
+	res := ComputeContactMergeResolution(keeper, loser)
+
+	assert.Len(t, res.Phones, 1, "+18005551234 and (800) 555-1234 share the same last-10-digit key and must dedup")
+	assert.Equal(t, "+18005551234", res.Phones[0].Value, "keeper's value wins")
+}
+
+func TestComputeContactMergeResolution_PhoneThreeWayCountryCodeReconciliation(t *testing.T) {
+	keeper := &models.Contact{Phones: []models.ContactPhone{
+		{Type: "cell", Value: "800-555-1234"},
+	}}
+	loser := &models.Contact{Phones: []models.ContactPhone{
+		{Type: "cell", Value: "+18005551234"},
+		{Type: "cell", Value: "(800) 555-1234"},
+	}}
+
+	res := ComputeContactMergeResolution(keeper, loser)
+
+	assert.Len(t, res.Phones, 1, "all three forms — 800-555-1234, +18005551234, (800) 555-1234 — must collapse to one")
+}
+
+func TestComputeContactMergeResolution_PhoneDedupUkTrunkPrefix(t *testing.T) {
+	keeper := &models.Contact{Phones: []models.ContactPhone{{Type: "work", Value: "+44 20 7946 0958"}}}
+	loser := &models.Contact{Phones: []models.ContactPhone{{Type: "work", Value: "020 7946 0958"}}}
+
+	res := ComputeContactMergeResolution(keeper, loser)
+
+	assert.Len(t, res.Phones, 1, "UK number with and without international prefix must dedup via last-10-digit key")
+}
+
+func TestComputeContactMergeResolution_PhoneTooShortDoesNotMatch(t *testing.T) {
+	keeper := &models.Contact{Phones: []models.ContactPhone{{Type: "cell", Value: "5551234"}}}
+	loser := &models.Contact{Phones: []models.ContactPhone{{Type: "cell", Value: "9001234"}}}
+
+	res := ComputeContactMergeResolution(keeper, loser)
+
+	assert.Len(t, res.Phones, 2, "numbers below 7 digits must not match each other through an empty key")
+}
+
+func TestComputeContactMergeResolution_PhoneTooShortDoesNotMatchLong(t *testing.T) {
+	keeper := &models.Contact{Phones: []models.ContactPhone{{Type: "cell", Value: "5551234"}}}
+	loser := &models.Contact{Phones: []models.ContactPhone{{Type: "cell", Value: "800-555-1234"}}}
+
+	res := ComputeContactMergeResolution(keeper, loser)
+
+	assert.Len(t, res.Phones, 2, "a too-short number must not match a valid 10-digit number")
+}
+
+func TestComputeContactMergeResolution_PhoneEmptyKeyDoesNotMatchEmptyKey(t *testing.T) {
+	keeper := &models.Contact{Phones: []models.ContactPhone{{Type: "cell", Value: "1234"}}}
+	loser := &models.Contact{Phones: []models.ContactPhone{{Type: "cell", Value: "567"}}}
+
+	res := ComputeContactMergeResolution(keeper, loser)
+
+	assert.Len(t, res.Phones, 2, "two numbers both too short to key must not compare equal through a shared empty string")
 }
 
 func TestComputeContactMergeResolution_ScalarOnlyOneSideSet(t *testing.T) {

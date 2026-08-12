@@ -139,3 +139,114 @@ func TestMergeImportedContact_RealDB_CSV(t *testing.T) {
 	require.NoError(t, db.Model(&models.Gift{}).Where("entity_id = ?", existing.VCardUID).Count(&reachableGifts).Error)
 	assert.Equal(t, int64(1), reachableGifts)
 }
+
+func TestDetectDuplicate_PhoneKeyCountryCode(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "dedup-phonekey.db")
+	db, err := database.InitDB(dbPath)
+	require.NoError(t, err)
+
+	user := models.User{Username: "dedup-phonekey", Password: "password123!A", Email: "dedup-phonekey@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	existing := models.Contact{
+		UserID:    user.ID,
+		Firstname: "Alice",
+		Lastname:  "Test",
+		Phone:     "+18005551234",
+		Phones:    []models.ContactPhone{{Type: "cell", Value: "+18005551234"}},
+	}
+	require.NoError(t, db.Create(&existing).Error)
+
+	match := DetectDuplicate(db, user.ID, "Alice", "Different", "someone@test.com", "(800) 555-1234")
+	require.NotNil(t, match, "DetectDuplicate must reconcile +18005551234 with (800) 555-1234")
+	assert.Equal(t, existing.ID, match.ExistingContactID)
+	assert.Equal(t, "phone", match.MatchReason)
+}
+
+func TestDetectDuplicate_PhoneUkTrunkPrefix(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "dedup-uk.db")
+	db, err := database.InitDB(dbPath)
+	require.NoError(t, err)
+
+	user := models.User{Username: "dedup-uk", Password: "password123!A", Email: "dedup-uk@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	existing := models.Contact{
+		UserID:    user.ID,
+		Firstname: "Bob",
+		Lastname:  "UK",
+		Phone:     "+44 20 7946 0958",
+		Phones:    []models.ContactPhone{{Type: "work", Value: "+44 20 7946 0958"}},
+	}
+	require.NoError(t, db.Create(&existing).Error)
+
+	match := DetectDuplicate(db, user.ID, "Bob", "Different", "someone@test.com", "020 7946 0958")
+	require.NotNil(t, match, "DetectDuplicate must reconcile UK +44 prefix with trunk 0")
+	assert.Equal(t, existing.ID, match.ExistingContactID)
+	assert.Equal(t, "phone", match.MatchReason)
+}
+
+func TestDetectDuplicate_PhoneTooShortNoMatch(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "dedup-short.db")
+	db, err := database.InitDB(dbPath)
+	require.NoError(t, err)
+
+	user := models.User{Username: "dedup-short", Password: "password123!A", Email: "dedup-short@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	existing := models.Contact{
+		UserID:    user.ID,
+		Firstname: "Carol",
+		Lastname:  "Short",
+		Phone:     "5551234",
+		Phones:    []models.ContactPhone{{Type: "cell", Value: "5551234"}},
+	}
+	require.NoError(t, db.Create(&existing).Error)
+
+	match := DetectDuplicate(db, user.ID, "Different", "Name", "someone@test.com", "1234")
+	assert.Nil(t, match, "too-short phone must not match any existing contact")
+}
+
+func TestDetectDuplicate_PhoneTooShortDoesNotMatchOtherShort(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "dedup-twoshort.db")
+	db, err := database.InitDB(dbPath)
+	require.NoError(t, err)
+
+	user := models.User{Username: "dedup-twoshort", Password: "password123!A", Email: "dedup-twoshort@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	existing := models.Contact{
+		UserID:    user.ID,
+		Firstname: "Dave",
+		Lastname:  "First",
+		Phone:     "5551",
+		Phones:    []models.ContactPhone{{Type: "cell", Value: "5551"}},
+	}
+	require.NoError(t, db.Create(&existing).Error)
+
+	match := DetectDuplicate(db, user.ID, "Dave", "Altered", "", "1234")
+	assert.Nil(t, match, "two too-short numbers must not match through shared empty key")
+}
+
+func TestDetectDuplicate_PhonePunctuationNormalization(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "dedup-punct.db")
+	db, err := database.InitDB(dbPath)
+	require.NoError(t, err)
+
+	user := models.User{Username: "dedup-punct", Password: "password123!A", Email: "dedup-punct@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	existing := models.Contact{
+		UserID:    user.ID,
+		Firstname: "Eve",
+		Lastname:  "Punct",
+		Phone:     "800-555-1234",
+		Phones:    []models.ContactPhone{{Type: "cell", Value: "800-555-1234"}},
+	}
+	require.NoError(t, db.Create(&existing).Error)
+
+	match := DetectDuplicate(db, user.ID, "Eve", "Other", "someone@test.com", "800.555.1234")
+	require.NotNil(t, match, "punctuation-only differences must still match")
+	assert.Equal(t, existing.ID, match.ExistingContactID)
+	assert.Equal(t, "phone", match.MatchReason)
+}

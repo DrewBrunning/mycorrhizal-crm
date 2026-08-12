@@ -724,7 +724,32 @@ func NormalizeGender(input string) string {
 	}
 }
 
-// normalizePhoneForComparison removes all non-digit characters from a phone number for comparison
+// PhoneKey reduces a phone number to a canonical comparison key: its digits,
+// keeping at most the last 10. Two numbers with the same key are treated as
+// the same number. Returns "" for anything with fewer than 7 digits so that
+// short/extension-like values never collapse onto each other through a shared
+// empty key.
+func PhoneKey(phone string) string {
+	var digits strings.Builder
+	for _, r := range phone {
+		if r >= '0' && r <= '9' {
+			digits.WriteRune(r)
+		}
+	}
+	normalized := digits.String()
+	if len(normalized) < 7 {
+		return ""
+	}
+	if len(normalized) > 10 {
+		normalized = normalized[len(normalized)-10:]
+	}
+	return normalized
+}
+
+// normalizePhoneForComparison removes all non-digit characters from a phone
+// number. Prefer PhoneKey for dedup/merge comparisons — this lower-level helper
+// is kept for consumers that need the full digit string rather than the
+// canonical key (e.g. full-digit FTS5 tokenization, T69).
 func normalizePhoneForComparison(phone string) string {
 	var normalized strings.Builder
 	for _, r := range phone {
@@ -769,14 +794,17 @@ func DetectDuplicate(db *gorm.DB, userID uint, firstname, lastname, email, phone
 	}
 
 	// Priority 3: Phone match (if phone provided)
-	// Normalize phone numbers for comparison (strip non-digits)
+	// Normalize phone numbers to a canonical last-10-digit key (PhoneKey) so
+	// that +1-country-code, trunk-prefix and punctuation-only differences
+	// still detect a duplicate. An empty key means the number is too short to
+	// match — treat it the same as "no phone provided."
 	if phone != "" {
-		normalizedPhone := normalizePhoneForComparison(phone)
-		if len(normalizedPhone) >= 5 { // Only match if we have enough digits
+		phoneKey := PhoneKey(phone)
+		if phoneKey != "" {
 			var contacts []models.Contact
 			if err := db.Where("user_id = ? AND phone != ''", userID).Find(&contacts).Error; err == nil {
 				for _, c := range contacts {
-					if normalizePhoneForComparison(c.Phone) == normalizedPhone {
+					if PhoneKey(c.Phone) == phoneKey {
 						return &models.DuplicateMatch{
 							ExistingContactID: c.ID,
 							ExistingFirstname: c.Firstname,
