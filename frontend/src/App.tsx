@@ -11,6 +11,7 @@ import UsersPage from './UsersPage';
 import CircleTagTriagePage from './CircleTagTriagePage';
 import DataSettingsPage from './DataSettingsPage';
 import HouseholdsPage from './HouseholdsPage';
+import CirclesTagsPage from './CirclesTagsPage';
 import ContactSharesPage from './ContactSharesPage';
 import SearchPage from './SearchPage';
 import AuditPage from './AuditPage';
@@ -55,6 +56,7 @@ import EventNoteIcon from '@mui/icons-material/EventNote';
 import SettingsIcon from '@mui/icons-material/Settings';
 import PeopleIcon from '@mui/icons-material/People';
 import HomeWorkIcon from '@mui/icons-material/HomeWork';
+import GroupIcon from '@mui/icons-material/Group';
 import ShareIcon from '@mui/icons-material/Share';
 import StorageIcon from '@mui/icons-material/Storage';
 import HistoryIcon from '@mui/icons-material/History';
@@ -150,6 +152,7 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
       { text: t('nav.notes'), icon: <SvgIcon><path d={mdiNotebookOutline} /></SvgIcon>, path: '/notes' },
       { text: t('nav.network'), icon: <SvgIcon><path d={mdiGraphOutline} /></SvgIcon>, path: '/network' },
       { text: t('nav.households'), icon: <HomeWorkIcon />, path: '/households' },
+      { text: t('nav.circlesTags'), icon: <GroupIcon />, path: '/circles' },
       { text: t('nav.shares'), icon: <ShareIcon />, path: '/shares' },
       { text: t('nav.audit'), icon: <HistoryIcon />, path: '/audit' },
       { text: t('nav.data'), icon: <StorageIcon />, path: '/settings/data' },
@@ -485,6 +488,8 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
           <Route path="/settings/data" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><DataSettingsPage /></Suspense>} />
           <Route path="/network" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><NetworkPage /></Suspense>} />
           <Route path="/households" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><HouseholdsPage /></Suspense>} />
+          <Route path="/circles" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><CirclesTagsPage /></Suspense>} />
+          <Route path="/tags" element={<Navigate to="/circles?tab=tags" replace />} />
           <Route path="/shares" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><ContactSharesPage /></Suspense>} />
           <Route path="/search" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><SearchPage /></Suspense>} />
           <Route path="/audit" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><AuditPage /></Suspense>} />
