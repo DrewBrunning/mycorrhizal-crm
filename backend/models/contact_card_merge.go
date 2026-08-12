@@ -121,7 +121,7 @@ func mergeCardWithFlat(loaded, fresh contactmodel.Card) contactmodel.Card {
 	// SocialProfiles, OtherOnlineServices, Members, RelatedTo,
 	// Localizations, ContactURIs, Calendars, FreeBusyURLs,
 	// SchedulingAddresses, CryptoKeys, Directories, PreferredLanguages,
-	// UID/Kind/Language/ProdID/Created/Updated) has no flat home and is
+	// Kind/Language/ProdID/Created/Updated) has no flat home and is
 	// carried over from `loaded` untouched by virtue of the copy above.
 	return merged
 }

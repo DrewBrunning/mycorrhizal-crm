@@ -164,6 +164,13 @@ func TestBeforeSave_FlatArrayAppendPreservesUntouchedEntries(t *testing.T) {
 	if components["apartment"] != "Apt 3B" || components["postOfficeBox"] != "PO Box 42" {
 		t.Errorf("existing address unprojected components lost when a new flat address was appended (components=%v)", components)
 	}
+	newComponents := map[string]string{}
+	for _, comp := range persisted.Card.Addresses[1].Components {
+		newComponents[comp.Kind] = comp.Value
+	}
+	if newComponents["name"] != "456 Oak Ave" {
+		t.Errorf("new address name = %q, want the appended street value in the card", newComponents["name"])
+	}
 	if persisted.Card.Addresses[1].Full == "" {
 		t.Errorf("appended address = %+v, want the new flat address rebuilt into the card", persisted.Card.Addresses[1])
 	}
@@ -273,6 +280,16 @@ func TestRestoreFlatStateFrom_ThenSavePreservesCardOnlyData(t *testing.T) {
 	assert.Equal(t, "Ada", undone.Firstname, "the flat name must be reverted to the snapshot value")
 	if undone.Card.SpeakToAs == nil || len(undone.Card.SpeakToAs.Pronouns) != 1 {
 		t.Errorf("SpeakToAs = %+v, want the Card-only data preserved through undo", undone.Card.SpeakToAs)
+	}
+	if len(undone.Card.PersonalInfo) != 1 || undone.Card.PersonalInfo[0].Value != "sailing" {
+		t.Errorf("PersonalInfo = %+v, want the created hobby preserved through undo", undone.Card.PersonalInfo)
+	}
+	components := map[string]string{}
+	for _, comp := range undone.Card.Addresses[0].Components {
+		components[comp.Kind] = comp.Value
+	}
+	if components["apartment"] != "Apt 3B" {
+		t.Errorf("address apartment lost through undo (components=%v)", components)
 	}
 	if undone.CRM.Kind != "pet" {
 		t.Errorf("CRM.Kind = %q, want preserved through undo", undone.CRM.Kind)
