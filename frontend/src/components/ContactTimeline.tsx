@@ -41,6 +41,11 @@ interface ContactTimelineProps {
   }>;
   onEditItem: (type: 'note' | 'activity', item: Note | Activity) => void;
   onDeleteCompletion?: (completionId: number) => void;
+  // T78: override for the empty-state message. The default reads "no notes
+  // or activities yet", which is wrong for the filtered explorer -- a
+  // contact can have plenty of events while a given type/bucket filter
+  // matches none.
+  emptyText?: string;
 }
 
 function isLifeEvent(item: { type: string; data: unknown }): item is { type: 'life_event'; data: LifeEvent } {
@@ -55,7 +60,7 @@ function isExternalActivity(item: { type: string; data: unknown }): item is { ty
   return item.type === 'external_activity';
 }
 
-export default function ContactTimeline({ timelineItems, onEditItem, onDeleteCompletion }: ContactTimelineProps) {
+export default function ContactTimeline({ timelineItems, onEditItem, onDeleteCompletion, emptyText }: ContactTimelineProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { formatDate } = useDateFormat();
@@ -63,7 +68,7 @@ export default function ContactTimeline({ timelineItems, onEditItem, onDeleteCom
   if (timelineItems.length === 0) {
     return (
       <Typography variant="body2" color="text.secondary">
-        {t('contactDetail.noActivity')}
+        {emptyText ?? t('contactDetail.noActivity')}
       </Typography>
     );
   }
@@ -254,6 +259,7 @@ export default function ContactTimeline({ timelineItems, onEditItem, onDeleteCom
                     className="action-icon"
                     size="small"
                     color="error"
+                    aria-label={t('common.delete')}
                     onClick={() => onDeleteCompletion?.((item.data as ReminderCompletion).ID)}
                     sx={{
                       position: 'absolute',
@@ -269,6 +275,7 @@ export default function ContactTimeline({ timelineItems, onEditItem, onDeleteCom
                   <IconButton
                     className="action-icon"
                     size="small"
+                    aria-label={t('common.edit')}
                     onClick={() => onEditItem(item.type as 'note' | 'activity', item.data as Note | Activity)}
                     sx={{
                       position: 'absolute',

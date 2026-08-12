@@ -435,6 +435,27 @@
     "gift": {
       "given": "Geschenk übergeben",
       "received": "Geschenk erhalten"
+    },
+    "viewAll": "Alle anzeigen",
+    "explorerTitle": "Zeitachse",
+    "filterType": "Ereignistyp",
+    "filterBucket": "Wie lange her",
+    "allTypes": "Alle Typen",
+    "empty": "Keine Ereignisse in der Zeitachse",
+    "types": {
+      "note": "Notiz",
+      "activity": "Aktivität",
+      "completion": "Erinnerung erledigt",
+      "life_event": "Lebensereignis",
+      "external_activity": "Externes Ereignis",
+      "gift": "Geschenk"
+    },
+    "buckets": {
+      "all": "Alle Zeit",
+      "last_7_days": "Letzte 7 Tage",
+      "last_30_days": "Letzte 30 Tage",
+      "last_90_days": "Letzte 90 Tage",
+      "this_year": "Dieses Jahr"
     }
   },
   "contactDetail": {
@@ -712,7 +733,8 @@
     "copy": "Kopieren",
     "copied": "In die Zwischenablage kopiert",
     "copyFailed": "Kopieren in die Zwischenablage fehlgeschlagen",
-    "copyValue": "{{label}} kopieren"
+    "copyValue": "{{label}} kopieren",
+    "close": "Schließen"
   },
   "externalLinks": {
     "title": "Externe Verknüpfungen",
