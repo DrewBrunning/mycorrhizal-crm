@@ -103,9 +103,11 @@ test.describe('T79: flat address projection carries PO box / apartment / floor',
     const contact = await createSubStreetContact(request, 'Export');
 
     try {
-      // A plain save first, to prove the data survives the T75 merge path
-      // (this is the save that used to destroy the parts before T79 gave the
-      // flat projection slots for them).
+      // Re-save the contact through the nested PUT (the ApplyRecordToContact /
+      // cardSetDirectly path, echoing the card back with the surname changed)
+      // to prove the sub-street parts survive a full save round trip. The
+      // T75 plain-save merge path (a flat-field mutation + db.Save) is pinned
+      // separately by the backend model tests.
       const get = await request.get(`${API_BASE_URL}/contacts/${contact.ID}`);
       expect(get.ok()).toBeTruthy();
       const body = await get.json();
