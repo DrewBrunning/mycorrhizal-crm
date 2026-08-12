@@ -15,6 +15,7 @@
     "notes": "Notes",
     "network": "Network",
     "households": "Households",
+    "circlesTags": "Circles & Tags",
     "profile": "Settings",
     "users": "Users",
     "data": "Data",
@@ -71,6 +72,26 @@
     "dismissSuggestion": "Dismiss",
     "suggestionAccepted": "Household created from the suggestion",
     "suggestionDismissed": "Suggestion dismissed"
+  },
+  "circlesTags": {
+    "title": "Circles & Tags",
+    "description": "Manage the circles and tags used to group contacts. Renaming or deleting one here applies everywhere it's used.",
+    "tabCircles": "Circles",
+    "tabTags": "Tags",
+    "newCirclePlaceholder": "New circle name…",
+    "newTagPlaceholder": "New tag name…",
+    "add": "Add",
+    "memberCount": "{{count}} contacts",
+    "noCircles": "No circles yet. Add one below, or from a contact's page.",
+    "noTags": "No tags yet. Add one below, or from a contact's page.",
+    "deleteCircleConfirm": "Delete the circle \"{{name}}\"? It will be removed from every contact that has it.",
+    "deleteTagConfirm": "Delete the tag \"{{name}}\"? It will be removed from every contact that has it.",
+    "circleCreated": "Circle created",
+    "circleRenamed": "Circle renamed",
+    "circleDeleted": "Circle deleted",
+    "tagCreated": "Tag created",
+    "tagRenamed": "Tag renamed",
+    "tagDeleted": "Tag deleted"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -401,7 +422,11 @@
       "city": "City",
       "region": "State / Region",
       "postal": "Postal Code",
-      "country": "Country"
+      "country": "Country",
+      "pobox": "PO Box",
+      "apartment": "Apartment / Suite",
+      "floor": "Floor",
+      "additionalFields": "Additional fields"
     }
   },
   "timeline": {

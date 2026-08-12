@@ -69,12 +69,16 @@ export function useTags(notifier?: ErrorNotifier) {
     async (id: string, name: string) => {
       try {
         await updateTag(id, name);
+        // T65: refresh so a rename is reflected in `tags` without the caller
+        // having to remember to do it — matches handleDelete below and
+        // useHouseholds' handleUpdate.
+        await refresh();
       } catch (err) {
         handleError(err, { operation: 'updating tag' }, notifier);
         throw err;
       }
     },
-    [notifier]
+    [refresh, notifier]
   );
 
   const handleDelete = useCallback(

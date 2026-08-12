@@ -6,7 +6,7 @@
 | **Rating** | 4 — blocks a core interaction (adding a circle/tag) entirely on mobile web |
 | **Size** | S — CSS/layout only, one file |
 | **Depends on** | Nothing |
-| **Status** | TO BE DONE |
+| **Status** | **DONE**, 2026-08-12. Both edit-mode rows in `ContactHeader.tsx` (circles at 582, tags at 643) now get `flexWrap="wrap"`, and the `Autocomplete`'s hard `minWidth: 200` floor becomes `{ xs: '100%', sm: 200 }` so it takes a full line at phone widths instead of imposing a fixed floor alongside its siblings; the `TextField` gained `minWidth: 0` so it can shrink below its content width once wrapped. Hand-verified at a 390px viewport: pre-fix, the Add button's left edge sat at x=394 (off the 390px viewport, unreachable); post-fix, both rows wrap onto their own lines and the Add button lands at x=158–222, fully on-screen. Desktop (`sm`+) is pixel-identical to before — confirmed the `Autocomplete` still renders at its 200px floor on one line. Landed as part of the T71/T72/T78 web rollup branch. |
 | **Source** | Testing notes, 2026-08-11: "Mobile web Circles input on a Contact overflows the screen and prevents use" |
 
 ## Why this exists
