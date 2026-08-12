@@ -424,6 +424,89 @@ func TestGetContactTimeline_GiftFiltering(t *testing.T) {
 	assert.Equal(t, map[string]bool{"gift": true}, got, "only gift items may appear")
 }
 
+// TestGetContactTimeline_AscendingPaging walks the timeline oldest-first and
+// pins the asc cursor predicates (the mirror image of the desc ones): every
+// item exactly once, ascending by date.
+func TestGetContactTimeline_AscendingPaging(t *testing.T) {
+	env := newTimelineTestEnv(t)
+
+	base := time.Now().AddDate(0, 0, -1).UTC()
+	// Interleave notes and external activities so pages cross both types.
+	var notes []uint
+	var exts []string
+	for i := 0; i < 6; i++ {
+		at := base.Add(time.Duration(i) * time.Hour)
+		notes = append(notes, env.seedNote(t, at, fmt.Sprintf("asc-note-%d", i)))
+		exts = append(exts, env.seedExternalActivity(t, at.Add(30*time.Minute), fmt.Sprintf("asc-ext-%d", i)))
+	}
+	// Oldest first: note-0 (base), ext-0 (base+30m), note-1 (base+1h), ...
+	all := env.walkTimeline(t, "order=asc&limit=2")
+	require.Len(t, all, 12)
+	seen := map[string]bool{}
+	var last time.Time
+	for i, it := range all {
+		key := itemKey(it)
+		require.Falsef(t, seen[key], "item %q returned twice", key)
+		seen[key] = true
+		d := parseItemDate(t, it)
+		if i > 0 {
+			assert.False(t, d.Before(last), "asc walk must be non-decreasing at item %d", i)
+		}
+		last = d
+	}
+	// First two are note-0 then ext-0.
+	assert.Equal(t, models.TimelineTypeNote, all[0].Type)
+	assert.Equal(t, fmt.Sprint(notes[0]), all[0].ID)
+	assert.Equal(t, models.TimelineTypeExternalActivity, all[1].Type)
+	assert.Equal(t, exts[0], all[1].ID)
+}
+
+// TestGetContactTimeline_WalkCrossesLifeEvents drives the Go-side cursor
+// predicate for life events (the one type whose event date isn't
+// SQL-orderable): a walk whose page boundaries land on life events must still
+// return every item exactly once.
+func TestGetContactTimeline_WalkCrossesLifeEvents(t *testing.T) {
+	env := newTimelineTestEnv(t)
+
+	base := time.Now().AddDate(0, 0, -1).UTC()
+	// Alternate a life event and a note, newest first, so a small limit makes
+	// every other page boundary land on a life event.
+	var notes []uint
+	var life []string
+	for i := 0; i < 5; i++ {
+		year := 2020 + i
+		life = append(life, env.seedLifeEvent(t, &contactmodel.PartialDate{
+			Year: pInt(year), Month: pInt(6), Day: pInt(15),
+		}, "moved"))
+		notes = append(notes, env.seedNote(t, base.Add(time.Duration(i)*time.Hour), fmt.Sprintf("le-note-%d", i)))
+	}
+
+	all := env.walkTimeline(t, "limit=2")
+	require.Len(t, all, 10)
+	seen := map[string]bool{}
+	for _, it := range all {
+		key := itemKey(it)
+		require.Falsef(t, seen[key], "item %q returned twice", key)
+		seen[key] = true
+	}
+	// Both types are present and the dates are descending (2024 life event
+	// newest, then the base-dated notes, then the 2020 life event oldest).
+	types := map[string]int{}
+	for _, it := range all {
+		types[it.Type]++
+	}
+	assert.Equal(t, 5, types["life_event"])
+	assert.Equal(t, 5, types["note"])
+	var last time.Time
+	for i, it := range all {
+		d := parseItemDate(t, it)
+		if i > 0 {
+			assert.False(t, d.After(last), "desc walk must be non-increasing at item %d", i)
+		}
+		last = d
+	}
+}
+
 // TestGetContactTimeline_Validation pins the loud-failure policy: unknown
 // type/bucket and malformed cursors are 400s, never silent fallbacks.
 func TestGetContactTimeline_Validation(t *testing.T) {
