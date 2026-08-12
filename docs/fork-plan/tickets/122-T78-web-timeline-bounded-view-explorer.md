@@ -5,7 +5,7 @@
 | **Platform** | Web |
 | **Rating** | 3 — the user-visible half of T66 |
 | **Size** | M — a new dialog with filters and pagination |
-| **Depends on** | [T66](110-T66-contact-timeline-bounded-view-and-explorer.md) — the paginated timeline endpoint doesn't exist yet. Blocked until it lands. |
+| **Depends on** | [T66](110-T66-contact-timeline-bounded-view-and-explorer.md) — **landed 2026-08-12**; the paginated, filterable timeline endpoint it specifies is now live, and the composite's timeline blocks are bounded at 5. Unblocked. |
 | **Status** | TO BE DONE |
 | **Source** | User request, 2026-08-11. Split from T66 on 2026-08-11 so the backend and web halves rank on their own platform lists. |
 

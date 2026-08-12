@@ -6,8 +6,8 @@
 | **Rating** | 3 — not urgent today, but the underlying fetch is already unbounded and Immich is actively compounding it |
 | **Size** | M |
 | **Source** | User request, 2026-08-11. Split into backend (this) + web ([T78](122-T78-web-timeline-bounded-view-explorer.md)) on 2026-08-11. |
-| **Depends on** | Nothing. [T17](17-T17-change-feeds.md)'s cursor-pagination primitives (`cursorPredicate`/`cursorOrderBy`) already exist and are reused here rather than invented fresh. Blocks [T78](122-T78-web-timeline-bounded-view-explorer.md). |
-| **Status** | TO BE DONE — design questions below settled 2026-08-11. |
+| **Depends on** | Nothing. [T17](17-T17-change-feeds.md)'s cursor-pagination primitives (`cursorPredicate`/`cursorOrderBy`) already exist and are reused here rather than invented fresh. Blocks [T78](122-T78-web-timeline-bounded-view-explorer.md) — **unblocked 2026-08-12 when this landed**. |
+| **Status** | **DONE** (2026-08-12) |
 
 ## Why this exists
 
@@ -88,3 +88,56 @@ source, not assumed:
   before — record the before/after in the landing note.
 - OpenAPI spec updated ([T8](16-T8-openapi.md)'s drift test will fail otherwise).
 - `cd backend && go build ./... && go vet ./... && gofmt -l . && go test ./...` green.
+
+## Landing note
+
+**Shipped 2026-08-12** (branch `feature/T66-contact-timeline-bounded-endpoint`).
+
+**`GET /contacts/:id/timeline`** — a page of the merged timeline across all six types, cursor-
+paginated over a normalized `(event_date, type, id)` key, filtered by `?type=` (comma-separated
+subset of the six tokens) and `?bucket=` (`last_7_days|last_30_days|last_90_days|this_year|all`).
+Merge strategy is exactly design decision 3 option b: each SQL-orderable table is asked for a full
+page (N+1, so `next_cursor` presence is exact), merged, sorted, top N returned. The cursor's type
+component is what makes the per-table predicates correct — a table ranking below the cursor's type
+is entirely before it at a shared date, a table ranking above it must be strictly older; the id is
+re-typed per table (uint vs UUID-string) so SQLite's type ordering can't miscompare, and is only
+validated/parsed for the one table whose type equals the cursor's (a UUID-string cursor from a
+string-PK page boundary must not 400 a mixed page). The proof from the ticket is written into the
+controller's doc comment so nobody "optimizes" the per-table N+1 into N/6.
+
+**One deliberate deviation from design decision 3**: life events do NOT participate in the per-table
+bounded fetch, because their `PartialDate` is JSON text with no SQL-orderable timestamp — they're
+fetched in full per request and their cursor/bucket predicates are applied in Go on a resolved date
+(the web's `fullDateFromPartial` semantics, UTC midnight). The bounded-merge proof doesn't cover
+them, but the exception is bounded-small (a person's notable life events, not Immich's
+photo-appearance flood) and documented in the controller. If life events ever become a large
+unbounded table, revisit with a denormalized sortable date column.
+
+**Composite bound** (`buildContactDetail`): the six timeline-eligible blocks are now capped at
+`timelinePreviewLimit` (5) each, ordered by the timeline's event-date key. Two ordering fixes the
+bound made necessary: external activities gained an `occurred_at DESC` order (were unordered) and
+gifts now order by `date DESC` (were `created_at DESC`) so undated ideas sort out of the top 5 —
+matching the timeline's "undated ideas are not events" rule. Life events stay on `created_at DESC`
+(their PartialDate isn't SQL-orderable in the composite either; the bound is the point there, not
+the ordering). The other composite blocks (reminders, agenda, field values, identities, circles,
+tags) stay unpaginated per M4 design decision 6.
+
+**Payload measurement (done-when item)**: seeded a contact with 200 external activities + 40
+notes/completions/gifts and measured the composite response with the limits removed vs in place
+(the same harness, one edit apart) — **122,779 bytes unbounded → 8,407 bytes bounded**, a ~14.6×
+reduction (~93% smaller). Pinned by `TestGetContactDetail_PayloadBoundedForLongHistory`, which
+asserts the bound and logs the byte count.
+
+**Tests, all hand-verified to fail pre-fix** (`controllers/timeline_controller_test.go`, real
+`database.InitDB` schema): the ticket's core merge-under-skew test (200 external activities + 3
+notes → full correctly-ordered pages, walk returns all 203 items exactly once), same-date
+type-rank/id tiebreaks, the comma-separated type filter, all five recency buckets, life-event date
+resolution (full/year-only/yearless/created-at fallback), gift eligibility (given/received-with-date
+only), validation 400s (unknown type/bucket, malformed cursor), and cross-user 404. The bounded-
+composite tests fail when any `.Limit()` is removed. Four Playwright e2e specs
+(`frontend/e2e/timelineEndpoint.spec.ts`) drive the real API end to end: merge+order+paging,
+type/bucket filters, unknown-type 400, and the composite bound for data created through the REST
+pipeline. OpenAPI updated (route + `TimelineItem`/`TimelineResponse` schemas; drift test green).
+
+**Unblocks [T78](122-T78-web-timeline-bounded-view-explorer.md)**, whose explorer consumes this
+endpoint with the exact type/bucket vocabulary it validates.
