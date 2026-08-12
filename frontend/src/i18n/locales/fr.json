@@ -320,7 +320,11 @@
       "city": "Ville",
       "region": "État / Région",
       "postal": "Code postal",
-      "country": "Pays"
+      "country": "Pays",
+      "pobox": "Boîte postale",
+      "apartment": "Appartement / Suite",
+      "floor": "Étage",
+      "additionalFields": "Champs supplémentaires"
     },
     "anniversaries": "Anniversaires",
     "socialProfiles": "Profils sociaux",

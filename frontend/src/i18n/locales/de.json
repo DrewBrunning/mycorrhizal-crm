@@ -320,7 +320,11 @@
       "city": "Stadt",
       "region": "Bundesland / Region",
       "postal": "Postleitzahl",
-      "country": "Land"
+      "country": "Land",
+      "pobox": "Postfach",
+      "apartment": "Wohnung / Suite",
+      "floor": "Etage",
+      "additionalFields": "Weitere Felder"
     },
     "anniversaries": "Jahrestage",
     "socialProfiles": "Soziale Profile",

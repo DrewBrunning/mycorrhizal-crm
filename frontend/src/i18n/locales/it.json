@@ -320,7 +320,11 @@
       "city": "Città",
       "region": "Regione",
       "postal": "CAP",
-      "country": "Paese"
+      "country": "Paese",
+      "pobox": "Casella postale",
+      "apartment": "Interno / Appartamento",
+      "floor": "Piano",
+      "additionalFields": "Campi aggiuntivi"
     },
     "anniversaries": "Anniversari",
     "socialProfiles": "Profil social",

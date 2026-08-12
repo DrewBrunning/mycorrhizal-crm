@@ -420,7 +420,11 @@
       "city": "City",
       "region": "State / Region",
       "postal": "Postal Code",
-      "country": "Country"
+      "country": "Country",
+      "pobox": "PO Box",
+      "apartment": "Apartment / Suite",
+      "floor": "Floor",
+      "additionalFields": "Additional fields"
     }
   },
   "timeline": {
