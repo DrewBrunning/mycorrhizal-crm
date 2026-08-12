@@ -82,18 +82,17 @@ test.describe('T79: flat address projection carries PO box / apartment / floor',
     }
   });
 
-  test('finds a contact by its apartment text via global search', async ({ page, request }) => {
+  test('finds a contact by its apartment text via the merged search (T86)', async ({ page, request }) => {
     const contact = await createSubStreetContact(request, 'Search');
 
     try {
       // The apartment token appears nowhere in the name/email/phone, so the
       // match can only come from addresses_flat -> contacts_fts. This proves
       // the FTS-triggered index carries the newly-flattened sub-street text.
-      await page.goto(`/search?q=${encodeURIComponent(contact.apartmentToken)}`);
+      await page.goto(`/contacts?search=${encodeURIComponent(contact.apartmentToken)}`);
       await waitForLoading(page);
 
       await expect(page.getByText(new RegExp(contact.firstname))).toBeVisible({ timeout: 15000 });
-      await expect(page.getByText(/Contacts \(\d+\)/)).toBeVisible();
     } finally {
       await deleteTestContact(request, contact.ID);
     }

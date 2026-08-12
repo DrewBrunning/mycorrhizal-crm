@@ -19,7 +19,6 @@ test.describe('Mobile navigation (T33)', () => {
     // Icon-only affordances keep their accessible names (aria-label).
     await expect(page.getByRole('link', { name: 'Contacts' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Notes' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Search' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Account' })).toBeVisible();
     await noHorizontalOverflow(page);
   });

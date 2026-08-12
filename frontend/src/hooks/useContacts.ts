@@ -22,7 +22,7 @@ interface UseContactsResult {
 export function useContacts(params: GetContactsParams = {}): UseContactsResult {
   // Destructure params to use primitive values as dependencies
   // This prevents re-fetches when callers pass new object references with identical values
-  const { cursor: _ignored, limit, search, circle, order, includeArchived, archived } = params;
+  const { cursor: _ignored, limit, search, circle, sort, order, includeArchived, archived } = params;
 
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [nextCursor, setNextCursor] = useState('');
@@ -43,6 +43,7 @@ export function useContacts(params: GetContactsParams = {}): UseContactsResult {
         limit,
         search,
         circle,
+        sort,
         order,
         includeArchived,
         archived,
@@ -55,7 +56,7 @@ export function useContacts(params: GetContactsParams = {}): UseContactsResult {
     } finally {
       setLoading(false);
     }
-  }, [limit, search, circle, order, includeArchived, archived]);
+  }, [limit, search, circle, sort, order, includeArchived, archived]);
 
   const loadMore = useCallback(async () => {
     if (!nextCursor) return;
@@ -67,6 +68,7 @@ export function useContacts(params: GetContactsParams = {}): UseContactsResult {
         limit,
         search,
         circle,
+        sort,
         order,
         includeArchived,
         archived,
@@ -78,7 +80,7 @@ export function useContacts(params: GetContactsParams = {}): UseContactsResult {
     } finally {
       setLoading(false);
     }
-  }, [nextCursor, limit, search, circle, order, includeArchived, archived]);
+  }, [nextCursor, limit, search, circle, sort, order, includeArchived, archived]);
 
   useEffect(() => {
     fetchFirst();

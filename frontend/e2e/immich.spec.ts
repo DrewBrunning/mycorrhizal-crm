@@ -3,6 +3,16 @@ import { waitForLoading, createTestContact, deleteTestContact } from './fixtures
 import { API_BASE_URL } from './global-setup';
 
 test.describe('Immich integration', () => {
+  // Every test in this file reads and writes the *same* per-user
+  // /immich/config row (there is only one config per user, and each test
+  // asserts against whatever it just seeded). With fullyParallel the runner
+  // would schedule two of them in different workers at once and one test's
+  // beforeEach/afterEach DELETE would silently strip the config the other's
+  // page had just loaded — seen as "Test connection" button never appearing
+  // and the browse-error alert never surfacing. The config is a single shared
+  // resource, so these tests must never overlap.
+  test.describe.configure({ mode: 'serial' });
+
   test.beforeEach(async ({ request }) => {
     await request.delete(`${API_BASE_URL}/immich/config`);
   });

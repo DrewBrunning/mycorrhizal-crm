@@ -1,15 +1,17 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useContacts } from './hooks/useContacts';
 import { useCircles } from './hooks/useCircles';
 import { useTags } from './hooks/useTags';
+import { useSearch } from './hooks/useSearch';
 import { getCurrentUser } from './api/admin';
 import { resolveEnabledFields, ContactFieldKey } from './contactFields';
 import { BulkAction, runBulkOperation } from './api/bulkOperations';
 import AddContactDialog from './components/AddContactDialog';
 import ImportContactsDialog from './components/ImportContactsDialog';
 import BulkActionsBar from './components/BulkActionsBar';
+import SearchNotesActivities from './components/SearchNotesActivities';
 import {
   Box,
   Card,
@@ -24,20 +26,66 @@ import {
   Button,
   FormControlLabel,
   Switch,
-  Checkbox
+  Checkbox,
+  TextField,
+  InputAdornment,
+  IconButton
 } from '@mui/material';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import FileUploadIcon from '@mui/icons-material/FileUpload';
+import SearchIcon from '@mui/icons-material/Search';
+import ClearIcon from '@mui/icons-material/Clear';
 import { ContactListSkeleton } from './components/LoadingSkeletons';
 
 export default function ContactsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  // The committed (debounced) search term — the URL's `?search=` param is the
+  // source of truth and drives the list query; the text field below owns it.
   const searchQuery = searchParams.get('search') || '';
   const [selectedCircle, setSelectedCircle] = useState('');
   const { circles, circleNamesByUid, refresh: refreshCircles } = useCircles();
   const { tags, refresh: refreshTags } = useTags();
+  const { result: searchResult, runSearch } = useSearch();
+
+  // The search field is a draft: as-you-type input, debounced into the URL
+  // (300ms, two-character minimum — matching the backend's own two-rune gate).
+  // `searchInput` mirrors the field; `searchQuery` (above) is the committed
+  // value the list actually queries. `ownWriteRef` tracks the value this
+  // component itself last wrote, so the resync effect can tell "the URL
+  // changed because we wrote it" (ignore) apart from "something else
+  // navigated here" (seed the field) — the exact bug SearchPage's comment
+  // documented; ported rather than rediscovered.
+  const [searchInput, setSearchInput] = useState(searchQuery);
+  const ownWriteRef = useRef(searchQuery);
+
+  useEffect(() => {
+    if (searchQuery !== ownWriteRef.current) {
+      setSearchInput(searchQuery);
+    }
+  }, [searchQuery]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const next = searchInput.trim().length >= 2 ? searchInput.trim() : '';
+      ownWriteRef.current = next;
+      if (next === searchQuery) return;
+      setSearchParams((prev) => {
+        const nextParams = new URLSearchParams(prev);
+        if (next) nextParams.set('search', next);
+        else nextParams.delete('search');
+        return nextParams;
+      }, { replace: true });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput, searchQuery, setSearchParams]);
+
+  // Cross-entity search (notes/activities) fires in parallel with the list and
+  // is only ever additive — the contact cards never wait on it (trap #3).
+  useEffect(() => {
+    runSearch(searchQuery);
+  }, [searchQuery, runSearch]);
 
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -54,24 +102,65 @@ export default function ContactsPage() {
   // filter/search/archived change swaps `contacts` for an unrelated page,
   // so a stale selection would let a bulk action (including delete) run
   // against contacts the user can no longer see. Clear it here rather than
-  // in useContacts, which has no concept of selection.
+  // in useContacts, which has no concept of selection. Sort is deliberately
+  // NOT a dependency (T77): changing the order changes which page a contact
+  // is on, not which contacts are selected — clearing on a sort would throw
+  // away a valid selection for no reason.
   useEffect(() => {
     setSelectedUids(new Set());
   }, [searchQuery, selectedCircle, showArchived]);
 
-  // T17: cursor pagination — the list pages by (updated_at, id) DESC and the
-  // "load more" button appends the next_cursor page. There is no page number
-  // or exact total anymore.
+  // T77 sort control: the URL's ?sort= and ?order= params own the list order
+  // (same persistence mechanism as T86's ?search=). The web client opts into
+  // name (alphabetical) as its default; the server keeps updated_at for
+  // existing API consumers. The Select below encodes both dimensions in one
+  // "sort:order" value.
+  const sort = searchParams.get('sort') === 'updated_at' ? 'updated_at' : 'name';
+  // Direction default follows the sort key's natural expectation: name opens
+  // A→Z, recently-edited opens newest-first (matching the server's desc
+  // default) — only relevant for a hand-crafted URL, since the Select below
+  // always writes both params together.
+  const orderParam = searchParams.get('order');
+  const order = orderParam === 'desc' || orderParam === 'asc'
+    ? orderParam
+    : (sort === 'name' ? 'asc' : 'desc');
+
+  const setSortSelection = (value: string) => {
+    const [nextSort, nextOrder] = value.split(':');
+    setSearchParams((prev) => {
+      const nextParams = new URLSearchParams(prev);
+      nextParams.set('sort', nextSort);
+      nextParams.set('order', nextOrder);
+      return nextParams;
+    }, { replace: true });
+  };
+
+  // T17/T73: cursor pagination — the list pages by the chosen sort's cursor
+  // key ((updated_at, id) DESC by default, or (sort_name, id) under
+  // ?sort=name) and the "load more" button appends the next_cursor page.
+  // There is no page number or exact total anymore.
   const contactParams = useMemo(() => ({
     limit: pageSize,
     search: searchQuery,
     circle: selectedCircle,
-    order: 'desc' as const,
+    sort: sort as 'updated_at' | 'name',
+    order: order as 'asc' | 'desc',
     includeArchived: showArchived,
-  }), [searchQuery, selectedCircle, showArchived]);
+  }), [searchQuery, selectedCircle, showArchived, sort, order]);
 
   // Use custom hook for fetching contacts
   const { contacts, nextCursor, loading, refetch, loadMore } = useContacts(contactParams);
+
+  // Derived flags for the merged search surfaces (T86).
+  const searchActive = searchQuery.trim().length >= 2;
+  // Discard a stale /search result: useSearch keeps the previous query's
+  // result until the new one lands, so without this the notes/activities
+  // section would render the old query's hits against the new query's cards.
+  const crossResultMatches = searchResult !== null && searchResult.query === searchQuery;
+  const crossEmpty = crossResultMatches
+    && (searchResult.notes || []).length === 0
+    && (searchResult.activities || []).length === 0;
+  const showNoResults = searchActive && !loading && contacts.length === 0 && crossEmpty;
 
   // Fetch enabled contact fields
   useEffect(() => {
@@ -169,7 +258,32 @@ export default function ContactsPage() {
       <Typography variant="h5" gutterBottom sx={{ mb: 2 }}>
         {t('contacts.title')}
       </Typography>
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} mb={2} alignItems="center">
+      <TextField
+        label={t('contacts.searchPlaceholder')}
+        value={searchInput}
+        onChange={(e) => setSearchInput(e.target.value)}
+        fullWidth
+        size="small"
+        sx={{ mb: 2 }}
+        helperText={searchInput.trim().length === 1 ? t('contacts.searchMinLengthHint') : undefined}
+        slotProps={{
+          input: {
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            ),
+            endAdornment: searchInput ? (
+              <InputAdornment position="end">
+                <IconButton size="small" onClick={() => setSearchInput('')} aria-label={t('contacts.searchClear')}>
+                  <ClearIcon fontSize="small" />
+                </IconButton>
+              </InputAdornment>
+            ) : undefined,
+          },
+        }}
+      />
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} mb={2} alignItems="center" flexWrap="wrap">
         <FormControl sx={{ minWidth: 180 }} size="small">
           <InputLabel id="circle-select-label">{t('contacts.filterByCircle')}</InputLabel>
           <Select
@@ -182,6 +296,20 @@ export default function ContactsPage() {
             {circles.map(c => (
               <MenuItem key={c.id} value={c.name}>{c.name}</MenuItem>
             ))}
+          </Select>
+        </FormControl>
+        <FormControl sx={{ minWidth: 220 }} size="small">
+          <InputLabel id="sort-select-label">{t('contacts.sortBy')}</InputLabel>
+          <Select
+            labelId="sort-select-label"
+            value={`${sort}:${order}`}
+            label={t('contacts.sortBy')}
+            onChange={e => setSortSelection(e.target.value)}
+          >
+            <MenuItem value="name:asc">{t('contacts.sortNameAsc')}</MenuItem>
+            <MenuItem value="name:desc">{t('contacts.sortNameDesc')}</MenuItem>
+            <MenuItem value="updated_at:desc">{t('contacts.sortUpdatedDesc')}</MenuItem>
+            <MenuItem value="updated_at:asc">{t('contacts.sortUpdatedAsc')}</MenuItem>
           </Select>
         </FormControl>
         <FormControlLabel
@@ -213,22 +341,13 @@ export default function ContactsPage() {
           {t('contacts.add.button')}
         </Button>
       </Stack>
-      {(contacts.length > 0 || searchQuery || selectedCircle) && (
+      {selectedCircle && (
         <Box sx={{ mb: 2, p: 1.5, bgcolor: 'action.hover', borderRadius: 1, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-          {searchQuery && (
-            <Chip 
-              label={`"${searchQuery}"`} 
-              size="small" 
-              onDelete={() => navigate('/contacts')} 
-            />
-          )}
-          {selectedCircle && (
-            <Chip 
-              label={selectedCircle} 
-              size="small" 
-              onDelete={clearCircle} 
-            />
-          )}
+          <Chip 
+            label={selectedCircle} 
+            size="small" 
+            onDelete={clearCircle} 
+          />
         </Box>
       )}
       <BulkActionsBar
@@ -311,6 +430,11 @@ export default function ContactsPage() {
               </Card>
             ))}
           </Stack>
+          {showNoResults && (
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+              {t('contacts.searchNoResults', { query: searchQuery })}
+            </Typography>
+          )}
           {nextCursor && (
             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
               <Button variant="outlined" onClick={loadMore} disabled={loading}>
@@ -319,6 +443,13 @@ export default function ContactsPage() {
             </Box>
           )}
         </>
+      )}
+      {searchActive && (
+        <SearchNotesActivities
+          query={searchQuery}
+          result={crossResultMatches ? searchResult : null}
+          onOpenContact={(id) => navigate(`/contacts/${id}`)}
+        />
       )}
       <AddContactDialog
         open={addDialogOpen}

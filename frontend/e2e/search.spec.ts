@@ -3,16 +3,18 @@ import { createTestContact, deleteTestContact, waitForLoading } from './fixtures
 import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 
 /**
- * Global search (T11 / WP-86) — one of the three R5 capabilities, and
- * previously with no e2e coverage at all.
+ * Search, folded into Contacts (T86) — the /search page is gone; the Contacts
+ * page is now the single search surface. It queries GET /contacts?search= for
+ * the list (FTS-backed since T85) and GET /search in parallel for the
+ * notes/activities half, rendered in a collapsed section below the cards.
  *
- * The parts worth exercising end to end are the ones that span layers: the
- * FTS5 index is maintained by SQL triggers (migration 000007), so a contact
- * created through the API has to become findable without any explicit
+ * The parts still worth exercising end to end are the ones that span layers:
+ * the FTS5 index is maintained by SQL triggers (migration 000007), so a
+ * contact created through the API has to become findable without any explicit
  * re-index step. A broken trigger is invisible to a unit test that seeds the
  * index directly.
  */
-test.describe('Search', () => {
+test.describe('Search (folded into Contacts)', () => {
   test('finds a contact created moments earlier via the FTS index', async ({ page, request }) => {
     // A distinctive token so the assertion cannot pass on seeded fixture data.
     const surname = `Zzyzx${Date.now()}`;
@@ -22,13 +24,10 @@ test.describe('Search', () => {
     });
 
     try {
-      await page.goto(`/search?q=${encodeURIComponent(surname)}`);
+      await page.goto(`/contacts?search=${encodeURIComponent(surname)}`);
       await waitForLoading(page);
 
       await expect(page.getByText(new RegExp(surname))).toBeVisible({ timeout: 15000 });
-      // The Contacts group header carries a count, proving it grouped rather
-      // than dumping a flat list.
-      await expect(page.getByText(/Contacts \(\d+\)/)).toBeVisible();
     } finally {
       await deleteTestContact(request, contact.ID);
     }
@@ -49,10 +48,14 @@ test.describe('Search', () => {
       });
       expect(note.ok()).toBeTruthy();
 
-      await page.goto(`/search?q=${encodeURIComponent(token)}`);
+      await page.goto(`/contacts?search=${encodeURIComponent(token)}`);
       await waitForLoading(page);
 
-      await expect(page.getByText(/Notes \(\d+\)/)).toBeVisible({ timeout: 15000 });
+      // The notes/activities section is collapsed by default; expand it and
+      // assert the note body is reachable — the whole point of the fold is
+      // that a note-only match is still findable from the merged page.
+      await expect(page.getByText(/matches in notes and activities/)).toBeVisible({ timeout: 15000 });
+      await page.getByText(/matches in notes and activities/).click();
       await expect(page.getByText(new RegExp(token))).toBeVisible();
     } finally {
       await deleteTestContact(request, contact.ID);
@@ -64,7 +67,7 @@ test.describe('Search', () => {
     // LIKE fallback), so a street name found nothing. This spans the whole
     // path: a contact created through the API gets its addresses_flat column
     // populated by BeforeSave, indexed by the migration-000010 trigger, and
-    // the /search page surfaces the contact when the street is the query.
+    // the contacts list surfaces the contact when the street is the query.
     const streetToken = `Heliotrope${Date.now()}`;
     const firstname = `${E2E_CONTACT_PREFIX}AddrSearch${Date.now()}`;
     const contact = await createTestContact(request, {
@@ -84,13 +87,11 @@ test.describe('Search', () => {
 
     try {
       // The street token appears nowhere in the contact's name/email/phone,
-      // so the match can only come from the indexed address text. The search
-      // page renders the contact's name for a hit, which is what we assert.
-      await page.goto(`/search?q=${encodeURIComponent(streetToken)}`);
+      // so the match can only come from the indexed address text.
+      await page.goto(`/contacts?search=${encodeURIComponent(streetToken)}`);
       await waitForLoading(page);
 
       await expect(page.getByText(new RegExp(firstname))).toBeVisible({ timeout: 15000 });
-      await expect(page.getByText(/Contacts \(\d+\)/)).toBeVisible();
     } finally {
       await deleteTestContact(request, contact.ID);
     }
@@ -143,7 +144,7 @@ test.describe('Search', () => {
 
     try {
       // Before delete: search by the street must surface the contact.
-      await page.goto(`/search?q=${encodeURIComponent(streetToken)}`);
+      await page.goto(`/contacts?search=${encodeURIComponent(streetToken)}`);
       await waitForLoading(page);
       await expect(page.getByText(new RegExp(firstname))).toBeVisible({ timeout: 15000 });
 
@@ -152,7 +153,7 @@ test.describe('Search', () => {
 
       // After soft-delete: the FTS trigger removes the row from the index,
       // so a search for the same address token must return no-results.
-      await page.goto(`/search?q=${encodeURIComponent(streetToken)}`);
+      await page.goto(`/contacts?search=${encodeURIComponent(streetToken)}`);
       await waitForLoading(page);
       await expect(page.getByText(/No results for/)).toBeVisible({ timeout: 15000 });
     } finally {
@@ -160,7 +161,7 @@ test.describe('Search', () => {
     }
   });
 
-  test('finds a contact by phone across formats via global search (T69)', async ({ page, request }) => {
+  test('finds a contact by phone across formats via the merged search (T69)', async ({ page, request }) => {
     // T69: the FTS index previously indexed phone numbers only as the raw
     // `phone` scalar with the punctuation-splitting unicode61 tokenizer, so
     // "(800) 555-1234" became tokens 800/555/1234 and a query typed as
@@ -179,14 +180,13 @@ test.describe('Search', () => {
     try {
       // Query the plain 10-digit form against an 11-digit (country-code) stored
       // value — the exact cross-format gap the ticket describes.
-      await page.goto(`/search?q=${encodeURIComponent(tenDigits)}`);
+      await page.goto(`/contacts?search=${encodeURIComponent(tenDigits)}`);
       await waitForLoading(page);
       await expect(page.getByText(new RegExp(firstname))).toBeVisible({ timeout: 15000 });
-      await expect(page.getByText(/Contacts \(\d+\)/)).toBeVisible();
 
       // Query the fully-punctuated form; also matches via normalization.
       const punctuated = `${tenDigits.slice(0, 3)}-${tenDigits.slice(3, 6)}-${tenDigits.slice(6)}`;
-      await page.goto(`/search?q=${encodeURIComponent(punctuated)}`);
+      await page.goto(`/contacts?search=${encodeURIComponent(punctuated)}`);
       await waitForLoading(page);
       await expect(page.getByText(new RegExp(firstname))).toBeVisible({ timeout: 15000 });
     } finally {
@@ -224,7 +224,7 @@ test.describe('Search', () => {
     }
   });
 
-  test('finds a contact by a non-primary phone via global search (T69)', async ({ page, request }) => {
+  test('finds a contact by a non-primary phone via the merged search (T69)', async ({ page, request }) => {
     // T69's fourth gap: contacts_fts previously indexed only the flat primary
     // `phone` scalar, so a contact could not be found by their second or third
     // number even when typed perfectly. phones_normalized is built from every
@@ -242,10 +242,9 @@ test.describe('Search', () => {
     });
 
     try {
-      await page.goto(`/search?q=${encodeURIComponent(secondary)}`);
+      await page.goto(`/contacts?search=${encodeURIComponent(secondary)}`);
       await waitForLoading(page);
       await expect(page.getByText(new RegExp(firstname))).toBeVisible({ timeout: 15000 });
-      await expect(page.getByText(/Contacts \(\d+\)/)).toBeVisible();
     } finally {
       await deleteTestContact(request, contact.ID);
     }
@@ -253,10 +252,26 @@ test.describe('Search', () => {
 
   test('shows an explicit empty state rather than a blank page', async ({ page }) => {
     const nonsense = `NoSuchThing${Date.now()}`;
-    await page.goto(`/search?q=${encodeURIComponent(nonsense)}`);
+    await page.goto(`/contacts?search=${encodeURIComponent(nonsense)}`);
     await waitForLoading(page);
 
     await expect(page.getByText(/No results for/)).toBeVisible({ timeout: 15000 });
+  });
+
+  test('redirects legacy /search?q= deep links to the merged page', async ({ page, request }) => {
+    const surname = `Redirect${Date.now()}`;
+    const contact = await createTestContact(request, {
+      firstname: `${E2E_CONTACT_PREFIX}Redirect`,
+      lastname: surname,
+    });
+
+    try {
+      await page.goto(`/search?q=${encodeURIComponent(surname)}`);
+      await expect(page).toHaveURL(new RegExp(`/contacts\\?search=${encodeURIComponent(surname)}`));
+      await expect(page.getByText(new RegExp(surname))).toBeVisible({ timeout: 15000 });
+    } finally {
+      await deleteTestContact(request, contact.ID);
+    }
   });
 
   // T11's synonym half: the whole query is resolved through the relation-type
@@ -266,6 +281,17 @@ test.describe('Search', () => {
     expect(response.ok()).toBeTruthy();
     const body = await response.json();
     expect(body.resolved_relation, '"brother" must resolve to the sibling_of token').toBe('sibling_of');
+  });
+
+  // T11's synonym half is the only visible proof the registry works, and it
+  // has no other consumer — it must still surface on the merged page even when
+  // the synonym query matches no contacts, notes or activities.
+  test('surfaces the resolved_relation line for a synonym query', async ({ page }) => {
+    await page.goto('/contacts');
+    await waitForLoading(page);
+
+    await page.getByLabel(/search contacts/i).fill('brother');
+    await expect(page.getByText(/Matched relationship: Sibling/)).toBeVisible({ timeout: 15000 });
   });
 
   test('scopes results to the calling user', async ({ request }) => {

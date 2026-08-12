@@ -11,6 +11,7 @@ import { listTags } from './api/tags';
 import { getFieldDefinitions } from './api/fieldDefinitions';
 import { getCurrentUser } from './api/admin';
 import { runBulkOperation, BulkOperationResult } from './api/bulkOperations';
+import { searchAll } from './api/search';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
 afterEach(cleanup);
@@ -39,6 +40,19 @@ vi.mock('./api/bulkOperations', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api/bulkOperations')>();
   return { ...actual, runBulkOperation: vi.fn() };
 });
+vi.mock('./api/search', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./api/search')>();
+  return {
+    ...actual,
+    searchAll: vi.fn(async (q: string) => ({
+      query: q,
+      resolved_relation: '',
+      contacts: [],
+      notes: [],
+      activities: [],
+    })),
+  };
+});
 vi.mock('./auth', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./auth')>();
   return { ...actual, isAuthenticated: vi.fn(() => true) };
@@ -51,11 +65,13 @@ beforeEach(() => {
   vi.mocked(getFieldDefinitions).mockReset();
   vi.mocked(getCurrentUser).mockReset();
   vi.mocked(runBulkOperation).mockReset();
+  vi.mocked(searchAll).mockReset();
 
   vi.mocked(getCurrentUser).mockResolvedValue({ enabled_contact_fields: null } as never);
   vi.mocked(listCircles).mockResolvedValue({ circles: [], members: [], next_cursor: '', limit: 100 } as never);
   vi.mocked(listTags).mockResolvedValue({ tags: [], contacts: [], next_cursor: '', limit: 100 } as never);
   vi.mocked(getFieldDefinitions).mockResolvedValue({ field_definitions: [] } as never);
+  vi.mocked(searchAll).mockResolvedValue({ query: '', resolved_relation: '', contacts: [], notes: [], activities: [] } as never);
 });
 
 function contact(id: number, uid: string, firstname: string): Contact {
@@ -225,4 +241,119 @@ test('changing the circle filter clears an in-progress selection', async () => {
   fireEvent.click(await screen.findByRole('option', { name: 'Friends' }));
 
   await waitFor(() => expect(screen.queryByText('1 selected')).not.toBeInTheDocument());
+});
+
+test('typing a search term filters the list through the debounced URL param', async () => {
+  mockTwoPages();
+  renderPage();
+  await screen.findByLabelText('Select Alice');
+
+  fireEvent.change(screen.getByLabelText(/search contacts/i), {
+    target: { value: 'ali' },
+  });
+
+  await waitFor(() =>
+    expect(getContacts).toHaveBeenCalledWith(
+      expect.objectContaining({ search: 'ali' })
+    )
+  );
+});
+
+test('a single character does not trigger a filtered search', async () => {
+  mockTwoPages();
+  renderPage();
+  await screen.findByLabelText('Select Alice');
+
+  fireEvent.change(screen.getByLabelText(/search contacts/i), {
+    target: { value: 'a' },
+  });
+
+  // The two-character minimum means the single rune never becomes the URL
+  // param, so the list keeps its unfiltered query — no refetch, no search arg.
+  await new Promise((r) => setTimeout(r, 400));
+  expect(getContacts).toHaveBeenCalledTimes(1);
+  expect(getContacts).not.toHaveBeenCalledWith(expect.objectContaining({ search: 'a' }));
+});
+
+test('clearing the search field restores the unfiltered list', async () => {
+  mockTwoPages();
+  renderPage();
+  await screen.findByLabelText('Select Alice');
+
+  const field = screen.getByLabelText(/search contacts/i);
+  fireEvent.change(field, { target: { value: 'ali' } });
+  await waitFor(() =>
+    expect(getContacts).toHaveBeenCalledWith(
+      expect.objectContaining({ search: 'ali' })
+    )
+  );
+
+  fireEvent.change(field, { target: { value: '' } });
+
+  await waitFor(() =>
+    expect(getContacts).toHaveBeenLastCalledWith(
+      expect.objectContaining({ search: '' })
+    )
+  );
+});
+
+test('a search change clears an in-progress selection', async () => {
+  mockTwoPages();
+  renderPage();
+  await screen.findByLabelText('Select Alice');
+
+  fireEvent.click(screen.getByLabelText('Select Alice'));
+  expect(screen.getByText('1 selected')).toBeInTheDocument();
+
+  fireEvent.change(screen.getByLabelText(/search contacts/i), {
+    target: { value: 'bob' },
+  });
+
+  await waitFor(() => expect(screen.queryByText('1 selected')).not.toBeInTheDocument());
+});
+
+test('defaults to name (alphabetical) sort', async () => {
+  mockTwoPages();
+  renderPage();
+  await screen.findByLabelText('Select Alice');
+
+  expect(getContacts).toHaveBeenCalledWith(
+    expect.objectContaining({ sort: 'name', order: 'asc' })
+  );
+});
+
+test('changing the sort control refetches with the chosen sort and direction', async () => {
+  mockTwoPages();
+  renderPage();
+  await screen.findByLabelText('Select Alice');
+
+  fireEvent.mouseDown(screen.getByLabelText('Sort'));
+  fireEvent.click(await screen.findByRole('option', { name: 'Recently edited (newest first)' }));
+
+  await waitFor(() =>
+    expect(getContacts).toHaveBeenCalledWith(
+      expect.objectContaining({ sort: 'updated_at', order: 'desc' })
+    )
+  );
+});
+
+test('changing the sort does not clear an in-progress selection', async () => {
+  mockTwoPages();
+  renderPage();
+  await screen.findByLabelText('Select Alice');
+
+  fireEvent.click(screen.getByLabelText('Select Alice'));
+  expect(screen.getByText('1 selected')).toBeInTheDocument();
+
+  fireEvent.mouseDown(screen.getByLabelText('Sort'));
+  fireEvent.click(await screen.findByRole('option', { name: 'Recently edited (newest first)' }));
+
+  await waitFor(() =>
+    expect(getContacts).toHaveBeenCalledWith(
+      expect.objectContaining({ sort: 'updated_at', order: 'desc' })
+    )
+  );
+  // Sorting reorders the list but not which contacts are visible — the
+  // selection is still valid and must survive (T77 trap).
+  expect(screen.getByText('1 selected')).toBeInTheDocument();
 });
