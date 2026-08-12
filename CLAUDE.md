@@ -99,7 +99,12 @@ These are real bugs that shipped, not hypotheticals.
 3. **`RecordForContact`, not `RecordFromContact`.** The former reads what is actually persisted
    (including data with no flat-field home — `SpeakToAs`, `PersonalInfo`, projections); the latter
    rebuilds from flat fields and **silently drops** that data. Using the wrong one was a live bug found
-   across three call sites.
+   across three call sites — and, for years, inside `Contact.BeforeSave` itself, whose wholesale
+   `c.Card = RecordFromContact(c, photoDir).Card` dropped the same data on every plain `db.Save` of a
+   loaded contact (profile-photo upload, import merge, and the audit Undo button — **T75**, fixed
+   2026-08-12 by merging the flat derivation onto the loaded Card instead of replacing it; see
+   `models/contact_card_merge.go`). If you add a new plain-save path, it must not re-introduce a
+   straight `db.Save` on a loaded contact without going through that merge.
 
 4. **Check `.Error` on every `db.Updates`/`db.Save`.** Three sites silently swallowed failures until
    audited.

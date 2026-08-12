@@ -6,7 +6,7 @@
 | **Rating** | 5 — silent, irreversible data loss on shipped, real-data paths |
 | **Size** | M — the mechanism is one function, but the fix is a semantic change to `BeforeSave` plus an audit of every save site |
 | **Depends on** | Nothing |
-| **Status** | TO BE DONE |
+| **Status** | **DONE (2026-08-12 — see the landing note at the bottom)** |
 | **Source** | Found during the 2026-08-11 grooming pass while investigating [T67](111-T67-android-address-import-parsing.md)'s "backend drops unmatched address kinds" claim. Not previously reported by testing — it is invisible from the UI until the data is already gone. |
 
 ## Why this exists
@@ -226,3 +226,53 @@ mechanism from this one and fixing it here would muddy both.
 - All new tests were hand-verified to fail against the pre-fix `BeforeSave`.
 - The address-merge rule chosen in item 2 is written down in `BeforeSave`'s doc comment.
 - `cd backend && go build ./... && go vet ./... && gofmt -l . && go test ./...` green.
+
+## Landing note — 2026-08-12
+
+**Fixed the mechanism, not the call sites, per the plan.** `Contact.BeforeSave`'s non-`cardSetDirectly`
+branch now merges the fresh flat-field derivation onto the loaded `Card`/`CRM`/`Passthrough` instead of
+replacing it (see `models/contact_card_merge.go`, and the merge-rule doc comment on
+`mergeRecordFromFlat`). Flat fields stay the source of truth for everything they can express; the
+loaded Card is the source of truth for everything they cannot.
+
+**One deliberate deviation from the ticket's item 2, recorded here because it changes the chosen
+address-rule:** the ticket's whole-array dirty-comparison was premised on "no plain-save path writes the
+flat arrays". That is wrong in the current code — T49's additive `MergeImportedContact` appends to
+`Addresses`/`Emails`/`Phones`, and the manual merge (contact_merge_service.go) replaces them. Under
+the ticket's whole-array rule, an import merge that appended a *different* address would have rebuilt
+the entire array from flat and destroyed the existing address's apartment/PO-box data on the very
+trigger this ticket exists to fix. So the rule is implemented **per-entry**: an array entry whose flat
+projection still matches the loaded Card's entry survives whole (unprojected components included); a
+changed or newly-appended entry is rebuilt from flat; a deleted trailing entry is dropped. This is a
+strict superset of the whole-array rule (preserves at least as much in every case) and pins both halves
+in tests: `TestBeforeSave_FlatArrayAppendPreservesUntouchedEntries` and
+`TestBeforeSave_EditedFlatEntryRebuildsFromFlat`.
+
+**The merge also closes a channel the ticket didn't name:** the flat→Card rebuild wiped rich per-entry
+metadata (`pref`, `features`, extra `contexts`, entry `id`) from emails/phones/urls/impps, `Passthrough`
+imported vCard/JSContact properties, `Card.UID`, and anniversary `id`/`place`. All now survive a plain
+save, because the mechanism — wholesale replacement — is gone, not just the named categories.
+
+**Undo (trigger 3) stopgap:** `undoContact` no longer rebuilds a Record from the flat-only snapshot and
+`ApplyRecordToContact`s it over the live Card. It restores the snapshot's flat state via the new
+`Contact.RestoreFlatStateFrom` and lets `BeforeSave`'s merge carry the Card-only members through. Undo
+now reverts everything the snapshot actually recorded and preserves what it could not — strictly better
+than deleting it. **The partial-restore behavior is stated in the UI**: the undo confirm dialog in
+`AuditPage` now carries a note ("Details that were never captured in this record (pronouns, personal
+information, address details) are preserved unchanged") across all five locales. [T82](126-T82-audit-snapshots-miss-nested-contact-data.md)
+remains the fix that makes undo full-fidelity.
+
+**Tests** (all hand-verified to fail against the pre-fix `BeforeSave`/`undoContact` per `/CLAUDE.md`):
+model-level `contact_card_merge_test.go` (plain-save preservation across SpeakToAs/PersonalInfo/address
+components/rich phone data/pet kind/passthrough; per-entry append vs edit; RestoreFlatStateFrom), and
+handler-level tests for all three triggers — `TestAddPhotoToContact_PreservesCardOnlyData`,
+`TestConfirmImport_UpdateMergePreservesCardOnlyData` (+ an address-append variant), and
+`TestUndoAuditEvent_PreservesCardOnlyData`. Three Playwright specs in `frontend/e2e/t75CardOnlyData.spec.ts`
+drive the photo-upload, audit-Undo, and Data-settings CSV-import-merge flows end to end against the
+real UI and assert the Card-only data survives each. Verified green on the docker-compose.test stack.
+
+**Already-lost data is not recoverable.** As the ticket's traps section required, stated plainly: any
+contact whose photo was set, or which was merged during an import, while these paths shipped has
+already lost its Card-only data. The audit trail never captured `Card` (all `json:"-"`), so there is
+no snapshot to restore from — that gap is [T82](126-T82-audit-snapshots-miss-nested-contact-data.md),
+and this fix only prevents future losses.
