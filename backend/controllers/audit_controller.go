@@ -101,21 +101,32 @@ func UndoAuditEvent(c *gin.Context) {
 
 // undoContact restores a Contact from the event's before snapshot.
 //
-// T75 (docs/fork-plan/tickets/119-T75-plain-save-destroys-card-only-data.md):
-// the before snapshot never contained Card/CRM/Passthrough (all json:"-",
-// see T82), so it can only restore the flat fields. The stopgap restores
-// exactly those — copying the snapshot's flat state onto the live contact
-// and letting BeforeSave's merge (contact.go) rebuild the flat-owned Card
-// sub-structures from it while carrying the contact's current Card-only
-// members through (SpeakToAs, PersonalInfo, unprojected address components,
-// CRMEnvelope.Kind, ...). The result is honest rather than complete: undo
-// reverts everything the snapshot actually recorded and leaves everything
-// else as it is. Before this change undo overwrote the contact's Card with a
-// Record rebuilt from a snapshot that never carried one, deleting what it
-// could not restore. T82 (audit snapshots capturing nested data) makes undo
-// full-fidelity afterwards.
+// The snapshot has two shapes (T82, docs/fork-plan/tickets/126-T82-audit-
+// snapshots-miss-nested-contact-data.md), and undo must handle both:
+//
+//   - Events written before T82's capture change were marshaled by
+//     json.Marshal(&Contact), which omits Card/CRM/Passthrough (all json:"-"),
+//     so they carry only flat fields. For those, the T75 stopgap applies:
+//     restore the snapshot's flat state onto the live contact and let
+//     BeforeSave's merge (contact.go) rebuild the flat-owned Card sub-
+//     structures from it while carrying the contact's current Card-only
+//     members through (SpeakToAs, PersonalInfo, unprojected address
+//     components, CRMEnvelope.Kind, ...). Undo reverts everything the snapshot
+//     recorded and preserves what it could not — never deleting it.
+//
+//   - Events written after T82 capture the nested columns too
+//     (ContactAuditSnapshot.HasNested). Those get a full restore via
+//     RestoreFullStateFrom: flat state plus the exact before Card/CRM/
+//     Passthrough, with the photo (stripped from snapshots) re-derived from
+//     the restored Photo path.
+//
+// HasNested distinguishes the two by "was card/crm/passthrough present in the
+// raw snapshot", which is exactly the difference between "absent because the
+// event predates the change" and "cleared by the user" — a live contact's
+// Card is never empty, so a non-empty nested snapshot can only mean a T82
+// event with an authoritative before state.
 func undoContact(c *gin.Context, db *gorm.DB, userID uint, event models.AuditEvent) {
-	var before models.Contact
+	var before models.ContactAuditSnapshot
 	if err := json.Unmarshal([]byte(event.BeforeSnapshot), &before); err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrInternal("audit snapshot is corrupt").WithError(err))
 		return
@@ -131,10 +142,18 @@ func undoContact(c *gin.Context, db *gorm.DB, userID uint, event models.AuditEve
 		return
 	}
 
-	// Restore the snapshot's flat state onto the loaded contact; BeforeSave's
-	// merge then rebuilds the flat-owned neutral columns from it without
-	// touching the Card-only data no snapshot has ever carried.
-	current.RestoreFlatStateFrom(&before)
+	if before.HasNested() {
+		// T82 event: the snapshot carries the full before Card/CRM/Passthrough —
+		// restore it verbatim. BeforeSave then leaves the restored nested columns
+		// alone (RestoreFullStateFrom sets cardSetDirectly).
+		current.RestoreFullStateFrom(&before)
+	} else {
+		// Pre-T82 event: restore the snapshot's flat state onto the loaded
+		// contact; BeforeSave's merge then rebuilds the flat-owned neutral
+		// columns from it without touching the Card-only data no snapshot has
+		// ever carried (T75 stopgap).
+		current.RestoreFlatStateFrom(&before.Contact)
+	}
 
 	if err := db.Save(&current).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to undo contact update").WithError(err))
