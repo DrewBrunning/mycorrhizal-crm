@@ -131,15 +131,19 @@ func unionEmails(a, b []models.ContactEmail) []models.ContactEmail {
 	return out
 }
 
-// unionPhones unions on (case-insensitive type, normalized digits) -- reuses
-// normalizePhoneForComparison (import_service.go, same package) so "phone
-// equality" means the same thing here as it already does for
-// DetectDuplicate's phone-match path.
+// unionPhones unions on (case-insensitive type, canonical phone key) -- reuses
+// models.PhoneKey so "phone equality" means the same thing here as it already
+// does for DetectDuplicate's phone-match path.
 func unionPhones(a, b []models.ContactPhone) []models.ContactPhone {
 	seen := map[string]bool{}
 	var out []models.ContactPhone
 	add := func(p models.ContactPhone) {
-		key := strings.ToLower(strings.TrimSpace(p.Type)) + "|" + normalizePhoneForComparison(p.Value)
+		phoneKey := models.PhoneKey(p.Value)
+		if phoneKey == "" {
+			out = append(out, p)
+			return
+		}
+		key := strings.ToLower(strings.TrimSpace(p.Type)) + "|" + phoneKey
 		if seen[key] {
 			return
 		}

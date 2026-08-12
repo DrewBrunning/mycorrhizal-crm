@@ -724,17 +724,6 @@ func NormalizeGender(input string) string {
 	}
 }
 
-// normalizePhoneForComparison removes all non-digit characters from a phone number for comparison
-func normalizePhoneForComparison(phone string) string {
-	var normalized strings.Builder
-	for _, r := range phone {
-		if r >= '0' && r <= '9' {
-			normalized.WriteRune(r)
-		}
-	}
-	return normalized.String()
-}
-
 // DetectDuplicate checks for existing contacts matching the given fields
 func DetectDuplicate(db *gorm.DB, userID uint, firstname, lastname, email, phone string) *models.DuplicateMatch {
 	var existing models.Contact
@@ -769,14 +758,17 @@ func DetectDuplicate(db *gorm.DB, userID uint, firstname, lastname, email, phone
 	}
 
 	// Priority 3: Phone match (if phone provided)
-	// Normalize phone numbers for comparison (strip non-digits)
+	// Normalize phone numbers to a canonical last-10-digit key (PhoneKey) so
+	// that +1-country-code, trunk-prefix and punctuation-only differences
+	// still detect a duplicate. An empty key means the number is too short to
+	// match — treat it the same as "no phone provided."
 	if phone != "" {
-		normalizedPhone := normalizePhoneForComparison(phone)
-		if len(normalizedPhone) >= 5 { // Only match if we have enough digits
+		phoneKey := models.PhoneKey(phone)
+		if phoneKey != "" {
 			var contacts []models.Contact
 			if err := db.Where("user_id = ? AND phone != ''", userID).Find(&contacts).Error; err == nil {
 				for _, c := range contacts {
-					if normalizePhoneForComparison(c.Phone) == normalizedPhone {
+					if models.PhoneKey(c.Phone) == phoneKey {
 						return &models.DuplicateMatch{
 							ExistingContactID: c.ID,
 							ExistingFirstname: c.Firstname,

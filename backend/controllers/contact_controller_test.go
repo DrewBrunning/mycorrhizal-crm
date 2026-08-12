@@ -292,6 +292,92 @@ func TestGetContactsSearchMatchesAddresses(t *testing.T) {
 	assert.Equal(t, 0, search("nomatch"), "unrelated term should match nothing")
 }
 
+// TestGetContactsSearchDoesNotLeakAcrossUsers pins the ownership-scoping rule
+// for the legacy contacts-list search (the same highest-risk rule the FTS path
+// pins with TestSearch_CrossUserReturnsNothing): applyContactSearch's OR-clause
+// must compose with the user_id scope under AND, never OR, so a search term
+// can never surface a contact owned by another user. (GORM parenthesizes the
+// Where clause, but this test guards against any regression that would let the
+// unparenthesized OR escape the user scope.)
+func TestGetContactsSearchDoesNotLeakAcrossUsers(t *testing.T) {
+	db, router := setupRouter()
+
+	var user models.User
+	db.First(&user)
+
+	router.GET("/contacts", GetContacts)
+
+	// A second user owns a contact with a distinctive lastname.
+	other := models.User{Username: "search-other", Password: "password123", Email: "search-other@example.com"}
+	require.NoError(t, db.Create(&other).Error)
+	require.NoError(t, db.Create(&models.Contact{
+		UserID: other.ID, Firstname: "Sneaky", Lastname: "ZzyzxCrossUser",
+	}).Error)
+
+	// The first user searches for that distinctive lastname.
+	req, _ := http.NewRequest("GET", "/contacts?search=ZzyzxCrossUser", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	contacts := body["contacts"].([]any)
+	assert.Empty(t, contacts, "a contact owned by another user must never be returned via the contacts search")
+}
+
+// TestGetContactsSearchMatchesPhonesNormalized pins T69's other half: the
+// legacy LIKE-based contacts search (applyContactSearch) must match a phone
+// regardless of punctuation/grouping/country-code differences between the
+// query and the stored value, via the denormalized phones_normalized column.
+// The phone tokens are absent from every name/email/address field so the
+// match can only come from the phone.
+func TestGetContactsSearchMatchesPhonesNormalized(t *testing.T) {
+	db, router := setupRouter()
+
+	var user models.User
+	db.First(&user)
+
+	router.GET("/contacts", GetContacts)
+
+	require.NoError(t, db.Create(&models.Contact{
+		UserID: user.ID, Firstname: "Grace", Lastname: "Hopper",
+		Phones: []models.ContactPhone{{Type: "cell", Value: "(800) 555-1234"}},
+	}).Error)
+	// A second contact with an 11-digit (country-code) number and a distinct
+	// non-primary number.
+	require.NoError(t, db.Create(&models.Contact{
+		UserID: user.ID, Firstname: "Alan", Lastname: "Turing",
+		Phones: []models.ContactPhone{
+			{Type: "cell", Value: "+18005551234"},
+			{Type: "work", Value: "800-555-2222"},
+		},
+	}).Error)
+	// A third contact that must NOT match any of the searches below.
+	require.NoError(t, db.Create(&models.Contact{UserID: user.ID, Firstname: "Zoe", Lastname: "None"}).Error)
+
+	search := func(term string) int {
+		req, _ := http.NewRequest("GET", "/contacts?search="+term, nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusOK, w.Code)
+		var body map[string]any
+		json.Unmarshal(w.Body.Bytes(), &body)
+		return len(body["contacts"].([]any))
+	}
+
+	// Unpunctuated 10-digit query finds both stored forms.
+	assert.Equal(t, 2, search("8005551234"), "the 10-digit query must find the punctuated and country-code stored numbers")
+	// Punctuated query finds both too.
+	assert.Equal(t, 2, search("(800) 555-1234"), "the punctuated query must find both stored forms")
+	// The full international form matches the same number in either format.
+	assert.Equal(t, 2, search("18005551234"), "the full 11-digit query must match both stored forms")
+	// A non-primary number is findable.
+	assert.Equal(t, 1, search("8005552222"), "a non-primary phone must be findable through the contacts search")
+	// A different number matches nothing.
+	assert.Equal(t, 0, search("8005559999"), "unrelated number should match nothing")
+}
+
 func TestGetContact(t *testing.T) {
 	db, router := setupRouter()
 

@@ -194,3 +194,65 @@ func TestValidateImportedContact(t *testing.T) {
 	}
 	assert.Empty(t, ValidateImportedContact(&ok))
 }
+
+func TestPhoneKey_CountryCodeReconciliation(t *testing.T) {
+	a := models.PhoneKey("+18005551234")
+	b := models.PhoneKey("(800) 555-1234")
+	c := models.PhoneKey("800-555-1234")
+
+	assert.Equal(t, "8005551234", a)
+	assert.Equal(t, "8005551234", b)
+	assert.Equal(t, "8005551234", c)
+	assert.Equal(t, a, b, "all three forms share the same key")
+}
+
+func TestPhoneKey_UkTrunkPrefix(t *testing.T) {
+	assert.Equal(t, "2079460958", models.PhoneKey("+44 20 7946 0958"))
+	assert.Equal(t, "2079460958", models.PhoneKey("020 7946 0958"))
+	assert.Equal(t, "2079460958", models.PhoneKey("+44 020 7946 0958"))
+}
+
+func TestPhoneKey_ExactlyTen(t *testing.T) {
+	assert.Equal(t, "8005551234", models.PhoneKey("8005551234"))
+	assert.Equal(t, "2079460958", models.PhoneKey("2079460958"))
+}
+
+func TestPhoneKey_PunctuationOnly(t *testing.T) {
+	assert.Equal(t, "8005551234", models.PhoneKey("800.555.1234"))
+	assert.Equal(t, "8005551234", models.PhoneKey("800-555-1234"))
+	assert.Equal(t, "8005551234", models.PhoneKey("(800) 555-1234"))
+}
+
+func TestPhoneKey_MoreThanTenKeepsLastTen(t *testing.T) {
+	assert.Equal(t, "8005551234", models.PhoneKey("18005551234"))
+	assert.Equal(t, "8005551234", models.PhoneKey("+1 800 555 1234"))
+}
+
+func TestPhoneKey_SevenDigits(t *testing.T) {
+	assert.Equal(t, "5551234", models.PhoneKey("555-1234"))
+}
+
+func TestPhoneKey_SixDigitsReturnsEmpty(t *testing.T) {
+	assert.Equal(t, "", models.PhoneKey("555123"))
+	assert.Equal(t, "", models.PhoneKey("555-123"))
+}
+
+func TestPhoneKey_EmptyStringReturnsEmpty(t *testing.T) {
+	assert.Equal(t, "", models.PhoneKey(""))
+}
+
+func TestPhoneKey_NoDigitsReturnsEmpty(t *testing.T) {
+	assert.Equal(t, "", models.PhoneKey("abc def"))
+}
+
+func TestPhoneKey_WhitespaceOnlyReturnsEmpty(t *testing.T) {
+	assert.Equal(t, "", models.PhoneKey("  \t\n"))
+}
+
+func TestPhoneKey_VeryLongNumber(t *testing.T) {
+	assert.Equal(t, "5512345599", models.PhoneKey("+1-800-555-1234 ext. 5599"))
+}
+
+func TestPhoneKey_NonLatinDigitsAreNotDigits(t *testing.T) {
+	assert.Equal(t, "", models.PhoneKey("１２３４５６７８９０"))
+}

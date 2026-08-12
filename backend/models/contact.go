@@ -155,6 +155,17 @@ type Contact struct {
 	// surface. Backfilled for pre-existing rows by migration 000010.
 	AddressesFlat string `gorm:"column:addresses_flat;type:text" json:"-"`
 
+	// PhonesNormalized is the denormalized, searchable concatenation of every
+	// Phones[] entry's full digit string and its PhoneKey (see FlattenPhones),
+	// kept in sync by BeforeSave like the legacy Phone scalar and indexed into
+	// contacts_fts so search finds a number regardless of punctuation,
+	// grouping, or country-code differences between the query and the stored
+	// value (T69). Covers every array entry, not just the flat primary. Derived
+	// data — rebuildable from the phones JSON at any time — so it is
+	// deliberately not part of the API surface. Backfilled for pre-existing
+	// rows by migration 000020.
+	PhonesNormalized string `gorm:"column:phones_normalized;type:text" json:"-"`
+
 	// cardSetDirectly is a transient, in-memory-only marker (unexported, so
 	// GORM ignores it entirely — no column, nothing to tag) set by
 	// ApplyRecordToContact (contact_record_reverse.go, WP-71/P2) to tell
@@ -204,11 +215,37 @@ func FlattenAddresses(addresses []ContactAddress) string {
 	return strings.Join(parts, " ")
 }
 
-// BeforeSave keeps the denormalized primary scalars (Email/Phone/Address)
-// and the searchable AddressesFlat column (T38) in sync with the JSON
-// arrays, and keeps the neutral Card/CRM/Passthrough representation (and
-// its own derived projection scalars) in sync with the legacy fields on
-// every create/update.
+// FlattenPhones renders every phone entry as one searchable string: each
+// entry's full digit string (NormalizePhoneDigits) plus its PhoneKey (the
+// last-10-digits key, T68) when that differs, all joined with a space. It
+// feeds the denormalized PhonesNormalized column (T69), which contacts_fts
+// indexes. Emitting both tokens is what makes cross-format search work in
+// both directions: a query of the full digits ("18005551234") hits the first
+// token, a query of the canonical key ("8005551234") hits the second, for a
+// number stored either way. Entries with no digits at all contribute nothing.
+// Migration 000020's SQL backfill deliberately mirrors this exact shape for
+// pre-existing rows, so this testable function is what keeps new-contact and
+// pre-existing-contact search behavior from silently diverging.
+func FlattenPhones(phones []ContactPhone) string {
+	parts := make([]string, 0, 2*len(phones))
+	for _, p := range phones {
+		digits := NormalizePhoneDigits(p.Value)
+		if digits == "" {
+			continue
+		}
+		parts = append(parts, digits)
+		if key := PhoneKey(p.Value); key != "" && key != digits {
+			parts = append(parts, key)
+		}
+	}
+	return strings.Join(parts, " ")
+}
+
+// BeforeSave keeps the denormalized primary scalars (Email/Phone/Address),
+// the searchable AddressesFlat column (T38) and PhonesNormalized column (T69)
+// in sync with the JSON arrays, and keeps the neutral Card/CRM/Passthrough
+// representation (and its own derived projection scalars) in sync with the
+// legacy fields on every create/update.
 //
 // RecordFromContact + contactmodel.DeriveProjection is now the single source
 // of truth for Firstname/Lastname/Email/Phone/Birthday/FN/Org: the old
@@ -252,6 +289,7 @@ func (c *Contact) BeforeSave(tx *gorm.DB) error {
 		c.Address = FormatAddress(c.Addresses[0])
 	}
 	c.AddressesFlat = FlattenAddresses(c.Addresses)
+	c.PhonesNormalized = FlattenPhones(c.Phones)
 
 	var record *contactmodel.Record
 	if c.cardSetDirectly {

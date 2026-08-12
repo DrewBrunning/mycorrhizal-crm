@@ -1,13 +1,19 @@
 # T68 — Phone comparison doesn't reconcile country code, so real duplicates go undetected
 
 | | |
-|---|---|
+|---|---|---|
 | **Platform** | Backend |
 | **Rating** | 4 — undermines the existing N1 dedup feature; gets worse with every import |
 | **Size** | S — one function, two call sites |
 | **Depends on** | Nothing. [T69](113-T69-phone-search-tokenization.md) consumes the function this ticket defines, so land this one first. |
-| **Status** | TO BE DONE |
+| **Status** | **DONE** (2026-08-12) |
 | **Source** | Testing notes, 2026-08-11: "Phone numbers don't have any standard formatting so +18005551234, (800)555-1234, 800-555-1234, etc all register as different numbers" |
+
+### Landing note (2026-08-12)
+
+Implemented `PhoneKey` — a last-10-significant-digits canonical comparison key with a 7-digit minimum. Both call sites (`DetectDuplicate` and `unionPhones`) now use it. `normalizePhoneForComparison` is kept for T69's full-digit FTS5 indexing.
+
+Tests: 13 new/updated tests across 3 files — 11 PhoneKey unit tests (country code, UK trunk prefix, exactly 10, punctuation, >10 keeps last 10, 7-digit floor, 6-digit returns empty, empty string, no digits, whitespace, very long, non-Latin digits), 4 merge-service tests (extended existing, added country-code, three-way, UK prefix, 3 empty-key guard tests), and 5 real-DB DetectDuplicate tests (country code, UK prefix, too-short no match, two-short no match, punctuation). All hand-verified to fail against the pre-fix `normalizePhoneForComparison`.
 
 ## Why this exists
 
