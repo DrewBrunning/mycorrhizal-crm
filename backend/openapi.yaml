@@ -1083,10 +1083,14 @@ paths:
         current user's enabled-fields, and (when the user has an Immich
         config) an Immich summary block. Pure aggregation, no writes, no
         cache; every collection block is always present and serializes as
-        `[]` when empty, never `null`/absent. Sub-blocks are deliberately
-        unpaginated — the client gets the whole screen in one shot. The
-        profile picture is NOT included (GET /contacts/{id}/profile_picture
-        stays a separate request).
+        `[]` when empty, never `null`/absent. The six timeline-eligible
+        blocks (notes, activities, completions, life events, external
+        activities, gifts) are bounded at 5 each — enough to build the
+        default 5-item timeline preview correctly — and ordered by the
+        timeline's event-date key; the rest are the client's whole screen in
+        one shot. For the full, paginated timeline see GET
+        /contacts/{id}/timeline. The profile picture is NOT included (GET
+        /contacts/{id}/profile_picture stays a separate request).
       responses:
         "200":
           description: The contact-detail composite.
@@ -1094,6 +1098,76 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ContactDetailResponse"
+        "404":
+          description: Contact not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /contacts/{id}/timeline:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      summary: Get a contact's merged, paginated, filterable timeline (T66)
+      operationId: getContactTimeline
+      description: >
+        A page of a contact's merged timeline across all six event types —
+        note, activity, completion (reminder completions), life_event,
+        external_activity, gift — sorted by each event's date (newest first
+        by default). Cursor-paginated over a normalized (event_date, type,
+        id) key: the opaque cursor resumes strictly after the previous
+        page's last item, and every item is returned exactly once when pages
+        are walked to the end. Filter with ?type= (comma-separated subset of
+        the six tokens; empty means all) and ?bucket= (one of last_7_days,
+        last_30_days, last_90_days, this_year, all). Life events sort by
+        their resolved date (a PartialDate); undated ideas are not timeline
+        gifts. Read-only, scoped to the owning user; unknown type/bucket
+        tokens and malformed cursors are 400s, never silent fallbacks.
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, default: 25 }
+        - name: order
+          in: query
+          description: Direction for the (event_date, type, id) cursor order.
+          schema: { type: string, enum: [asc, desc], default: desc }
+        - name: cursor
+          in: query
+          description: Opaque resume token from the previous page's next_cursor.
+          schema: { type: string }
+        - name: type
+          in: query
+          description: >
+            Comma-separated subset of event types to include. Empty means
+            all six. Any unknown token is a 400.
+          schema:
+            type: string
+            example: note,activity
+        - name: bucket
+          in: query
+          description: >
+            Recency filter: last_7_days, last_30_days, last_90_days,
+            this_year, or all (default).
+          schema:
+            type: string
+            enum: [last_7_days, last_30_days, last_90_days, this_year, all]
+            default: all
+      responses:
+        "200":
+          description: A page of merged timeline items.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TimelineResponse"
+        "400":
+          description: Unknown type/bucket token or malformed cursor.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Contact not found.
           content:
@@ -6965,6 +7039,48 @@ components:
           nullable: true
           allOf:
             - $ref: "#/components/schemas/ImmichPersonSummary"
+    TimelineItem:
+      type: object
+      description: >
+        One entry in a contact's merged timeline (T66): the raw entity under
+        `data`, plus the normalized sort key the merge and cursor are built
+        on. `type` discriminates which entity shape `data` carries — note,
+        activity, completion, life_event, external_activity, or gift. `id` is
+        always the entity's primary key as a string (the six tables mix uint
+        and UUID-string PKs). `date` is the resolved event date the timeline
+        sorts on: the entity's own timestamp for the five timestamped types,
+        and the resolved PartialDate for life events.
+      required: [type, id, date, data]
+      properties:
+        type:
+          type: string
+          enum: [note, activity, completion, life_event, external_activity, gift]
+        id: { type: string }
+        date: { type: string, format: date-time }
+        data:
+          oneOf:
+            - $ref: "#/components/schemas/Note"
+            - $ref: "#/components/schemas/Activity"
+            - $ref: "#/components/schemas/ReminderCompletion"
+            - $ref: "#/components/schemas/LifeEvent"
+            - $ref: "#/components/schemas/ExternalActivity"
+            - $ref: "#/components/schemas/Gift"
+          description: The raw entity, whose shape follows `type`.
+    TimelineResponse:
+      type: object
+      description: >
+        One page of the merged timeline (GET /contacts/{id}/timeline). Items
+        serialize as `[]` when the page is empty, never `null`/absent.
+        `next_cursor` is empty when there are no more rows; walking pages by
+        following it returns every matching item exactly once.
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/TimelineItem" }
+        next_cursor:
+          type: string
+          description: Resume token for the next page; empty when there are no more rows.
+        limit: { type: integer }
     ContactBriefing:
       type: object
       description: >

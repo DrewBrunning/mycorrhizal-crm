@@ -102,6 +102,8 @@ func TestOpenAPISpecValidates(t *testing.T) {
 		// M4 contact-detail composite.
 		"ContactDetailResponse", "ContactDetailUser", "ContactDetailLifeEvent",
 		"ContactDetailImmich",
+		// T66 merged contact timeline.
+		"TimelineItem", "TimelineResponse",
 	}
 	for _, name := range wantSchemas {
 		if _, ok := doc.Components.Schemas[name]; !ok {

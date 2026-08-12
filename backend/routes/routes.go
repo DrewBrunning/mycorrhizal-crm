@@ -87,6 +87,12 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// /briefing above — registered after GET /contacts/:id so the
 			// literal /detail path is never captured as a contact ID.
 			protected.GET("/contacts/:id/detail", controllers.GetContactDetail)
+			// T66 contact timeline: paginated, type- and recency-filtered view
+			// of the merged timeline across all six event types. Registered
+			// after /contacts/:id so the literal /timeline path is never
+			// captured as a contact ID (same ordering note as /briefing and
+			// /detail).
+			protected.GET("/contacts/:id/timeline", controllers.GetContactTimeline)
 			protected.PUT("/contacts/:id", middleware.ValidateJSONMiddleware(&models.ContactRecordInput{}), controllers.UpdateContact)
 			protected.DELETE("/contacts/:id", controllers.DeleteContact)
 			protected.POST("/contacts/:id/archive", controllers.ArchiveContact)

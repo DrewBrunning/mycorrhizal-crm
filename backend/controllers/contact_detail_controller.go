@@ -47,6 +47,10 @@ func GetContactDetail(c *gin.Context) {
 // user_id (CLAUDE.md trap 5); soft-deleted rows are excluded by GORM's
 // default deleted_at IS NULL scoping, matching each source query's existing
 // per-resource handler.
+//
+// T66 bounds the six timeline-eligible blocks at timelinePreviewLimit each
+// (see the inline comment on the notes query for the reasoning); the
+// remaining blocks stay unpaginated by design (M4 design decision 6).
 func buildContactDetail(db *gorm.DB, userID uint, contact *models.Contact, cfg config.Config) (*models.ContactDetailResponse, error) {
 	detail := &models.ContactDetailResponse{
 		Contact: models.NewContactRecordResponse(contact, cfg.ProfilePhotoDir, db),
@@ -58,8 +62,14 @@ func buildContactDetail(db *gorm.DB, userID uint, contact *models.Contact, cfg c
 	}
 	detail.User = models.ContactDetailUser{EnabledContactFields: user.EnabledContactFields}
 
+	// T66: the six timeline-eligible blocks are bounded at timelinePreviewLimit
+	// (5) — enough to build the default 5-item preview correctly regardless of
+	// type distribution (any item in the global top 5 must be within its own
+	// type's top 5), each ordered by the timeline's event-date key. The other
+	// blocks (reminders, agenda, field values, identities, circles, tags) stay
+	// unpaginated — they are bounded-small or the screen's complete set.
 	if err := db.Where("contact_id = ? AND user_id = ?", contact.ID, userID).
-		Order("date DESC").Find(&detail.Notes).Error; err != nil {
+		Order("date DESC").Limit(timelinePreviewLimit).Find(&detail.Notes).Error; err != nil {
 		return nil, err
 	}
 
@@ -70,12 +80,13 @@ func buildContactDetail(db *gorm.DB, userID uint, contact *models.Contact, cfg c
 		Joins("JOIN activity_contacts ON activities.id = activity_contacts.activity_id").
 		Where("activities.user_id = ? AND activity_contacts.contact_id = ?", userID, contact.ID).
 		Order("activities.date DESC").
+		Limit(timelinePreviewLimit).
 		Find(&detail.Activities).Error; err != nil {
 		return nil, err
 	}
 
 	if err := db.Where("contact_id = ? AND user_id = ?", contact.ID, userID).
-		Order("completed_at DESC").Find(&detail.Completions).Error; err != nil {
+		Order("completed_at DESC").Limit(timelinePreviewLimit).Find(&detail.Completions).Error; err != nil {
 		return nil, err
 	}
 
@@ -99,8 +110,12 @@ func buildContactDetail(db *gorm.DB, userID uint, contact *models.Contact, cfg c
 		return nil, err
 	}
 
+	// Gifts are ordered by date (not created_at) so the bounded block doubles
+	// as the timeline preview's gift slice: undated ideas sort last and fall
+	// out of the top 5, matching the timeline's "undated ideas are not
+	// events" rule while the status filter stays on the timeline endpoint.
 	if err := db.Where("user_id = ? AND entity_id = ?", userID, contact.VCardUID).
-		Order("created_at DESC").Find(&detail.Gifts).Error; err != nil {
+		Order("date DESC").Limit(timelinePreviewLimit).Find(&detail.Gifts).Error; err != nil {
 		return nil, err
 	}
 
@@ -115,7 +130,7 @@ func buildContactDetail(db *gorm.DB, userID uint, contact *models.Contact, cfg c
 	}
 
 	if err := db.Where("user_id = ? AND entity_id = ?", userID, contact.VCardUID).
-		Find(&detail.ExternalActivities).Error; err != nil {
+		Order("occurred_at DESC").Limit(timelinePreviewLimit).Find(&detail.ExternalActivities).Error; err != nil {
 		return nil, err
 	}
 
@@ -140,7 +155,7 @@ func buildContactDetail(db *gorm.DB, userID uint, contact *models.Contact, cfg c
 func attachContactDetailLifeEvents(db *gorm.DB, userID uint, contact *models.Contact, detail *models.ContactDetailResponse) error {
 	var events []models.LifeEvent
 	if err := db.Where("user_id = ? AND entity_id = ?", userID, contact.VCardUID).
-		Order("created_at DESC").Find(&events).Error; err != nil {
+		Order("created_at DESC").Limit(timelinePreviewLimit).Find(&events).Error; err != nil {
 		return err
 	}
 	if len(events) == 0 {
