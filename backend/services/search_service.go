@@ -133,6 +133,27 @@ func phoneFTSMatch(digits, key string) string {
 	return strings.Join(tokens, " OR ")
 }
 
+// ContactFTSMatch builds the FTS5 MATCH expression to run against
+// contacts_fts for a free-text query term: the phone-shaped expression
+// (phoneFTSMatch) when the term is phone-shaped (PhoneQueryTokens), the plain
+// prefix expression (ftsQuery) otherwise. Reports ok=false when the term
+// tokenizes to nothing (e.g. all-whitespace) — callers must not run a MATCH
+// with an empty expression (FTS5 syntax error).
+//
+// Both Search (this file, the cross-entity /search endpoint) and
+// applyContactSearch (controllers/contact_controller.go, GET
+// /contacts?search=, T85 — docs/fork-plan/tickets/129-T85-contacts-list-fts-search.md)
+// call this, so the two paths' notion of "what a contacts_fts match looks
+// like" cannot drift apart the way it would if each reimplemented the
+// phone-vs-plain choice separately.
+func ContactFTSMatch(term string) (expr string, ok bool) {
+	if digits, key, phoneOK := PhoneQueryTokens(term); phoneOK {
+		return phoneFTSMatch(digits, key), true
+	}
+	expr = ftsQuery(term)
+	return expr, expr != ""
+}
+
 // Search runs a full-text query across the user's contacts, notes, and
 // interactions. Empty/whitespace queries return an empty result. A query
 // shorter than two characters also returns empty (avoiding a noisy index
@@ -176,11 +197,16 @@ func Search(db *gorm.DB, userID uint, term string, limit int, householdID *strin
 	// never prefix-matches). Only the contacts index carries the normalized
 	// column, so only the contacts query gets the phone-shaped expression;
 	// notes and activities keep the plain text match (their raw fields are
-	// not normalized).
-	contactMatch := match
-	if digits, key, ok := PhoneQueryTokens(term); ok {
-		contactMatch = phoneFTSMatch(digits, key)
-	}
+	// not normalized). ContactFTSMatch encapsulates the phone-vs-plain choice
+	// (T85) so this and applyContactSearch cannot drift.
+	//
+	// The ok result is deliberately discarded: it is false only for a term
+	// that tokenizes to nothing, which the >= 2-rune gate above already
+	// excludes, and in that case the returned expression and `match` are
+	// both the empty string anyway — identical to pre-T85 behavior. There is
+	// no meaningful fallback to make here; applyContactSearch, which has no
+	// such upstream guarantee, is the caller that actually checks ok.
+	contactMatch, _ := ContactFTSMatch(term)
 
 	// Optional household scope: restrict contact hits to members of one
 	// household (T11's "everyone in the Smith household").

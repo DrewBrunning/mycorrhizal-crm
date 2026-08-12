@@ -93,8 +93,16 @@ func CreateContact(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"message": "Contact created successfully", "contact": models.NewContactRecordResponse(&contact, currentConfig(c).ProfilePhotoDir, db)})
 }
 
-// filters a contacts query by a free-text term
-func applyContactSearch(query *gorm.DB, searchTerm string) *gorm.DB {
+// applyContactSearch filters a contacts query by a free-text term. The base
+// clause is LIKE-based substring matching over flat columns; T85
+// (docs/fork-plan/tickets/129-T85-contacts-list-fts-search.md) ORs in an FTS5
+// prefix-token match on contacts_fts, narrowing the same row set the LIKE
+// clause narrows rather than replacing it — see the ticket's "FTS as a
+// filter, not a ranker" decision and its "LIKE and FTS do not match the same
+// rows" trap. LIKE alone finds "Joanne" for "ann" (substring); FTS alone does
+// not (token-prefix). ORing keeps every match that worked before this ticket
+// and adds the FTS matches on top.
+func applyContactSearch(query *gorm.DB, userID uint, searchTerm string) *gorm.DB {
 	like := "%" + searchTerm + "%"
 
 	clause := "firstname LIKE ? OR lastname LIKE ? OR nickname LIKE ? " +
@@ -126,6 +134,25 @@ func applyContactSearch(query *gorm.DB, searchTerm string) *gorm.DB {
 		if key != "" && key != digits {
 			clause += " OR phones_normalized LIKE ?"
 			args = append(args, "%"+key+"%")
+		}
+	}
+
+	// T85: gate the FTS clause at two runes, matching services.Search's own
+	// gate (search_service.go) — below that, this is LIKE-only, which is
+	// exactly today's (pre-T85) behavior, so a one-character search does not
+	// change at all. contacts_fts indexes archived and soft-deleted rows, so
+	// this subquery is not trusted to filter them — the outer query's
+	// existing `archived` Where and GORM's default soft-delete scope do that,
+	// and they still apply here because this whole clause is only ever
+	// ANDed onto the outer query, never a replacement for it.
+	if len([]rune(strings.TrimSpace(searchTerm))) >= 2 {
+		if match, ok := services.ContactFTSMatch(searchTerm); ok {
+			// contacts_fts.user_id is redundant with the outer query's own
+			// `user_id = ?` scope, but included anyway — defense-in-depth
+			// matching the double-scoping services.Search already does, and
+			// the ticket's own highest-risk-part callout.
+			clause += " OR contacts.id IN (SELECT rowid FROM contacts_fts WHERE contacts_fts MATCH ? AND contacts_fts.user_id = ?)"
+			args = append(args, match, userID)
 		}
 	}
 
@@ -335,7 +362,7 @@ func GetContacts(c *gin.Context) {
 
 	// Apply search filter using parameterization
 	if searchTerm := c.Query("search"); searchTerm != "" {
-		query = applyContactSearch(query, searchTerm)
+		query = applyContactSearch(query, userID, searchTerm)
 	}
 
 	if circle := c.Query("circle"); circle != "" {
