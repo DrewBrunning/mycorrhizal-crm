@@ -2,7 +2,9 @@
 
 | | |
 |---|---|
+| **Platform** | Android |
 | **Rating** | 3 |
+| **Size** | L — 7 new endpoints, and accept opens a per-row preview flow rather than a button |
 | **Source** | [M8](89-M8-web-android-parity-audit.md) audit, 2026-08-11 |
 | **Depends on** | Nothing — P1's backend already exists and serves web today |
 | **Status** | TO BE DONE |

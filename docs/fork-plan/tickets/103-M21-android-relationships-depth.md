@@ -2,7 +2,9 @@
 
 | | |
 |---|---|
+| **Platform** | Android |
 | **Rating** | 4 |
+| **Size** | M — 1 new method + 1 new parameter, then name resolution, edit and sensitivity |
 | **Source** | [M8](89-M8-web-android-parity-audit.md) audit, 2026-08-11 |
 | **Depends on** | Nothing |
 | **Status** | TO BE DONE |

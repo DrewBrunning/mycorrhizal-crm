@@ -2,7 +2,9 @@
 
 | | |
 |---|---|
+| **Platform** | Android |
 | **Rating** | 3 — large; consider splitting per entity once scoped for real |
+| **Size** | S–M — no new endpoints; fields added across four existing forms |
 | **Source** | [M8](89-M8-web-android-parity-audit.md) audit, 2026-08-11 |
 | **Depends on** | [M17](99-M17-android-entity-scaffold-edit-delete-confirm.md) (edit needs to exist before these fields are worth adding to an edit form, not just create) |
 | **Status** | TO BE DONE |

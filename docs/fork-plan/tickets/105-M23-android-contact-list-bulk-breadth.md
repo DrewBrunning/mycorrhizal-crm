@@ -2,7 +2,9 @@
 
 | | |
 |---|---|
+| **Platform** | Android |
 | **Rating** | 3 |
+| **Size** | S–M — no new methods, one new parameter; mostly filter UI and the merge picker |
 | **Source** | [M8](89-M8-web-android-parity-audit.md) audit, 2026-08-11 |
 | **Depends on** | [M9](91-M9-android-wire-up-existing-screens.md) item 2 (bulk circle/tag wiring) should land first — this ticket's merge/breadth work is unrelated but touches the same screens |
 | **Status** | TO BE DONE |

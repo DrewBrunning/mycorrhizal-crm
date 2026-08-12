@@ -4,6 +4,7 @@
 |---|---|
 | **Platform** | Web |
 | **Rating** | 3 — cheap; the whole stack already exists except the button |
+| **Size** | S — backend, API client and hooks all exist; this is the calling page |
 | **Source** | [M8](89-M8-web-android-parity-audit.md) audit, 2026-08-11 — reverse-direction "wire it up" finding (structural finding #4) |
 | **Depends on** | Nothing |
 | **Status** | TO BE DONE |

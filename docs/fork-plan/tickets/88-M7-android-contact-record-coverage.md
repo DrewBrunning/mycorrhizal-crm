@@ -2,7 +2,9 @@
 
 | | |
 |---|---|
+| **Platform** | Android |
 | **Rating** | 4 — the contact record is the product; editing it is the app's primary job |
+| **Size** | L — a new shared editor plus ~20 field groups; the largest Android ticket. Consider slicing by field group. |
 | **Source** | Post-M1 review pass, 2026-08-11 — found by diffing `ContactFormViewModel`'s state against the `Card`/`CRMEnvelope` model |
 | **Depends on** | Nothing. The API client, the nested `Card` model, and the merge-on-edit write path all already exist. |
 | **Status** | Scoped, not started. |

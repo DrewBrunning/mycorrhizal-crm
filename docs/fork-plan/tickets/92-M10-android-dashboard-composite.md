@@ -2,7 +2,9 @@
 
 | | |
 |---|---|
+| **Platform** | Android |
 | **Rating** | 4 |
+| **Size** | M — 1 new endpoint, plus 2 missing widgets and reminder complete/skip |
 | **Source** | [M8](89-M8-web-android-parity-audit.md) audit, 2026-08-11 |
 | **Depends on** | [M3](82-M3-dashboard-overview-endpoint.md) (done — the composite endpoint Android should be calling) |
 | **Status** | TO BE DONE |

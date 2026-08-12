@@ -2,7 +2,9 @@
 
 | | |
 |---|---|
+| **Platform** | Android |
 | **Rating** | 4 — cheap, high value; every item here is already built and tested, just unreachable |
+| **Size** | M — 2 new client methods, but four unrelated wirings (routes, bulk actions, pagination, VCF confirm) |
 | **Source** | [M8](89-M8-web-android-parity-audit.md) audit, 2026-08-11 — "wire it up" bucket |
 | **Depends on** | Nothing |
 | **Status** | TO BE DONE |

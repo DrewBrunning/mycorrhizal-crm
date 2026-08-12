@@ -2,7 +2,9 @@
 
 | | |
 |---|---|
+| **Platform** | Android |
 | **Rating** | 3 |
+| **Size** | S–M — 2 endpoints, one list screen, one confirm dialog |
 | **Source** | [M8](89-M8-web-android-parity-audit.md) audit, 2026-08-11 |
 | **Depends on** | Nothing — T60/T18's backend already exists and serves web today |
 | **Status** | TO BE DONE |

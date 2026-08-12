@@ -2,7 +2,9 @@
 
 | | |
 |---|---|
+| **Platform** | Android |
 | **Rating** | 4 |
+| **Size** | S–M — 1 endpoint, one screen, and a debounce |
 | **Source** | [M8](89-M8-web-android-parity-audit.md) audit, 2026-08-11 |
 | **Depends on** | Nothing — T11's FTS5 `/search` endpoint already exists and serves web today |
 | **Status** | TO BE DONE |

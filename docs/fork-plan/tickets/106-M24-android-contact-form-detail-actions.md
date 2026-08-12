@@ -2,7 +2,9 @@
 
 | | |
 |---|---|
+| **Platform** | Android |
 | **Rating** | 4 — delete/archive missing from the detail page is a real gap, not polish |
+| **Size** | S — 3 new endpoints, each a straightforward action plus a confirm |
 | **Source** | [M8](89-M8-web-android-parity-audit.md) audit, 2026-08-11 |
 | **Depends on** | Nothing |
 | **Status** | TO BE DONE |

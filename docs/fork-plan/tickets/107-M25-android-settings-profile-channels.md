@@ -2,7 +2,9 @@
 
 | | |
 |---|---|
+| **Platform** | Android |
 | **Rating** | 3 |
+| **Size** | L — 10 new endpoints across several distinct settings surfaces |
 | **Source** | [M8](89-M8-web-android-parity-audit.md) audit, 2026-08-11 |
 | **Depends on** | Nothing |
 | **Status** | TO BE DONE |

@@ -2,7 +2,9 @@
 
 | | |
 |---|---|
+| **Platform** | Android |
 | **Rating** | 4 — one fix resolves four entity types at once |
+| **Size** | S — no new endpoints; one shared scaffold, fixing four entity types at once |
 | **Source** | [M8](89-M8-web-android-parity-audit.md) audit, 2026-08-11 — structural finding #3 |
 | **Depends on** | Nothing |
 | **Status** | TO BE DONE |

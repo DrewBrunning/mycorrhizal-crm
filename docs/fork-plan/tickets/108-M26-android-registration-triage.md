@@ -2,7 +2,9 @@
 
 | | |
 |---|---|
+| **Platform** | Android |
 | **Rating** | 2 — both real but low-frequency: one-time account creation, one-time legacy cleanup |
+| **Size** | M — 2 new endpoints for registration, plus the triage UI (which needs none) |
 | **Source** | [M8](89-M8-web-android-parity-audit.md) audit, 2026-08-11 |
 | **Depends on** | Nothing |
 | **Status** | TO BE DONE |

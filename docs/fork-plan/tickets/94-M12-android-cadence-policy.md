@@ -2,7 +2,9 @@
 
 | | |
 |---|---|
+| **Platform** | Android |
 | **Rating** | 5 — T19 cadence is a rating-5 capability on web; Android has none of it |
+| **Size** | M–L — 5 new endpoints plus screen, ViewModel, repository and route; the feature does not exist at all |
 | **Source** | [M8](89-M8-web-android-parity-audit.md) audit, 2026-08-11 |
 | **Depends on** | Nothing — the T19 backend already exists and serves web today |
 | **Status** | TO BE DONE |

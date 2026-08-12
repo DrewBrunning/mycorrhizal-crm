@@ -2,7 +2,9 @@
 
 | | |
 |---|---|
+| **Platform** | Android |
 | **Rating** | 5 — N2 is a rating-5 capability on web; this is porting it, not a new design |
+| **Size** | M — 1 endpoint, but a whole new screen |
 | **Source** | [M8](89-M8-web-android-parity-audit.md) audit, 2026-08-11 |
 | **Depends on** | Nothing — the backend N2 endpoint(s) already exist and serve web today |
 | **Status** | TO BE DONE |
