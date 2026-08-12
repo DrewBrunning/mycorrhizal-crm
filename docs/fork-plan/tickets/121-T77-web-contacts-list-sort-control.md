@@ -5,7 +5,7 @@
 | **Platform** | Web |
 | **Rating** | 3 — the user-visible half of T73 |
 | **Size** | S — one control, one param, one persistence hook |
-| **Depends on** | [T73](117-T73-contacts-list-sort-control.md) — the `sort` param does not exist server-side yet. Blocked until it lands. |
+| **Depends on** | [T73](117-T73-contacts-list-sort-control.md) — landed 2026-08-12; the server-side `sort=updated_at|name` param this control consumes now exists. Unblocked. |
 | **Status** | TO BE DONE |
 | **Source** | Testing notes, 2026-08-11: "Contacts sort by most recently edited". Split from T73 on 2026-08-11 so the backend and web halves rank on their own platform lists. |
 
