@@ -422,3 +422,67 @@ test('anniversary rows honor a US (MM/DD/YYYY) date format', () => {
   expect(screen.queryByText(/2015-06-01/)).toBeNull();
   window.localStorage.removeItem('dateFormat');
 });
+
+// --- T74: two-column field grid at lg+ ---
+//
+// jsdom does no layout and MUI's responsive sx values only become real CSS
+// (inside media queries) in a <style> tag, so the layout itself is verified
+// by the Playwright spec (which measures actual positions). These tests pin
+// the CSS emission the layout depends on: the grid container's two-column
+// template at lg+ (single column below), and the full-width span on the
+// multi-line / wide fields. They use the same style-text inspection the T28
+// wrapping test above already relies on.
+
+function allStyles(): string {
+  return Array.from(document.head.querySelectorAll('style'))
+    .map((s) => s.textContent)
+    .join('\n');
+}
+
+// The rules MUI generates for a responsive sx value (e.g.
+// gridTemplateColumns: { xs: '1fr', lg: 'repeat(2, 1fr)' }) are wrapped in
+// @media (min-width:<bp>) blocks, one per line; pull one breakpoint's worth
+// out so an assertion can tell the two-column template (lg+ = 1200px) apart
+// from the base single-column one (0px).
+function mediaRules(styles: string, minWidth: string): string {
+  return styles
+    .split('\n')
+    .filter((line) => line.startsWith(`@media (min-width:${minWidth})`))
+    .join('\n');
+}
+
+test('lays the field groups out in two columns at lg+ (T74 Level 1)', () => {
+  renderInformation({ phones: [{ number: '+15551234567' }] });
+  expect(mediaRules(allStyles(), '1200px')).toContain('repeat(2, 1fr)');
+});
+
+test('keeps a single column below lg (T74 Level 1)', () => {
+  renderInformation({ phones: [{ number: '+15551234567' }] });
+  const base = mediaRules(allStyles(), '0px');
+  expect(base).toContain('grid-template-columns:1fr');
+  // The two-column template must stay gated to lg+, never in the base rules.
+  expect(base).not.toContain('repeat(2, 1fr)');
+});
+
+test('section headings span both columns so dividers stay full-width (T74)', () => {
+  renderInformation({ phones: [{ number: '+15551234567' }] });
+  expect(mediaRules(allStyles(), '1200px')).toContain('grid-column:1/-1');
+});
+
+test('multi-line / wide fields span both columns at lg+ (T74)', () => {
+  // work_information is one of the fields wrapped in ContactInformation's
+  // FullSpanField span (enabled by default); a plain row like birthday must
+  // stay half-width.
+  renderInformation({}, { work_information: 'some notes' });
+  expect(mediaRules(allStyles(), '1200px')).toContain('grid-column:1/-1');
+});
+
+// T74 trap: EditableField's value box must be allowed to shrink below its
+// content's min-width (a flex child defaults to min-width: auto), or a long
+// unbroken value could force its column wider than 1fr and blow out the
+// two-column layout. EditableArrayField's equivalent box already carried
+// minWidth: 0; this pins the EditableField half of the fix.
+test('EditableField value boxes shrink below content min-width (T74 trap)', () => {
+  renderInformation({ phones: [{ number: '+15551234567' }] });
+  expect(allStyles()).toContain('min-width:0');
+});
