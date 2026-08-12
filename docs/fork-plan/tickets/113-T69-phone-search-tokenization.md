@@ -6,7 +6,7 @@
 | **Rating** | 3 — real search miss, but has a workaround (type it as stored) |
 | **Size** | M — migration + triggers + two query paths |
 | **Depends on** | [T68](112-T68-phone-dedup-country-code-normalization.md) — this ticket indexes the `PhoneKey` function T68 defines. Land T68 first. |
-| **Status** | TO BE DONE |
+| **Status** | **DONE** (2026-08-12) |
 | **Source** | Found investigating testing notes, 2026-08-11 ("phone numbers... all register as different numbers") — this is the search-side half of that report; T68 is the dedup-side half. |
 
 ## Why this exists
@@ -99,6 +99,30 @@ against `phone`/`json_each(phones)`.
 - **Don't index only the flat `phone` column** out of habit; that reproduces the fourth gap above.
 - **Keep the two backend paths consistent.** They already disagree about non-primary phones; ending
   this ticket with them disagreeing about *formatting* instead would be no better.
+
+### Landing note (2026-08-12)
+
+Implemented the T38-style shadow column: `contacts.phones_normalized`, populated by
+`Contact.BeforeSave` from **every** `Phones[]` entry as two space-separated tokens — the full digit
+string and T68's `PhoneKey` (last-10-digits) when it differs. Migration `000020` adds the column,
+backfills existing rows in SQL (recursive CTE digit-extraction, mirroring `models.FlattenPhones`
+exactly), and drops/recreates `contacts_fts` + its three triggers to index it.
+
+`PhoneKey`/`NormalizePhoneDigits` moved to `models` (their canonical home — `BeforeSave` needs them
+and models cannot import services); services callers now go through `models.PhoneKey`. Path 1
+(`/search`) detects phone-shaped terms via `services.PhoneQueryTokens` and matches the normalized
+digits+key tokens with an FTS5 OR instead of the raw-tokenizer path; path 2 (`applyContactSearch`)
+matches `phones_normalized` directly, additionally normalizing phone-shaped terms. `RebuildSearchIndex`
+was updated for the new column. Both paths now agree on the fourth gap too: a non-primary number is
+findable through global search, which `contacts_fts` previously couldn't index.
+
+Tests: `TestFlattenPhones` (models), `TestMigrationsAddPhonesNormalized` +
+`TestPhonesNormalizedMigrationBackfillsExistingRows` (migration + data-safety backfill),
+`TestPhoneQueryTokens` + five search-service tests (cross-format both directions, non-primary,
+soft-delete, cross-user leak, rebuild), `TestGetContactsSearchMatchesPhonesNormalized` (path 2), and
+three Playwright e2e tests in `search.spec.ts` (global cross-format, legacy list cross-format,
+non-primary). All hand-verified: temporarily disabling `PhoneQueryTokens` makes the cross-format
+tests fail. Full backend suite + frontend vitest + the search/contacts/merge e2e specs are green.
 
 ## Done when
 
