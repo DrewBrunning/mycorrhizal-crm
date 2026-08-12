@@ -56,7 +56,10 @@ export default function EditableField({
         sx={{ display: 'flex', alignItems: multiline ? 'flex-start' : 'center' }}
       >
         {icon}
-        <Box sx={{ flex: 1 }}>
+        {/* T74: minWidth: 0 lets this shrink below its content's natural width
+            inside a narrower grid cell (a flex child defaults to min-width:
+            auto) -- EditableArrayField's equivalent box already had this. */}
+        <Box sx={{ flex: 1, minWidth: 0 }}>
           {/* T63: field-name label gets IBM Plex Mono to contrast against the
               IBM Plex Sans field value below it -- component-scoped since
               "caption" is reused 60+ times elsewhere (timestamps, hints,
