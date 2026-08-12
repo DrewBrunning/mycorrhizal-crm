@@ -16,6 +16,7 @@
     "notes": "Notas",
     "network": "Red",
     "households": "Hogares",
+    "circlesTags": "Círculos y etiquetas",
     "profile": "Configuración",
     "users": "Usuarios",
     "data": "Datos",
@@ -72,6 +73,26 @@
     "dismissSuggestion": "Descartar",
     "suggestionAccepted": "Hogar creado a partir de la sugerencia",
     "suggestionDismissed": "Sugerencia descartada"
+  },
+  "circlesTags": {
+    "title": "Círculos y etiquetas",
+    "description": "Administra los círculos y etiquetas que usas para agrupar contactos. Cambiar el nombre o eliminar uno aquí se aplica en todos los lugares donde se usa.",
+    "tabCircles": "Círculos",
+    "tabTags": "Etiquetas",
+    "newCirclePlaceholder": "Nombre del nuevo círculo…",
+    "newTagPlaceholder": "Nueva etiqueta…",
+    "add": "Agregar",
+    "memberCount": "{{count}} contactos",
+    "noCircles": "Aún no hay círculos. Agrega uno abajo o desde la página de un contacto.",
+    "noTags": "Aún no hay etiquetas. Agrega una abajo o desde la página de un contacto.",
+    "deleteCircleConfirm": "¿Eliminar el círculo \"{{name}}\"? Se quitará de todos los contactos que lo tengan.",
+    "deleteTagConfirm": "¿Eliminar la etiqueta \"{{name}}\"? Se quitará de todos los contactos que la tengan.",
+    "circleCreated": "Círculo creado",
+    "circleRenamed": "Círculo renombrado",
+    "circleDeleted": "Círculo eliminado",
+    "tagCreated": "Etiqueta creada",
+    "tagRenamed": "Etiqueta renombrada",
+    "tagDeleted": "Etiqueta eliminada"
   },
   "dashboard": {
     "title": "Panel",
@@ -299,7 +320,11 @@
       "city": "Ciudad",
       "region": "Estado / Región",
       "postal": "Código Postal",
-      "country": "País"
+      "country": "País",
+      "pobox": "Apartado postal",
+      "apartment": "Apartamento / Suite",
+      "floor": "Piso",
+      "additionalFields": "Campos adicionales"
     },
     "anniversaries": "Aniversarios",
     "socialProfiles": "Perfiles sociales",

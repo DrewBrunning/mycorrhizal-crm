@@ -1,4 +1,4 @@
-import { Box, Typography, TextField, IconButton } from '@mui/material';
+import { Box, Typography, TextField, IconButton, Autocomplete } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
@@ -20,6 +20,13 @@ interface EditableFieldProps {
   onEditCancel: () => void;
   onEditSave: (field: string) => void;
   onEditValueChange: (value: string) => void;
+  // T72: when set, edit mode renders a free-solo Autocomplete offering these
+  // suggestions instead of a plain TextField. Free text is still accepted and
+  // saved verbatim — this is a suggestion list, not a constrained enum. Opt-in
+  // so every other EditableField consumer (birthday, organization, ...) is
+  // unaffected.
+  options?: string[];
+  getOptionLabel?: (option: string) => string;
 }
 
 export default function EditableField({
@@ -37,7 +44,9 @@ export default function EditableField({
   onEditStart,
   onEditCancel,
   onEditSave,
-  onEditValueChange
+  onEditValueChange,
+  options,
+  getOptionLabel
 }: EditableFieldProps) {
   const baseDisplayValue = formattedDisplayValue || value;
   const displayValue = baseDisplayValue ? (displaySuffix ? `${baseDisplayValue} ${displaySuffix}` : baseDisplayValue) : '-';
@@ -70,17 +79,38 @@ export default function EditableField({
           {isEditing ? (
             <Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-                <TextField
-                  value={editValue}
-                  onChange={(e) => onEditValueChange(e.target.value)}
-                  size="small"
-                  fullWidth
-                  multiline={multiline}
-                  rows={multiline ? 3 : 1}
-                  autoFocus
-                  error={!!showError}
-                  placeholder={placeholder}
-                />
+                {options ? (
+                  <Autocomplete
+                    freeSolo
+                    fullWidth
+                    size="small"
+                    options={options}
+                    getOptionLabel={getOptionLabel ?? ((option) => option)}
+                    value={editValue || null}
+                    onChange={(_, newValue) => onEditValueChange(newValue || '')}
+                    onInputChange={(_, newValue) => onEditValueChange(newValue)}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        autoFocus
+                        error={!!showError}
+                        placeholder={placeholder}
+                      />
+                    )}
+                  />
+                ) : (
+                  <TextField
+                    value={editValue}
+                    onChange={(e) => onEditValueChange(e.target.value)}
+                    size="small"
+                    fullWidth
+                    multiline={multiline}
+                    rows={multiline ? 3 : 1}
+                    autoFocus
+                    error={!!showError}
+                    placeholder={placeholder}
+                  />
+                )}
                 <IconButton size="small" color="primary" onClick={() => onEditSave(field)}>
                   <SaveIcon fontSize="small" />
                 </IconButton>

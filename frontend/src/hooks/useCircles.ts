@@ -69,12 +69,16 @@ export function useCircles(notifier?: ErrorNotifier) {
     async (id: string, name: string) => {
       try {
         await updateCircle(id, name);
+        // T65: refresh so a rename is reflected in `circles` without the
+        // caller having to remember to do it — matches handleDelete below
+        // and useHouseholds' handleUpdate.
+        await refresh();
       } catch (err) {
         handleError(err, { operation: 'updating circle' }, notifier);
         throw err;
       }
     },
-    [notifier]
+    [refresh, notifier]
   );
 
   const handleDelete = useCallback(

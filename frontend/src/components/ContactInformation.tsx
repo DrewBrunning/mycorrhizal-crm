@@ -777,6 +777,9 @@ export default function ContactInformation({
               onEditCancel={onEditCancel}
               onEditSave={onEditSave}
               onEditValueChange={onEditValueChange}
+              options={[...GENDER_OPTIONS]}
+              getOptionLabel={(v) => (GENDER_OPTIONS.includes(v as (typeof GENDER_OPTIONS)[number]) ? t(`contacts.${v}`) : v)}
+              placeholder={t('contacts.selectGender')}
             />
           )}
 

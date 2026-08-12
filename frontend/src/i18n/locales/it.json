@@ -16,6 +16,7 @@
     "notes": "Note",
     "network": "Rete",
     "households": "Nuclei",
+    "circlesTags": "Cerchie e tag",
     "profile": "Impostazioni",
     "users": "Utenti",
     "data": "Dati",
@@ -72,6 +73,26 @@
     "dismissSuggestion": "Ignora",
     "suggestionAccepted": "Nucleo familiare creato dal suggerimento",
     "suggestionDismissed": "Suggerimento ignorato"
+  },
+  "circlesTags": {
+    "title": "Cerchie e tag",
+    "description": "Gestisci le cerchie e i tag usati per raggruppare i contatti. Rinominare o eliminare qui si applica ovunque vengano usati.",
+    "tabCircles": "Cerchie",
+    "tabTags": "Tag",
+    "newCirclePlaceholder": "Nome nuova cerchia…",
+    "newTagPlaceholder": "Nuovo tag…",
+    "add": "Aggiungi",
+    "memberCount": "{{count}} contatti",
+    "noCircles": "Nessuna cerchia ancora. Aggiungine una qui sotto o dalla pagina di un contatto.",
+    "noTags": "Nessun tag ancora. Aggiungine uno qui sotto o dalla pagina di un contatto.",
+    "deleteCircleConfirm": "Eliminare la cerchia \"{{name}}\"? Verrà rimossa da ogni contatto che la ha.",
+    "deleteTagConfirm": "Eliminare il tag \"{{name}}\"? Verrà rimosso da ogni contatto che lo ha.",
+    "circleCreated": "Cerchia creata",
+    "circleRenamed": "Cerchia rinominata",
+    "circleDeleted": "Cerchia eliminata",
+    "tagCreated": "Tag creato",
+    "tagRenamed": "Tag rinominato",
+    "tagDeleted": "Tag eliminato"
   },
   "dashboard": {
     "title": "Cruscotto",
@@ -299,7 +320,11 @@
       "city": "Città",
       "region": "Regione",
       "postal": "CAP",
-      "country": "Paese"
+      "country": "Paese",
+      "pobox": "Casella postale",
+      "apartment": "Interno / Appartamento",
+      "floor": "Piano",
+      "additionalFields": "Campi aggiuntivi"
     },
     "anniversaries": "Anniversari",
     "socialProfiles": "Profil social",
