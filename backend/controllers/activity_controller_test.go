@@ -32,6 +32,23 @@ func setupRouter() (*gorm.DB, *gin.Engine) {
 
 	db.AutoMigrate(&models.Contact{}, &models.Activity{}, &models.Note{}, models.Reminder{}, models.User{}, models.Webhook{}, models.WebhookDelivery{}, models.ContactSubscription{}, models.ContactSyncLink{}, models.RelationshipEdge{}, models.Circle{}, models.CircleMember{}, models.Tag{}, models.ContactTag{}, models.LifeEvent{}, models.Household{}, models.HouseholdMember{}, models.FieldDefinition{}, models.FieldValue{}, models.CardDAVSync{}, models.ApiToken{}, models.ReminderCompletion{}, models.CalendarSubscription{}, models.CalendarEventLink{}, models.Preference{}, models.CadencePolicy{}, models.ConversationAgenda{}, models.Gift{}, models.ExternalIdentity{}, models.ExternalActivity{}, models.ImmichConfig{}, models.ContactShare{}, models.LinkFieldType{}, models.NotificationDelivery{}, models.NotificationConfig{}, models.PushSubscription{}, models.DeviceRegistration{}, models.ServerSetting{}, models.Attachment{})
 
+	// T85 (docs/fork-plan/tickets/129-T85-contacts-list-fts-search.md):
+	// applyContactSearch unconditionally references contacts_fts for any
+	// search= term of two-plus runes, but that virtual table is hand-written
+	// migration SQL (000007, widened by 000010/000020) that AutoMigrate does
+	// not know about. Create it empty here (no triggers, no rows) purely so
+	// the query doesn't 500 under this fast AutoMigrate schema — the FTS
+	// clause then contributes nothing, which is fine: this helper's tests
+	// exercise the LIKE clause, and FTS-specific matching is covered against
+	// the real migrated schema (database.InitDB) in
+	// contact_fts_search_test.go.
+	if err := db.Exec(`CREATE VIRTUAL TABLE IF NOT EXISTS contacts_fts USING fts5(
+		firstname, lastname, nickname, email, phone, org, addresses_flat, phones_normalized,
+		user_id UNINDEXED
+	)`).Error; err != nil {
+		panic("failed to create stub contacts_fts table: " + err.Error())
+	}
+
 	user := models.User{Username: "tester", Password: "password123", Email: "tester@example.com"}
 	if err := db.Create(&user).Error; err != nil {
 		panic("failed to seed user")

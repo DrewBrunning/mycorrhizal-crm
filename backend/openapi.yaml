@@ -565,7 +565,16 @@ paths:
           schema: { type: string, enum: [asc, desc], default: desc }
         - name: search
           in: query
-          description: Free-text search across name/nickname/email/phone (including secondary array entries).
+          description: >
+            Free-text search across name/nickname/email/phone/address
+            (including secondary array entries), composable with every other
+            filter, sort and cursor on this endpoint. Matching is the union of
+            substring matching over those fields and, for terms of two or more
+            characters, an FTS5 prefix-token match over the same index /search
+            uses — which additionally covers organization. Results stay in the
+            selected sort order; relevance is deliberately not a sort mode
+            here (T85). A phone-shaped term is normalized, so punctuation,
+            grouping and country-code differences still match.
           schema: { type: string }
         - name: include_archived
           in: query
