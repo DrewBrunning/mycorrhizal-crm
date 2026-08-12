@@ -9,8 +9,8 @@ import "strings"
 // empty key.
 //
 // Lives here rather than in services because Contact.BeforeSave needs it to
-// build the phones_normalized search column (T69) and models cannot import
-// services. services.PhoneKey callers reach it through models directly —
+// build the phones_normalized search column (T69), and models cannot import
+// services. Callers in the services package use models.PhoneKey directly —
 // there is deliberately only one implementation (T68).
 func PhoneKey(phone string) string {
 	digits := NormalizePhoneDigits(phone)
