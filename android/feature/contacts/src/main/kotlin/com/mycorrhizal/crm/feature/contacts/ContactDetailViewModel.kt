@@ -8,6 +8,8 @@ import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ReminderRepository
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
+import com.mycorrhizal.crm.model.network.FieldDefinition
+import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
@@ -27,6 +29,17 @@ data class ContactDetailUiState(
     val error: String? = null,
     /** The signed-in user's `date_format` preference (see `SessionState`); null until loaded. */
     val dateFormat: String? = null,
+    /**
+     * T84 (read-only slice): the user's custom field definitions and this contact's values for
+     * them, keyed by `FieldDefinition.id`. Fetched separately from the contact and from each
+     * other — a value's definition may no longer exist (deleted since the value was set); such
+     * values are silently skipped at render time rather than crashing, since the two lists are
+     * never fetched atomically. A fetch failure for either just leaves it empty; this is an
+     * optional enhancement to the contact record, not core data, so it never blocks or errors
+     * the screen.
+     */
+    val fieldDefinitions: List<FieldDefinition> = emptyList(),
+    val fieldValuesByDefinitionId: Map<String, Any?> = emptyMap(),
 )
 
 @HiltViewModel
@@ -34,6 +47,11 @@ class ContactDetailViewModel @Inject constructor(
     private val contactRepository: ContactRepository,
     private val reminderRepository: ReminderRepository,
     private val authRepository: AuthRepository,
+    // T84: custom field definitions/values are cross-cutting (definitions are per-user, not
+    // per-contact) and read-only here, so ApiClient is injected directly rather than adding a
+    // repository for a slice with no write path yet — same precedent as DashboardViewModel and
+    // T87's ContactListViewModel.
+    private val apiClient: ApiClient,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -71,6 +89,30 @@ class ContactDetailViewModel @Inject constructor(
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
                 },
+            )
+        }
+        loadCustomFields()
+    }
+
+    /**
+     * T84 (read-only slice): fetched independently of the contact record and of each other, and
+     * never surfaces its own error — see [ContactDetailUiState.fieldDefinitions]' doc comment
+     * for why a failure here silently leaves the section empty rather than erroring the screen.
+     */
+    private fun loadCustomFields() {
+        viewModelScope.launch {
+            apiClient.listFieldDefinitions().foldApiError(
+                onSuccess = { response -> _uiState.update { it.copy(fieldDefinitions = response.definitions) } },
+                onError = {},
+            )
+        }
+        viewModelScope.launch {
+            apiClient.listContactFieldValues(contactId).foldApiError(
+                onSuccess = { response ->
+                    val byDefinitionId = response.values.associate { it.fieldDefinitionId to it.value }
+                    _uiState.update { it.copy(fieldValuesByDefinitionId = byDefinitionId) }
+                },
+                onError = {},
             )
         }
     }

@@ -5,8 +5,13 @@ import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ReminderRepository
 import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.model.network.Card
+import com.mycorrhizal.crm.model.network.ContactFieldValuesResponse
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
+import com.mycorrhizal.crm.model.network.FieldDefinition
+import com.mycorrhizal.crm.model.network.FieldDefinitionsResponse
+import com.mycorrhizal.crm.model.network.FieldValue
 import com.mycorrhizal.crm.model.network.Name
+import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
 import com.mycorrhizal.crm.ui.R
@@ -32,14 +37,18 @@ class ContactDetailViewModelTest {
     private val contactRepository = mockk<ContactRepository>()
     private val reminderRepository = mockk<ReminderRepository>()
     private val authRepository = mockk<AuthRepository>()
+    private val apiClient = mockk<ApiClient>()
 
     private fun viewModel(id: Int, dateFormat: String? = null): ContactDetailViewModel {
         coEvery { contactRepository.getDeviceLookupKey(any()) } returns null
         every { authRepository.observeSession() } returns flowOf(SessionState(dateFormat = dateFormat))
+        coEvery { apiClient.listFieldDefinitions(any()) } returns Result.success(FieldDefinitionsResponse())
+        coEvery { apiClient.listContactFieldValues(any()) } returns Result.success(ContactFieldValuesResponse())
         return ContactDetailViewModel(
             contactRepository,
             reminderRepository,
             authRepository,
+            apiClient,
             SavedStateHandle(mapOf("contactId" to id)),
         )
     }
@@ -74,11 +83,14 @@ class ContactDetailViewModelTest {
         coEvery { contactRepository.getContact(9) } returns Result.success(record)
         coEvery { contactRepository.getDeviceLookupKey(9) } returns null
         every { authRepository.observeSession() } returns flowOf(SessionState())
+        coEvery { apiClient.listFieldDefinitions(any()) } returns Result.success(FieldDefinitionsResponse())
+        coEvery { apiClient.listContactFieldValues(any()) } returns Result.success(ContactFieldValuesResponse())
 
         val vm = ContactDetailViewModel(
             contactRepository,
             reminderRepository,
             authRepository,
+            apiClient,
             SavedStateHandle(mapOf("contactId" to "9")),
         )
         advanceUntilIdle()
@@ -169,5 +181,91 @@ class ContactDetailViewModelTest {
         advanceUntilIdle()
 
         assertEquals("Not found", vm.uiState.value.error)
+    }
+
+    @Test
+    fun `custom field definitions and values load into state keyed by definition id`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { contactRepository.getDeviceLookupKey(5) } returns null
+        every { authRepository.observeSession() } returns flowOf(SessionState())
+        coEvery { apiClient.listFieldDefinitions(any()) } returns Result.success(
+            FieldDefinitionsResponse(fieldDefinitions = listOf(FieldDefinition(id = "d1", label = "Coffee order", type = "string"))),
+        )
+        coEvery { apiClient.listContactFieldValues(5) } returns Result.success(
+            ContactFieldValuesResponse(fieldValues = listOf(FieldValue(id = 1, fieldDefinitionId = "d1", value = "Latte"))),
+        )
+
+        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, apiClient, SavedStateHandle(mapOf("contactId" to 5)))
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertEquals(1, state.fieldDefinitions.size)
+        assertEquals("Coffee order", state.fieldDefinitions.first().label)
+        assertEquals("Latte", state.fieldValuesByDefinitionId["d1"])
+    }
+
+    @Test
+    fun `a field-definitions fetch failure does not fail the contact load`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { contactRepository.getDeviceLookupKey(5) } returns null
+        every { authRepository.observeSession() } returns flowOf(SessionState())
+        coEvery { apiClient.listFieldDefinitions(any()) } returns Result.failure(ApiError.Server(500, "boom"))
+        coEvery { apiClient.listContactFieldValues(5) } returns Result.success(ContactFieldValuesResponse())
+
+        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, apiClient, SavedStateHandle(mapOf("contactId" to 5)))
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertEquals("Dana White", state.contact?.card?.name?.full)
+        assertNull(state.error) // the custom-fields failure must not surface as the screen's error
+        assertTrue(state.fieldDefinitions.isEmpty())
+    }
+
+    @Test
+    fun `a field-values fetch failure does not fail the contact load`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { contactRepository.getDeviceLookupKey(5) } returns null
+        every { authRepository.observeSession() } returns flowOf(SessionState())
+        coEvery { apiClient.listFieldDefinitions(any()) } returns Result.success(
+            FieldDefinitionsResponse(fieldDefinitions = listOf(FieldDefinition(id = "d1", label = "Coffee order", type = "string"))),
+        )
+        coEvery { apiClient.listContactFieldValues(5) } returns Result.failure(ApiError.Network(java.io.IOException("offline")))
+
+        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, apiClient, SavedStateHandle(mapOf("contactId" to 5)))
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertEquals("Dana White", state.contact?.card?.name?.full)
+        assertNull(state.error)
+        assertEquals(1, state.fieldDefinitions.size) // definitions still loaded independently
+        assertTrue(state.fieldValuesByDefinitionId.isEmpty())
+    }
+
+    @Test
+    fun `a value whose definition no longer exists is stored but never resolves without a matching definition`() = runTest(mainDispatcherRule.testDispatcher) {
+        // T84: definitions and values are fetched separately and can disagree (a definition
+        // deleted after the value was set). The ViewModel does no filtering — it stores exactly
+        // what the server returned; the render loop (which iterates definitions, not values,
+        // see ContactDetailScreen's CustomFieldsSection) is what makes an orphaned value
+        // unreachable, without needing special-case code or risking a crash.
+        val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { contactRepository.getDeviceLookupKey(5) } returns null
+        every { authRepository.observeSession() } returns flowOf(SessionState())
+        coEvery { apiClient.listFieldDefinitions(any()) } returns Result.success(FieldDefinitionsResponse()) // zero definitions
+        coEvery { apiClient.listContactFieldValues(5) } returns Result.success(
+            ContactFieldValuesResponse(fieldValues = listOf(FieldValue(id = 1, fieldDefinitionId = "deleted-def", value = "orphaned"))),
+        )
+
+        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, apiClient, SavedStateHandle(mapOf("contactId" to 5)))
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertNull(state.error)
+        assertTrue(state.fieldDefinitions.isEmpty())
+        assertEquals("orphaned", state.fieldValuesByDefinitionId["deleted-def"]) // present but unreachable — no def to render it under
     }
 }

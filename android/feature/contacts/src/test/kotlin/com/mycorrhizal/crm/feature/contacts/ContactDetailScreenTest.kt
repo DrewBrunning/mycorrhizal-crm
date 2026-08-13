@@ -16,6 +16,8 @@ import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.CRMEnvelope
 import com.mycorrhizal.crm.model.network.Email
+import com.mycorrhizal.crm.model.network.FieldConstraints
+import com.mycorrhizal.crm.model.network.FieldDefinition
 import com.mycorrhizal.crm.model.network.Name
 import com.mycorrhizal.crm.model.network.OnlineService
 import com.mycorrhizal.crm.model.network.Phone
@@ -271,5 +273,103 @@ class ContactDetailScreenTest {
             .performScrollToNode(hasText("Signal"))
             .assertIsDisplayed()
         composeTestRule.onNodeWithText("6085142711").assertIsDisplayed()
+    }
+
+    @Test
+    fun `custom field section is absent when there are no definitions`() {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(contact = contact, fieldDefinitions = emptyList())
+            }
+        }
+        composeTestRule.onNodeWithText("Custom fields").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a string and a number field render with their values`() {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    fieldDefinitions = listOf(
+                        FieldDefinition(id = "d1", label = "Coffee order", type = "string"),
+                        FieldDefinition(id = "d2", label = "Favorite number", type = "number"),
+                    ),
+                    fieldValuesByDefinitionId = mapOf("d1" to "Latte", "d2" to 7.0),
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasText("Coffee order: Latte"))
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("Favorite number: 7").assertIsDisplayed()
+    }
+
+    @Test
+    fun `a definition with no value shows the placeholder, not a crash`() {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    fieldDefinitions = listOf(FieldDefinition(id = "d1", label = "Coffee order", type = "string")),
+                    fieldValuesByDefinitionId = emptyMap(),
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasText("Coffee order: —"))
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun `a value whose definition is missing never renders anywhere`() {
+        // T84: the render loop iterates definitions, not values, so an orphaned value (its
+        // definition deleted since the value was set) is silently unreachable rather than
+        // needing a special-case skip. Regression for the "degrades gracefully" test case.
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    fieldDefinitions = emptyList(),
+                    fieldValuesByDefinitionId = mapOf("deleted-def" to "orphaned value"),
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("orphaned value").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Custom fields").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a boolean and a multi-value field render per their type`() {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    fieldDefinitions = listOf(
+                        FieldDefinition(id = "d1", label = "VIP", type = "boolean"),
+                        FieldDefinition(
+                            id = "d2",
+                            label = "Milk options",
+                            type = "string",
+                            constraints = FieldConstraints(multi = true),
+                        ),
+                    ),
+                    fieldValuesByDefinitionId = mapOf("d1" to true, "d2" to listOf("oat", "almond")),
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasText("VIP: true"))
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("Milk options: oat; almond").assertIsDisplayed()
     }
 }

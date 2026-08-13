@@ -717,4 +717,111 @@ class ApiClientTest {
         val request = server.takeRequest()
         assertEquals("/api/v1/search?q=al", request.path)
     }
+
+    @Test
+    fun `listFieldDefinitions parses the definitions list`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """
+                {
+                  "field_definitions": [
+                    {"id": "d1", "label": "Coffee order", "key": "coffee_order", "target": "contact",
+                     "type": "string", "projection": "internal-only", "sensitivity": "normal",
+                     "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z"}
+                  ],
+                  "total": 1, "next_cursor": "", "limit": 100
+                }
+                """.trimIndent(),
+            ),
+        )
+
+        val result = client.listFieldDefinitions()
+
+        assertTrue(result.isSuccess)
+        val defs = result.getOrThrow().definitions
+        assertEquals(1, defs.size)
+        assertEquals("Coffee order", defs[0].label)
+        assertEquals("string", defs[0].type)
+
+        val request = server.takeRequest()
+        assertEquals("/api/v1/field-definitions", request.path)
+    }
+
+    @Test
+    fun `listFieldDefinitions normalizes an explicit JSON null to an empty list`() = runBlocking {
+        // T84: gin.H always emits the key, but a nil Go slice serializes as JSON null, not [] —
+        // a different failure mode than /CLAUDE.md trap #8's absent-key one. Both must not crash.
+        server.enqueue(
+            MockResponse().setResponseCode(200)
+                .setBody("""{"field_definitions": null, "total": 0, "next_cursor": "", "limit": 100}"""),
+        )
+
+        val result = client.listFieldDefinitions()
+
+        assertTrue(result.isSuccess)
+        assertEquals(0, result.getOrThrow().definitions.size)
+    }
+
+    @Test
+    fun `listFieldDefinitions tolerates the collection key being fully absent`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"total": 0}"""))
+
+        val result = client.listFieldDefinitions()
+
+        assertTrue(result.isSuccess)
+        assertEquals(0, result.getOrThrow().definitions.size)
+    }
+
+    @Test
+    fun `listContactFieldValues parses the values list`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"field_values": [{"id": 1, "field_definition_id": "d1", "entity_id": "u1", "value": "Latte"}]}""",
+            ),
+        )
+
+        val result = client.listContactFieldValues(5)
+
+        assertTrue(result.isSuccess)
+        val values = result.getOrThrow().values
+        assertEquals(1, values.size)
+        assertEquals("Latte", values[0].value)
+
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/api/v1/contacts/5/field-values", request.path)
+    }
+
+    @Test
+    fun `a value written via replaceContactFieldValues round-trips through a subsequent read`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"message": "Field values saved successfully", "field_values": [{"id": 1, "field_definition_id": "d1", "entity_id": "u1", "value": "Latte"}]}""",
+            ),
+        )
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"field_values": [{"id": 1, "field_definition_id": "d1", "entity_id": "u1", "value": "Latte"}]}""",
+            ),
+        )
+
+        val writeResult = client.replaceContactFieldValues(
+            5,
+            com.mycorrhizal.crm.model.network.ContactFieldValuesInput(
+                fieldValues = listOf(
+                    com.mycorrhizal.crm.model.network.FieldValueInput(fieldDefinitionId = "d1", value = "Latte"),
+                ),
+            ),
+        )
+        val readResult = client.listContactFieldValues(5)
+
+        assertTrue(writeResult.isSuccess)
+        assertTrue(readResult.isSuccess)
+        assertEquals("Latte", readResult.getOrThrow().values.first().value)
+
+        val putRequest = server.takeRequest()
+        assertEquals("PUT", putRequest.method)
+        assertEquals("/api/v1/contacts/5/field-values", putRequest.path)
+        assertTrue(putRequest.body.readUtf8().contains("\"field_definition_id\":\"d1\""))
+    }
 }
