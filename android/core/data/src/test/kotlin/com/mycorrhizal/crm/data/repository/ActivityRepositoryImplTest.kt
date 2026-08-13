@@ -5,6 +5,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.mycorrhizal.crm.data.local.AppDatabase
 import com.mycorrhizal.crm.model.network.Activity
+import com.mycorrhizal.crm.model.network.ActivitiesPage
 import com.mycorrhizal.crm.model.network.ActivityInput
 import com.mycorrhizal.crm.model.network.ContactActivitiesResponse
 import com.mycorrhizal.crm.network.ApiClient
@@ -76,6 +77,38 @@ class ActivityRepositoryImplTest {
         assertTrue(result.isFailure)
         val error = result.exceptionOrNull() as ApiError
         assertEquals(404, (error as ApiError.Client).code)
+    }
+
+    // M9: the Activities drawer inbox — GET /activities?include=contacts, all contacts' activities.
+    @Test
+    fun `listAll requests included contacts and caches the page`() = runTest {
+        coEvery { apiClient.listActivities(cursor = null, limit = null, includeContacts = true) } returns Result.success(
+            ActivitiesPage(
+                activitiesRaw = listOf(Activity(id = 1, title = "Coffee with Dana", type = "visit")),
+                nextCursor = "cursor-2",
+            ),
+        )
+
+        val result = repository.listAll()
+
+        assertTrue(result.isSuccess)
+        assertEquals("cursor-2", result.getOrThrow().nextCursor)
+        assertEquals(1, db.cachedActivityDao().getAll().size)
+    }
+
+    // Trap-#8 fix: GetActivities marshals a nil Go slice as JSON `null`, not `[]`, when there are
+    // zero activities. ActivitiesPage's raw field must be nullable so this doesn't crash Moshi —
+    // this is the repository-level proof (ApiClientTest covers the JSON parse itself).
+    @Test
+    fun `listAll tolerates a null activities list`() = runTest {
+        coEvery { apiClient.listActivities(cursor = null, limit = null, includeContacts = true) } returns Result.success(
+            ActivitiesPage(activitiesRaw = null),
+        )
+
+        val result = repository.listAll()
+
+        assertTrue(result.isSuccess)
+        assertTrue(db.cachedActivityDao().getAll().isEmpty())
     }
 
     @Test

@@ -3,11 +3,15 @@ package com.mycorrhizal.crm.feature.contacts
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.BulkOperationRepository
+import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
+import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.model.network.BulkActions
 import com.mycorrhizal.crm.model.network.BulkContactOperationInput
 import com.mycorrhizal.crm.model.network.BulkOperationResult
+import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,6 +23,8 @@ import javax.inject.Inject
 
 data class BulkUiState(
     val contacts: List<ContactSummary> = emptyList(),
+    val circles: List<Circle> = emptyList(),
+    val tags: List<Tag> = emptyList(),
     val selected: Set<Int> = emptySet(),
     val isLoading: Boolean = false,
     val runningAction: Boolean = false,
@@ -30,6 +36,8 @@ data class BulkUiState(
 class BulkOperationsViewModel @Inject constructor(
     private val bulkOperationRepository: BulkOperationRepository,
     private val contactRepository: ContactRepository,
+    private val circleRepository: CircleRepository,
+    private val tagRepository: TagRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BulkUiState())
@@ -49,6 +57,17 @@ class BulkOperationsViewModel @Inject constructor(
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
                 },
+            )
+            // M9: circle/tag pickers for the add/remove-circle and add/remove-tag bulk
+            // actions. Loaded alongside contacts rather than lazily on first dialog open
+            // so the picker never shows its own separate loading state.
+            circleRepository.list().foldApiError(
+                onSuccess = { circles -> _uiState.update { it.copy(circles = circles) } },
+                onError = { /* Picker just shows empty; the main contacts error already surfaces. */ },
+            )
+            tagRepository.list().foldApiError(
+                onSuccess = { tags -> _uiState.update { it.copy(tags = tags) } },
+                onError = { /* Picker just shows empty; the main contacts error already surfaces. */ },
             )
         }
     }

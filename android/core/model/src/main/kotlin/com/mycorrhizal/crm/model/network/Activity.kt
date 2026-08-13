@@ -54,14 +54,25 @@ data class ContactActivitiesResponse(
     val activities: List<Activity> = emptyList(),
 )
 
-/** GET /activities — T17 cursor-paginated page. */
+/**
+ * GET /activities — T17 cursor-paginated page. `GetActivities` does
+ * `var activities []models.Activity; ...Find(&activities)`, and Go marshals a nil slice (zero
+ * activities) as JSON `null`, not `[]` (`/CLAUDE.md` frontend trap #8). A non-null Kotlin default
+ * only covers an *absent* key, not an explicit `null` value — Moshi codegen still rejects the
+ * latter — so the raw field stays nullable and [activities] normalizes absent/null/`[]` to a
+ * plain empty list, mirroring `FieldDefinitionsResponse.definitions`' fix for the same trap.
+ * `listActivities()` had zero UI callers before M9's Activities inbox, so this was a live bug
+ * nothing had exercised yet.
+ */
 @JsonClass(generateAdapter = true)
 data class ActivitiesPage(
-    val activities: List<Activity> = emptyList(),
+    @Json(name = "activities") val activitiesRaw: List<Activity>? = null,
     @Json(name = "next_cursor") val nextCursor: String? = null,
     val limit: Int = 0,
     val sync: SyncInfo? = null,
-)
+) {
+    val activities: List<Activity> get() = activitiesRaw.orEmpty()
+}
 
 /**
  * Raw serialization of models.Contact (legacy flat DTO) — used for an

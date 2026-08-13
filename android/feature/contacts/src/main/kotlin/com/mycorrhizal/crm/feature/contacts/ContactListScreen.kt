@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
@@ -38,6 +39,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -107,6 +109,7 @@ fun ContactListScreen(
         onMenuClick = onMenuClick,
         onImportContacts = onImportContacts,
         onErrorShown = viewModel::onErrorShown,
+        onLoadMore = viewModel::loadNextPage,
     )
 }
 
@@ -124,9 +127,29 @@ fun ContactListScreenContent(
     onMenuClick: () -> Unit = {},
     onImportContacts: () -> Unit = {},
     onErrorShown: () -> Unit = {},
+    onLoadMore: () -> Unit = {},
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     var search by rememberSaveable { mutableStateOf(uiState.searchQuery) }
+    val listState = rememberLazyListState()
+
+    // T-M9: infinite scroll — fire loadNextPage() once the user scrolls
+    // within 5 rows of the end of the loaded contacts, matching
+    // ContactListViewModel.loadNextPage()'s own re-entrancy guards
+    // (isLoading / isLoadingMore / hasMore), so this can fire repeatedly
+    // as the list grows without risking duplicate in-flight requests.
+    val shouldLoadMore by remember {
+        derivedStateOf {
+            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: return@derivedStateOf false
+            val lastContactIndex = uiState.contacts.lastIndex
+            lastContactIndex >= 0 && lastVisible >= lastContactIndex - 5
+        }
+    }
+    LaunchedEffect(shouldLoadMore, uiState.pagination.hasMore, uiState.pagination.isLoadingMore) {
+        if (shouldLoadMore && uiState.pagination.hasMore && !uiState.pagination.isLoadingMore) {
+            onLoadMore()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -175,7 +198,10 @@ fun ContactListScreenContent(
             // T87: the notes/activities section trails every state (loading/empty/error/
             // populated) as the LazyColumn's last item, so it's reachable regardless of
             // whether the contact list itself has rows — the two result sets are independent.
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize().testTag("contact-list"),
+            ) {
                 when {
                     uiState.isLoading -> item {
                         LoadingSkeleton(modifier = Modifier.testTag("contact-list-loading"))
