@@ -1702,6 +1702,14 @@ val dataCursor = contentResolver.query(
     arrayOf(contactId.toString()),
     null
 )
+```
+
+> **Correction, 2026-08-12 ([T67](111-T67-android-address-import-parsing.md)):** the DATA4–DATA9
+> comments above are shifted by one column and were implemented faithfully, which is exactly how
+> T67's Bug A shipped. `StructuredPostal`'s real layout is `DATA1=FORMATTED_ADDRESS`,
+> `DATA4=STREET`, `DATA7=CITY`, `DATA8=REGION`, `DATA9=POSTCODE`, `DATA10=COUNTRY` — confirmed
+> against `contactmodel/model.go` and hand-verified on a real device. Don't copy the table above;
+> copy T67's fix instead.
 
 val rows = mutableListOf<DeviceDataRow>()
 while (dataCursor.moveToNext()) {

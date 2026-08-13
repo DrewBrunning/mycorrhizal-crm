@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm.feature.imports
 
 import android.provider.ContactsContract.CommonDataKinds.Phone
+import android.provider.ContactsContract.CommonDataKinds.StructuredPostal
 import com.mycorrhizal.crm.model.network.Address
 import com.mycorrhizal.crm.model.network.AddressComponent
 import com.mycorrhizal.crm.model.network.Anniversary
@@ -39,7 +40,7 @@ object DeviceContactMapper {
             )
         }
         val emails = device.emails.map { Email(address = it) }
-        val addresses = device.addresses.map { Address(components = splitAddress(it)) }
+        val addresses = device.addresses.map { toAddress(it) }
         val card = Card(
             name = name,
             phones = phones.ifEmpty { null },
@@ -76,18 +77,31 @@ object DeviceContactMapper {
         }
     }
 
-    private fun splitAddress(formatted: String): List<AddressComponent> {
-        // A single-line formatted address: keep it as one "street" component
-        // plus the rest, best-effort. The backend also accepts the raw string.
-        val parts = formatted.split(",").map { it.trim() }.filter { it.isNotBlank() }
-        return parts.mapIndexed { i, part ->
-            when (i) {
-                0 -> AddressComponent(kind = "street", value = part)
-                1 -> AddressComponent(kind = "city", value = part)
-                parts.lastIndex -> AddressComponent(kind = "country", value = part)
-                else -> AddressComponent(kind = "region", value = part)
-            }
+    /**
+     * Maps a device-structured address to the registry's real component kinds — "name"
+     * (street) and "locality" (city), not the intuitive-but-wrong "street"/"city" (T67 Bug B).
+     * See `contactmodel/model.go:167-176`. TYPE_HOME/TYPE_WORK carry through into `contexts`
+     * using the neutral private/work vocabulary (`vcard4/adapter.go`'s ctx2type: home<->private),
+     * the same pair phones already use for their own home/work distinction.
+     */
+    private fun toAddress(device: DeviceAddress): Address {
+        val components = buildList {
+            device.street?.let { add(AddressComponent(kind = "name", value = it)) }
+            device.city?.let { add(AddressComponent(kind = "locality", value = it)) }
+            device.region?.let { add(AddressComponent(kind = "region", value = it)) }
+            device.postcode?.let { add(AddressComponent(kind = "postcode", value = it)) }
+            device.country?.let { add(AddressComponent(kind = "country", value = it)) }
         }
+        val contexts = when (device.type) {
+            StructuredPostal.TYPE_HOME -> listOf("private")
+            StructuredPostal.TYPE_WORK -> listOf("work")
+            else -> null
+        }
+        return Address(
+            components = components.ifEmpty { null },
+            full = device.formattedAddress,
+            contexts = contexts,
+        )
     }
 
     private fun parsePartialDate(iso: String): PartialDate? {

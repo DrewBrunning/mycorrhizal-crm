@@ -105,3 +105,30 @@ M5's hardening review.
   confirmed to fail against the old code before the fix.
 - `./gradlew testDebugUnitTest`, `./gradlew lintDebug` and `./gradlew assembleDebug` green —
   the three steps `.github/workflows/android-tests.yml` actually runs.
+
+## Landed 2026-08-12
+
+Fixed both bugs as scoped. `DeviceContact.addresses` is now a structured `List<DeviceAddress>`
+(street/city/region/postcode/country/type) instead of `List<String>`, so `DeviceContactMapper`
+maps real fields to the real registry kinds (`name`/`locality`) instead of guessing from comma
+positions. Address `TYPE` (home/work) now carries through into `Address.contexts`
+(`private`/`work`, matching `vcard4/adapter.go`'s `ctx2type`) — Address has no free-text `label`
+field the way Phone/Email do, so contexts is the correct destination, not a literal copy of the
+phone mapper's approach.
+
+New `DeviceContactsReaderTest` (Robolectric + a fake `ContentProvider`, mirroring
+`MobileLinkActionResolverTest`'s pattern — the established convention for testing
+`ContentResolver` readers in this repo) plus 3 new `DeviceContactMapperTest` cases. Hand-verified
+per `/CLAUDE.md`: reintroduced both bugs, confirmed exactly the 3 new tests failed and nothing
+else, reverted.
+
+Hand-verified on a real device (Pixel 8a via adb): installed the fix over the existing debuggable
+dev build (same `applicationId`, no data loss on reinstall), re-ran device-contacts import against
+a contact that had previously lost its address to this bug — address imported correctly.
+
+Also corrected the source of the bug: [67-M1](67-M1-mobile-android-app.md)'s own column-comment
+table had the same DATA-index-shifted-by-one mistake, which is why the implementation copied it
+faithfully. Left the original table in place with a dated correction note rather than rewriting
+history.
+
+Landed via [PR #103](https://github.com/DrewBrunning/mycorrhizal-crm/pull/103).
