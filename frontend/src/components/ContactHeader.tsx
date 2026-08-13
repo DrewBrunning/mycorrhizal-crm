@@ -287,9 +287,11 @@ export default function ContactHeader({
               // View Mode
               <>
                 {archived && (
+                  // T102/T62: neutral, matching the same badge on the contacts
+                  // list. Archived is a state, not a warning condition.
                   <Chip
                     label={t('contactDetail.archivedBadge')}
-                    color="warning"
+                    color="default"
                     size="small"
                     sx={{ mb: 1 }}
                   />
@@ -446,10 +448,14 @@ export default function ContactHeader({
                     <Box sx={{ display: 'flex', gap: 1 }}>
                       {archived ? (
                         onUnarchiveContact && (
+                          // T102: no explicit color. Archive/unarchive are
+                          // reversible state changes, so they take the neutral
+                          // outlined treatment (matching BulkActionsBar);
+                          // warning/error stay reserved for destructive or
+                          // irreversible actions like delete.
                           <Button
                             variant="outlined"
                             size="small"
-                            color="success"
                             startIcon={<UnarchiveIcon />}
                             onClick={onUnarchiveContact}
                           >
@@ -522,10 +528,10 @@ export default function ContactHeader({
                             </MenuItem>
                           </Menu>
                           {onArchiveContact && (
+                            // T102: see the unarchive button above.
                             <Button
                               variant="outlined"
                               size="small"
-                              color="warning"
                               startIcon={<ArchiveIcon />}
                               onClick={onArchiveContact}
                             >
@@ -561,8 +567,12 @@ export default function ContactHeader({
                 <Typography variant="caption" color="text.secondary">
                   {t('contactDetail.circles')}
                 </Typography>
+                {/* T89: ml:1 + flexShrink:0, matching the Name field's pencil
+                    below -- ml:'auto' pushed this to the far right edge of the
+                    header card, hundreds of px from the label and chips it
+                    edits on a wide viewport. */}
                 <IconButton className="edit-icon" size="small" color="primary" onClick={() => setEditingCircles(!editingCircles)}
-                  sx={{ ml: 'auto', opacity: 0, transition: 'opacity 0.2s' }}>
+                  sx={{ ml: 1, flexShrink: 0, opacity: 0, transition: 'opacity 0.2s' }}>
                   <EditIcon fontSize="small" />
                 </IconButton>
               </Box>
@@ -622,8 +632,9 @@ export default function ContactHeader({
                 <Typography variant="caption" color="text.secondary">
                   {t('contactDetail.tags')}
                 </Typography>
+                {/* T89: see the circles pencil above. */}
                 <IconButton className="edit-icon" size="small" color="primary" onClick={() => setEditingTags(!editingTags)}
-                  sx={{ ml: 'auto', opacity: 0, transition: 'opacity 0.2s' }}>
+                  sx={{ ml: 1, flexShrink: 0, opacity: 0, transition: 'opacity 0.2s' }}>
                   <EditIcon fontSize="small" />
                 </IconButton>
               </Box>
