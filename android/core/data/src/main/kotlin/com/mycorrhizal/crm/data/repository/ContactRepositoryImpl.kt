@@ -57,6 +57,18 @@ class ContactRepositoryImpl @Inject constructor(
         )
     }
 
+    override suspend fun resolveByUid(uids: List<String>): Result<Map<String, ContactSummary>> {
+        val distinctUids = uids.distinct()
+        if (distinctUids.isEmpty()) return Result.success(emptyMap())
+        val result = apiClient.listContacts(vcardUids = distinctUids)
+        return result.fold(
+            onSuccess = { page ->
+                Result.success(page.contacts.mapNotNull { c -> c.uid?.let { it to c } }.toMap())
+            },
+            onFailure = { error -> Result.failure(error.toApiError()) },
+        )
+    }
+
     override suspend fun getContact(id: Int): Result<ContactRecordResponse> {
         val result = apiClient.getContact(id)
         return result.fold(

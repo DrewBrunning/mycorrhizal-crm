@@ -422,6 +422,7 @@ private fun MainScaffold() {
             ) {
                 RelationshipsScreen(
                     onBack = { navController.popBackStack() },
+                    onNavigateToContact = { id -> navController.navigate("contacts/$id") },
                 )
             }
             composable(

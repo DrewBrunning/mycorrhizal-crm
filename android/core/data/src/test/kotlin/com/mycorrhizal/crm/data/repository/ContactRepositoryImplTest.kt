@@ -96,6 +96,36 @@ class ContactRepositoryImplTest {
     }
 
     @Test
+    fun `resolveByUid maps the response by VCardUID`() = runTest {
+        coEvery { apiClient.listContacts(vcardUids = listOf("u1", "u2")) } returns Result.success(
+            com.mycorrhizal.crm.model.network.ContactsPage(
+                contacts = listOf(
+                    ContactSummary(id = 1, uid = "u1", fn = "Alice"),
+                    ContactSummary(id = 2, uid = "u2", fn = "Bob"),
+                ),
+                nextCursor = "",
+            ),
+        )
+
+        val result = repository.resolveByUid(listOf("u1", "u2"))
+
+        assertTrue(result.isSuccess)
+        val map = result.getOrThrow()
+        assertEquals(2, map.size)
+        assertEquals("Alice", map["u1"]?.fn)
+        assertEquals("Bob", map["u2"]?.fn)
+    }
+
+    @Test
+    fun `resolveByUid with empty input short-circuits without a network call`() = runTest {
+        val result = repository.resolveByUid(emptyList())
+
+        assertTrue(result.isSuccess)
+        assertTrue(result.getOrThrow().isEmpty())
+        io.mockk.coVerify(exactly = 0) { apiClient.listContacts(any(), any(), any(), any(), any()) }
+    }
+
+    @Test
     fun `getContact caches the full record`() = runTest {
         val record = ContactRecordResponse(
             id = 5,

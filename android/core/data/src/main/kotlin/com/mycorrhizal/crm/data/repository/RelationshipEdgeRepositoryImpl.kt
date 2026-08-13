@@ -45,6 +45,12 @@ class RelationshipEdgeRepositoryImpl @Inject constructor(
         return result
     }
 
+    override suspend fun update(id: String, input: RelationshipEdgeInput): Result<RelationshipEdge> {
+        val result = apiClient.updateRelationshipEdge(id, input)
+        result.getOrNull()?.let { dao.upsert(it.toCached()) }
+        return result
+    }
+
     override suspend fun accept(id: String): Result<RelationshipEdge> {
         val result = apiClient.acceptRelationshipEdge(id)
         result.getOrNull()?.let { dao.upsert(it.toCached()) }

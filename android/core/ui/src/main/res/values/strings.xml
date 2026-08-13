@@ -272,13 +272,35 @@
     <string name="relationships_title">Relationships</string>
     <string name="relationships_new">New relationship</string>
     <string name="relationships_type">Type</string>
-    <string name="relationships_other_vcard_uid">Other contact VCard UID (optional)</string>
     <string name="relationships_other_name">Other contact name (optional)</string>
     <string name="relationships_accept">Accept</string>
     <string name="relationships_suggested">Suggested</string>
     <string name="relationships_empty">No relationships yet</string>
     <string name="relationships_error_missing_contact_id">Missing contact id</string>
     <string name="relationships_error_no_vcard_uid">Contact has no VCard UID</string>
+    <string name="relationships_entry_mode">How is this person known?</string>
+    <string name="relationships_enter_manually">Enter manually</string>
+    <string name="relationships_link_to_contact">Link to contact</string>
+    <string name="relationships_search_contacts">Search contacts</string>
+    <string name="relationships_type_to_search">Type to search</string>
+    <string name="relationships_no_contacts_found">No contacts found</string>
+    <string name="relationships_change_selection">Change</string>
+    <string name="relationships_gender">Gender (optional)</string>
+    <string name="relationships_birthday">Birthday (optional)</string>
+    <string name="relationships_sensitivity">Sensitivity</string>
+    <string name="relationships_sensitivity_normal">Normal</string>
+    <string name="relationships_sensitivity_private">Private</string>
+    <string name="relationships_sensitivity_secret">Secret</string>
+    <string name="relationships_edit_title">Edit relationship</string>
+    <string name="relationships_edit">Edit relationship</string>
+    <string name="relationships_other_party_readonly_hint">The other party can\'t be changed here — delete and recreate the relationship to link a different contact.</string>
+    <string name="relationships_unknown_contact">Unknown contact</string>
+    <string name="relationships_suggested_section">Suggested</string>
+    <string name="relationships_reject">Reject</string>
+    <string name="relationships_delete_title">Delete relationship?</string>
+    <string name="relationships_delete_confirm">Delete the relationship with %1$s?</string>
+    <string name="relationships_reject_title">Reject suggestion?</string>
+    <string name="relationships_reject_confirm">Reject the suggested relationship with %1$s?</string>
 
     <!-- Timeline entities (life events / gifts / preferences / agenda) -->
     <string name="entities_empty">Nothing here yet</string>

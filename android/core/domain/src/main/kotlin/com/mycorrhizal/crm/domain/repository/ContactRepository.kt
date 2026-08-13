@@ -33,6 +33,15 @@ interface ContactRepository {
     /** Fetch one contact from the server, falling back to the cached copy. */
     suspend fun getContact(id: Int): Result<ContactRecordResponse>
 
+    /**
+     * Batch-resolve Contact.VCardUIDs to display summaries via the server's
+     * repeatable `?vcard_uid=` lookup (a display-only helper -- e.g. turning
+     * a RelationshipEdge's raw source/target UID into a name -- not cached
+     * locally). Empty input short-circuits without a network call. A UID
+     * with no matching contact is simply absent from the result map.
+     */
+    suspend fun resolveByUid(uids: List<String>): Result<Map<String, ContactSummary>>
+
     /** Create a contact on the server; returns the created record (writes online-first). */
     suspend fun createContact(input: ContactRecordInput): Result<ContactRecordResponse>
 
