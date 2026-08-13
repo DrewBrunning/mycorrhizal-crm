@@ -9,29 +9,12 @@ package com.mycorrhizal.crm.model.registry
  * in this codebase, by design — when a token is added backend-side, this
  * object must be updated by hand (see /CLAUDE.md frontend trap 4).
  */
-object RelationshipType {
-    const val PARENT_OF = "parent_of"
-    const val CHILD_OF = "child_of"
-    const val SPOUSE_OF = "spouse_of"
-    const val SIBLING_OF = "sibling_of"
-    const val FRIEND_OF = "friend_of"
-    const val ROOMMATE_OF = "roommate_of"
-    const val PARTNER_OF = "partner_of"
-    const val CO_PARENT_OF = "co_parent_of"
-    const val MENTOR_OF = "mentor_of"
-    const val MENTEE_OF = "mentee_of"
-    const val OWNED_BY = "owned_by"
-    const val OWNS = "owns"
-    const val GETS_ALONG_WITH = "gets_along_with"
-    const val CONFLICTS_WITH = "conflicts_with"
-    const val RELATED_TO = "related_to"
-
-    val ALL = listOf(
-        PARENT_OF, CHILD_OF, SPOUSE_OF, SIBLING_OF, FRIEND_OF,
-        ROOMMATE_OF, PARTNER_OF, CO_PARENT_OF, MENTOR_OF, MENTEE_OF,
-        OWNED_BY, OWNS, GETS_ALONG_WITH, CONFLICTS_WITH, RELATED_TO,
-    )
-}
+// The relationship-type mirror that used to live here was a second, unused
+// copy of network/RelationshipEdge.kt's RelationshipEdgeTypes -- the one the
+// UI actually reads. Deleted in T105 rather than updated: two hand-synced
+// mirrors of the same registry, one of them with no consumer to notice when
+// it goes stale, is the drift hazard trap 4 exists to warn about. Add new
+// relationship tokens to RelationshipEdgeTypes.
 
 object LifeEventCategory {
     const val HOME_LIVING = "home_living"

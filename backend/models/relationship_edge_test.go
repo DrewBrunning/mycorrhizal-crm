@@ -373,3 +373,28 @@ func TestRecordForContact_NilDBSkipsProjection(t *testing.T) {
 	record := RecordForContact(c, "", nil)
 	assert.Equal(t, c.Card.RelatedTo, record.Card.RelatedTo)
 }
+
+// TestCoworkerRelationType is T105. The registry is mirrored by hand in four
+// other files (two frontend, two Android per /CLAUDE.md frontend trap 4), so
+// this pins the backend half -- the one the validator and the vCard projection
+// both read -- rather than only asserting the token exists.
+func TestCoworkerRelationType(t *testing.T) {
+	assert.True(t, IsKnownRelationType("coworker_of"))
+
+	// Symmetric: one stored direction, and the inverse is itself. If this ever
+	// became directional, the contact detail page would render "coworker of"
+	// pointing the wrong way for one of the two parties.
+	assert.True(t, IsSymmetricRelationType("coworker_of"))
+	assert.Equal(t, "coworker_of", InverseRelationType("coworker_of"))
+
+	// Unlike partner_of/co_parent_of, RFC 6350 6.6.6 has a token for this, so
+	// it must project to vCard rather than staying internal-only.
+	assert.Equal(t, "co-worker", RelationVCardTypeTag("coworker_of"))
+
+	// Legacy free-text relations import through the synonym table.
+	for _, legacy := range []string{"coworker", "co-worker", "colleague", "workmate"} {
+		got, ok := MatchLegacyRelationType(legacy)
+		assert.True(t, ok, "legacy %q should match", legacy)
+		assert.Equal(t, "coworker_of", got, "legacy %q", legacy)
+	}
+}

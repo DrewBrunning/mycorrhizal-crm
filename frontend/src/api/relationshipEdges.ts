@@ -10,7 +10,7 @@ import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './cl
 // hand with relationship_type_registry.go if that file changes.
 export type RelationshipEdgeType =
   | 'parent_of' | 'child_of' | 'spouse_of' | 'sibling_of' | 'friend_of'
-  | 'roommate_of' | 'partner_of' | 'co_parent_of' | 'mentor_of' | 'mentee_of'
+  | 'roommate_of' | 'coworker_of' | 'partner_of' | 'co_parent_of' | 'mentor_of' | 'mentee_of'
   | 'owned_by' | 'owns' | 'gets_along_with' | 'conflicts_with' | 'related_to';
 
 export type RelationshipEdgeSource = 'user-confirmed' | 'household-inferred' | 'imported' | 'ai-suggested';
@@ -29,6 +29,7 @@ export const RELATIONSHIP_EDGE_TYPES: Record<RelationshipEdgeType, RelationTypeM
   sibling_of:      { inverse: 'sibling_of',      symmetric: true },
   friend_of:       { inverse: 'friend_of',       symmetric: true },
   roommate_of:     { inverse: 'roommate_of',     symmetric: true },
+  coworker_of:     { inverse: 'coworker_of',     symmetric: true },
   partner_of:      { inverse: 'partner_of',      symmetric: true },
   co_parent_of:    { inverse: 'co_parent_of',    symmetric: true },
   mentor_of:       { inverse: 'mentee_of',       symmetric: false },

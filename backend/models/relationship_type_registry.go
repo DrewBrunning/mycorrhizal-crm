@@ -62,6 +62,17 @@ var relationTypeRegistry = map[string]relationTypeDef{
 		Synonyms:     []string{"roommate", "housemate"},
 		VCardTypeTag: "co-resident",
 	},
+	// The peer professional relationship. mentor_of/mentee_of below are the
+	// only other work-shaped types and both are hierarchical, so before T105
+	// there was no way to record "we work together". RFC 6350 §6.6.6 defines
+	// a co-worker TYPE token, so unlike partner_of/co_parent_of this one
+	// projects to vCard cleanly.
+	"coworker_of": {
+		Inverse:      "coworker_of",
+		Symmetric:    true,
+		Synonyms:     []string{"coworker", "co-worker", "colleague", "workmate"},
+		VCardTypeTag: "co-worker",
+	},
 	// No RFC 6350 token distinguishes an unmarried romantic partner from a
 	// spouse, and reusing "spouse" would misrepresent the relationship on
 	// export — so this stays non-projecting like co_parent_of below, per

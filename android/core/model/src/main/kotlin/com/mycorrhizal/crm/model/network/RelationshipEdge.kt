@@ -15,6 +15,7 @@ object RelationshipEdgeTypes {
     const val SIBLING_OF = "sibling_of"
     const val FRIEND_OF = "friend_of"
     const val ROOMMATE_OF = "roommate_of"
+    const val COWORKER_OF = "coworker_of"
     const val PARTNER_OF = "partner_of"
     const val CO_PARENT_OF = "co_parent_of"
     const val MENTOR_OF = "mentor_of"
@@ -34,6 +35,7 @@ object RelationshipEdgeTypes {
         SIBLING_OF to Meta(SIBLING_OF, true),
         FRIEND_OF to Meta(FRIEND_OF, true),
         ROOMMATE_OF to Meta(ROOMMATE_OF, true),
+        COWORKER_OF to Meta(COWORKER_OF, true),
         PARTNER_OF to Meta(PARTNER_OF, true),
         CO_PARENT_OF to Meta(CO_PARENT_OF, true),
         MENTOR_OF to Meta(MENTEE_OF, false),
