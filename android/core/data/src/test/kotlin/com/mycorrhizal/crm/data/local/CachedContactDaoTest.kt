@@ -132,6 +132,44 @@ class CachedContactDaoTest {
     }
 
     @Test
+    fun `searchFtsMatch finds a punctuated phone number by its bare digits`() = runBlocking {
+        // Regression for T76: FTS4's default tokenizer splits "(800) 555-1234" on the
+        // punctuation into three tokens ("800", "555", "1234"); a query of "8005551234" must
+        // still find it via the normalized phonesNormalized column, not the raw one.
+        dao.upsertAll(
+            listOf(
+                testContact(1, "Dana White").copy(
+                    primaryPhone = "(800) 555-1234",
+                    phonesNormalized = PhoneKey.flatten(listOf("(800) 555-1234")),
+                ),
+                testContact(2, "Bob Jones"),
+            ),
+        )
+
+        val result = dao.searchFtsMatch("phonesNormalized:8005551234*")
+
+        assertEquals(1, result.size)
+        assertEquals("Dana White", result[0].fn)
+    }
+
+    @Test
+    fun `searchFtsMatch finds a non-primary phone number`() = runBlocking {
+        dao.upsertAll(
+            listOf(
+                testContact(1, "Dana White").copy(
+                    primaryPhone = "(800) 555-1234",
+                    phonesNormalized = PhoneKey.flatten(listOf("(800) 555-1234", "555-0100")),
+                ),
+            ),
+        )
+
+        val result = dao.searchFtsMatch("phonesNormalized:5550100*")
+
+        assertEquals(1, result.size)
+        assertEquals("Dana White", result[0].fn)
+    }
+
+    @Test
     fun `deleteByIds removes the listed rows`() = runBlocking {
         dao.upsertAll(listOf(testContact(1, "Alice"), testContact(2, "Bob")))
         dao.deleteByIds(listOf(1))

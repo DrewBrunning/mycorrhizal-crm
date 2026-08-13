@@ -104,6 +104,11 @@ object DataModule {
             AppDatabase::class.java,
             "mycorrhizal-cache.db",
         )
+            // T76: an explicit migration for 13->14 so pending_interactions (a real
+            // not-yet-synced outbox) survives that specific version bump; the destructive
+            // fallback remains for any other/unexpected version gap, per this cache's
+            // general rebuild-from-server policy (see AppDatabase's doc comment).
+            .addMigrations(com.mycorrhizal.crm.data.local.MIGRATION_13_14)
             .fallbackToDestructiveMigration()
             .build()
 

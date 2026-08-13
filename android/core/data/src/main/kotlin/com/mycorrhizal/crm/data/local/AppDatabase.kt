@@ -9,6 +9,12 @@ import androidx.room.TypeConverters
  * readable data for offline viewing and fast list rendering. Schema grows as
  * later phases mirror more tables; exportSchema is off because the cache can
  * always be rebuilt from the server (fallbackToDestructiveMigration).
+ *
+ * **Exception: `pending_interactions`** is a real not-yet-synced outbox (queued
+ * call/SMS tracking), not rebuildable cache data — a version bump touching its
+ * schema must not rely on the destructive fallback. See [MIGRATION_13_14] (T76)
+ * for the pattern: a hand-written `Migration` registered in `DataModule`, scoped
+ * to only the tables that actually changed.
  */
 @Database(
     entities = [
@@ -31,7 +37,7 @@ import androidx.room.TypeConverters
         PendingInteraction::class,
         CustomLinkAction::class,
     ],
-    version = 13,
+    version = 14,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)

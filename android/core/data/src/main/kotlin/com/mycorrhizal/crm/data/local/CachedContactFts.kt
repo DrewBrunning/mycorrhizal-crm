@@ -22,5 +22,9 @@ data class CachedContactFts(
     val lastname: String? = null,
     val primaryEmail: String? = null,
     val primaryPhone: String? = null,
+    /** See [CachedContact.phonesNormalized]; T76 indexes this instead of the raw
+     *  [primaryPhone] for phone-shaped queries, since punctuation splits the raw
+     *  column into unmatchable FTS4 tokens. */
+    val phonesNormalized: String? = null,
     val org: String? = null,
 )
