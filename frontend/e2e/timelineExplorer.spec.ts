@@ -325,4 +325,40 @@ test.describe('Contact timeline explorer (T78)', () => {
       await deleteTestContact(page.request, contact.ID);
     }
   });
+
+  test('editing a note from the explorer updates it in place (stacked dialogs + revision refresh)', async ({ page }) => {
+    const ts = Date.now();
+    const contact = await createTestContact(page.request, { firstname: `E2ET78Edit${ts}` });
+    const now = new Date();
+
+    try {
+      await createNote(page.request, contact.ID, 'E2E tl edit me', now.toISOString());
+
+      await page.goto(`/contacts/${contact.ID}`);
+      await waitForLoading(page);
+
+      await stableClick(page.getByRole('button', { name: 'View all' }));
+      const explorer = page.getByRole('dialog', { name: 'Timeline' });
+      await expect(explorer).toBeVisible();
+      await expect(explorer.getByText('E2E tl edit me')).toBeVisible();
+
+      // The row's edit icon is hover-gated; reveal it, then open the edit
+      // dialog on top of the explorer.
+      await explorer.getByText('E2E tl edit me').hover();
+      await explorer.getByRole('button', { name: 'Edit' }).click();
+
+      const editDialog = page.getByRole('dialog', { name: 'Edit Note' });
+      await expect(editDialog).toBeVisible();
+      await editDialog.getByLabel(/content/i).fill('E2E tl edited');
+      await editDialog.getByRole('button', { name: /^save$/i }).click();
+      await expect(editDialog).toBeHidden();
+
+      // The explorer's own fetch catches up (revision bump) and shows the new
+      // content without a manual reopen.
+      await expect(explorer.getByText('E2E tl edited')).toBeVisible();
+      await expect(explorer.getByText('E2E tl edit me')).not.toBeVisible();
+    } finally {
+      await deleteTestContact(page.request, contact.ID);
+    }
+  });
 });

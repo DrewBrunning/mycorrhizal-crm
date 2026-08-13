@@ -100,20 +100,31 @@ the explorer regardless of history size, so the empty state is reachable in both
 `backend/models/timeline.go` per frontend trap #4) and `hooks/useTimeline.ts` (owns the page,
 filters, cursor; `refresh` is memoized on the filters, `loadMore` appends).
 
+**Concurrency** (review pass): `useTimeline` uses the repo's request-epoch guard
+(`useActivities`/`useAudit`/`useGraph` all do) so a stale fetch — a "Load more" that was in flight
+when the filter changed, or a fetch started for a previous contact — is discarded rather than
+appended over fresh rows; and it clears its page when `contactId` changes, so navigating between
+contacts can't briefly render the previous contact's rows (the dialog stays mounted across contact
+navigation). The "Load more" button is disabled during a refresh too, since its cursor belongs to
+the page it was returned with.
+
 **Deliberate decisions**: the "View all" button is always visible (not gated on >5) so the explorer
-and its empty state are reachable for small/empty histories; the load-more/filter-change race is the
-same accepted shape as `useContacts` — the repo's established cursor-pagination idiom.
+and its empty state are reachable for small/empty histories.
 
 **Tests, all hand-verified to fail pre-fix where a pre-fix existed**:
 - 9 `api/timeline.test.ts` cases (URL contract: comma-joined type subset, full-set/empty omission,
   bucket/cursor passthrough, 400 error propagation, registry mirrors).
+- 2 `useTimeline.test.ts` cases (the stale load-more discard, and page clear on contact switch —
+  both verified to fail against the pre-guard hook).
 - 7 `TimelineExplorerDialog.test.tsx` cases (fetch on open, no fetch while closed, type/bucket
   filter refetch, load-more append, empty state, edit/delete passthrough).
-- 6 Playwright specs in `e2e/timelineExplorer.spec.ts`: preview truncation to 5 + full explorer,
+- 7 Playwright specs in `e2e/timelineExplorer.spec.ts`: preview truncation to 5 + full explorer,
   all-six-types mixed preview/explorer, type filter isolation, bucket filter + type combination
-  (with the filtered-empty state), cursor paging past 25, and zero-item empty states in both
-  surfaces. All driven against the real shipped artifact (rebuilt `docker-compose.test.yml` stack);
-  the full 158-test e2e suite is green.
+  (with the filtered-empty state), cursor paging past 25, zero-item empty states in both surfaces,
+  and editing a note from within the explorer (stacked dialogs + the revision-triggered refresh).
+  All driven against the real shipped artifact (rebuilt `docker-compose.test.yml` stack); the full
+  e2e suite is green. (`e2e/reminders.spec.ts` also gained the `waitForLoading`/`stableClick` the
+  other contact-page specs use — it was intermittently failing under parallel load without them.)
 
 **Unblocks nothing** — this was the final web ticket. The Web platform list on the board is now
 empty; the remaining open work is the Android list (T67/T81/M21/…, see the board).

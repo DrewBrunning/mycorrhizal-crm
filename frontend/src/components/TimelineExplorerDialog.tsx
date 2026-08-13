@@ -150,7 +150,10 @@ export default function TimelineExplorerDialog({
 
           {nextCursor && (
             <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-              <Button variant="outlined" onClick={loadMore} disabled={loadingMore}>
+              {/* Disabled during a refresh too: the cursor belongs to the page
+                  it was returned with, so paging on a stale cursor mid-filter-
+                  change would fetch the wrong rows. */}
+              <Button variant="outlined" onClick={loadMore} disabled={loadingMore || loading}>
                 {t('common.loadMore')}
               </Button>
             </Box>
