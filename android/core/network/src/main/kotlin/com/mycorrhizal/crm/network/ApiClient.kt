@@ -16,6 +16,8 @@ import com.mycorrhizal.crm.model.network.CircleMember
 import com.mycorrhizal.crm.model.network.CircleMemberInput
 import com.mycorrhizal.crm.model.network.CirclesPage
 import com.mycorrhizal.crm.model.network.ContactActivitiesResponse
+import com.mycorrhizal.crm.model.network.ContactFieldValuesInput
+import com.mycorrhizal.crm.model.network.ContactFieldValuesResponse
 import com.mycorrhizal.crm.model.network.ContactNotesResponse
 import com.mycorrhizal.crm.model.network.ContactRecordInput
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
@@ -27,6 +29,7 @@ import com.mycorrhizal.crm.model.network.CreateActivityResponse
 import com.mycorrhizal.crm.model.network.CreateCircleResponse
 import com.mycorrhizal.crm.model.network.CreateContactResponse
 import com.mycorrhizal.crm.model.network.CreateConversationAgendaResponse
+import com.mycorrhizal.crm.model.network.FieldDefinitionsResponse
 import com.mycorrhizal.crm.model.network.CreateGiftResponse
 import com.mycorrhizal.crm.model.network.CreateHouseholdResponse
 import com.mycorrhizal.crm.model.network.CreateLifeEventResponse
@@ -176,6 +179,34 @@ class ApiClient(
     suspend fun updateContact(id: Int, input: ContactRecordInput): Result<ContactRecordResponse> =
         executePut("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$id", input) { _, body ->
             moshi.adapter(ContactRecordResponse::class.java).fromJson(body)
+        }
+
+    /** GET /api/v1/field-definitions (T84). */
+    suspend fun listFieldDefinitions(limit: Int? = null): Result<FieldDefinitionsResponse> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$FIELD_DEFINITIONS_PATH".toHttpUrl().newBuilder()
+        limit?.let { urlBuilder.addQueryParameter("limit", it.toString()) }
+        return executeGet(urlBuilder.build().toString()) { _, body ->
+            moshi.adapter(FieldDefinitionsResponse::class.java).fromJson(body)
+        }
+    }
+
+    /** GET /api/v1/contacts/{id}/field-values (T84). */
+    suspend fun listContactFieldValues(contactId: Int): Result<ContactFieldValuesResponse> =
+        executeGet("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/field-values") { _, body ->
+            moshi.adapter(ContactFieldValuesResponse::class.java).fromJson(body)
+        }
+
+    /**
+     * PUT /api/v1/contacts/{id}/field-values (T84) — full-replace; see
+     * [ContactFieldValuesInput]'s doc comment. No UI calls this yet (T84 ships the read-only
+     * slice); it exists for the round-trip test and so the write path isn't a second ticket.
+     */
+    suspend fun replaceContactFieldValues(
+        contactId: Int,
+        input: ContactFieldValuesInput,
+    ): Result<ContactFieldValuesResponse> =
+        executePut("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/field-values", input) { _, body ->
+            moshi.adapter(ContactFieldValuesResponse::class.java).fromJson(body)
         }
 
     /** GET /api/v1/contacts/{id}/activities — a contact's activities. */
@@ -779,6 +810,7 @@ class ApiClient(
         private const val ME_PATH = "$API_V1/users/me"
         private const val CONTACTS_PATH = "$API_V1/contacts"
         private const val SEARCH_PATH = "$API_V1/search"
+        private const val FIELD_DEFINITIONS_PATH = "$API_V1/field-definitions"
         private const val ACTIVITIES_PATH = "$API_V1/activities"
         private const val NOTES_PATH = "$API_V1/notes"
         private const val REMINDERS_PATH = "$API_V1/reminders"

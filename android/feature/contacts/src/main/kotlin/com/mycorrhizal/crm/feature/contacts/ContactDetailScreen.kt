@@ -77,8 +77,10 @@ import com.mycorrhizal.crm.model.network.Address
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.Email
+import com.mycorrhizal.crm.model.network.FieldDefinition
 import com.mycorrhizal.crm.model.network.OnlineService
 import com.mycorrhizal.crm.model.network.Phone
+import com.mycorrhizal.crm.model.network.fieldValueDisplay
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.model.util.DateFormat.display
 import com.mycorrhizal.crm.ui.components.EmptyState
@@ -292,6 +294,8 @@ fun ContactDetailScreen(
                     headerContentAlpha = 1f - collapseProgress,
                     deviceLookupKey = state.deviceLookupKey,
                     dateFormat = state.dateFormat,
+                    fieldDefinitions = state.fieldDefinitions,
+                    fieldValuesByDefinitionId = state.fieldValuesByDefinitionId,
                     onOpenInContacts = onOpenInContacts,
                     onViewActivities = onViewActivities,
                     onViewNotes = onViewNotes,
@@ -322,6 +326,9 @@ fun ContactDetailContent(
     deviceLookupKey: String? = null,
     /** The signed-in user's `date_format` preference; falls back to "eu" when absent. */
     dateFormat: String? = null,
+    /** T84 (read-only slice): the user's custom field definitions and this contact's values. */
+    fieldDefinitions: List<FieldDefinition> = emptyList(),
+    fieldValuesByDefinitionId: Map<String, Any?> = emptyMap(),
     onOpenInContacts: (String) -> Unit = {},
     onViewActivities: (Int) -> Unit = {},
     onViewNotes: (Int) -> Unit = {},
@@ -469,6 +476,23 @@ fun ContactDetailContent(
             item {
                 SectionCard(stringResource(R.string.contact_circles)) {
                     InfoRow(contact.crm?.circles?.joinToString(", ").orEmpty())
+                }
+            }
+        }
+        // T84 (read-only slice): one row per definition, iterated over the definitions list
+        // rather than the values map — this is what makes a value whose definition was deleted
+        // since it was set (definitions and values are fetched independently and can disagree)
+        // simply unreachable rather than something that needs a special-case skip.
+        if (fieldDefinitions.isNotEmpty()) {
+            item {
+                SectionCard(stringResource(R.string.contact_custom_fields)) {
+                    fieldDefinitions.forEach { definition ->
+                        val value = fieldValuesByDefinitionId[definition.id]
+                        // "—" mirrors the web app's own hardcoded no-value placeholder
+                        // (CustomFieldValueRow.tsx) — a punctuation glyph, not translated text.
+                        val display = fieldValueDisplay(definition, value).ifBlank { "—" }
+                        InfoRow("${definition.label.orEmpty()}: $display")
+                    }
                 }
             }
         }

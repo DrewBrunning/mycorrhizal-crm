@@ -73,6 +73,7 @@
     <string name="contact_personal_info">Informations personnelles</string>
     <string name="contact_online_services">Services en ligne</string>
     <string name="contact_circles">Cercles</string>
+    <string name="contact_custom_fields">Champs personnalisés</string>
     <string name="contact_edit">Modifier le contact</string>
     <string name="contact_birthday_label">Anniversaire : %1$s</string>
     <string name="mobile_link_message">Message</string>

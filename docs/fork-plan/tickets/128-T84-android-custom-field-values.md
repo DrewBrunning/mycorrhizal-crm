@@ -87,3 +87,56 @@ JUnit4 + MockK (`mockk`/`coEvery`) + Turbine + `runTest` with `MainDispatcherRul
 mock the repository — `feature/contacts/.../ContactListViewModelTest.kt` is the reference. New
 `ApiClient` methods get a MockWebServer test in `core/network` — `ApiClientTest.kt` is the reference.
 Hand-verify per `/CLAUDE.md`: break the code, confirm the new test fails, restore.
+
+## Landing note
+
+**DONE (2026-08-12) — read-only slice, as the ticket's own §3 permits.** All three `ApiClient`
+methods (`listFieldDefinitions`, `listContactFieldValues`, `replaceContactFieldValues`) are
+implemented and tested (MockWebServer, including the round-trip case), but only the read path is
+wired into the UI. Editing is left for a future ticket — the screen never implies it's editable.
+
+New `core/model` types (`FieldDefinition`, `FieldConstraints`, `FieldValue`, plus response wrappers
+and input DTOs for the write path) follow the same nullable-list-with-normalized-accessor pattern as
+T87's `SearchResult`, per `/CLAUDE.md` frontend trap #8 — `FieldDefinitionsResponse.fieldDefinitions`
+and `ContactFieldValuesResponse.fieldValues` are `List<T>? = null` with a `.definitions`/`.values`
+accessor, since Moshi rejects an explicit JSON `null` for a non-nullable list even with a Kotlin
+default. Verified with a dedicated MockWebServer test sending a literal `"field_definitions": null`.
+
+`ContactDetailViewModel` gained `apiClient: ApiClient` directly (same precedent as `DashboardViewModel`
+and T87's `ContactListViewModel`: a read that's cross-cutting — definitions are per-user, not
+per-contact — with no repository home). Definitions and this contact's values are fetched
+independently of the contact record and of each other; the render walks the *definitions* list and
+looks up each one's value by id (never the other way around), so a value whose definition no longer
+exists is structurally unreachable rather than requiring a runtime skip-check. A fetch failure on
+either just leaves that part of the state empty — this is an enhancement to the contact record, not
+core data, so it never blocks or errors the whole screen. New `ContactDetailScreen` section
+("Custom fields") renders only when `fieldDefinitions` is non-empty, placed after Circles and before
+Timeline; each definition shows `label: value`, with the unresolved-value case shown as a hardcoded
+em dash (matching web's own hardcoded placeholder in `CustomFieldValueRow.tsx`, not a string
+resource). `fieldValueDisplay()` in `FieldDefinition.kt` formats per type: booleans as `true`/`false`,
+whole-number doubles without a trailing `.0`, multi-value fields joined with `; `.
+
+All four test cases from the ticket are covered: round-trip (`ApiClientTest`), no-definitions-shows-
+no-section including the JSON-absent-key variant (`ContactDetailScreenTest`,
+`FieldDefinitionsResponse` tests), a value whose definition no longer exists degrading gracefully
+(`ContactDetailViewModelTest` + `ContactDetailScreenTest`, hand-verified by breaking the "iterate
+definitions" design into "iterate values" and confirming exactly the 2 expected tests failed), and
+per-type rendering for string/number/boolean/multi (`FieldDefinitionTest`, `ContactDetailScreenTest`).
+
+**Real-device snag, resolved by reading the backend source rather than guessing**: on the user's
+Pixel 8a, both endpoints returned HTTP 200 with the field-definitions response logged at 348 bytes,
+yet the parsed result was `total=0`/empty — looking like a possible silent-parse-failure bug. Ruled
+out Gradle build-cache staleness first (`--rerun-tasks` full rebuild, same result). Traced it to
+[`field_definition_controller.go:155-161`](../../../backend/controllers/field_definition_controller.go#L155-L161):
+every list response is wrapped in a `sync` block (`buildSyncMeta`, `incremental`/`full_resync`
+collection-name lists) that pads the envelope well past what an empty `field_definitions: []` alone
+would produce. `total: 0` confirms the account genuinely has zero custom field definitions today —
+not a parsing bug. Confirmed via `field_definition_controller.go`'s own `ListFieldDefinitions`, not
+by inference.
+
+**Hand-verified on a real device** (Pixel 8a): whole-project CI gate green
+(`testDebugUnitTest lintDebug assembleDebug`); installed and navigated to a real contact — the
+section correctly does not render (zero definitions on this account), no crash, no empty card, rest
+of the screen unaffected. The *populated* render was not observed live, for the same reason as T87's
+cross-entity section (no live data to exercise it against) — it's covered by 5 dedicated
+`ContactDetailScreenTest` cases with real fixtures instead.
