@@ -59,12 +59,14 @@ class DeviceContactsReader(private val contentResolver: ContentResolver) {
                 ContactsContract.Data.MIMETYPE,
                 ContactsContract.Data.DATA1,
                 ContactsContract.Data.DATA2,
+                ContactsContract.Data.DATA3,
                 ContactsContract.Data.DATA4,
                 ContactsContract.Data.DATA5,
                 ContactsContract.Data.DATA6,
                 ContactsContract.Data.DATA7,
                 ContactsContract.Data.DATA8,
                 ContactsContract.Data.DATA9,
+                ContactsContract.Data.DATA10,
             ),
             "${ContactsContract.Data.CONTACT_ID} = ?",
             arrayOf(contactId.toString()),
@@ -74,24 +76,28 @@ class DeviceContactsReader(private val contentResolver: ContentResolver) {
             val mimeIdx = it.getColumnIndexOrThrow(ContactsContract.Data.MIMETYPE)
             val d1 = it.getColumnIndex(ContactsContract.Data.DATA1)
             val d2 = it.getColumnIndex(ContactsContract.Data.DATA2)
+            val d3 = it.getColumnIndex(ContactsContract.Data.DATA3)
             val d4 = it.getColumnIndex(ContactsContract.Data.DATA4)
             val d5 = it.getColumnIndex(ContactsContract.Data.DATA5)
             val d6 = it.getColumnIndex(ContactsContract.Data.DATA6)
             val d7 = it.getColumnIndex(ContactsContract.Data.DATA7)
             val d8 = it.getColumnIndex(ContactsContract.Data.DATA8)
             val d9 = it.getColumnIndex(ContactsContract.Data.DATA9)
+            val d10 = it.getColumnIndex(ContactsContract.Data.DATA10)
             while (it.moveToNext()) {
                 out.add(
                     DeviceDataRow(
                         mimetype = it.getString(mimeIdx),
                         data1 = it.getStringOrNull(d1),
                         data2 = it.getStringOrNull(d2),
+                        data3 = it.getStringOrNull(d3),
                         data4 = it.getStringOrNull(d4),
                         data5 = it.getStringOrNull(d5),
                         data6 = it.getStringOrNull(d6),
                         data7 = it.getStringOrNull(d7),
                         data8 = it.getStringOrNull(d8),
                         data9 = it.getStringOrNull(d9),
+                        data10 = it.getStringOrNull(d10),
                     ),
                 )
             }
@@ -105,7 +111,7 @@ class DeviceContactsReader(private val contentResolver: ContentResolver) {
     private fun DeviceContact.withData(rows: List<DeviceDataRow>): DeviceContact {
         val phones = mutableListOf<Pair<String, Int>>()
         val emails = mutableListOf<String>()
-        val addresses = mutableListOf<String>()
+        val addresses = mutableListOf<DeviceAddress>()
         var organization: String? = null
         var birthday: String? = null
         rows.forEach { row ->
@@ -117,9 +123,32 @@ class DeviceContactsReader(private val contentResolver: ContentResolver) {
                     row.data1?.takeIf { it.isNotBlank() }?.let { emails.add(it) }
                 }
                 CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE -> {
-                    val formatted = row.data9 ?: listOf(row.data4, row.data5, row.data6, row.data7, row.data8)
-                        .filterNotNull().filter { it.isNotBlank() }.joinToString(", ")
-                    if (formatted.isNotBlank()) addresses.add(formatted)
+                    // Real StructuredPostal column layout: DATA1=FORMATTED_ADDRESS,
+                    // DATA4=STREET, DATA7=CITY, DATA8=REGION, DATA9=POSTCODE, DATA10=COUNTRY.
+                    // DATA9 (postcode) must never be treated as the formatted address (T67 Bug A).
+                    val street = row.data4?.takeIf { it.isNotBlank() }
+                    val city = row.data7?.takeIf { it.isNotBlank() }
+                    val region = row.data8?.takeIf { it.isNotBlank() }
+                    val postcode = row.data9?.takeIf { it.isNotBlank() }
+                    val country = row.data10?.takeIf { it.isNotBlank() }
+                    val formatted = row.data1?.takeIf { it.isNotBlank() }
+                    if (street != null || city != null || region != null ||
+                        postcode != null || country != null || formatted != null
+                    ) {
+                        addresses.add(
+                            DeviceAddress(
+                                street = street,
+                                city = city,
+                                region = region,
+                                postcode = postcode,
+                                country = country,
+                                formattedAddress = formatted,
+                                customLabel = row.data3?.takeIf { it.isNotBlank() },
+                                type = row.data2?.toIntOrNull()
+                                    ?: CommonDataKinds.StructuredPostal.TYPE_OTHER,
+                            ),
+                        )
+                    }
                 }
                 CommonDataKinds.Organization.CONTENT_ITEM_TYPE -> {
                     if (organization == null) organization = row.data1
