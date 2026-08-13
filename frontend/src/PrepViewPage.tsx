@@ -184,7 +184,8 @@ export default function PrepViewPage() {
           </Stack>
           {briefing.last_activity ? (
             <Box sx={{ mt: 0.5 }}>
-              <Typography variant="body2" fontWeight={500}>
+              {/* T98: activity titles are subtitle1 everywhere they appear. */}
+              <Typography variant="subtitle1" fontWeight={500}>
                 {briefing.last_activity.title}
                 {briefing.last_activity.type ? ` (${briefing.last_activity.type})` : ''}
               </Typography>

@@ -63,7 +63,15 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import './App.css';
 
-const drawerWidth = 180;
+// T98: 180 -> 190. Bumping the nav label to 1.0625rem pushed English's longest
+// label ("Circles & Tags") from 88px to 94px against a 91px text slot, so it
+// newly wrapped to two lines. 190 gives a 102px slot, which clears it.
+// Deliberately not wider: de/es/fr/it already wrapped at the old 16px (their
+// longest labels are 99-128px), and fitting those at the new size would need a
+// ~224px drawer -- a 24% widening of every page's content area, which is well
+// out of proportion to "make the nav labels bigger". Those four locales are
+// unchanged by this ticket, not newly broken by it.
+const drawerWidth = 190;
 
 // T33 nav classification: which destinations are "primary" (kept as icons in
 // the phone AppBar) and which are "account-level" (collapsed into the account
@@ -209,9 +217,12 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
               }}
             >
               <ListItemIcon>{item.icon}</ListItemIcon>
+              {/* T98: Garamond has a smaller x-height than IBM Plex Sans, so
+                  ListItemText's 1rem body1 default reads shrunken here rather
+                  than merely different. T63 set the family and no size. */}
               <ListItemText
                 primary={item.text}
-                slotProps={{ primary: { sx: { fontFamily: '"EB Garamond", serif' } } }}
+                slotProps={{ primary: { sx: { fontFamily: '"EB Garamond", serif', fontSize: '1.0625rem' } } }}
               />
             </ListItemButton>
           </ListItem>
