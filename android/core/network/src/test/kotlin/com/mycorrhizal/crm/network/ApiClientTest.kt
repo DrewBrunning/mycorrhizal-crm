@@ -454,6 +454,98 @@ class ApiClientTest {
     }
 
     @Test
+    fun `list activities with includeContacts appends the include query param`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200)
+                .setBody("""{"activities": [], "next_cursor": "", "limit": 25}"""),
+        )
+
+        client.listActivities(includeContacts = true)
+
+        val request = server.takeRequest()
+        assertEquals("/api/v1/activities?include=contacts", request.path)
+    }
+
+    // Trap-#8 (`/CLAUDE.md`): GetActivities marshals a nil Go slice as JSON `null`, not `[]`, for
+    // zero activities — a different failure mode than the absent-key one below. Both must parse.
+    @Test
+    fun `list activities normalizes an explicit JSON null to an empty list`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200)
+                .setBody("""{"activities": null, "next_cursor": "", "limit": 25}"""),
+        )
+
+        val result = client.listActivities()
+
+        assertTrue(result.isSuccess)
+        assertEquals(0, result.getOrThrow().activities.size)
+    }
+
+    @Test
+    fun `list activities tolerates the collection key being fully absent`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"next_cursor": "", "limit": 25}"""))
+
+        val result = client.listActivities()
+
+        assertTrue(result.isSuccess)
+        assertEquals(0, result.getOrThrow().activities.size)
+    }
+
+    // M9: the Notes drawer inbox — GET /notes, the N4 unfiled-notes queue (ticket's test case 3).
+    @Test
+    fun `list notes parses the cursor page and its total`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """
+                {
+                  "notes": [{"ID": 3, "content": "Buy milk", "date": "2026-08-01T10:00:00Z"}],
+                  "next_cursor": "cursor-2",
+                  "limit": 25,
+                  "total": 9
+                }
+                """.trimIndent(),
+            ),
+        )
+
+        val result = client.listNotes(cursor = "cursor-1", limit = 25)
+
+        assertTrue(result.isSuccess)
+        val page = result.getOrThrow()
+        assertEquals(1, page.notes.size)
+        assertEquals("Buy milk", page.notes[0].content)
+        assertEquals("cursor-2", page.nextCursor)
+        assertEquals(9, page.total)
+
+        val request = server.takeRequest()
+        assertEquals("/api/v1/notes?cursor=cursor-1&limit=25", request.path)
+    }
+
+    // Trap-#8 (`/CLAUDE.md`): GetUnassignedNotes marshals a nil Go slice as JSON `null`, not
+    // `[]`, for zero unfiled notes — a different failure mode than the absent-key one below.
+    @Test
+    fun `list notes normalizes an explicit JSON null to an empty list`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200)
+                .setBody("""{"notes": null, "next_cursor": "", "limit": 25, "total": 0}"""),
+        )
+
+        val result = client.listNotes()
+
+        assertTrue(result.isSuccess)
+        assertEquals(0, result.getOrThrow().notes.size)
+    }
+
+    @Test
+    fun `list notes tolerates the collection key being fully absent`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"total": 0}"""))
+
+        val result = client.listNotes()
+
+        assertTrue(result.isSuccess)
+        assertEquals(0, result.getOrThrow().notes.size)
+    }
+
+    @Test
     fun `list contact notes parses the wrapped notes array`() = runBlocking {
         server.enqueue(
             MockResponse()
@@ -864,5 +956,146 @@ class ApiClientTest {
         val request = server.takeRequest()
         assertEquals("PUT", request.method)
         assertEquals("/api/v1/relationship-edges/e1", request.path)
+    }
+
+    // --- M24: contact-level actions (delete/archive/unarchive/export) ---
+
+    @Test
+    fun `delete contact sends a DELETE to the contact route`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"message":"deleted"}"""))
+
+        val result = client.deleteContact(5)
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("DELETE", request.method)
+        assertEquals("/api/v1/contacts/5", request.path)
+    }
+
+    @Test
+    fun `delete contact failure maps to the backend error`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(404).setBody("""{"error":{"code":"not_found","message":"Contact not found"}}"""),
+        )
+
+        val result = client.deleteContact(5)
+
+        assertTrue(result.isFailure)
+        val error = result.exceptionOrNull() as ApiError
+        assertTrue(error is ApiError.Client)
+        assertEquals(404, (error as ApiError.Client).code)
+    }
+
+    @Test
+    fun `archive contact posts to the archive route`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"id":5,"archived":true,"firstname":"Dana","lastname":"White"}"""),
+        )
+
+        val result = client.archiveContact(5)
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/contacts/5/archive", request.path)
+    }
+
+    @Test
+    fun `unarchive contact posts to the unarchive route`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"id":5,"archived":false,"firstname":"Dana","lastname":"White"}"""),
+        )
+
+        val result = client.unarchiveContact(5)
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/contacts/5/unarchive", request.path)
+    }
+
+    @Test
+    fun `export single contact vcard 4 returns the raw file bytes`() = runBlocking {
+        val vcf = "BEGIN:VCARD\r\nVERSION:4.0\r\nFN:Dana White\r\nUID:u1\r\nEND:VCARD\r\n"
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "text/vcard; charset=utf-8")
+                .setBody(vcf),
+        )
+
+        val result = client.exportContactVcf("u1")
+
+        assertTrue(result.isSuccess)
+        assertEquals(vcf.toByteArray().contentToString(), result.getOrThrow().contentToString())
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/api/v1/export/vcf?vcard_uid=u1", request.path)
+    }
+
+    @Test
+    fun `export single contact vcard 3 adds the version param`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "text/vcard; charset=utf-8")
+                .setBody("BEGIN:VCARD\r\nVERSION:3.0\r\nEND:VCARD\r\n"),
+        )
+
+        val result = client.exportContactVcf("u1", version = 3)
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("/api/v1/export/vcf?vcard_uid=u1&version=3", request.path)
+    }
+
+    @Test
+    fun `export failure parses the JSON error instead of returning bytes`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(400).setBody("""{"error":{"code":"validation","message":"bad request"}}"""),
+        )
+
+        val result = client.exportContactVcf("missing")
+
+        assertTrue(result.isFailure)
+        val error = result.exceptionOrNull() as ApiError
+        assertTrue(error is ApiError.Client)
+        assertEquals(400, (error as ApiError.Client).code)
+    }
+
+    // M9 item 4: confirmVcfImport had zero callers/tests before this ticket wired a VCF import
+    // screen to it — same request/response shape as the (also-untested) CSV confirmImport.
+    @Test
+    fun `confirmVcfImport posts to the vcf confirm path and parses the result`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"total_processed": 3, "created": 2, "updated": 1, "skipped": 0, "errors": []}"""),
+        )
+
+        val result = client.confirmVcfImport(
+            com.mycorrhizal.crm.model.network.ImportConfirmRequest(
+                sessionId = "session-1",
+                actions = listOf(
+                    com.mycorrhizal.crm.model.network.RowImportAction(rowIndex = 0, action = "add"),
+                    com.mycorrhizal.crm.model.network.RowImportAction(rowIndex = 1, action = "update"),
+                ),
+            ),
+        )
+
+        assertTrue(result.isSuccess)
+        assertEquals(2, result.getOrThrow().created)
+        assertEquals(1, result.getOrThrow().updated)
+
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/contacts/import/vcf/confirm", request.path)
+        val body = request.body.readUtf8()
+        assertTrue(body.contains("session-1"))
+        assertTrue(body.contains("\"action\":\"update\""))
     }
 }

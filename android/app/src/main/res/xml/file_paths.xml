@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- M24: exported contact files are written to the app's cache (exports/ subdir) and shared
+     via FileProvider; this grants the share-target a scoped read on exactly those files. -->
+<paths>
+    <cache-path name="exports" path="exports/" />
+</paths>

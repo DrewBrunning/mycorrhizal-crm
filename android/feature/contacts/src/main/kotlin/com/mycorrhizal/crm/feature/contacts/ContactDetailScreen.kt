@@ -1,6 +1,8 @@
 package com.mycorrhizal.crm.feature.contacts
 
 import android.Manifest
+import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -8,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,24 +25,34 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Call
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Message
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -68,6 +81,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -75,11 +89,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mycorrhizal.crm.model.network.Address
 import com.mycorrhizal.crm.model.network.Card
+import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.Email
 import com.mycorrhizal.crm.model.network.FieldDefinition
 import com.mycorrhizal.crm.model.network.OnlineService
 import com.mycorrhizal.crm.model.network.Phone
+import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.model.network.fieldValueDisplay
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.model.util.DateFormat.display
@@ -92,6 +108,7 @@ import com.mycorrhizal.crm.feature.timeline.TimelineSection
 import com.mycorrhizal.crm.feature.timeline.toTimelineItems
 import com.mycorrhizal.crm.ui.R
 import kotlinx.coroutines.launch
+import java.io.File
 
 private fun androidx.compose.ui.graphics.Color.toArgbCompat(): Int =
     android.graphics.Color.argb(
@@ -121,6 +138,8 @@ private val HeaderFadeEndDp = 180.dp
 fun ContactDetailScreen(
     onBack: () -> Unit,
     onEdit: (Int) -> Unit = {},
+    onStayInTouch: (ContactRecordResponse) -> Unit = {},
+    onDeleted: () -> Unit = {},
     onViewActivities: (Int) -> Unit = {},
     onViewNotes: (Int) -> Unit = {},
     onViewReminders: (Int) -> Unit = {},
@@ -146,6 +165,46 @@ fun ContactDetailScreen(
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    // M24: one-shot events — a finished delete (navigate back) and an exported file (share
+    // sheet). Consumed exactly once, then cleared via viewModel.onEventShown().
+    val event by viewModel.events.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    LaunchedEffect(event) {
+        when (event) {
+            is ContactDetailEvent.ContactDeleted -> {
+                viewModel.onEventShown()
+                onDeleted()
+            }
+            is ContactDetailEvent.ExportReady -> {
+                val ready = event as ContactDetailEvent.ExportReady
+                viewModel.onEventShown()
+                shareExportedVcf(context, state.contact, ready.version, ready.bytes)
+            }
+            null -> Unit
+        }
+    }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showArchiveConfirm by remember { mutableStateOf(false) }
+    var showUnarchiveConfirm by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    // M24 stubs: share (M15) and prep view (M11) are separate tickets; until they land these
+    // menu items surface the standard "coming in a later phase" notice.
+    val shareComingSoon = stringResource(R.string.coming_soon, stringResource(R.string.contact_share))
+    val prepComingSoon = stringResource(R.string.coming_soon, stringResource(R.string.contact_prep_view))
+
+    // M24: action failures (delete/archive/export/membership writes) set `state.error`, which
+    // the EmptyState branch already shows when there is no contact to render. For a loaded
+    // contact the error had no surface at all — show it as a snackbar there (mirroring
+    // ContactFormScreen/ContactListScreen), and leave the EmptyState to handle load failures.
+    LaunchedEffect(state.error) {
+        val message = state.error
+        if (message != null && state.contact != null) {
+            snackbarHostState.showSnackbar(message)
+            viewModel.onErrorShown()
+        }
     }
 
     // Drives the collapsing app bar: at the top the bar is transparent so the
@@ -266,6 +325,85 @@ fun ContactDetailScreen(
                                 tint = barIconColor,
                             )
                         }
+                        // M24: the top-level action menu (archive/unarchive, export, stay in
+                        // touch, share/prep stubs, delete). Wrapped in a Box so the
+                        // DropdownMenu anchors to the ⋮ button rather than the whole bar.
+                        var menuExpanded by remember { mutableStateOf(false) }
+                        Box {
+                            IconButton(onClick = { menuExpanded = true }) {
+                                Icon(
+                                    Icons.Outlined.MoreVert,
+                                    contentDescription = stringResource(R.string.contact_actions_menu),
+                                    tint = barIconColor,
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = menuExpanded,
+                                onDismissRequest = { menuExpanded = false },
+                            ) {
+                                if (contact.archived) {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.contact_unarchive)) },
+                                        onClick = {
+                                            menuExpanded = false
+                                            showUnarchiveConfirm = true
+                                        },
+                                    )
+                                } else {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.contact_archive)) },
+                                        onClick = {
+                                            menuExpanded = false
+                                            showArchiveConfirm = true
+                                        },
+                                    )
+                                }
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.contact_export_vcf4)) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        viewModel.exportVcf()
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.contact_export_vcf3)) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        viewModel.exportVcf(version = 3)
+                                    },
+                                )
+                                if (!contact.archived) {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.contact_stay_in_touch)) },
+                                        onClick = {
+                                            menuExpanded = false
+                                            onStayInTouch(contact)
+                                        },
+                                    )
+                                }
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.contact_share)) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        scope.launch { snackbarHostState.showSnackbar(shareComingSoon) }
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.contact_prep_view)) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        scope.launch { snackbarHostState.showSnackbar(prepComingSoon) }
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.contact_delete), color = MaterialTheme.colorScheme.error) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        showDeleteConfirm = true
+                                    },
+                                )
+                            }
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -281,6 +419,7 @@ fun ContactDetailScreen(
                 ),
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when {
@@ -296,6 +435,14 @@ fun ContactDetailScreen(
                     dateFormat = state.dateFormat,
                     fieldDefinitions = state.fieldDefinitions,
                     fieldValuesByDefinitionId = state.fieldValuesByDefinitionId,
+                    allCircles = state.allCircles,
+                    contactCircles = state.contactCircles,
+                    allTags = state.allTags,
+                    contactTags = state.contactTags,
+                    onAddCircle = viewModel::addCircle,
+                    onRemoveCircle = viewModel::removeCircle,
+                    onAddTag = viewModel::addTag,
+                    onRemoveTag = viewModel::removeTag,
                     onOpenInContacts = onOpenInContacts,
                     onViewActivities = onViewActivities,
                     onViewNotes = onViewNotes,
@@ -314,10 +461,105 @@ fun ContactDetailScreen(
             }
         }
     }
+
+    // M24: confirm-before-destructive-action dialogs. Delete and archive match web's
+    // confirmation semantics (soft-delete per /CLAUDE.md); unarchive is confirmed too, since
+    // the ticket calls for confirmation on both directions.
+    val contact = state.contact
+    if (showDeleteConfirm && contact != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text(stringResource(R.string.contact_delete_title)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.contact_delete_confirm,
+                        contact.card?.displayName.orEmpty(),
+                    ),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !state.isMutating,
+                    onClick = {
+                        showDeleteConfirm = false
+                        viewModel.deleteContact()
+                    },
+                ) {
+                    Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
+    if (showArchiveConfirm && contact != null) {
+        AlertDialog(
+            onDismissRequest = { showArchiveConfirm = false },
+            title = { Text(stringResource(R.string.contact_archive_title)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.contact_archive_confirm,
+                        contact.card?.displayName.orEmpty(),
+                    ),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !state.isMutating,
+                    onClick = {
+                        showArchiveConfirm = false
+                        viewModel.setArchived(archived = true)
+                    },
+                ) {
+                    Text(stringResource(R.string.contact_archive))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showArchiveConfirm = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
+    if (showUnarchiveConfirm && contact != null) {
+        AlertDialog(
+            onDismissRequest = { showUnarchiveConfirm = false },
+            title = { Text(stringResource(R.string.contact_unarchive_title)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.contact_unarchive_confirm,
+                        contact.card?.displayName.orEmpty(),
+                    ),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !state.isMutating,
+                    onClick = {
+                        showUnarchiveConfirm = false
+                        viewModel.setArchived(archived = false)
+                    },
+                ) {
+                    Text(stringResource(R.string.contact_unarchive))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showUnarchiveConfirm = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
 }
 
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 fun ContactDetailContent(
     contact: ContactRecordResponse,
     listState: LazyListState = rememberLazyListState(),
@@ -329,6 +571,16 @@ fun ContactDetailContent(
     /** T84 (read-only slice): the user's custom field definitions and this contact's values. */
     fieldDefinitions: List<FieldDefinition> = emptyList(),
     fieldValuesByDefinitionId: Map<String, Any?> = emptyMap(),
+    // M24: inline circle/tag editors. `all*` back the add menus, `contact*` are the currently
+    // applied memberships derived from the join rows.
+    allCircles: List<Circle> = emptyList(),
+    contactCircles: List<Circle> = emptyList(),
+    allTags: List<Tag> = emptyList(),
+    contactTags: List<Tag> = emptyList(),
+    onAddCircle: (Circle) -> Unit = {},
+    onRemoveCircle: (Circle) -> Unit = {},
+    onAddTag: (Tag) -> Unit = {},
+    onRemoveTag: (Tag) -> Unit = {},
     onOpenInContacts: (String) -> Unit = {},
     onViewActivities: (Int) -> Unit = {},
     onViewNotes: (Int) -> Unit = {},
@@ -472,11 +724,34 @@ fun ContactDetailContent(
                 }
             }
         }
-        if (!contact.crm?.circles.isNullOrEmpty()) {
-            item {
-                SectionCard(stringResource(R.string.contact_circles)) {
-                    InfoRow(contact.crm?.circles?.joinToString(", ").orEmpty())
-                }
+        // M24: circles and tags are now editable inline from the detail page (previously
+        // circles were a read-only comma-joined string and tags weren't displayed at all).
+        item {
+            SectionCard(stringResource(R.string.contact_circles)) {
+                ChipEditorRow(
+                    items = contactCircles,
+                    allItems = allCircles,
+                    label = { it.name },
+                    isApplied = { c -> contactCircles.any { it.id == c.id } },
+                    onAdd = onAddCircle,
+                    onRemove = onRemoveCircle,
+                    emptyText = stringResource(R.string.contact_circles_empty),
+                    addLabel = stringResource(R.string.contact_circles_add),
+                )
+            }
+        }
+        item {
+            SectionCard(stringResource(R.string.contact_tags)) {
+                ChipEditorRow(
+                    items = contactTags,
+                    allItems = allTags,
+                    label = { it.name },
+                    isApplied = { t -> contactTags.any { it.id == t.id } },
+                    onAdd = onAddTag,
+                    onRemove = onRemoveTag,
+                    emptyText = stringResource(R.string.contact_tags_empty),
+                    addLabel = stringResource(R.string.contact_tags_add),
+                )
             }
         }
         // T84 (read-only slice): one row per definition, iterated over the definitions list
@@ -678,7 +953,10 @@ private fun EmailRow(email: Email) {
             style = AppTypography.mono,
             modifier = Modifier.weight(1f),
         )
-        email.label?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        // M7: the type is `contexts[0]` (web parity — the form's type dropdown writes
+        // there), with `label` as a fallback for legacy flat-Type data (backend's
+        // buildEmails maps ContactEmail.Type -> Email.Label).
+        (email.contexts?.firstOrNull() ?: email.label)?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         if (address.isNotBlank()) {
             IconButton(onClick = { context.startActivity(FieldActions.emailIntent(address)) }) {
                 Icon(
@@ -711,9 +989,11 @@ private fun PhoneRow(phone: Phone) {
             style = AppTypography.mono,
             modifier = Modifier.weight(1f),
         )
-        val features = phone.features?.joinToString(", ").orEmpty()
-        if (features.isNotBlank()) {
-            Text(features, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        // M7: the type is `features[0] ?: contexts[0]` (web parity), matching what
+        // the form's type dropdown reads. `label` is X-ABLabel, not the type.
+        val typeToken = phone.features?.firstOrNull() ?: phone.contexts?.firstOrNull()
+        if (!typeToken.isNullOrBlank()) {
+            Text(typeToken, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (number.isNotBlank()) {
             IconButton(onClick = { context.startActivity(FieldActions.dialIntent(number)) }) {
@@ -959,3 +1239,117 @@ private fun MobileLinkActions(
             }
         }
     }
+
+// --- M24: inline circle/tag chip editor -------------------------------------
+
+/**
+ * A chip list with an "add" overflow menu. `items` are the currently applied entities
+ * (rendered as removable chips); the add menu lists `allItems` minus the applied ones.
+ * Generic over the entity type so circles and tags share one implementation.
+ */
+@Composable
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+private fun <T> ChipEditorRow(
+    items: List<T>,
+    allItems: List<T>,
+    label: (T) -> String,
+    isApplied: (T) -> Boolean,
+    onAdd: (T) -> Unit,
+    onRemove: (T) -> Unit,
+    emptyText: String,
+    addLabel: String,
+) {
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
+        if (items.isEmpty()) {
+            Text(
+                text = emptyText,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = 4.dp),
+            )
+        }
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            items.forEach { item ->
+                InputChip(
+                    selected = true,
+                    onClick = { onRemove(item) },
+                    label = { Text(label(item)) },
+                    trailingIcon = {
+                        Icon(
+                            Icons.Outlined.Close,
+                            contentDescription = stringResource(R.string.contact_remove),
+                            modifier = Modifier.size(16.dp),
+                        )
+                    },
+                )
+            }
+        }
+        val addable = allItems.filter { !isApplied(it) }
+        if (addable.isNotEmpty()) {
+            var menuExpanded by remember { mutableStateOf(false) }
+            Box(modifier = Modifier.padding(top = 4.dp)) {
+                AssistChip(
+                    onClick = { menuExpanded = true },
+                    label = { Text(addLabel) },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Outlined.Add,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    },
+                    modifier = Modifier.height(32.dp),
+                )
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false },
+                ) {
+                    addable.forEach { item ->
+                        DropdownMenuItem(
+                            text = { Text(label(item)) },
+                            onClick = {
+                                menuExpanded = false
+                                onAdd(item)
+                            },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Writes an exported vCard to the cache and hands it to the share sheet via FileProvider, so
+ * the user can save the file (Files) or send it to any app. `version` null → vCard 4.0;
+ * 3 → vCard 3.0 (filename suffix).
+ */
+private fun shareExportedVcf(
+    context: Context,
+    contact: ContactRecordResponse?,
+    version: Int?,
+    bytes: ByteArray,
+) {
+    val dir = File(context.cacheDir, "exports").apply { mkdirs() }
+    val safeName = contact?.card?.displayName
+        ?.replace(Regex("""[^A-Za-z0-9._-]"""), "_")
+        ?: "contact"
+    val suffix = if (version == 3) "-v3" else ""
+    val file = File(dir, "$safeName$suffix.vcf")
+    file.writeBytes(bytes)
+
+    val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/vcard"
+        putExtra(Intent.EXTRA_STREAM, uri)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    try {
+        context.startActivity(Intent.createChooser(intent, context.getString(R.string.contact_export_share_title)))
+    } catch (_: Exception) {
+        // No activity can handle the share — nothing to do.
+    }
+}

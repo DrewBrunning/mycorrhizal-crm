@@ -48,6 +48,30 @@ interface ContactRepository {
     /** Update a contact on the server; returns the updated record. */
     suspend fun updateContact(id: Int, input: ContactRecordInput): Result<ContactRecordResponse>
 
+    // M24: top-level contact actions. Delete/archive/unarchive were repository-level gaps
+    // (no client surface at all), not just missing UI; the backend endpoints pre-date the
+    // Android client. All three are online-first: on success the local Room mirror is updated
+    // so the list/detail degrade consistently offline.
+
+    /**
+     * Delete a contact (soft delete per `/CLAUDE.md`'s delete-semantics — the row survives
+     * server-side for the audit undo). Removes the local cache row.
+     */
+    suspend fun deleteContact(id: Int): Result<Unit>
+
+    /** Archive a contact (backend also retires its reminders); flips the cached `archived` flag. */
+    suspend fun archiveContact(id: Int): Result<Unit>
+
+    /** Unarchive a contact; flips the cached `archived` flag back. */
+    suspend fun unarchiveContact(id: Int): Result<Unit>
+
+    /**
+     * Export a single contact as vCard 4.0 (or 3.0 when [version] == 3) — the raw file bytes
+     * from `GET /export/vcf?vcard_uid=…`. Matches web's single-contact export (default field
+     * selection: all sections, private/secret sensitivity excluded). Not cached.
+     */
+    suspend fun exportContactVcf(vcardUid: String, version: Int? = null): Result<ByteArray>
+
     /** Cached contact list summaries as a reactive stream (list + offline). */
     fun observeContacts(): Flow<List<ContactSummary>>
 

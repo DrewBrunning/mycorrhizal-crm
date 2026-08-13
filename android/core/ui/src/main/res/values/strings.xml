@@ -73,9 +73,32 @@
     <string name="contact_personal_info">Personal information</string>
     <string name="contact_online_services">Online services</string>
     <string name="contact_circles">Circles</string>
+    <string name="contact_tags">Tags</string>
     <string name="contact_custom_fields">Custom fields</string>
     <string name="contact_edit">Edit contact</string>
     <string name="contact_birthday_label">Birthday: %1$s</string>
+    <!-- M24: top-level detail actions -->
+    <string name="contact_actions_menu">Contact actions</string>
+    <string name="contact_archive">Archive</string>
+    <string name="contact_unarchive">Unarchive</string>
+    <string name="contact_export_vcf4">Export vCard 4.0</string>
+    <string name="contact_export_vcf3">Export vCard 3.0</string>
+    <string name="contact_stay_in_touch">Stay in touch</string>
+    <string name="contact_stay_in_touch_message">Catch-up with %1$s</string>
+    <string name="contact_share">Share contact</string>
+    <string name="contact_prep_view">View prep</string>
+    <string name="contact_delete">Delete contact</string>
+    <string name="contact_delete_title">Delete contact?</string>
+    <string name="contact_delete_confirm">Are you sure you want to delete %1$s? This action cannot be undone and will also delete all notes, activities, and reminders associated with this contact.</string>
+    <string name="contact_archive_title">Archive contact?</string>
+    <string name="contact_archive_confirm">Are you sure you want to archive %1$s? All reminders will be deleted. You can unarchive later, but reminders won\'t be restored.</string>
+    <string name="contact_unarchive_title">Unarchive contact?</string>
+    <string name="contact_unarchive_confirm">Unarchive %1$s?</string>
+    <string name="contact_circles_empty">No circles yet</string>
+    <string name="contact_circles_add">Add circle</string>
+    <string name="contact_tags_empty">No tags yet</string>
+    <string name="contact_tags_add">Add tag</string>
+    <string name="contact_export_share_title">Export contact</string>
     <string name="mobile_link_message">Message</string>
     <string name="mobile_link_voice_call">Voice Call</string>
     <string name="mobile_link_video_call">Video Call</string>
@@ -97,12 +120,60 @@
     <string name="contact_given_name">Given name</string>
     <string name="contact_surname">Surname</string>
     <string name="contact_nickname">Nickname</string>
+    <!-- M24: contact form additions -->
+    <string name="contact_prefix">Prefix</string>
+    <string name="contact_middle_name">Middle name</string>
+    <string name="contact_suffix">Suffix</string>
+    <string name="contact_kind">Kind</string>
+    <string name="contact_kind_human">Human</string>
+    <string name="contact_kind_animal">Animal</string>
+    <string name="contact_language">Language</string>
+    <string name="contact_circles_select">Select circle…</string>
+    <string name="contact_tags_select">Select tag…</string>
     <string name="contact_birthday">Birthday</string>
     <string name="contact_birthday_hint">1990-06-15 or --12-25</string>
     <string name="contact_value_n">Value %1$d</string>
-    <string name="contact_circles_label">Circles (comma-separated)</string>
     <string name="contact_remove">Remove</string>
     <string name="contact_add">Add</string>
+    <!-- M7: generic multi-value editor -->
+    <string name="contact_field_type">Type</string>
+    <string name="contact_type_none">None</string>
+    <string name="contact_preferred">Preferred</string>
+    <string name="contact_set_preferred">Set as preferred</string>
+    <string name="contact_type_home">Home</string>
+    <string name="contact_type_work">Work</string>
+    <string name="contact_type_cell">Mobile</string>
+    <string name="contact_type_fax">Fax</string>
+    <string name="contact_type_other">Other</string>
+    <string name="contact_context_private">Private</string>
+    <string name="contact_context_school">School</string>
+    <string name="contact_context_billing">Billing</string>
+    <string name="contact_context_delivery">Delivery</string>
+    <string name="contact_online_service_service">Service</string>
+    <string name="contact_title_kind_title">Job title</string>
+    <string name="contact_title_kind_role">Role</string>
+    <string name="contact_personal_info_kind_expertise">Expertise</string>
+    <string name="contact_personal_info_kind_hobby">Hobby</string>
+    <string name="contact_personal_info_kind_interest">Interest</string>
+    <!-- M7: new form sections -->
+    <string name="contact_department">Department</string>
+    <string name="contact_job_titles">Job titles</string>
+    <string name="contact_impps">Instant Messaging</string>
+    <string name="contact_social_profiles">Social profiles</string>
+    <string name="contact_other_online_services">Other online services</string>
+    <string name="contact_how_we_met">How we met</string>
+    <string name="contact_work_information">Work information</string>
+    <string name="contact_contact_information">Additional contact information</string>
+    <!-- M7: address editor -->
+    <string name="contact_address_street">Street</string>
+    <string name="contact_address_city">City</string>
+    <string name="contact_address_region">State / Region</string>
+    <string name="contact_address_postal">Postal code</string>
+    <string name="contact_address_country">Country</string>
+    <string name="contact_address_pobox">PO box</string>
+    <string name="contact_address_apartment">Apartment / Suite</string>
+    <string name="contact_address_floor">Floor</string>
+    <string name="contact_address_additional">Additional fields</string>
     <string name="contact_create">Create contact</string>
     <string name="contact_save">Save changes</string>
     <string name="contact_error_given_name">At least one given name is required</string>
@@ -173,6 +244,8 @@
     <!-- Notes -->
     <string name="notes_title">Notes</string>
     <string name="notes_empty">No notes yet</string>
+    <string name="notes_inbox_total">%1$d unfiled</string>
+    <string name="action_load_more">Load more</string>
     <string name="note_new">New note</string>
     <string name="note_edit">Edit note</string>
     <string name="note_content">Note</string>
@@ -331,6 +404,14 @@
     <string name="bulk_title">Bulk operations</string>
     <string name="bulk_archive">Archive</string>
     <string name="bulk_unarchive">Unarchive</string>
+    <string name="bulk_add_circle">Add to circle</string>
+    <string name="bulk_remove_circle">Remove from circle</string>
+    <string name="bulk_add_tag">Add tag</string>
+    <string name="bulk_remove_tag">Remove tag</string>
+    <string name="bulk_pick_circle">Choose a circle</string>
+    <string name="bulk_pick_tag">Choose a tag</string>
+    <string name="bulk_no_circles">No circles yet</string>
+    <string name="bulk_no_tags">No tags yet</string>
     <string name="bulk_confirm_title">Confirm bulk action?</string>
     <string name="bulk_confirm_body">Run the action on %1$d selected contacts?</string>
     <string name="bulk_result">Done: %1$d succeeded, %2$d failed.</string>
@@ -343,4 +424,17 @@
     <string name="import_button">Import %1$d selected (%2$d possible duplicates)</string>
     <string name="import_done">Imported %1$d contacts.</string>
     <string name="import_duplicate">Possible duplicate of %1$s</string>
+
+    <!-- VCF file import (M9) -->
+    <string name="import_vcf_entry">Import from a VCF file</string>
+    <string name="import_vcf_title">Import VCF file</string>
+    <string name="import_vcf_pick">Select a .vcf file</string>
+    <string name="import_vcf_pick_hint">Choose a .vcf (vCard) file exported from another app.</string>
+    <string name="import_vcf_row_skip">Skip</string>
+    <string name="import_vcf_row_add">Add</string>
+    <string name="import_vcf_row_update">Update</string>
+    <string name="import_vcf_confirm">Confirm import</string>
+    <string name="import_vcf_result">Import complete: %1$d created, %2$d updated, %3$d skipped.</string>
+    <string name="import_vcf_error_too_large">File is too large. Maximum size is 50MB.</string>
+    <string name="import_vcf_error_invalid_file">Couldn\'t read that file. Choose a .vcf file.</string>
 </resources>

@@ -73,9 +73,32 @@
     <string name="contact_personal_info">Persönliche Informationen</string>
     <string name="contact_online_services">Online-Dienste</string>
     <string name="contact_circles">Kreise</string>
+    <string name="contact_tags">Tags</string>
     <string name="contact_custom_fields">Benutzerdefinierte Felder</string>
     <string name="contact_edit">Kontakt bearbeiten</string>
     <string name="contact_birthday_label">Geburtstag: %1$s</string>
+    <!-- M24: Top-Level-Kontaktaktionen -->
+    <string name="contact_actions_menu">Kontaktaktionen</string>
+    <string name="contact_archive">Archivieren</string>
+    <string name="contact_unarchive">Archiv aufheben</string>
+    <string name="contact_export_vcf4">Als vCard 4.0 exportieren</string>
+    <string name="contact_export_vcf3">Als vCard 3.0 exportieren</string>
+    <string name="contact_stay_in_touch">In Kontakt bleiben</string>
+    <string name="contact_stay_in_touch_message">Nachholgespräch mit %1$s</string>
+    <string name="contact_share">Kontakt teilen</string>
+    <string name="contact_prep_view">Briefing ansehen</string>
+    <string name="contact_delete">Kontakt löschen</string>
+    <string name="contact_delete_title">Kontakt löschen?</string>
+    <string name="contact_delete_confirm">Möchtest du %1$s wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden und löscht auch alle Notizen, Aktivitäten und Erinnerungen dieses Kontakts.</string>
+    <string name="contact_archive_title">Kontakt archivieren?</string>
+    <string name="contact_archive_confirm">Möchtest du %1$s wirklich archivieren? Alle Erinnerungen werden gelöscht. Du kannst später das Archiv wieder aufheben, die Erinnerungen werden aber nicht wiederhergestellt.</string>
+    <string name="contact_unarchive_title">Archivierung aufheben?</string>
+    <string name="contact_unarchive_confirm">Archivierung von %1$s aufheben?</string>
+    <string name="contact_circles_empty">Noch keine Kreise</string>
+    <string name="contact_circles_add">Kreis hinzufügen</string>
+    <string name="contact_tags_empty">Noch keine Tags</string>
+    <string name="contact_tags_add">Tag hinzufügen</string>
+    <string name="contact_export_share_title">Kontakt exportieren</string>
     <string name="mobile_link_message">Nachricht</string>
     <string name="mobile_link_voice_call">Sprachanruf</string>
     <string name="mobile_link_video_call">Videoanruf</string>
@@ -97,12 +120,60 @@
     <string name="contact_given_name">Vorname</string>
     <string name="contact_surname">Nachname</string>
     <string name="contact_nickname">Spitzname</string>
+    <!-- M24: Formularerweiterungen -->
+    <string name="contact_prefix">Präfix</string>
+    <string name="contact_middle_name">Zweiter Vorname</string>
+    <string name="contact_suffix">Suffix</string>
+    <string name="contact_kind">Art</string>
+    <string name="contact_kind_human">Mensch</string>
+    <string name="contact_kind_animal">Tier</string>
+    <string name="contact_language">Sprache</string>
+    <string name="contact_circles_select">Kreis auswählen…</string>
+    <string name="contact_tags_select">Tag auswählen…</string>
     <string name="contact_birthday">Geburtstag</string>
     <string name="contact_birthday_hint">1990-06-15 or --12-25</string>
     <string name="contact_value_n">Wert %1$d</string>
-    <string name="contact_circles_label">Kreise (durch Kommas getrennt)</string>
     <string name="contact_remove">Entfernen</string>
     <string name="contact_add">Hinzufügen</string>
+    <!-- M7: generischer Mehrwert-Editor -->
+    <string name="contact_field_type">Typ</string>
+    <string name="contact_type_none">Keine</string>
+    <string name="contact_preferred">Bevorzugt</string>
+    <string name="contact_set_preferred">Als bevorzugt festlegen</string>
+    <string name="contact_type_home">Privat</string>
+    <string name="contact_type_work">Arbeit</string>
+    <string name="contact_type_cell">Mobil</string>
+    <string name="contact_type_fax">Fax</string>
+    <string name="contact_type_other">Sonstiges</string>
+    <string name="contact_context_private">Privat</string>
+    <string name="contact_context_school">Schule</string>
+    <string name="contact_context_billing">Rechnung</string>
+    <string name="contact_context_delivery">Lieferung</string>
+    <string name="contact_online_service_service">Dienst</string>
+    <string name="contact_title_kind_title">Berufsbezeichnung</string>
+    <string name="contact_title_kind_role">Rolle</string>
+    <string name="contact_personal_info_kind_expertise">Expertise</string>
+    <string name="contact_personal_info_kind_hobby">Hobby</string>
+    <string name="contact_personal_info_kind_interest">Interesse</string>
+    <!-- M7: neue Formularabschnitte -->
+    <string name="contact_department">Abteilung</string>
+    <string name="contact_job_titles">Berufsbezeichnungen</string>
+    <string name="contact_impps">Instant Messaging</string>
+    <string name="contact_social_profiles">Soziale Profile</string>
+    <string name="contact_other_online_services">Andere Online-Dienste</string>
+    <string name="contact_how_we_met">Wie wir uns kennengelernt haben</string>
+    <string name="contact_work_information">Arbeitsinformationen</string>
+    <string name="contact_contact_information">Weitere Kontaktinformationen</string>
+    <!-- M7: Adresseditor -->
+    <string name="contact_address_street">Straße</string>
+    <string name="contact_address_city">Stadt</string>
+    <string name="contact_address_region">Bundesland / Region</string>
+    <string name="contact_address_postal">Postleitzahl</string>
+    <string name="contact_address_country">Land</string>
+    <string name="contact_address_pobox">Postfach</string>
+    <string name="contact_address_apartment">Wohnung / Suite</string>
+    <string name="contact_address_floor">Etage</string>
+    <string name="contact_address_additional">Weitere Felder</string>
     <string name="contact_create">Kontakt erstellen</string>
     <string name="contact_save">Änderungen speichern</string>
     <string name="contact_error_given_name">Mindestens ein Vorname ist erforderlich</string>
@@ -171,6 +242,8 @@
     <!-- Notizen -->
     <string name="notes_title">Notizen</string>
     <string name="notes_empty">Noch keine Notizen</string>
+    <string name="notes_inbox_total">%1$d nicht zugeordnet</string>
+    <string name="action_load_more">Mehr laden</string>
     <string name="note_new">Neue Notiz</string>
     <string name="note_edit">Notiz bearbeiten</string>
     <string name="note_content">Notiz</string>
@@ -335,6 +408,14 @@
     <string name="bulk_title">Stapeloperationen</string>
     <string name="bulk_archive">Archivieren</string>
     <string name="bulk_unarchive">Archiv aufheben</string>
+    <string name="bulk_add_circle">Zu Kreis hinzufügen</string>
+    <string name="bulk_remove_circle">Aus Kreis entfernen</string>
+    <string name="bulk_add_tag">Tag hinzufügen</string>
+    <string name="bulk_remove_tag">Tag entfernen</string>
+    <string name="bulk_pick_circle">Kreis auswählen</string>
+    <string name="bulk_pick_tag">Tag auswählen</string>
+    <string name="bulk_no_circles">Noch keine Kreise</string>
+    <string name="bulk_no_tags">Noch keine Tags</string>
     <string name="bulk_confirm_title">Stapelaktion bestätigen?</string>
     <string name="bulk_confirm_body">Aktion auf %1$d ausgewählte Kontakte ausführen?</string>
     <string name="bulk_result">Fertig: %1$d erfolgreich, %2$d fehlgeschlagen.</string>
@@ -348,4 +429,17 @@
     <string name="import_button">%1$d ausgewählte importieren (%2$d mögliche Duplikate)</string>
     <string name="import_done">%1$d Kontakte importiert.</string>
     <string name="import_duplicate">Mögliches Duplikat von %1$s</string>
+
+    <!-- VCF file import (M9) -->
+    <string name="import_vcf_entry">Aus VCF-Datei importieren</string>
+    <string name="import_vcf_title">VCF-Datei importieren</string>
+    <string name="import_vcf_pick">VCF-Datei auswählen</string>
+    <string name="import_vcf_pick_hint">Wählen Sie eine .vcf-Datei (vCard), die aus einer anderen App exportiert wurde.</string>
+    <string name="import_vcf_row_skip">Überspringen</string>
+    <string name="import_vcf_row_add">Hinzufügen</string>
+    <string name="import_vcf_row_update">Aktualisieren</string>
+    <string name="import_vcf_confirm">Import bestätigen</string>
+    <string name="import_vcf_result">Import abgeschlossen: %1$d erstellt, %2$d aktualisiert, %3$d übersprungen.</string>
+    <string name="import_vcf_error_too_large">Datei ist zu groß. Maximale Größe ist 50MB.</string>
+    <string name="import_vcf_error_invalid_file">Datei konnte nicht gelesen werden. Wählen Sie eine .vcf-Datei.</string>
 </resources>

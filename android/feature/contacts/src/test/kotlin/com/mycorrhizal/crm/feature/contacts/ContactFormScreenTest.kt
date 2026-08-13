@@ -6,6 +6,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import com.mycorrhizal.crm.model.network.Circle
+import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -27,6 +29,8 @@ class ContactFormScreenTest {
         state: ContactFormState = ContactFormState(),
         onSave: () -> Unit = {},
         onGivenNameChange: (String) -> Unit = {},
+        onCircleToggle: (String) -> Unit = {},
+        onTagToggle: (String) -> Unit = {},
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -35,15 +39,19 @@ class ContactFormScreenTest {
                     onGivenNameChange = onGivenNameChange,
                     onSurnameChange = {},
                     onNicknameChange = {},
-                    onEmailValueChange = { _, _ -> },
-                    onEmailAdd = {},
-                    onEmailRemove = {},
-                    onPhoneValueChange = { _, _ -> },
-                    onPhoneAdd = {},
-                    onPhoneRemove = {},
+                    onEmailsChange = {},
+                    onPhonesChange = {},
+                    onAddressesChange = {},
+                    onTitlesChange = {},
+                    onImppChange = {},
+                    onSocialChange = {},
+                    onOtherServicesChange = {},
+                    onLinksChange = {},
+                    onPersonalInfoChange = {},
                     onBirthdayChange = {},
                     onNotesChange = {},
-                    onCirclesTextChange = {},
+                    onCircleToggle = onCircleToggle,
+                    onTagToggle = onTagToggle,
                     onSave = onSave,
                 )
             }
@@ -52,12 +60,36 @@ class ContactFormScreenTest {
 
     @Test
     fun `renders the form fields`() {
-        setContent()
+        setContent(
+            state = ContactFormState(
+                addresses = listOf(
+                    com.mycorrhizal.crm.model.network.Address(
+                        components = listOf(
+                            com.mycorrhizal.crm.model.network.AddressComponent(kind = "name", value = "1 Main St"),
+                        ),
+                    ),
+                ),
+            ),
+        )
         composeTestRule.onNodeWithText("Given name").assertIsDisplayed()
         composeTestRule.onNodeWithText("Surname").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Prefix").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Kind").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Language").performScrollTo().assertIsDisplayed()
+        // M7: the previously read-only/invisible field groups now have editors.
+        composeTestRule.onNodeWithText("Address").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Street").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Job titles").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Instant Messaging").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Social profiles").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Personal information").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("How we met").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Work information").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Additional contact information").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Birthday").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Notes").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("Circles (comma-separated)").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("No circles yet").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("No tags yet").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Create contact").performScrollTo().assertIsDisplayed()
     }
 
@@ -81,5 +113,33 @@ class ContactFormScreenTest {
         setContent(onSave = { saved = true })
         composeTestRule.onNodeWithText("Create contact").performScrollTo().performClick()
         assertEquals(true, saved)
+    }
+
+    @Test
+    fun `a selected circle renders as a removable chip`() {
+        var toggled: String? = null
+        setContent(
+            state = ContactFormState(
+                circles = listOf("friends"),
+                allCircles = listOf(Circle(id = "c1", name = "friends")),
+            ),
+            onCircleToggle = { toggled = it },
+        )
+        composeTestRule.onNodeWithText("friends").performScrollTo().performClick()
+        assertEquals("friends", toggled)
+    }
+
+    @Test
+    fun `a selected tag renders as a removable chip`() {
+        var toggled: String? = null
+        setContent(
+            state = ContactFormState(
+                tags = listOf("close"),
+                allTags = listOf(Tag(id = "t1", name = "close")),
+            ),
+            onTagToggle = { toggled = it },
+        )
+        composeTestRule.onNodeWithText("close").performScrollTo().performClick()
+        assertEquals("close", toggled)
     }
 }

@@ -7,7 +7,7 @@
 | **Size** | L — a new shared editor plus ~20 field groups; the largest Android ticket. Consider slicing by field group. |
 | **Source** | Post-M1 review pass, 2026-08-11 — found by diffing `ContactFormViewModel`'s state against the `Card`/`CRMEnvelope` model |
 | **Depends on** | Nothing. The API client, the nested `Card` model, and the merge-on-edit write path all already exist. |
-| **Status** | Scoped, not started. |
+| **Status** | **DONE** (2026-08-13 — see the landing note). |
 
 This is the **depth** gap inside the contact record. The **breadth** gap — whole web screens with
 no Android equivalent — is [M8](89-M8-web-android-parity-audit.md).
@@ -231,3 +231,92 @@ JUnit4 + MockK (`mockk`/`coEvery`) + Turbine + `runTest` with `MainDispatcherRul
 mock the repository — `feature/contacts/.../ContactListViewModelTest.kt` is the reference. New
 `ApiClient` methods get a MockWebServer test in `core/network` — `ApiClientTest.kt` is the reference.
 Hand-verify per `/CLAUDE.md`: break the code, confirm the new test fails, restore.
+
+## Tier 2 verdicts — recorded 2026-08-13
+
+Every Tier-2 group got an explicit verdict, as the "Done when" requires:
+
+| Group | Verdict | Why |
+|---|---|---|
+| `speakToAs` (pronouns / grammatical gender) | **Out of scope for mobile** | A two-list editor (`SpeakToAsEditor` on web) that doesn't fit the scalar `MultiValueSpec`; needs a bespoke editor. Deferred, not rejected. |
+| `anniversaries[]` beyond birthday | **Out of scope for mobile** | Birthday is handled (kind `birth`); other kinds are rare and need a kind + partial-date editor. Deferred. |
+| `preferredLanguages[]` | **Out of scope for mobile** | The form already has the card's default `language`; a list of LANG prefs is a niche vCard extension. |
+| `keywords[]` | **Out of scope for mobile** | Simple string list, but a settings-gated niche field; low mobile impact. |
+| `calendars[]`, `schedulingAddresses[]`, `freeBusyUrls[]` | **Out of scope for mobile** | CalDAV/subscription infrastructure, not end-user contact data. |
+| `cryptoKeys[]`, `directories[]`, `contactUris[]`, `relatedTo[]`, `media[]` beyond photo | **Out of scope for mobile** | Imported-card metadata. The web renders all of these **read-only** (the collapsible "Card metadata" section) — mobile matching web means no editor, and nothing beyond the existing read-only media/photo surface. |
+
+The verdict's shape is deliberate: **everything here is either read-only on the web too** (all the
+`Resource`/`Relation` groups) **or a bespoke editor web built only because a settings gate makes it
+opt-in** (`speakToAs`, `anniversaries`, `preferredLanguages`, `keywords`). None of them fit the
+generic editor, so they stay out of the mobile form; the neutral model still carries them untouched
+through every save (the form's merge-on-edit path), so nothing is lost.
+
+## Landed 2026-08-13
+
+The editor now covers the full editable Card/CRM surface, driven by the design's one generic
+component:
+
+- **`core/ui/components/MultiValueEditor.kt`** — `MultiValueSpec<T>` (the ticket's exact interface)
+  + `MultiValueEditor<T>`. The guarantee the interface exists to provide — `withValue`/`withType`
+  are `.copy()`s, never constructors — is documented on the interface and pinned by tests. The
+  `pref` star is **list-level editor logic** via a pure `applyPrefToggle` helper (at most one entry
+  per list holds `pref = 1`), so no future spec can forget it. `blank()` mints genuinely new rows,
+  and it is where each spec's new-row default lives — `PhoneSpec.blank()` = `cell` (T81's `cell`
+  default relocated here from `onPhoneAdd`, the same "only genuinely new rows get it" invariant).
+  Specs: `EmailSpec`, `PhoneSpec`, `OnlineServiceSpec`, `LinkSpec`, `TitleSpec` (kind-bound),
+  `PersonalInfoSpec` (kind-bound). The editor self-labels with the mono/primary caption treatment
+  (web's `MultiValueField` subtitle2 equivalent).
+- **`core/ui/components/AddressEditor.kt`** — edits `card.addresses[]` as flat rows mapped onto the
+  loaded `Address` via `.copy()`. Registry kinds are the real `name`/`locality` (NOT `street`/`city`
+  — the T67 bug), PO box/apartment/floor hidden behind an "Additional fields" toggle that
+  auto-reveals when a loaded address carries one (T80 parity), and extra `contexts` beyond
+  `contexts[0]` survive a save (strictly better than web's `valuesToCardAddresses`, which collapses
+  to one).
+- **`ContactFormViewModel`** — `ContactFormState` now holds `addresses`, `titles`, `imppAddresses`,
+  `socialProfiles`, `otherOnlineServices`, `links`, `personalInfo` (the real loaded objects),
+  `organizationName`/`department` (the web's flat exception), and `howWeMet`/`workInformation`/
+  `contactInformation`. `toInput` maps all of them; organizations replace `organizations[0]` via
+  `.copy()` (id preserved) and extra organizations survive; CRM strings are preserve-on-blank,
+  matching the form's existing birthday/nickname convention. T81's index-based email/phone API was
+  superseded by the editor's `onChange(List<T>)` contract (safe now that the list holds objects, so
+  object identity — and metadata — survives a middle-row delete); `ValueListEditor` was deleted and
+  the T81 tests re-pointed at the new API.
+- **`ContactFormScreen`** — the new sections render: address editor, organization + department,
+  titles, three online-service lists, links, personal info, and the three CRM-envelope text fields.
+- **Strings** — 30 new keys in all five locales (`values`, `-de`, `-es`, `-fr`, `-it`), genuinely
+  translated.
+
+Tests: 6 new viewmodel cases (email/phone type+pref round-trip, address kinds + context
+preservation, online-services/links/titles/personalInfo round-trip, organization/department
+mapping, CRM strings, type-option mirrors), a parameterized `MultiValueSpecTest` (M7 test cases
+1–4 across Email/Phone/OnlineService), `MultiValueEditorTest` + `AddressEditorTest` (pref
+exclusivity, new-row defaults, kind emission), and the form screen render test extended to the new
+sections. Hand-verified per `/CLAUDE.md`: reconstruct-instead-of-copy on `EmailSpec.withValue` fails
+the round-trip tests; `kind = "street"` in the address editor fails the kinds test; both reverted.
+`./gradlew testDebugUnitTest lintDebug assembleDebug` green.
+
+The ticket's on-device Pixel 8a hand-verify step is still outstanding — no device/emulator available
+in this build environment (same as every other landed M-series ticket).
+
+### Follow-up review fixes, 2026-08-13
+
+A self-review of the landed work found the design's `type → label` mapping (faithfully implemented
+above) diverged from the web, which maps the type dropdown to `contexts[0]` (phones: `features[0] ?:
+contexts[0]`) and treats `label` as preserve-only X-ABLabel — so a type set on one platform didn't
+round-trip to the other, and an Android `cell`-labeled phone got no SMS button on the web. Corrected:
+
+- **Type now maps to `contexts[0]`** (phones: `features[0] ?: contexts[0]`, web parity) in
+  `EmailSpec`/`PhoneSpec`/`LinkSpec`/`OnlineServiceSpec`; `label` is preserve-only everywhere.
+  `PhoneSpec.blank()` now defaults new phones to `contexts = ["cell"]` (was `label = "cell"`), which
+  both platforms' SMS detection read. `ContactDetailScreen`'s email/phone type suffix was updated to
+  `contexts[0]` (email: `contexts[0] ?: label`; phone: `features[0] ?: contexts[0]`) so the form and
+  detail no longer disagree.
+- **Online services gained a `service` name field** (`supportsService`/`serviceName`/`withServiceName`
+  on `MultiValueSpec`), the link-resolver key the generic editor had no way to set; its type dropdown
+  uses `CONTEXT_OPTIONS` (private/work/school/billing/delivery, the web's online-service contexts) and
+  its `pref` star was removed (web offers none). New addresses default to `type "home"` (web's
+  `EMPTY_ADDRESS`), and the type dropdown gained a "None" clear option. 6 new strings per locale
+  (None, private/school/billing/delivery, Service).
+- Orphaned `MultiValueEditor` KDoc re-attached. `./gradlew testDebugUnitTest lintDebug assembleDebug`
+  green (142 contacts + 10 ui tests); the type→contexts and service-name behaviors hand-verified by
+  breaking each and confirming the corresponding test fails.

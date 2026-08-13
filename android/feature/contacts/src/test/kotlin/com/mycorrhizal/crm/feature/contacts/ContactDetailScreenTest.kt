@@ -10,6 +10,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performClick
 import com.mycorrhizal.crm.model.network.Anniversary
 import com.mycorrhizal.crm.model.network.AnniversaryDate
 import com.mycorrhizal.crm.model.network.Card
@@ -371,5 +372,75 @@ class ContactDetailScreenTest {
             .performScrollToNode(hasText("VIP: true"))
             .assertIsDisplayed()
         composeTestRule.onNodeWithText("Milk options: oat; almond").assertIsDisplayed()
+    }
+
+    // --- M24: inline circle/tag editors ---
+
+    @Test
+    fun `circles render as removable chips and tags show the empty text`() {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        var removed: String? = null
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    contactCircles = listOf(com.mycorrhizal.crm.model.network.Circle(id = "c1", name = "friends")),
+                    allCircles = listOf(com.mycorrhizal.crm.model.network.Circle(id = "c1", name = "friends")),
+                    contactTags = emptyList(),
+                    onRemoveCircle = { removed = it.name },
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasText("friends"))
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("No tags yet").assertIsDisplayed()
+    }
+
+    @Test
+    fun `tapping a circle chip removes the membership`() {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        var removed: String? = null
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    contactCircles = listOf(com.mycorrhizal.crm.model.network.Circle(id = "c1", name = "friends")),
+                    allCircles = listOf(com.mycorrhizal.crm.model.network.Circle(id = "c1", name = "friends")),
+                    onRemoveCircle = { removed = it.name },
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasText("friends"))
+        composeTestRule.onNodeWithText("friends").performClick()
+        assertEquals("friends", removed)
+    }
+
+    @Test
+    fun `the add menu lists circles the contact is not in`() {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        var added: String? = null
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    contactCircles = listOf(com.mycorrhizal.crm.model.network.Circle(id = "c1", name = "friends")),
+                    allCircles = listOf(
+                        com.mycorrhizal.crm.model.network.Circle(id = "c1", name = "friends"),
+                        com.mycorrhizal.crm.model.network.Circle(id = "c2", name = "family"),
+                    ),
+                    onAddCircle = { added = it.name },
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasText("Add circle"))
+        composeTestRule.onNodeWithText("Add circle").performClick()
+        composeTestRule.onNodeWithText("family").performClick()
+        assertEquals("family", added)
     }
 }

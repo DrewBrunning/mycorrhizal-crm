@@ -60,6 +60,18 @@
             </intent-filter>
         </activity>
 
+        <!-- M24: shares exported vCard files via the system share sheet (ACTION_SEND with a
+             content:// URI scoped to the app's cache). -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
         <!-- Phase 4 quick-capture overlay foreground service (§6.7). -->
         <service
             android:name="com.mycorrhizal.crm.feature.tracking.CallDetectionService"

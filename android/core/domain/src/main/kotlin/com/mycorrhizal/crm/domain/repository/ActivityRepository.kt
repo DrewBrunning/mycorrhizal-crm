@@ -12,6 +12,12 @@ interface ActivityRepository {
     /** A contact's activities. */
     suspend fun listForContact(contactId: Int): Result<List<Activity>>
 
+    /**
+     * All activities across every contact (M9 Activities drawer entry), with participants
+     * attached — `GET /activities?include=contacts`, cursor-paginated.
+     */
+    suspend fun listAll(cursor: String? = null, limit: Int? = null): Result<ActivitiesPage>
+
     /** A single activity (with its participants). */
     suspend fun get(id: Int): Result<Activity>
 

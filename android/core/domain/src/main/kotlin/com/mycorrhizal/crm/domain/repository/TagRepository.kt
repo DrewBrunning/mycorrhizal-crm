@@ -11,6 +11,16 @@ interface TagRepository {
     /** All tags, cursor-paginated. */
     suspend fun list(cursor: String? = null, limit: Int = 100): Result<List<Tag>>
 
+    /**
+     * The tags applied to a given contact, derived from the taggings (`GET
+     * /tags?include_contacts=true` filtered client-side by VCard UID). The
+     * contact detail payload carries no tags, so M24's inline editor derives
+     * them from the taggings; the snapshot also refreshes the local tag/tagging
+     * mirror wholesale. Empty [vcardUid] short-circuits to success with no tags
+     * (no network call).
+     */
+    suspend fun tagsForContact(vcardUid: String): Result<List<Tag>>
+
     /** A tag with its tagged contacts. */
     suspend fun getWithContacts(id: String): Result<TagDetail>
 

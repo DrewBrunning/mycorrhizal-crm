@@ -1,11 +1,15 @@
 package com.mycorrhizal.crm.feature.contacts
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextInput
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.SearchActivityHit
@@ -13,6 +17,7 @@ import com.mycorrhizal.crm.model.network.SearchNoteHit
 import com.mycorrhizal.crm.model.network.SearchResult
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -32,6 +37,7 @@ class ContactListScreenTest {
         uiState: ContactListUiState,
         onContactClick: (Int) -> Unit = {},
         onSearchQueryChange: (String) -> Unit = {},
+        onLoadMore: () -> Unit = {},
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -39,10 +45,14 @@ class ContactListScreenTest {
                     uiState = uiState,
                     onContactClick = onContactClick,
                     onSearchQueryChange = onSearchQueryChange,
+                    onLoadMore = onLoadMore,
                 )
             }
         }
     }
+
+    private fun manyContacts(count: Int): List<ContactSummary> =
+        (1..count).map { ContactSummary(id = it, fn = "Contact $it", firstname = "Contact $it") }
 
     @Test
     fun `shows skeleton while loading`() {
@@ -186,5 +196,58 @@ class ContactListScreenTest {
             ),
         )
         composeTestRule.onNodeWithText("Matched relationship: parent_of").assertIsDisplayed()
+    }
+
+    // M9 item 3: ContactListViewModel.loadNextPage() was implemented and unit-tested but had
+    // no call site — scrolling near the end of a paginated list must trigger it.
+    //
+    // This composes EMPTY first and only then delivers the page, because that is the real app's
+    // order (the ViewModel's initial state is always ContactListUiState() with no contacts).
+    // An already-populated first composition passes even when the scroll trigger captures a
+    // stale uiState and is dead on a real device — which is exactly the bug this shape caught.
+    @Test
+    fun `scrolling near the end loads the next page when contacts arrive after first composition`() {
+        var loadMoreCalls = 0
+        var state by mutableStateOf(ContactListUiState(isLoading = true))
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactListScreenContent(
+                    uiState = state,
+                    onSearchQueryChange = {},
+                    onContactClick = {},
+                    onLoadMore = { loadMoreCalls++ },
+                )
+            }
+        }
+
+        state = ContactListUiState(
+            isLoading = false,
+            contacts = manyContacts(30),
+            pagination = PaginationState(nextCursor = "cursor-2", hasMore = true),
+        )
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag("contact-list").performScrollToIndex(29)
+        composeTestRule.waitForIdle()
+
+        assertTrue("expected loadNextPage to be wired to scroll-near-end", loadMoreCalls > 0)
+    }
+
+    @Test
+    fun `scrolling to the end does not load more once the last page is reached`() {
+        var loadMoreCalls = 0
+        setContent(
+            ContactListUiState(
+                isLoading = false,
+                contacts = manyContacts(30),
+                pagination = PaginationState(nextCursor = null, hasMore = false),
+            ),
+            onLoadMore = { loadMoreCalls++ },
+        )
+
+        composeTestRule.onNodeWithTag("contact-list").performScrollToIndex(29)
+        composeTestRule.waitForIdle()
+
+        assertEquals(0, loadMoreCalls)
     }
 }

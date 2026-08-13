@@ -358,4 +358,73 @@ class ContactRepositoryImplTest {
         assertEquals(1, near.size)
         assertEquals("David Smith", smith[0].fn)
     }
+
+    // --- M24: delete / archive / unarchive / export ---
+
+    @Test
+    fun `deleteContact removes the cached row on success`() = runTest {
+        db.cachedContactDao().upsert(com.mycorrhizal.crm.data.local.CachedContact(id = 5, fn = "Dana White"))
+        coEvery { apiClient.deleteContact(5) } returns Result.success(Unit)
+
+        val result = repository.deleteContact(5)
+
+        assertTrue(result.isSuccess)
+        assertEquals(null, db.cachedContactDao().getById(5))
+        io.mockk.coVerify(exactly = 1) { apiClient.deleteContact(5) }
+    }
+
+    @Test
+    fun `deleteContact failure leaves the cached row in place`() = runTest {
+        db.cachedContactDao().upsert(com.mycorrhizal.crm.data.local.CachedContact(id = 5, fn = "Dana White"))
+        coEvery { apiClient.deleteContact(5) } returns Result.failure(ApiError.Server(500, "boom"))
+
+        val result = repository.deleteContact(5)
+
+        assertTrue(result.isFailure)
+        assertTrue(db.cachedContactDao().getById(5) != null)
+    }
+
+    @Test
+    fun `archiveContact flips the cached archived flag on success`() = runTest {
+        db.cachedContactDao().upsert(com.mycorrhizal.crm.data.local.CachedContact(id = 5, fn = "Dana White", archived = false))
+        coEvery { apiClient.archiveContact(5) } returns Result.success(Unit)
+
+        val result = repository.archiveContact(5)
+
+        assertTrue(result.isSuccess)
+        assertEquals(true, db.cachedContactDao().getById(5)?.archived)
+    }
+
+    @Test
+    fun `unarchiveContact flips the cached archived flag back`() = runTest {
+        db.cachedContactDao().upsert(com.mycorrhizal.crm.data.local.CachedContact(id = 5, fn = "Dana White", archived = true))
+        coEvery { apiClient.unarchiveContact(5) } returns Result.success(Unit)
+
+        val result = repository.unarchiveContact(5)
+
+        assertTrue(result.isSuccess)
+        assertEquals(false, db.cachedContactDao().getById(5)?.archived)
+    }
+
+    @Test
+    fun `exportContactVcf forwards the call and returns the raw bytes`() = runTest {
+        val bytes = "BEGIN:VCARD\r\nEND:VCARD\r\n".toByteArray()
+        coEvery { apiClient.exportContactVcf("u5", null) } returns Result.success(bytes)
+
+        val result = repository.exportContactVcf("u5")
+
+        assertTrue(result.isSuccess)
+        assertEquals(bytes.contentToString(), result.getOrThrow().contentToString())
+    }
+
+    @Test
+    fun `exportContactVcf propagates a backend failure`() = runTest {
+        coEvery { apiClient.exportContactVcf("u5", 3) } returns Result.failure(ApiError.Client(400, "bad request"))
+
+        val result = repository.exportContactVcf("u5", version = 3)
+
+        assertTrue(result.isFailure)
+        val error = result.exceptionOrNull() as ApiError
+        assertEquals(400, (error as ApiError.Client).code)
+    }
 }
