@@ -131,12 +131,22 @@ class ApiClient(
         limit: Int? = null,
         search: String? = null,
         includeArchived: Boolean? = null,
+        vcardUids: List<String>? = null,
     ): Result<ContactsPage> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$CONTACTS_PATH".toHttpUrl().newBuilder()
-        cursor?.let { urlBuilder.addQueryParameter("cursor", it) }
-        limit?.let { urlBuilder.addQueryParameter("limit", it.toString()) }
-        search?.let { urlBuilder.addQueryParameter("search", it) }
-        includeArchived?.let { urlBuilder.addQueryParameter("include_archived", it.toString()) }
+        if (!vcardUids.isNullOrEmpty()) {
+            // ?vcard_uid= (repeatable) short-circuits the backend's whole
+            // search/sort/pagination path (contact_controller.go), so don't
+            // send cursor/limit/search alongside it -- they'd be silently
+            // ignored server-side, and sending them here would be misleading.
+            vcardUids.forEach { urlBuilder.addQueryParameter("vcard_uid", it) }
+            includeArchived?.let { urlBuilder.addQueryParameter("include_archived", it.toString()) }
+        } else {
+            cursor?.let { urlBuilder.addQueryParameter("cursor", it) }
+            limit?.let { urlBuilder.addQueryParameter("limit", it.toString()) }
+            search?.let { urlBuilder.addQueryParameter("search", it) }
+            includeArchived?.let { urlBuilder.addQueryParameter("include_archived", it.toString()) }
+        }
         return executeGet(urlBuilder.build().toString()) { _, body ->
             moshi.adapter(ContactsPage::class.java).fromJson(body)
         }
@@ -487,6 +497,12 @@ class ApiClient(
     suspend fun createRelationshipEdge(input: RelationshipEdgeInput): Result<RelationshipEdge> =
         executePost(RELATIONSHIP_EDGES_PATH, input) { _, body ->
             moshi.adapter(CreateRelationshipEdgeResponse::class.java).fromJson(body)?.relationshipEdge
+        }
+
+    /** PUT /api/v1/relationship-edges/{id} — raw (unwrapped) updated edge, unlike create's wrapped response. */
+    suspend fun updateRelationshipEdge(id: String, input: RelationshipEdgeInput): Result<RelationshipEdge> =
+        executePut("$PLACEHOLDER_ORIGIN$RELATIONSHIP_EDGES_PATH/$id", input) { _, body ->
+            moshi.adapter(RelationshipEdge::class.java).fromJson(body)
         }
 
     /** PATCH /api/v1/relationship-edges/{id}/accept — promotes a suggestion; raw edge. */

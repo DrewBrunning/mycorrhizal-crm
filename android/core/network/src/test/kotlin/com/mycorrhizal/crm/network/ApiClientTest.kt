@@ -142,6 +142,18 @@ class ApiClientTest {
     }
 
     @Test
+    fun `list contacts with vcardUids sends repeatable vcard_uid params and skips pagination params`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"contacts":[],"next_cursor":""}"""),
+        )
+
+        client.listContacts(cursor = "c1", limit = 25, search = "ali", vcardUids = listOf("uid-1", "uid-2"))
+
+        val request = server.takeRequest()
+        assertEquals("/api/v1/contacts?vcard_uid=uid-1&vcard_uid=uid-2", request.path)
+    }
+
+    @Test
     fun `get contact parses the full record`() = runBlocking {
         server.enqueue(
             MockResponse()
@@ -823,5 +835,34 @@ class ApiClientTest {
         assertEquals("PUT", putRequest.method)
         assertEquals("/api/v1/contacts/5/field-values", putRequest.path)
         assertTrue(putRequest.body.readUtf8().contains("\"field_definition_id\":\"d1\""))
+    }
+
+    @Test
+    fun `update relationship edge sends a PUT and parses the raw edge`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """{"id": "e1", "source_id": "u1", "target_id": "u2", "type": "spouse_of", "sensitivity": "private"}""",
+                ),
+        )
+
+        val result = client.updateRelationshipEdge(
+            "e1",
+            com.mycorrhizal.crm.model.network.RelationshipEdgeInput(
+                sourceId = "u1",
+                targetId = "u2",
+                type = "spouse_of",
+                sensitivity = "private",
+            ),
+        )
+
+        assertTrue(result.isSuccess)
+        assertEquals("spouse_of", result.getOrThrow().type)
+        assertEquals("private", result.getOrThrow().sensitivity)
+
+        val request = server.takeRequest()
+        assertEquals("PUT", request.method)
+        assertEquals("/api/v1/relationship-edges/e1", request.path)
     }
 }

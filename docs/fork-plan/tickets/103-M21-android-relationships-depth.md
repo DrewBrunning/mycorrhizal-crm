@@ -7,7 +7,7 @@
 | **Size** | M — 1 new method + 1 new parameter, then name resolution, edit and sensitivity |
 | **Source** | [M8](89-M8-web-android-parity-audit.md) audit, 2026-08-11 |
 | **Depends on** | Nothing |
-| **Status** | TO BE DONE |
+| **Status** | IMPLEMENTED, AWAITING ON-DEVICE VERIFICATION (2026-08-12) |
 
 `RelationshipsScreen` covers type-select, accept-suggested, and create/delete natively. What's
 missing, per `RelationshipEdgeDialog.tsx`/`RelationshipEdgeList.tsx`:
@@ -107,3 +107,44 @@ JUnit4 + MockK (`mockk`/`coEvery`) + Turbine + `runTest` with `MainDispatcherRul
 mock the repository — `feature/contacts/.../ContactListViewModelTest.kt` is the reference. New
 `ApiClient` methods get a MockWebServer test in `core/network` — `ApiClientTest.kt` is the reference.
 Hand-verify per `/CLAUDE.md`: break the code, confirm the new test fails, restore.
+
+---
+
+## Landing note (2026-08-12)
+
+Implemented per the plan in this file's "Implementation contract." Summary of what landed:
+
+- **Name resolution**: `ApiClient.listContacts` gained a repeatable `vcardUids` param (short-circuits
+  `cursor`/`limit`/`search`, mirroring the backend); `ContactRepository.resolveByUid` batch-resolves
+  the edges' other-party UIDs on load. Unresolved UIDs (or a resolve failure) degrade to an "unknown
+  contact" label rather than a raw UID, crash, or a surfaced screen error. Resolved rows are tappable
+  and navigate to `contacts/{id}`.
+- **Search-based linking**: the create dialog gained a manual/linked entry-mode toggle; linked mode
+  debounces (300ms, cancel-and-relaunch, same shape as `ContactListViewModel`'s) into the existing
+  `ContactRepository.listContacts(search=)` — no new search endpoint needed.
+- **Edit**: `ApiClient.updateRelationshipEdge` (`PUT`, raw response) +
+  `RelationshipEdgeRepository.update`; `RelationshipsViewModel.update` converts the dropdown's
+  viewer-relative type back to the backend's source-relative type via a ported `toBackendType` and
+  always resends `source_id`/`target_id` verbatim (a `*_thin` resend would insert a new Contact
+  server-side, per the backend's `resolveRelationshipEndpoint`). Edit is confirmed-rows only.
+- **Sensitivity, gender, birthday**: added to the dialog (sensitivity in both create/edit; gender and
+  birthday as plain text fields on manual-entry create, matching `ContactFormScreen`'s existing
+  simpler-than-web convention for the same two fields).
+- **Reject vs delete**: no new repository method (delete already doubles as reject server-side) —
+  distinct icon/copy/confirm-dialog per row type. Delete now also gets a confirmation dialog (previously
+  immediate).
+- **Confirmed/suggested sectioning**: `RelationshipsUiState.confirmedEdges`/`suggestedEdges` derived
+  properties drive a sectioned list with a divider + header, mirroring `RelationshipEdgeList.tsx`.
+- All 23 new strings translated (not English placeholders) in all five locales; the obsolete
+  `relationships_other_vcard_uid` (manual-UID field, now replaced by search) was retired from all five.
+- New/extended tests: `ApiClientTest` (repeatable `vcard_uid`, `updateRelationshipEdge`),
+  `ContactRepositoryImplTest` (`resolveByUid`), new `RelationshipEdgeRepositoryImplTest` (`update`
+  cache behavior), and `RelationshipsViewModelTest`/`RelationshipEdgeSemanticsTest` covering all five
+  of the ticket's contract test cases plus search debounce and `create`'s new fields.
+- Gate green: `./gradlew testDebugUnitTest lintDebug assembleDebug`.
+- Hand-verified (break/restore) the `toBackendType` direction logic and the resolve-failure
+  graceful-degradation path per `/CLAUDE.md`.
+
+**Not done**: the ticket's on-device hand-verify step (link via search, edit sensitivity, reject a
+suggestion, confirm it's distinguishable from deleting a confirmed edge) — this build environment has
+no Android device/emulator attached. That pass is still needed before this ships.

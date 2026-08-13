@@ -144,7 +144,7 @@ None currently — the last two (T74, T78) landed and moved to Done below.
 
 | Ticket | Status |
 |---|---|
-| [M21](103-M21-android-relationships-depth.md) · Relationships depth | **TO BE DONE**. R4. Other-party names render as raw vCard UIDs, not resolved/tappable — visibly broken, and the highest-value single item in the ticket. Also missing search-based linking, edit, sensitivity. |
+| [M21](103-M21-android-relationships-depth.md) · Relationships depth | **IMPLEMENTED, AWAITING ON-DEVICE VERIFICATION** (2026-08-12). Name resolution, search-based linking, edit, sensitivity, gender/birthday, reject-vs-delete, and confirmed/suggested sectioning all landed; `testDebugUnitTest`/`lintDebug`/`assembleDebug` green. The ticket's on-device hand-verify step (link via search, edit sensitivity, reject a suggestion) is still outstanding — no device/emulator available in the build environment. |
 | [M9](91-M9-android-wire-up-existing-screens.md) · Wire up already-built screens & dead code | **TO BE DONE**. R4. Cheapest impact on the list: global Notes/Activities routes, bulk circle/tag actions, contact-list pagination past page 1, and VCF-upload wiring are all implemented and just unreachable. |
 | [M24](106-M24-android-contact-form-detail-actions.md) · Contact form & detail-page actions | **TO BE DONE**. R4. Delete and archive/unarchive don't exist at the repository level, not just missing UI — a real gap, not polish. |
 | [M11](93-M11-android-prep-view.md) · Prep view (N2) | **TO BE DONE**. R5 capability, zero Android footprint — not even a placeholder route. |

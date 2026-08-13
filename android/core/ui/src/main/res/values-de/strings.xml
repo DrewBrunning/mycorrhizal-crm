@@ -274,13 +274,35 @@
     <string name="relationships_title">Beziehungen</string>
     <string name="relationships_new">Neue Beziehung</string>
     <string name="relationships_type">Typ</string>
-    <string name="relationships_other_vcard_uid">VCard-UID des anderen Kontakts (optional)</string>
     <string name="relationships_other_name">Name des anderen Kontakts (optional)</string>
     <string name="relationships_accept">Akzeptieren</string>
     <string name="relationships_suggested">Vorgeschlagen</string>
     <string name="relationships_empty">Noch keine Beziehungen</string>
     <string name="relationships_error_missing_contact_id">Fehlende Kontakt-ID</string>
     <string name="relationships_error_no_vcard_uid">Kontakt hat keine VCard-UID</string>
+    <string name="relationships_entry_mode">Wie ist diese Person bekannt?</string>
+    <string name="relationships_enter_manually">Manuell eingeben</string>
+    <string name="relationships_link_to_contact">Mit Kontakt verknüpfen</string>
+    <string name="relationships_search_contacts">Kontakte durchsuchen</string>
+    <string name="relationships_type_to_search">Zum Suchen tippen</string>
+    <string name="relationships_no_contacts_found">Keine Kontakte gefunden</string>
+    <string name="relationships_change_selection">Ändern</string>
+    <string name="relationships_gender">Geschlecht (optional)</string>
+    <string name="relationships_birthday">Geburtstag (optional)</string>
+    <string name="relationships_sensitivity">Vertraulichkeit</string>
+    <string name="relationships_sensitivity_normal">Normal</string>
+    <string name="relationships_sensitivity_private">Privat</string>
+    <string name="relationships_sensitivity_secret">Geheim</string>
+    <string name="relationships_edit_title">Beziehung bearbeiten</string>
+    <string name="relationships_edit">Beziehung bearbeiten</string>
+    <string name="relationships_other_party_readonly_hint">Die andere Person kann hier nicht geändert werden — lösche die Beziehung und lege sie neu an, um einen anderen Kontakt zu verknüpfen.</string>
+    <string name="relationships_unknown_contact">Unbekannter Kontakt</string>
+    <string name="relationships_suggested_section">Vorgeschlagen</string>
+    <string name="relationships_reject">Ablehnen</string>
+    <string name="relationships_delete_title">Beziehung löschen?</string>
+    <string name="relationships_delete_confirm">Die Beziehung mit %1$s löschen?</string>
+    <string name="relationships_reject_title">Vorschlag ablehnen?</string>
+    <string name="relationships_reject_confirm">Die vorgeschlagene Beziehung mit %1$s ablehnen?</string>
 
 
     <!-- Timeline entities -->

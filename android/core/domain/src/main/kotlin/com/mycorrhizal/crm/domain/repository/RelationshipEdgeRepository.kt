@@ -19,6 +19,14 @@ interface RelationshipEdgeRepository {
     /** Create an edge (source/target by VCardUID, or thin-contact for unknown parties). */
     suspend fun create(input: RelationshipEdgeInput): Result<RelationshipEdge>
 
+    /**
+     * Update an existing edge's type/sensitivity. Callers must resend the
+     * edge's already-resolved source_id/target_id verbatim -- a *_thin input
+     * here inserts a NEW Contact server-side even on update, never resolves
+     * to the existing endpoint.
+     */
+    suspend fun update(id: String, input: RelationshipEdgeInput): Result<RelationshipEdge>
+
     /** Promote a suggested edge to confirmed. */
     suspend fun accept(id: String): Result<RelationshipEdge>
 

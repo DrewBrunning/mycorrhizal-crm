@@ -274,13 +274,35 @@
     <string name="relationships_title">Relations</string>
     <string name="relationships_new">Nouvelle relation</string>
     <string name="relationships_type">Type</string>
-    <string name="relationships_other_vcard_uid">UID VCard de l\'autre contact (facultatif)</string>
     <string name="relationships_other_name">Nom de l\'autre contact (facultatif)</string>
     <string name="relationships_accept">Accepter</string>
     <string name="relationships_suggested">Suggéré</string>
     <string name="relationships_empty">Aucune relation pour le moment</string>
     <string name="relationships_error_missing_contact_id">Identifiant de contact manquant</string>
     <string name="relationships_error_no_vcard_uid">Le contact n\'a pas d\'UID VCard</string>
+    <string name="relationships_entry_mode">Comment cette personne est-elle connue ?</string>
+    <string name="relationships_enter_manually">Saisir manuellement</string>
+    <string name="relationships_link_to_contact">Lier à un contact</string>
+    <string name="relationships_search_contacts">Rechercher des contacts</string>
+    <string name="relationships_type_to_search">Tapez pour rechercher</string>
+    <string name="relationships_no_contacts_found">Aucun contact trouvé</string>
+    <string name="relationships_change_selection">Modifier</string>
+    <string name="relationships_gender">Genre (facultatif)</string>
+    <string name="relationships_birthday">Anniversaire (facultatif)</string>
+    <string name="relationships_sensitivity">Sensibilité</string>
+    <string name="relationships_sensitivity_normal">Normale</string>
+    <string name="relationships_sensitivity_private">Privée</string>
+    <string name="relationships_sensitivity_secret">Secrète</string>
+    <string name="relationships_edit_title">Modifier la relation</string>
+    <string name="relationships_edit">Modifier la relation</string>
+    <string name="relationships_other_party_readonly_hint">L\'autre personne ne peut pas être modifiée ici — supprimez puis recréez la relation pour la lier à un autre contact.</string>
+    <string name="relationships_unknown_contact">Contact inconnu</string>
+    <string name="relationships_suggested_section">Suggérées</string>
+    <string name="relationships_reject">Rejeter</string>
+    <string name="relationships_delete_title">Supprimer la relation ?</string>
+    <string name="relationships_delete_confirm">Supprimer la relation avec %1$s ?</string>
+    <string name="relationships_reject_title">Rejeter la suggestion ?</string>
+    <string name="relationships_reject_confirm">Rejeter la relation suggérée avec %1$s ?</string>
 
 
     <!-- Timeline entities -->
