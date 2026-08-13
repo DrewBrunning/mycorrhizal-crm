@@ -11,13 +11,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -41,9 +39,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -52,6 +48,14 @@ import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.Email
 import com.mycorrhizal.crm.model.network.Phone
 import com.mycorrhizal.crm.model.network.Tag
+import com.mycorrhizal.crm.ui.components.AddressEditor
+import com.mycorrhizal.crm.ui.components.EmailSpec
+import com.mycorrhizal.crm.ui.components.LinkSpec
+import com.mycorrhizal.crm.ui.components.MultiValueEditor
+import com.mycorrhizal.crm.ui.components.OnlineServiceSpec
+import com.mycorrhizal.crm.ui.components.PersonalInfoSpec
+import com.mycorrhizal.crm.ui.components.PhoneSpec
+import com.mycorrhizal.crm.ui.components.TitleSpec
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.theme.MycorrhizalFonts
@@ -104,7 +108,7 @@ fun ContactFormScreen(
     ) { padding ->
         when {
             state.isLoading -> LoadingSkeleton()
-            else -> ContactFormContent(
+            else ->             ContactFormContent(
                 modifier = Modifier.padding(padding),
                 state = state,
                 onGivenNameChange = viewModel::onGivenNameChange,
@@ -115,12 +119,20 @@ fun ContactFormScreen(
                 onNicknameChange = viewModel::onNicknameChange,
                 onKindChange = viewModel::onKindChange,
                 onLanguageChange = viewModel::onLanguageChange,
-                onEmailValueChange = viewModel::onEmailValueChange,
-                onEmailAdd = viewModel::onEmailAdd,
-                onEmailRemove = viewModel::onEmailRemove,
-                onPhoneValueChange = viewModel::onPhoneValueChange,
-                onPhoneAdd = viewModel::onPhoneAdd,
-                onPhoneRemove = viewModel::onPhoneRemove,
+                onEmailsChange = viewModel::onEmailsChange,
+                onPhonesChange = viewModel::onPhonesChange,
+                onAddressesChange = viewModel::onAddressesChange,
+                onTitlesChange = viewModel::onTitlesChange,
+                onImppChange = viewModel::onImppChange,
+                onSocialChange = viewModel::onSocialChange,
+                onOtherServicesChange = viewModel::onOtherServicesChange,
+                onLinksChange = viewModel::onLinksChange,
+                onPersonalInfoChange = viewModel::onPersonalInfoChange,
+                onOrganizationNameChange = viewModel::onOrganizationNameChange,
+                onDepartmentChange = viewModel::onDepartmentChange,
+                onHowWeMetChange = viewModel::onHowWeMetChange,
+                onWorkInformationChange = viewModel::onWorkInformationChange,
+                onContactInformationChange = viewModel::onContactInformationChange,
                 onBirthdayChange = viewModel::onBirthdayChange,
                 onNotesChange = viewModel::onNotesChange,
                 onCircleToggle = viewModel::onCircleToggle,
@@ -151,12 +163,20 @@ fun ContactFormContent(
     onNicknameChange: (String) -> Unit,
     onKindChange: (String) -> Unit = {},
     onLanguageChange: (String) -> Unit = {},
-    onEmailValueChange: (Int, String) -> Unit,
-    onEmailAdd: () -> Unit,
-    onEmailRemove: (Int) -> Unit,
-    onPhoneValueChange: (Int, String) -> Unit,
-    onPhoneAdd: () -> Unit,
-    onPhoneRemove: (Int) -> Unit,
+    onEmailsChange: (List<Email>) -> Unit,
+    onPhonesChange: (List<Phone>) -> Unit,
+    onAddressesChange: (List<com.mycorrhizal.crm.model.network.Address>) -> Unit,
+    onTitlesChange: (List<com.mycorrhizal.crm.model.network.Title>) -> Unit,
+    onImppChange: (List<com.mycorrhizal.crm.model.network.OnlineService>) -> Unit,
+    onSocialChange: (List<com.mycorrhizal.crm.model.network.OnlineService>) -> Unit,
+    onOtherServicesChange: (List<com.mycorrhizal.crm.model.network.OnlineService>) -> Unit,
+    onLinksChange: (List<com.mycorrhizal.crm.model.network.Resource>) -> Unit,
+    onPersonalInfoChange: (List<com.mycorrhizal.crm.model.network.PersonalInfo>) -> Unit,
+    onOrganizationNameChange: (String) -> Unit = {},
+    onDepartmentChange: (String) -> Unit = {},
+    onHowWeMetChange: (String) -> Unit = {},
+    onWorkInformationChange: (String) -> Unit = {},
+    onContactInformationChange: (String) -> Unit = {},
     onBirthdayChange: (String) -> Unit,
     onNotesChange: (String) -> Unit,
     onCircleToggle: (String) -> Unit = {},
@@ -267,26 +287,87 @@ fun ContactFormContent(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        SectionLabel(stringResource(R.string.contact_email))
-        ValueListEditor(
+        MultiValueEditor(
             items = state.emails,
-            valueOf = { it.address ?: "" },
-            onValueChange = onEmailValueChange,
-            onAdd = onEmailAdd,
-            onRemove = onEmailRemove,
-            placeholder = "email@example.com",
-            keyboardType = KeyboardType.Email,
+            spec = EmailSpec,
+            onChange = onEmailsChange,
+            label = stringResource(R.string.contact_email),
         )
 
-        SectionLabel(stringResource(R.string.contact_phone))
-        ValueListEditor(
+        MultiValueEditor(
             items = state.phones,
-            valueOf = { it.number ?: "" },
-            onValueChange = onPhoneValueChange,
-            onAdd = onPhoneAdd,
-            onRemove = onPhoneRemove,
-            placeholder = "+1 555 0100",
-            keyboardType = KeyboardType.Phone,
+            spec = PhoneSpec,
+            onChange = onPhonesChange,
+            label = stringResource(R.string.contact_phone),
+        )
+
+        // M7 Tier 1: addresses get their own editor (components[], not a scalar).
+        SectionLabel(stringResource(R.string.contact_address))
+        AddressEditor(
+            addresses = state.addresses,
+            onChange = onAddressesChange,
+        )
+
+        // M7 Tier 1: organization + department are plain fields (web parity — only the
+        // first organization is surfaced), edited onto organizations[0] on save.
+        SectionLabel(stringResource(R.string.contact_organization))
+        OutlinedTextField(
+            value = state.organizationName,
+            onValueChange = onOrganizationNameChange,
+            label = { Text(stringResource(R.string.contact_organization)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+            value = state.department,
+            onValueChange = onDepartmentChange,
+            label = { Text(stringResource(R.string.contact_department)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        MultiValueEditor(
+            items = state.titles,
+            spec = TitleSpec,
+            onChange = onTitlesChange,
+            label = stringResource(R.string.contact_job_titles),
+        )
+
+        // M7 Tier 1: online services. The detail screen resolves handles via `service`
+        // (MobileLinkRegistry) — the editor's spec edits the uri and label only, so a
+        // loaded row's `service` rides along untouched and the resolved chips keep working.
+        SectionLabel(stringResource(R.string.contact_online_services))
+        MultiValueEditor(
+            items = state.imppAddresses,
+            spec = OnlineServiceSpec,
+            onChange = onImppChange,
+            label = stringResource(R.string.contact_impps),
+        )
+        MultiValueEditor(
+            items = state.socialProfiles,
+            spec = OnlineServiceSpec,
+            onChange = onSocialChange,
+            label = stringResource(R.string.contact_social_profiles),
+        )
+        MultiValueEditor(
+            items = state.otherOnlineServices,
+            spec = OnlineServiceSpec,
+            onChange = onOtherServicesChange,
+            label = stringResource(R.string.contact_other_online_services),
+        )
+
+        MultiValueEditor(
+            items = state.links,
+            spec = LinkSpec,
+            onChange = onLinksChange,
+            label = stringResource(R.string.contact_links),
+        )
+
+        MultiValueEditor(
+            items = state.personalInfo,
+            spec = PersonalInfoSpec,
+            onChange = onPersonalInfoChange,
+            label = stringResource(R.string.contact_personal_info),
         )
 
         OutlinedTextField(
@@ -295,6 +376,29 @@ fun ContactFormContent(
             label = { Text(stringResource(R.string.contact_birthday)) },
             placeholder = { Text(stringResource(R.string.contact_birthday_hint)) },
             singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        // M7 Tier 3: CRM-envelope strings that appeared in neither the old form nor detail.
+        OutlinedTextField(
+            value = state.howWeMet,
+            onValueChange = onHowWeMetChange,
+            label = { Text(stringResource(R.string.contact_how_we_met)) },
+            minLines = 2,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+            value = state.workInformation,
+            onValueChange = onWorkInformationChange,
+            label = { Text(stringResource(R.string.contact_work_information)) },
+            minLines = 2,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+            value = state.contactInformation,
+            onValueChange = onContactInformationChange,
+            label = { Text(stringResource(R.string.contact_contact_information)) },
+            minLines = 2,
             modifier = Modifier.fillMaxWidth(),
         )
 
@@ -363,8 +467,7 @@ private fun SectionLabel(text: String) {
  * A chip selector: selected entries render as removable chips, an add dropdown lists the
  * unselected ones. M24's replacement for the free-text comma-separated field — selection is
  * always from the existing set (no free text), mirroring web's AddContactDialog selectors.
- */
-@Composable
+ */@Composable
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 private fun SelectorChipEditor(
     label: String,
@@ -432,47 +535,6 @@ private fun SelectorChipEditor(
                     )
                 }
             }
-        }
-    }
-}
-
-/**
- * Editable list of email/phone entries with add/remove buttons (MultiValueField equivalent).
- * Edits an entry's display value only — never reconstructs it — so every field the form
- * doesn't surface (id, contexts, pref, features, label) survives untouched (T81).
- */
-@Composable
-private fun <T> ValueListEditor(
-    items: List<T>,
-    valueOf: (T) -> String,
-    onValueChange: (index: Int, value: String) -> Unit,
-    onAdd: () -> Unit,
-    onRemove: (index: Int) -> Unit,
-    placeholder: String,
-    keyboardType: KeyboardType,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        items.forEachIndexed { index, item ->
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                OutlinedTextField(
-                    value = valueOf(item),
-                    onValueChange = { onValueChange(index, it) },
-                    label = { Text(stringResource(R.string.contact_value_n, index + 1)) },
-                    placeholder = { Text(placeholder) },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-                    modifier = Modifier.weight(1f),
-                )
-                IconButton(onClick = { if (items.size > 1) onRemove(index) }) {
-                    Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.contact_remove))
-                }
-            }
-        }
-        IconButton(onClick = onAdd) {
-            Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.contact_add))
         }
     }
 }

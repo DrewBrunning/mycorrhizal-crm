@@ -135,6 +135,45 @@
     <string name="contact_value_n">Valor %1$d</string>
     <string name="contact_remove">Eliminar</string>
     <string name="contact_add">Añadir</string>
+    <!-- M7: editor de valores múltiples -->
+    <string name="contact_field_type">Tipo</string>
+    <string name="contact_type_none">Ninguno</string>
+    <string name="contact_preferred">Preferido</string>
+    <string name="contact_set_preferred">Marcar como preferido</string>
+    <string name="contact_type_home">Casa</string>
+    <string name="contact_type_work">Trabajo</string>
+    <string name="contact_type_cell">Móvil</string>
+    <string name="contact_type_fax">Fax</string>
+    <string name="contact_type_other">Otro</string>
+    <string name="contact_context_private">Privado</string>
+    <string name="contact_context_school">Escuela</string>
+    <string name="contact_context_billing">Facturación</string>
+    <string name="contact_context_delivery">Entrega</string>
+    <string name="contact_online_service_service">Servicio</string>
+    <string name="contact_title_kind_title">Cargo</string>
+    <string name="contact_title_kind_role">Rol</string>
+    <string name="contact_personal_info_kind_expertise">Experiencia</string>
+    <string name="contact_personal_info_kind_hobby">Pasatiempo</string>
+    <string name="contact_personal_info_kind_interest">Interés</string>
+    <!-- M7: nuevas secciones del formulario -->
+    <string name="contact_department">Departamento</string>
+    <string name="contact_job_titles">Cargos</string>
+    <string name="contact_impps">Mensajería instantánea</string>
+    <string name="contact_social_profiles">Perfiles sociales</string>
+    <string name="contact_other_online_services">Otros servicios en línea</string>
+    <string name="contact_how_we_met">Cómo nos conocimos</string>
+    <string name="contact_work_information">Información laboral</string>
+    <string name="contact_contact_information">Información de contacto adicional</string>
+    <!-- M7: editor de direcciones -->
+    <string name="contact_address_street">Calle</string>
+    <string name="contact_address_city">Ciudad</string>
+    <string name="contact_address_region">Provincia / Región</string>
+    <string name="contact_address_postal">Código postal</string>
+    <string name="contact_address_country">País</string>
+    <string name="contact_address_pobox">Apartado de correos</string>
+    <string name="contact_address_apartment">Apartamento / Suite</string>
+    <string name="contact_address_floor">Planta</string>
+    <string name="contact_address_additional">Campos adicionales</string>
     <string name="contact_create">Crear contacto</string>
     <string name="contact_save">Guardar cambios</string>
     <string name="contact_error_given_name">Se requiere al menos un nombre</string>

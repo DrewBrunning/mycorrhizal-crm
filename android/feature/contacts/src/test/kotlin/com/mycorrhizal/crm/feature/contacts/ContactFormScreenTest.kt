@@ -39,12 +39,15 @@ class ContactFormScreenTest {
                     onGivenNameChange = onGivenNameChange,
                     onSurnameChange = {},
                     onNicknameChange = {},
-                    onEmailValueChange = { _, _ -> },
-                    onEmailAdd = {},
-                    onEmailRemove = {},
-                    onPhoneValueChange = { _, _ -> },
-                    onPhoneAdd = {},
-                    onPhoneRemove = {},
+                    onEmailsChange = {},
+                    onPhonesChange = {},
+                    onAddressesChange = {},
+                    onTitlesChange = {},
+                    onImppChange = {},
+                    onSocialChange = {},
+                    onOtherServicesChange = {},
+                    onLinksChange = {},
+                    onPersonalInfoChange = {},
                     onBirthdayChange = {},
                     onNotesChange = {},
                     onCircleToggle = onCircleToggle,
@@ -57,12 +60,32 @@ class ContactFormScreenTest {
 
     @Test
     fun `renders the form fields`() {
-        setContent()
+        setContent(
+            state = ContactFormState(
+                addresses = listOf(
+                    com.mycorrhizal.crm.model.network.Address(
+                        components = listOf(
+                            com.mycorrhizal.crm.model.network.AddressComponent(kind = "name", value = "1 Main St"),
+                        ),
+                    ),
+                ),
+            ),
+        )
         composeTestRule.onNodeWithText("Given name").assertIsDisplayed()
         composeTestRule.onNodeWithText("Surname").assertIsDisplayed()
         composeTestRule.onNodeWithText("Prefix").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Kind").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Language").performScrollTo().assertIsDisplayed()
+        // M7: the previously read-only/invisible field groups now have editors.
+        composeTestRule.onNodeWithText("Address").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Street").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Job titles").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Instant Messaging").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Social profiles").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Personal information").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("How we met").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Work information").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Additional contact information").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Birthday").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Notes").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("No circles yet").performScrollTo().assertIsDisplayed()
