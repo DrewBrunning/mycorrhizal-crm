@@ -3,7 +3,6 @@
     <!-- App / navegación -->
     <string name="app_name">Mycorrhizal</string>
     <string name="nav_contacts">Contactos</string>
-    <string name="nav_search">Buscar</string>
     <string name="nav_notes">Notas</string>
     <string name="nav_activities">Actividades</string>
         <string name="nav_dashboard">Panel</string>
@@ -43,6 +42,14 @@
     <string name="contacts_empty">Aún no hay contactos</string>
     <string name="contacts_new">Nuevo contacto</string>
     <string name="contacts_photo_description">Foto de %1$s</string>
+
+    <!-- Contact list: cross-entity search (T87) -->
+    <string name="contacts_search_results_header">%1$d coincidencias en notas y actividades</string>
+    <string name="contacts_search_results_hint">También se buscan notas y actividades — los filtros de círculo y archivado no se aplican a ellas.</string>
+    <string name="contacts_search_notes_group">Notas</string>
+    <string name="contacts_search_activities_group">Interacciones</string>
+    <string name="contacts_search_unfiled">Sin asignar</string>
+    <string name="contacts_search_resolved_relation">Relación coincidente: %1$s</string>
 
     <!-- Detalle del contacto -->
     <string name="contact_title_fallback">Contacto</string>

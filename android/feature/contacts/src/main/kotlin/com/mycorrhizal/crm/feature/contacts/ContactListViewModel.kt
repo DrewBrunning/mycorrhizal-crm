@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ContactsPage
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.model.network.SearchResult
+import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -32,6 +34,13 @@ data class ContactListUiState(
     val error: String? = null,
     val searchQuery: String = "",
     val pagination: PaginationState = PaginationState(),
+    /**
+     * T87: cross-entity (notes/activities) matches for [searchQuery], from `GET /search`. Null
+     * means "nothing to show" — no query, a query below the two-character gate, or the request
+     * failed (offline: hide the section, don't error; see [loadCrossEntitySearch]'s doc comment).
+     * Never routed through the local FTS4 cache — that mirror only covers cached contact rows.
+     */
+    val searchResult: SearchResult? = null,
 )
 
 sealed interface ContactListEvent {
@@ -42,6 +51,10 @@ sealed interface ContactListEvent {
 @HiltViewModel
 class ContactListViewModel @Inject constructor(
     private val contactRepository: ContactRepository,
+    // T87: /search is cross-entity (notes + activities), not owned by any one repository —
+    // DashboardViewModel injects ApiClient directly for the same reason (a composite endpoint
+    // with no single-entity home).
+    private val apiClient: ApiClient,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ContactListUiState())
@@ -158,15 +171,47 @@ class ContactListViewModel @Inject constructor(
         _uiState.update { it.copy(searchQuery = query) }
         // Debounce keystrokes so a fast typist doesn't fire one request per
         // character; also reload immediately when cleared.
+        //
+        // T87: the cross-entity search shares this same debounce/cancellation rather than
+        // running its own timer — a second independent debounce is the specific way this trap
+        // was flagged to break (rapid typing firing two out-of-order request streams).
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
             if (query.isBlank()) {
+                _uiState.update { it.copy(searchResult = null) }
                 loadContacts()
             } else {
                 delay(SEARCH_DEBOUNCE_MS)
                 loadContacts()
+                loadCrossEntitySearch(query)
             }
         }
+    }
+
+    /**
+     * T87: notes/activities matches for [query] from `GET /search`, rendered as a collapsed
+     * section below the contact list. Two deliberate decisions:
+     * - **Client-side two-character gate**, matching the backend's own rather than relying on
+     *   it alone — a one-character query fires no request at all.
+     * - **Offline hides the section, never errors.** `/search` has no local mirror (unlike the
+     *   contact list, which falls back to the Room FTS4 cache) — any failure, not just a
+     *   connectivity one, just clears [ContactListUiState.searchResult]. This is a structural
+     *   guarantee, not a tested one: this function never writes [ContactListUiState.error] at
+     *   all, on either branch, so it cannot show its own error surface by construction. (A
+     *   runtime assertion that it stays null after a failure here is not reliable — `loadContacts`
+     *   unconditionally resets `error` at the very start of its own next run, in the same tick,
+     *   which would mask a regression here regardless of assertion placement.)
+     */
+    private suspend fun loadCrossEntitySearch(query: String) {
+        if (query.trim().length < 2) {
+            _uiState.update { it.copy(searchResult = null) }
+            return
+        }
+        val result = apiClient.search(query)
+        result.foldApiError(
+            onSuccess = { search -> _uiState.update { it.copy(searchResult = search) } },
+            onError = { _uiState.update { it.copy(searchResult = null) } },
+        )
     }
 
     fun onContactClick(contactId: Int) {

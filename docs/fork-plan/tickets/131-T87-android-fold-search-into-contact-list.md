@@ -113,3 +113,60 @@ Hand-verify per `/CLAUDE.md`: break the code, confirm the new test fails, restor
 - A synonym query shows its resolved relation.
 - Airplane-mode search still returns cached contacts with no error and no empty cross-entity section.
 - Gate green; five locales.
+
+## Landed 2026-08-12
+
+Implemented as scoped. New `ApiClient.search(q, limit, householdId)` for `GET /search`; a new
+`Search.kt` model deliberately has no `contacts` property at all (not just an unused one) — the
+response's `contacts` group is discarded structurally, Moshi ignores the JSON key, there's no
+Kotlin field it could leak into. `ContactListViewModel` gained `apiClient: ApiClient` as a direct
+dependency (mirroring `DashboardViewModel`'s precedent for a composite endpoint with no
+single-entity repository home) and a `searchResult: SearchResult?` state field, populated by
+`loadCrossEntitySearch` — fired from the *same* debounced `searchJob` as the contact-list fetch
+(not a second timer), gated at two characters client-side, and set to `null` (never a distinct
+error) on any `/search` failure so the section simply disappears offline rather than showing its
+own error surface. That "never errors" property is structural — the function has no code path
+that writes `ContactListUiState.error` at all — not something a runtime assertion reliably pins,
+since `loadContacts` unconditionally resets `error` at the start of its own next run in the same
+tick, which would mask a regression regardless of where the assertion sits (see the doc comment
+on `loadCrossEntitySearch`).
+
+`ContactListScreen.kt` gained a `SearchNotesActivitiesSection` — collapsed by default,
+re-collapses on every new query (`remember(query)`), shows a resolved-relation banner
+independently of hit count, and renders note/activity rows with contact-chip (or "Unfiled")
+navigation. Started with `AnimatedVisibility` for the expand/collapse per the design pass; dropped
+it for a plain `if (expanded)` after Compose's animation clock made the Robolectric tests
+non-deterministic without `mainClock.advanceTimeBy` plumbing — simpler and untested-motion-free
+beats chasing that. The `search` drawer destination and its `PlaceholderScreen` route are deleted;
+`nav_search` removed from all five locale files as dead weight, matching web's T86 cleanup.
+
+Two real findings, both from following the ticket's own instructions to verify rather than assume:
+
+- **The ticket's third listed gap doesn't exist.** "Passes unsanitized input to MATCH" was already
+  fixed by prior hardening work in `ContactRepositoryImpl.searchLocal` (character-stripping +
+  boolean-keyword removal + a try/catch LIKE fallback) that landed after this ticket was filed.
+  Confirmed by reading the current source before touching it; left as-is.
+- **A weak version of the "no cross-entity error" test would pass even with a real regression.**
+  Traced through the actual coroutine ordering (see above) before trusting an assertion on the
+  shared `error` field — it wasn't reliable, so the test asserts the structural guarantee instead.
+
+Test coverage: `ApiClientTest` (grouped-response parsing incl. snippets/resolved_relation, the
+`contacts` group's structural non-leak, query-param omission), `ContactListViewModelTest` (a note
+match populating state, the two-character gate firing zero requests, offline hiding the section,
+an empty result not being an error, debounce collapsing rapid typing to one request, clearing the
+query clearing the result), `ContactListScreenTest` (header count + collapsed-by-default +
+expand-on-tap, contact-chip navigation, the unfiled chip, the resolved-relation banner independent
+of hit count). Hand-verified per `/CLAUDE.md`: broke the two-character gate, confirmed exactly the
+discriminating test failed. Separately, injected an extra `error =` write into the offline branch
+to check the "never errors" claim, traced why no assertion caught it (the coroutine-ordering issue
+above), and rewrote the test against the structural guarantee instead of the flaky one.
+
+**Hand-verified on a real device** (Pixel 8a) across two installs: app launches cleanly with no
+crashes on real production data (400+ unit tests all green beforehand); the drawer's "Search" entry
+is confirmed gone (screenshot); the contact list's own `?search=` FTS matching (free from T85)
+works correctly against real contacts. Several real search terms ("an", "call", "email") were tried
+live but none happened to match this account's actual note/activity content, so the cross-entity
+section's *populated* rendering was not directly observed on-device — it is covered instead by the
+dedicated `ContactListScreenTest` cases listed above, run against the exact same composable.
+
+Landed via [PR #106](https://github.com/DrewBrunning/mycorrhizal-crm/pull/106).

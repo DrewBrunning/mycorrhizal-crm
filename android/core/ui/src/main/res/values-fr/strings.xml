@@ -3,7 +3,6 @@
     <!-- App / navigation -->
     <string name="app_name">Mycorrhizal</string>
     <string name="nav_contacts">Contacts</string>
-    <string name="nav_search">Recherche</string>
     <string name="nav_notes">Notes</string>
     <string name="nav_activities">Activités</string>
         <string name="nav_dashboard">Tableau de bord</string>
@@ -43,6 +42,14 @@
     <string name="contacts_empty">Aucun contact pour le moment</string>
     <string name="contacts_new">Nouveau contact</string>
     <string name="contacts_photo_description">Photo de %1$s</string>
+
+    <!-- Contact list: cross-entity search (T87) -->
+    <string name="contacts_search_results_header">%1$d correspondances dans les notes et les activités</string>
+    <string name="contacts_search_results_hint">Les notes et les activités sont également recherchées — les filtres de cercle et d\'archivage ne s\'y appliquent pas.</string>
+    <string name="contacts_search_notes_group">Notes</string>
+    <string name="contacts_search_activities_group">Interactions</string>
+    <string name="contacts_search_unfiled">Non classé</string>
+    <string name="contacts_search_resolved_relation">Relation correspondante : %1$s</string>
 
     <!-- Contact detail -->
     <string name="contact_title_fallback">Contact</string>
