@@ -165,6 +165,44 @@ has a Compose test proving it renders real content (not a placeholder) and its c
 case) and `confirmVcfImport`. Every new test was hand-verified per `/CLAUDE.md` (break the wiring,
 confirm the test fails, restore) during implementation.
 
+### Review pass (same day, before merge)
+
+A review of the branch found two defects in the code it had just added; both fixed, both now
+pinned by tests.
+
+1. **Item 3's pagination never fired on a real device.** `ContactListScreenContent` used an
+   unkeyed ``remember { derivedStateOf { … uiState.contacts.lastIndex … } }``. `uiState` is a
+   plain parameter, not a `State`, so the lambda captured the *first* composition's `uiState`
+   permanently — and the first composition is always the ViewModel's empty initial state, pinning
+   `lastIndex` at `-1` and leaving the trigger dead forever. Only `listState.layoutInfo` is a real
+   `State` and re-triggers the block on its own. Fixed with `remember(lastContactIndex)`.
+
+   **The test-shape lesson is the reusable part**: the original test composed an
+   already-populated list, which never happens in the real app (the ViewModel always starts
+   empty). Any Compose test for state-dependent behaviour should compose the *initial* state and
+   then deliver data, not start from the end state — otherwise it passes against wiring that is
+   dead in production. This is a sibling of the trap the ticket already warned about for
+   pagination ("a test that only asserts 'more items appeared' would pass against a re-fetch of
+   page 1"): same failure mode, different axis. Worth a `/CLAUDE.md` trap entry if an Android
+   traps section ever gets started.
+
+2. **VCF import read the whole file before the size guard.** The picker is launched with
+   `GetContent("*/*")` (vCard MIME types are unreliable across providers), so a user could pick a
+   multi-gigabyte file; the 50MB check ran only *after* `readBytes()` had already allocated it,
+   OOM-ing the app before the guard. Now probes `OpenableColumns.SIZE` and rejects without
+   reading; the post-read check stays as the backstop for providers that declare no size.
+
+Also checked and found clean: locale key/placeholder parity across all five files (325 keys,
+identical sets); the `contacts/0/...` edit-route reuse for both notes and activities (`GET
+/activities/{id}` does preload `Contacts`, so `ActivityFormViewModel` round-trips participants
+rather than stripping them — verified against the controller, not the client's doc comment).
+
+One thing deliberately left alone: `CachedNote` has no `contact_id`, so `listUnfiled` and
+`listForContact` now write both unfiled and contact-scoped notes into one table with no way to
+tell them apart. Harmless today — nothing reads `getAll()` in production, the mirror is
+write-only — but a future offline-notes reader will need a column and therefore a migration
+against real production data. Flagged rather than pre-emptively migrated.
+
 **Not built as a nav-graph test**: `android/app/src` has no test source set at all — a
 `MycorrhizalApp`-level Hilt+NavHost harness to directly assert "drawer tap → real screen" would be
 new infrastructure, out of proportion to this ticket. The screen-level Compose tests plus this
