@@ -133,15 +133,20 @@ fun ContactListScreenContent(
     var search by rememberSaveable { mutableStateOf(uiState.searchQuery) }
     val listState = rememberLazyListState()
 
-    // T-M9: infinite scroll — fire loadNextPage() once the user scrolls
-    // within 5 rows of the end of the loaded contacts, matching
-    // ContactListViewModel.loadNextPage()'s own re-entrancy guards
-    // (isLoading / isLoadingMore / hasMore), so this can fire repeatedly
-    // as the list grows without risking duplicate in-flight requests.
-    val shouldLoadMore by remember {
+    // M9: infinite scroll — fire loadNextPage() once the user scrolls within 5 rows of the end
+    // of the loaded contacts, matching ContactListViewModel.loadNextPage()'s own re-entrancy
+    // guards (isLoading / isLoadingMore / hasMore), so this can fire repeatedly as the list
+    // grows without risking duplicate in-flight requests.
+    //
+    // `remember` MUST be keyed on lastContactIndex. uiState is a plain parameter, not a State,
+    // so an unkeyed `remember { derivedStateOf { ... uiState ... } }` captures the *first*
+    // composition's uiState permanently — and the first composition is always the ViewModel's
+    // empty initial state, pinning lastIndex at -1 and silently disabling pagination forever.
+    // Only listState.layoutInfo is a real State and re-triggers the block on its own.
+    val lastContactIndex = uiState.contacts.lastIndex
+    val shouldLoadMore by remember(lastContactIndex) {
         derivedStateOf {
             val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: return@derivedStateOf false
-            val lastContactIndex = uiState.contacts.lastIndex
             lastContactIndex >= 0 && lastVisible >= lastContactIndex - 5
         }
     }

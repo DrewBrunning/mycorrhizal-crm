@@ -49,6 +49,15 @@ class VcfImportViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(VcfImportUiState())
     val uiState: StateFlow<VcfImportUiState> = _uiState.asStateFlow()
 
+    /**
+     * The picked file's provider-declared size already exceeded [MAX_VCF_SIZE_BYTES], so its
+     * bytes were never read. Separate from [onFilePicked]'s own size check, which is the
+     * backstop for providers that declare no size at all.
+     */
+    fun onFileTooLarge() {
+        _uiState.update { it.copy(errorRes = R.string.import_vcf_error_too_large, error = null) }
+    }
+
     /** Client-side gate matching `backend/services/import_service.go`'s `MaxVCFSize` (VCF files
      *  can embed photos, hence the higher limit than CSV) — avoids an upload doomed to fail. */
     fun onFilePicked(fileName: String, bytes: ByteArray) {

@@ -70,6 +70,7 @@ fun VcfImportScreen(
         onBack = onBack,
         onDone = onDone,
         onFilePicked = viewModel::onFilePicked,
+        onFileTooLarge = viewModel::onFileTooLarge,
         onRowActionChange = viewModel::setRowAction,
         onConfirm = viewModel::confirm,
         onErrorShown = viewModel::onErrorShown,
@@ -89,6 +90,7 @@ fun VcfImportScreenContent(
     onBack: () -> Unit = {},
     onDone: () -> Unit = {},
     onFilePicked: (String, ByteArray) -> Unit = { _, _ -> },
+    onFileTooLarge: () -> Unit = {},
     onRowActionChange: (Int, String) -> Unit = { _, _ -> },
     onConfirm: () -> Unit = {},
     onErrorShown: () -> Unit = {},
@@ -101,10 +103,19 @@ fun VcfImportScreenContent(
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {
             val resolver = context.contentResolver
-            val (name, bytes) = withContext(Dispatchers.IO) {
-                readVcfFile(resolver, uri)
+            // Probe the provider's declared size BEFORE reading anything. The picker is
+            // launched with "*/*" (vCard MIME types are unreliable across providers), so the
+            // user can pick a multi-gigabyte video — reading that into a ByteArray to then
+            // reject it on size would OOM the app before the guard ever ran. Providers may
+            // report no size at all, so VcfImportViewModel keeps its own post-read check as
+            // the backstop for that case.
+            val meta = withContext(Dispatchers.IO) { queryFileMeta(resolver, uri) }
+            if (meta.size != null && meta.size > VcfImportViewModel.MAX_VCF_SIZE_BYTES) {
+                onFileTooLarge()
+                return@launch
             }
-            onFilePicked(name, bytes)
+            val bytes = withContext(Dispatchers.IO) { readAllBytes(resolver, uri) }
+            onFilePicked(meta.name, bytes)
         }
     }
 
@@ -262,15 +273,28 @@ private fun ImportRowPreview.displayName(): String {
     return listOfNotNull(first, last).joinToString(" ").ifBlank { "#${rowIndex + 1}" }
 }
 
-/** Reads a picked file's display name (falling back to a generic one) and bytes off the main thread. */
-private fun readVcfFile(resolver: ContentResolver, uri: Uri): Pair<String, ByteArray> {
+/** A picked file's display name and the size its provider declares (null when it declares none). */
+private data class PickedFileMeta(val name: String, val size: Long?)
+
+/**
+ * Cheap metadata probe — reads only the provider's cursor, never the file contents, so an
+ * oversized pick can be rejected without allocating it. `size` is null when the provider omits
+ * the column or reports it as null, which some do.
+ */
+private fun queryFileMeta(resolver: ContentResolver, uri: Uri): PickedFileMeta {
     var name = "import.vcf"
+    var size: Long? = null
     resolver.query(uri, null, null, null, null)?.use { cursor ->
-        val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-        if (nameIndex >= 0 && cursor.moveToFirst()) {
-            cursor.getString(nameIndex)?.let { name = it }
+        if (cursor.moveToFirst()) {
+            val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            if (nameIndex >= 0) cursor.getString(nameIndex)?.let { name = it }
+            val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
+            if (sizeIndex >= 0 && !cursor.isNull(sizeIndex)) size = cursor.getLong(sizeIndex)
         }
     }
-    val bytes = resolver.openInputStream(uri)?.use { it.readBytes() } ?: ByteArray(0)
-    return name to bytes
+    return PickedFileMeta(name, size)
 }
+
+/** Reads the picked file's bytes off the main thread. Only called once the size probe passes. */
+private fun readAllBytes(resolver: ContentResolver, uri: Uri): ByteArray =
+    resolver.openInputStream(uri)?.use { it.readBytes() } ?: ByteArray(0)

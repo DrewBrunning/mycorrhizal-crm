@@ -26,6 +26,22 @@ class VcfImportViewModelTest {
 
     private val apiClient = mockk<ApiClient>()
 
+    // The primary size gate: the screen probes the provider's declared size and calls this
+    // WITHOUT ever reading the file, so picking a multi-gigabyte file can't OOM the app.
+    @Test
+    fun `a file whose declared size is over 50MB is rejected before its bytes are read`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = VcfImportViewModel(apiClient)
+
+            vm.onFileTooLarge()
+            advanceUntilIdle()
+
+            assertEquals(R.string.import_vcf_error_too_large, vm.uiState.value.errorRes)
+            assertEquals(VcfImportStep.PICK, vm.uiState.value.step)
+            coVerify(exactly = 0) { apiClient.uploadVcfImport(any(), any()) }
+        }
+
+    // The backstop, for content providers that declare no size at all.
     @Test
     fun `a file over 50MB is rejected client-side without calling the API`() = runTest(mainDispatcherRule.testDispatcher) {
         val vm = VcfImportViewModel(apiClient)

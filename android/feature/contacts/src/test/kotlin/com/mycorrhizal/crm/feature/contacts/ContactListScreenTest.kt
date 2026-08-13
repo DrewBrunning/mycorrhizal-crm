@@ -1,5 +1,8 @@
 package com.mycorrhizal.crm.feature.contacts
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -197,17 +200,32 @@ class ContactListScreenTest {
 
     // M9 item 3: ContactListViewModel.loadNextPage() was implemented and unit-tested but had
     // no call site — scrolling near the end of a paginated list must trigger it.
+    //
+    // This composes EMPTY first and only then delivers the page, because that is the real app's
+    // order (the ViewModel's initial state is always ContactListUiState() with no contacts).
+    // An already-populated first composition passes even when the scroll trigger captures a
+    // stale uiState and is dead on a real device — which is exactly the bug this shape caught.
     @Test
-    fun `scrolling near the end loads the next page when more is available`() {
+    fun `scrolling near the end loads the next page when contacts arrive after first composition`() {
         var loadMoreCalls = 0
-        setContent(
-            ContactListUiState(
-                isLoading = false,
-                contacts = manyContacts(30),
-                pagination = PaginationState(nextCursor = "cursor-2", hasMore = true),
-            ),
-            onLoadMore = { loadMoreCalls++ },
+        var state by mutableStateOf(ContactListUiState(isLoading = true))
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactListScreenContent(
+                    uiState = state,
+                    onSearchQueryChange = {},
+                    onContactClick = {},
+                    onLoadMore = { loadMoreCalls++ },
+                )
+            }
+        }
+
+        state = ContactListUiState(
+            isLoading = false,
+            contacts = manyContacts(30),
+            pagination = PaginationState(nextCursor = "cursor-2", hasMore = true),
         )
+        composeTestRule.waitForIdle()
 
         composeTestRule.onNodeWithTag("contact-list").performScrollToIndex(29)
         composeTestRule.waitForIdle()
