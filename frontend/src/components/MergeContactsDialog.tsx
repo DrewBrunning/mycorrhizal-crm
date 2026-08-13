@@ -103,10 +103,19 @@ export default function MergeContactsDialog({
   const handleCommit = async () => {
     if (!selectedContact) return;
     try {
-      await commit(selectedContact.ID, currentContactId);
-      onMerged(selectedContact.ID);
+      const keeperId = selectedContact.ID;
+      await commit(keeperId, currentContactId);
+      // T94: close and reset before handing control back. The parent navigates
+      // to /contacts/:keeperId, but that route renders the same
+      // ContactDetailPage element, so a param change never unmounts this
+      // dialog -- without an explicit close it stays open over the keeper's
+      // page holding the now-deleted loser in selectedContact.
+      handleClose();
+      onMerged(keeperId);
     } catch {
       // useContactMerge's commit already surfaced the error via the snackbar.
+      // Deliberately no close here: a failed merge keeps the user's selection
+      // and conflict answers so they can retry or fix the conflict.
     }
   };
 

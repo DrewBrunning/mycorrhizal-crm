@@ -303,3 +303,28 @@ type Record struct {
 	UID  string `json:"-"`
 	ETag string `json:"-"`
 }
+
+// ctx2type (docs/fork-plan/20-correspondence.md §20.4): the neutral model's
+// Contexts vocabulary is private/work; the vCard TYPE parameter and this
+// project's legacy flat fields both use home/work. RFC 9554 adds
+// billing/delivery for addresses, which are identical in both directions.
+//
+// This table lives here, in the package that owns the neutral model, rather
+// than in vcard4 where it started — because it has two consumers with no
+// import relationship: vcard4's TYPE<->Contexts adapter, and models'
+// Card->flat reverse projection (contact_record_reverse.go). It was
+// vcard4-private until T91, which is exactly why the reverse projection
+// silently shipped the untranslated token ("private") into the flat
+// ContactAddress.Type for every imported address.
+//
+// Callers must fall through to the original value on a miss: Contexts is not
+// a closed enum on the write side (contact_record.go puts arbitrary legacy
+// free-text Type values into it), so an unrecognized context is data to
+// preserve, not an error.
+var TypeTokenToContext = map[string]string{
+	"home": "private", "work": "work", "billing": "billing", "delivery": "delivery",
+}
+
+var ContextToTypeToken = map[string]string{
+	"private": "home", "work": "work", "billing": "billing", "delivery": "delivery",
+}

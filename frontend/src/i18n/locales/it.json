@@ -1133,6 +1133,7 @@
       "sibling_of": "Fratello/Sorella",
       "friend_of": "Amico/a",
       "roommate_of": "Coinquilino/a",
+      "coworker_of": "Collega",
       "partner_of": "Partner",
       "co_parent_of": "Co-genitore",
       "mentor_of": "Mentore",

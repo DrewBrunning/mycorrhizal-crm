@@ -332,6 +332,98 @@ func TestContactMerge_RealMigratedSchema(t *testing.T) {
 	assert.Contains(t, mergeNote.Content, "Robert")
 }
 
+// TestContactMerge_SharedCircleAndTag_Deduped covers the branch
+// TestContactMerge_RealMigratedSchema does not: there, only the loser holds
+// the circle/tag membership, so the plain UPDATE half of the repoint is
+// exercised and the DELETE-the-loser's-duplicate half never runs. Here both
+// contacts are in the same circle and carry the same tag, which is the case
+// that produced the T95 beta report ("merge doesn't carry forward circles").
+// The backend was never the bug -- but nothing pinned the dedup path, so a
+// frontend refresh bug was indistinguishable from a backend data-loss bug.
+//
+// Both tables hard-delete (/CLAUDE.md trap #7) and both are counted with a
+// plain Count() below, which is safe precisely because there is no soft-delete
+// to hide behind.
+func TestContactMerge_SharedCircleAndTag_Deduped(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "contact-merge-shared-membership.db")
+	db, err := database.InitDB(dbPath)
+	require.NoError(t, err)
+
+	user := models.User{Username: "dedupetester", Password: "password123!A", Email: "dedupe@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	alice := models.Contact{UserID: user.ID, Firstname: "Alice"}
+	bob := models.Contact{UserID: user.ID, Firstname: "Bob"}
+	require.NoError(t, db.Create(&alice).Error)
+	require.NoError(t, db.Create(&bob).Error)
+
+	// shared: both are members -> the loser's row must be dropped, not moved.
+	shared := models.Circle{UserID: user.ID, Name: "Book Club"}
+	require.NoError(t, db.Create(&shared).Error)
+	require.NoError(t, db.Create(&models.CircleMember{CircleID: shared.ID, UserID: user.ID, MemberVCardUID: alice.VCardUID}).Error)
+	require.NoError(t, db.Create(&models.CircleMember{CircleID: shared.ID, UserID: user.ID, MemberVCardUID: bob.VCardUID}).Error)
+
+	// loserOnly: only Bob is a member -> the row must move to Alice. Asserted
+	// alongside the shared case so a fix that deletes instead of repointing
+	// cannot pass this test.
+	loserOnly := models.Circle{UserID: user.ID, Name: "Climbing Gym"}
+	require.NoError(t, db.Create(&loserOnly).Error)
+	require.NoError(t, db.Create(&models.CircleMember{CircleID: loserOnly.ID, UserID: user.ID, MemberVCardUID: bob.VCardUID}).Error)
+
+	sharedTag := models.Tag{UserID: user.ID, Name: "neighbor"}
+	require.NoError(t, db.Create(&sharedTag).Error)
+	require.NoError(t, db.Create(&models.ContactTag{TagID: sharedTag.ID, UserID: user.ID, ContactVCardUID: alice.VCardUID}).Error)
+	require.NoError(t, db.Create(&models.ContactTag{TagID: sharedTag.ID, UserID: user.ID, ContactVCardUID: bob.VCardUID}).Error)
+
+	loserOnlyTag := models.Tag{UserID: user.ID, Name: "climbing"}
+	require.NoError(t, db.Create(&loserOnlyTag).Error)
+	require.NoError(t, db.Create(&models.ContactTag{TagID: loserOnlyTag.ID, UserID: user.ID, ContactVCardUID: bob.VCardUID}).Error)
+
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.Default()
+	router.Use(func(c *gin.Context) {
+		c.Set("db", db)
+		c.Set("userID", user.ID)
+		c.Next()
+	})
+	router.POST("/contacts/merge", withValidated(func() any { return &models.ContactMergeRequest{} }), CommitContactMerge)
+
+	var buf bytes.Buffer
+	require.NoError(t, json.NewEncoder(&buf).Encode(models.ContactMergeRequest{
+		KeepID: alice.ID, MergeID: bob.ID,
+		// Both have a firstname, so it is a scalar conflict the commit path
+		// refuses to guess at -- unrelated to what this test is about.
+		Resolutions: map[string]string{"firstname": "Alice"},
+	}))
+	req, _ := http.NewRequest("POST", "/contacts/merge", &buf)
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	countRows := func(model any, where string, args ...any) int64 {
+		var n int64
+		require.NoError(t, db.Model(model).Where(where, args...).Count(&n).Error)
+		return n
+	}
+
+	// The shared membership collapses to exactly one row for the keeper --
+	// not two (no dedup) and not zero (dedup deleted the survivor too).
+	assert.EqualValues(t, 1, countRows(&models.CircleMember{}, "circle_id = ? AND member_vcard_uid = ?", shared.ID, alice.VCardUID))
+	assert.EqualValues(t, 1, countRows(&models.CircleMember{}, "circle_id = ? AND member_vcard_uid = ?", loserOnly.ID, alice.VCardUID))
+	assert.EqualValues(t, 1, countRows(&models.ContactTag{}, "tag_id = ? AND contact_vcard_uid = ?", sharedTag.ID, alice.VCardUID))
+	assert.EqualValues(t, 1, countRows(&models.ContactTag{}, "tag_id = ? AND contact_vcard_uid = ?", loserOnlyTag.ID, alice.VCardUID))
+
+	// Nothing is left pointing at the deleted loser.
+	assert.EqualValues(t, 0, countRows(&models.CircleMember{}, "member_vcard_uid = ?", bob.VCardUID))
+	assert.EqualValues(t, 0, countRows(&models.ContactTag{}, "contact_vcard_uid = ?", bob.VCardUID))
+
+	// The keeper ends up in both circles and carries both tags -- the claim
+	// the T95 report disputed, stated as the user would experience it.
+	assert.EqualValues(t, 2, countRows(&models.CircleMember{}, "member_vcard_uid = ?", alice.VCardUID))
+	assert.EqualValues(t, 2, countRows(&models.ContactTag{}, "contact_vcard_uid = ?", alice.VCardUID))
+}
+
 // TestContactMerge_KeepEqualsMerge_Rejected is a lightweight guard against
 // the trivial self-merge case, on AutoMigrate (no real-DB dependency needed
 // for this check).

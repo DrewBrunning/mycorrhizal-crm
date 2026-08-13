@@ -527,6 +527,27 @@ export function rowsToOnlineServices(rows: OnlineServiceRow[]): CardOnlineServic
     }));
 }
 
+// ctx2type (docs/fork-plan/20-correspondence.md §20.4), mirroring the Go
+// contactmodel.ContextToTypeToken map. The neutral model's Contexts vocabulary
+// is private/work; the flat shape this file's adapters produce — and the
+// `contacts.types.*` i18n keys that render it — use home/work.
+//
+// T91: without this, an address imported from a vCard `ADR;TYPE=home` (which
+// the importer correctly stores as `contexts: ["private"]`) rendered as the
+// literal string "private", because no `contacts.types.private` key exists and
+// i18next falls back to the raw token. The backend fix corrected the persisted
+// flat column; the contact detail page reads the nested Card instead, so it
+// needed the same translation here.
+//
+// The fall-through on a miss is load-bearing: Contexts is not a closed enum on
+// the write side, so an unrecognized value is user data to show, not to blank.
+const ADDRESS_CONTEXT_TO_TYPE: Record<string, string> = {
+  private: 'home',
+  work: 'work',
+  billing: 'billing',
+  delivery: 'delivery',
+};
+
 export function cardAddressesToValues(addresses: CardAddress[] | undefined): ContactAddress[] {
   return (addresses || []).map((a) => {
     const comps = a.components || [];
@@ -537,7 +558,7 @@ export function cardAddressesToValues(addresses: CardAddress[] | undefined): Con
     const knownKinds = new Set(['name', 'number', 'locality', 'region', 'postcode', 'country', 'postOfficeBox', 'apartment', 'floor']);
     const passthrough = comps.filter((c) => !knownKinds.has(c.kind));
     return {
-      type: a.contexts?.[0] || '',
+      type: a.contexts?.[0] ? (ADDRESS_CONTEXT_TO_TYPE[a.contexts[0]] ?? a.contexts[0]) : '',
       street: find('name') || find('number'),
       city: find('locality'),
       region: find('region'),

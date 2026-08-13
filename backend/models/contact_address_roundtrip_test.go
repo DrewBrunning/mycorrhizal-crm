@@ -101,6 +101,46 @@ func TestVCardImportSaveExportRoundTrip_SubStreetParts(t *testing.T) {
 	}
 }
 
+// TestVCardImportAddressType is T91
+// (docs/fork-plan/tickets/135-T91-imported-address-type-private.md): the whole
+// path, end to end, because the bug was only visible across a package
+// boundary. vcard4's importer maps ADR;TYPE=HOME to the neutral Contexts token
+// "private" (correct, RFC 9553), and the flat projection then used to copy
+// that token across untranslated -- so every VCF-imported home address
+// persisted with Type "private", which the web address editor renders as raw
+// text because there is no i18n key for it. Android's device import emitted
+// the same neutral token deliberately and hit the same projection.
+//
+// Neither half was wrong on its own, which is why unit tests on either side
+// passed throughout. This test spans both.
+func TestVCardImportAddressType(t *testing.T) {
+	for _, tc := range []struct{ name, typeParam, want string }{
+		{"home imports as the legacy home token", "HOME", "home"},
+		{"work is unaffected", "WORK", "work"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			raw := "BEGIN:VCARD\r\n" +
+				"VERSION:4.0\r\n" +
+				"UID:t91-" + tc.typeParam + "\r\n" +
+				"FN:Address Type Person\r\n" +
+				"N:Person;Address Type;;;\r\n" +
+				"ADR;TYPE=" + tc.typeParam + ":;;123 Fake St;Townesville;MO;55555;USA\r\n" +
+				"END:VCARD\r\n"
+
+			record, _, err := vcard4.Adapter{}.Import([]byte(raw))
+			require.NoError(t, err)
+			require.Len(t, record.Card.Addresses, 1)
+
+			contact := &Contact{}
+			ApplyRecordToContact(contact, record, "")
+			require.Len(t, contact.Addresses, 1)
+			assert.Equal(t, tc.want, contact.Addresses[0].Type,
+				"a TYPE=%s vCard address must land on the flat model as %q, not as the neutral context token",
+				tc.typeParam, tc.want)
+		})
+	}
+}
+
 // TestAddressFromContactAddress_OrderingPinsFormatAddressSymmetry guards the
 // "don't add parsing" trap from a different angle: the neutral components
 // AddressFromContactAddress emits must flatten back to exactly the flat

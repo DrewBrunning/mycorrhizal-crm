@@ -304,8 +304,23 @@ func contactAddressFromNeutral(a contactmodel.Address) ContactAddress {
 			out.Country = comp.Value
 		}
 	}
+	// T91: translate the neutral private/work Contexts vocabulary back to the
+	// flat model's home/work before storing it. Without this every address
+	// that arrived through an adapter came out typed "private" -- a vCard
+	// ADR;TYPE=home becomes Contexts:["private"] in vcard4's importer, and
+	// Android's device-contacts import emits the same neutral token
+	// deliberately. Neither is wrong; the projection was.
+	//
+	// The fall-through is load-bearing: RecordFromContact (contact_record.go)
+	// puts the legacy free-text Type straight into Contexts because Address
+	// has no Label field, so an unrecognized context is user data to preserve,
+	// not a value to blank.
 	if len(a.Contexts) > 0 {
-		out.Type = a.Contexts[0]
+		if tok, ok := contactmodel.ContextToTypeToken[a.Contexts[0]]; ok {
+			out.Type = tok
+		} else {
+			out.Type = a.Contexts[0]
+		}
 	}
 	return out
 }

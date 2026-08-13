@@ -109,6 +109,25 @@ describe('address conversion', () => {
     expect(valuesToCardAddresses(values)).toEqual(card);
   });
 
+  test('translates neutral address contexts to the flat type vocabulary (T91)', () => {
+    // The importer stores a vCard ADR;TYPE=home as contexts:["private"] --
+    // correct for RFC 9553, but "private" has no contacts.types.* i18n key, so
+    // it rendered as the raw token on the contact detail page.
+    const mk = (context: string): CardAddress[] => [
+      { components: [{ kind: 'name', value: '123 Fake St' }], contexts: [context] },
+    ];
+    expect(cardAddressesToValues(mk('private'))[0].type).toBe('home');
+    expect(cardAddressesToValues(mk('work'))[0].type).toBe('work');
+    expect(cardAddressesToValues(mk('billing'))[0].type).toBe('billing');
+    // Already-flat tokens pass through unchanged...
+    expect(cardAddressesToValues(mk('home'))[0].type).toBe('home');
+    // ...and so does arbitrary free text, which the write side genuinely
+    // allows into contexts, so it must be shown rather than blanked.
+    expect(cardAddressesToValues(mk('cabin'))[0].type).toBe('cabin');
+    // No contexts at all stays empty, not undefined-mapped.
+    expect(cardAddressesToValues([{ components: [{ kind: 'name', value: 'x' }] }])[0].type).toBe('');
+  });
+
   test('preserves unknown address component kinds through round-trip (T25)', () => {
     const card: CardAddress[] = [
       {

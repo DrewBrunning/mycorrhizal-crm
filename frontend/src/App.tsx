@@ -63,7 +63,19 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import './App.css';
 
-const drawerWidth = 180;
+// T98: 180 -> 256. The old 180 was tight enough that four of the five locales
+// wrapped their longest nav label even at the pre-T98 16px (de/es/fr/it, at
+// 99-128px against a 91px text slot), and raising the label to 1.0625rem made
+// English wrap too.
+//
+// A ListItemButton spends 48px of its width on padding plus a 56px icon slot,
+// so the usable text slot is drawerWidth - 104. The widest label across all
+// five locales at 1.0625rem is Spanish's "Registro de auditoría" at 136.2px,
+// which needs 240.2 -- i.e. 240 misses by a sixth of a pixel, and Italian
+// clears it by only 1.5px. 256 gives a 152px slot: every locale fits with real
+// headroom rather than sitting on the rounding boundary, where a font-rendering
+// difference between platforms would flip it back to wrapping.
+const drawerWidth = 256;
 
 // T33 nav classification: which destinations are "primary" (kept as icons in
 // the phone AppBar) and which are "account-level" (collapsed into the account
@@ -209,9 +221,12 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
               }}
             >
               <ListItemIcon>{item.icon}</ListItemIcon>
+              {/* T98: Garamond has a smaller x-height than IBM Plex Sans, so
+                  ListItemText's 1rem body1 default reads shrunken here rather
+                  than merely different. T63 set the family and no size. */}
               <ListItemText
                 primary={item.text}
-                slotProps={{ primary: { sx: { fontFamily: '"EB Garamond", serif' } } }}
+                slotProps={{ primary: { sx: { fontFamily: '"EB Garamond", serif', fontSize: '1.0625rem' } } }}
               />
             </ListItemButton>
           </ListItem>

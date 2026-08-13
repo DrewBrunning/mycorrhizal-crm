@@ -286,10 +286,14 @@ const ActivitiesPage: React.FC = () => {
                     <Box display="flex" justifyContent="space-between" alignItems="flex-start">
                       <Box sx={{ flex: 1, pr: 2 }}>
                         {activity.title && (
+                          // T98: subtitle1 matches the activity title size on
+                          // the contact timeline. The color override is gone
+                          // with body2 -- it only existed to undo body2's
+                          // themed soil color (theme.ts).
                           <Typography
-                            variant="body2"
+                            variant="subtitle1"
                             fontWeight={600}
-                            sx={{ wordBreak: 'break-word', color: 'text.primary' }}
+                            sx={{ wordBreak: 'break-word' }}
                           >
                             {activity.title}
                           </Typography>
