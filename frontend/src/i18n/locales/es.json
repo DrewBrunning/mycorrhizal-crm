@@ -435,6 +435,27 @@
     "gift": {
       "given": "Regalo entregado",
       "received": "Regalo recibido"
+    },
+    "viewAll": "Ver todo",
+    "explorerTitle": "Línea de Tiempo",
+    "filterType": "Tipo de evento",
+    "filterBucket": "Hace cuánto tiempo",
+    "allTypes": "Todos los tipos",
+    "empty": "No hay eventos en la línea de tiempo",
+    "types": {
+      "note": "Nota",
+      "activity": "Actividad",
+      "completion": "Recordatorio Completado",
+      "life_event": "Evento de vida",
+      "external_activity": "Actividad externa",
+      "gift": "Regalo"
+    },
+    "buckets": {
+      "all": "Todo el tiempo",
+      "last_7_days": "Últimos 7 días",
+      "last_30_days": "Últimos 30 días",
+      "last_90_days": "Últimos 90 días",
+      "this_year": "Este año"
     }
   },
   "contactDetail": {
@@ -712,7 +733,8 @@
     "copy": "Copiar",
     "copied": "Copiado al portapapeles",
     "copyFailed": "No se pudo copiar al portapapeles",
-    "copyValue": "Copiar {{label}}"
+    "copyValue": "Copiar {{label}}",
+    "close": "Cerrar"
   },
   "externalLinks": {
     "title": "Enlaces externos",

@@ -1,16 +1,23 @@
 import { test, expect } from './fixtures';
-import { createTestContact, deleteTestContact } from './fixtures';
+import { createTestContact, deleteTestContact, waitForLoading, stableClick } from './fixtures';
 
 // Authenticated via the shared storageState (see playwright.config.ts).
-// Each test runs against its own throwaway contact
+// Each test runs against its own throwaway contact.
+//
+// waitForLoading + stableClick here for the same reason timeline.spec.ts needs
+// them: the contact detail page mounts every panel eagerly and a section above
+// Reminders (ConnectionsPanel) can defer its own fetch behind an
+// IntersectionObserver, shifting the page mid-click. Without them the click on
+// "Add Reminder" intermittently lands on the wrong element under parallel load.
 test.describe('Reminders', () => {
   test('should create a reminder from a contact detail page', async ({ page }) => {
     const contact = await createTestContact(page.request);
 
     try {
       await page.goto(`/contacts/${contact.ID}`);
+      await waitForLoading(page);
 
-      await page.getByRole('button', { name: /add.*reminder/i }).click();
+      await stableClick(page.getByRole('button', { name: /add.*reminder/i }));
       await expect(page.getByRole('dialog')).toBeVisible();
 
       await page.getByRole('textbox', { name: /message/i }).fill('E2E Test Reminder');
@@ -29,8 +36,9 @@ test.describe('Reminders', () => {
 
     try {
       await page.goto(`/contacts/${contact.ID}`);
+      await waitForLoading(page);
 
-      await page.getByRole('button', { name: /add.*reminder/i }).click();
+      await stableClick(page.getByRole('button', { name: /add.*reminder/i }));
       await expect(page.getByRole('dialog')).toBeVisible();
 
       await expect(page.getByRole('textbox', { name: /message/i })).toBeVisible();

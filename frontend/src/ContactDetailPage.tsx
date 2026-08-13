@@ -62,6 +62,7 @@ import MergeContactsDialog from './components/MergeContactsDialog';
 import ShareContactDialog from './components/ShareContactDialog';
 import ContactInformation from './components/ContactInformation';
 import ContactTimeline from './components/ContactTimeline';
+import TimelineExplorerDialog from './components/TimelineExplorerDialog';
 import RelationshipEdgeList from './components/RelationshipEdgeList';
 import LifeEventList from './components/LifeEventList';
 import PreferenceList from './components/PreferenceList';
@@ -296,6 +297,11 @@ export default function ContactDetailPage() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [completions, setCompletions] = useState<ReminderCompletion[]>([]);
+  // T78: the timeline explorer dialog, and a revision counter bumped whenever
+  // the page's timeline data changes so the explorer's own paginated fetch
+  // (which the page-level edit dialogs can't touch) refreshes to match.
+  const [timelineExplorerOpen, setTimelineExplorerOpen] = useState(false);
+  const [timelineRevision, setTimelineRevision] = useState(0);
   
   // Profile editing state
   const [editingProfile, setEditingProfile] = useState(false);
@@ -366,6 +372,9 @@ export default function ContactDetailPage() {
       setNotes(notesData.notes || []);
       setActivities(activitiesData.activities || []);
       setCompletions(completionsData || []);
+      // Bump the explorer's revision: a save/delete went through the
+      // page-level dialogs, so the explorer's own fetch needs to catch up.
+      setTimelineRevision((r) => r + 1);
     } catch (err) {
       handleFetchError(err, 'refreshing notes and activities');
     }
@@ -1492,6 +1501,18 @@ export default function ContactDetailPage() {
             // siblings, so space-between spread all three evenly instead of
             // grouping the two buttons together on the right.
             <Box sx={{ display: 'flex', gap: 1 }}>
+              {/* T78: "View all" opens the full timeline explorer (filters +
+                  pagination) regardless of how many items exist -- the empty
+                  state lives in the explorer too, and a small history is the
+                  least harmful place to discover it. */}
+              <Button
+                onClick={() => setTimelineExplorerOpen(true)}
+                variant="outlined"
+                color="primary"
+                size="small"
+              >
+                {t('timeline.viewAll')}
+              </Button>
               <Button
                 startIcon={<SvgIcon><path d={mdiNotePlusOutline} /></SvgIcon>}
                 onClick={() => setNoteDialogOpen(true)}
@@ -1514,7 +1535,7 @@ export default function ContactDetailPage() {
           }
         >
           <ContactTimeline
-            timelineItems={timelineItems}
+            timelineItems={timelineItems.slice(0, 5)}
             onEditItem={handleStartEditTimelineItem}
             onDeleteCompletion={handleDeleteCompletion}
           />
@@ -1701,6 +1722,15 @@ export default function ContactDetailPage() {
         edge={editingEdge}
         viewedContactUid={record?.uid || ''}
         otherPartyContact={editingEdgeOtherParty}
+      />
+
+      <TimelineExplorerDialog
+        open={timelineExplorerOpen}
+        onClose={() => setTimelineExplorerOpen(false)}
+        contactId={record?.id}
+        onEditItem={handleStartEditTimelineItem}
+        onDeleteCompletion={handleDeleteCompletion}
+        revision={timelineRevision}
       />
 
       <LifeEventDialog
