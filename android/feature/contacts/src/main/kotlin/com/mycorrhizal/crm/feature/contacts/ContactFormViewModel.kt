@@ -17,6 +17,13 @@ import com.mycorrhizal.crm.model.network.Name
 import com.mycorrhizal.crm.model.network.NameComponent
 import com.mycorrhizal.crm.model.network.Nickname
 import com.mycorrhizal.crm.model.network.Phone
+import com.mycorrhizal.crm.model.network.Address
+import com.mycorrhizal.crm.model.network.OnlineService
+import com.mycorrhizal.crm.model.network.Organization
+import com.mycorrhizal.crm.model.network.OrgUnit
+import com.mycorrhizal.crm.model.network.PersonalInfo
+import com.mycorrhizal.crm.model.network.Resource
+import com.mycorrhizal.crm.model.network.Title
 import com.mycorrhizal.crm.model.network.Anniversary
 import com.mycorrhizal.crm.model.network.AnniversaryDate
 import com.mycorrhizal.crm.model.network.PartialDate
@@ -25,6 +32,12 @@ import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.EmailSpec
+import com.mycorrhizal.crm.ui.components.LinkSpec
+import com.mycorrhizal.crm.ui.components.OnlineServiceSpec
+import com.mycorrhizal.crm.ui.components.PersonalInfoSpec
+import com.mycorrhizal.crm.ui.components.PhoneSpec
+import com.mycorrhizal.crm.ui.components.TitleSpec
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -61,15 +74,34 @@ data class ContactFormState(
     // T81: the loaded Email/Phone objects, not scalars — id/contexts/pref/features/label
     // ride along untouched through edit and save. The single default row (create mode, or
     // a loaded record with none) is a genuinely new entry, so the phone gets the same
-    // `cell` default a form-added row gets; see onPhoneAdd's doc comment for why.
+    // `cell` default a form-added row gets; see PhoneSpec.blank()'s doc comment for why.
     val emails: List<Email> = listOf(Email(address = "")),
     val phones: List<Phone> = listOf(Phone(number = "", label = "cell")),
+    // M7: the rest of the neutral Card's editable field groups. All hold the REAL loaded
+    // objects — edits go through MultiValueSpec.withValue/withType, which are guaranteed
+    // `.copy()`s (the editor never reconstructs), so id/contexts/pref/service/… survive.
+    // Organizations are the exception: like the web, only the first organization's name
+    // + department are surfaced as plain strings and mapped to `organizations[0]` on
+    // save (extra organizations are preserved untouched).
+    val addresses: List<Address> = emptyList(),
+    val organizationName: String = "",
+    val department: String = "",
+    val titles: List<Title> = emptyList(),
+    val imppAddresses: List<OnlineService> = emptyList(),
+    val socialProfiles: List<OnlineService> = emptyList(),
+    val otherOnlineServices: List<OnlineService> = emptyList(),
+    val links: List<Resource> = emptyList(),
+    val personalInfo: List<PersonalInfo> = emptyList(),
     val birthday: String = "",
     val notes: String = "",
     // M24: selected circle/tag names. In edit mode these initialize from the join-row
     // derivations (circlesForContact/tagsForContact), not the legacy flat `crm.circles`.
     val circles: List<String> = emptyList(),
     val tags: List<String> = emptyList(),
+    // M7: Tier 3 — CRM-envelope strings that appeared in neither form nor detail.
+    val howWeMet: String = "",
+    val workInformation: String = "",
+    val contactInformation: String = "",
     val allCircles: List<Circle> = emptyList(),
     val allTags: List<Tag> = emptyList(),
     val isLoading: Boolean = false,
@@ -85,11 +117,15 @@ data class ContactFormState(
 
     /**
      * Assemble the ContactRecordInput to send. In edit mode this merges onto
-     * [base] so fields the form does not model (addresses, organizations,
-     * titles, personalInfo, links, media, extra nicknames/notes, email/phone
-     * contexts…) survive a save — the backend PUT is a full overwrite, so a
-     * rebuild-from-scratch would silently delete them. In create mode [base]
-     * is null and everything comes from the form.
+     * [base] so fields the form does not model — media, extra nicknames/notes,
+     * anniversaries beyond birth, speakToAs, preferredLanguages, calendars,
+     * contactUris, relatedTo, … — survive a save; the backend PUT is a full
+     * overwrite, so a rebuild-from-scratch would silently delete them. Every
+     * field the form DOES model (M7: email/phone/address/online-service/link/
+     * title/personalInfo lists plus organization, CRM strings) is assembled
+     * from its real loaded objects via `.copy()`, so per-entry metadata the
+     * editor chose not to surface rides along too. In create mode [base] is
+     * null and everything comes from the form.
      */
     fun toInput(base: ContactRecordResponse?): ContactRecordInput {
         val baseCard = base?.card ?: Card()
@@ -106,10 +142,10 @@ data class ContactFormState(
             } else {
                 baseCard.nicknames
             },
-            // T81: copy onto the loaded entry, never reconstruct — a blank/whitespace value
+            // T81/M7: copy onto the loaded entry, never reconstruct — a blank/whitespace value
             // drops the row (matching the old behavior), but every field the form doesn't
             // surface (id, contexts, pref, features, label) rides along untouched on every
-            // entry that survives. Only onEmailAdd/onPhoneAdd mint a genuinely new object.
+            // entry that survives. Only a spec's blank() mints a genuinely new object.
             emails = emails.mapNotNull { email ->
                 val trimmed = email.address?.trim()
                 if (trimmed.isNullOrBlank()) null else email.copy(address = trimmed)
@@ -117,6 +153,36 @@ data class ContactFormState(
             phones = phones.mapNotNull { phone ->
                 val trimmed = phone.number?.trim()
                 if (trimmed.isNullOrBlank()) null else phone.copy(number = trimmed)
+            }.ifEmpty { null },
+            addresses = addresses.mapNotNull { address ->
+                // Drop a row the user emptied (no components and no LABEL to preserve);
+                // trim every surviving component's value.
+                if (address.components.orEmpty().none { it.value?.isNotBlank() == true } && address.full.isNullOrBlank()) {
+                    null
+                } else {
+                    address.copy(
+                        components = address.components?.map { c ->
+                            val value = c.value
+                            if (value.isNullOrBlank()) c else c.copy(value = value.trim())
+                        },
+                    )
+                }
+            }.ifEmpty { null },
+            organizations = mergeOrganizations(baseCard.organizations),
+            titles = titles.mapNotNull { title ->
+                val name = title.name?.trim()
+                if (name.isNullOrBlank()) null else title.copy(name = name)
+            }.ifEmpty { null },
+            imppAddresses = trimOnlineServices(imppAddresses),
+            socialProfiles = trimOnlineServices(socialProfiles),
+            otherOnlineServices = trimOnlineServices(otherOnlineServices),
+            links = links.mapNotNull { link ->
+                val uri = link.uri?.trim()
+                if (uri.isNullOrBlank()) null else link.copy(uri = uri)
+            }.ifEmpty { null },
+            personalInfo = personalInfo.mapNotNull { info ->
+                val value = info.value?.trim()
+                if (value.isNullOrBlank()) null else info.copy(value = value)
             }.ifEmpty { null },
             anniversaries = mergeBirthday(baseCard.anniversaries, birthday),
             notes = if (notes.isNotBlank()) {
@@ -131,6 +197,11 @@ data class ContactFormState(
             // M24: the flat `circles` projection mirrors the selection; the real memberships
             // are applied via the CircleMember sub-resource on save (see applyMembershipChanges).
             circles = circles,
+            // M7: Tier 3. Preserve-on-blank, matching the form's existing convention for
+            // birthday/nickname — a blank field keeps the loaded value rather than clearing it.
+            howWeMet = howWeMet.trim().ifBlank { baseCrm.howWeMet },
+            workInformation = workInformation.trim().ifBlank { baseCrm.workInformation },
+            contactInformation = contactInformation.trim().ifBlank { baseCrm.contactInformation },
         )
         return ContactRecordInput(
             gender = base?.gender,
@@ -198,6 +269,37 @@ data class ContactFormState(
         val parts = clean.split("-")
         return Triple(parts.getOrNull(0)?.toIntOrNull(), parts.getOrNull(1)?.toIntOrNull(), parts.getOrNull(2)?.toIntOrNull())
     }
+
+    /**
+     * M7: map the form's organization name + department onto the first organization,
+     * preserving every organization beyond it. Blank name drops the first org (web's
+     * `withOrganization` semantics); an existing first org is edited via `.copy()` so
+     * its `id` survives.
+     */
+    private fun mergeOrganizations(base: List<Organization>?): List<Organization>? {
+        val baseOrgs = base.orEmpty()
+        if (organizationName.isBlank()) return baseOrgs.drop(1).ifEmpty { null }
+        val first = baseOrgs.firstOrNull()
+        val edited = (first ?: Organization()).copy(
+            name = organizationName.trim(),
+            units = if (department.isBlank()) null else listOf(OrgUnit(name = department.trim())),
+        )
+        return listOf(edited) + baseOrgs.drop(1)
+    }
+
+    /** M7: trim an online-services list, dropping rows with no uri/user/service. */
+    private fun trimOnlineServices(services: List<OnlineService>): List<OnlineService>? =
+        services.mapNotNull { service ->
+            val trimmed = service.copy(
+                uri = service.uri?.trim()?.ifBlank { null },
+                user = service.user?.trim()?.ifBlank { null },
+            )
+            if (trimmed.uri.isNullOrBlank() && trimmed.user.isNullOrBlank() && trimmed.service.isNullOrBlank()) {
+                null
+            } else {
+                trimmed
+            }
+        }.ifEmpty { null }
 
     companion object {
         const val KIND_HUMAN = "human"
@@ -309,36 +411,25 @@ class ContactFormViewModel @Inject constructor(
     fun onNicknameChange(value: String) = _uiState.update { it.copy(nickname = value) }
     fun onKindChange(value: String) = _uiState.update { it.copy(kind = value) }
     fun onLanguageChange(value: String) = _uiState.update { it.copy(language = value) }
-    // T81: index-based edit/add/remove instead of a full-list replace, so a value edit can
-    // never be reconstructed into a fresh object — it can only ever `.copy()` the entry
-    // already at that index. Reindexing a plain List<String> after a middle-row delete would
-    // silently attach the deleted entry's metadata to its former neighbor; filtering by index
-    // here removes the exact object the user removed instead.
-    fun onEmailValueChange(index: Int, value: String) = _uiState.update {
-        it.copy(emails = it.emails.mapIndexed { i, email -> if (i == index) email.copy(address = value) else email })
-    }
-    fun onEmailAdd() = _uiState.update { it.copy(emails = it.emails + Email(address = "")) }
-    fun onEmailRemove(index: Int) = _uiState.update {
-        it.copy(emails = it.emails.filterIndexed { i, _ -> i != index })
-    }
-
-    fun onPhoneValueChange(index: Int, value: String) = _uiState.update {
-        it.copy(phones = it.phones.mapIndexed { i, phone -> if (i == index) phone.copy(number = value) else phone })
-    }
-
-    /**
-     * Default a newly added row's type to "cell", matching the web form's MultiValueField
-     * `defaultType="cell"`. Without a type the backend stores ContactPhone.Type="" and
-     * buildPhones emits a bare Phone{number} with no features/contexts/label, so the detail
-     * screen can never show an SMS action for a phone the form created (T34 phone-feature
-     * detection). Only a genuinely new row gets this default — an existing loaded phone's
-     * label is never touched here (that was T81's bug: the default was applied to every
-     * phone, loaded or new, on every save).
-     */
-    fun onPhoneAdd() = _uiState.update { it.copy(phones = it.phones + Phone(number = "", label = "cell")) }
-    fun onPhoneRemove(index: Int) = _uiState.update {
-        it.copy(phones = it.phones.filterIndexed { i, _ -> i != index })
-    }
+    // M7: each multi-value list takes the whole edited list from MultiValueEditor. The
+    // editor only ever `.copy()`s the exact object at an index (never reconstructs), so
+    // object identity — and with it every unshown field — survives a middle-row delete
+    // exactly as T81's index-based contract intended. New rows are minted by the spec's
+    // `blank()`, the single place a new entry's default type (phone `cell`) lives.
+    fun onEmailsChange(value: List<Email>) = _uiState.update { it.copy(emails = value) }
+    fun onPhonesChange(value: List<Phone>) = _uiState.update { it.copy(phones = value) }
+    fun onAddressesChange(value: List<Address>) = _uiState.update { it.copy(addresses = value) }
+    fun onTitlesChange(value: List<Title>) = _uiState.update { it.copy(titles = value) }
+    fun onImppChange(value: List<OnlineService>) = _uiState.update { it.copy(imppAddresses = value) }
+    fun onSocialChange(value: List<OnlineService>) = _uiState.update { it.copy(socialProfiles = value) }
+    fun onOtherServicesChange(value: List<OnlineService>) = _uiState.update { it.copy(otherOnlineServices = value) }
+    fun onLinksChange(value: List<Resource>) = _uiState.update { it.copy(links = value) }
+    fun onPersonalInfoChange(value: List<PersonalInfo>) = _uiState.update { it.copy(personalInfo = value) }
+    fun onOrganizationNameChange(value: String) = _uiState.update { it.copy(organizationName = value) }
+    fun onDepartmentChange(value: String) = _uiState.update { it.copy(department = value) }
+    fun onHowWeMetChange(value: String) = _uiState.update { it.copy(howWeMet = value) }
+    fun onWorkInformationChange(value: String) = _uiState.update { it.copy(workInformation = value) }
+    fun onContactInformationChange(value: String) = _uiState.update { it.copy(contactInformation = value) }
     fun onBirthdayChange(value: String) = _uiState.update { it.copy(birthday = value) }
     fun onNotesChange(value: String) = _uiState.update { it.copy(notes = value) }
 
@@ -442,6 +533,18 @@ class ContactFormViewModel @Inject constructor(
         // ever edits the address/number field of each.
         val emails = card?.emails?.ifEmpty { null } ?: listOf(Email(address = ""))
         val phones = card?.phones?.ifEmpty { null } ?: listOf(Phone(number = "", label = "cell"))
+        // M7: load every other editable Card group as the real objects. Organizations are
+        // the flat exception: the form surfaces the first org's name + department.
+        val addresses = card?.addresses.orEmpty()
+        val firstOrg = card?.organizations?.firstOrNull()
+        val organizationName = firstOrg?.name.orEmpty()
+        val department = firstOrg?.units?.firstOrNull()?.name.orEmpty()
+        val titles = card?.titles.orEmpty()
+        val imppAddresses = card?.imppAddresses.orEmpty()
+        val socialProfiles = card?.socialProfiles.orEmpty()
+        val otherOnlineServices = card?.otherOnlineServices.orEmpty()
+        val links = card?.links.orEmpty()
+        val personalInfo = card?.personalInfo.orEmpty()
         val birthday = card?.anniversaries?.firstOrNull { it.kind == "birth" }?.date?.partial?.let {
             formatPartialDate(it)
         } ?: ""
@@ -459,8 +562,20 @@ class ContactFormViewModel @Inject constructor(
             language = language,
             emails = emails,
             phones = phones,
+            addresses = addresses,
+            organizationName = organizationName,
+            department = department,
+            titles = titles,
+            imppAddresses = imppAddresses,
+            socialProfiles = socialProfiles,
+            otherOnlineServices = otherOnlineServices,
+            links = links,
+            personalInfo = personalInfo,
             birthday = birthday,
             notes = notes,
+            howWeMet = record.crm?.howWeMet.orEmpty(),
+            workInformation = record.crm?.workInformation.orEmpty(),
+            contactInformation = record.crm?.contactInformation.orEmpty(),
         )
     }
 

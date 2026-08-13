@@ -135,6 +135,45 @@
     <string name="contact_value_n">Value %1$d</string>
     <string name="contact_remove">Remove</string>
     <string name="contact_add">Add</string>
+    <!-- M7: generic multi-value editor -->
+    <string name="contact_field_type">Type</string>
+    <string name="contact_type_none">None</string>
+    <string name="contact_preferred">Preferred</string>
+    <string name="contact_set_preferred">Set as preferred</string>
+    <string name="contact_type_home">Home</string>
+    <string name="contact_type_work">Work</string>
+    <string name="contact_type_cell">Mobile</string>
+    <string name="contact_type_fax">Fax</string>
+    <string name="contact_type_other">Other</string>
+    <string name="contact_context_private">Private</string>
+    <string name="contact_context_school">School</string>
+    <string name="contact_context_billing">Billing</string>
+    <string name="contact_context_delivery">Delivery</string>
+    <string name="contact_online_service_service">Service</string>
+    <string name="contact_title_kind_title">Job title</string>
+    <string name="contact_title_kind_role">Role</string>
+    <string name="contact_personal_info_kind_expertise">Expertise</string>
+    <string name="contact_personal_info_kind_hobby">Hobby</string>
+    <string name="contact_personal_info_kind_interest">Interest</string>
+    <!-- M7: new form sections -->
+    <string name="contact_department">Department</string>
+    <string name="contact_job_titles">Job titles</string>
+    <string name="contact_impps">Instant Messaging</string>
+    <string name="contact_social_profiles">Social profiles</string>
+    <string name="contact_other_online_services">Other online services</string>
+    <string name="contact_how_we_met">How we met</string>
+    <string name="contact_work_information">Work information</string>
+    <string name="contact_contact_information">Additional contact information</string>
+    <!-- M7: address editor -->
+    <string name="contact_address_street">Street</string>
+    <string name="contact_address_city">City</string>
+    <string name="contact_address_region">State / Region</string>
+    <string name="contact_address_postal">Postal code</string>
+    <string name="contact_address_country">Country</string>
+    <string name="contact_address_pobox">PO box</string>
+    <string name="contact_address_apartment">Apartment / Suite</string>
+    <string name="contact_address_floor">Floor</string>
+    <string name="contact_address_additional">Additional fields</string>
     <string name="contact_create">Create contact</string>
     <string name="contact_save">Save changes</string>
     <string name="contact_error_given_name">At least one given name is required</string>

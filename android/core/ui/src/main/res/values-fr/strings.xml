@@ -135,6 +135,45 @@
     <string name="contact_value_n">Valeur %1$d</string>
     <string name="contact_remove">Supprimer</string>
     <string name="contact_add">Ajouter</string>
+    <!-- M7 : éditeur à valeurs multiples -->
+    <string name="contact_field_type">Type</string>
+    <string name="contact_type_none">Aucun</string>
+    <string name="contact_preferred">Préféré</string>
+    <string name="contact_set_preferred">Définir comme préféré</string>
+    <string name="contact_type_home">Domicile</string>
+    <string name="contact_type_work">Travail</string>
+    <string name="contact_type_cell">Mobile</string>
+    <string name="contact_type_fax">Fax</string>
+    <string name="contact_type_other">Autre</string>
+    <string name="contact_context_private">Privé</string>
+    <string name="contact_context_school">École</string>
+    <string name="contact_context_billing">Facturation</string>
+    <string name="contact_context_delivery">Livraison</string>
+    <string name="contact_online_service_service">Service</string>
+    <string name="contact_title_kind_title">Titre du poste</string>
+    <string name="contact_title_kind_role">Rôle</string>
+    <string name="contact_personal_info_kind_expertise">Expertise</string>
+    <string name="contact_personal_info_kind_hobby">Passe-temps</string>
+    <string name="contact_personal_info_kind_interest">Intérêt</string>
+    <!-- M7 : nouvelles sections du formulaire -->
+    <string name="contact_department">Service</string>
+    <string name="contact_job_titles">Titres de poste</string>
+    <string name="contact_impps">Messagerie instantanée</string>
+    <string name="contact_social_profiles">Profils sociaux</string>
+    <string name="contact_other_online_services">Autres services en ligne</string>
+    <string name="contact_how_we_met">Comment nous nous sommes rencontrés</string>
+    <string name="contact_work_information">Informations professionnelles</string>
+    <string name="contact_contact_information">Coordonnées supplémentaires</string>
+    <!-- M7 : éditeur d&#39;adresse -->
+    <string name="contact_address_street">Rue</string>
+    <string name="contact_address_city">Ville</string>
+    <string name="contact_address_region">État / Région</string>
+    <string name="contact_address_postal">Code postal</string>
+    <string name="contact_address_country">Pays</string>
+    <string name="contact_address_pobox">Boîte postale</string>
+    <string name="contact_address_apartment">Appartement / Suite</string>
+    <string name="contact_address_floor">Étage</string>
+    <string name="contact_address_additional">Champs supplémentaires</string>
     <string name="contact_create">Créer le contact</string>
     <string name="contact_save">Enregistrer les modifications</string>
     <string name="contact_error_given_name">Au moins un prénom est requis</string>

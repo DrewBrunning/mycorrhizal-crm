@@ -953,7 +953,10 @@ private fun EmailRow(email: Email) {
             style = AppTypography.mono,
             modifier = Modifier.weight(1f),
         )
-        email.label?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        // M7: the type is `contexts[0]` (web parity — the form's type dropdown writes
+        // there), with `label` as a fallback for legacy flat-Type data (backend's
+        // buildEmails maps ContactEmail.Type -> Email.Label).
+        (email.contexts?.firstOrNull() ?: email.label)?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         if (address.isNotBlank()) {
             IconButton(onClick = { context.startActivity(FieldActions.emailIntent(address)) }) {
                 Icon(
@@ -986,9 +989,11 @@ private fun PhoneRow(phone: Phone) {
             style = AppTypography.mono,
             modifier = Modifier.weight(1f),
         )
-        val features = phone.features?.joinToString(", ").orEmpty()
-        if (features.isNotBlank()) {
-            Text(features, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        // M7: the type is `features[0] ?: contexts[0]` (web parity), matching what
+        // the form's type dropdown reads. `label` is X-ABLabel, not the type.
+        val typeToken = phone.features?.firstOrNull() ?: phone.contexts?.firstOrNull()
+        if (!typeToken.isNullOrBlank()) {
+            Text(typeToken, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (number.isNotBlank()) {
             IconButton(onClick = { context.startActivity(FieldActions.dialIntent(number)) }) {
