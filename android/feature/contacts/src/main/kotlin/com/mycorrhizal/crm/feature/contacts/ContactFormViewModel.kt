@@ -4,9 +4,12 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
+import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.model.network.CRMEnvelope
 import com.mycorrhizal.crm.model.network.Card
+import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.ContactRecordInput
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.Email
@@ -18,6 +21,7 @@ import com.mycorrhizal.crm.model.network.Anniversary
 import com.mycorrhizal.crm.model.network.AnniversaryDate
 import com.mycorrhizal.crm.model.network.PartialDate
 import com.mycorrhizal.crm.model.network.CardNote
+import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
@@ -27,6 +31,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.Locale
 import javax.inject.Inject
 
 /**
@@ -34,14 +39,25 @@ import javax.inject.Inject
  * here (single source of truth for the form screen); [toInput] assembles the
  * neutral Card/CRM the backend accepts.
  *
- * `circlesText` is the raw comma-separated field text; it is parsed only on
- * save (parsing on every keystroke corrupts typed input).
+ * M24: `circles`/`tags` are selected **existing** circle/tag names (chips + dropdown — the
+ * ticket's "autocomplete of existing circles, not a free-text comma-separated field"), and
+ * memberships are applied through the CircleMember/ContactTag sub-resources on save, exactly
+ * like the web's AddContactDialog. `allCircles`/`allTags` back the add menus.
  */
 data class ContactFormState(
     val contactId: Int? = null,
     val givenName: String = "",
+    val prefix: String = "",
+    val middleName: String = "",
     val surname: String = "",
+    val suffix: String = "",
     val nickname: String = "",
+    // M24: envelope-side entity kind (human|animal) — the backend default is human, matching
+    // web's AddContactDialog.
+    val kind: String = KIND_HUMAN,
+    // M24: the card's default language tag; defaults to the device locale on create, mirroring
+    // web's defaultLanguage() (i18n.language).
+    val language: String = "",
     // T81: the loaded Email/Phone objects, not scalars — id/contexts/pref/features/label
     // ride along untouched through edit and save. The single default row (create mode, or
     // a loaded record with none) is a genuinely new entry, so the phone gets the same
@@ -50,7 +66,12 @@ data class ContactFormState(
     val phones: List<Phone> = listOf(Phone(number = "", label = "cell")),
     val birthday: String = "",
     val notes: String = "",
-    val circlesText: String = "",
+    // M24: selected circle/tag names. In edit mode these initialize from the join-row
+    // derivations (circlesForContact/tagsForContact), not the legacy flat `crm.circles`.
+    val circles: List<String> = emptyList(),
+    val tags: List<String> = emptyList(),
+    val allCircles: List<Circle> = emptyList(),
+    val allTags: List<Tag> = emptyList(),
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
     @StringRes val errorRes: Int? = null,
@@ -75,7 +96,8 @@ data class ContactFormState(
         val baseCrm = base?.crm ?: CRMEnvelope()
 
         val card = baseCard.copy(
-            name = mergeName(baseCard.name, givenName, surname),
+            language = language.ifBlank { baseCard.language },
+            name = mergeName(baseCard.name),
             nicknames = if (nickname.isNotBlank()) {
                 (baseCard.nicknames.orEmpty().let { existing ->
                     if (existing.isEmpty()) listOf(Nickname(name = nickname.trim()))
@@ -104,11 +126,12 @@ data class ContactFormState(
                 baseCard.notes
             },
         )
-        val crm = if (circlesText.isBlank()) {
-            baseCrm
-        } else {
-            baseCrm.copy(circles = circlesText.split(",").map(String::trim).filter(String::isNotEmpty))
-        }
+        val crm = baseCrm.copy(
+            kind = kind.ifBlank { baseCrm.kind },
+            // M24: the flat `circles` projection mirrors the selection; the real memberships
+            // are applied via the CircleMember sub-resource on save (see applyMembershipChanges).
+            circles = circles,
+        )
         return ContactRecordInput(
             gender = base?.gender,
             card = card,
@@ -122,15 +145,23 @@ data class ContactFormState(
         else -> null
     }
 
-    /** Merge form given/surname onto the base name, preserving other name
-     *  components (title, given2, generation…) and rebuilding `full`. */
-    private fun mergeName(base: Name?, givenName: String, surname: String): Name {
+    /**
+     * Merge form name components onto the base name, replacing the editable kinds
+     * (title/given/given2/surname/generation) and preserving everything else.
+     * Mirror the web AddContactDialog's component mapping: prefix→title,
+     * middle name→given2, suffix→generation (JSContact-standard kinds).
+     */
+    private fun mergeName(base: Name?): Name {
         val baseComponents = base?.components.orEmpty()
-        val kept = baseComponents.filter { it.kind != "given" && it.kind != "surname" }
+        val editableKinds = setOf("title", "given", "given2", "surname", "generation")
+        val kept = baseComponents.filter { it.kind !in editableKinds }
         val components = buildList {
             addAll(kept)
+            if (prefix.isNotBlank()) add(NameComponent(kind = "title", value = prefix.trim()))
             if (givenName.isNotBlank()) add(NameComponent(kind = "given", value = givenName.trim()))
+            if (middleName.isNotBlank()) add(NameComponent(kind = "given2", value = middleName.trim()))
             if (surname.isNotBlank()) add(NameComponent(kind = "surname", value = surname.trim()))
+            if (suffix.isNotBlank()) add(NameComponent(kind = "generation", value = suffix.trim()))
         }
         val full = components.mapNotNull { it.value }.filter { it.isNotBlank() }.joinToString(" ")
         return Name(
@@ -167,6 +198,11 @@ data class ContactFormState(
         val parts = clean.split("-")
         return Triple(parts.getOrNull(0)?.toIntOrNull(), parts.getOrNull(1)?.toIntOrNull(), parts.getOrNull(2)?.toIntOrNull())
     }
+
+    companion object {
+        const val KIND_HUMAN = "human"
+        const val KIND_ANIMAL = "animal"
+    }
 }
 
 sealed interface ContactFormEvent {
@@ -176,6 +212,10 @@ sealed interface ContactFormEvent {
 @HiltViewModel
 class ContactFormViewModel @Inject constructor(
     private val contactRepository: ContactRepository,
+    // M24: the circle/tag selectors need the existing entities (dropdowns) and apply
+    // memberships via the join-row sub-resources, like web's AddContactDialog.
+    private val circleRepository: CircleRepository,
+    private val tagRepository: TagRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -194,7 +234,30 @@ class ContactFormViewModel @Inject constructor(
     private var baseRecord: ContactRecordResponse? = null
 
     init {
-        if (contactId != null) loadExisting()
+        if (contactId != null) {
+            loadExisting()
+        } else {
+            // M24: default the language to the device locale on create, mirroring web's
+            // AddContactDialog (defaultLanguage = i18n.language).
+            _uiState.update { it.copy(language = defaultLanguage()) }
+        }
+        loadOptions()
+    }
+
+    /** Load the existing circles/tags that back the add menus (create + edit). */
+    private fun loadOptions() {
+        viewModelScope.launch {
+            circleRepository.list().foldApiError(
+                onSuccess = { circles -> _uiState.update { it.copy(allCircles = circles) } },
+                onError = {},
+            )
+        }
+        viewModelScope.launch {
+            tagRepository.list().foldApiError(
+                onSuccess = { tags -> _uiState.update { it.copy(allTags = tags) } },
+                onError = {},
+            )
+        }
     }
 
     fun loadExisting() {
@@ -205,6 +268,7 @@ class ContactFormViewModel @Inject constructor(
                 onSuccess = { record ->
                     baseRecord = record
                     _uiState.update { it.toFormState(record).copy(isLoading = false) }
+                    loadMemberships(record)
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
@@ -213,9 +277,38 @@ class ContactFormViewModel @Inject constructor(
         }
     }
 
+    /**
+     * M24: seed the circle/tag chips from the join-row derivations (authoritative) rather
+     * than the legacy flat `crm.circles`, which is a stale denormalized copy.
+     */
+    private fun loadMemberships(record: ContactRecordResponse) {
+        val uid = record.uid ?: return
+        viewModelScope.launch {
+            circleRepository.circlesForContact(uid).foldApiError(
+                onSuccess = { circles ->
+                    _uiState.update { it.copy(circles = circles.map { c -> c.name }) }
+                },
+                onError = {},
+            )
+        }
+        viewModelScope.launch {
+            tagRepository.tagsForContact(uid).foldApiError(
+                onSuccess = { tags ->
+                    _uiState.update { it.copy(tags = tags.map { t -> t.name }) }
+                },
+                onError = {},
+            )
+        }
+    }
+
     fun onGivenNameChange(value: String) = _uiState.update { it.copy(givenName = value) }
     fun onSurnameChange(value: String) = _uiState.update { it.copy(surname = value) }
+    fun onPrefixChange(value: String) = _uiState.update { it.copy(prefix = value) }
+    fun onMiddleNameChange(value: String) = _uiState.update { it.copy(middleName = value) }
+    fun onSuffixChange(value: String) = _uiState.update { it.copy(suffix = value) }
     fun onNicknameChange(value: String) = _uiState.update { it.copy(nickname = value) }
+    fun onKindChange(value: String) = _uiState.update { it.copy(kind = value) }
+    fun onLanguageChange(value: String) = _uiState.update { it.copy(language = value) }
     // T81: index-based edit/add/remove instead of a full-list replace, so a value edit can
     // never be reconstructed into a fresh object — it can only ever `.copy()` the entry
     // already at that index. Reindexing a plain List<String> after a middle-row delete would
@@ -248,7 +341,17 @@ class ContactFormViewModel @Inject constructor(
     }
     fun onBirthdayChange(value: String) = _uiState.update { it.copy(birthday = value) }
     fun onNotesChange(value: String) = _uiState.update { it.copy(notes = value) }
-    fun onCirclesTextChange(value: String) = _uiState.update { it.copy(circlesText = value) }
+
+    /** M24: toggle a circle on/off the selection by name (deduped against what's already on). */
+    fun onCircleToggle(name: String) = _uiState.update {
+        if (name in it.circles) it.copy(circles = it.circles - name) else it.copy(circles = it.circles + name)
+    }
+
+    /** M24: toggle a tag on/off the selection by name. */
+    fun onTagToggle(name: String) = _uiState.update {
+        if (name in it.tags) it.copy(tags = it.tags - name) else it.copy(tags = it.tags + name)
+    }
+
     fun onErrorShown() = _uiState.update { it.copy(errorRes = null, error = null) }
 
     fun save() {
@@ -271,11 +374,50 @@ class ContactFormViewModel @Inject constructor(
                 contactRepository.createContact(input)
             }
             result.foldApiError(
-                onSuccess = { _uiState.update { it.copy(isSaving = false) }; _events.value = ContactFormEvent.Saved },
+                onSuccess = { record ->
+                    // Await the membership reconciliation before emitting Saved, so the form
+                    // stays on "saving" until the memberships land — web's AddContactDialog
+                    // awaits its addCircleMember/addContactTag calls the same way, and a
+                    // fire-and-forget here would race the navigate-back against the writes.
+                    viewModelScope.launch {
+                        applyMembershipChanges(record)
+                        _uiState.update { it.copy(isSaving = false) }
+                        _events.value = ContactFormEvent.Saved
+                    }
+                },
                 onError = { error ->
                     _uiState.update { it.copy(isSaving = false, error = error.displayMessage) }
                 },
             )
+        }
+    }
+
+    /**
+     * M24: reconcile the contact's circle memberships and taggings to the form's selection,
+     * via the CircleMember/ContactTag sub-resources (the PUT's `crm.circles` only touches the
+     * legacy flat column). Create mode: the contact is new, so this only adds. Edit mode: it
+     * also removes memberships/taggings the user deselected. Best-effort — a failure on one
+     * membership is swallowed rather than failing the whole save (web does the same).
+     */
+    private suspend fun applyMembershipChanges(record: ContactRecordResponse) {
+        val uid = record.uid ?: return
+        val state = _uiState.value
+        val selectedCircleIds = state.allCircles.filter { it.name in state.circles }.map { it.id }.toSet()
+        val selectedTagIds = state.allTags.filter { it.name in state.tags }.map { it.id }.toSet()
+
+        val loadedCircles = circleRepository.circlesForContact(uid).getOrNull().orEmpty()
+        loadedCircles.filter { it.id !in selectedCircleIds }.forEach {
+            runCatching { circleRepository.removeMember(it.id, uid) }
+        }
+        val loadedTags = tagRepository.tagsForContact(uid).getOrNull().orEmpty()
+        loadedTags.filter { it.id !in selectedTagIds }.forEach {
+            runCatching { tagRepository.removeContact(it.id, uid) }
+        }
+        state.allCircles.filter { it.name in state.circles }.forEach {
+            runCatching { circleRepository.addMember(it.id, uid) }
+        }
+        state.allTags.filter { it.name in state.tags }.forEach {
+            runCatching { tagRepository.addContact(it.id, uid) }
         }
     }
 
@@ -289,7 +431,12 @@ class ContactFormViewModel @Inject constructor(
         val name = card?.name
         val given = name?.components?.firstOrNull { it.kind == "given" }?.value ?: ""
         val surname = name?.components?.firstOrNull { it.kind == "surname" }?.value ?: ""
+        val prefix = name?.components?.firstOrNull { it.kind == "title" }?.value ?: ""
+        val middleName = name?.components?.firstOrNull { it.kind == "given2" }?.value ?: ""
+        val suffix = name?.components?.firstOrNull { it.kind == "generation" }?.value ?: ""
         val nickname = card?.nicknames?.firstOrNull()?.name ?: ""
+        val kind = record.crm?.kind ?: ContactFormState.KIND_HUMAN
+        val language = card?.language.orEmpty()
         // T81: load the entries as-is — no narrowing to a scalar — so id/contexts/pref/
         // features/label survive whatever the form saves next, even though the form only
         // ever edits the address/number field of each.
@@ -299,16 +446,21 @@ class ContactFormViewModel @Inject constructor(
             formatPartialDate(it)
         } ?: ""
         val notes = card?.notes?.firstOrNull()?.note ?: ""
-        val circlesText = (record.crm?.circles ?: emptyList()).joinToString(", ")
+        // M24: circles/tags are seeded asynchronously from the join-row derivations
+        // (loadMemberships), not from the stale flat `crm.circles`.
         return copy(
             givenName = given,
             surname = surname,
+            prefix = prefix,
+            middleName = middleName,
+            suffix = suffix,
             nickname = nickname,
+            kind = kind,
+            language = language,
             emails = emails,
             phones = phones,
             birthday = birthday,
             notes = notes,
-            circlesText = circlesText,
         )
     }
 
@@ -320,5 +472,11 @@ class ContactFormViewModel @Inject constructor(
         val day = p.day?.toString()?.padStart(2, '0')
         if (month == null || day == null) return ""
         return if (p.year == null) "--$month-$day" else "${p.year}-$month-$day"
+    }
+
+    companion object {
+        /** Device locale's language code, or "en" — web's defaultLanguage() equivalent. */
+        internal fun defaultLanguage(): String =
+            Locale.getDefault().language.takeIf { it.isNotBlank() } ?: "en"
     }
 }

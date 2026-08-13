@@ -84,6 +84,12 @@ data class Card(
 /** Mycorrhizal-specific data outside any contact-exchange standard. */
 @JsonClass(generateAdapter = true)
 data class CRMEnvelope(
+    /**
+     * Envelope-side entity kind (human|animal) — distinct from [Card.kind]'s
+     * standard vCard/JSContact KIND (individual|group|org|…), which has no
+     * pet/animal value. Mirrors backend contactmodel.CRMEnvelope.Kind (T27).
+     */
+    val kind: String? = null,
     val circles: List<String>? = null,
     @Json(name = "how_we_met") val howWeMet: String? = null,
     @Json(name = "work_information") val workInformation: String? = null,

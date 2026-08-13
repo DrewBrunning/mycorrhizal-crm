@@ -33,6 +33,27 @@ class CircleRepositoryImpl @Inject constructor(
         return result.map { page -> page.circles }
     }
 
+    override suspend fun circlesForContact(vcardUid: String): Result<List<Circle>> {
+        if (vcardUid.isBlank()) return Result.success(emptyList())
+        // One page rather than walking the cursor: the inline editor needs the circle set to
+        // render its add menu, and members must be attached for the derivation. 100 is the
+        // backend's maxLimit (GetCursorParams clamps anything higher), matching web's own
+        // listCircles default — a user with >100 circles is a documented truncation.
+        val result = apiClient.listCircles(includeMembers = true, limit = 100)
+        if (result.isFailure) return result.map { it.circles }
+        val page = result.getOrThrow()
+        circleDao.upsertAll(page.circles.map { it.toCached() })
+        // Full snapshot — replace the member mirror wholesale rather than merging, so a
+        // removed membership doesn't linger in the cache (join rows hard-delete server-side).
+        memberDao.deleteAll()
+        memberDao.upsertAll(page.members.orEmpty().map { it.toCached() })
+        val circleIds = page.members.orEmpty()
+            .filter { it.memberVCardUid == vcardUid }
+            .map { it.circleId }
+            .toSet()
+        return Result.success(page.circles.filter { it.id in circleIds })
+    }
+
     override suspend fun getWithMembers(id: String): Result<CircleDetail> {
         val result = apiClient.getCircle(id)
         val detail = result.getOrNull()

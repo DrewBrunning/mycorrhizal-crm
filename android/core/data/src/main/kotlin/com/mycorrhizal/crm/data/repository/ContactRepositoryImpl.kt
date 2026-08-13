@@ -117,6 +117,27 @@ class ContactRepositoryImpl @Inject constructor(
         )
     }
 
+    override suspend fun deleteContact(id: Int): Result<Unit> {
+        val result = apiClient.deleteContact(id)
+        if (result.isSuccess) dao.deleteById(id)
+        return result
+    }
+
+    override suspend fun archiveContact(id: Int): Result<Unit> {
+        val result = apiClient.archiveContact(id)
+        if (result.isSuccess) dao.setArchived(id, true)
+        return result
+    }
+
+    override suspend fun unarchiveContact(id: Int): Result<Unit> {
+        val result = apiClient.unarchiveContact(id)
+        if (result.isSuccess) dao.setArchived(id, false)
+        return result
+    }
+
+    override suspend fun exportContactVcf(vcardUid: String, version: Int?): Result<ByteArray> =
+        apiClient.exportContactVcf(vcardUid, version)
+
     override fun observeContacts(): Flow<List<ContactSummary>> =
         flow {
             emit(dao.getAll().map { it.toSummary() })

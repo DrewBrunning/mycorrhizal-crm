@@ -39,4 +39,7 @@ interface CachedContactTagDao {
 
     @Query("DELETE FROM cached_contact_tags WHERE tagId = :tagId AND contactVCardUid = :vcardUid")
     suspend fun deleteTagging(tagId: String, vcardUid: String)
+
+    @Query("DELETE FROM cached_contact_tags")
+    suspend fun deleteAll()
 }

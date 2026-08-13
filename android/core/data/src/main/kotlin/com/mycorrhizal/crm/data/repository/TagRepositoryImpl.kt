@@ -32,6 +32,26 @@ class TagRepositoryImpl @Inject constructor(
         return result.map { page -> page.tags }
     }
 
+    override suspend fun tagsForContact(vcardUid: String): Result<List<Tag>> {
+        if (vcardUid.isBlank()) return Result.success(emptyList())
+        // 100 is the backend's maxLimit (the default is 25 — omitting it would silently
+        // truncate a user with >25 tags and miss the contact's later tags), matching web's
+        // own listTags default. A user with >100 tags is a documented truncation.
+        val result = apiClient.listTags(includeContacts = true, limit = 100)
+        if (result.isFailure) return result.map { it.tags }
+        val page = result.getOrThrow()
+        tagDao.upsertAll(page.tags.map { it.toCached() })
+        // Full snapshot — replace the tagging mirror wholesale rather than merging, so a
+        // removed tagging doesn't linger in the cache (join rows hard-delete server-side).
+        contactTagDao.deleteAll()
+        contactTagDao.upsertAll(page.contacts.orEmpty().map { it.toCached() })
+        val tagIds = page.contacts.orEmpty()
+            .filter { it.contactVCardUid == vcardUid }
+            .map { it.tagId }
+            .toSet()
+        return Result.success(page.tags.filter { it.id in tagIds })
+    }
+
     override suspend fun getWithContacts(id: String): Result<TagDetail> {
         val result = apiClient.getTag(id)
         val detail = result.getOrNull()

@@ -191,6 +191,36 @@ class ApiClient(
             moshi.adapter(ContactRecordResponse::class.java).fromJson(body)
         }
 
+    // M24: top-level contact actions (delete/archive/unarchive/export). The
+    // endpoints all pre-date the Android client (route table in
+    // backend/routes/routes.go) — the gap this ticket closes is the missing
+    // client surface, not the backend.
+
+    /** DELETE /api/v1/contacts/{id} — soft-delete; the row stays for undo (T60/M16). */
+    suspend fun deleteContact(id: Int): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$id")
+
+    /** POST /api/v1/contacts/{id}/archive — archives the contact and retires its reminders. */
+    suspend fun archiveContact(id: Int): Result<Unit> =
+        executePostEmpty("$CONTACTS_PATH/$id/archive") { _, _ -> Unit }
+
+    /** POST /api/v1/contacts/{id}/unarchive — restores an archived contact. */
+    suspend fun unarchiveContact(id: Int): Result<Unit> =
+        executePostEmpty("$CONTACTS_PATH/$id/unarchive") { _, _ -> Unit }
+
+    /**
+     * GET /api/v1/export/vcf?vcard_uid=… — exports a single contact as vCard
+     * (4.0 default, 3.0 when [version] == 3), honoring the backend's default
+     * field selection (all sections, private/secret sensitivity excluded).
+     * Returns the raw file bytes; see `executeGetBytes`.
+     */
+    suspend fun exportContactVcf(vcardUid: String, version: Int? = null): Result<ByteArray> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$EXPORT_VCF_PATH".toHttpUrl().newBuilder()
+        urlBuilder.addQueryParameter("vcard_uid", vcardUid)
+        if (version == 3) urlBuilder.addQueryParameter("version", "3")
+        return executeGetBytes(urlBuilder.build().toString())
+    }
+
     /** GET /api/v1/field-definitions (T84). */
     suspend fun listFieldDefinitions(limit: Int? = null): Result<FieldDefinitionsResponse> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$FIELD_DEFINITIONS_PATH".toHttpUrl().newBuilder()
@@ -775,6 +805,34 @@ class ApiClient(
         return execute(request, mapper)
     }
 
+    /**
+     * GET for a binary/download response: reads the body as raw bytes rather
+     * than a decoded string (a VCF export is a file, not JSON). Non-2xx still
+     * parses the JSON error body via the normal path.
+     */
+    private suspend fun executeGetBytes(url: String): Result<ByteArray> =
+        withContext(Dispatchers.IO) {
+            try {
+                val request = Request.Builder().url(url.toHttpUrl()).get().build()
+                val response = okHttpClient.newCall(request).execute()
+                response.use {
+                    val body = it.body
+                    if (!it.isSuccessful) {
+                        val errorBody = body?.string().orEmpty()
+                        return@withContext Result.failure(parseError(it.code, errorBody))
+                    }
+                    val bytes = body?.bytes()
+                    if (bytes == null || bytes.isEmpty()) {
+                        Result.failure(ApiError.Parse("Empty response body"))
+                    } else {
+                        Result.success(bytes)
+                    }
+                }
+            } catch (e: Exception) {
+                Result.failure(e.toApiError())
+            }
+        }
+
     private suspend fun <T> execute(
         request: Request,
         mapper: (okhttp3.Response, String) -> T?,
@@ -839,6 +897,7 @@ class ApiClient(
         private const val PREFERENCES_PATH = "$API_V1/preferences"
         private const val CONVERSATION_AGENDA_PATH = "$API_V1/conversation-agenda"
         private const val CADENCE_POLICIES_PATH = "$API_V1/cadence-policies"
+        private const val EXPORT_VCF_PATH = "$API_V1/export/vcf"
         private const val AUTH_COOKIE = "auth_token"    }
 }
 

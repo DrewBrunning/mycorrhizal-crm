@@ -80,7 +80,26 @@ class ReminderFormViewModel @Inject constructor(
         (raw as? Int) ?: (raw as? String)?.toIntOrNull()
     }
 
-    private val _uiState = MutableStateFlow(ReminderFormState(contactId = contactId, reminderId = reminderId))
+    // M24 stay-in-touch: the detail screen navigates here with a prefilled message +
+    // recurrence ("Catch up with <name>", quarterly) so the one-tap action only needs a date.
+    private val prefillMessage: String? = run {
+        val raw: Any? = savedStateHandle["message"]
+        (raw as? String)?.takeIf { it.isNotBlank() }
+    }
+
+    private val prefillRecurrence: String? = run {
+        val raw: Any? = savedStateHandle["recurrence"]
+        (raw as? String)?.takeIf { it in ReminderRecurrence.ALL }
+    }
+
+    private val _uiState = MutableStateFlow(
+        ReminderFormState(
+            contactId = contactId,
+            reminderId = reminderId,
+            message = prefillMessage.orEmpty(),
+            recurrence = prefillRecurrence ?: ReminderRecurrence.ONCE,
+        ),
+    )
     val uiState: StateFlow<ReminderFormState> = _uiState.asStateFlow()
 
     private val _events = MutableStateFlow<ReminderFormEvent?>(null)

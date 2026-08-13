@@ -39,4 +39,7 @@ interface CachedCircleMemberDao {
 
     @Query("DELETE FROM cached_circle_members WHERE circleId = :circleId AND memberVCardUid = :vcardUid")
     suspend fun deleteMember(circleId: String, vcardUid: String)
+
+    @Query("DELETE FROM cached_circle_members")
+    suspend fun deleteAll()
 }
