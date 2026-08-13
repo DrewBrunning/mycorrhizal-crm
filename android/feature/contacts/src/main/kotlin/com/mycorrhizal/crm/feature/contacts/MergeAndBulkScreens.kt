@@ -1,15 +1,18 @@
 package com.mycorrhizal.crm.feature.contacts
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Menu
@@ -35,6 +38,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -166,15 +170,51 @@ private fun ConflictRow(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * M9: which circle/tag-scoped action a picker dialog is choosing an id for.
+ * Archive/unarchive/delete need no id and skip the picker, going straight to
+ * the existing confirm dialog.
+ */
+private enum class BulkPickerTarget { CIRCLE, TAG }
+
 @Composable
 fun BulkOperationsScreen(
     onMenuClick: () -> Unit,
     viewModel: BulkOperationsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    BulkOperationsScreenContent(
+        uiState = state,
+        onMenuClick = onMenuClick,
+        onToggle = viewModel::toggle,
+        onRun = viewModel::run,
+        onErrorShown = viewModel::onErrorShown,
+    )
+}
+
+/**
+ * Stateless screen content, split out from [BulkOperationsScreen] so the circle/tag pickers and
+ * confirm flow are directly testable without a Hilt-backed ViewModel (mirrors
+ * `ContactListScreenContent`'s split in `ContactListScreen.kt`).
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun BulkOperationsScreenContent(
+    uiState: BulkUiState,
+    onMenuClick: () -> Unit = {},
+    onToggle: (Int) -> Unit = {},
+    onRun: (String, String?, String?) -> Unit = { _, _, _ -> },
+    onErrorShown: () -> Unit = {},
+) {
+    val state = uiState
     val snackbarHostState = remember { SnackbarHostState() }
     var pendingAction by remember { mutableStateOf<String?>(null) }
+    var pendingCircleId by remember { mutableStateOf<String?>(null) }
+    var pendingTagId by remember { mutableStateOf<String?>(null) }
+    // Set while a circle/tag picker dialog is open; the action it's picking
+    // for (add vs remove) travels alongside it so confirming the picker can
+    // set pendingAction directly.
+    var picker by remember { mutableStateOf<Pair<BulkPickerTarget, String>?>(null) }
 
     Scaffold(
         topBar = {
@@ -198,16 +238,52 @@ fun BulkOperationsScreen(
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
             ) {
-                TextButton(onClick = { pendingAction = BulkActions.ARCHIVE }) {
+                TextButton(
+                    onClick = { pendingAction = BulkActions.ARCHIVE },
+                    modifier = Modifier.testTag("bulk-archive"),
+                ) {
                     Text(stringResource(R.string.bulk_archive))
                 }
-                TextButton(onClick = { pendingAction = BulkActions.UNARCHIVE }) {
+                TextButton(
+                    onClick = { pendingAction = BulkActions.UNARCHIVE },
+                    modifier = Modifier.testTag("bulk-unarchive"),
+                ) {
                     Text(stringResource(R.string.bulk_unarchive))
                 }
-                TextButton(onClick = { pendingAction = BulkActions.DELETE }) {
+                TextButton(
+                    onClick = { pendingAction = BulkActions.DELETE },
+                    modifier = Modifier.testTag("bulk-delete"),
+                ) {
                     Text(stringResource(R.string.action_delete))
+                }
+                TextButton(
+                    onClick = { picker = BulkPickerTarget.CIRCLE to BulkActions.ADD_CIRCLE },
+                    modifier = Modifier.testTag("bulk-add-circle"),
+                ) {
+                    Text(stringResource(R.string.bulk_add_circle))
+                }
+                TextButton(
+                    onClick = { picker = BulkPickerTarget.CIRCLE to BulkActions.REMOVE_CIRCLE },
+                    modifier = Modifier.testTag("bulk-remove-circle"),
+                ) {
+                    Text(stringResource(R.string.bulk_remove_circle))
+                }
+                TextButton(
+                    onClick = { picker = BulkPickerTarget.TAG to BulkActions.ADD_TAG },
+                    modifier = Modifier.testTag("bulk-add-tag"),
+                ) {
+                    Text(stringResource(R.string.bulk_add_tag))
+                }
+                TextButton(
+                    onClick = { picker = BulkPickerTarget.TAG to BulkActions.REMOVE_TAG },
+                    modifier = Modifier.testTag("bulk-remove-tag"),
+                ) {
+                    Text(stringResource(R.string.bulk_remove_tag))
                 }
             }
             LazyColumn(modifier = Modifier.weight(1f)) {
@@ -216,10 +292,10 @@ fun BulkOperationsScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { viewModel.toggle(contact.id) }
+                            .clickable { onToggle(contact.id) }
                             .padding(horizontal = 16.dp, vertical = 8.dp),
                     ) {
-                        Checkbox(checked = contact.id in state.selected, onCheckedChange = { viewModel.toggle(contact.id) })
+                        Checkbox(checked = contact.id in state.selected, onCheckedChange = { onToggle(contact.id) })
                         Text(
                             text = contact.displayName,
                             style = MaterialTheme.typography.bodyLarge,
@@ -240,18 +316,86 @@ fun BulkOperationsScreen(
         }
     }
 
+    picker?.let { (target, action) ->
+        val names: List<Pair<String, String>> = when (target) {
+            BulkPickerTarget.CIRCLE -> state.circles.map { it.id to it.name }
+            BulkPickerTarget.TAG -> state.tags.map { it.id to it.name }
+        }
+        AlertDialog(
+            onDismissRequest = { picker = null },
+            title = {
+                Text(
+                    stringResource(
+                        if (target == BulkPickerTarget.CIRCLE) R.string.bulk_pick_circle else R.string.bulk_pick_tag,
+                    ),
+                )
+            },
+            text = {
+                if (names.isEmpty()) {
+                    Text(
+                        stringResource(
+                            if (target == BulkPickerTarget.CIRCLE) R.string.bulk_no_circles else R.string.bulk_no_tags,
+                        ),
+                    )
+                } else {
+                    LazyColumn(modifier = Modifier.heightIn(max = 320.dp)) {
+                        items(names, key = { it.first }) { (id, name) ->
+                            Text(
+                                text = name,
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        when (target) {
+                                            BulkPickerTarget.CIRCLE -> pendingCircleId = id
+                                            BulkPickerTarget.TAG -> pendingTagId = id
+                                        }
+                                        pendingAction = action
+                                        picker = null
+                                    }
+                                    .padding(vertical = 12.dp),
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { picker = null }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
+
     pendingAction?.let { action ->
         AlertDialog(
-            onDismissRequest = { pendingAction = null },
+            onDismissRequest = {
+                pendingAction = null
+                pendingCircleId = null
+                pendingTagId = null
+            },
             title = { Text(stringResource(R.string.bulk_confirm_title)) },
             text = { Text(stringResource(R.string.bulk_confirm_body, state.selected.size)) },
             confirmButton = {
-                TextButton(onClick = { viewModel.run(action); pendingAction = null }) {
+                TextButton(
+                    onClick = {
+                        onRun(action, pendingCircleId, pendingTagId)
+                        pendingAction = null
+                        pendingCircleId = null
+                        pendingTagId = null
+                    },
+                ) {
                     Text(stringResource(R.string.action_confirm))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { pendingAction = null }) {
+                TextButton(
+                    onClick = {
+                        pendingAction = null
+                        pendingCircleId = null
+                        pendingTagId = null
+                    },
+                ) {
                     Text(stringResource(R.string.action_cancel))
                 }
             },
@@ -261,7 +405,7 @@ fun BulkOperationsScreen(
     state.error?.let { message ->
         LaunchedEffect(message) {
             snackbarHostState.showSnackbar(message)
-            viewModel.onErrorShown()
+            onErrorShown()
         }
     }
 }

@@ -242,6 +242,8 @@
     <!-- Notas -->
     <string name="notes_title">Notas</string>
     <string name="notes_empty">Aún no hay notas</string>
+    <string name="notes_inbox_total">%1$d sin asignar</string>
+    <string name="action_load_more">Cargar más</string>
     <string name="note_new">Nueva nota</string>
     <string name="note_edit">Editar nota</string>
     <string name="note_content">Nota</string>
@@ -406,6 +408,14 @@
     <string name="bulk_title">Operaciones masivas</string>
     <string name="bulk_archive">Archivar</string>
     <string name="bulk_unarchive">Desarchivar</string>
+    <string name="bulk_add_circle">Añadir a un círculo</string>
+    <string name="bulk_remove_circle">Quitar de un círculo</string>
+    <string name="bulk_add_tag">Añadir etiqueta</string>
+    <string name="bulk_remove_tag">Quitar etiqueta</string>
+    <string name="bulk_pick_circle">Elegir un círculo</string>
+    <string name="bulk_pick_tag">Elegir una etiqueta</string>
+    <string name="bulk_no_circles">Aún no hay círculos</string>
+    <string name="bulk_no_tags">Aún no hay etiquetas</string>
     <string name="bulk_confirm_title">¿Confirmar acción masiva?</string>
     <string name="bulk_confirm_body">¿Ejecutar la acción en %1$d contactos seleccionados?</string>
     <string name="bulk_result">Hecho: %1$d correctos, %2$d fallidos.</string>
@@ -419,4 +429,17 @@
     <string name="import_button">Importar %1$d seleccionados (%2$d posibles duplicados)</string>
     <string name="import_done">%1$d contactos importados.</string>
     <string name="import_duplicate">Posible duplicado de %1$s</string>
+
+    <!-- VCF file import (M9) -->
+    <string name="import_vcf_entry">Importar desde un archivo VCF</string>
+    <string name="import_vcf_title">Importar archivo VCF</string>
+    <string name="import_vcf_pick">Seleccionar un archivo .vcf</string>
+    <string name="import_vcf_pick_hint">Elige un archivo .vcf (vCard) exportado desde otra aplicación.</string>
+    <string name="import_vcf_row_skip">Omitir</string>
+    <string name="import_vcf_row_add">Añadir</string>
+    <string name="import_vcf_row_update">Actualizar</string>
+    <string name="import_vcf_confirm">Confirmar importación</string>
+    <string name="import_vcf_result">Importación completada: %1$d creados, %2$d actualizados, %3$d omitidos.</string>
+    <string name="import_vcf_error_too_large">El archivo es demasiado grande. El tamaño máximo es 50MB.</string>
+    <string name="import_vcf_error_invalid_file">No se pudo leer ese archivo. Elige un archivo .vcf.</string>
 </resources>

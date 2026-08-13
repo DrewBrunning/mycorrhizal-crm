@@ -40,3 +40,23 @@ data class CreateNoteResponse(
     val message: String? = null,
     val note: Note? = null,
 )
+
+/**
+ * GET /notes — the N4 unfiled-notes inbox, T17 cursor-paginated. `GetUnassignedNotes` does
+ * `var notes []models.Note; ...Find(&notes)`, and Go marshals a nil slice (zero unfiled notes) as
+ * JSON `null`, not `[]` (`/CLAUDE.md` frontend trap #8). A non-null Kotlin default only covers an
+ * *absent* key, not an explicit `null` value — Moshi codegen still rejects the latter — so the raw
+ * field stays nullable and [notes] normalizes absent/null/`[]` to a plain empty list, mirroring
+ * `FieldDefinitionsResponse.definitions`' fix for the same trap.
+ */
+@JsonClass(generateAdapter = true)
+data class NotesPage(
+    @Json(name = "notes") val notesRaw: List<Note>? = null,
+    @Json(name = "next_cursor") val nextCursor: String? = null,
+    val limit: Int = 0,
+    /** N4 queue depth — total unfiled notes matching the filters, not just this page. */
+    val total: Int = 0,
+    val sync: SyncInfo? = null,
+) {
+    val notes: List<Note> get() = notesRaw.orEmpty()
+}

@@ -4,6 +4,7 @@ import com.mycorrhizal.crm.data.local.CachedActivity
 import com.mycorrhizal.crm.data.local.CachedActivityDao
 import com.mycorrhizal.crm.domain.repository.ActivityRepository
 import com.mycorrhizal.crm.model.network.Activity
+import com.mycorrhizal.crm.model.network.ActivitiesPage
 import com.mycorrhizal.crm.model.network.ActivityInput
 import com.mycorrhizal.crm.network.ApiClient
 import javax.inject.Inject
@@ -26,6 +27,12 @@ class ActivityRepositoryImpl @Inject constructor(
             dao.upsertAll(response.activities.map { it.toCached() })
         }
         return result.map { response -> response.activities }
+    }
+
+    override suspend fun listAll(cursor: String?, limit: Int?): Result<ActivitiesPage> {
+        val result = apiClient.listActivities(cursor = cursor, limit = limit, includeContacts = true)
+        result.getOrNull()?.let { page -> dao.upsertAll(page.activities.map { it.toCached() }) }
+        return result
     }
 
     override suspend fun get(id: Int): Result<Activity> = apiClient.getActivity(id)

@@ -68,6 +68,7 @@ import com.mycorrhizal.crm.feature.contacts.MergeContactsScreen
 import com.mycorrhizal.crm.feature.households.HouseholdDetailScreen
 import com.mycorrhizal.crm.feature.households.HouseholdsScreen
 import com.mycorrhizal.crm.feature.imports.ImportContactsScreen
+import com.mycorrhizal.crm.feature.imports.VcfImportScreen
 import com.mycorrhizal.crm.feature.relationships.RelationshipsScreen
 import com.mycorrhizal.crm.feature.settings.CustomLinkActionsScreen
 import com.mycorrhizal.crm.feature.settings.SettingsScreen
@@ -78,9 +79,11 @@ import com.mycorrhizal.crm.feature.timelineentities.PreferencesScreen
 import com.mycorrhizal.crm.feature.tags.TagDetailScreen
 import com.mycorrhizal.crm.feature.tags.TagsScreen
 import kotlinx.coroutines.launch
+import com.mycorrhizal.crm.feature.timeline.ActivitiesInboxScreen
 import com.mycorrhizal.crm.feature.timeline.ActivitiesScreen
 import com.mycorrhizal.crm.feature.timeline.ActivityFormScreen
 import com.mycorrhizal.crm.feature.timeline.NoteFormScreen
+import com.mycorrhizal.crm.feature.timeline.NotesInboxScreen
 import com.mycorrhizal.crm.feature.timeline.NotesScreen
 import com.mycorrhizal.crm.feature.timeline.ReminderFormScreen
 import com.mycorrhizal.crm.feature.timeline.RemindersScreen
@@ -260,6 +263,14 @@ private fun MainScaffold() {
                 ImportContactsScreen(
                     onMenuClick = { scope.launch { drawerState.open() } },
                     onImported = {},
+                    onImportVcf = { navController.navigate("import/vcf") },
+                )
+            }
+            // M9 item 4: VCF-file import — a sibling path to this screen's device-contacts one.
+            composable("import/vcf") {
+                VcfImportScreen(
+                    onBack = { navController.popBackStack() },
+                    onDone = { navController.popBackStack() },
                 )
             }
             composable(
@@ -465,8 +476,24 @@ private fun MainScaffold() {
             ) {
                 ConversationAgendaScreen(onBack = { navController.popBackStack() })
             }
-            composable("notes") { PlaceholderScreen(R.string.nav_notes) { scope.launch { drawerState.open() } } }
-            composable("activities") { PlaceholderScreen(R.string.nav_activities) { scope.launch { drawerState.open() } } }
+            // M9: contact-agnostic drawer entries — the N4 unfiled-notes inbox and the
+            // all-contacts activities feed (matching web's NotesPage.tsx/ActivitiesPage.tsx),
+            // replacing the PlaceholderScreen stub. onNoteClick/onActivityClick reuse the
+            // existing per-contact edit routes with a contactId of 0 (never a real id) — see
+            // NotesInboxScreen/ActivitiesInboxScreen's doc comments for why that's safe.
+            composable("notes") {
+                NotesInboxScreen(
+                    onMenuClick = { scope.launch { drawerState.open() } },
+                    onNoteClick = { id -> navController.navigate("contacts/0/notes/$id/edit") },
+                )
+            }
+            composable("activities") {
+                ActivitiesInboxScreen(
+                    onMenuClick = { scope.launch { drawerState.open() } },
+                    onActivityClick = { id -> navController.navigate("contacts/0/activities/$id/edit") },
+                    onContactClick = { id -> navController.navigate("contacts/$id") },
+                )
+            }
             composable("home") { DashboardScreen(onMenuClick = { scope.launch { drawerState.open() } }) }
 
             composable("settings") {
