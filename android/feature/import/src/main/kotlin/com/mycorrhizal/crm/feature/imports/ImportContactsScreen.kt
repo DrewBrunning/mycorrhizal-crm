@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Button
@@ -22,6 +23,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -44,6 +46,7 @@ import com.mycorrhizal.crm.ui.R
 fun ImportContactsScreen(
     onMenuClick: () -> Unit,
     onImported: () -> Unit = {},
+    onImportVcf: () -> Unit = {},
     viewModel: ImportContactsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -73,6 +76,16 @@ fun ImportContactsScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            // M9 item 4: a second, file-based import path alongside this screen's existing
+            // device-contacts import — ApiClient.uploadVcfImport() already hit this backend
+            // endpoint but had zero callers.
+            TextButton(
+                onClick = onImportVcf,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+            ) {
+                Icon(Icons.Outlined.FileUpload, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                Text(stringResource(R.string.import_vcf_entry))
+            }
             when {
                 state.isLoading -> LoadingSkeleton()
                 state.contacts.isEmpty() && state.error == null ->

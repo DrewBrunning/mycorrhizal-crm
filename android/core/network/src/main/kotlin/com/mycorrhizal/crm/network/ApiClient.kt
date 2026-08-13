@@ -66,6 +66,7 @@ import com.mycorrhizal.crm.model.network.LoginRequest
 import com.mycorrhizal.crm.model.network.LoginResponse
 import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.model.network.NoteInput
+import com.mycorrhizal.crm.model.network.NotesPage
 import com.mycorrhizal.crm.model.network.Preference
 import com.mycorrhizal.crm.model.network.PreferenceInput
 import com.mycorrhizal.crm.model.network.PreferencesPage
@@ -273,13 +274,32 @@ class ApiClient(
             moshi.adapter(Activity::class.java).fromJson(body)
         }
 
-    /** GET /api/v1/activities (cursor-paginated, all activities). */
-    suspend fun listActivities(cursor: String? = null, limit: Int? = null): Result<ActivitiesPage> {
+    /**
+     * GET /api/v1/activities (cursor-paginated, all activities). [includeContacts] appends
+     * `?include=contacts` — matches `GetActivities`' `c.DefaultQuery("include", "")` check —
+     * so the M9 Activities inbox can show each activity's participants.
+     */
+    suspend fun listActivities(
+        cursor: String? = null,
+        limit: Int? = null,
+        includeContacts: Boolean = false,
+    ): Result<ActivitiesPage> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$ACTIVITIES_PATH".toHttpUrl().newBuilder()
         cursor?.let { urlBuilder.addQueryParameter("cursor", it) }
         limit?.let { urlBuilder.addQueryParameter("limit", it.toString()) }
+        if (includeContacts) urlBuilder.addQueryParameter("include", "contacts")
         return executeGet(urlBuilder.build().toString()) { _, body ->
             moshi.adapter(ActivitiesPage::class.java).fromJson(body)
+        }
+    }
+
+    /** GET /api/v1/notes — the N4 unfiled-notes inbox (M9 Notes drawer entry), cursor-paginated. */
+    suspend fun listNotes(cursor: String? = null, limit: Int? = null): Result<NotesPage> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$NOTES_PATH".toHttpUrl().newBuilder()
+        cursor?.let { urlBuilder.addQueryParameter("cursor", it) }
+        limit?.let { urlBuilder.addQueryParameter("limit", it.toString()) }
+        return executeGet(urlBuilder.build().toString()) { _, body ->
+            moshi.adapter(NotesPage::class.java).fromJson(body)
         }
     }
 
@@ -705,6 +725,12 @@ class ApiClient(
 
     suspend fun confirmImport(request: ImportConfirmRequest): Result<ImportResult> =
         executePost("$CONTACTS_PATH/import/confirm", request) { _, body ->
+            moshi.adapter(ImportResult::class.java).fromJson(body)
+        }
+
+    /** M9 item 4: confirms a VCF import session — same request/response shape as [confirmImport]. */
+    suspend fun confirmVcfImport(request: ImportConfirmRequest): Result<ImportResult> =
+        executePost("$CONTACTS_PATH/import/vcf/confirm", request) { _, body ->
             moshi.adapter(ImportResult::class.java).fromJson(body)
         }
 

@@ -205,6 +205,8 @@
     <!-- Notes -->
     <string name="notes_title">Notes</string>
     <string name="notes_empty">No notes yet</string>
+    <string name="notes_inbox_total">%1$d unfiled</string>
+    <string name="action_load_more">Load more</string>
     <string name="note_new">New note</string>
     <string name="note_edit">Edit note</string>
     <string name="note_content">Note</string>
@@ -363,6 +365,14 @@
     <string name="bulk_title">Bulk operations</string>
     <string name="bulk_archive">Archive</string>
     <string name="bulk_unarchive">Unarchive</string>
+    <string name="bulk_add_circle">Add to circle</string>
+    <string name="bulk_remove_circle">Remove from circle</string>
+    <string name="bulk_add_tag">Add tag</string>
+    <string name="bulk_remove_tag">Remove tag</string>
+    <string name="bulk_pick_circle">Choose a circle</string>
+    <string name="bulk_pick_tag">Choose a tag</string>
+    <string name="bulk_no_circles">No circles yet</string>
+    <string name="bulk_no_tags">No tags yet</string>
     <string name="bulk_confirm_title">Confirm bulk action?</string>
     <string name="bulk_confirm_body">Run the action on %1$d selected contacts?</string>
     <string name="bulk_result">Done: %1$d succeeded, %2$d failed.</string>
@@ -375,4 +385,17 @@
     <string name="import_button">Import %1$d selected (%2$d possible duplicates)</string>
     <string name="import_done">Imported %1$d contacts.</string>
     <string name="import_duplicate">Possible duplicate of %1$s</string>
+
+    <!-- VCF file import (M9) -->
+    <string name="import_vcf_entry">Import from a VCF file</string>
+    <string name="import_vcf_title">Import VCF file</string>
+    <string name="import_vcf_pick">Select a .vcf file</string>
+    <string name="import_vcf_pick_hint">Choose a .vcf (vCard) file exported from another app.</string>
+    <string name="import_vcf_row_skip">Skip</string>
+    <string name="import_vcf_row_add">Add</string>
+    <string name="import_vcf_row_update">Update</string>
+    <string name="import_vcf_confirm">Confirm import</string>
+    <string name="import_vcf_result">Import complete: %1$d created, %2$d updated, %3$d skipped.</string>
+    <string name="import_vcf_error_too_large">File is too large. Maximum size is 50MB.</string>
+    <string name="import_vcf_error_invalid_file">Couldn\'t read that file. Choose a .vcf file.</string>
 </resources>

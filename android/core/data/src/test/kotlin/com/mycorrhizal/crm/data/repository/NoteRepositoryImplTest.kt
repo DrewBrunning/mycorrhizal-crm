@@ -7,6 +7,7 @@ import com.mycorrhizal.crm.data.local.AppDatabase
 import com.mycorrhizal.crm.model.network.ContactNotesResponse
 import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.model.network.NoteInput
+import com.mycorrhizal.crm.model.network.NotesPage
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
 import io.mockk.coEvery
@@ -76,6 +77,43 @@ class NoteRepositoryImplTest {
         assertTrue(result.isFailure)
         val error = result.exceptionOrNull() as ApiError
         assertEquals(404, (error as ApiError.Client).code)
+    }
+
+    // M9: the Notes drawer inbox — GET /notes, the N4 unfiled-notes queue.
+    @Test
+    fun `listUnfiled caches notes and carries the queue depth`() = runTest {
+        coEvery { apiClient.listNotes(null, null) } returns Result.success(
+            NotesPage(
+                notesRaw = listOf(Note(id = 3, content = "Buy milk")),
+                nextCursor = "cursor-2",
+                total = 12,
+            ),
+        )
+
+        val result = repository.listUnfiled()
+
+        assertTrue(result.isSuccess)
+        val page = result.getOrThrow()
+        assertEquals(1, page.notes.size)
+        assertEquals("cursor-2", page.nextCursor)
+        assertEquals(12, page.total)
+        assertEquals("Buy milk", db.cachedNoteDao().getById(3)?.content)
+    }
+
+    // Trap-#8 (`/CLAUDE.md`): GetUnassignedNotes marshals a nil Go slice as JSON `null`, not
+    // `[]`, when there are zero unfiled notes. NotesPage's raw field must be nullable so this
+    // doesn't crash Moshi — this is the repository-level proof (ApiClientTest covers the parse).
+    @Test
+    fun `listUnfiled tolerates a null notes list`() = runTest {
+        coEvery { apiClient.listNotes(null, null) } returns Result.success(
+            NotesPage(notesRaw = null, total = 0),
+        )
+
+        val result = repository.listUnfiled()
+
+        assertTrue(result.isSuccess)
+        assertTrue(result.getOrThrow().notes.isEmpty())
+        assertTrue(db.cachedNoteDao().getAll().isEmpty())
     }
 
     @Test
