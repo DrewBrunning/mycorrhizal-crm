@@ -125,6 +125,71 @@ test('handles a real backend response where empty Go slices serialize as null, n
   expect(screen.getByRole('button', { name: 'Merge' })).not.toBeDisabled();
 });
 
+test('a successful merge closes the dialog and reports the keeper', async () => {
+  // T94: handleCommit used to call onMerged without ever closing. The parent
+  // navigates to /contacts/:keeperId, but that route renders the same
+  // ContactDetailPage element, so the param change never unmounts the dialog
+  // -- it stayed open over the keeper's page still holding the deleted loser.
+  mockFetchByUrl({
+    '/contacts/merge/preview': () => ({
+      keep_id: 2,
+      merge_id: 1,
+      resolution: { emails: [], phones: [], addresses: [], urls: [], impps: [], circles: [] },
+      association_counts: emptyAssociationCounts,
+    }),
+    '/contacts/merge': () => ({ id: 2, uid: 'bob-uid' }),
+    '/contacts?': bobContactsResponse,
+  });
+
+  const onClose = vi.fn();
+  const onMerged = vi.fn();
+  renderDialog({ onClose, onMerged });
+  await selectBob();
+  await screen.findByText('No conflicts to resolve. Ready to merge.');
+
+  fireEvent.click(screen.getByRole('button', { name: 'Merge' }));
+
+  await waitFor(() => expect(onMerged).toHaveBeenCalledWith(2));
+  expect(onClose).toHaveBeenCalled();
+});
+
+test('a failed merge leaves the dialog open with the selection intact', async () => {
+  // The other half of T94: closing on failure would throw away the user's
+  // conflict answers, so only the success path closes.
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      if (url.includes('/contacts/merge/preview')) {
+        return {
+          ok: true,
+          json: async () => ({
+            keep_id: 2,
+            merge_id: 1,
+            resolution: { emails: [], phones: [], addresses: [], urls: [], impps: [], circles: [] },
+            association_counts: emptyAssociationCounts,
+          }),
+        };
+      }
+      if (url.includes('/contacts/merge')) {
+        return { ok: false, status: 500, json: async () => ({ error: { message: 'boom' } }) };
+      }
+      return { ok: true, json: async () => bobContactsResponse() };
+    })
+  );
+
+  const onClose = vi.fn();
+  const onMerged = vi.fn();
+  renderDialog({ onClose, onMerged });
+  await selectBob();
+  await screen.findByText('No conflicts to resolve. Ready to merge.');
+
+  fireEvent.click(screen.getByRole('button', { name: 'Merge' }));
+
+  await waitFor(() => expect(onMerged).not.toHaveBeenCalled());
+  expect(onClose).not.toHaveBeenCalled();
+  expect(screen.getByText('Merge Contacts')).toBeInTheDocument();
+});
+
 test('a scalar conflict keeps merge disabled until resolved', async () => {
   mockFetchByUrl({
     '/contacts?': bobContactsResponse,

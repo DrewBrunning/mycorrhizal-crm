@@ -1383,7 +1383,19 @@ export default function ContactDetailPage() {
         <MergeContactsDialog
           open={mergeDialogOpen}
           onClose={() => setMergeDialogOpen(false)}
-          onMerged={(keeperId) => navigate(`/contacts/${keeperId}`)}
+          onMerged={async (keeperId) => {
+            // T94: this page is the same element for every /contacts/:id, so a
+            // param change never unmounts it -- own the dialog's open state
+            // here too rather than relying only on the dialog closing itself.
+            setMergeDialogOpen(false);
+            // T95: the backend repoints circle_members/contact_tags onto the
+            // keeper, but useCircles/useTags hold a list fetched for the loser
+            // and nothing remounts to refetch it. Without these the keeper
+            // renders its pre-merge membership, which looks like the merge
+            // dropped the circles.
+            await Promise.all([refreshCircles(), refreshTags()]);
+            navigate(`/contacts/${keeperId}`);
+          }}
           currentContactId={record.id}
           currentContactUid={record.uid}
           currentContactName={`${firstname} ${lastname}`.trim()}
