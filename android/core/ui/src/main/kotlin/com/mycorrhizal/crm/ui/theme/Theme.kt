@@ -102,22 +102,21 @@ private val DarkColors = darkColorScheme(
 )
 
 /**
- * The bundled brand fonts, matching the web app's stack:
- *  - EB Garamond (serif) for the brand/display role — AppBar titles,
- *    headings — as in `frontend/src/App.css`'s `.App-header`.
+ * The bundled brand fonts:
  *  - IBM Plex Sans for UI and content.
  *  - IBM Plex Mono for data fields (phone numbers, emails, IDs).
  *
- * EB Garamond and IBM Plex Sans are variable fonts (weight axis); each
- * `Font` entry pins a weight so Compose picks the right instance. See
- * THIRD_PARTY_SOURCES.md for the SIL OFL notices.
+ * **No serif.** T99 dropped EB Garamond from Android entirely: a display serif
+ * that reads well in a 1440px page header carries very differently at 22sp
+ * over Material 3's metrics on a phone. This is a deliberate divergence from
+ * web, which keeps Garamond on `typography.h5` and the persistent nav per T63
+ * — not a parity gap to be re-filed.
+ *
+ * IBM Plex Sans is a variable font (weight axis); each `Font` entry pins a
+ * weight so Compose picks the right instance. See THIRD_PARTY_SOURCES.md for
+ * the SIL OFL notices.
  */
 object MycorrhizalFonts {
-    val serif = FontFamily(
-        Font(R.font.eb_garamond, weight = FontWeight.Normal),
-        Font(R.font.eb_garamond, weight = FontWeight.Medium),
-        Font(R.font.eb_garamond, weight = FontWeight.SemiBold),
-    )
     val sans = FontFamily(
         Font(R.font.ibm_plex_sans, weight = FontWeight.Normal),
         Font(R.font.ibm_plex_sans, weight = FontWeight.Medium),
@@ -134,20 +133,17 @@ object MycorrhizalFonts {
  * (not just titleLarge/bodyLarge) keeps every M3 role — labels, body, buttons,
  * chips — on IBM Plex Sans instead of the default Roboto.
  *
- * T63 (web) narrowed EB Garamond to exactly one role: page-level headings
- * (`typography.h5` in `frontend/src/theme.ts`) — deliberately NOT a blanket
- * heading-scale override, because MUI's `DialogTitle` defaults to a heading
- * variant too, and a blanket override would put Garamond on every dialog
- * title. `titleLarge` is Android's equivalent of that one safe role — it's
- * used exclusively for TopAppBar titles and the contact-name heading
- * (confirmed zero other call sites), and M3's `AlertDialog` title defaults to
- * `headlineSmall`, not `titleLarge`, so this override cannot leak into
- * dialogs. `display*`/`headlineLarge/Medium/Small` (6 roles) previously also
- * carried the brand serif, which is what caused the M3 default -- every
- * `AlertDialog` in the app rendered its title in Garamond, the exact "looks
- * bad on modals" problem T63 was written to avoid; confirmed no app code
- * outside this file referenced any of those six roles, so reverting them to
- * sans is a pure fix with no other effect.
+ * Every role is IBM Plex Sans as of T99, which dropped EB Garamond from
+ * Android — see MycorrhizalFonts above for why, and why that divergence from
+ * web's T63 is deliberate.
+ *
+ * Kept for the next person who reaches for a display face here: T63's Android
+ * port put the serif on `titleLarge` only, because that role is used
+ * exclusively for TopAppBar titles and the contact-name heading, and M3's
+ * `AlertDialog` title defaults to `headlineSmall` rather than `titleLarge`. An
+ * earlier revision had the serif on `display*` and `headlineLarge/Medium/Small`
+ * too, which put it on every AlertDialog title in the app. If a brand face ever
+ * comes back, `titleLarge` is the one role it can safely occupy.
  */
 val MycorrhizalTypography = Typography(
     // See titleLarge below for the brand-serif role -- display*/headline*
@@ -159,9 +155,10 @@ val MycorrhizalTypography = Typography(
     headlineLarge = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 32.sp, fontWeight = FontWeight.Normal),
     headlineMedium = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 28.sp, fontWeight = FontWeight.Normal),
     headlineSmall = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 24.sp, fontWeight = FontWeight.Normal),
-    // App bars and page titles — EB Garamond (T63's one safe brand-serif
-    // role; see the class doc above). Matches web's typography.h5.
-    titleLarge = TextStyle(fontFamily = MycorrhizalFonts.serif, fontSize = 22.sp, fontWeight = FontWeight.Medium),
+    // App bars and page titles. Carried EB Garamond as T63's one safe
+    // brand-serif role until T99 dropped the serif from Android; every role in
+    // this scale is now sans.
+    titleLarge = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 22.sp, fontWeight = FontWeight.Medium),
     titleMedium = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 16.sp, fontWeight = FontWeight.Medium),
     titleSmall = TextStyle(fontFamily = MycorrhizalFonts.sans, fontSize = 14.sp, fontWeight = FontWeight.Medium),
     // Body — IBM Plex Sans.

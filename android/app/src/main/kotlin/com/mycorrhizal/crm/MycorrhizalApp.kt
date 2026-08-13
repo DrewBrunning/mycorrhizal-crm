@@ -42,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.rememberDrawerState
@@ -86,7 +87,6 @@ import com.mycorrhizal.crm.feature.timeline.ReminderFormScreen
 import com.mycorrhizal.crm.feature.timeline.RemindersScreen
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.LocalDrawerOpen
-import com.mycorrhizal.crm.ui.theme.MycorrhizalFonts
 
 private data class DrawerDestination(
     val route: String,
@@ -190,14 +190,17 @@ private fun MainScaffold() {
                 HorizontalDivider()
                 primaryDestinations.forEach { item ->
                     NavigationDrawerItem(
-                        // T63 Android port: matches web's App.tsx nav-list
-                        // fix — the label falls through to labelLarge by
-                        // default (also the Button/Snackbar default, so not
-                        // safe to retheme globally), scoped here instead.
+                        // T100: labelLarge is 14sp -- Material's chip/button
+                        // size, too small for the app's only global nav. Bumped
+                        // here rather than in Theme.kt because labelLarge is
+                        // also the M3 default for Button and Snackbar, so a
+                        // global change would resize every button in the app.
+                        // (T99 removed the serif family this override also
+                        // used to carry.)
                         label = {
                             Text(
                                 stringResource(item.labelRes),
-                                style = MaterialTheme.typography.labelLarge.copy(fontFamily = MycorrhizalFonts.serif),
+                                style = MaterialTheme.typography.labelLarge.copy(fontSize = 16.sp),
                             )
                         },
                         selected = isSelected(currentDestination, item),
@@ -215,12 +218,12 @@ private fun MainScaffold() {
                 }
                 secondaryDestinations.forEach { item ->
                     NavigationDrawerItem(
-                        // T63 Android port: see the primaryDestinations loop's
+                        // T100/T99: see the primaryDestinations loop's
                         // matching comment above.
                         label = {
                             Text(
                                 stringResource(item.labelRes),
-                                style = MaterialTheme.typography.labelLarge.copy(fontFamily = MycorrhizalFonts.serif),
+                                style = MaterialTheme.typography.labelLarge.copy(fontSize = 16.sp),
                             )
                         },
                         selected = isSelected(currentDestination, item),
