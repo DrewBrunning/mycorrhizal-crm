@@ -92,3 +92,31 @@ from destroying data it never showed. The UI can follow later without re-doing t
   against the current `toInput` per `/CLAUDE.md`.
 - `./gradlew testDebugUnitTest`, `./gradlew lintDebug` and `./gradlew assembleDebug` green —
   the three steps `.github/workflows/android-tests.yml` actually runs.
+
+## Landed 2026-08-12
+
+`ContactFormState.emails`/`phones` are now `List<Email>`/`List<Phone>` — the loaded objects, not
+scalars. Loading no longer narrows to `it.address`/`it.number`; saving copies onto the loaded
+entry (`email.copy(address = trimmed)` / `phone.copy(number = trimmed)`) instead of reconstructing
+a fresh `Email`/`Phone`, so `id`/`contexts`/`pref`/`features`/`label` all ride through untouched.
+
+The UI/ViewModel contract changed from a full-list replace
+(`onEmailsChange(List<String>)`/`onPhonesChange(List<String>)`) to index-based
+edit/add/remove (`onEmailValueChange(index, value)`/`onEmailAdd()`/`onEmailRemove(index)`, mirrored
+for phones) — not just a mechanical rename. A full-list replace re-indexes positionally, so
+deleting a *middle* row would have silently reattached a surviving entry's metadata to whatever
+value shifted into its old position; index-based operations remove the exact object at the given
+index instead. `ContactFormScreen.kt`'s `StringListEditor` became a generic `ValueListEditor<T>`
+taking a `valueOf: (T) -> String` extractor, so it renders either list without knowing about
+`Email`/`Phone` beyond what's displayed. The `label = "cell"` default now lives only in
+`onPhoneAdd()` — the single place a phone entry is genuinely new — instead of being applied
+unconditionally to every phone on every save.
+
+Two new `ContactFormViewModelTest` cases, hand-verified per `/CLAUDE.md`: reintroduced the old
+reconstruct-from-scratch `toInput`, confirmed exactly those two tests failed (17/19 still passed),
+reverted. Existing tests updated to the new index-based API; no behavior they covered changed.
+
+**Hand-verified on a real device** (Pixel 8a): edited an existing contact's name only, confirmed
+on web afterward that the phone's label/preferred/id were unchanged.
+
+Landed via [PR #104](https://github.com/DrewBrunning/mycorrhizal-crm/pull/104).

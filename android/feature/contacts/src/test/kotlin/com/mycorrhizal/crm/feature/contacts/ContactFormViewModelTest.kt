@@ -77,8 +77,10 @@ class ContactFormViewModelTest {
         assertEquals("Dana", state.givenName)
         assertEquals("White", state.surname)
         assertEquals("D", state.nickname)
-        assertEquals(listOf("dana@example.com"), state.emails)
-        assertEquals(listOf("+1-555-0100"), state.phones)
+        // Loaded as the real objects, not scalars — and critically, a loaded phone with no
+        // label stays label=null, never forced to "cell" (T81).
+        assertEquals(listOf(Email(address = "dana@example.com")), state.emails)
+        assertEquals(listOf(Phone(number = "+1-555-0100")), state.phones)
         assertEquals("friends", state.circlesText)
         assertFalse(state.isLoading)
     }
@@ -91,8 +93,8 @@ class ContactFormViewModelTest {
         val vm = createViewModel()
         vm.onGivenNameChange("Carol")
         vm.onSurnameChange("King")
-        vm.onEmailsChange(listOf("carol@example.com"))
-        vm.onPhonesChange(listOf("+1-555-0100"))
+        vm.onEmailValueChange(0, "carol@example.com")
+        vm.onPhoneValueChange(0, "+1-555-0100")
         vm.save()
         advanceUntilIdle()
 
@@ -121,7 +123,7 @@ class ContactFormViewModelTest {
         val vm = createViewModel()
         vm.onGivenNameChange("Carol")
         vm.onSurnameChange("King")
-        vm.onPhonesChange(listOf("+1-555-0100"))
+        vm.onPhoneValueChange(0, "+1-555-0100")
         vm.save()
         advanceUntilIdle()
 
@@ -165,7 +167,7 @@ class ContactFormViewModelTest {
     @Test
     fun `save without a given name is blocked by validation`() = runTest(mainDispatcherRule.testDispatcher) {
         val vm = createViewModel()
-        vm.onEmailsChange(listOf("x@example.com"))
+        vm.onEmailValueChange(0, "x@example.com")
         vm.save()
         advanceUntilIdle()
 
@@ -205,7 +207,7 @@ class ContactFormViewModelTest {
 
         val vm = createViewModel()
         vm.onGivenNameChange("Carol")
-        vm.onPhonesChange(listOf("1234"))
+        vm.onPhoneValueChange(0, "1234")
         vm.save()
         advanceUntilIdle()
 
@@ -270,6 +272,96 @@ class ContactFormViewModelTest {
                     input.card?.addresses?.firstOrNull()?.full == "123 Main St" &&
                         input.card?.personalInfo?.firstOrNull()?.value == "climbing" &&
                         input.card?.name?.components?.firstOrNull { it.kind == "surname" }?.value == "Whitehall"
+                },
+            )
+        }
+    }
+
+    @Test
+    fun `editing an unrelated field preserves phone and email metadata`() = runTest(mainDispatcherRule.testDispatcher) {
+        // Regression for T81: the old toInput reconstructed every phone/email from
+        // scratch on every save, so editing the *name* silently relabeled every
+        // phone "cell" and dropped id/pref/contexts/features.
+        val record = ContactRecordResponse(
+            id = 5,
+            card = Card(
+                name = Name(
+                    full = "Dana White",
+                    components = listOf(
+                        com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"),
+                        com.mycorrhizal.crm.model.network.NameComponent(kind = "surname", value = "White"),
+                    ),
+                ),
+                phones = listOf(
+                    Phone(
+                        id = "phone-1",
+                        number = "+1-555-0100",
+                        label = "work",
+                        contexts = listOf("work"),
+                        pref = 1,
+                        features = listOf("voice"),
+                    ),
+                ),
+                emails = listOf(
+                    Email(id = "email-1", address = "dana@example.com", contexts = listOf("work"), pref = 1),
+                ),
+            ),
+        )
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+
+        val vm = createViewModel(5)
+        advanceUntilIdle()
+        vm.onGivenNameChange("Danielle") // unrelated to phones/emails
+        vm.save()
+        advanceUntilIdle()
+
+        coVerify {
+            contactRepository.updateContact(
+                5,
+                match<ContactRecordInput> { input ->
+                    val phone = input.card?.phones?.firstOrNull()
+                    val email = input.card?.emails?.firstOrNull()
+                    phone?.id == "phone-1" && phone.label == "work" && phone.contexts == listOf("work") &&
+                        phone.pref == 1 && phone.features == listOf("voice") &&
+                        email?.id == "email-1" && email.contexts == listOf("work") && email.pref == 1
+                },
+            )
+        }
+    }
+
+    @Test
+    fun `a newly added phone still defaults to cell, an existing one is untouched`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(
+            id = 5,
+            card = Card(
+                name = Name(
+                    full = "Dana White",
+                    components = listOf(
+                        com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"),
+                        com.mycorrhizal.crm.model.network.NameComponent(kind = "surname", value = "White"),
+                    ),
+                ),
+                phones = listOf(Phone(id = "phone-1", number = "+1-555-0100", label = "work")),
+            ),
+        )
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+
+        val vm = createViewModel(5)
+        advanceUntilIdle()
+        vm.onPhoneAdd()
+        vm.onPhoneValueChange(1, "+1-555-0199")
+        vm.save()
+        advanceUntilIdle()
+
+        coVerify {
+            contactRepository.updateContact(
+                5,
+                match<ContactRecordInput> { input ->
+                    val phones = input.card?.phones.orEmpty()
+                    phones.any { it.id == "phone-1" && it.number == "+1-555-0100" && it.label == "work" } &&
+                        phones.any { it.id == null && it.number == "+1-555-0199" && it.label == "cell" }
                 },
             )
         }
