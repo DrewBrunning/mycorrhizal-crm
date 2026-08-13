@@ -36,6 +36,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.mycorrhizal.crm.model.network.Email
+import com.mycorrhizal.crm.model.network.Phone
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.theme.MycorrhizalFonts
@@ -94,8 +96,12 @@ fun ContactFormScreen(
                 onGivenNameChange = viewModel::onGivenNameChange,
                 onSurnameChange = viewModel::onSurnameChange,
                 onNicknameChange = viewModel::onNicknameChange,
-                onEmailsChange = viewModel::onEmailsChange,
-                onPhonesChange = viewModel::onPhonesChange,
+                onEmailValueChange = viewModel::onEmailValueChange,
+                onEmailAdd = viewModel::onEmailAdd,
+                onEmailRemove = viewModel::onEmailRemove,
+                onPhoneValueChange = viewModel::onPhoneValueChange,
+                onPhoneAdd = viewModel::onPhoneAdd,
+                onPhoneRemove = viewModel::onPhoneRemove,
                 onBirthdayChange = viewModel::onBirthdayChange,
                 onNotesChange = viewModel::onNotesChange,
                 onCirclesTextChange = viewModel::onCirclesTextChange,
@@ -119,8 +125,12 @@ fun ContactFormContent(
     onGivenNameChange: (String) -> Unit,
     onSurnameChange: (String) -> Unit,
     onNicknameChange: (String) -> Unit,
-    onEmailsChange: (List<String>) -> Unit,
-    onPhonesChange: (List<String>) -> Unit,
+    onEmailValueChange: (Int, String) -> Unit,
+    onEmailAdd: () -> Unit,
+    onEmailRemove: (Int) -> Unit,
+    onPhoneValueChange: (Int, String) -> Unit,
+    onPhoneAdd: () -> Unit,
+    onPhoneRemove: (Int) -> Unit,
     onBirthdayChange: (String) -> Unit,
     onNotesChange: (String) -> Unit,
     onCirclesTextChange: (String) -> Unit,
@@ -160,17 +170,23 @@ fun ContactFormContent(
         )
 
         SectionLabel(stringResource(R.string.contact_email))
-        StringListEditor(
-            values = state.emails,
-            onValuesChange = onEmailsChange,
+        ValueListEditor(
+            items = state.emails,
+            valueOf = { it.address ?: "" },
+            onValueChange = onEmailValueChange,
+            onAdd = onEmailAdd,
+            onRemove = onEmailRemove,
             placeholder = "email@example.com",
             keyboardType = KeyboardType.Email,
         )
 
         SectionLabel(stringResource(R.string.contact_phone))
-        StringListEditor(
-            values = state.phones,
-            onValuesChange = onPhonesChange,
+        ValueListEditor(
+            items = state.phones,
+            valueOf = { it.number ?: "" },
+            onValueChange = onPhoneValueChange,
+            onAdd = onPhoneAdd,
+            onRemove = onPhoneRemove,
             placeholder = "+1 555 0100",
             keyboardType = KeyboardType.Phone,
         )
@@ -232,41 +248,42 @@ private fun SectionLabel(text: String) {
     )
 }
 
-/** Editable list of strings with add/remove buttons (MultiValueField equivalent). */
+/**
+ * Editable list of email/phone entries with add/remove buttons (MultiValueField equivalent).
+ * Edits an entry's display value only — never reconstructs it — so every field the form
+ * doesn't surface (id, contexts, pref, features, label) survives untouched (T81).
+ */
 @Composable
-private fun StringListEditor(
-    values: List<String>,
-    onValuesChange: (List<String>) -> Unit,
+private fun <T> ValueListEditor(
+    items: List<T>,
+    valueOf: (T) -> String,
+    onValueChange: (index: Int, value: String) -> Unit,
+    onAdd: () -> Unit,
+    onRemove: (index: Int) -> Unit,
     placeholder: String,
     keyboardType: KeyboardType,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        values.forEachIndexed { index, value ->
+        items.forEachIndexed { index, item ->
             Row(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
             ) {
                 OutlinedTextField(
-                    value = value,
-                    onValueChange = { updated ->
-                        onValuesChange(values.toMutableList().apply { this[index] = updated })
-                    },
+                    value = valueOf(item),
+                    onValueChange = { onValueChange(index, it) },
                     label = { Text(stringResource(R.string.contact_value_n, index + 1)) },
                     placeholder = { Text(placeholder) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
                     modifier = Modifier.weight(1f),
                 )
-                IconButton(onClick = {
-                    if (values.size > 1) {
-                        onValuesChange(values.toMutableList().apply { removeAt(index) })
-                    }
-                }) {
+                IconButton(onClick = { if (items.size > 1) onRemove(index) }) {
                     Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.contact_remove))
                 }
             }
         }
-        IconButton(onClick = { onValuesChange(values + "") }) {
+        IconButton(onClick = onAdd) {
             Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.contact_add))
         }
     }

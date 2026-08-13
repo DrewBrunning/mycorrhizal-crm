@@ -42,8 +42,12 @@ data class ContactFormState(
     val givenName: String = "",
     val surname: String = "",
     val nickname: String = "",
-    val emails: List<String> = listOf(""),
-    val phones: List<String> = listOf(""),
+    // T81: the loaded Email/Phone objects, not scalars — id/contexts/pref/features/label
+    // ride along untouched through edit and save. The single default row (create mode, or
+    // a loaded record with none) is a genuinely new entry, so the phone gets the same
+    // `cell` default a form-added row gets; see onPhoneAdd's doc comment for why.
+    val emails: List<Email> = listOf(Email(address = "")),
+    val phones: List<Phone> = listOf(Phone(number = "", label = "cell")),
     val birthday: String = "",
     val notes: String = "",
     val circlesText: String = "",
@@ -80,19 +84,18 @@ data class ContactFormState(
             } else {
                 baseCard.nicknames
             },
-            emails = emails.mapNotNull { it.trim().takeIf(String::isNotBlank) }
-                .map { Email(address = it) }
-                .ifEmpty { null },
-            phones = phones.mapNotNull { it.trim().takeIf(String::isNotBlank) }
-                // Default the phone type to "cell", matching the web form's
-                // MultiValueField `defaultType="cell"`. Without a type the
-                // backend stores ContactPhone.Type="" and buildPhones emits a
-                // bare Phone{number} with no features/contexts/label, so the
-                // detail screen can never show an SMS action for a phone the
-                // form created (T34 phone-feature detection). The label is the
-                // field the backend round-trips into ContactPhone.Type.
-                .map { Phone(number = it, label = "cell") }
-                .ifEmpty { null },
+            // T81: copy onto the loaded entry, never reconstruct — a blank/whitespace value
+            // drops the row (matching the old behavior), but every field the form doesn't
+            // surface (id, contexts, pref, features, label) rides along untouched on every
+            // entry that survives. Only onEmailAdd/onPhoneAdd mint a genuinely new object.
+            emails = emails.mapNotNull { email ->
+                val trimmed = email.address?.trim()
+                if (trimmed.isNullOrBlank()) null else email.copy(address = trimmed)
+            }.ifEmpty { null },
+            phones = phones.mapNotNull { phone ->
+                val trimmed = phone.number?.trim()
+                if (trimmed.isNullOrBlank()) null else phone.copy(number = trimmed)
+            }.ifEmpty { null },
             anniversaries = mergeBirthday(baseCard.anniversaries, birthday),
             notes = if (notes.isNotBlank()) {
                 val note = CardNote(note = notes.trim())
@@ -213,8 +216,36 @@ class ContactFormViewModel @Inject constructor(
     fun onGivenNameChange(value: String) = _uiState.update { it.copy(givenName = value) }
     fun onSurnameChange(value: String) = _uiState.update { it.copy(surname = value) }
     fun onNicknameChange(value: String) = _uiState.update { it.copy(nickname = value) }
-    fun onEmailsChange(emails: List<String>) = _uiState.update { it.copy(emails = emails) }
-    fun onPhonesChange(phones: List<String>) = _uiState.update { it.copy(phones = phones) }
+    // T81: index-based edit/add/remove instead of a full-list replace, so a value edit can
+    // never be reconstructed into a fresh object — it can only ever `.copy()` the entry
+    // already at that index. Reindexing a plain List<String> after a middle-row delete would
+    // silently attach the deleted entry's metadata to its former neighbor; filtering by index
+    // here removes the exact object the user removed instead.
+    fun onEmailValueChange(index: Int, value: String) = _uiState.update {
+        it.copy(emails = it.emails.mapIndexed { i, email -> if (i == index) email.copy(address = value) else email })
+    }
+    fun onEmailAdd() = _uiState.update { it.copy(emails = it.emails + Email(address = "")) }
+    fun onEmailRemove(index: Int) = _uiState.update {
+        it.copy(emails = it.emails.filterIndexed { i, _ -> i != index })
+    }
+
+    fun onPhoneValueChange(index: Int, value: String) = _uiState.update {
+        it.copy(phones = it.phones.mapIndexed { i, phone -> if (i == index) phone.copy(number = value) else phone })
+    }
+
+    /**
+     * Default a newly added row's type to "cell", matching the web form's MultiValueField
+     * `defaultType="cell"`. Without a type the backend stores ContactPhone.Type="" and
+     * buildPhones emits a bare Phone{number} with no features/contexts/label, so the detail
+     * screen can never show an SMS action for a phone the form created (T34 phone-feature
+     * detection). Only a genuinely new row gets this default — an existing loaded phone's
+     * label is never touched here (that was T81's bug: the default was applied to every
+     * phone, loaded or new, on every save).
+     */
+    fun onPhoneAdd() = _uiState.update { it.copy(phones = it.phones + Phone(number = "", label = "cell")) }
+    fun onPhoneRemove(index: Int) = _uiState.update {
+        it.copy(phones = it.phones.filterIndexed { i, _ -> i != index })
+    }
     fun onBirthdayChange(value: String) = _uiState.update { it.copy(birthday = value) }
     fun onNotesChange(value: String) = _uiState.update { it.copy(notes = value) }
     fun onCirclesTextChange(value: String) = _uiState.update { it.copy(circlesText = value) }
@@ -259,8 +290,11 @@ class ContactFormViewModel @Inject constructor(
         val given = name?.components?.firstOrNull { it.kind == "given" }?.value ?: ""
         val surname = name?.components?.firstOrNull { it.kind == "surname" }?.value ?: ""
         val nickname = card?.nicknames?.firstOrNull()?.name ?: ""
-        val emails = card?.emails?.map { it.address ?: "" }?.ifEmpty { listOf("") } ?: listOf("")
-        val phones = card?.phones?.map { it.number ?: "" }?.ifEmpty { listOf("") } ?: listOf("")
+        // T81: load the entries as-is — no narrowing to a scalar — so id/contexts/pref/
+        // features/label survive whatever the form saves next, even though the form only
+        // ever edits the address/number field of each.
+        val emails = card?.emails?.ifEmpty { null } ?: listOf(Email(address = ""))
+        val phones = card?.phones?.ifEmpty { null } ?: listOf(Phone(number = "", label = "cell"))
         val birthday = card?.anniversaries?.firstOrNull { it.kind == "birth" }?.date?.partial?.let {
             formatPartialDate(it)
         } ?: ""
