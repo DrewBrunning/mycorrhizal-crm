@@ -17,7 +17,6 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.HomeWork
 import androidx.compose.material.icons.outlined.Label
 import androidx.compose.material.icons.outlined.Menu
-import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.Icon
@@ -101,7 +100,6 @@ private val primaryDestinations = listOf(
     DrawerDestination("contacts", R.string.nav_contacts, Icons.Outlined.Contacts),
     DrawerDestination("activities", R.string.nav_activities, Icons.Outlined.EventNote),
     DrawerDestination("notes", R.string.nav_notes, Icons.Outlined.EditNote),
-    DrawerDestination("search", R.string.nav_search, Icons.Outlined.Search),
 )
 
 /** Secondary destinations, below the primary set in the drawer. */
@@ -450,7 +448,6 @@ private fun MainScaffold() {
             ) {
                 ConversationAgendaScreen(onBack = { navController.popBackStack() })
             }
-            composable("search") { PlaceholderScreen(R.string.nav_search) { scope.launch { drawerState.open() } } }
             composable("notes") { PlaceholderScreen(R.string.nav_notes) { scope.launch { drawerState.open() } } }
             composable("activities") { PlaceholderScreen(R.string.nav_activities) { scope.launch { drawerState.open() } } }
             composable("home") { DashboardScreen(onMenuClick = { scope.launch { drawerState.open() } }) }

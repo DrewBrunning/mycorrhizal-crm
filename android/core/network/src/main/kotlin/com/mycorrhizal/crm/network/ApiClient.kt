@@ -71,6 +71,7 @@ import com.mycorrhizal.crm.model.network.RelationshipEdgeInput
 import com.mycorrhizal.crm.model.network.RelationshipEdgesPage
 import com.mycorrhizal.crm.model.network.Reminder
 import com.mycorrhizal.crm.model.network.ReminderCompleteResponse
+import com.mycorrhizal.crm.model.network.SearchResult
 import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.model.network.TagDetailResponse
 import com.mycorrhizal.crm.model.network.TagInput
@@ -143,6 +144,23 @@ class ApiClient(
         executeGet("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$id") { _, body ->
             moshi.adapter(ContactRecordResponse::class.java).fromJson(body)
         }
+
+    /**
+     * GET /api/v1/search — cross-entity FTS across notes and activities (T87: folded into the
+     * contact list rather than a dedicated search screen). `q`'s two-character gate is the
+     * backend's own; callers should apply it too rather than firing a request destined to
+     * return empty. The response's `contacts` group is deliberately unmodeled — see
+     * [SearchResult]'s doc comment.
+     */
+    suspend fun search(q: String, limit: Int? = null, householdId: String? = null): Result<SearchResult> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$SEARCH_PATH".toHttpUrl().newBuilder()
+        urlBuilder.addQueryParameter("q", q)
+        limit?.let { urlBuilder.addQueryParameter("limit", it.toString()) }
+        householdId?.let { urlBuilder.addQueryParameter("household_id", it) }
+        return executeGet(urlBuilder.build().toString()) { _, body ->
+            moshi.adapter(SearchResult::class.java).fromJson(body)
+        }
+    }
 
     /**
      * POST /api/v1/contacts. The create endpoint wraps its response as
@@ -760,6 +778,7 @@ class ApiClient(
         private const val LOGIN_PATH = "$API_V1/login"
         private const val ME_PATH = "$API_V1/users/me"
         private const val CONTACTS_PATH = "$API_V1/contacts"
+        private const val SEARCH_PATH = "$API_V1/search"
         private const val ACTIVITIES_PATH = "$API_V1/activities"
         private const val NOTES_PATH = "$API_V1/notes"
         private const val REMINDERS_PATH = "$API_V1/reminders"

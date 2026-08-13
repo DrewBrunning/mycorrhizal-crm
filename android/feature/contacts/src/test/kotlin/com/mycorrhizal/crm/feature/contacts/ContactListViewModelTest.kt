@@ -4,9 +4,13 @@ import app.cash.turbine.test
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ContactsPage
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.model.network.SearchNoteHit
+import com.mycorrhizal.crm.model.network.SearchResult
+import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -26,17 +30,20 @@ class ContactListViewModelTest {
     private fun page(vararg contacts: ContactSummary, nextCursor: String? = null): ContactsPage =
         ContactsPage(contacts = contacts.toList(), nextCursor = nextCursor, limit = 50, sync = null)
 
-    /** Fresh repository mock + ViewModel; stubs the cache stream the VM collects on init. */
-    private fun newViewModel(): Pair<ContactListViewModel, ContactRepository> {
+    /** Fresh repository + ApiClient mocks and ViewModel; stubs the cache stream the VM collects
+     *  on init and defaults /search to an empty (never-called-in-most-tests) result. */
+    private fun newViewModel(): Triple<ContactListViewModel, ContactRepository, ApiClient> {
         val repo = mockk<ContactRepository>()
+        val apiClient = mockk<ApiClient>()
         coEvery { repo.observeContacts() } returns emptyFlow()
         coEvery { repo.searchLocal(any()) } returns emptyList()
-        return ContactListViewModel(repo) to repo
+        coEvery { apiClient.search(any(), any(), any()) } returns Result.success(SearchResult())
+        return Triple(ContactListViewModel(repo, apiClient), repo, apiClient)
     }
 
     @Test
     fun `initial load fetches the first page`() = runTest(mainDispatcherRule.testDispatcher) {
-        val (viewModel, contactRepository) = newViewModel()
+        val (viewModel, contactRepository, _) = newViewModel()
         coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
             Result.success(page(ContactSummary(id = 1, fn = "Alice")))
 
@@ -50,7 +57,7 @@ class ContactListViewModelTest {
 
     @Test
     fun `error state sets the display message`() = runTest(mainDispatcherRule.testDispatcher) {
-        val (viewModel, contactRepository) = newViewModel()
+        val (viewModel, contactRepository, _) = newViewModel()
         coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
             Result.failure(ApiError.Server(500, "boom"))
 
@@ -63,7 +70,7 @@ class ContactListViewModelTest {
 
     @Test
     fun `401 error emits ForceLogout`() = runTest(mainDispatcherRule.testDispatcher) {
-        val (viewModel, contactRepository) = newViewModel()
+        val (viewModel, contactRepository, _) = newViewModel()
         coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
             Result.failure(ApiError.Client(401, "Invalid token"))
 
@@ -76,7 +83,7 @@ class ContactListViewModelTest {
 
     @Test
     fun `cursor pagination appends to the existing list`() = runTest(mainDispatcherRule.testDispatcher) {
-        val (viewModel, contactRepository) = newViewModel()
+        val (viewModel, contactRepository, _) = newViewModel()
         coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
             Result.success(page(ContactSummary(id = 1, fn = "Alice"), nextCursor = "cursor2"))
         coEvery { contactRepository.listContacts(cursor = "cursor2", limit = 50, search = null) } returns
@@ -95,7 +102,7 @@ class ContactListViewModelTest {
 
     @Test
     fun `loadNextPage is a no-op while already loading`() = runTest(mainDispatcherRule.testDispatcher) {
-        val (viewModel, contactRepository) = newViewModel()
+        val (viewModel, contactRepository, _) = newViewModel()
         coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
             Result.success(page(ContactSummary(id = 1, fn = "Alice"), nextCursor = "cursor2"))
         coEvery { contactRepository.listContacts(cursor = "cursor2", limit = 50, search = null) } returns
@@ -113,7 +120,7 @@ class ContactListViewModelTest {
 
     @Test
     fun `search query is forwarded to the repository`() = runTest(mainDispatcherRule.testDispatcher) {
-        val (viewModel, contactRepository) = newViewModel()
+        val (viewModel, contactRepository, _) = newViewModel()
         coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
             Result.success(page())
         coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "ali") } returns
@@ -132,7 +139,7 @@ class ContactListViewModelTest {
 
     @Test
     fun `clearing the search reloads the full list`() = runTest(mainDispatcherRule.testDispatcher) {
-        val (viewModel, contactRepository) = newViewModel()
+        val (viewModel, contactRepository, _) = newViewModel()
         coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
             Result.success(page(ContactSummary(id = 1, fn = "Alice")))
         coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "bob") } returns
@@ -150,7 +157,7 @@ class ContactListViewModelTest {
 
     @Test
     fun `clicking a contact emits navigation event`() = runTest(mainDispatcherRule.testDispatcher) {
-        val (viewModel, contactRepository) = newViewModel()
+        val (viewModel, contactRepository, _) = newViewModel()
         coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
             Result.success(page(ContactSummary(id = 42, fn = "Alice")))
 
@@ -165,7 +172,7 @@ class ContactListViewModelTest {
 
     @Test
     fun `network failure falls back to the local FTS cache for the query`() = runTest(mainDispatcherRule.testDispatcher) {
-        val (viewModel, contactRepository) = newViewModel()
+        val (viewModel, contactRepository, _) = newViewModel()
         coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "dav") } returns
             Result.failure(ApiError.Network(java.io.IOException("offline")))
         coEvery { contactRepository.searchLocal("dav") } returns
@@ -180,7 +187,7 @@ class ContactListViewModelTest {
 
     @Test
     fun `network failure with no local matches leaves the list empty`() = runTest(mainDispatcherRule.testDispatcher) {
-        val (viewModel, contactRepository) = newViewModel()
+        val (viewModel, contactRepository, _) = newViewModel()
         coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "zzz") } returns
             Result.failure(ApiError.Network(java.io.IOException("offline")))
         coEvery { contactRepository.searchLocal("zzz") } returns emptyList()
@@ -189,5 +196,115 @@ class ContactListViewModelTest {
         advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value.contacts.isEmpty())
+    }
+
+    @Test
+    fun `a note match populates the cross-entity search result`() = runTest(mainDispatcherRule.testDispatcher) {
+        val (viewModel, contactRepository, apiClient) = newViewModel()
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "mom") } returns
+            Result.success(page())
+        coEvery { apiClient.search("mom", null, null) } returns Result.success(
+            SearchResult(
+                resolvedRelation = "parent_of",
+                notes = listOf(SearchNoteHit(id = 1, content = "called mom", contactId = 5, contactName = "Dana")),
+            ),
+        )
+
+        viewModel.onSearchQueryChange("mom")
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals("parent_of", state.searchResult?.resolvedRelation)
+        assertEquals(1, state.searchResult?.notes?.size)
+        assertEquals("Dana", state.searchResult?.notes?.first()?.contactName)
+    }
+
+    @Test
+    fun `a one-character query fires no cross-entity search request`() = runTest(mainDispatcherRule.testDispatcher) {
+        val (viewModel, contactRepository, apiClient) = newViewModel()
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "a") } returns
+            Result.success(page())
+
+        viewModel.onSearchQueryChange("a")
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { apiClient.search(any(), any(), any()) }
+        assertNull(viewModel.uiState.value.searchResult)
+    }
+
+    @Test
+    fun `offline hides the cross-entity section without a section-level error`() = runTest(mainDispatcherRule.testDispatcher) {
+        // T87: /search has no local mirror — unlike the contact list (which falls back to the
+        // Room FTS4 cache via searchLocal), a genuine offline failure just clears the section
+        // rather than showing its own error state. A realistic airplane-mode scenario: both the
+        // primary list fetch and the cross-entity search fail; the list still resolves from
+        // cache, and the section is absent (SearchNotesActivitiesSection's `if (searchResult ==
+        // null) return` renders nothing, never an error) rather than double-erroring.
+        val (viewModel, contactRepository, apiClient) = newViewModel()
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "dav") } returns
+            Result.failure(ApiError.Network(java.io.IOException("offline")))
+        coEvery { contactRepository.searchLocal("dav") } returns
+            listOf(ContactSummary(id = 1, fn = "David Smith"))
+        coEvery { apiClient.search("dav", null, null) } returns
+            Result.failure(ApiError.Network(java.io.IOException("offline")))
+
+        viewModel.onSearchQueryChange("dav")
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals("David Smith", state.contacts.firstOrNull()?.fn)
+        assertNull(state.searchResult)
+    }
+
+    @Test
+    fun `an empty cross-entity result is not treated as an error`() = runTest(mainDispatcherRule.testDispatcher) {
+        val (viewModel, contactRepository, apiClient) = newViewModel()
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "zzz") } returns
+            Result.success(page())
+        coEvery { apiClient.search("zzz", null, null) } returns Result.success(SearchResult())
+
+        viewModel.onSearchQueryChange("zzz")
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertNull(state.error)
+        assertEquals(0, state.searchResult?.notes?.size)
+        assertEquals(0, state.searchResult?.activities?.size)
+    }
+
+    @Test
+    fun `rapid typing debounces to one cross-entity search request`() = runTest(mainDispatcherRule.testDispatcher) {
+        val (viewModel, contactRepository, apiClient) = newViewModel()
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = any()) } returns
+            Result.success(page())
+
+        viewModel.onSearchQueryChange("d")
+        viewModel.onSearchQueryChange("da")
+        viewModel.onSearchQueryChange("dav")
+        advanceUntilIdle()
+
+        // Each keystroke cancels the prior debounce (same searchJob) — only the last
+        // query's request survives, not one per keystroke.
+        coVerify(exactly = 1) { apiClient.search(any(), any(), any()) }
+        coVerify(exactly = 1) { apiClient.search("dav", null, null) }
+    }
+
+    @Test
+    fun `clearing the search also clears the cross-entity result`() = runTest(mainDispatcherRule.testDispatcher) {
+        val (viewModel, contactRepository, apiClient) = newViewModel()
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "mom") } returns
+            Result.success(page())
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+            Result.success(page())
+        coEvery { apiClient.search("mom", null, null) } returns
+            Result.success(SearchResult(notes = listOf(SearchNoteHit(id = 1, content = "called mom"))))
+
+        viewModel.onSearchQueryChange("mom")
+        advanceUntilIdle()
+        assertEquals(1, viewModel.uiState.value.searchResult?.notes?.size)
+
+        viewModel.onSearchQueryChange("")
+        advanceUntilIdle()
+        assertNull(viewModel.uiState.value.searchResult)
     }
 }

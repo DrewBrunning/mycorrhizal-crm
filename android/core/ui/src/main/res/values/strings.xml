@@ -3,7 +3,6 @@
     <!-- App / navigation -->
     <string name="app_name">Mycorrhizal</string>
     <string name="nav_contacts">Contacts</string>
-    <string name="nav_search">Search</string>
     <string name="nav_notes">Notes</string>
     <string name="nav_activities">Activities</string>
     <string name="nav_home">Home</string>
@@ -43,6 +42,14 @@
     <string name="contacts_empty">No contacts yet</string>
     <string name="contacts_new">New contact</string>
     <string name="contacts_photo_description">Photo of %1$s</string>
+
+    <!-- Contact list: cross-entity search (T87) -->
+    <string name="contacts_search_results_header">%1$d matches in notes and activities</string>
+    <string name="contacts_search_results_hint">Notes and activities are searched too — circle and archived filters don\'t apply to them.</string>
+    <string name="contacts_search_notes_group">Notes</string>
+    <string name="contacts_search_activities_group">Interactions</string>
+    <string name="contacts_search_unfiled">Unfiled</string>
+    <string name="contacts_search_resolved_relation">Matched relationship: %1$s</string>
 
     <!-- Contact detail -->
     <string name="contact_title_fallback">Contact</string>

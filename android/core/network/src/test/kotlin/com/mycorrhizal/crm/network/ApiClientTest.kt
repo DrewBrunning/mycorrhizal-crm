@@ -652,4 +652,69 @@ class ApiClientTest {
         assertTrue(result.isSuccess)
         assertEquals("Call Dana", result.getOrThrow().message)
     }
+
+    @Test
+    fun `search parses notes and activities with snippets and resolved_relation`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "query": "mom",
+                      "resolved_relation": "parent_of",
+                      "contacts": [{"id": 99, "fn": "Should Be Ignored"}],
+                      "notes": [
+                        {"ID": 1, "content": "called mom", "date": "2026-01-01", "contact_id": 5, "contact_name": "Dana White", "snippet": "called <b>mom</b>"}
+                      ],
+                      "activities": [
+                        {"ID": 2, "title": "Coffee with mom", "date": "2026-01-02", "snippet": "Coffee with <b>mom</b>"}
+                      ]
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        val result = client.search("mom", limit = 5)
+
+        assertTrue(result.isSuccess)
+        val search = result.getOrThrow()
+        assertEquals("parent_of", search.resolvedRelation)
+        assertEquals(1, search.notes.size)
+        assertEquals("Dana White", search.notes[0].contactName)
+        assertEquals("called <b>mom</b>", search.notes[0].snippet)
+        assertEquals(1, search.activities.size)
+        assertEquals("Coffee with mom", search.activities[0].title)
+
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/api/v1/search?q=mom&limit=5", request.path)
+    }
+
+    @Test
+    fun `search response's contacts group never reaches the parsed model`() = runBlocking {
+        // T87: the contact list is the sole authority for contact results; SearchResult has no
+        // `contacts` property to leak them into, regardless of what the server sends.
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"query": "ali", "contacts": [{"id": 1, "fn": "Alice"}], "notes": [], "activities": []}"""),
+        )
+
+        val result = client.search("ali")
+
+        assertTrue(result.isSuccess)
+        assertEquals(0, result.getOrThrow().notes.size)
+        assertEquals(0, result.getOrThrow().activities.size)
+    }
+
+    @Test
+    fun `search omits optional params when not provided`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"notes": [], "activities": []}"""))
+
+        client.search("al")
+
+        val request = server.takeRequest()
+        assertEquals("/api/v1/search?q=al", request.path)
+    }
 }
