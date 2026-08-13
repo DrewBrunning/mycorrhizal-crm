@@ -1,15 +1,19 @@
 package com.mycorrhizal.crm.feature.contacts
 
 import androidx.lifecycle.SavedStateHandle
+import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
+import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.model.network.CRMEnvelope
 import com.mycorrhizal.crm.model.network.Card
+import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.ContactRecordInput
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.Name
 import com.mycorrhizal.crm.model.network.Nickname
 import com.mycorrhizal.crm.model.network.Email
 import com.mycorrhizal.crm.model.network.Phone
+import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
 import com.mycorrhizal.crm.ui.R
@@ -20,7 +24,6 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -32,12 +35,25 @@ class ContactFormViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val contactRepository = mockk<ContactRepository>()
+    private val circleRepository = mockk<CircleRepository>()
+    private val tagRepository = mockk<TagRepository>()
 
-    private fun createViewModel(id: Int? = null): ContactFormViewModel =
-        ContactFormViewModel(
+    private fun createViewModel(id: Int? = null): ContactFormViewModel {
+        // Default stubs so the init option-loader / membership-derivation coroutines never
+        // throw. NOTE: mockk's last-registered-wins means a test wanting a *specific* answer
+        // must re-stub AFTER createViewModel() and BEFORE advanceUntilIdle() (the coroutines
+        // are only scheduled until then).
+        coEvery { circleRepository.list(any(), any()) } returns Result.success(emptyList())
+        coEvery { tagRepository.list(any(), any()) } returns Result.success(emptyList())
+        coEvery { circleRepository.circlesForContact(any()) } returns Result.success(emptyList())
+        coEvery { tagRepository.tagsForContact(any()) } returns Result.success(emptyList())
+        return ContactFormViewModel(
             contactRepository,
+            circleRepository,
+            tagRepository,
             if (id == null) SavedStateHandle() else SavedStateHandle(mapOf("contactId" to id)),
         )
+    }
 
     @Test
     fun `create mode starts with empty form and no id`() {
@@ -46,12 +62,16 @@ class ContactFormViewModelTest {
         assertFalse(state.isEdit)
         assertNull(state.contactId)
         assertTrue(state.hasName.not())
+        // M24: the kind defaults to human and the language to the device locale (web parity).
+        assertEquals(ContactFormState.KIND_HUMAN, state.kind)
+        assertTrue(state.language.isNotBlank())
     }
 
     @Test
     fun `edit mode loads the existing contact into the form`() = runTest(mainDispatcherRule.testDispatcher) {
         val record = ContactRecordResponse(
             id = 5,
+            uid = "u5",
             card = Card(
                 name = Name(
                     full = "Dana White",
@@ -69,6 +89,11 @@ class ContactFormViewModelTest {
         coEvery { contactRepository.getContact(5) } returns Result.success(record)
 
         val vm = createViewModel(5)
+        // M24: the circles chips seed from the join-row derivation, not the stale flat
+        // `crm.circles` column (which is a legacy mirror, not the authoritative membership).
+        // Re-stub after creation (last-registered-wins) and before advanceUntilIdle.
+        coEvery { circleRepository.circlesForContact("u5") } returns Result.success(listOf(Circle(id = "c1", name = "friends")))
+        coEvery { tagRepository.tagsForContact("u5") } returns Result.success(listOf(Tag(id = "t1", name = "close")))
         advanceUntilIdle()
 
         val state = vm.uiState.value
@@ -81,8 +106,43 @@ class ContactFormViewModelTest {
         // label stays label=null, never forced to "cell" (T81).
         assertEquals(listOf(Email(address = "dana@example.com")), state.emails)
         assertEquals(listOf(Phone(number = "+1-555-0100")), state.phones)
-        assertEquals("friends", state.circlesText)
+        // Seeded from the join-row derivations.
+        assertEquals(listOf("friends"), state.circles)
+        assertEquals(listOf("close"), state.tags)
         assertFalse(state.isLoading)
+    }
+
+    @Test
+    fun `edit mode maps prefix middle suffix kind and language from the record`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(
+                language = "fr",
+                name = Name(
+                    full = "Dr. Dana White Jr.",
+                    components = listOf(
+                        com.mycorrhizal.crm.model.network.NameComponent(kind = "title", value = "Dr."),
+                        com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"),
+                        com.mycorrhizal.crm.model.network.NameComponent(kind = "given2", value = "Ann"),
+                        com.mycorrhizal.crm.model.network.NameComponent(kind = "surname", value = "White"),
+                        com.mycorrhizal.crm.model.network.NameComponent(kind = "generation", value = "Jr."),
+                    ),
+                ),
+            ),
+            crm = CRMEnvelope(kind = "animal"),
+        )
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+        val vm = createViewModel(5)
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertEquals("Dr.", state.prefix)
+        assertEquals("Ann", state.middleName)
+        assertEquals("Jr.", state.suffix)
+        assertEquals(ContactFormState.KIND_ANIMAL, state.kind)
+        assertEquals("fr", state.language)
     }
 
     @Test
@@ -109,6 +169,117 @@ class ContactFormViewModelTest {
         }
         assertEquals(ContactFormEvent.Saved, vm.events.value)
         assertFalse(vm.uiState.value.isSaving)
+    }
+
+    @Test
+    fun `prefix middle and suffix map to title given2 and generation components`() = runTest(mainDispatcherRule.testDispatcher) {
+        val created = ContactRecordResponse(id = 9, card = Card(name = Name(full = "Carol King")))
+        coEvery { contactRepository.createContact(any()) } returns Result.success(created)
+
+        val vm = createViewModel()
+        vm.onGivenNameChange("Carol")
+        vm.onPrefixChange("Dr.")
+        vm.onMiddleNameChange("Ann")
+        vm.onSurnameChange("King")
+        vm.onSuffixChange("Jr.")
+        vm.save()
+        advanceUntilIdle()
+
+        coVerify {
+            contactRepository.createContact(
+                match<ContactRecordInput> { input ->
+                    val comps = input.card?.name?.components.orEmpty()
+                    comps.firstOrNull { it.kind == "title" }?.value == "Dr." &&
+                        comps.firstOrNull { it.kind == "given2" }?.value == "Ann" &&
+                        comps.firstOrNull { it.kind == "generation" }?.value == "Jr."
+                },
+            )
+        }
+    }
+
+    @Test
+    fun `kind and language are sent in create mode`() = runTest(mainDispatcherRule.testDispatcher) {
+        val created = ContactRecordResponse(id = 9, card = Card(name = Name(full = "Rex")))
+        coEvery { contactRepository.createContact(any()) } returns Result.success(created)
+
+        val vm = createViewModel()
+        vm.onGivenNameChange("Rex")
+        vm.onKindChange(ContactFormState.KIND_ANIMAL)
+        vm.onLanguageChange("de")
+        vm.save()
+        advanceUntilIdle()
+
+        coVerify {
+            contactRepository.createContact(
+                match<ContactRecordInput> { input ->
+                    input.crm?.kind == ContactFormState.KIND_ANIMAL && input.card?.language == "de"
+                },
+            )
+        }
+    }
+
+    @Test
+    fun `selected circles and tags become memberships after create`() = runTest(mainDispatcherRule.testDispatcher) {
+        // M24: the form applies memberships via the CircleMember/ContactTag sub-resources,
+        // like web's AddContactDialog — the PUT's crm.circles only touches the flat column.
+        val created = ContactRecordResponse(id = 9, uid = "u9", card = Card(name = Name(full = "Carol King")))
+        coEvery { contactRepository.createContact(any()) } returns Result.success(created)
+
+        val vm = createViewModel()
+        coEvery { circleRepository.list(any(), any()) } returns Result.success(listOf(Circle(id = "c1", name = "friends"), Circle(id = "c2", name = "family")))
+        coEvery { tagRepository.list(any(), any()) } returns Result.success(listOf(Tag(id = "t1", name = "close")))
+        coEvery { circleRepository.circlesForContact("u9") } returns Result.success(emptyList())
+        coEvery { tagRepository.tagsForContact("u9") } returns Result.success(emptyList())
+        coEvery { circleRepository.addMember("c1", "u9") } returns Result.success(
+            com.mycorrhizal.crm.model.network.CircleMember(circleId = "c1", memberVCardUid = "u9"),
+        )
+        coEvery { tagRepository.addContact("t1", "u9") } returns Result.success(
+            com.mycorrhizal.crm.model.network.ContactTag(tagId = "t1", contactVCardUid = "u9"),
+        )
+        vm.onGivenNameChange("Carol")
+        vm.onCircleToggle("friends")
+        vm.onTagToggle("close")
+        vm.save()
+        advanceUntilIdle()
+
+        coVerify { circleRepository.addMember("c1", "u9") }
+        coVerify { tagRepository.addContact("t1", "u9") }
+        assertEquals(ContactFormEvent.Saved, vm.events.value)
+    }
+
+    @Test
+    fun `deselecting a membership removes it in edit mode`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(
+                name = Name(
+                    full = "Dana White",
+                    components = listOf(
+                        com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana"),
+                        com.mycorrhizal.crm.model.network.NameComponent(kind = "surname", value = "White"),
+                    ),
+                ),
+            ),
+            crm = CRMEnvelope(circles = listOf("friends")),
+        )
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { contactRepository.updateContact(5, any()) } returns Result.success(record)
+
+        val vm = createViewModel(5)
+        // Re-stub after creation (last-registered-wins) so the edit-mode membership load
+        // sees the pre-edit membership and can detect the deselection.
+        coEvery { circleRepository.circlesForContact("u5") } returns Result.success(listOf(Circle(id = "c1", name = "friends")))
+        coEvery { tagRepository.tagsForContact("u5") } returns Result.success(emptyList())
+        coEvery { circleRepository.removeMember("c1", "u5") } returns Result.success(Unit)
+        advanceUntilIdle()
+        assertEquals(listOf("friends"), vm.uiState.value.circles)
+
+        vm.onCircleToggle("friends") // deselect
+        vm.save()
+        advanceUntilIdle()
+
+        coVerify { circleRepository.removeMember("c1", "u5") }
     }
 
     @Test
@@ -213,26 +384,6 @@ class ContactFormViewModelTest {
 
         assertEquals(ContactFormEvent.Saved, vm.events.value)
         coVerify { contactRepository.createContact(any()) }
-    }
-
-    @Test
-    fun `circles text is parsed only on save`() = runTest(mainDispatcherRule.testDispatcher) {
-        val created = ContactRecordResponse(id = 9, card = Card(name = Name(full = "Carol King")))
-        coEvery { contactRepository.createContact(any()) } returns Result.success(created)
-
-        val vm = createViewModel()
-        vm.onGivenNameChange("Carol")
-        vm.onCirclesTextChange("friends, family")
-        vm.save()
-        advanceUntilIdle()
-
-        coVerify {
-            contactRepository.createContact(
-                match<ContactRecordInput> { input ->
-                    input.crm?.circles == listOf("friends", "family")
-                },
-            )
-        }
     }
 
     @Test

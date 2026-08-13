@@ -81,6 +81,13 @@ interface CachedContactDao {
     @Query("DELETE FROM cached_contacts WHERE id IN (:ids)")
     suspend fun deleteByIds(ids: List<Int>)
 
+    @Query("DELETE FROM cached_contacts WHERE id = :id")
+    suspend fun deleteById(id: Int)
+
+    /** M24: flip a cached contact's archived flag (archive/unarchive from the detail screen). */
+    @Query("UPDATE cached_contacts SET archived = :archived WHERE id = :id")
+    suspend fun setArchived(id: Int, archived: Boolean)
+
     /** Records the device LOOKUP_KEY after a T57 import (§7.5.4). */
     @Query("UPDATE cached_contacts SET deviceLookupKey = :lookupKey WHERE id = :id")
     suspend fun setDeviceLookupKey(id: Int, lookupKey: String?)

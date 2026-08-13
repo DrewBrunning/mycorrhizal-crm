@@ -280,6 +280,18 @@ private fun MainScaffold() {
                 ContactDetailScreen(
                     onBack = { navController.popBackStack() },
                     onEdit = { id -> navController.navigate("contacts/$id/edit") },
+                    onDeleted = { navController.popBackStack() },
+                    onStayInTouch = { contact ->
+                        val name = contact.card?.displayName.orEmpty()
+                        val message = navController.context.getString(
+                            R.string.contact_stay_in_touch_message,
+                            name,
+                        )
+                        navController.navigate(
+                            "contacts/$contactId/reminders/new" +
+                                "?message=${Uri.encode(message)}&recurrence=quarterly",
+                        )
+                    },
                     onViewActivities = { id -> navController.navigate("contacts/$id/activities") },
                     onViewNotes = { id -> navController.navigate("contacts/$id/notes") },
                     onViewReminders = { id -> navController.navigate("contacts/$id/reminders") },
@@ -396,8 +408,12 @@ private fun MainScaffold() {
                 )
             }
             composable(
-                route = "contacts/{contactId}/reminders/new",
-                arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+                route = "contacts/{contactId}/reminders/new?message={message}&recurrence={recurrence}",
+                arguments = listOf(
+                    navArgument("contactId") { type = NavType.IntType },
+                    navArgument("message") { type = NavType.StringType; defaultValue = "" },
+                    navArgument("recurrence") { type = NavType.StringType; defaultValue = "" },
+                ),
             ) {
                 ReminderFormScreen(
                     onSaved = { navController.popBackStack() },

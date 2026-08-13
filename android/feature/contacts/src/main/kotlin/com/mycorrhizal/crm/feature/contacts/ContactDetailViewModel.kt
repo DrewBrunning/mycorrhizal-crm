@@ -5,10 +5,14 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.AuthRepository
+import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ReminderRepository
+import com.mycorrhizal.crm.domain.repository.TagRepository
+import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.FieldDefinition
+import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
@@ -40,7 +44,28 @@ data class ContactDetailUiState(
      */
     val fieldDefinitions: List<FieldDefinition> = emptyList(),
     val fieldValuesByDefinitionId: Map<String, Any?> = emptyMap(),
+    // M24: inline circle/tag editors. `contactCircles`/`contactTags` are derived from the
+    // CircleMember/ContactTag join rows (the contact payload only carries the legacy flat
+    // `crm.circles` names and no tags at all); `allCircles`/`allTags` back the add menus. A
+    // fetch failure for either leaves the section's chips empty but never errors the screen.
+    val allCircles: List<Circle> = emptyList(),
+    val contactCircles: List<Circle> = emptyList(),
+    val allTags: List<Tag> = emptyList(),
+    val contactTags: List<Tag> = emptyList(),
+    /** True while a mutating action (delete/archive/unarchive/export) is in flight. */
+    val isMutating: Boolean = false,
 )
+
+sealed interface ContactDetailEvent {
+    /** A successful soft-delete — the screen should navigate back. */
+    data object ContactDeleted : ContactDetailEvent
+
+    /**
+     * A single-contact vCard export is ready to hand off to the share sheet.
+     * [version] is null (vCard 4.0) or 3 (vCard 3.0), for the filename.
+     */
+    data class ExportReady(val version: Int?, val bytes: ByteArray) : ContactDetailEvent
+}
 
 @HiltViewModel
 class ContactDetailViewModel @Inject constructor(
@@ -52,6 +77,10 @@ class ContactDetailViewModel @Inject constructor(
     // repository for a slice with no write path yet — same precedent as DashboardViewModel and
     // T87's ContactListViewModel.
     private val apiClient: ApiClient,
+    // M24: the inline circle/tag editors write through the repositories (so the Room mirrors
+    // stay in sync) and read the join-row derivations they expose.
+    private val circleRepository: CircleRepository,
+    private val tagRepository: TagRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -62,6 +91,9 @@ class ContactDetailViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(ContactDetailUiState())
     val uiState: StateFlow<ContactDetailUiState> = _uiState.asStateFlow()
+
+    private val _events = MutableStateFlow<ContactDetailEvent?>(null)
+    val events: StateFlow<ContactDetailEvent?> = _events
 
     init {
         load()
@@ -85,6 +117,7 @@ class ContactDetailViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(isLoading = false, contact = contact, deviceLookupKey = lookupKey)
                     }
+                    loadCirclesAndTags(contact)
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
@@ -117,6 +150,159 @@ class ContactDetailViewModel @Inject constructor(
         }
     }
 
+    /**
+     * M24: refresh the inline circle/tag editors. Needs the contact's VCard UID (the join-row
+     * derivations are keyed on it), so it is only called once the contact has loaded. Failures
+     * silently leave the sections empty — see the state fields' doc comment.
+     */
+    private fun loadCirclesAndTags(contact: ContactRecordResponse) {
+        val uid = contact.uid
+        if (uid.isNullOrBlank()) return
+        viewModelScope.launch {
+            circleRepository.circlesForContact(uid).foldApiError(
+                onSuccess = { circles -> _uiState.update { it.copy(contactCircles = circles) } },
+                onError = {},
+            )
+        }
+        viewModelScope.launch {
+            circleRepository.list().foldApiError(
+                onSuccess = { circles -> _uiState.update { it.copy(allCircles = circles) } },
+                onError = {},
+            )
+        }
+        viewModelScope.launch {
+            tagRepository.tagsForContact(uid).foldApiError(
+                onSuccess = { tags -> _uiState.update { it.copy(contactTags = tags) } },
+                onError = {},
+            )
+        }
+        viewModelScope.launch {
+            tagRepository.list().foldApiError(
+                onSuccess = { tags -> _uiState.update { it.copy(allTags = tags) } },
+                onError = {},
+            )
+        }
+    }
+
+    // --- M24: top-level actions (delete / archive / unarchive / export) ---
+
+    /**
+     * Soft-delete the contact. On success the screen navigates back (a screen bound to a
+     * deleted contact is stale); the list screen refetches on resume and the row disappears.
+     */
+    fun deleteContact() {
+        if (contactId == 0 || _uiState.value.isMutating) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isMutating = true, error = null) }
+            contactRepository.deleteContact(contactId).foldApiError(
+                onSuccess = {
+                    _uiState.update { it.copy(isMutating = false) }
+                    _events.value = ContactDetailEvent.ContactDeleted
+                },
+                onError = { error ->
+                    _uiState.update { it.copy(isMutating = false, error = error.displayMessage) }
+                },
+            )
+        }
+    }
+
+    /**
+     * Archive (true) or unarchive (false) the contact, matching web's semantics — archive
+     * retires the contact's reminders server-side; the contact stays visible on this screen
+     * and the action menu flips. Reloads the contact afterwards so the archived flag (and
+     * cache) reflect the change.
+     */
+    fun setArchived(archived: Boolean) {
+        if (contactId == 0 || _uiState.value.isMutating) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isMutating = true, error = null) }
+            val result = if (archived) {
+                contactRepository.archiveContact(contactId)
+            } else {
+                contactRepository.unarchiveContact(contactId)
+            }
+            result.foldApiError(
+                onSuccess = {
+                    _uiState.update { it.copy(isMutating = false) }
+                    load()
+                },
+                onError = { error ->
+                    _uiState.update { it.copy(isMutating = false, error = error.displayMessage) }
+                },
+            )
+        }
+    }
+
+    /**
+     * Export this contact as vCard 4.0 (version == null) or 3.0 (version == 3), emitting
+     * [ContactDetailEvent.ExportReady] with the raw file bytes for the share sheet.
+     */
+    fun exportVcf(version: Int? = null) {
+        val uid = _uiState.value.contact?.uid
+        if (uid.isNullOrBlank() || _uiState.value.isMutating) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isMutating = true, error = null) }
+            contactRepository.exportContactVcf(uid, version).foldApiError(
+                onSuccess = { bytes ->
+                    _uiState.update { it.copy(isMutating = false) }
+                    _events.value = ContactDetailEvent.ExportReady(version, bytes)
+                },
+                onError = { error ->
+                    _uiState.update { it.copy(isMutating = false, error = error.displayMessage) }
+                },
+            )
+        }
+    }
+
+    // --- M24: inline circle/tag editors ---
+
+    /** Add [circle]'s membership for this contact (needs the VCard UID; no-op without one). */
+    fun addCircle(circle: Circle) {
+        val uid = _uiState.value.contact?.uid ?: return
+        viewModelScope.launch {
+            circleRepository.addMember(circle.id, uid).foldApiError(
+                onSuccess = { reloadMemberships() },
+                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } },
+            )
+        }
+    }
+
+    fun removeCircle(circle: Circle) {
+        val uid = _uiState.value.contact?.uid ?: return
+        viewModelScope.launch {
+            circleRepository.removeMember(circle.id, uid).foldApiError(
+                onSuccess = { reloadMemberships() },
+                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } },
+            )
+        }
+    }
+
+    /** Tag this contact with [tag] (needs the VCard UID; no-op without one). */
+    fun addTag(tag: Tag) {
+        val uid = _uiState.value.contact?.uid ?: return
+        viewModelScope.launch {
+            tagRepository.addContact(tag.id, uid).foldApiError(
+                onSuccess = { reloadMemberships() },
+                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } },
+            )
+        }
+    }
+
+    fun removeTag(tag: Tag) {
+        val uid = _uiState.value.contact?.uid ?: return
+        viewModelScope.launch {
+            tagRepository.removeContact(tag.id, uid).foldApiError(
+                onSuccess = { reloadMemberships() },
+                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } },
+            )
+        }
+    }
+
+    /** Refetch the join-row derivations after a membership/tagging write. */
+    private fun reloadMemberships() {
+        _uiState.value.contact?.let { loadCirclesAndTags(it) }
+    }
+
     /** Complete a reminder from the timeline; reload the contact so the list refreshes. */
     fun completeReminder(id: Int) {
         viewModelScope.launch {
@@ -131,5 +317,9 @@ class ContactDetailViewModel @Inject constructor(
 
     fun onErrorShown() {
         _uiState.update { it.copy(errorRes = null, error = null) }
+    }
+
+    fun onEventShown() {
+        _events.value = null
     }
 }

@@ -11,6 +11,17 @@ interface CircleRepository {
     /** All circles, cursor-paginated. */
     suspend fun list(cursor: String? = null, limit: Int = 100): Result<List<Circle>>
 
+    /**
+     * The circles a given contact belongs to, derived from the memberships
+     * (`GET /circles?include_members=true` filtered client-side by VCard UID).
+     * The contact detail payload's `crm.circles` is the legacy flat projection;
+     * CircleMember join rows are the authoritative source, so M24's inline
+     * editor derives membership from them. Also refreshes the local
+     * circle/member mirror wholesale. Empty [vcardUid] short-circuits to
+     * success with no circles (no network call).
+     */
+    suspend fun circlesForContact(vcardUid: String): Result<List<Circle>>
+
     /** A circle with its members. */
     suspend fun getWithMembers(id: String): Result<CircleDetail>
 

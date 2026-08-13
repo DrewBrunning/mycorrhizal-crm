@@ -865,4 +865,113 @@ class ApiClientTest {
         assertEquals("PUT", request.method)
         assertEquals("/api/v1/relationship-edges/e1", request.path)
     }
+
+    // --- M24: contact-level actions (delete/archive/unarchive/export) ---
+
+    @Test
+    fun `delete contact sends a DELETE to the contact route`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"message":"deleted"}"""))
+
+        val result = client.deleteContact(5)
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("DELETE", request.method)
+        assertEquals("/api/v1/contacts/5", request.path)
+    }
+
+    @Test
+    fun `delete contact failure maps to the backend error`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(404).setBody("""{"error":{"code":"not_found","message":"Contact not found"}}"""),
+        )
+
+        val result = client.deleteContact(5)
+
+        assertTrue(result.isFailure)
+        val error = result.exceptionOrNull() as ApiError
+        assertTrue(error is ApiError.Client)
+        assertEquals(404, (error as ApiError.Client).code)
+    }
+
+    @Test
+    fun `archive contact posts to the archive route`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"id":5,"archived":true,"firstname":"Dana","lastname":"White"}"""),
+        )
+
+        val result = client.archiveContact(5)
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/contacts/5/archive", request.path)
+    }
+
+    @Test
+    fun `unarchive contact posts to the unarchive route`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"id":5,"archived":false,"firstname":"Dana","lastname":"White"}"""),
+        )
+
+        val result = client.unarchiveContact(5)
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/contacts/5/unarchive", request.path)
+    }
+
+    @Test
+    fun `export single contact vcard 4 returns the raw file bytes`() = runBlocking {
+        val vcf = "BEGIN:VCARD\r\nVERSION:4.0\r\nFN:Dana White\r\nUID:u1\r\nEND:VCARD\r\n"
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "text/vcard; charset=utf-8")
+                .setBody(vcf),
+        )
+
+        val result = client.exportContactVcf("u1")
+
+        assertTrue(result.isSuccess)
+        assertEquals(vcf.toByteArray().contentToString(), result.getOrThrow().contentToString())
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/api/v1/export/vcf?vcard_uid=u1", request.path)
+    }
+
+    @Test
+    fun `export single contact vcard 3 adds the version param`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "text/vcard; charset=utf-8")
+                .setBody("BEGIN:VCARD\r\nVERSION:3.0\r\nEND:VCARD\r\n"),
+        )
+
+        val result = client.exportContactVcf("u1", version = 3)
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("/api/v1/export/vcf?vcard_uid=u1&version=3", request.path)
+    }
+
+    @Test
+    fun `export failure parses the JSON error instead of returning bytes`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(400).setBody("""{"error":{"code":"validation","message":"bad request"}}"""),
+        )
+
+        val result = client.exportContactVcf("missing")
+
+        assertTrue(result.isFailure)
+        val error = result.exceptionOrNull() as ApiError
+        assertTrue(error is ApiError.Client)
+        assertEquals(400, (error as ApiError.Client).code)
+    }
 }

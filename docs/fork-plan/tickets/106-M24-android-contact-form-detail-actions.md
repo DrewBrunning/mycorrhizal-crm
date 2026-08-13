@@ -7,7 +7,7 @@
 | **Size** | S — 3 new endpoints, each a straightforward action plus a confirm |
 | **Source** | [M8](89-M8-web-android-parity-audit.md) audit, 2026-08-11 |
 | **Depends on** | Nothing |
-| **Status** | TO BE DONE |
+| **Status** | **IMPLEMENTED, AWAITING ON-DEVICE VERIFICATION** (2026-08-13). All three new `ApiClient` methods, the repository layer, the detail-screen action menu with confirmations, inline circle/tag editors, and the form fields landed; `testDebugUnitTest`/`lintDebug`/`assembleDebug` green. The ticket's on-device hand-verify step is still outstanding — no device/emulator available in the build environment. |
 
 This is distinct from [M7](88-M7-android-contact-record-coverage.md) — M7 is the depth gap *inside*
 the `Card`/`CRMEnvelope` record (addresses, orgs, links, etc.); this ticket is the set of top-level
@@ -103,5 +103,80 @@ undo). Do not present it as permanent, and do not expect the row to vanish from 
 
 JUnit4 + MockK (`mockk`/`coEvery`) + Turbine + `runTest` with `MainDispatcherRule`. ViewModel tests
 mock the repository — `feature/contacts/.../ContactListViewModelTest.kt` is the reference. New
-`ApiClient` methods get a MockWebServer test in `core/network` — `ApiClientTest.kt` is the reference.
-Hand-verify per `/CLAUDE.md`: break the code, confirm the new test fails, restore.
+`ApiClient` methods get a MockWebServer test in `core/network` — `ApiClientTest.kt` is the
+reference. Hand-verify per `/CLAUDE.md`: break the code, confirm the new test fails, restore.
+
+---
+
+## Landing note (2026-08-13)
+
+**What landed** (all in `android/`; no backend changes were needed — every endpoint pre-dates
+the client):
+
+- **`ApiClient`**: `deleteContact`, `archiveContact`, `unarchiveContact`, and
+  `exportContactVcf(vcardUid, version)` (raw bytes via a new `executeGetBytes` helper; vCard
+  4.0 default, 3.0 when `version=3`), each with MockWebServer tests.
+- **`ContactRepository`** (+ impl): the four methods above, online-first with cache sync —
+  delete removes the cached row, archive/unarchive flip the cached `archived` flag (`setArchived`).
+- **`CircleRepository`/`TagRepository`**: `circlesForContact(uid)` and `tagsForContact(uid)`
+  derive a contact's circles/tags from the `include_members`/`include_contacts` snapshots,
+  because the contact payload carries neither (its `crm.circles` is the stale flat mirror, and
+  tags aren't in the detail response at all). This is the *authoritative* source the detail
+  editors and the edit form both seed from.
+- **Contact detail screen**: a ⋮ action menu (archive/unarchive, export vCard 4.0/3.0, stay in
+  touch, share + prep stubs, delete). Delete and archive/unarchive are confirmed first and name
+  the contact; delete navigates back on success. Export writes the file to the cache and hands
+  it to the share sheet via a new `FileProvider` (`${applicationId}.fileprovider` +
+  `res/xml/file_paths.xml`). Stay-in-touch navigates to the reminder form pre-filled with
+  "Catch-up with \<name\>" + quarterly recurrence (`ReminderFormViewModel` reads optional
+  `message`/`recurrence` SavedStateHandle args; new route query params).
+- **Inline circle/tag editors** on the detail page: removable chips + an add dropdown of the
+  not-yet-applied entities, writing through the repositories.
+- **Contact form**: prefix/middle name/suffix fields (map to name components `title`/`given2`/
+  `generation`, matching web's AddContactDialog), kind (human/animal → `crm.kind`, default
+  human), language (→ `card.language`, defaulted to the device locale on create), and
+  circles/tags as *autocomplete-of-existing* chips + dropdown (the ticket's explicit
+  requirement) replacing the free-text comma-separated circles field. On save, memberships are
+  reconciled through the join-row sub-resources (add newly selected, remove deselected) — the
+  PUT's `crm.circles` only touches the legacy flat column. The T81 "copy onto the loaded entry,
+  never reconstruct" rule is preserved for the new name components too (only the editable kinds
+  are replaced).
+- **i18n**: 32 new keys in all five locales (`values`/`-de/-es/-fr/-it`), `LocalesConsistencyTest`
+  green; `contact_circles_label` removed everywhere (the comma-separated field it labeled is gone).
+
+**Test coverage** (all hand-verified per `/CLAUDE.md` — each listed direction was broken and
+confirmed to fail before restore): ApiClient MockWebServer round-trips incl. error mapping and
+the `version=3` param; repository cache-sync tests (delete removes row, failure keeps it;
+archive/unarchive flip the flag); the join-row derivations (blank-uid short-circuit, snapshot
+filtering, failure propagation); detail-VM action tests (delete → `ContactDeleted`, archive →
+reload, export → `ExportReady`, error paths, no-uid guard, add/remove → repo + re-derivation);
+form-VM tests (component mapping, kind/language payload, create-membership adds, edit-mode
+deselect removes, plus all pre-existing T81 regressions kept green); and screen tests for the
+chips/add-dropdown. CI gate (`testDebugUnitTest` + `lintDebug` + `assembleDebug`) green with
+`--rerun-tasks`.
+
+**Deliberate deviations / deferrals** (nothing here is in the ticket's "Done when", so none
+blocks this landing, but each is recorded per the readiness pass's "state it rather than
+discover it" rule):
+
+- **Profile-picture upload deferred.** It's in the Scope list ("plain upload/crop path is
+  sufficient"), but a crop UI would require either a new dependency (uCrop) or a hand-rolled
+  Compose cropper — neither is safe to add blind in an offline build environment, and the
+  ticket's "Done when" doesn't include it. The `POST /contacts/:id/profile_picture` endpoint
+  is already reachable from `ApiClient`'s existing multipart machinery when it's built.
+- **Export offers vCard 4.0 and 3.0 only, not JSContact.** The backend's `/export/jscontact`
+  ignores `?vcard_uid=` (unlike `/export/vcf`), so a "single-contact JSContact export" would
+  silently produce a file of *all* contacts. Web's `exportContact('jscontact', uid)` has the
+  same latent issue; it was deliberately not replicated on mobile. "One of web's three formats"
+  is satisfied by vcf4.
+- **Share-contact and view-prep are stub menu items** showing the standard "coming in a later
+  phase" snackbar, per the ticket's "can add the menu item as a stub" option (M15/M11 are
+  separate tickets).
+- **Membership derivation uses a single 100-item page** (`limit=100` — the backend's
+  `GetCursorParams` clamps to `maxLimit=100` regardless of the request, and 100 is web's own
+  `listCircles`/`listTags` default). Not cursor-walked; a user with >100 circles/tags would see
+  truncation (documented in the repository doc comments).
+- **On-device hand-verification is outstanding**, matching M21's status: no device/emulator in
+  the build environment. The ticket's on-device steps (archive → excluded from the default
+  list; delete → soft-delete/undo story; name-linking in the delete confirm) are exactly what
+  the unit/UI tests pin, but a real-device pass is still owed.
