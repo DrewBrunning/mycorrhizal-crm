@@ -216,6 +216,47 @@ func TestAddressMapping_RoundTripsSubStreetFields(t *testing.T) {
 	}
 }
 
+// TestAddressMapping_TranslatesContextsToLegacyType is T91: the neutral model
+// uses private/work for Contexts, the flat model uses home/work, and this
+// projection used to copy Contexts[0] across untranslated. Every address that
+// arrived through an adapter therefore came out typed "private" -- a token no
+// other part of the app understands, so the web address editor rendered it as
+// raw text.
+//
+// The unmapped case is asserted deliberately: RecordFromContact puts the
+// legacy free-text Type straight into Contexts (Address has no Label field),
+// so an unrecognized context is user data that must survive, not be blanked.
+func TestAddressMapping_TranslatesContextsToLegacyType(t *testing.T) {
+	for _, tc := range []struct{ name, context, want string }{
+		{"private becomes home", "private", "home"},
+		{"work is identical both ways", "work", "work"},
+		{"billing is identical both ways", "billing", "billing"},
+		{"an already-legacy token passes through", "home", "home"},
+		{"an arbitrary context is preserved verbatim", "cabin", "cabin"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			flat := contactAddressFromNeutral(contactmodel.Address{
+				Components: []contactmodel.AddressComponent{{Kind: "name", Value: "123 Fake St"}},
+				Contexts:   []string{tc.context},
+			})
+			if flat.Type != tc.want {
+				t.Errorf("contexts[0]=%q projected to Type %q, want %q", tc.context, flat.Type, tc.want)
+			}
+		})
+	}
+
+	// A flat-entered address must still survive a full round trip unchanged --
+	// the forward direction (contact_record.go) puts the flat Type into
+	// Contexts verbatim, so "home" -> ["home"] -> "home" must not become
+	// "private" or blank on the way back.
+	roundTripped := contactAddressFromNeutral(AddressFromContactAddress(ContactAddress{
+		Street: "123 Fake St", City: "Townesville", Type: "home",
+	}))
+	if roundTripped.Type != "home" {
+		t.Errorf("flat->Card->flat Type = %q, want %q", roundTripped.Type, "home")
+	}
+}
+
 // TestApplyRecordToContact_AddressFullOnlyFallback documents the one known
 // lossy case called out in applyAddresses's doc comment: an Address with no
 // structured Components, only Full, reconstructs to an all-blank

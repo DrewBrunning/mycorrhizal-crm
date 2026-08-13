@@ -236,14 +236,10 @@ func setPref(f *vcard.Field, pref *int) {
 	setParam(f, ParamPref, strconv.Itoa(*pref))
 }
 
-// ctx2type (20.4): Contexts private<->home, work<->work; 9554 also adds
-// billing/delivery (identity both ways) for addresses.
-var typeTokenToContext = map[string]string{
-	"home": "private", "work": "work", "billing": "billing", "delivery": "delivery",
-}
-var contextToTypeToken = map[string]string{
-	"private": "home", "work": "work", "billing": "billing", "delivery": "delivery",
-}
+// ctx2type (20.4) moved to contactmodel in T91 so the Card->flat reverse
+// projection can share it; see contactmodel.TypeTokenToContext for why.
+var typeTokenToContext = contactmodel.TypeTokenToContext
+var contextToTypeToken = contactmodel.ContextToTypeToken
 
 // splitTypeTokens classifies a field's TYPE tokens into recognized Contexts
 // (home/work/billing/delivery) vs. everything else ("rest" — e.g. phone
