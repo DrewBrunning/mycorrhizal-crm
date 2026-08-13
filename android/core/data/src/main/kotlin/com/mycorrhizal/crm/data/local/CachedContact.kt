@@ -21,6 +21,14 @@ data class CachedContact(
     val fn: String? = null,
     val primaryEmail: String? = null,
     val primaryPhone: String? = null,
+    /**
+     * Every phone entry's full digit string plus its [PhoneKey], space-joined (T76) — mirrors
+     * the backend's `phones_normalized` column (`FlattenPhones`, T69) so offline search finds a
+     * number regardless of punctuation. Only populated when the row came from a full detail
+     * fetch (`card.phones` is the full list); a bare list-page row only ever knows
+     * [primaryPhone], same limitation that field already has.
+     */
+    val phonesNormalized: String? = null,
     val birthday: String? = null,
     val org: String? = null,
     val photoThumbnail: String? = null,

@@ -239,6 +239,51 @@ class ContactRepositoryImplTest {
     }
 
     @Test
+    fun `searchLocal finds a punctuated phone number by its bare digits`() = runTest {
+        // T76: offline search must find a contact by phone number regardless of the stored
+        // punctuation — the exact reported bug (offline search can't find a contact by phone).
+        db.cachedContactDao().upsertAll(
+            listOf(
+                com.mycorrhizal.crm.data.local.CachedContact(
+                    id = 1,
+                    fn = "Dana White",
+                    primaryPhone = "(800) 555-1234",
+                    phonesNormalized = com.mycorrhizal.crm.data.local.PhoneKey.flatten(listOf("(800) 555-1234")),
+                ),
+                com.mycorrhizal.crm.data.local.CachedContact(id = 2, fn = "Bob Jones"),
+            ),
+        )
+
+        val result = repository.searchLocal("8005551234")
+
+        assertEquals(1, result.size)
+        assertEquals("Dana White", result[0].fn)
+    }
+
+    @Test
+    fun `searchLocal finds a contact by querying with a country code the stored number lacks`() = runTest {
+        // The specific thing PhoneKey's digits-vs-key duality buys over a bare/unrestricted FTS
+        // prefix match: "18005551234" is not a prefix of the stored "8005551234" token or vice
+        // versa, so only the OR'd key match (via phoneMatchExpr) finds it. This is the part a
+        // weaker "does *any* phone query work" test wouldn't catch regressing.
+        db.cachedContactDao().upsertAll(
+            listOf(
+                com.mycorrhizal.crm.data.local.CachedContact(
+                    id = 1,
+                    fn = "Dana White",
+                    primaryPhone = "(800) 555-1234",
+                    phonesNormalized = com.mycorrhizal.crm.data.local.PhoneKey.flatten(listOf("(800) 555-1234")),
+                ),
+            ),
+        )
+
+        val result = repository.searchLocal("+1 (800) 555-1234")
+
+        assertEquals(1, result.size)
+        assertEquals("Dana White", result[0].fn)
+    }
+
+    @Test
     fun `searchLocal with a blank query returns the whole cache`() = runTest {
         db.cachedContactDao().upsertAll(
             listOf(

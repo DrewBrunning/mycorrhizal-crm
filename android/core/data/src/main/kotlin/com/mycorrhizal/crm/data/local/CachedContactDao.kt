@@ -58,6 +58,23 @@ interface CachedContactDao {
     )
     suspend fun searchFts(query: String): List<CachedContact>
 
+    /**
+     * FTS4 search taking a complete MATCH expression, unlike [searchFts] which treats its
+     * argument as a bare prefix term appended with `'*'` in SQL. Used for phone-shaped queries
+     * (T76), where the caller has already built an OR-of-prefix-matches expression restricted
+     * to the `phonesNormalized` column — see `ContactRepositoryImpl.phoneMatchExpr`.
+     */
+    @Query(
+        """
+        SELECT c.* FROM cached_contacts_fts f
+        JOIN cached_contacts c ON c.id = f.rowid
+        WHERE cached_contacts_fts MATCH :matchExpr
+          AND c.deleted = 0
+        ORDER BY c.fn COLLATE NOCASE ASC
+        """,
+    )
+    suspend fun searchFtsMatch(matchExpr: String): List<CachedContact>
+
     @Query("DELETE FROM cached_contacts")
     suspend fun deleteAll()
 

@@ -2,6 +2,7 @@ package com.mycorrhizal.crm.data.repository
 
 import com.mycorrhizal.crm.data.local.CachedContact
 import com.mycorrhizal.crm.data.local.CachedContactDao
+import com.mycorrhizal.crm.data.local.PhoneKey
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ContactsPage
 import com.mycorrhizal.crm.model.network.ContactRecordInput
@@ -125,22 +126,49 @@ class ContactRepositoryImpl @Inject constructor(
     override suspend fun searchLocal(query: String): List<ContactSummary> {
         val trimmed = query.trim()
         if (trimmed.isEmpty()) return dao.getAll().map { it.toSummary() }
-        // Sanitize the query so a plain search term can never break the FTS
-        // MATCH expression (unbalanced parens or a bare NEAR throw
-        // "malformed MATCH expression" and crash the offline path).
-        val safe = trimmed
-            .replace("\"", " ")
-            .replace(Regex("""[()*:\-]"""), " ")
-            .replace(Regex("""\b(AND|OR|NOT|NEAR)\b""", RegexOption.IGNORE_CASE), " ")
-            .replace(Regex("""\s+"""), " ")
-            .trim()
-        if (safe.isEmpty()) return dao.getAll().map { it.toSummary() }
         return try {
+            // T76: a phone-shaped query (mostly digits) is matched against the normalized
+            // digit/key tokens of phonesNormalized rather than the raw-tokenizer path, which
+            // splits "(800) 555-1234" into three FTS tokens that "8005551234" never
+            // prefix-matches. Mirrors backend ContactFTSMatch's phone-vs-plain choice.
+            val phoneQuery = PhoneKey.queryTokens(trimmed)
+            if (phoneQuery != null) {
+                return dao.searchFtsMatch(phoneMatchExpr(phoneQuery)).map { it.toSummary() }
+            }
+            // Sanitize the query so a plain search term can never break the FTS
+            // MATCH expression (unbalanced parens or a bare NEAR throw
+            // "malformed MATCH expression" and crash the offline path).
+            val safe = trimmed
+                .replace("\"", " ")
+                .replace(Regex("""[()*:\-]"""), " ")
+                .replace(Regex("""\b(AND|OR|NOT|NEAR)\b""", RegexOption.IGNORE_CASE), " ")
+                .replace(Regex("""\s+"""), " ")
+                .trim()
+            if (safe.isEmpty()) return dao.getAll().map { it.toSummary() }
             dao.searchFts(safe).map { it.toSummary() }
         } catch (_: Exception) {
             // FTS rejected the expression after all — fall back to the LIKE scan.
             dao.search(trimmed).map { it.toSummary() }
         }
+    }
+
+    /**
+     * Builds the FTS4 MATCH expression for a phone-shaped query, mirroring backend
+     * `phoneFTSMatch`: an OR of prefix-matches on the query's normalized digit string and its
+     * [PhoneKey.key] (deduped when they coincide), restricted to the `phonesNormalized` column
+     * so a phone-shaped query can't accidentally match an unrelated text column's digits.
+     *
+     * Deliberately unquoted, unlike the backend's version — quoting a phrase breaks FTS4's
+     * `column:term*` filter syntax entirely (`column:"term"*` matches nothing; confirmed
+     * empirically, not documented). Safe without it: [PhoneKey.digits]/[PhoneKey.key] are
+     * always pure `0`-`9` by construction, so there is no FTS syntax character to escape.
+     */
+    private fun phoneMatchExpr(query: PhoneKey.Query): String {
+        val tokens = mutableListOf("phonesNormalized:${query.digits}*")
+        if (query.key.isNotEmpty() && query.key != query.digits) {
+            tokens.add("phonesNormalized:${query.key}*")
+        }
+        return tokens.joinToString(" OR ")
     }
 
     override fun observeContact(id: Int): Flow<ContactRecordResponse?> =
@@ -174,6 +202,11 @@ class ContactRepositoryImpl @Inject constructor(
                 card = row.card ?: cached.card,
                 crm = row.crm ?: cached.crm,
                 photoThumbnail = row.photoThumbnail ?: cached.photoThumbnail,
+                // A list row only ever knows primaryPhone; preserve a richer multi-phone
+                // index from a previously cached full detail fetch (cached.card != null,
+                // same signal card/crm above key off) rather than downgrading it on every
+                // plain list refresh.
+                phonesNormalized = if (cached.card != null) cached.phonesNormalized else row.phonesNormalized,
             )
         }
     }
@@ -187,6 +220,9 @@ class ContactRepositoryImpl @Inject constructor(
         fn = fn,
         primaryEmail = primaryEmail,
         primaryPhone = primaryPhone,
+        // A list row only ever knows the single primary phone; see phonesNormalized's
+        // doc comment and mergePreservingDetail for how a richer index survives past it.
+        phonesNormalized = primaryPhone?.let { PhoneKey.flatten(listOf(it)) },
         birthday = birthday,
         org = org,
         photoThumbnail = photoThumbnail,
@@ -205,6 +241,7 @@ class ContactRepositoryImpl @Inject constructor(
         fn = card?.name?.full,
         primaryEmail = card?.emails?.firstOrNull()?.address,
         primaryPhone = card?.phones?.firstOrNull()?.number,
+        phonesNormalized = PhoneKey.flatten(card?.phones.orEmpty().map { it.number }),
         org = card?.organizations?.firstOrNull()?.name,
         photoThumbnail = photoThumbnail,
         circles = crm?.circles,

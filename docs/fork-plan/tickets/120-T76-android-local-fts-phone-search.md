@@ -75,3 +75,57 @@ Two secondary gaps come along with it, both mirroring T69's:
   first.
 - `./gradlew testDebugUnitTest`, `./gradlew lintDebug` and `./gradlew assembleDebug` green —
   the three steps `.github/workflows/android-tests.yml` actually runs.
+
+## Landed 2026-08-12
+
+Implemented largely as scoped, with two real deviations from the ticket's own suggested
+approach, both found by following its own "verify before relying on" instructions:
+
+- **Not a destructive migration.** `pending_interactions` (device call/SMS tracking staged for
+  server sync) is a real not-yet-synced outbox, not rebuildable cache data —
+  `fallbackToDestructiveMigration` would have silently deleted it on this version bump. Wrote a
+  hand-migration (`MIGRATION_13_14`, `Migrations.kt`) instead: `ALTER TABLE` on `cached_contacts`
+  for the new column, drop+recreate `cached_contacts_fts` (FTS4 can't `ALTER ADD COLUMN`) with an
+  FTS `'rebuild'` to reindex from existing rows. Room's own migration pipeline
+  (`onPreMigrate`/`onPostMigrate`) drops and recreates every `@Fts4` entity's sync triggers
+  around any registered migration automatically, so the migration itself only needed the
+  table-level DDL delta. `Migration13To14Test` builds a real v13-shaped database (every table,
+  not just the two that changed — Room validates the whole schema post-migration) and proves both
+  halves: the outbox row survives, and the new phone index actually works after migrating.
+- **The FTS4 `column:"term"*` filter syntax silently matches nothing when the term is quoted**
+  (confirmed empirically against Robolectric's real SQLite, not documented anywhere found).
+  `phoneMatchExpr` uses `column:term*` unquoted instead — safe without quoting since
+  `PhoneKey.digits`/`PhoneKey.key` are always pure `0`-`9` by construction, so there's no FTS
+  syntax character that would need escaping in the first place. The backend's Go equivalent
+  (`phoneFTSMatch`) does quote — the two aren't required to match syntactically, only in what
+  they find.
+- The ticket's third gap — "passes unsanitized input to MATCH" — turned out to already be fixed:
+  `ContactRepositoryImpl.searchLocal` already sanitized (strip FTS operator characters, quotes,
+  boolean keywords) before hitting `MATCH`, plus a try/catch falling back to the LIKE scan, from
+  work that landed after this ticket was filed. Left as-is; no regression to fix.
+
+`PhoneKey.kt` mirrors backend `models.PhoneKey`/`NormalizePhoneDigits`/`FlattenPhones`
+(`backend/models/phonekey.go`) and `services.PhoneQueryTokens`/`phoneFTSMatch`
+(`backend/services/search_service.go`) line-for-line. `CachedContact`/`CachedContactFts` gain
+`phonesNormalized` (every phone's full digits + its last-10-digit key, space-joined); a list-page
+row only ever knows `primaryPhone`, so `mergePreservingDetail` now also preserves a richer
+multi-phone index from a previously cached full detail fetch across a plain list refresh, the
+same way it already does for `card`/`crm`.
+
+Test coverage: `PhoneKeyTest` (pure unit), `CachedContactDaoTest` (cross-punctuation + non-primary
+phone FTS match), `ContactRepositoryImplTest` (the ticket's literal scenario, plus a
+country-code-prefix test that specifically pins the digits-vs-key duality — the literal-scenario
+test alone would still pass with the phone-routing removed, since `phonesNormalized` is a
+generally-indexed FTS column). All hand-verified per `/CLAUDE.md`: broke the phone-routing,
+confirmed exactly the discriminating test failed; separately swapped the migration test to the
+ticket's originally-suggested `fallbackToDestructiveMigration`, confirmed the outbox-preservation
+assertion failed (`expected:<1> but was:<0>`) — the exact hazard the hand-migration exists to
+avoid.
+
+**Hand-verified on a real device** (Pixel 8a): installed over the existing debuggable build
+(schema still at v13 from earlier T67/T81 installs) — the migration ran live against a real
+on-device database with no crash and no data loss, confirmed via logcat. The offline-search UI
+path itself (airplane mode + search) was not separately hand-verified — the migration and unit
+test coverage were judged sufficient.
+
+Landed via [PR #105](https://github.com/DrewBrunning/mycorrhizal-crm/pull/105).
