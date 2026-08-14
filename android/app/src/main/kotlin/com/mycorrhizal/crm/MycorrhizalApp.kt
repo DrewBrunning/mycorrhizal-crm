@@ -58,6 +58,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.mycorrhizal.crm.feature.auth.LoginScreen
+import com.mycorrhizal.crm.feature.cadence.CadenceScreen
 import com.mycorrhizal.crm.feature.circles.CircleDetailScreen
 import com.mycorrhizal.crm.feature.circles.CirclesScreen
 import com.mycorrhizal.crm.feature.contacts.ContactDetailScreen
@@ -321,6 +322,7 @@ private fun MainScaffold(darkTheme: Boolean) {
                     onViewNotes = { id -> navController.navigate("contacts/$id/notes") },
                     onViewReminders = { id -> navController.navigate("contacts/$id/reminders") },
                     onViewRelationships = { id -> navController.navigate("contacts/$id/relationships") },
+                    onViewCadence = { id -> navController.navigate("contacts/$id/cadence") },
                     onOpenInContacts = { lookupKey ->
                         openInContacts(navController.context, lookupKey)
                     },
@@ -465,6 +467,14 @@ private fun MainScaffold(darkTheme: Boolean) {
                 RelationshipsScreen(
                     onBack = { navController.popBackStack() },
                     onNavigateToContact = { id -> navController.navigate("contacts/$id") },
+                )
+            }
+            composable(
+                route = "contacts/{contactId}/cadence",
+                arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            ) {
+                CadenceScreen(
+                    onBack = { navController.popBackStack() },
                 )
             }
             composable(

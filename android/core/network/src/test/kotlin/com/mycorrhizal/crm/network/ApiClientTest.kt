@@ -1293,4 +1293,137 @@ class ApiClientTest {
         assertTrue(body.contains("session-1"))
         assertTrue(body.contains("\"action\":\"update\""))
     }
+
+    // --- M12: cadence policies (5 new client methods) ---
+
+    @Test
+    fun `list cadence policies sends the entity_id filter and parses the wrapped list`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """{"cadence_policies": [
+                        {"id": "p1", "entity_id": "u1", "target_interval_days": 30,
+                         "qualifying_types": ["call"], "health": {"has_qualifying_interaction": true, "overdue_by": 2}}
+                    ], "total": 1, "next_cursor": "", "limit": 25}""",
+                ),
+        )
+
+        val result = client.listCadencePolicies("u1")
+
+        assertTrue(result.isSuccess)
+        val page = result.getOrThrow()
+        assertEquals(1, page.cadencePolicies.size)
+        assertEquals(30, page.cadencePolicies[0].targetIntervalDays)
+        assertEquals(listOf("call"), page.cadencePolicies[0].qualifyingTypes)
+        assertEquals(2, page.cadencePolicies[0].health?.overdueBy)
+
+        val request = server.takeRequest()
+        assertEquals("/api/v1/cadence-policies?entity_id=u1", request.path)
+    }
+
+    @Test
+    fun `list cadence policies normalizes an absent policy array to empty`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"total": 0, "next_cursor": "", "limit": 25}"""),
+        )
+
+        val result = client.listCadencePolicies("u1")
+
+        assertTrue(result.isSuccess)
+        assertTrue(result.getOrThrow().cadencePolicies.isEmpty())
+    }
+
+    @Test
+    fun `get cadence policy parses the raw policy with health`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """{"id": "p1", "entity_id": "u1", "target_interval_days": 30,
+                        "health": {"has_qualifying_interaction": false, "overdue_by": 0}}""",
+                ),
+        )
+
+        val result = client.getCadencePolicy("p1")
+
+        assertTrue(result.isSuccess)
+        assertEquals("p1", result.getOrThrow().id)
+        assertTrue(result.getOrThrow().qualifyingTypes.isEmpty())
+        assertTrue(result.getOrThrow().health?.hasQualifyingInteraction == false)
+
+        val request = server.takeRequest()
+        assertEquals("/api/v1/cadence-policies/p1", request.path)
+    }
+
+    @Test
+    fun `create cadence policy posts the input and unwraps the created policy`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(201)
+                .setBody(
+                    """{"message": "Cadence policy created", "cadence_policy":
+                        {"id": "p1", "entity_id": "u1", "target_interval_days": 14, "qualifying_types": []}}""",
+                ),
+        )
+
+        val result = client.createCadencePolicy(
+            com.mycorrhizal.crm.model.network.CadencePolicyInput(entityId = "u1", targetIntervalDays = 14),
+        )
+
+        assertTrue(result.isSuccess)
+        assertEquals("p1", result.getOrThrow().id)
+        assertEquals(14, result.getOrThrow().targetIntervalDays)
+
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/cadence-policies", request.path)
+        val body = request.body.readUtf8()
+        assertTrue(body.contains("\"entity_id\":\"u1\""))
+        assertTrue(body.contains("\"target_interval_days\":14"))
+        // An empty selection is sent as an empty array, never defaulted away.
+        assertTrue(body.contains("\"qualifying_types\":[]"))
+    }
+
+    @Test
+    fun `update cadence policy sends a PUT and parses the raw policy`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """{"id": "p1", "entity_id": "u1", "target_interval_days": 90,
+                        "qualifying_types": ["visit"], "health": {"has_qualifying_interaction": true, "overdue_by": 0}}""",
+                ),
+        )
+
+        val result = client.updateCadencePolicy(
+            "p1",
+            com.mycorrhizal.crm.model.network.CadencePolicyInput(
+                entityId = "u1",
+                targetIntervalDays = 90,
+                qualifyingTypes = listOf("visit"),
+            ),
+        )
+
+        assertTrue(result.isSuccess)
+        assertEquals(90, result.getOrThrow().targetIntervalDays)
+        assertEquals(listOf("visit"), result.getOrThrow().qualifyingTypes)
+
+        val request = server.takeRequest()
+        assertEquals("PUT", request.method)
+        assertEquals("/api/v1/cadence-policies/p1", request.path)
+        assertTrue(request.body.readUtf8().contains("\"qualifying_types\":[\"visit\"]"))
+    }
+
+    @Test
+    fun `delete cadence policy sends a DELETE to the policy route`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"message": "Cadence policy deleted"}"""))
+
+        val result = client.deleteCadencePolicy("p1")
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("DELETE", request.method)
+        assertEquals("/api/v1/cadence-policies/p1", request.path)
+    }
 }
