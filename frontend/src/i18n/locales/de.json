@@ -8,6 +8,22 @@
       "reload": "Neu laden"
     }
   },
+  "duplicates": {
+    "reviewTitle": "Duplikate prüfen",
+    "none": "Keine Duplikatskandidaten gefunden.",
+    "count": "{{count}} Kandidatenpaare",
+    "vs": "vs.",
+    "confidence": "{{percent}} % Konfidenz",
+    "notDuplicate": "Kein Duplikat",
+    "dismissConfirm": "Diese beiden Kontakte als KEINE Duplikate markieren? Das Paar wird dauerhaft ausgeblendet.",
+    "mergeDescription": "Beide Kontakte sind unten aufgeführt. Wählen Sie, welcher die Zusammenführung überleben soll.",
+    "mergeHint": "Die Daten des anderen Kontakts werden in den überlebenden Kontakt übernommen.",
+    "reason": {
+      "email": "Gleiche E-Mail",
+      "name": "Gleicher Name",
+      "phone": "Gleiche Telefonnummer"
+    }
+  },
   "nav": {
     "dashboard": "Dashboard",
     "contacts": "Kontakte",
@@ -427,7 +443,8 @@
     "personalInfoLabel": "Persönliche Angaben (Expertise / Hobbys / Interessen)",
     "keywordsLabel": "Schlagwörter",
     "cardNotesLabel": "Notizen (vCard)",
-    "preferredLanguagesLabel": "Bevorzugte Sprachen"
+    "preferredLanguagesLabel": "Bevorzugte Sprachen",
+    "reviewDuplicates": "Duplikate prüfen"
   },
   "timeline": {
     "reminderCompleted": "Erinnerung erledigt",
@@ -1247,7 +1264,9 @@
     "resolveFieldValueConflicts": "Widersprüchliche benutzerdefinierte Felder auflösen",
     "keepValue": "{{name}}: {{value}}",
     "associationSummary": "Dabei werden {{notes}} Notiz(en), {{activities}} Aktivität(en), {{reminders}} Erinnerung(en) und {{edges}} Beziehung(en) auf den zusammengeführten Kontakt übertragen.",
-    "mergeButton": "Zusammenführen"
+    "mergeButton": "Zusammenführen",
+    "keepThisOne": "{{name}} behalten",
+    "swap": "Tauschen"
   },
   "triage": {
     "title": "Kreis-/Tag-Migration",

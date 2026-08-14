@@ -8,6 +8,22 @@
       "reload": "Recargar"
     }
   },
+  "duplicates": {
+    "reviewTitle": "Revisar duplicados",
+    "none": "No se encontraron posibles duplicados.",
+    "count": "{{count}} pares candidatos",
+    "vs": "vs",
+    "confidence": "Confianza del {{percent}} %",
+    "notDuplicate": "No es un duplicado",
+    "dismissConfirm": "¿Marcar estos dos contactos como NO duplicados? El par quedará oculto permanentemente.",
+    "mergeDescription": "Ambos contactos se muestran a continuación. Elige cuál debe sobrevivir a la fusión.",
+    "mergeHint": "Los datos del otro contacto se fusionan en el superviviente.",
+    "reason": {
+      "email": "Mismo correo",
+      "name": "Mismo nombre",
+      "phone": "Mismo teléfono"
+    }
+  },
   "nav": {
     "dashboard": "Panel",
     "contacts": "Contactos",
@@ -427,7 +443,8 @@
     "personalInfoLabel": "Información personal (habilidades / aficiones / intereses)",
     "keywordsLabel": "Palabras clave",
     "cardNotesLabel": "Notas (vCard)",
-    "preferredLanguagesLabel": "Idiomas preferidos"
+    "preferredLanguagesLabel": "Idiomas preferidos",
+    "reviewDuplicates": "Revisar duplicados"
   },
   "timeline": {
     "reminderCompleted": "Recordatorio Completado",
@@ -1247,7 +1264,9 @@
     "resolveFieldValueConflicts": "Resolver campos personalizados en conflicto",
     "keepValue": "{{name}}: {{value}}",
     "associationSummary": "Esto moverá {{notes}} nota(s), {{activities}} actividad(es), {{reminders}} recordatorio(s) y {{edges}} relación(es) al contacto combinado.",
-    "mergeButton": "Combinar"
+    "mergeButton": "Combinar",
+    "keepThisOne": "Conservar {{name}}",
+    "swap": "Intercambiar"
   },
   "triage": {
     "title": "Migración de círculos y etiquetas",

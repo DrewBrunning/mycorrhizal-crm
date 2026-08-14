@@ -719,6 +719,12 @@ func deleteContactAssociations(tx *gorm.DB, contact models.Contact, userID uint)
 		return err
 	}
 
+	// T93: duplicate-pair dismissals naming this contact (either side of the
+	// ordered uid pair) — hard-delete, join-shaped.
+	if err := tx.Where("(uid_low = ? OR uid_high = ?) AND user_id = ?", contact.VCardUID, contact.VCardUID, userID).Delete(&models.DismissedDuplicatePair{}).Error; err != nil {
+		return err
+	}
+
 	return nil
 }
 

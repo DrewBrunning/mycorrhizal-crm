@@ -14,7 +14,10 @@ import {
   Radio,
   Divider,
   Alert,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import { useTranslation } from 'react-i18next';
 import AppDialog from './AppDialog';
 import { Contact, getContacts } from '../api/contacts';
@@ -26,19 +29,32 @@ interface MergeContactsDialogProps {
   open: boolean;
   onClose: () => void;
   // Called after a successful commit with the surviving (keeper) contact's
-  // id, since the currently-viewed contact (the loser) no longer exists --
-  // the parent is expected to navigate there.
+  // id, since the loser no longer exists -- the parent is expected to
+  // navigate there (detail-page flow) or refresh its list (review flow).
   onMerged: (keeperId: number) => void;
-  currentContactId: number;
-  currentContactUid: string;
-  currentContactName: string;
+  // --- Single-contact mode (contact detail page) ---
+  // The viewed contact is always the loser; the picked contact is the keeper.
+  currentContactId?: number;
+  currentContactUid?: string;
+  currentContactName?: string;
+  // --- Pair mode (T92/T93 review and bulk-merge flows) ---
+  // When provided, both contacts are fixed up front and neither is
+  // privileged: the user picks which survives (with a swap control) instead
+  // of searching. This lifts the single-mode "the viewed contact is always
+  // the loser" assumption into an explicit keeper/loser choice, which the
+  // list-driven flows need since neither selected row is privileged.
+  pair?: { a: Contact; b: Contact };
+}
+
+function contactName(c: Contact): string {
+  return [c.firstname, c.lastname].filter(Boolean).join(' ').trim() || c.uid || '';
 }
 
 // MergeContactsDialog is ticket N1's frontend entry point
-// (docs/fork-plan/tickets/01-N1-contact-merge.md): opened from the
-// currently-viewed contact's page, "merge into another contact" always
-// treats the viewed contact as the loser and the picked contact as the
-// keeper -- the viewed contact is the one that will disappear.
+// (docs/fork-plan/tickets/01-N1-contact-merge.md), extended by T92/T93 with
+// the fixed-pair mode above. Single mode: "merge into another contact"
+// always treats the viewed contact as the loser and the picked contact as
+// the keeper.
 export default function MergeContactsDialog({
   open,
   onClose,
@@ -46,6 +62,7 @@ export default function MergeContactsDialog({
   currentContactId,
   currentContactUid,
   currentContactName,
+  pair,
 }: MergeContactsDialogProps) {
   const { t } = useTranslation();
   const { showError } = useSnackbar();
@@ -53,9 +70,20 @@ export default function MergeContactsDialog({
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [contactsLoading, setContactsLoading] = useState(false);
   const [searchInput, setSearchInput] = useState('');
+  // Pair mode: which of pair.a / pair.b survives. Defaults to pair.a when the
+  // dialog opens for a pair.
+  const [keeperUid, setKeeperUid] = useState<string | undefined>(undefined);
 
   const { preview, loading, committing, error, allConflictsResolved, loadPreview, setResolution, resolutions, commit, reset } =
     useContactMerge();
+
+  const inPairMode = !!pair;
+  const keeper = inPairMode && pair ? (keeperUid === pair.b.uid ? pair.b : pair.a) : selectedContact;
+  const loserContact = inPairMode && pair ? (keeperUid === pair.b.uid ? pair.a : pair.b) : undefined;
+  const loserName = inPairMode ? contactName(loserContact!) : currentContactName || '';
+  // Conflict labels: pair mode uses full display names (neither contact is
+  // privileged); single mode keeps the historical firstname-only keeper label.
+  const keeperLabelName = inPairMode ? contactName(keeper!) : (selectedContact?.firstname || '');
 
   const loadContacts = useCallback(
     async (search: string = '') => {
@@ -73,45 +101,74 @@ export default function MergeContactsDialog({
   );
 
   useEffect(() => {
-    if (open) loadContacts();
+    if (open && !pair) loadContacts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, pair]);
 
   useEffect(() => {
     if (!open) return;
+    if (pair) {
+      setKeeperUid(pair.a.uid);
+      return;
+    }
     const timeoutId = setTimeout(() => loadContacts(searchInput), 300);
     return () => clearTimeout(timeoutId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchInput]);
+  }, [searchInput, open, pair]);
+
+  // Load the preview whenever the pair's keeper/loser assignment changes.
+  useEffect(() => {
+    if (!open) return;
+    if (inPairMode && pair) {
+      const k = keeperUid === pair.b.uid ? pair.b : pair.a;
+      const l = keeperUid === pair.b.uid ? pair.a : pair.b;
+      loadPreview(k.ID, l.ID);
+      return;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, inPairMode, pair, keeperUid]);
 
   const handleSelectContact = (contact: Contact | null) => {
     setSelectedContact(contact);
     if (contact) {
-      loadPreview(contact.ID, currentContactId);
+      loadPreview(contact.ID, currentContactId!);
     } else {
       reset();
     }
   };
 
+  const handleSwap = () => {
+    if (!pair) return;
+    setKeeperUid((prev) => (prev === pair.b.uid ? pair.a.uid : pair.b.uid));
+  };
+
   const handleClose = () => {
     setSelectedContact(null);
     setSearchInput('');
+    setKeeperUid(undefined);
     reset();
     onClose();
   };
 
   const handleCommit = async () => {
-    if (!selectedContact) return;
+    let keeperId: number | undefined;
+    if (inPairMode) {
+      if (!keeper) return;
+      keeperId = keeper.ID;
+    } else {
+      if (!selectedContact) return;
+      keeperId = selectedContact.ID;
+    }
     try {
-      const keeperId = selectedContact.ID;
-      await commit(keeperId, currentContactId);
-      // T94: close and reset before handing control back. The parent navigates
-      // to /contacts/:keeperId, but that route renders the same
-      // ContactDetailPage element, so a param change never unmounts this
-      // dialog -- without an explicit close it stays open over the keeper's
-      // page holding the now-deleted loser in selectedContact.
+      const loserId = inPairMode ? loserContact!.ID : currentContactId!;
+      await commit(keeperId!, loserId);
+      // T94: close and reset before handing control back. In the detail-page
+      // flow the parent navigates to /contacts/:keeperId, but that route
+      // renders the same ContactDetailPage element, so a param change never
+      // unmounts this dialog -- without an explicit close it stays open over
+      // the keeper's page holding the now-deleted loser in selectedContact.
       handleClose();
-      onMerged(keeperId);
+      onMerged(keeperId!);
     } catch {
       // useContactMerge's commit already surfaced the error via the snackbar.
       // Deliberately no close here: a failed merge keeps the user's selection
@@ -135,39 +192,77 @@ export default function MergeContactsDialog({
     <AppDialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
       <DialogTitle>{t('contactMerge.title')}</DialogTitle>
       <DialogContent>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          {t('contactMerge.description', { name: currentContactName })}
-        </Typography>
+        {inPairMode && pair ? (
+          <>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {t('duplicates.mergeDescription')}
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+              <RadioGroup
+                value={keeperUid ?? pair.a.uid}
+                onChange={(e) => setKeeperUid(e.target.value)}
+                sx={{ flex: 1 }}
+              >
+                <FormControlLabel
+                  value={pair.a.uid}
+                  control={<Radio size="small" />}
+                  label={t('contactMerge.keepThisOne', { name: contactName(pair.a) })}
+                />
+                <FormControlLabel
+                  value={pair.b.uid}
+                  control={<Radio size="small" />}
+                  label={t('contactMerge.keepThisOne', { name: contactName(pair.b) })}
+                />
+              </RadioGroup>
+              <Tooltip title={t('contactMerge.swap')}>
+                <span>
+                  <IconButton onClick={handleSwap} size="small" aria-label={t('contactMerge.swap')}>
+                    <SwapHorizIcon />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            </Box>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+              {t('duplicates.mergeHint')}
+            </Typography>
+          </>
+        ) : (
+          <>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {t('contactMerge.description', { name: currentContactName })}
+            </Typography>
 
-        <Autocomplete
-          options={contacts}
-          getOptionLabel={(option) => `${option.firstname} ${option.lastname}`}
-          value={selectedContact}
-          onChange={(_, value) => handleSelectContact(value)}
-          onInputChange={(_, value, reason) => {
-            if (reason === 'input') setSearchInput(value);
-          }}
-          loading={contactsLoading}
-          filterOptions={(x) => x}
-          renderInput={(params) => (
-            <TextField
-              {...params}
-              label={t('contactMerge.selectTarget')}
-              placeholder={t('contactMerge.searchContacts')}
-              InputProps={{
-                ...params.InputProps,
-                endAdornment: (
-                  <>
-                    {contactsLoading ? <CircularProgress color="inherit" size={20} /> : null}
-                    {params.InputProps.endAdornment}
-                  </>
-                ),
+            <Autocomplete
+              options={contacts}
+              getOptionLabel={(option) => `${option.firstname} ${option.lastname}`}
+              value={selectedContact}
+              onChange={(_, value) => handleSelectContact(value)}
+              onInputChange={(_, value, reason) => {
+                if (reason === 'input') setSearchInput(value);
               }}
+              loading={contactsLoading}
+              filterOptions={(x) => x}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label={t('contactMerge.selectTarget')}
+                  placeholder={t('contactMerge.searchContacts')}
+                  InputProps={{
+                    ...params.InputProps,
+                    endAdornment: (
+                      <>
+                        {contactsLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                        {params.InputProps.endAdornment}
+                      </>
+                    ),
+                  }}
+                />
+              )}
+              isOptionEqualToValue={(option, value) => option.uid === value.uid}
+              noOptionsText={searchInput ? t('contactMerge.noContactsFound') : t('contactMerge.typeToSearch')}
             />
-          )}
-          isOptionEqualToValue={(option, value) => option.uid === value.uid}
-          noOptionsText={searchInput ? t('contactMerge.noContactsFound') : t('contactMerge.typeToSearch')}
-        />
+          </>
+        )}
 
         {loading && (
           <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
@@ -181,7 +276,7 @@ export default function MergeContactsDialog({
           </Alert>
         )}
 
-        {preview && selectedContact && (
+        {preview && keeper && (
           <Box sx={{ mt: 2 }}>
             <Divider sx={{ mb: 2 }} />
 
@@ -206,12 +301,12 @@ export default function MergeContactsDialog({
                       <FormControlLabel
                         value={conflict.keeper_value}
                         control={<Radio size="small" />}
-                        label={t('contactMerge.keepValue', { name: selectedContact.firstname, value: conflict.keeper_value })}
+                        label={t('contactMerge.keepValue', { name: keeperLabelName, value: conflict.keeper_value })}
                       />
                       <FormControlLabel
                         value={conflict.loser_value}
                         control={<Radio size="small" />}
-                        label={t('contactMerge.keepValue', { name: currentContactName, value: conflict.loser_value })}
+                        label={t('contactMerge.keepValue', { name: loserName, value: conflict.loser_value })}
                       />
                     </RadioGroup>
                   </Box>
@@ -233,12 +328,12 @@ export default function MergeContactsDialog({
                           <FormControlLabel
                             value={conflict.keeper_value}
                             control={<Radio size="small" />}
-                            label={t('contactMerge.keepValue', { name: selectedContact.firstname, value: conflict.keeper_value })}
+                            label={t('contactMerge.keepValue', { name: keeperLabelName, value: conflict.keeper_value })}
                           />
                           <FormControlLabel
                             value={conflict.loser_value}
                             control={<Radio size="small" />}
-                            label={t('contactMerge.keepValue', { name: currentContactName, value: conflict.loser_value })}
+                            label={t('contactMerge.keepValue', { name: loserName, value: conflict.loser_value })}
                           />
                         </RadioGroup>
                       </Box>

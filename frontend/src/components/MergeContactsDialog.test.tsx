@@ -215,3 +215,66 @@ test('a scalar conflict keeps merge disabled until resolved', async () => {
   fireEvent.click(screen.getByLabelText('Bob: Bob'));
   await waitFor(() => expect(mergeButton).not.toBeDisabled());
 });
+
+// --- T93 pair mode ---------------------------------------------------------
+
+const aliceContact = { ID: 1, uid: 'alice-uid', firstname: 'Alice', lastname: 'Anderson' } as const;
+const bobContact = { ID: 2, uid: 'bob-uid', firstname: 'Bob', lastname: 'Brown' } as const;
+
+function mockPairFetch(overrides: { mergeBody?: (body: unknown) => void } = {}) {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes('/contacts/merge/preview')) {
+        const body = JSON.parse(String(init?.body));
+        return {
+          ok: true,
+          json: async () => ({
+            keep_id: body.keep_id,
+            merge_id: body.merge_id,
+            resolution: { emails: [], phones: [], addresses: [], urls: [], impps: [], circles: [] },
+            association_counts: emptyAssociationCounts,
+          }),
+        };
+      }
+      if (url.includes('/contacts/merge')) {
+        overrides.mergeBody?.(JSON.parse(String(init?.body)));
+        return { ok: true, json: async () => ({ message: 'merged', contact: { id: 2 } }) };
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    })
+  );
+}
+
+test('pair mode renders both contacts and previews the default keeper (a)', async () => {
+  mockPairFetch();
+  renderDialog({ pair: { a: aliceContact, b: bobContact } });
+
+  // Both contacts are offered as the keeper.
+  expect(screen.getByLabelText('Keep Alice Anderson')).toBeInTheDocument();
+  expect(screen.getByLabelText('Keep Bob Brown')).toBeInTheDocument();
+  // Default keeper is pair.a (Alice), so the preview loads keep=1 merge=2.
+  await screen.findByText('No conflicts to resolve. Ready to merge.');
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Merge' })).not.toBeDisabled());
+});
+
+test('pair mode swap reloads the preview with the swapped keeper and merges it', async () => {
+  const mergeBodies: unknown[] = [];
+  mockPairFetch({ mergeBody: (b) => mergeBodies.push(b) });
+  const onClose = vi.fn();
+  const onMerged = vi.fn();
+  renderDialog({ pair: { a: aliceContact, b: bobContact }, onClose, onMerged });
+
+  await screen.findByText('No conflicts to resolve. Ready to merge.');
+
+  // Swap so Bob (b) is the keeper, Alice (a) the loser.
+  fireEvent.click(screen.getByRole('button', { name: 'Swap' }));
+  await waitFor(() => expect(screen.getByLabelText('Keep Bob Brown')).toBeChecked());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Merge' }));
+
+  await waitFor(() => expect(onMerged).toHaveBeenCalledWith(2));
+  expect(onClose).toHaveBeenCalled();
+  await waitFor(() => expect(mergeBodies).toEqual([{ keep_id: 2, merge_id: 1, resolutions: {} }]));
+});
+
