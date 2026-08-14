@@ -32,24 +32,37 @@ func TestNewContactRecordResponse_PreservesPersistedCardOnlyData(t *testing.T) {
 	}
 }
 
-// TestNewContactSummary_IncludesNicknameAndCircles is a regression test for
-// the frontend-migration pre-work gap: ContactsPage's list view renders
-// nickname and circles per row, but GET /contacts' slim ContactSummary
-// projection didn't carry either field until this fix.
-func TestNewContactSummary_IncludesNicknameAndCircles(t *testing.T) {
+// TestNewContactSummary_IncludesNickname is a regression test for the
+// frontend-migration pre-work gap: ContactsPage's list view renders nickname
+// per row, but GET /contacts' slim ContactSummary projection didn't carry it
+// until this fix.
+//
+// T108: this test alone never caught that GET /contacts actually shipped an
+// empty nickname on every real request — it exercises NewContactSummary
+// directly against a hand-built Contact, never the controller's fixed
+// contactSummaryColumns Select that GORM actually runs, which is exactly
+// where the real bug lived (nickname was never in that column list, so GORM
+// silently left Contact.Nickname at its zero value on every real query, no
+// matter how correct NewContactSummary's own mapping was). See
+// contact_controller_test.go's raw-JSON pin for the test that actually
+// covers the query layer.
+//
+// Circles was removed from ContactSummary entirely as part of the same fix
+// (see the doc comment on ContactSummary.Circles' old field, and
+// contact_controller.go's contactSummaryColumns): it was never selected
+// either, and even if it had been, Contact.Circles is the legacy flat column
+// T2/T3 superseded with circle_members, so populating it would have shipped
+// stale data rather than nothing.
+func TestNewContactSummary_IncludesNickname(t *testing.T) {
 	c := &Contact{
 		Firstname: "Ada",
 		Lastname:  "Lovelace",
 		Nickname:  "Countess",
-		Circles:   []string{"Friends", "Work"},
 	}
 
 	summary := NewContactSummary(c)
 
 	if summary.Nickname != "Countess" {
 		t.Errorf("ContactSummary.Nickname = %q, want %q", summary.Nickname, "Countess")
-	}
-	if len(summary.Circles) != 2 || summary.Circles[0] != "Friends" || summary.Circles[1] != "Work" {
-		t.Errorf("ContactSummary.Circles = %+v, want [Friends Work]", summary.Circles)
 	}
 }
