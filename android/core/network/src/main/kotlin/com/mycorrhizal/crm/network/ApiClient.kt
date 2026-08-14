@@ -8,7 +8,11 @@ import com.mycorrhizal.crm.model.network.AddContactTagResponse
 import com.mycorrhizal.crm.model.network.AddHouseholdMemberResponse
 import com.mycorrhizal.crm.model.network.BackendError
 import com.mycorrhizal.crm.model.network.BirthdaysResponse
+import com.mycorrhizal.crm.model.network.CadencePoliciesResponse
+import com.mycorrhizal.crm.model.network.CadencePolicy
+import com.mycorrhizal.crm.model.network.CadencePolicyInput
 import com.mycorrhizal.crm.model.network.ContactBriefing
+import com.mycorrhizal.crm.model.network.CreateCadencePolicyResponse
 import com.mycorrhizal.crm.model.network.OverdueCadencesResponse
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.CircleDetailResponse
@@ -396,6 +400,44 @@ class ApiClient(
         executeGet("$PLACEHOLDER_ORIGIN$CADENCE_POLICIES_PATH/overdue") { _, body ->
             moshi.adapter(OverdueCadencesResponse::class.java).fromJson(body)
         }
+
+    /**
+     * GET /api/v1/cadence-policies?entity_id=… — a contact's policies
+     * (0 or 1, server-enforced). `entity_id` is the Contact.VCardUID.
+     */
+    suspend fun listCadencePolicies(entityId: String): Result<CadencePoliciesResponse> {
+        val url = "$PLACEHOLDER_ORIGIN$CADENCE_POLICIES_PATH".toHttpUrl().newBuilder()
+            .addQueryParameter("entity_id", entityId)
+            .build()
+        return executeGet(url.toString()) { _, body ->
+            moshi.adapter(CadencePoliciesResponse::class.java).fromJson(body)
+        }
+    }
+
+    /** GET /api/v1/cadence-policies/{id} — raw (unwrapped) policy with health. */
+    suspend fun getCadencePolicy(id: String): Result<CadencePolicy> =
+        executeGet("$PLACEHOLDER_ORIGIN$CADENCE_POLICIES_PATH/$id") { _, body ->
+            moshi.adapter(CadencePolicy::class.java).fromJson(body)
+        }
+
+    /** POST /api/v1/cadence-policies — wrapped `{ cadence_policy }`, unwrapped here. */
+    suspend fun createCadencePolicy(input: CadencePolicyInput): Result<CadencePolicy> =
+        executePost(CADENCE_POLICIES_PATH, input) { _, body ->
+            moshi.adapter(CreateCadencePolicyResponse::class.java).fromJson(body)?.cadencePolicy
+        }
+
+    /**
+     * PUT /api/v1/cadence-policies/{id} — raw (unwrapped) updated policy,
+     * unlike create's wrapped response (deliberate backend asymmetry).
+     */
+    suspend fun updateCadencePolicy(id: String, input: CadencePolicyInput): Result<CadencePolicy> =
+        executePut("$PLACEHOLDER_ORIGIN$CADENCE_POLICIES_PATH/$id", input) { _, body ->
+            moshi.adapter(CadencePolicy::class.java).fromJson(body)
+        }
+
+    /** DELETE /api/v1/cadence-policies/{id} — `{ message }`. */
+    suspend fun deleteCadencePolicy(id: String): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$CADENCE_POLICIES_PATH/$id")
 
     /** GET /api/v1/circles — cursor-paginated; members when include_members=true. */
     suspend fun listCircles(

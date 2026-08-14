@@ -55,8 +55,6 @@ import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.theme.MycorrhizalColors
 import com.mycorrhizal.crm.ui.theme.MycorrhizalFonts
 import com.mycorrhizal.crm.ui.R
-import java.time.Instant
-import java.time.ZoneOffset
 
 /**
  * M11 — the N2 prep-view briefing for Android (docs/fork-plan/tickets/
@@ -488,22 +486,12 @@ private fun PrepCard(
  * Formats an ISO-8601 timestamp as a date in the user's date format, or ""
  * when unparseable/absent.
  *
- * **UTC, not the device zone.** The web's formatDateWithFormat reads
- * getUTCDate()/getUTCMonth()/getUTCFullYear(), so for a stored instant like
- * `2026-09-10T01:00:00Z` web shows "2026-09-10" no matter where the user sits.
- * A device-zone conversion would shift that to the previous day for anyone
- * west of UTC — the same briefing rendered two different days across clients.
- * The briefings dates (next-due, last-interaction, activity dates) are
- * calendar-ish values computed server-side; render them in the zone they were
- * authored in, which is what UTC does.
+ * **UTC, not the device zone** — see [DateFormat.formatTimestamp], the single
+ * shared implementation (M11 + M12 must render the same value the same way;
+ * this used to be a private copy that could drift).
  */
-private fun formatTimestamp(iso: String?, format: String): String {
-    if (iso.isNullOrBlank()) return ""
-    return runCatching {
-        val zoned = Instant.parse(iso).atZone(ZoneOffset.UTC)
-        DateFormat.formatFull(zoned.year, zoned.monthValue, zoned.dayOfMonth, format)
-    }.getOrDefault("")
-}
+private fun formatTimestamp(iso: String?, format: String): String =
+    DateFormat.formatTimestamp(iso, format)
 
 /**
  * Formats an upcoming-date value (YYYY-MM-DD or --MM-DD) in the user's date

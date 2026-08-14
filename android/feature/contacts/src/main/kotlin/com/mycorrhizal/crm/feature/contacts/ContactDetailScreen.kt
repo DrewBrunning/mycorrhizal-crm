@@ -146,6 +146,7 @@ fun ContactDetailScreen(
     onViewNotes: (Int) -> Unit = {},
     onViewReminders: (Int) -> Unit = {},
     onViewRelationships: (Int) -> Unit = {},
+    onViewCadence: (Int) -> Unit = {},
     onOpenInContacts: (String) -> Unit = {},
     onMerge: (Int) -> Unit = {},
     onViewLifeEvents: (Int) -> Unit = {},
@@ -467,6 +468,7 @@ fun ContactDetailScreen(
                     onViewNotes = onViewNotes,
                     onViewReminders = onViewReminders,
                     onViewRelationships = onViewRelationships,
+                    onViewCadence = onViewCadence,
                     onMerge = onMerge,
                     onViewLifeEvents = onViewLifeEvents,
                     onViewGifts = onViewGifts,
@@ -605,6 +607,7 @@ fun ContactDetailContent(
     onViewNotes: (Int) -> Unit = {},
     onViewReminders: (Int) -> Unit = {},
     onViewRelationships: (Int) -> Unit = {},
+    onViewCadence: (Int) -> Unit = {},
     onMerge: (Int) -> Unit = {},
     onViewLifeEvents: (Int) -> Unit = {},
     onViewGifts: (Int) -> Unit = {},
@@ -857,6 +860,16 @@ fun ContactDetailContent(
                     )
                 },
                 modifier = Modifier.fillMaxWidth().clickable { onViewRelationships(contact.id) },
+            )
+            androidx.compose.material3.ListItem(
+                headlineContent = { Text(stringResource(R.string.contact_cadence), style = MaterialTheme.typography.bodyLarge) },
+                trailingContent = {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
+                        contentDescription = null,
+                    )
+                },
+                modifier = Modifier.fillMaxWidth().clickable { onViewCadence(contact.id) },
             )
             androidx.compose.material3.ListItem(
                 headlineContent = { Text(stringResource(R.string.contact_merge), style = MaterialTheme.typography.bodyLarge) },

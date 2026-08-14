@@ -60,6 +60,7 @@
     <string name="contact_merge">Kontakte zusammenführen</string>
     <string name="contact_open_in_contacts">In Kontakten öffnen</string>
     <string name="contact_relationships">Beziehungen</string>
+    <string name="contact_cadence">Kadenz</string>
     <string name="contact_life_events">Lebensereignisse</string>
     <string name="contact_gifts">Geschenke</string>
     <string name="contact_preferences">Vorlieben</string>
@@ -326,6 +327,7 @@
     <string name="circles_error_missing_id">Fehlende Kreis-ID</string>
     <string name="action_create">Erstellen</string>
     <string name="action_save">Speichern</string>
+    <string name="action_edit">Bearbeiten</string>
     <string name="action_delete">Löschen</string>
     <string name="action_cancel">Abbrechen</string>
     <string name="action_add">Hinzufügen</string>
@@ -401,6 +403,36 @@
     <string name="relationships_delete_confirm">Die Beziehung mit %1$s löschen?</string>
     <string name="relationships_reject_title">Vorschlag ablehnen?</string>
     <string name="relationships_reject_confirm">Die vorgeschlagene Beziehung mit %1$s ablehnen?</string>
+
+    <!-- Cadence (T19 relationship health) -->
+    <string name="cadence_title">Kadenz</string>
+    <string name="cadence_add">Kadenz hinzufügen</string>
+    <string name="cadence_create_title">Kadenz hinzufügen</string>
+    <string name="cadence_edit_title">Kadenz bearbeiten</string>
+    <string name="cadence_interval">In Kontakt bleiben</string>
+    <string name="cadence_interval_value">alle %1$d Tage</string>
+    <string name="cadence_interval_days">Intervall (Tage)</string>
+    <string name="cadence_interval_hint">Wie oft du in Kontakt bleiben möchtest.</string>
+    <string name="cadence_interval_required">Gib eine positive Anzahl von Tagen ein.</string>
+    <string name="cadence_qualifying_types">Qualifizierende Interaktionen</string>
+    <string name="cadence_qualifying_hint">Welche Interaktionsarten diese Kadenz zurücksetzen. Keine Auswahl bedeutet: alle Interaktionsarten außer passiven Foto-Beiträgen zählen.</string>
+    <string name="cadence_type_call">Anruf</string>
+    <string name="cadence_type_video_call">Videoanruf</string>
+    <string name="cadence_type_visit">Besuch</string>
+    <string name="cadence_type_meal">Essen</string>
+    <string name="cadence_type_gift">Geschenk</string>
+    <string name="cadence_type_message">Nachricht</string>
+    <string name="cadence_type_shared_activity">Gemeinsame Aktivität</string>
+    <string name="cadence_no_policy">Für diesen Kontakt ist keine Kadenz festgelegt.</string>
+    <string name="cadence_no_interactions_yet">Noch keine qualifizierenden Interaktionen – die Kadenz beginnt mit der ersten.</string>
+    <string name="cadence_on_track">Im Zeitplan</string>
+    <string name="cadence_overdue_by">%1$d Tage überfällig</string>
+    <string name="cadence_next_due">Nächster Termin: %1$s</string>
+    <string name="cadence_last_interaction">Letzte Interaktion: %1$s</string>
+    <string name="cadence_confirm_delete">Diese Kadenz entfernen?</string>
+    <string name="cadence_delete_title">Kadenz löschen</string>
+    <string name="cadence_error_missing_contact_id">Fehlende Kontakt-ID</string>
+    <string name="cadence_error_no_vcard_uid">Kontakt hat keine VCard-UID</string>
 
 
     <!-- Timeline entities -->

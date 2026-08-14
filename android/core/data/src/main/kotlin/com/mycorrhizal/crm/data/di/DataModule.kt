@@ -2,6 +2,7 @@ package com.mycorrhizal.crm.data.di
 
 import com.mycorrhizal.crm.data.local.AppDatabase
 import com.mycorrhizal.crm.data.local.CachedActivityDao
+import com.mycorrhizal.crm.data.local.CachedCadencePolicyDao
 import com.mycorrhizal.crm.data.local.CachedCircleDao
 import com.mycorrhizal.crm.data.local.CachedCircleMemberDao
 import com.mycorrhizal.crm.data.local.CachedContactDao
@@ -20,6 +21,7 @@ import com.mycorrhizal.crm.data.local.CachedTagDao
 import com.mycorrhizal.crm.data.local.PendingInteractionDao
 import com.mycorrhizal.crm.data.repository.ActivityRepositoryImpl
 import com.mycorrhizal.crm.data.repository.AuthRepositoryImpl
+import com.mycorrhizal.crm.data.repository.CadencePolicyRepositoryImpl
 import com.mycorrhizal.crm.data.repository.CircleRepositoryImpl
 import com.mycorrhizal.crm.data.repository.CustomLinkActionRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ContactRepositoryImpl
@@ -43,6 +45,7 @@ import com.mycorrhizal.crm.data.session.TokenStorage
 import com.mycorrhizal.crm.domain.repository.ActivityRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.BulkOperationRepository
+import com.mycorrhizal.crm.domain.repository.CadencePolicyRepository
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.CustomLinkActionRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
@@ -108,7 +111,10 @@ object DataModule {
             // not-yet-synced outbox) survives that specific version bump; the destructive
             // fallback remains for any other/unexpected version gap, per this cache's
             // general rebuild-from-server policy (see AppDatabase's doc comment).
-            .addMigrations(com.mycorrhizal.crm.data.local.MIGRATION_13_14)
+            .addMigrations(
+                com.mycorrhizal.crm.data.local.MIGRATION_13_14,
+                com.mycorrhizal.crm.data.local.MIGRATION_14_15,
+            )
             .fallbackToDestructiveMigration()
             .build()
 
@@ -162,6 +168,10 @@ object DataModule {
     @Provides
     fun provideCachedConversationAgendaDao(db: AppDatabase): CachedConversationAgendaDao =
         db.cachedConversationAgendaDao()
+
+    @Provides
+    fun provideCachedCadencePolicyDao(db: AppDatabase): CachedCadencePolicyDao =
+        db.cachedCadencePolicyDao()
 
     @Provides
     fun providePendingInteractionDao(db: AppDatabase): PendingInteractionDao =
@@ -251,6 +261,10 @@ abstract class DataBindsModule {
     @Binds
     @Singleton
     abstract fun bindConversationAgendaRepository(impl: ConversationAgendaRepositoryImpl): ConversationAgendaRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindCadencePolicyRepository(impl: CadencePolicyRepositoryImpl): CadencePolicyRepository
 
     @Binds
     @Singleton

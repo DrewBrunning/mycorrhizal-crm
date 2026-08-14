@@ -62,6 +62,16 @@ object HouseholdType {
     val ALL = listOf(FAMILY_UNIT, ROOMMATES, OTHER)
 }
 
+/**
+ * Interaction types that can reset a cadence policy's clock, mirroring web's
+ * `QUALIFYING_INTERACTION_TYPE_TOKENS` and the backend's token set.
+ *
+ * [photo] is deliberately absent — it is the one globally non-qualifying
+ * activity type (`models/activity.go`'s `Activity.Qualifying()`), so offering
+ * it as a checkbox would be a dead option. If the backend adds a qualifying
+ * token, update this list AND the cadence screen's `cadenceTypeLabel` map by
+ * hand (see /CLAUDE.md frontend trap 4).
+ */
 object CadenceQualifyingType {
     const val CALL = "call"
     const val VIDEO_CALL = "video_call"
@@ -70,6 +80,7 @@ object CadenceQualifyingType {
     const val GIFT = "gift"
     const val MESSAGE = "message"
     const val SHARED_ACTIVITY = "shared_activity"
+    const val PHOTO = "photo"
 
     val ALL = listOf(CALL, VIDEO_CALL, VISIT, MEAL, GIFT, MESSAGE, SHARED_ACTIVITY)
 }

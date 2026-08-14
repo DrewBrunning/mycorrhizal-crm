@@ -21,8 +21,8 @@ data class BirthdaysResponse(
 /** GET /cadence-policies/overdue — `{ overdue: [...] }`. */
 @JsonClass(generateAdapter = true)
 data class OverdueCadence(
-    val policy: Map<String, Any?>? = null,
-    val health: Map<String, Any?>? = null,
+    val policy: CadencePolicy? = null,
+    val health: CadenceHealth? = null,
     @Json(name = "contact_id") val contactId: Long = 0,
     @Json(name = "contact_name") val contactName: String = "",
     @Json(name = "photo_thumbnail") val photoThumbnail: String? = null,
