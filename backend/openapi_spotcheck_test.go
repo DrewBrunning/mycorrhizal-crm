@@ -152,7 +152,54 @@ func TestOpenAPIResponseSpotCheck(t *testing.T) {
 	require.Equal(t, 201, edgeResp.Code, edgeResp.Body.String())
 	validateResponse(t, edgeResp, "POST", "/relationship-edges", nil)
 
-	// 4. GET /health (public, unversioned, path-level server override).
+	// 4. Bulk import round-trip (T57's documented contract): a JSON batch of
+	// neutral Card/CRM records through /contacts/import/records, then a VCF
+	// confirm, then a REPLAY of that confirm — which must still be a 200 with
+	// a spec-valid ImportResult (idempotent no-op), not a 404/500.
+	recordsBody := `{"records":[` +
+		`{"card":{"name":{"components":[{"kind":"given","value":"Linus"}]}}},` +
+		`{"card":{"name":{"components":[{"kind":"given","value":"Grace"}]}}}]}`
+	recReq := httptest.NewRequest("POST", "/api/v1/contacts/import/records", bytes.NewBufferString(recordsBody))
+	recReq.Header.Set("Content-Type", "application/json")
+	recReq.Header.Set("Cookie", cookie)
+	recResp := httptest.NewRecorder()
+	router.ServeHTTP(recResp, recReq)
+	require.Equal(t, 200, recResp.Code, recResp.Body.String())
+	validateResponse(t, recResp, "POST", "/contacts/import/records", nil)
+
+	var preview struct {
+		SessionID string `json:"session_id"`
+	}
+	require.NoError(t, json.Unmarshal(recResp.Body.Bytes(), &preview))
+	require.NotEmpty(t, preview.SessionID)
+
+	confirmBody, _ := json.Marshal(map[string]any{
+		"session_id": preview.SessionID,
+		"actions": []map[string]any{
+			{"row_index": 0, "action": "add"},
+			{"row_index": 1, "action": "add"},
+		},
+	})
+	confirmReq := httptest.NewRequest("POST", "/api/v1/contacts/import/vcf/confirm", bytes.NewBuffer(confirmBody))
+	confirmReq.Header.Set("Content-Type", "application/json")
+	confirmReq.Header.Set("Cookie", cookie)
+	confirmResp := httptest.NewRecorder()
+	router.ServeHTTP(confirmResp, confirmReq)
+	require.Equal(t, 200, confirmResp.Code, confirmResp.Body.String())
+	validateResponse(t, confirmResp, "POST", "/contacts/import/vcf/confirm", nil)
+
+	// Replay the same confirm: the session is consumed but the result must be
+	// returned verbatim (idempotent), proving the documented contract holds.
+	replayReq := httptest.NewRequest("POST", "/api/v1/contacts/import/vcf/confirm", bytes.NewBuffer(confirmBody))
+	replayReq.Header.Set("Content-Type", "application/json")
+	replayReq.Header.Set("Cookie", cookie)
+	replayResp := httptest.NewRecorder()
+	router.ServeHTTP(replayResp, replayReq)
+	require.Equal(t, 200, replayResp.Code, "a retried confirm of a consumed session must replay, not 404: %s", replayResp.Body.String())
+	validateResponse(t, replayResp, "POST", "/contacts/import/vcf/confirm", nil)
+	require.JSONEq(t, confirmResp.Body.String(), replayResp.Body.String(), "the replayed result must be byte-identical to the original")
+
+	// 5. GET /health (public, unversioned, path-level server override).
 	healthReq := httptest.NewRequest("GET", "/health", nil)
 	healthResp := httptest.NewRecorder()
 	router.ServeHTTP(healthResp, healthReq)

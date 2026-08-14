@@ -1437,12 +1437,15 @@ paths:
       summary: Start a contact import from a batch of neutral Card/CRM records
       operationId: uploadImportRecords
       description: >
-        T96's device-contacts path: a batch of records in the same nested
+        T96's device-contacts path and the stable bulk-import contract for
+        external clients (T57): a batch of records in the same nested
         Card/CRM shape POST /contacts accepts is run through the standard
         import preview pipeline (validation, per-row DB duplicate detection
         with a merge diff, and within-batch duplicate detection) and returns
         an ImportPreviewResponse. Confirm via POST /contacts/import/vcf/confirm
-        exactly like a VCF/JSContact session.
+        exactly like a VCF/JSContact session — the same repeatable contract
+        serves a first-run prompt and a standing "Import from contacts"
+        entry point alike.
       requestBody:
         required: true
         content:
@@ -1485,6 +1488,12 @@ paths:
       description: >
         One bad row's error does not abort the batch — other rows in the
         same request still commit. The session is deleted on completion.
+        Idempotent (T57): once a session is confirmed, re-confirming the same
+        session_id within the 15-minute session window returns the original
+        result as a no-op instead of re-applying, so a client that lost the
+        response can retry safely without double-importing. To change
+        decisions, start a new upload. A retried confirm must not be sent to
+        /contacts/import/vcf/confirm with a CSV-sourced session ID.
       requestBody:
         required: true
         content:
@@ -1493,7 +1502,7 @@ paths:
               $ref: "#/components/schemas/ImportConfirmRequest"
       responses:
         "200":
-          description: Import result summary.
+          description: Import result summary (the same result is replayed on a retried confirm of a consumed session).
           content:
             application/json:
               schema:
@@ -1508,7 +1517,12 @@ paths:
         Same contract as /contacts/import/confirm, plus photo processing:
         embedded or URL-referenced photos are saved after the row commits
         (an incoming photo never overwrites a contact that already has one
-        on "update").
+        on "update"). Idempotent (T57): once a session is confirmed,
+        re-confirming the same session_id within the 15-minute session
+        window returns the original result as a no-op instead of re-applying,
+        so a client that lost the response (e.g. a dropped mobile request)
+        can retry safely without double-importing. To change decisions, start
+        a new upload.
       requestBody:
         required: true
         content:
@@ -1517,7 +1531,7 @@ paths:
               $ref: "#/components/schemas/ImportConfirmRequest"
       responses:
         "200":
-          description: Import result summary.
+          description: Import result summary (the same result is replayed on a retried confirm of a consumed session).
           content:
             application/json:
               schema:
@@ -8863,16 +8877,23 @@ components:
           additionalProperties: true
         validation_errors: { type: array, items: { type: string } }
         duplicate_match:
-          $ref: "#/components/schemas/DuplicateMatch"
+          description: Potential duplicate, if any; null when the row matches nothing.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/DuplicateMatch"
         suggested_action: { type: string, enum: [add, skip, update] }
         merge_diff:
-          $ref: "#/components/schemas/ImportMergeDiff"
+          description: What the "update" action would change; null when there is no duplicate_match.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ImportMergeDiff"
         batch_duplicate_of:
           type: integer
+          nullable: true
           description: >
             When present, the row_index of an EARLIER row in the same import
             file that this row duplicates (T96 within-batch detection). Such
-            rows default to "skip".
+            rows default to "skip". Absent rows emit null.
         diagnostics:
           type: array
           items: { type: string }

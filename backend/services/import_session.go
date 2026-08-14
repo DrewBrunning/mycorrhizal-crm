@@ -32,6 +32,24 @@ type importSessionData struct {
 	// created it — see CreateVCFSessionForShare/SessionBelongsToShare below.
 	// Empty for ordinary CSV/VCF/JSContact import sessions.
 	boundShareID string
+
+	// confirmMu serializes concurrent confirms of this same session so a race
+	// cannot apply an import twice (T57 idempotent confirm). confirmed, when
+	// non-nil, means a confirm has already committed and its result is
+	// authoritative — later confirms replay it instead of re-applying.
+	confirmMu sync.Mutex
+	confirmed *models.ImportResult
+}
+
+// confirmedImport is the tiny post-confirm tombstone kept so a client that
+// lost a confirm's response can retry the same session_id idempotently (T57)
+// instead of 404ing and re-uploading (which would double-import). The full
+// session payload is deleted on confirm; only the result, its owner, and an
+// expiry are retained until the normal session window closes.
+type confirmedImport struct {
+	userID    uint
+	result    models.ImportResult
+	expiresAt time.Time
 }
 
 // ImportSessionManager owns the lifecycle of in-progress import sessions: creation,
@@ -40,11 +58,18 @@ type importSessionData struct {
 type ImportSessionManager struct {
 	mu       sync.RWMutex
 	sessions map[string]*importSessionData
+
+	// confirmedResults maps a consumed session_id to its import result for
+	// the remainder of the session's 15-minute window (T57 idempotency).
+	confirmedResults map[string]confirmedImport
 }
 
 // NewImportSessionManager creates an empty session manager.
 func NewImportSessionManager() *ImportSessionManager {
-	return &ImportSessionManager{sessions: make(map[string]*importSessionData)}
+	return &ImportSessionManager{
+		sessions:         make(map[string]*importSessionData),
+		confirmedResults: make(map[string]confirmedImport),
+	}
 }
 
 // generateSessionID creates a random session ID.
@@ -65,6 +90,46 @@ func (m *ImportSessionManager) CleanupExpired() {
 			delete(m.sessions, id)
 		}
 	}
+	for id, rec := range m.confirmedResults {
+		if now.After(rec.expiresAt) {
+			delete(m.confirmedResults, id)
+		}
+	}
+}
+
+// rememberConfirmed stores the result of a just-consumed session so a retried
+// confirm can replay it (T57). The caller must already hold the session's
+// confirmMu; the tombstone itself is guarded by the manager mutex.
+func (m *ImportSessionManager) rememberConfirmed(sessionID string, userID uint, result models.ImportResult) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.confirmedResults[sessionID] = confirmedImport{
+		userID:    userID,
+		result:    result,
+		expiresAt: time.Now().Add(sessionExpiry),
+	}
+}
+
+// replayConfirmed returns the stored result of an already-consumed session if
+// it belongs to userID and has not expired yet. It is the idempotent-confirm
+// path (T57): a client that lost the first confirm's response retries the same
+// session_id and gets the original result instead of a 404 and a duplicate
+// re-upload.
+func (m *ImportSessionManager) replayConfirmed(sessionID string, userID uint) (models.ImportResult, bool) {
+	m.mu.RLock()
+	rec, exists := m.confirmedResults[sessionID]
+	m.mu.RUnlock()
+
+	if !exists || rec.userID != userID {
+		return models.ImportResult{}, false
+	}
+	if time.Now().After(rec.expiresAt) {
+		m.mu.Lock()
+		delete(m.confirmedResults, sessionID)
+		m.mu.Unlock()
+		return models.ImportResult{}, false
+	}
+	return rec.result, true
 }
 
 // get retrieves and validates an import session, enforcing ownership and expiry.
@@ -226,12 +291,29 @@ func (m *ImportSessionManager) PreviewCSV(db *gorm.DB, userID uint, req models.I
 	}, nil
 }
 
-// Confirm executes a CSV or VCF import using the per-row actions in req, then deletes
-// the session. Photo processing is handled separately by ConfirmVCF.
+// Confirm executes a CSV or VCF import using the per-row actions in req, then
+// consumes the session. Consumed sessions are NOT simply dropped: the result is
+// kept as a short-lived tombstone so a client that lost the response can retry
+// the same session_id and get the same result back (idempotent replay, T57)
+// rather than 404ing and re-uploading. Photo processing is handled by ConfirmVCF.
 func (m *ImportSessionManager) Confirm(db *gorm.DB, userID uint, req models.ImportConfirmRequest, log *zerolog.Logger) (*models.ImportResult, *apperrors.AppError) {
 	sessionData, sessErr := m.get(req.SessionID, userID)
 	if sessErr != nil {
+		// The session may already have been consumed by an earlier successful
+		// confirm whose response the client lost. Replay instead of failing.
+		if res, ok := m.replayConfirmed(req.SessionID, userID); ok {
+			log.Info().Str("session_id", req.SessionID).Msg("Import confirm replayed from a consumed session")
+			return &res, nil
+		}
 		return nil, sessErr
+	}
+
+	// Serialize concurrent confirms of this session: the second one waits,
+	// then sees confirmed set and replays instead of applying again.
+	sessionData.confirmMu.Lock()
+	defer sessionData.confirmMu.Unlock()
+	if sessionData.confirmed != nil {
+		return sessionData.confirmed, nil
 	}
 
 	if !sessionData.session.PreviewCached {
@@ -333,6 +415,8 @@ func (m *ImportSessionManager) Confirm(db *gorm.DB, userID uint, req models.Impo
 		return nil, apperrors.ErrDatabase("Import failed").WithError(txErr)
 	}
 
+	sessionData.confirmed = &result
+	m.rememberConfirmed(req.SessionID, userID, result)
 	m.Delete(req.SessionID)
 
 	log.Info().
@@ -356,11 +440,24 @@ type photoTask struct {
 	photoURL       string // URL to fetch photo from (if not embedded)
 }
 
-// ConfirmVCF executes a VCF import with photo processing, then deletes the session.
+// ConfirmVCF executes a VCF/JSContact/records import with photo processing,
+// then consumes the session — keeping a tombstone so a retried confirm of the
+// same session_id replays the original result instead of double-importing
+// (T57 idempotency; see Confirm's doc comment).
 func (m *ImportSessionManager) ConfirmVCF(db *gorm.DB, userID uint, req models.ImportConfirmRequest, cfg *config.Config, log *zerolog.Logger) (*models.ImportResult, *apperrors.AppError) {
 	sessionData, sessErr := m.get(req.SessionID, userID)
 	if sessErr != nil {
+		if res, ok := m.replayConfirmed(req.SessionID, userID); ok {
+			log.Info().Str("session_id", req.SessionID).Msg("Import confirm replayed from a consumed session")
+			return &res, nil
+		}
 		return nil, sessErr
+	}
+
+	sessionData.confirmMu.Lock()
+	defer sessionData.confirmMu.Unlock()
+	if sessionData.confirmed != nil {
+		return sessionData.confirmed, nil
 	}
 
 	if sessionData.importType != "vcf" && sessionData.importType != "records" {
@@ -524,6 +621,8 @@ func (m *ImportSessionManager) ConfirmVCF(db *gorm.DB, userID uint, req models.I
 		}
 	}
 
+	sessionData.confirmed = &result
+	m.rememberConfirmed(req.SessionID, userID, result)
 	m.Delete(req.SessionID)
 
 	log.Info().

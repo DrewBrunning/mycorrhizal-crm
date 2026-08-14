@@ -41,9 +41,9 @@ without repeated small batches.
 - Watch for request/response size and timeout limits on a hundreds-of-contacts single upload+parse —
   this may need chunking or a background-job pattern rather than a single synchronous request,
   depending on how large a real Takeout export gets in practice.
-- See [T57](66-T57-bulk-import-api-for-external-clients.md) (deferred) for the separate,
-  not-yet-scheduled question of a documented API for a future external client (e.g. a mobile app) to
-  drive bulk import — this ticket is the in-app UI only.
+- See [T57](66-T57-bulk-import-api-for-external-clients.md) for the separate question of a
+  documented API for an external client (a mobile app) to drive bulk import — **shipped 2026-08-14**
+  once M1 became its consumer; this ticket is the in-app UI only.
 
 ## Done when
 

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"sync"
 	"testing"
 	"time"
 
@@ -280,7 +281,7 @@ func TestPreviewCSV_WrongUser_ErrorPropagatesFromGet(t *testing.T) {
 
 // --- Confirm (CSV) -----------------------------------------------------------------
 
-func TestConfirm_Add_PersistsRowAndDeletesSession(t *testing.T) {
+func TestConfirm_Add_PersistsRow_AndReconfirmIsIdempotent(t *testing.T) {
 	db := setupImportSessionTestDB(t)
 	m := NewImportSessionManager()
 	log := testImportLogger()
@@ -310,10 +311,21 @@ func TestConfirm_Add_PersistsRowAndDeletesSession(t *testing.T) {
 	assert.Equal(t, "Smith", persisted.Lastname)
 	assert.Equal(t, uint(1), persisted.UserID)
 
-	// Session must be gone after a successful Confirm.
+	// The session payload must be gone after a successful Confirm...
 	_, getErr := m.get(id, 1)
 	require.NotNil(t, getErr)
 	assert.Equal(t, apperrors.ErrCodeNotFound, getErr.Code)
+
+	// ...but a retried confirm (the client lost the first response, T57)
+	// must replay the stored result instead of 404ing and double-importing.
+	replayed, appErr := m.Confirm(db, 1, req, log)
+	require.Nil(t, appErr)
+	require.NotNil(t, replayed)
+	assert.Equal(t, *result, *replayed, "a replayed confirm must return the original result")
+
+	var count int64
+	require.NoError(t, db.Model(&models.Contact{}).Where("user_id = ?", 1).Count(&count).Error)
+	assert.Equal(t, int64(1), count, "a replayed confirm must not create a second contact")
 }
 
 func TestConfirm_Update_MergesExistingAndWritesMergeNote(t *testing.T) {
@@ -401,6 +413,134 @@ func TestConfirm_UpdateWithNilDuplicateMatch_ErrorsButBatchContinues(t *testing.
 	var count int64
 	require.NoError(t, db.Model(&models.Contact{}).Where("user_id = ?", 1).Count(&count).Error)
 	assert.Equal(t, int64(1), count, "only the good row should have been persisted")
+}
+
+// TestConfirm_ConcurrentReconfirms_ApplyExactlyOnce pins T57's idempotency
+// race: N concurrent confirms of the same session must result in exactly one
+// apply. Without the per-session confirmMu, every goroutine would pass the
+// tombstone lookup (empty at first), run the same transaction, and create N
+// copies of each contact.
+func TestConfirm_ConcurrentReconfirms_ApplyExactlyOnce(t *testing.T) {
+	db := setupImportSessionTestDB(t)
+	m := NewImportSessionManager()
+	log := testImportLogger()
+
+	headers := []string{"First Name", "Last Name", "Email"}
+	rows := [][]string{
+		{"Alice", "Smith", "alice@example.com"},
+		{"Bob", "Jones", "bob@example.com"},
+		{"Carol", "Lee", "carol@example.com"},
+	}
+	id := m.CreateCSVSession(1, headers, rows)
+
+	_, appErr := m.PreviewCSV(db, 1, models.ImportPreviewRequest{SessionID: id, Mappings: csvMappings()})
+	require.Nil(t, appErr)
+
+	req := models.ImportConfirmRequest{
+		SessionID: id,
+		Actions: []models.RowImportAction{
+			{RowIndex: 0, Action: "add"},
+			{RowIndex: 1, Action: "add"},
+			{RowIndex: 2, Action: "add"},
+		},
+	}
+
+	const workers = 8
+	var wg sync.WaitGroup
+	results := make([]*models.ImportResult, workers)
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			res, err := m.Confirm(db, 1, req, log)
+			if err == nil {
+				results[i] = res
+			}
+		}(i)
+	}
+	wg.Wait()
+
+	for _, res := range results {
+		require.NotNil(t, res, "every concurrent confirm must succeed, even the replays")
+		assert.Equal(t, 3, res.Created)
+		assert.Equal(t, 3, res.TotalProcessed)
+	}
+
+	var count int64
+	require.NoError(t, db.Model(&models.Contact{}).Where("user_id = ?", 1).Count(&count).Error)
+	assert.Equal(t, int64(3), count, "exactly one apply must win; the rest are idempotent replays")
+}
+
+// TestConfirm_Reconfirm_ConsumedSession_RejectsOtherUsers pins the ownership
+// half of the tombstone: a consumed session's replay is only available to the
+// user who ran the confirm, never to another account on the same instance.
+func TestConfirm_Reconfirm_ConsumedSession_RejectsOtherUsers(t *testing.T) {
+	db := setupImportSessionTestDB(t)
+	m := NewImportSessionManager()
+	log := testImportLogger()
+
+	headers := []string{"First Name", "Last Name", "Email"}
+	rows := [][]string{{"Alice", "Smith", "alice@example.com"}}
+	id := m.CreateCSVSession(1, headers, rows)
+
+	_, appErr := m.PreviewCSV(db, 1, models.ImportPreviewRequest{SessionID: id, Mappings: csvMappings()})
+	require.Nil(t, appErr)
+
+	req := models.ImportConfirmRequest{
+		SessionID: id,
+		Actions:   []models.RowImportAction{{RowIndex: 0, Action: "add"}},
+	}
+	_, appErr = m.Confirm(db, 1, req, log)
+	require.Nil(t, appErr)
+
+	// User 2 must NOT be able to replay user 1's consumed session.
+	_, appErr = m.Confirm(db, 2, req, log)
+	require.NotNil(t, appErr)
+	assert.Equal(t, apperrors.ErrCodeNotFound, appErr.Code)
+
+	var count int64
+	require.NoError(t, db.Model(&models.Contact{}).Count(&count).Error)
+	assert.Equal(t, int64(1), count, "user 2 must not create anything from user 1's session")
+}
+
+// TestConfirm_ReplayExpiredTombstone_NotFound pins the tombstone's window: it
+// lives only as long as the session's 15-minute expiry, so a retried confirm
+// after that is a plain 404 again, not a silent success.
+func TestConfirm_ReplayExpiredTombstone_NotFound(t *testing.T) {
+	db := setupImportSessionTestDB(t)
+	m := NewImportSessionManager()
+	log := testImportLogger()
+
+	headers := []string{"First Name", "Last Name", "Email"}
+	rows := [][]string{{"Alice", "Smith", "alice@example.com"}}
+	id := m.CreateCSVSession(1, headers, rows)
+
+	_, appErr := m.PreviewCSV(db, 1, models.ImportPreviewRequest{SessionID: id, Mappings: csvMappings()})
+	require.Nil(t, appErr)
+
+	req := models.ImportConfirmRequest{
+		SessionID: id,
+		Actions:   []models.RowImportAction{{RowIndex: 0, Action: "add"}},
+	}
+	_, appErr = m.Confirm(db, 1, req, log)
+	require.Nil(t, appErr)
+
+	m.mu.Lock()
+	rec, exists := m.confirmedResults[id]
+	require.True(t, exists, "confirm must have recorded a tombstone")
+	rec.expiresAt = time.Now().Add(-time.Minute)
+	m.confirmedResults[id] = rec
+	m.mu.Unlock()
+
+	m.CleanupExpired()
+
+	_, appErr = m.Confirm(db, 1, req, log)
+	require.NotNil(t, appErr)
+	assert.Equal(t, apperrors.ErrCodeNotFound, appErr.Code)
+
+	var count int64
+	require.NoError(t, db.Model(&models.Contact{}).Count(&count).Error)
+	assert.Equal(t, int64(1), count, "an expired tombstone must not re-apply the import")
 }
 
 func TestConfirm_Update_StaleDuplicateReference_ErrorsButBatchContinues(t *testing.T) {
@@ -764,7 +904,7 @@ func TestConfirmVCF_Update_NoExistingPhoto_QueuesIncomingPhoto(t *testing.T) {
 	assert.NotEmpty(t, merged.Photo, "an incoming photo must be applied when the existing contact had none")
 }
 
-func TestConfirmVCF_Add_PersistsRowAndDeletesSession(t *testing.T) {
+func TestConfirmVCF_Add_PersistsRow_AndReconfirmIsIdempotent(t *testing.T) {
 	db := setupImportSessionTestDB(t)
 	m := NewImportSessionManager()
 	log := testImportLogger()
@@ -785,8 +925,19 @@ func TestConfirmVCF_Add_PersistsRowAndDeletesSession(t *testing.T) {
 	require.NoError(t, db.Where("email = ?", "vera@example.com").First(&persisted).Error)
 	assert.Equal(t, "Vera", persisted.Firstname)
 
+	// Session payload is consumed, but a retried confirm replays the result
+	// instead of double-importing (T57).
 	_, getErr := m.get(id, 1)
 	require.NotNil(t, getErr)
+
+	replayed, appErr := m.ConfirmVCF(db, 1, req, cfg, log)
+	require.Nil(t, appErr)
+	require.NotNil(t, replayed)
+	assert.Equal(t, *result, *replayed)
+
+	var count int64
+	require.NoError(t, db.Model(&models.Contact{}).Where("user_id = ?", 1).Count(&count).Error)
+	assert.Equal(t, int64(1), count, "a replayed confirm must not create a second contact")
 }
 
 // TestConfirmVCF_Add_EmbeddedPhoto_PersistsPhotoAndValidETag is the critical

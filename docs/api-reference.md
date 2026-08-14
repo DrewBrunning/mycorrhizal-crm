@@ -160,6 +160,40 @@ Every request and response carries an `X-Request-ID` header created by the middl
 | `POST` | `/contacts/import/confirm` | Execute the import with per-row decisions |
 | `POST` | `/contacts/import/vcf/upload` | Upload a VCF file, returns contacts with duplicate detection |
 | `POST` | `/contacts/import/vcf/confirm` | Execute the VCF import |
+| `POST` | `/contacts/import/jscontact/upload` | Upload a JSContact (RFC 9553) JSON file, returns contacts with duplicate detection |
+| `POST` | `/contacts/import/records` | Start an import from a JSON batch of neutral Card/CRM records (bulk-import API for external clients) |
+
+#### Bulk import contract (external clients)
+
+The records endpoint is the repeatable bulk-import contract for external clients (e.g. the Android
+app): it serves both a first-run "import your contacts" prompt and a standing "Import from contacts"
+entry point with the same flow.
+
+**Session lifecycle.** An import is a three-step, server-side-session flow:
+
+1. `POST /contacts/import/records` (JSON batch, 1–500 records) — or an upload endpoint for a file —
+   returns an `ImportPreviewResponse` with a `session_id`, per-row duplicate detection
+   (`duplicate_match` + `merge_diff`), and within-batch detection (`batch_duplicate_of`).
+2. (CSV only) `POST /contacts/import/preview` applies column mappings to the session.
+3. `POST /contacts/import/vcf/confirm` (VCF/JSContact/records) or `/contacts/import/confirm` (CSV)
+   executes the import with one action per row: `add`, `update` (merge into the matched existing
+   contact), or `skip`. The response is an `ImportResult` summary.
+
+**Idempotent confirm.** Confirming a session consumes it. A retry of the same `session_id` within
+the 15-minute session window returns the **original result** as a no-op — it does not re-apply the
+import. This makes a dropped confirm response safe to retry: a client that times out mid-request can
+simply re-send the same confirm instead of re-uploading (which would create duplicates). To change a
+decision, start a new upload (new `session_id`).
+
+**Retry guidance.** If a confirm is retried and the session has aged out (>15 min, or the server
+restarted), it returns `404 NOT_FOUND`; the client must re-upload. A retried confirm must not be sent
+to the other confirm endpoint (a CSV-sourced `session_id` is rejected by `/contacts/import/vcf/confirm`).
+
+**Guarantees.** Sessions are scoped to the owning user; a foreign or expired `session_id` is `404`.
+Sessions are held in memory only and lost on server restart. Batch limit is 500 records; the import
+commits per-row, so one failing row does not abort the rest. Ownership scoping, per-row decisions,
+and the 15-minute expiry are enforced server-side.
+
 
 ### Export
 
