@@ -20,6 +20,10 @@ test.describe('Import merge review', () => {
       firstname: `${E2E_CONTACT_PREFIX}${runId}Jane`,
       lastname: 'Smith',
       email: `merge-${runId}@example.com`,
+      // The union-on-update case (T96 "Done when"): the existing contact
+      // already has one phone; importing a card with a different phone must
+      // leave BOTH.
+      phones: [{ value: '555-0000' }],
     });
 
     const vcf =
@@ -64,7 +68,8 @@ test.describe('Import merge review', () => {
       const body = await detail.json();
       const record = body.contact || body;
       const phoneValues = (record.card?.phones ?? []).map((p: { number: string }) => p.number);
-      expect(phoneValues).toContain('+15559998888');
+      expect(phoneValues, 'the incoming phone must be added alongside the existing one (union, not replace)').toContain('+15559998888');
+      expect(phoneValues, 'the existing phone must survive the merge').toContain('555-0000');
 
       const count = await (
         await request.get(`${API_BASE_URL}/contacts?limit=200`)

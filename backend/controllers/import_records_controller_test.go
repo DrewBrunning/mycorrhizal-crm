@@ -156,7 +156,8 @@ func TestUploadImportRecords_MergeDiffArraysSerializeAsEmptyArrays(t *testing.T)
 	require.Len(t, raw.Rows[0].MergeDiff.Added, 1, "the new phone must be the one addition")
 }
 
-func TestUploadImportRecords_ConfirmViaVCFRouteMergesIntoExisting(t *testing.T) {	db, err := database.InitDB(filepath.Join(t.TempDir(), "t96-records-merge.db"))
+func TestUploadImportRecords_ConfirmViaVCFRouteMergesIntoExisting(t *testing.T) {
+	db, err := database.InitDB(filepath.Join(t.TempDir(), "t96-records-merge.db"))
 	require.NoError(t, err)
 
 	user := models.User{Username: "t96recordsm", Password: "password123!A", Email: "t96recordsm@example.com"}
