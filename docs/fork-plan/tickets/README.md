@@ -177,7 +177,7 @@ idea, not a bug — filed in Deferred → Feature ideas instead, not ranked here
 
 | Ticket | Status |
 |---|---|
-| [T92](136-T92-bulk-merge-from-contacts-list.md) · Bulk merge from the contacts list | **TO BE DONE**. R4. M. Select-two-and-merge needs nothing; the suggested-pairs half is unblocked — T93's "Review duplicates" dialog ships the pair→merge flow this ticket's step 5 asked for. |
+| [T92](136-T92-bulk-merge-from-contacts-list.md) · Bulk merge from the contacts list | **DONE** (2026-08-14 — the Contacts bulk bar gains a **Merge** button enabled only at exactly two selected rows (disabled otherwise, with a tooltip explaining the constraint), which opens `MergeContactsDialog` in the pair mode T93 already lifted: neither selected row is privileged, keeper is user-chosen with a swap. Selection is resolved from the loaded page (uid-keyed selection → `Contact.ID`), and a successful merge clears the selection and refetches the list + circles/tags so the dead loser row can't linger (T94/T95 class). The detail-page merge entry point is untouched and verified. Step 5 (Review-duplicates entry point) needs nothing — T93 shipped it. Two new `bulk.*` strings ×5 locales; BulkActionsBar enable/disable/tooltip tests + a ContactsPage select-two→merge→refresh unit test (both hand-verified to fail against a broken handler/enable-gate) + a Playwright spec driving select-one-disabled→tooltip→select-two→resolve-firstname-conflict→merge→list-refreshed→loser-404; full 182-test e2e suite green. See the ticket's landing note.) |
 
 ### Android
 

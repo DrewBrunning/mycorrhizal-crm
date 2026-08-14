@@ -1,5 +1,5 @@
 import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router';
 import './i18n/config';
 import ContactsPage from './ContactsPage';
@@ -12,6 +12,7 @@ import { getFieldDefinitions } from './api/fieldDefinitions';
 import { getCurrentUser } from './api/admin';
 import { runBulkOperation, BulkOperationResult } from './api/bulkOperations';
 import { searchAll } from './api/search';
+import { previewContactMerge, commitContactMerge } from './api/contactMerge';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
 afterEach(cleanup);
@@ -53,6 +54,10 @@ vi.mock('./api/search', async (importOriginal) => {
     })),
   };
 });
+vi.mock('./api/contactMerge', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./api/contactMerge')>();
+  return { ...actual, previewContactMerge: vi.fn(), commitContactMerge: vi.fn() };
+});
 vi.mock('./auth', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./auth')>();
   return { ...actual, isAuthenticated: vi.fn(() => true) };
@@ -66,6 +71,8 @@ beforeEach(() => {
   vi.mocked(getCurrentUser).mockReset();
   vi.mocked(runBulkOperation).mockReset();
   vi.mocked(searchAll).mockReset();
+  vi.mocked(previewContactMerge).mockReset();
+  vi.mocked(commitContactMerge).mockReset();
 
   vi.mocked(getCurrentUser).mockResolvedValue({ enabled_contact_fields: null } as never);
   vi.mocked(listCircles).mockResolvedValue({ circles: [], members: [], next_cursor: '', limit: 100 } as never);
@@ -460,4 +467,68 @@ test('toggling the contact-info filter clears an in-progress selection', async (
   fireEvent.click(screen.getByLabelText('Show all'));
 
   await waitFor(() => expect(screen.queryByText('1 selected')).not.toBeInTheDocument());
+});
+
+// --- T92 bulk merge ----------------------------------------------------------
+// Merge is a pairwise flow, not a one-verb-over-N-rows action: selecting
+// exactly two contacts enables the bulk bar's Merge, which opens
+// MergeContactsDialog in pair mode (neither selected row is privileged —
+// the user picks the keeper). A successful merge clears the selection and
+// refetches so the dead loser row can't linger.
+
+const noConflictPreview = {
+  keep_id: 1,
+  merge_id: 2,
+  resolution: {
+    emails: [],
+    phones: [],
+    addresses: [],
+    urls: [],
+    impps: [],
+    resolved_scalars: {},
+    conflicts: [],
+    field_value_conflicts: [],
+  },
+  association_counts: {
+    notes: 0, activities: 0, reminders: 0, reminder_completions: 0,
+    relationship_edges: 0, household_memberships: 0, circle_memberships: 0,
+    tags: 0, life_events: 0, life_event_references: 0, field_values: 0,
+    contact_sync_links: 0, attachments: 0, preferences: 0,
+    external_identities: 0, external_activities: 0, cadence_policies: 0,
+  },
+};
+
+test('selecting exactly two contacts and merging opens the pair-mode dialog, then refreshes and clears', async () => {
+  mockTwoPages();
+  vi.mocked(previewContactMerge).mockResolvedValue(noConflictPreview as never);
+  vi.mocked(commitContactMerge).mockResolvedValue({ message: 'merged', contact: {} } as never);
+  renderPage();
+  await screen.findByLabelText('Select Alice');
+
+  fireEvent.click(screen.getByLabelText('Select Alice'));
+  fireEvent.click(screen.getByLabelText('Select Bob'));
+  expect(screen.getByText('2 selected')).toBeInTheDocument();
+
+  // The bulk bar's Merge (only one matches — the dialog is not open yet).
+  fireEvent.click(screen.getByRole('button', { name: 'Merge' }));
+
+  // Pair mode: both contacts are offered as keeper candidates, neither
+  // privileged (T92 step 2 — the whole point of the lift).
+  const dialog = screen.getByRole('dialog');
+  expect(within(dialog).getByText('Keep Alice')).toBeInTheDocument();
+  expect(within(dialog).getByText('Keep Bob')).toBeInTheDocument();
+
+  // No conflicts → the dialog's own Merge button enables once the preview
+  // lands. Scope inside the dialog: the bulk bar's Merge button is still in
+  // the DOM behind it.
+  const dialogMerge = within(dialog).getByRole('button', { name: 'Merge' });
+  await waitFor(() => expect(dialogMerge).not.toBeDisabled());
+  fireEvent.click(dialogMerge);
+
+  // Committed as Alice (the pair default keeper) swallowing Bob, then the
+  // selection clears and the list refetches.
+  await waitFor(() => expect(commitContactMerge).toHaveBeenCalledWith(1, 2, {}));
+  await waitFor(() => expect(screen.queryByText('2 selected')).not.toBeInTheDocument());
+  expect(getContacts).toHaveBeenCalledTimes(2);
+  expect(within(dialog).queryByText('Keep Alice')).not.toBeInTheDocument();
 });

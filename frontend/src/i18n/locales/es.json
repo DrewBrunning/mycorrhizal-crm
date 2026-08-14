@@ -747,6 +747,8 @@
     "removeTag": "Quitar etiqueta",
     "archive": "Archivar",
     "unarchive": "Desarchivar",
+    "merge": "Fusionar",
+    "mergeSelectTwoHint": "Selecciona exactamente dos contactos para fusionar.",
     "delete": "Eliminar",
     "deleteConfirm": "¿Eliminar {{count}} contactos? Esto los elimina permanentemente junto con todos sus datos. Esta acción no se puede deshacer.",
     "selectContact": "Seleccionar {{name}}",

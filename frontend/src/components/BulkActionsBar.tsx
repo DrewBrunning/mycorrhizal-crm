@@ -8,6 +8,7 @@ import {
   InputLabel,
   MenuItem,
   Select,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import { useTranslation } from 'react-i18next';
@@ -29,6 +30,7 @@ interface BulkActionsBarProps {
   onRemoveTag: (tagId: string) => Promise<void>;
   onArchive: () => Promise<void>;
   onUnarchive: () => Promise<void>;
+  onMerge: () => void;
   onDelete: () => Promise<void>;
 }
 
@@ -51,6 +53,7 @@ export default function BulkActionsBar({
   onRemoveTag,
   onArchive,
   onUnarchive,
+  onMerge,
   onDelete,
 }: BulkActionsBarProps) {
   const { t } = useTranslation();
@@ -160,6 +163,22 @@ export default function BulkActionsBar({
           <Button size="small" variant="outlined" disabled={busy} onClick={onUnarchive}>
             {t('bulk.unarchive')}
           </Button>
+          {/* T92: merge is pairwise, not a one-verb-over-N-rows action, so it
+              is only meaningful (and only enabled) for exactly two selected
+              contacts. Anything else shows it disabled with a tooltip
+              explaining the constraint. */}
+          <Tooltip title={selectedCount === 2 ? '' : t('bulk.mergeSelectTwoHint')}>
+            <span>
+              <Button
+                size="small"
+                variant="outlined"
+                disabled={busy || selectedCount !== 2}
+                onClick={onMerge}
+              >
+                {t('bulk.merge')}
+              </Button>
+            </span>
+          </Tooltip>
           <Button size="small" variant="outlined" color="error" disabled={busy} onClick={onDelete}>
             {t('bulk.delete')}
           </Button>

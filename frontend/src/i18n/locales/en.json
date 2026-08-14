@@ -774,6 +774,8 @@
     "removeTag": "Remove tag",
     "archive": "Archive",
     "unarchive": "Unarchive",
+    "merge": "Merge",
+    "mergeSelectTwoHint": "Select exactly two contacts to merge.",
     "delete": "Delete",
     "deleteConfirm": "Delete {{count}} contacts? This permanently removes them and all of their data. This cannot be undone.",
     "selectContact": "Select {{name}}",

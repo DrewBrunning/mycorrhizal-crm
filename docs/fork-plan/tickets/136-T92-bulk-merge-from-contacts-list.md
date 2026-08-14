@@ -6,7 +6,7 @@
 | **Rating** | 4 — the reported blocker after a large import |
 | **Size** | M |
 | **Depends on** | [T93](137-T93-duplicate-scan-endpoint-and-review.md) for the *suggested-pairs* half. The select-two-and-merge half depends on nothing. |
-| **Status** | **TO BE DONE** |
+| **Status** | **DONE** (2026-08-14 — see the landing note below) |
 | **Source** | Beta testing note, 2026-08-13: *"How can I bulk merge? Import created a lot of duplicates and merge isn't in the bulk actions list on Contacts."* |
 
 ## Why this exists
@@ -74,3 +74,48 @@ Build it as a guided flow instead:
 - New strings translated in all five locales.
 - `cd frontend && npx tsc --noEmit && npx vitest run` green, plus a Playwright spec driving select-two →
   merge → list-refreshed.
+
+## Landing note, 2026-08-14
+
+Shipped steps 1–4; step 5 needed nothing (T93's "Review duplicates" surface already walks its pairs
+through `MergeContactsDialog`'s pair mode — the exact lift this ticket deferred to it). T107 landed
+first, so the reachability-vs-destruction trap is moot: the loser's attachments/preferences/cadence/
+external identities all re-point now.
+
+What actually got built:
+
+- **`BulkActionsBar` gains a Merge button** (`onMerge` prop), enabled only at `selectedCount === 2`
+  and disabled otherwise with a tooltip (`bulk.mergeSelectTwoHint`), via a `Tooltip`-wrapped `<span>`
+  because a disabled MUI Button never fires pointer events. Two new keys (`bulk.merge`,
+  `bulk.mergeSelectTwoHint`) in all five locales.
+- **`ContactsPage` resolves the pair from the loaded page, not a lookup round trip.** Selection is
+  keyed by `Contact.VCardUID`; the rows already carry `Contact.ID`, which is what
+  `POST /contacts/merge` wants. The handler is defensive — it re-filters the loaded `contacts` by the
+  selection set and refuses unless exactly two resolve, even though the button only enables at two.
+- **After a successful merge: clear the selection and refetch list + circles + tags.** The loser is
+  gone; a stale selection pointing at it (and stale circle/tag chips on the survivor) is the T94/T95
+  bug class this ticket's step 4 explicitly names.
+- The **detail-page entry point is untouched** and re-verified by `contactMerge.spec.ts`.
+
+Tests:
+
+- `BulkActionsBar.test.tsx`: disabled at 1 and 3, enabled + reports at exactly 2, tooltip text on
+  hover, disabled while busy. The jsdom tooltip assertion needed the mouse event on the `Tooltip`'s
+  own `<span>` (MUI only opens when the pointer enters the wrapper element, not a disabled
+  descendant).
+- `ContactsPage.test.tsx`: select-two → dialog opens in pair mode showing both "Keep …" candidates →
+  resolve → commit called with the right IDs → selection cleared and `getContacts` refetched.
+- New `e2e/bulkMerge.spec.ts`: select one (Merge disabled + tooltip) → select two (Merge enables) →
+  dialog offers both keeper candidates → the distinct first names produce a **real firstname conflict
+  the user resolves via the keeper radio** (deliberately not the no-conflict fast path) → commit →
+  dialog closes, selection empty, loser gone from the list, keeper's GET ok and loser's polled to 404
+  (the T93 WAL-read-snapshot caveat). Full 182-test e2e suite green against the Docker test stack.
+
+Both unit tests were hand-verified by breaking them first: disabling the enable-gate made the
+single/three+ tests fail, and stubbing out the `setMergePair` call made the ContactsPage test fail —
+each restored after confirming the failure.
+
+One process note: the "disabled hint" e2e assertion originally clicked the disabled button to surface
+the tooltip; Playwright's actionability check rightly refused. Hovering is the correct gesture for a
+disabled element — a `hover({ force: true })` is needed because the opened tooltip then sits over the
+button and would block a normal actionability re-check.

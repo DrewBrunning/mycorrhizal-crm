@@ -747,6 +747,8 @@
     "removeTag": "Tag entfernen",
     "archive": "Archivieren",
     "unarchive": "Wiederherstellen",
+    "merge": "Zusammenführen",
+    "mergeSelectTwoHint": "Wähle genau zwei Kontakte zum Zusammenführen aus.",
     "delete": "Löschen",
     "deleteConfirm": "{{count}} Kontakte löschen? Dies entfernt sie samt aller Daten dauerhaft. Dies kann nicht rückgängig gemacht werden.",
     "selectContact": "{{name}} auswählen",
