@@ -6,7 +6,7 @@
 | **Rating** | 3 — cosmetic, but it undoes part of what T74 was for |
 | **Size** | S — one component, four `FullSpanField` decisions plus a grid track change |
 | **Depends on** | Nothing. [T74](118-T74-desktop-field-row-action-distance.md) built the grid this adjusts. |
-| **Status** | **TO BE DONE** |
+| **Status** | **DONE** (2026-08-14) |
 | **Source** | Beta testing note, 2026-08-13: *"Two column layout breaks down on web (pronouns, How We Met, Additional Information)."* |
 
 ## Why this exists
@@ -89,3 +89,37 @@ The decisions below are made; do not re-derive them.
   difference and for the how-we-met/additional-info pairing; the existing full-span assertions at
   `:426-480` are updated, not deleted.
 - `cd frontend && npx tsc --noEmit && npx vitest run` green.
+
+## Landing note (2026-08-14)
+
+Items 2-4 landed exactly as specified: `how_we_met`/`contact_information` unwrapped from `FullSpanField`,
+`cardNotes`/`work_information` left alone, both grid tracks (`ContactInformation.tsx` and
+`ContactDetailPage.tsx`'s `SectionGroup`) changed to `repeat(2, minmax(0, 1fr))`.
+
+Item 1 (pronouns full-span only while editing) needed more than the ticket's one-line instruction. The
+naive version — conditionally rendering `<FullSpanField>{field}</FullSpanField>` only when editing, versus
+the bare field otherwise — is a real React pitfall, not just a style choice: it changes the *element type*
+at that tree position exactly when `EditableArrayField`'s own internal `editing` state flips from false to
+true, so React discards the existing instance and mounts a fresh one instead of updating it — silently
+resetting `editing` back to `false` in the same render that set it to `true`. Clicking the field's edit
+button appeared to do nothing. Fixed by always rendering the same `FullSpanField` wrapper and toggling only
+its `sx` via a new `active` prop, so `EditableArrayField` stays mounted continuously regardless of span
+state. `EditableArrayField` also gained an optional `onEditingChange` callback (every other of its 12
+call sites in this file ignores it) so `ContactInformation` can observe that internal state at all.
+
+Test-wise, the existing coarse "does `grid-column:1/-1` appear anywhere in the document" checks can't
+isolate one field's span from another's (headings and cardNotes/work_information are unconditionally
+full-span, so that string is always present regardless of what changed) — new tests instead extract the
+actual generated class name(s) from the stylesheet and walk a bounded number of ancestors up from a
+field's own text node to check whether one of them carries it. All three production fixes (the remount
+bug, the how-we-met/additional-info unwrap, the grid-track floor) were hand-verified per `/CLAUDE.md`:
+reverted each in turn, confirmed the corresponding new/updated test failed with the expected message,
+restored.
+
+Not independently re-verified with a live browser: registering a throwaway account against a local
+`backend-dev` run hit an unrelated infra snag (empty JSON response, likely concurrent traffic on the same
+dev DB/port from another process) not worth chasing for a CSS-only change already pinned precisely at the
+unit level — this ticket's own "Why this exists" section already notes jsdom can't do real layout and
+defers pixel-level verification to Playwright, which the unit tests here don't attempt to substitute for.
+
+`cd frontend && npx tsc --noEmit && npx vitest run` (671 tests, full suite) green.

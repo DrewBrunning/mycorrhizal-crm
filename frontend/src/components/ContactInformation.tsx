@@ -114,8 +114,18 @@ const SectionHeading = ({ label }: { label: string }) => (
 // T74 Level 1: wraps a field whose editor is too wide/tall to share a
 // ~530px column with its neighbor (multi-line text, SpeakToAs' two lists,
 // card notes) so it spans both grid columns instead of narrowing.
-const FullSpanField = ({ children }: { children: ReactNode }) => (
-  <Box sx={{ gridColumn: { lg: '1 / -1' } }}>{children}</Box>
+//
+// T88: `active` (default true) lets speakToAs toggle its span by editing
+// state without unmounting its child. The child's *position* in the tree
+// must never change based on that same state -- conditionally rendering
+// <FullSpanField> only when active, versus the bare child otherwise, changes
+// the element type at this position exactly when EditableArrayField's own
+// internal `editing` state flips, so React discards and remounts a fresh
+// instance instead of updating the existing one, silently resetting
+// `editing` back to false right as it was set to true. Always rendering the
+// same Box and only toggling its sx keeps the child mounted continuously.
+const FullSpanField = ({ children, active = true }: { children: ReactNode; active?: boolean }) => (
+  <Box sx={active ? { gridColumn: { lg: '1 / -1' } } : undefined}>{children}</Box>
 );
 
 export default function ContactInformation({
@@ -187,6 +197,10 @@ export default function ContactInformation({
   // whole section collapses behind its heading by default (v0.4.1). The data
   // is never lost — it just takes a click to reveal.
   const [metadataExpanded, setMetadataExpanded] = useState(false);
+
+  // T88: speakToAs (pronouns) is full-span only while its own
+  // EditableArrayField is being edited -- see the FullSpanField usage below.
+  const [speakToAsEditing, setSpeakToAsEditing] = useState(false);
 
   // Gender is a top-level record field (not part of the Card/CRM envelope), so
   // it is passed in separately and shown here next to pronouns/grammatical
@@ -542,7 +556,11 @@ export default function ContactInformation({
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: { xs: '1fr', lg: 'repeat(2, 1fr)' },
+            // T88: minmax(0, ...) floors each track so a long unbreakable
+            // value (a bare 1fr is minmax(auto, 1fr)) can't force a column
+            // past 50% -- EditableField/EditableArrayField's own minWidth: 0
+            // mitigated this per-field, but the grid itself had no floor.
+            gridTemplateColumns: { xs: '1fr', lg: 'repeat(2, minmax(0, 1fr))' },
             columnGap: 3,
             rowGap: 2,
             alignItems: 'start',
@@ -784,7 +802,14 @@ export default function ContactInformation({
           )}
 
           {isOn('speakToAs') && (
-            <FullSpanField>
+            // T88: renderSpeakToAs' display is one short line -- no reason to
+            // hold a full row's width (and doing so left a hole beside
+            // Gender, since a full-span item can't sit mid-row). Its editor
+            // has several sub-fields and does need the width, so only span
+            // while actually editing -- see FullSpanField's own comment for
+            // why EditableArrayField must stay mounted at this same position
+            // regardless of `active`, not be swapped for a bare child.
+            <FullSpanField active={speakToAsEditing}>
               <EditableArrayField<CardSpeakToAs>
                 icon={<BadgeIcon sx={iconSx} />}
                 label={t('contacts.speakToAsLabel')}
@@ -800,6 +825,7 @@ export default function ContactInformation({
                 onSave={(draft) => onUpdateCard({
                   speakToAs: draft.pronouns?.length || draft.grammaticalGenders?.length ? draft : undefined,
                 })}
+                onEditingChange={setSpeakToAsEditing}
               />
             </FullSpanField>
           )}
@@ -905,42 +931,44 @@ export default function ContactInformation({
             </FullSpanField>
           )}
 
+          {/* T88: no longer FullSpanField -- both are multiline EditableFields
+              (which already wrap fine in a ~530px column), and pairing them
+              side by side is what the report asked for. Together with
+              cardNotes staying full-span above them, this closes the
+              two-consecutive-full-span run that forced the whole Notes
+              section single-column. */}
           {isOn('how_we_met') && (
-            <FullSpanField>
-              <EditableField
-                icon={<PeopleIcon sx={{ ...iconSx, mt: 0.5 }} />}
-                label={t('contactDetail.howWeMet')}
-                field="how_we_met"
-                value={crm.how_we_met || ''}
-                multiline
-                isEditing={editingField === 'how_we_met'}
-                editValue={editValue}
-                validationError={validationError}
-                onEditStart={onEditStart}
-                onEditCancel={onEditCancel}
-                onEditSave={onEditSave}
-                onEditValueChange={onEditValueChange}
-              />
-            </FullSpanField>
+            <EditableField
+              icon={<PeopleIcon sx={{ ...iconSx, mt: 0.5 }} />}
+              label={t('contactDetail.howWeMet')}
+              field="how_we_met"
+              value={crm.how_we_met || ''}
+              multiline
+              isEditing={editingField === 'how_we_met'}
+              editValue={editValue}
+              validationError={validationError}
+              onEditStart={onEditStart}
+              onEditCancel={onEditCancel}
+              onEditSave={onEditSave}
+              onEditValueChange={onEditValueChange}
+            />
           )}
 
           {isOn('contact_information') && (
-            <FullSpanField>
-              <EditableField
-                icon={<SvgIcon sx={{ ...iconSx, mt: 0.5 }}><path d={mdiNoteMultipleOutline} /></SvgIcon>}
-                label={t('contactDetail.additionalInfo')}
-                field="contact_information"
-                value={crm.contact_information || ''}
-                multiline
-                isEditing={editingField === 'contact_information'}
-                editValue={editValue}
-                validationError={validationError}
-                onEditStart={onEditStart}
-                onEditCancel={onEditCancel}
-                onEditSave={onEditSave}
-                onEditValueChange={onEditValueChange}
-              />
-            </FullSpanField>
+            <EditableField
+              icon={<SvgIcon sx={{ ...iconSx, mt: 0.5 }}><path d={mdiNoteMultipleOutline} /></SvgIcon>}
+              label={t('contactDetail.additionalInfo')}
+              field="contact_information"
+              value={crm.contact_information || ''}
+              multiline
+              isEditing={editingField === 'contact_information'}
+              editValue={editValue}
+              validationError={validationError}
+              onEditStart={onEditStart}
+              onEditCancel={onEditCancel}
+              onEditSave={onEditSave}
+              onEditValueChange={onEditValueChange}
+            />
           )}
 
           {/* Custom Fields (v2, T6/T7): one row per FieldDefinition, rendered

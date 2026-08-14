@@ -14,6 +14,10 @@ interface EditableArrayFieldProps<T> {
   /** Deep-clones the value into an editable draft */
   cloneValue: (value: T) => T;
   onSave: (draft: T) => Promise<void>;
+  // T88: lets a caller (ContactInformation's speakToAs row) react to this
+  // field's own internal edit toggle -- e.g. to widen its grid span only
+  // while editing. Optional: every other consumer ignores it.
+  onEditingChange?: (editing: boolean) => void;
 }
 
 export default function EditableArrayField<T>({
@@ -24,11 +28,17 @@ export default function EditableArrayField<T>({
   renderEditor,
   cloneValue,
   onSave,
+  onEditingChange,
 }: EditableArrayFieldProps<T>) {
   const { t } = useTranslation();
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditingRaw] = useState(false);
   const [draft, setDraft] = useState<T>(value);
   const [saving, setSaving] = useState(false);
+
+  const setEditing = (next: boolean) => {
+    setEditingRaw(next);
+    onEditingChange?.(next);
+  };
 
   const startEdit = () => {
     setDraft(cloneValue(value));
