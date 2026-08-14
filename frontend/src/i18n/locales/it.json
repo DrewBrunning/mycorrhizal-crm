@@ -1283,7 +1283,8 @@
     "associationSummary": "Questo sposterà {{notes}} nota/e, {{activities}} attività, {{reminders}} promemoria e {{edges}} relazione/i sul contatto unito.",
     "mergeButton": "Unisci",
     "keepThisOne": "Conserva {{name}}",
-    "swap": "Scambia"
+    "swap": "Scambia",
+    "hiddenMatches": "{{shown}} mostrato/i, {{hidden}} trovato/i su altri campi"
   },
   "triage": {
     "title": "Migrazione di cerchie ed etichette",

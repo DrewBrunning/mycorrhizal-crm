@@ -44,6 +44,20 @@ const bobContactsResponse = () => ({
   limit: 100,
 });
 
+// T101: the server search is deliberately broad (name, email, phone,
+// address...), so a real response can include a contact whose displayed
+// name contains none of what was typed -- e.g. Dana matched on a phone
+// number or address, not her name. Carol's name does contain it.
+const carolAndDanaContactsResponse = () => ({
+  contacts: [
+    { id: 2, uid: 'carol-uid', firstname: 'Carol', lastname: 'Smith' },
+    { id: 3, uid: 'dana-uid', firstname: 'Dana', lastname: 'Lee' },
+  ],
+  total: 2,
+  page: 1,
+  limit: 100,
+});
+
 const emptyAssociationCounts = {
   notes: 0, activities: 0, reminders: 0, reminder_completions: 0, relationship_edges: 0,
   household_memberships: 0, circle_memberships: 0, tags: 0, life_events: 0,
@@ -52,6 +66,12 @@ const emptyAssociationCounts = {
 
 async function selectBob() {
   const input = await screen.findByLabelText('Merge into');
+  // MUI's Autocomplete resets its internal input value on every render while
+  // unfocused (see useAutocomplete's reset effect), which a bare
+  // fireEvent.change never escapes in jsdom -- a real browser always fires
+  // focus before input. Without this the dropdown silently falls back to
+  // showing every option unfiltered.
+  fireEvent.focus(input);
   fireEvent.change(input, { target: { value: 'Bob' } });
   const option = await screen.findByText('Bob Brown');
   fireEvent.click(option);
@@ -214,6 +234,76 @@ test('a scalar conflict keeps merge disabled until resolved', async () => {
 
   fireEvent.click(screen.getByLabelText('Bob: Bob'));
   await waitFor(() => expect(mergeButton).not.toBeDisabled());
+});
+
+// --- T101 strict client-side match ------------------------------------------
+
+test('hides a server result whose displayed name does not contain the typed string', async () => {
+  mockFetchByUrl({ '/contacts?': carolAndDanaContactsResponse });
+  renderDialog();
+
+  const input = await screen.findByLabelText('Merge into');
+  // MUI's Autocomplete resets its internal input value on every render while
+  // unfocused (see useAutocomplete's reset effect), which a bare
+  // fireEvent.change never escapes in jsdom -- a real browser always fires
+  // focus before input. Without this the dropdown silently falls back to
+  // showing every option unfiltered.
+  fireEvent.focus(input);
+  fireEvent.change(input, { target: { value: 'car' } });
+
+  await screen.findByText('Carol Smith');
+  expect(screen.queryByText('Dana Lee')).not.toBeInTheDocument();
+});
+
+test('matching is case-insensitive', async () => {
+  mockFetchByUrl({ '/contacts?': carolAndDanaContactsResponse });
+  renderDialog();
+
+  const input = await screen.findByLabelText('Merge into');
+  // MUI's Autocomplete resets its internal input value on every render while
+  // unfocused (see useAutocomplete's reset effect), which a bare
+  // fireEvent.change never escapes in jsdom -- a real browser always fires
+  // focus before input. Without this the dropdown silently falls back to
+  // showing every option unfiltered.
+  fireEvent.focus(input);
+  fireEvent.change(input, { target: { value: 'CAROL' } });
+
+  await screen.findByText('Carol Smith');
+  expect(screen.queryByText('Dana Lee')).not.toBeInTheDocument();
+});
+
+test('shows a count of server matches the strict filter hid, without discarding them silently', async () => {
+  mockFetchByUrl({ '/contacts?': carolAndDanaContactsResponse });
+  renderDialog();
+
+  const input = await screen.findByLabelText('Merge into');
+  // MUI's Autocomplete resets its internal input value on every render while
+  // unfocused (see useAutocomplete's reset effect), which a bare
+  // fireEvent.change never escapes in jsdom -- a real browser always fires
+  // focus before input. Without this the dropdown silently falls back to
+  // showing every option unfiltered.
+  fireEvent.focus(input);
+  fireEvent.change(input, { target: { value: 'car' } });
+
+  await screen.findByText('1 shown, 1 matched on other fields');
+});
+
+test('shows no hidden-match count when every server result still matches', async () => {
+  mockFetchByUrl({ '/contacts?': carolAndDanaContactsResponse });
+  renderDialog();
+
+  const input = await screen.findByLabelText('Merge into');
+  // MUI's Autocomplete resets its internal input value on every render while
+  // unfocused (see useAutocomplete's reset effect), which a bare
+  // fireEvent.change never escapes in jsdom -- a real browser always fires
+  // focus before input. Without this the dropdown silently falls back to
+  // showing every option unfiltered.
+  fireEvent.focus(input);
+  fireEvent.change(input, { target: { value: 'a' } }); // matches both Carol and Dana
+
+  await screen.findByText('Carol Smith');
+  expect(screen.getByText('Dana Lee')).toBeInTheDocument();
+  expect(screen.queryByText(/matched on other fields/)).not.toBeInTheDocument();
 });
 
 // --- T93 pair mode ---------------------------------------------------------

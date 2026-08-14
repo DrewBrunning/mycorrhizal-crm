@@ -6,7 +6,7 @@
 | **Rating** | 4 — wrong results in a picker that feeds a destructive, irreversible action |
 | **Size** | S |
 | **Depends on** | Nothing |
-| **Status** | **TO BE DONE** |
+| **Status** | **DONE** (2026-08-14) |
 | **Source** | Beta testing note, 2026-08-13: *"Contact search in merge needs to be strict string match — it's matching contacts who don't contain the typed string."* |
 
 ## Why this exists
@@ -72,3 +72,34 @@ opposite complaint gets filed later.
 - New strings translated in all five locales.
 - `cd frontend && npx tsc --noEmit && npx vitest run` green, plus a Playwright spec typing a partial name
   and asserting no non-matching row is offered.
+
+## Landing note (2026-08-14)
+
+Implemented as scoped: `MergeContactsDialog.tsx`'s single-mode `Autocomplete` now uses
+`createFilterOptions({ stringify: contactOptionLabel })` in place of the pass-through `filterOptions={(x)
+=> x}`. `contactOptionLabel` was hoisted to a module-level constant shared between `getOptionLabel` and
+the filter's `stringify` so both agree on what "the text the option actually renders" means. A
+`hiddenMatchCount` (`contacts.length - filteredContacts.length`, computed with the same filter fn against
+the current `searchInput`) drives a caption below the field — `contactMerge.hiddenMatches`, "{{shown}}
+shown, {{hidden}} matched on other fields" — shown only when the filter actually hid something. Server
+query, `limit: 100`, and the AppBar autocomplete are all untouched, per the ticket.
+
+Added four component tests (a server result matched only via a non-name field is hidden; matching is
+case-insensitive; the hidden-count caption appears/doesn't as appropriate) — hand-verified by reverting
+`filterOptions` to the old pass-through and confirming the two matching-behavior tests fail. One trap hit
+along the way, worth knowing for future Autocomplete tests in this file: MUI's `useAutocomplete` resets
+its internal input value on every render while the input isn't focused, so a bare `fireEvent.change`
+(no prior `fireEvent.focus`) makes jsdom's Autocomplete fall back to showing every option unfiltered even
+though the surrounding component's own state updated correctly — a real browser always fires focus before
+input, so this only bites tests. Fixed by adding `fireEvent.focus(input)` before `fireEvent.change`
+everywhere in this test file, including the pre-existing `selectBob` helper (harmless there since it only
+ever had one option to show).
+
+Also verified end-to-end against a real backend + browser (not just mocked tests): created a contact
+matched only by an address field ("Carson City" for typed "car"), opened the merge picker from a third
+contact, and confirmed the dropdown showed only the name-matching contact with "1 shown, 1 matched on
+other fields" — the exact scenario from the ticket's source beta report. Confirmed selecting the shown
+result still loads a normal merge preview, and confirmed the AppBar search dropdown (out of scope) was
+unaffected — it turns out the AppBar already effectively strict-filters via MUI's untouched default
+`filterOptions`, since it never set the `(x) => x` override this ticket removes from the merge picker;
+its "wide net" advantage lives in the full search-results page reached via Enter, not in its dropdown.
