@@ -18,22 +18,11 @@ import (
 	"gorm.io/gorm"
 )
 
-// contactSummaryColumns is the fixed set of columns needed to build a
-// ContactSummary (list-view) response. Selecting only these avoids the
-// over-fetch (heavy JSON columns like card/emails/phones/addresses/...) that
-// the removed fields= param used to exist to let callers opt out of (Gap 3
-// in docs/fork-plan/50-integration-and-rebrand.md WP-71) — now that the list
-// endpoint has a fixed slim shape, this is baked in rather than
-// caller-configurable.
-var contactSummaryColumns = []string{
-	"id", "vcard_uid", "firstname", "lastname", "nickname", "fn", "email", "phone", "birthday", "org",
-	"photo", "photo_thumbnail", "archived",
-}
-
 // contactListColumns adds updated_at to the slim projection — the cursor
 // (updated_at, id) needs it to build the response's next_cursor. Fresh slice
-// per var so appends can never leak into contactSummaryColumns' backing array.
-var contactListColumns = append(append([]string{}, contactSummaryColumns...), "updated_at")
+// per var so appends can never leak into models.ContactSummaryColumns'
+// backing array.
+var contactListColumns = append(append([]string{}, models.ContactSummaryColumns...), "updated_at")
 
 // contactNameSortedColumns additionally selects sort_name — the T73 name-sort
 // cursor (sort_name, id) needs it to build the response's next_cursor.
@@ -197,7 +186,7 @@ func GetContacts(c *gin.Context) {
 	// NOT migrated to cursor pagination (T17) — it is not a list view.
 	if vcardUIDs := c.QueryArray("vcard_uid"); len(vcardUIDs) > 0 {
 		query := db.Model(&models.Contact{}).Where("user_id = ? AND vcard_uid IN ?", userID, vcardUIDs).
-			Select(contactSummaryColumns)
+			Select(models.ContactSummaryColumns)
 		if c.Query("include_archived") != "true" {
 			query = query.Where("archived = ?", false)
 		}
@@ -224,7 +213,7 @@ func GetContacts(c *gin.Context) {
 	// an oversight. It is simply no longer read; a request that still sends
 	// it is not rejected, it just has no effect. The fixed ContactSummary
 	// shape (below) now serves the reason fields= existed (avoiding
-	// over-fetch on a list view) — see contactSummaryColumns.
+	// over-fetch on a list view) — see models.ContactSummaryColumns.
 
 	// T17: cursor pagination. The list endpoint pages by (updated_at, id) and
 	// the ?since= query turns it into a change feed: everything the user's
@@ -788,6 +777,21 @@ func deleteContactAssociations(tx *gorm.DB, contact models.Contact, userID uint)
 	// delete; the on-disk files are removed by the caller after the
 	// transaction commits, see deleteContactPhotos' sibling below).
 	if err := tx.Where("contact_vcard_uid = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.Attachment{}).Error; err != nil {
+		return err
+	}
+
+	// users.self_contact_vcard_uid (T90): the user's "Me" pointer must not
+	// dangle on a soft-deleted row. If it pointed at this contact, clear it.
+	// In the merge path this is a no-op — RepointContactAssociations already
+	// moved the pointer to the keeper before deleteContactAssociations runs.
+	if err := tx.Model(&models.User{}).Where("id = ? AND self_contact_vcard_uid = ?", userID, contact.VCardUID).
+		Update("self_contact_vcard_uid", nil).Error; err != nil {
+		return err
+	}
+
+	// T93: duplicate-pair dismissals naming this contact (either side of the
+	// ordered uid pair) — hard-delete, join-shaped.
+	if err := tx.Where("(uid_low = ? OR uid_high = ?) AND user_id = ?", contact.VCardUID, contact.VCardUID, userID).Delete(&models.DismissedDuplicatePair{}).Error; err != nil {
 		return err
 	}
 

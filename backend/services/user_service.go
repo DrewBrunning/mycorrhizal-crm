@@ -71,15 +71,25 @@ func EnsureSelfContact(db *gorm.DB, user *models.User) error {
 		return nil
 	}
 
-	contact := models.Contact{
-		UserID:    user.ID,
-		Firstname: user.Username,
-	}
-	if err := db.Create(&contact).Error; err != nil {
-		return err
-	}
-
-	vcardUID := contact.VCardUID
-	user.SelfContactVCardUID = &vcardUID
-	return db.Model(user).Update("self_contact_vcard_uid", vcardUID).Error
+	// Atomic: either the contact exists and the pointer is set, or neither.
+	// A contact created here but left unpointed by a failed pointer-write
+	// would be an orphan forever — the next call would pass the nil check
+	// again, create a second contact, and the first would never be cleaned
+	// up. That window matters more now that GetCurrentUser calls this on the
+	// lazy path (T90).
+	return db.Transaction(func(tx *gorm.DB) error {
+		contact := models.Contact{
+			UserID:    user.ID,
+			Firstname: user.Username,
+		}
+		if err := tx.Create(&contact).Error; err != nil {
+			return err
+		}
+		vcardUID := contact.VCardUID
+		if err := tx.Model(user).Update("self_contact_vcard_uid", vcardUID).Error; err != nil {
+			return err
+		}
+		user.SelfContactVCardUID = &vcardUID
+		return nil
+	})
 }

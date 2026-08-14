@@ -85,6 +85,21 @@ export function getToken(): string | null {
   return userInfo ? 'cookie-auth' : null;
 }
 
+// T90: the cached self-contact VCardUID, or null when none is set or the cache
+// is absent/corrupt. The badge on the contact detail page compares a contact's
+// uid against this. Callers that just PATCHed the self contact should call
+// fetchAndCacheUserInfo() first so this reflects the change.
+export function getCachedSelfContactVCardUID(): string | null {
+  const userInfoStr = localStorage.getItem(USER_INFO_KEY);
+  if (!userInfoStr) return null;
+  try {
+    const userInfo: UserInfo = JSON.parse(userInfoStr);
+    return userInfo.self_contact_vcard_uid ?? null;
+  } catch {
+    return null;
+  }
+}
+
 // Check if user is authenticated (has cached user info)
 export function isAuthenticated(): boolean {
   return localStorage.getItem(USER_INFO_KEY) !== null;

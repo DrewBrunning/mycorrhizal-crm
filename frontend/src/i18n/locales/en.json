@@ -8,6 +8,22 @@
       "reload": "Reload"
     }
   },
+  "duplicates": {
+    "reviewTitle": "Review duplicates",
+    "none": "No duplicate candidates found.",
+    "count": "{{count}} candidate pairs",
+    "vs": "vs",
+    "confidence": "{{percent}}% confidence",
+    "notDuplicate": "Not a duplicate",
+    "dismissConfirm": "Mark these two contacts as NOT duplicates? This hides the pair permanently.",
+    "mergeDescription": "Both contacts are listed below. Choose which one should survive the merge.",
+    "mergeHint": "The other contact's data is merged into the survivor.",
+    "reason": {
+      "email": "Same email",
+      "name": "Same name",
+      "phone": "Same phone"
+    }
+  },
   "nav": {
     "dashboard": "Dashboard",
     "contacts": "Contacts",
@@ -430,7 +446,8 @@
       "apartment": "Apartment / Suite",
       "floor": "Floor",
       "additionalFields": "Additional fields"
-    }
+    },
+    "reviewDuplicates": "Review duplicates"
   },
   "timeline": {
     "reminderCompleted": "Reminder Completed",
@@ -527,6 +544,7 @@
     "archive": "Archive",
     "unarchive": "Unarchive",
     "archivedBadge": "Archived",
+    "youBadge": "You",
     "archiveConfirmation": "Are you sure you want to archive this contact? All reminders will be deleted. You can unarchive later, but reminders won't be restored.",
     "tags": "Tags",
     "noTags": "No tags yet",
@@ -534,7 +552,9 @@
     "newTag": "New tag...",
     "add": "Add",
     "actions": "Actions",
-    "jumpNav": "Jump to section"
+    "jumpNav": "Jump to section",
+    "markAsMe": "This is me",
+    "unmarkAsMe": "This isn't me"
   },
   "noteDialog": {
     "title": "Add Note",
@@ -883,6 +903,17 @@
         "light": "Light mode",
         "dark": "Dark mode"
       }
+    },
+    "selfContact": {
+      "title": "Your contact",
+      "description": "Pick the contact that represents you. Its contact page gets a \"You\" badge.",
+      "label": "Which contact is you?",
+      "placeholder": "Search contacts…",
+      "noMatches": "No contacts found",
+      "clear": "Clear",
+      "saveSuccess": "Self contact updated.",
+      "clearSuccess": "Self contact cleared.",
+      "saveError": "Couldn't update your self contact."
     },
     "password": {
       "title": "Change Password",
@@ -1277,7 +1308,9 @@
     "resolveFieldValueConflicts": "Resolve conflicting custom fields",
     "keepValue": "{{name}}: {{value}}",
     "associationSummary": "This will move {{notes}} note(s), {{activities}} activit(y/ies), {{reminders}} reminder(s), and {{edges}} relationship(s) onto the merged contact.",
-    "mergeButton": "Merge"
+    "mergeButton": "Merge",
+    "keepThisOne": "Keep {{name}}",
+    "swap": "Swap"
   },
   "customFields": {
     "addTitle": "Add Custom Field",

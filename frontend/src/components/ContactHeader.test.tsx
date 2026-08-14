@@ -133,3 +133,35 @@ test('renders the standalone action buttons at md and above (T28)', () => {
   expect(screen.getByText('Merge')).toBeInTheDocument();
   expect(screen.getByText('Archive')).toBeInTheDocument();
 });
+
+// --- T90: "You" badge + toggle from the overflow menu ----------------------
+
+test('shows a neutral "You" badge on the caller\'s own contact (T90)', () => {
+  renderHeader({ isMe: true });
+  expect(screen.getByText('You')).toBeInTheDocument();
+});
+
+test('shows no "You" badge on other contacts (T90)', () => {
+  renderHeader({ isMe: false });
+  expect(screen.queryByText('You')).not.toBeInTheDocument();
+});
+
+test('the compact overflow menu offers "This is me" and reports the toggle (T90)', () => {
+  mockMatchMedia(true);
+  const onToggleMe = vi.fn();
+  renderHeader({ isMe: false, onToggleMe });
+
+  fireEvent.click(screen.getByLabelText('Actions'));
+  fireEvent.click(screen.getByText('This is me'));
+
+  expect(onToggleMe).toHaveBeenCalledTimes(1);
+});
+
+test('the overflow menu reads "This isn\'t me" on the current self contact (T90)', () => {
+  mockMatchMedia(true);
+  renderHeader({ isMe: true, onToggleMe: vi.fn() });
+
+  fireEvent.click(screen.getByLabelText('Actions'));
+  expect(screen.getByText("This isn't me")).toBeInTheDocument();
+  expect(screen.queryByText('This is me')).not.toBeInTheDocument();
+});

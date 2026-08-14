@@ -59,6 +59,25 @@ func GetCurrentUser(c *gin.Context) {
 		return
 	}
 
+	// T90: lazy self-contact backfill. Migration 000018 documented this as
+	// handled lazily "when they first hit an endpoint that needs it," but no
+	// endpoint ever called it — every account created before that migration
+	// has had NULL self_contact_vcard_uid forever. This is that promised
+	// backfill: EnsureSelfContact is idempotent (a no-op once set), so it is
+	// safe to call unconditionally. It does *create a contact*, so a failure
+	// here is logged and the user is served without a self contact rather
+	// than 500ing the whole session — /users/me must never become a login
+	// failure because a backfill failed.
+	prevSelfContact := user.SelfContactVCardUID
+	if err := services.EnsureSelfContact(db, &user); err != nil {
+		logger.FromContext(c).Error().Err(err).Uint("user_id", userID).Msg("Failed to ensure self contact during GetCurrentUser")
+		// Defensive: EnsureSelfContact only mutates user.SelfContactVCardUID
+		// on success, but restore the pre-call value anyway so a future
+		// change to it can't make this response claim a self contact the
+		// database doesn't hold.
+		user.SelfContactVCardUID = prevSelfContact
+	}
+
 	c.JSON(http.StatusOK, models.CurrentUserResponse{
 		AdminUserResponse: models.AdminUserResponse{
 			ID:         user.ID,
@@ -73,6 +92,56 @@ func GetCurrentUser(c *gin.Context) {
 		EnabledContactFields: user.EnabledContactFields,
 		SelfContactVCardUID:  user.SelfContactVCardUID,
 	})
+}
+
+// UpdateSelfContact sets or clears the caller's "Me" contact pointer (T90).
+// A non-empty vcard_uid must resolve to a non-deleted Contact owned by the
+// caller — otherwise 404, so a user can never point at someone else's contact
+// (ownership scoping, /CLAUDE.md backend trap #5). An explicit null/empty
+// clears the link. Setting it is a pointer move: the previously linked contact
+// is neither deleted nor modified.
+func UpdateSelfContact(c *gin.Context) {
+	db := c.MustGet("db").(*gorm.DB)
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+
+	input, appErr := middleware.GetValidated[models.SelfContactInput](c)
+	if appErr != nil {
+		apperrors.AbortWithError(c, appErr)
+		return
+	}
+
+	// Clear the link. Scope to the caller's own row by ID, never by username.
+	if input.VCardUID == "" {
+		if err := db.Model(&models.User{}).Where("id = ?", userID).
+			Update("self_contact_vcard_uid", nil).Error; err != nil {
+			apperrors.AbortWithError(c, apperrors.ErrDatabase("clear self contact").WithError(err))
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "Self contact cleared", "self_contact_vcard_uid": nil})
+		return
+	}
+
+	// The uid must resolve to a non-deleted Contact owned by the caller.
+	var contact models.Contact
+	if err := db.Where("user_id = ? AND vcard_uid = ?", userID, input.VCardUID).First(&contact).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			apperrors.AbortWithError(c, apperrors.ErrNotFound("Contact").WithDetails("vcard_uid", input.VCardUID))
+			return
+		}
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("lookup self contact").WithError(err))
+		return
+	}
+
+	if err := db.Model(&models.User{}).Where("id = ?", userID).
+		Update("self_contact_vcard_uid", input.VCardUID).Error; err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("set self contact").WithError(err))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Self contact updated", "self_contact_vcard_uid": input.VCardUID})
 }
 
 // UserDirectoryEntry is the thin per-user shape ListUserDirectory returns —
@@ -607,6 +676,12 @@ func DeleteUser(c *gin.Context) {
 		// tombstoning needed; matches the other DeletedAt-bearing entities
 		// above, e.g. CadencePolicy/Preference/LifeEvent)
 		if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.LinkFieldType{}).Error; err != nil {
+			return err
+		}
+
+		// T93: duplicate-pair dismissal memory (hard, edge/join-shaped — account
+		// gone, no tombstoning needed)
+		if err := tx.Where("user_id = ?", userID).Delete(&models.DismissedDuplicatePair{}).Error; err != nil {
 			return err
 		}
 

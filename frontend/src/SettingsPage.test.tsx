@@ -7,6 +7,10 @@ import { DateFormatProvider } from './DateFormatProvider';
 import { SnackbarProvider } from './context/SnackbarContext';
 import { changePassword } from './api/auth';
 import { getApiTokens, createApiToken, revokeApiToken, ApiToken } from './api/apiTokens';
+import { getCurrentUser } from './api/admin';
+import { updateSelfContact } from './api/users';
+import { getContacts, getContactsByUid, Contact } from './api/contacts';
+import { fetchAndCacheUserInfo } from './auth';
 
 // This codebase's vitest setup has no auto-cleanup and no globals: true.
 afterEach(cleanup);
@@ -32,6 +36,23 @@ vi.mock('./api/apiTokens', async (importOriginal) => {
     revokeApiToken: vi.fn(),
   };
 });
+// T90 self-contact picker: these modules fire on mount / on interaction.
+vi.mock('./api/contacts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./api/contacts')>();
+  return { ...actual, getContacts: vi.fn(), getContactsByUid: vi.fn() };
+});
+vi.mock('./api/users', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./api/users')>();
+  return { ...actual, updateSelfContact: vi.fn() };
+});
+vi.mock('./api/admin', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./api/admin')>();
+  return { ...actual, getCurrentUser: vi.fn() };
+});
+vi.mock('./auth', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./auth')>();
+  return { ...actual, fetchAndCacheUserInfo: vi.fn() };
+});
 
 // jsdom doesn't implement matchMedia; AppThemeProvider's system-theme
 // listener needs it to exist.
@@ -49,6 +70,25 @@ beforeEach(() => {
   vi.mocked(createApiToken).mockReset();
   vi.mocked(revokeApiToken).mockReset();
   vi.mocked(getApiTokens).mockResolvedValue({ tokens: [] });
+
+  // T90: reset the picker mocks. Default /users/me has no self contact and
+  // no contacts resolve.
+  vi.mocked(getCurrentUser).mockReset();
+  vi.mocked(getCurrentUser).mockResolvedValue({
+    id: 1,
+    email: 'tester@example.com',
+    username: 'tester',
+    language: 'en',
+    is_admin: false,
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+    self_contact_vcard_uid: null,
+  });
+  vi.mocked(getContacts).mockReset();
+  vi.mocked(getContactsByUid).mockReset();
+  vi.mocked(getContactsByUid).mockResolvedValue(new Map());
+  vi.mocked(updateSelfContact).mockReset();
+  vi.mocked(fetchAndCacheUserInfo).mockReset();
 });
 
 function apiToken(overrides: Partial<ApiToken> = {}): ApiToken {
@@ -62,6 +102,10 @@ function apiToken(overrides: Partial<ApiToken> = {}): ApiToken {
     scope: 'full',
     ...overrides,
   };
+}
+
+function contact(overrides: Partial<Contact> = {}): Contact {
+  return { ID: 1, firstname: 'First', lastname: 'Last', ...overrides };
 }
 
 function renderPage() {
@@ -178,4 +222,70 @@ test('revoking a token requires confirmation before calling the API', async () =
   fireEvent.click(screen.getByRole('button', { name: /^revoke$/i }));
 
   await waitFor(() => expect(revokeApiToken).toHaveBeenCalledWith(3));
+});
+
+// --- Self contact picker (T90) ----------------------------------------------
+
+test('shows the current self-contact in the picker (T90)', async () => {
+  const me = contact({ ID: 7, uid: 'uid-me', firstname: 'Me', lastname: 'Contact' });
+  vi.mocked(getCurrentUser).mockResolvedValue({
+    id: 1, email: 'a@b.c', username: 'u', language: 'en', is_admin: false,
+    created_at: '', updated_at: '', self_contact_vcard_uid: 'uid-me',
+  });
+  vi.mocked(getContactsByUid).mockResolvedValue(new Map([['uid-me', me]]));
+
+  renderPage();
+
+  await waitFor(() => expect(screen.getByDisplayValue('Me Contact')).toBeInTheDocument());
+  expect(screen.getByRole('button', { name: /clear/i })).toBeInTheDocument();
+});
+
+test('selecting a contact patches the self contact and refreshes the cache (T90)', async () => {
+  const bob = contact({ ID: 3, uid: 'uid-bob', firstname: 'Bob', lastname: 'Smith' });
+  vi.mocked(getContacts).mockResolvedValue({ contacts: [bob], next_cursor: '', limit: 100 });
+
+  renderPage();
+
+  const input = await screen.findByLabelText('Which contact is you?');
+  fireEvent.change(input, { target: { value: 'Bob' } });
+  fireEvent.click(await screen.findByText('Bob Smith'));
+
+  await waitFor(() => expect(updateSelfContact).toHaveBeenCalledWith('uid-bob'));
+  await waitFor(() => expect(fetchAndCacheUserInfo).toHaveBeenCalled());
+});
+
+test('the clear button patches a null self contact (T90)', async () => {
+  const me = contact({ ID: 7, uid: 'uid-me', firstname: 'Me', lastname: 'Contact' });
+  vi.mocked(getCurrentUser).mockResolvedValue({
+    id: 1, email: 'a@b.c', username: 'u', language: 'en', is_admin: false,
+    created_at: '', updated_at: '', self_contact_vcard_uid: 'uid-me',
+  });
+  vi.mocked(getContactsByUid).mockResolvedValue(new Map([['uid-me', me]]));
+
+  renderPage();
+
+  fireEvent.click(await screen.findByRole('button', { name: /clear/i }));
+
+  await waitFor(() => expect(updateSelfContact).toHaveBeenCalledWith(null));
+  await waitFor(() => expect(fetchAndCacheUserInfo).toHaveBeenCalled());
+});
+
+test('a failed self-contact save surfaces the error and keeps the old selection (T90)', async () => {
+  const me = contact({ ID: 7, uid: 'uid-me', firstname: 'Me', lastname: 'Contact' });
+  vi.mocked(getCurrentUser).mockResolvedValue({
+    id: 1, email: 'a@b.c', username: 'u', language: 'en', is_admin: false,
+    created_at: '', updated_at: '', self_contact_vcard_uid: 'uid-me',
+  });
+  vi.mocked(getContactsByUid).mockResolvedValue(new Map([['uid-me', me]]));
+  vi.mocked(updateSelfContact).mockRejectedValue(new Error('Couldn\'t update your self contact.'));
+
+  renderPage();
+  await waitFor(() => expect(screen.getByDisplayValue('Me Contact')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: /clear/i }));
+
+  await waitFor(() => expect(updateSelfContact).toHaveBeenCalledWith(null));
+  await waitFor(() => expect(screen.getByText("Couldn't update your self contact.")).toBeInTheDocument());
+  expect(screen.getByDisplayValue('Me Contact')).toBeInTheDocument();
+  expect(fetchAndCacheUserInfo).not.toHaveBeenCalled();
 });

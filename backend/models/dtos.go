@@ -416,6 +416,17 @@ type GraphConnectionsResponse struct {
 	Chains       []GraphChain `json:"chains"`
 }
 
+// SelfContactInput is the DTO for PATCH /users/me/self-contact (T90) — the
+// caller's "Me" contact pointer. A null, absent, or empty vcard_uid clears
+// the link (omitempty lets "" through); a non-empty value must resolve to a
+// non-deleted contact owned by the caller (the handler returns 404
+// otherwise). uuid4 matches Contact.VCardUID's generation
+// (models/contact.go BeforeCreate), and the handler's ownership lookup is the
+// real gate — this tag only rejects obviously malformed input.
+type SelfContactInput struct {
+	VCardUID string `json:"vcard_uid" validate:"omitempty,uuid4"`
+}
+
 // AdminUserResponse - user data returned to admin (no password)
 type AdminUserResponse struct {
 	ID         uint      `json:"id"`

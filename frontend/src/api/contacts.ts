@@ -348,7 +348,7 @@ export interface ContactRecordResponse {
 // never selected by the list query, and would have been the stale legacy
 // flat column even if it had been), and the list's circle chips have always
 // come from a separate useCircles() lookup, not this DTO.
-interface ContactSummaryDTO {
+export interface ContactSummaryDTO {
   id: number;
   uid: string;
   firstname: string;
@@ -648,7 +648,7 @@ export function withTitles(jobTitle: string, role: string): CardTitle[] {
 
 // summaryToLegacyContact maps the slim GET /contacts list item shape down
 // into the same flat Contact shape ContactsPage/DashboardPage etc. render.
-function summaryToLegacyContact(summary: ContactSummaryDTO): Contact {
+export function summaryToLegacyContact(summary: ContactSummaryDTO): Contact {
   return {
     ID: summary.id,
     uid: summary.uid,

@@ -30,6 +30,7 @@ import {
   DialogContent,
   DialogActions,
   Tooltip,
+  Autocomplete,
 } from '@mui/material';
 import AppDialog from './components/AppDialog';
 import { SelectChangeEvent } from '@mui/material/Select';
@@ -41,8 +42,12 @@ import KeyIcon from '@mui/icons-material/Key';
 import AddIcon from '@mui/icons-material/Add';
 import BlockIcon from '@mui/icons-material/Block';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import PersonIcon from '@mui/icons-material/Person';
 import { changePassword } from './api/auth';
-import { updateLanguage, updateDateFormat } from './api/users';
+import { updateLanguage, updateDateFormat, updateSelfContact } from './api/users';
+import { getCurrentUser } from './api/admin';
+import { fetchAndCacheUserInfo } from './auth';
+import { Contact, getContacts, getContactsByUid } from './api/contacts';
 import { ThemePreference, useThemePreference } from './AppThemeProvider';
 import { DateFormat, useDateFormat } from './DateFormatProvider';
 import {
@@ -73,6 +78,13 @@ export default function SettingsPage() {
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
   const [changingPassword, setChangingPassword] = useState(false);
+
+  // T90: "Your contact" picker — which of the caller's own contacts is them.
+  const [selfContact, setSelfContact] = useState<Contact | null>(null);
+  const [selfContactOptions, setSelfContactOptions] = useState<Contact[]>([]);
+  const [selfContactSearch, setSelfContactSearch] = useState('');
+  const [selfContactLoading, setSelfContactLoading] = useState(false);
+  const [selfContactSaving, setSelfContactSaving] = useState(false);
 
   // API tokens
   const [tokens, setTokens] = useState<ApiToken[]>([]);
@@ -217,6 +229,73 @@ export default function SettingsPage() {
     }
   };
 
+  // T90: resolve the current self-contact (by uid, including archived — a user
+  // may have archived the contact they marked as "Me") so the picker shows what
+  // is currently selected.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const user = await getCurrentUser();
+        const uid = user.self_contact_vcard_uid ?? null;
+        if (!uid) {
+          if (!cancelled) setSelfContact(null);
+          return;
+        }
+        const byUid = await getContactsByUid([uid]);
+        if (!cancelled) setSelfContact(byUid.get(uid) ?? null);
+      } catch {
+        // Non-critical on the settings page; the picker just stays empty.
+        if (!cancelled) setSelfContact(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // T90: options for the picker autocomplete — the same getContacts({search})
+  // shape MergeContactsDialog uses, debounced like it is there.
+  const loadSelfContactOptions = useCallback(async (search: string = '') => {
+    setSelfContactLoading(true);
+    try {
+      const response = await getContacts({ limit: 100, search });
+      setSelfContactOptions(response.contacts);
+    } catch {
+      setSelfContactOptions([]);
+    } finally {
+      setSelfContactLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(
+      () => loadSelfContactOptions(selfContactSearch),
+      selfContactSearch ? 300 : 0
+    );
+    return () => clearTimeout(timeoutId);
+  }, [selfContactSearch, loadSelfContactOptions]);
+
+  const selfContactName = (c: Contact | null): string => {
+    if (!c) return '';
+    return [c.firstname, c.lastname].filter(Boolean).join(' ') || c.nickname || '';
+  };
+
+  const handleSelfContactSelect = async (contact: Contact | null) => {
+    if (selfContactSaving) return;
+    setSelfContactSaving(true);
+    try {
+      await updateSelfContact(contact?.uid ?? null);
+      setSelfContact(contact);
+      // Refresh the localStorage cache so the contact-detail badge reads the
+      // change without a reload (auth.ts getCachedSelfContactVCardUID).
+      await fetchAndCacheUserInfo();
+      showSuccess(contact ? t('settings.selfContact.saveSuccess') : t('settings.selfContact.clearSuccess'));
+    } catch (error) {
+      showError(error instanceof Error ? error.message : t('settings.selfContact.saveError'));
+    } finally {
+      setSelfContactSaving(false);
+    }
+  };
+
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 2, p: 2 }}>
       <Typography variant="h5" gutterBottom sx={{ mb: 1.5 }}>
@@ -323,6 +402,49 @@ export default function SettingsPage() {
 
           <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
             {t('settings.theme.description')}
+          </Typography>
+        </CardContent>
+      </Card>
+
+      <Card sx={{ mb: 2 }}>
+        <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+            <PersonIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }} />
+            <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+              {t('settings.selfContact.title')}
+            </Typography>
+          </Box>
+          <Divider sx={{ mb: 1.5 }} />
+
+          <Autocomplete
+            size="small"
+            options={selfContactOptions}
+            getOptionLabel={selfContactName}
+            value={selfContact}
+            onChange={(_, value) => handleSelfContactSelect(value)}
+            onInputChange={(_, value) => setSelfContactSearch(value)}
+            filterOptions={(x) => x}
+            loading={selfContactLoading}
+            isOptionEqualToValue={(a, b) => a.uid === b.uid}
+            noOptionsText={t('settings.selfContact.noMatches')}
+            renderInput={(params) => (
+              <TextField {...params} label={t('settings.selfContact.label')} placeholder={t('settings.selfContact.placeholder')} />
+            )}
+          />
+          {selfContact && (
+            <Button
+              size="small"
+              variant="outlined"
+              sx={{ mt: 1 }}
+              onClick={() => handleSelfContactSelect(null)}
+              disabled={selfContactSaving}
+            >
+              {t('settings.selfContact.clear')}
+            </Button>
+          )}
+
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+            {t('settings.selfContact.description')}
           </Typography>
         </CardContent>
       </Card>

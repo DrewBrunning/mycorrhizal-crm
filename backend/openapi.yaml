@@ -457,6 +457,40 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /users/me/self-contact:
+    patch:
+      summary: Set or clear the caller's "Me" contact
+      operationId: updateSelfContact
+      description: >
+        Points users.self_contact_vcard_uid at one of the caller's own contacts
+        (T90), or clears it with a null/empty vcard_uid. A non-empty vcard_uid
+        must resolve to a non-deleted contact owned by the caller — 404
+        otherwise. Setting it is a pointer move only: the previously linked
+        contact is neither deleted nor modified.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SelfContactInput"
+      responses:
+        "200":
+          description: The self contact was set or cleared.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  self_contact_vcard_uid:
+                    type: string
+                    nullable: true
+        "404":
+          description: The vcard_uid does not resolve to a contact owned by the caller.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /users/directory:
     get:
       summary: List every other user on the instance (id + username only)
@@ -835,6 +869,75 @@ paths:
                 $ref: "#/components/schemas/Error"
         "404":
           description: One of the two contacts not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /contacts/duplicates:
+    get:
+      summary: Scan the address book for duplicate candidate pairs (T93)
+      operationId: getDuplicatePairs
+      description: >
+        Re-derives duplicate candidates across three tiers — email, exact
+        name, and phone (last-10-digit PhoneKey over every number, not just
+        the primary) — as unordered pairs, strongest-first, offset-paginated.
+        Already-dismissed pairs are filtered out. Read-only and idempotent.
+        Archived contacts are included (flagged by each summary's `archived`);
+        soft-deleted ones are excluded.
+      parameters:
+        - { name: page, in: query, schema: { type: integer, default: 1 }, description: "1-based page number." }
+        - { name: limit, in: query, schema: { type: integer, default: 25, maximum: 100 }, description: "Page size." }
+      responses:
+        "200":
+          description: Candidate pairs found (possibly none).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DuplicatePairsResponse"
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /contacts/duplicates/dismiss:
+    post:
+      summary: Mark a duplicate-candidate pair as not a duplicate (T93)
+      operationId: dismissDuplicatePair
+      description: >
+        Records a permanent dismissal for the pair identified by the two
+        contacts' VCardUIDs, so the scanner never offers it again. Idempotent:
+        dismissing an already-dismissed pair succeeds. Both contacts must be
+        the caller's own.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DuplicateDismissalInput"
+      responses:
+        "200":
+          description: Pair dismissed (or already dismissed).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Pair dismissed" }
+        "400":
+          description: Validation failed (missing or malformed uid).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: One or both contacts not found / not owned by the caller.
           content:
             application/json:
               schema:
@@ -6850,6 +6953,21 @@ components:
               type: array
               items: { type: string }
               nullable: true
+            self_contact_vcard_uid:
+              type: string
+              nullable: true
+              description: VCardUID of the caller's "Me" contact, if set (T90).
+    SelfContactInput:
+      type: object
+      description: >
+        Body for PATCH /users/me/self-contact. A null/empty vcard_uid clears
+        the link; a non-empty value must resolve to a non-deleted contact
+        owned by the caller.
+      properties:
+        vcard_uid:
+          type: string
+          format: uuid
+          nullable: true
     AdminUsersListResponse:
       type: object
       properties:
@@ -7308,6 +7426,55 @@ components:
         birthday: { type: string, description: "ISO YYYY-MM-DD." }
         photo_thumbnail: { type: string }
         contact_id: { type: integer }
+
+    # --- Duplicate scan (T93) ---
+    DuplicatePair:
+      type: object
+      properties:
+        a:
+          $ref: "#/components/schemas/ContactSummary"
+        b:
+          $ref: "#/components/schemas/ContactSummary"
+        reasons:
+          type: array
+          description: >
+            The full set of tiers both contacts matched on, in canonical
+            order (email, name, phone). Never just the first hit.
+          items:
+            type: string
+            enum: [email, name, phone]
+        confidence:
+          type: number
+          format: float
+          description: >
+            0-1 heuristic for how likely the pair really is a duplicate — a
+            pure function of which tiers matched (phone+email ~0.95, name
+            alone ~0.5). The review surface sorts by it.
+      required: [a, b, reasons, confidence]
+    DuplicatePairsResponse:
+      type: object
+      properties:
+        pairs:
+          type: array
+          description: "Candidate pairs, strongest first. Always an array, never null."
+          items:
+            $ref: "#/components/schemas/DuplicatePair"
+        total: { type: integer }
+        page: { type: integer }
+        limit: { type: integer }
+      required: [pairs, total, page, limit]
+    DuplicateDismissalInput:
+      type: object
+      required: [uid_a, uid_b]
+      properties:
+        uid_a:
+          type: string
+          format: uuid
+          description: "One contact's VCardUID."
+        uid_b:
+          type: string
+          format: uuid
+          description: "The other contact's VCardUID."
 
     # --- Contact merge ---
     ContactMergeRequest:

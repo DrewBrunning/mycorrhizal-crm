@@ -8,6 +8,22 @@
       "reload": "Neu laden"
     }
   },
+  "duplicates": {
+    "reviewTitle": "Duplikate prüfen",
+    "none": "Keine Duplikatskandidaten gefunden.",
+    "count": "{{count}} Kandidatenpaare",
+    "vs": "vs.",
+    "confidence": "{{percent}} % Konfidenz",
+    "notDuplicate": "Kein Duplikat",
+    "dismissConfirm": "Diese beiden Kontakte als KEINE Duplikate markieren? Das Paar wird dauerhaft ausgeblendet.",
+    "mergeDescription": "Beide Kontakte sind unten aufgeführt. Wählen Sie, welcher die Zusammenführung überleben soll.",
+    "mergeHint": "Die Daten des anderen Kontakts werden in den überlebenden Kontakt übernommen.",
+    "reason": {
+      "email": "Gleiche E-Mail",
+      "name": "Gleicher Name",
+      "phone": "Gleiche Telefonnummer"
+    }
+  },
   "nav": {
     "dashboard": "Dashboard",
     "contacts": "Kontakte",
@@ -430,7 +446,8 @@
     "personalInfoLabel": "Persönliche Angaben (Expertise / Hobbys / Interessen)",
     "keywordsLabel": "Schlagwörter",
     "cardNotesLabel": "Notizen (vCard)",
-    "preferredLanguagesLabel": "Bevorzugte Sprachen"
+    "preferredLanguagesLabel": "Bevorzugte Sprachen",
+    "reviewDuplicates": "Duplikate prüfen"
   },
   "timeline": {
     "reminderCompleted": "Erinnerung erledigt",
@@ -527,6 +544,7 @@
     "archive": "Archivieren",
     "unarchive": "Wiederherstellen",
     "archivedBadge": "Archiviert",
+    "youBadge": "Sie",
     "archiveConfirmation": "Möchten Sie diesen Kontakt wirklich archivieren? Alle Erinnerungen werden gelöscht. Sie können den Kontakt später wiederherstellen, aber die Erinnerungen werden nicht wiederhergestellt.",
     "tags": "Tags",
     "noTags": "Noch keine Tags",
@@ -534,7 +552,9 @@
     "newTag": "Neuer Tag...",
     "add": "Hinzufügen",
     "actions": "Aktionen",
-    "jumpNav": "Zum Abschnitt springen"
+    "jumpNav": "Zum Abschnitt springen",
+    "markAsMe": "Das bin ich",
+    "unmarkAsMe": "Das bin nicht ich"
   },
   "noteDialog": {
     "title": "Notiz hinzufügen",
@@ -856,6 +876,17 @@
         "light": "Helles Design",
         "dark": "Dunkles Design"
       }
+    },
+    "selfContact": {
+      "title": "Ihr eigener Kontakt",
+      "description": "Wählen Sie den Kontakt, der Sie selbst darstellt. Auf seiner Kontaktseite erscheint ein Abzeichen „Sie“.",
+      "label": "Welcher Kontakt sind Sie?",
+      "placeholder": "Kontakte suchen…",
+      "noMatches": "Keine Kontakte gefunden",
+      "clear": "Zurücksetzen",
+      "saveSuccess": "Eigener Kontakt aktualisiert.",
+      "clearSuccess": "Eigener Kontakt entfernt.",
+      "saveError": "Der eigene Kontakt konnte nicht aktualisiert werden."
     },
     "password": {
       "title": "Passwort ändern",
@@ -1250,7 +1281,9 @@
     "resolveFieldValueConflicts": "Widersprüchliche benutzerdefinierte Felder auflösen",
     "keepValue": "{{name}}: {{value}}",
     "associationSummary": "Dabei werden {{notes}} Notiz(en), {{activities}} Aktivität(en), {{reminders}} Erinnerung(en) und {{edges}} Beziehung(en) auf den zusammengeführten Kontakt übertragen.",
-    "mergeButton": "Zusammenführen"
+    "mergeButton": "Zusammenführen",
+    "keepThisOne": "{{name}} behalten",
+    "swap": "Tauschen"
   },
   "triage": {
     "title": "Kreis-/Tag-Migration",
