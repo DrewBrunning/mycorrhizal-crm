@@ -186,8 +186,10 @@ simply re-send the same confirm instead of re-uploading (which would create dupl
 decision, start a new upload (new `session_id`).
 
 **Retry guidance.** If a confirm is retried and the session has aged out (>15 min, or the server
-restarted), it returns `404 NOT_FOUND`; the client must re-upload. A retried confirm must not be sent
-to the other confirm endpoint (a CSV-sourced `session_id` is rejected by `/contacts/import/vcf/confirm`).
+restarted), it returns `404 NOT_FOUND`; the client must re-upload. The confirm endpoints are
+type-scoped: `/contacts/import/confirm` rejects records-sourced sessions and
+`/contacts/import/vcf/confirm` rejects CSV-sourced ones — a retried confirm must target the same
+endpoint the preview came from.
 
 **Guarantees.** Sessions are scoped to the owning user; a foreign or expired `session_id` is `404`.
 Sessions are held in memory only and lost on server restart. Batch limit is 500 records; the import

@@ -415,6 +415,33 @@ func TestConfirm_UpdateWithNilDuplicateMatch_ErrorsButBatchContinues(t *testing.
 	assert.Equal(t, int64(1), count, "only the good row should have been persisted")
 }
 
+func TestConfirm_RecordsSession_RejectedInvalidInput(t *testing.T) {
+	db := setupImportSessionTestDB(t)
+	m := NewImportSessionManager()
+	log := testImportLogger()
+
+	contact := &models.Contact{Firstname: "Dev", Lastname: "Record"}
+	vcfContacts := []VCFContactData{{Contact: contact}}
+	previews := []models.ImportRowPreview{{RowIndex: 0, SuggestedAction: "add"}}
+	id := m.CreateRecordsSession(1, vcfContacts, previews)
+
+	req := models.ImportConfirmRequest{
+		SessionID: id,
+		Actions:   []models.RowImportAction{{RowIndex: 0, Action: "add"}},
+	}
+	// A records session must go through ConfirmVCF. Sending it to the CSV
+	// confirm endpoint used to panic on the nil csvContacts slice; it must
+	// instead be a clean 400 and touch nothing.
+	result, appErr := m.Confirm(db, 1, req, log)
+	assert.Nil(t, result)
+	require.NotNil(t, appErr)
+	assert.Equal(t, apperrors.ErrCodeInvalidInput, appErr.Code)
+
+	var count int64
+	require.NoError(t, db.Model(&models.Contact{}).Count(&count).Error)
+	assert.Equal(t, int64(0), count, "a rejected records session must create nothing")
+}
+
 // TestConfirm_ConcurrentReconfirms_ApplyExactlyOnce pins T57's idempotency
 // race: N concurrent confirms of the same session must result in exactly one
 // apply. Without the per-session confirmMu, every goroutine would pass the
@@ -938,6 +965,92 @@ func TestConfirmVCF_Add_PersistsRow_AndReconfirmIsIdempotent(t *testing.T) {
 	var count int64
 	require.NoError(t, db.Model(&models.Contact{}).Where("user_id = ?", 1).Count(&count).Error)
 	assert.Equal(t, int64(1), count, "a replayed confirm must not create a second contact")
+}
+
+// TestConfirmVCF_RecordsSession_ConcurrentReconfirms_ApplyExactlyOnce runs the
+// same race pin as the CSV version but on the RECORDS path — the session type
+// the Android device-contacts flow actually confirms. The photo loop is a
+// separate concern after the transaction, so this proves the per-session lock
+// (and not anything photo-related) is what serializes the apply.
+func TestConfirmVCF_RecordsSession_ConcurrentReconfirms_ApplyExactlyOnce(t *testing.T) {
+	db := setupImportSessionTestDB(t)
+	m := NewImportSessionManager()
+	log := testImportLogger()
+	cfg := testImportConfig(t)
+
+	vcfContacts := []VCFContactData{
+		{Contact: &models.Contact{Firstname: "Dev", Lastname: "One", Email: "dev1@example.com"}},
+		{Contact: &models.Contact{Firstname: "Dev", Lastname: "Two", Email: "dev2@example.com"}},
+		{Contact: &models.Contact{Firstname: "Dev", Lastname: "Three", Email: "dev3@example.com"}},
+	}
+	previews := []models.ImportRowPreview{
+		{RowIndex: 0, SuggestedAction: "add"},
+		{RowIndex: 1, SuggestedAction: "add"},
+		{RowIndex: 2, SuggestedAction: "add"},
+	}
+	id := m.CreateRecordsSession(1, vcfContacts, previews)
+
+	req := models.ImportConfirmRequest{
+		SessionID: id,
+		Actions: []models.RowImportAction{
+			{RowIndex: 0, Action: "add"},
+			{RowIndex: 1, Action: "add"},
+			{RowIndex: 2, Action: "add"},
+		},
+	}
+
+	const workers = 8
+	var wg sync.WaitGroup
+	results := make([]*models.ImportResult, workers)
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			res, err := m.ConfirmVCF(db, 1, req, cfg, log)
+			if err == nil {
+				results[i] = res
+			}
+		}(i)
+	}
+	wg.Wait()
+
+	for _, res := range results {
+		require.NotNil(t, res, "every concurrent confirm must succeed, even the replays")
+		assert.Equal(t, 3, res.Created)
+		assert.Equal(t, 3, res.TotalProcessed)
+	}
+
+	var count int64
+	require.NoError(t, db.Model(&models.Contact{}).Where("user_id = ?", 1).Count(&count).Error)
+	assert.Equal(t, int64(3), count, "exactly one apply must win; the rest are idempotent replays")
+}
+
+// TestConfirm_Replay_ConsumedSession_PreviewStillNotFound pins that the T57
+// tombstone's replay is scoped to confirm only: a consumed session's preview
+// must still 404 (a client that lost the confirm response re-sends the
+// confirm, not the preview — re-previewing would re-detect duplicates).
+func TestConfirm_Replay_ConsumedSession_PreviewStillNotFound(t *testing.T) {
+	db := setupImportSessionTestDB(t)
+	m := NewImportSessionManager()
+	log := testImportLogger()
+
+	headers := []string{"First Name", "Last Name", "Email"}
+	rows := [][]string{{"Alice", "Smith", "alice@example.com"}}
+	id := m.CreateCSVSession(1, headers, rows)
+
+	_, appErr := m.PreviewCSV(db, 1, models.ImportPreviewRequest{SessionID: id, Mappings: csvMappings()})
+	require.Nil(t, appErr)
+
+	req := models.ImportConfirmRequest{
+		SessionID: id,
+		Actions:   []models.RowImportAction{{RowIndex: 0, Action: "add"}},
+	}
+	_, appErr = m.Confirm(db, 1, req, log)
+	require.Nil(t, appErr)
+
+	_, appErr = m.PreviewCSV(db, 1, models.ImportPreviewRequest{SessionID: id, Mappings: csvMappings()})
+	require.NotNil(t, appErr, "a consumed session's preview must not be replayable through the tombstone")
+	assert.Equal(t, apperrors.ErrCodeNotFound, appErr.Code)
 }
 
 // TestConfirmVCF_Add_EmbeddedPhoto_PersistsPhotoAndValidETag is the critical

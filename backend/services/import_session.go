@@ -316,6 +316,14 @@ func (m *ImportSessionManager) Confirm(db *gorm.DB, userID uint, req models.Impo
 		return sessionData.confirmed, nil
 	}
 
+	// Only CSV (and, by symmetry with the web flow, VCF) sessions belong on
+	// this endpoint. A records session has nil csvContacts, so reading one
+	// here would panic; it must go through ConfirmVCF like every VCF-like
+	// session. Mirrors ConfirmVCF's importType guard.
+	if sessionData.importType != "csv" && sessionData.importType != "vcf" {
+		return nil, apperrors.ErrInvalidInput("session", "This endpoint is only for CSV or VCF imports")
+	}
+
 	if !sessionData.session.PreviewCached {
 		return nil, apperrors.ErrInvalidInput("session", "Please generate a preview first")
 	}

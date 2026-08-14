@@ -156,6 +156,10 @@ func TestOpenAPIResponseSpotCheck(t *testing.T) {
 	// neutral Card/CRM records through /contacts/import/records, then a VCF
 	// confirm, then a REPLAY of that confirm — which must still be a 200 with
 	// a spec-valid ImportResult (idempotent no-op), not a 404/500.
+	// "Grace" is the target contact created in step 3, so row 1's preview
+	// carries a non-null duplicate_match (exercising that nullable schema
+	// branch) while "Linus" (row 0) exercises the null branch. Both rows are
+	// confirmed as "add" so the round-trip is a pure contract check.
 	recordsBody := `{"records":[` +
 		`{"card":{"name":{"components":[{"kind":"given","value":"Linus"}]}}},` +
 		`{"card":{"name":{"components":[{"kind":"given","value":"Grace"}]}}}]}`

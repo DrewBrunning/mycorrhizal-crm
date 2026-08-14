@@ -1492,8 +1492,9 @@ paths:
         session_id within the 15-minute session window returns the original
         result as a no-op instead of re-applying, so a client that lost the
         response can retry safely without double-importing. To change
-        decisions, start a new upload. A retried confirm must not be sent to
-        /contacts/import/vcf/confirm with a CSV-sourced session ID.
+        decisions, start a new upload. This endpoint is for CSV-sourced
+        sessions (and, historically, VCF ones); a records-sourced session ID
+        is rejected here and must be confirmed via /contacts/import/vcf/confirm.
       requestBody:
         required: true
         content:

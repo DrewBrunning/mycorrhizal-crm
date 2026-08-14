@@ -100,6 +100,19 @@ contract now has a test that fails if the implementation drifts from it.
   retry *after* deletion. Neither alone covers both (the concurrency test failed with 24 contacts
   when `sessionData.confirmed` was forgotten).
 
+## Review pass (2026-08-14, post-commit)
+
+- **Fixed a real panic:** a `records`-sourced session ID sent to `/contacts/import/confirm` (the CSV
+  endpoint) used to panic with `index out of range` — records sessions carry nil `csvContacts`, which
+  `Confirm`'s add/update branches index. The confirm endpoints are now type-scoped both ways, matching
+  ConfirmVCF's existing guard: `/contacts/import/confirm` rejects records sessions (400), and
+  `/contacts/import/vcf/confirm` already rejected CSV ones. Pinned by a hand-verified test (panic
+  reproduced before the fix) and documented in `openapi.yaml` + `api-reference.md`.
+- **Coverage gaps closed:** a concurrent ConfirmVCF test on the records path (the actual Android
+  device-contacts path, 8 goroutines → exactly one apply), and a pin that a consumed session's
+  *preview* still 404s (the tombstone's replay is confirm-scoped only).
+- Concurrent confirm tests verified `-race`-clean across 10 runs.
+
 ## Done when
 
 - `cd backend && go build ./... && go vet ./... && gofmt -l . && go test ./...` green.
