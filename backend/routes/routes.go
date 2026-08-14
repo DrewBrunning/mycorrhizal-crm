@@ -53,6 +53,9 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.GET("/users/enabled-contact-fields", controllers.GetEnabledContactFields)
 			protected.PATCH("/users/enabled-contact-fields", middleware.ValidateJSONMiddleware(&models.EnabledContactFieldsInput{}), controllers.UpdateEnabledContactFields)
 			protected.GET("/users/me", controllers.GetCurrentUser)
+			// T90: mark a contact as "Me". Single-purpose, follows the shape of
+			// the other /users mutation routes above.
+			protected.PATCH("/users/me/self-contact", middleware.ValidateJSONMiddleware(&models.SelfContactInput{}), controllers.UpdateSelfContact)
 			// P1 contact sharing recipient picker (docs/fork-plan/tickets/
 			// 31-P1-contact-sharing.md) — the only non-admin way to discover
 			// other users on the instance; deliberately thinner than

@@ -524,6 +524,7 @@
     "archive": "Archive",
     "unarchive": "Unarchive",
     "archivedBadge": "Archived",
+    "youBadge": "You",
     "archiveConfirmation": "Are you sure you want to archive this contact? All reminders will be deleted. You can unarchive later, but reminders won't be restored.",
     "tags": "Tags",
     "noTags": "No tags yet",
@@ -531,7 +532,9 @@
     "newTag": "New tag...",
     "add": "Add",
     "actions": "Actions",
-    "jumpNav": "Jump to section"
+    "jumpNav": "Jump to section",
+    "markAsMe": "This is me",
+    "unmarkAsMe": "This isn't me"
   },
   "noteDialog": {
     "title": "Add Note",
@@ -880,6 +883,17 @@
         "light": "Light mode",
         "dark": "Dark mode"
       }
+    },
+    "selfContact": {
+      "title": "Your contact",
+      "description": "Pick the contact that represents you. Its contact page gets a \"You\" badge.",
+      "label": "Which contact is you?",
+      "placeholder": "Search contacts…",
+      "noMatches": "No contacts found",
+      "clear": "Clear",
+      "saveSuccess": "Self contact updated.",
+      "clearSuccess": "Self contact cleared.",
+      "saveError": "Couldn't update your self contact."
     },
     "password": {
       "title": "Change Password",

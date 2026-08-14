@@ -387,6 +387,48 @@ func TestPickEdgeToDrop_KeepsTheMoreAuthoritativeEdge(t *testing.T) {
 	})
 }
 
+// T90: if the user's "Me" pointer (users.self_contact_vcard_uid) pointed at
+// the loser, the merge must move it to the keeper — otherwise it dangles on
+// the soft-deleted loser row.
+func TestRepointContactAssociations_RepointsSelfContactPointer(t *testing.T) {
+	db, userID := newMergeDB(t)
+	keeper := makeMergeContact(t, db, userID, "Keeper")
+	loser := makeMergeContact(t, db, userID, "Loser")
+
+	uid := loser.VCardUID
+	require.NoError(t, db.Model(&models.User{}).Where("id = ?", userID).
+		Update("self_contact_vcard_uid", uid).Error)
+
+	_, err := RepointContactAssociations(db, userID, keeper, loser, nil, map[string]string{})
+	require.NoError(t, err)
+
+	var user models.User
+	require.NoError(t, db.First(&user, userID).Error)
+	require.NotNil(t, user.SelfContactVCardUID)
+	assert.Equal(t, keeper.VCardUID, *user.SelfContactVCardUID,
+		"the self contact pointer must follow the merge onto the keeper")
+}
+
+// T90: a pointer that already points at the keeper (or is NULL) is left
+// untouched — the repoint is a no-op, not a clobber.
+func TestRepointContactAssociations_LeavesSelfContactPointerOnKeeper(t *testing.T) {
+	db, userID := newMergeDB(t)
+	keeper := makeMergeContact(t, db, userID, "Keeper")
+	loser := makeMergeContact(t, db, userID, "Loser")
+
+	uid := keeper.VCardUID
+	require.NoError(t, db.Model(&models.User{}).Where("id = ?", userID).
+		Update("self_contact_vcard_uid", uid).Error)
+
+	_, err := RepointContactAssociations(db, userID, keeper, loser, nil, map[string]string{})
+	require.NoError(t, err)
+
+	var user models.User
+	require.NoError(t, db.First(&user, userID).Error)
+	require.NotNil(t, user.SelfContactVCardUID)
+	assert.Equal(t, keeper.VCardUID, *user.SelfContactVCardUID)
+}
+
 func TestBuildContactMergeNoteContent_RecordsResolutionsAndCounts(t *testing.T) {
 	loser := &models.Contact{Firstname: "Bob", Lastname: "Smith"}
 	loser.ID = 42

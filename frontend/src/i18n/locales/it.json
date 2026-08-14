@@ -524,6 +524,7 @@
     "archive": "Archivia",
     "unarchive": "Ripristina",
     "archivedBadge": "Archiviato",
+    "youBadge": "Tu",
     "archiveConfirmation": "Sei sicuro di voler archiviare questo contatto? Tutti i promemoria verranno eliminati. Potrai ripristinarlo in seguito, ma i promemoria non verranno recuperati.",
     "tags": "Tag",
     "noTags": "Nessun tag ancora",
@@ -531,7 +532,9 @@
     "newTag": "Nuovo tag...",
     "add": "Aggiungi",
     "actions": "Azioni",
-    "jumpNav": "Vai alla sezione"
+    "jumpNav": "Vai alla sezione",
+    "markAsMe": "Questo sono io",
+    "unmarkAsMe": "Questo non sono io"
   },
   "noteDialog": {
     "title": "Aggiungi Nota",
@@ -853,6 +856,17 @@
         "light": "Modalità chiara",
         "dark": "Modalità scura"
       }
+    },
+    "selfContact": {
+      "title": "Il tuo contatto",
+      "description": "Scegli il contatto che ti rappresenta. La sua pagina mostrerà un badge \"Tu\".",
+      "label": "Quale contatto sei tu?",
+      "placeholder": "Cerca contatti…",
+      "noMatches": "Nessun contatto trovato",
+      "clear": "Cancella",
+      "saveSuccess": "Contatto aggiornato.",
+      "clearSuccess": "Contatto rimosso.",
+      "saveError": "Impossibile aggiornare il contatto."
     },
     "password": {
       "title": "Cambia Password",

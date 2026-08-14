@@ -46,3 +46,16 @@ export async function updateEnabledContactFields(fields: string[]): Promise<stri
   const data = await handleResponse(response, 'Unable to update enabled contact fields.');
   return data?.enabled_contact_fields || fields;
 }
+
+// T90: points users.self_contact_vcard_uid at one of the caller's own
+// contacts, or clears it with a null vcard_uid. The backend 404s a uid that
+// doesn't resolve to a non-deleted contact owned by the caller.
+export async function updateSelfContact(vcardUid: string | null): Promise<void> {
+  const response = await apiFetch(`${API_BASE_URL}/users/me/self-contact`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ vcard_uid: vcardUid }),
+  });
+
+  await handleResponse(response, 'Unable to update self contact.');
+}

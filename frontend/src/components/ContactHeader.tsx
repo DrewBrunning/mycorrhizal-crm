@@ -13,6 +13,7 @@ import ArchiveIcon from '@mui/icons-material/Archive';
 import UnarchiveIcon from '@mui/icons-material/Unarchive';
 import MergeIcon from '@mui/icons-material/MergeType';
 import ShareIcon from '@mui/icons-material/Share';
+import PersonIcon from '@mui/icons-material/Person';
 import { mdiDownloadOutline, mdiNoteMultipleOutline } from '@mdi/js';
 import { useTranslation } from 'react-i18next';
 import { ContactFieldKey, resolveEnabledFields } from '../contactFields';
@@ -63,6 +64,10 @@ interface ContactHeaderProps {
   onPrepView?: () => void;
   onShareContact?: () => void;
   onExportContact: (format: string) => void;
+  // T90: whether this contact is the caller's "Me" contact, and the handler to
+  // set/clear that pointer from the header's overflow menu.
+  isMe?: boolean;
+  onToggleMe?: () => void;
 }
 
 export default function ContactHeader({
@@ -91,7 +96,9 @@ export default function ContactHeader({
   onMergeContact,
   onPrepView,
   onShareContact,
-  onExportContact
+  onExportContact,
+  isMe,
+  onToggleMe
 }: ContactHeaderProps) {
   const { t } = useTranslation();
   const enabled = enabledFields ?? resolveEnabledFields(null);
@@ -312,6 +319,16 @@ export default function ContactHeader({
                       <Typography variant="h5" sx={{ fontWeight: 500, lineHeight: 1.2, overflowWrap: 'anywhere' }}>
                         {displayName}
                       </Typography>
+                      {isMe && (
+                        // T90: being yourself is not a status condition — neutral
+                        // chip per T62.
+                        <Chip
+                          label={t('contactDetail.youBadge')}
+                          color="default"
+                          size="small"
+                          sx={{ ml: 1, flexShrink: 0 }}
+                        />
+                      )}
                       <IconButton
                         className="edit-icon"
                         size="small"
@@ -355,6 +372,12 @@ export default function ContactHeader({
                           )
                         ) : (
                           [
+                            onToggleMe && (
+                              <MenuItem key="toggle-me" onClick={() => { setActionsMenuAnchor(null); onToggleMe(); }}>
+                                <ListItemIcon><PersonIcon fontSize="small" /></ListItemIcon>
+                                <ListItemText>{isMe ? t('contactDetail.unmarkAsMe') : t('contactDetail.markAsMe')}</ListItemText>
+                              </MenuItem>
+                            ),
                             onStayInTouch && (
                               <MenuItem key="stay-in-touch" onClick={() => { setActionsMenuAnchor(null); onStayInTouch(); }}>
                                 <ListItemIcon><AutoModeIcon fontSize="small" /></ListItemIcon>
@@ -430,6 +453,15 @@ export default function ContactHeader({
                       <Typography variant="h5" sx={{ fontWeight: 500, lineHeight: 1.2, overflowWrap: 'anywhere' }}>
                         {displayName}
                       </Typography>
+                      {isMe && (
+                        // T90: see the compact-layout badge above.
+                        <Chip
+                          label={t('contactDetail.youBadge')}
+                          color="default"
+                          size="small"
+                          sx={{ ml: 1, flexShrink: 0 }}
+                        />
+                      )}
                       <IconButton
                         className="edit-icon"
                         size="small"

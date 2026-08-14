@@ -457,6 +457,40 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /users/me/self-contact:
+    patch:
+      summary: Set or clear the caller's "Me" contact
+      operationId: updateSelfContact
+      description: >
+        Points users.self_contact_vcard_uid at one of the caller's own contacts
+        (T90), or clears it with a null/empty vcard_uid. A non-empty vcard_uid
+        must resolve to a non-deleted contact owned by the caller — 404
+        otherwise. Setting it is a pointer move only: the previously linked
+        contact is neither deleted nor modified.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SelfContactInput"
+      responses:
+        "200":
+          description: The self contact was set or cleared.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  self_contact_vcard_uid:
+                    type: string
+                    nullable: true
+        "404":
+          description: The vcard_uid does not resolve to a contact owned by the caller.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /users/directory:
     get:
       summary: List every other user on the instance (id + username only)
@@ -6829,6 +6863,21 @@ components:
               type: array
               items: { type: string }
               nullable: true
+            self_contact_vcard_uid:
+              type: string
+              nullable: true
+              description: VCardUID of the caller's "Me" contact, if set (T90).
+    SelfContactInput:
+      type: object
+      description: >
+        Body for PATCH /users/me/self-contact. A null/empty vcard_uid clears
+        the link; a non-empty value must resolve to a non-deleted contact
+        owned by the caller.
+      properties:
+        vcard_uid:
+          type: string
+          format: uuid
+          nullable: true
     AdminUsersListResponse:
       type: object
       properties:

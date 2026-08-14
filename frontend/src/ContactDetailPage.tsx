@@ -21,6 +21,8 @@ import {
   unarchiveContact
 } from './api/contacts';
 import { getCurrentUser } from './api/admin';
+import { updateSelfContact } from './api/users';
+import { fetchAndCacheUserInfo, getCachedSelfContactVCardUID } from './auth';
 import { resolveEnabledFields, ContactFieldKey } from './contactFields';
 import { 
   getContactNotes, 
@@ -282,11 +284,17 @@ export default function ContactDetailPage() {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { showError } = useSnackbar();
+  const { showError, showSuccess } = useSnackbar();
   const { formatBirthdayForInput, parseBirthdayInput, autoFormatBirthdayInput } = useDateFormat();
   // record is the single source of truth, fetched/written directly against
   // the nested Card/CRM wire shape -- see docs/fork-plan/95.
   const [record, setRecord] = useState<ContactRecordResponse | null>(null);
+  // T90: VCardUID of the caller's "Me" contact. Seeded from the localStorage
+  // cache (written at login / after a Settings picker change) so a fresh page
+  // shows the badge immediately, then corrected from this page's own
+  // /users/me fetch below when it lands.
+  const [selfContactUid, setSelfContactUid] = useState<string | null>(() => getCachedSelfContactVCardUID());
+  const isMe = !!record && !!selfContactUid && record.uid === selfContactUid;
   const firstname = record ? nameComponentValue(record.card?.name?.components, 'given') || '' : '';
   const lastname = record ? nameComponentValue(record.card?.name?.components, 'surname') || '' : '';
   const [profilePic, setProfilePic] = useState<string>('');
@@ -917,6 +925,13 @@ export default function ContactDetailPage() {
         setActivities(activitiesData.activities || []);
         setCompletions(completionsData || []);
         setEnabledFields(resolveEnabledFields(user?.enabled_contact_fields ?? null));
+        // T90: this page's own /users/me fetch is fresher than the localStorage
+        // cache (e.g. right after a Settings picker change); take its value.
+        // Only when the fetch actually succeeded — the `.catch(() => null)`
+        // above means a transient failure shouldn't hide a badge the cache had.
+        if (user) {
+          setSelfContactUid(user.self_contact_vcard_uid ?? null);
+        }
 
         // Second batch: refresh reminders and relationship edges in
         // parallel. refreshRelationshipEdges is passed recordData.uid
@@ -1306,6 +1321,28 @@ export default function ContactDetailPage() {
     setReminderDialogOpen(true);
   };
 
+  // T90: set/clear the caller's "Me" pointer from the header's overflow menu.
+  // The PATCH commits the exact value this page computed, so reflect it
+  // immediately (no extra /users/me round-trip), then refresh the
+  // localStorage cache so the Settings picker and any other page agree
+  // without a reload. fetchAndCacheUserInfo swallows its own fetch errors and
+  // returns null, which is why the optimistic set happens first — a failed
+  // cache refresh must not roll the badge back to the pre-toggle state.
+  const handleToggleMe = async () => {
+    if (!record) return;
+    try {
+      const willBeMe = selfContactUid !== record.uid;
+      const newUid = willBeMe ? record.uid : null;
+      await updateSelfContact(newUid);
+      setSelfContactUid(newUid);
+      await fetchAndCacheUserInfo();
+      showSuccess(willBeMe ? t('settings.selfContact.saveSuccess') : t('settings.selfContact.clearSuccess'));
+    } catch (err) {
+      console.error('Error updating self contact:', err);
+      showError(t('settings.selfContact.saveError'));
+    }
+  };
+
   const handleUploadProfilePicture = async (croppedImageBlob: Blob) => {
     if (!id) return;
 
@@ -1372,6 +1409,8 @@ export default function ContactDetailPage() {
         onMergeContact={() => setMergeDialogOpen(true)}
         onPrepView={() => navigate(`/contacts/${record.id}/prep`)}
         onShareContact={() => setShareDialogOpen(true)}
+        isMe={isMe}
+        onToggleMe={handleToggleMe}
         onExportContact={(format) => {
           if (record?.uid) {
             exportContact(format as 'vcf3' | 'vcf4' | 'jscontact', record.uid).catch(() => showError(t('contactDetail.deleteContactError')));
