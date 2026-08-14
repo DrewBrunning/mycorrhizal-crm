@@ -96,6 +96,7 @@ import com.mycorrhizal.crm.model.network.Email
 import com.mycorrhizal.crm.model.network.FieldDefinition
 import com.mycorrhizal.crm.model.network.OnlineService
 import com.mycorrhizal.crm.model.network.Phone
+import com.mycorrhizal.crm.model.network.ReminderCompletion
 import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.model.network.fieldValueDisplay
 import com.mycorrhizal.crm.model.util.DateFormat
@@ -478,6 +479,8 @@ fun ContactDetailScreen(
                     onEditNote = onEditNote,
                     onEditReminder = onEditReminder,
                     onCompleteReminder = viewModel::completeReminder,
+                    completions = state.completions,
+                    onUndoCompletion = viewModel::undoCompletion,
                 )
             }
         }
@@ -617,6 +620,8 @@ fun ContactDetailContent(
     onEditNote: (Int) -> Unit = {},
     onEditReminder: (Int) -> Unit = {},
     onCompleteReminder: (Int) -> Unit = {},
+    completions: List<ReminderCompletion> = emptyList(),
+    onUndoCompletion: (Int) -> Unit = {},
 ) {
     val card = contact.card
     LazyColumn(
@@ -798,11 +803,12 @@ fun ContactDetailContent(
             // newest-first (Phase 2 item 10). Tapping a row routes to its edit form.
             SectionTitle(stringResource(R.string.contact_timeline))
             TimelineSection(
-                items = contact.toTimelineItems(),
+                items = contact.toTimelineItems(completions),
                 onEditActivity = onEditActivity,
                 onEditNote = onEditNote,
                 onEditReminder = onEditReminder,
                 onCompleteReminder = onCompleteReminder,
+                onUndoCompletion = onUndoCompletion,
             )
         }
         if (deviceLookupKey != null) {

@@ -340,6 +340,16 @@
     <string name="reminder_recurrence_six_months">Every 6 months</string>
     <string name="reminder_recurrence_yearly">Yearly</string>
     <string name="cd_new_reminder">New reminder</string>
+    <string name="reminder_delete_title">Delete reminder?</string>
+    <string name="reminder_delete_confirm">Delete this reminder? \"%1$s\"</string>
+    <string name="cd_delete_reminder">Delete reminder</string>
+    <string name="reminder_overdue">Overdue</string>
+    <string name="reminder_flexible">Flexible</string>
+    <string name="reminder_pick_date">Pick a date</string>
+    <string name="reminder_reoccur_from_completion">Reschedule from completion date</string>
+    <string name="reminder_reoccur_from_completion_hint">When completed, the next reminder is scheduled from the completion date instead of the original date.</string>
+    <string name="reminder_completed">Reminder completed</string>
+    <string name="cd_undo_completion">Undo completion</string>
 
     <!-- Timeline -->
     <string name="timeline_empty">No timeline entries yet</string>

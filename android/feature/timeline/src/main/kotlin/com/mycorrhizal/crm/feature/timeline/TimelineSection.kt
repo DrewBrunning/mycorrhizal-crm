@@ -7,10 +7,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarToday
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.EventNote
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.StickyNote2
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,6 +37,7 @@ fun TimelineSection(
     onEditNote: (Int) -> Unit,
     onEditReminder: (Int) -> Unit,
     onCompleteReminder: (Int) -> Unit,
+    onUndoCompletion: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
@@ -64,6 +67,10 @@ fun TimelineSection(
                     completed = item.reminder.completed,
                     onClick = { onEditReminder(item.reminder.id) },
                     onComplete = { onCompleteReminder(item.reminder.id) },
+                )
+                is TimelineItem.CompletionItem -> TimelineCompletionRow(
+                    message = item.completion.message.orEmpty(),
+                    onUndo = { onUndoCompletion(item.completion.id) },
                 )
             }
         }
@@ -144,6 +151,35 @@ private fun TimelineReminderRow(
                         Icon(Icons.Outlined.CalendarToday, contentDescription = stringResource(R.string.cd_complete_reminder))
                     }
                 }
+            }
+        },
+    )
+}
+
+/** A completed reminder's timeline row (web's "Reminder completed"). Undo deletes it. */
+@Composable
+private fun TimelineCompletionRow(
+    message: String,
+    onUndo: () -> Unit,
+) {
+    TimelineRowBase(
+        icon = {
+            Icon(
+                Icons.Outlined.Notifications,
+                contentDescription = stringResource(R.string.cd_reminder),
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        },
+        title = stringResource(R.string.reminder_completed),
+        subtitle = message,
+        onClick = {},
+        trailing = {
+            IconButton(onClick = onUndo) {
+                Icon(
+                    Icons.Outlined.Delete,
+                    contentDescription = stringResource(R.string.cd_undo_completion),
+                    tint = MaterialTheme.colorScheme.error,
+                )
             }
         },
     )

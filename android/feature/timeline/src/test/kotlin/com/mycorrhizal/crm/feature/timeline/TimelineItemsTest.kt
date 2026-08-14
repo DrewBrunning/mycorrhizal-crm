@@ -7,6 +7,7 @@ import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.Name
 import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.model.network.Reminder
+import com.mycorrhizal.crm.model.network.ReminderCompletion
 import com.mycorrhizal.crm.model.network.ReminderRecurrence
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -97,6 +98,46 @@ class TimelineItemsTest {
         )
 
         val keys = contact.toTimelineItems().map { it.key }
+
+        assertEquals(2, keys.distinct().size)
+    }
+
+    @Test
+    fun `completions join the timeline and sort by completed_at`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(name = Name(full = "Dana White")),
+            notes = listOf(Note(id = 1, content = "Old note", date = "2026-08-01T10:00:00Z")),
+        )
+        val completions = listOf(
+            ReminderCompletion(id = 10, contactId = 5, message = "Done earlier", completedAt = "2026-08-02T10:00:00Z"),
+            ReminderCompletion(id = 11, contactId = 5, message = "Done later", completedAt = "2026-08-05T10:00:00Z"),
+        )
+
+        val items = contact.toTimelineItems(completions)
+
+        assertEquals(3, items.size)
+        assertTrue(items[0] is TimelineItem.CompletionItem)
+        assertEquals("Done later", (items[0] as TimelineItem.CompletionItem).completion.message)
+        assertTrue(items[1] is TimelineItem.CompletionItem)
+        assertEquals("Done earlier", (items[1] as TimelineItem.CompletionItem).completion.message)
+        assertTrue(items[2] is TimelineItem.NoteItem)
+    }
+
+    @Test
+    fun `completion keys are unique and don't collide with same-id reminder rows`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(name = Name(full = "Dana White")),
+            reminders = listOf(
+                Reminder(id = 7, message = "Call Dana", remindAt = "2026-08-04T10:00:00Z", recurrence = ReminderRecurrence.WEEKLY),
+            ),
+        )
+        val completions = listOf(
+            ReminderCompletion(id = 7, contactId = 5, message = "Done", completedAt = "2026-08-05T10:00:00Z"),
+        )
+
+        val keys = contact.toTimelineItems(completions).map { it.key }
 
         assertEquals(2, keys.distinct().size)
     }

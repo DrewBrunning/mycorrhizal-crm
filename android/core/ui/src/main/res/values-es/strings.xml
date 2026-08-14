@@ -340,6 +340,16 @@
     <string name="reminder_recurrence_six_months">Cada 6 meses</string>
     <string name="reminder_recurrence_yearly">Anual</string>
     <string name="cd_new_reminder">Nuevo recordatorio</string>
+    <string name="reminder_delete_title">¿Eliminar recordatorio?</string>
+    <string name="reminder_delete_confirm">¿Eliminar este recordatorio? \"%1$s\"</string>
+    <string name="cd_delete_reminder">Eliminar recordatorio</string>
+    <string name="reminder_overdue">Vencido</string>
+    <string name="reminder_flexible">Flexible</string>
+    <string name="reminder_pick_date">Elegir fecha</string>
+    <string name="reminder_reoccur_from_completion">Reprogramar desde la fecha de finalización</string>
+    <string name="reminder_reoccur_from_completion_hint">Al completarse, el próximo recordatorio se programará desde la fecha de finalización en lugar de la fecha original.</string>
+    <string name="reminder_completed">Recordatorio completado</string>
+    <string name="cd_undo_completion">Deshacer finalización</string>
 
     <!-- Cronología -->
     <string name="timeline_empty">Aún no hay entradas en la cronología</string>

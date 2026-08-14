@@ -4,6 +4,7 @@ import com.mycorrhizal.crm.data.local.CachedReminder
 import com.mycorrhizal.crm.data.local.CachedReminderDao
 import com.mycorrhizal.crm.domain.repository.ReminderRepository
 import com.mycorrhizal.crm.model.network.Reminder
+import com.mycorrhizal.crm.model.network.ReminderCompletion
 import com.mycorrhizal.crm.network.ApiClient
 import javax.inject.Inject
 
@@ -55,6 +56,18 @@ class ReminderRepositoryImpl @Inject constructor(
         }
         return result.map { it.reminder }
     }
+
+    override suspend fun delete(id: Int): Result<Unit> {
+        val result = apiClient.deleteReminder(id)
+        if (result.isSuccess) dao.deleteByIds(listOf(id))
+        return result
+    }
+
+    override suspend fun listCompletions(contactId: Int): Result<List<ReminderCompletion>> =
+        apiClient.listContactReminderCompletions(contactId).map { it.completions }
+
+    override suspend fun deleteCompletion(id: Int): Result<Unit> =
+        apiClient.deleteReminderCompletion(id)
 
     private fun Reminder.toCached(): CachedReminder = CachedReminder(
         id = id,

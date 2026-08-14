@@ -50,6 +50,39 @@ data class ReminderCompleteResponse(
     val reminder: Reminder? = null,
 )
 
+/**
+ * A reminder completion timeline record (backend `ReminderCompletion`). Written
+ * when a reminder is completed; `DELETE /reminder-completions/:id` removes it
+ * (the web's "undo" of a completed reminder's timeline entry).
+ */
+@JsonClass(generateAdapter = true)
+data class ReminderCompletion(
+    @Json(name = "ID") val id: Int = 0,
+    @Json(name = "CreatedAt") val createdAt: String? = null,
+    @Json(name = "UpdatedAt") val updatedAt: String? = null,
+    @Json(name = "reminder_id") val reminderId: Int? = null,
+    @Json(name = "contact_id") val contactId: Int = 0,
+    val message: String? = null,
+    @Json(name = "completed_at") val completedAt: String? = null,
+)
+
+/**
+ * GET /contacts/{id}/reminder-completions — wrapped `{ completions }` array.
+ * `GetCompletionsForContact` does `var completions []models.ReminderCompletion;
+ * ...Find(&completions)`, and Go marshals a nil slice (no completions) as JSON
+ * `null`, not `[]` (`/CLAUDE.md` frontend trap #8). A non-null Kotlin default
+ * only covers an *absent* key, not an explicit `null` — Moshi codegen still
+ * rejects the latter — so the raw field stays nullable and [completions]
+ * normalizes absent/null/`[]` to a plain empty list (the `ActivitiesPage`
+ * pattern).
+ */
+@JsonClass(generateAdapter = true)
+data class CompletionsResponse(
+    @Json(name = "completions") val completionsRaw: List<ReminderCompletion>? = null,
+) {
+    val completions: List<ReminderCompletion> get() = completionsRaw.orEmpty()
+}
+
 /** Closed recurrence set, mirroring the backend's `recurrence` enum. */
 object ReminderRecurrence {
     const val ONCE = "once"

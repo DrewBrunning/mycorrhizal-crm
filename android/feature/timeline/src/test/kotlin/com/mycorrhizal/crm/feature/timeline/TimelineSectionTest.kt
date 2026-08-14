@@ -8,6 +8,7 @@ import androidx.compose.ui.test.performClick
 import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.model.network.Reminder
+import com.mycorrhizal.crm.model.network.ReminderCompletion
 import com.mycorrhizal.crm.model.network.ReminderRecurrence
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
@@ -107,5 +108,51 @@ class TimelineSectionTest {
         }
         composeTestRule.onNodeWithContentDescription("Complete reminder").performClick()
         assertEquals(3, completed)
+    }
+
+    @Test
+    fun `completion row renders the completed message`() {
+        val items = listOf(
+            TimelineItem.CompletionItem(
+                ReminderCompletion(id = 5, contactId = 5, message = "Done with gift", completedAt = "2026-08-05T10:00:00Z"),
+            ),
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                TimelineSection(
+                    items = items,
+                    onEditActivity = {},
+                    onEditNote = {},
+                    onEditReminder = {},
+                    onCompleteReminder = {},
+                )
+            }
+        }
+        composeTestRule.onNodeWithText("Reminder completed").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Done with gift").assertIsDisplayed()
+    }
+
+    @Test
+    fun `completion undo button invokes the undo callback`() {
+        var undone: Int? = null
+        val items = listOf(
+            TimelineItem.CompletionItem(
+                ReminderCompletion(id = 5, contactId = 5, message = "Done", completedAt = "2026-08-05T10:00:00Z"),
+            ),
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                TimelineSection(
+                    items = items,
+                    onEditActivity = {},
+                    onEditNote = {},
+                    onEditReminder = {},
+                    onCompleteReminder = {},
+                    onUndoCompletion = { undone = it },
+                )
+            }
+        }
+        composeTestRule.onNodeWithContentDescription("Undo completion").performClick()
+        assertEquals(5, undone)
     }
 }

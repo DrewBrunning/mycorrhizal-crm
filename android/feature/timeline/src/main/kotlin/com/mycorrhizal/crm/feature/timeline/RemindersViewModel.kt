@@ -21,6 +21,7 @@ data class RemindersUiState(
     val reminders: List<Reminder> = emptyList(),
     val isLoading: Boolean = false,
     val completingId: Int? = null,
+    val deletingId: Int? = null,
     @StringRes val errorRes: Int? = null,
     val error: String? = null,
 )
@@ -94,5 +95,25 @@ class RemindersViewModel @Inject constructor(
 
     fun onErrorShown() {
         _uiState.update { it.copy(errorRes = null, error = null) }
+    }
+
+    fun delete(id: Int) {
+        if (_uiState.value.deletingId != null) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(deletingId = id) }
+            reminderRepository.delete(id).foldApiError(
+                onSuccess = {
+                    _uiState.update { state ->
+                        state.copy(
+                            deletingId = null,
+                            reminders = state.reminders.filterNot { it.id == id },
+                        )
+                    }
+                },
+                onError = { error ->
+                    _uiState.update { it.copy(deletingId = null, error = error.displayMessage) }
+                },
+            )
+        }
     }
 }

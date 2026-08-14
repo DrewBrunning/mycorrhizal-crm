@@ -340,6 +340,16 @@
     <string name="reminder_recurrence_six_months">Alle 6 Monate</string>
     <string name="reminder_recurrence_yearly">Jährlich</string>
     <string name="cd_new_reminder">Neue Erinnerung</string>
+    <string name="reminder_delete_title">Erinnerung löschen?</string>
+    <string name="reminder_delete_confirm">Diese Erinnerung löschen? „%1$s“</string>
+    <string name="cd_delete_reminder">Erinnerung löschen</string>
+    <string name="reminder_overdue">Überfällig</string>
+    <string name="reminder_flexible">Flexibel</string>
+    <string name="reminder_pick_date">Datum auswählen</string>
+    <string name="reminder_reoccur_from_completion">Ab Erledigungsdatum neu planen</string>
+    <string name="reminder_reoccur_from_completion_hint">Bei Erledigung wird die nächste Erinnerung ab dem Erledigungsdatum statt ab dem ursprünglichen Datum geplant.</string>
+    <string name="reminder_completed">Erinnerung erledigt</string>
+    <string name="cd_undo_completion">Erledigung rückgängig machen</string>
 
     <!-- Zeitleiste -->
     <string name="timeline_empty">Noch keine Zeitleisten-Einträge</string>

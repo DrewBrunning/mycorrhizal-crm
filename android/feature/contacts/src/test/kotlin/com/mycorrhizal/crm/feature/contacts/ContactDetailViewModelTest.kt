@@ -49,6 +49,7 @@ class ContactDetailViewModelTest {
         coEvery { apiClient.listFieldDefinitions(any()) } returns Result.success(FieldDefinitionsResponse())
         coEvery { apiClient.listContactFieldValues(any()) } returns Result.success(ContactFieldValuesResponse())
         stubMemberships()
+        stubCompletions()
         return ContactDetailViewModel(
             contactRepository,
             reminderRepository,
@@ -66,6 +67,11 @@ class ContactDetailViewModelTest {
         coEvery { circleRepository.list(any(), any()) } returns Result.success(emptyList())
         coEvery { tagRepository.tagsForContact(any()) } returns Result.success(emptyList())
         coEvery { tagRepository.list(any(), any()) } returns Result.success(emptyList())
+    }
+
+    /** M20: default stub for the completion-timeline load (run on every load()). */
+    private fun stubCompletions() {
+        coEvery { reminderRepository.listCompletions(any()) } returns Result.success(emptyList())
     }
 
     @Test
@@ -100,6 +106,7 @@ class ContactDetailViewModelTest {
         every { authRepository.observeSession() } returns flowOf(SessionState())
         coEvery { apiClient.listFieldDefinitions(any()) } returns Result.success(FieldDefinitionsResponse())
         coEvery { apiClient.listContactFieldValues(any()) } returns Result.success(ContactFieldValuesResponse())
+        coEvery { reminderRepository.listCompletions(any()) } returns Result.success(emptyList())
 
         val vm = ContactDetailViewModel(
             contactRepository,
@@ -212,6 +219,7 @@ class ContactDetailViewModelTest {
         coEvery { apiClient.listContactFieldValues(5) } returns Result.success(
             ContactFieldValuesResponse(fieldValues = listOf(FieldValue(id = 1, fieldDefinitionId = "d1", value = "Latte"))),
         )
+        coEvery { reminderRepository.listCompletions(any()) } returns Result.success(emptyList())
 
         val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, apiClient, circleRepository, tagRepository, SavedStateHandle(mapOf("contactId" to 5)))
         advanceUntilIdle()
@@ -230,6 +238,7 @@ class ContactDetailViewModelTest {
         every { authRepository.observeSession() } returns flowOf(SessionState())
         coEvery { apiClient.listFieldDefinitions(any()) } returns Result.failure(ApiError.Server(500, "boom"))
         coEvery { apiClient.listContactFieldValues(5) } returns Result.success(ContactFieldValuesResponse())
+        coEvery { reminderRepository.listCompletions(any()) } returns Result.success(emptyList())
 
         val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, apiClient, circleRepository, tagRepository, SavedStateHandle(mapOf("contactId" to 5)))
         advanceUntilIdle()
@@ -250,6 +259,7 @@ class ContactDetailViewModelTest {
             FieldDefinitionsResponse(fieldDefinitions = listOf(FieldDefinition(id = "d1", label = "Coffee order", type = "string"))),
         )
         coEvery { apiClient.listContactFieldValues(5) } returns Result.failure(ApiError.Network(java.io.IOException("offline")))
+        coEvery { reminderRepository.listCompletions(any()) } returns Result.success(emptyList())
 
         val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, apiClient, circleRepository, tagRepository, SavedStateHandle(mapOf("contactId" to 5)))
         advanceUntilIdle()
@@ -276,6 +286,7 @@ class ContactDetailViewModelTest {
         coEvery { apiClient.listContactFieldValues(5) } returns Result.success(
             ContactFieldValuesResponse(fieldValues = listOf(FieldValue(id = 1, fieldDefinitionId = "deleted-def", value = "orphaned"))),
         )
+        coEvery { reminderRepository.listCompletions(any()) } returns Result.success(emptyList())
 
         val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, apiClient, circleRepository, tagRepository, SavedStateHandle(mapOf("contactId" to 5)))
         advanceUntilIdle()
@@ -486,5 +497,82 @@ class ContactDetailViewModelTest {
         advanceUntilIdle()
 
         io.mockk.coVerify(exactly = 1) { tagRepository.removeContact("t1", "u5") }
+    }
+
+    // --- M20: reminder completions on the timeline ---
+
+    @Test
+    fun `completions load alongside the contact`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+        val vm = viewModel(5)
+        // Re-stub after the helper's default (mockk last-registered-wins).
+        coEvery { reminderRepository.listCompletions(5) } returns Result.success(
+            listOf(
+                com.mycorrhizal.crm.model.network.ReminderCompletion(
+                    id = 1,
+                    contactId = 5,
+                    message = "Done with gift",
+                    completedAt = "2026-08-12T10:00:00Z",
+                ),
+            ),
+        )
+        advanceUntilIdle()
+
+        assertEquals(1, vm.uiState.value.completions.size)
+        assertEquals("Done with gift", vm.uiState.value.completions[0].message)
+    }
+
+    @Test
+    fun `a completions fetch failure does not fail the contact load`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { reminderRepository.listCompletions(5) } returns Result.failure(ApiError.Server(500, "boom"))
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertEquals("Dana White", state.contact?.card?.name?.full)
+        assertNull(state.error)
+        assertTrue(state.completions.isEmpty())
+    }
+
+    @Test
+    fun `undoCompletion deletes the completion and reloads the list`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { reminderRepository.deleteCompletion(7) } returns Result.success(Unit)
+        coEvery { reminderRepository.listCompletions(5) } returns Result.success(emptyList())
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+
+        vm.undoCompletion(7)
+        advanceUntilIdle()
+
+        io.mockk.coVerify(exactly = 1) { reminderRepository.deleteCompletion(7) }
+        // M20 test case 4: after the undo the completion list is refetched, so a deleted
+        // completion is gone from the timeline (its pre-completion state).
+        io.mockk.coVerify(exactly = 2) { reminderRepository.listCompletions(5) }
+        assertNull(vm.uiState.value.error)
+    }
+
+    @Test
+    fun `undoCompletion failure surfaces the error and keeps the completion`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { reminderRepository.deleteCompletion(7) } returns Result.failure(
+            ApiError.Client(404, "Reminder completion not found"),
+        )
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+
+        vm.undoCompletion(7)
+        advanceUntilIdle()
+
+        assertEquals("Not found", vm.uiState.value.error)
     }
 }
