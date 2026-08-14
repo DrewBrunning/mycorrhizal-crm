@@ -435,10 +435,30 @@
     <string name="import_vcf_title">Importa file VCF</string>
     <string name="import_vcf_pick">Seleziona un file .vcf</string>
     <string name="import_vcf_pick_hint">Scegli un file .vcf (vCard) esportato da un\'altra app.</string>
-    <string name="import_vcf_row_skip">Salta</string>
-    <string name="import_vcf_row_add">Aggiungi</string>
-    <string name="import_vcf_row_update">Aggiorna</string>
-    <string name="import_vcf_confirm">Conferma importazione</string>
+
+    <!-- T96 import merge review -->
+    <string name="import_review_remaining">Risolvi conflitti (%1$d rimanenti)</string>
+    <string name="import_review_no_conflicts">Nessun duplicato trovato: tutto ciò che segue verrà aggiunto come nuovo.</string>
+    <string name="import_action_merge">Unisci</string>
+    <string name="import_action_keep_both">Mantieni entrambi</string>
+    <string name="import_action_discard">Scarta nuovo</string>
+    <string name="import_matches">Corrisponde a: %1$s (%2$s)</string>
+    <string name="import_reason_email">stessa e-mail</string>
+    <string name="import_reason_name">stesso nome</string>
+    <string name="import_reason_phone">stesso telefono</string>
+    <string name="import_batch_duplicate_of">Duplica la riga %1$d di questa importazione</string>
+    <string name="import_new_contact">Nuovo contatto: nessuna corrispondenza trovata</string>
+    <string name="import_diff_title">Verrà unito:</string>
+    <string name="import_diff_added">+ nuovo %1$s: %2$s</string>
+    <string name="import_diff_updated">%1$s: %2$s → %3$s</string>
+    <string name="import_diff_none">Nessuna modifica: le schede corrispondono già.</string>
+    <string name="import_apply_decisions">Applica decisioni (%1$d)</string>
+    <string name="import_resolve_all">Risolvi tutto come unito</string>
+    <string name="import_diff_kind_email">e-mail</string>
+    <string name="import_diff_kind_phone">telefono</string>
+    <string name="import_diff_kind_address">indirizzo</string>
+    <string name="import_diff_kind_url">sito web</string>
+    <string name="import_diff_kind_impp">IM</string>
     <string name="import_vcf_result">Importazione completata: %1$d creati, %2$d aggiornati, %3$d saltati.</string>
     <string name="import_vcf_error_too_large">Il file è troppo grande. La dimensione massima è 50MB.</string>
     <string name="import_vcf_error_invalid_file">Impossibile leggere il file. Scegli un file .vcf.</string>

@@ -127,6 +127,36 @@ class VcfImportViewModelTest {
     }
 
     @Test
+    fun `resolveAll sets every valid row to its suggested action and leaves errored rows skipped`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { apiClient.uploadVcfImport(any(), any()) } returns Result.success(
+                ImportPreviewResponse(
+                    sessionId = "session-1",
+                    rows = listOf(
+                        ImportRowPreview(rowIndex = 0, suggestedAction = "update"),
+                        ImportRowPreview(rowIndex = 1, suggestedAction = "add"),
+                        ImportRowPreview(rowIndex = 2, validationErrors = listOf("missing name"), suggestedAction = "skip"),
+                    ),
+                ),
+            )
+
+            val vm = VcfImportViewModel(apiClient)
+            vm.onFilePicked("contacts.vcf", byteArrayOf(1))
+            advanceUntilIdle()
+
+            // Flatten every row to skip, then resolve all.
+            vm.setRowAction(0, "skip")
+            vm.setRowAction(1, "skip")
+            vm.resolveAll()
+            advanceUntilIdle()
+
+            val actions = vm.uiState.value.rowActions
+            assertEquals("update", actions[0])
+            assertEquals("add", actions[1])
+            assertEquals("skip", actions[2])
+        }
+
+    @Test
     fun `upload failure surfaces the error and stays on the pick step`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { apiClient.uploadVcfImport(any(), any()) } returns Result.failure(ApiError.Client(400, "bad vcf"))
 

@@ -430,10 +430,30 @@
     <string name="import_vcf_title">Import VCF file</string>
     <string name="import_vcf_pick">Select a .vcf file</string>
     <string name="import_vcf_pick_hint">Choose a .vcf (vCard) file exported from another app.</string>
-    <string name="import_vcf_row_skip">Skip</string>
-    <string name="import_vcf_row_add">Add</string>
-    <string name="import_vcf_row_update">Update</string>
-    <string name="import_vcf_confirm">Confirm import</string>
+
+    <!-- T96 import merge review -->
+    <string name="import_review_remaining">Resolve Conflicts (%1$d remaining)</string>
+    <string name="import_review_no_conflicts">No duplicate matches — everything below will be added as new.</string>
+    <string name="import_action_merge">Merge</string>
+    <string name="import_action_keep_both">Keep Both</string>
+    <string name="import_action_discard">Discard New</string>
+    <string name="import_matches">Matches: %1$s (%2$s)</string>
+    <string name="import_reason_email">same email</string>
+    <string name="import_reason_name">same name</string>
+    <string name="import_reason_phone">same phone</string>
+    <string name="import_batch_duplicate_of">Duplicates row %1$d of this import</string>
+    <string name="import_new_contact">New contact — no match found</string>
+    <string name="import_diff_title">Will merge:</string>
+    <string name="import_diff_added">+ new %1$s: %2$s</string>
+    <string name="import_diff_updated">%1$s: %2$s → %3$s</string>
+    <string name="import_diff_none">No changes — the records already match.</string>
+    <string name="import_apply_decisions">Apply decisions (%1$d)</string>
+    <string name="import_resolve_all">Resolve all as merged</string>
+    <string name="import_diff_kind_email">email</string>
+    <string name="import_diff_kind_phone">phone</string>
+    <string name="import_diff_kind_address">address</string>
+    <string name="import_diff_kind_url">website</string>
+    <string name="import_diff_kind_impp">IM</string>
     <string name="import_vcf_result">Import complete: %1$d created, %2$d updated, %3$d skipped.</string>
     <string name="import_vcf_error_too_large">File is too large. Maximum size is 50MB.</string>
     <string name="import_vcf_error_invalid_file">Couldn\'t read that file. Choose a .vcf file.</string>

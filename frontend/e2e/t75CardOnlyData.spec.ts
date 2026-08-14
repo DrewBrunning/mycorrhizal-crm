@@ -198,10 +198,10 @@ test.describe('T75: plain saves no longer destroy Card-only data', () => {
       await dialog.getByRole('button', { name: /continue/i }).click();
 
       // The row is detected as a duplicate of the seeded contact: the preview
-      // offers "to update" and "accept all suggested" keeps that action.
+      // offers "to update" and "resolve all as merged" keeps that action.
       await expect(dialog.getByText('1 to update')).toBeVisible();
-      await dialog.getByRole('button', { name: /accept all suggested/i }).click();
-      await dialog.getByRole('button', { name: /^import$/i }).click();
+      await dialog.getByRole('button', { name: /resolve all as merged/i }).click();
+      await dialog.getByRole('button', { name: /apply decisions/i }).click();
 
       // The Data-settings wizard closes the dialog on a successful import
       // (onImportComplete); the merge itself is verified through the API.

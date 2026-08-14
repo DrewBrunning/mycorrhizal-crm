@@ -66,7 +66,7 @@ class VcfImportScreenTest {
             ),
         )
         composeTestRule.onNodeWithText("Dana White").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Confirm import").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Apply decisions (1)").assertIsDisplayed()
     }
 
     @Test
@@ -80,7 +80,7 @@ class VcfImportScreenTest {
             ),
             onConfirm = { confirmed = true },
         )
-        composeTestRule.onNodeWithText("Confirm import").performClick()
+        composeTestRule.onNodeWithText("Apply decisions (1)").performClick()
         assertEquals(true, confirmed)
     }
 
@@ -96,9 +96,70 @@ class VcfImportScreenTest {
             ),
             onRowActionChange = { row, action -> changedRow = row; changedAction = action },
         )
-        composeTestRule.onNodeWithText("Skip").performClick()
+        composeTestRule.onNodeWithText("Discard New").performClick()
         assertEquals(0, changedRow)
         assertEquals("skip", changedAction)
+    }
+
+    @Test
+    fun `a duplicate row renders its match line and merge diff`() {
+        setContent(
+            VcfImportUiState(
+                step = VcfImportStep.PREVIEW,
+                preview = ImportPreviewResponse(
+                    sessionId = "session-1",
+                    rows = listOf(
+                        ImportRowPreview(
+                            rowIndex = 0,
+                            parsedContact = mapOf("firstname" to "Bob", "lastname" to "Smith"),
+                            suggestedAction = "update",
+                            duplicateMatch = com.mycorrhizal.crm.model.network.DuplicateMatch(
+                                existingContactId = 9,
+                                existingFirstname = "Bob",
+                                existingLastname = "Smith",
+                                existingEmail = "bob@example.com",
+                                matchReason = "email",
+                            ),
+                            mergeDiff = com.mycorrhizal.crm.model.network.ImportMergeDiff(
+                                updated = listOf(
+                                    com.mycorrhizal.crm.model.network.ImportScalarChange(
+                                        field = "job_title",
+                                        label = "Job Title",
+                                        old = "Engineer",
+                                        new = "Staff Engineer",
+                                    ),
+                                ),
+                                added = listOf(
+                                    com.mycorrhizal.crm.model.network.ImportAddedValue(kind = "phone", value = "+15559998888"),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                rowActions = mapOf(0 to "update"),
+            ),
+        )
+        composeTestRule.onNodeWithText("Matches: Bob Smith (same email)").assertIsDisplayed()
+        composeTestRule.onNodeWithText("+ new phone: +15559998888").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Job Title: Engineer \u2192 Staff Engineer").assertIsDisplayed()
+    }
+
+    @Test
+    fun `a within-batch duplicate renders the duplicate-of line and disables merge`() {
+        setContent(
+            VcfImportUiState(
+                step = VcfImportStep.PREVIEW,
+                preview = ImportPreviewResponse(
+                    sessionId = "session-1",
+                    rows = listOf(
+                        ImportRowPreview(rowIndex = 0, suggestedAction = "add"),
+                        ImportRowPreview(rowIndex = 1, suggestedAction = "skip", batchDuplicateOf = 0),
+                    ),
+                ),
+                rowActions = mapOf(0 to "add", 1 to "skip"),
+            ),
+        )
+        composeTestRule.onNodeWithText("Duplicates row 1 of this import").assertIsDisplayed()
     }
 
     @Test

@@ -57,6 +57,7 @@ import com.mycorrhizal.crm.model.network.HouseholdMemberInput
 import com.mycorrhizal.crm.model.network.HouseholdsPage
 import com.mycorrhizal.crm.model.network.ImportConfirmRequest
 import com.mycorrhizal.crm.model.network.ImportPreviewResponse
+import com.mycorrhizal.crm.model.network.ImportRecordsRequest
 import com.mycorrhizal.crm.model.network.ImportResult
 import com.mycorrhizal.crm.model.network.ImportUploadResponse
 import com.mycorrhizal.crm.model.network.LifeEvent
@@ -732,6 +733,19 @@ class ApiClient(
     suspend fun confirmVcfImport(request: ImportConfirmRequest): Result<ImportResult> =
         executePost("$CONTACTS_PATH/import/vcf/confirm", request) { _, body ->
             moshi.adapter(ImportResult::class.java).fromJson(body)
+        }
+
+    /**
+     * T96: starts a records-based import session from a batch of neutral
+     * Card/CRM records (the device-contacts import path produces these via
+     * DeviceContactMapper.toInput). Runs the same preview pipeline as a VCF
+     * upload — validation, server-side duplicate detection with a merge diff,
+     * within-batch duplicate detection — and is confirmed via
+     * [confirmVcfImport].
+     */
+    suspend fun uploadImportRecords(records: List<ContactRecordInput>): Result<ImportPreviewResponse> =
+        executePost("$CONTACTS_PATH/import/records", ImportRecordsRequest(records)) { _, body ->
+            moshi.adapter(ImportPreviewResponse::class.java).fromJson(body)
         }
 
     private suspend fun <T> executeGet(

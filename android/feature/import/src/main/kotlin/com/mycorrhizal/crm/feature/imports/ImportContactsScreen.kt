@@ -76,18 +76,37 @@ fun ImportContactsScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            // M9 item 4: a second, file-based import path alongside this screen's existing
-            // device-contacts import — ApiClient.uploadVcfImport() already hit this backend
-            // endpoint but had zero callers.
-            TextButton(
-                onClick = onImportVcf,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-            ) {
-                Icon(Icons.Outlined.FileUpload, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
-                Text(stringResource(R.string.import_vcf_entry))
-            }
+            val preview = state.preview
             when {
                 state.isLoading -> LoadingSkeleton()
+                state.step == ImportStep.REVIEW && preview != null ->
+                    ImportReviewStep(
+                        rows = preview.rows,
+                        rowActions = state.rowActions,
+                        onRowActionChange = viewModel::setRowAction,
+                        onResolveAll = viewModel::resolveAll,
+                        onConfirm = viewModel::confirmImport,
+                    )
+                state.step == ImportStep.RESULT -> {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.fillMaxSize().padding(24.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.import_done, state.importedCount),
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(top = 48.dp, bottom = 16.dp),
+                        )
+                        Button(
+                            onClick = {
+                                viewModel.reset()
+                                onImported()
+                            },
+                        ) {
+                            Text(stringResource(R.string.action_confirm))
+                        }
+                    }
+                }
                 state.contacts.isEmpty() && state.error == null ->
                     EmptyState(message = stringResource(R.string.import_empty))
                 state.contacts.isEmpty() && state.error != null -> {
@@ -98,6 +117,16 @@ fun ImportContactsScreen(
                     )
                 }
                 else -> {
+                    // M9 item 4: a second, file-based import path alongside this screen's existing
+                    // device-contacts import — ApiClient.uploadVcfImport() already hit this backend
+                    // endpoint but had zero callers.
+                    TextButton(
+                        onClick = onImportVcf,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                    ) {
+                        Icon(Icons.Outlined.FileUpload, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                        Text(stringResource(R.string.import_vcf_entry))
+                    }
                     LazyColumn(modifier = Modifier.weight(1f)) {
                         items(state.contacts, key = { it.device.contactId }) { candidate ->
                             DeviceContactRow(
@@ -108,7 +137,7 @@ fun ImportContactsScreen(
                         }
                     }
                     Button(
-                        onClick = { viewModel.importSelected(); onImported() },
+                        onClick = { viewModel.submitSelected() },
                         enabled = state.selected.isNotEmpty() && !state.isImporting,
                         modifier = Modifier.fillMaxWidth().padding(16.dp),
                     ) {
@@ -118,13 +147,6 @@ fun ImportContactsScreen(
                                 state.selected.size,
                                 state.contacts.count { it.duplicateOf != null },
                             ),
-                        )
-                    }
-                    if (state.importedCount > 0) {
-                        Text(
-                            text = stringResource(R.string.import_done, state.importedCount),
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                         )
                     }
                 }

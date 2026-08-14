@@ -72,6 +72,7 @@ fun VcfImportScreen(
         onFilePicked = viewModel::onFilePicked,
         onFileTooLarge = viewModel::onFileTooLarge,
         onRowActionChange = viewModel::setRowAction,
+        onResolveAll = viewModel::resolveAll,
         onConfirm = viewModel::confirm,
         onErrorShown = viewModel::onErrorShown,
     )
@@ -92,6 +93,7 @@ fun VcfImportScreenContent(
     onFilePicked: (String, ByteArray) -> Unit = { _, _ -> },
     onFileTooLarge: () -> Unit = {},
     onRowActionChange: (Int, String) -> Unit = { _, _ -> },
+    onResolveAll: () -> Unit = {},
     onConfirm: () -> Unit = {},
     onErrorShown: () -> Unit = {},
 ) {
@@ -143,7 +145,13 @@ fun VcfImportScreenContent(
                 uiState.isLoading -> LoadingSkeleton(modifier = Modifier.testTag("vcf-import-loading"))
                 uiState.step == VcfImportStep.PICK -> PickStep(onPick = { filePicker.launch("*/*") })
                 uiState.step == VcfImportStep.PREVIEW && uiState.preview != null ->
-                    PreviewStep(rows = uiState.preview.rows, rowActions = uiState.rowActions, onRowActionChange = onRowActionChange, onConfirm = onConfirm)
+                    PreviewStep(
+                        rows = uiState.preview.rows,
+                        rowActions = uiState.rowActions,
+                        onRowActionChange = onRowActionChange,
+                        onResolveAll = onResolveAll,
+                        onConfirm = onConfirm,
+                    )
                 uiState.step == VcfImportStep.RESULT && uiState.result != null ->
                     ResultStep(created = uiState.result.created, updated = uiState.result.updated, skipped = uiState.result.skipped, onDone = onDone)
                 else -> EmptyState(message = stringResource(R.string.import_vcf_error_invalid_file))
@@ -187,67 +195,16 @@ private fun PreviewStep(
     rows: List<ImportRowPreview>,
     rowActions: Map<Int, String>,
     onRowActionChange: (Int, String) -> Unit,
+    onResolveAll: () -> Unit,
     onConfirm: () -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxSize()) {
-        LazyColumn(modifier = Modifier.weight(1f).testTag("vcf-import-preview-list")) {
-            items(rows, key = { it.rowIndex }) { row ->
-                PreviewRow(
-                    row = row,
-                    action = rowActions[row.rowIndex] ?: row.suggestedAction,
-                    onActionChange = { action -> onRowActionChange(row.rowIndex, action) },
-                )
-            }
-        }
-        Button(
-            onClick = onConfirm,
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-        ) {
-            Text(stringResource(R.string.import_vcf_confirm))
-        }
-    }
-}
-
-@Composable
-private fun PreviewRow(
-    row: ImportRowPreview,
-    action: String,
-    onActionChange: (String) -> Unit,
-) {
-    val hasErrors = row.validationErrors.isNotEmpty()
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Text(row.displayName(), style = MaterialTheme.typography.bodyLarge)
-        row.duplicateMatch?.let { duplicate ->
-            val label = listOfNotNull(duplicate.existingFirstname, duplicate.existingLastname).joinToString(" ")
-            Text(
-                text = stringResource(R.string.import_duplicate, label.ifBlank { "#${duplicate.existingContactId}" }),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.error,
-            )
-        }
-        if (hasErrors) {
-            row.validationErrors.forEach { error ->
-                Text(error, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
-            }
-        }
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(top = 4.dp),
-        ) {
-            listOf(
-                "skip" to stringResource(R.string.import_vcf_row_skip),
-                "add" to stringResource(R.string.import_vcf_row_add),
-                "update" to stringResource(R.string.import_vcf_row_update),
-            ).forEach { (value, label) ->
-                FilterChip(
-                    selected = action == value,
-                    onClick = { if (!hasErrors) onActionChange(value) },
-                    enabled = !hasErrors,
-                    label = { Text(label) },
-                )
-            }
-        }
-    }
+    ImportReviewStep(
+        rows = rows,
+        rowActions = rowActions,
+        onRowActionChange = onRowActionChange,
+        onResolveAll = onResolveAll,
+        onConfirm = onConfirm,
+    )
 }
 
 @Composable
@@ -267,13 +224,6 @@ private fun ResultStep(created: Int, updated: Int, skipped: Int, onDone: () -> U
     }
 }
 
-private fun ImportRowPreview.displayName(): String {
-    val first = parsedContact["firstname"] as? String
-    val last = parsedContact["lastname"] as? String
-    return listOfNotNull(first, last).joinToString(" ").ifBlank { "#${rowIndex + 1}" }
-}
-
-/** A picked file's display name and the size its provider declares (null when it declares none). */
 private data class PickedFileMeta(val name: String, val size: Long?)
 
 /**
