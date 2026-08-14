@@ -708,6 +708,15 @@ func deleteContactAssociations(tx *gorm.DB, contact models.Contact, userID uint)
 		return err
 	}
 
+	// users.self_contact_vcard_uid (T90): the user's "Me" pointer must not
+	// dangle on a soft-deleted row. If it pointed at this contact, clear it.
+	// In the merge path this is a no-op — RepointContactAssociations already
+	// moved the pointer to the keeper before deleteContactAssociations runs.
+	if err := tx.Model(&models.User{}).Where("id = ? AND self_contact_vcard_uid = ?", userID, contact.VCardUID).
+		Update("self_contact_vcard_uid", nil).Error; err != nil {
+		return err
+	}
+
 	// T93: duplicate-pair dismissals naming this contact (either side of the
 	// ordered uid pair) — hard-delete, join-shaped.
 	if err := tx.Where("(uid_low = ? OR uid_high = ?) AND user_id = ?", contact.VCardUID, contact.VCardUID, userID).Delete(&models.DismissedDuplicatePair{}).Error; err != nil {

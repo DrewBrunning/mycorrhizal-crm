@@ -541,6 +541,7 @@
     "archive": "Archiver",
     "unarchive": "Désarchiver",
     "archivedBadge": "Archivé",
+    "youBadge": "Vous",
     "archiveConfirmation": "Êtes-vous sûr de vouloir archiver ce contact ? Tous les rappels seront supprimés. Vous pourrez le désarchiver plus tard, mais les rappels ne seront pas restaurés.",
     "tags": "Étiquettes",
     "noTags": "Pas encore d'étiquettes",
@@ -548,7 +549,9 @@
     "newTag": "Nouvelle étiquette...",
     "add": "Ajouter",
     "actions": "Actions",
-    "jumpNav": "Aller à la section"
+    "jumpNav": "Aller à la section",
+    "markAsMe": "C'est moi",
+    "unmarkAsMe": "Ce n'est pas moi"
   },
   "noteDialog": {
     "title": "Ajouter une note",
@@ -870,6 +873,17 @@
         "light": "Mode clair",
         "dark": "Mode sombre"
       }
+    },
+    "selfContact": {
+      "title": "Votre contact",
+      "description": "Choisissez le contact qui vous représente. Sa page de contact affichera un badge « Vous ».",
+      "label": "Quel contact êtes-vous ?",
+      "placeholder": "Rechercher des contacts…",
+      "noMatches": "Aucun contact trouvé",
+      "clear": "Effacer",
+      "saveSuccess": "Votre contact a été mis à jour.",
+      "clearSuccess": "Votre contact a été effacé.",
+      "saveError": "Impossible de mettre à jour votre contact."
     },
     "password": {
       "title": "Changer le mot de passe",

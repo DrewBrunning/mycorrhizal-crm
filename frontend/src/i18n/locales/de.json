@@ -541,6 +541,7 @@
     "archive": "Archivieren",
     "unarchive": "Wiederherstellen",
     "archivedBadge": "Archiviert",
+    "youBadge": "Sie",
     "archiveConfirmation": "Möchten Sie diesen Kontakt wirklich archivieren? Alle Erinnerungen werden gelöscht. Sie können den Kontakt später wiederherstellen, aber die Erinnerungen werden nicht wiederhergestellt.",
     "tags": "Tags",
     "noTags": "Noch keine Tags",
@@ -548,7 +549,9 @@
     "newTag": "Neuer Tag...",
     "add": "Hinzufügen",
     "actions": "Aktionen",
-    "jumpNav": "Zum Abschnitt springen"
+    "jumpNav": "Zum Abschnitt springen",
+    "markAsMe": "Das bin ich",
+    "unmarkAsMe": "Das bin nicht ich"
   },
   "noteDialog": {
     "title": "Notiz hinzufügen",
@@ -870,6 +873,17 @@
         "light": "Helles Design",
         "dark": "Dunkles Design"
       }
+    },
+    "selfContact": {
+      "title": "Ihr eigener Kontakt",
+      "description": "Wählen Sie den Kontakt, der Sie selbst darstellt. Auf seiner Kontaktseite erscheint ein Abzeichen „Sie“.",
+      "label": "Welcher Kontakt sind Sie?",
+      "placeholder": "Kontakte suchen…",
+      "noMatches": "Keine Kontakte gefunden",
+      "clear": "Zurücksetzen",
+      "saveSuccess": "Eigener Kontakt aktualisiert.",
+      "clearSuccess": "Eigener Kontakt entfernt.",
+      "saveError": "Der eigene Kontakt konnte nicht aktualisiert werden."
     },
     "password": {
       "title": "Passwort ändern",

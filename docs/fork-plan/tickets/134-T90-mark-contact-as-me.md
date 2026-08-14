@@ -1,5 +1,49 @@
 # T90 — No way to mark a contact as "Me" (the column exists, nothing writes or reads it)
 
+> **Landing note, 2026-08-14.** Implemented and merged as `feature/t90-mark-contact-as-me`.
+>
+> Backend: `PATCH /users/me/self-contact` (body `{ "vcard_uid": "…" }` or `null`/`""` to clear),
+> scoped to the caller and 404ing any uid that doesn't resolve to a non-deleted contact the caller
+> owns. The lazy backfill the schema comment promised is now real: `GetCurrentUser` calls
+> `EnsureSelfContact` unconditionally — it is idempotent, and a backfill failure is logged and
+> served-without, never a 500'd session. `deleteContactAssociations` (shared by `DeleteContact` and
+> `CommitContactMerge`) nulls the pointer when the deleted contact was "Me"; `RepointContactAssociations`
+> moves it onto the keeper when "Me" is the merge loser. OpenAPI updated; the drift test is green.
+>
+> Web: a "Your contact" picker card in Settings (debounced `getContacts` autocomplete over the same
+> shape `MergeContactsDialog` uses, a clear button, and a cache refresh via `fetchAndCacheUserInfo`
+> so the badge updates without a reload), and a neutral `color="default"` "You" chip next to the name
+> on `ContactHeader` (per T62) with "This is me / This isn't me" in the compact overflow menu as the
+> second entry point. The detail page seeds the badge from the localStorage `user_info` cache and
+> corrects it from its own `/users/me` fetch. New strings in all five locales.
+>
+> Tests, all hand-verified: real-migrated-schema controller tests in
+> `backend/controllers/self_contact_test.go` (lazy backfill, idempotence, set / clear-null /
+> clear-empty, foreign-uid 404, unknown-uid 404, malformed-uid 400, delete-nulls-pointer, and the
+> merge-commit path repointing the pointer to the keeper — the auto-created self contact is an
+> ordinary `Contact`, so the delete path is exercised with the pointer pre-set), two merge repoint
+> tests in `services/contact_merge_repoint_test.go`, and ContactHeader/SettingsPage unit tests (the
+> "You" badge test and the merge-repoint controller test were each verified to fail with the
+> feature disabled).
+>
+> **Review pass, same day** — four hardening fixes plus the extra tests above: `EnsureSelfContact`
+> is now transactional, so a failed pointer-write can't leave an orphan contact behind (a real risk
+> now that the lazy backfill calls it on every `/users/me`); `GetCurrentUser` restores the
+> pre-backfill pointer on failure so the response can't claim a self contact the DB doesn't hold;
+> the header toggle updates the badge optimistically and refreshes the cache once (it previously
+> made a redundant second `/users/me` call, and a failed refresh could roll the badge back after a
+> successful PATCH); and the detail page only lets a *successful* `/users/me` override the cached
+> badge, so a transient fetch failure no longer hides it. New `api/users.test.ts` + `auth.test.ts`
+> cover the PATCH wrapper (set/clear/error) and the badge cache (unset/corrupt/failure cases), and
+> the Settings save-error path is pinned.
+>
+> Android deliberately out of scope per the ticket — the client half is a separate ticket. Two
+> deliberate UI decisions beyond the ticket's letter: the "This is me / This isn't me" action is
+> only in the compact overflow menu (the ticket's cited lines), not as a wide-viewport button —
+> Settings is the wide-screen path; and a dangling pointer (self contact soft-deleted behind the
+> scenes) renders as "not set" everywhere, since `getContactsByUid` can't resolve a soft-deleted
+> row and no visible contact will ever match its uid.
+
 | | |
 |---|---|
 | **Platform** | Backend + Web |

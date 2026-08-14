@@ -592,6 +592,16 @@ func RepointContactAssociations(
 		return 0, err
 	}
 
+	// users.self_contact_vcard_uid (T90): the user's "Me" pointer. One row
+	// per user, no uniqueness hazard — if it pointed at the loser (the loser
+	// was "Me"), move it to the keeper so it doesn't dangle once the loser is
+	// soft-deleted below. If it pointed at the keeper or is NULL, the WHERE
+	// matches nothing and the write is a no-op.
+	if err := tx.Model(&models.User{}).Where("id = ? AND self_contact_vcard_uid = ?", userID, loser.VCardUID).
+		Update("self_contact_vcard_uid", keeper.VCardUID).Error; err != nil {
+		return 0, err
+	}
+
 	// RelationshipEdge: bulk repoint both endpoints, then drop self-loops
 	// and semantic duplicates.
 	if err := tx.Model(&models.RelationshipEdge{}).Where("source_id = ? AND user_id = ?", loser.VCardUID, userID).

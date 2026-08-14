@@ -541,6 +541,7 @@
     "archive": "Archivar",
     "unarchive": "Desarchivar",
     "archivedBadge": "Archivado",
+    "youBadge": "Tú",
     "archiveConfirmation": "¿Estás seguro de que quieres archivar este contacto? Todos los recordatorios serán eliminados. Puedes desarchivarlo más tarde, pero los recordatorios no se restaurarán.",
     "tags": "Etiquetas",
     "noTags": "Sin etiquetas aún",
@@ -548,7 +549,9 @@
     "newTag": "Nueva etiqueta...",
     "add": "Agregar",
     "actions": "Acciones",
-    "jumpNav": "Ir a la sección"
+    "jumpNav": "Ir a la sección",
+    "markAsMe": "Este soy yo",
+    "unmarkAsMe": "Este no soy yo"
   },
   "noteDialog": {
     "title": "Agregar Nota",
@@ -870,6 +873,17 @@
         "light": "Modo claro",
         "dark": "Modo oscuro"
       }
+    },
+    "selfContact": {
+      "title": "Tu contacto",
+      "description": "Elige el contacto que te representa. Su página de contacto mostrará una insignia \"Tú\".",
+      "label": "¿Qué contacto eres tú?",
+      "placeholder": "Buscar contactos…",
+      "noMatches": "No se encontraron contactos",
+      "clear": "Borrar",
+      "saveSuccess": "Tu contacto se actualizó.",
+      "clearSuccess": "Tu contacto se borró.",
+      "saveError": "No se pudo actualizar tu contacto."
     },
     "password": {
       "title": "Cambiar Contraseña",

@@ -9,6 +9,9 @@ export interface User {
   // Present only on the /users/me response (CurrentUserResponse), not in admin lists.
   // null means the user has never configured it; apply DEFAULT_ENABLED_CONTACT_FIELDS.
   enabled_contact_fields?: string[] | null;
+  // Present only on the /users/me response. VCardUID of the caller's "Me"
+  // contact (T90); null/absent means none is set.
+  self_contact_vcard_uid?: string | null;
 }
 
 export interface UsersListResponse {
