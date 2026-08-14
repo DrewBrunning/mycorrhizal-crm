@@ -17,4 +17,19 @@
     <!-- Identity theme for API < 27; values-v27/themes.xml overrides this
          with the windowLightNavigationBar addition on API 27+. -->
     <style name="Theme.Mycorrhizal" parent="Base.Theme.Mycorrhizal" />
+
+    <!-- T106: splash theme, shown by the OS before installSplashScreen()'s
+         postSplashScreenTheme swaps in Theme.Mycorrhizal. Split the same way
+         as the pair above so values-night/themes.xml only has to override the
+         background. No dedicated splash icon asset exists; the adaptive
+         launcher-icon foreground (already used by mipmap-anydpi-v26/ic_launcher.xml)
+         is reused as-is, per platform convention for apps without one. -->
+    <style name="Base.Theme.Mycorrhizal.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.Mycorrhizal</item>
+    </style>
+
+    <style name="Theme.Mycorrhizal.Splash" parent="Base.Theme.Mycorrhizal.Splash">
+        <item name="windowSplashScreenBackground">#FAF5EA</item> <!-- bone -->
+    </style>
 </resources>

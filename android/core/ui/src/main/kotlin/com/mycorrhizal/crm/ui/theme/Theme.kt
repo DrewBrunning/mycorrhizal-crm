@@ -187,9 +187,14 @@ private val MycorrhizalShapes = Shapes(
     small = RoundedCornerShape(10.dp),
     medium = RoundedCornerShape(10.dp),
     large = RoundedCornerShape(10.dp),
-    // FloatingActionButton uses Shapes.extraLarge; CircleShape gives the
-    // circular FAB the brand wants instead of M3's rounded-square default.
-    extraLarge = androidx.compose.foundation.shape.CircleShape,
+    // NOT CircleShape: M3's AlertDialog also defaults its container to
+    // shapes.extraLarge, so overriding it here made every AlertDialog in the
+    // app render clipped to a circle/oval (title and buttons cut off) --
+    // found during T97/T106 on-device verification. The brand FAB doesn't
+    // need this token: BrandFab.kt already sets shape = CircleShape on
+    // itself explicitly, so this can just be the same rounded shape as the
+    // rest of the scale.
+    extraLarge = RoundedCornerShape(10.dp),
 )
 
 @Composable

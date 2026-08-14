@@ -208,3 +208,16 @@ against real production data. Flagged rather than pre-emptively migrated.
 new infrastructure, out of proportion to this ticket. The screen-level Compose tests plus this
 note's outstanding on-device pass are the substitute; flagged for whoever picks up the on-device
 step in case a real nav-graph test is wanted later.
+
+## On-device verification (2026-08-14, Pixel 8a)
+
+All four items confirmed reachable against the real account: the drawer's "Activities" and
+"Notes" entries open the real `ActivitiesInboxScreen`/`NotesInboxScreen` (each showing its own
+title and an "no … yet" empty state, not the old `PlaceholderScreen`'s "coming soon" copy).
+"Bulk operations" shows Archive/Unarchive/Delete/Add-to-circle/Remove-from-circle (and more,
+scrollable) instead of just the original three. The contacts list scrolled through several
+dozen distinct real contacts continuously with no stall and no repeat of the first page's names
+at the bottom of a subsequent scroll — the specific failure mode item 3's own test cases
+target. "Import contacts" shows the "Import from a VCF file" entry point above the device
+contacts list. Bulk actions and VCF import were not actually executed against real data (no
+selection/import performed) to avoid mutating the account beyond this verification pass.
