@@ -183,7 +183,7 @@ idea, not a bug — filed in Deferred → Feature ideas instead, not ranked here
 
 | Ticket | Status |
 |---|---|
-| [M20](102-M20-android-reminders-depth.md) · Reminders depth | **TO BE DONE**. R4. No delete, no overdue styling, no reoccur-from-completion, no auto-date-from-recurrence. |
+| [M20](102-M20-android-reminders-depth.md) · Reminders depth | **DONE** (2026-08-14 — see the landing note: delete-with-confirm + `DELETE /reminders/:id`, per-contact completions + undo (`GET /contacts/:id/reminder-completions` + `DELETE /reminder-completions/:id`), overdue styling with the due-today-not-overdue off-by-one pinned, by-mail + flexible chips, Material3 date picker with min-date, auto-date-from-recurrence on create, and the reoccur-from-completion switch. The three new client methods landed with MockWebServer tests incl. the nil-slice JSON-null trap; the completion rows render on the contact-detail timeline with an undo action mirroring web. On-device verification outstanding, same gap as M19/M11/M17). |
 | [M23](105-M23-android-contact-list-bulk-breadth.md) · Contact list & bulk breadth | **TO BE DONE**. R3. No circle filter or archived toggle on the main list; merge requires typing a raw numeric ID instead of searching. |
 | [M22](104-M22-android-household-depth.md) · Household management depth | **TO BE DONE**. R3. Core CRUD has parity; role-editing, name resolution, AI suggestions, and T40 address-based suggestions don't. |
 | [M25](107-M25-android-settings-profile-channels.md) · Settings: profile & channels | **TO BE DONE**. R3. Language/date-format are read-only; theme, password change, webhooks, and ntfy/Gotify config don't exist at all. |
