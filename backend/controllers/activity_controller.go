@@ -366,22 +366,86 @@ func GetActivitiesForContact(c *gin.Context) {
 		return
 	}
 
-	var activities []models.Activity
-	// Eager load contacts associated with each activity
-	if err := db.Preload("Contacts", func(db *gorm.DB) *gorm.DB {
-		return db.Select("ID", "Firstname", "Lastname", "PhotoThumbnail", "Circles").Where("user_id = ?", userID)
-	}).
-		Model(&models.Activity{}).
+	// M19: same search/date/cursor controls as the global GetActivities
+	// handler — the per-contact list pages by (updated_at, id). Search stays
+	// on title/description/location only (no participant-name join): every
+	// row already involves the viewed contact, so matching that contact's own
+	// name would be meaningless, and joining all participants just to search
+	// names buys nothing here. ?since= is deliberately not handled — a
+	// contact-scoped change feed has no consumer.
+	params, err := GetCursorParams(c)
+	if err != nil {
+		apperrors.AbortWithError(c, err)
+		return
+	}
+
+	search := strings.ToLower(strings.TrimSpace(c.Query("search")))
+	fromDateStr := c.Query("fromDate")
+	toDateStr := c.Query("toDate")
+
+	baseQuery := db.Model(&models.Activity{}).
 		Where("activities.user_id = ?", userID).
 		Joins("JOIN activity_contacts ON activities.id = activity_contacts.activity_id").
-		Where("activity_contacts.contact_id = ?", contact.ID).
-		Find(&activities).Error; err != nil {
+		Where("activity_contacts.contact_id = ?", contact.ID)
+
+	// Apply date filters
+	if fromDateStr != "" {
+		if fromDate, err := time.Parse("2006-01-02", fromDateStr); err == nil {
+			baseQuery = baseQuery.Where("activities.date >= ?", fromDate)
+		}
+	}
+	if toDateStr != "" {
+		if toDate, err := time.Parse("2006-01-02", toDateStr); err == nil {
+			// Add one day to include the entire end date
+			toDate = toDate.AddDate(0, 0, 1)
+			baseQuery = baseQuery.Where("activities.date < ?", toDate)
+		}
+	}
+
+	if search != "" {
+		like := "%" + search + "%"
+		searchClause := db.Where("LOWER(activities.title) LIKE ?", like).
+			Or("LOWER(activities.description) LIKE ?", like).
+			Or("LOWER(activities.location) LIKE ?", like)
+		baseQuery = baseQuery.Where(searchClause)
+	}
+
+	// T17: resume-after cursor. Ordering is (updated_at, id); the ORDER BY
+	// columns live in activities.* so the join-based query stays valid.
+	desc := params.Order == "desc"
+	if params.Cursor != nil {
+		id, ok := parseCursorID(params.Cursor)
+		if !ok {
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed"))
+			return
+		}
+		pred, t, idv := cursorPredicate("activities", params.Cursor, id, desc)
+		baseQuery = baseQuery.Where(pred, t, idv)
+	}
+
+	var activities []models.Activity
+	query := cursorOrderBy(baseQuery.Session(&gorm.Session{}), "activities", desc).
+		Limit(params.Limit + 1)
+
+	// Eager load contacts associated with each activity
+	query = query.Preload("Contacts", func(db *gorm.DB) *gorm.DB {
+		return db.Select("ID", "Firstname", "Lastname", "PhotoThumbnail", "Circles").Where("user_id = ?", userID)
+	})
+
+	if err := query.Find(&activities).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve activities for contact").WithError(err))
 		return
+	}
+	nextCursor := ""
+	if len(activities) > params.Limit {
+		activities = activities[:params.Limit]
+		nextCursor = EncodeCursor(activities[len(activities)-1].UpdatedAt, activities[len(activities)-1].ID)
 	}
 
 	// If successful, return the contact and its notes as JSON
 	c.JSON(http.StatusOK, gin.H{
-		"activities": activities,
+		"activities":  activities,
+		"next_cursor": nextCursor,
+		"limit":       params.Limit,
 	})
 }

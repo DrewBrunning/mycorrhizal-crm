@@ -46,14 +46,159 @@ func TestGetContactNotes(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 
 	var responseBody struct {
-		Notes []models.Note `json:"notes"`
+		Notes      []models.Note `json:"notes"`
+		NextCursor string        `json:"next_cursor"`
+		Limit      int           `json:"limit"`
 	}
 	json.Unmarshal(w.Body.Bytes(), &responseBody)
 
-	// Assert that the notes returned belong to the contact
+	// Assert that the notes returned belong to the contact. Both notes are
+	// within the default page, so ordering is the T17 (updated_at, id) DESC
+	// feed order — the newest-created first.
 	assert.Len(t, responseBody.Notes, 2)
-	assert.Equal(t, note1.Content, responseBody.Notes[0].Content)
-	assert.Equal(t, note2.Content, responseBody.Notes[1].Content)
+	assert.Equal(t, note2.Content, responseBody.Notes[0].Content)
+	assert.Equal(t, note1.Content, responseBody.Notes[1].Content)
+	// M19: cursor envelope, no total/page (a contact's note history
+	// accumulates without bound).
+	assert.Empty(t, responseBody.NextCursor, "two notes fit in the default page, so no cursor")
+	assert.Equal(t, 25, responseBody.Limit)
+}
+
+func TestGetContactNotesSearchAndDateFilter(t *testing.T) {
+	db, router := setupRouter()
+
+	var user models.User
+	db.First(&user)
+
+	router.GET("/contacts/:id/notes", GetNotesForContact)
+
+	contact := models.Contact{UserID: user.ID, Firstname: "John", Lastname: "Doe"}
+	db.Create(&contact)
+
+	mkNote := func(content string, daysAgo int) models.Note {
+		n := models.Note{
+			UserID:    user.ID,
+			Content:   content,
+			Date:      time.Now().AddDate(0, 0, -daysAgo),
+			ContactID: &contact.ID,
+		}
+		db.Create(&n)
+		return n
+	}
+	mkNote("Loves climbing", 1)
+	mkNote("Met at conference", 3)
+	mkNote("Birthday party", 10)
+
+	// Search narrows by content (case-insensitive).
+	req, _ := http.NewRequest("GET", "/contacts/"+strconv.Itoa(int(contact.ID))+"/notes?search=CLIMBING", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+	var body map[string]any
+	json.Unmarshal(w.Body.Bytes(), &body)
+	notes := body["notes"].([]any)
+	assert.Len(t, notes, 1)
+	assert.Contains(t, notes[0].(map[string]any)["content"], "climbing")
+
+	// fromDate/toDate filter on the note date, inclusive both ends.
+	from := time.Now().AddDate(0, 0, -4).Format("2006-01-02")
+	to := time.Now().AddDate(0, 0, -1).Format("2006-01-02")
+	req2, _ := http.NewRequest("GET", "/contacts/"+strconv.Itoa(int(contact.ID))+"/notes?fromDate="+from+"&toDate="+to, nil)
+	w2 := httptest.NewRecorder()
+	router.ServeHTTP(w2, req2)
+	assert.Equal(t, http.StatusOK, w2.Code)
+	json.Unmarshal(w2.Body.Bytes(), &body)
+	assert.Len(t, body["notes"].([]any), 2, "the 1- and 3-day-old notes fall inside the window")
+}
+
+func TestGetContactNotesPagination(t *testing.T) {
+	db, router := setupRouter()
+
+	var user models.User
+	db.First(&user)
+
+	router.GET("/contacts/:id/notes", GetNotesForContact)
+
+	contact := models.Contact{UserID: user.ID, Firstname: "John", Lastname: "Doe"}
+	db.Create(&contact)
+
+	// Distinct updated_at values keep the cursor walk deterministic: give
+	// each note an explicit offset so page boundaries can't land on ties.
+	base := time.Now().Add(-time.Hour)
+	var created []models.Note
+	for i, content := range []string{"One", "Two", "Three"} {
+		n := models.Note{UserID: user.ID, Content: content, Date: time.Now(), ContactID: &contact.ID}
+		require.NoError(t, db.Create(&n).Error)
+		require.NoError(t, db.Model(&n).Update("updated_at", base.Add(time.Duration(i)*time.Minute)).Error)
+		created = append(created, n)
+	}
+
+	req, _ := http.NewRequest("GET", "/contacts/"+strconv.Itoa(int(contact.ID))+"/notes?limit=2", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var page1 struct {
+		Notes      []models.Note `json:"notes"`
+		NextCursor string        `json:"next_cursor"`
+	}
+	json.Unmarshal(w.Body.Bytes(), &page1)
+	require.Len(t, page1.Notes, 2)
+	require.NotEmpty(t, page1.NextCursor, "a full page must carry a next_cursor")
+
+	// Follow the cursor to the last page.
+	req2, _ := http.NewRequest("GET", "/contacts/"+strconv.Itoa(int(contact.ID))+"/notes?limit=2&cursor="+page1.NextCursor, nil)
+	w2 := httptest.NewRecorder()
+	router.ServeHTTP(w2, req2)
+	assert.Equal(t, http.StatusOK, w2.Code)
+
+	var page2 struct {
+		Notes      []models.Note `json:"notes"`
+		NextCursor string        `json:"next_cursor"`
+	}
+	json.Unmarshal(w2.Body.Bytes(), &page2)
+	require.Len(t, page2.Notes, 1)
+	assert.Empty(t, page2.NextCursor, "no more rows after the last page")
+
+	// Every note appears exactly once across the walk.
+	seen := map[uint]bool{}
+	for _, n := range append(page1.Notes, page2.Notes...) {
+		seen[n.ID] = true
+	}
+	require.Len(t, seen, 3)
+}
+
+func TestGetContactNotesNotFound(t *testing.T) {
+	db, router := setupRouter()
+
+	var user models.User
+	db.First(&user)
+
+	router.GET("/contacts/:id/notes", GetNotesForContact)
+
+	req, _ := http.NewRequest("GET", "/contacts/999999/notes", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestGetContactNotesMalformedCursor(t *testing.T) {
+	db, router := setupRouter()
+
+	var user models.User
+	db.First(&user)
+
+	router.GET("/contacts/:id/notes", GetNotesForContact)
+
+	contact := models.Contact{UserID: user.ID, Firstname: "John", Lastname: "Doe"}
+	db.Create(&contact)
+
+	req, _ := http.NewRequest("GET", "/contacts/"+strconv.Itoa(int(contact.ID))+"/notes?cursor=not-a-cursor", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
 func TestCreateContactNote(t *testing.T) {

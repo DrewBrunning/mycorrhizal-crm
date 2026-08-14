@@ -16,6 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
 
@@ -163,6 +164,17 @@ func TestGetActivitiesForContact(t *testing.T) {
 	db.Model(&activity1).Association("Contacts").Append(&contact)
 	db.Model(&activity2).Association("Contacts").Append(&contact)
 
+	// A second contact whose activities must NOT leak into this contact's list.
+	otherContact := models.Contact{UserID: user.ID, Firstname: "Other"}
+	db.Create(&otherContact)
+	otherActivity := models.Activity{
+		UserID: user.ID,
+		Title:  "Not Yours",
+		Date:   time.Now().AddDate(0, 0, 3),
+	}
+	db.Create(&otherActivity)
+	db.Model(&otherActivity).Association("Contacts").Append(&otherContact)
+
 	// Make the request to get activities for the contact
 	req, _ := http.NewRequest("GET", "/contacts/"+strconv.Itoa(int(contact.ID))+"/activities", nil)
 	w := httptest.NewRecorder()
@@ -173,6 +185,125 @@ func TestGetActivitiesForContact(t *testing.T) {
 	var responseBody map[string]any
 	json.Unmarshal(w.Body.Bytes(), &responseBody)
 	assert.Len(t, responseBody["activities"], 2) // Should return both activities for the contact
+	assert.NotContains(t, responseBody, "total")
+	assert.EqualValues(t, 25, responseBody["limit"])
+	// M19: cursor envelope present; two rows fit in the default page so no cursor.
+	assert.Equal(t, "", responseBody["next_cursor"])
+
+	// The activity also carries its participant contacts so the client can
+	// render the chips without a second lookup.
+	activities := responseBody["activities"].([]any)
+	first := activities[0].(map[string]any)
+	participants := first["contacts"].([]any)
+	assert.Len(t, participants, 1)
+}
+
+func TestGetActivitiesForContactSearchAndDateFilter(t *testing.T) {
+	db, router := setupRouter()
+
+	var user models.User
+	db.First(&user)
+
+	router.GET("/contacts/:id/activities", GetActivitiesForContact)
+
+	contact := models.Contact{UserID: user.ID, Firstname: "John", Lastname: "Doe"}
+	db.Create(&contact)
+
+	mkActivity := func(title, desc string, daysAhead int) models.Activity {
+		a := models.Activity{UserID: user.ID, Title: title, Description: desc, Date: time.Now().AddDate(0, 0, daysAhead)}
+		db.Create(&a)
+		require.NoError(t, db.Model(&a).Association("Contacts").Append(&contact))
+		return a
+	}
+	mkActivity("Coffee with Dana", "Talked about the trip", 1)
+	mkActivity("Phone call", "Quick check-in", 3)
+	mkActivity("Gift shipped", "Birthday present", 10)
+
+	// Search narrows across title and description (case-insensitive).
+	req, _ := http.NewRequest("GET", "/contacts/"+strconv.Itoa(int(contact.ID))+"/activities?search=TRIP", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+	var body map[string]any
+	json.Unmarshal(w.Body.Bytes(), &body)
+	assert.Len(t, body["activities"].([]any), 1)
+
+	// fromDate/toDate filter on the activity date, inclusive both ends.
+	from := time.Now().AddDate(0, 0, 2).Format("2006-01-02")
+	to := time.Now().AddDate(0, 0, 11).Format("2006-01-02")
+	req2, _ := http.NewRequest("GET", "/contacts/"+strconv.Itoa(int(contact.ID))+"/activities?fromDate="+from+"&toDate="+to, nil)
+	w2 := httptest.NewRecorder()
+	router.ServeHTTP(w2, req2)
+	assert.Equal(t, http.StatusOK, w2.Code)
+	json.Unmarshal(w2.Body.Bytes(), &body)
+	assert.Len(t, body["activities"].([]any), 2, "the 3- and 10-day-out activities fall inside the window")
+}
+
+func TestGetActivitiesForContactPagination(t *testing.T) {
+	db, router := setupRouter()
+
+	var user models.User
+	db.First(&user)
+
+	router.GET("/contacts/:id/activities", GetActivitiesForContact)
+
+	contact := models.Contact{UserID: user.ID, Firstname: "John", Lastname: "Doe"}
+	db.Create(&contact)
+
+	base := time.Now().Add(-time.Hour)
+	for i, title := range []string{"One", "Two", "Three"} {
+		a := models.Activity{UserID: user.ID, Title: title, Date: time.Now()}
+		require.NoError(t, db.Create(&a).Error)
+		require.NoError(t, db.Model(&a).Update("updated_at", base.Add(time.Duration(i)*time.Minute)).Error)
+		require.NoError(t, db.Model(&a).Association("Contacts").Append(&contact))
+	}
+
+	req, _ := http.NewRequest("GET", "/contacts/"+strconv.Itoa(int(contact.ID))+"/activities?limit=2", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var page1 struct {
+		Activities []models.Activity `json:"activities"`
+		NextCursor string            `json:"next_cursor"`
+	}
+	json.Unmarshal(w.Body.Bytes(), &page1)
+	require.Len(t, page1.Activities, 2)
+	require.NotEmpty(t, page1.NextCursor, "a full page must carry a next_cursor")
+
+	req2, _ := http.NewRequest("GET", "/contacts/"+strconv.Itoa(int(contact.ID))+"/activities?limit=2&cursor="+page1.NextCursor, nil)
+	w2 := httptest.NewRecorder()
+	router.ServeHTTP(w2, req2)
+	assert.Equal(t, http.StatusOK, w2.Code)
+
+	var page2 struct {
+		Activities []models.Activity `json:"activities"`
+		NextCursor string            `json:"next_cursor"`
+	}
+	json.Unmarshal(w2.Body.Bytes(), &page2)
+	require.Len(t, page2.Activities, 1)
+	assert.Empty(t, page2.NextCursor, "no more rows after the last page")
+
+	seen := map[uint]bool{}
+	for _, a := range append(page1.Activities, page2.Activities...) {
+		seen[a.ID] = true
+	}
+	require.Len(t, seen, 3, "every activity appears exactly once across the walk")
+}
+
+func TestGetActivitiesForContactNotFound(t *testing.T) {
+	db, router := setupRouter()
+
+	var user models.User
+	db.First(&user)
+
+	router.GET("/contacts/:id/activities", GetActivitiesForContact)
+
+	req, _ := http.NewRequest("GET", "/contacts/999999/activities", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
 func TestGetActivities(t *testing.T) {

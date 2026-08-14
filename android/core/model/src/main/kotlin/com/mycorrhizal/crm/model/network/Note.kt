@@ -28,10 +28,12 @@ data class NoteInput(
     @Json(name = "contact_id") val contactId: Int? = null,
 )
 
-/** GET /contacts/{id}/notes — wrapped `{ notes }` array. */
+/** GET /contacts/{id}/notes — wrapped `{ notes }` array (M19: T17 cursor envelope). */
 @JsonClass(generateAdapter = true)
 data class ContactNotesResponse(
     val notes: List<Note> = emptyList(),
+    @Json(name = "next_cursor") val nextCursor: String? = null,
+    val limit: Int = 0,
 )
 
 /** POST /contacts/{id}/notes — wrapped `{ message, note }`. */

@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.mycorrhizal.crm.data.local.AppDatabase
+import com.mycorrhizal.crm.data.local.CachedActivity
 import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ActivitiesPage
 import com.mycorrhizal.crm.model.network.ActivityInput
@@ -47,7 +48,7 @@ class ActivityRepositoryImplTest {
 
     @Test
     fun `listForContact caches activities and returns them`() = runTest {
-        coEvery { apiClient.listContactActivities(5) } returns Result.success(
+        coEvery { apiClient.listContactActivities(5, any(), any(), any(), any(), any()) } returns Result.success(
             ContactActivitiesResponse(
                 activities = listOf(
                     Activity(id = 1, title = "Coffee with Dana", type = "visit"),
@@ -59,7 +60,7 @@ class ActivityRepositoryImplTest {
         val result = repository.listForContact(5)
 
         assertTrue(result.isSuccess)
-        assertEquals(2, result.getOrThrow().size)
+        assertEquals(2, result.getOrThrow().activities.size)
 
         val cached = db.cachedActivityDao().getAll()
         assertEquals(2, cached.size)
@@ -68,7 +69,7 @@ class ActivityRepositoryImplTest {
 
     @Test
     fun `listForContact propagates a 404`() = runTest {
-        coEvery { apiClient.listContactActivities(999) } returns Result.failure(
+        coEvery { apiClient.listContactActivities(999, any(), any(), any(), any(), any()) } returns Result.failure(
             ApiError.Client(404, "Contact not found"),
         )
 
@@ -77,6 +78,43 @@ class ActivityRepositoryImplTest {
         assertTrue(result.isFailure)
         val error = result.exceptionOrNull() as ApiError
         assertEquals(404, (error as ApiError.Client).code)
+    }
+
+    // M19: the page carries the T17 next_cursor for "load more".
+    @Test
+    fun `listForContact carries the next cursor`() = runTest {
+        coEvery { apiClient.listContactActivities(5, any(), any(), any(), any(), any()) } returns Result.success(
+            ContactActivitiesResponse(activities = listOf(Activity(id = 1, title = "Coffee")), nextCursor = "cursor-2"),
+        )
+
+        val result = repository.listForContact(5)
+
+        assertTrue(result.isSuccess)
+        assertEquals("cursor-2", result.getOrThrow().nextCursor)
+    }
+
+    // M19: delete drops the local cache row after a successful server soft delete.
+    @Test
+    fun `delete removes the cached row on success`() = runTest {
+        db.cachedActivityDao().upsertAll(listOf(CachedActivity(id = 1, title = "Coffee", description = null, location = null, date = null, type = null, deleted = false)))
+        coEvery { apiClient.deleteActivity(1) } returns Result.success(Unit)
+
+        val result = repository.delete(1)
+
+        assertTrue(result.isSuccess)
+        assertTrue(db.cachedActivityDao().getAll().isEmpty())
+    }
+
+    // M19: a failed delete must not clear the local cache (the item stays).
+    @Test
+    fun `delete failure leaves the cached row`() = runTest {
+        db.cachedActivityDao().upsertAll(listOf(CachedActivity(id = 1, title = "Coffee", description = null, location = null, date = null, type = null, deleted = false)))
+        coEvery { apiClient.deleteActivity(1) } returns Result.failure(ApiError.Client(500, "boom"))
+
+        val result = repository.delete(1)
+
+        assertTrue(result.isFailure)
+        assertEquals(1, db.cachedActivityDao().getAll().size)
     }
 
     // M9: the Activities drawer inbox — GET /activities?include=contacts, all contacts' activities.

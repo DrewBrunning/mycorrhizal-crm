@@ -256,6 +256,10 @@
     <!-- Activities -->
     <string name="activities_title">Activities</string>
     <string name="activities_empty">No activities yet</string>
+    <string name="activities_search">Search activities</string>
+    <string name="activities_no_results">No activities match your filters</string>
+    <string name="activities_delete_title">Delete activity?</string>
+    <string name="activities_delete_confirm">Delete this activity? \"%1$s\"</string>
     <string name="activity_new">New activity</string>
     <string name="activity_edit">Edit activity</string>
     <string name="activity_title">Title</string>
@@ -267,6 +271,9 @@
     <string name="activity_description">Description</string>
     <string name="activity_create">Create activity</string>
     <string name="activity_save">Save changes</string>
+    <string name="activity_participants">Participants</string>
+    <string name="activity_search_contact">Add participants</string>
+    <string name="activity_remove_participant">Remove participant</string>
     <string name="activity_error_title">Title is required</string>
     <string name="activity_error_date">Date must be ISO 8601, e.g. 2026-08-10T14:00:00Z</string>
     <string name="activity_error_missing_id">Missing contact id</string>
@@ -275,6 +282,10 @@
     <!-- Notes -->
     <string name="notes_title">Notes</string>
     <string name="notes_empty">No notes yet</string>
+    <string name="notes_search">Search notes</string>
+    <string name="notes_no_results">No notes match your filters</string>
+    <string name="notes_delete_title">Delete note?</string>
+    <string name="notes_delete_confirm">Delete this note? \"%1$s\"</string>
     <string name="notes_inbox_total">%1$d unfiled</string>
     <string name="action_load_more">Load more</string>
     <string name="note_new">New note</string>
@@ -284,11 +295,20 @@
     <string name="note_date_hint">2026-08-10T14:00:00Z</string>
     <string name="note_create">Create note</string>
     <string name="note_save">Save changes</string>
+    <string name="note_assign_contact">Assigned contact</string>
+    <string name="note_clear_contact">Clear</string>
+    <string name="note_search_contact">Search contacts</string>
     <string name="note_error_content">Note content is required</string>
     <string name="note_error_date_required">Date is required</string>
     <string name="note_error_date">Date must be ISO 8601, e.g. 2026-08-10T14:00:00Z</string>
     <string name="note_error_missing_id">Missing contact id</string>
     <string name="cd_new_note">New note</string>
+
+    <!-- Timeline (shared notes/activities filters + contact picker) -->
+    <string name="timeline_from_date">From</string>
+    <string name="timeline_to_date">To</string>
+    <string name="timeline_type_to_search">Type to search</string>
+    <string name="timeline_no_contacts_found">No contacts found</string>
 
     <!-- Reminders -->
     <string name="reminders_title">Reminders</string>

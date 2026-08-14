@@ -367,6 +367,7 @@ private fun MainScaffold(darkTheme: Boolean) {
                     onEditActivity = { activityId ->
                         navController.navigate("contacts/$contactId/activities/$activityId/edit")
                     },
+                    onContactClick = { id -> navController.navigate("contacts/$id") },
                 )
             }
             composable(

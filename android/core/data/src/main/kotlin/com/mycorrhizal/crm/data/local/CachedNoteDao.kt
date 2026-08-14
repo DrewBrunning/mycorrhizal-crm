@@ -19,6 +19,10 @@ interface CachedNoteDao {
     @Query("SELECT * FROM cached_notes WHERE id = :id")
     suspend fun getById(id: Int): CachedNote?
 
+    /** M19: drop the local row after a successful server-side soft delete. */
+    @Query("DELETE FROM cached_notes WHERE id = :id")
+    suspend fun deleteById(id: Int)
+
     @Query("DELETE FROM cached_notes")
     suspend fun deleteAll()
 }

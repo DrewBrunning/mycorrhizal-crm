@@ -285,11 +285,32 @@ class ApiClient(
             moshi.adapter(ContactFieldValuesResponse::class.java).fromJson(body)
         }
 
-    /** GET /api/v1/contacts/{id}/activities — a contact's activities. */
-    suspend fun listContactActivities(contactId: Int): Result<ContactActivitiesResponse> =
-        executeGet("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/activities") { _, body ->
+    /**
+     * GET /api/v1/contacts/{id}/activities — a contact's activities (M19:
+     * T17 cursor-paginated; [search]/[fromDate]/[toDate] filter server-side).
+     */
+    suspend fun listContactActivities(
+        contactId: Int,
+        cursor: String? = null,
+        limit: Int? = null,
+        search: String? = null,
+        fromDate: String? = null,
+        toDate: String? = null,
+    ): Result<ContactActivitiesResponse> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/activities".toHttpUrl().newBuilder()
+        cursor?.let { urlBuilder.addQueryParameter("cursor", it) }
+        limit?.let { urlBuilder.addQueryParameter("limit", it.toString()) }
+        search?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("search", it) }
+        fromDate?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("fromDate", it) }
+        toDate?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("toDate", it) }
+        return executeGet(urlBuilder.build().toString()) { _, body ->
             moshi.adapter(ContactActivitiesResponse::class.java).fromJson(body)
         }
+    }
+
+    /** DELETE /api/v1/activities/{id} — soft-deletes an activity (M19). */
+    suspend fun deleteActivity(id: Int): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$ACTIVITIES_PATH/$id")
 
     /** POST /api/v1/activities — wrapped `{ message, activity }`, unwrapped here. */
     suspend fun createActivity(input: ActivityInput): Result<Activity> =
@@ -338,15 +359,42 @@ class ApiClient(
         }
     }
 
-    /** GET /api/v1/contacts/{id}/notes — a contact's notes. */
-    suspend fun listContactNotes(contactId: Int): Result<ContactNotesResponse> =
-        executeGet("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/notes") { _, body ->
+    /**
+     * GET /api/v1/contacts/{id}/notes — a contact's notes (M19: T17
+     * cursor-paginated; [search]/[fromDate]/[toDate] filter server-side).
+     */
+    suspend fun listContactNotes(
+        contactId: Int,
+        cursor: String? = null,
+        limit: Int? = null,
+        search: String? = null,
+        fromDate: String? = null,
+        toDate: String? = null,
+    ): Result<ContactNotesResponse> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/notes".toHttpUrl().newBuilder()
+        cursor?.let { urlBuilder.addQueryParameter("cursor", it) }
+        limit?.let { urlBuilder.addQueryParameter("limit", it.toString()) }
+        search?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("search", it) }
+        fromDate?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("fromDate", it) }
+        toDate?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("toDate", it) }
+        return executeGet(urlBuilder.build().toString()) { _, body ->
             moshi.adapter(ContactNotesResponse::class.java).fromJson(body)
         }
+    }
+
+    /** DELETE /api/v1/notes/{id} — soft-deletes a note (M19). */
+    suspend fun deleteNote(id: Int): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$NOTES_PATH/$id")
 
     /** POST /api/v1/contacts/{id}/notes — wrapped `{ message, note }`, unwrapped here. */
     suspend fun createNote(contactId: Int, input: NoteInput): Result<Note> =
         executePost("$CONTACTS_PATH/$contactId/notes", input) { _, body ->
+            moshi.adapter(CreateNoteResponse::class.java).fromJson(body)?.note
+        }
+
+    /** POST /api/v1/notes — create an unassigned note (contact_id honored, unlike the nested route). */
+    suspend fun createUnassignedNote(input: NoteInput): Result<Note> =
+        executePost(NOTES_PATH, input) { _, body ->
             moshi.adapter(CreateNoteResponse::class.java).fromJson(body)?.note
         }
 
