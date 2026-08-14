@@ -112,6 +112,7 @@
     <string name="cd_copy_address">Copy address</string>
     <string name="cd_open_link">Open link</string>
     <string name="cd_copy_link">Copy link</string>
+    <string name="cd_open_contact">Open contact</string>
 
     <!-- Contact form -->
     <string name="contact_new">New contact</string>

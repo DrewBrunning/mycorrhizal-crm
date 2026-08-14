@@ -113,3 +113,37 @@ entry point and nav route:
 
 The ticket's on-device hand-verify step is still outstanding — no device/emulator available in the
 build environment.
+
+---
+
+## Review pass (2026-08-14, same branch)
+
+A full review pass found and fixed one real bug plus several divergences and test gaps:
+
+- **Timezone bug (real, would ship wrong dates):** the prep view's date helper formatted ISO
+  timestamps in the *device* zone. Web reads `getUTCDate()/getUTCMonth()/getUTCFullYear()` — a
+  stored instant like `2026-09-10T01:00:00Z` renders as `2026-09-10` on web everywhere, but a user
+  west of UTC would have seen `2026-09-09` on Android for the same briefing. Fixed to UTC and
+  documented. The cadence next-due / last-interaction and last-activity dates are calendar-ish
+  values computed server-side; they render in the zone they were authored in.
+- **Date-format preference now honored:** `PrepViewModel` observes the session (same pattern as
+  `ContactDetailViewModel`) and the screen renders dates via the app's `DateFormat` util, so the
+  user's `date_format` applies; the upcoming-dates block also renders yearless `--MM-DD` values as
+  "25 December" instead of the raw `--12-25`.
+- **Cadence card colors:** overdue now renders in the warning (chantarelle) color and on-track in
+  the success (moss/tertiary) color, matching web — being overdue is a nudge, not an error.
+- **Relationship rows** gained a trailing chevron when the other party has a contact to link to
+  (web's "View" chip, adapted to the app's tap-with-chevron convention).
+- **Life-event rows** no longer drop the description when `type` is missing.
+- **Double-tap retry guard:** `load()` dedupes overlapping loads via an in-flight `Job` — a retry
+  tapped twice fires one request, not two.
+- **Test gaps closed:** a new Robolectric/Compose UI test (`PrepViewScreenTest`, 4 cases) pins that
+  the screen actually renders all seven sections from a populated briefing, renders empty states
+  for a bare one without crashing, and that relationship rows navigate only when there is a target
+  contact. A new Playwright spec pins the same all-seven-sections case end-to-end against the real
+  API (activity + note + cadence policy + agenda item + relationship edge + life event + reminder +
+  yearless birthday), so the wire contract the Android client consumes is proven fully populated.
+  Both hand-verified per `/CLAUDE.md` (broke the tap path → test failed; restored).
+- **Gate re-run:** `testDebugUnitTest`/`lintDebug`/`assembleDebug --rerun-tasks` green; full
+  Playwright suite 181/181 green against the dockerized all-in-one image; frontend vitest 707/707;
+  backend `go test ./...` green.

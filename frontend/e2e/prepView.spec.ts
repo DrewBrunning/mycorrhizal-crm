@@ -100,6 +100,117 @@ test.describe('Prep view', () => {
     }
   });
 
+  // The all-seven-sections case. Web's prep view renders every block from the
+  // briefing composite, and the M11 Android client consumes the exact same
+  // wire contract — so this spec is the shared proof that a fully-populated
+  // contact yields every section, populated from real backend data (cadence
+  // health, agenda, last interaction + notes, relationships, life events,
+  // reminders, upcoming dates).
+  test('renders every section for a fully populated contact', async ({ page, request }) => {
+    // The other party for the relationship edge.
+    const other = await createTestContact(request, { firstname: 'Prep', lastname: 'Spouse' });
+    const contact = await createTestContact(request, {
+      firstname: 'Prep',
+      lastname: 'Full',
+      // A yearless birthday 7 days out, so the upcoming-dates block is deterministic.
+      birthday: (() => {
+        const d = new Date();
+        d.setDate(d.getDate() + 7);
+        const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(d.getUTCDate()).padStart(2, '0');
+        return `--${m}-${day}`;
+      })(),
+    });
+
+    try {
+      const now = new Date().toISOString();
+
+      // Last interaction — a qualifying activity (visit counts toward cadence).
+      const activity = await request.post(`${API_BASE_URL}/activities`, {
+        data: { title: 'Coffee', type: 'visit', date: now, contact_ids: [contact.ID] },
+      });
+      expect(activity.ok(), `activity: ${await activity.text()}`).toBeTruthy();
+
+      const note = await request.post(`${API_BASE_URL}/contacts/${contact.ID}/notes`, {
+        data: { content: 'Mentioned their new job', date: now },
+      });
+      expect(note.ok(), `note: ${await note.text()}`).toBeTruthy();
+
+      const cadence = await request.post(`${API_BASE_URL}/cadence-policies`, {
+        data: { entity_id: contact.uid, target_interval_days: 30 },
+      });
+      expect(cadence.ok(), `cadence: ${await cadence.text()}`).toBeTruthy();
+
+      const agenda = await request.post(`${API_BASE_URL}/conversation-agenda`, {
+        data: { entity_id: contact.uid, content: 'Ask about the trip' },
+      });
+      expect(agenda.ok(), `agenda: ${await agenda.text()}`).toBeTruthy();
+
+      const edge = await request.post(`${API_BASE_URL}/relationship-edges`, {
+        data: { source_id: contact.uid, target_id: other.uid, type: 'spouse_of' },
+      });
+      expect(edge.ok(), `edge: ${await edge.text()}`).toBeTruthy();
+
+      const lifeEvent = await request.post(`${API_BASE_URL}/life-events`, {
+        data: { entity_id: contact.uid, type: 'graduated', description: 'MSc' },
+      });
+      expect(lifeEvent.ok(), `lifeEvent: ${await lifeEvent.text()}`).toBeTruthy();
+
+      const reminder = await request.post(`${API_BASE_URL}/contacts/${contact.ID}/reminders`, {
+        data: {
+          message: 'Send a card',
+          remind_at: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+          recurrence: 'once',
+          reoccur_from_completion: false,
+          contact_id: contact.ID,
+        },
+      });
+      expect(reminder.ok(), `reminder: ${await reminder.text()}`).toBeTruthy();
+
+      await page.goto(`/contacts/${contact.ID}/prep`);
+      await waitForLoading(page);
+
+      // Header.
+      await expect(page.getByText('Prep Full')).toBeVisible({ timeout: 15000 });
+
+      // Cadence health — the activity just created is qualifying, so the
+      // health block is server-derived "on track" with next-due/last dates.
+      await expect(page.getByText('Relationship health')).toBeVisible();
+      await expect(page.getByText('On track')).toBeVisible();
+      await expect(page.getByText(/Next due:/)).toBeVisible();
+      await expect(page.getByText(/Last interaction:/)).toBeVisible();
+
+      // Agenda.
+      await expect(page.getByText('Things to bring up')).toBeVisible();
+      await expect(page.getByText(/Ask about the trip/)).toBeVisible();
+
+      // Last interaction + recent notes.
+      await expect(page.getByText('Coffee')).toBeVisible();
+      await expect(page.getByText(/Mentioned their new job/)).toBeVisible();
+
+      // Relationships — other party + the label as read from this contact's
+      // perspective ("Spouse", not "spouse_of").
+      await expect(page.getByText('People around them')).toBeVisible();
+      await expect(page.getByText(/Prep Spouse/)).toBeVisible();
+      await expect(page.getByText(/Spouse$/)).toBeVisible();
+
+      // Life events.
+      await expect(page.getByText('Life events')).toBeVisible();
+      await expect(page.getByText(/Graduated/)).toBeVisible();
+
+      // Upcoming reminders.
+      await expect(page.getByText('Upcoming reminders')).toBeVisible();
+      await expect(page.getByText(/Send a card/)).toBeVisible();
+
+      // Upcoming dates — the birthday set 7 days out.
+      await expect(page.getByText('Upcoming dates')).toBeVisible();
+      await expect(page.getByText(/in \d+ day/)).toBeVisible();
+    } finally {
+      await deleteTestContact(request, contact.ID);
+      await deleteTestContact(request, other.ID);
+    }
+  });
+
   test('shows a not-found state for a contact that does not exist', async ({ page }) => {
     await page.goto('/contacts/99999999/prep');
     await waitForLoading(page);

@@ -111,6 +111,7 @@
     <string name="cd_open_maps">In Karten öffnen</string>
     <string name="cd_copy_address">Adresse kopieren</string>
     <string name="cd_open_link">Link öffnen</string>
+    <string name="cd_open_contact">Kontakt öffnen</string>
     <string name="cd_copy_link">Link kopieren</string>
 
     <!-- Kontaktformular -->

@@ -2,6 +2,8 @@ package com.mycorrhizal.crm.feature.contacts
 
 import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
+import com.mycorrhizal.crm.domain.repository.AuthRepository
+import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.model.network.BriefingCadence
 import com.mycorrhizal.crm.model.network.BriefingCadenceHealth
 import com.mycorrhizal.crm.model.network.ContactBriefing
@@ -11,6 +13,8 @@ import com.mycorrhizal.crm.testing.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -28,8 +32,11 @@ class PrepViewModelTest {
     private fun newViewModel(
         apiClient: ApiClient = mockk(),
         contactId: Int = 7,
+        authRepository: AuthRepository = mockk<AuthRepository>().also {
+            coEvery { it.observeSession() } returns emptyFlow()
+        },
     ): PrepViewModel {
-        return PrepViewModel(apiClient, SavedStateHandle(mapOf("contactId" to contactId)))
+        return PrepViewModel(apiClient, authRepository, SavedStateHandle(mapOf("contactId" to contactId)))
     }
 
     @Test
@@ -161,5 +168,43 @@ class PrepViewModelTest {
         assertNull(state.error)
         assertNull(state.briefing)
         coVerify(exactly = 0) { apiClient.getBriefing(any()) }
+    }
+
+    @Test
+    fun `the session date format flows into the state`() = runTest(mainDispatcherRule.testDispatcher) {
+        val apiClient = mockk<ApiClient>()
+        coEvery { apiClient.getBriefing(7) } returns Result.success(
+            ContactBriefing(contactId = 7, uid = "u7", name = "Alice"),
+        )
+        val authRepository = mockk<AuthRepository>()
+        coEvery { authRepository.observeSession() } returns flowOf(
+            SessionState(dateFormat = "us"),
+        )
+
+        val viewModel = newViewModel(apiClient, authRepository = authRepository)
+        advanceUntilIdle()
+
+        assertEquals("us", viewModel.uiState.value.dateFormat)
+    }
+
+    @Test
+    fun `a retry tapped while a load is in flight is a no-op`() = runTest(mainDispatcherRule.testDispatcher) {
+        val apiClient = mockk<ApiClient>()
+        // First call fails (drives the error state), the retry succeeds.
+        coEvery { apiClient.getBriefing(7) } returns
+            Result.failure(ApiError.Server(500, "boom")) andThen
+            Result.success(ContactBriefing(contactId = 7, uid = "u7", name = "Recovered"))
+
+        val viewModel = newViewModel(apiClient)
+        advanceUntilIdle()
+        assertEquals("Server error (500)", viewModel.uiState.value.error)
+
+        viewModel.load()
+        viewModel.load()
+        advanceUntilIdle()
+
+        // Exactly one retry despite two taps (the second saw the in-flight Job and bailed).
+        assertEquals("Recovered", viewModel.uiState.value.briefing?.name)
+        coVerify(exactly = 2) { apiClient.getBriefing(7) }
     }
 }
