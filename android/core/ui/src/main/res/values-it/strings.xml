@@ -406,19 +406,25 @@
     <!-- Timeline entities -->
     <string name="entities_empty">Niente ancora qui</string>
     <string name="entities_error_no_vcard_uid">Il contatto non ha un UID VCard</string>
+    <string name="entities_delete_title">Eliminare l\'elemento?</string>
+    <string name="entities_delete_confirm">Eliminare «%1$s»? Questa azione non può essere annullata.</string>
     <string name="life_events_title">Eventi di vita</string>
     <string name="life_events_new">Nuovo evento</string>
+    <string name="life_events_edit">Modifica evento</string>
     <string name="life_events_type">Tipo</string>
     <string name="life_events_description">Descrizione</string>
     <string name="gifts_title">Regali</string>
     <string name="gifts_new">Nuovo regalo</string>
+    <string name="gifts_edit">Modifica regalo</string>
     <string name="gifts_description">Descrizione</string>
     <string name="preferences_title">Preferenze</string>
     <string name="preferences_new">Nuova preferenza</string>
+    <string name="preferences_edit">Modifica preferenza</string>
     <string name="preferences_category">Categoria</string>
     <string name="preferences_value">Valore</string>
     <string name="agenda_title">Ordine del giorno</string>
     <string name="agenda_new">Nuovo elemento</string>
+    <string name="agenda_edit">Modifica elemento</string>
     <string name="agenda_content">Contenuto</string>
 
 

@@ -58,6 +58,13 @@ class LifeEventsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(EntityListUiState())
     val uiState: StateFlow<EntityListUiState> = _uiState.asStateFlow()
 
+    // The loaded entities behind the current EntityItem rows, kept so the
+    // edit dialog can be pre-filled from the real object (EntityItem only
+    // carries the derived label/url, not every field) and so update() can
+    // preserve every field the mini edit form doesn't touch -- see its own
+    // doc comment for why that preservation is required, not optional.
+    private var loaded: List<LifeEvent> = emptyList()
+
     init { load() }
 
     fun load() {
@@ -73,6 +80,7 @@ class LifeEventsViewModel @Inject constructor(
             _uiState.update { it.copy(entityId = uid) }
             lifeEventRepository.listForContact(uid).foldApiError(
                 onSuccess = { items ->
+                    loaded = items
                     _uiState.update { it.copy(isLoading = false, items = items.map { e -> EntityItem(e.id, lifeEventLabel(e)) }) }
                 },
                 onError = { error ->
@@ -81,6 +89,8 @@ class LifeEventsViewModel @Inject constructor(
             )
         }
     }
+
+    fun findById(id: String): LifeEvent? = loaded.find { it.id == id }
 
     fun create(type: String, description: String) {
         val uid = _uiState.value.entityId
@@ -91,6 +101,33 @@ class LifeEventsViewModel @Inject constructor(
                     onSuccess = { load() },
                     onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
                 )
+        }
+    }
+
+    // UpdateLifeEvent (life_event_controller.go) is a full overwrite of every
+    // field from the input, not a merge -- so type/category/date/description/
+    // source/relatedEntityIds/remind all have to be carried forward from
+    // `original` except the two the mini edit form actually edits, or a save
+    // would silently null out category/date/source/relatedEntityIds/remind.
+    fun update(original: LifeEvent, type: String, description: String) {
+        if (description.isBlank()) return
+        viewModelScope.launch {
+            lifeEventRepository.update(
+                original.id,
+                LifeEventInput(
+                    entityId = original.entityId,
+                    type = type.takeIf { it.isNotBlank() },
+                    category = original.category,
+                    date = original.date,
+                    description = description,
+                    source = original.source,
+                    relatedEntityIds = original.relatedEntityIds,
+                    remind = original.remind,
+                ),
+            ).foldApiError(
+                onSuccess = { load() },
+                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
+            )
         }
     }
 
@@ -118,6 +155,7 @@ class GiftsViewModel @Inject constructor(
     private val contactId: Int = (savedStateHandle["contactId"] as? Int) ?: 0
     private val _uiState = MutableStateFlow(EntityListUiState())
     val uiState: StateFlow<EntityListUiState> = _uiState.asStateFlow()
+    private var loaded: List<Gift> = emptyList()
 
     init { load() }
 
@@ -134,6 +172,7 @@ class GiftsViewModel @Inject constructor(
             _uiState.update { it.copy(entityId = uid) }
             giftRepository.listForContact(uid).foldApiError(
                 onSuccess = { items ->
+                    loaded = items
                     _uiState.update { it.copy(isLoading = false, items = items.map { g -> EntityItem(g.id, giftLabel(g), url = g.url) }) }
                 },
                 onError = { error ->
@@ -142,6 +181,8 @@ class GiftsViewModel @Inject constructor(
             )
         }
     }
+
+    fun findById(id: String): Gift? = loaded.find { it.id == id }
 
     fun create(description: String) {
         val uid = _uiState.value.entityId
@@ -152,6 +193,36 @@ class GiftsViewModel @Inject constructor(
                     onSuccess = { load() },
                     onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
                 )
+        }
+    }
+
+    // UpdateGift is a full overwrite (gift_controller.go) -- status/occasion/
+    // url/notes/date/valueCents/currency/lifeEventId/activityId all have to
+    // survive from `original`, since this mini edit form only edits the
+    // description. Losing e.g. a "given" status back to the "idea" default,
+    // or an attached url/value, would be real user data loss on save.
+    fun update(original: Gift, description: String) {
+        if (description.isBlank()) return
+        viewModelScope.launch {
+            giftRepository.update(
+                original.id,
+                GiftInput(
+                    entityId = original.entityId,
+                    status = original.status,
+                    occasion = original.occasion,
+                    description = description,
+                    url = original.url,
+                    notes = original.notes,
+                    date = original.date,
+                    valueCents = original.valueCents,
+                    currency = original.currency,
+                    lifeEventId = original.lifeEventId,
+                    activityId = original.activityId,
+                ),
+            ).foldApiError(
+                onSuccess = { load() },
+                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
+            )
         }
     }
 
@@ -179,6 +250,7 @@ class PreferencesViewModel @Inject constructor(
     private val contactId: Int = (savedStateHandle["contactId"] as? Int) ?: 0
     private val _uiState = MutableStateFlow(EntityListUiState())
     val uiState: StateFlow<EntityListUiState> = _uiState.asStateFlow()
+    private var loaded: List<Preference> = emptyList()
 
     init { load() }
 
@@ -195,6 +267,7 @@ class PreferencesViewModel @Inject constructor(
             _uiState.update { it.copy(entityId = uid) }
             preferenceRepository.listForContact(uid).foldApiError(
                 onSuccess = { items ->
+                    loaded = items
                     _uiState.update { it.copy(isLoading = false, items = items.map { p -> EntityItem(p.id, preferenceLabel(p)) }) }
                 },
                 onError = { error ->
@@ -203,6 +276,8 @@ class PreferencesViewModel @Inject constructor(
             )
         }
     }
+
+    fun findById(id: String): Preference? = loaded.find { it.id == id }
 
     fun create(category: String, value: String) {
         val uid = _uiState.value.entityId
@@ -213,6 +288,31 @@ class PreferencesViewModel @Inject constructor(
                     onSuccess = { load() },
                     onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
                 )
+        }
+    }
+
+    // UpdatePreference is a full overwrite (preference_controller.go) -- key/
+    // source/confidence/lastConfirmed/sensitivity all have to survive from
+    // `original`, since this mini edit form only edits category/value.
+    fun update(original: Preference, category: String, value: String) {
+        if (category.isBlank() || value.isBlank()) return
+        viewModelScope.launch {
+            preferenceRepository.update(
+                original.id,
+                PreferenceInput(
+                    entityId = original.entityId,
+                    category = category,
+                    key = original.key,
+                    value = value,
+                    source = original.source,
+                    confidence = original.confidence,
+                    lastConfirmed = original.lastConfirmed,
+                    sensitivity = original.sensitivity,
+                ),
+            ).foldApiError(
+                onSuccess = { load() },
+                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
+            )
         }
     }
 
@@ -240,6 +340,7 @@ class ConversationAgendaViewModel @Inject constructor(
     private val contactId: Int = (savedStateHandle["contactId"] as? Int) ?: 0
     private val _uiState = MutableStateFlow(EntityListUiState())
     val uiState: StateFlow<EntityListUiState> = _uiState.asStateFlow()
+    private var loaded: List<ConversationAgenda> = emptyList()
 
     init { load() }
 
@@ -256,6 +357,7 @@ class ConversationAgendaViewModel @Inject constructor(
             _uiState.update { it.copy(entityId = uid) }
             agendaRepository.listForContact(uid).foldApiError(
                 onSuccess = { items ->
+                    loaded = items
                     _uiState.update { it.copy(isLoading = false, items = items.map { a -> EntityItem(a.id, agendaLabel(a), url = a.referenceUrl) }) }
                 },
                 onError = { error ->
@@ -264,6 +366,8 @@ class ConversationAgendaViewModel @Inject constructor(
             )
         }
     }
+
+    fun findById(id: String): ConversationAgenda? = loaded.find { it.id == id }
 
     fun create(content: String) {
         val uid = _uiState.value.entityId
@@ -274,6 +378,26 @@ class ConversationAgendaViewModel @Inject constructor(
                     onSuccess = { load() },
                     onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
                 )
+        }
+    }
+
+    // UpdateConversationAgenda is a full overwrite (conversation_agenda_
+    // controller.go) -- referenceUrl has to survive from `original`, since
+    // this mini edit form only edits content.
+    fun update(original: ConversationAgenda, content: String) {
+        if (content.isBlank()) return
+        viewModelScope.launch {
+            agendaRepository.update(
+                original.id,
+                ConversationAgendaInput(
+                    entityId = original.entityId,
+                    content = content,
+                    referenceUrl = original.referenceUrl,
+                ),
+            ).foldApiError(
+                onSuccess = { load() },
+                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
+            )
         }
     }
 

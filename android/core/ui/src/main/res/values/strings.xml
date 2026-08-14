@@ -403,19 +403,25 @@
     <!-- Timeline entities (life events / gifts / preferences / agenda) -->
     <string name="entities_empty">Nothing here yet</string>
     <string name="entities_error_no_vcard_uid">Contact has no VCard UID</string>
+    <string name="entities_delete_title">Delete item?</string>
+    <string name="entities_delete_confirm">Delete “%1$s”? This cannot be undone.</string>
     <string name="life_events_title">Life events</string>
     <string name="life_events_new">New life event</string>
+    <string name="life_events_edit">Edit life event</string>
     <string name="life_events_type">Type</string>
     <string name="life_events_description">Description</string>
     <string name="gifts_title">Gifts</string>
     <string name="gifts_new">New gift</string>
+    <string name="gifts_edit">Edit gift</string>
     <string name="gifts_description">Description</string>
     <string name="preferences_title">Preferences</string>
     <string name="preferences_new">New preference</string>
+    <string name="preferences_edit">Edit preference</string>
     <string name="preferences_category">Category</string>
     <string name="preferences_value">Value</string>
     <string name="agenda_title">Conversation agenda</string>
     <string name="agenda_new">New item</string>
+    <string name="agenda_edit">Edit item</string>
     <string name="agenda_content">Content</string>
 
     <!-- Merge & bulk -->
