@@ -1,19 +1,21 @@
 import { test, expect, loginUser, LOGGED_OUT } from './fixtures';
-import { createTestContact, deleteTestContact, searchContact, waitForLoading } from './fixtures';
+import { createTestContact, deleteTestContact, searchContact, waitForLoading, makeThrowawayUser, deleteThrowawayUser } from './fixtures';
 import { API_BASE_URL } from './global-setup';
 
-// A second, throwaway account used only to exercise the recipient side of a
-// contact share (accept/decline/confirm). Mirrors isolation.spec.ts's own
-// USER_B pattern -- registered idempotently, a 409 on re-run is fine.
-const RECIPIENT = {
-  username: 'e2e_share_recipient',
-  email: 'e2e_share_recipient@example.com',
-  password: 'ShareRecipientPass123!',
-};
+// Each test below registers its own uniquely-suffixed throwaway recipient
+// account, rather than sharing one fixed username across both tests: this
+// file has no serial mode, so under `fullyParallel: true` both tests can run
+// at once, and a fixed shared recipient account deleted by one test's
+// cleanup while the other is still mid-login/accept would be exactly the
+// kind of cross-test race this whole review pass exists to close. A
+// per-test account also means it can be hard-deleted in that test's own
+// `finally` instead of accumulating forever (mirrors isolation.spec.ts).
 
 test.describe('Contact sharing', () => {
   test('share a contact; the recipient accepts it and it lands in their account with the shared field', async ({ page, browser }) => {
-    await page.request.post(`${API_BASE_URL}/register`, { data: RECIPIENT }).catch(() => {});
+    const recipient = makeThrowawayUser('share_recipient');
+    const registered = await page.request.post(`${API_BASE_URL}/register`, { data: recipient });
+    expect(registered.ok(), `recipient registration should succeed: ${await registered.text()}`).toBeTruthy();
 
     const contact = await createTestContact(page.request, {
       firstname: 'E2EShareAccept',
@@ -33,15 +35,14 @@ test.describe('Contact sharing', () => {
       const shareDialog = page.getByRole('dialog');
       await expect(shareDialog).toBeVisible();
       await shareDialog.getByLabel(/recipient/i).click();
-      await page.getByRole('option', { name: RECIPIENT.username, exact: true }).click();
+      await page.getByRole('option', { name: recipient.username, exact: true }).click();
       await shareDialog.getByRole('button', { name: /^share$/i }).click();
       await expect(shareDialog).toBeHidden();
 
-      // Recipient: log in, see the incoming share, accept it. Scoped to
-      // this share's own row -- the recipient account accumulates other
-      // pending shares across repeated e2e runs, so an unscoped "Accept"
-      // query would match more than one row.
-      await loginUser(recipientPage, RECIPIENT);
+      // Recipient: log in, see the incoming share, accept it. The account is
+      // fresh (created above just for this test), but the row is still
+      // scoped to this share by name defensively.
+      await loginUser(recipientPage, recipient);
       await recipientPage.goto('/shares');
       const shareRow = recipientPage.getByRole('listitem').filter({ hasText: fullName });
       await expect(shareRow).toBeVisible();
@@ -74,11 +75,14 @@ test.describe('Contact sharing', () => {
     } finally {
       await recipientContext.close();
       await deleteTestContact(page.request, contact.ID);
+      await deleteThrowawayUser(page.request, recipient.username);
     }
   });
 
   test('the recipient can decline a share; nothing is created and the sender keeps their copy', async ({ page, browser }) => {
-    await page.request.post(`${API_BASE_URL}/register`, { data: RECIPIENT }).catch(() => {});
+    const recipient = makeThrowawayUser('share_recipient');
+    const registered = await page.request.post(`${API_BASE_URL}/register`, { data: recipient });
+    expect(registered.ok(), `recipient registration should succeed: ${await registered.text()}`).toBeTruthy();
 
     const contact = await createTestContact(page.request, {
       firstname: 'E2EShareDecline',
@@ -95,11 +99,11 @@ test.describe('Contact sharing', () => {
       const shareDialog = page.getByRole('dialog');
       await expect(shareDialog).toBeVisible();
       await shareDialog.getByLabel(/recipient/i).click();
-      await page.getByRole('option', { name: RECIPIENT.username, exact: true }).click();
+      await page.getByRole('option', { name: recipient.username, exact: true }).click();
       await shareDialog.getByRole('button', { name: /^share$/i }).click();
       await expect(shareDialog).toBeHidden();
 
-      await loginUser(recipientPage, RECIPIENT);
+      await loginUser(recipientPage, recipient);
       await recipientPage.goto('/shares');
       const shareRow = recipientPage.getByRole('listitem').filter({ hasText: fullName });
       await expect(shareRow).toBeVisible();
@@ -121,6 +125,7 @@ test.describe('Contact sharing', () => {
     } finally {
       await recipientContext.close();
       await deleteTestContact(page.request, contact.ID);
+      await deleteThrowawayUser(page.request, recipient.username);
     }
   });
 });

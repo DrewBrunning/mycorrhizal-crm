@@ -115,16 +115,20 @@ test.describe('Contact merge', () => {
       });
       expect(commit.ok(), `merge failed: ${await commit.text()}`).toBeTruthy();
 
-      const circlesResponse = await request.get(`${API_BASE_URL}/circles?limit=200&include_members=true`);
-      const { members } = await circlesResponse.json();
-      const keeperMemberships = (members ?? []).filter(
-        (m: { member_vcard_uid: string }) => m.member_vcard_uid === keeper.uid
-      );
+      // GET /circles/:id always returns that circle's own members -- fetching
+      // the two circles this test actually created directly, rather than
+      // paging the account's whole circle list with a ?limit=200 cap, can't
+      // silently miss them if the shared account happens to hold more than
+      // 200 circles from other parallel tests.
+      const keeperMembershipCount = async (circleId: string) => {
+        const res = await request.get(`${API_BASE_URL}/circles/${circleId}`);
+        expect(res.ok()).toBeTruthy();
+        const { members } = await res.json();
+        return (members ?? []).filter((m: { member_vcard_uid: string }) => m.member_vcard_uid === keeper.uid).length;
+      };
 
-      const circleIds = keeperMemberships.map((m: { circle_id: string }) => m.circle_id).sort();
-      expect(circleIds, 'the keeper must end up in both circles, each exactly once').toEqual(
-        [sharedId, soloId].sort()
-      );
+      expect(await keeperMembershipCount(sharedId), 'the keeper must be in the shared circle exactly once, not duplicated').toBe(1);
+      expect(await keeperMembershipCount(soloId), 'the keeper must have inherited the loser-only circle exactly once').toBe(1);
     } finally {
       await deleteTestContact(request, keeper.ID);
       await deleteTestContact(request, loser.ID);
