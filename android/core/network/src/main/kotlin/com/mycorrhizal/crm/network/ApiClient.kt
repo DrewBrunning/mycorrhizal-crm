@@ -8,6 +8,7 @@ import com.mycorrhizal.crm.model.network.AddContactTagResponse
 import com.mycorrhizal.crm.model.network.AddHouseholdMemberResponse
 import com.mycorrhizal.crm.model.network.BackendError
 import com.mycorrhizal.crm.model.network.BirthdaysResponse
+import com.mycorrhizal.crm.model.network.ContactBriefing
 import com.mycorrhizal.crm.model.network.OverdueCadencesResponse
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.CircleDetailResponse
@@ -158,6 +159,20 @@ class ApiClient(
     suspend fun getContact(id: Int): Result<ContactRecordResponse> =
         executeGet("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$id") { _, body ->
             moshi.adapter(ContactRecordResponse::class.java).fromJson(body)
+        }
+
+    /**
+     * GET /api/v1/contacts/{id}/briefing — the N2 prep-view composite (M11):
+     * everything the user wants to remember before seeing a person in one
+     * response. N2's backend does all the assembly; this is a read. The six
+     * collection blocks are normalized in [ContactBriefing] (absent/null/[]
+     * all decode to an empty list), so the screen can dereference `.size`
+     * unconditionally — the exact contract regression that crashed web's prep
+     * view into its ErrorBoundary (`/CLAUDE.md` frontend trap #8).
+     */
+    suspend fun getBriefing(contactId: Int): Result<ContactBriefing> =
+        executeGet("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/briefing") { _, body ->
+            moshi.adapter(ContactBriefing::class.java).fromJson(body)
         }
 
     /**

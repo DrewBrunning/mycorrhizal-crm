@@ -178,6 +178,29 @@
     <string name="contact_save">Enregistrer les modifications</string>
     <string name="contact_error_given_name">Au moins un prénom est requis</string>
 
+    <!-- Vue de préparation (N2 / M11) -->
+    <string name="prep_title">Vue de préparation</string>
+    <string name="prep_subtitle">Tout à retenir avant de les voir</string>
+    <string name="prep_unknown_contact">Inconnu</string>
+    <string name="prep_not_found">Contact introuvable</string>
+    <string name="prep_cadence_title">Santé de la relation</string>
+    <string name="prep_cadence_overdue">%1$d jours de retard</string>
+    <string name="prep_cadence_on_track">Dans les temps</string>
+    <string name="prep_cadence_next_due">Prochaine échéance : %1$s</string>
+    <string name="prep_cadence_last_interaction">Dernière interaction : %1$s</string>
+    <string name="prep_cadence_no_interactions_yet">Aucune interaction prise en compte pour l\'instant — la cadence démarre dès la première.</string>
+    <string name="prep_agenda_title">Sujets à aborder</string>
+    <string name="prep_last_interaction_title">Dernière interaction</string>
+    <string name="prep_last_interaction_none">Aucune interaction enregistrée</string>
+    <string name="prep_recent_notes_title">Notes récentes</string>
+    <string name="prep_relationships_title">Personnes autour d\'eux</string>
+    <string name="prep_life_events_title">Événements de vie</string>
+    <string name="prep_reminders_title">Rappels à venir</string>
+    <string name="prep_upcoming_dates_title">Dates à venir</string>
+    <string name="prep_upcoming_dates_birthday">Anniversaire</string>
+    <string name="prep_upcoming_dates_anniversary">Anniversaire de mariage</string>
+    <string name="prep_upcoming_dates_in_days">dans %1$d jour(s)</string>
+
     <!-- Settings -->
     <string name="settings_title">Paramètres</string>
     <string name="settings_session">Session</string>
@@ -306,6 +329,7 @@
     <string name="action_cancel">Annuler</string>
     <string name="action_add">Ajouter</string>
     <string name="action_rename">Renommer</string>
+    <string name="action_retry">Réessayer</string>
 
 
     <!-- Tags -->

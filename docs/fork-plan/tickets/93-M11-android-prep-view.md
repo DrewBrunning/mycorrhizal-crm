@@ -7,7 +7,7 @@
 | **Size** | M — 1 endpoint, but a whole new screen |
 | **Source** | [M8](89-M8-web-android-parity-audit.md) audit, 2026-08-11 |
 | **Depends on** | Nothing — the backend N2 endpoint(s) already exist and serve web today |
-| **Status** | TO BE DONE |
+| **Status** | IMPLEMENTED, AWAITING ON-DEVICE VERIFICATION (2026-08-14) |
 
 `/contacts/:id/prep` (`PrepViewPage.tsx`) has **zero** Android footprint — not even a placeholder
 route in `MycorrhizalApp.kt`'s nav graph. It's the single largest capability gap this audit found:
@@ -76,3 +76,40 @@ JUnit4 + MockK (`mockk`/`coEvery`) + Turbine + `runTest` with `MainDispatcherRul
 mock the repository — `feature/contacts/.../ContactListViewModelTest.kt` is the reference. New
 `ApiClient` methods get a MockWebServer test in `core/network` — `ApiClientTest.kt` is the reference.
 Hand-verify per `/CLAUDE.md`: break the code, confirm the new test fails, restore.
+
+---
+
+## Landing note (2026-08-14)
+
+All seven sections ship, populated from the real `GET /contacts/:id/briefing` backend data, plus the
+entry point and nav route:
+
+- **Network**: `getBriefing(contactId)` added to `ApiClient`; new `Briefing.kt` models
+  (`ContactBriefing`, `BriefingActivity`, `BriefingCadence(Policy/Health)`, `BriefingRelationship`,
+  `BriefingUpcomingDate`). The six collection blocks use the same nullable-raw + computed-property
+  normalization as `NotesPage`/`FieldDefinitionsResponse` (`/CLAUDE.md` trap #8), so absent/null/`[]`
+  all decode to an empty list — the exact contract regression that white-screened web's `PrepViewPage`
+  cannot recur here. The API-client test asserting this reads **raw JSON with the keys omitted**, not a
+  Kotlin object.
+- **ViewModel**: `PrepViewModel` (injects `ApiClient` directly — the same precedent as
+  `DashboardViewModel`, since a briefing is a pure read-only composite with no local cache or write
+  path). State machine: loading → success / error-with-retry. The empty-history briefing is *success*,
+  never an error; a `contactId` of 0 is an empty-not-error state.
+- **Screen**: `PrepViewScreen` renders header (avatar/name/subtitle/animal chip), cadence health card
+  (reads server-provided `health.*` fields verbatim — never recomputes locally, per M12), agenda,
+  last-interaction + recent notes, relationships (tap-through to `other_party_contact_id`'s detail),
+  life events, upcoming reminders, upcoming dates with `in N days` chips. Every block shows its empty
+  state when the source is absent.
+- **Entry point**: `ContactDetailScreen`'s ⋮ menu — the M24 "coming soon" stub is replaced with
+  `onViewPrep`; nav route `contacts/{contactId}/prep` added to `MycorrhizalApp.kt`. The share stub
+  stays (M15).
+- **i18n**: 21 new keys (`prep.*` + `action_retry`) in all five locales, translated from web's
+  `prep.*`/`cadence.*` strings (French apostrophes escaped), key-parity verified programmatically.
+- **Tests**: 4 new MockWebServer tests in `ApiClientTest` (full composite parse, absent-collection
+  keys, explicit-null collections, 404 error) + 6 `PrepViewModelTest` cases. Hand-verified per
+  `/CLAUDE.md`: breaking the nullable-raw pattern fails the explicit-null parse test; removing the
+  VM's `error` update fails both the error-state and retry tests; restoring passes.
+- **CI gate**: `./gradlew testDebugUnitTest lintDebug assembleDebug --rerun-tasks` — green.
+
+The ticket's on-device hand-verify step is still outstanding — no device/emulator available in the
+build environment.
