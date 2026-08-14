@@ -759,10 +759,14 @@ const IMPORT_DIFF_KIND_LABELS: Record<string, string> = {
 
 // ImportMergeDiffSummary renders what "Merge" will change on the matched
 // existing contact: appended entries (+ new phone: ...) and overwritten
-// scalars (Job Title: A → B).
+// scalars (Job Title: A → B). The backend always sends updated/added as arrays
+// (never null — trap #8), but a stray null from a proxy/older server must not
+// crash the render, so both are guarded with ?? [].
 function ImportMergeDiffSummary({ diff }: { diff: ImportMergeDiff }) {
   const { t } = useTranslation();
-  if (diff.updated.length === 0 && diff.added.length === 0) {
+  const updated = diff.updated ?? [];
+  const added = diff.added ?? [];
+  if (updated.length === 0 && added.length === 0) {
     return (
       <Typography variant="caption" color="text.secondary" display="block">
         {t('contacts.import.preview.noDiff', 'No changes — the records already match.')}
@@ -774,7 +778,7 @@ function ImportMergeDiffSummary({ diff }: { diff: ImportMergeDiff }) {
       <Typography variant="caption" sx={{ fontWeight: 600 }}>
         {t('contacts.import.preview.diffTitle', 'Will merge:')}
       </Typography>
-      {diff.added.map((a, i) => (
+      {added.map((a, i) => (
         <Typography key={`added-${i}`} variant="caption" display="block" color="text.secondary">
           {t('contacts.import.preview.diffAdded', '+ new {{kind}}: {{value}}', {
             kind: t(`contacts.import.preview.kind.${a.kind}`, IMPORT_DIFF_KIND_LABELS[a.kind] || a.kind),
@@ -782,7 +786,7 @@ function ImportMergeDiffSummary({ diff }: { diff: ImportMergeDiff }) {
           })}
         </Typography>
       ))}
-      {diff.updated.map((u, i) => (
+      {updated.map((u, i) => (
         <Typography key={`updated-${i}`} variant="caption" display="block" color="text.secondary">
           {t('contacts.import.preview.diffUpdated', '{{label}}: {{old}} → {{new}}', {
             label: u.label,

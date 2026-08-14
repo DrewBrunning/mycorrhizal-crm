@@ -106,8 +106,57 @@ func TestUploadImportRecords_PreviewDetectsDuplicateAndComputesDiff(t *testing.T
 	assert.Equal(t, "+15559998888", addedPhone, "the device contact's new phone must appear in the diff")
 }
 
-func TestUploadImportRecords_ConfirmViaVCFRouteMergesIntoExisting(t *testing.T) {
-	db, err := database.InitDB(filepath.Join(t.TempDir(), "t96-records-merge.db"))
+// TestUploadImportRecords_MergeDiffArraysSerializeAsEmptyArrays pins CLAUDE.md
+// frontend trap #8 on the NEW diff fields specifically: a diff with no scalar
+// updates (only an added phone) must serialize `updated` as `[]`, never `null`
+// — the client renders `diff.updated.length` directly. Decoding into the Go
+// struct can't see the difference (absent and `[]` both become a nil slice),
+// so this reads the raw JSON body.
+func TestUploadImportRecords_MergeDiffArraysSerializeAsEmptyArrays(t *testing.T) {
+	db, err := database.InitDB(filepath.Join(t.TempDir(), "t96-records-null.db"))
+	require.NoError(t, err)
+
+	user := models.User{Username: "t96recordsn", Password: "password123!A", Email: "t96recordsn@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	existing := &models.Contact{
+		UserID:    user.ID,
+		Firstname: "Jane",
+		Lastname:  "Smith",
+		Email:     "jane-null@example.com",
+		Emails:    []models.ContactEmail{{Type: "work", Value: "jane-null@example.com"}},
+	}
+	require.NoError(t, db.Create(existing).Error)
+
+	gin.SetMode(gin.ReleaseMode)
+	router := routerForUser(db, user.ID)
+	registerImportRoutes(router, &config.Config{})
+
+	// Same email as the existing contact (matched) plus a brand-new phone — so
+	// the diff has an addition but no scalar updates.
+	body := recordsFixture(cardFixture("Jane", "Smith", "jane-null@example.com", "+15559998888"))
+	req := newJSONRequest(t, "/contacts/import/records", json.RawMessage(body))
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var raw struct {
+		Rows []struct {
+			MergeDiff *struct {
+				Updated []json.RawMessage `json:"updated"`
+				Added   []json.RawMessage `json:"added"`
+			} `json:"merge_diff"`
+		} `json:"rows"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &raw))
+	require.Len(t, raw.Rows, 1)
+	require.NotNil(t, raw.Rows[0].MergeDiff)
+	require.NotNil(t, raw.Rows[0].MergeDiff.Updated, "updated must be present as [] on the wire, never absent")
+	require.NotNil(t, raw.Rows[0].MergeDiff.Added, "added must be present as [] on the wire, never absent")
+	require.Len(t, raw.Rows[0].MergeDiff.Added, 1, "the new phone must be the one addition")
+}
+
+func TestUploadImportRecords_ConfirmViaVCFRouteMergesIntoExisting(t *testing.T) {	db, err := database.InitDB(filepath.Join(t.TempDir(), "t96-records-merge.db"))
 	require.NoError(t, err)
 
 	user := models.User{Username: "t96recordsm", Password: "password123!A", Email: "t96recordsm@example.com"}

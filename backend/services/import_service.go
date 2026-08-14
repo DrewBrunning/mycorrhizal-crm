@@ -1202,7 +1202,15 @@ var importMergeDiffScalars = []struct {
 // a faithful record of an existing contact's real memberships, so comparing
 // against it would be inaccurate.
 func ComputeImportMergeDiff(existing, incoming *models.Contact) models.ImportMergeDiff {
-	var diff models.ImportMergeDiff
+	// Initialize both slices empty rather than nil: a nil slice serializes as
+	// JSON `null` (Go encodes nil slices as null even without omitempty), and
+	// the client renders diff.updated.length / diff.added.length directly --
+	// CLAUDE.md frontend trap #8, the whole reason the diff must always carry
+	// `[]`, never null.
+	diff := models.ImportMergeDiff{
+		Updated: []models.ImportScalarChange{},
+		Added:   []models.ImportAddedValue{},
+	}
 	for _, f := range importMergeDiffScalars {
 		oldVal, newVal := f.Get(existing), f.Get(incoming)
 		if newVal != "" && newVal != oldVal {

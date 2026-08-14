@@ -34,8 +34,8 @@ test.describe('Bulk contacts import in Data Settings', () => {
 
       // Preview: bulk-accept both rows, then import.
       await expect(dialog.getByText('2 to create')).toBeVisible();
-      await dialog.getByRole('button', { name: /accept all suggested/i }).click();
-      await dialog.getByRole('button', { name: /^import$/i }).click();
+      await dialog.getByRole('button', { name: /resolve all as merged/i }).click();
+      await dialog.getByRole('button', { name: /apply decisions/i }).click();
 
       // Result step reports both created.
       await expect(dialog.getByText('2 contacts created')).toBeVisible();
