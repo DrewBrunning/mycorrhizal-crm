@@ -255,6 +255,10 @@
     <!-- Aktivitäten -->
     <string name="activities_title">Aktivitäten</string>
     <string name="activities_empty">Noch keine Aktivitäten</string>
+    <string name="activities_search">Aktivitäten durchsuchen</string>
+    <string name="activities_no_results">Keine Aktivitäten entsprechen deinen Filtern</string>
+    <string name="activities_delete_title">Aktivität löschen?</string>
+    <string name="activities_delete_confirm">Diese Aktivität löschen? \"%1$s\"</string>
     <string name="activity_new">Neue Aktivität</string>
     <string name="activity_edit">Aktivität bearbeiten</string>
     <string name="activity_title">Titel</string>
@@ -266,6 +270,9 @@
     <string name="activity_description">Beschreibung</string>
     <string name="activity_create">Aktivität erstellen</string>
     <string name="activity_save">Änderungen speichern</string>
+    <string name="activity_participants">Teilnehmer</string>
+    <string name="activity_search_contact">Teilnehmer hinzufügen</string>
+    <string name="activity_remove_participant">Teilnehmer entfernen</string>
     <string name="activity_error_title">Ein Titel ist erforderlich</string>
     <string name="activity_error_date">Das Datum muss dem Format ISO 8601 entsprechen, z. B. 2026-08-10T14:00:00Z</string>
     <string name="cd_new_activity">Neue Aktivität</string>
@@ -273,6 +280,10 @@
     <!-- Notizen -->
     <string name="notes_title">Notizen</string>
     <string name="notes_empty">Noch keine Notizen</string>
+    <string name="notes_search">Notizen durchsuchen</string>
+    <string name="notes_no_results">Keine Notizen entsprechen deinen Filtern</string>
+    <string name="notes_delete_title">Notiz löschen?</string>
+    <string name="notes_delete_confirm">Diese Notiz löschen? \"%1$s\"</string>
     <string name="notes_inbox_total">%1$d nicht zugeordnet</string>
     <string name="action_load_more">Mehr laden</string>
     <string name="note_new">Neue Notiz</string>
@@ -282,6 +293,9 @@
     <string name="note_date_hint">2026-08-10T14:00:00Z</string>
     <string name="note_create">Notiz erstellen</string>
     <string name="note_save">Änderungen speichern</string>
+    <string name="note_assign_contact">Zugeordneter Kontakt</string>
+    <string name="note_clear_contact">Zurücksetzen</string>
+    <string name="note_search_contact">Kontakte durchsuchen</string>
     <string name="note_error_content">Der Notizinhalt ist erforderlich</string>
     <string name="note_error_date_required">Ein Datum ist erforderlich</string>
     <string name="note_error_date">Das Datum muss dem Format ISO 8601 entsprechen, z. B. 2026-08-10T14:00:00Z</string>
@@ -291,6 +305,12 @@
     <string name="reminder_error_missing_id">Fehlende Kontakt-ID</string>
     <string name="reminder_title_fallback">Erinnerung</string>
     <string name="cd_new_note">Neue Notiz</string>
+
+    <!-- Zeitleiste (gemeinsame Notizen-/Aktivitätsfilter + Kontaktauswahl) -->
+    <string name="timeline_from_date">Von</string>
+    <string name="timeline_to_date">Bis</string>
+    <string name="timeline_type_to_search">Zum Suchen tippen</string>
+    <string name="timeline_no_contacts_found">Keine Kontakte gefunden</string>
 
     <!-- Erinnerungen -->
     <string name="reminders_title">Erinnerungen</string>

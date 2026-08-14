@@ -348,7 +348,14 @@ func DeleteNote(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Note deleted"})
 }
 
-// GetNotesForContact retrieves all notes for a given contact
+// GetNotesForContact retrieves a contact's notes. M19: the plain
+// "everything at once" preload grew cursor pagination plus search and
+// from/to-date filters, mirroring the global GetUnassignedNotes handler — the
+// per-contact list pages by (updated_at, id) exactly like its sibling. Unlike
+// the change-feed variants there is deliberately no ?since= handling here: a
+// contact-scoped feed has no consumer, and keeping the endpoint to
+// filterable-paged browsing keeps it small. The 404-on-missing-contact
+// contract is preserved (checked before any note query).
 func GetNotesForContact(c *gin.Context) {
 	// Get contact ID from the request URL
 	contactID := c.Param("id")
@@ -361,23 +368,76 @@ func GetNotesForContact(c *gin.Context) {
 		return
 	}
 
-	// Initialize a variable to store the contact
+	// Fetch the contact first to preserve the 404 contract and to scope the
+	// note query to this user's contact (never trust the URL id alone).
 	var contact models.Contact
-
-	// Fetch the contact and preload associated notes
-	if err := db.Preload("Notes", "notes.user_id = ?", userID).Where("user_id = ?", userID).First(&contact, contactID).Error; err != nil {
+	if err := db.Where("user_id = ?", userID).First(&contact, contactID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			// If no contact found, return a 404 error
 			apperrors.AbortWithError(c, apperrors.ErrNotFound("Contact").WithDetails("id", contactID))
 		} else {
-			// For any other errors, return a 500 error
 			apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve contact").WithError(err))
 		}
 		return
 	}
 
-	// If successful, return the contact and its notes as JSON
+	params, err := GetCursorParams(c)
+	if err != nil {
+		apperrors.AbortWithError(c, err)
+		return
+	}
+
+	search := strings.ToLower(strings.TrimSpace(c.Query("search")))
+	fromDateStr := c.Query("fromDate")
+	toDateStr := c.Query("toDate")
+
+	baseQuery := db.Model(&models.Note{}).
+		Where("notes.user_id = ? AND notes.contact_id = ?", userID, contact.ID)
+
+	// Apply date filters
+	if fromDateStr != "" {
+		if fromDate, err := time.Parse("2006-01-02", fromDateStr); err == nil {
+			baseQuery = baseQuery.Where("notes.date >= ?", fromDate)
+		}
+	}
+	if toDateStr != "" {
+		if toDate, err := time.Parse("2006-01-02", toDateStr); err == nil {
+			// Add one day to include the entire end date
+			toDate = toDate.AddDate(0, 0, 1)
+			baseQuery = baseQuery.Where("notes.date < ?", toDate)
+		}
+	}
+
+	if search != "" {
+		like := "%" + search + "%"
+		baseQuery = baseQuery.Where("LOWER(notes.content) LIKE ?", like)
+	}
+
+	// T17: cursor pagination on (updated_at, id).
+	var notes []models.Note
+	desc := params.Order == "desc"
+	if params.Cursor != nil {
+		id, ok := parseCursorID(params.Cursor)
+		if !ok {
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed"))
+			return
+		}
+		pred, t, idv := cursorPredicate("notes", params.Cursor, id, desc)
+		baseQuery = baseQuery.Where(pred, t, idv)
+	}
+
+	if err := cursorOrderBy(baseQuery, "notes", desc).Limit(params.Limit + 1).Find(&notes).Error; err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve notes").WithError(err))
+		return
+	}
+	nextCursor := ""
+	if len(notes) > params.Limit {
+		notes = notes[:params.Limit]
+		nextCursor = EncodeCursor(notes[len(notes)-1].UpdatedAt, notes[len(notes)-1].ID)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"notes": contact.Notes,
+		"notes":       notes,
+		"next_cursor": nextCursor,
+		"limit":       params.Limit,
 	})
 }

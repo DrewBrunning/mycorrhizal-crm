@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.mycorrhizal.crm.data.local.AppDatabase
+import com.mycorrhizal.crm.data.local.CachedNote
 import com.mycorrhizal.crm.model.network.ContactNotesResponse
 import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.model.network.NoteInput
@@ -47,7 +48,7 @@ class NoteRepositoryImplTest {
 
     @Test
     fun `listForContact caches notes and returns them`() = runTest {
-        coEvery { apiClient.listContactNotes(5) } returns Result.success(
+        coEvery { apiClient.listContactNotes(5, any(), any(), any(), any(), any()) } returns Result.success(
             ContactNotesResponse(
                 notes = listOf(
                     Note(id = 3, content = "Loves climbing"),
@@ -59,7 +60,7 @@ class NoteRepositoryImplTest {
         val result = repository.listForContact(5)
 
         assertTrue(result.isSuccess)
-        assertEquals(2, result.getOrThrow().size)
+        assertEquals(2, result.getOrThrow().notes.size)
 
         val cached = db.cachedNoteDao().getAll()
         assertEquals(2, cached.size)
@@ -68,7 +69,7 @@ class NoteRepositoryImplTest {
 
     @Test
     fun `listForContact propagates a 404`() = runTest {
-        coEvery { apiClient.listContactNotes(999) } returns Result.failure(
+        coEvery { apiClient.listContactNotes(999, any(), any(), any(), any(), any()) } returns Result.failure(
             ApiError.Client(404, "Contact not found"),
         )
 
@@ -77,6 +78,43 @@ class NoteRepositoryImplTest {
         assertTrue(result.isFailure)
         val error = result.exceptionOrNull() as ApiError
         assertEquals(404, (error as ApiError.Client).code)
+    }
+
+    // M19: the page carries the T17 next_cursor for "load more".
+    @Test
+    fun `listForContact carries the next cursor`() = runTest {
+        coEvery { apiClient.listContactNotes(5, any(), any(), any(), any(), any()) } returns Result.success(
+            ContactNotesResponse(notes = listOf(Note(id = 3, content = "Loves climbing")), nextCursor = "cursor-2"),
+        )
+
+        val result = repository.listForContact(5)
+
+        assertTrue(result.isSuccess)
+        assertEquals("cursor-2", result.getOrThrow().nextCursor)
+    }
+
+    // M19: delete drops the local cache row after a successful server soft delete.
+    @Test
+    fun `delete removes the cached row on success`() = runTest {
+        db.cachedNoteDao().upsertAll(listOf(CachedNote(id = 3, content = "Loves climbing", date = null, deleted = false)))
+        coEvery { apiClient.deleteNote(3) } returns Result.success(Unit)
+
+        val result = repository.delete(3)
+
+        assertTrue(result.isSuccess)
+        assertTrue(db.cachedNoteDao().getAll().isEmpty())
+    }
+
+    // M19: a failed delete must not clear the local cache (the item stays).
+    @Test
+    fun `delete failure leaves the cached row`() = runTest {
+        db.cachedNoteDao().upsertAll(listOf(CachedNote(id = 3, content = "Loves climbing", date = null, deleted = false)))
+        coEvery { apiClient.deleteNote(3) } returns Result.failure(ApiError.Client(500, "boom"))
+
+        val result = repository.delete(3)
+
+        assertTrue(result.isFailure)
+        assertEquals(1, db.cachedNoteDao().getAll().size)
     }
 
     // M9: the Notes drawer inbox — GET /notes, the N4 unfiled-notes queue.
@@ -123,6 +161,19 @@ class NoteRepositoryImplTest {
         )
 
         val result = repository.create(5, NoteInput(content = "Loves climbing"))
+
+        assertTrue(result.isSuccess)
+        assertEquals("Loves climbing", db.cachedNoteDao().getById(3)?.content)
+    }
+
+    // M19: creating an unassigned note (POST /notes) mirrors into the cache.
+    @Test
+    fun `createUnassigned caches the created note`() = runTest {
+        coEvery { apiClient.createUnassignedNote(any()) } returns Result.success(
+            Note(id = 3, content = "Loves climbing", contactId = null),
+        )
+
+        val result = repository.createUnassigned(NoteInput(content = "Loves climbing"))
 
         assertTrue(result.isSuccess)
         assertEquals("Loves climbing", db.cachedNoteDao().getById(3)?.content)

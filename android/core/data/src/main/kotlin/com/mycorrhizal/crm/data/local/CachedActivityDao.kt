@@ -19,6 +19,10 @@ interface CachedActivityDao {
     @Query("SELECT * FROM cached_activities WHERE id = :id")
     suspend fun getById(id: Int): CachedActivity?
 
+    /** M19: drop the local row after a successful server-side soft delete. */
+    @Query("DELETE FROM cached_activities WHERE id = :id")
+    suspend fun deleteById(id: Int)
+
     @Query("DELETE FROM cached_activities")
     suspend fun deleteAll()
 }

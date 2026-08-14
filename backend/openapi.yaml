@@ -2151,9 +2151,33 @@ paths:
     get:
       summary: List a contact's notes
       operationId: listContactNotes
+      parameters:
+        - name: cursor
+          in: query
+          description: Opaque resume token from the previous page's next_cursor.
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, default: 25 }
+        - name: order
+          in: query
+          description: Direction for the (updated_at, id) cursor order.
+          schema: { type: string, enum: [asc, desc], default: desc }
+        - name: search
+          in: query
+          description: Free-text search on note content.
+          schema: { type: string }
+        - name: fromDate
+          in: query
+          description: Inclusive YYYY-MM-DD lower bound on note date.
+          schema: { type: string, format: date }
+        - name: toDate
+          in: query
+          description: Inclusive YYYY-MM-DD upper bound on note date.
+          schema: { type: string, format: date }
       responses:
         "200":
-          description: The contact's notes.
+          description: A page of the contact's notes.
           content:
             application/json:
               schema:
@@ -2163,6 +2187,16 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/Note"
+                  next_cursor:
+                    type: string
+                    description: Resume token for the next page; empty when there are no more rows.
+                  limit: { type: integer }
+        "400":
+          description: Malformed cursor.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Contact not found.
           content:
@@ -2383,9 +2417,33 @@ paths:
     get:
       summary: List a contact's activities
       operationId: listContactActivities
+      parameters:
+        - name: cursor
+          in: query
+          description: Opaque resume token from the previous page's next_cursor.
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, default: 25 }
+        - name: order
+          in: query
+          description: Direction for the (updated_at, id) cursor order.
+          schema: { type: string, enum: [asc, desc], default: desc }
+        - name: search
+          in: query
+          description: Free-text search across title/description/location.
+          schema: { type: string }
+        - name: fromDate
+          in: query
+          description: Inclusive YYYY-MM-DD lower bound on activity date.
+          schema: { type: string, format: date }
+        - name: toDate
+          in: query
+          description: Inclusive YYYY-MM-DD upper bound on activity date.
+          schema: { type: string, format: date }
       responses:
         "200":
-          description: The contact's activities.
+          description: A page of the contact's activities, each with its participant contacts.
           content:
             application/json:
               schema:
@@ -2395,6 +2453,16 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/Activity"
+                  next_cursor:
+                    type: string
+                    description: Resume token for the next page; empty when there are no more rows.
+                  limit: { type: integer }
+        "400":
+          description: Malformed cursor.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Contact not found.
           content:

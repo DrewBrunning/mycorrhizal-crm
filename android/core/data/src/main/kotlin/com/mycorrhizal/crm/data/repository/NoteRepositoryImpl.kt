@@ -2,6 +2,7 @@ package com.mycorrhizal.crm.data.repository
 
 import com.mycorrhizal.crm.data.local.CachedNote
 import com.mycorrhizal.crm.data.local.CachedNoteDao
+import com.mycorrhizal.crm.domain.repository.ContactNotesPage
 import com.mycorrhizal.crm.domain.repository.NoteRepository
 import com.mycorrhizal.crm.domain.repository.UnfiledNotesPage
 import com.mycorrhizal.crm.model.network.Note
@@ -18,13 +19,20 @@ class NoteRepositoryImpl @Inject constructor(
     private val dao: CachedNoteDao,
 ) : NoteRepository {
 
-    override suspend fun listForContact(contactId: Int): Result<List<Note>> {
-        val result = apiClient.listContactNotes(contactId)
+    override suspend fun listForContact(
+        contactId: Int,
+        cursor: String?,
+        limit: Int?,
+        search: String?,
+        fromDate: String?,
+        toDate: String?,
+    ): Result<ContactNotesPage> {
+        val result = apiClient.listContactNotes(contactId, cursor, limit, search, fromDate, toDate)
         val response = result.getOrNull()
         if (response != null) {
             dao.upsertAll(response.notes.map { it.toCached() })
         }
-        return result.map { response -> response.notes }
+        return result.map { response -> ContactNotesPage(notes = response.notes, nextCursor = response.nextCursor) }
     }
 
     override suspend fun listUnfiled(cursor: String?, limit: Int?): Result<UnfiledNotesPage> {
@@ -41,9 +49,21 @@ class NoteRepositoryImpl @Inject constructor(
         return result
     }
 
+    override suspend fun createUnassigned(input: NoteInput): Result<Note> {
+        val result = apiClient.createUnassignedNote(input)
+        result.getOrNull()?.let { dao.upsert(it.toCached()) }
+        return result
+    }
+
     override suspend fun update(id: Int, input: NoteInput): Result<Note> {
         val result = apiClient.updateNote(id, input)
         result.getOrNull()?.let { dao.upsert(it.toCached()) }
+        return result
+    }
+
+    override suspend fun delete(id: Int): Result<Unit> {
+        val result = apiClient.deleteNote(id)
+        if (result.isSuccess) dao.deleteById(id)
         return result
     }
 

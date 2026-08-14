@@ -48,10 +48,12 @@ data class CreateActivityResponse(
     val activity: Activity? = null,
 )
 
-/** GET /contacts/{id}/activities — bare array under `activities`. */
+/** GET /contacts/{id}/activities — bare array under `activities` (M19: T17 cursor envelope). */
 @JsonClass(generateAdapter = true)
 data class ContactActivitiesResponse(
     val activities: List<Activity> = emptyList(),
+    @Json(name = "next_cursor") val nextCursor: String? = null,
+    val limit: Int = 0,
 )
 
 /**

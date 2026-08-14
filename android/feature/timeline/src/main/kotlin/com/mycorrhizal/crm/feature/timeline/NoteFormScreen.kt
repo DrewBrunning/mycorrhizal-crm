@@ -2,6 +2,7 @@ package com.mycorrhizal.crm.feature.timeline
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -12,6 +13,7 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -20,15 +22,17 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
@@ -86,6 +90,9 @@ fun NoteFormScreen(
                 state = state,
                 onContentChange = viewModel::onContentChange,
                 onDateChange = viewModel::onDateChange,
+                onContactSearchChange = viewModel::searchContacts,
+                onPickContact = viewModel::selectContact,
+                onClearContact = viewModel::clearContact,
                 onSave = viewModel::save,
                 modifier = Modifier.padding(padding),
             )
@@ -106,6 +113,9 @@ fun NoteFormContent(
     state: NoteFormState,
     onContentChange: (String) -> Unit,
     onDateChange: (String) -> Unit,
+    onContactSearchChange: (String) -> Unit,
+    onPickContact: (com.mycorrhizal.crm.model.network.ContactSummary) -> Unit,
+    onClearContact: () -> Unit,
     onSave: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -131,6 +141,37 @@ fun NoteFormContent(
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
+
+        // M19: contact reassignment (web's EditTimelineItemDialog) — the
+        // currently assigned contact as a removable chip, plus a debounced
+        // search to move the note to any contact (or clear it back to unfiled).
+        HorizontalDivider()
+        Text(
+            text = stringResource(R.string.note_assign_contact),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (state.targetContactName != null) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = state.targetContactName,
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(onClick = onClearContact) {
+                    Text(stringResource(R.string.note_clear_contact))
+                }
+            }
+        }
+        ContactSearchField(
+            query = state.contactSearchQuery,
+            results = state.contactSearchResults,
+            loading = state.contactSearchLoading,
+            onQueryChange = onContactSearchChange,
+            onPick = onPickContact,
+            labelRes = R.string.note_search_contact,
+        )
+
         Button(
             onClick = onSave,
             enabled = !state.isSaving,

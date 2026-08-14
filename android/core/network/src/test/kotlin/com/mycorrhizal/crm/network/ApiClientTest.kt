@@ -548,6 +548,53 @@ class ApiClientTest {
     }
 
     @Test
+    fun `list contact activities sends search date and cursor params and parses next_cursor`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """{"activities":[{"ID":1,"title":"Coffee with Dana"}],"next_cursor":"cursor-2","limit":25}""",
+                ),
+        )
+
+        val result = client.listContactActivities(5, cursor = "c1", limit = 25, search = "coffee", fromDate = "2026-08-01", toDate = "2026-08-10")
+
+        assertTrue(result.isSuccess)
+        assertEquals("cursor-2", result.getOrThrow().nextCursor)
+
+        val request = server.takeRequest()
+        assertEquals(
+            "/api/v1/contacts/5/activities?cursor=c1&limit=25&search=coffee&fromDate=2026-08-01&toDate=2026-08-10",
+            request.path,
+        )
+    }
+
+    @Test
+    fun `delete activity sends a DELETE and succeeds`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"message":"Activity deleted"}"""),
+        )
+
+        val result = client.deleteActivity(7)
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("DELETE", request.method)
+        assertEquals("/api/v1/activities/7", request.path)
+    }
+
+    @Test
+    fun `delete activity surfaces a 404 as a failure`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(404).setBody("""{"error":"Activity not found"}"""),
+        )
+
+        val result = client.deleteActivity(999)
+
+        assertTrue(result.isFailure)
+    }
+
+    @Test
     fun `create activity posts and unwraps the wrapped response`() = runBlocking {
         server.enqueue(
             MockResponse()
@@ -770,6 +817,65 @@ class ApiClientTest {
     }
 
     @Test
+    fun `list contact notes sends search date and cursor params and parses next_cursor`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """{"notes":[{"ID":3,"content":"Loves climbing"}],"next_cursor":"cursor-2","limit":25}""",
+                ),
+        )
+
+        val result = client.listContactNotes(5, cursor = "c1", limit = 25, search = "climb", fromDate = "2026-08-01", toDate = "2026-08-10")
+
+        assertTrue(result.isSuccess)
+        assertEquals("cursor-2", result.getOrThrow().nextCursor)
+
+        val request = server.takeRequest()
+        assertEquals(
+            "/api/v1/contacts/5/notes?cursor=c1&limit=25&search=climb&fromDate=2026-08-01&toDate=2026-08-10",
+            request.path,
+        )
+    }
+
+    @Test
+    fun `list contact notes omits blank filters`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"notes":[],"next_cursor":""}"""),
+        )
+
+        client.listContactNotes(5, search = "   ")
+
+        val request = server.takeRequest()
+        assertEquals("/api/v1/contacts/5/notes", request.path)
+    }
+
+    @Test
+    fun `delete note sends a DELETE and succeeds`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"message":"Note deleted"}"""),
+        )
+
+        val result = client.deleteNote(3)
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("DELETE", request.method)
+        assertEquals("/api/v1/notes/3", request.path)
+    }
+
+    @Test
+    fun `delete note surfaces a 404 as a failure`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(404).setBody("""{"error":"Note not found"}"""),
+        )
+
+        val result = client.deleteNote(999)
+
+        assertTrue(result.isFailure)
+    }
+
+    @Test
     fun `create note posts to the contact path and unwraps`() = runBlocking {
         server.enqueue(
             MockResponse()
@@ -793,6 +899,26 @@ class ApiClientTest {
         val request = server.takeRequest()
         assertEquals("POST", request.method)
         assertEquals("/api/v1/contacts/5/notes", request.path)
+    }
+
+    @Test
+    fun `create unassigned note posts to the notes path`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """{"message": "Note created successfully", "note": {"ID": 3, "content": "Loves climbing"}}""",
+                ),
+        )
+
+        val result = client.createUnassignedNote(NoteInput(content = "Loves climbing"))
+
+        assertTrue(result.isSuccess)
+        assertEquals(3, result.getOrThrow().id)
+
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/notes", request.path)
     }
 
     @Test

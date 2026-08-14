@@ -255,6 +255,10 @@
     <!-- Activities -->
     <string name="activities_title">Activités</string>
     <string name="activities_empty">Aucune activité pour le moment</string>
+    <string name="activities_search">Rechercher des activités</string>
+    <string name="activities_no_results">Aucune activité ne correspond à vos filtres</string>
+    <string name="activities_delete_title">Supprimer l\'activité ?</string>
+    <string name="activities_delete_confirm">Supprimer cette activité ? \"%1$s\"</string>
     <string name="activity_new">Nouvelle activité</string>
     <string name="activity_edit">Modifier l\'activité</string>
     <string name="activity_title">Titre</string>
@@ -266,6 +270,9 @@
     <string name="activity_description">Description</string>
     <string name="activity_create">Créer l\'activité</string>
     <string name="activity_save">Enregistrer les modifications</string>
+    <string name="activity_participants">Participants</string>
+    <string name="activity_search_contact">Ajouter des participants</string>
+    <string name="activity_remove_participant">Retirer le participant</string>
     <string name="activity_error_title">Le titre est requis</string>
     <string name="activity_error_date">La date doit être au format ISO 8601, p. ex. 2026-08-10T14:00:00Z</string>
     <string name="cd_new_activity">Nouvelle activité</string>
@@ -273,6 +280,10 @@
     <!-- Notes -->
     <string name="notes_title">Notes</string>
     <string name="notes_empty">Aucune note pour le moment</string>
+    <string name="notes_search">Rechercher des notes</string>
+    <string name="notes_no_results">Aucune note ne correspond à vos filtres</string>
+    <string name="notes_delete_title">Supprimer la note ?</string>
+    <string name="notes_delete_confirm">Supprimer cette note ? \"%1$s\"</string>
     <string name="notes_inbox_total">%1$d non classées</string>
     <string name="action_load_more">Charger plus</string>
     <string name="note_new">Nouvelle note</string>
@@ -282,6 +293,9 @@
     <string name="note_date_hint">2026-08-10T14:00:00Z</string>
     <string name="note_create">Créer la note</string>
     <string name="note_save">Enregistrer les modifications</string>
+    <string name="note_assign_contact">Contact assigné</string>
+    <string name="note_clear_contact">Effacer</string>
+    <string name="note_search_contact">Rechercher des contacts</string>
     <string name="note_error_content">Le contenu de la note est requis</string>
     <string name="note_error_date_required">La date est requise</string>
     <string name="note_error_date">La date doit être au format ISO 8601, p. ex. 2026-08-10T14:00:00Z</string>
@@ -291,6 +305,12 @@
     <string name="reminder_error_missing_id">Identifiant de contact manquant</string>
     <string name="reminder_title_fallback">Rappel</string>
     <string name="cd_new_note">Nouvelle note</string>
+
+    <!-- Timeline (filtres notes/activités et sélecteur de contact partagés) -->
+    <string name="timeline_from_date">Du</string>
+    <string name="timeline_to_date">Au</string>
+    <string name="timeline_type_to_search">Saisissez pour rechercher</string>
+    <string name="timeline_no_contacts_found">Aucun contact trouvé</string>
 
     <!-- Reminders -->
     <string name="reminders_title">Rappels</string>

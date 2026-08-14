@@ -255,6 +255,10 @@
     <!-- Activities -->
     <string name="activities_title">Attività</string>
     <string name="activities_empty">Ancora nessuna attività</string>
+    <string name="activities_search">Cerca attività</string>
+    <string name="activities_no_results">Nessuna attività corrisponde ai filtri</string>
+    <string name="activities_delete_title">Eliminare l\'attività?</string>
+    <string name="activities_delete_confirm">Eliminare questa attività? \"%1$s\"</string>
     <string name="activity_new">Nuova attività</string>
     <string name="activity_edit">Modifica attività</string>
     <string name="activity_title">Titolo</string>
@@ -266,6 +270,9 @@
     <string name="activity_description">Descrizione</string>
     <string name="activity_create">Crea attività</string>
     <string name="activity_save">Salva modifiche</string>
+    <string name="activity_participants">Partecipanti</string>
+    <string name="activity_search_contact">Aggiungi partecipanti</string>
+    <string name="activity_remove_participant">Rimuovi partecipante</string>
     <string name="activity_error_title">Il titolo è obbligatorio</string>
     <string name="activity_error_date">La data deve essere in formato ISO 8601, es. 2026-08-10T14:00:00Z</string>
     <string name="cd_new_activity">Nuova attività</string>
@@ -273,6 +280,10 @@
     <!-- Notes -->
     <string name="notes_title">Note</string>
     <string name="notes_empty">Ancora nessuna nota</string>
+    <string name="notes_search">Cerca note</string>
+    <string name="notes_no_results">Nessuna nota corrisponde ai filtri</string>
+    <string name="notes_delete_title">Eliminare la nota?</string>
+    <string name="notes_delete_confirm">Eliminare questa nota? \"%1$s\"</string>
     <string name="notes_inbox_total">%1$d non archiviate</string>
     <string name="action_load_more">Carica altri</string>
     <string name="note_new">Nuova nota</string>
@@ -282,6 +293,9 @@
     <string name="note_date_hint">2026-08-10T14:00:00Z</string>
     <string name="note_create">Crea nota</string>
     <string name="note_save">Salva modifiche</string>
+    <string name="note_assign_contact">Contatto assegnato</string>
+    <string name="note_clear_contact">Cancella</string>
+    <string name="note_search_contact">Cerca contatti</string>
     <string name="note_error_content">Il contenuto della nota è obbligatorio</string>
     <string name="note_error_date_required">La data è obbligatoria</string>
     <string name="note_error_date">La data deve essere in formato ISO 8601, es. 2026-08-10T14:00:00Z</string>
@@ -291,6 +305,12 @@
     <string name="reminder_error_missing_id">ID contatto mancante</string>
     <string name="reminder_title_fallback">Promemoria</string>
     <string name="cd_new_note">Nuova nota</string>
+
+    <!-- Timeline (filtri note/attività e selettore contatto condivisi) -->
+    <string name="timeline_from_date">Da</string>
+    <string name="timeline_to_date">A</string>
+    <string name="timeline_type_to_search">Digita per cercare</string>
+    <string name="timeline_no_contacts_found">Nessun contatto trovato</string>
 
     <!-- Reminders -->
     <string name="reminders_title">Promemoria</string>

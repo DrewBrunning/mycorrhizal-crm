@@ -2,18 +2,24 @@ package com.mycorrhizal.crm.feature.timeline
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.InputChip
+import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -27,10 +33,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.ui.R
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -86,6 +93,9 @@ fun ActivityFormScreen(
             onDateChange = viewModel::onDateChange,
             onDescriptionChange = viewModel::onDescriptionChange,
             onLocationChange = viewModel::onLocationChange,
+            onContactSearchChange = viewModel::searchContacts,
+            onAddParticipant = viewModel::onAddParticipant,
+            onRemoveParticipant = viewModel::onRemoveParticipant,
             onSave = viewModel::save,
             modifier = Modifier.padding(padding),
         )
@@ -108,6 +118,9 @@ fun ActivityFormContent(
     onDateChange: (String) -> Unit,
     onDescriptionChange: (String) -> Unit,
     onLocationChange: (String) -> Unit,
+    onContactSearchChange: (String) -> Unit,
+    onAddParticipant: (ContactSummary) -> Unit,
+    onRemoveParticipant: (Int) -> Unit,
     onSave: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -155,6 +168,45 @@ fun ActivityFormContent(
             minLines = 3,
             modifier = Modifier.fillMaxWidth(),
         )
+
+        // M19: multi-contact picker. An activity may span several contacts;
+        // the participants are chips (removable), and the debounced search
+        // adds more. This is what fixes "silently can't have more than one
+        // participant".
+        HorizontalDivider()
+        Text(
+            text = stringResource(R.string.activity_participants),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            state.participants.forEach { participant ->
+                InputChip(
+                    selected = false,
+                    onClick = { onRemoveParticipant(participant.id) },
+                    label = { Text(participant.displayName) },
+                    trailingIcon = {
+                        Icon(
+                            imageVector = Icons.Outlined.Close,
+                            contentDescription = stringResource(R.string.activity_remove_participant),
+                            modifier = Modifier.size(InputChipDefaults.IconSize),
+                        )
+                    },
+                )
+            }
+        }
+        ContactSearchField(
+            query = state.contactSearchQuery,
+            results = state.contactSearchResults,
+            loading = state.contactSearchLoading,
+            onQueryChange = onContactSearchChange,
+            onPick = onAddParticipant,
+            labelRes = R.string.activity_search_contact,
+        )
+
         Button(
             onClick = onSave,
             enabled = !state.isSaving,
