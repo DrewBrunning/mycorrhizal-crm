@@ -111,6 +111,7 @@
     <string name="cd_open_maps">Abrir en mapas</string>
     <string name="cd_copy_address">Copiar dirección</string>
     <string name="cd_open_link">Abrir enlace</string>
+    <string name="cd_open_contact">Abrir contacto</string>
     <string name="cd_copy_link">Copiar enlace</string>
 
     <!-- Formulario de contacto -->
@@ -177,6 +178,29 @@
     <string name="contact_create">Crear contacto</string>
     <string name="contact_save">Guardar cambios</string>
     <string name="contact_error_given_name">Se requiere al menos un nombre</string>
+
+    <!-- Vista previa (N2 / M11) -->
+    <string name="prep_title">Vista previa</string>
+    <string name="prep_subtitle">Todo lo que recordar antes de verlos</string>
+    <string name="prep_unknown_contact">Desconocido</string>
+    <string name="prep_not_found">Contacto no encontrado</string>
+    <string name="prep_cadence_title">Estado de la relación</string>
+    <string name="prep_cadence_overdue">%1$d días de retraso</string>
+    <string name="prep_cadence_on_track">Al día</string>
+    <string name="prep_cadence_next_due">Próximo vencimiento: %1$s</string>
+    <string name="prep_cadence_last_interaction">Última interacción: %1$s</string>
+    <string name="prep_cadence_no_interactions_yet">Aún no hay interacciones que cuenten: la cadencia empieza al registrar la primera.</string>
+    <string name="prep_agenda_title">Temas para hablar</string>
+    <string name="prep_last_interaction_title">Última interacción</string>
+    <string name="prep_last_interaction_none">Aún no hay interacciones registradas</string>
+    <string name="prep_recent_notes_title">Notas recientes</string>
+    <string name="prep_relationships_title">Personas a su alrededor</string>
+    <string name="prep_life_events_title">Acontecimientos vitales</string>
+    <string name="prep_reminders_title">Recordatorios próximos</string>
+    <string name="prep_upcoming_dates_title">Fechas próximas</string>
+    <string name="prep_upcoming_dates_birthday">Cumpleaños</string>
+    <string name="prep_upcoming_dates_anniversary">Aniversario</string>
+    <string name="prep_upcoming_dates_in_days">en %1$d día(s)</string>
 
     <!-- Ajustes -->
     <string name="settings_title">Ajustes</string>
@@ -306,6 +330,7 @@
     <string name="action_cancel">Cancelar</string>
     <string name="action_add">Añadir</string>
     <string name="action_rename">Renombrar</string>
+    <string name="action_retry">Reintentar</string>
 
 
     <!-- Tags -->

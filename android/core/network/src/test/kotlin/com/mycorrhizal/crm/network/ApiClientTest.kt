@@ -190,6 +190,201 @@ class ApiClientTest {
     }
 
     @Test
+    fun `get briefing parses the full prep-view composite`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "contact_id": 7,
+                      "uid": "u7",
+                      "name": "Carol King",
+                      "kind": "human",
+                      "photo_thumbnail": "data:image/png;base64,abc",
+                      "last_activity": {
+                        "id": 41,
+                        "title": "Coffee",
+                        "type": "visit",
+                        "description": "Catch-up",
+                        "date": "2026-08-10T14:00:00Z"
+                      },
+                      "recent_notes": [
+                        {"ID": 9, "content": "Talks about her garden"}
+                      ],
+                      "cadence": {
+                        "policy": {
+                          "id": "pol-1",
+                          "entity_id": "u7",
+                          "target_interval_days": 30,
+                          "qualifying_types": ["visit", "meal"]
+                        },
+                        "health": {
+                          "has_qualifying_interaction": true,
+                          "last_interaction": "2026-08-10T14:00:00Z",
+                          "next_due": "2026-09-09T14:00:00Z",
+                          "overdue_by": 2
+                        }
+                      },
+                      "open_agenda_items": [
+                        {"id": "ag-1", "content": "Ask about the surgery"}
+                      ],
+                      "relationships": [
+                        {
+                          "edge": {
+                            "id": "edge-1",
+                            "source_id": "u7",
+                            "target_id": "u8",
+                            "type": "spouse_of",
+                            "directional": false,
+                            "status": "confirmed"
+                          },
+                          "other_party_contact_id": 8,
+                          "other_party_name": "Bob Marley",
+                          "other_party_uid": "u8",
+                          "display_token": "spouse_of"
+                        }
+                      ],
+                      "life_events": [
+                        {"id": "le-1", "entity_id": "u7", "type": "graduated", "description": "MSc"}
+                      ],
+                      "upcoming_reminders": [
+                        {"ID": 3, "message": "Send card", "remind_at": "2026-08-20T09:00:00Z"}
+                      ],
+                      "upcoming_dates": [
+                        {"label": "birthday", "date": "--12-25", "days_until": 5}
+                      ]
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        val result = client.getBriefing(7)
+
+        assertTrue(result.isSuccess)
+        val briefing = result.getOrThrow()
+        assertEquals(7, briefing.contactId)
+        assertEquals("Carol King", briefing.name)
+        assertEquals("human", briefing.kind)
+        assertEquals("data:image/png;base64,abc", briefing.photoThumbnail)
+
+        assertEquals("Coffee", briefing.lastActivity?.title)
+        assertEquals("visit", briefing.lastActivity?.type)
+        assertEquals(1, briefing.recentNotes.size)
+        assertEquals("Talks about her garden", briefing.recentNotes.first().content)
+
+        assertEquals(30, briefing.cadence?.policy?.targetIntervalDays)
+        assertEquals(listOf("visit", "meal"), briefing.cadence?.policy?.qualifyingTypes)
+        assertTrue(briefing.cadence?.health?.hasQualifyingInteraction ?: false)
+        assertEquals(2, briefing.cadence?.health?.overdueBy)
+
+        assertEquals(1, briefing.openAgendaItems.size)
+        assertEquals("Ask about the surgery", briefing.openAgendaItems.first().content)
+
+        assertEquals(1, briefing.relationships.size)
+        val rel = briefing.relationships.first()
+        assertEquals("Bob Marley", rel.otherPartyName)
+        assertEquals(8, rel.otherPartyContactId)
+        assertEquals("spouse_of", rel.displayToken)
+        assertEquals("spouse_of", rel.edge?.type)
+        assertEquals("u8", rel.edge?.targetId)
+
+        assertEquals(1, briefing.lifeEvents.size)
+        assertEquals("graduated", briefing.lifeEvents.first().type)
+
+        assertEquals(1, briefing.upcomingReminders.size)
+        assertEquals("Send card", briefing.upcomingReminders.first().message)
+
+        assertEquals(1, briefing.upcomingDates.size)
+        assertEquals("birthday", briefing.upcomingDates.first().label)
+        assertEquals(5, briefing.upcomingDates.first().daysUntil)
+
+        val request = server.takeRequest()
+        assertEquals("/api/v1/contacts/7/briefing", request.path)
+    }
+
+    @Test
+    fun `get briefing tolerates every collection key being absent`() = runBlocking {
+        // The exact web crash: a contact with no history once returned every
+        // collection block ABSENT (not `[]`), and PrepViewPage dereferenced
+        // `.length` on them — white-screening the page into the ErrorBoundary.
+        // Decoding into the Kotlin model makes absent vs [] indistinguishable,
+        // so assert against the raw JSON with the keys omitted, exactly the
+        // trap /CLAUDE.md frontend trap #8 describes.
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "contact_id": 1,
+                      "uid": "u1",
+                      "name": "Empty"
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        val result = client.getBriefing(1)
+
+        assertTrue(result.isSuccess)
+        val briefing = result.getOrThrow()
+        assertEquals("Empty", briefing.name)
+        assertTrue(briefing.recentNotes.isEmpty())
+        assertTrue(briefing.openAgendaItems.isEmpty())
+        assertTrue(briefing.relationships.isEmpty())
+        assertTrue(briefing.lifeEvents.isEmpty())
+        assertTrue(briefing.upcomingReminders.isEmpty())
+        assertTrue(briefing.upcomingDates.isEmpty())
+        assertEquals(null, briefing.cadence)
+        assertEquals(null, briefing.lastActivity)
+    }
+
+    @Test
+    fun `get briefing normalizes an explicit JSON null collection to an empty list`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "contact_id": 2,
+                      "uid": "u2",
+                      "name": "Nulls",
+                      "recent_notes": null,
+                      "relationships": null,
+                      "upcoming_dates": null
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        val result = client.getBriefing(2)
+
+        assertTrue(result.isSuccess)
+        val briefing = result.getOrThrow()
+        assertTrue(briefing.recentNotes.isEmpty())
+        assertTrue(briefing.relationships.isEmpty())
+        assertTrue(briefing.upcomingDates.isEmpty())
+    }
+
+    @Test
+    fun `get briefing failure maps to the backend error`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(404)
+                .setBody("""{"error":{"code":"not_found","message":"Contact not found"}}"""),
+        )
+
+        val result = client.getBriefing(999)
+
+        assertTrue(result.isFailure)
+        val error = result.exceptionOrNull() as ApiError
+        assertTrue(error is ApiError.Client)
+        assertEquals(404, (error as ApiError.Client).code)
+    }
+
+    @Test
     fun `current user parses profile`() = runBlocking {
         server.enqueue(
             MockResponse()

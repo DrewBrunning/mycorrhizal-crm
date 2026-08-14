@@ -64,6 +64,7 @@ import com.mycorrhizal.crm.feature.contacts.ContactDetailScreen
 import com.mycorrhizal.crm.feature.contacts.ContactFormScreen
 import com.mycorrhizal.crm.feature.contacts.ContactListScreen
 import com.mycorrhizal.crm.feature.contacts.DashboardScreen
+import com.mycorrhizal.crm.feature.contacts.PrepViewScreen
 import com.mycorrhizal.crm.feature.contacts.BulkOperationsScreen
 import com.mycorrhizal.crm.feature.contacts.MergeContactsScreen
 import com.mycorrhizal.crm.feature.households.HouseholdDetailScreen
@@ -328,6 +329,7 @@ private fun MainScaffold(darkTheme: Boolean) {
                     onViewGifts = { id -> navController.navigate("contacts/$id/gifts") },
                     onViewPreferences = { id -> navController.navigate("contacts/$id/preferences") },
                     onViewAgenda = { id -> navController.navigate("contacts/$id/agenda") },
+                    onViewPrep = { id -> navController.navigate("contacts/$id/prep") },
                     onEditActivity = { id -> navController.navigate("contacts/$contactId/activities/$id/edit") },
                     onEditNote = { id -> navController.navigate("contacts/$contactId/notes/$id/edit") },
                     onEditReminder = { id -> navController.navigate("contacts/$contactId/reminders/$id/edit") },
@@ -488,6 +490,18 @@ private fun MainScaffold(darkTheme: Boolean) {
                 arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
             ) {
                 ConversationAgendaScreen(onBack = { navController.popBackStack() })
+            }
+            // M11: the N2 prep-view briefing, reached from the contact detail's
+            // ⋮ action menu (web reaches it from ContactHeader.tsx).
+            composable(
+                route = "contacts/{contactId}/prep",
+                arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            ) { entry ->
+                val contactId = entry.arguments?.getInt("contactId") ?: 0
+                PrepViewScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenContact = { id -> navController.navigate("contacts/$id") },
+                )
             }
             // M9: contact-agnostic drawer entries — the N4 unfiled-notes inbox and the
             // all-contacts activities feed (matching web's NotesPage.tsx/ActivitiesPage.tsx),

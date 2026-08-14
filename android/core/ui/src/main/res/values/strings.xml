@@ -112,6 +112,7 @@
     <string name="cd_copy_address">Copy address</string>
     <string name="cd_open_link">Open link</string>
     <string name="cd_copy_link">Copy link</string>
+    <string name="cd_open_contact">Open contact</string>
 
     <!-- Contact form -->
     <string name="contact_new">New contact</string>
@@ -178,6 +179,29 @@
     <string name="contact_save">Save changes</string>
     <string name="contact_error_given_name">At least one given name is required</string>
     <string name="contact_error_missing_id">Missing contact id</string>
+
+    <!-- Prep view (N2 / M11) -->
+    <string name="prep_title">Prep view</string>
+    <string name="prep_subtitle">Everything to remember before you see them</string>
+    <string name="prep_unknown_contact">Unknown</string>
+    <string name="prep_not_found">Contact not found</string>
+    <string name="prep_cadence_title">Relationship health</string>
+    <string name="prep_cadence_overdue">%1$d days overdue</string>
+    <string name="prep_cadence_on_track">On track</string>
+    <string name="prep_cadence_next_due">Next due: %1$s</string>
+    <string name="prep_cadence_last_interaction">Last interaction: %1$s</string>
+    <string name="prep_cadence_no_interactions_yet">No qualifying interactions yet — cadence starts once you record one.</string>
+    <string name="prep_agenda_title">Things to bring up</string>
+    <string name="prep_last_interaction_title">Last interaction</string>
+    <string name="prep_last_interaction_none">No interactions recorded yet</string>
+    <string name="prep_recent_notes_title">Recent notes</string>
+    <string name="prep_relationships_title">People around them</string>
+    <string name="prep_life_events_title">Life events</string>
+    <string name="prep_reminders_title">Upcoming reminders</string>
+    <string name="prep_upcoming_dates_title">Upcoming dates</string>
+    <string name="prep_upcoming_dates_birthday">Birthday</string>
+    <string name="prep_upcoming_dates_anniversary">Anniversary</string>
+    <string name="prep_upcoming_dates_in_days">in %1$d day(s)</string>
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>
@@ -307,6 +331,7 @@
     <string name="action_cancel">Cancel</string>
     <string name="action_add">Add</string>
     <string name="action_rename">Rename</string>
+    <string name="action_retry">Retry</string>
 
     <!-- Tags -->
     <string name="tags_title">Tags</string>

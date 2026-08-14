@@ -152,6 +152,8 @@ fun ContactDetailScreen(
     onViewGifts: (Int) -> Unit = {},
     onViewPreferences: (Int) -> Unit = {},
     onViewAgenda: (Int) -> Unit = {},
+    // M11: the N2 prep-view briefing (replaces the "coming soon" stub).
+    onViewPrep: (Int) -> Unit = {},
     onEditActivity: (Int) -> Unit = {},
     onEditNote: (Int) -> Unit = {},
     onEditReminder: (Int) -> Unit = {},
@@ -192,10 +194,9 @@ fun ContactDetailScreen(
     var showUnarchiveConfirm by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    // M24 stubs: share (M15) and prep view (M11) are separate tickets; until they land these
-    // menu items surface the standard "coming in a later phase" notice.
+    // M24: the share stub stays (M15 is a separate ticket); prep view (M11) now
+    // navigates instead of surfacing the "coming in a later phase" notice.
     val shareComingSoon = stringResource(R.string.coming_soon, stringResource(R.string.contact_share))
-    val prepComingSoon = stringResource(R.string.coming_soon, stringResource(R.string.contact_prep_view))
 
     // M24: action failures (delete/archive/export/membership writes) set `state.error`, which
     // the EmptyState branch already shows when there is no contact to render. For a loaded
@@ -410,7 +411,7 @@ fun ContactDetailScreen(
                                     text = { Text(stringResource(R.string.contact_prep_view)) },
                                     onClick = {
                                         menuExpanded = false
-                                        scope.launch { snackbarHostState.showSnackbar(prepComingSoon) }
+                                        onViewPrep(contact.id)
                                     },
                                 )
                                 DropdownMenuItem(
