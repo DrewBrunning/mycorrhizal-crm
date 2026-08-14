@@ -453,7 +453,8 @@ function mediaRules(styles: string, minWidth: string): string {
 
 test('lays the field groups out in two columns at lg+ (T74 Level 1)', () => {
   renderInformation({ phones: [{ number: '+15551234567' }] });
-  expect(mediaRules(allStyles(), '1200px')).toContain('repeat(2, 1fr)');
+  // T88: minmax(0, 1fr) tracks, not a bare 1fr -- see the grid's own comment.
+  expect(mediaRules(allStyles(), '1200px')).toContain('repeat(2, minmax(0, 1fr))');
 });
 
 test('keeps a single column below lg (T74 Level 1)', () => {
@@ -461,7 +462,7 @@ test('keeps a single column below lg (T74 Level 1)', () => {
   const base = mediaRules(allStyles(), '0px');
   expect(base).toContain('grid-template-columns:1fr');
   // The two-column template must stay gated to lg+, never in the base rules.
-  expect(base).not.toContain('repeat(2, 1fr)');
+  expect(base).not.toContain('repeat(2, minmax(0, 1fr))');
 });
 
 test('section headings span both columns so dividers stay full-width (T74)', () => {
@@ -485,4 +486,84 @@ test('multi-line / wide fields span both columns at lg+ (T74)', () => {
 test('EditableField value boxes shrink below content min-width (T74 trap)', () => {
   renderInformation({ phones: [{ number: '+15551234567' }] });
   expect(allStyles()).toContain('min-width:0');
+});
+
+// --- T88: full-span holes around pronouns, How We Met, Additional Info ---
+//
+// The coarse "does the document contain grid-column:1/-1 anywhere" checks
+// above can't tell one field's span from another's -- section headings and
+// cardNotes/work_information are unconditionally full-span, so that string
+// is always present regardless of what this ticket changed. These tests
+// instead extract the actual full-span class name(s) from the stylesheet and
+// walk up from a specific field's own text node to see whether one of its
+// ancestors carries one.
+
+// Every lg-breakpoint rule of the shape ".cssClass{grid-column:1/-1;}" --
+// i.e. every class FullSpanField (or SectionHeading) actually produced.
+function fullSpanClassNames(styles: string): Set<string> {
+  const lg = mediaRules(styles, '1200px');
+  const names = new Set<string>();
+  for (const m of lg.matchAll(/\.([\w-]+)\{[^}]*grid-column:1\/-1[^}]*\}/g)) {
+    names.add(m[1]);
+  }
+  return names;
+}
+
+// Climbs from el looking for a full-span class within a bounded number of
+// ancestors -- bounded rather than pinned to an exact depth so this doesn't
+// need to hard-code either component's internal DOM nesting.
+function hasFullSpanAncestor(el: Element, fullSpanClasses: Set<string>, maxDepth = 8): boolean {
+  let node: Element | null = el;
+  for (let i = 0; i < maxDepth && node; i++) {
+    if ([...node.classList].some((c) => fullSpanClasses.has(c))) return true;
+    node = node.parentElement;
+  }
+  return false;
+}
+
+test('pronouns is full-span only while editing, not in read mode (T88)', () => {
+  renderInformation({ speakToAs: { pronouns: [{ pronouns: 'she/her' }], grammaticalGenders: [] } });
+  const classes = fullSpanClassNames(allStyles());
+
+  const readLabel = screen.getByText('Pronouns & Grammatical Gender');
+  expect(hasFullSpanAncestor(readLabel, classes)).toBe(false);
+
+  fireEvent.click(within(fieldRow('Pronouns & Grammatical Gender')).getByLabelText('Edit'));
+
+  // The read-mode label is gone once editing starts; anchor on the editor's
+  // own Cancel button instead (unique on the page -- only one field edits
+  // at a time in this test).
+  const cancelButton = screen.getByRole('button', { name: 'Cancel' });
+  expect(hasFullSpanAncestor(cancelButton, classes)).toBe(true);
+});
+
+test('entering edit mode on pronouns does not reorder the fields above it (T88)', () => {
+  renderInformation({ speakToAs: { pronouns: [{ pronouns: 'she/her' }], grammaticalGenders: [] } });
+  const genderLabelBefore = screen.getByText('Gender');
+  fireEvent.click(within(fieldRow('Pronouns & Grammatical Gender')).getByLabelText('Edit'));
+  // Gender is unrelated to pronouns' own editing state -- still present,
+  // same node, not reflowed elsewhere.
+  expect(screen.getByText('Gender')).toBe(genderLabelBefore);
+});
+
+test('How We Met and Additional Information are not full-span -- they sit side by side (T88)', () => {
+  renderInformation({}, { how_we_met: 'At a conference', contact_information: 'Prefers email' });
+  const classes = fullSpanClassNames(allStyles());
+
+  expect(hasFullSpanAncestor(screen.getByText('How We Met'), classes)).toBe(false);
+  expect(hasFullSpanAncestor(screen.getByText('Additional Information'), classes)).toBe(false);
+});
+
+test('card notes and work information stay full-span (T88)', () => {
+  // cardNotes is not in DEFAULT_ENABLED_CONTACT_FIELDS, unlike every other
+  // field this file exercises -- must opt in explicitly.
+  renderInformation(
+    { notes: [{ note: 'Loves hiking' }] },
+    { work_information: 'Remote, PST hours' },
+    { enabledFields: new Set<ContactFieldKey>(['cardNotes', 'work_information']) }
+  );
+  const classes = fullSpanClassNames(allStyles());
+
+  expect(hasFullSpanAncestor(screen.getByText('Notes (vCard)'), classes)).toBe(true);
+  expect(hasFullSpanAncestor(screen.getByText('Work Information'), classes)).toBe(true);
 });
