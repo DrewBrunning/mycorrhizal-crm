@@ -126,6 +126,12 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// creates is format-agnostic once parsed into []VCFContactData.
 			protected.POST("/contacts/import/jscontact/upload", controllers.UploadJSContactForImport)
 
+			// Contact import routes (records) — T96's Android device-contacts
+			// path: a batch of neutral Card/CRM records run through the same
+			// preview pipeline (duplicate detection + merge diff + within-batch),
+			// confirmed via the shared /contacts/import/vcf/confirm endpoint.
+			protected.POST("/contacts/import/records", middleware.ValidateJSONMiddleware(&models.ImportRecordsRequest{}), controllers.UploadImportRecords)
+
 			// P1 contact sharing (docs/fork-plan/tickets/31-P1-contact-sharing.md)
 			// — one-time filtered copy between two users on the same
 			// instance. Accept is preview-only (parses the stored payload

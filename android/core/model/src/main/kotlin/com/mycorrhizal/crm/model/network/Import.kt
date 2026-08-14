@@ -30,6 +30,32 @@ data class DuplicateMatch(
 )
 
 @JsonClass(generateAdapter = true)
+data class ImportScalarChange(
+    val field: String = "",
+    val label: String = "",
+    val old: String = "",
+    val new: String = "",
+)
+
+@JsonClass(generateAdapter = true)
+data class ImportAddedValue(
+    val kind: String = "",
+    val value: String = "",
+)
+
+/**
+ * T96: exactly what the "Merge" (update) action will change on the matched
+ * existing contact — scalars overwritten (incoming-wins-when-non-empty) and
+ * multi-valued entries appended (additive). The backend always sends `updated`
+ * / `added` as arrays, never null.
+ */
+@JsonClass(generateAdapter = true)
+data class ImportMergeDiff(
+    val updated: List<ImportScalarChange> = emptyList(),
+    val added: List<ImportAddedValue> = emptyList(),
+)
+
+@JsonClass(generateAdapter = true)
 data class ImportRowPreview(
     @Json(name = "row_index") val rowIndex: Int = 0,
     @Json(name = "parsed_contact") val parsedContact: Map<String, Any?> = emptyMap(),
@@ -37,6 +63,8 @@ data class ImportRowPreview(
     @Json(name = "duplicate_match") val duplicateMatch: DuplicateMatch? = null,
     @Json(name = "suggested_action") val suggestedAction: String = "add",
     val diagnostics: List<String>? = null,
+    @Json(name = "merge_diff") val mergeDiff: ImportMergeDiff? = null,
+    @Json(name = "batch_duplicate_of") val batchDuplicateOf: Int? = null,
 )
 
 @JsonClass(generateAdapter = true)
@@ -59,6 +87,12 @@ data class RowImportAction(
 data class ImportConfirmRequest(
     @Json(name = "session_id") val sessionId: String,
     val actions: List<RowImportAction>,
+)
+
+/** T96: request body for the records-import endpoint (device-contacts path). */
+@JsonClass(generateAdapter = true)
+data class ImportRecordsRequest(
+    val records: List<ContactRecordInput>,
 )
 
 @JsonClass(generateAdapter = true)

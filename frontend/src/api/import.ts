@@ -24,7 +24,33 @@ export interface DuplicateMatch {
   existing_firstname: string;
   existing_lastname: string;
   existing_email: string;
-  match_reason: 'name' | 'email';
+  existing_phone: string;
+  match_reason: 'name' | 'email' | 'phone';
+}
+
+// One scalar field the "Merge" (update) action will overwrite on the matched
+// existing contact (T96). Field is a stable camelCase key; label is the
+// human-readable fallback.
+export interface ImportScalarChange {
+  field: string;
+  label: string;
+  old: string;
+  new: string;
+}
+
+// One multi-valued entry the "Merge" action will append to the matched
+// existing contact. Kind is one of email/phone/address/url/impp.
+export interface ImportAddedValue {
+  kind: string;
+  value: string;
+}
+
+// Exactly what "Merge" will change on the matched existing contact: scalars
+// overwritten (incoming-wins-when-non-empty) and multi-valued entries
+// appended (additive).
+export interface ImportMergeDiff {
+  updated: ImportScalarChange[];
+  added: ImportAddedValue[];
 }
 
 // Preview row with parsed contact and status
@@ -34,6 +60,11 @@ export interface ImportRowPreview {
   validation_errors: string[];
   duplicate_match: DuplicateMatch | null;
   suggested_action: 'add' | 'skip' | 'update';
+  // T96: present exactly when duplicate_match is -- what "Merge" would change.
+  merge_diff: ImportMergeDiff | null;
+  // T96: when present, the row_index of an earlier row in the SAME import that
+  // this row duplicates. Such rows default to "skip".
+  batch_duplicate_of: number | null;
 }
 
 // Response from preview request

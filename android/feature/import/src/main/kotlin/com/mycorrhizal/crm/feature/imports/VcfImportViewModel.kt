@@ -93,6 +93,20 @@ class VcfImportViewModel @Inject constructor(
         _uiState.update { it.copy(rowActions = it.rowActions + (rowIndex to action)) }
     }
 
+    /** T96: "Resolve all as merged" — every valid row takes its suggested action
+     *  (merge for duplicates, keep both for new, discard for within-batch
+     *  duplicates); errored rows stay forced to skip. */
+    fun resolveAll() {
+        val preview = _uiState.value.preview ?: return
+        _uiState.update { state ->
+            val next = state.rowActions.toMutableMap()
+            preview.rows.forEach { row ->
+                if (row.validationErrors.isEmpty()) next[row.rowIndex] = row.suggestedAction
+            }
+            state.copy(rowActions = next)
+        }
+    }
+
     fun confirm() {
         val preview = _uiState.value.preview ?: return
         if (_uiState.value.isLoading) return

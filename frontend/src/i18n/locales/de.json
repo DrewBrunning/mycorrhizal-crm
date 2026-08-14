@@ -279,24 +279,35 @@
       "preview": {
         "title": "Import überprüfen",
         "description": "Überprüfen Sie die zu importierenden Kontakte. Lösen Sie eventuelle Duplikate vor dem Fortfahren.",
-        "row": "Zeile",
-        "status": "Status",
-        "action": "Aktion",
-        "valid": "Gültig",
-        "duplicate": "Duplikat gefunden",
-        "duplicateStatus": "Duplikat",
         "duplicateOf": "Entspricht: {{name}} ({{reason}})",
-        "error": "Fehler",
-        "actionSkip": "Überspringen",
-        "actionAdd": "Neu hinzufügen",
-        "actionUpdate": "Bestehenden aktualisieren",
         "toCreate": "{{count}} zu erstellen",
         "toUpdate": "{{count}} zu aktualisieren",
         "toSkip": "{{count}} zu überspringen",
         "errors": "{{count}} mit Fehlern",
-        "acceptAll": "Alle vorgeschlagenen übernehmen",
         "skipAll": "Alle überspringen",
-        "importing": "Importiere…"
+        "importing": "Importiere…",
+        "resolveAllAsMerged": "Alle wie vorgeschlagen zusammenführen",
+        "resolveConflicts": "Konflikte auflösen ({{count}} verbleibend)",
+        "noConflicts": "Keine Duplikate gefunden – alles unten wird als neu hinzugefügt.",
+        "applyDecisions": "Entscheidungen anwenden ({{count}})",
+        "actionMerge": "Zusammenführen",
+        "actionKeepBoth": "Beide behalten",
+        "actionDiscard": "Neuen verwerfen",
+        "unnamed": "Unbenannt",
+        "newContact": "Neuer Kontakt – kein Treffer gefunden",
+        "batchDuplicateOf": "Duplikat von Zeile {{row}} dieser Importdatei",
+        "diffTitle": "Wird zusammengeführt:",
+        "diffAdded": "+ neue {{kind}}: {{value}}",
+        "diffUpdated": "{{label}}: {{old}} → {{new}}",
+        "noDiff": "Keine Änderungen – die Datensätze stimmen bereits überein.",
+        "kind": {
+          "email": "E-Mail",
+          "phone": "Telefon",
+          "address": "Adresse",
+          "url": "Website",
+          "impp": "IM"
+        },
+        "allResolved": "Alle Konflikte gelöst – überprüfen Sie die Entscheidungen unten."
       },
       "result": {
         "title": "Import abgeschlossen",
@@ -1283,7 +1294,8 @@
     "associationSummary": "Dabei werden {{notes}} Notiz(en), {{activities}} Aktivität(en), {{reminders}} Erinnerung(en) und {{edges}} Beziehung(en) auf den zusammengeführten Kontakt übertragen.",
     "mergeButton": "Zusammenführen",
     "keepThisOne": "{{name}} behalten",
-    "swap": "Tauschen"
+    "swap": "Tauschen",
+    "hiddenMatches": "{{shown}} angezeigt, {{hidden}} über andere Felder gefunden"
   },
   "triage": {
     "title": "Kreis-/Tag-Migration",

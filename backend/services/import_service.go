@@ -186,6 +186,9 @@ func ParseVCF(reader io.Reader, db *gorm.DB, userID uint) (contacts []VCFContact
 		return nil, nil, stats, fmt.Errorf("VCF file contains no valid vCards")
 	}
 
+	// T96: prior rows' flat contacts, for within-batch duplicate detection.
+	var batchContacts []*models.Contact
+
 	for rowIdx, block := range blocks {
 		if rowIdx >= MaxVCFContacts {
 			return nil, nil, stats, fmt.Errorf("too many contacts: maximum is %d contacts", MaxVCFContacts)
@@ -243,33 +246,11 @@ func ParseVCF(reader io.Reader, db *gorm.DB, userID uint) (contacts []VCFContact
 			PhotoURL:       photoURL,
 		})
 
-		// Build preview
-		preview := models.ImportRowPreview{
-			RowIndex:         rowIdx,
-			ParsedContact:    ContactToPreviewMap(contact),
-			ValidationErrors: make([]string, 0),
-			Diagnostics:      diagnosticsToStrings(diags),
-			SuggestedAction:  "add",
-		}
-
-		// Validate contact
-		validationErrors := ValidateImportedContact(contact)
-		preview.ValidationErrors = validationErrors
-
-		if len(validationErrors) > 0 {
-			stats.ErrorCount++
-			preview.SuggestedAction = "skip"
-		} else {
-			stats.ValidCount++
-
-			// Detect duplicates
-			duplicate := DetectDuplicate(db, userID, contact.Firstname, contact.Lastname, contact.Email, contact.Phone)
-			if duplicate != nil {
-				preview.DuplicateMatch = duplicate
-				preview.SuggestedAction = "update"
-				stats.DuplicateCount++
-			}
-		}
+		// T96: shared preview wiring (validation, DB duplicate detection +
+		// merge diff, within-batch detection). batchContacts is appended AFTER
+		// the call so a row is never compared against itself.
+		preview := BuildImportRowPreview(db, userID, contact, rowIdx, batchContacts, diagnosticsToStrings(diags), &stats)
+		batchContacts = append(batchContacts, contact)
 
 		previews = append(previews, preview)
 	}
@@ -305,6 +286,8 @@ func ParseJSContact(reader io.Reader, db *gorm.DB, userID uint) (contacts []VCFC
 	}
 
 	adapter := jscontact.Adapter{}
+	// T96: prior rows' flat contacts, for within-batch duplicate detection.
+	var batchContacts []*models.Contact
 	for rowIdx, raw := range rawCards {
 		if rowIdx >= MaxVCFContacts {
 			return nil, nil, stats, fmt.Errorf("too many contacts: maximum is %d contacts", MaxVCFContacts)
@@ -341,29 +324,10 @@ func ParseJSContact(reader io.Reader, db *gorm.DB, userID uint) (contacts []VCFC
 			PhotoURL:       photoURL,
 		})
 
-		preview := models.ImportRowPreview{
-			RowIndex:         rowIdx,
-			ParsedContact:    ContactToPreviewMap(contact),
-			ValidationErrors: make([]string, 0),
-			Diagnostics:      diagnosticsToStrings(diags),
-			SuggestedAction:  "add",
-		}
-
-		validationErrors := ValidateImportedContact(contact)
-		preview.ValidationErrors = validationErrors
-
-		if len(validationErrors) > 0 {
-			stats.ErrorCount++
-			preview.SuggestedAction = "skip"
-		} else {
-			stats.ValidCount++
-			duplicate := DetectDuplicate(db, userID, contact.Firstname, contact.Lastname, contact.Email, contact.Phone)
-			if duplicate != nil {
-				preview.DuplicateMatch = duplicate
-				preview.SuggestedAction = "update"
-				stats.DuplicateCount++
-			}
-		}
+		// T96: shared preview wiring (validation, DB duplicate detection +
+		// merge diff, within-batch detection).
+		preview := BuildImportRowPreview(db, userID, contact, rowIdx, batchContacts, diagnosticsToStrings(diags), &stats)
+		batchContacts = append(batchContacts, contact)
 
 		previews = append(previews, preview)
 	}
@@ -527,32 +491,20 @@ func GenerateCSVPreview(db *gorm.DB, userID uint, rows [][]string, headers []str
 	contacts := make([]models.Contact, len(rows))
 	var previews []models.ImportRowPreview
 	var stats ImportStats
+	// T96: prior rows' flat contacts, for within-batch duplicate detection.
+	// Points into preallocated contacts (no reallocation), so the pointers
+	// stay valid for the whole loop.
+	var batchContacts []*models.Contact
 
 	for rowIdx, row := range rows {
 		contact := BuildContactFromRow(userID, headers, row, mappings)
 		contacts[rowIdx] = contact
 
-		preview := models.ImportRowPreview{
-			RowIndex:         rowIdx,
-			ParsedContact:    ContactToPreviewMap(&contact),
-			ValidationErrors: ValidateImportedContact(&contact),
-			SuggestedAction:  "add",
-		}
-
-		if len(preview.ValidationErrors) > 0 {
-			stats.ErrorCount++
-			preview.SuggestedAction = "skip"
-		} else {
-			stats.ValidCount++
-
-			// Detect duplicates using the denormalized primary scalars.
-			duplicate := DetectDuplicate(db, userID, contact.Firstname, contact.Lastname, contact.Email, contact.Phone)
-			if duplicate != nil {
-				preview.DuplicateMatch = duplicate
-				preview.SuggestedAction = "update"
-				stats.DuplicateCount++
-			}
-		}
+		// T96: shared preview wiring (validation, DB duplicate detection +
+		// merge diff, within-batch detection). CSV rows don't go through a
+		// vCard adapter, so diags is nil.
+		preview := BuildImportRowPreview(db, userID, &contacts[rowIdx], rowIdx, batchContacts, nil, &stats)
+		batchContacts = append(batchContacts, &contacts[rowIdx])
 
 		previews = append(previews, preview)
 	}
@@ -1203,6 +1155,218 @@ func MergeImportedContact(existing *models.Contact, incoming *models.Contact) {
 	// exports), so accepting incoming.VCardUID here silently reassigns the
 	// existing contact's identity and orphans every row filed under the old
 	// one -- exactly what "gifts was also wiped out" turned out to be.
+}
+
+// importMergeDiffScalars is the scalar table backing ComputeImportMergeDiff,
+// mirroring MergeImportedContact's overwrite set so the preview's "what Merge
+// will do" and the confirm path's actual behavior cannot drift. Email/Phone/
+// Address are deliberately absent: they are BeforeSave projections of
+// Emails[0]/Phones[0]/Addresses[0] (see contact_merge_service.go's
+// mergeScalarFields for the same reasoning), so a "changed email" is really an
+// "added email" and is reported that way by the multi-value diff below.
+// VCardExtra is likewise absent -- raw vCard payload, no user-facing meaning.
+var importMergeDiffScalars = []struct {
+	Key   string
+	Label string
+	Get   func(*models.Contact) string
+}{
+	{"firstname", "First Name", func(c *models.Contact) string { return c.Firstname }},
+	{"lastname", "Last Name", func(c *models.Contact) string { return c.Lastname }},
+	{"middle_name", "Middle Name", func(c *models.Contact) string { return c.MiddleName }},
+	{"prefix", "Prefix", func(c *models.Contact) string { return c.Prefix }},
+	{"suffix", "Suffix", func(c *models.Contact) string { return c.Suffix }},
+	{"nickname", "Nickname", func(c *models.Contact) string { return c.Nickname }},
+	{"gender", "Gender", func(c *models.Contact) string { return c.Gender }},
+	{"birthday", "Birthday", func(c *models.Contact) string { return c.Birthday }},
+	{"anniversary", "Anniversary", func(c *models.Contact) string { return c.Anniversary }},
+	{"organization", "Organization", func(c *models.Contact) string { return c.Organization }},
+	{"department", "Department", func(c *models.Contact) string { return c.Department }},
+	{"job_title", "Job Title", func(c *models.Contact) string { return c.JobTitle }},
+	{"role", "Role", func(c *models.Contact) string { return c.Role }},
+	{"how_we_met", "How We Met", func(c *models.Contact) string { return c.HowWeMet }},
+	{"work_information", "Work Information", func(c *models.Contact) string { return c.WorkInformation }},
+	{"contact_information", "Contact Information", func(c *models.Contact) string { return c.ContactInformation }},
+}
+
+// ComputeImportMergeDiff returns, for a duplicate import row, exactly what the
+// "Merge" (update) action will change on the existing contact: scalars that
+// MergeImportedContact will overwrite (incoming wins when non-empty, existing
+// survives when blank) and multi-valued entries it will append (the additive
+// T49 merge). It is pure and shares MergeImportedContact's own helpers --
+// mergeContactValues for the arrays, the same overwrite-when-non-empty rule
+// for the scalars -- so the preview can never describe a merge the commit
+// would not perform (pinned by a test that applies MergeImportedContact and
+// asserts the diff predicted every change). Circles/Tags are deliberately not
+// in the diff: membership materialization (MaterializeImportedGroupings) is
+// additive and idempotent, and the flat Contact.Circles staging column is not
+// a faithful record of an existing contact's real memberships, so comparing
+// against it would be inaccurate.
+func ComputeImportMergeDiff(existing, incoming *models.Contact) models.ImportMergeDiff {
+	// Initialize both slices empty rather than nil: a nil slice serializes as
+	// JSON `null` (Go encodes nil slices as null even without omitempty), and
+	// the client renders diff.updated.length / diff.added.length directly --
+	// CLAUDE.md frontend trap #8, the whole reason the diff must always carry
+	// `[]`, never null.
+	diff := models.ImportMergeDiff{
+		Updated: []models.ImportScalarChange{},
+		Added:   []models.ImportAddedValue{},
+	}
+	for _, f := range importMergeDiffScalars {
+		oldVal, newVal := f.Get(existing), f.Get(incoming)
+		if newVal != "" && newVal != oldVal {
+			diff.Updated = append(diff.Updated, models.ImportScalarChange{
+				Field: f.Key, Label: f.Label, Old: oldVal, New: newVal,
+			})
+		}
+	}
+
+	addAdded := func(kind string, added []string) {
+		for _, v := range added {
+			diff.Added = append(diff.Added, models.ImportAddedValue{Kind: kind, Value: v})
+		}
+	}
+	_, addedEmails := mergeContactValues(existing.Emails, incoming.Emails, contactEmailBlank, contactEmailKey)
+	addAdded("email", displayValues(addedEmails, contactEmailDisplay))
+	_, addedPhones := mergeContactValues(existing.Phones, incoming.Phones, contactPhoneBlank, contactPhoneKey)
+	addAdded("phone", displayValues(addedPhones, contactPhoneDisplay))
+	_, addedAddresses := mergeContactValues(existing.Addresses, incoming.Addresses, contactAddressBlank, contactAddressKey)
+	addAdded("address", displayValues(addedAddresses, contactAddressDisplay))
+	_, addedURLs := mergeContactValues(existing.URLs, incoming.URLs, contactURLBlank, contactURLKey)
+	addAdded("url", displayValues(addedURLs, contactURLDisplay))
+	_, addedIMPPs := mergeContactValues(existing.IMPPs, incoming.IMPPs, contactIMPPBlank, contactIMPPKey)
+	addAdded("impp", displayValues(addedIMPPs, contactIMPPDisplay))
+
+	return diff
+}
+
+// loadImportDuplicate loads the full flat Contact a DuplicateMatch points at,
+// so the preview can compute what merging into it would change. The match
+// itself came from DetectDuplicate, which is already user-scoped; the load
+// re-scopes by user_id as defense in depth (CLAUDE.md backend trap #5).
+// Returns nil when the row vanished between detection and load (e.g. a
+// concurrent delete) -- the caller then shows the match without a diff.
+func loadImportDuplicate(db *gorm.DB, userID uint, id uint) *models.Contact {
+	var existing models.Contact
+	if err := db.Where("user_id = ?", userID).First(&existing, id).Error; err != nil {
+		return nil
+	}
+	return &existing
+}
+
+// batchDuplicateIndex returns the index of the earliest earlier row in batch
+// that duplicates candidate, or -1. T96's within-batch detection: the same
+// person imported twice in one file. Same tier order and key normalizers as
+// DetectDuplicate (email, name, phone via PhoneKey), but compared against
+// sibling rows of the same import rather than the whole contacts table, and
+// reading the full multi-value arrays rather than just the flat primaries.
+func batchDuplicateIndex(batch []*models.Contact, candidate *models.Contact) int {
+	for i, prev := range batch {
+		if contactsMatchWithinBatch(prev, candidate) {
+			return i
+		}
+	}
+	return -1
+}
+
+// contactsMatchWithinBatch reports whether two import rows are the same person
+// by any of DetectDuplicate's three tiers: a shared email (case-insensitive),
+// an exact shared firstname+lastname (both non-empty), or a phone reducing to
+// the same PhoneKey (T68, so +1-country-code / punctuation differences still
+// match).
+func contactsMatchWithinBatch(a, b *models.Contact) bool {
+	aEmails := map[string]bool{}
+	for _, e := range a.Emails {
+		if v := strings.ToLower(strings.TrimSpace(e.Value)); v != "" {
+			aEmails[v] = true
+		}
+	}
+	for _, e := range b.Emails {
+		if v := strings.ToLower(strings.TrimSpace(e.Value)); v != "" && aEmails[v] {
+			return true
+		}
+	}
+
+	aFN := strings.ToLower(strings.TrimSpace(a.Firstname))
+	aLN := strings.ToLower(strings.TrimSpace(a.Lastname))
+	bFN := strings.ToLower(strings.TrimSpace(b.Firstname))
+	bLN := strings.ToLower(strings.TrimSpace(b.Lastname))
+	if aFN != "" && aLN != "" && aFN == bFN && aLN == bLN {
+		return true
+	}
+
+	aPhones := map[string]bool{}
+	for _, p := range a.Phones {
+		if k := models.PhoneKey(p.Value); k != "" {
+			aPhones[k] = true
+		}
+	}
+	for _, p := range b.Phones {
+		if k := models.PhoneKey(p.Value); k != "" && aPhones[k] {
+			return true
+		}
+	}
+	return false
+}
+
+// BuildImportRowPreview finalizes a successfully-parsed import row into its
+// preview row: validation, DB duplicate detection (with the per-row merge
+// diff, ComputeImportMergeDiff) and T96 within-batch detection against the
+// sibling contacts built so far, updating stats accordingly. contact is the
+// flat Contact for this row; batch holds every EARLIER row's contact in row
+// order (the caller appends contact after the call, so a row is never
+// compared against itself); diags is the row's adapter diagnostics (nil for
+// CSV/records rows, which don't go through an adapter). Shared by the VCF,
+// JSContact, CSV and records-import preview builders so the
+// duplicate/diff/default-action wiring cannot drift between formats.
+func BuildImportRowPreview(
+	db *gorm.DB,
+	userID uint,
+	contact *models.Contact,
+	rowIdx int,
+	batch []*models.Contact,
+	diags []string,
+	stats *ImportStats,
+) models.ImportRowPreview {
+	preview := models.ImportRowPreview{
+		RowIndex:         rowIdx,
+		ParsedContact:    ContactToPreviewMap(contact),
+		ValidationErrors: ValidateImportedContact(contact),
+		Diagnostics:      diags,
+		SuggestedAction:  "add",
+	}
+
+	if len(preview.ValidationErrors) > 0 {
+		stats.ErrorCount++
+		preview.SuggestedAction = "skip"
+		return preview
+	}
+	stats.ValidCount++
+
+	// Within-batch detection: does this row duplicate an earlier row of the
+	// same file? Defaults to skip so the twin is never created; the user may
+	// override to Keep Both.
+	if idx := batchDuplicateIndex(batch, contact); idx >= 0 {
+		preview.BatchDuplicateOf = &idx
+		preview.SuggestedAction = "skip"
+	}
+
+	// DB duplicate detection -- the import path's own detector
+	// (DetectDuplicate), unchanged. Only a row with no within-batch match
+	// defaults to update; a row that duplicates both a sibling and an existing
+	// record stays skip-by-default so the file's twin isn't created twice.
+	duplicate := DetectDuplicate(db, userID, contact.Firstname, contact.Lastname, contact.Email, contact.Phone)
+	if duplicate != nil {
+		preview.DuplicateMatch = duplicate
+		if existing := loadImportDuplicate(db, userID, duplicate.ExistingContactID); existing != nil {
+			diff := ComputeImportMergeDiff(existing, contact)
+			preview.MergeDiff = &diff
+		}
+		if preview.BatchDuplicateOf == nil {
+			preview.SuggestedAction = "update"
+		}
+		stats.DuplicateCount++
+	}
+	return preview
 }
 
 // creates a note documenting what an "update" import actually changed on an

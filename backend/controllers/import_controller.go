@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -260,6 +261,70 @@ func PreviewImport(c *gin.Context) {
 		Msg("Import preview generated")
 
 	c.JSON(http.StatusOK, response)
+}
+
+// UploadImportRecords accepts a batch of neutral Card/CRM records — the same
+// nested shape POST /contacts accepts, which is what Android's device-contacts
+// import produces (DeviceContactMapper.toInput) — and runs them through the
+// standard import preview pipeline (validation, per-row DB duplicate detection
+// with merge diff, T96 within-batch detection) by converting each record to a
+// flat contact and building a session. Confirmation reuses the existing
+// POST /contacts/import/vcf/confirm endpoint (format-agnostic once the session
+// holds []VCFContactData), so the device-contacts flow gets the same server-side
+// merge/keep-both/discard machinery as every other import path.
+func UploadImportRecords(c *gin.Context) {
+	db := c.MustGet("db").(*gorm.DB)
+	log := logger.FromContext(c)
+
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+
+	go importSessions.CleanupExpired()
+
+	request, err := middleware.GetValidated[models.ImportRecordsRequest](c)
+	if err != nil {
+		apperrors.AbortWithError(c, err)
+		return
+	}
+
+	contacts := make([]services.VCFContactData, 0, len(request.Records))
+	var previews []models.ImportRowPreview
+	var stats services.ImportStats
+	var batch []*models.Contact
+
+	for rowIdx := range request.Records {
+		contact := &models.Contact{}
+		models.ApplyRecordToContact(contact, request.Records[rowIdx].ToRecord(), "")
+		if contact.VCardUID == "" {
+			contact.VCardUID = uuid.New().String()
+		}
+
+		contacts = append(contacts, services.VCFContactData{Contact: contact})
+		preview := services.BuildImportRowPreview(db, userID, contact, rowIdx, batch, nil, &stats)
+		batch = append(batch, contact)
+		previews = append(previews, preview)
+	}
+
+	sessionID := importSessions.CreateRecordsSession(userID, contacts, previews)
+
+	log.Info().
+		Str("session_id", sessionID).
+		Int("contacts", len(contacts)).
+		Int("valid", stats.ValidCount).
+		Int("duplicates", stats.DuplicateCount).
+		Int("errors", stats.ErrorCount).
+		Msg("Import records session created")
+
+	c.JSON(http.StatusOK, models.ImportPreviewResponse{
+		SessionID:      sessionID,
+		Rows:           previews,
+		TotalRows:      len(previews),
+		ValidRows:      stats.ValidCount,
+		DuplicateCount: stats.DuplicateCount,
+		ErrorCount:     stats.ErrorCount,
+	})
 }
 
 // ConfirmImport executes the import with user-specified actions per row

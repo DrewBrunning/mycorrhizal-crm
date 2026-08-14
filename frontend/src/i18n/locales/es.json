@@ -279,24 +279,35 @@
       "preview": {
         "title": "Revisar Importación",
         "description": "Revisa los contactos a importar. Resuelve los duplicados antes de continuar.",
-        "row": "Fila",
-        "status": "Estado",
-        "action": "Acción",
-        "valid": "Válido",
-        "duplicate": "Duplicado encontrado",
-        "duplicateStatus": "Duplicado",
         "duplicateOf": "Coincide con: {{name}} ({{reason}})",
-        "error": "Error",
-        "actionSkip": "Omitir",
-        "actionAdd": "Agregar como Nuevo",
-        "actionUpdate": "Actualizar Existente",
         "toCreate": "{{count}} para crear",
         "toUpdate": "{{count}} para actualizar",
         "toSkip": "{{count}} para omitir",
         "errors": "{{count}} con errores",
-        "acceptAll": "Aceptar todos los sugeridos",
         "skipAll": "Omitir todos",
-        "importing": "Importando…"
+        "importing": "Importando…",
+        "resolveAllAsMerged": "Resolver todo como combinado",
+        "resolveConflicts": "Resolver conflictos ({{count}} restantes)",
+        "noConflicts": "No hay coincidencias duplicadas: todo lo siguiente se añadirá como nuevo.",
+        "applyDecisions": "Aplicar decisiones ({{count}})",
+        "actionMerge": "Combinar",
+        "actionKeepBoth": "Conservar ambos",
+        "actionDiscard": "Descartar nuevo",
+        "unnamed": "Sin nombre",
+        "newContact": "Contacto nuevo: no se encontró coincidencia",
+        "batchDuplicateOf": "Duplica la fila {{row}} de esta importación",
+        "diffTitle": "Se combinará:",
+        "diffAdded": "+ nueva {{kind}}: {{value}}",
+        "diffUpdated": "{{label}}: {{old}} → {{new}}",
+        "noDiff": "Sin cambios: los registros ya coinciden.",
+        "kind": {
+          "email": "correo",
+          "phone": "teléfono",
+          "address": "dirección",
+          "url": "sitio web",
+          "impp": "IM"
+        },
+        "allResolved": "Todos los conflictos resueltos: revisa las decisiones a continuación."
       },
       "result": {
         "title": "Importación Completa",
@@ -1283,7 +1294,8 @@
     "associationSummary": "Esto moverá {{notes}} nota(s), {{activities}} actividad(es), {{reminders}} recordatorio(s) y {{edges}} relación(es) al contacto combinado.",
     "mergeButton": "Combinar",
     "keepThisOne": "Conservar {{name}}",
-    "swap": "Intercambiar"
+    "swap": "Intercambiar",
+    "hiddenMatches": "{{shown}} mostrado(s), {{hidden}} coincidente(s) en otros campos"
   },
   "triage": {
     "title": "Migración de círculos y etiquetas",

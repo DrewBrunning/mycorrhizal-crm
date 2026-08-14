@@ -17,6 +17,7 @@ import {
   IconButton,
   Tooltip,
 } from '@mui/material';
+import { createFilterOptions } from '@mui/material/Autocomplete';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import { useTranslation } from 'react-i18next';
 import AppDialog from './AppDialog';
@@ -65,6 +66,15 @@ function contactName(c: Contact): string {
   return [c.firstname, c.lastname].filter(Boolean).join(' ').trim() || c.uid || '';
 }
 
+// T101: the server search (`applyContactSearch`) is deliberately broad --
+// name, email, phone, address and FTS token matches all OR together, which
+// is right for the Contacts list but surfaces unrelated contacts in a picker
+// that feeds a destructive merge. Filter client-side to only what the typed
+// string actually appears in, keeping the wide server query so a phone or
+// email search still finds the right contact in the first place.
+const contactOptionLabel = (option: Contact) => `${option.firstname} ${option.lastname}`;
+const contactFilterOptions = createFilterOptions<Contact>({ stringify: contactOptionLabel });
+
 // MergeContactsDialog is ticket N1's frontend entry point
 // (docs/fork-plan/tickets/01-N1-contact-merge.md), extended by T92/T93 with
 // the fixed-pair mode above. Single mode: "merge into another contact"
@@ -99,6 +109,12 @@ export default function MergeContactsDialog(props: MergeContactsDialogProps) {
   // Conflict labels: pair mode uses full display names (neither contact is
   // privileged); single mode keeps the historical firstname-only keeper label.
   const keeperLabelName = inPairMode ? contactName(keeper!) : (selectedContact?.firstname || '');
+
+  // T101: how many of the server's (deliberately broad) results the
+  // client-side strict filter is hiding, so the picker can say so instead of
+  // silently dropping rows the user might expect to see.
+  const filteredContacts = contactFilterOptions(contacts, { inputValue: searchInput, getOptionLabel: contactOptionLabel });
+  const hiddenMatchCount = contacts.length - filteredContacts.length;
 
   const loadContacts = useCallback(
     async (search: string = '') => {
@@ -252,14 +268,14 @@ export default function MergeContactsDialog(props: MergeContactsDialogProps) {
 
             <Autocomplete
               options={contacts}
-              getOptionLabel={(option) => `${option.firstname} ${option.lastname}`}
+              getOptionLabel={contactOptionLabel}
               value={selectedContact}
               onChange={(_, value) => handleSelectContact(value)}
               onInputChange={(_, value, reason) => {
                 if (reason === 'input') setSearchInput(value);
               }}
               loading={contactsLoading}
-              filterOptions={(x) => x}
+              filterOptions={contactFilterOptions}
               renderInput={(params) => (
                 <TextField
                   {...params}
@@ -279,6 +295,11 @@ export default function MergeContactsDialog(props: MergeContactsDialogProps) {
               isOptionEqualToValue={(option, value) => option.uid === value.uid}
               noOptionsText={searchInput ? t('contactMerge.noContactsFound') : t('contactMerge.typeToSearch')}
             />
+            {hiddenMatchCount > 0 && (
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                {t('contactMerge.hiddenMatches', { shown: filteredContacts.length, hidden: hiddenMatchCount })}
+              </Typography>
+            )}
           </>
         )}
 

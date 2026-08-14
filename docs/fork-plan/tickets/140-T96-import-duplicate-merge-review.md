@@ -6,7 +6,7 @@
 | **Rating** | 4 — this is where the duplicates the beta complained about came from |
 | **Size** | M (web) + M (Android) |
 | **Depends on** | [T93](137-T93-duplicate-scan-endpoint-and-review.md) for the within-batch half; the per-row preview half depends on nothing. |
-| **Status** | **TO BE DONE** |
+| **Status** | **DONE** (2026-08-14) |
 | **Source** | Beta testing note, 2026-08-13: *"Doing bulk import doesn't give a screen to do a bulk merge of contacts — we should be able to merge duplicates as part of import for VCF, CSV, and Android contacts."* |
 
 ## Why this exists
@@ -92,3 +92,105 @@ against the database only, so a VCF containing the same person twice creates two
   union-on-update case.
 - `cd android && ./gradlew testDebugUnitTest lintDebug assembleDebug` green.
 - New strings translated in all five locales, both clients.
+
+## Landing note (2026-08-14)
+
+Built in one session as the described feature — per-contact Merge / Keep Both /
+Discard New decision cards during bulk import, on web **and** both Android import
+flows. T93 (which this ticket depends on) landed first, so the whole thing was
+buildable; T92-as-written (a Merge button in the Contacts list bulk-actions bar)
+was deliberately **not** done — it is a separate ticket, and its "Review
+duplicates" review surface was already shipped as part of T93.
+
+### Backend
+
+- **`ImportRowPreview` gains `merge_diff` and `batch_duplicate_of`.**
+  `merge_diff` describes exactly what the "Merge" (update) action will change on
+  the matched existing contact: scalars overwritten (incoming-wins-when-non-
+  empty, `ComputeImportMergeDiff`) and multi-valued entries appended (the same
+  `mergeContactValues` helpers the confirm path applies — a convergence test
+  applies `MergeImportedContact` and asserts the diff predicted every change, so
+  the preview can never describe a merge the commit won't perform). Email/Phone/
+  Address are reported as additions, not scalar updates — they're `BeforeSave`
+  projections of the arrays. Circles/Tags are deliberately absent (membership
+  materialization is additive/idempotent, and the flat staging column isn't a
+  faithful record of an existing contact's memberships).
+- **Within-batch duplicate detection.** `BuildImportRowPreview` (new shared
+  preview builder used by the VCF, JSContact, CSV and records-import paths so
+  the duplicate/diff/default-action wiring can't drift between formats) compares
+  each row against the sibling rows built so far using the same key functions
+  as `DetectDuplicate` (email, exact name, phone via `PhoneKey`). A twin gets
+  `batch_duplicate_of` pointing at the earlier row and defaults to "skip" — the
+  user can still Keep Both.
+- **`POST /contacts/import/records`** — a batch of neutral Card/CRM records run
+  through the same preview pipeline and confirmed via the shared
+  `/contacts/import/vcf/confirm` route. This is the Android device-contacts path
+  (T96 step 5's "use the server's detector"): the device flow no longer creates
+  each selected contact unconditionally. Session type is `records` so merge
+  notes are labelled "Device Import".
+- The diff's `updated`/`added` always serialize as `[]`, never `null` (Go emits
+  `null` for a nil slice even without `omitempty`; the client renders
+  `.length` directly — CLAUDE.md trap #8, pinned by a raw-JSON test).
+
+### Web
+
+The review step of `ImportContactsDialog` is redesigned from a table with a
+per-row select into the decision cards: name + match line ("Matches: X (same
+email)"), the merge diff ("Will merge: + new phone: ..., Job Title: A → B"), a
+within-batch note ("Duplicates row N of this import"), and Merge / Keep Both /
+Discard New buttons (Merge only enabled when the row matched an existing
+record). "Resolve all as merged" (was "Accept all suggested") + "Skip all"
+bulk controls; the apply button is now "Apply Decisions (N)"; the review heading
+counts unresolved conflicts ("Resolve Conflicts (N remaining)"). All five
+locales updated. `api/import.ts` also fixes `DuplicateMatch.match_reason` to
+include `phone`.
+
+### Android
+
+Both import flows share a new `ImportReviewStep` composable with the same
+decision cards and diff. The VCF-file flow replaces its Skip/Add/Update chips.
+The device-contacts flow becomes select → review → confirm via the new records
+endpoint. **Deliberate tradeoff:** the device LOOKUP_KEY linkage (a future
+re-import dedup aid, §7.5.4) is dropped — the server owns creation now, and the
+client no longer learns which row became which contact. `findDuplicate` still
+decorates the list step, but the real duplicate decision is server-side.
+
+### Tests / verification
+
+Backend: pure diff + within-batch unit tests, real-schema `ParseVCF` wiring
+tests, records-endpoint controller tests (merge/keep-both/add, within-batch
+collapse, empty-batch 400, no-auth 401, raw-JSON `[]` pin) — all hand-verified
+to fail pre-fix. Frontend: `ImportContactsDialog.test.tsx` rewritten for the
+cards (default-merge, conflict-count countdown, within-batch cannot-merge, bulk
+controls), locales test green, and a new `importMergeReview.spec.ts` e2e driving
+Merge (diff shown, phone unioned, one contact), Keep Both (two contacts), Discard
+New (untouched), and the within-batch collapse against the real UI. Android:
+`ImportContactsViewModelTest` (5 tests), a `resolveAll` test, review-step UI
+tests. Full gates green: backend `go build/vet/gofmt/test`, frontend
+`tsc`+`vitest` (699 tests) + the full 179-test Playwright suite, Android
+`testDebugUnitTest lintDebug assembleDebug --rerun-tasks`.
+
+### Post-rebase review pass (2026-08-14)
+
+Rebased onto `main` (which had since landed T88 and T101; the README conflict
+resolved by folding both into Done alongside T96). A second review pass fixed
+the gaps it found:
+
+- **Web copy bug**: the "No duplicate matches — everything below will be added
+  as new." line also appeared when conflicts existed but were all *resolved*
+  (which is false once a row merges or discards). Now three states: "Resolve
+  Conflicts (N remaining)", "All conflicts resolved — review the decisions
+  below.", or the no-matches line only when there never were any.
+  `allResolved` translated ×5.
+- **a11y**: the Merge / Keep Both / Discard New buttons now carry
+  `aria-pressed` so screen readers hear the selected decision.
+- **Android stale-list**: the device-contacts RESULT step's Done button now
+  calls `startOver()` (reset + reload) so the just-imported contacts' duplicate
+  flags reflect fresh server state instead of the stale pre-import cache.
+- **Test gaps closed**: CSV within-batch detection (`GenerateCSVPreview`)
+  wasn't unit-covered — added; the combined within-batch **and** DB-duplicate
+  case (twin defaults to skip while still showing both flags + diff) wasn't —
+  added; a Playwright spec for the **CSV** import-merge path (mapping step →
+  cards → merge → phone unioned) — added, since only VCF was e2e-covered; and
+  the all-resolved heading is now asserted e2e in the Discard test. Suite is
+  180 tests green.
