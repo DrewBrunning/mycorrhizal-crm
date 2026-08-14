@@ -2,6 +2,7 @@ import { test as base, Page, Locator, APIRequestContext, expect } from '@playwri
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import * as crypto from 'crypto';
 import { TEST_USER, API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 import { toContactRecordInput } from '../src/api/contacts';
 
@@ -28,7 +29,8 @@ let uniqueCounter = 0;
  */
 export function uniqueToken(): string {
   uniqueCounter += 1;
-  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}${uniqueCounter.toString(36)}`;
+  const randomPart = crypto.randomBytes(4).toString('base64url').slice(0, 6).toLowerCase();
+  return `${Date.now().toString(36)}${randomPart}${uniqueCounter.toString(36)}`;
 }
 
 /**
@@ -38,7 +40,8 @@ export function uniqueToken(): string {
  */
 export function uniqueDigits(length = 10): string {
   uniqueCounter += 1;
-  const raw = `${Date.now()}${Math.floor(Math.random() * 1e9)}${uniqueCounter}`;
+  const randomPart = (crypto.randomBytes(4).readUInt32BE(0) % 1_000_000_000).toString().padStart(9, '0');
+  const raw = `${Date.now()}${randomPart}${uniqueCounter}`;
   return raw.slice(-length);
 }
 
