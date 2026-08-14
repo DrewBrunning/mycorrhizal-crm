@@ -51,6 +51,7 @@ import com.mycorrhizal.crm.model.network.BulkOperationResult
 import com.mycorrhizal.crm.model.network.ContactMergeCommitResponse
 import com.mycorrhizal.crm.model.network.ContactMergePreviewResponse
 import com.mycorrhizal.crm.model.network.ContactMergeRequest
+import com.mycorrhizal.crm.model.network.DashboardResponse
 import com.mycorrhizal.crm.model.network.Gift
 import com.mycorrhizal.crm.model.network.GiftInput
 import com.mycorrhizal.crm.model.network.GiftsPage
@@ -177,6 +178,20 @@ class ApiClient(
     suspend fun getBriefing(contactId: Int): Result<ContactBriefing> =
         executeGet("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/briefing") { _, body ->
             moshi.adapter(ContactBriefing::class.java).fromJson(body)
+        }
+
+    /**
+     * GET /api/v1/dashboard — the M3 "today/overview" composite (M10): one
+     * call replacing the four-request fan-out the dashboard used to fire
+     * (`listUpcomingBirthdays`, `listUpcomingReminders`,
+     * `listOverdueCadences`, plus a per-reminder contact lookup). The
+     * backend embeds each reminder's contact display name (M3 design
+     * decision 2), so no second fetch is needed. All four blocks are
+     * normalized to `[]` server-side; see [DashboardResponse]'s doc comment.
+     */
+    suspend fun getDashboard(): Result<DashboardResponse> =
+        executeGet("$PLACEHOLDER_ORIGIN$DASHBOARD_PATH") { _, body ->
+            moshi.adapter(DashboardResponse::class.java).fromJson(body)
         }
 
     /**
@@ -365,11 +380,18 @@ class ApiClient(
             moshi.adapter(CreateReminderResponse::class.java).fromJson(body)?.reminder
         }
 
-    /** POST /api/v1/reminders/{id}/complete — completes a reminder (no body). */
-    suspend fun completeReminder(id: Int): Result<ReminderCompleteResponse> =
-        executePostEmpty("$REMINDERS_PATH/$id/complete") { _, body ->
+    /**
+     * POST /api/v1/reminders/{id}/complete — completes a reminder (no body).
+     * [skip] is the M10 skip path: `?skip=true` reschedules recurring
+     * reminders without recording completion in the timeline (the web
+     * confirms before calling it — match that at the call site).
+     */
+    suspend fun completeReminder(id: Int, skip: Boolean = false): Result<ReminderCompleteResponse> {
+        val path = if (skip) "$REMINDERS_PATH/$id/complete?skip=true" else "$REMINDERS_PATH/$id/complete"
+        return executePostEmpty(path) { _, body ->
             moshi.adapter(ReminderCompleteResponse::class.java).fromJson(body)
         }
+    }
 
     /** GET /api/v1/reminders — all reminders for the user. */
     suspend fun listReminders(): Result<ContactRemindersResponse> =
@@ -994,6 +1016,7 @@ class ApiClient(
         private const val PREFERENCES_PATH = "$API_V1/preferences"
         private const val CONVERSATION_AGENDA_PATH = "$API_V1/conversation-agenda"
         private const val CADENCE_POLICIES_PATH = "$API_V1/cadence-policies"
+        private const val DASHBOARD_PATH = "$API_V1/dashboard"
         private const val EXPORT_VCF_PATH = "$API_V1/export/vcf"
         private const val AUTH_COOKIE = "auth_token"    }
 }

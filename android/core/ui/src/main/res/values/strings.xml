@@ -9,7 +9,13 @@
     <string name="nav_dashboard">Dashboard</string>
     <string name="dashboard_birthdays">Upcoming birthdays</string>
     <string name="dashboard_reminders">Upcoming reminders</string>
-    <string name="dashboard_empty">Nothing coming up.</string>
+    <string name="dashboard_overdue_cadences">Overdue Relationships</string>
+    <string name="dashboard_random_contacts">Stay in Touch</string>
+    <string name="dashboard_no_birthdays">No upcoming birthdays</string>
+    <string name="dashboard_no_reminders">No upcoming reminders</string>
+    <string name="dashboard_no_contacts">No contacts available</string>
+    <string name="dashboard_years_old">(%1$d years old)</string>
+    <string name="dashboard_unknown_contact">Unknown contact</string>
     <string name="nav_settings">Settings</string>
     <string name="nav_network">Network</string>
     <string name="nav_households">Households</string>
@@ -303,6 +309,16 @@
     <string name="reminder_error_missing_id">Missing contact id</string>
     <string name="reminder_title_fallback">Reminder</string>
     <string name="cd_complete_reminder">Complete reminder</string>
+    <string name="cd_skip_reminder">Skip reminder</string>
+    <string name="reminder_skip">Skip</string>
+    <string name="reminder_skip_confirm">Skip this reminder? For recurring reminders, this will reschedule to the next occurrence without recording it in the timeline.</string>
+    <string name="reminder_email_chip">Email</string>
+    <string name="reminder_recurrence_once">Once</string>
+    <string name="reminder_recurrence_weekly">Weekly</string>
+    <string name="reminder_recurrence_monthly">Monthly</string>
+    <string name="reminder_recurrence_quarterly">Quarterly</string>
+    <string name="reminder_recurrence_six_months">Every 6 months</string>
+    <string name="reminder_recurrence_yearly">Yearly</string>
     <string name="cd_new_reminder">New reminder</string>
 
     <!-- Timeline -->

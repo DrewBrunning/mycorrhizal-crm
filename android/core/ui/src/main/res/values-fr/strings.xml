@@ -8,7 +8,13 @@
         <string name="nav_dashboard">Tableau de bord</string>
     <string name="dashboard_birthdays">Anniversaires à venir</string>
     <string name="dashboard_reminders">Rappels à venir</string>
-    <string name="dashboard_empty">Rien à venir.</string>
+    <string name="dashboard_overdue_cadences">Relations en retard</string>
+    <string name="dashboard_random_contacts">Restez en contact</string>
+    <string name="dashboard_no_birthdays">Aucun anniversaire à venir</string>
+    <string name="dashboard_no_reminders">Aucun rappel à venir</string>
+    <string name="dashboard_no_contacts">Aucun contact disponible</string>
+    <string name="dashboard_years_old">(%1$d ans)</string>
+    <string name="dashboard_unknown_contact">Contact inconnu</string>
     <string name="nav_home">Accueil</string>
     <string name="nav_settings">Paramètres</string>
     <string name="nav_tags">Étiquettes</string>
@@ -303,6 +309,16 @@
     <string name="reminder_error_remind_at">La date de rappel doit être au format ISO 8601, p. ex. 2026-08-10T14:00:00Z</string>
     <string name="reminder_error_recurrence">Récurrence inconnue</string>
     <string name="cd_complete_reminder">Terminer le rappel</string>
+    <string name="cd_skip_reminder">Ignorer le rappel</string>
+    <string name="reminder_skip">Ignorer</string>
+    <string name="reminder_skip_confirm">Ignorer ce rappel ? Pour les rappels récurrents, cela reprogrammera à la prochaine occurrence sans l\'enregistrer dans la chronologie.</string>
+    <string name="reminder_email_chip">E-mail</string>
+    <string name="reminder_recurrence_once">Une fois</string>
+    <string name="reminder_recurrence_weekly">Hebdomadaire</string>
+    <string name="reminder_recurrence_monthly">Mensuel</string>
+    <string name="reminder_recurrence_quarterly">Trimestriel</string>
+    <string name="reminder_recurrence_six_months">Tous les 6 mois</string>
+    <string name="reminder_recurrence_yearly">Annuel</string>
     <string name="cd_new_reminder">Nouveau rappel</string>
 
     <!-- Timeline -->

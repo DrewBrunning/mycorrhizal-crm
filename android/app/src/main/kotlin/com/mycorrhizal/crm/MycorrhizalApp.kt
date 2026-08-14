@@ -531,7 +531,12 @@ private fun MainScaffold(darkTheme: Boolean) {
                     onContactClick = { id -> navController.navigate("contacts/$id") },
                 )
             }
-            composable("home") { DashboardScreen(onMenuClick = { scope.launch { drawerState.open() } }) }
+            composable("home") {
+                DashboardScreen(
+                    onOpenContact = { id -> navController.navigate("contacts/$id") },
+                    onMenuClick = { scope.launch { drawerState.open() } },
+                )
+            }
 
             composable("settings") {
                 SettingsScreen(
