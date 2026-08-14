@@ -40,7 +40,7 @@ export function uniqueToken(): string {
  */
 export function uniqueDigits(length = 10): string {
   uniqueCounter += 1;
-  const randomPart = (crypto.randomBytes(4).readUInt32BE(0) % 1_000_000_000).toString().padStart(9, '0');
+  const randomPart = crypto.randomInt(1_000_000_000).toString().padStart(9, '0');
   const raw = `${Date.now()}${randomPart}${uniqueCounter}`;
   return raw.slice(-length);
 }
