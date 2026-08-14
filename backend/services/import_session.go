@@ -124,6 +124,23 @@ func (m *ImportSessionManager) CreateCSVSession(userID uint, headers []string, r
 // CreateVCFSession stores a freshly parsed VCF upload (whose preview is computed at
 // upload time) and returns its session ID.
 func (m *ImportSessionManager) CreateVCFSession(userID uint, vcfContacts []VCFContactData, previews []models.ImportRowPreview) string {
+	return m.createVCFLikeSession(userID, vcfContacts, previews, "vcf")
+}
+
+// CreateRecordsSession is CreateVCFSession for a batch of neutral Card/CRM
+// records (T96's Android device-contacts import): the records are converted
+// to flat []VCFContactData by the caller, so the session is shape-identical
+// to a VCF session and the existing ConfirmVCF pipeline — including photo
+// handling, which device contacts simply never trigger — confirms it. The
+// importType is "records" so ConfirmVCF can label merge notes accurately and
+// log the real source.
+func (m *ImportSessionManager) CreateRecordsSession(userID uint, vcfContacts []VCFContactData, previews []models.ImportRowPreview) string {
+	return m.createVCFLikeSession(userID, vcfContacts, previews, "records")
+}
+
+// createVCFLikeSession is the shared implementation behind CreateVCFSession/
+// CreateRecordsSession; importType is what ConfirmVCF dispatches and labels on.
+func (m *ImportSessionManager) createVCFLikeSession(userID uint, vcfContacts []VCFContactData, previews []models.ImportRowPreview, importType string) string {
 	sessionID := generateSessionID()
 	now := time.Now()
 
@@ -137,7 +154,7 @@ func (m *ImportSessionManager) CreateVCFSession(userID uint, vcfContacts []VCFCo
 			PreviewRows:   previews,
 			PreviewCached: true,
 		},
-		importType:  "vcf",
+		importType:  importType,
 		vcfContacts: vcfContacts,
 	}
 	m.mu.Unlock()
@@ -346,8 +363,15 @@ func (m *ImportSessionManager) ConfirmVCF(db *gorm.DB, userID uint, req models.I
 		return nil, sessErr
 	}
 
-	if sessionData.importType != "vcf" {
-		return nil, apperrors.ErrInvalidInput("session", "This endpoint is only for VCF imports")
+	if sessionData.importType != "vcf" && sessionData.importType != "records" {
+		return nil, apperrors.ErrInvalidInput("session", "This endpoint is only for VCF or records imports")
+	}
+
+	// The import-type label used in the per-contact merge note ("VCF Import
+	// updated this contact." vs the device-contacts "records" path).
+	importTypeLabel := "VCF"
+	if sessionData.importType == "records" {
+		importTypeLabel = "Device"
 	}
 
 	if !sessionData.session.PreviewCached {
@@ -412,7 +436,7 @@ func (m *ImportSessionManager) ConfirmVCF(db *gorm.DB, userID uint, req models.I
 					continue
 				}
 
-				if err := CreateMergeNote(tx, userID, existing.ID, &existing, vcfData.Contact, "VCF"); err != nil {
+				if err := CreateMergeNote(tx, userID, existing.ID, &existing, vcfData.Contact, importTypeLabel); err != nil {
 					log.Warn().Err(err).Uint("contact_id", existing.ID).Msg("Failed to create merge note")
 				}
 
@@ -504,12 +528,13 @@ func (m *ImportSessionManager) ConfirmVCF(db *gorm.DB, userID uint, req models.I
 
 	log.Info().
 		Str("session_id", req.SessionID).
+		Str("import_type", sessionData.importType).
 		Int("created", result.Created).
 		Int("updated", result.Updated).
 		Int("skipped", result.Skipped).
 		Int("photos_processed", len(photoTasks)).
 		Int("errors", len(result.Errors)).
-		Msg("VCF import completed")
+		Msg("VCF/records import completed")
 
 	return &result, nil
 }

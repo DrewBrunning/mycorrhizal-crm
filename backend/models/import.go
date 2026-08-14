@@ -52,6 +52,41 @@ type DuplicateMatch struct {
 	MatchReason       string `json:"match_reason"` // "email", "name", or "phone"
 }
 
+// ImportScalarChange is one scalar field the "Merge" (update) action will
+// overwrite on the matched existing contact, reported as a before/after pair
+// (T96 — docs/fork-plan/tickets/140-T96-import-duplicate-merge-review.md).
+// Field is a stable camelCase key so the client can group/label by it; Label
+// is the human-readable fallback the server already knows.
+type ImportScalarChange struct {
+	Field string `json:"field"`
+	Label string `json:"label"`
+	Old   string `json:"old"`
+	New   string `json:"new"`
+}
+
+// ImportAddedValue is one multi-valued entry the "Merge" action will append
+// to the matched existing contact — a phone/email/address/url/impp the
+// existing contact does not already carry. Kind is a stable lowercase token
+// ("email", "phone", "address", "url", "impp"); Value is a display rendering.
+type ImportAddedValue struct {
+	Kind  string `json:"kind"`
+	Value string `json:"value"`
+}
+
+// ImportMergeDiff describes, per duplicate row, exactly what the "Merge"
+// (update) action will change on the matched existing contact: which scalars
+// get overwritten (incoming-wins-when-non-empty, the MergeImportedContact
+// policy) and which multi-valued entries get appended (additive, T49). It is
+// computed by services.ComputeImportMergeDiff from the same helpers the
+// confirm path applies, so the preview can never describe a merge that the
+// commit would not perform. Updated and Added deliberately have no omitempty:
+// absent-vs-`[]` must stay distinguishable (CLAUDE.md frontend trap #8) for
+// the clients that render the diff.
+type ImportMergeDiff struct {
+	Updated []ImportScalarChange `json:"updated"`
+	Added   []ImportAddedValue   `json:"added"`
+}
+
 // ImportRowPreview represents one row in the import preview
 type ImportRowPreview struct {
 	RowIndex         int                    `json:"row_index"`
@@ -60,6 +95,18 @@ type ImportRowPreview struct {
 	DuplicateMatch   *DuplicateMatch        `json:"duplicate_match"`   // Potential duplicate, if any
 	SuggestedAction  string                 `json:"suggested_action"`  // "add", "skip", or "update"
 
+	// MergeDiff is present exactly when DuplicateMatch is: what "update"
+	// would change on the matched existing contact (see ImportMergeDiff).
+	// Absent (nil) for rows with no duplicate or rows whose existing contact
+	// could not be loaded.
+	MergeDiff *ImportMergeDiff `json:"merge_diff"`
+
+	// BatchDuplicateOf, when non-nil, holds the row_index of an EARLIER row in
+	// the SAME import file that this row duplicates (T96's within-batch
+	// detection — the same person imported twice in one file). These rows
+	// default to "skip"; the user may still override to Keep Both.
+	BatchDuplicateOf *int `json:"batch_duplicate_of"`
+
 	// Diagnostics surfaces contactmodel.Diagnostic events (WP-71 Gap 4) from
 	// the vcard4/vcard3/jscontact adapter that parsed this row — e.g. a
 	// gracefully-dropped, no-target-home field (docs/fork-plan/00-overview.md
@@ -67,6 +114,16 @@ type ImportRowPreview struct {
 	// through an adapter at all). Additive: existing preview consumers that
 	// don't know about this field are unaffected.
 	Diagnostics []string `json:"diagnostics,omitempty"`
+}
+
+// ImportRecordsRequest is the request body for POST /contacts/import/records
+// (T96): a batch of neutral Card/CRM records — the same shape the REST
+// create/update endpoints accept, which is what Android's device-contacts
+// import produces — to be run through the standard import preview pipeline
+// (duplicate detection, per-row merge diff, within-batch detection) and then
+// confirmed via the shared confirm endpoint.
+type ImportRecordsRequest struct {
+	Records []ContactRecordInput `json:"records" validate:"required,min=1,max=500"`
 }
 
 // ImportPreviewResponse contains the full preview data

@@ -1432,6 +1432,32 @@ paths:
                 $ref: "#/components/schemas/ImportPreviewResponse"
         "400":
           description: Missing file, wrong extension, oversized file, or malformed JSON.
+  /contacts/import/records:
+    post:
+      summary: Start a contact import from a batch of neutral Card/CRM records
+      operationId: uploadImportRecords
+      description: >
+        T96's device-contacts path: a batch of records in the same nested
+        Card/CRM shape POST /contacts accepts is run through the standard
+        import preview pipeline (validation, per-row DB duplicate detection
+        with a merge diff, and within-batch duplicate detection) and returns
+        an ImportPreviewResponse. Confirm via POST /contacts/import/vcf/confirm
+        exactly like a VCF/JSContact session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportRecordsRequest"
+      responses:
+        "200":
+          description: Parsed rows with duplicate detection, merge diffs, and per-row diagnostics.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportPreviewResponse"
+        "400":
+          description: Empty batch, or a record with no name.
   /contacts/import/preview:
     post:
       summary: Apply column mappings to a CSV import session and get a preview (step 2 of 3)
@@ -8771,13 +8797,56 @@ components:
         duplicate_match:
           $ref: "#/components/schemas/DuplicateMatch"
         suggested_action: { type: string, enum: [add, skip, update] }
+        merge_diff:
+          $ref: "#/components/schemas/ImportMergeDiff"
+        batch_duplicate_of:
+          type: integer
+          description: >
+            When present, the row_index of an EARLIER row in the same import
+            file that this row duplicates (T96 within-batch detection). Such
+            rows default to "skip".
         diagnostics:
           type: array
           items: { type: string }
           description: >
             Degradation-policy diagnostics from the vcard4/vcard3/jscontact
-            adapter that parsed this row (empty for CSV-import rows, which
-            don't go through an adapter).
+            adapter that parsed this row (empty for CSV/records-import rows,
+            which don't go through an adapter).
+    ImportMergeDiff:
+      type: object
+      description: >
+        Per duplicate row, exactly what the "update" (Merge) action will
+        change on the matched existing contact: scalars overwritten
+        (incoming-wins-when-non-empty) and multi-valued entries appended
+        (additive merge).
+      properties:
+        updated:
+          type: array
+          items: { $ref: "#/components/schemas/ImportScalarChange" }
+        added:
+          type: array
+          items: { $ref: "#/components/schemas/ImportAddedValue" }
+    ImportScalarChange:
+      type: object
+      properties:
+        field: { type: string, description: "Stable camelCase key (e.g. job_title, organization)." }
+        label: { type: string, description: "Human-readable fallback label." }
+        old: { type: string }
+        new: { type: string }
+    ImportAddedValue:
+      type: object
+      properties:
+        kind: { type: string, description: "One of email, phone, address, url, impp." }
+        value: { type: string, description: "Display rendering of the appended entry." }
+    ImportRecordsRequest:
+      type: object
+      required: [records]
+      properties:
+        records:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items: { $ref: "#/components/schemas/ContactRecordInput" }
     ImportPreviewResponse:
       type: object
       description: Returned by the VCF/JSContact upload endpoints and by POST /contacts/import/preview (CSV).

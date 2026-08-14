@@ -45,6 +45,7 @@ func registerImportRoutes(router *gin.Engine, cfg *config.Config) {
 		ConfirmVCFImport(c, cfg)
 	})
 	router.POST("/contacts/import/jscontact/upload", UploadJSContactForImport)
+	router.POST("/contacts/import/records", middleware.ValidateJSONMiddleware(&models.ImportRecordsRequest{}), UploadImportRecords)
 }
 
 // newFileUploadRequest builds a multipart/form-data POST with a single "file"
