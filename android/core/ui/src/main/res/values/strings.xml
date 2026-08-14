@@ -59,6 +59,7 @@
     <string name="contact_notes">Notes</string>
     <string name="contact_reminders">Reminders</string>
     <string name="contact_relationships">Relationships</string>
+    <string name="contact_cadence">Cadence</string>
     <string name="contact_merge">Merge contacts</string>
     <string name="contact_open_in_contacts">Open in Contacts</string>
     <string name="contact_life_events">Life events</string>
@@ -327,6 +328,7 @@
     <!-- Shared actions -->
     <string name="action_create">Create</string>
     <string name="action_save">Save</string>
+    <string name="action_edit">Edit</string>
     <string name="action_delete">Delete</string>
     <string name="action_cancel">Cancel</string>
     <string name="action_add">Add</string>
@@ -399,6 +401,36 @@
     <string name="relationships_delete_confirm">Delete the relationship with %1$s?</string>
     <string name="relationships_reject_title">Reject suggestion?</string>
     <string name="relationships_reject_confirm">Reject the suggested relationship with %1$s?</string>
+
+    <!-- Cadence (T19 relationship health) -->
+    <string name="cadence_title">Cadence</string>
+    <string name="cadence_add">Add Cadence</string>
+    <string name="cadence_create_title">Add Cadence</string>
+    <string name="cadence_edit_title">Edit Cadence</string>
+    <string name="cadence_interval">Stay in touch</string>
+    <string name="cadence_interval_value">every %1$d days</string>
+    <string name="cadence_interval_days">Interval (days)</string>
+    <string name="cadence_interval_hint">How often you want to stay in touch.</string>
+    <string name="cadence_interval_required">Enter a positive number of days.</string>
+    <string name="cadence_qualifying_types">Qualifying interactions</string>
+    <string name="cadence_qualifying_hint">Which interaction types reset this cadence. Leave everything unchecked for every interaction type (except passive photo shares) to count.</string>
+    <string name="cadence_type_call">Call</string>
+    <string name="cadence_type_video_call">Video call</string>
+    <string name="cadence_type_visit">Visit</string>
+    <string name="cadence_type_meal">Meal</string>
+    <string name="cadence_type_gift">Gift</string>
+    <string name="cadence_type_message">Message</string>
+    <string name="cadence_type_shared_activity">Shared activity</string>
+    <string name="cadence_no_policy">No cadence set for this contact.</string>
+    <string name="cadence_no_interactions_yet">No qualifying interactions yet — cadence starts once you record one.</string>
+    <string name="cadence_on_track">On track</string>
+    <string name="cadence_overdue_by">%1$d days overdue</string>
+    <string name="cadence_next_due">Next due: %1$s</string>
+    <string name="cadence_last_interaction">Last interaction: %1$s</string>
+    <string name="cadence_confirm_delete">Remove this cadence policy?</string>
+    <string name="cadence_delete_title">Delete cadence</string>
+    <string name="cadence_error_missing_contact_id">Missing contact id</string>
+    <string name="cadence_error_no_vcard_uid">Contact has no VCard UID</string>
 
     <!-- Timeline entities (life events / gifts / preferences / agenda) -->
     <string name="entities_empty">Nothing here yet</string>

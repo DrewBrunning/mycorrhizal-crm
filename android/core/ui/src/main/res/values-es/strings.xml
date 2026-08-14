@@ -60,6 +60,7 @@
     <string name="contact_merge">Fusionar contactos</string>
     <string name="contact_open_in_contacts">Abrir en Contactos</string>
     <string name="contact_relationships">Relaciones</string>
+    <string name="contact_cadence">Cadencia</string>
     <string name="contact_life_events">Acontecimientos vitales</string>
     <string name="contact_gifts">Regalos</string>
     <string name="contact_preferences">Preferencias</string>
@@ -326,6 +327,7 @@
     <string name="circles_error_missing_id">Falta el ID del círculo</string>
     <string name="action_create">Crear</string>
     <string name="action_save">Guardar</string>
+    <string name="action_edit">Editar</string>
     <string name="action_delete">Eliminar</string>
     <string name="action_cancel">Cancelar</string>
     <string name="action_add">Añadir</string>
@@ -401,6 +403,36 @@
     <string name="relationships_delete_confirm">¿Eliminar la relación con %1$s?</string>
     <string name="relationships_reject_title">¿Rechazar sugerencia?</string>
     <string name="relationships_reject_confirm">¿Rechazar la relación sugerida con %1$s?</string>
+
+    <!-- Cadence (T19 relationship health) -->
+    <string name="cadence_title">Cadencia</string>
+    <string name="cadence_add">Añadir cadencia</string>
+    <string name="cadence_create_title">Añadir cadencia</string>
+    <string name="cadence_edit_title">Editar cadencia</string>
+    <string name="cadence_interval">Mantener el contacto</string>
+    <string name="cadence_interval_value">cada %1$d días</string>
+    <string name="cadence_interval_days">Intervalo (días)</string>
+    <string name="cadence_interval_hint">Con qué frecuencia quieres mantener el contacto.</string>
+    <string name="cadence_interval_required">Introduce un número positivo de días.</string>
+    <string name="cadence_qualifying_types">Interacciones que cuentan</string>
+    <string name="cadence_qualifying_hint">Qué tipos de interacción restablecen esta cadencia. Si no marcas ninguno, cuentan todas excepto las fotos pasivas.</string>
+    <string name="cadence_type_call">Llamada</string>
+    <string name="cadence_type_video_call">Videollamada</string>
+    <string name="cadence_type_visit">Visita</string>
+    <string name="cadence_type_meal">Comida</string>
+    <string name="cadence_type_gift">Regalo</string>
+    <string name="cadence_type_message">Mensaje</string>
+    <string name="cadence_type_shared_activity">Actividad compartida</string>
+    <string name="cadence_no_policy">No hay cadencia establecida para este contacto.</string>
+    <string name="cadence_no_interactions_yet">Aún no hay interacciones que cuenten: la cadencia empieza al registrar la primera.</string>
+    <string name="cadence_on_track">Al día</string>
+    <string name="cadence_overdue_by">%1$d días de retraso</string>
+    <string name="cadence_next_due">Próximo vencimiento: %1$s</string>
+    <string name="cadence_last_interaction">Última interacción: %1$s</string>
+    <string name="cadence_confirm_delete">¿Eliminar esta cadencia?</string>
+    <string name="cadence_delete_title">Eliminar cadencia</string>
+    <string name="cadence_error_missing_contact_id">Falta el ID del contacto</string>
+    <string name="cadence_error_no_vcard_uid">El contacto no tiene UID de VCard</string>
 
 
     <!-- Timeline entities -->

@@ -88,3 +88,24 @@ interface CachedConversationAgendaDao {
     @Query("DELETE FROM cached_conversation_agenda")
     suspend fun deleteAll()
 }
+
+@Dao
+interface CachedCadencePolicyDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(items: List<CachedCadencePolicy>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(item: CachedCadencePolicy)
+
+    @Query("SELECT * FROM cached_cadence_policies WHERE entityId = :entityId ORDER BY updatedAt DESC")
+    suspend fun getForContact(entityId: String): List<CachedCadencePolicy>
+
+    @Query("DELETE FROM cached_cadence_policies WHERE id = :id")
+    suspend fun deleteById(id: String)
+
+    @Query("DELETE FROM cached_cadence_policies WHERE entityId = :entityId")
+    suspend fun deleteForContact(entityId: String)
+
+    @Query("DELETE FROM cached_cadence_policies")
+    suspend fun deleteAll()
+}

@@ -27,6 +27,7 @@ function renderBar(props: Partial<React.ComponentProps<typeof BulkActionsBar>> =
     onRemoveTag: vi.fn(),
     onArchive: vi.fn(),
     onUnarchive: vi.fn(),
+    onMerge: vi.fn(),
     onDelete: vi.fn(),
     ...props,
   };
@@ -110,4 +111,39 @@ test('archive, unarchive, and delete call their handlers', () => {
 
   fireEvent.click(screen.getByText('Delete'));
   expect(onDelete).toHaveBeenCalled();
+});
+
+// --- T92 bulk merge ---------------------------------------------------------
+// Merge is pairwise, not one-verb-over-N-rows: it is only enabled for exactly
+// two selected contacts and disabled (with an explanatory tooltip) otherwise.
+
+test('merge is disabled for a single selection and explains the constraint', async () => {
+  renderBar({ selectedCount: 1 });
+  const mergeButton = screen.getByRole('button', { name: 'Merge' });
+  expect(mergeButton).toBeDisabled();
+
+  // MUI Tooltip only opens when the pointer enters the wrapping element
+  // itself, not a disabled descendant — hover the Tooltip's own <span>.
+  fireEvent.mouseOver(mergeButton.parentElement as HTMLElement);
+  expect(await screen.findByRole('tooltip')).toHaveTextContent('Select exactly two contacts to merge.');
+});
+
+test('merge is disabled for three or more selections', () => {
+  renderBar({ selectedCount: 3 });
+  expect(screen.getByRole('button', { name: 'Merge' })).toBeDisabled();
+});
+
+test('merge is enabled for exactly two selections and reports them', () => {
+  const onMerge = vi.fn();
+  renderBar({ selectedCount: 2, onMerge });
+
+  const mergeButton = screen.getByRole('button', { name: 'Merge' });
+  expect(mergeButton).not.toBeDisabled();
+  fireEvent.click(mergeButton);
+  expect(onMerge).toHaveBeenCalledTimes(1);
+});
+
+test('merge stays disabled while a bulk action is busy', () => {
+  renderBar({ selectedCount: 2, busy: true });
+  expect(screen.getByRole('button', { name: 'Merge' })).toBeDisabled();
 });

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { createTestContact, deleteTestContact, waitForLoading } from './fixtures';
+import { createTestContact, deleteTestContact, waitForLoading, uniqueDigits } from './fixtures';
 import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 
 /**
@@ -179,7 +179,12 @@ test.describe('Search (folded into Contacts)', () => {
     // number's full digit string + PhoneKey, so a query in one format finds a
     // number stored in another. The phone digits appear nowhere in the
     // contact's name/email, so the match can only come from the phone index.
-    const tenDigits = String(Date.now()).slice(-10);
+    //
+    // uniqueDigits (not a bare Date.now() truncation): the assertions below
+    // expect *exactly one* match, so two parallel tests generating the same
+    // 10-digit suffix in the same millisecond would make one spuriously see
+    // the other's contact.
+    const tenDigits = uniqueDigits(10);
     const firstname = `${E2E_CONTACT_PREFIX}PhoneSearch${Date.now()}`;
     const contact = await createTestContact(request, {
       firstname,
@@ -209,7 +214,8 @@ test.describe('Search (folded into Contacts)', () => {
     // (applyContactSearch) must also match a phone across formats, via the
     // denormalized phones_normalized column. The digits are absent from every
     // name/email/address field so the match can only come from the phone.
-    const tenDigits = String(Date.now()).slice(-10);
+    // uniqueDigits, not Date.now() alone -- see the sibling test above.
+    const tenDigits = uniqueDigits(10);
     const firstname = `${E2E_CONTACT_PREFIX}LegacyPhone${Date.now()}`;
     const contact = await createTestContact(request, {
       firstname,
@@ -239,8 +245,11 @@ test.describe('Search (folded into Contacts)', () => {
     // `phone` scalar, so a contact could not be found by their second or third
     // number even when typed perfectly. phones_normalized is built from every
     // Phones[] entry.
-    const primary = String(Date.now()).slice(-10);
-    const secondary = `555${String(Date.now()).slice(-7)}`;
+    // uniqueDigits, not Date.now() alone -- see the T69 merged-search test
+    // above; two different-length calls here so primary/secondary can't
+    // collide with each other either.
+    const primary = uniqueDigits(10);
+    const secondary = `555${uniqueDigits(7)}`;
     const firstname = `${E2E_CONTACT_PREFIX}SecondPhone${Date.now()}`;
     const contact = await createTestContact(request, {
       firstname,

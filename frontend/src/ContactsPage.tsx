@@ -8,11 +8,13 @@ import { useSearch } from './hooks/useSearch';
 import { getCurrentUser } from './api/admin';
 import { resolveEnabledFields, ContactFieldKey } from './contactFields';
 import { BulkAction, runBulkOperation } from './api/bulkOperations';
+import { Contact } from './api/contacts';
 import AddContactDialog from './components/AddContactDialog';
 import ImportContactsDialog from './components/ImportContactsDialog';
 import BulkActionsBar from './components/BulkActionsBar';
 import SearchNotesActivities from './components/SearchNotesActivities';
 import ReviewDuplicatesDialog from './components/ReviewDuplicatesDialog';
+import MergeContactsDialog from './components/MergeContactsDialog';
 import {
   Box,
   Card,
@@ -92,6 +94,11 @@ export default function ContactsPage() {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [reviewDuplicatesOpen, setReviewDuplicatesOpen] = useState(false);
+  // T92: the two contacts selected for a bulk merge, in pair mode (neither is
+  // privileged — the user picks the keeper inside the dialog). Resolved from
+  // the loaded page rather than a fresh lookup, since selection is keyed by
+  // VCardUID but the merge endpoint takes numeric IDs (Contact.ID).
+  const [mergePair, setMergePair] = useState<{ a: Contact; b: Contact } | null>(null);
   const [enabledFields, setEnabledFields] = useState<Set<ContactFieldKey>>(() => resolveEnabledFields(null));
   const [showArchived, setShowArchived] = useState(false);
   const pageSize = 10;
@@ -277,6 +284,37 @@ export default function ContactsPage() {
   const handleArchive = () => handleBulk('archive');
   const handleUnarchive = () => handleBulk('unarchive');
 
+  // --- T92 bulk merge ------------------------------------------------------
+
+  const handleBulkMerge = () => {
+    // The button only enables at exactly two selected, but the selection is
+    // keyed by uid and the rows carry it -- resolve defensively. A selection
+    // can outlive the rows it points at: a sort change deliberately keeps the
+    // selection (T77) while the refetched page may not carry all of it, so
+    // `contacts` can hold fewer than both. A silent no-op on an enabled
+    // button is exactly the failure this codebase avoids -- say so and clear
+    // the stale selection so the user can pick a fresh pair.
+    const selectedContacts = contacts.filter((c) => !!c.uid && selectedUids.has(c.uid));
+    if (selectedContacts.length !== 2) {
+      window.alert(t('bulk.mergeSelectionStale'));
+      setSelectedUids(new Set());
+      return;
+    }
+    setMergePair({ a: selectedContacts[0], b: selectedContacts[1] });
+  };
+
+  const handleMergeClosed = () => setMergePair(null);
+
+  const handleMerged = async () => {
+    // T92 step 4: the loser is gone and the survivor gained its
+    // circles/tags — refetch so a stale row (or stale membership chips)
+    // can't linger, and clear the selection pointing at the dead contact
+    // (the same class of bug as T94/T95).
+    setMergePair(null);
+    setSelectedUids(new Set());
+    await Promise.all([refetch(), refreshCircles(), refreshTags()]);
+  };
+
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 2, p: 2 }}>
       <Typography variant="h5" gutterBottom sx={{ mb: 2 }}>
@@ -418,6 +456,7 @@ export default function ContactsPage() {
         onRemoveTag={handleRemoveTag}
         onArchive={handleArchive}
         onUnarchive={handleUnarchive}
+        onMerge={handleBulkMerge}
         onDelete={handleBulkDelete}
       />
       {loading && contacts.length === 0 ? (
@@ -521,6 +560,14 @@ export default function ContactsPage() {
         open={reviewDuplicatesOpen}
         onClose={() => setReviewDuplicatesOpen(false)}
       />
+      {mergePair && (
+        <MergeContactsDialog
+          open
+          onClose={handleMergeClosed}
+          onMerged={handleMerged}
+          pair={mergePair}
+        />
+      )}
     </Box>
   );
 }

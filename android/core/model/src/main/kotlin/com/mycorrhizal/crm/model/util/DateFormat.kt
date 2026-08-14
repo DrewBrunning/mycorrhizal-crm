@@ -1,6 +1,8 @@
 package com.mycorrhizal.crm.model.util
 
 import com.mycorrhizal.crm.model.network.PartialDate
+import java.time.Instant
+import java.time.ZoneOffset
 
 /**
  * Display formatting for dates following the backend's `date_format`
@@ -47,4 +49,26 @@ object DateFormat {
     fun monthName(month: Int): String = months[month - 1]
 
     fun monthNameShort(month: Int): String = monthsShort[month - 1]
+
+    /**
+     * Formats an ISO-8601 timestamp as a date in [format], or "" when
+     * unparseable/absent. The single shared implementation for server-derived
+     * calendar timestamps (cadence next-due/last-interaction, briefing dates) —
+     * M11's prep view and M12's cadence panel must render the same value the
+     * same way, so both call this rather than formatting inline.
+     *
+     * **UTC, not the device zone.** The web's formatDateWithFormat reads
+     * getUTCDate()/getUTCMonth()/getUTCFullYear(), so a stored instant like
+     * `2026-09-10T01:00:00Z` renders "2026-09-10" no matter where the user sits.
+     * Converting to the device zone shifts the date for anyone west of UTC —
+     * the same value rendered as two different days across clients (a real bug
+     * M11's review pass fixed in the prep view).
+     */
+    fun formatTimestamp(iso: String?, format: String): String {
+        if (iso.isNullOrBlank()) return ""
+        return runCatching {
+            val zoned = Instant.parse(iso).atZone(ZoneOffset.UTC)
+            formatFull(zoned.year, zoned.monthValue, zoned.dayOfMonth, format)
+        }.getOrDefault("")
+    }
 }

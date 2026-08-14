@@ -34,3 +34,23 @@ val MIGRATION_13_14: Migration = object : Migration(startVersion = 13, endVersio
         connection.execSQL("INSERT INTO `cached_contacts_fts`(`cached_contacts_fts`) VALUES('rebuild')")
     }
 }
+
+/**
+ * M12: adds the `cached_cadence_policies` table (M12's CadencePolicyRepository
+ * mirrors server policies into the cache, following the timeline-entity
+ * full-resync pattern). A new table only — no existing table's schema changed.
+ *
+ * A hand-written migration is required rather than relying on the destructive
+ * fallback for the same reason as [MIGRATION_13_14]: the destructive path drops
+ * *every* table, `pending_interactions` (a real not-yet-synced outbox) included.
+ */
+val MIGRATION_14_15: Migration = object : Migration(startVersion = 14, endVersion = 15) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            "CREATE TABLE IF NOT EXISTS `cached_cadence_policies` (`id` TEXT NOT NULL, " +
+                "`entityId` TEXT NOT NULL, `targetIntervalDays` INTEGER NOT NULL, " +
+                "`qualifyingTypes` TEXT NOT NULL, `updatedAt` TEXT, `deleted` INTEGER NOT NULL, " +
+                "PRIMARY KEY(`id`))",
+        )
+    }
+}

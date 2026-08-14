@@ -6,7 +6,7 @@
 | **Rating** | 4 — the reported blocker after a large import |
 | **Size** | M |
 | **Depends on** | [T93](137-T93-duplicate-scan-endpoint-and-review.md) for the *suggested-pairs* half. The select-two-and-merge half depends on nothing. |
-| **Status** | **TO BE DONE** |
+| **Status** | **DONE** (2026-08-14 — see the landing note below) |
 | **Source** | Beta testing note, 2026-08-13: *"How can I bulk merge? Import created a lot of duplicates and merge isn't in the bulk actions list on Contacts."* |
 
 ## Why this exists
@@ -74,3 +74,76 @@ Build it as a guided flow instead:
 - New strings translated in all five locales.
 - `cd frontend && npx tsc --noEmit && npx vitest run` green, plus a Playwright spec driving select-two →
   merge → list-refreshed.
+
+## Landing note, 2026-08-14
+
+Shipped steps 1–4; step 5 needed nothing (T93's "Review duplicates" surface already walks its pairs
+through `MergeContactsDialog`'s pair mode — the exact lift this ticket deferred to it). T107 landed
+first, so the reachability-vs-destruction trap is moot: the loser's attachments/preferences/cadence/
+external identities all re-point now.
+
+What actually got built:
+
+- **`BulkActionsBar` gains a Merge button** (`onMerge` prop), enabled only at `selectedCount === 2`
+  and disabled otherwise with a tooltip (`bulk.mergeSelectTwoHint`), via a `Tooltip`-wrapped `<span>`
+  because a disabled MUI Button never fires pointer events. Two new keys (`bulk.merge`,
+  `bulk.mergeSelectTwoHint`) in all five locales.
+- **`ContactsPage` resolves the pair from the loaded page, not a lookup round trip.** Selection is
+  keyed by `Contact.VCardUID`; the rows already carry `Contact.ID`, which is what
+  `POST /contacts/merge` wants. The handler is defensive — it re-filters the loaded `contacts` by the
+  selection set and refuses unless exactly two resolve, even though the button only enables at two.
+- **After a successful merge: clear the selection and refetch list + circles + tags.** The loser is
+  gone; a stale selection pointing at it (and stale circle/tag chips on the survivor) is the T94/T95
+  bug class this ticket's step 4 explicitly names.
+- The **detail-page entry point is untouched** and re-verified by `contactMerge.spec.ts`.
+
+Tests:
+
+- `BulkActionsBar.test.tsx`: disabled at 1 and 3, enabled + reports at exactly 2, tooltip text on
+  hover, disabled while busy. The jsdom tooltip assertion needed the mouse event on the `Tooltip`'s
+  own `<span>` (MUI only opens when the pointer enters the wrapper element, not a disabled
+  descendant).
+- `ContactsPage.test.tsx`: select-two → dialog opens in pair mode showing both "Keep …" candidates →
+  resolve → commit called with the right IDs → selection cleared and `getContacts` refetched. Plus a
+  cross-page variant (Alice on page one + Carol on page two via "load more") proving the resolution
+  reads the merged loaded array, and a stale-selection variant (below).
+- New `e2e/bulkMerge.spec.ts`: select one (Merge disabled + tooltip) → two (enabled) → three
+  (disabled again — merge is strictly pairwise) → back to two → dialog offers both keeper
+  candidates with the list-first row as default → **Swap toggles the checked keeper and back** →
+  the distinct first names produce a **real firstname conflict the user resolves via the keeper
+  radio** (deliberately not the no-conflict fast path) → commit → dialog closes, selection empty,
+  loser gone from the list, keeper's GET ok and loser's polled to 404 (the T93 WAL-read-snapshot
+  caveat). Full e2e suite green against the Docker test stack.
+
+Both unit tests were hand-verified by breaking them first: disabling the enable-gate made the
+single/three+ tests fail, and stubbing out the `setMergePair` call made the ContactsPage test fail —
+each restored after confirming the failure.
+
+One process note: the "disabled hint" e2e assertion originally clicked the disabled button to surface
+the tooltip; Playwright's actionability check rightly refused. Hovering is the correct gesture for a
+disabled element — a `hover({ force: true })` is needed because the opened tooltip then sits over the
+button and would block a normal actionability re-check.
+
+## Review pass, 2026-08-14
+
+Self-review after the landing found one real bug and two coverage gaps; all fixed in this pass:
+
+- **An enabled Merge button could silently do nothing.** The selection is keyed by `VCardUID` and
+  deliberately survives a sort change (T77) — but the sort's refetch replaces the loaded page, which
+  may carry fewer than both selected rows. `handleBulkMerge`'s resolution guard then bailed silently:
+  a visible, enabled Merge button that no-ops on click, the exact failure class this repo avoids. It
+  now `window.alert`s (`bulk.mergeSelectionStale`, ×5 locales) and clears the stale selection, so the
+  user recovers instead of staring at a dead button. Pinned by a unit test that reproduces the
+  sequence (select across pages → sort → refetch drops the row → click Merge): it fails against the
+  silent version and passes against the fix. Note the T77 "sort doesn't clear the selection" decision
+  was left intact — the merge path now *handles* a selection it can't resolve rather than the sort
+  changing the contract.
+- **Cross-page merge resolution was untested.** The whole point of uid-keyed selection is surviving
+  pagination, and the resolution reads the merged loaded array — but the first test only merged two
+  rows from page one. Added a unit test: Alice (page one) + Carol (page two) → dialog shows both →
+  commit called with `(1, 3)`.
+- **e2e covered the one/two gate but not three-plus or the swap.** The ticket's "Done when" lists
+  one-or-three-plus disabled explicitly. The spec now seeds a third contact: 3 selected → Merge
+  disabled, back to 2 → enabled. And it drives the Swap control in the real dialog (default keeper
+  checked → Swap → the other checked → Swap back), proving the "lets the keeper be swapped"
+  requirement end-to-end rather than only in the dialog's own unit tests.

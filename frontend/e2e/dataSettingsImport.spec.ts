@@ -52,11 +52,18 @@ test.describe('Bulk contacts import in Data Settings', () => {
       ).toBeTruthy();
     } finally {
       // Clean up the imported contacts (skip/ignore failures — the contacts
-      // may not exist if the import failed mid-run).
+      // may not exist if the import failed mid-run). Scoped by ?search=
+      // rather than an unfiltered ?limit=200 -- under a full parallel run the
+      // shared account can hold well over 200 live throwaway contacts at
+      // once, which would silently drop these out of an unscoped page and
+      // leak them (the same cap global-setup's own leftover-sweep has, so
+      // relying on that catching it isn't a given either).
       for (const firstname of [name, second]) {
-        const list = await request.get(`${API_BASE_URL}/contacts?limit=200`);
+        const list = await request.get(
+          `${API_BASE_URL}/contacts?search=${encodeURIComponent(firstname)}&limit=10`
+        );
         const { contacts } = await list.json();
-        const match = contacts.find((c: { firstname: string }) => c.firstname === firstname);
+        const match = (contacts || []).find((c: { firstname: string }) => c.firstname === firstname);
         if (match) await request.delete(`${API_BASE_URL}/contacts/${match.id}`).catch(() => {});
       }
     }

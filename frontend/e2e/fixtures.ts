@@ -1,4 +1,8 @@
 import { test as base, Page, Locator, APIRequestContext, expect } from '@playwright/test';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+import * as crypto from 'crypto';
 import { TEST_USER, API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 import { toContactRecordInput } from '../src/api/contacts';
 
@@ -6,6 +10,165 @@ export { test } from '@playwright/test';
 export { expect } from '@playwright/test';
 
 export const LOGGED_OUT = { cookies: [], origins: [] };
+
+// ---------------------------------------------------------------------------
+// Uniqueness helpers — `Date.now()` alone is 1ms-resolution and nothing else,
+// so two tests racing under `fullyParallel` (different worker processes, but
+// scheduled close enough in wall-clock time) can generate the identical
+// "unique" token. Mixing in Math.random() plus a per-process monotonic
+// counter means two callers in the very same millisecond still diverge.
+// ---------------------------------------------------------------------------
+let uniqueCounter = 0;
+
+/**
+ * A short, collision-resistant token safe to embed in a name/email/username.
+ * Base-36 rather than decimal specifically to stay compact: it feeds
+ * makeThrowawayUser() below, and User.Username validates max=50, so a
+ * verbose label (e.g. "isolation_share_thirdparty") plus the "e2e_" prefix
+ * and separators already spends over half that budget before the token.
+ */
+export function uniqueToken(): string {
+  uniqueCounter += 1;
+  const randomPart = crypto.randomBytes(4).toString('base64url').slice(0, 6).toLowerCase();
+  return `${Date.now().toString(36)}${randomPart}${uniqueCounter.toString(36)}`;
+}
+
+/**
+ * A numeric-only unique suffix, for fields that must look like a phone
+ * number (search.spec.ts's cross-format phone tests). Longer than `length`
+ * internally so the requested tail is still unique even after truncation.
+ */
+export function uniqueDigits(length = 10): string {
+  uniqueCounter += 1;
+  const randomPart = crypto.randomInt(1_000_000_000).toString().padStart(9, '0');
+  const raw = `${Date.now()}${randomPart}${uniqueCounter}`;
+  return raw.slice(-length);
+}
+
+// ---------------------------------------------------------------------------
+// Cross-process mutex for the shared TEST_USER's account-level settings
+// (/users/enabled-contact-fields, /users/date-format, /notifications/config,
+// ...). These are singleton rows on the one account every spec authenticates
+// as (see playwright.config.ts's storageState), so two specs that each
+// read-modify-write one of them -- even from different files -- can
+// interleave their toggle/restore under `fullyParallel: true` and corrupt
+// each other's setting mid-test.
+//
+// `test.describe.configure({ mode: 'serial' })` does NOT close this gap: it
+// only serializes tests *within* one file, and each Playwright worker is a
+// separate OS process, so an in-memory JS lock wouldn't reach across workers
+// either. This is a real cross-process lock -- an atomic `fs.mkdirSync` on a
+// well-known directory in the OS temp dir -- specifically because the race
+// that motivated it (dateFormats.spec.ts and linkFieldTypeEditors.spec.ts
+// both mutating /users/enabled-contact-fields with no coordination) is a
+// cross-file, cross-worker race.
+const USER_SETTINGS_LOCK_DIR = path.join(os.tmpdir(), 'mycorrhizal-e2e-user-settings.lock');
+const USER_SETTINGS_LOCK_STALE_MS = 45_000;
+
+async function acquireUserSettingsLock(timeoutMs = 60_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    try {
+      fs.mkdirSync(USER_SETTINGS_LOCK_DIR);
+      return;
+    } catch (err: unknown) {
+      if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
+
+      // Break a lock abandoned by a crashed test/process rather than hang
+      // every later test forever.
+      try {
+        const stat = fs.statSync(USER_SETTINGS_LOCK_DIR);
+        if (Date.now() - stat.mtimeMs > USER_SETTINGS_LOCK_STALE_MS) {
+          fs.rmSync(USER_SETTINGS_LOCK_DIR, { recursive: true, force: true });
+          continue;
+        }
+      } catch {
+        // Lock dir vanished between the failed mkdir and this check -- the
+        // holder just released it. Retry the mkdir immediately.
+        continue;
+      }
+
+      if (Date.now() > deadline) {
+        throw new Error(
+          'Timed out waiting for the shared e2e user-settings lock -- another test is holding it ' +
+          `(${USER_SETTINGS_LOCK_DIR}). If that directory is stale from a crashed run, delete it.`
+        );
+      }
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+  }
+}
+
+function releaseUserSettingsLock(): void {
+  fs.rmSync(USER_SETTINGS_LOCK_DIR, { recursive: true, force: true });
+}
+
+/**
+ * Runs `fn` with exclusive access to the shared TEST_USER's account-level
+ * settings. Every spec that reads-modifies-writes a singleton per-user
+ * setting (enabled-contact-fields, date-format, notification config, ...)
+ * and restores it afterward must wrap its whole test body in this, so its
+ * toggle-then-restore window can never interleave with another spec's.
+ */
+export async function withExclusiveUserSettings<T>(fn: () => Promise<T>): Promise<T> {
+  await acquireUserSettingsLock();
+  try {
+    return await fn();
+  } finally {
+    releaseUserSettingsLock();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Throwaway secondary accounts (isolation checks, contact-share recipients,
+// ...) — always uniquely suffixed so two tests (or two runs) never fight over
+// the same account, and always cleaned up via the admin API so nothing
+// accumulates in the shared database across runs.
+// ---------------------------------------------------------------------------
+export interface ThrowawayUser {
+  username: string;
+  email: string;
+  password: string;
+}
+
+/** Builds a never-reused throwaway account. Does not register it. */
+export function makeThrowawayUser(label: string): ThrowawayUser {
+  const token = uniqueToken();
+  return {
+    username: `e2e_${label}_${token}`,
+    email: `e2e_${label}_${token}@example.com`,
+    password: 'ThrowawayPass123!',
+  };
+}
+
+/**
+ * Deletes a throwaway account by username via the admin API. The shared
+ * TEST_USER is auto-admin (the first registered account -- see
+ * userManagement.spec.ts's note), and DeleteUser is a real hard delete (the
+ * one deliberate exception in CLAUDE.md's soft/hard-delete rules, precisely
+ * so a torn-down account's username/email can be reused), so this leaves
+ * nothing for a later run to skip over.
+ *
+ * `adminRequest` must be an authenticated-as-TEST_USER request context (e.g.
+ * `page.request` on a page using the shared storageState) -- never the
+ * throwaway account's own context.
+ */
+export async function deleteThrowawayUser(
+  adminRequest: APIRequestContext,
+  username: string
+): Promise<void> {
+  try {
+    const directory = await adminRequest.get(`${API_BASE_URL}/users/directory`);
+    if (!directory.ok()) return;
+    const { users } = await directory.json();
+    const match = (users || []).find((u: { id: number; username: string }) => u.username === username);
+    if (match) {
+      await adminRequest.delete(`${API_BASE_URL}/admin/users/${match.id}`).catch(() => {});
+    }
+  } catch {
+    // Best-effort cleanup; never fail a test over it.
+  }
+}
 
 /**
  * Logs a user in through the UI. Only needed by specs that explicitly start
@@ -183,7 +346,7 @@ export async function createTestContact(
   request: APIRequestContext,
   overrides: Record<string, unknown> = {}
 ): Promise<CreatedContact> {
-  const firstname = (overrides.firstname as string | undefined) ?? `${E2E_CONTACT_PREFIX}${Date.now()}`;
+  const firstname = (overrides.firstname as string | undefined) ?? `${E2E_CONTACT_PREFIX}${uniqueToken()}`;
   const lastname = (overrides.lastname as string | undefined) ?? 'Temp';
   const response = await request.post(`${API_BASE_URL}/contacts`, {
     data: toContactRecordInput({ firstname, lastname, ...overrides }),
