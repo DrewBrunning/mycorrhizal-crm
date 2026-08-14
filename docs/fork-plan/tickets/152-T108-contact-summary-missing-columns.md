@@ -6,7 +6,7 @@
 | **Rating** | 3 — two DTO fields that have never carried data |
 | **Size** | XS — two strings in a slice, plus deciding what to do about `circles` |
 | **Depends on** | Nothing |
-| **Status** | **TO BE DONE** |
+| **Status** | **DONE** (2026-08-14) |
 | **Source** | Not reported. Found while checking what the list DTO carries, during the 2026-08-13 beta triage. |
 
 ## Why this exists
@@ -76,3 +76,29 @@ renders nothing. And the circle chips on the list are fed from a separate `useCi
 - `cd backend && go build ./... && go vet ./... && gofmt -l . && go test ./...` green.
 - `cd frontend && npx tsc --noEmit && npx vitest run` green.
 - `backend/openapi.yaml` matches the final DTO shape (the drift test enforces it).
+
+## Landing note (2026-08-14)
+
+Took the preferred option: `nickname` added to `contactSummaryColumns` (and its three derived slices, via
+the existing `append(append([]string{}, …))` chain — no shape change needed there), `circles` removed from
+`ContactSummary`/`NewContactSummary` entirely, not populated. `frontend/src/api/contacts.ts`'s
+`ContactSummaryDTO` already matched this target shape by coincidence (had `nickname`, never had `circles`)
+— just added the "hand-synced mirror, must stay in sync" comment per trap #4. `openapi.yaml`'s
+`ContactSummary` schema had already grown an honest caveat on `circles` ("the list query does not select
+this column... do not rely on it being populated") from some earlier pass that noticed the symptom without
+tracing it to the cause — removed now that the field itself is gone.
+
+New raw-JSON regression test (`TestGetContacts_SummaryHasNicknameNoCircles`,
+`contact_controller_test.go`) hits the real `GetContacts` handler and asserts against the parsed JSON map,
+not a decoded struct — catches both the nickname value and a stray `circles` key the removed Go field
+alone wouldn't reveal. Hand-verified by reverting the column-list fix and confirming the test fails.
+
+Found and fixed the actual root cause of "nobody noticed for two reasons" while touching this: the
+pre-existing `TestNewContactSummary_IncludesNicknameAndCircles` unit test (now
+`TestNewContactSummary_IncludesNickname`, `circles` assertions removed) called `NewContactSummary` directly
+against a hand-built `Contact{Nickname: "..."}` — it always passed, because the real bug was in the
+controller's `Select()` column list, a layer that test never touched. Left as a mapping-logic unit test
+(still legitimate for that narrower purpose), with a comment pointing at the new controller-level test as
+the one that actually covers the query.
+
+`go build/vet/gofmt/test` and `tsc --noEmit`/`vitest run` both green.

@@ -341,7 +341,13 @@ export interface ContactRecordResponse {
 
 // ContactSummaryDTO mirrors the backend's slim GET /contacts list
 // projection exactly (models.ContactSummary) -- distinct from the legacy
-// Contact shape above, which the adapter maps summaries down into.
+// Contact shape above, which the adapter maps summaries down into. Hand-
+// synced with the Go struct field for field (no dynamic schema endpoint
+// exists anywhere in this codebase, per /CLAUDE.md frontend trap #4) --
+// deliberately has no `circles` field: T108 removed it backend-side (it was
+// never selected by the list query, and would have been the stale legacy
+// flat column even if it had been), and the list's circle chips have always
+// come from a separate useCircles() lookup, not this DTO.
 interface ContactSummaryDTO {
   id: number;
   uid: string;

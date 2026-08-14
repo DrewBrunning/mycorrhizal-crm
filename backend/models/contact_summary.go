@@ -23,25 +23,35 @@ import (
 // distinguish which is which without a second round trip. Both are cheap,
 // already-loaded scalar columns — no extra query cost.
 //
-// Nickname and Circles were added after the fact (frontend migration
-// pre-work): ContactsPage's list view renders both per-row, and the old
-// fields=-based flat API used to let it request them directly. Both are
-// cheap, already-loaded columns like ID/Archived above.
+// Nickname was added after the fact (frontend migration pre-work):
+// ContactsPage's list view renders it per-row, and the old fields=-based
+// flat API used to let it request it directly. Cheap, an already-loaded
+// column like ID/Archived above.
+//
+// T108: Circles lived here too until 2026-08-14, and was removed rather than
+// fixed. It was never actually populated -- contactSummaryColumns never
+// selected the column, so every response carried a silently empty "circles":
+// null -- and nothing consumed it: ContactsPage's circle chips come from a
+// separate useCircles() lookup, not this DTO. It also would have been the
+// wrong data if selected: Contact.Circles is the legacy flat JSON column
+// T2/T3 superseded with circle_members, so populating it verbatim would ship
+// stale values for any contact edited since that migration. If a real
+// consumer needs circles on the list endpoint, it should read from
+// circle_members (a join or a second query), not resurrect this field.
 type ContactSummary struct {
-	ID             uint     `json:"id"`
-	UID            string   `json:"uid"`
-	Firstname      string   `json:"firstname"`
-	Lastname       string   `json:"lastname"`
-	Nickname       string   `json:"nickname"`
-	FN             string   `json:"fn"`
-	PrimaryEmail   string   `json:"primary_email"`
-	PrimaryPhone   string   `json:"primary_phone"`
-	Birthday       string   `json:"birthday"`
-	Org            string   `json:"org"`
-	Photo          string   `json:"photo"`
-	PhotoThumbnail string   `json:"photo_thumbnail"`
-	Circles        []string `json:"circles"`
-	Archived       bool     `json:"archived"`
+	ID             uint   `json:"id"`
+	UID            string `json:"uid"`
+	Firstname      string `json:"firstname"`
+	Lastname       string `json:"lastname"`
+	Nickname       string `json:"nickname"`
+	FN             string `json:"fn"`
+	PrimaryEmail   string `json:"primary_email"`
+	PrimaryPhone   string `json:"primary_phone"`
+	Birthday       string `json:"birthday"`
+	Org            string `json:"org"`
+	Photo          string `json:"photo"`
+	PhotoThumbnail string `json:"photo_thumbnail"`
+	Archived       bool   `json:"archived"`
 	// Deleted is the T17 change-feed tombstone marker, set only by the
 	// ?since= feed path (which reads rows with Unscoped()). A plain list
 	// request never sets it.
@@ -70,7 +80,6 @@ func NewContactSummary(c *Contact) ContactSummary {
 		Org:            c.Org,
 		Photo:          c.Photo,
 		PhotoThumbnail: c.PhotoThumbnail,
-		Circles:        c.Circles,
 		Archived:       c.Archived,
 	}
 }

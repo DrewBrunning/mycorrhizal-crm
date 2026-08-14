@@ -94,6 +94,45 @@ func TestGetContacts(t *testing.T) {
 	assert.ElementsMatch(t, []float64{1, 2, 3, 4, 5}, seen, "no dropped or duplicated contacts")
 }
 
+// TestGetContacts_SummaryHasNicknameNoCircles is T108's regression test
+// (docs/fork-plan/tickets/152-T108-contact-summary-missing-columns.md):
+// contactSummaryColumns (the fixed Select() list GetContacts actually runs)
+// never included "nickname", so every ContactSummary shipped an empty
+// nickname despite the DTO and NewContactSummary both carrying it correctly
+// -- a bug no test decoding into models.ContactSummary could have caught,
+// since NewContactSummary's own unit test builds a Contact by hand and never
+// goes through the controller's query at all (see
+// contact_summary_test.go's TestNewContactSummary_IncludesNickname). This
+// asserts against the raw JSON map instead of a decoded struct for the same
+// reason /CLAUDE.md frontend trap #8 requires it for a Go response DTO: a
+// decoded struct can't distinguish "key present with the zero value" from
+// "key absent" -- both matter here, nickname for the former, circles (
+// removed from the DTO entirely, not populated) for the latter.
+func TestGetContacts_SummaryHasNicknameNoCircles(t *testing.T) {
+	db, router := setupRouter()
+	var user models.User
+	db.First(&user)
+
+	router.GET("/contacts", GetContacts)
+
+	contact := models.Contact{UserID: user.ID, Firstname: "Ada", Lastname: "Lovelace", Nickname: "Countess"}
+	require.NoError(t, db.Create(&contact).Error)
+
+	req, _ := http.NewRequest("GET", "/contacts", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var responseBody map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &responseBody))
+	items := responseBody["contacts"].([]any)
+	require.Len(t, items, 1)
+	item := items[0].(map[string]any)
+
+	assert.Equal(t, "Countess", item["nickname"], "the list query must actually select the nickname column")
+	assert.NotContains(t, item, "circles", "circles must be gone from the DTO entirely, not present-and-empty")
+}
+
 // TestGetContacts_FiltersByVCardUID pins down §3d WP0
 // (docs/fork-plan/95-backlog-and-priorities.md): the RelationshipEdge
 // frontend needs to resolve a batch of Contact.VCardUID values (edge

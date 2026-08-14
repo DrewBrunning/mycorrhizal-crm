@@ -6877,11 +6877,6 @@ components:
         org: { type: string }
         photo: { type: string }
         photo_thumbnail: { type: string, description: "Base64 data URL of the thumbnail." }
-        circles:
-          type: array
-          items: { type: string }
-          nullable: true
-          description: "The list query does not select this column, so it is typically null unless the backend changes; do not rely on it being populated."
         archived: { type: boolean }
         deleted:
           type: boolean

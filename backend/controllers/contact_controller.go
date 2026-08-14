@@ -26,7 +26,7 @@ import (
 // endpoint has a fixed slim shape, this is baked in rather than
 // caller-configurable.
 var contactSummaryColumns = []string{
-	"id", "vcard_uid", "firstname", "lastname", "fn", "email", "phone", "birthday", "org",
+	"id", "vcard_uid", "firstname", "lastname", "nickname", "fn", "email", "phone", "birthday", "org",
 	"photo", "photo_thumbnail", "archived",
 }
 
