@@ -18,11 +18,13 @@ import (
 // any) and appends it into resolution.Conflicts, re-sorted by Field to match
 // ComputeContactMergeResolution's own ordering. Shared by the preview and
 // commit endpoints so they can never disagree about whether a cadence
-// conflict exists.
-func appendCadencePolicyConflict(db *gorm.DB, userID uint, keeperVCardUID, loserVCardUID string, resolution *models.ContactMergeResolution) *apperrors.AppError {
+// conflict exists. errMessage lets each caller supply its own error wording
+// (matching the message its other DB-error paths already use) rather than
+// hardcoding one that would be wrong for the other caller.
+func appendCadencePolicyConflict(db *gorm.DB, userID uint, keeperVCardUID, loserVCardUID string, resolution *models.ContactMergeResolution, errMessage string) *apperrors.AppError {
 	conflict, err := services.ComputeCadencePolicyConflict(db, userID, keeperVCardUID, loserVCardUID)
 	if err != nil {
-		return apperrors.ErrDatabase("Failed to compute merge preview").WithError(err)
+		return apperrors.ErrDatabase(errMessage).WithError(err)
 	}
 	if conflict != nil {
 		resolution.Conflicts = append(resolution.Conflicts, *conflict)
@@ -99,7 +101,7 @@ func PreviewContactMerge(c *gin.Context) {
 	}
 	resolution.FieldValueConflicts = fvConflicts
 
-	if appErr := appendCadencePolicyConflict(db, userID, keeper.VCardUID, loser.VCardUID, resolution); appErr != nil {
+	if appErr := appendCadencePolicyConflict(db, userID, keeper.VCardUID, loser.VCardUID, resolution, "Failed to compute merge preview"); appErr != nil {
 		apperrors.AbortWithError(c, appErr)
 		return
 	}
@@ -154,7 +156,7 @@ func CommitContactMerge(c *gin.Context) {
 	}
 	resolution.FieldValueConflicts = fvConflicts
 
-	if appErr := appendCadencePolicyConflict(db, userID, keeper.VCardUID, loser.VCardUID, resolution); appErr != nil {
+	if appErr := appendCadencePolicyConflict(db, userID, keeper.VCardUID, loser.VCardUID, resolution, "Failed to merge contacts"); appErr != nil {
 		apperrors.AbortWithError(c, appErr)
 		return
 	}

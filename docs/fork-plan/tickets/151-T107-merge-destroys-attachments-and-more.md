@@ -129,6 +129,38 @@ corresponding test failed with a message matching the reintroduced bug, restored
 
 `go build ./... && go vet ./... && gofmt -l . && go test ./...` green.
 
+**Self-review pass (high-effort, 8 parallel finder angles) found four real correctness bugs, fixed in the same
+session** — worth recording since two of them are exactly the class of silent-loss bug this ticket exists to
+close, just relocated into the new code:
+
+- `repointCadencePolicy` fell through to silently keeping the keeper's policy (deleting the loser's) whenever
+  the resolution value didn't exactly match either side's freshly-recomputed summary, instead of erroring —
+  e.g. a stale preview value after either policy was edited before commit. Now a hard rejection, matching how
+  the `FieldValue` conflict path already treats an unresolved value. New `TestContactMerge_CadencePolicyConflict`
+  pair C pins it; hand-verified by reverting the fix and confirming the test fails.
+- `formatCadencePolicySummary` joined `QualifyingTypes` without sorting, so the same set of qualifying types in
+  a different slice order produced a spurious conflict. Now sorts a copy first. Pair D pins it, same
+  hand-verify treatment.
+- `appendCadencePolicyConflict` hardcoded the preview-only error message even when called from the commit path.
+  Now takes the caller's own message.
+- The hand-maintained frontend `ContactMergeAssociationCounts` TS type (`frontend/src/api/contactMerge.ts`,
+  whose own comment already says it "must be kept in sync manually") wasn't updated with the five new fields,
+  so `MergeContactsDialog`'s `hasAssociations` gate couldn't see them — a merge whose only real effect was one
+  of the new association types would show no "this affects associations" notice. Both files updated;
+  `tsc --noEmit` and the full `vitest` suite (667 tests) still green.
+
+Also updated `ContactMergeFieldConflict`'s doc comment (now stale — it described only two conflict kinds, not
+the cadence-policy one this ticket adds as a third folded into the same `Conflicts` slice) and added a comment
+on `ApplyContactMergeResolution`'s silent no-op for that field, so a future same-named scalar field can't
+collide with it unnoticed.
+
+Two lower-severity findings surfaced but deliberately left unfixed, with rationale: `BuildContactMergeNoteContent`'s
+audit note overstates cadence-policy re-pointing when the loser's was actually discarded on a conflict —
+true, but consistent with the same pre-existing imprecision for household/circle/tag dedup counts, so fixing
+cadence alone would be inconsistent scope creep; and the soft-deleted loser's DB row keeps a stale `Photo`
+value after adoption (in-memory only is blanked) — currently unexploitable, no code path reads it
+destructively today.
+
 Not done here, filed separately as out-of-scope-but-noticed: `openapi.yaml`'s `ContactMergeAssociationCounts`
 schema was already missing `conversation_agenda_items`/`gift_items` before this ticket (pre-existing drift,
 not caught by the drift test since it only checks schema *existence*, not field parity) — flagged as a

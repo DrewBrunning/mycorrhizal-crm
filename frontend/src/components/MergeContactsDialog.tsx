@@ -125,7 +125,11 @@ export default function MergeContactsDialog({
     (counts.notes || counts.activities || counts.reminders || counts.reminder_completions ||
       counts.relationship_edges || counts.household_memberships || counts.circle_memberships ||
       counts.tags || counts.life_events || counts.life_event_references || counts.field_values ||
-      counts.contact_sync_links);
+      counts.contact_sync_links ||
+      // T107: a merge whose only effect is moving one of these must still
+      // show the info box, not silently look like a no-op merge.
+      counts.attachments || counts.preferences || counts.external_identities ||
+      counts.external_activities || counts.cadence_policies);
 
   return (
     <AppDialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>

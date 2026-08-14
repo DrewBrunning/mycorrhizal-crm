@@ -592,6 +592,56 @@ func TestContactMerge_CadencePolicyConflict(t *testing.T) {
 	var keeperPolicyGone int64
 	require.NoError(t, db.Model(&models.CadencePolicy{}).Where("id = ?", keeperPolicy.ID).Count(&keeperPolicyGone).Error)
 	assert.EqualValues(t, 0, keeperPolicyGone, "the keeper's original (unchosen) policy must be gone, not left behind as a duplicate")
+
+	// --- Pair C: a resolution value that matches neither side is rejected,
+	// not silently treated as "keeper wins". This is the stale-preview case
+	// -- e.g. the loser's policy was edited between preview and commit, so
+	// the client's echoed-back resolution no longer matches either side's
+	// freshly-recomputed summary. Picking wrong here silently discards
+	// which whole row survives, unlike a scalar conflict where a bad value
+	// just writes an odd string -- so this must be a hard rejection, the
+	// same way an unresolved conflict already is.
+	aliceC := models.Contact{UserID: user.ID, Firstname: "AliceC"}
+	bobC := models.Contact{UserID: user.ID, Firstname: "AliceC"}
+	require.NoError(t, db.Create(&aliceC).Error)
+	require.NoError(t, db.Create(&bobC).Error)
+	require.NoError(t, db.Create(&models.CadencePolicy{UserID: user.ID, EntityID: aliceC.VCardUID, TargetIntervalDays: 7}).Error)
+	loserPolicyC := models.CadencePolicy{UserID: user.ID, EntityID: bobC.VCardUID, TargetIntervalDays: 21}
+	require.NoError(t, db.Create(&loserPolicyC).Error)
+
+	commitC := doJSON("/contacts/merge", models.ContactMergeRequest{
+		KeepID: aliceC.ID, MergeID: bobC.ID,
+		// Stale: doesn't match "Every 7 days" (keeper) or "Every 21 days"
+		// (loser) -- e.g. echoed back from a preview taken before the
+		// loser's policy was edited to 21 days.
+		Resolutions: map[string]string{"cadence_policy": "Every 14 days"},
+	})
+	require.Equal(t, http.StatusInternalServerError, commitC.Code, commitC.Body.String())
+
+	var aliceCPolicy, bobCPolicy models.CadencePolicy
+	require.NoError(t, db.Where("entity_id = ? AND user_id = ?", aliceC.VCardUID, user.ID).First(&aliceCPolicy).Error)
+	assert.Equal(t, 7, aliceCPolicy.TargetIntervalDays, "a rejected commit must not have touched the keeper's policy")
+	require.NoError(t, db.Where("id = ?", loserPolicyC.ID).First(&bobCPolicy).Error)
+	assert.Equal(t, 21, bobCPolicy.TargetIntervalDays, "a rejected commit must not have dropped the loser's policy either")
+
+	// --- Pair D: QualifyingTypes in a different order must not be treated
+	// as a conflict -- it's a JSON array with no canonical order, so the
+	// same set of types written in a different sequence is the same policy.
+	aliceD := models.Contact{UserID: user.ID, Firstname: "AliceD"}
+	bobD := models.Contact{UserID: user.ID, Firstname: "AliceD"}
+	require.NoError(t, db.Create(&aliceD).Error)
+	require.NoError(t, db.Create(&bobD).Error)
+	require.NoError(t, db.Create(&models.CadencePolicy{UserID: user.ID, EntityID: aliceD.VCardUID, TargetIntervalDays: 30, QualifyingTypes: []string{"call", "visit"}}).Error)
+	require.NoError(t, db.Create(&models.CadencePolicy{UserID: user.ID, EntityID: bobD.VCardUID, TargetIntervalDays: 30, QualifyingTypes: []string{"visit", "call"}}).Error)
+
+	previewD := doJSON("/contacts/merge/preview", models.ContactMergeRequest{KeepID: aliceD.ID, MergeID: bobD.ID})
+	require.Equal(t, http.StatusOK, previewD.Code, previewD.Body.String())
+	var resolutionD models.ContactMergePreviewResponse
+	require.NoError(t, json.Unmarshal(previewD.Body.Bytes(), &resolutionD))
+	assert.Empty(t, resolutionD.Resolution.Conflicts, "same interval and same qualifying types in a different order must not surface as a conflict")
+
+	commitD := doJSON("/contacts/merge", models.ContactMergeRequest{KeepID: aliceD.ID, MergeID: bobD.ID})
+	require.Equal(t, http.StatusOK, commitD.Code, commitD.Body.String())
 }
 
 // TestContactMerge_ExternalIdentityAndActivityPlainRepoint covers T107's

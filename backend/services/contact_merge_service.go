@@ -94,6 +94,14 @@ func ApplyContactMergeResolution(keeper *models.Contact, res *models.ContactMerg
 		if !ok {
 			return fmt.Errorf("contact merge: unresolved conflict for field %q", conflict.Field)
 		}
+		// T107: conflict.Field == cadencePolicyConflictField ("cadence_policy")
+		// deliberately matches no mergeScalarFields entry and is a no-op here
+		// -- repointCadencePolicy applies that resolution separately, since a
+		// CadencePolicy isn't a Contact field this function can Set(). This
+		// only stays correct because cadencePolicyConflictField never
+		// collides with a real mergeScalarFields key; if a future scalar
+		// field is ever added under that same name, it would silently start
+		// receiving the cadence conflict's chosen value instead.
 		for _, f := range mergeScalarFields {
 			if f.Key == conflict.Field {
 				f.Set(keeper, v)
@@ -679,11 +687,17 @@ func ComputeCadencePolicyConflict(db *gorm.DB, userID uint, keeperVCardUID, lose
 // LoserValue and repointCadencePolicy's re-derivation of which side the
 // caller picked -- so the two can never drift apart (the same trick
 // BuildContactMergeNoteContent already relies on for scalar conflicts).
+// QualifyingTypes is sorted first: it's a JSON array with no canonical
+// order, so two policies that are the same set of types in a different
+// insertion order must still compare equal, not surface as a spurious
+// conflict.
 func formatCadencePolicySummary(p models.CadencePolicy) string {
 	if len(p.QualifyingTypes) == 0 {
 		return fmt.Sprintf("Every %d days", p.TargetIntervalDays)
 	}
-	return fmt.Sprintf("Every %d days (%s)", p.TargetIntervalDays, strings.Join(p.QualifyingTypes, ", "))
+	sorted := append([]string(nil), p.QualifyingTypes...)
+	sort.Strings(sorted)
+	return fmt.Sprintf("Every %d days (%s)", p.TargetIntervalDays, strings.Join(sorted, ", "))
 }
 
 // repointCadencePolicy resolves CadencePolicy across a merge, inside tx:
@@ -713,12 +727,14 @@ func repointCadencePolicy(tx *gorm.DB, userID uint, keeper, loser *models.Contac
 			Update("entity_id", keeper.VCardUID).Error
 	}
 
-	if formatCadencePolicySummary(keeperPolicy) != formatCadencePolicySummary(loserPolicy) {
+	keeperSummary, loserSummary := formatCadencePolicySummary(keeperPolicy), formatCadencePolicySummary(loserPolicy)
+	if keeperSummary != loserSummary {
 		chosen, ok := resolutions[cadencePolicyConflictField]
 		if !ok {
 			return fmt.Errorf("contact merge: unresolved cadence policy conflict")
 		}
-		if chosen == formatCadencePolicySummary(loserPolicy) {
+		switch chosen {
+		case loserSummary:
 			// The loser's policy wins: drop the keeper's, then repoint the
 			// loser's onto the keeper.
 			if err := tx.Delete(&keeperPolicy).Error; err != nil {
@@ -726,6 +742,18 @@ func repointCadencePolicy(tx *gorm.DB, userID uint, keeper, loser *models.Contac
 			}
 			return tx.Model(&models.CadencePolicy{}).Where("id = ?", loserPolicy.ID).
 				Update("entity_id", keeper.VCardUID).Error
+		case keeperSummary:
+			// Explicitly the keeper's: fall through to the drop-the-loser's
+			// return below.
+		default:
+			// Doesn't match either side -- e.g. one policy was edited
+			// between preview and commit, so `chosen` (echoed back from a
+			// stale preview) no longer matches this freshly-recomputed
+			// summary. Reject rather than silently guessing which policy
+			// the user actually meant (unlike a scalar field conflict,
+			// picking wrong here doesn't just write an odd string -- it
+			// decides which whole row survives).
+			return fmt.Errorf("contact merge: cadence policy resolution %q does not match either side", chosen)
 		}
 	}
 	// Keeper's policy wins (explicitly chosen, or the two already agreed):
