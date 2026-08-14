@@ -913,6 +913,122 @@ class ApiClientTest {
     }
 
     @Test
+    fun `complete reminder with skip true appends the skip query param`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"message": "Reminder skipped", "reminder": {"ID": 1, "message": "Call Dana", "completed": false}}"""),
+        )
+
+        val result = client.completeReminder(1, skip = true)
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/reminders/1/complete?skip=true", request.path)
+    }
+
+    @Test
+    fun `get dashboard parses all four widgets from one composite response`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "birthdays": [
+                        {"type": "contact", "name": "Alice", "birthday": "--12-25", "photo_thumbnail": "data:image/png;base64,abc", "contact_id": 1}
+                      ],
+                      "random_contacts": [
+                        {"id": 3, "uid": "u3", "firstname": "Bob", "lastname": "Smith", "nickname": "Bobby", "circles": ["family"], "photo_thumbnail": "data:image/png;base64,def"}
+                      ],
+                      "upcoming_reminders": [
+                        {"ID": 7, "message": "Call Dana", "remind_at": "2026-08-15T09:00:00Z", "recurrence": "weekly", "by_mail": true, "contact_id": 3, "contact_name": "Bobby Smith"}
+                      ],
+                      "overdue": [
+                        {"policy": {"id": "cadence-1", "entity_id": "u3", "target_interval_days": 30}, "health": {"has_qualifying_interaction": true, "next_due": "2026-08-01T00:00:00Z", "overdue_by": 13}, "contact_id": 3, "contact_name": "Bobby Smith", "photo_thumbnail": "data:image/png;base64,ghi"}
+                      ]
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        val result = client.getDashboard()
+
+        assertTrue(result.isSuccess)
+        val dashboard = result.getOrThrow()
+        // Birthdays.
+        assertEquals(1, dashboard.birthdays.size)
+        assertEquals("Alice", dashboard.birthdays[0].name)
+        assertEquals(1L, dashboard.birthdays[0].contactId)
+        // Random contacts.
+        assertEquals(1, dashboard.randomContacts.size)
+        assertEquals("Bobby", dashboard.randomContacts[0].nickname)
+        assertEquals(listOf("family"), dashboard.randomContacts[0].circles)
+        // Upcoming reminders — the M3 embedded contact name must survive parsing.
+        assertEquals(1, dashboard.upcomingReminders.size)
+        assertEquals(7, dashboard.upcomingReminders[0].id)
+        assertEquals("Call Dana", dashboard.upcomingReminders[0].message)
+        assertEquals("Bobby Smith", dashboard.upcomingReminders[0].contactName)
+        assertEquals("weekly", dashboard.upcomingReminders[0].recurrence)
+        assertEquals(true, dashboard.upcomingReminders[0].byMail)
+        assertEquals(3, dashboard.upcomingReminders[0].contactId)
+        // Overdue cadences.
+        assertEquals(1, dashboard.overdue.size)
+        assertEquals("cadence-1", dashboard.overdue[0].policy?.id)
+        assertEquals(13, dashboard.overdue[0].health?.overdueBy)
+
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/api/v1/dashboard", request.path)
+    }
+
+    @Test
+    fun `get dashboard normalizes empty arrays to empty lists`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "birthdays": [],
+                      "random_contacts": [],
+                      "upcoming_reminders": [],
+                      "overdue": []
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        val result = client.getDashboard()
+
+        assertTrue(result.isSuccess)
+        val dashboard = result.getOrThrow()
+        assertTrue(dashboard.birthdays.isEmpty())
+        assertTrue(dashboard.randomContacts.isEmpty())
+        assertTrue(dashboard.upcomingReminders.isEmpty())
+        assertTrue(dashboard.overdue.isEmpty())
+    }
+
+    @Test
+    fun `get dashboard tolerates every collection key being absent`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{}"""),
+        )
+
+        val result = client.getDashboard()
+
+        assertTrue(result.isSuccess)
+        val dashboard = result.getOrThrow()
+        assertTrue(dashboard.birthdays.isEmpty())
+        assertTrue(dashboard.randomContacts.isEmpty())
+        assertTrue(dashboard.upcomingReminders.isEmpty())
+        assertTrue(dashboard.overdue.isEmpty())
+    }
+
+    @Test
     fun `update reminder sends a PUT and unwraps the wrapped response`() = runBlocking {
         server.enqueue(
             MockResponse()

@@ -8,7 +8,13 @@
         <string name="nav_dashboard">Dashboard</string>
     <string name="dashboard_birthdays">Kommende Geburtstage</string>
     <string name="dashboard_reminders">Kommende Erinnerungen</string>
-    <string name="dashboard_empty">Nichts anstehend.</string>
+    <string name="dashboard_overdue_cadences">Überfällige Beziehungen</string>
+    <string name="dashboard_random_contacts">Bleibe in Kontakt</string>
+    <string name="dashboard_no_birthdays">Keine anstehenden Geburtstage</string>
+    <string name="dashboard_no_reminders">Keine anstehenden Erinnerungen</string>
+    <string name="dashboard_no_contacts">Keine Kontakte verfügbar</string>
+    <string name="dashboard_years_old">(%1$d Jahre alt)</string>
+    <string name="dashboard_unknown_contact">Unbekannter Kontakt</string>
     <string name="nav_home">Start</string>
     <string name="nav_settings">Einstellungen</string>
     <string name="nav_tags">Tags</string>
@@ -303,6 +309,16 @@
     <string name="reminder_error_remind_at">Das Erinnerungsdatum muss dem Format ISO 8601 entsprechen, z. B. 2026-08-10T14:00:00Z</string>
     <string name="reminder_error_recurrence">Unbekannte Wiederholung</string>
     <string name="cd_complete_reminder">Erinnerung abschließen</string>
+    <string name="cd_skip_reminder">Erinnerung überspringen</string>
+    <string name="reminder_skip">Überspringen</string>
+    <string name="reminder_skip_confirm">Diese Erinnerung überspringen? Bei wiederkehrenden Erinnerungen wird zum nächsten Termin verschoben, ohne in der Zeitachse zu erscheinen.</string>
+    <string name="reminder_email_chip">E-Mail</string>
+    <string name="reminder_recurrence_once">Einmalig</string>
+    <string name="reminder_recurrence_weekly">Wöchentlich</string>
+    <string name="reminder_recurrence_monthly">Monatlich</string>
+    <string name="reminder_recurrence_quarterly">Vierteljährlich</string>
+    <string name="reminder_recurrence_six_months">Alle 6 Monate</string>
+    <string name="reminder_recurrence_yearly">Jährlich</string>
     <string name="cd_new_reminder">Neue Erinnerung</string>
 
     <!-- Zeitleiste -->

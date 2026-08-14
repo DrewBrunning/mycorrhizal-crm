@@ -8,7 +8,13 @@
         <string name="nav_dashboard">Panel</string>
     <string name="dashboard_birthdays">Próximos cumpleaños</string>
     <string name="dashboard_reminders">Próximos recordatorios</string>
-    <string name="dashboard_empty">No hay nada próximo.</string>
+    <string name="dashboard_overdue_cadences">Relaciones vencidas</string>
+    <string name="dashboard_random_contacts">Mantente en Contacto</string>
+    <string name="dashboard_no_birthdays">No hay cumpleaños próximos</string>
+    <string name="dashboard_no_reminders">No hay recordatorios próximos</string>
+    <string name="dashboard_no_contacts">No hay contactos disponibles</string>
+    <string name="dashboard_years_old">(%1$d años)</string>
+    <string name="dashboard_unknown_contact">Contacto desconocido</string>
     <string name="nav_home">Inicio</string>
     <string name="nav_settings">Ajustes</string>
     <string name="nav_tags">Etiquetas</string>
@@ -303,6 +309,16 @@
     <string name="reminder_error_remind_at">La fecha del recordatorio debe estar en formato ISO 8601, p. ej. 2026-08-10T14:00:00Z</string>
     <string name="reminder_error_recurrence">Repetición desconocida</string>
     <string name="cd_complete_reminder">Completar recordatorio</string>
+    <string name="cd_skip_reminder">Omitir recordatorio</string>
+    <string name="reminder_skip">Omitir</string>
+    <string name="reminder_skip_confirm">¿Omitir este recordatorio? Para recordatorios recurrentes, esto reprogramará a la próxima ocurrencia sin registrarlo en la línea de tiempo.</string>
+    <string name="reminder_email_chip">Email</string>
+    <string name="reminder_recurrence_once">Una vez</string>
+    <string name="reminder_recurrence_weekly">Semanal</string>
+    <string name="reminder_recurrence_monthly">Mensual</string>
+    <string name="reminder_recurrence_quarterly">Trimestral</string>
+    <string name="reminder_recurrence_six_months">Cada 6 meses</string>
+    <string name="reminder_recurrence_yearly">Anual</string>
     <string name="cd_new_reminder">Nuevo recordatorio</string>
 
     <!-- Cronología -->
