@@ -357,3 +357,107 @@ test('changing the sort does not clear an in-progress selection', async () => {
   // selection is still valid and must survive (T77 trap).
   expect(screen.getByText('1 selected')).toBeInTheDocument();
 });
+
+// --- T103 contact-info filter -----------------------------------------------
+
+// T103: the filter defaults ON — a fresh /contacts load asks the server for
+// contactable contacts only (hasContactInfo: true), even though the URL has no
+// param (absence of ?has_contact_info= means the default, which is filtered).
+test('defaults to the contactable-only filter on first load', async () => {
+  mockTwoPages();
+  renderPage();
+  await screen.findByLabelText('Select Alice');
+
+  expect(getContacts).toHaveBeenCalledWith(
+    expect.objectContaining({ hasContactInfo: true })
+  );
+  // The "Show all" switch is present and off (the filter is on).
+  expect(screen.getByLabelText('Show all')).not.toBeChecked();
+});
+
+// T103: the switch is the URL-persisted inverse of the filter. Flipping it on
+// writes has_contact_info=false (show everything) and refetches accordingly.
+test('toggling Show all off the filter and writing the URL param', async () => {
+  mockTwoPages();
+  renderPage();
+  await screen.findByLabelText('Select Alice');
+
+  fireEvent.click(screen.getByLabelText('Show all'));
+
+  await waitFor(() =>
+    expect(getContacts).toHaveBeenCalledWith(
+      expect.objectContaining({ hasContactInfo: false })
+    )
+  );
+  expect(screen.getByLabelText('Show all')).toBeChecked();
+});
+
+// T103 URL round trip: a shared/reloaded link carrying has_contact_info=false
+// must reproduce the "show all" state — the switch is checked and the server
+// is asked for everything.
+test('a has_contact_info=false URL is honoured on load', async () => {
+  vi.mocked(getContacts).mockImplementation((params) => {
+    expect(params?.hasContactInfo).toBe(false);
+    return Promise.resolve({ contacts: [contact(1, 'uid-1', 'Alice')], next_cursor: '', limit: 10 });
+  });
+  render(
+    <MemoryRouter initialEntries={['/contacts?has_contact_info=false']}>
+      <DateFormatProvider>
+        <SnackbarProvider>
+          <Routes>
+            <Route path="/contacts" element={<ContactsPage />} />
+          </Routes>
+        </SnackbarProvider>
+      </DateFormatProvider>
+    </MemoryRouter>
+  );
+  await screen.findByLabelText('Select Alice');
+  expect(screen.getByLabelText('Show all')).toBeChecked();
+});
+
+// T103: the hidden count is disclosed when the filter is on and the response
+// says contacts were hidden — the user who sees 340 must know the other 160
+// were hidden, not lost.
+test('renders the hidden count while the filter is active', async () => {
+  vi.mocked(getContacts).mockResolvedValue({
+    contacts: [contact(1, 'uid-1', 'Alice')],
+    next_cursor: '',
+    limit: 10,
+    hidden_count: 2,
+  });
+  renderPage();
+  await screen.findByLabelText('Select Alice');
+  expect(screen.getByText('2 contacts without contact info are hidden')).toBeInTheDocument();
+
+  // Toggling Show all reveals them; the line disappears (no filter, no count).
+  fireEvent.click(screen.getByLabelText('Show all'));
+  await waitFor(() => expect(screen.queryByText('2 contacts without contact info are hidden')).not.toBeInTheDocument());
+});
+
+test('a hidden count of zero renders nothing', async () => {
+  vi.mocked(getContacts).mockResolvedValue({
+    contacts: [contact(1, 'uid-1', 'Alice')],
+    next_cursor: '',
+    limit: 10,
+    hidden_count: 0,
+  });
+  renderPage();
+  await screen.findByLabelText('Select Alice');
+  expect(screen.queryByText(/hidden/i)).not.toBeInTheDocument();
+});
+
+// T103 trap: toggling the contact-info filter swaps the visible set, so an
+// in-progress bulk selection must be cleared — a delete/archive applied to
+// rows the user can no longer see is a real hazard, not a cosmetic one.
+test('toggling the contact-info filter clears an in-progress selection', async () => {
+  mockTwoPages();
+  renderPage();
+  await screen.findByLabelText('Select Alice');
+
+  fireEvent.click(screen.getByLabelText('Select Alice'));
+  expect(screen.getByText('1 selected')).toBeInTheDocument();
+
+  fireEvent.click(screen.getByLabelText('Show all'));
+
+  await waitFor(() => expect(screen.queryByText('1 selected')).not.toBeInTheDocument());
+});

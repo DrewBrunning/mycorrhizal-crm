@@ -13,6 +13,10 @@ interface UseContactsResult {
   // Opaque resume token (T17): non-empty while more rows exist. There is no
   // exact total — cursor pagination gives it up.
   nextCursor: string;
+  // T103: present only while the contact-info filter is active — how many
+  // contacts matched the other filters but were hidden by it, so the page can
+  // disclose that rows are hidden rather than reading as lost data.
+  hiddenCount?: number;
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
@@ -22,10 +26,11 @@ interface UseContactsResult {
 export function useContacts(params: GetContactsParams = {}): UseContactsResult {
   // Destructure params to use primitive values as dependencies
   // This prevents re-fetches when callers pass new object references with identical values
-  const { cursor: _ignored, limit, search, circle, sort, order, includeArchived, archived } = params;
+  const { cursor: _ignored, limit, search, circle, sort, order, includeArchived, archived, hasContactInfo } = params;
 
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [nextCursor, setNextCursor] = useState('');
+  const [hiddenCount, setHiddenCount] = useState<number | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,16 +52,18 @@ export function useContacts(params: GetContactsParams = {}): UseContactsResult {
         order,
         includeArchived,
         archived,
+        hasContactInfo,
       });
       setContacts(data.contacts || []);
       setNextCursor(data.next_cursor || '');
+      setHiddenCount(data.hidden_count);
     } catch (err) {
       const message = handleFetchError(err, 'fetching contacts');
       setError(message);
     } finally {
       setLoading(false);
     }
-  }, [limit, search, circle, sort, order, includeArchived, archived]);
+  }, [limit, search, circle, sort, order, includeArchived, archived, hasContactInfo]);
 
   const loadMore = useCallback(async () => {
     if (!nextCursor) return;
@@ -72,15 +79,17 @@ export function useContacts(params: GetContactsParams = {}): UseContactsResult {
         order,
         includeArchived,
         archived,
+        hasContactInfo,
       });
       setContacts((prev) => [...prev, ...(data.contacts || [])]);
       setNextCursor(data.next_cursor || '');
+      setHiddenCount(data.hidden_count);
     } catch (err) {
       setError(handleFetchError(err, 'loading more contacts'));
     } finally {
       setLoading(false);
     }
-  }, [nextCursor, limit, search, circle, sort, order, includeArchived, archived]);
+  }, [nextCursor, limit, search, circle, sort, order, includeArchived, archived, hasContactInfo]);
 
   useEffect(() => {
     fetchFirst();
@@ -89,6 +98,7 @@ export function useContacts(params: GetContactsParams = {}): UseContactsResult {
   return {
     contacts,
     nextCursor,
+    hiddenCount,
     loading,
     error,
     refetch: fetchFirst,

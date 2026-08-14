@@ -6,8 +6,77 @@
 | **Rating** | 4 — the list is the app's front door and real data has made it noisy |
 | **Size** | M |
 | **Depends on** | Nothing |
-| **Status** | **TO BE DONE** |
+| **Status** | **DONE** (2026-08-13 — see the landing note) |
 | **Source** | Beta testing note, 2026-08-13: *"Filter to contacts with contact info by default — pets, children, and people created just for relationships/connections show in the contacts list which makes it less useful as a Contacts list. We can should filter down to Contacts with at least one email, phone number, or URL/link and have a toggle to show all."* |
+
+## Landing note (2026-08-13)
+
+Implemented as specified. What shipped:
+
+- **Backend** (`backend/controllers/contact_controller.go`): `?has_contact_info=true|false` on
+  `GET /contacts`, applied as a `query.Where(contactInfoClause)` beside the `circle` clause. The
+  clause reads the flat `email`/`phone` scalars (trimmed, non-empty, `COALESCE`d against NULL — see
+  the review-pass note below) *and* `json_each` over the `emails`/`phones`/`urls` arrays — the
+  arrays cover the contactable case a scalar-only path would miss (a contact whose only email
+  arrived without populating the flat column). Any value other than `true`/`false` is a 400,
+  matching `sort`'s treatment. The `?vcard_uid=` batch path returns before the parse and never sees
+  the param; the `?since=` feed returns after but ignores the flag — a feed is sync state and must
+  carry every row (a malformed value still 400s there, since the parse is shared).
+- **`hidden_count`**: present only while the filter is active — how many contacts matched the other
+  filters (archive/search/circle) but were excluded by the predicate. Counted on a `Session()` clone
+  of the query *before* the resume cursor, so it reflects the whole filtered set, not the page. The
+  browse path was restructured (filters → count → cursor) to make that possible; WHERE clauses are
+  ANDed so the reordering is semantically inert. Web renders "N contacts without contact info are
+  hidden" so the default-on filter never reads as silently lost data.
+- **Web** (`ContactsPage.tsx`): a "Show all" `Switch` beside the archived toggle. The filter defaults
+  on (`showAll` is the URL's `has_contact_info` absent-or-`true` = filtered, `false` = all); the
+  toggle writes the param via T77's `setSearchParams` pattern, so the choice survives reload and a
+  shared link. `has_contact_info` is threaded through `GetContactsParams`/`getContacts`/`useContacts`
+  and was added to the selection-clearing dependency array (the ticket's trap). Six new strings
+  (`showAll` + `hiddenContactable` `_one`/`_other`) in all five locales.
+- **Query-plan measurement** (the ticket's trap, with numbers): against a 20k-row real migrated
+  schema, the predicate adds ~120µs to the page query (453µs vs 336µs baseline) and the hidden-count
+  `COUNT(*)` is ~18ms. The denormalized `has_contact_info` column escape hatch was deliberately **not**
+  reached for — the measurement is the reason it isn't needed.
+- **E2E fallout**: seven existing specs search for / create contacts with no contact info and expected
+  them on the list, which the new default hides. They now pass `has_contact_info=false` explicitly
+  (bulkOperations, contactSortControl, importExport's circle-chips check, t79's apartment search,
+  search.spec's FTS/address/soft-delete tests), and the `/search?q=` redirect spec gained a
+  contactable fixture since the redirect target can't carry the param. Two of those assertions
+  (`search.spec`'s surname-match ones) had been passing **vacuously** via the "No results for …" line
+  once the card was hidden — worth remembering: `getByText(new RegExp(searchTerm))` matches the
+  no-results message, so a hidden contact is not a failed assertion.
+
+**Not done / deferred**: the web's list still shows the filter switch only; the Android client's
+contacts list has no `has_contact_info` surface (out of scope — this ticket is Backend + Web, the
+M-series has its own tickets).
+
+### Review pass (2026-08-13)
+
+An independent review of the branch found one real bug and several untested branches; all fixed.
+
+- **NULL-scalar `hidden_count` undercount (fixed)**: the flat `email`/`phone` columns are nullable
+  (raw-SQL/legacy rows can store NULL where GORM writes `''`), and the original clause's
+  `length(trim(email)) > 0` evaluates to NULL for a NULL column. In the visible-list predicate that
+  correctly excludes the row, but the hidden-count query's `NOT (clause)` turned that NULL into NULL
+  too — the row vanished from the list *without* being counted as hidden, so the "N contacts hidden"
+  disclosure under-reported. Fixed by `COALESCE`ing both scalars to `''`; the regression test
+  (`TestGetContacts_ContactInfoFilterNullScalars`, which inserts a NULL-scalar row via raw SQL)
+  fails pre-fix, verified.
+- **Branches that were untested and now are**: cursor pagination over the filtered set
+  (`TestGetContacts_ContactInfoFilterPagesFilteredSet` — walks pages, asserts every contactable row
+  exactly once, stubs never, and that each page reports the whole-set `hidden_count`, not the
+  per-page count); `sort=name` + filter (`TestGetContacts_ContactInfoFilterNameSort`);
+  `includes=notes` + filter, i.e. the `ContactSummaryWithRelations` response branch
+  (`TestGetContacts_ContactInfoFilterIncludesRelations`); and explicit `has_contact_info=false`
+  returning every row with no `hidden_count` (extended the off-by-default test). The pagination and
+  includes assertions were hand-verified to fail when their code path is broken.
+- **E2E additions**: two more Playwright specs — a fresh load of a shared `?has_contact_info=false`
+  link reproduces Show-all with no toggle ever touched, and toggling Show-all clears an in-progress
+  bulk selection (the ticket's trap, previously unit-test-only).
+- Full gates re-run green: backend build/vet/gofmt/test, `tsc` + 673 vitest, 174 Playwright (4 of
+  them this spec). One pre-existing flaky vitest run (`LifeEventDialog.test.tsx` fetches the real
+  `localhost:8080`, unmocked) was observed and is unrelated to this change.
 
 ## Why this exists
 

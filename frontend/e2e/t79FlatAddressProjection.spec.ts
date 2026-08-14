@@ -89,7 +89,7 @@ test.describe('T79: flat address projection carries PO box / apartment / floor',
       // The apartment token appears nowhere in the name/email/phone, so the
       // match can only come from addresses_flat -> contacts_fts. This proves
       // the FTS-triggered index carries the newly-flattened sub-street text.
-      await page.goto(`/contacts?search=${encodeURIComponent(contact.apartmentToken)}`);
+      await page.goto(`/contacts?search=${encodeURIComponent(contact.apartmentToken)}&has_contact_info=false`);
       await waitForLoading(page);
 
       await expect(page.getByText(new RegExp(contact.firstname))).toBeVisible({ timeout: 15000 });

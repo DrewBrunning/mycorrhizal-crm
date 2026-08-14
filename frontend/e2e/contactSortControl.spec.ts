@@ -55,7 +55,10 @@ test.describe('Contacts list sort control (T77)', () => {
 
     try {
       const search = `${E2E_CONTACT_PREFIX}T77Sort`;
-      await page.goto(`/contacts?search=${encodeURIComponent(search)}`);
+      // T103: the contact-info filter defaults on, and these sort fixtures
+      // carry no email/phone/URL — opt out explicitly so the spec keeps
+      // testing the sort control, not the filter.
+      await page.goto(`/contacts?search=${encodeURIComponent(search)}&has_contact_info=false`);
       await waitForLoading(page);
 
       // The three contacts are the only cards on the page (search isolates

@@ -20,7 +20,10 @@ test.describe('Bulk operations', () => {
     const tag = (await tagRes.json()).tag;
 
     try {
-      await page.goto(`/contacts?search=${encodeURIComponent(runId)}`);
+      // T103: the contact-info filter defaults on, and these throwaway bulk
+      // contacts carry no email/phone/URL — opt out explicitly so the spec
+      // keeps testing pagination/selection, not the filter.
+      await page.goto(`/contacts?search=${encodeURIComponent(runId)}&has_contact_info=false`);
       await waitForLoading(page);
 
       // Select all of page one (10 of the 11).

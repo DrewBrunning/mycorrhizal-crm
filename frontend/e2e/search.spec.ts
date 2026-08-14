@@ -24,7 +24,11 @@ test.describe('Search (folded into Contacts)', () => {
     });
 
     try {
-      await page.goto(`/contacts?search=${encodeURIComponent(surname)}`);
+      // T103: this contact carries no email/phone/URL, so the default
+      // contact-info filter would hide the card (and turn the assertion into
+      // a vacuous match on the "No results" line). Opt out explicitly — this
+      // spec is about the FTS index, not the list filter.
+      await page.goto(`/contacts?search=${encodeURIComponent(surname)}&has_contact_info=false`);
       await waitForLoading(page);
 
       await expect(page.getByText(new RegExp(surname))).toBeVisible({ timeout: 15000 });
@@ -87,8 +91,11 @@ test.describe('Search (folded into Contacts)', () => {
 
     try {
       // The street token appears nowhere in the contact's name/email/phone,
-      // so the match can only come from the indexed address text.
-      await page.goto(`/contacts?search=${encodeURIComponent(streetToken)}`);
+      // so the match can only come from the indexed address text. T103: the
+      // contact has no email/phone/URL, so opt out of the default
+      // contact-info filter — this spec is about address search, not the
+      // list filter.
+      await page.goto(`/contacts?search=${encodeURIComponent(streetToken)}&has_contact_info=false`);
       await waitForLoading(page);
 
       await expect(page.getByText(new RegExp(firstname))).toBeVisible({ timeout: 15000 });
@@ -143,8 +150,11 @@ test.describe('Search (folded into Contacts)', () => {
     });
 
     try {
-      // Before delete: search by the street must surface the contact.
-      await page.goto(`/contacts?search=${encodeURIComponent(streetToken)}`);
+      // Before delete: search by the street must surface the contact. T103:
+      // address-only contacts have no email/phone/URL, so opt out of the
+      // default contact-info filter — this spec is about the soft-delete
+      // trigger, not the list filter.
+      await page.goto(`/contacts?search=${encodeURIComponent(streetToken)}&has_contact_info=false`);
       await waitForLoading(page);
       await expect(page.getByText(new RegExp(firstname))).toBeVisible({ timeout: 15000 });
 
@@ -153,7 +163,7 @@ test.describe('Search (folded into Contacts)', () => {
 
       // After soft-delete: the FTS trigger removes the row from the index,
       // so a search for the same address token must return no-results.
-      await page.goto(`/contacts?search=${encodeURIComponent(streetToken)}`);
+      await page.goto(`/contacts?search=${encodeURIComponent(streetToken)}&has_contact_info=false`);
       await waitForLoading(page);
       await expect(page.getByText(/No results for/)).toBeVisible({ timeout: 15000 });
     } finally {
@@ -263,6 +273,11 @@ test.describe('Search (folded into Contacts)', () => {
     const contact = await createTestContact(request, {
       firstname: `${E2E_CONTACT_PREFIX}Redirect`,
       lastname: surname,
+      // T103: the redirect lands on /contacts?search=<surname> with the
+      // default contact-info filter on, so the contact needs contact info to
+      // actually be visible (a bare-name fixture would make the assertion a
+      // vacuous match on the "No results" line).
+      emails: [{ type: 'home', value: 'redirect@example.com' }],
     });
 
     try {
