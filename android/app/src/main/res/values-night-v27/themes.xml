@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- T97: night+API-27+ counterpart to values-v27/themes.xml. That file
+         unconditionally sets windowLightNavigationBar=true, which is only
+         correct over the light theme's bone-colored navigation bar; here the
+         navigation bar is boneDark (values-night/themes.xml), so it needs
+         light (not dark) icons/buttons instead. -->
+    <style name="Theme.Mycorrhizal" parent="Base.Theme.Mycorrhizal">
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+</resources>

@@ -148,3 +148,21 @@ Implemented per the plan in this file's "Implementation contract." Summary of wh
 **Not done**: the ticket's on-device hand-verify step (link via search, edit sensitivity, reject a
 suggestion, confirm it's distinguishable from deleting a confirmed edge) — this build environment has
 no Android device/emulator attached. That pass is still needed before this ships.
+
+## On-device verification (2026-08-14, Pixel 8a)
+
+Verified against the real account (not a fixture): relationship rows resolve to the actual
+other-party contact name and are tappable through to that contact — confirmed by tapping a
+resolved row and landing on the right contact detail screen. The edit dialog opened for a
+confirmed edge pre-fills its real type/sensitivity and round-trips a cancel cleanly (opened
+twice, once with an accidental unsaved change, confirmed Cancel discarded it rather than
+persisting). The create dialog's "Enter manually"/"Link to contact" toggle shows the search
+field replacing manual UID entry when linked mode is selected.
+
+**Not exercised this pass**: the account's current relationship data is all `status: confirmed`
+— no `suggested` (household-inferred) edge exists to view, so the reject-vs-delete label
+distinction and the confirmed/suggested section split weren't observed live. Also found (and
+fixed, unrelated to this ticket): the create/edit dialogs were rendering clipped to a
+circle/oval shape due to a theme-wide `AlertDialog` shape bug — see
+[T97](141-T97-android-status-bar-dark-mode.md)'s landing note for the fix; not a defect in this
+ticket's own code.

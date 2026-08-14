@@ -180,3 +180,19 @@ discover it" rule):
   the build environment. The ticket's on-device steps (archive → excluded from the default
   list; delete → soft-delete/undo story; name-linking in the delete confirm) are exactly what
   the unit/UI tests pin, but a real-device pass is still owed.
+
+## On-device verification (2026-08-14, Pixel 8a)
+
+Verified against the real account, using a throwaway contact created for this purpose
+("ZZTEST DeleteMeVerify") rather than any real contact — real contacts were only used for
+read-only checks (opening the ⋮ menu, viewing the export share sheet) without confirming any
+destructive action. The ⋮ menu shows all seven items (Archive, Export vCard 4.0, Export vCard
+3.0, Stay in touch, Share contact, View prep, Delete contact). "Export vCard 4.0" on a real
+contact produced a working share sheet with a correctly named `.vcf` file attached. On the
+throwaway contact, "Archive" showed a confirmation naming the contact exactly
+("Are you sure you want to archive ZZTEST DeleteMeVerify? …") and warning about reminder loss,
+matching the ticket's semantics; confirming archived it successfully. The contact form's
+prefix/given/surname/middle/suffix/nickname/kind/language fields and the circles/tags
+autocomplete-of-existing sections (replacing the old free-text field) are all present and were
+used to create the throwaway contact. Delete was not exercised on this pass (the device locked
+mid-session); the archived throwaway contact needs a manual delete as cleanup.

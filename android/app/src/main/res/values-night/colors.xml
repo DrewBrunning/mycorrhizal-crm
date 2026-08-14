@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- T106: also the adaptive-icon background on the home screen in dark
+         mode (mipmap-anydpi-v26/ic_launcher.xml), not just the splash — a
+         deliberate, accepted side effect of the same override. -->
+    <color name="ic_launcher_background">#1E1A13</color>
+</resources>
