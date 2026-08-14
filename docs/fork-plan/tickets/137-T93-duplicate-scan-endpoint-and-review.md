@@ -138,9 +138,10 @@ checklist).
 review surface), because the review surface is the point of the engine and the Merge button needs the
 pair-mode dialog — which T92 step 5 defers to "once T93 lands." That deferral left a chicken-and-egg:
 the review dialog can't open `MergeContactsDialog` on a pair until the dialog can express a pair. The
-minimal lift (`MergeContactsDialog`'s new optional `pair` prop: explicit keeper radio + swap, no search
-picker) is done here and directly serves T92 step 5; T92's remaining work (the bulk-actions-bar entry
-point, refresh/selection semantics) is unaffected.
+minimal lift (`MergeContactsDialog`'s `pair` mode — the props are now a discriminated union, so a call
+site cannot mix single- and pair-mode props: explicit keeper radio + swap, no search picker) is done
+here and directly serves T92 step 5; T92's remaining work (the bulk-actions-bar entry point,
+refresh/selection semantics) is unaffected.
 
 Decisions worth recording:
 
@@ -160,9 +161,33 @@ Decisions worth recording:
   email+phone → 0.95, name+email or name+phone → 0.9, phone → 0.75, email → 0.7, name → 0.5. Sorting
   is confidence desc then `(a.id, b.id)`, which makes offset pagination deterministic.
 - **Dismissal is idempotent (200, not 409)** — a double-click is not an error. This deliberately differs
-  from the household-suggestion dismissal's 409, which is a different shape (a group, not a pair).
+  from the household-suggestion dismissal's 409, which is a different shape (a group, not a pair). The
+  idempotency guard is the unique index itself: the controller INSERTs and treats a `UNIQUE constraint
+  failed` error as "already dismissed" (the house idiom from `admin_user_controller.go`) — a
+  count-then-create would race and 500 under two concurrent dismissals of the same pair.
 - **Query count is exactly 5** — one per tier + summaries + dismissals — pinned by a counting-GORM-logger
   test over 150 contacts. This is the ticket's bounded-query guarantee made concrete.
+
+## Review pass, 2026-08-14 (post-landing self-review)
+
+All findings fixed in one follow-up:
+
+- **Name-tier grouping key is a TUPLE, never a separator-joined string.** The first version concatenated
+  `LOWER(firstname) || '|' || LOWER(lastname)`, so `"A|B"+"C"` and `"A"+"B|C"` collapsed onto `a|b|c` and
+  produced a false pair. The SQL now partitions and selects the two name columns separately and Go groups
+  by `[2]string{first, last}`; a collision test seeds both shapes plus a genuine `(A|B, C)` duplicate and
+  asserts only the true pair forms.
+- **`duplicateSummaryColumns` moved into `models.ContactSummaryColumns`** — the service and the
+  controllers' `GetContacts` now read one list instead of two hand-synced mirrors (the drift hazard
+  `/CLAUDE.md` trap #4 warns about).
+- **Dismissal idempotency made race-safe** (unique-index tolerance, above) with an 8-way concurrent
+  dismiss test asserting all 200s and exactly one row.
+- **`MergeContactsDialog` props became a discriminated union**, eliminating the silently-broken-caller
+  hazard of optional single-mode props; pair mode fires exactly one preview (the keeperUid reset no
+  longer doubles it), and the keeper RadioGroup gained an accessible name.
+- The review dialog's multi-page fetch now fills the list incrementally instead of holding a blank
+  spinner until every page lands; the "Review duplicates" button icon is `DifferenceIcon`, not a copy
+  icon. Phone-pair confidence (`0.75`) is asserted; the test's `window.confirm` spy is restored.
 
 The one genuinely surprising find came from the e2e run, not the code: **a merge POST returning 200 is
 not immediately visible to a follow-up GET.** The loser GET intermittently returned 200 right after a

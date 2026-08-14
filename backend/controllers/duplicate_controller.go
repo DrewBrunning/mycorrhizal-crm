@@ -7,6 +7,7 @@ import (
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -96,21 +97,20 @@ func DismissDuplicatePair(c *gin.Context) {
 		uidLow, uidHigh = uidHigh, uidLow
 	}
 
-	var existing int64
-	if err := db.Model(&models.DismissedDuplicatePair{}).
-		Where("user_id = ? AND uid_low = ? AND uid_high = ?", userID, uidLow, uidHigh).
-		Count(&existing).Error; err != nil {
-		logger.FromContext(c).Error().Err(err).Msg("Failed to check existing duplicate dismissal")
-		apperrors.AbortWithError(c, apperrors.ErrDatabase("check duplicate dismissal").WithError(err))
+	// Insert, tolerating a duplicate: the (user_id, uid_low, uid_high) unique
+	// index is the idempotency guard. A count-then-create would race — two
+	// concurrent dismissals of the same pair could both see "absent" and the
+	// second INSERT would then 500 on the index, violating the idempotent
+	// contract. Instead the unique-constraint error IS the "already dismissed"
+	// answer (double-click safe, concurrent-call safe). The string match is
+	// the house idiom for a unique-index violation (admin_user_controller.go)
+	// — GORM only translates to gorm.ErrDuplicatedKey with TranslateError,
+	// which this app does not enable.
+	dismissal := models.DismissedDuplicatePair{UserID: userID, UIDLow: uidLow, UIDHigh: uidHigh}
+	if err := db.Create(&dismissal).Error; err != nil && !strings.Contains(err.Error(), "UNIQUE constraint failed") {
+		logger.FromContext(c).Error().Err(err).Msg("Failed to record duplicate dismissal")
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("record duplicate dismissal").WithError(err))
 		return
-	}
-	if existing == 0 {
-		dismissal := models.DismissedDuplicatePair{UserID: userID, UIDLow: uidLow, UIDHigh: uidHigh}
-		if err := db.Create(&dismissal).Error; err != nil {
-			logger.FromContext(c).Error().Err(err).Msg("Failed to record duplicate dismissal")
-			apperrors.AbortWithError(c, apperrors.ErrDatabase("record duplicate dismissal").WithError(err))
-			return
-		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Pair dismissed"})

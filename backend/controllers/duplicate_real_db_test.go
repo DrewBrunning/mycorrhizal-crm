@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"path/filepath"
 	"strconv"
+	"sync"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -122,9 +123,21 @@ func TestDuplicatePairs_RealMigratedSchema(t *testing.T) {
 	other := models.Contact{UserID: otherUser.ID, Firstname: "Alice", Lastname: "Adams", Email: "alice@example.com"}
 	require.NoError(t, db.Create(&other).Error)
 
+	// Name-tier grouping-key collision (review fix): the lowercased name
+	// tuple must group as a TUPLE, never a separator-joined string. "A|B"+"C"
+	// and "A"+"B|C" must not collapse onto the same key (both string-concat to
+	// "a|b|c"); two contacts with the SAME pipe-containing tuple must still
+	// pair. col1+col3 share (A|B, C) -> one name pair; col2 stays out.
+	col1 := models.Contact{UserID: user.ID, Firstname: "A|B", Lastname: "C", Email: "col1@example.com"}
+	require.NoError(t, db.Create(&col1).Error)
+	col2 := models.Contact{UserID: user.ID, Firstname: "A", Lastname: "B|C", Email: "col2@example.com"}
+	require.NoError(t, db.Create(&col2).Error)
+	col3 := models.Contact{UserID: user.ID, Firstname: "A|B", Lastname: "C", Email: "col3@example.com"}
+	require.NoError(t, db.Create(&col3).Error)
+
 	// --- first scan --------------------------------------------------------
 	pairs := scan()
-	require.Len(t, pairs, 5, "exactly five pairs: email, name, phone, non-primary-phone, archived-email")
+	require.Len(t, pairs, 6, "exactly six pairs: email, name, phone, non-primary-phone, archived-email, pipe-name")
 
 	emailPair := pairHas(pairs, e1.ID, e2.ID)
 	require.NotNil(t, emailPair, "email dupe must be detected")
@@ -139,14 +152,25 @@ func TestDuplicatePairs_RealMigratedSchema(t *testing.T) {
 	phonePair := pairHas(pairs, p1.ID, p2.ID)
 	require.NotNil(t, phonePair, "country-code phone dupe must be detected")
 	assert.ElementsMatch(t, []string{"phone"}, phonePair.Reasons)
+	assert.InDelta(t, 0.75, phonePair.Confidence, 0.001)
 
 	nonPrimaryPair := pairHas(pairs, q1.ID, q2.ID)
 	require.NotNil(t, nonPrimaryPair, "non-primary phone dupe must be detected")
 	assert.ElementsMatch(t, []string{"phone"}, nonPrimaryPair.Reasons)
+	assert.InDelta(t, 0.75, nonPrimaryPair.Confidence, 0.001)
 
 	archivedPair := pairHas(pairs, r1.ID, r2.ID)
 	require.NotNil(t, archivedPair, "archived contact's duplicate must be detected")
 	assert.True(t, archivedPair.A.Archived || archivedPair.B.Archived, "the archived contact must be flagged")
+
+	// The pipe-name tuple: col1+col3 are the same exact name, so they pair —
+	// but col2 ("A"+"B|C"), which a separator-joined key would wrongly fold
+	// into "a|b|c", must not appear in any pair at all.
+	pipePair := pairHas(pairs, col1.ID, col3.ID)
+	require.NotNil(t, pipePair, "two contacts with the same pipe-containing name must still pair")
+	assert.ElementsMatch(t, []string{"name"}, pipePair.Reasons)
+	assert.Nil(t, pairHas(pairs, col1.ID, col2.ID), "'A|B'+'C' and 'A'+'B|C' must NOT collide onto one name key")
+	assert.Nil(t, pairHas(pairs, col2.ID, col3.ID), "'A'+'B|C' must not pair with 'A|B'+'C'")
 
 	assert.Nil(t, pairHas(pairs, x1.ID, x2.ID), "name-identical contacts with no contact info must not be paired")
 	assert.Nil(t, pairHas(pairs, e1.ID, other.ID), "another user's contact must never appear")
@@ -159,7 +183,7 @@ func TestDuplicatePairs_RealMigratedSchema(t *testing.T) {
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 
 	pairs = scan()
-	require.Len(t, pairs, 4, "dismissed pair must not be re-offered")
+	require.Len(t, pairs, 5, "dismissed pair must not be re-offered")
 	assert.Nil(t, pairHas(pairs, e1.ID, e2.ID))
 
 	// Dismissing the same pair again (reversed order) is an idempotent 200.
@@ -231,4 +255,60 @@ func orderedUID(a, b string, wantLow bool) string {
 		return a
 	}
 	return b
+}
+
+// TestDuplicatePairs_DismissIdempotentUnderConcurrency pins the idempotency
+// contract against the race that a count-then-create implementation would
+// have: N concurrent dismissals of the same pair must all return 200 and
+// produce exactly one dismissal row. The unique index is the guard, so the
+// "losing" writers hit gorm.ErrDuplicatedKey and that must be treated as
+// success, not a 500.
+func TestDuplicatePairs_DismissIdempotentUnderConcurrency(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "duplicates-concurrent.db")
+	db, err := database.InitDB(dbPath)
+	require.NoError(t, err)
+
+	user := models.User{Username: "dupconc", Password: "password123!A", Email: "dupconc@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	a := models.Contact{UserID: user.ID, Firstname: "Conc", Lastname: "One", Email: "conc@example.com"}
+	require.NoError(t, db.Create(&a).Error)
+	b := models.Contact{UserID: user.ID, Firstname: "Conc", Lastname: "Two", Email: "conc@example.com"}
+	require.NoError(t, db.Create(&b).Error)
+
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.Default()
+	router.Use(func(c *gin.Context) {
+		c.Set("db", db)
+		c.Set("userID", user.ID)
+		c.Next()
+	})
+	router.POST("/contacts/duplicates/dismiss", middleware.ValidateJSONMiddleware(&models.DuplicateDismissalInput{}), DismissDuplicatePair)
+
+	const workers = 8
+	statuses := make([]int, workers)
+	var wg sync.WaitGroup
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			body, _ := json.Marshal(models.DuplicateDismissalInput{UIDA: a.VCardUID, UIDB: b.VCardUID})
+			req, _ := http.NewRequest("POST", "/contacts/duplicates/dismiss", bytes.NewReader(body))
+			req.Header.Set("Content-Type", "application/json")
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+			statuses[idx] = w.Code
+		}(i)
+	}
+	wg.Wait()
+
+	for i, code := range statuses {
+		assert.Equal(t, http.StatusOK, code, "dismissal %d must be an idempotent 200 under concurrency (body: see log)", i)
+	}
+
+	var count int64
+	require.NoError(t, db.Model(&models.DismissedDuplicatePair{}).
+		Where("user_id = ? AND uid_low = ? AND uid_high = ?", user.ID, orderedUID(a.VCardUID, b.VCardUID, true), orderedUID(a.VCardUID, b.VCardUID, false)).
+		Count(&count).Error)
+	assert.Equal(t, int64(1), count, "exactly one dismissal row must exist after concurrent dismissals")
 }

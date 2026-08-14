@@ -4,7 +4,12 @@ import '../i18n/config';
 import ReviewDuplicatesDialog from './ReviewDuplicatesDialog';
 import { SnackbarProvider } from '../context/SnackbarContext';
 
-afterEach(cleanup);
+// CLAUDE.md frontend trap #1 (explicit cleanup) plus mock hygiene: the
+// window.confirm spy below must not leak into later tests in this file.
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 const emptyAssociationCounts = {
   notes: 0, activities: 0, reminders: 0, reminder_completions: 0, relationship_edges: 0,

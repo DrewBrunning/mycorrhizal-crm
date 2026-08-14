@@ -7,18 +7,18 @@ import { SnackbarProvider } from '../context/SnackbarContext';
 afterEach(cleanup);
 
 function renderDialog(props: Partial<React.ComponentProps<typeof MergeContactsDialog>> = {}) {
-  const defaults: React.ComponentProps<typeof MergeContactsDialog> = {
+  // Single-mode defaults only when not in pair mode — the discriminated union
+  // forbids mixing the two, so the defaults must be mode-conditional.
+  const merged = {
     open: true,
     onClose: vi.fn(),
     onMerged: vi.fn(),
-    currentContactId: 1,
-    currentContactUid: 'alice-uid',
-    currentContactName: 'Alice Anderson',
+    ...(props.pair ? {} : { currentContactId: 1, currentContactUid: 'alice-uid', currentContactName: 'Alice Anderson' }),
     ...props,
-  };
+  } as React.ComponentProps<typeof MergeContactsDialog>;
   return render(
     <SnackbarProvider>
-      <MergeContactsDialog {...defaults} />
+      <MergeContactsDialog {...merged} />
     </SnackbarProvider>
   );
 }

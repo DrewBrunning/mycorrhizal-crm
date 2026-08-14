@@ -25,26 +25,41 @@ import { useContactMerge } from '../hooks/useContactMerge';
 import { useSnackbar } from '../context/SnackbarContext';
 import { getErrorMessage } from '../utils/errorHandler';
 
-interface MergeContactsDialogProps {
+interface MergeContactsDialogBaseProps {
   open: boolean;
   onClose: () => void;
   // Called after a successful commit with the surviving (keeper) contact's
   // id, since the loser no longer exists -- the parent is expected to
   // navigate there (detail-page flow) or refresh its list (review flow).
   onMerged: (keeperId: number) => void;
-  // --- Single-contact mode (contact detail page) ---
-  // The viewed contact is always the loser; the picked contact is the keeper.
-  currentContactId?: number;
-  currentContactUid?: string;
-  currentContactName?: string;
-  // --- Pair mode (T92/T93 review and bulk-merge flows) ---
-  // When provided, both contacts are fixed up front and neither is
-  // privileged: the user picks which survives (with a swap control) instead
-  // of searching. This lifts the single-mode "the viewed contact is always
-  // the loser" assumption into an explicit keeper/loser choice, which the
-  // list-driven flows need since neither selected row is privileged.
-  pair?: { a: Contact; b: Contact };
 }
+
+// --- Single-contact mode (contact detail page) ---
+// The viewed contact is always the loser; the picked contact is the keeper.
+// All three current-contact props are REQUIRED here, so a caller can't
+// silently omit one and get an undefined ID on commit.
+interface MergeContactsDialogSingleProps extends MergeContactsDialogBaseProps {
+  pair?: never;
+  currentContactId: number;
+  currentContactUid: string;
+  currentContactName: string;
+}
+
+// --- Pair mode (T92/T93 review and bulk-merge flows) ---
+// Both contacts are fixed up front and neither is privileged: the user picks
+// which survives (with a swap control) instead of searching. This lifts the
+// single-mode "the viewed contact is always the loser" assumption into an
+// explicit keeper/loser choice, which the list-driven flows need since
+// neither selected row is privileged. The single-mode props are structurally
+// absent (`never`) so a call site can't mix the two modes.
+interface MergeContactsDialogPairProps extends MergeContactsDialogBaseProps {
+  pair: { a: Contact; b: Contact };
+  currentContactId?: never;
+  currentContactUid?: never;
+  currentContactName?: never;
+}
+
+export type MergeContactsDialogProps = MergeContactsDialogSingleProps | MergeContactsDialogPairProps;
 
 function contactName(c: Contact): string {
   return [c.firstname, c.lastname].filter(Boolean).join(' ').trim() || c.uid || '';
@@ -55,17 +70,17 @@ function contactName(c: Contact): string {
 // the fixed-pair mode above. Single mode: "merge into another contact"
 // always treats the viewed contact as the loser and the picked contact as
 // the keeper.
-export default function MergeContactsDialog({
-  open,
-  onClose,
-  onMerged,
-  currentContactId,
-  currentContactUid,
-  currentContactName,
-  pair,
-}: MergeContactsDialogProps) {
+export default function MergeContactsDialog(props: MergeContactsDialogProps) {
   const { t } = useTranslation();
   const { showError } = useSnackbar();
+  const { open, onClose, onMerged, pair } = props;
+  // The single-mode props are guaranteed by the union at call sites; the
+  // destructured values below are `| undefined` because the pair member
+  // structurally lacks them, but the guards on `inPairMode` make every use
+  // safe (and the `!`s are backed by the type, not blind).
+  const currentContactId = 'currentContactId' in props ? props.currentContactId : undefined;
+  const currentContactUid = 'currentContactUid' in props ? props.currentContactUid : undefined;
+  const currentContactName = 'currentContactName' in props ? props.currentContactName : undefined;
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [contactsLoading, setContactsLoading] = useState(false);
@@ -117,14 +132,16 @@ export default function MergeContactsDialog({
   }, [searchInput, open, pair]);
 
   // Load the preview whenever the pair's keeper/loser assignment changes.
+  // Skip the pre-reset render (keeperUid undefined, before the reset effect
+  // below pins it to pair.a): that first pass would load the identical
+  // preview again as soon as keeperUid is set, doubling the request.
   useEffect(() => {
     if (!open) return;
-    if (inPairMode && pair) {
-      const k = keeperUid === pair.b.uid ? pair.b : pair.a;
-      const l = keeperUid === pair.b.uid ? pair.a : pair.b;
-      loadPreview(k.ID, l.ID);
-      return;
-    }
+    if (!inPairMode || !pair) return;
+    if (keeperUid === undefined) return;
+    const k = keeperUid === pair.b.uid ? pair.b : pair.a;
+    const l = keeperUid === pair.b.uid ? pair.a : pair.b;
+    loadPreview(k.ID, l.ID);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, inPairMode, pair, keeperUid]);
 
@@ -202,6 +219,7 @@ export default function MergeContactsDialog({
                 value={keeperUid ?? pair.a.uid}
                 onChange={(e) => setKeeperUid(e.target.value)}
                 sx={{ flex: 1 }}
+                aria-label={t('duplicates.mergeDescription')}
               >
                 <FormControlLabel
                   value={pair.a.uid}

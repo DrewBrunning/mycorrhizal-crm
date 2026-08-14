@@ -24,16 +24,22 @@ export function useDuplicatePairs(notifier?: ErrorNotifier) {
   const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setPairs([]);
     try {
       const all: DuplicatePair[] = [];
       let nextPage = 1;
       for (let guard = 0; guard < DUPLICATES_MAX_PAGES; guard++) {
         const response = await getDuplicatePairs({ page: nextPage, limit: DUPLICATES_PAGE_SIZE });
         all.push(...response.pairs);
+        // Incremental: the list fills as each page lands instead of holding
+        // the dialog on a blank spinner until a large scan is fully fetched.
+        // Safe because the backend sorts the whole result set before
+        // offsetting, so appending pages preserves the global strongest-first
+        // order.
+        setPairs(all.slice());
         if (all.length >= response.total) break;
         nextPage += 1;
       }
-      setPairs(all);
       setTotal(all.length);
     } catch (err) {
       setError(handleFetchError(err, 'scanning for duplicates'));

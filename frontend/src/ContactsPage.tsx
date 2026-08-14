@@ -36,7 +36,7 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import FileUploadIcon from '@mui/icons-material/FileUpload';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import DifferenceIcon from '@mui/icons-material/Difference';
 import { ContactListSkeleton } from './components/LoadingSkeletons';
 
 export default function ContactsPage() {
@@ -336,7 +336,7 @@ export default function ContactsPage() {
         </Button>
         <Button
           variant="outlined"
-          startIcon={<ContentCopyIcon />}
+          startIcon={<DifferenceIcon />}
           onClick={() => setReviewDuplicatesOpen(true)}
           sx={{ whiteSpace: 'nowrap' }}
         >

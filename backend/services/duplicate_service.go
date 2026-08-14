@@ -8,22 +8,22 @@ import (
 	"gorm.io/gorm"
 )
 
-// duplicateSummaryColumns is the column list needed to build a
-// ContactSummary for every contact involved in a detected pair. Mirrors the
-// controllers package's contactSummaryColumns (which cannot be imported from
-// services without a cycle) — keep the two in step.
-var duplicateSummaryColumns = []string{
-	"id", "vcard_uid", "firstname", "lastname", "nickname", "fn", "email", "phone", "birthday", "org",
-	"photo", "photo_thumbnail", "archived",
+// tierRow is one (contact id, grouping key) hit from a duplicate tier query.
+// Key/Key2 together are the SQL grouping value a contact shares with at least
+// one other contact. Most tiers use only Key; the name tier keeps the
+// lowercased firstname and lastname SEPARATE (Key, Key2) so no
+// separator-in-a-name can ever collapse two different name tuples onto the
+// same grouping key ("A|B"+"C" must not group with "A"+"B|C").
+type tierRow struct {
+	ID   uint
+	Key  string
+	Key2 string
 }
 
-// tierRow is one (contact id, grouping key) hit from a duplicate tier query.
-// Key is the SQL grouping value (LOWER(email), the name join, or a phone
-// token) a contact shares with at least one other contact.
-type tierRow struct {
-	ID  uint
-	Key string
-}
+// groupKey is the collision-free in-memory grouping key derived from a
+// tierRow: [2]string{Key, Key2} is a comparable Go struct, so the name tier's
+// tuple stays a tuple all the way into the pair builder.
+type groupKey [2]string
 
 // pairKey is the unordered identity of a contact pair, normalized so (a,b)
 // and (b,a) map to the same key.
@@ -89,7 +89,8 @@ func FindDuplicatePairs(db *gorm.DB, userID uint) ([]models.DuplicatePair, error
 	// excluded explicitly: db.Raw bypasses GORM's default soft-delete scope.
 	var emailRows []tierRow
 	if err := db.Raw(`SELECT id, key FROM (
-			SELECT id, LOWER(email) AS key, COUNT(*) OVER (PARTITION BY LOWER(email)) AS cnt
+			SELECT id, LOWER(email) AS key, '' AS key2,
+			       COUNT(*) OVER (PARTITION BY LOWER(email)) AS cnt
 			FROM contacts
 			WHERE user_id = ? AND deleted_at IS NULL AND email != ''
 		) WHERE cnt > 1`, userID).Scan(&emailRows).Error; err != nil {
@@ -97,9 +98,9 @@ func FindDuplicatePairs(db *gorm.DB, userID uint) ([]models.DuplicatePair, error
 	}
 
 	var nameRows []tierRow
-	if err := db.Raw(`SELECT id, key FROM (
-			SELECT id, LOWER(firstname) || '|' || LOWER(lastname) AS key,
-			       COUNT(*) OVER (PARTITION BY LOWER(firstname) || '|' || LOWER(lastname)) AS cnt
+	if err := db.Raw(`SELECT id, key, key2 FROM (
+			SELECT id, LOWER(firstname) AS key, LOWER(lastname) AS key2,
+			       COUNT(*) OVER (PARTITION BY LOWER(firstname), LOWER(lastname)) AS cnt
 			FROM contacts
 			WHERE user_id = ? AND deleted_at IS NULL AND firstname != '' AND lastname != ''
 			  AND (email != '' OR phone != '' OR phones_normalized != '')
@@ -119,7 +120,7 @@ func FindDuplicatePairs(db *gorm.DB, userID uint) ([]models.DuplicatePair, error
 			  AND json_valid('["' || replace(phones_normalized, ' ', '","') || '"]')
 			  AND length(value) >= 7
 		)
-		SELECT split.id, token AS key FROM split
+		SELECT split.id, token AS key, '' AS key2 FROM split
 		WHERE token IN (SELECT token FROM split GROUP BY token HAVING COUNT(*) > 1)`, userID).Scan(&phoneRows).Error; err != nil {
 		return nil, err
 	}
@@ -129,9 +130,10 @@ func FindDuplicatePairs(db *gorm.DB, userID uint) ([]models.DuplicatePair, error
 	pairs := map[pairKey]*pairAccumulator{}
 	involved := map[uint]bool{}
 	addTier := func(rows []tierRow, reason string) {
-		groups := map[string][]uint{}
+		groups := map[groupKey][]uint{}
 		for _, r := range rows {
-			groups[r.Key] = append(groups[r.Key], r.ID)
+			gk := groupKey{r.Key, r.Key2}
+			groups[gk] = append(groups[gk], r.ID)
 		}
 		for _, group := range groups {
 			for i := 0; i < len(group); i++ {
@@ -167,7 +169,7 @@ func FindDuplicatePairs(db *gorm.DB, userID uint) ([]models.DuplicatePair, error
 		idList = append(idList, id)
 	}
 	var contacts []models.Contact
-	if err := db.Select(duplicateSummaryColumns).Where("user_id = ? AND id IN ?", userID, idList).Find(&contacts).Error; err != nil {
+	if err := db.Select(models.ContactSummaryColumns).Where("user_id = ? AND id IN ?", userID, idList).Find(&contacts).Error; err != nil {
 		return nil, err
 	}
 	summaryByID := make(map[uint]models.ContactSummary, len(contacts))
@@ -180,9 +182,9 @@ func FindDuplicatePairs(db *gorm.DB, userID uint) ([]models.DuplicatePair, error
 	if err := db.Where("user_id = ?", userID).Find(&dismissals).Error; err != nil {
 		return nil, err
 	}
-	dismissed := make(map[string]bool, len(dismissals))
+	dismissed := make(map[[2]string]bool, len(dismissals))
 	for _, d := range dismissals {
-		dismissed[d.UIDLow+"\x00"+d.UIDHigh] = true
+		dismissed[[2]string{d.UIDLow, d.UIDHigh}] = true
 	}
 
 	result := make([]models.DuplicatePair, 0, len(pairs))
@@ -198,7 +200,7 @@ func FindDuplicatePairs(db *gorm.DB, userID uint) ([]models.DuplicatePair, error
 		if aUID > bUID {
 			aUID, bUID = bUID, aUID
 		}
-		if dismissed[aUID+"\x00"+bUID] {
+		if dismissed[[2]string{aUID, bUID}] {
 			continue
 		}
 		reasons := make([]string, 0, len(acc.reasons))
