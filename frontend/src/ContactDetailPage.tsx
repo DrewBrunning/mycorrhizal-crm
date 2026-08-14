@@ -155,7 +155,9 @@ function SectionGroup({ id, twoColumn, children }: { id: string; twoColumn?: boo
         mb: 1,
         ...(twoColumn && {
           display: 'grid',
-          gridTemplateColumns: { xs: '1fr', lg: 'repeat(2, 1fr)' },
+          // T88: minmax(0, ...) floor -- see the identical change/comment on
+          // ContactInformation.tsx's own grid.
+          gridTemplateColumns: { xs: '1fr', lg: 'repeat(2, minmax(0, 1fr))' },
           columnGap: 3,
           alignItems: 'start',
         }),
