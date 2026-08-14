@@ -1283,7 +1283,8 @@
     "associationSummary": "Cela déplacera {{notes}} note(s), {{activities}} activité(s), {{reminders}} rappel(s) et {{edges}} relation(s) vers le contact fusionné.",
     "mergeButton": "Fusionner",
     "keepThisOne": "Conserver {{name}}",
-    "swap": "Échanger"
+    "swap": "Échanger",
+    "hiddenMatches": "{{shown}} affiché(s), {{hidden}} correspondant(s) sur d'autres champs"
   },
   "triage": {
     "title": "Migration des cercles et étiquettes",

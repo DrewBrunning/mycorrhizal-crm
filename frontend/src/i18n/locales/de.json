@@ -1283,7 +1283,8 @@
     "associationSummary": "Dabei werden {{notes}} Notiz(en), {{activities}} Aktivität(en), {{reminders}} Erinnerung(en) und {{edges}} Beziehung(en) auf den zusammengeführten Kontakt übertragen.",
     "mergeButton": "Zusammenführen",
     "keepThisOne": "{{name}} behalten",
-    "swap": "Tauschen"
+    "swap": "Tauschen",
+    "hiddenMatches": "{{shown}} angezeigt, {{hidden}} über andere Felder gefunden"
   },
   "triage": {
     "title": "Kreis-/Tag-Migration",

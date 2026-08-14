@@ -1283,7 +1283,8 @@
     "associationSummary": "Esto moverá {{notes}} nota(s), {{activities}} actividad(es), {{reminders}} recordatorio(s) y {{edges}} relación(es) al contacto combinado.",
     "mergeButton": "Combinar",
     "keepThisOne": "Conservar {{name}}",
-    "swap": "Intercambiar"
+    "swap": "Intercambiar",
+    "hiddenMatches": "{{shown}} mostrado(s), {{hidden}} coincidente(s) en otros campos"
   },
   "triage": {
     "title": "Migración de círculos y etiquetas",

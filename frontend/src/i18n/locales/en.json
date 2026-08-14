@@ -1310,7 +1310,8 @@
     "associationSummary": "This will move {{notes}} note(s), {{activities}} activit(y/ies), {{reminders}} reminder(s), and {{edges}} relationship(s) onto the merged contact.",
     "mergeButton": "Merge",
     "keepThisOne": "Keep {{name}}",
-    "swap": "Swap"
+    "swap": "Swap",
+    "hiddenMatches": "{{shown}} shown, {{hidden}} matched on other fields"
   },
   "customFields": {
     "addTitle": "Add Custom Field",
