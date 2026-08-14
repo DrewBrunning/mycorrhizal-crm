@@ -1,14 +1,20 @@
 package models
 
 // ContactMergeFieldConflict is one field where the keep and merge contacts
-// disagree and a user decision is required. Covers two distinct kinds of
-// conflict, kept in separate slices on ContactMergeResolution rather than
-// disambiguated by a prefix on Field: a scalar Contact field (Field is the
-// fixed snake_case key from contact_merge_service.go's mergeScalarFields,
-// e.g. "firstname") or a typed custom-field value (Field is the
-// FieldDefinition.ID UUID, since FieldValue rows -- unlike every other
-// association -- cannot be unioned: the schema allows only one value per
-// field per contact).
+// disagree and a user decision is required. Covers three kinds of conflict:
+// a scalar Contact field (Field is the fixed snake_case key from
+// contact_merge_service.go's mergeScalarFields, e.g. "firstname"); a typed
+// custom-field value (Field is the FieldDefinition.ID UUID, since FieldValue
+// rows -- unlike every other association -- cannot be unioned: the schema
+// allows only one value per field per contact); or a CadencePolicy (T107,
+// Field is the fixed key "cadence_policy", for the same one-per-contact
+// reason as FieldValue). The first two are disambiguated by kind via
+// separate slices on ContactMergeResolution (Conflicts vs
+// FieldValueConflicts); CadencePolicy's is appended into Conflicts itself
+// (services.ComputeCadencePolicyConflict) rather than getting a third slice,
+// specifically so the frontend's existing generic conflict UI renders it
+// with no changes -- Field's value, not which slice it's in, is what
+// actually distinguishes a CadencePolicy conflict from a scalar one.
 type ContactMergeFieldConflict struct {
 	Field       string `json:"field"`
 	Label       string `json:"label"`
@@ -69,6 +75,16 @@ type ContactMergeAssociationCounts struct {
 	GiftItems               int64 `json:"gift_items"`                // gift records keyed to the loser (entity_id)
 	FieldValues             int64 `json:"field_values"`
 	ContactSyncLinks        int64 `json:"contact_sync_links"` // discarded, not re-pointed
+
+	// T107: previously fell through deleteContactAssociations and were
+	// silently destroyed on every merge -- now all re-pointed (or, for
+	// CadencePolicies, adopted/resolved as a conflict). See
+	// services.RepointContactAssociations.
+	Attachments        int64 `json:"attachments"`
+	Preferences        int64 `json:"preferences"`
+	ExternalIdentities int64 `json:"external_identities"`
+	ExternalActivities int64 `json:"external_activities"`
+	CadencePolicies    int64 `json:"cadence_policies"` // 0 or 1 -- at most one per contact
 }
 
 // ContactMergeRequest is the DTO for both merge endpoints. KeepID survives;

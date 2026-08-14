@@ -28,6 +28,34 @@ func setupLifeEventTestDB(t *testing.T) *gorm.DB {
 	return db
 }
 
+// setupLifeEventTestDBFrozenClock is setupLifeEventTestDB with GORM's
+// NowFunc pinned to a single instant, used only by
+// TestLifeEventETagSaveDoesNotLoop -- not folded into setupLifeEventTestDB
+// itself since several of this file's other tests may care about real time
+// elapsing between operations. AfterSave computes the ETag from
+// UpdatedAt.Unix(), and GORM bumps UpdatedAt to "now" on every plain Save()
+// regardless of whether any field changed, so a test asserting two
+// back-to-back Save() calls leave the ETag unchanged is only deterministic
+// if both calls are guaranteed to land in the same wall-clock second --
+// confirmed flaky under CI load otherwise (failed once with ETags a second
+// apart).
+func setupLifeEventTestDBFrozenClock(t *testing.T) *gorm.DB {
+	t.Helper()
+
+	frozen := time.Now()
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
+		NowFunc: func() time.Time { return frozen },
+	})
+	require.NoError(t, err)
+
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	sqlDB.SetMaxOpenConns(1)
+
+	require.NoError(t, db.AutoMigrate(&User{}, &Contact{}, &LifeEvent{}))
+	return db
+}
+
 func TestLifeEventBeforeCreateGeneratesUUID(t *testing.T) {
 	db := setupLifeEventTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
@@ -172,7 +200,7 @@ func TestLifeEventETagChangesOnUpdate(t *testing.T) {
 }
 
 func TestLifeEventETagSaveDoesNotLoop(t *testing.T) {
-	db := setupLifeEventTestDB(t)
+	db := setupLifeEventTestDBFrozenClock(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
 	contact := Contact{UserID: user.ID, Firstname: "Alice"}

@@ -26,6 +26,34 @@ func setupActivityTestDB(t *testing.T) *gorm.DB {
 	return db
 }
 
+// setupActivityTestDBFrozenClock is setupActivityTestDB with GORM's NowFunc
+// pinned to a single instant, used only by TestActivityETagSaveDoesNotLoop --
+// not folded into setupActivityTestDB itself since several of this file's
+// other tests may care about real time elapsing between operations.
+// AfterSave computes the ETag from UpdatedAt.Unix(), and GORM bumps
+// UpdatedAt to "now" on every plain Save() regardless of whether any field
+// changed, so a test asserting two back-to-back Save() calls leave the ETag
+// unchanged is only deterministic if both calls are guaranteed to land in
+// the same wall-clock second -- confirmed flaky under CI load otherwise (the
+// same pattern failed once in TestLifeEventETagSaveDoesNotLoop with ETags a
+// second apart).
+func setupActivityTestDBFrozenClock(t *testing.T) *gorm.DB {
+	t.Helper()
+
+	frozen := time.Now()
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
+		NowFunc: func() time.Time { return frozen },
+	})
+	require.NoError(t, err)
+
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	sqlDB.SetMaxOpenConns(1)
+
+	require.NoError(t, db.AutoMigrate(&User{}, &Contact{}, &Activity{}))
+	return db
+}
+
 func TestActivityBeforeCreateGeneratesUUID(t *testing.T) {
 	db := setupActivityTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
@@ -93,7 +121,7 @@ func TestActivityETagChangesOnUpdate(t *testing.T) {
 }
 
 func TestActivityETagSaveDoesNotLoop(t *testing.T) {
-	db := setupActivityTestDB(t)
+	db := setupActivityTestDBFrozenClock(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}
 	require.NoError(t, db.Create(&user).Error)
 

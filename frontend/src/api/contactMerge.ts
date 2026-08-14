@@ -37,6 +37,13 @@ export interface ContactMergeAssociationCounts {
   life_event_references: number;
   field_values: number;
   contact_sync_links: number;
+  // T107 -- previously destroyed by a merge, now all re-pointed (or, for
+  // cadence_policies, adopted/resolved as a conflict).
+  attachments: number;
+  preferences: number;
+  external_identities: number;
+  external_activities: number;
+  cadence_policies: number;
 }
 
 export interface ContactMergePreviewResponse {
