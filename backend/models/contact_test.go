@@ -481,10 +481,24 @@ func TestRoundTrip_ProjectionStable(t *testing.T) {
 // (generate, refresh, no-loop, zero-value guard) but cannot catch a GORM
 // column-tag mismatch against the real migration SQL — etag_real_db_test.go
 // covers that with a database.InitDB-migrated DB.
+// NowFunc is pinned to a single instant rather than left on GORM's default
+// (real time.Now()): AfterSave computes the ETag from UpdatedAt.Unix(), and
+// GORM bumps UpdatedAt to "now" on every plain Save() regardless of whether
+// any field actually changed. TestContactETagSaveDoesNotLoop does two
+// back-to-back Save() calls and asserts the ETag is unchanged -- with a real
+// clock that only holds if both calls land in the same wall-clock second, so
+// it was genuinely flaky under CI load (confirmed: failed once with ETags
+// one second apart). None of this helper's other consumers depend on real
+// time elapsing between calls -- TestContactETagChangesOnUpdate sets
+// updated_at explicitly via a map Update, bypassing NowFunc entirely -- so
+// freezing it here is safe for all of them.
 func setupContactETagTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	frozen := time.Now()
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
+		NowFunc: func() time.Time { return frozen },
+	})
 	require.NoError(t, err)
 
 	sqlDB, err := db.DB()
