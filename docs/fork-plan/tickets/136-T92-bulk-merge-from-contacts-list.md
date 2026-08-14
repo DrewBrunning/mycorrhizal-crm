@@ -104,12 +104,16 @@ Tests:
   own `<span>` (MUI only opens when the pointer enters the wrapper element, not a disabled
   descendant).
 - `ContactsPage.test.tsx`: select-two → dialog opens in pair mode showing both "Keep …" candidates →
-  resolve → commit called with the right IDs → selection cleared and `getContacts` refetched.
-- New `e2e/bulkMerge.spec.ts`: select one (Merge disabled + tooltip) → select two (Merge enables) →
-  dialog offers both keeper candidates → the distinct first names produce a **real firstname conflict
-  the user resolves via the keeper radio** (deliberately not the no-conflict fast path) → commit →
-  dialog closes, selection empty, loser gone from the list, keeper's GET ok and loser's polled to 404
-  (the T93 WAL-read-snapshot caveat). Full 182-test e2e suite green against the Docker test stack.
+  resolve → commit called with the right IDs → selection cleared and `getContacts` refetched. Plus a
+  cross-page variant (Alice on page one + Carol on page two via "load more") proving the resolution
+  reads the merged loaded array, and a stale-selection variant (below).
+- New `e2e/bulkMerge.spec.ts`: select one (Merge disabled + tooltip) → two (enabled) → three
+  (disabled again — merge is strictly pairwise) → back to two → dialog offers both keeper
+  candidates with the list-first row as default → **Swap toggles the checked keeper and back** →
+  the distinct first names produce a **real firstname conflict the user resolves via the keeper
+  radio** (deliberately not the no-conflict fast path) → commit → dialog closes, selection empty,
+  loser gone from the list, keeper's GET ok and loser's polled to 404 (the T93 WAL-read-snapshot
+  caveat). Full e2e suite green against the Docker test stack.
 
 Both unit tests were hand-verified by breaking them first: disabling the enable-gate made the
 single/three+ tests fail, and stubbing out the `setMergePair` call made the ContactsPage test fail —
@@ -119,3 +123,27 @@ One process note: the "disabled hint" e2e assertion originally clicked the disab
 the tooltip; Playwright's actionability check rightly refused. Hovering is the correct gesture for a
 disabled element — a `hover({ force: true })` is needed because the opened tooltip then sits over the
 button and would block a normal actionability re-check.
+
+## Review pass, 2026-08-14
+
+Self-review after the landing found one real bug and two coverage gaps; all fixed in this pass:
+
+- **An enabled Merge button could silently do nothing.** The selection is keyed by `VCardUID` and
+  deliberately survives a sort change (T77) — but the sort's refetch replaces the loaded page, which
+  may carry fewer than both selected rows. `handleBulkMerge`'s resolution guard then bailed silently:
+  a visible, enabled Merge button that no-ops on click, the exact failure class this repo avoids. It
+  now `window.alert`s (`bulk.mergeSelectionStale`, ×5 locales) and clears the stale selection, so the
+  user recovers instead of staring at a dead button. Pinned by a unit test that reproduces the
+  sequence (select across pages → sort → refetch drops the row → click Merge): it fails against the
+  silent version and passes against the fix. Note the T77 "sort doesn't clear the selection" decision
+  was left intact — the merge path now *handles* a selection it can't resolve rather than the sort
+  changing the contract.
+- **Cross-page merge resolution was untested.** The whole point of uid-keyed selection is surviving
+  pagination, and the resolution reads the merged loaded array — but the first test only merged two
+  rows from page one. Added a unit test: Alice (page one) + Carol (page two) → dialog shows both →
+  commit called with `(1, 3)`.
+- **e2e covered the one/two gate but not three-plus or the swap.** The ticket's "Done when" lists
+  one-or-three-plus disabled explicitly. The spec now seeds a third contact: 3 selected → Merge
+  disabled, back to 2 → enabled. And it drives the Swap control in the real dialog (default keeper
+  checked → Swap → the other checked → Swap back), proving the "lets the keeper be swapped"
+  requirement end-to-end rather than only in the dialog's own unit tests.

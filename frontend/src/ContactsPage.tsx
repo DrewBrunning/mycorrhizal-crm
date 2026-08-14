@@ -288,10 +288,18 @@ export default function ContactsPage() {
 
   const handleBulkMerge = () => {
     // The button only enables at exactly two selected, but the selection is
-    // keyed by uid and the rows carry it -- resolve defensively in case a
-    // stale selection (e.g. a row that left the page) slips through.
+    // keyed by uid and the rows carry it -- resolve defensively. A selection
+    // can outlive the rows it points at: a sort change deliberately keeps the
+    // selection (T77) while the refetched page may not carry all of it, so
+    // `contacts` can hold fewer than both. A silent no-op on an enabled
+    // button is exactly the failure this codebase avoids -- say so and clear
+    // the stale selection so the user can pick a fresh pair.
     const selectedContacts = contacts.filter((c) => !!c.uid && selectedUids.has(c.uid));
-    if (selectedContacts.length !== 2) return;
+    if (selectedContacts.length !== 2) {
+      window.alert(t('bulk.mergeSelectionStale'));
+      setSelectedUids(new Set());
+      return;
+    }
     setMergePair({ a: selectedContacts[0], b: selectedContacts[1] });
   };
 

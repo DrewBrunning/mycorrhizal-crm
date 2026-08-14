@@ -749,6 +749,7 @@
     "unarchive": "Wiederherstellen",
     "merge": "Zusammenführen",
     "mergeSelectTwoHint": "Wähle genau zwei Kontakte zum Zusammenführen aus.",
+    "mergeSelectionStale": "Die ausgewählten Kontakte sind in dieser Liste nicht mehr sichtbar. Die Auswahl wurde geleert – wähle erneut zwei Kontakte zum Zusammenführen aus.",
     "delete": "Löschen",
     "deleteConfirm": "{{count}} Kontakte löschen? Dies entfernt sie samt aller Daten dauerhaft. Dies kann nicht rückgängig gemacht werden.",
     "selectContact": "{{name}} auswählen",

@@ -749,6 +749,7 @@
     "unarchive": "Desarchivar",
     "merge": "Fusionar",
     "mergeSelectTwoHint": "Selecciona exactamente dos contactos para fusionar.",
+    "mergeSelectionStale": "Los contactos seleccionados ya no son visibles en esta lista. Se ha borrado la selección: vuelve a seleccionar dos contactos para fusionar.",
     "delete": "Eliminar",
     "deleteConfirm": "¿Eliminar {{count}} contactos? Esto los elimina permanentemente junto con todos sus datos. Esta acción no se puede deshacer.",
     "selectContact": "Seleccionar {{name}}",
