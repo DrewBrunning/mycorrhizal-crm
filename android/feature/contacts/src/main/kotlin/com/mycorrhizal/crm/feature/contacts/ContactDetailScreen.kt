@@ -63,6 +63,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -100,6 +101,7 @@ import com.mycorrhizal.crm.model.network.fieldValueDisplay
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.model.util.DateFormat.display
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.LocalDarkTheme
 import com.mycorrhizal.crm.ui.LocalDrawerOpen
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.theme.AppTypography
@@ -239,37 +241,53 @@ fun ContactDetailScreen(
     val onPrimary = MaterialTheme.colorScheme.onPrimary
     val barIconColor = lerp(onSurface, onPrimary, collapseProgress)
 
-    // The status bar follows the collapse: bone with dark icons at the top,
-    // brand green with light icons once the bar collapses in (overrides the
-    // theme's default green for this screen). isAppearanceLightStatusBars=true
-    // means dark icons (for the light bone bar); false means white icons.
+    // The status bar follows the collapse: background (bone/boneDark) at the
+    // top, primary (brand green) once the bar collapses in (overrides the
+    // theme's default green for this screen). isAppearanceLightStatusBars has
+    // two rules depending on the color role behind the bar -- see
+    // MycorrhizalApp.kt's MainScaffold for the full explanation: `primary` is
+    // the one M3 role that inverts between themes, so it needs `darkTheme`;
+    // `background` follows the intuitive direction, so it needs `!darkTheme`.
     // While the navigation drawer is open, the app-level scaffold owns the
-    // status bar (parchment + dark icons), so this screen stays out of the way
-    // and re-applies its own state when the drawer closes.
+    // status bar, so this screen stays out of the way and re-applies its own
+    // state when the drawer closes.
     val drawerOpen = LocalDrawerOpen.current
+    val darkTheme = LocalDarkTheme.current
     val window = (LocalContext.current as android.app.Activity).window
-    LaunchedEffect(drawerOpen) {
+    val collapsedColor = MaterialTheme.colorScheme.primary.toArgbCompat()
+    val expandedColor = MaterialTheme.colorScheme.background.toArgbCompat()
+    LaunchedEffect(drawerOpen, darkTheme, collapsedColor, expandedColor) {
         if (drawerOpen) return@LaunchedEffect
         snapshotFlow { collapseProgress }
             .collect { progress ->
                 val collapsedNow = progress > 0.5f
-                window.statusBarColor = if (collapsedNow) {
-                    com.mycorrhizal.crm.ui.theme.MycorrhizalColors.mycelium.toArgbCompat()
-                } else {
-                    com.mycorrhizal.crm.ui.theme.MycorrhizalColors.bone.toArgbCompat()
-                }
+                window.statusBarColor = if (collapsedNow) collapsedColor else expandedColor
                 WindowCompat.getInsetsController(window, window.decorView)
-                    .isAppearanceLightStatusBars = !collapsedNow
+                    .isAppearanceLightStatusBars = if (collapsedNow) darkTheme else !darkTheme
             }
     }
-    // Restore the app-wide default (green + white icons) when leaving this
-    // screen, so the always-green sub-screens (life events, gifts, ...) get
-    // white status-bar icons rather than inheriting this screen's bone+dark.
+    // Restore the app-wide default (green app bar) when leaving this screen,
+    // so the always-green sub-screens (life events, gifts, ...) get the right
+    // status-bar icons rather than inheriting this screen's last state.
+    //
+    // Only restores if the drawer isn't open at dispose time: MainScaffold's
+    // own effect already owns (and has already applied) the correct bar state
+    // for that case, and writing here too would race with, and could stomp,
+    // that effect -- this used to hardcode "drawer closed" unconditionally,
+    // which was wrong whenever this screen was disposed while the drawer was
+    // open. This effect must stay keyed on Unit (it should fire only on
+    // unmount, not on every drawer/theme change while still on screen), so it
+    // needs rememberUpdatedState to see the *live* values at actual dispose
+    // time rather than the stale ones captured at first composition.
+    val latestDrawerOpen = rememberUpdatedState(drawerOpen)
+    val latestDarkTheme = rememberUpdatedState(darkTheme)
+    val latestCollapsedColor = rememberUpdatedState(collapsedColor)
     DisposableEffect(Unit) {
         onDispose {
-            window.statusBarColor = com.mycorrhizal.crm.ui.theme.MycorrhizalColors.mycelium.toArgbCompat()
+            if (latestDrawerOpen.value) return@onDispose
+            window.statusBarColor = latestCollapsedColor.value
             WindowCompat.getInsetsController(window, window.decorView)
-                .isAppearanceLightStatusBars = false
+                .isAppearanceLightStatusBars = latestDarkTheme.value
         }
     }
 

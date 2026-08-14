@@ -6,7 +6,7 @@
 | **Rating** | 2 — one second per launch, but it's the first thing a dark-mode user sees |
 | **Size** | S |
 | **Depends on** | Nothing. Shares the missing `values-night/` with [T97](141-T97-android-status-bar-dark-mode.md); land them together. |
-| **Status** | **TO BE DONE** |
+| **Status** | **IMPLEMENTED, AWAITING ON-DEVICE VERIFICATION** (2026-08-14) |
 | **Source** | Beta testing note, 2026-08-13: *"Splash screen for Android is always light mode, doesn't respect dark mode."* |
 
 ## Why this exists
@@ -63,3 +63,41 @@ splash or anything else.
 - Verified on a real device by cold-launching in each theme — the failure mode is a sub-second visual and
   nothing else can see it.
 - `cd android && ./gradlew testDebugUnitTest lintDebug assembleDebug` green.
+
+## Landing note (2026-08-14)
+
+Landed together with [T97](141-T97-android-status-bar-dark-mode.md), which needed the same new
+`values-night/themes.xml`.
+
+- **`androidx.core:core-splashscreen:1.2.0`** added (`gradle/libs.versions.toml` +
+  `app/build.gradle.kts`) — current stable release, confirmed via Maven metadata.
+- **`Theme.Mycorrhizal.Splash`** (new, `values/themes.xml`, split into a `Base.*` +
+  leaf style the same way the existing `Base.Theme.Mycorrhizal`/`Theme.Mycorrhizal` pair is,
+  so `values-night/themes.xml` only has to override the background): parent
+  `Theme.SplashScreen`, `windowSplashScreenAnimatedIcon` reuses the existing adaptive-icon
+  foreground (`@mipmap/ic_launcher_foreground` — no dedicated splash asset exists, and this is
+  the standard fallback), `postSplashScreenTheme` → `@style/Theme.Mycorrhizal`.
+  `values-night/themes.xml` overrides just `windowSplashScreenBackground` to `boneDark`.
+- **`AndroidManifest.xml`**'s `<application android:theme>` now points at
+  `@style/Theme.Mycorrhizal.Splash` instead of `@style/Theme.Mycorrhizal` directly.
+- **`MainActivity.onCreate`** calls `installSplashScreen()` as the first line, before
+  `super.onCreate()`.
+- **`values-night/colors.xml`** (new) overrides `ic_launcher_background` to `boneDark` — also
+  changes the home-screen adaptive icon background at night, the accepted side effect this
+  ticket calls out.
+- No `values-v31`/`values-night-v31` variants added: the compat library's own theme attributes
+  are already resolved uniformly across API 26–35 by `installSplashScreen()`, so there was no
+  concrete attribute divergence to cover.
+- `cd android && ./gradlew testDebugUnitTest lintDebug assembleDebug` green.
+
+### On-device verification (2026-08-14, Pixel 8a, API 37)
+
+`adb screencap` alone couldn't reliably catch the ~900ms cold-launch window, so verified via
+`adb shell screenrecord` + `ffmpeg` frame extraction instead. Confirmed in both themes: the
+actual splash frame (icon over the correct background, not the OS's own generic splash), a
+clean fade-out with the background color held constant the entire time (no white flash at any
+extracted frame), and a clean handoff into the Dashboard first frame. Light mode unchanged
+from before this ticket, as required. Only tested on one API level (37, above the API 31+
+platform-splash threshold) — an API&lt;31 device would exercise the compat library's own
+rendering path instead, untested here, though the ticket's design doesn't distinguish the two
+paths' behavior.

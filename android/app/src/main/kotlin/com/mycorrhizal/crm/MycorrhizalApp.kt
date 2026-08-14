@@ -89,6 +89,7 @@ import com.mycorrhizal.crm.feature.timeline.NotesScreen
 import com.mycorrhizal.crm.feature.timeline.ReminderFormScreen
 import com.mycorrhizal.crm.feature.timeline.RemindersScreen
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.LocalDarkTheme
 import com.mycorrhizal.crm.ui.LocalDrawerOpen
 
 private data class DrawerDestination(
@@ -132,6 +133,7 @@ private fun androidx.compose.ui.graphics.Color.toArgbCompat(): Int =
 
 @Composable
 fun MycorrhizalApp(
+    darkTheme: Boolean,
     mainViewModel: MainViewModel = hiltViewModel(),
 ) {
     val session by mainViewModel.session.collectAsStateWithLifecycle()
@@ -149,11 +151,11 @@ fun MycorrhizalApp(
         return
     }
 
-    MainScaffold()
+    MainScaffold(darkTheme = darkTheme)
 }
 
 @Composable
-private fun MainScaffold() {
+private fun MainScaffold(darkTheme: Boolean) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
@@ -161,26 +163,34 @@ private fun MainScaffold() {
     val scope = rememberCoroutineScope()
 
     // Default status bar for the always-green app-bar screens: brand green
-    // background with light (white) icons. The contact detail overrides this
-    // per its collapse state. When the drawer is open its parchment surface
-    // shows under the status bar, so the status bar becomes parchment with
-    // dark icons (other apps do the same inversion).
+    // (primary) background, icons following the theme. The contact detail
+    // overrides this per its collapse state. When the drawer is open its
+    // surfaceContainerLow surface shows under the status bar, so the status
+    // bar follows that surface instead (other apps do the same inversion).
+    //
+    // isAppearanceLightStatusBars has two different rules depending on which
+    // color role is behind the bar: `primary` is the one M3 role in this
+    // palette that inverts between themes (mycelium is dark-toned in light
+    // mode, myceliumDark is light-toned in dark mode -- deliberately, per
+    // Theme.kt), so primary-role bars need `darkTheme` (inverted). Every
+    // other role here (surfaceContainerLow) follows the intuitive direction,
+    // so it needs `!darkTheme`.
     val activity = LocalContext.current as android.app.Activity
-    LaunchedEffect(drawerState.isOpen) {
+    val primaryArgb = MaterialTheme.colorScheme.primary.toArgbCompat()
+    val surfaceContainerLowArgb = MaterialTheme.colorScheme.surfaceContainerLow.toArgbCompat()
+    LaunchedEffect(drawerState.isOpen, darkTheme, primaryArgb, surfaceContainerLowArgb) {
         if (drawerState.isOpen) {
-            activity.window.statusBarColor =
-                com.mycorrhizal.crm.ui.theme.MycorrhizalColors.parchment.toArgbCompat()
+            activity.window.statusBarColor = surfaceContainerLowArgb
             WindowCompat.getInsetsController(activity.window, activity.window.decorView)
-                .isAppearanceLightStatusBars = true
+                .isAppearanceLightStatusBars = !darkTheme
         } else {
-            activity.window.statusBarColor =
-                com.mycorrhizal.crm.ui.theme.MycorrhizalColors.mycelium.toArgbCompat()
+            activity.window.statusBarColor = primaryArgb
             WindowCompat.getInsetsController(activity.window, activity.window.decorView)
-                .isAppearanceLightStatusBars = false
+                .isAppearanceLightStatusBars = darkTheme
         }
     }
 
-    CompositionLocalProvider(LocalDrawerOpen provides drawerState.isOpen) {
+    CompositionLocalProvider(LocalDrawerOpen provides drawerState.isOpen, LocalDarkTheme provides darkTheme) {
         ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
