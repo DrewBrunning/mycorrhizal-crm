@@ -6,6 +6,25 @@ import (
 	"gorm.io/gorm"
 )
 
+// ContactSummaryColumns is the fixed set of columns needed to build a
+// ContactSummary (list-view) response. Selecting only these avoids the
+// over-fetch (heavy JSON columns like card/emails/phones/addresses/...) that
+// the removed fields= param used to exist to let callers opt out of (Gap 3
+// in docs/fork-plan/50-integration-and-rebrand.md WP-71) — now that the list
+// endpoint has a fixed slim shape, this is baked in rather than
+// caller-configurable.
+//
+// Defined here (models) rather than in the controllers package so the
+// duplicate-scan service (services/duplicate_service.go, which cannot import
+// controllers without a cycle) builds its ContactSummaries from the SAME
+// column list — a hand-synced mirror is exactly the drift hazard /CLAUDE.md
+// trap #4 warns about. Controllers build their cursor variants (adding
+// updated_at / sort_name / deleted_at) off this base.
+var ContactSummaryColumns = []string{
+	"id", "vcard_uid", "firstname", "lastname", "nickname", "fn", "email", "phone", "birthday", "org",
+	"photo", "photo_thumbnail", "archived",
+}
+
 // ContactSummary is the slim per-item shape for GET /api/v1/contacts (list).
 // Per docs/fork-plan/50-integration-and-rebrand.md WP-71 ("Mobile-CRUD-real"
 // section), it wraps contactmodel.Projection's own fields (Firstname,
