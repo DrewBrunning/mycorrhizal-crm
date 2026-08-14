@@ -10,13 +10,14 @@ import {
   Stepper,
   Step,
   StepLabel,
+  Avatar,
+  Paper,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
   Select,
   MenuItem,
   FormControl,
@@ -25,7 +26,6 @@ import {
   Alert,
   LinearProgress,
   IconButton,
-  Tooltip,
   TablePagination,
   CircularProgress,
 } from '@mui/material';
@@ -48,6 +48,8 @@ import {
   ImportPreviewResponse,
   RowImportAction,
   ImportResult,
+  ImportRowPreview,
+  ImportMergeDiff,
   IMPORTABLE_CONTACT_FIELDS,
   CONTACT_FIELD_LABELS,
   REPEATABLE_VALUE_FIELDS,
@@ -264,7 +266,8 @@ export default function ImportContactsDialog({
     const newActions = new Map(rowActions);
     previewResponse.rows.forEach((row) => {
       // Errors are disabled in the UI and always stay skip; every other row
-      // takes its own suggested action (add for new, update for duplicates).
+      // takes its own suggested action (add for new, update for duplicates,
+      // skip for within-batch duplicates).
       if (row.validation_errors.length === 0) newActions.set(row.row_index, row.suggested_action);
     });
     setRowActions(newActions);
@@ -480,9 +483,16 @@ export default function ImportContactsDialog({
     const { toCreate, toUpdate, toSkip } = getSummaryCounts();
     const errorCount = previewResponse.rows.filter((r) => r.validation_errors.length > 0).length;
 
-    // T56: client-side page of the preview table. Rows whose index lands on
+    // T96: how many duplicate/within-batch rows still sit on their seeded
+    // default action, i.e. how many conflicts remain to be consciously
+    // resolved ("Resolve Conflicts (N remaining)").
+    const conflictsRemaining = previewResponse.rows.filter(
+      (r) => r.validation_errors.length === 0 && isConflictRow(r) && (rowActions.get(r.row_index) ?? r.suggested_action) === r.suggested_action
+    ).length;
+
+    // T56: client-side page of the preview rows. Rows whose index lands on
     // the current page are the only ones mounted, so a full address-book
-    // import never mounts hundreds of Selects at once.
+    // import never mounts hundreds of cards at once.
     const pageStart = previewPage * PREVIEW_PAGE_SIZE;
     const pageRows = previewResponse.rows.slice(pageStart, pageStart + PREVIEW_PAGE_SIZE);
 
@@ -516,77 +526,37 @@ export default function ImportContactsDialog({
           )}
           <Box sx={{ flexGrow: 1 }} />
           <Button size="small" onClick={handleAcceptAll}>
-            {t('contacts.import.preview.acceptAll', 'Accept all suggested')}
+            {t('contacts.import.preview.resolveAllAsMerged', 'Resolve all as merged')}
           </Button>
           <Button size="small" onClick={handleSkipAll}>
             {t('contacts.import.preview.skipAll', 'Skip all')}
           </Button>
         </Box>
 
-        {/* Preview table */}
-        <TableContainer component={Paper} sx={{ maxHeight: 350 }}>
-          <Table stickyHeader size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell width={50}>{t('contacts.import.preview.row', 'Row')}</TableCell>
-                <TableCell>{t('contacts.add.firstname', 'First Name')}</TableCell>
-                <TableCell>{t('contacts.add.lastname', 'Last Name')}</TableCell>
-                <TableCell>{t('contacts.add.email', 'Email')}</TableCell>
-                <TableCell width={120}>{t('contacts.import.preview.status', 'Status')}</TableCell>
-                <TableCell width={160}>{t('contacts.import.preview.action', 'Action')}</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {pageRows.map((row) => (
-                <TableRow key={row.row_index}>
-                  <TableCell>{row.row_index + 1}</TableCell>
-                  <TableCell>{row.parsed_contact.firstname || '-'}</TableCell>
-                  <TableCell>{row.parsed_contact.lastname || '-'}</TableCell>
-                  <TableCell>{row.parsed_contact.email || '-'}</TableCell>
-                  <TableCell>
-                    {row.validation_errors.length > 0 ? (
-                      <Tooltip title={row.validation_errors.join(', ')}>
-                        <Chip icon={<ErrorIcon />} label={t('contacts.import.preview.error')} size="small" color="error" />
-                      </Tooltip>
-                    ) : row.duplicate_match ? (
-                      <Tooltip
-                        title={t('contacts.import.preview.duplicateOf', 'Matches: {{name}} ({{reason}})', {
-                          name: `${row.duplicate_match.existing_firstname} ${row.duplicate_match.existing_lastname}`,
-                          reason: row.duplicate_match.match_reason,
-                        })}
-                      >
-                        <Chip icon={<WarningIcon />} label={t('contacts.import.preview.duplicateStatus')} size="small" color="warning" />
-                      </Tooltip>
-                    ) : (
-                      <Chip icon={<CheckCircleIcon />} label={t('contacts.import.preview.valid')} size="small" color="success" />
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <FormControl size="small" fullWidth>
-                      <Select
-                        value={rowActions.get(row.row_index) || 'skip'}
-                        onChange={(e) => handleRowActionChange(row.row_index, e.target.value)}
-                        disabled={row.validation_errors.length > 0}
-                      >
-                        <MenuItem value="skip">
-                          {t('contacts.import.preview.actionSkip', 'Skip')}
-                        </MenuItem>
-                        <MenuItem value="add">
-                          {t('contacts.import.preview.actionAdd', 'Add as New')}
-                        </MenuItem>
-                        {row.duplicate_match && (
-                          <MenuItem value="update">
-                            {t('contacts.import.preview.actionUpdate', 'Update Existing')}
-                          </MenuItem>
-                        )}
-                      </Select>
-                    </FormControl>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        {/* T96 conflict heading, matching the review dialog's copy */}
+        {conflictsRemaining > 0 ? (
+          <Typography variant="subtitle2" sx={{ mb: 1 }}>
+            {t('contacts.import.preview.resolveConflicts', 'Resolve Conflicts ({{count}} remaining)', {
+              count: conflictsRemaining,
+            })}
+          </Typography>
+        ) : (
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            {t('contacts.import.preview.noConflicts', 'No duplicate matches — everything below will be added as new.')}
+          </Typography>
+        )}
+
+        {/* Per-row decision cards */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, maxHeight: 420, overflowY: 'auto' }}>
+          {pageRows.map((row) => (
+            <ImportRowCard
+              key={row.row_index}
+              row={row}
+              action={rowActions.get(row.row_index) ?? row.suggested_action}
+              onActionChange={(action) => handleRowActionChange(row.row_index, action)}
+            />
+          ))}
+        </Box>
         {previewResponse.rows.length > PREVIEW_PAGE_SIZE && (
           <TablePagination
             component="div"
@@ -704,8 +674,17 @@ export default function ImportContactsDialog({
               {t('common.back', 'Back')}
             </Button>
             <Button onClick={handleClose} disabled={loading}>{t('common.cancel', 'Cancel')}</Button>
-            <Button variant="contained" onClick={handleConfirmImport} disabled={loading} startIcon={loading ? <CircularProgress size={16} color="inherit" /> : undefined}>
-              {loading ? t('contacts.import.preview.importing', 'Importing…') : t('contacts.import.button', 'Import')}
+            <Button
+              variant="contained"
+              onClick={handleConfirmImport}
+              disabled={loading}
+              startIcon={loading ? <CircularProgress size={16} color="inherit" /> : undefined}
+            >
+              {loading
+                ? t('contacts.import.preview.importing', 'Importing…')
+                : t('contacts.import.preview.applyDecisions', 'Apply Decisions ({{count}})', {
+                    count: previewResponse?.rows.filter((r) => r.validation_errors.length === 0).length ?? 0,
+                  })}
             </Button>
           </>
         );
@@ -757,5 +736,183 @@ export default function ImportContactsDialog({
 
       <DialogActions>{renderActions()}</DialogActions>
     </AppDialog>
+  );
+}
+
+// --- T96 review-step helpers (docs/fork-plan/tickets/
+// 140-T96-import-duplicate-merge-review.md) -------------------------------
+
+// isConflictRow reports whether a row needs a conscious decision: it matches an
+// existing record (duplicate_match) or duplicates an earlier row of the same
+// import (batch_duplicate_of).
+function isConflictRow(row: ImportRowPreview): boolean {
+  return !!row.duplicate_match || row.batch_duplicate_of !== null;
+}
+
+const IMPORT_DIFF_KIND_LABELS: Record<string, string> = {
+  email: 'email',
+  phone: 'phone',
+  address: 'address',
+  url: 'website',
+  impp: 'IM',
+};
+
+// ImportMergeDiffSummary renders what "Merge" will change on the matched
+// existing contact: appended entries (+ new phone: ...) and overwritten
+// scalars (Job Title: A → B).
+function ImportMergeDiffSummary({ diff }: { diff: ImportMergeDiff }) {
+  const { t } = useTranslation();
+  if (diff.updated.length === 0 && diff.added.length === 0) {
+    return (
+      <Typography variant="caption" color="text.secondary" display="block">
+        {t('contacts.import.preview.noDiff', 'No changes — the records already match.')}
+      </Typography>
+    );
+  }
+  return (
+    <Box sx={{ mt: 0.5 }}>
+      <Typography variant="caption" sx={{ fontWeight: 600 }}>
+        {t('contacts.import.preview.diffTitle', 'Will merge:')}
+      </Typography>
+      {diff.added.map((a, i) => (
+        <Typography key={`added-${i}`} variant="caption" display="block" color="text.secondary">
+          {t('contacts.import.preview.diffAdded', '+ new {{kind}}: {{value}}', {
+            kind: t(`contacts.import.preview.kind.${a.kind}`, IMPORT_DIFF_KIND_LABELS[a.kind] || a.kind),
+            value: a.value,
+          })}
+        </Typography>
+      ))}
+      {diff.updated.map((u, i) => (
+        <Typography key={`updated-${i}`} variant="caption" display="block" color="text.secondary">
+          {t('contacts.import.preview.diffUpdated', '{{label}}: {{old}} → {{new}}', {
+            label: u.label,
+            old: u.old || '—',
+            new: u.new,
+          })}
+        </Typography>
+      ))}
+    </Box>
+  );
+}
+
+// ImportRowCard is one contact's decision card in the review step: name,
+// match/diff summary, and the Merge / Keep Both / Discard New choice. Merge is
+// only offered when the row matched an EXISTING record — a within-batch
+// duplicate (batch_duplicate_of without a DB match) has nothing to merge into.
+function ImportRowCard({
+  row,
+  action,
+  onActionChange,
+}: {
+  row: ImportRowPreview;
+  action: string;
+  onActionChange: (action: 'skip' | 'add' | 'update') => void;
+}) {
+  const { t } = useTranslation();
+  const hasErrors = row.validation_errors.length > 0;
+  const name =
+    [row.parsed_contact.firstname, row.parsed_contact.lastname].filter(Boolean).join(' ').trim() ||
+    t('contacts.import.preview.unnamed', 'Unnamed');
+  const sub = row.parsed_contact.email || row.parsed_contact.phone || '';
+  const canMerge = !hasErrors && !!row.duplicate_match;
+
+  const reasonLabel = (reason: string) => {
+    switch (reason) {
+      case 'email':
+        return t('duplicates.reason.email');
+      case 'name':
+        return t('duplicates.reason.name');
+      case 'phone':
+        return t('duplicates.reason.phone');
+      default:
+        return reason;
+    }
+  };
+
+  return (
+    <Box
+      sx={{
+        p: 1.5,
+        border: '1px solid',
+        borderColor: 'divider',
+        borderRadius: 1,
+        bgcolor: 'background.paper',
+      }}
+    >
+      <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
+        <Avatar sx={{ width: 36, height: 36, bgcolor: 'primary.main', fontSize: '1rem', flexShrink: 0 }}>
+          {(row.parsed_contact.firstname || '?').charAt(0)}
+        </Avatar>
+        <Box sx={{ minWidth: 0, flex: 1 }}>
+          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+            {name}
+          </Typography>
+          {sub && (
+            <Typography variant="caption" color="text.secondary">
+              {sub}
+            </Typography>
+          )}
+
+          {hasErrors ? (
+            <Box>
+              {row.validation_errors.map((e, i) => (
+                <Typography key={i} variant="caption" color="error" display="block">
+                  {e}
+                </Typography>
+              ))}
+            </Box>
+          ) : row.duplicate_match ? (
+            <Typography variant="caption" sx={{ color: 'warning.main' }} display="block">
+              {t('contacts.import.preview.duplicateOf', 'Matches: {{name}} ({{reason}})', {
+                name: [row.duplicate_match.existing_firstname, row.duplicate_match.existing_lastname]
+                  .filter(Boolean)
+                  .join(' ')
+                  .trim(),
+                reason: reasonLabel(row.duplicate_match.match_reason),
+              })}
+            </Typography>
+          ) : row.batch_duplicate_of !== null ? (
+            <Typography variant="caption" sx={{ color: 'warning.main' }} display="block">
+              {t('contacts.import.preview.batchDuplicateOf', 'Duplicates row {{row}} of this import', {
+                row: (row.batch_duplicate_of ?? 0) + 1,
+              })}
+            </Typography>
+          ) : (
+            <Typography variant="caption" sx={{ color: 'success.main' }} display="block">
+              {t('contacts.import.preview.newContact', 'New contact — no match found')}
+            </Typography>
+          )}
+
+          {!hasErrors && row.merge_diff && <ImportMergeDiffSummary diff={row.merge_diff} />}
+        </Box>
+      </Box>
+      <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
+        <Button
+          size="small"
+          variant={action === 'update' ? 'contained' : 'outlined'}
+          onClick={() => onActionChange('update')}
+          disabled={!canMerge}
+        >
+          {t('contacts.import.preview.actionMerge', 'Merge')}
+        </Button>
+        <Button
+          size="small"
+          variant={action === 'add' ? 'contained' : 'outlined'}
+          onClick={() => onActionChange('add')}
+          disabled={hasErrors}
+        >
+          {t('contacts.import.preview.actionKeepBoth', 'Keep Both')}
+        </Button>
+        <Button
+          size="small"
+          variant={action === 'skip' ? 'contained' : 'outlined'}
+          color={action === 'skip' ? 'inherit' : undefined}
+          onClick={() => onActionChange('skip')}
+          disabled={hasErrors}
+        >
+          {t('contacts.import.preview.actionDiscard', 'Discard New')}
+        </Button>
+      </Box>
+    </Box>
   );
 }

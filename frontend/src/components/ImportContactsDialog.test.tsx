@@ -9,6 +9,8 @@ import {
   getImportPreview,
   confirmImport,
   confirmVCFImport,
+  ImportRowPreview,
+  DuplicateMatch,
 } from '../api/import';
 
 // This codebase's vitest setup has no auto-cleanup and no globals: true.
@@ -57,6 +59,48 @@ function selectFile(file: File) {
   fireEvent.change(input);
 }
 
+// T96: the backend always emits merge_diff/batch_duplicate_of on preview rows
+// (the Go struct has no omitempty on them), so every fixture carries them —
+// mirroring what a real ImportPreviewResponse looks like on the wire.
+function row(overrides: Partial<ImportRowPreview> & { parsed_contact: ImportRowPreview['parsed_contact'] }): ImportRowPreview {
+  return {
+    row_index: 0,
+    validation_errors: [],
+    duplicate_match: null,
+    suggested_action: 'add',
+    merge_diff: null,
+    batch_duplicate_of: null,
+    ...overrides,
+  };
+}
+
+function dupMatch(overrides: Partial<DuplicateMatch>): DuplicateMatch {
+  return {
+    existing_contact_id: 9,
+    existing_firstname: '',
+    existing_lastname: '',
+    existing_email: '',
+    existing_phone: '',
+    match_reason: 'email',
+    ...overrides,
+  };
+}
+
+// Loads a VCF-based preview with the given rows.
+async function loadPreview(rows: ImportRowPreview[]) {
+  vi.mocked(uploadVCFForImport).mockResolvedValue({
+    session_id: 'sess-test',
+    rows,
+    total_rows: rows.length,
+    valid_rows: rows.filter((r) => r.validation_errors.length === 0).length,
+    duplicate_count: rows.filter((r) => r.duplicate_match).length,
+    error_count: rows.filter((r) => r.validation_errors.length > 0).length,
+  });
+  renderDialog();
+  selectFile(new File(['BEGIN:VCARD\nEND:VCARD'], 'contact.vcf', { type: 'text/vcard' }));
+  await waitFor(() => expect(screen.getByText('Resolve all as merged')).toBeInTheDocument());
+}
+
 test('shows the upload dropzone by default', () => {
   renderDialog();
   expect(screen.getByText(/drag and drop a csv or vcf file/i)).toBeInTheDocument();
@@ -86,13 +130,7 @@ test('CSV upload walks through mapping, preview, and confirm', async () => {
   vi.mocked(getImportPreview).mockResolvedValue({
     session_id: 'sess-1',
     rows: [
-      {
-        row_index: 0,
-        parsed_contact: { firstname: 'Ada', lastname: '', email: 'ada@example.com' },
-        validation_errors: [],
-        duplicate_match: null,
-        suggested_action: 'add',
-      },
+      row({ parsed_contact: { firstname: 'Ada', lastname: '', email: 'ada@example.com' } }),
     ],
     total_rows: 1,
     valid_rows: 1,
@@ -126,7 +164,7 @@ test('CSV upload walks through mapping, preview, and confirm', async () => {
     { csv_column: 'Email', contact_field: 'email', group: 0 },
   ]);
 
-  fireEvent.click(screen.getByRole('button', { name: /^import$/i }));
+  fireEvent.click(screen.getByRole('button', { name: /apply decisions/i }));
 
   // Result step: created/updated/skipped counts, and the caller is notified.
   await waitFor(() => expect(screen.getByText('1 contacts created')).toBeInTheDocument());
@@ -156,15 +194,7 @@ test('mapping step blocks Continue until at least one column is mapped', async (
 test('VCF upload skips the mapping step and goes straight to preview', async () => {
   vi.mocked(uploadVCFForImport).mockResolvedValue({
     session_id: 'sess-vcf',
-    rows: [
-      {
-        row_index: 0,
-        parsed_contact: { firstname: 'Grace', lastname: 'Hopper', email: '' },
-        validation_errors: [],
-        duplicate_match: null,
-        suggested_action: 'add',
-      },
-    ],
+    rows: [row({ parsed_contact: { firstname: 'Grace', lastname: 'Hopper', email: '' } })],
     total_rows: 1,
     valid_rows: 1,
     duplicate_count: 0,
@@ -179,34 +209,75 @@ test('VCF upload skips the mapping step and goes straight to preview', async () 
   expect(getImportPreview).not.toHaveBeenCalled();
 });
 
-test('a duplicate row defaults to "update existing" and reports the match', async () => {
-  vi.mocked(uploadVCFForImport).mockResolvedValue({
-    session_id: 'sess-dup',
-    rows: [
-      {
-        row_index: 0,
-        parsed_contact: { firstname: 'Bob', lastname: 'Smith', email: 'bob@example.com' },
-        validation_errors: [],
-        duplicate_match: {
-          existing_contact_id: 9,
-          existing_firstname: 'Bob',
-          existing_lastname: 'Smith',
-          existing_email: 'bob@example.com',
-          match_reason: 'email',
-        },
-        suggested_action: 'update',
+// T96: a row that matches an existing record shows the match, defaults to
+// Merge, and the conflict heading counts it as one remaining.
+test('a duplicate row defaults to Merge, shows the match, and renders the diff', async () => {
+  await loadPreview([
+    row({
+      parsed_contact: { firstname: 'Bob', lastname: 'Smith', email: 'bob@example.com' },
+      duplicate_match: dupMatch({ existing_firstname: 'Bob', existing_lastname: 'Smith', existing_email: 'bob@example.com' }),
+      suggested_action: 'update',
+      merge_diff: {
+        updated: [{ field: 'job_title', label: 'Job Title', old: 'Engineer', new: 'Staff Engineer' }],
+        added: [{ kind: 'phone', value: '+15559998888' }],
       },
-    ],
-    total_rows: 1,
-    valid_rows: 1,
-    duplicate_count: 1,
-    error_count: 0,
-  });
+    }),
+  ]);
 
-  renderDialog();
-  selectFile(new File(['BEGIN:VCARD\nEND:VCARD'], 'contact.vcf', { type: 'text/vcard' }));
+  // The match line and the conflict heading.
+  expect(screen.getByText(/Matches: Bob Smith/)).toBeInTheDocument();
+  expect(screen.getByText('Resolve Conflicts (1 remaining)')).toBeInTheDocument();
 
-  await waitFor(() => expect(screen.getByText('1 to update')).toBeInTheDocument());
+  // The diff describes exactly what Merge will do.
+  expect(screen.getByText(/\+ new phone: \+15559998888/)).toBeInTheDocument();
+  expect(screen.getByText('Job Title: Engineer → Staff Engineer')).toBeInTheDocument();
+
+  // The row defaults to Merge, and Apply Decisions reports one decision.
+  expect(screen.getByRole('button', { name: /apply decisions \(1\)/i })).toBeInTheDocument();
+  expect(screen.getByText('1 to update')).toBeInTheDocument();
+});
+
+test('resolving every conflict zeroes the remaining count', async () => {
+  await loadPreview([
+    row({
+      parsed_contact: { firstname: 'Bob', lastname: 'Smith', email: 'bob@example.com' },
+      duplicate_match: dupMatch({ existing_firstname: 'Bob', existing_lastname: 'Smith', existing_email: 'bob@example.com' }),
+      suggested_action: 'update',
+      merge_diff: { updated: [], added: [] },
+    }),
+  ]);
+  expect(screen.getByText('Resolve Conflicts (1 remaining)')).toBeInTheDocument();
+
+  // Explicitly choose Discard New: the conflict is now resolved.
+  fireEvent.click(screen.getByRole('button', { name: /discard new/i }));
+  expect(screen.getByText('1 to skip')).toBeInTheDocument();
+  expect(screen.getByText(/no duplicate matches/i)).toBeInTheDocument();
+});
+
+// T96: a row that duplicates an EARLIER row of the same import is flagged with
+// the source row, defaults to Discard New, and has no Merge button (there is
+// no existing record to merge into).
+test('within-batch duplicates are flagged, default to Discard, and cannot merge', async () => {
+  await loadPreview([
+    row({ parsed_contact: { firstname: 'Jane', lastname: 'Smith', email: 'jane@example.com' } }),
+    row({
+      row_index: 1,
+      parsed_contact: { firstname: 'Jane', lastname: 'Smith', email: 'jane@example.com' },
+      suggested_action: 'skip',
+      batch_duplicate_of: 0,
+    }),
+  ]);
+
+  expect(screen.getByText('Duplicates row 1 of this import')).toBeInTheDocument();
+  // The twin defaults to Discard New; the first occurrence stays Keep Both.
+  expect(screen.getByText('1 to create')).toBeInTheDocument();
+  expect(screen.getByText('1 to skip')).toBeInTheDocument();
+
+  const mergeButtons = screen.getAllByRole('button', { name: /^merge$/i });
+  // Row 1 (batch dup) has no mergeable target; row 0 (new) also has none —
+  // both Merge buttons must be disabled.
+  expect(mergeButtons.length).toBeGreaterThan(0);
+  mergeButtons.forEach((b) => expect(b).toBeDisabled());
 });
 
 test('an upload failure surfaces the error without advancing the step', async () => {
@@ -220,16 +291,27 @@ test('an upload failure surfaces the error without advancing the step', async ()
   expect(screen.getByText(/drag and drop a csv or vcf file/i)).toBeInTheDocument();
 });
 
-// T56 bulk controls: "Accept all suggested" applies each valid row's own
-// suggested action (add for new, update for duplicates) in one click, and
-// "Skip all" marks every valid row as skip — both leave errored rows alone.
-test('accept all suggested applies each row suggested action', async () => {
+// T56 bulk controls, renamed for T96: "Resolve all as merged" applies each
+// valid row's own suggested action (add for new, merge for duplicates, skip
+// for within-batch duplicates) in one click, and "Skip all" marks every valid
+// row as skip — both leave errored rows alone.
+test('resolve all as merged applies each row suggested action', async () => {
   vi.mocked(uploadVCFForImport).mockResolvedValue({
     session_id: 'sess-bulk',
     rows: [
-      { row_index: 0, parsed_contact: { firstname: 'New', lastname: 'One', email: '' }, validation_errors: [], duplicate_match: null, suggested_action: 'add' },
-      { row_index: 1, parsed_contact: { firstname: 'Dup', lastname: 'Two', email: '' }, validation_errors: [], duplicate_match: { existing_contact_id: 1, existing_firstname: 'Dup', existing_lastname: 'Two', existing_email: '', match_reason: 'name' }, suggested_action: 'update' },
-      { row_index: 2, parsed_contact: { firstname: 'Bad', lastname: '', email: 'not-an-email' }, validation_errors: ['bad email'], duplicate_match: null, suggested_action: 'skip' },
+      row({ parsed_contact: { firstname: 'New', lastname: 'One', email: '' } }),
+      row({
+        row_index: 1,
+        parsed_contact: { firstname: 'Dup', lastname: 'Two', email: '' },
+        duplicate_match: dupMatch({ existing_firstname: 'Dup', existing_lastname: 'Two', match_reason: 'name' }),
+        suggested_action: 'update',
+      }),
+      row({
+        row_index: 2,
+        parsed_contact: { firstname: 'Bad', lastname: '', email: 'not-an-email' },
+        validation_errors: ['bad email'],
+        suggested_action: 'skip',
+      }),
     ],
     total_rows: 3,
     valid_rows: 2,
@@ -242,13 +324,13 @@ test('accept all suggested applies each row suggested action', async () => {
   selectFile(new File(['BEGIN:VCARD\nEND:VCARD'], 'contact.vcf', { type: 'text/vcard' }));
   await waitFor(() => expect(screen.getByText('1 to create')).toBeInTheDocument());
 
-  // First flatten every valid row to skip, then Accept all must revert them
+  // First flatten every valid row to skip, then Resolve all must revert them
   // to their suggested actions — proving the bulk action actually rewrites
   // the per-row state rather than being a no-op on the initial defaults.
   fireEvent.click(screen.getByRole('button', { name: /skip all/i }));
   expect(screen.getByText('3 to skip')).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: /accept all suggested/i }));
-  fireEvent.click(screen.getByRole('button', { name: /^import$/i }));
+  fireEvent.click(screen.getByRole('button', { name: /resolve all as merged/i }));
+  fireEvent.click(screen.getByRole('button', { name: /apply decisions/i }));
 
   await waitFor(() => expect(confirmVCFImport).toHaveBeenCalled());
   const actions = vi.mocked(confirmVCFImport).mock.calls[0][1];
@@ -263,8 +345,8 @@ test('skip all marks every valid row as skip', async () => {
   vi.mocked(uploadVCFForImport).mockResolvedValue({
     session_id: 'sess-skipall',
     rows: [
-      { row_index: 0, parsed_contact: { firstname: 'A', lastname: '', email: '' }, validation_errors: [], duplicate_match: null, suggested_action: 'add' },
-      { row_index: 1, parsed_contact: { firstname: 'B', lastname: '', email: '' }, validation_errors: [], duplicate_match: null, suggested_action: 'add' },
+      row({ parsed_contact: { firstname: 'A', lastname: '', email: '' } }),
+      row({ row_index: 1, parsed_contact: { firstname: 'B', lastname: '', email: '' } }),
     ],
     total_rows: 2,
     valid_rows: 2,
@@ -278,7 +360,7 @@ test('skip all marks every valid row as skip', async () => {
   await waitFor(() => expect(screen.getByText('2 to create')).toBeInTheDocument());
 
   fireEvent.click(screen.getByRole('button', { name: /skip all/i }));
-  fireEvent.click(screen.getByRole('button', { name: /^import$/i }));
+  fireEvent.click(screen.getByRole('button', { name: /apply decisions/i }));
 
   await waitFor(() => expect(confirmVCFImport).toHaveBeenCalled());
   const actions = vi.mocked(confirmVCFImport).mock.calls[0][1];
@@ -288,16 +370,12 @@ test('skip all marks every valid row as skip', async () => {
   ]);
 });
 
-// T56: the preview table is paginated client-side, so a full address-book
-// import mounts only one page of Selects at a time.
+// T56: the preview is paginated client-side, so a full address-book import
+// mounts only one page of decision cards at a time.
 test('paginates a preview larger than one page', async () => {
-  const rows = Array.from({ length: 45 }, (_, i) => ({
-    row_index: i,
-    parsed_contact: { firstname: `C${i}`, lastname: '', email: '' },
-    validation_errors: [] as string[],
-    duplicate_match: null,
-    suggested_action: 'add' as const,
-  }));
+  const rows = Array.from({ length: 45 }, (_, i) =>
+    row({ row_index: i, parsed_contact: { firstname: `C${i}`, lastname: '', email: '' } })
+  );
   vi.mocked(uploadVCFForImport).mockResolvedValue({
     session_id: 'sess-page',
     rows,
