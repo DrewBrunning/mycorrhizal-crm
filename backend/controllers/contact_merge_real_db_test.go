@@ -3,10 +3,12 @@ package controllers
 import (
 	"bytes"
 	"encoding/json"
+	"mycorrhizal/config"
 	"mycorrhizal/database"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -135,6 +137,30 @@ func TestContactMerge_RealMigratedSchema(t *testing.T) {
 	syncLink := models.ContactSyncLink{SubscriptionID: subscription.ID, UserID: user.ID, Href: "/dav/bob.vcf", ContactID: bob.ID, ContentHash: "abc123"}
 	require.NoError(t, db.Create(&syncLink).Error)
 
+	// T107: the five association types that previously fell through
+	// RepointContactAssociations straight into deleteContactAssociations'
+	// delete calls, silently destroyed on every merge. All Bob-only (no
+	// conflict) here -- the conflict/dedupe cases get their own dedicated
+	// tests below.
+	bobAttachment := models.Attachment{UserID: user.ID, ContactVCardUID: bob.VCardUID, StoredName: "stored-bob-1", OriginalName: "resume.pdf", ContentType: "application/pdf", SizeBytes: 1024}
+	require.NoError(t, db.Create(&bobAttachment).Error)
+	bobPreference := models.Preference{UserID: user.ID, EntityID: bob.VCardUID, Category: "food", Value: "sushi"}
+	require.NoError(t, db.Create(&bobPreference).Error)
+	bobCadence := models.CadencePolicy{UserID: user.ID, EntityID: bob.VCardUID, TargetIntervalDays: 30}
+	require.NoError(t, db.Create(&bobCadence).Error)
+	bobIdentity := models.ExternalIdentity{UserID: user.ID, EntityID: bob.VCardUID, System: "immich", ExternalID: "person-bob"}
+	require.NoError(t, db.Create(&bobIdentity).Error)
+	bobActivity := models.ExternalActivity{UserID: user.ID, EntityID: bob.VCardUID, SourceSystem: "immich", ExternalID: "asset-bob", Type: "photo-appearance", OccurredAt: time.Now()}
+	require.NoError(t, db.Create(&bobActivity).Error)
+
+	// NotificationDelivery is keyed only by ReminderID, not by contact -- it
+	// must survive untouched once its owning Reminder is repointed (T107
+	// closes out every table deleteContactAssociations touches; this is the
+	// one that's neither repointed nor dropped by name, since it rides along
+	// with the Reminder).
+	notificationDelivery := models.NotificationDelivery{ReminderID: reminder.ID, Channel: "email", Status: "pending"}
+	require.NoError(t, db.Create(&notificationDelivery).Error)
+
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
 	router.Use(func(c *gin.Context) {
@@ -191,6 +217,11 @@ func TestContactMerge_RealMigratedSchema(t *testing.T) {
 	assert.EqualValues(t, 1, counts.LifeEventReferences)
 	assert.EqualValues(t, 2, counts.FieldValues)
 	assert.EqualValues(t, 1, counts.ContactSyncLinks)
+	assert.EqualValues(t, 1, counts.Attachments)
+	assert.EqualValues(t, 1, counts.Preferences)
+	assert.EqualValues(t, 1, counts.ExternalIdentities)
+	assert.EqualValues(t, 1, counts.ExternalActivities)
+	assert.EqualValues(t, 1, counts.CadencePolicies)
 
 	// --- Commit without a resolution for the known conflicts: rejected, no partial merge ---
 	rejectResp := doJSON("POST", "/contacts/merge", models.ContactMergeRequest{KeepID: alice.ID, MergeID: bob.ID})
@@ -244,6 +275,40 @@ func TestContactMerge_RealMigratedSchema(t *testing.T) {
 	assertZero(&models.Gift{}, "entity_id = ?", bob.VCardUID)
 	assertZero(&models.ContactSyncLink{}, "contact_id = ?", bob.ID)
 	assertZero(&models.RelationshipEdge{}, "source_id = ? OR target_id = ?", bob.VCardUID, bob.VCardUID)
+	assertZero(&models.Attachment{}, "contact_vcard_uid = ?", bob.VCardUID)
+	assertZero(&models.Preference{}, "entity_id = ?", bob.VCardUID)
+	assertZero(&models.CadencePolicy{}, "entity_id = ?", bob.VCardUID)
+	assertZero(&models.ExternalIdentity{}, "entity_id = ?", bob.VCardUID)
+	assertZero(&models.ExternalActivity{}, "entity_id = ?", bob.VCardUID)
+
+	// T107: all five re-pointed onto Alice, not destroyed.
+	var repointedAttachment models.Attachment
+	require.NoError(t, db.Where("id = ?", bobAttachment.ID).First(&repointedAttachment).Error)
+	assert.Equal(t, alice.VCardUID, repointedAttachment.ContactVCardUID)
+
+	var repointedPreference models.Preference
+	require.NoError(t, db.Where("id = ?", bobPreference.ID).First(&repointedPreference).Error)
+	assert.Equal(t, alice.VCardUID, repointedPreference.EntityID)
+
+	var adoptedCadence models.CadencePolicy
+	require.NoError(t, db.Where("id = ?", bobCadence.ID).First(&adoptedCadence).Error)
+	assert.Equal(t, alice.VCardUID, adoptedCadence.EntityID, "Alice had no cadence policy of her own -- Bob's must be adopted silently")
+	assert.Equal(t, 30, adoptedCadence.TargetIntervalDays)
+
+	var repointedIdentity models.ExternalIdentity
+	require.NoError(t, db.Where("id = ?", bobIdentity.ID).First(&repointedIdentity).Error)
+	assert.Equal(t, alice.VCardUID, repointedIdentity.EntityID)
+
+	var repointedActivity models.ExternalActivity
+	require.NoError(t, db.Where("id = ?", bobActivity.ID).First(&repointedActivity).Error)
+	assert.Equal(t, alice.VCardUID, repointedActivity.EntityID)
+
+	// NotificationDelivery rides along with its Reminder -- untouched by the
+	// merge, not swept up by deleteContactAssociations' ContactSyncLink-only
+	// cleanup pass.
+	var survivingDelivery models.NotificationDelivery
+	require.NoError(t, db.Where("id = ?", notificationDelivery.ID).First(&survivingDelivery).Error)
+	assert.Equal(t, reminder.ID, survivingDelivery.ReminderID)
 
 	var notesForKeeper, remindersForKeeper int64
 	require.NoError(t, db.Model(&models.Note{}).Where("contact_id = ?", alice.ID).Count(&notesForKeeper).Error)
@@ -444,4 +509,217 @@ func TestContactMerge_KeepEqualsMerge_Rejected(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+}
+
+// TestContactMerge_CadencePolicyConflict covers T107's new conflict type:
+// unlike every other association CadencePolicy can't be unioned or plain
+// re-pointed (migration 000002's partial unique index on (user_id,
+// entity_id) allows only one per contact). Two independent pairs in one
+// test: pair A shows the commit is rejected until resolved, same as any
+// other conflict; pair B resolves it toward the loser's policy and confirms
+// the keeper actually ends up with the loser's values, not silently kept.
+func TestContactMerge_CadencePolicyConflict(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "contact-merge-cadence-conflict.db")
+	db, err := database.InitDB(dbPath)
+	require.NoError(t, err)
+
+	user := models.User{Username: "cadencetester", Password: "password123!A", Email: "cadence@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.Default()
+	router.Use(func(c *gin.Context) {
+		c.Set("db", db)
+		c.Set("userID", user.ID)
+		c.Next()
+	})
+	router.POST("/contacts/merge/preview", withValidated(func() any { return &models.ContactMergeRequest{} }), PreviewContactMerge)
+	router.POST("/contacts/merge", withValidated(func() any { return &models.ContactMergeRequest{} }), CommitContactMerge)
+
+	doJSON := func(path string, body any) *httptest.ResponseRecorder {
+		var buf bytes.Buffer
+		require.NoError(t, json.NewEncoder(&buf).Encode(body))
+		req, _ := http.NewRequest("POST", path, &buf)
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		return w
+	}
+
+	// --- Pair A: rejected until resolved ---
+	aliceA := models.Contact{UserID: user.ID, Firstname: "AliceA"}
+	bobA := models.Contact{UserID: user.ID, Firstname: "AliceA"} // same firstname: no scalar conflict to muddy this test
+	require.NoError(t, db.Create(&aliceA).Error)
+	require.NoError(t, db.Create(&bobA).Error)
+	require.NoError(t, db.Create(&models.CadencePolicy{UserID: user.ID, EntityID: aliceA.VCardUID, TargetIntervalDays: 30}).Error)
+	require.NoError(t, db.Create(&models.CadencePolicy{UserID: user.ID, EntityID: bobA.VCardUID, TargetIntervalDays: 90}).Error)
+
+	previewA := doJSON("/contacts/merge/preview", models.ContactMergeRequest{KeepID: aliceA.ID, MergeID: bobA.ID})
+	require.Equal(t, http.StatusOK, previewA.Code, previewA.Body.String())
+	var resolutionA models.ContactMergePreviewResponse
+	require.NoError(t, json.Unmarshal(previewA.Body.Bytes(), &resolutionA))
+	require.Len(t, resolutionA.Resolution.Conflicts, 1, "differing cadence policies on both sides must surface as exactly one conflict")
+	assert.Equal(t, "cadence_policy", resolutionA.Resolution.Conflicts[0].Field)
+	assert.Equal(t, "Every 30 days", resolutionA.Resolution.Conflicts[0].KeeperValue)
+	assert.Equal(t, "Every 90 days", resolutionA.Resolution.Conflicts[0].LoserValue)
+
+	rejectA := doJSON("/contacts/merge", models.ContactMergeRequest{KeepID: aliceA.ID, MergeID: bobA.ID})
+	require.Equal(t, http.StatusBadRequest, rejectA.Code, rejectA.Body.String())
+	assert.Contains(t, rejectA.Body.String(), "cadence_policy")
+
+	// --- Pair B: resolved toward the loser's policy ---
+	aliceB := models.Contact{UserID: user.ID, Firstname: "AliceB"}
+	bobB := models.Contact{UserID: user.ID, Firstname: "AliceB"}
+	require.NoError(t, db.Create(&aliceB).Error)
+	require.NoError(t, db.Create(&bobB).Error)
+	keeperPolicy := models.CadencePolicy{UserID: user.ID, EntityID: aliceB.VCardUID, TargetIntervalDays: 14}
+	require.NoError(t, db.Create(&keeperPolicy).Error)
+	loserPolicy := models.CadencePolicy{UserID: user.ID, EntityID: bobB.VCardUID, TargetIntervalDays: 60, QualifyingTypes: []string{"call", "visit"}}
+	require.NoError(t, db.Create(&loserPolicy).Error)
+
+	commitB := doJSON("/contacts/merge", models.ContactMergeRequest{
+		KeepID: aliceB.ID, MergeID: bobB.ID,
+		Resolutions: map[string]string{"cadence_policy": "Every 60 days (call, visit)"},
+	})
+	require.Equal(t, http.StatusOK, commitB.Code, commitB.Body.String())
+
+	var survivingPolicy models.CadencePolicy
+	require.NoError(t, db.Where("entity_id = ? AND user_id = ?", aliceB.VCardUID, user.ID).First(&survivingPolicy).Error)
+	assert.Equal(t, 60, survivingPolicy.TargetIntervalDays, "the chosen (loser's) policy must win, not the keeper's original")
+	assert.Equal(t, []string{"call", "visit"}, survivingPolicy.QualifyingTypes)
+	assert.Equal(t, loserPolicy.ID, survivingPolicy.ID, "the surviving row must be the loser's re-pointed, not a new one")
+
+	var keeperPolicyGone int64
+	require.NoError(t, db.Model(&models.CadencePolicy{}).Where("id = ?", keeperPolicy.ID).Count(&keeperPolicyGone).Error)
+	assert.EqualValues(t, 0, keeperPolicyGone, "the keeper's original (unchosen) policy must be gone, not left behind as a duplicate")
+}
+
+// TestContactMerge_ExternalIdentityAndActivityPlainRepoint covers T107's
+// external_identities/external_activities repoint. Their unique index --
+// (system, external_id, user_id) / (source_system, external_id, user_id) --
+// does not include entity_id, which unique-constrains across the whole user
+// rather than per-contact: two contacts belonging to the same user can never
+// separately hold the same (system, external_id) pair to begin with (proven
+// while writing this test -- attempting to seed exactly that as a fixture
+// fails at Create with a UNIQUE constraint error, before a merge is even
+// involved), so there is no dedupe case to cover here, only a plain repoint.
+func TestContactMerge_ExternalIdentityAndActivityPlainRepoint(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "contact-merge-external-repoint.db")
+	db, err := database.InitDB(dbPath)
+	require.NoError(t, err)
+
+	user := models.User{Username: "externalrepointtester", Password: "password123!A", Email: "extrepoint@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	alice := models.Contact{UserID: user.ID, Firstname: "Alice"}
+	bob := models.Contact{UserID: user.ID, Firstname: "Alice"}
+	require.NoError(t, db.Create(&alice).Error)
+	require.NoError(t, db.Create(&bob).Error)
+
+	require.NoError(t, db.Create(&models.ExternalIdentity{UserID: user.ID, EntityID: bob.VCardUID, System: "paperless", ExternalID: "doc-bob-only"}).Error)
+	require.NoError(t, db.Create(&models.ExternalActivity{UserID: user.ID, EntityID: bob.VCardUID, SourceSystem: "immich", ExternalID: "asset-bob-only", Type: "photo-appearance", OccurredAt: time.Now()}).Error)
+
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.Default()
+	router.Use(func(c *gin.Context) {
+		c.Set("db", db)
+		c.Set("userID", user.ID)
+		c.Next()
+	})
+	router.POST("/contacts/merge", withValidated(func() any { return &models.ContactMergeRequest{} }), CommitContactMerge)
+
+	var buf bytes.Buffer
+	require.NoError(t, json.NewEncoder(&buf).Encode(models.ContactMergeRequest{KeepID: alice.ID, MergeID: bob.ID}))
+	req, _ := http.NewRequest("POST", "/contacts/merge", &buf)
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	countRows := func(model any, where string, args ...any) int64 {
+		var n int64
+		require.NoError(t, db.Model(model).Where(where, args...).Count(&n).Error)
+		return n
+	}
+
+	assert.EqualValues(t, 1, countRows(&models.ExternalIdentity{}, "entity_id = ? AND system = ? AND external_id = ?", alice.VCardUID, "paperless", "doc-bob-only"))
+	assert.EqualValues(t, 1, countRows(&models.ExternalActivity{}, "entity_id = ? AND source_system = ? AND external_id = ?", alice.VCardUID, "immich", "asset-bob-only"))
+	assert.EqualValues(t, 0, countRows(&models.ExternalIdentity{}, "entity_id = ?", bob.VCardUID))
+	assert.EqualValues(t, 0, countRows(&models.ExternalActivity{}, "entity_id = ?", bob.VCardUID))
+}
+
+// TestContactMerge_PhotoAdoptionAndDiscard covers T107's photo rule: adopt
+// the loser's photo when the keeper has none of its own, discard it
+// (existing, correct behaviour) when the keeper already has one. Real files
+// on disk via cfg.ProfilePhotoDir, since the assertion that matters is the
+// file surviving (or not) on disk, not just the Contact.Photo string.
+func TestContactMerge_PhotoAdoptionAndDiscard(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "contact-merge-photo.db")
+	db, err := database.InitDB(dbPath)
+	require.NoError(t, err)
+	photoDir := t.TempDir()
+
+	user := models.User{Username: "phototester", Password: "password123!A", Email: "photo@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	writePhoto := func(name string) {
+		require.NoError(t, os.WriteFile(filepath.Join(photoDir, name), []byte("fake-jpeg-bytes"), 0o644))
+	}
+	exists := func(name string) bool {
+		_, err := os.Stat(filepath.Join(photoDir, name))
+		return err == nil
+	}
+
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.Default()
+	router.Use(func(c *gin.Context) {
+		c.Set("db", db)
+		c.Set("userID", user.ID)
+		c.Set("cfg", config.Config{ProfilePhotoDir: photoDir})
+		c.Next()
+	})
+	router.POST("/contacts/merge", withValidated(func() any { return &models.ContactMergeRequest{} }), CommitContactMerge)
+
+	doMerge := func(keepID, mergeID uint) *httptest.ResponseRecorder {
+		var buf bytes.Buffer
+		require.NoError(t, json.NewEncoder(&buf).Encode(models.ContactMergeRequest{KeepID: keepID, MergeID: mergeID}))
+		req, _ := http.NewRequest("POST", "/contacts/merge", &buf)
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		return w
+	}
+
+	// --- Adoption: keeper has no photo, loser does ---
+	writePhoto("loser-adopt.jpg")
+	aliceNoPhoto := models.Contact{UserID: user.ID, Firstname: "AliceNoPhoto"}
+	bobWithPhoto := models.Contact{UserID: user.ID, Firstname: "AliceNoPhoto", Photo: "loser-adopt.jpg", PhotoThumbnail: "data:image/jpeg;base64,Zm9v"}
+	require.NoError(t, db.Create(&aliceNoPhoto).Error)
+	require.NoError(t, db.Create(&bobWithPhoto).Error)
+
+	w := doMerge(aliceNoPhoto.ID, bobWithPhoto.ID)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var adopted models.Contact
+	require.NoError(t, db.First(&adopted, aliceNoPhoto.ID).Error)
+	assert.Equal(t, "loser-adopt.jpg", adopted.Photo, "the keeper must adopt the loser's photo when it had none")
+	assert.Equal(t, "data:image/jpeg;base64,Zm9v", adopted.PhotoThumbnail)
+	assert.True(t, exists("loser-adopt.jpg"), "the adopted photo file must survive on disk, not be deleted out from under the keeper")
+
+	// --- Discard: both have a photo, keeper's own must survive untouched ---
+	writePhoto("keeper-own.jpg")
+	writePhoto("loser-discarded.jpg")
+	aliceWithPhoto := models.Contact{UserID: user.ID, Firstname: "AliceWithPhoto", Photo: "keeper-own.jpg"}
+	bobAlsoPhoto := models.Contact{UserID: user.ID, Firstname: "AliceWithPhoto", Photo: "loser-discarded.jpg"}
+	require.NoError(t, db.Create(&aliceWithPhoto).Error)
+	require.NoError(t, db.Create(&bobAlsoPhoto).Error)
+
+	w2 := doMerge(aliceWithPhoto.ID, bobAlsoPhoto.ID)
+	require.Equal(t, http.StatusOK, w2.Code, w2.Body.String())
+
+	var discarded models.Contact
+	require.NoError(t, db.First(&discarded, aliceWithPhoto.ID).Error)
+	assert.Equal(t, "keeper-own.jpg", discarded.Photo, "a keeper that already has a photo must keep its own, not the loser's")
+	assert.True(t, exists("keeper-own.jpg"), "the keeper's own photo file must survive")
+	assert.False(t, exists("loser-discarded.jpg"), "the loser's discarded photo file must actually be removed from disk")
 }

@@ -69,6 +69,16 @@ type ContactMergeAssociationCounts struct {
 	GiftItems               int64 `json:"gift_items"`                // gift records keyed to the loser (entity_id)
 	FieldValues             int64 `json:"field_values"`
 	ContactSyncLinks        int64 `json:"contact_sync_links"` // discarded, not re-pointed
+
+	// T107: previously fell through deleteContactAssociations and were
+	// silently destroyed on every merge -- now all re-pointed (or, for
+	// CadencePolicies, adopted/resolved as a conflict). See
+	// services.RepointContactAssociations.
+	Attachments        int64 `json:"attachments"`
+	Preferences        int64 `json:"preferences"`
+	ExternalIdentities int64 `json:"external_identities"`
+	ExternalActivities int64 `json:"external_activities"`
+	CadencePolicies    int64 `json:"cadence_policies"` // 0 or 1 -- at most one per contact
 }
 
 // ContactMergeRequest is the DTO for both merge endpoints. KeepID survives;

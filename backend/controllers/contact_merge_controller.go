@@ -7,11 +7,29 @@ import (
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
+
+// appendCadencePolicyConflict computes T107's cadence-policy conflict (if
+// any) and appends it into resolution.Conflicts, re-sorted by Field to match
+// ComputeContactMergeResolution's own ordering. Shared by the preview and
+// commit endpoints so they can never disagree about whether a cadence
+// conflict exists.
+func appendCadencePolicyConflict(db *gorm.DB, userID uint, keeperVCardUID, loserVCardUID string, resolution *models.ContactMergeResolution) *apperrors.AppError {
+	conflict, err := services.ComputeCadencePolicyConflict(db, userID, keeperVCardUID, loserVCardUID)
+	if err != nil {
+		return apperrors.ErrDatabase("Failed to compute merge preview").WithError(err)
+	}
+	if conflict != nil {
+		resolution.Conflicts = append(resolution.Conflicts, *conflict)
+		sort.Slice(resolution.Conflicts, func(i, j int) bool { return resolution.Conflicts[i].Field < resolution.Conflicts[j].Field })
+	}
+	return nil
+}
 
 // loadMergePair validates and loads the keeper/loser contacts for a merge
 // request: both must exist and be owned by userID, and the two IDs must
@@ -81,6 +99,11 @@ func PreviewContactMerge(c *gin.Context) {
 	}
 	resolution.FieldValueConflicts = fvConflicts
 
+	if appErr := appendCadencePolicyConflict(db, userID, keeper.VCardUID, loser.VCardUID, resolution); appErr != nil {
+		apperrors.AbortWithError(c, appErr)
+		return
+	}
+
 	counts, err2 := services.ComputeContactMergeAssociationCounts(db, userID, loser.ID, loser.VCardUID)
 	if err2 != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to compute merge preview").WithError(err2))
@@ -131,6 +154,11 @@ func CommitContactMerge(c *gin.Context) {
 	}
 	resolution.FieldValueConflicts = fvConflicts
 
+	if appErr := appendCadencePolicyConflict(db, userID, keeper.VCardUID, loser.VCardUID, resolution); appErr != nil {
+		apperrors.AbortWithError(c, appErr)
+		return
+	}
+
 	missing := missingResolutions(resolution.Conflicts, input.Resolutions)
 	missing = append(missing, missingResolutions(resolution.FieldValueConflicts, input.Resolutions)...)
 	if len(missing) > 0 {
@@ -139,15 +167,20 @@ func CommitContactMerge(c *gin.Context) {
 	}
 
 	var noteContent string
-	// Capture the loser's attachment stored names before the transaction
-	// soft-deletes the records, so their files can be removed afterwards
-	// (file deletion can't be rolled back).
-	var loserAttachmentNames []string
-	if err := db.Model(&models.Attachment{}).
-		Where("contact_vcard_uid = ? AND user_id = ?", loser.VCardUID, userID).
-		Pluck("stored_name", &loserAttachmentNames).Error; err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to load contact attachments").WithError(err))
-		return
+	// T107: adopt the loser's photo when the keeper has none of its own,
+	// rather than discarding it. Photo/PhotoThumbnail are flat-owned
+	// (contact_card_merge.go's mergeMedia always takes "fresh"), so mutating
+	// them directly here -- the same pattern ApplyContactMergeResolution
+	// already uses for every other flat scalar -- is enough; BeforeSave's
+	// T75 merge rederives Card.Media from these on tx.Save(&keeper) below.
+	// Blanking them on the local `loser` value (not its DB row, which is
+	// about to be soft-deleted regardless) stops deleteContactPhotos below
+	// from deleting the file out from under the keeper that now shares it.
+	if keeper.Photo == "" && loser.Photo != "" {
+		keeper.Photo = loser.Photo
+		keeper.PhotoThumbnail = loser.PhotoThumbnail
+		loser.Photo = ""
+		loser.PhotoThumbnail = ""
 	}
 	txErr := db.Transaction(func(tx *gorm.DB) error {
 		if err := services.ApplyContactMergeResolution(&keeper, resolution, input.Resolutions); err != nil {
@@ -198,9 +231,9 @@ func CommitContactMerge(c *gin.Context) {
 	// deletion can't be rolled back. The loser's photo file is discarded;
 	// the keeper's own Photo/PhotoThumbnail was never touched.
 	deleteContactPhotos(c, loser)
-	// The loser's attachment files (N7): deleteContactAssociations soft-deleted
-	// the records inside the transaction; remove the on-disk files here.
-	deleteContactAttachmentFiles(c, loserAttachmentNames)
+	// N7 attachments are now always re-pointed onto the keeper (T107,
+	// RepointContactAssociations), never deleted by a merge -- there is
+	// nothing left to remove from disk here.
 
 	go services.TriggerWebhooks(db, currentConfig(c), userID, "contact.updated", keeper)
 	go services.TriggerWebhooks(db, currentConfig(c), userID, "contact.deleted", gin.H{"id": loser.ID})

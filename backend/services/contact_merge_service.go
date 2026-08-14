@@ -1,6 +1,7 @@
 package services
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -333,6 +334,11 @@ func ComputeContactMergeAssociationCounts(db *gorm.DB, userID uint, loserID uint
 		{&c.GiftItems, db.Model(&models.Gift{}).Where("entity_id = ? AND user_id = ?", loserVCardUID, userID)},
 		{&c.FieldValues, db.Model(&models.FieldValue{}).Where("entity_id = ? AND user_id = ?", loserVCardUID, userID)},
 		{&c.ContactSyncLinks, db.Model(&models.ContactSyncLink{}).Where("contact_id = ? AND user_id = ?", loserID, userID)},
+		{&c.Attachments, db.Model(&models.Attachment{}).Where("contact_vcard_uid = ? AND user_id = ?", loserVCardUID, userID)},
+		{&c.Preferences, db.Model(&models.Preference{}).Where("entity_id = ? AND user_id = ?", loserVCardUID, userID)},
+		{&c.ExternalIdentities, db.Model(&models.ExternalIdentity{}).Where("entity_id = ? AND user_id = ?", loserVCardUID, userID)},
+		{&c.ExternalActivities, db.Model(&models.ExternalActivity{}).Where("entity_id = ? AND user_id = ?", loserVCardUID, userID)},
+		{&c.CadencePolicies, db.Model(&models.CadencePolicy{}).Where("entity_id = ? AND user_id = ?", loserVCardUID, userID)},
 	}
 	for _, s := range steps {
 		if err := s.q.Count(s.dst).Error; err != nil {
@@ -445,6 +451,41 @@ func RepointContactAssociations(
 		return 0, err
 	}
 
+	// attachments (N7) / preferences (T20a): plain repoint, neither has a
+	// uniqueness constraint to dedupe against (T107).
+	if err := tx.Model(&models.Attachment{}).Where("contact_vcard_uid = ? AND user_id = ?", loser.VCardUID, userID).
+		Update("contact_vcard_uid", keeper.VCardUID).Error; err != nil {
+		return 0, err
+	}
+	if err := tx.Model(&models.Preference{}).Where("entity_id = ? AND user_id = ?", loser.VCardUID, userID).
+		Update("entity_id", keeper.VCardUID).Error; err != nil {
+		return 0, err
+	}
+
+	// external_identities / external_activities (T14): the natural-key
+	// unique index is (system, external_id, user_id) / (source_system,
+	// external_id, user_id) -- entity_id is NOT part of it, which means it
+	// unique-constrains across the whole user, not per-contact. So the
+	// collision a dedupe step would guard against (keeper and loser each
+	// already linking the same external record) cannot exist to begin with:
+	// the constraint already forbids two rows sharing that key for this user
+	// regardless of which contact holds them, before a merge ever starts.
+	// Re-pointing entity_id doesn't touch the key, so a plain repoint (T107)
+	// can never violate it -- confirmed by a real-DB test attempting to seed
+	// that exact "shared" fixture, which fails at Create, not at merge.
+	if err := tx.Exec(
+		"UPDATE external_identities SET entity_id = ? WHERE entity_id = ? AND user_id = ?",
+		keeper.VCardUID, loser.VCardUID, userID,
+	).Error; err != nil {
+		return 0, err
+	}
+	if err := tx.Exec(
+		"UPDATE external_activities SET entity_id = ? WHERE entity_id = ? AND user_id = ?",
+		keeper.VCardUID, loser.VCardUID, userID,
+	).Error; err != nil {
+		return 0, err
+	}
+
 	// field_values: uniqueIndex on (field_definition_id, entity_id). Where
 	// both sides had a value (fvConflicts), drop the loser's row and apply
 	// the user's chosen value onto the keeper's surviving row -- a value
@@ -535,6 +576,14 @@ func RepointContactAssociations(
 		}
 	}
 
+	// cadence_policies (T19): one-per-contact (migration 000002's partial
+	// unique index on (user_id, entity_id)), so unlike everything above it
+	// can genuinely conflict rather than just dedupe. See
+	// repointCadencePolicy and ComputeCadencePolicyConflict (T107).
+	if err := repointCadencePolicy(tx, userID, keeper, loser, resolutions); err != nil {
+		return 0, err
+	}
+
 	// RelationshipEdge: bulk repoint both endpoints, then drop self-loops
 	// and semantic duplicates.
 	if err := tx.Model(&models.RelationshipEdge{}).Where("source_id = ? AND user_id = ?", loser.VCardUID, userID).
@@ -582,6 +631,106 @@ func RepointContactAssociations(
 	}
 
 	return edgesDropped, nil
+}
+
+// cadencePolicyConflictField is the fixed conflict key for a CadencePolicy
+// collision, in the same key space as mergeScalarFields' keys (T107). It's
+// appended into ContactMergeResolution.Conflicts rather than getting its own
+// response field, which is what lets MergeContactsDialog.tsx's existing
+// generic radio-choice UI for scalar conflicts handle it with zero frontend
+// changes.
+const cadencePolicyConflictField = "cadence_policy"
+
+// ComputeCadencePolicyConflict returns a conflict when both keeper and loser
+// already have a CadencePolicy (T19) and they genuinely differ -- migration
+// 000002's partial unique index on (user_id, entity_id) means only one can
+// survive per contact, so unlike every other T107 addition this can't just be
+// unioned or plain-repointed. nil, nil when at most one side has a policy
+// (repointCadencePolicy adopts a one-sided policy silently) or when both
+// sides already agree (nothing to ask).
+func ComputeCadencePolicyConflict(db *gorm.DB, userID uint, keeperVCardUID, loserVCardUID string) (*models.ContactMergeFieldConflict, error) {
+	var keeperPolicy, loserPolicy models.CadencePolicy
+	if err := db.Where("entity_id = ? AND user_id = ?", keeperVCardUID, userID).First(&keeperPolicy).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	if err := db.Where("entity_id = ? AND user_id = ?", loserVCardUID, userID).First(&loserPolicy).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	keeperSummary, loserSummary := formatCadencePolicySummary(keeperPolicy), formatCadencePolicySummary(loserPolicy)
+	if keeperSummary == loserSummary {
+		return nil, nil
+	}
+	return &models.ContactMergeFieldConflict{
+		Field:       cadencePolicyConflictField,
+		Label:       "Stay-in-touch cadence",
+		KeeperValue: keeperSummary,
+		LoserValue:  loserSummary,
+	}, nil
+}
+
+// formatCadencePolicySummary renders a CadencePolicy identically everywhere
+// it's compared or displayed -- ComputeCadencePolicyConflict's KeeperValue/
+// LoserValue and repointCadencePolicy's re-derivation of which side the
+// caller picked -- so the two can never drift apart (the same trick
+// BuildContactMergeNoteContent already relies on for scalar conflicts).
+func formatCadencePolicySummary(p models.CadencePolicy) string {
+	if len(p.QualifyingTypes) == 0 {
+		return fmt.Sprintf("Every %d days", p.TargetIntervalDays)
+	}
+	return fmt.Sprintf("Every %d days (%s)", p.TargetIntervalDays, strings.Join(p.QualifyingTypes, ", "))
+}
+
+// repointCadencePolicy resolves CadencePolicy across a merge, inside tx:
+// nothing on the loser -> no-op; only the loser has one -> repoint it
+// silently; both have one -> apply whichever ComputeCadencePolicyConflict's
+// caller resolved (or, if the two already agree, keep the keeper's and drop
+// the loser's with no resolution required, mirroring how identical scalar
+// values never become a conflict in the first place).
+func repointCadencePolicy(tx *gorm.DB, userID uint, keeper, loser *models.Contact, resolutions map[string]string) error {
+	var keeperPolicy models.CadencePolicy
+	keeperErr := tx.Where("entity_id = ? AND user_id = ?", keeper.VCardUID, userID).First(&keeperPolicy).Error
+	if keeperErr != nil && !errors.Is(keeperErr, gorm.ErrRecordNotFound) {
+		return keeperErr
+	}
+
+	var loserPolicy models.CadencePolicy
+	loserErr := tx.Where("entity_id = ? AND user_id = ?", loser.VCardUID, userID).First(&loserPolicy).Error
+	if errors.Is(loserErr, gorm.ErrRecordNotFound) {
+		return nil // nothing to move
+	} else if loserErr != nil {
+		return loserErr
+	}
+
+	if errors.Is(keeperErr, gorm.ErrRecordNotFound) {
+		// Only the loser has one -- adopt silently.
+		return tx.Model(&models.CadencePolicy{}).Where("id = ?", loserPolicy.ID).
+			Update("entity_id", keeper.VCardUID).Error
+	}
+
+	if formatCadencePolicySummary(keeperPolicy) != formatCadencePolicySummary(loserPolicy) {
+		chosen, ok := resolutions[cadencePolicyConflictField]
+		if !ok {
+			return fmt.Errorf("contact merge: unresolved cadence policy conflict")
+		}
+		if chosen == formatCadencePolicySummary(loserPolicy) {
+			// The loser's policy wins: drop the keeper's, then repoint the
+			// loser's onto the keeper.
+			if err := tx.Delete(&keeperPolicy).Error; err != nil {
+				return err
+			}
+			return tx.Model(&models.CadencePolicy{}).Where("id = ?", loserPolicy.ID).
+				Update("entity_id", keeper.VCardUID).Error
+		}
+	}
+	// Keeper's policy wins (explicitly chosen, or the two already agreed):
+	// drop the loser's, the keeper's is untouched.
+	return tx.Delete(&loserPolicy).Error
 }
 
 // edgesConflict reports whether a and b express the same relationship fact
@@ -694,10 +843,14 @@ func BuildContactMergeNoteContent(
 	b.WriteString("\nRe-pointed: ")
 	fmt.Fprintf(&b, "%d notes, %d activities, %d reminders, %d reminder completions, "+
 		"%d relationship edges (%d dropped as duplicate/self-loop), %d household memberships, "+
-		"%d circle memberships, %d tags, %d life events (%d references), %d custom field values.\n",
+		"%d circle memberships, %d tags, %d life events (%d references), %d custom field values, "+
+		"%d attachments, %d preferences, %d external identities, %d external activities, "+
+		"%d cadence policies.\n",
 		counts.Notes, counts.Activities, counts.Reminders, counts.ReminderCompletions,
 		counts.RelationshipEdges, edgesDropped, counts.HouseholdMemberships,
-		counts.CircleMemberships, counts.Tags, counts.LifeEvents, counts.LifeEventReferences, counts.FieldValues)
+		counts.CircleMemberships, counts.Tags, counts.LifeEvents, counts.LifeEventReferences, counts.FieldValues,
+		counts.Attachments, counts.Preferences, counts.ExternalIdentities, counts.ExternalActivities,
+		counts.CadencePolicies)
 
 	if counts.ContactSyncLinks > 0 {
 		fmt.Fprintf(&b, "%d CardDAV sync link(s) on the merged contact were discarded (not re-pointed).\n", counts.ContactSyncLinks)

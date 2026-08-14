@@ -7366,6 +7366,11 @@ components:
         life_event_references: { type: integer }
         field_values: { type: integer }
         contact_sync_links: { type: integer }
+        attachments: { type: integer }
+        preferences: { type: integer }
+        external_identities: { type: integer }
+        external_activities: { type: integer }
+        cadence_policies: { type: integer, description: "0 or 1 -- at most one per contact." }
 
     # --- Notes / Activities / Reminders (gorm.Model PascalCase identity) ---
     Note:

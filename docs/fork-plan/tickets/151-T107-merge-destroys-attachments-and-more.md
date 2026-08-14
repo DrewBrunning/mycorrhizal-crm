@@ -6,7 +6,7 @@
 | **Rating** | 5 — silent, unrecoverable data loss on real production data |
 | **Size** | M |
 | **Depends on** | Nothing. **Should land before** [T92](136-T92-bulk-merge-from-contacts-list.md), which makes merge much easier to reach. |
-| **Status** | **TO BE DONE** |
+| **Status** | **DONE** (2026-08-13) |
 | **Source** | Not reported. Found while investigating [T95](139-T95-merge-keeper-shows-stale-circles.md) during the 2026-08-13 beta triage. |
 
 ## Why this exists
@@ -91,3 +91,45 @@ note text at `contact_merge_service.go:702-704`) — leave it alone.
   explicitly listed as intentionally dropped — so the next entity added can't silently regress this.
 - `cd backend && go build ./... && go vet ./... && gofmt -l . && go test ./...` green, with every new test
   hand-verified against the reintroduced bug.
+
+## Landing note (2026-08-13)
+
+All four association types plus the photo now survive a merge. `attachments`/`preferences` got a plain
+repoint (confirmed neither has a dedupe-worthy unique constraint); the pre-transaction "pluck attachment
+stored names, delete files after commit" dance was removed outright rather than reordered, since attachments
+are now never deleted by a merge — nothing to race the transaction anymore.
+
+One design correction made while implementing, not just planning: the ticket's "check whether
+`external_identities` has a natural-key unique index on `(provider, external_id, entity_id)`" turned out to
+resolve the other way. The real index — migration `000005`, `(system, external_id, user_id)` — does **not**
+include `entity_id`, which means it unique-constrains *per user*, not *per contact*. Two contacts belonging
+to the same user can therefore never separately hold the same `(system, external_id)` pair to begin with —
+proven directly: a first attempt at a dedupe-then-repoint test failed at fixture `Create` with a UNIQUE
+constraint violation, before a merge was ever involved. So `external_identities`/`external_activities` got a
+plain repoint too, with the dead DELETE/EXISTS dedupe branch removed rather than left in as defensive dead
+code.
+
+`cadence_policies` (genuinely one-per-contact, migration `000002`'s partial unique index) is the one real new
+conflict type. It reuses `ContactMergeResolution.Conflicts` — the same slice scalar field conflicts already
+populate — rather than getting its own response field, so `MergeContactsDialog.tsx`'s existing generic radio
+UI renders it with **zero frontend changes**. Identical-content policies auto-resolve with no prompt, one
+side present adopts silently, and both differing forces a choice exactly like a scalar conflict does.
+
+Photo adoption follows the codebase's own established pattern: mutate the flat `Contact.Photo`/
+`PhotoThumbnail` fields directly (same as every other field `ApplyContactMergeResolution` already sets) and
+let `BeforeSave`'s T75 merge rederive `Card.Media` on save, rather than touching `Card` directly. The
+now-shared file is protected from the post-commit `deleteContactPhotos(c, loser)` call by blanking the local
+(in-memory, not DB) `loser.Photo`/`PhotoThumbnail` right after adopting.
+
+Six new/extended real-DB tests in `contact_merge_real_db_test.go` (`database.InitDB`, per `/CLAUDE.md` trap
+#1), covering every table `deleteContactAssociations` touches including `NotificationDelivery`. Every new
+assertion was hand-verified per `/CLAUDE.md`: temporarily disabled each production fix, confirmed the
+corresponding test failed with a message matching the reintroduced bug, restored. `openapi.yaml`'s
+`ContactMergeAssociationCounts` schema updated with the five new count fields.
+
+`go build ./... && go vet ./... && gofmt -l . && go test ./...` green.
+
+Not done here, filed separately as out-of-scope-but-noticed: `openapi.yaml`'s `ContactMergeAssociationCounts`
+schema was already missing `conversation_agenda_items`/`gift_items` before this ticket (pre-existing drift,
+not caught by the drift test since it only checks schema *existence*, not field parity) — flagged as a
+follow-up task, not fixed here to keep this diff scoped to T107.
