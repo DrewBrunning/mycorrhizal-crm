@@ -438,19 +438,25 @@
     <!-- Timeline entities -->
     <string name="entities_empty">Noch nichts hier</string>
     <string name="entities_error_no_vcard_uid">Kontakt hat keine VCard-UID</string>
+    <string name="entities_delete_title">Eintrag löschen?</string>
+    <string name="entities_delete_confirm">„%1$s“ löschen? Dies kann nicht rückgängig gemacht werden.</string>
     <string name="life_events_title">Lebensereignisse</string>
     <string name="life_events_new">Neues Lebensereignis</string>
+    <string name="life_events_edit">Lebensereignis bearbeiten</string>
     <string name="life_events_type">Typ</string>
     <string name="life_events_description">Beschreibung</string>
     <string name="gifts_title">Geschenke</string>
     <string name="gifts_new">Neues Geschenk</string>
+    <string name="gifts_edit">Geschenk bearbeiten</string>
     <string name="gifts_description">Beschreibung</string>
     <string name="preferences_title">Vorlieben</string>
     <string name="preferences_new">Neue Vorliebe</string>
+    <string name="preferences_edit">Vorliebe bearbeiten</string>
     <string name="preferences_category">Kategorie</string>
     <string name="preferences_value">Wert</string>
     <string name="agenda_title">Gesprächsagenda</string>
     <string name="agenda_new">Neuer Punkt</string>
+    <string name="agenda_edit">Punkt bearbeiten</string>
     <string name="agenda_content">Inhalt</string>
 
 

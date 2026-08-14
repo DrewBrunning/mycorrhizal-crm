@@ -85,3 +85,43 @@ JUnit4 + MockK (`mockk`/`coEvery`) + Turbine + `runTest` with `MainDispatcherRul
 mock the repository — `feature/contacts/.../ContactListViewModelTest.kt` is the reference. New
 `ApiClient` methods get a MockWebServer test in `core/network` — `ApiClientTest.kt` is the reference.
 Hand-verify per `/CLAUDE.md`: break the code, confirm the new test fails, restore.
+
+---
+
+## Landing note
+
+**IMPLEMENTED, AWAITING ON-DEVICE VERIFICATION** (2026-08-14). `EntityListScaffold` gained an
+`onItemClick` callback (a row tap, not an icon — the ticket's literal spec) and a shared
+delete-confirmation `AlertDialog` naming the item, both fixing all four entity types from one change.
+Each entity's create dialog became a reusable `XxxDialog(initial, onConfirm, onDismiss)` composable:
+`initial == null` is add mode, non-null pre-fills every field the dialog already modeled and switches
+to edit mode (title + Save instead of New + Create) — reusing the create dialog in edit mode exactly
+as scoped, no new fields (M18's job).
+
+A real finding along the way, not assumed: `findById()`/`update()` needed the *loaded* entity, not just
+the derived `EntityItem` (label/url only), so each ViewModel now keeps its last-fetched list. And
+checking the actual controllers (`gift_controller.go`, `life_event_controller.go`,
+`preference_controller.go`, `conversation_agenda_controller.go`) rather than assuming PATCH semantics
+found all four `Update*` handlers are **full overwrites** of every input field, not merges — so
+`update()` copies every field the mini edit form doesn't touch forward from the original entity.
+Skipping that would have made editing a gift's description alone silently reset its status back to
+"idea" and drop its url/notes/value/currency, i.e. exactly the kind of data loss `/CLAUDE.md`'s
+data-safety rules exist to prevent.
+
+Tests split the same way the module already does: `TimelineEntitiesViewModelTest` covers
+`findById`/`update`-preserves-untouched-fields per entity type (4×, mirroring the ticket's
+parameterization ask); a new `EntityListScreensTest` covers the shared scaffold's delete-confirm/
+cancel/row-click mechanics directly (`internal` visibility, no ViewModel, no coroutines) plus one
+add/edit round-trip test per entity dialog. 6 new strings × 5 locales, real translations, verified
+against `LocalesConsistencyTest`.
+
+Hand-verified per `/CLAUDE.md`: reverting the delete icon to call `onDelete` directly failed the 3
+scaffold delete-confirm tests as expected; reverting `GiftsViewModel.update` to a minimal Input
+(entity id + description only, dropping the preserved fields) failed the new
+preserves-untouched-fields test as expected — catching exactly the data-loss bug it exists to catch.
+Both reverts restored afterward.
+
+Gate green: `./gradlew testDebugUnitTest` (whole project, 623 tasks), `./gradlew lintDebug` (whole
+project, `feature:timelineentities` "No Issues Found"), `./gradlew assembleDebug`. **On-device
+verification still outstanding** — no physical device in this build environment, same gap M11 landed
+with.
