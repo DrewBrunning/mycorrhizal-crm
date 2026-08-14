@@ -78,6 +78,12 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// N5 bulk operations — registered before /contacts/:id so the
 			// literal path is never captured as a contact ID.
 			protected.POST("/contacts/bulk", middleware.ValidateJSONMiddleware(&models.BulkContactOperationInput{}), controllers.BulkContactOperation)
+			// T93 duplicate scan (docs/fork-plan/tickets/
+			// 137-T93-duplicate-scan-endpoint-and-review.md) — registered
+			// before /contacts/:id like the other literal paths above, so
+			// "duplicates" is never captured as a contact ID.
+			protected.GET("/contacts/duplicates", controllers.GetDuplicatePairs)
+			protected.POST("/contacts/duplicates/dismiss", middleware.ValidateJSONMiddleware(&models.DuplicateDismissalInput{}), controllers.DismissDuplicatePair)
 			protected.GET("/contacts/:id", controllers.GetContact)
 			// N2 prep view: read-only aggregation of everything the user
 			// wants to remember before seeing this contact. Registered after

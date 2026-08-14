@@ -8,6 +8,22 @@
       "reload": "Ricarica"
     }
   },
+  "duplicates": {
+    "reviewTitle": "Controlla duplicati",
+    "none": "Nessun possibile duplicato trovato.",
+    "count": "{{count}} coppie candidate",
+    "vs": "vs",
+    "confidence": "Confidenza {{percent}}%",
+    "notDuplicate": "Non è un duplicato",
+    "dismissConfirm": "Contrassegnare questi due contatti come NON duplicati? La coppia verrà nascosta definitivamente.",
+    "mergeDescription": "Entrambi i contatti sono elencati qui sotto. Scegli quale deve sopravvivere alla fusione.",
+    "mergeHint": "I dati dell'altro contatto vengono uniti nel sopravvissuto.",
+    "reason": {
+      "email": "Stessa email",
+      "name": "Stesso nome",
+      "phone": "Stesso telefono"
+    }
+  },
   "nav": {
     "dashboard": "Cruscotto",
     "contacts": "Contatti",
@@ -427,7 +443,8 @@
     "personalInfoLabel": "Informazioni personali (competenze / hobby / interessi)",
     "keywordsLabel": "Parole chiave",
     "cardNotesLabel": "Note (vCard)",
-    "preferredLanguagesLabel": "Lingue preferite"
+    "preferredLanguagesLabel": "Lingue preferite",
+    "reviewDuplicates": "Controlla duplicati"
   },
   "timeline": {
     "reminderCompleted": "Promemoria Completato",
@@ -1261,7 +1278,9 @@
     "resolveFieldValueConflicts": "Risolvi i campi personalizzati in conflitto",
     "keepValue": "{{name}}: {{value}}",
     "associationSummary": "Questo sposterà {{notes}} nota/e, {{activities}} attività, {{reminders}} promemoria e {{edges}} relazione/i sul contatto unito.",
-    "mergeButton": "Unisci"
+    "mergeButton": "Unisci",
+    "keepThisOne": "Conserva {{name}}",
+    "swap": "Scambia"
   },
   "triage": {
     "title": "Migrazione di cerchie ed etichette",

@@ -8,6 +8,22 @@
       "reload": "Recharger"
     }
   },
+  "duplicates": {
+    "reviewTitle": "Examiner les doublons",
+    "none": "Aucun doublon potentiel trouvé.",
+    "count": "{{count}} paires candidates",
+    "vs": "contre",
+    "confidence": "Confiance {{percent}} %",
+    "notDuplicate": "Pas un doublon",
+    "dismissConfirm": "Marquer ces deux contacts comme n'étant PAS des doublons ? La paire sera masquée définitivement.",
+    "mergeDescription": "Les deux contacts sont listés ci-dessous. Choisissez lequel doit survivre à la fusion.",
+    "mergeHint": "Les données de l'autre contact sont fusionnées dans le survivant.",
+    "reason": {
+      "email": "Même e-mail",
+      "name": "Même nom",
+      "phone": "Même téléphone"
+    }
+  },
   "nav": {
     "dashboard": "Tableau de bord",
     "contacts": "Contacts",
@@ -427,7 +443,8 @@
     "personalInfoLabel": "Informations personnelles (compétences / loisirs / intérêts)",
     "keywordsLabel": "Mots-clés",
     "cardNotesLabel": "Notes (vCard)",
-    "preferredLanguagesLabel": "Langues préférées"
+    "preferredLanguagesLabel": "Langues préférées",
+    "reviewDuplicates": "Examiner les doublons"
   },
   "timeline": {
     "reminderCompleted": "Rappel terminé",
@@ -1261,7 +1278,9 @@
     "resolveFieldValueConflicts": "Résoudre les champs personnalisés en conflit",
     "keepValue": "{{name}} : {{value}}",
     "associationSummary": "Cela déplacera {{notes}} note(s), {{activities}} activité(s), {{reminders}} rappel(s) et {{edges}} relation(s) vers le contact fusionné.",
-    "mergeButton": "Fusionner"
+    "mergeButton": "Fusionner",
+    "keepThisOne": "Conserver {{name}}",
+    "swap": "Échanger"
   },
   "triage": {
     "title": "Migration des cercles et étiquettes",

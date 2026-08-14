@@ -8,6 +8,22 @@
       "reload": "Reload"
     }
   },
+  "duplicates": {
+    "reviewTitle": "Review duplicates",
+    "none": "No duplicate candidates found.",
+    "count": "{{count}} candidate pairs",
+    "vs": "vs",
+    "confidence": "{{percent}}% confidence",
+    "notDuplicate": "Not a duplicate",
+    "dismissConfirm": "Mark these two contacts as NOT duplicates? This hides the pair permanently.",
+    "mergeDescription": "Both contacts are listed below. Choose which one should survive the merge.",
+    "mergeHint": "The other contact's data is merged into the survivor.",
+    "reason": {
+      "email": "Same email",
+      "name": "Same name",
+      "phone": "Same phone"
+    }
+  },
   "nav": {
     "dashboard": "Dashboard",
     "contacts": "Contacts",
@@ -427,7 +443,8 @@
       "apartment": "Apartment / Suite",
       "floor": "Floor",
       "additionalFields": "Additional fields"
-    }
+    },
+    "reviewDuplicates": "Review duplicates"
   },
   "timeline": {
     "reminderCompleted": "Reminder Completed",
@@ -1288,7 +1305,9 @@
     "resolveFieldValueConflicts": "Resolve conflicting custom fields",
     "keepValue": "{{name}}: {{value}}",
     "associationSummary": "This will move {{notes}} note(s), {{activities}} activit(y/ies), {{reminders}} reminder(s), and {{edges}} relationship(s) onto the merged contact.",
-    "mergeButton": "Merge"
+    "mergeButton": "Merge",
+    "keepThisOne": "Keep {{name}}",
+    "swap": "Swap"
   },
   "customFields": {
     "addTitle": "Add Custom Field",

@@ -12,6 +12,7 @@ import AddContactDialog from './components/AddContactDialog';
 import ImportContactsDialog from './components/ImportContactsDialog';
 import BulkActionsBar from './components/BulkActionsBar';
 import SearchNotesActivities from './components/SearchNotesActivities';
+import ReviewDuplicatesDialog from './components/ReviewDuplicatesDialog';
 import {
   Box,
   Card,
@@ -35,6 +36,7 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import FileUploadIcon from '@mui/icons-material/FileUpload';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
+import DifferenceIcon from '@mui/icons-material/Difference';
 import { ContactListSkeleton } from './components/LoadingSkeletons';
 
 export default function ContactsPage() {
@@ -89,6 +91,7 @@ export default function ContactsPage() {
 
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [reviewDuplicatesOpen, setReviewDuplicatesOpen] = useState(false);
   const [enabledFields, setEnabledFields] = useState<Set<ContactFieldKey>>(() => resolveEnabledFields(null));
   const [showArchived, setShowArchived] = useState(false);
   const pageSize = 10;
@@ -332,6 +335,14 @@ export default function ContactsPage() {
           {t('contacts.import.button', 'Import')}
         </Button>
         <Button
+          variant="outlined"
+          startIcon={<DifferenceIcon />}
+          onClick={() => setReviewDuplicatesOpen(true)}
+          sx={{ whiteSpace: 'nowrap' }}
+        >
+          {t('contacts.reviewDuplicates')}
+        </Button>
+        <Button
           variant="contained"
           color="primary"
           startIcon={<PersonAddIcon />}
@@ -463,6 +474,10 @@ export default function ContactsPage() {
         open={importDialogOpen}
         onClose={() => setImportDialogOpen(false)}
         onImportComplete={handleImportComplete}
+      />
+      <ReviewDuplicatesDialog
+        open={reviewDuplicatesOpen}
+        onClose={() => setReviewDuplicatesOpen(false)}
       />
     </Box>
   );

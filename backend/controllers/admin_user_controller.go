@@ -679,6 +679,12 @@ func DeleteUser(c *gin.Context) {
 			return err
 		}
 
+		// T93: duplicate-pair dismissal memory (hard, edge/join-shaped — account
+		// gone, no tombstoning needed)
+		if err := tx.Where("user_id = ?", userID).Delete(&models.DismissedDuplicatePair{}).Error; err != nil {
+			return err
+		}
+
 		// Delete contacts (hard)
 		if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.Contact{}).Error; err != nil {
 			return err
