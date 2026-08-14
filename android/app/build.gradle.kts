@@ -33,6 +33,7 @@ dependencies {
     implementation(project(":feature:import"))
     implementation(project(":feature:timeline"))
     implementation(project(":feature:settings"))
+    implementation(project(":feature:cadence"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

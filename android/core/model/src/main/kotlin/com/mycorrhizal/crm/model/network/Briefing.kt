@@ -74,6 +74,10 @@ data class BriefingActivity(
  * Bundles a contact's CadencePolicy with its derived health. Health is the
  * DERIVED relationship-health read-model (§91.10) computed server-side — the
  * client must never recompute it locally (see M11's health-card test case).
+ *
+ * The two nested types are deliberately thin briefing projections — see the
+ * cross-reference on [BriefingCadenceHealth] for how they relate to M12's
+ * [CadencePolicy]/[CadenceHealth] (the standalone cadence screen's models).
  */
 @JsonClass(generateAdapter = true)
 data class BriefingCadence(
@@ -81,7 +85,12 @@ data class BriefingCadence(
     val health: BriefingCadenceHealth = BriefingCadenceHealth(),
 )
 
-/** Wire mirror of the backend's CadencePolicy as carried on the briefing. */
+/**
+ * Wire mirror of the backend's CadencePolicy as carried on the briefing.
+ * Same server concept as M12's [CadencePolicy] (which also carries `deleted`
+ * and a nested `health`); if one grows a new backend field, update both —
+ * they must stay in sync.
+ */
 @JsonClass(generateAdapter = true)
 data class BriefingCadencePolicy(
     val id: String = "",
@@ -97,6 +106,12 @@ data class BriefingCadencePolicy(
  * fields `services.CadenceHealth` computes. [hasQualifyingInteraction] is
  * false until the contact has at least one qualifying interaction;
  * [overdueBy] is whole calendar days past due (0 when due today or later).
+ *
+ * Field-for-field identical to M12's [CadenceHealth]; the two must stay in
+ * sync (same backend object, two wire contexts). M11 chose a briefing-local
+ * type because the briefing bundles policy+health and dates render through
+ * the prep view's format path; M12's standalone cadence screen uses
+ * [CadenceHealth] directly.
  */
 @JsonClass(generateAdapter = true)
 data class BriefingCadenceHealth(
