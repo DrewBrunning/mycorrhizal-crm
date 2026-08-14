@@ -1,27 +1,7 @@
 import { test, expect } from './fixtures';
-import { createTestContact, deleteTestContact } from './fixtures';
+import { createTestContact, deleteTestContact, makeThrowawayUser, deleteThrowawayUser } from './fixtures';
 import { request } from '@playwright/test';
 import { API_BASE_URL } from './global-setup';
-
-// A second account used only to prove data isolation (a 409 on re-run is fine).
-const USER_B = {
-  username: 'e2e_isolation_userb',
-  email: 'e2e_isolation_userb@example.com',
-  password: 'IsolationPass123!',
-};
-
-// Two more throwaway accounts for the contact-share isolation test below --
-// distinct from USER_B so the two tests' registrations can't interfere.
-const SHARE_RECIPIENT = {
-  username: 'e2e_isolation_share_recipient',
-  email: 'e2e_isolation_share_recipient@example.com',
-  password: 'ShareRecipientPass123!',
-};
-const SHARE_THIRD_PARTY = {
-  username: 'e2e_isolation_share_thirdparty',
-  email: 'e2e_isolation_share_thirdparty@example.com',
-  password: 'ShareThirdPartyPass123!',
-};
 
 test.describe('Multi-user isolation', () => {
   test('a user cannot see another user\'s contacts', async ({ page }) => {
@@ -35,13 +15,18 @@ test.describe('Multi-user isolation', () => {
       (own.contacts || []).some((c: any) => c.firstname === 'Alice' && c.lastname === 'Johnson')
     ).toBeTruthy();
 
+    // A throwaway account used only to prove data isolation, uniquely
+    // suffixed (rather than a fixed username) so it never collides with
+    // another run and can be hard-deleted below instead of accumulating.
+    const userB = makeThrowawayUser('isolation_userb');
     // userB gets a clean API context with no shared cookies.
     const ctx = await request.newContext();
     try {
-      await ctx.post(`${API_BASE_URL}/register`, { data: USER_B }).catch(() => {});
+      const registered = await ctx.post(`${API_BASE_URL}/register`, { data: userB });
+      expect(registered.ok(), `userB registration should succeed: ${await registered.text()}`).toBeTruthy();
 
       const login = await ctx.post(`${API_BASE_URL}/login`, {
-        data: { identifier: USER_B.username, password: USER_B.password },
+        data: { identifier: userB.username, password: userB.password },
       });
       expect(login.ok(), 'userB login should succeed').toBeTruthy();
 
@@ -56,24 +41,32 @@ test.describe('Multi-user isolation', () => {
       ).toBeFalsy();
     } finally {
       await ctx.dispose();
+      // page.request is authenticated as the shared (auto-admin) TEST_USER.
+      await deleteThrowawayUser(page.request, userB.username);
     }
   });
 
   test('a third user cannot see a contact share between two other users', async ({ page }) => {
+    // Distinct throwaway accounts, uniquely suffixed so they never collide
+    // with another run's or the other test's own accounts here.
+    const shareRecipient = makeThrowawayUser('isolation_share_recipient');
+    const shareThirdParty = makeThrowawayUser('isolation_share_thirdparty');
     const recipientCtx = await request.newContext();
     const thirdCtx = await request.newContext();
     let contact: Awaited<ReturnType<typeof createTestContact>> | undefined;
 
     try {
-      await recipientCtx.post(`${API_BASE_URL}/register`, { data: SHARE_RECIPIENT }).catch(() => {});
+      const recipientRegistered = await recipientCtx.post(`${API_BASE_URL}/register`, { data: shareRecipient });
+      expect(recipientRegistered.ok(), `recipient registration should succeed: ${await recipientRegistered.text()}`).toBeTruthy();
       const recipientLogin = await recipientCtx.post(`${API_BASE_URL}/login`, {
-        data: { identifier: SHARE_RECIPIENT.username, password: SHARE_RECIPIENT.password },
+        data: { identifier: shareRecipient.username, password: shareRecipient.password },
       });
       expect(recipientLogin.ok(), 'recipient login should succeed').toBeTruthy();
 
-      await thirdCtx.post(`${API_BASE_URL}/register`, { data: SHARE_THIRD_PARTY }).catch(() => {});
+      const thirdRegistered = await thirdCtx.post(`${API_BASE_URL}/register`, { data: shareThirdParty });
+      expect(thirdRegistered.ok(), `third party registration should succeed: ${await thirdRegistered.text()}`).toBeTruthy();
       const thirdLogin = await thirdCtx.post(`${API_BASE_URL}/login`, {
-        data: { identifier: SHARE_THIRD_PARTY.username, password: SHARE_THIRD_PARTY.password },
+        data: { identifier: shareThirdParty.username, password: shareThirdParty.password },
       });
       expect(thirdLogin.ok(), 'third party login should succeed').toBeTruthy();
 
@@ -88,7 +81,7 @@ test.describe('Multi-user isolation', () => {
       expect(directory.ok()).toBeTruthy();
       const directoryBody = await directory.json();
       const recipientEntry = (directoryBody.users || []).find(
-        (u: any) => u.username === SHARE_RECIPIENT.username
+        (u: any) => u.username === shareRecipient.username
       );
       expect(recipientEntry, 'recipient should be discoverable via /users/directory').toBeTruthy();
 
@@ -115,6 +108,8 @@ test.describe('Multi-user isolation', () => {
       await recipientCtx.dispose();
       await thirdCtx.dispose();
       if (contact) await deleteTestContact(page.request, contact.ID);
+      await deleteThrowawayUser(page.request, shareRecipient.username);
+      await deleteThrowawayUser(page.request, shareThirdParty.username);
     }
   });
 });
