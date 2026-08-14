@@ -617,6 +617,20 @@ paths:
           in: query
           description: When true (and include_archived is not set), return only archived contacts.
           schema: { type: boolean, default: false }
+        - name: has_contact_info
+          in: query
+          description: >
+            When true, return only contacts with at least one non-empty email,
+            phone or URL (the flat email/phone scalars or any entry in the
+            emails/phones/urls JSON arrays) — i.e. contacts you can actually
+            contact. Defaults to false for API consumers; the web Contacts page
+            opts in by default. Any value other than true/false is a 400, not a
+            silent fallback. When the filter is active, the response carries
+            hidden_count: how many contacts matched the other filters
+            (archive/search/circle) but were excluded by this predicate.
+            Ignored by ?since= (the change feed is sync state and must return
+            every row regardless of filters) and ?vcard_uid= (a by-UID lookup).
+          schema: { type: boolean, default: false }
         - name: circle
           in: query
           schema: { type: string }
@@ -682,6 +696,13 @@ paths:
                     type: string
                     description: Resume token for the next page; empty when there are no more rows.
                   limit: { type: integer }
+                  hidden_count:
+                    type: integer
+                    description: >
+                      Present only when has_contact_info=true: how many contacts
+                      matched the other filters but were excluded by the
+                      contact-info predicate, so the client can disclose that
+                      rows are hidden.
                   sync:
                     $ref: "#/components/schemas/SyncInfo"
     post:

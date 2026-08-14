@@ -32,6 +32,25 @@ var contactNameSortedColumns = append(append([]string{}, contactListColumns...),
 // feed can mark tombstones (Unscoped rows whose deleted_at is set).
 var contactFeedColumns = append(append([]string{}, contactListColumns...), "deleted_at")
 
+// contactInfoClause is the T103 "has contact info" predicate: at least one of
+// a non-empty flat email, a non-empty flat phone, or a non-empty entry in the
+// emails, phones or urls JSON arrays. Reading the flat scalars AND the arrays
+// is deliberate — the flat columns are derived from [0] of each array, so
+// they cover the common case cheaply, but a contact whose only email arrived
+// via a path that didn't populate the scalar must still count. The flat legs
+// COALESCE the NULL-able scalars to ” (raw-SQL/legacy rows can store NULL
+// where GORM writes ”): without it, `length(trim(NULL)) > 0` is NULL, which
+// the hidden-count query's `NOT (clause)` turns into NULL too — such a row is
+// excluded from the visible list but silently NOT counted as hidden, so the
+// "N contacts hidden" disclosure under-reports. No args.
+var contactInfoClause = `(
+	length(trim(COALESCE(email, ''))) > 0
+	OR length(trim(COALESCE(phone, ''))) > 0
+	OR (json_valid(emails) AND EXISTS (SELECT 1 FROM json_each(contacts.emails) WHERE length(trim(json_extract(json_each.value, '$.value'))) > 0))
+	OR (json_valid(phones) AND EXISTS (SELECT 1 FROM json_each(contacts.phones) WHERE length(trim(json_extract(json_each.value, '$.value'))) > 0))
+	OR (json_valid(urls) AND EXISTS (SELECT 1 FROM json_each(contacts.urls) WHERE length(trim(json_extract(json_each.value, '$.value'))) > 0))
+)`
+
 func CreateContact(c *gin.Context) {
 	// Save to the database
 	db := c.MustGet("db").(*gorm.DB)
@@ -215,6 +234,28 @@ func GetContacts(c *gin.Context) {
 	}
 	nameSorted := sort == "name"
 
+	// T103: ?has_contact_info=true|false narrows the list to contacts with at
+	// least one non-empty email, phone or URL (the contactInfoClause
+	// predicate). Defaults to OFF for existing API consumers; the web client
+	// opts in by default (the Contacts page is an address book, not a graph
+	// dump). Any value other than true/false is a 400, matching how sort is
+	// treated — not a silent fallback. The ?vcard_uid= batch path returns
+	// before this parse, so it never sees the param; the ?since= change feed
+	// returns after the parse but ignores the flag — a feed is sync state and
+	// must carry every row regardless of filters (a malformed value is still a
+	// 400 there, since the parse is shared).
+	hasContactInfo := false
+	if raw := c.Query("has_contact_info"); raw != "" {
+		switch raw {
+		case "true":
+			hasContactInfo = true
+		case "false":
+		default:
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("has_contact_info", "must be one of: true, false"))
+			return
+		}
+	}
+
 	params, err := GetCursorParamsForSort(c, sort)
 	if err != nil {
 		apperrors.AbortWithError(c, err)
@@ -327,28 +368,6 @@ func GetContacts(c *gin.Context) {
 		}
 	}
 
-	// T17: resume-after cursor. Default order is (updated_at, id), so the
-	// cursor position maps directly onto the ordering. T73: sort=name uses
-	// the (sort_name, id) key and its own cursor shape — never mixed.
-	desc := params.Order == "desc"
-	if params.NameCursor != nil {
-		id, ok := parseUintID(params.NameCursor.ID)
-		if !ok {
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed"))
-			return
-		}
-		pred, t, idv := nameCursorPredicate("contacts", params.NameCursor, id, desc)
-		query = query.Where(pred, t, idv)
-	} else if params.Cursor != nil {
-		id, ok := parseCursorID(params.Cursor)
-		if !ok {
-			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed"))
-			return
-		}
-		pred, t, idv := cursorPredicate("contacts", params.Cursor, id, desc)
-		query = query.Where(pred, t, idv)
-	}
-
 	// Apply search filter using parameterization
 	if searchTerm := c.Query("search"); searchTerm != "" {
 		query = applyContactSearch(query, userID, searchTerm)
@@ -366,6 +385,51 @@ func GetContacts(c *gin.Context) {
 	// old flat contacts.circles JSON column. Remove once migration is complete.
 	if circle := c.Query("circle_legacy"); circle != "" {
 		query = query.Where("EXISTS (SELECT 1 FROM json_each(contacts.circles) WHERE json_each.value = ?)", circle)
+	}
+
+	// T103: ?has_contact_info=true narrows the list to contacts you can
+	// actually contact (contactInfoClause). The hidden count is computed over
+	// the same filter scope (archive/search/circle) WITHOUT the predicate and
+	// WITHOUT the resume cursor, so it reflects the whole set the user is
+	// looking at, not the page they are on — the web client renders it as
+	// "N contacts without contact info are hidden" so a default-on filter
+	// never reads as silently lost data. Session() clones the builder so the
+	// count does not pollute the Find below; hidden_count is only present in
+	// the response while the filter is active.
+	hiddenCount := int64(0)
+	if hasContactInfo {
+		countQuery := query.Session(&gorm.Session{})
+		countQuery = countQuery.Where("NOT " + contactInfoClause)
+		if err := countQuery.Count(&hiddenCount).Error; err != nil {
+			apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to count hidden contacts").WithError(err))
+			return
+		}
+		query = query.Where(contactInfoClause)
+	}
+
+	// T17: resume-after cursor. Default order is (updated_at, id), so the
+	// cursor position maps directly onto the ordering. T73: sort=name uses
+	// the (sort_name, id) key and its own cursor shape — never mixed. Applied
+	// after the filters (and the T103 count) so the hidden count can be
+	// computed over the whole filtered set; WHERE clauses are ANDed, so the
+	// ordering between filters and cursor is semantically irrelevant.
+	desc := params.Order == "desc"
+	if params.NameCursor != nil {
+		id, ok := parseUintID(params.NameCursor.ID)
+		if !ok {
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed"))
+			return
+		}
+		pred, t, idv := nameCursorPredicate("contacts", params.NameCursor, id, desc)
+		query = query.Where(pred, t, idv)
+	} else if params.Cursor != nil {
+		id, ok := parseCursorID(params.Cursor)
+		if !ok {
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed"))
+			return
+		}
+		pred, t, idv := cursorPredicate("contacts", params.Cursor, id, desc)
+		query = query.Where(pred, t, idv)
 	}
 
 	// Preload requested relationships
@@ -415,12 +479,16 @@ func GetContacts(c *gin.Context) {
 		for i := range contacts {
 			items[i] = models.NewContactSummaryWithRelations(&contacts[i])
 		}
-		c.JSON(http.StatusOK, gin.H{
+		resp := gin.H{
 			"contacts":    items,
 			"next_cursor": nextCursor,
 			"limit":       params.Limit,
 			"sync":        buildSyncMeta(SyncModeIncremental),
-		})
+		}
+		if hasContactInfo {
+			resp["hidden_count"] = hiddenCount
+		}
+		c.JSON(http.StatusOK, resp)
 		return
 	}
 
@@ -428,12 +496,16 @@ func GetContacts(c *gin.Context) {
 	for i := range contacts {
 		items[i] = models.NewContactSummary(&contacts[i])
 	}
-	c.JSON(http.StatusOK, gin.H{
+	resp := gin.H{
 		"contacts":    items,
 		"next_cursor": nextCursor,
 		"limit":       params.Limit,
 		"sync":        buildSyncMeta(SyncModeIncremental),
-	})
+	}
+	if hasContactInfo {
+		resp["hidden_count"] = hiddenCount
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 func GetContactsRandom(c *gin.Context) {

@@ -245,6 +245,9 @@
       "lastname": "Nachname"
     },
     "showArchived": "Archivierte anzeigen",
+    "showAll": "Alle anzeigen",
+    "hiddenContactable_one": "{{count}} Kontakt ohne Kontaktinformationen ist ausgeblendet",
+    "hiddenContactable_other": "{{count}} Kontakte ohne Kontaktinformationen sind ausgeblendet",
     "archived": "Archiviert",
     "import": {
       "button": "Importieren",

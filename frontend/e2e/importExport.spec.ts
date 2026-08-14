@@ -82,8 +82,12 @@ test.describe('CSV import/export round trip', () => {
       expect(memberships.length, 'the imported contact must be a member of that Circle').toBe(1);
 
       // And it must be visible in the app, which is the point: the filter
-      // dropdown on the contacts page is populated from the entities.
-      await page.goto('/contacts');
+      // dropdown on the contacts page is populated from the entities. T103:
+      // the imported contact has no email/phone/URL, so the default
+      // contact-info filter would hide its card (and its circle chips) —
+      // opt out explicitly to keep this spec about circle import, not the
+      // list filter.
+      await page.goto('/contacts?has_contact_info=false');
       await waitForLoading(page);
       await expect(page.getByText(circleName).first()).toBeVisible({ timeout: 15000 });
 

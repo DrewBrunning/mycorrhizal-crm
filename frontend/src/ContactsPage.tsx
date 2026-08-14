@@ -96,6 +96,24 @@ export default function ContactsPage() {
   const [showArchived, setShowArchived] = useState(false);
   const pageSize = 10;
 
+  // T103: the contact-info filter defaults ON — the list is the app's front
+  // door and real data has made it an address book, so pets/relationship
+  // stubs without any email/phone/URL are hidden by default. The "Show all"
+  // switch turns it off. The URL's ?has_contact_info= param owns the choice
+  // (absent means the default, i.e. filtered), so it survives a reload and a
+  // shared link reproduces what the sender saw — the T77 pattern.
+  const hasContactInfoParam = searchParams.get('has_contact_info');
+  const showAll = hasContactInfoParam === 'false';
+  const hasContactInfo = !showAll;
+
+  const toggleShowAll = (checked: boolean) => {
+    setSearchParams((prev) => {
+      const nextParams = new URLSearchParams(prev);
+      nextParams.set('has_contact_info', checked ? 'false' : 'true');
+      return nextParams;
+    }, { replace: true });
+  };
+
   // N5 multi-select: keyed by Contact.VCardUID so it survives pagination —
   // "load more" appends to the list but the selection Set is untouched.
   const [selectedUids, setSelectedUids] = useState<Set<string>>(new Set());
@@ -108,10 +126,12 @@ export default function ContactsPage() {
   // in useContacts, which has no concept of selection. Sort is deliberately
   // NOT a dependency (T77): changing the order changes which page a contact
   // is on, not which contacts are selected — clearing on a sort would throw
-  // away a valid selection for no reason.
+  // away a valid selection for no reason. T103: toggling the contact-info
+  // filter is a selection-clearing change too (its trap calls it out
+  // explicitly).
   useEffect(() => {
     setSelectedUids(new Set());
-  }, [searchQuery, selectedCircle, showArchived]);
+  }, [searchQuery, selectedCircle, showArchived, showAll]);
 
   // T77 sort control: the URL's ?sort= and ?order= params own the list order
   // (same persistence mechanism as T86's ?search=). The web client opts into
@@ -149,10 +169,11 @@ export default function ContactsPage() {
     sort: sort as 'updated_at' | 'name',
     order: order as 'asc' | 'desc',
     includeArchived: showArchived,
-  }), [searchQuery, selectedCircle, showArchived, sort, order]);
+    hasContactInfo,
+  }), [searchQuery, selectedCircle, showArchived, sort, order, hasContactInfo]);
 
   // Use custom hook for fetching contacts
-  const { contacts, nextCursor, loading, refetch, loadMore } = useContacts(contactParams);
+  const { contacts, nextCursor, hiddenCount, loading, refetch, loadMore } = useContacts(contactParams);
 
   // Derived flags for the merged search surfaces (T86).
   const searchActive = searchQuery.trim().length >= 2;
@@ -326,6 +347,19 @@ export default function ContactsPage() {
           label={t('contacts.showArchived')}
           sx={{ ml: 0.5, whiteSpace: 'nowrap' }}
         />
+        {/* T103: the contact-info filter defaults ON; "Show all" turns it off.
+            Label matches the ticket — the unchecked default is the filter. */}
+        <FormControlLabel
+          control={
+            <Switch
+              checked={showAll}
+              onChange={(e) => toggleShowAll(e.target.checked)}
+              size="small"
+            />
+          }
+          label={t('contacts.showAll')}
+          sx={{ ml: 0.5, whiteSpace: 'nowrap' }}
+        />
         <Button
           variant="outlined"
           startIcon={<FileUploadIcon />}
@@ -352,6 +386,14 @@ export default function ContactsPage() {
           {t('contacts.add.button')}
         </Button>
       </Stack>
+      {/* T103: disclose the default-on filter so it never reads as silently
+          lost data — a user who imported 500 contacts and sees 340 must be
+          able to tell that the 160 were hidden, not deleted. */}
+      {!showAll && hiddenCount !== undefined && hiddenCount > 0 && (
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          {t('contacts.hiddenContactable', { count: hiddenCount })}
+        </Typography>
+      )}
       {selectedCircle && (
         <Box sx={{ mb: 2, p: 1.5, bgcolor: 'action.hover', borderRadius: 1, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
           <Chip 

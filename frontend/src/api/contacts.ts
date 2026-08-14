@@ -736,6 +736,10 @@ export interface ContactsResponse {
   // up the exact count on large tables.
   next_cursor: string;
   limit: number;
+  // T103: present only while ?has_contact_info=true — how many contacts
+  // matched the other filters but were excluded by the contact-info
+  // predicate, so the UI can disclose that rows are hidden.
+  hidden_count?: number;
 }
 
 export interface GetContactsParams {
@@ -751,13 +755,17 @@ export interface GetContactsParams {
   order?: 'asc' | 'desc';
   includeArchived?: boolean;
   archived?: boolean;
+  // T103: when true, only contacts with at least one non-empty email, phone,
+  // or URL are returned (the web Contacts page opts in by default). False and
+  // absent both mean "show everything"; the server rejects any other value.
+  hasContactInfo?: boolean;
 }
 
 // Get a page of contacts with filters, resumable via next_cursor (T17).
 export async function getContacts(
   params: GetContactsParams
 ): Promise<ContactsResponse> {
-  const { cursor, limit = 25, search = '', circle = '', sort, order, includeArchived, archived } = params;
+  const { cursor, limit = 25, search = '', circle = '', sort, order, includeArchived, archived, hasContactInfo } = params;
 
   const queryParams = new URLSearchParams({
     limit: limit.toString(),
@@ -770,6 +778,7 @@ export async function getContacts(
   if (order) queryParams.append('order', order);
   if (includeArchived) queryParams.append('include_archived', 'true');
   if (archived !== undefined) queryParams.append('archived', archived.toString());
+  if (hasContactInfo !== undefined) queryParams.append('has_contact_info', hasContactInfo.toString());
 
   const response = await apiFetch(
     `${API_BASE_URL}/contacts?${queryParams.toString()}`,
@@ -780,11 +789,12 @@ export async function getContacts(
     throw await parseErrorResponse(response);
   }
 
-  const data: { contacts: ContactSummaryDTO[]; next_cursor: string; limit: number } = await response.json();
+  const data: { contacts: ContactSummaryDTO[]; next_cursor: string; limit: number; hidden_count?: number } = await response.json();
   return {
     contacts: data.contacts.map(summaryToLegacyContact),
     next_cursor: data.next_cursor,
     limit: data.limit,
+    hidden_count: data.hidden_count,
   };
 }
 

@@ -171,7 +171,6 @@ idea, not a bug — filed in Deferred → Feature ideas instead, not ranked here
 
 | Ticket | Status |
 |---|---|
-| [T103](147-T103-contacts-list-has-contact-info-filter.md) · Contacts list: default to contacts with contact info | **TO BE DONE**. R4. M. Backend predicate + web toggle. Pets and relationship stubs have made the list a graph dump. |
 | [T104](148-T104-suggest-relationships-from-relationships.md) · Suggest relationships from relationships | **NOT READY** — needs a design pass first; see the ticket. R3. |
 
 ### Web
