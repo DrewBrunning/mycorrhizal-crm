@@ -10,8 +10,9 @@ import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
  * describes the actual merge, and that a within-batch duplicate collapses
  * rather than creating a twin.
  *
- * The wizard is reached from Settings → Data (the T56 entry point), uploading
- * a VCF so it goes straight to the review step (no column mapping).
+ * The wizard is reached from Settings → Data (the T56 entry point). VCF goes
+ * straight to the review step; the CSV test walks the column-mapping step so
+ * GenerateCSVPreview's separate wiring is covered too.
  */
 test.describe('Import merge review', () => {
   test('Merge unions a new phone into the matched contact and reports the diff', async ({ page, request }) => {
@@ -179,6 +180,9 @@ test.describe('Import merge review', () => {
       await expect(dialog.getByText('Resolve Conflicts (1 remaining)')).toBeVisible();
 
       await dialog.getByRole('button', { name: 'Discard New' }).click();
+      // The heading switches to the all-resolved copy — not the "no matches"
+      // claim, since the row still matched something.
+      await expect(dialog.getByText(/all conflicts resolved/i)).toBeVisible();
       await dialog.getByRole('button', { name: /apply decisions \(1\)/i }).click();
 
       await expect(dialog.getByText('1 contacts updated')).not.toBeVisible();
@@ -192,6 +196,64 @@ test.describe('Import merge review', () => {
       const body = await detail.json();
       const record = body.contact || body;
       expect((record.card?.phones ?? []).length).toBe(0);
+    } finally {
+      await deleteTestContact(request, existing.ID);
+    }
+  });
+
+  test('CSV import merge review matches the existing record and merges via the mapping step', async ({ page, request }) => {
+    const runId = `C${Date.now()}`;
+    const existing = await createTestContact(request, {
+      firstname: `${E2E_CONTACT_PREFIX}${runId}Casey`,
+      lastname: 'Morgan',
+      email: `csv-merge-${runId}@example.com`,
+    });
+
+    // CSV goes through the column-mapping step before the review cards — the
+    // within-batch/diff wiring lives in GenerateCSVPreview, a separate code
+    // path from ParseVCF, so the same merge behavior must be proven on it.
+    const csv = `First Name,Last Name,Email,Phone\n${E2E_CONTACT_PREFIX}${runId}Casey,Morgan,csv-merge-${runId}@example.com,+15554443333\n`;
+
+    try {
+      await page.goto('/settings/data');
+      await waitForLoading(page);
+      await page.getByRole('button', { name: /import contacts/i }).first().click();
+
+      const dialog = page.getByRole('dialog');
+      await expect(dialog).toBeVisible();
+      await dialog.locator('#import-file-input').setInputFiles({
+        name: 'addressbook.csv',
+        mimeType: 'text/csv',
+        buffer: Buffer.from(csv),
+      });
+
+      // Mapping step → accept the suggested mappings.
+      await expect(dialog.getByText('Map Columns')).toBeVisible();
+      await dialog.getByRole('button', { name: /continue/i }).click();
+
+      // Review step: the CSV row matched by email, defaults to Merge, and the
+      // diff shows the new phone the merge will add.
+      await expect(dialog.getByText('Resolve Conflicts (1 remaining)')).toBeVisible();
+      await expect(dialog.getByText(/\+ new phone: \+15554443333/)).toBeVisible();
+      await expect(dialog.getByText('1 to update')).toBeVisible();
+
+      await dialog.getByRole('button', { name: /apply decisions \(1\)/i }).click();
+      await expect(dialog.getByText('1 contacts updated')).toBeVisible();
+      await dialog.getByRole('button', { name: /done/i }).click();
+
+      // The existing contact gained the CSV's phone; no second contact exists.
+      const detail = await request.get(`${API_BASE_URL}/contacts/${existing.ID}`);
+      expect(detail.ok()).toBeTruthy();
+      const body = await detail.json();
+      const record = body.contact || body;
+      const phoneValues = (record.card?.phones ?? []).map((p: { number: string }) => p.number);
+      expect(phoneValues).toContain('+15554443333');
+
+      const count = await (await request.get(`${API_BASE_URL}/contacts?limit=200`)).json();
+      const matches = count.contacts.filter(
+        (c: { primary_email: string }) => c.primary_email === `csv-merge-${runId}@example.com`
+      );
+      expect(matches.length, 'a CSV merge must not create a second contact').toBe(1);
     } finally {
       await deleteTestContact(request, existing.ID);
     }

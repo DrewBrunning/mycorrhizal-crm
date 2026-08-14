@@ -340,3 +340,83 @@ func mergeDiffUpdatedValue(diff *models.ImportMergeDiff, field string) string {
 	}
 	return ""
 }
+
+// TestGenerateCSVPreview_WithinBatchDuplicate pins the T96 within-batch
+// detection on the CSV preview path specifically (the other two paths are
+// covered by TestParseVCF_WithinBatchDuplicate and the records-endpoint test):
+// a CSV carrying the same person twice must flag the second row as a
+// within-batch duplicate defaulting to skip, with no DB match involved.
+func TestGenerateCSVPreview_WithinBatchDuplicate(t *testing.T) {
+	db, err := database.InitDB(filepath.Join(t.TempDir(), "t96-csv-batch.db"))
+	require.NoError(t, err)
+
+	user := models.User{Username: "t96csvbatch", Password: "password123!A", Email: "t96csvbatch@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	headers := []string{"First Name", "Last Name", "Email"}
+	mappings := []models.ColumnMapping{
+		{CSVColumn: "First Name", ContactField: "firstname"},
+		{CSVColumn: "Last Name", ContactField: "lastname"},
+		{CSVColumn: "Email", ContactField: "email"},
+	}
+	rows := [][]string{
+		{"Jane", "Smith", "jane@example.com"},
+		{"Jane", "Smith", "jane@example.com"},
+		{"Bob", "Jones", "bob@example.com"},
+	}
+
+	contacts, previews, stats := GenerateCSVPreview(db, user.ID, rows, headers, mappings)
+	require.Len(t, contacts, 3)
+	require.Len(t, previews, 3)
+
+	assert.Equal(t, "add", previews[0].SuggestedAction)
+	assert.Nil(t, previews[0].BatchDuplicateOf, "first occurrence is not a within-batch duplicate")
+
+	require.NotNil(t, previews[1].BatchDuplicateOf, "the CSV twin must be flagged as a within-batch duplicate")
+	assert.Equal(t, 0, *previews[1].BatchDuplicateOf)
+	assert.Equal(t, "skip", previews[1].SuggestedAction)
+
+	assert.Equal(t, "add", previews[2].SuggestedAction)
+	assert.Equal(t, 3, stats.ValidCount)
+	assert.Equal(t, 0, stats.DuplicateCount, "within-batch dups are not DB duplicate matches")
+}
+
+// TestParseVCF_WithinBatchAndDbDuplicateCombined covers the combined case a
+// real import hits when the same person appears twice AND already exists in
+// the address book: the twin must carry BOTH the within-batch flag and the DB
+// duplicate match (with its merge diff), and default to skip so neither a
+// second contact is created nor a second merge is applied silently.
+func TestParseVCF_WithinBatchAndDbDuplicateCombined(t *testing.T) {
+	db, err := database.InitDB(filepath.Join(t.TempDir(), "t96-combined.db"))
+	require.NoError(t, err)
+
+	user := models.User{Username: "t96combined", Password: "password123!A", Email: "t96combined@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	existing := &models.Contact{
+		UserID:    user.ID,
+		Firstname: "Jane",
+		Lastname:  "Smith",
+		Email:     "jane@example.com",
+		Emails:    []models.ContactEmail{{Type: "work", Value: "jane@example.com"}},
+	}
+	require.NoError(t, db.Create(existing).Error)
+
+	card := "BEGIN:VCARD\r\nVERSION:4.0\r\nFN:Jane Smith\r\nN:Smith;Jane;;;\r\nEMAIL:jane@example.com\r\nEND:VCARD\r\n"
+	raw := card + card
+
+	_, previews, _, err := ParseVCF(strings.NewReader(raw), db, user.ID)
+	require.NoError(t, err)
+	require.Len(t, previews, 2)
+
+	// First occurrence: DB duplicate, default merge.
+	require.NotNil(t, previews[0].DuplicateMatch)
+	assert.Nil(t, previews[0].BatchDuplicateOf)
+	assert.Equal(t, "update", previews[0].SuggestedAction)
+
+	// Twin: BOTH flags, default skip.
+	require.NotNil(t, previews[1].DuplicateMatch, "the twin still matches the DB record")
+	require.NotNil(t, previews[1].BatchDuplicateOf, "the twin is also a within-batch duplicate")
+	assert.Equal(t, 0, *previews[1].BatchDuplicateOf)
+	assert.Equal(t, "skip", previews[1].SuggestedAction, "a row that duplicates both a sibling and an existing record stays skip-by-default")
+}

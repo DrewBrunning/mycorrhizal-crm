@@ -171,11 +171,14 @@ class ImportContactsViewModel @Inject constructor(
         }
     }
 
-    /** Returns to the LIST step so the user can import again. */
-    fun reset() {
+    /** Returns to the LIST step so the user can import again. Reloads the
+     *  device contacts so the just-imported ones' duplicate flags reflect the
+     *  fresh server state rather than the stale pre-import cache. */
+    fun startOver() {
         _uiState.update {
             it.copy(step = ImportStep.LIST, preview = null, rowActions = emptyMap(), importedCount = 0, selected = emptySet())
         }
+        load()
     }
 
     fun onErrorShown() {

@@ -306,7 +306,8 @@
           "address": "indirizzo",
           "url": "sito web",
           "impp": "IM"
-        }
+        },
+        "allResolved": "Tutti i conflitti risolti: rivedi le decisioni qui sotto."
       },
       "result": {
         "title": "Importazione Completata",

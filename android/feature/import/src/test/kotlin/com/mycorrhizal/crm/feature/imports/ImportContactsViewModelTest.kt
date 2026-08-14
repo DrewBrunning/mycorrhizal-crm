@@ -204,4 +204,33 @@ class ImportContactsViewModelTest {
             assertNull(vm.uiState.value.importedCount.takeIf { it > 0 })
             assertEquals(ImportStep.REVIEW, vm.uiState.value.step)
         }
+
+    @Test
+    fun `startOver returns to the list step and reloads the device contacts`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val device = DeviceContact(1, "lk-1", "Jane Smith", emptyList(), listOf("jane@example.com"), emptyList(), null, null)
+            coEvery { apiClient.uploadImportRecords(any()) } returns Result.success(
+                preview(ImportRowPreview(rowIndex = 0, suggestedAction = "add")),
+            )
+            coEvery { apiClient.confirmVcfImport(any()) } returns Result.success(ImportResult(created = 1))
+
+            val vm = vm(listOf(device))
+            vm.load(contentResolver = mockk<ContentResolver>(relaxed = true))
+            advanceUntilIdle()
+            vm.toggle(1)
+            vm.submitSelected()
+            advanceUntilIdle()
+            vm.confirmImport()
+            advanceUntilIdle()
+            assertEquals(ImportStep.RESULT, vm.uiState.value.step)
+
+            vm.startOver()
+            advanceUntilIdle()
+
+            val state = vm.uiState.value
+            assertEquals(ImportStep.LIST, state.step)
+            assertNull(state.preview)
+            assertNull(state.importedCount.takeIf { it > 0 })
+            assertEquals(1, state.contacts.size)
+        }
 }

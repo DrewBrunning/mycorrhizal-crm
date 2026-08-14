@@ -486,8 +486,9 @@ export default function ImportContactsDialog({
     // T96: how many duplicate/within-batch rows still sit on their seeded
     // default action, i.e. how many conflicts remain to be consciously
     // resolved ("Resolve Conflicts (N remaining)").
-    const conflictsRemaining = previewResponse.rows.filter(
-      (r) => r.validation_errors.length === 0 && isConflictRow(r) && (rowActions.get(r.row_index) ?? r.suggested_action) === r.suggested_action
+    const conflictRows = previewResponse.rows.filter((r) => r.validation_errors.length === 0 && isConflictRow(r));
+    const conflictsRemaining = conflictRows.filter(
+      (r) => (rowActions.get(r.row_index) ?? r.suggested_action) === r.suggested_action
     ).length;
 
     // T56: client-side page of the preview rows. Rows whose index lands on
@@ -533,12 +534,18 @@ export default function ImportContactsDialog({
           </Button>
         </Box>
 
-        {/* T96 conflict heading, matching the review dialog's copy */}
+        {/* T96 conflict heading. The "no matches" copy is only accurate when
+            there were never any conflicts: once one exists, even a fully
+            resolved set is not "everything below will be added as new". */}
         {conflictsRemaining > 0 ? (
           <Typography variant="subtitle2" sx={{ mb: 1 }}>
             {t('contacts.import.preview.resolveConflicts', 'Resolve Conflicts ({{count}} remaining)', {
               count: conflictsRemaining,
             })}
+          </Typography>
+        ) : conflictRows.length > 0 ? (
+          <Typography variant="subtitle2" sx={{ mb: 1 }}>
+            {t('contacts.import.preview.allResolved', 'All conflicts resolved — review the decisions below.')}
           </Typography>
         ) : (
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
@@ -896,6 +903,7 @@ function ImportRowCard({
           variant={action === 'update' ? 'contained' : 'outlined'}
           onClick={() => onActionChange('update')}
           disabled={!canMerge}
+          aria-pressed={action === 'update'}
         >
           {t('contacts.import.preview.actionMerge', 'Merge')}
         </Button>
@@ -904,6 +912,7 @@ function ImportRowCard({
           variant={action === 'add' ? 'contained' : 'outlined'}
           onClick={() => onActionChange('add')}
           disabled={hasErrors}
+          aria-pressed={action === 'add'}
         >
           {t('contacts.import.preview.actionKeepBoth', 'Keep Both')}
         </Button>
@@ -913,6 +922,7 @@ function ImportRowCard({
           color={action === 'skip' ? 'inherit' : undefined}
           onClick={() => onActionChange('skip')}
           disabled={hasErrors}
+          aria-pressed={action === 'skip'}
         >
           {t('contacts.import.preview.actionDiscard', 'Discard New')}
         </Button>

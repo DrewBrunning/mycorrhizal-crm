@@ -306,7 +306,8 @@
           "address": "dirección",
           "url": "sitio web",
           "impp": "IM"
-        }
+        },
+        "allResolved": "Todos los conflictos resueltos: revisa las decisiones a continuación."
       },
       "result": {
         "title": "Importación Completa",

@@ -169,3 +169,28 @@ New (untouched), and the within-batch collapse against the real UI. Android:
 tests. Full gates green: backend `go build/vet/gofmt/test`, frontend
 `tsc`+`vitest` (699 tests) + the full 179-test Playwright suite, Android
 `testDebugUnitTest lintDebug assembleDebug --rerun-tasks`.
+
+### Post-rebase review pass (2026-08-14)
+
+Rebased onto `main` (which had since landed T88 and T101; the README conflict
+resolved by folding both into Done alongside T96). A second review pass fixed
+the gaps it found:
+
+- **Web copy bug**: the "No duplicate matches — everything below will be added
+  as new." line also appeared when conflicts existed but were all *resolved*
+  (which is false once a row merges or discards). Now three states: "Resolve
+  Conflicts (N remaining)", "All conflicts resolved — review the decisions
+  below.", or the no-matches line only when there never were any.
+  `allResolved` translated ×5.
+- **a11y**: the Merge / Keep Both / Discard New buttons now carry
+  `aria-pressed` so screen readers hear the selected decision.
+- **Android stale-list**: the device-contacts RESULT step's Done button now
+  calls `startOver()` (reset + reload) so the just-imported contacts' duplicate
+  flags reflect fresh server state instead of the stale pre-import cache.
+- **Test gaps closed**: CSV within-batch detection (`GenerateCSVPreview`)
+  wasn't unit-covered — added; the combined within-batch **and** DB-duplicate
+  case (twin defaults to skip while still showing both flags + diff) wasn't —
+  added; a Playwright spec for the **CSV** import-merge path (mapping step →
+  cards → merge → phone unioned) — added, since only VCF was e2e-covered; and
+  the all-resolved heading is now asserted e2e in the Discard test. Suite is
+  180 tests green.

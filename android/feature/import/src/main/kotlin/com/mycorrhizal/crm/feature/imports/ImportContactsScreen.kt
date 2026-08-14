@@ -99,7 +99,7 @@ fun ImportContactsScreen(
                         )
                         Button(
                             onClick = {
-                                viewModel.reset()
+                                viewModel.startOver()
                                 onImported()
                             },
                         ) {

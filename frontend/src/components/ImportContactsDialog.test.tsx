@@ -251,7 +251,9 @@ test('resolving every conflict zeroes the remaining count', async () => {
   // Explicitly choose Discard New: the conflict is now resolved.
   fireEvent.click(screen.getByRole('button', { name: /discard new/i }));
   expect(screen.getByText('1 to skip')).toBeInTheDocument();
-  expect(screen.getByText(/no duplicate matches/i)).toBeInTheDocument();
+  // The heading switches to the all-resolved copy, never the "no matches"
+  // claim (the row still matched something).
+  expect(screen.getByText(/all conflicts resolved/i)).toBeInTheDocument();
 });
 
 // T96: a row that duplicates an EARLIER row of the same import is flagged with
