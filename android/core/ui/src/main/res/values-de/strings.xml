@@ -685,6 +685,67 @@
     <string name="agenda_edit">Punkt bearbeiten</string>
     <string name="agenda_content">Inhalt</string>
 
+    <!-- M18: field richness across the four timeline entities -->
+    <string name="life_events_category">Kategorie</string>
+    <string name="life_events_select_category">Kategorie wählen…</string>
+    <string name="life_events_select_category_first">Zuerst eine Kategorie wählen</string>
+    <string name="life_events_custom_type">Neuen Lebensereignis-Typ hinzufügen</string>
+    <string name="life_events_custom_type_label">Eigener Ereignisname</string>
+    <string name="life_events_year">Jahr</string>
+    <string name="life_events_month">Monat</string>
+    <string name="life_events_day">Tag</string>
+    <string name="life_events_related">Bezogen auf</string>
+    <string name="life_events_search_related">Kontakte suchen</string>
+    <string name="life_events_remove_related">%1$s entfernen</string>
+    <string name="life_events_remind">Jährlich erinnern</string>
+    <string name="life_events_category_home_living">Zuhause &amp; Wohnen</string>
+    <string name="life_events_category_health_wellness">Gesundheit &amp; Wohlbefinden</string>
+    <string name="life_events_category_work_education">Arbeit &amp; Bildung</string>
+    <string name="life_events_category_travel_experiences">Reisen &amp; Erlebnisse</string>
+    <string name="life_events_category_family_relationships">Familie &amp; Beziehungen</string>
+    <string name="life_events_category_uncategorized">Sonstiges / Nicht kategorisiert</string>
+    <string name="gifts_status">Status</string>
+    <string name="gifts_status_idea">Idee</string>
+    <string name="gifts_status_purchased">Gekauft</string>
+    <string name="gifts_status_given">Verschenkt</string>
+    <string name="gifts_status_received">Erhalten</string>
+    <string name="gifts_url">URL</string>
+    <string name="gifts_url_invalid">Bitte eine gültige http(s)-URL eingeben</string>
+    <string name="gifts_notes">Notizen</string>
+    <string name="gifts_occasion">Anlass</string>
+    <string name="gifts_date">Datum (JJJJ-MM-TT)</string>
+    <string name="gifts_amount">Betrag</string>
+    <string name="gifts_currency">Währung</string>
+    <string name="gifts_life_event">Lebensereignis</string>
+    <string name="gifts_activity">Aktivität</string>
+    <string name="gifts_none">Keine</string>
+    <string name="gifts_value_currency_required">Betrag und Währung müssen gemeinsam gesetzt sein</string>
+    <string name="gifts_mark_given">Als verschenkt markieren</string>
+    <string name="preferences_key">Schlüssel</string>
+    <string name="preferences_sensitivity">Sensibilität</string>
+    <string name="preferences_category_food">Essen</string>
+    <string name="preferences_category_drink">Trinken</string>
+    <string name="preferences_category_media">Medien</string>
+    <string name="preferences_key_favorite">Lieblings-</string>
+    <string name="preferences_key_dislike">Nicht mögen</string>
+    <string name="preferences_key_allergy">Allergie</string>
+    <string name="preferences_key_show">Serie</string>
+    <string name="preferences_key_movie">Film</string>
+    <string name="preferences_key_music">Musik</string>
+    <string name="preferences_section_food_drink">Essen &amp; Trinken</string>
+    <string name="preferences_section_media">Medien</string>
+    <string name="preferences_section_other">Sonstiges</string>
+    <string name="preferences_clothing_sizes">Kleidungsgrößen</string>
+    <string name="preferences_clothing_hint">z. B. M, 42, S/M</string>
+    <string name="preferences_clothing_add">Größe hinzufügen</string>
+    <string name="preferences_clothing_empty">Noch keine Kleidungsgrößen</string>
+    <string name="agenda_reference_url">Referenz-URL</string>
+    <string name="agenda_mark_discussed">Als besprochen markieren</string>
+    <string name="agenda_discussed_link_activity">Aktivität verknüpfen (optional)</string>
+    <string name="agenda_discussed_button">Besprochen</string>
+    <string name="agenda_section_open">Offen</string>
+    <string name="agenda_section_discussed">Besprochen</string>
+
 
     <!-- Merge & bulk -->
     <string name="merge_title">Kontakte zusammenführen</string>

@@ -685,6 +685,67 @@
     <string name="agenda_edit">Editar elemento</string>
     <string name="agenda_content">Contenido</string>
 
+    <!-- M18: field richness across the four timeline entities -->
+    <string name="life_events_category">Categoría</string>
+    <string name="life_events_select_category">Selecciona una categoría…</string>
+    <string name="life_events_select_category_first">Selecciona primero una categoría</string>
+    <string name="life_events_custom_type">Añadir un nuevo tipo de evento vital</string>
+    <string name="life_events_custom_type_label">Nombre del evento personalizado</string>
+    <string name="life_events_year">Año</string>
+    <string name="life_events_month">Mes</string>
+    <string name="life_events_day">Día</string>
+    <string name="life_events_related">Relacionado con</string>
+    <string name="life_events_search_related">Buscar contactos</string>
+    <string name="life_events_remove_related">Eliminar %1$s</string>
+    <string name="life_events_remind">Recordarme cada año</string>
+    <string name="life_events_category_home_living">Hogar y vivienda</string>
+    <string name="life_events_category_health_wellness">Salud y bienestar</string>
+    <string name="life_events_category_work_education">Trabajo y educación</string>
+    <string name="life_events_category_travel_experiences">Viajes y experiencias</string>
+    <string name="life_events_category_family_relationships">Familia y relaciones</string>
+    <string name="life_events_category_uncategorized">Otros / Sin categoría</string>
+    <string name="gifts_status">Estado</string>
+    <string name="gifts_status_idea">Idea</string>
+    <string name="gifts_status_purchased">Comprado</string>
+    <string name="gifts_status_given">Regalado</string>
+    <string name="gifts_status_received">Recibido</string>
+    <string name="gifts_url">URL</string>
+    <string name="gifts_url_invalid">Introduce una URL http(s) válida</string>
+    <string name="gifts_notes">Notas</string>
+    <string name="gifts_occasion">Ocasión</string>
+    <string name="gifts_date">Fecha (AAAA-MM-DD)</string>
+    <string name="gifts_amount">Importe</string>
+    <string name="gifts_currency">Moneda</string>
+    <string name="gifts_life_event">Evento vital</string>
+    <string name="gifts_activity">Actividad</string>
+    <string name="gifts_none">Ninguno</string>
+    <string name="gifts_value_currency_required">El importe y la moneda deben indicarse juntos</string>
+    <string name="gifts_mark_given">Marcar como regalado</string>
+    <string name="preferences_key">Clave</string>
+    <string name="preferences_sensitivity">Sensibilidad</string>
+    <string name="preferences_category_food">Comida</string>
+    <string name="preferences_category_drink">Bebida</string>
+    <string name="preferences_category_media">Medios</string>
+    <string name="preferences_key_favorite">Favorito</string>
+    <string name="preferences_key_dislike">No gusta</string>
+    <string name="preferences_key_allergy">Alergia</string>
+    <string name="preferences_key_show">Serie</string>
+    <string name="preferences_key_movie">Película</string>
+    <string name="preferences_key_music">Música</string>
+    <string name="preferences_section_food_drink">Comida y bebida</string>
+    <string name="preferences_section_media">Medios</string>
+    <string name="preferences_section_other">Otros</string>
+    <string name="preferences_clothing_sizes">Tallas de ropa</string>
+    <string name="preferences_clothing_hint">p. ej. M, 42, S/M</string>
+    <string name="preferences_clothing_add">Añadir talla</string>
+    <string name="preferences_clothing_empty">Aún no hay tallas de ropa</string>
+    <string name="agenda_reference_url">URL de referencia</string>
+    <string name="agenda_mark_discussed">Marcar como tratado</string>
+    <string name="agenda_discussed_link_activity">Vincular una actividad (opcional)</string>
+    <string name="agenda_discussed_button">Tratado</string>
+    <string name="agenda_section_open">Abierto</string>
+    <string name="agenda_section_discussed">Tratado</string>
+
 
     <!-- Merge & bulk -->
     <string name="merge_title">Fusionar contactos</string>

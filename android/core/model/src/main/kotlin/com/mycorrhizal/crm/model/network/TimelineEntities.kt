@@ -189,6 +189,12 @@ data class ConversationAgendaInput(
     @Json(name = "reference_url") val referenceUrl: String? = null,
 )
 
+/** PATCH /conversation-agenda/:id/discuss body — `{}` when unlinked (M18). */
+@JsonClass(generateAdapter = true)
+data class DiscussConversationAgendaInput(
+    @Json(name = "activity_id") val activityId: Int? = null,
+)
+
 @JsonClass(generateAdapter = true)
 data class ConversationAgendaPage(
     @Json(name = "conversation_agenda") val conversationAgenda: List<ConversationAgenda> = emptyList(),

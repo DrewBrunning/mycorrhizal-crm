@@ -55,6 +55,7 @@ import com.mycorrhizal.crm.model.network.CreateTagResponse
 import com.mycorrhizal.crm.model.network.ConversationAgenda
 import com.mycorrhizal.crm.model.network.ConversationAgendaInput
 import com.mycorrhizal.crm.model.network.ConversationAgendaPage
+import com.mycorrhizal.crm.model.network.DiscussConversationAgendaInput
 import com.mycorrhizal.crm.model.network.BulkContactOperationInput
 import com.mycorrhizal.crm.model.network.BulkOperationResult
 import com.mycorrhizal.crm.model.network.ContactMergeCommitResponse
@@ -959,9 +960,17 @@ class ApiClient(
     suspend fun deleteConversationAgenda(id: String): Result<Unit> =
         executeDelete("$PLACEHOLDER_ORIGIN$CONVERSATION_AGENDA_PATH/$id")
 
-    /** PATCH /api/v1/conversation-agenda/{id}/discuss — marks an item discussed. */
-    suspend fun discussConversationAgenda(id: String): Result<ConversationAgenda> =
-        executePatchEmpty("$PLACEHOLDER_ORIGIN$CONVERSATION_AGENDA_PATH/$id/discuss") { _, body ->
+    /**
+     * PATCH /api/v1/conversation-agenda/{id}/discuss — marks an item
+     * discussed (M18: optionally linked to an existing activity). Sends
+     * `{ activity_id }` when [activityId] is set and an empty object
+     * otherwise — matching web's MarkDiscussedDialog.
+     */
+    suspend fun discussConversationAgenda(id: String, activityId: Int? = null): Result<ConversationAgenda> =
+        executePatch(
+            "$PLACEHOLDER_ORIGIN$CONVERSATION_AGENDA_PATH/$id/discuss",
+            DiscussConversationAgendaInput(activityId = activityId),
+        ) { _, body ->
             moshi.adapter(ConversationAgenda::class.java).fromJson(body)
         }
 

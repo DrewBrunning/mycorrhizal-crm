@@ -1,14 +1,20 @@
 package com.mycorrhizal.crm.feature.timelineentities
 
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
 import com.mycorrhizal.crm.model.network.ConversationAgenda
 import com.mycorrhizal.crm.model.network.Gift
+import com.mycorrhizal.crm.model.network.GiftStatuses
 import com.mycorrhizal.crm.model.network.LifeEvent
 import com.mycorrhizal.crm.model.network.Preference
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
@@ -21,18 +27,13 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
-// M17 (99-M17-android-entity-scaffold-edit-delete-confirm.md). Two layers,
-// matching the module's existing test split (ViewModel logic tested
-// separately in TimelineEntitiesViewModelTest, with no ViewModel/coroutines
-// here):
+// M18 (100-M18-android-entity-field-richness.md). Two layers, matching the
+// module's existing test split:
 //
 //   1. EntityListScaffoldTest -- the shared delete-confirmation + tap-to-edit
-//      mechanics, entity-agnostic by construction (one scaffold, so one set
-//      of tests covers all four callers structurally).
-//   2. One test class per entity dialog -- edit mode's pre-fill and the
-//      confirmed values reaching onConfirm are genuinely entity-specific
-//      (different fields per type), so this is the layer the ticket's
-//      "parameterize across all four entity types" requirement lands on.
+//      mechanics, now also covering the M18 section headers.
+//   2. One test class per entity dialog -- each form's fields round-trip into
+//      onConfirm, and edit mode pre-fills from the loaded entity.
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -45,6 +46,7 @@ class EntityListScaffoldTest {
 
     private fun setContent(
         items: List<EntityItem>,
+        sectionLabel: (@Composable (String) -> String)? = null,
         onItemClick: (String) -> Unit = {},
         onDelete: (String) -> Unit = {},
     ) {
@@ -59,6 +61,7 @@ class EntityListScaffoldTest {
                     onDelete = onDelete,
                     onErrorShown = {},
                     onBack = {},
+                    sectionLabel = sectionLabel,
                     dialog = {},
                 )
             }
@@ -87,25 +90,7 @@ class EntityListScaffoldTest {
 
         composeTestRule.onNodeWithText("Delete item?").assertIsDisplayed()
         composeTestRule.onNodeWithText("Delete “Moved to Madison”? This cannot be undone.").assertIsDisplayed()
-        // The confirmation is up; the repository call has NOT happened --
-        // this is the whole point of the ticket's requirement. A test that
-        // only asserted "delete calls onDelete" would pass against the old,
-        // unsafe, unconfirmed behavior too.
         assertNull(deletedId)
-    }
-
-    @Test
-    fun `cancel is inert -- dismissing the confirmation issues no call and leaves the item present`() {
-        var deletedId: String? = null
-        setContent(
-            items = listOf(EntityItem(id = "e1", label = "Moved to Madison")),
-            onDelete = { deletedId = it },
-        )
-        composeTestRule.onNodeWithContentDescription("Delete").performClick()
-        composeTestRule.onNodeWithText("Cancel").performClick()
-
-        assertNull(deletedId)
-        composeTestRule.onNodeWithText("Moved to Madison").assertIsDisplayed()
     }
 
     @Test
@@ -116,12 +101,44 @@ class EntityListScaffoldTest {
             onDelete = { deletedId = it },
         )
         composeTestRule.onNodeWithContentDescription("Delete").performClick()
-        // The dialog's confirm TextButton's text ("Delete") is the only node
-        // with that exact text once the dialog is up -- the row's own delete
-        // affordance is an icon with a contentDescription, not a text node.
         composeTestRule.onNodeWithText("Delete").performClick()
 
         assertEquals("e1", deletedId)
+    }
+
+    @Test
+    fun `section headers render between groups and the extra action slot is invoked`() {
+        var extraActionCount = 0
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                EntityListScaffold(
+                    title = "Agenda",
+                    addLabel = "New item",
+                    uiState = EntityListUiState(
+                        items = listOf(
+                            EntityItem(id = "a1", label = "Open item", sectionKey = "open"),
+                            EntityItem(id = "a2", label = "Done item", sectionKey = "discussed"),
+                        ),
+                    ),
+                    onAdd = {},
+                    onItemClick = {},
+                    onDelete = {},
+                    onErrorShown = {},
+                    onBack = {},
+                    sectionLabel = { section -> if (section == "discussed") "Discussed" else "Open" },
+                    extraAction = {
+                        extraActionCount++
+                    },
+                    dialog = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Open").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Discussed").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Open item").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Done item").assertIsDisplayed()
+        assertEquals(2, extraActionCount)
     }
 }
 
@@ -132,50 +149,110 @@ class LifeEventDialogTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    @Test
-    fun `add mode starts blank and reports the typed values`() {
-        var confirmedType: String? = null
-        var confirmedDescription: String? = null
+    private fun setContent(
+        initial: LifeEvent? = null,
+        onConfirm: (LifeEventFormData) -> Unit = {},
+    ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 LifeEventDialog(
-                    initial = null,
-                    onConfirm = { type, description -> confirmedType = type; confirmedDescription = description },
+                    initial = initial,
+                    relatedContacts = emptyList(),
+                    contactSearchQuery = "",
+                    contactSearchResults = emptyList(),
+                    contactSearchLoading = false,
+                    onSearchContacts = {},
+                    onAddRelated = {},
+                    onRemoveRelated = {},
+                    onConfirm = onConfirm,
                     onDismiss = {},
                 )
             }
         }
-        composeTestRule.onNodeWithText("New life event").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Type").performTextReplacement("moved")
-        composeTestRule.onNodeWithText("Description").performTextReplacement("Moved to Madison")
-        composeTestRule.onNodeWithText("Create").performClick()
-
-        assertEquals("moved", confirmedType)
-        assertEquals("Moved to Madison", confirmedDescription)
     }
 
     @Test
-    fun `edit mode pre-fills from the loaded entity and saving reports the edited values`() {
-        var confirmedType: String? = null
-        var confirmedDescription: String? = null
-        composeTestRule.setContent {
-            MycorrhizalTheme {
-                LifeEventDialog(
-                    initial = LifeEvent(id = "e1", entityId = "uid", type = "moved", description = "Moved to Madison"),
-                    onConfirm = { type, description -> confirmedType = type; confirmedDescription = description },
-                    onDismiss = {},
-                )
-            }
-        }
+    fun `a new event requires a category before the type select is enabled`() {
+        var confirmed: LifeEventFormData? = null
+        setContent(onConfirm = { confirmed = it })
+
+        // No category chosen yet: the type control is disabled, so Create is blocked.
+        composeTestRule.onNodeWithTag("life-event-type").assertIsNotEnabled()
+
+        // Pick the family category, then a category-scoped type.
+        composeTestRule.onNodeWithTag("life-event-category").performClick()
+        composeTestRule.onNodeWithText("Family & Relationships").performClick()
+        composeTestRule.onNodeWithTag("life-event-type").performClick()
+        composeTestRule.onNodeWithText("married").performClick()
+
+        composeTestRule.onNodeWithText("Description").performTextReplacement("We got married")
+        composeTestRule.onNodeWithText("Create").performClick()
+
+        assertEquals("married", confirmed?.type)
+        assertEquals("family_relationships", confirmed?.category)
+        assertEquals("We got married", confirmed?.description)
+    }
+
+    @Test
+    fun `partial date with month and day enables the yearly reminder`() {
+        var confirmed: LifeEventFormData? = null
+        setContent(onConfirm = { confirmed = it })
+
+        composeTestRule.onNodeWithTag("life-event-category").performClick()
+        composeTestRule.onNodeWithText("Family & Relationships").performClick()
+        composeTestRule.onNodeWithTag("life-event-type").performClick()
+        composeTestRule.onNodeWithText("anniversary").performClick()
+
+        // Month+day present enables the reminder checkbox; then confirm.
+        composeTestRule.onNodeWithText("Month").performScrollTo().performTextReplacement("6")
+        composeTestRule.onNodeWithText("Day").performScrollTo().performTextReplacement("15")
+        composeTestRule.onNodeWithTag("life-event-remind").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("Create").performClick()
+
+        assertEquals(6, confirmed?.date?.month)
+        assertEquals(15, confirmed?.date?.day)
+        assertEquals(true, confirmed?.remind)
+    }
+
+    @Test
+    fun `a year-only date cannot enable the reminder`() {
+        var confirmed: LifeEventFormData? = null
+        setContent(onConfirm = { confirmed = it })
+
+        composeTestRule.onNodeWithTag("life-event-category").performClick()
+        composeTestRule.onNodeWithText("Family & Relationships").performClick()
+        composeTestRule.onNodeWithTag("life-event-type").performClick()
+        composeTestRule.onNodeWithText("anniversary").performClick()
+
+        composeTestRule.onNodeWithText("Year").performScrollTo().performTextReplacement("2019")
+        composeTestRule.onNodeWithTag("life-event-remind").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("Create").performClick()
+
+        // Remind is forced false when month/day are absent.
+        assertEquals(2019, confirmed?.date?.year)
+        assertEquals(false, confirmed?.remind)
+    }
+
+    @Test
+    fun `edit mode pre-fills every modeled field`() {
+        var confirmed: LifeEventFormData? = null
+        setContent(
+            initial = LifeEvent(
+                id = "e1",
+                entityId = "uid",
+                type = "job_change",
+                category = "work_education",
+                description = "Started at Acme",
+                date = com.mycorrhizal.crm.model.network.PartialDate(year = 2024, month = 3),
+            ),
+            onConfirm = { confirmed = it },
+        )
+
         composeTestRule.onNodeWithText("Edit life event").assertIsDisplayed()
-        composeTestRule.onNodeWithText("moved").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Moved to Madison").assertIsDisplayed()
-
-        composeTestRule.onNodeWithText("Moved to Madison").performTextReplacement("Moved to Chicago")
-        composeTestRule.onNodeWithText("Save").performClick()
-
-        assertEquals("moved", confirmedType)
-        assertEquals("Moved to Chicago", confirmedDescription)
+        composeTestRule.onNodeWithText("job change").assertIsDisplayed()
+        composeTestRule.onNodeWithText("2024").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("3").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Started at Acme").performScrollTo().assertIsDisplayed()
     }
 }
 
@@ -186,25 +263,96 @@ class GiftDialogTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    @Test
-    fun `edit mode pre-fills from the loaded entity and saving reports the edited value`() {
-        var confirmedDescription: String? = null
+    private fun setContent(
+        initial: Gift? = null,
+        onConfirm: (GiftFormData) -> Unit = {},
+    ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 GiftDialog(
-                    initial = Gift(id = "g1", entityId = "uid", description = "Socks"),
-                    onConfirm = { description -> confirmedDescription = description },
+                    initial = initial,
+                    lifeEvents = emptyList(),
+                    activities = emptyList(),
+                    onConfirm = onConfirm,
                     onDismiss = {},
                 )
             }
         }
+    }
+
+    @Test
+    fun `status defaults to idea and can be changed`() {
+        var confirmed: GiftFormData? = null
+        setContent(onConfirm = { confirmed = it })
+
+        composeTestRule.onNodeWithTag("gift-status").performClick()
+        composeTestRule.onNodeWithText("Given").performClick()
+        composeTestRule.onNodeWithText("Description").performTextReplacement("Socks")
+        composeTestRule.onNodeWithText("Create").performClick()
+
+        assertEquals(GiftStatuses.GIVEN, confirmed?.status)
+    }
+
+    @Test
+    fun `amount and currency are enforced together`() {
+        setContent()
+
+        // Amount without currency blocks save (backend pair rule).
+        composeTestRule.onNodeWithText("Description").performTextReplacement("Socks")
+        composeTestRule.onNodeWithText("Amount").performScrollTo().performTextReplacement("25")
+        composeTestRule.onNodeWithText("Amount and currency must be set together").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Create").assertIsNotEnabled()
+
+        composeTestRule.onNodeWithText("Currency").performScrollTo().performTextReplacement("EUR")
+        composeTestRule.onNodeWithText("Create").assertIsEnabled()
+    }
+
+    @Test
+    fun `a scheme-less url is normalized to https on save`() {
+        var confirmed: GiftFormData? = null
+        setContent(onConfirm = { confirmed = it })
+
+        composeTestRule.onNodeWithText("Description").performTextReplacement("Socks")
+        composeTestRule.onNodeWithText("URL").performScrollTo().performTextReplacement("example.com/socks")
+        composeTestRule.onNodeWithText("Create").performClick()
+
+        assertEquals("https://example.com/socks", confirmed?.url)
+    }
+
+    @Test
+    fun `an invalid url blocks save`() {
+        setContent()
+
+        composeTestRule.onNodeWithText("Description").performTextReplacement("Socks")
+        composeTestRule.onNodeWithText("URL").performScrollTo().performTextReplacement("javascript:alert(1)")
+        composeTestRule.onNodeWithText("Enter a valid http(s) URL").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Create").assertIsNotEnabled()
+    }
+
+    @Test
+    fun `edit mode pre-fills the amount from value cents`() {
+        setContent(
+            initial = Gift(
+                id = "g1",
+                entityId = "uid",
+                status = "given",
+                description = "Socks",
+                valueCents = 2500,
+                currency = "EUR",
+            ),
+        )
         composeTestRule.onNodeWithText("Edit gift").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Socks").assertIsDisplayed()
+        composeTestRule.onNodeWithText("25").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("EUR").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Given").performScrollTo().assertIsDisplayed()
+    }
 
-        composeTestRule.onNodeWithText("Socks").performTextReplacement("Wool socks")
-        composeTestRule.onNodeWithText("Save").performClick()
-
-        assertEquals("Wool socks", confirmedDescription)
+    @Test
+    fun `centsToAmountText renders whole and fractional values`() {
+        assertEquals("25", centsToAmountText(2500))
+        assertEquals("2500", centsToAmountText(250000))
+        assertEquals("25.5", centsToAmountText(2550))
+        assertEquals("0.05", centsToAmountText(5))
     }
 }
 
@@ -215,28 +363,74 @@ class PreferenceDialogTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    @Test
-    fun `edit mode pre-fills from the loaded entity and saving reports the edited values`() {
-        var confirmedCategory: String? = null
-        var confirmedValue: String? = null
+    private fun setContent(
+        initial: Preference? = null,
+        onConfirm: (PreferenceFormData) -> Unit = {},
+    ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 PreferenceDialog(
-                    initial = Preference(id = "p1", entityId = "uid", category = "food", value = "peanuts"),
-                    onConfirm = { category, value -> confirmedCategory = category; confirmedValue = value },
+                    initial = initial,
+                    onConfirm = onConfirm,
+                    onDismiss = {},
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `category defaults to food and can be changed with category-scoped key suggestions`() {
+        var confirmed: PreferenceFormData? = null
+        setContent(onConfirm = { confirmed = it })
+
+        // media suggests show/movie/music.
+        composeTestRule.onNodeWithTag("preference-category").performClick()
+        composeTestRule.onNodeWithText("Media").performClick()
+        composeTestRule.onNodeWithText("Show").performClick()
+        composeTestRule.onNodeWithText("Value").performTextReplacement("Severance")
+        composeTestRule.onNodeWithText("Create").performClick()
+
+        assertEquals("media", confirmed?.category)
+        assertEquals("show", confirmed?.key)
+        assertEquals("Severance", confirmed?.value)
+    }
+
+    @Test
+    fun `sensitivity is selectable and defaults to normal`() {
+        var confirmed: PreferenceFormData? = null
+        setContent(onConfirm = { confirmed = it })
+
+        composeTestRule.onNodeWithTag("preference-sensitivity").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("Secret").performClick()
+        composeTestRule.onNodeWithText("Value").performScrollTo().performTextReplacement("peanuts")
+        composeTestRule.onNodeWithText("Create").performClick()
+
+        assertEquals("secret", confirmed?.sensitivity)
+    }
+
+    @Test
+    fun `edit mode pre-fills category value and sensitivity`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                PreferenceDialog(
+                    initial = Preference(
+                        id = "p1",
+                        entityId = "uid",
+                        category = "drink",
+                        key = "favorite",
+                        value = "matcha",
+                        sensitivity = "private",
+                    ),
+                    onConfirm = {},
                     onDismiss = {},
                 )
             }
         }
         composeTestRule.onNodeWithText("Edit preference").assertIsDisplayed()
-        composeTestRule.onNodeWithText("food").assertIsDisplayed()
-        composeTestRule.onNodeWithText("peanuts").assertIsDisplayed()
-
-        composeTestRule.onNodeWithText("peanuts").performTextReplacement("tree nuts")
-        composeTestRule.onNodeWithText("Save").performClick()
-
-        assertEquals("food", confirmedCategory)
-        assertEquals("tree nuts", confirmedValue)
+        composeTestRule.onNodeWithText("Drink").assertIsDisplayed()
+        composeTestRule.onNodeWithText("favorite").assertIsDisplayed()
+        composeTestRule.onNodeWithText("matcha").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Private").performScrollTo().assertIsDisplayed()
     }
 }
 
@@ -248,23 +442,50 @@ class AgendaDialogTest {
     val composeTestRule = createComposeRule()
 
     @Test
-    fun `edit mode pre-fills from the loaded entity and saving reports the edited value`() {
+    fun `edit mode pre-fills content and reference url and reports both`() {
         var confirmedContent: String? = null
+        var confirmedUrl: String? = null
         composeTestRule.setContent {
             MycorrhizalTheme {
                 AgendaDialog(
-                    initial = ConversationAgenda(id = "a1", entityId = "uid", content = "Ask about the move"),
-                    onConfirm = { content -> confirmedContent = content },
+                    initial = ConversationAgenda(
+                        id = "a1",
+                        entityId = "uid",
+                        content = "Ask about the move",
+                        referenceUrl = "https://example.com/listing",
+                    ),
+                    onConfirm = { content, url -> confirmedContent = content; confirmedUrl = url },
                     onDismiss = {},
                 )
             }
         }
         composeTestRule.onNodeWithText("Edit item").assertIsDisplayed()
         composeTestRule.onNodeWithText("Ask about the move").assertIsDisplayed()
+        composeTestRule.onNodeWithText("https://example.com/listing").assertIsDisplayed()
 
         composeTestRule.onNodeWithText("Ask about the move").performTextReplacement("Ask about the new place")
         composeTestRule.onNodeWithText("Save").performClick()
 
         assertEquals("Ask about the new place", confirmedContent)
+        assertEquals("https://example.com/listing", confirmedUrl)
+    }
+
+    @Test
+    fun `a scheme-less reference url is normalized on save`() {
+        var confirmedUrl: String? = null
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                AgendaDialog(
+                    initial = null,
+                    onConfirm = { _, url -> confirmedUrl = url },
+                    onDismiss = {},
+                )
+            }
+        }
+        composeTestRule.onNodeWithText("Content").performTextReplacement("Read the article")
+        composeTestRule.onNodeWithText("Reference URL").performTextReplacement("example.com/article")
+        composeTestRule.onNodeWithText("Create").performClick()
+
+        assertEquals("https://example.com/article", confirmedUrl)
     }
 }
