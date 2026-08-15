@@ -244,6 +244,86 @@
     <string name="custom_links_mime">MIMETYPE</string>
     <string name="custom_links_template">Intent URI ({handle})</string>
 
+    <!-- Settings: appearance (M25) -->
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_theme_system">Use system default</string>
+    <string name="settings_theme_light">Light mode</string>
+    <string name="settings_theme_dark">Dark mode</string>
+    <string name="settings_date_format_eu">European (DD.MM.YYYY)</string>
+    <string name="settings_date_format_us">US (MM/DD/YYYY)</string>
+    <string name="settings_date_format_iso">ISO (YYYY-MM-DD)</string>
+    <string name="settings_date_format_ca">Canada (DD/MM/YYYY)</string>
+    <string name="settings_date_format_eu_hyphen">European with hyphens (DD-MM-YYYY)</string>
+    <string name="settings_date_format_us_mmm">US abbreviated (MMM D, YYYY)</string>
+    <string name="settings_date_format_us_mmmm">US full (MMMM D, YYYY)</string>
+    <string name="settings_date_format_eu_mmm">European abbreviated (D MMM, YYYY)</string>
+    <string name="settings_date_format_eu_mmmm">European full (DD MMMM, YYYY)</string>
+
+    <!-- Settings: password change (M25) -->
+    <string name="settings_password_title">Change Password</string>
+    <string name="settings_password_current">Current password</string>
+    <string name="settings_password_new">New password</string>
+    <string name="settings_password_confirm">Confirm new password</string>
+    <string name="settings_password_change_button">Update password</string>
+    <string name="settings_password_mismatch">New passwords do not match.</string>
+
+    <!-- Settings: webhooks (M25) -->
+    <string name="settings_webhooks_title">Webhooks</string>
+    <string name="settings_webhooks_description">Receive HTTP POST notifications when events occur in your CRM.</string>
+    <string name="settings_webhooks_add">Add Webhook</string>
+    <string name="settings_webhooks_edit">Edit</string>
+    <string name="settings_webhooks_delete">Delete</string>
+    <string name="settings_webhooks_delete_title">Delete Webhook</string>
+    <string name="settings_webhooks_delete_body">Delete "%1$s"? This will stop all future deliveries.</string>
+    <string name="settings_webhooks_test">Test</string>
+    <string name="settings_webhooks_active">Active</string>
+    <string name="settings_webhooks_inactive">Inactive</string>
+    <string name="settings_webhooks_events">Events</string>
+    <string name="settings_webhooks_events_count">%1$d events</string>
+    <string name="settings_webhooks_name">Name</string>
+    <string name="settings_webhooks_url">URL</string>
+    <string name="settings_webhooks_empty">No webhooks configured yet.</string>
+    <string name="settings_webhooks_show_deliveries">Recent Deliveries</string>
+    <string name="settings_webhooks_hide_deliveries">Hide Deliveries</string>
+    <string name="settings_webhooks_no_deliveries">No deliveries yet.</string>
+    <string name="settings_webhooks_test_success">Test delivered (%1$s)</string>
+    <string name="settings_webhooks_secret_title">Webhook Secret</string>
+    <string name="settings_webhooks_secret_warning">This secret is shown only once. Copy it before closing.</string>
+    <string name="settings_webhooks_event_contact_created">Contact Created</string>
+    <string name="settings_webhooks_event_contact_updated">Contact Updated</string>
+    <string name="settings_webhooks_event_contact_deleted">Contact Deleted</string>
+    <string name="settings_webhooks_event_note_created">Note Created</string>
+    <string name="settings_webhooks_event_note_updated">Note Updated</string>
+    <string name="settings_webhooks_event_note_deleted">Note Deleted</string>
+    <string name="settings_webhooks_event_activity_created">Activity Created</string>
+    <string name="settings_webhooks_event_activity_updated">Activity Updated</string>
+    <string name="settings_webhooks_event_activity_deleted">Activity Deleted</string>
+    <string name="settings_webhooks_event_reminder_triggered">Reminder Triggered</string>
+    <string name="settings_webhooks_event_birthday_occurred">Birthday</string>
+
+    <!-- Settings: notification channels — ntfy/Gotify (M25) -->
+    <string name="settings_notifications_title">Notification channels</string>
+    <string name="settings_notifications_description">Choose how reminder notifications reach you. Email is configured server-side and toggled per reminder; the channels below deliver reminders to your self-hosted push services.</string>
+    <string name="settings_notifications_ntfy">ntfy</string>
+    <string name="settings_notifications_ntfy_enable">Send reminders via ntfy</string>
+    <string name="settings_notifications_ntfy_url">ntfy server URL</string>
+    <string name="settings_notifications_ntfy_topic">Topic</string>
+    <string name="settings_notifications_gotify">Gotify</string>
+    <string name="settings_notifications_gotify_enable">Send reminders via Gotify</string>
+    <string name="settings_notifications_gotify_url">Gotify server URL</string>
+    <string name="settings_notifications_gotify_token">App token</string>
+    <string name="settings_notifications_gotify_token_hint_existing">A token is already stored. Leave the field empty to keep it.</string>
+    <string name="settings_notifications_gotify_token_hint_new">Create an app token in your Gotify instance.</string>
+    <string name="settings_notifications_test">Send test notification</string>
+    <string name="settings_notifications_testing">Sending…</string>
+    <string name="settings_notifications_test_success">Test notification sent via %1$s</string>
+    <string name="settings_notifications_test_failed">Test failed: %1$s</string>
+    <string name="settings_notifications_save">Save notification settings</string>
+
+    <string name="settings_save">Save</string>
+    <string name="settings_ok">OK</string>
+
     <!-- Notifications (tracking alerts / channels) -->
     <string name="notification_channel_reminders_name">Reminders</string>
     <string name="notification_channel_reminders_description">Contact reminders and follow-ups</string>

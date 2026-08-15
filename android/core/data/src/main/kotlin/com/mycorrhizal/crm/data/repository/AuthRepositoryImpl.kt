@@ -60,6 +60,30 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun fetchCurrentUser(): Result<UserProfile> = apiClient.currentUser()
 
+    override suspend fun updateLanguage(language: String): Result<Unit> {
+        val result = apiClient.updateLanguage(language)
+        result.getOrElse { return Result.failure(it.toApiError()) }
+        // Merge into the session so observeSession() re-emits and every screen
+        // that reads SessionState.language picks up the change immediately.
+        sessionManager.setProfile(SessionState(language = language))
+        return Result.success(Unit)
+    }
+
+    override suspend fun updateDateFormat(dateFormat: String): Result<Unit> {
+        val result = apiClient.updateDateFormat(dateFormat)
+        result.getOrElse { return Result.failure(it.toApiError()) }
+        sessionManager.setProfile(SessionState(dateFormat = dateFormat))
+        return Result.success(Unit)
+    }
+
+    override suspend fun changePassword(currentPassword: String, newPassword: String): Result<Unit> {
+        val result = apiClient.changePassword(currentPassword, newPassword)
+        return result.fold(
+            onSuccess = { Result.success(Unit) },
+            onFailure = { Result.failure(it.toApiError()) },
+        )
+    }
+
     override suspend fun logout() {
         sessionManager.clearSession()
     }
