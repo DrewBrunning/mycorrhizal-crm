@@ -199,7 +199,7 @@ export function formatBirthdayWithFormat(birthday: string, format: DateFormat, i
     const month = parts[1];
     const day = parts[2];
 
-    let dateStr = formatFullDate(year, month, day, format);
+    const dateStr = formatFullDate(year, month, day, format);
 
     // Calculate age if requested and year is valid
     if (includeAge && year && year.length === 4) {

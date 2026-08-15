@@ -46,7 +46,7 @@ func (e *AppError) WithError(err error) *AppError {
 const (
 	// Authentication & Authorization
 	ErrCodeUnauthorized       = "UNAUTHORIZED"
-	ErrCodeInvalidCredentials = "INVALID_CREDENTIALS"
+	ErrCodeInvalidCredentials = "INVALID_CREDENTIALS" // #nosec G101 -- error code string, not a credential
 	ErrCodeTokenExpired       = "TOKEN_EXPIRED"
 	ErrCodeTokenInvalid       = "TOKEN_INVALID"
 	ErrCodeForbidden          = "FORBIDDEN"

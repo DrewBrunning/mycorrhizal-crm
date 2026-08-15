@@ -69,7 +69,7 @@ export default function CustomFieldsSettings() {
       await handleDelete(deleteTarget.id);
       showSuccess(t('customFields.deleteSuccess'));
       setDeleteTarget(null);
-    } catch (err) {
+    } catch {
       // error surfaced by the hook's notifier path; keep the dialog open
       setDeleteTarget(null);
     } finally {

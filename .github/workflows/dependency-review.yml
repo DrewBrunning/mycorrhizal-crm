@@ -1,0 +1,20 @@
+name: Dependency Review
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Scans the PR's dependency changes for known-vulnerable additions and
+      # dependency-confusion / typosquatting attacks. Requires the Dependency
+      # graph + Dependency submission to be enabled on the repo.
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4

@@ -1,5 +1,5 @@
 # Build stage
-FROM --platform=$BUILDPLATFORM node:lts-alpine AS builder
+FROM --platform=$BUILDPLATFORM node:22-alpine AS builder
 
 WORKDIR /app
 
@@ -21,7 +21,7 @@ ENV VITE_API_URL=${VITE_API_URL}
 RUN if [ -f yarn.lock ]; then yarn build; else npm run build; fi
 
 # Production stage - serve with unprivileged nginx
-FROM nginxinc/nginx-unprivileged:alpine
+FROM nginxinc/nginx-unprivileged:1.27-alpine
 
 # Copy custom nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf

@@ -49,7 +49,7 @@ const SAMPLE_CONTACTS = [
   },
 ];
 
-async function globalSetup(config: FullConfig) {
+async function globalSetup(_config: FullConfig) {
   console.log('Setting up test environment...');
 
   // Wait for backend to be ready
