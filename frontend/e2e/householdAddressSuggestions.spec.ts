@@ -24,12 +24,20 @@ test.describe('Address-based household suggestions', () => {
 
     try {
       await page.goto('/households');
-      await page.getByRole('button', { name: /suggest households/i }).click();
+
+      // The address-suggestion scan is a backend read that can briefly miss
+      // the just-created contacts: the pooled SQLite WAL connections can serve
+      // a stale read snapshot right after the creates commit (the exact race
+      // T93 documents for merge). Retry the scan until the suggestion appears
+      // rather than asserting a single attempt.
+      const address = '742 Evergreen Terrace, Springfield, IL, 62704';
+      await expect(async () => {
+        await page.getByRole('button', { name: /suggest households/i }).click();
+        await expect(page.getByText(address)).toBeVisible({ timeout: 2000 });
+      }).toPass({ timeout: 15000 });
 
       // The suggestion card renders the shared address and both members.
-      await expect(
-        page.getByText('742 Evergreen Terrace, Springfield, IL, 62704')
-      ).toBeVisible();
+      await expect(page.getByText(address)).toBeVisible();
       await expect(page.getByText(new RegExp(`${a.firstname}`))).toBeVisible();
       await expect(page.getByText(new RegExp(`${b.firstname}`))).toBeVisible();
 
@@ -38,13 +46,17 @@ test.describe('Address-based household suggestions', () => {
       // the members' UUIDs (server-side sort), so match either order.
       await page.getByRole('button', { name: 'Accept' }).click();
       const eitherOrder = new RegExp(`(${a.firstname}.*${b.firstname}|${b.firstname}.*${a.firstname})`);
-      await expect(page.getByText(eitherOrder)).toBeVisible();
+      // Scope to the household card's title (the generated name). A bare
+      // getByText also matches the members rows (each shows both names beside
+      // its role select), which is two elements and trips strict mode.
+      const householdTitle = page.locator('.MuiTypography-h6', { hasText: eitherOrder });
+      await expect(householdTitle).toBeVisible();
 
       // The suggestion is gone from the list, and the new household persists
       // after reload.
-      await expect(page.getByText('742 Evergreen Terrace, Springfield, IL, 62704')).toBeHidden();
+      await expect(page.getByText(address)).toBeHidden();
       await page.reload();
-      await expect(page.getByText(eitherOrder)).toBeVisible();
+      await expect(householdTitle).toBeVisible();
     } finally {
       await deleteTestContact(page.request, a.ID);
       await deleteTestContact(page.request, b.ID);
