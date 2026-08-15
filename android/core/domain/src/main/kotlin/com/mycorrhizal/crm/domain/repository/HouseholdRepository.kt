@@ -1,7 +1,11 @@
 package com.mycorrhizal.crm.domain.repository
 
+import com.mycorrhizal.crm.model.network.AcceptHouseholdSuggestionInput
+import com.mycorrhizal.crm.model.network.AddressHouseholdSuggestion
+import com.mycorrhizal.crm.model.network.DismissHouseholdSuggestionInput
 import com.mycorrhizal.crm.model.network.Household
 import com.mycorrhizal.crm.model.network.HouseholdMember
+import com.mycorrhizal.crm.model.network.RelationshipEdge
 
 /**
  * Household data access. Online-first: writes go to the server and the
@@ -32,6 +36,18 @@ interface HouseholdRepository {
 
     /** Update a member's role/since/until. */
     suspend fun updateMember(id: String, vcardUid: String, role: String? = null): Result<Unit>
+
+    /** Trigger the relationship-suggestion engine for a household; returns the newly created suggested edges. */
+    suspend fun suggestRelationships(id: String): Result<List<RelationshipEdge>>
+
+    /** T40: scan the user's contacts for shared-address household suggestions (read-only). */
+    suspend fun suggestAddressHouseholds(): Result<List<AddressHouseholdSuggestion>>
+
+    /** T40: materialize a household from a suggested group; returns the created household. */
+    suspend fun acceptAddressSuggestion(input: AcceptHouseholdSuggestionInput): Result<Household>
+
+    /** T40: permanently dismiss a suggested group so the scan stops offering it. */
+    suspend fun dismissAddressSuggestion(input: DismissHouseholdSuggestionInput): Result<Unit>
 }
 
 data class HouseholdDetail(

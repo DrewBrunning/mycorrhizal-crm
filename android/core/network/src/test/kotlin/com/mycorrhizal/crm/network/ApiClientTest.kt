@@ -1798,4 +1798,155 @@ class ApiClientTest {
         assertEquals("DELETE", request.method)
         assertEquals("/api/v1/cadence-policies/p1", request.path)
     }
+
+    // --- M22: household relationship & shared-address suggestions ---
+
+    @Test
+    fun `suggest household relationships posts an empty body and parses the response`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "message": "Relationship suggestions generated",
+                      "household_id": "h1",
+                      "suggested_edges": [
+                        {"id": "e1", "source_id": "u1", "target_id": "u2", "type": "spouse_of", "status": "suggested", "source": "household-inferred", "confidence": 0.8}
+                      ],
+                      "total": 1
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        val result = client.suggestHouseholdRelationships("h1")
+
+        assertTrue(result.isSuccess)
+        assertEquals("h1", result.getOrThrow().householdId)
+        assertEquals(1, result.getOrThrow().suggestedEdges.size)
+        assertEquals("spouse_of", result.getOrThrow().suggestedEdges[0].type)
+        assertEquals("suggested", result.getOrThrow().suggestedEdges[0].status)
+
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/households/h1/suggest-relationships", request.path)
+        assertEquals(0, request.body.size)
+    }
+
+    @Test
+    fun `suggest household relationships tolerates an absent suggested_edges key`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """{"message": "Relationship suggestions generated", "household_id": "h1", "total": 0}""",
+                ),
+        )
+
+        val result = client.suggestHouseholdRelationships("h1")
+
+        assertTrue(result.isSuccess)
+        assertTrue(result.getOrThrow().suggestedEdges.isEmpty())
+    }
+
+    @Test
+    fun `suggest address households parses the suggestions`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "suggestions": [
+                        {
+                          "address_hash": "ah1",
+                          "member_hash": "mh1",
+                          "member_vcard_uids": ["u1", "u2"],
+                          "address": {"components": [{"kind": "locality", "value": "Berlin"}], "full": "1 Main St, Berlin"}
+                        }
+                      ],
+                      "total": 1
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        val result = client.suggestAddressHouseholds()
+
+        assertTrue(result.isSuccess)
+        val suggestions = result.getOrThrow().suggestions
+        assertEquals(1, suggestions.size)
+        assertEquals(listOf("u1", "u2"), suggestions[0].memberVCardUids)
+        assertEquals("Berlin", suggestions[0].address?.components?.get(0)?.value)
+
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/households/suggest-addresses", request.path)
+    }
+
+    @Test
+    fun `suggest address households tolerates an absent suggestions key`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"total": 0}"""),
+        )
+
+        val result = client.suggestAddressHouseholds()
+
+        assertTrue(result.isSuccess)
+        assertTrue(result.getOrThrow().suggestions.isEmpty())
+    }
+
+    @Test
+    fun `accept household suggestion posts member uids and unwraps the household`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(201)
+                .setBody(
+                    """{"household": {"id": "h9", "name": "Alice & Bob", "type": "family_unit"}}""",
+                ),
+        )
+
+        val input = com.mycorrhizal.crm.model.network.AcceptHouseholdSuggestionInput(
+            memberVCardUids = listOf("u1", "u2"),
+        )
+        val result = client.acceptHouseholdSuggestion(input)
+
+        assertTrue(result.isSuccess)
+        assertEquals("h9", result.getOrThrow().id)
+        assertEquals("Alice & Bob", result.getOrThrow().name)
+
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/households/suggestions/accept", request.path)
+        val body = request.body.readUtf8()
+        assertTrue(body.contains("member_vcard_uids"))
+        assertTrue(body.contains("u1"))
+        assertTrue(body.contains("u2"))
+    }
+
+    @Test
+    fun `dismiss household suggestion posts member uids`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"message": "Household suggestion dismissed"}"""),
+        )
+
+        val input = com.mycorrhizal.crm.model.network.DismissHouseholdSuggestionInput(
+            memberVCardUids = listOf("u1", "u2"),
+        )
+        val result = client.dismissHouseholdSuggestion(input)
+
+        assertTrue(result.isSuccess)
+
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/households/suggestions/dismiss", request.path)
+        val body = request.body.readUtf8()
+        assertTrue(body.contains("member_vcard_uids"))
+        assertTrue(body.contains("u1"))
+    }
 }
