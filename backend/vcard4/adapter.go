@@ -1,15 +1,15 @@
 // This file (adapter.go, WP-40b) implements the vCard 4.0 <-> neutral-model
 // adapter: contactmodel.Importer/Exporter per docs/adrs/0001-neutral-hub-and-spoke-contact-model.md
-// §0.4, built on top of consts.go/components.go (WP-40a) and driven entirely
+// built on top of consts.go/components.go (WP-40a) and driven entirely
 // by docs/adrs/0002-correspondence-table-locked-oracle.md (the oracle — see that file's rows
-// for the concept_id backing every field touched below; per §0.6 no mapping
+// for the concept_id backing every field touched below; no mapping
 // here is invented beyond what a row states).
 //
 // Low-level line/property parsing is delegated to
 // github.com/emersion/go-vcard (vcard.Decoder/vcard.Encoder over
 // vcard.Card = map[string][]*vcard.Field); this file only does the
 // neutral<->vCard4 field mapping and value transforms named in docs/adrs/0002-correspondence-table-locked-oracle.md
-// §20.4.
+// .
 package vcard4
 
 import (
@@ -236,7 +236,7 @@ func setPref(f *vcard.Field, pref *int) {
 	setParam(f, ParamPref, strconv.Itoa(*pref))
 }
 
-// ctx2type (20.4) moved to contactmodel in T91 so the Card->flat reverse
+// ctx2type  moved to contactmodel in T91 so the Card->flat reverse
 // projection can share it; see contactmodel.TypeTokenToContext for why.
 var typeTokenToContext = contactmodel.TypeTokenToContext
 var contextToTypeToken = contactmodel.ContextToTypeToken
@@ -658,7 +658,7 @@ func exportNicknames(rec *contactmodel.Record, card vcard.Card) {
 
 // ---------------------------------------------------------------------------
 // Organizations / Titles (org, org.unit, title, role) — including the
-// organizationId <-> shared GROUP derivation (20.7, fixture title-role).
+// organizationId <-> shared GROUP derivation (fixture title-role).
 // ---------------------------------------------------------------------------
 
 func importOrganizations(card vcard.Card, rec *contactmodel.Record) map[string]string {
@@ -712,7 +712,7 @@ func unitNames(units []contactmodel.OrgUnit) []string {
 
 // exportOrganizations returns a map from Organization.ID to the synthetic
 // GROUP token assigned to it, for every organization referenced by at least
-// one Title.OrganizationID (20.7: "emit a shared groupN. prefix on the
+// one Title.OrganizationID ("emit a shared groupN. prefix on the
 // TITLE/ROLE and its ORG").
 func exportOrganizations(rec *contactmodel.Record, card vcard.Card) map[string]string {
 	referenced := make(map[string]bool)
@@ -779,7 +779,7 @@ func exportEmails(rec *contactmodel.Record, card vcard.Card) {
 	}
 }
 
-// feat2type (20.4): Phone.Features <-> TEL TYPE tokens; vCard4/neutral both
+// feat2type: Phone.Features <-> TEL TYPE tokens; vCard4/neutral both
 // use "cell" (the JSContact "mobile" translation is a jscontact-adapter
 // concern, not this one), so this direction is identity — any TYPE token not
 // recognized as a context (home/work) is treated as a feature verbatim.
@@ -804,7 +804,7 @@ func exportPhones(rec *contactmodel.Record, card vcard.Card) {
 }
 
 // ---------------------------------------------------------------------------
-// Online services (impp, social) — 20.7: choose SOCIALPROFILE vs IMPP on
+// Online services (impp, social) — choose SOCIALPROFILE vs IMPP on
 // export by presence of Service/User.
 // ---------------------------------------------------------------------------
 
@@ -858,7 +858,7 @@ func importOnlineServices(card vcard.Card, rec *contactmodel.Record) {
 
 // exportOnlineServices emits Card.ImppAddresses as IMPP and
 // Card.SocialProfiles as SOCIALPROFILE — always, unconditionally, since which
-// neutral array an entry lives in already IS the provenance decision (20.7).
+// neutral array an entry lives in already IS the provenance decision .
 // Card.OtherOnlineServices has no vCard export at all (neither IMPP nor
 // SOCIALPROFILE is a safe default guess for genuinely unclassified data): each
 // entry present is reported via a warn Diagnostic and not emitted.
@@ -916,7 +916,7 @@ func exportOnlineServices(rec *contactmodel.Record, card vcard.Card, diags *[]co
 // extended address) has no corresponding neutral kind in the registry (only
 // position 3 "Street" and position 12 "StreetName" do, both -> kind "name")
 // — a non-empty Ext is therefore reported via Diagnostic and dropped, per
-// 0.5 (rather than inventing a new kind value, which 60.4 explicitly flags
+// 0.5 (rather than inventing a new kind value, which explicitly flags
 // as a stop-worthy move).
 //
 // JUDGMENT CALL: when both legacy Street (pos 3) and modern StreetName
@@ -927,7 +927,7 @@ func exportOnlineServices(rec *contactmodel.Record, card vcard.Card, diags *[]co
 // legacy Street field is instead reconstructed on export (see
 // kindValuesToAdrComponents) by combining Number+StreetName for backward
 // compatibility with legacy-only parsers. This is not a documented
-// transform detail (20.4's adr_components entry does not spell out a merge
+// transform detail (adr_components entry does not spell out a merge
 // algorithm for the two schemes coexisting); it is grounded directly in the
 // one worked example we have and is round-trip lossless for that fixture.
 func adrComponentsToKindValues(ac AdrComponents, diags *[]contactmodel.Diagnostic) []contactmodel.AddressComponent {
@@ -1366,12 +1366,12 @@ func importSpeakToAs(card vcard.Card, rec *contactmodel.Record, diags *[]contact
 		})
 		any = true
 		// LANGUAGE param has no field on contactmodel.Pronouns (P0 keeps
-		// localizations opaque per 20.7); note the drop rather than silently
+		// localizations opaque); note the drop rather than silently
 		// discarding it.
 		if paramValue(f, ParamLanguage) != "" {
 			*diags = append(*diags, contactmodel.Diagnostic{
 				Severity: "info", Concept: "pronouns",
-				Message: "PRONOUNS LANGUAGE param has no neutral field (20.7 keeps localizations opaque in P0); not preserved",
+				Message: "PRONOUNS LANGUAGE param has no neutral field (keeps localizations opaque in P0); not preserved",
 			})
 		}
 	}
@@ -1408,7 +1408,7 @@ func exportSpeakToAs(rec *contactmodel.Record, card vcard.Card) {
 
 func identityLevel(s string) string { return strings.ToLower(s) }
 
-// levelToExpertise / expertiseToLevel (20.4 personalinfo transform, per the
+// levelToExpertise / expertiseToLevel (personalinfo transform, per the
 // expertise row's note): neutral level high/medium/low <-> RFC 6715 EXPERTISE
 // LEVEL vocabulary expert/average/beginner. HOBBY/INTEREST use the same
 // vocabulary on both sides (identityLevel).
@@ -1656,7 +1656,7 @@ func exportLangsRelatedMembers(rec *contactmodel.Record, card vcard.Card) {
 }
 
 // ---------------------------------------------------------------------------
-// Passthrough (pt.vcard, pt.jscontact) — 20.5 escape-hatch precedence.
+// Passthrough (pt.vcard, pt.jscontact) — escape-hatch precedence.
 // ---------------------------------------------------------------------------
 
 func importPassthrough(card vcard.Card, rec *contactmodel.Record) {
@@ -1708,7 +1708,7 @@ func importPassthrough(card vcard.Card, rec *contactmodel.Record) {
 func exportPassthrough(rec *contactmodel.Record, card vcard.Card, mapped map[string]bool) {
 	for _, p := range rec.Passthrough.VCard {
 		if mapped[strings.ToUpper(p.Name)] {
-			// de-dup guard (20.5): a mapped property name must not also be
+			// de-dup guard: a mapped property name must not also be
 			// re-emitted verbatim from passthrough.
 			continue
 		}

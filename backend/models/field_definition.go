@@ -16,8 +16,8 @@ const (
 	FieldDefinitionTargetContact = "contact"
 )
 
-// Type values stored on FieldDefinition.Type -- a closed set (§94.4). Note
-// there is no separate "list<T>" token: §94.4 describes list-of-T as "a
+// Type values stored on FieldDefinition.Type -- a closed set. Note
+// there is no separate "list<T>" token: describes list-of-T as "a
 // multi-valued variant of any scalar type above ({multi:true})", so
 // multi-valuedness is FieldConstraints.Multi on any of these nine, not a
 // tenth Type value.
@@ -35,7 +35,7 @@ const (
 )
 
 // FieldConstraints holds the type-dependent validation rules for a
-// FieldDefinition (§94.3's "constraints" row: "JSON, type-dependent").
+// FieldDefinition ("constraints" row: "JSON, type-dependent").
 // A concrete typed struct rather than a free-form map -- unlike
 // RelationshipEdge.Metadata (a genuine passthrough value bag), every field
 // here is actually read and enforced by services.ValidateFieldValue, so a
@@ -49,7 +49,7 @@ type FieldConstraints struct {
 	// Values is the allowed-value list for FieldTypeEnum.
 	Values []string `json:"values,omitempty"`
 	// Multi marks this field as list-of-<Type> rather than a single scalar
-	// (§94.4's list<T>) -- FieldValue.Value is then a JSON array, each
+	// (list<T>) -- FieldValue.Value is then a JSON array, each
 	// element validated against the same scalar rule.
 	Multi bool `json:"multi,omitempty"`
 }
@@ -59,7 +59,7 @@ type FieldConstraints struct {
 // optionally validated and standards-projected property, generalizing the
 // retired untyped v1. Distinct from native
 // contactmodel.Card fields: this is the user's escape hatch for concepts the
-// standards don't define, not a reimplementation of ones they do (§94.2).
+// standards don't define, not a reimplementation of ones they do .
 //
 // UUID-string-primary-key entity, following Household's exact template
 // (household.go): ID generated in BeforeCreate, no soft-delete.
@@ -87,8 +87,8 @@ type FieldDefinition struct {
 	Projection string `gorm:"not null;default:internal-only" json:"projection" validate:"required,fielddefprojection"`
 
 	// Sensitivity reuses RelationshipEdge's three-value set directly rather
-	// than a duplicate local const block: §94.3 explicitly frames this as
-	// "the cross-cutting sensitivity rule (91.13)", not an entity-specific
+	// than a duplicate local const block — this is framed as
+	// "the cross-cutting sensitivity rule ", not an entity-specific
 	// classifier like Type/Target above.
 	Sensitivity string `gorm:"not null;default:normal;index" json:"sensitivity" validate:"required,oneof=normal private secret"`
 }
@@ -102,7 +102,7 @@ func (fd *FieldDefinition) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// FieldValue is the data half (§94.3) -- one typed value of a FieldDefinition
+// FieldValue is the data half  -- one typed value of a FieldDefinition
 // for one entity. Value is stored as json.RawMessage (matching
 // RelationshipEdge.Metadata/contactmodel.JCardProp.Value's existing
 // precedent for a JSON column holding a variably-typed value) so

@@ -53,7 +53,7 @@ func RecordForContact(c *Contact, photoDir string, db *gorm.DB) *contactmodel.Re
 
 // RecordForContactFiltered is RecordForContact plus WP-97/T9's field
 // selection (T9): sel carries
-// (a) the §91.13 sensitivity override (FieldSelection.IncludeSensitive),
+// (a) the sensitivity override (FieldSelection.IncludeSensitive),
 // threaded into the projection queries below so private/secret relationship
 // edges, hobby preferences, and vCard-projected custom fields can be included
 // just this once — the "explicit opt-in, not just a pre-unchecked box"
@@ -110,13 +110,13 @@ func RecordForContactFiltered(c *Contact, photoDir string, db *gorm.DB, sel *Fie
 // A's card, B is my child" (RelationVCardTypeTag(InverseRelationType(
 // "parent_of"))). Only emitted where the relevant side's vCard TYPE tag is
 // non-empty — types with no standard equivalent (co_parent_of, the affinity
-// edges, ...) simply never appear here, per §91.2's "deliberately lossy"
+// edges, ...) simply never appear here, "deliberately lossy"
 // export rule.
 //
-// Suggested-status edges are never projected (§91.2: "only confirmed edges
-// are authoritative"), and neither are edges above normal sensitivity
-// (§91.13's default-exclude-from-export rule) — both filtered in the query
-// itself rather than after loading, so a query failure can't accidentally
+// Suggested-status edges are never projected ("only confirmed edges
+// are authoritative"), and neither are edges above normal sensitivity —
+// both filtered in the query itself rather than after loading, so a query
+// failure can't accidentally
 // leak a suggested or sensitive edge into an export.
 //
 // includeSensitive is WP-97/T9's explicit opt-in override: when true, the
@@ -186,7 +186,7 @@ func projectRelationshipEdges(db *gorm.DB, vcardUID string, existing []contactmo
 	return result
 }
 
-// projectTags is WP-84's Tag -> Card.Keywords projection (§91.5): tags are
+// projectTags is WP-84's Tag -> Card.Keywords projection: tags are
 // "an attribute a set of people share" and have a clean standards home
 // (vCard CATEGORIES / JSContact keywords), unlike Circles which stay
 // internal-only. Structurally identical to projectRelationshipEdges above —
@@ -242,7 +242,7 @@ func projectTags(db *gorm.DB, vcardUID string, existing []string) []string {
 // appears here. Structurally identical to projectTags/projectRelationshipEdges
 // above — nil-safe, best-effort (a query failure degrades to "just the
 // existing personalInfo entries" rather than failing the whole read), and
-// §91.13 sensitivity is filtered in the query itself (only
+// sensitivity is filtered in the query itself (only
 // sensitivity='normal' preferences project), never in the caller. The
 // includeSensitive flag is WP-97/T9's explicit opt-in override: when true,
 // the sensitivity='normal' clause is dropped for exactly this read.
@@ -291,7 +291,7 @@ func projectPreferences(db *gorm.DB, vcardUID string, existing []contactmodel.Pe
 // default) never appear here. Structurally identical to projectTags/
 // projectRelationshipEdges above — nil-safe, best-effort, sensitivity
 // filtered in the query itself (only sensitivity='normal' definitions
-// project, matching projectRelationshipEdges' own §91.13 discipline), and
+// project, matching projectRelationshipEdges' own discipline), and
 // returns a new slice rather than mutating existing.
 //
 // Note the target is Passthrough.VCard, a Record-level field (sibling of

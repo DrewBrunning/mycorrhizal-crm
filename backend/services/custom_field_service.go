@@ -22,7 +22,7 @@ import (
 // correct home, matching household_service.go/birthday_service.go's
 // precedent for algorithmic logic that isn't a model or a controller.
 //
-// When def.Constraints.Multi is set (§94.4's list<T>), value must be a JSON
+// When def.Constraints.Multi is set (list<T>), value must be a JSON
 // array and every element is validated against the same scalar rule.
 func ValidateFieldValue(def models.FieldDefinition, value json.RawMessage) error {
 	if !def.Constraints.Multi {

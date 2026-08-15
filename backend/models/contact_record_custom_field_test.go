@@ -33,7 +33,7 @@ func mustMarshal(t *testing.T, v interface{}) json.RawMessage {
 	return b
 }
 
-// WP-84b's FieldValue -> Passthrough.VCard projection (§94.5): a
+// WP-84b's FieldValue -> Passthrough.VCard projection: a
 // "vcard:X-<NAME>"-projected, normal-sensitivity field appears as a JCardProp
 // in RecordForContact's output.
 func TestRecordForContact_ProjectsVCardCustomField(t *testing.T) {
@@ -89,7 +89,7 @@ func TestRecordForContact_DoesNotProjectInternalOnlyCustomField(t *testing.T) {
 }
 
 // A sensitive field's value must not project even though it has a vcard:
-// mapping — §91.13's default-exclude-from-export rule, same discipline
+// mapping — default-exclude-from-export rule, same discipline
 // projectRelationshipEdges/projectTags already enforce.
 func TestRecordForContact_DoesNotProjectSensitiveCustomField(t *testing.T) {
 	db := setupCustomFieldProjectionTestDB(t)

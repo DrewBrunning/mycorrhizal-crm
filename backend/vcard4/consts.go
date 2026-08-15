@@ -4,7 +4,7 @@
 //
 // This file (consts.go, WP-40a) declares the exported property and parameter
 // name constants transcribed verbatim from docs/adrs/0001-neutral-hub-and-spoke-contact-model.md
-// §30.B's "consts.go property names" block, which in turn comes from the IANA
+// "consts.go property names" block, which in turn comes from the IANA
 // vcard-elements registry. The string VALUES must exactly equal the IANA
 // spellings: WP-20's correspondence test hardcodes the same list and checks
 // against it mechanically.

@@ -18,7 +18,7 @@ import (
 )
 
 // TestCadencePolicy_RealMigratedSchema is the real-DB check for T19: every
-// other controller test runs against AutoMigrate on :memory: sqlite, which
+// other controller test runs against AutoMigrate on:memory: sqlite, which
 // derives its schema from the same Go struct tags the application code uses —
 // it cannot catch a GORM column-tag or serializer mismatch against the real
 // hand-written migration SQL (this fork's own recurring bug class, e.g.

@@ -64,7 +64,7 @@ export interface FieldDefinitionInput {
   sensitivity?: FieldSensitivity;
 }
 
-// FieldValue.value is the raw JSON payload (§94.4): a scalar definition holds
+// FieldValue.value is the raw JSON payload: a scalar definition holds
 // a bare value (string/number/boolean), a Multi definition holds an array.
 export interface FieldValue {
   id: number;

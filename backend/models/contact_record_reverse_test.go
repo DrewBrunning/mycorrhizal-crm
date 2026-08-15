@@ -11,7 +11,7 @@ import (
 )
 
 // TestApplyRecordToContact_ReDerivesRelativePhotoURL is the regression test
-// for M6 §1's write-path round-trip (M6): the read response now exposes Card.Media's photo uri as
+// for M6's write-path round-trip (M6): the read response now exposes Card.Media's photo uri as
 // a relative profile-picture URL, and the web client PUTs that card back
 // verbatim on the next edit. applyMedia must recognize that relative URL as
 // "this contact's own photo pointer" and re-derive the entry from the flat
@@ -440,8 +440,8 @@ func TestApplyRecordToContact_PreservesCRMKind(t *testing.T) {
 }
 
 // TestApplyRecordToContact_ClearsPhoneScalarWhenPhonesRemoved is the
-// regression guard for a real bug found by Tier 3c item 11a's audit
-// : applyPhones cleared
+// regression guard for a real bug found by audit:
+// applyPhones cleared
 // c.Phones but left the c.Phone scalar untouched when the incoming Record
 // had no phones at all, unlike its sibling applyEmails (which always
 // resets c.Email, falling back to proj.PrimaryEmail). A contact whose last

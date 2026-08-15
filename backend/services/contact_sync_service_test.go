@@ -158,8 +158,7 @@ func TestReconcileContactSyncUpdatesExistingLinkedContact(t *testing.T) {
 	assert.Equal(t, "bob.new@example.com", contact.Email)
 }
 
-// TestReconcileContactSyncOverwritesLocalEditsOnRemoteChange pins down Tier
-// 3c item 11a : does a local
+// TestReconcileContactSyncOverwritesLocalEditsOnRemoteChange pins down: does a local
 // edit to a field the remote vCard doesn't touch survive a sync, or get
 // silently discarded? Confirmed intentional, not a bug: models.
 // ApplyRecordToContact (its own doc comment) treats the incoming Record as

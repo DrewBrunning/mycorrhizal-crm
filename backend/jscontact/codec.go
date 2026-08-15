@@ -220,7 +220,7 @@ func captureExtra(data []byte, known map[string]bool) map[string]json.RawMessage
 // mergeExtraJSON splices extra's entries into the already-marshaled JSON
 // object base, skipping any key base already defines (a known field must
 // never be shadowed or duplicated by a captured-unknown one -- the same
-// de-dup guard adapter.go applies at the top level, 20.5). Returns base
+// de-dup guard adapter.go applies at the top level). Returns base
 // unchanged if extra is empty (the overwhelmingly common case, so this never
 // touches the marshal fast path for objects with no captured unknowns).
 func mergeExtraJSON(base []byte, extra map[string]json.RawMessage) ([]byte, error) {

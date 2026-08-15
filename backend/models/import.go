@@ -110,7 +110,7 @@ type ImportRowPreview struct {
 	// Diagnostics surfaces contactmodel.Diagnostic events (WP-71 Gap 4) from
 	// the vcard4/vcard3/jscontact adapter that parsed this row — e.g. a
 	// gracefully-dropped, no-target-home field (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md
-	// §0.5's degradation policy). Empty for CSV-import rows (which don't go
+	// degradation policy). Empty for CSV-import rows (which don't go
 	// through an adapter at all). Additive: existing preview consumers that
 	// don't know about this field are unaffected.
 	Diagnostics []string `json:"diagnostics,omitempty"`

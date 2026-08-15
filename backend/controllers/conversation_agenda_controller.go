@@ -13,7 +13,7 @@ import (
 )
 
 // CreateConversationAgenda creates a new ConversationAgenda (conversation_
-// agenda.go, §91.11) for the authenticated user, scoped to a Contact they own
+// agenda.go) for the authenticated user, scoped to a Contact they own
 // via EntityID. Agenda items are free-text contextual memory — never
 // date-scheduled, which is what distinguishes them from Reminders.
 func CreateConversationAgenda(c *gin.Context) {
@@ -204,8 +204,8 @@ func UpdateConversationAgenda(c *gin.Context) {
 }
 
 // DiscussConversationAgenda marks a ConversationAgenda item as discussed —
-// the agenda's only "resolution": the item has no due date or completion cron
-// (§91.11); it is resolved by the next conversation, surfacing by context, not
+// the agenda's only "resolution": the item has no due date or completion cron;
+// it is resolved by the next conversation, surfacing by context, not
 // by time. Sets discussed_at to now and, when an activity_id is supplied,
 // links the interaction that covered it (feeding the timeline). The item
 // stays visible in a resolved state — "we talked about this on the 3rd" is

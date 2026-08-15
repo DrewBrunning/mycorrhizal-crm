@@ -8,7 +8,7 @@ import (
 
 // Concepts: org, org.unit, title, role.
 // Golden fixture: title-role.v4.vcf (RFC 9555 §2.9.6) — organizationId
-// derived from a shared vCard property GROUP (20.7).
+// derived from a shared vCard property GROUP .
 func init() {
 	registerImportCoverage("org", "org.unit", "title", "role")
 }

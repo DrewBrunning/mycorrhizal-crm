@@ -19,8 +19,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// TestDeleteUser_CleansUpAllOwnedRows is the regression test for Tier 3c
-// item 1 : DeleteUser must not
+// TestDeleteUser_CleansUpAllOwnedRows is the regression test
+// item 1: DeleteUser must not
 // leave orphaned rows in any of the 14 tables that reference a user, not just
 // the handful it originally covered.
 func TestDeleteUser_CleansUpAllOwnedRows(t *testing.T) {

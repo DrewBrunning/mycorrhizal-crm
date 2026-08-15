@@ -12,7 +12,7 @@ import (
 
 // Conventional (not validated — same open-classifier reasoning as
 // Activity.Type/InteractionType* above and HouseholdMember.Role) values for
-// LifeEvent.Type. §91.6 lists these with a trailing "…", signalling an open,
+// LifeEvent.Type. lists these with a trailing "…", signalling an open,
 // extensible set.
 //
 // T36 added the 37
@@ -99,7 +99,7 @@ const (
 )
 
 // LifeEvent is a permanent fact about an entity's life (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md) — "what happened in *their* life", as
-// opposed to Interaction/Activity ("what happened between *us*", §91.7).
+// opposed to Interaction/Activity ("what happened between *us*").
 //
 // UUID-string-primary-key entity, following Household's exact template
 // (household.go): ID generated in BeforeCreate. Soft-deletes (deleted_at)
@@ -115,7 +115,7 @@ type LifeEvent struct {
 
 	// EntityID is the subject Contact, referenced by Contact.VCardUID — the
 	// same graph invariant RelationshipEdge.SourceID/TargetID and
-	// HouseholdMember.MemberVCardUID follow (§90 D3).
+	// HouseholdMember.MemberVCardUID follow .
 	EntityID string `gorm:"column:entity_id;not null;index" json:"entity_id" validate:"required,uuid4"`
 
 	// Type is conventional/unvalidated — see the LifeEventType* constants
@@ -132,7 +132,7 @@ type LifeEvent struct {
 	// per-category "Add a new life event type" affordance.
 	Category string `gorm:"column:category" json:"category,omitempty" validate:"omitempty,life_event_category"`
 
-	// Date reuses contactmodel.PartialDate per §91.6's own instruction
+	// Date reuses contactmodel.PartialDate own instruction
 	// ("life events are often known only to a year"), JSON-serialized like
 	// Household.Address.
 	Date *contactmodel.PartialDate `gorm:"type:text;serializer:json" json:"date,omitempty"`
@@ -142,7 +142,7 @@ type LifeEvent struct {
 	Source string `json:"source,omitempty" validate:"omitempty,oneof=user imported ai-suggested"`
 
 	// RelatedEntityIDs holds other Contact.VCardUIDs this event involves —
-	// covering both §91.6's "secondary participants" (e.g. both spouses in a
+	// covering both "secondary participants" (e.g. both spouses in a
 	// married event) and "related_entity_ids" (the new child, the pet
 	// adopted, the org joined) with a single JSON array rather than a
 	// dedicated join table, since nothing needs to query from the

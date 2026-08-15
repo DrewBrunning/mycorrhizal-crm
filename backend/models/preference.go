@@ -24,7 +24,7 @@ const (
 	PreferenceCategoryMedia        = "media"
 )
 
-// Source values stored on Preference.Source — provenance, §91.9's own
+// Source values stored on Preference.Source — provenance, own
 // closed list (conversation_note, user, ai-suggested, external).
 const (
 	PreferenceSourceConversationNote = "conversation_note"
@@ -55,25 +55,25 @@ type Preference struct {
 	UserID uint `gorm:"not null;index" json:"-"`
 
 	// EntityID is the subject Contact, referenced by Contact.VCardUID — the
-	// same graph invariant every join/reference entity follows (§90 D3).
+	// same graph invariant every join/reference entity follows .
 	EntityID string `gorm:"column:entity_id;not null;index" json:"entity_id" validate:"required,uuid4"`
 
 	// Category is the open classifier above (food, hobby, gift, ...). Key is
 	// an optional structured qualifier (e.g. "favorite_coffee"), matching
-	// §91.9's key/value pair.
+	// key/value pair.
 	Category string `gorm:"not null" json:"category" validate:"required,max=100"`
 	Key      string `json:"key,omitempty" validate:"omitempty,max=100"`
 	Value    string `gorm:"not null" json:"value" validate:"required,max=1000"`
 
-	// Source is provenance (§91.9's closed set above). Confidence/
-	// LastConfirmed implement §91.9's "preferences go stale; track when last
+	// Source is provenance. Confidence/
+	// LastConfirmed implement "preferences go stale; track when last
 	// confirmed".
 	Source        string     `json:"source,omitempty" validate:"omitempty,oneof=conversation_note user ai-suggested external"`
 	Confidence    *float64   `json:"confidence,omitempty"`
 	LastConfirmed *time.Time `json:"last_confirmed,omitempty"`
 
 	// Sensitivity reuses the cross-cutting normal/private/secret set
-	// (§91.13), driving the projectPreferences query filter — anything above
+	//, driving the projectPreferences query filter — anything above
 	// normal is excluded from Card.PersonalInfo projection in the query, the
 	// way projectCustomFields filters field_definitions.
 	Sensitivity string `gorm:"not null;default:normal;index" json:"sensitivity" validate:"required,oneof=normal private secret"`

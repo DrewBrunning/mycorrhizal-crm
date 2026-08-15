@@ -113,7 +113,7 @@ func TestExportData(t *testing.T) {
 	}
 	db.Create(&contact2)
 
-	// Create a relationship edge (§3d WP4: RELATIONSHIPS now reads
+	// Create a relationship edge (RELATIONSHIPS now reads
 	// RelationshipEdge, not the legacy models.Relationship table)
 	edge := models.RelationshipEdge{
 		UserID:      user.ID,
@@ -805,7 +805,7 @@ func TestExportContactsAsVCF_UnknownSection_BadRequest(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
-// The §91.13 opt-in override flows through the HTTP surface: a secret edge is
+// The opt-in override flows through the HTTP surface: a secret edge is
 // absent by default and present only with ?include_sensitive=true.
 func TestExportContactsAsVCF_IncludeSensitiveOptIn(t *testing.T) {
 	db, router := setupRouter()

@@ -95,7 +95,7 @@ func TestMigrateDownRollsBackExactlyOneMigration(t *testing.T) {
 
 // TestSquashedSchemaHasNoLegacyRelationshipsTable verifies the squashed
 // baseline (T22) never creates the legacy `relationships` table — it was
-// dropped in §3d WP5 and does not belong in the clean baseline.
+// dropped and does not belong in the clean baseline.
 func TestSquashedSchemaHasNoLegacyRelationshipsTable(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "drop-relationships.db")
 	db, err := InitDB(dbPath)
@@ -123,8 +123,8 @@ func TestMigrationsAddCredentialLifecycleColumns(t *testing.T) {
 		"api_tokens.expires_at is required to bound API token lifetime")
 }
 
-// TestForeignKeysEnforced is the regression test for Tier 3c item 8
-// : foreign_keys is a
+// TestForeignKeysEnforced is the regression test
+// foreign_keys is a
 // per-connection SQLite setting, not persisted in the database file, so it
 // must be supplied via the DSN on every InitDB call (openDSN) rather than a
 // one-time PRAGMA statement.
@@ -866,7 +866,7 @@ func TestLifeEventCategoriesMigrationBackfillsExistingRows(t *testing.T) {
 // TestOpenDSN_PragmasArePresent verifies that openDSN appends the two pragmas
 // the app requires for correctness:
 //   - journal_mode(WAL): persisted once set, needed for safe hot-backup.
-//   - foreign_keys(1): per-connection, needed for FK enforcement (Tier 3c item 8).
+//   - foreign_keys(1): per-connection, needed for FK enforcement .
 func TestOpenDSN_PragmasArePresent(t *testing.T) {
 	dsn := openDSN("/path/to/db.sqlite")
 	assert.True(t, strings.Contains(dsn, "_pragma=journal_mode(WAL)"),

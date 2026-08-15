@@ -37,7 +37,7 @@ info:
       `CARDDAV_ENABLED`.
     - **Deliberate omissions (not bugs):** `fields=` on GET /contacts is
       gone (WP-71 Gap 3) and is silently ignored if sent;
-      `includes=relationships` was removed in §3d WP4 and is likewise a no-op
+      `includes=relationships` was removed and is likewise a no-op
       rather than an error. The only Redocly lint warnings left are on
       genuinely-public endpoints that return no 4xx by design — /health
       (200/503), /auth/oidc/config (200), the OIDC login/callback redirects
@@ -664,7 +664,7 @@ paths:
           description: >
             Comma-separated subset of notes,activities,reminders. When set,
             each item is a ContactSummaryWithRelations instead of a plain
-            ContactSummary. includes=relationships was removed in §3d WP4 and
+            ContactSummary. includes=relationships was removed and
             is a no-op (not an error).
           schema: { type: string }
       responses:
@@ -1191,7 +1191,7 @@ paths:
         health, open agenda items, confirmed relationships, life events,
         upcoming reminders, and upcoming dates. Pure aggregation of existing
         data — never persisted, every block degrades to empty when its source
-        is absent. Secret-sensitivity relationships are excluded (91.13): a
+        is absent. Secret-sensitivity relationships are excluded : a
         secret relationship must not surface on a screen likely to be open in
         front of the person it concerns.
       responses:
@@ -4184,7 +4184,7 @@ paths:
       summary: Create a gift record
       operationId: createGift
       description: >
-        "What did I give them last year?" (§91.11) against a contact. Covers an
+        "What did I give them last year?"  against a contact. Covers an
         idea captured opportunistically (status defaults to idea), the
         offered/given gift with its date, and a received gift. Any value must
         carry an explicit ISO 4217 currency. Optionally links the LifeEvent or
@@ -4953,7 +4953,7 @@ paths:
         - name: include_sensitive
           in: query
           description: >
-            Explicit opt-in override (91.13): when true, private/secret
+            Explicit opt-in override : when true, private/secret
             items in the selected sensitivity-bearing sections (related_to,
             personal_info, custom_fields) are included in this one export.
             Defaults to false.
@@ -4987,7 +4987,7 @@ paths:
         - name: include_sensitive
           in: query
           description: >
-            Explicit opt-in override (91.13): when true, private/secret
+            Explicit opt-in override : when true, private/secret
             items in the selected sensitivity-bearing sections (related_to,
             personal_info, custom_fields) are included in this one export.
             Defaults to false.
@@ -7413,7 +7413,7 @@ components:
     BriefingCadenceHealth:
       type: object
       description: >
-        The DERIVED relationship-health read-model (91.10), never stored.
+        The DERIVED relationship-health read-model , never stored.
         has_qualifying_interaction stays false until the contact has at least
         one qualifying interaction; overdue_by is whole calendar days past due
         (0 when due today or later).
@@ -7836,7 +7836,7 @@ components:
           items: { type: string }
         include_sensitive:
           type: boolean
-          description: §91.13 opt-in override to include private/secret items within the selected sections.
+          description: opt-in override to include private/secret items within the selected sections.
     ContactShare:
       type: object
       properties:
@@ -8279,7 +8279,7 @@ components:
     ConversationAgenda:
       type: object
       description: >
-        "Things to bring up next time I see them" (§91.11). Contextual memory
+        "Things to bring up next time I see them" . Contextual memory
         surfaced on the contact view, explicitly NOT date-scheduled. resolved
         by discussed_at, never by a timer.
       properties:
@@ -8318,7 +8318,7 @@ components:
     Gift:
       type: object
       description: >
-        "What did I give them last year?" (§91.11) against a contact — an idea
+        "What did I give them last year?"  against a contact — an idea
         captured opportunistically, the offered/given gift, or a received gift.
         Status defaults to idea; any value carries an explicit ISO 4217
         currency.
@@ -8422,7 +8422,7 @@ components:
       type: object
       description: >
         A relationship-maintenance rule — "stay in touch every N days"
-        (§91.10). Health is DERIVED (see CadenceHealth), never stored; this
+        . Health is DERIVED (see CadenceHealth), never stored; this
         entity carries only the rule itself.
       properties:
         id: { type: string, format: uuid }
@@ -8444,7 +8444,7 @@ components:
     CadenceHealth:
       type: object
       description: >
-        The DERIVED relationship-health read-model (§91.10) — computed from
+        The DERIVED relationship-health read-model  — computed from
         the timeline, never persisted. Undefined (has_qualifying_interaction
         false) until the contact has at least one qualifying interaction;
         cadence does NOT count from the contact's creation date.

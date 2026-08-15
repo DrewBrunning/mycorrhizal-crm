@@ -36,7 +36,7 @@ func TestRoundtrip_RFC6350Baseline(t *testing.T) {
 		t.Errorf("Emails = %+v", rec2.Card.Emails)
 	}
 	// CLIENTPIDMAP has no correspondence row; it must survive the round trip
-	// via passthrough (20.5) as a TRUE inverse — not just present after
+	// via passthrough  as a TRUE inverse — not just present after
 	// re-import, but re-emitted on export with its original value intact.
 	rfctest.AssertVCardLine(t, out, "CLIENTPIDMAP", nil, "1;urn:uuid:53e374d9-337e-4727-8803-a1e9c14e0556")
 	if len(rec2.Passthrough.VCard) != len(rec.Passthrough.VCard) {
@@ -146,7 +146,7 @@ func TestRoundtrip_TitleRole(t *testing.T) {
 }
 
 // TestRoundtrip_PropIDIdentity is a dedicated check for docs/adrs/0003-golden-fixtures-external-test-oracle.md
-// §60.3's "PROP-ID/ID round-trips" bullet: an element's ID, once exported as
+// "PROP-ID/ID round-trips" bullet: an element's ID, once exported as
 // PROP-ID, must come back as the same ID on re-import (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md).
 func TestRoundtrip_PropIDIdentity(t *testing.T) {
 	rec := &contactmodel.Record{Card: contactmodel.Card{

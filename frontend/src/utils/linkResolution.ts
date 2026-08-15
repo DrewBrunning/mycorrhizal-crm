@@ -86,7 +86,7 @@ export function looksLikeAbsoluteUri(value: string): boolean {
 }
 
 // Resolves an OnlineService (SocialProfiles/OtherOnlineServices/IMPP,
-// T34 §5) to a tappable
+// T34) to a tappable
 // href, or null if it isn't resolvable:
 //   1. A full URI is already a complete profile link — use it directly.
 //   2. Else, case-insensitively match `service` against the user's

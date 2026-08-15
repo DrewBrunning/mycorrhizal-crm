@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Tier 3c item 11c : MergeImportedContact's
+//: MergeImportedContact's
 // "incoming wins when non-empty, existing survives when incoming blank" policy had only ever
 // been asserted for a single scalar field (Phone, in TestParseVCF_DuplicateDetectionAndMerge).
 // These tests pin the same policy down for every array field (Emails/Phones/Addresses/URLs/

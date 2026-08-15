@@ -7,7 +7,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// Gift statuses (§91.11 + ticket T20b). The state machine is linear
+// Gift statuses. The state machine is linear
 // (idea → purchased → given) but deliberately not enforced as one: an edit may
 // move a gift between any two statuses. idea = "she mentioned she liked X"
 // captured opportunistically (the whole point of the feature); purchased =
@@ -40,9 +40,9 @@ type Gift struct {
 
 	// EntityID is the contact this gift concerns, referenced by
 	// Contact.VCardUID — the same graph invariant every join/reference entity
-	// follows (§90 D3). For a given/purchased gift the contact is the
+	// follows. For a given/purchased gift the contact is the
 	// recipient; for a received gift they are the giver. Kept as entity_id
-	// (rather than §91.11's recipient_id) to match the LifeEvent/
+	// (rather than recipient_id) to match the LifeEvent/
 	// ConversationAgenda/Preference template exactly, which is what T20b
 	// instructs.
 	EntityID string `gorm:"column:entity_id;not null;index" json:"entity_id" validate:"required,uuid4"`

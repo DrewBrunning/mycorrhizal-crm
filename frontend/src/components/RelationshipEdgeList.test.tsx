@@ -12,7 +12,7 @@ import { Contact } from '../api/contacts';
 // elements from earlier ones.
 afterEach(cleanup);
 
-// §3d WP3: the household-inference engine that produces `status: suggested`
+// the household-inference engine that produces `status: suggested`
 // edges (services/household_service.go) has no HTTP trigger anywhere in the
 // app today (confirmed via grep during planning), so no real suggested edge
 // can exist in a running instance yet. This test is the practical substitute

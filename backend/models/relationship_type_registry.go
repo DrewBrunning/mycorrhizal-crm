@@ -75,7 +75,7 @@ var relationTypeRegistry = map[string]relationTypeDef{
 	// No RFC 6350 token distinguishes an unmarried romantic partner from a
 	// spouse, and reusing "spouse" would misrepresent the relationship on
 	// export — so this stays non-projecting like co_parent_of below, per
-	// §91.2's own examples of edge types with no standard home.
+	// own examples of edge types with no standard home.
 	"partner_of": {
 		Inverse:   "partner_of",
 		Symmetric: true,
@@ -94,7 +94,7 @@ var relationTypeRegistry = map[string]relationTypeDef{
 		Inverse:  "mentor_of",
 		Synonyms: []string{"mentee"},
 	},
-	// Fork-invented (pets, §90 D3's thin-entity graph invariant); no RFC 6350
+	// Fork-invented (pets); no RFC 6350
 	// equivalent.
 	"owned_by": {
 		Inverse:  "owns",
@@ -104,11 +104,11 @@ var relationTypeRegistry = map[string]relationTypeDef{
 		Inverse:  "owned_by",
 		Synonyms: []string{"owner"},
 	},
-	// Affinity edges (§91.2 "Affinity edges" subsection) — pairwise
+	// Affinity edges ("Affinity edges" subsection) — pairwise
 	// compatibility, not a structural bond. Always non-projecting:
 	// gets_along_with has no vCard equivalent, and conflicts_with must never
 	// reach an export regardless (its sensitivity defaults to private/secret
-	// at the call site that creates it, per §91.13 — the registry doesn't
+	// at the call site that creates it, — the registry doesn't
 	// enforce that, the creation path does).
 	"gets_along_with": {
 		Inverse:   "gets_along_with",
@@ -146,7 +146,7 @@ func IsKnownRelationType(token string) bool {
 }
 
 // InverseRelationType returns the reciprocal token for a known relation type,
-// or "" if token is unregistered. Never stored (§91.2: "store one edge,
+// or "" if token is unregistered. Never stored ("store one edge,
 // derive the inverse") — always derived through this function.
 func InverseRelationType(token string) string {
 	return relationTypeRegistry[token].Inverse

@@ -17,7 +17,7 @@ import (
 
 // TestHouseholdSuggestions_RealMigratedSchema is the real-DB check for T1
 // (T1): every other controller test
-// in this package uses AutoMigrate against :memory: sqlite, which derives
+// in this package uses AutoMigrate against:memory: sqlite, which derives
 // its schema from the same Go struct tags the application code uses — it
 // cannot catch a GORM column-tag mismatch against the real migration SQL
 // (this fork's own recurring bug class, e.g. ContactSyncLink.ETag, and the
@@ -83,7 +83,7 @@ func TestHouseholdSuggestions_RealMigratedSchema(t *testing.T) {
 	}
 
 	// First run: 2 adults + 1 child + 1 pet -> 1 spouse_of + 2 parent_of +
-	// 3 owned_by (the child counts as a human for owned_by, per §91.4).
+	// 3 owned_by (the child counts as a human for owned_by).
 	first := doJSON("POST", "/households/"+household.ID+"/suggest-relationships", nil)
 	require.Equal(t, http.StatusOK, first.Code, first.Body.String())
 	var firstBody struct {

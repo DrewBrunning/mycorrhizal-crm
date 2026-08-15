@@ -82,7 +82,7 @@ func TestLifeEventBeforeCreatePreservesExplicitID(t *testing.T) {
 	assert.Equal(t, "explicit-id", event.ID)
 }
 
-// A year-only PartialDate ("known only to a year", per §91.6) and a
+// A year-only PartialDate ("known only to a year") and a
 // multi-entry RelatedEntityIDs list must both round-trip through a real
 // save/reload exactly as stored -- not just compile, per the WP-83 lesson
 // that only a real AutoMigrate-backed save/reload catches column/serializer

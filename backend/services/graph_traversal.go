@@ -57,7 +57,7 @@ type traversalRow struct {
 // demands it):
 //   - only Status: confirmed edges (a suggested edge is never treated as a
 //     hard fact outside a review surface);
-//   - sensitivity != secret is excluded (§91.13: a secret edge must not leak
+//   - sensitivity != secret is excluded (a secret edge must not leak
 //     into a derived traversal result); private edges remain visible, the same
 //     as the graph display.
 //

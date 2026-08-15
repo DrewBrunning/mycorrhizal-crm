@@ -102,7 +102,7 @@ func ftsQuery(term string) string {
 // full digit string (models.NormalizePhoneDigits) and its PhoneKey, and
 // reports whether the term is phone-shaped at all: mostly digits, with every
 // non-digit character drawn from the ones phone numbers are written with —
-// + ( ) - . / and whitespace. A term like "alice" or "800 flowers" is not
+// + ( ) -. / and whitespace. A term like "alice" or "800 flowers" is not
 // phone-shaped, so ordinary text search is untouched. The two-token shape
 // mirrors the phones_normalized index column (T69): a query of the full digits
 // ("18005551234") or of the canonical key ("8005551234") both resolve.

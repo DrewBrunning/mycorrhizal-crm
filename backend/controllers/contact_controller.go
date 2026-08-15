@@ -177,8 +177,8 @@ func GetContacts(c *gin.Context) {
 
 	// ?vcard_uid= (repeatable) is a batch by-VCardUID lookup, short-circuiting
 	// the rest of this handler's search/sort/pagination/includes logic
-	// entirely -- it exists for callers (e.g. the RelationshipEdge frontend,
-	// §3d WP3) that already know exactly which contacts they need to resolve
+	// entirely -- it exists for callers (e.g. the RelationshipEdge frontend)
+	// that already know exactly which contacts they need to resolve
 	// a Contact.VCardUID reference back into a displayable name, and have no
 	// use for the list-view machinery below. Bounded by how many UIDs were
 	// requested, not paginated. Respects include_archived like the rest of
@@ -325,7 +325,7 @@ func GetContacts(c *gin.Context) {
 	// (ContactSummary, extended to ContactSummaryWithRelations when any
 	// includes= relation is requested).
 	//
-	// "relationships" was removed from this map in §3d WP4: the legacy
+	// "relationships" was removed from this map: the legacy
 	// models.Relationship include had zero remaining frontend callers (the
 	// RelationshipEdge UI fetches via its own /relationship-edges endpoint,
 	// never by requesting this field). Matches this file's own fields=
@@ -589,7 +589,7 @@ func GetContact(c *gin.Context) {
 	// doesn't need to make; preserving existing behavior here is the safer
 	// default for backward compat.
 	//
-	// Relationships is no longer preloaded here (§3d WP4) — the legacy
+	// Relationships is no longer preloaded here — the legacy
 	// models.Relationship association had zero remaining readers once the
 	// RelationshipEdge frontend UI shipped in WP3 (it fetches relationships
 	// via its own /relationship-edges endpoint, not off this response).

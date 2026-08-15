@@ -157,7 +157,7 @@ func TestRecordFromContact_FullyPopulated(t *testing.T) {
 		t.Errorf("Card.Phones = %+v, want [{Number:+15551234567 Label:cell}]", card.Phones)
 	}
 
-	// "impp" row: Card.ImppAddresses[].URI ; legacy Type -> Service, per this
+	// "impp" row: Card.ImppAddresses[].URI; legacy Type -> Service, per this
 	// WP's explicit instruction (Type holds a service name, not a category)
 	if len(card.ImppAddresses) != 1 || card.ImppAddresses[0].Service != "telegram" || card.ImppAddresses[0].URI != "xmpp:jane@example.com" {
 		t.Errorf("Card.ImppAddresses = %+v, want [{Service:telegram URI:xmpp:jane@example.com}]", card.ImppAddresses)

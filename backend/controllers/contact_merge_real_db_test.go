@@ -20,7 +20,7 @@ import (
 
 // TestContactMerge_RealMigratedSchema is the real-DB check for ticket N1
 // (N1): every other test in this
-// package uses AutoMigrate against :memory: sqlite, which cannot catch a
+// package uses AutoMigrate against:memory: sqlite, which cannot catch a
 // GORM column-tag mismatch against the real migration SQL. This test seeds a
 // keeper (Alice) and loser (Bob) plus a third contact (Carol) covering every
 // merge case in one pass, then exercises preview -> commit against a

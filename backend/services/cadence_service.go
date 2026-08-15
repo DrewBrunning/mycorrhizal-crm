@@ -12,7 +12,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// CadenceHealth is the DERIVED relationship-health read model (§91.10) —
+// CadenceHealth is the DERIVED relationship-health read model —
 // computed from the timeline, never persisted. There is deliberately no
 // next_due column anywhere in the schema; this struct is the only place
 // those values exist.

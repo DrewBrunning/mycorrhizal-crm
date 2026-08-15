@@ -17,7 +17,7 @@ import (
 // Adapter implements contactmodel.Importer and contactmodel.Exporter for
 // legacy vCard 3.0 (RFC 2426). See docs/adrs/0001-neutral-hub-and-spoke-contact-model.md for
 // the binding rules this file follows, and docs/adrs/0002-correspondence-table-locked-oracle.md
-// (§20.3 table, §20.6 degradation summary) for the mapping this file
+// for the mapping this file
 // implements. This adapter shares no code with backend/vcard4 or
 // backend/jscontact and does not import either package.
 type Adapter struct{}
@@ -139,7 +139,7 @@ func (Adapter) Export(r *contactmodel.Record) ([]byte, []contactmodel.Diagnostic
 		card.Add(PropTel, newTypedField(p.Number, tokens))
 	}
 
-	// --- Online services: three-array design (20.7) ---
+	// --- Online services: three-array design  ---
 	// vCard import/export is always unambiguous — IMPP always reads/writes
 	// ImppAddresses[], X-SOCIALPROFILE always reads/writes SocialProfiles[].
 	// Array membership is the sole decision; no presence-based heuristic.
@@ -191,11 +191,11 @@ func (Adapter) Export(r *contactmodel.Record) ([]byte, []contactmodel.Diagnostic
 			card.Add(PropXUsername, &vcard.Field{Group: grp, Value: os.User})
 		}
 	}
-	// OtherOnlineServices has no vCard export at all (20.7): neither IMPP nor
+	// OtherOnlineServices has no vCard export at all: neither IMPP nor
 	// SOCIALPROFILE is a safe default guess for genuinely unclassified data.
 	for range r.Card.OtherOnlineServices {
 		// Concept "onlineservice.other" (not "impp"): OtherOnlineServices has
-		// no correspondence-table row at all (docs/adrs/0002-correspondence-table-locked-oracle.md SS20.7) —
+		// no correspondence-table row at all (docs/adrs/0002-correspondence-table-locked-oracle.md SS ) —
 		// it is not the `impp` concept, just an unclassified bucket that
 		// happens to share the OnlineService element type.
 		warn(&diags, "onlineservice.other", "Card.OtherOnlineServices has no vCard export (neither IMPP nor SOCIALPROFILE is a safe default for unclassified data); dropped")
@@ -287,7 +287,7 @@ func (Adapter) Export(r *contactmodel.Record) ([]byte, []contactmodel.Diagnostic
 		card.Add(prop, exportMediaField(m.URI, m.MediaType))
 	}
 
-	// --- Calendars / FreeBusyURLs (discrete fields, 20.7-style split) ---
+	// --- Calendars / FreeBusyURLs (discrete fields, -style split) ---
 	for _, c := range r.Card.Calendars {
 		if c.URI == "" {
 			continue
@@ -351,7 +351,7 @@ func (Adapter) Export(r *contactmodel.Record) ([]byte, []contactmodel.Diagnostic
 		warn(&diags, "lang", "LANG has no vCard 3.0 home; dropped")
 	}
 
-	// --- Related (redirected onto AGENT, still warned per 20.6) ---
+	// --- Related (redirected onto AGENT, still warned) ---
 	for _, rel := range r.Card.RelatedTo {
 		if rel.Target == "" {
 			continue
@@ -377,7 +377,7 @@ func (Adapter) Export(r *contactmodel.Record) ([]byte, []contactmodel.Diagnostic
 	for _, jp := range r.Passthrough.VCard {
 		name := strings.ToUpper(jp.Name)
 		if known[name] {
-			continue // 20.5 de-dup guard: never re-emit a name a mapped row already produced
+			continue // de-dup guard: never re-emit a name a mapped row already produced
 		}
 		card.Add(name, jcardPropToField(jp))
 	}
@@ -390,7 +390,7 @@ func (Adapter) Export(r *contactmodel.Record) ([]byte, []contactmodel.Diagnostic
 }
 
 // exportName handles the Card.Name -> FN/N mapping, including the
-// name.surname2/name.generation/name.phonetic degradations (20.6).
+// name.surname2/name.generation/name.phonetic degradations .
 func exportName(card vcard.Card, name *contactmodel.Name, diags *[]contactmodel.Diagnostic) {
 	var full string
 	var comps NComponents
@@ -432,7 +432,7 @@ func exportName(card vcard.Card, name *contactmodel.Name, diags *[]contactmodel.
 }
 
 // exportAddresses handles the Card.Addresses -> ADR/LABEL/GEO/TZ mapping,
-// including the extra-component-kind degradation (part of 20.6's "extra ADR
+// including the extra-component-kind degradation (part "extra ADR
 // component kinds" bullet, folded into the `adr` concept).
 func exportAddresses(card vcard.Card, addresses []contactmodel.Address, diags *[]contactmodel.Diagnostic) {
 	for _, a := range addresses {
@@ -636,7 +636,7 @@ func importPhones(card vcard.Card, rec *contactmodel.Record) {
 	}
 }
 
-// importOnlineServices implements the three-array design (20.7): IMPP always
+// importOnlineServices implements the three-array design: IMPP always
 // reads into ImppAddresses[], X-SOCIALPROFILE always reads into
 // SocialProfiles[] — the source property is the sole, unambiguous
 // discriminator; no per-element tag or heuristic is needed on the vCard side.
@@ -765,7 +765,7 @@ func importMediaResources(card vcard.Card, rec *contactmodel.Record) {
 }
 
 // importCalendars implements the discrete Calendars/FreeBusyURLs split
-// (20.7-style): CALURI always lands in Calendars[], FBURL always lands in
+// ( -style): CALURI always lands in Calendars[], FBURL always lands in
 // FreeBusyURLs[] — Kind is no longer used to discriminate these.
 func importCalendars(card vcard.Card, rec *contactmodel.Record) {
 	for _, f := range card[PropCaluri] {
@@ -816,7 +816,7 @@ func importLinks(card vcard.Card, rec *contactmodel.Record) {
 }
 
 // importAgentRelated reverses the "related" concept's export-side AGENT
-// redirect (20.6: "3.0: no RELATED → AGENT/warn") so a vcard3 round-trip
+// redirect ("3.0: no RELATED → AGENT/warn") so a vcard3 round-trip
 // preserves the relation's target. This isn't separately called out by
 // docs/adrs/0001-neutral-hub-and-spoke-contact-model.md import rule (which only names X-ANNIVERSARY/
 // X-SOCIALPROFILE explicitly), but AGENT is otherwise one of our "known"
@@ -833,14 +833,14 @@ func importAgentRelated(card vcard.Card, rec *contactmodel.Record) {
 }
 
 // ---------------------------------------------------------------------
-// Shared helpers (transforms, 20.4)
+// Shared helpers (transforms)
 // ---------------------------------------------------------------------
 
 func warn(diags *[]contactmodel.Diagnostic, concept, msg string) {
 	*diags = append(*diags, contactmodel.Diagnostic{Severity: "warn", Concept: concept, Message: msg})
 }
 
-// ctxToType implements the `ctx2type` transform (20.4): private->home,
+// ctxToType implements the `ctx2type` transform: private->home,
 // work->work, rendered as vCard 3.0 TYPE tokens.
 func ctxToType(contexts []string) []string {
 	var out []string
@@ -885,7 +885,7 @@ func isPreferred(pref *int) bool {
 	return pref != nil && *pref == 1
 }
 
-// featToType implements (the v3 half of) the `feat2type` transform (20.4).
+// featToType implements (the v3 half of) the `feat2type` transform .
 func featToType(f string) string {
 	if strings.EqualFold(f, "mobile") {
 		return "CELL"
@@ -897,7 +897,7 @@ func featToType(f string) string {
 // as neutral Phone.Features (voice,fax,cell,video,pager) plus the 4.0-only
 // tokens text/textphone/main-number, which RFC 2426 doesn't define but which
 // this adapter still emits/parses permissively (graceful degradation, not a
-// hard error) since the `phone`/TEL row itself is fully mapped (not a 20.6
+// hard error) since the `phone`/TEL row itself is fully mapped (not a
 // concept) — see the final WP-50 report.
 var telFeatureTokens = map[string]string{
 	"VOICE":       "voice",
@@ -1204,7 +1204,7 @@ func importMediaURI(f *vcard.Field, kind string) string {
 // interprets on import (structurally mapped, or consumed as a companion of a
 // mapped property like X-ABLabel/X-SERVICE-TYPE/GEO/TZ/LABEL). Anything else
 // is preserved verbatim in Passthrough.VCard (0.5) and, on export, re-emitted
-// unless its name is in this set (the 20.5 de-dup guard).
+// unless its name is in this set (the de-dup guard).
 func knownPropNames() map[string]bool {
 	names := []string{
 		PropBegin, PropEnd, PropVersion, PropUID, PropProdid, PropRev,

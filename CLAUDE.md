@@ -135,7 +135,7 @@ These are real bugs that shipped, not hypotheticals.
    `... WHERE deleted_at IS NULL` — the way `idx_contacts_vcard_uid_user` does.
 
    **Operation-based variance was considered and rejected** ("cascades hard, single deletes soft"): it
-   makes every future cascade site a chance to forget an `Unscoped()`, and the failure is silent. Tier 3c
+   makes every future cascade site a chance to forget an `Unscoped`, and the failure is silent.
    item 1 found 14 tables `DeleteUser`/`DeleteContact` had already missed. See the T26 ticket.
 
    `gorm.Model` gives soft delete for free, **but only works on uint-PK entities**. The UUID-string-PK
@@ -171,7 +171,7 @@ These are real bugs that shipped, not hypotheticals.
   their ID in `BeforeCreate`. Everything older uses `gorm.Model`'s uint PK.
 - Validation lives in struct tags + `middleware.ValidateJSONMiddleware`; custom validators
   (`phone`, `birthday`, `safeurl`, `relation_type`) are registered in `middleware/`.
-- Sensitivity (`normal|private|secret`, `91.13`): anything above `normal` is excluded from exports and
+- Sensitivity (`normal|private|secret`): anything above `normal` is excluded from exports and
   external sync **in the query**, not in the caller.
 
 ## Frontend traps
@@ -222,7 +222,7 @@ These are real bugs that shipped, not hypotheticals.
   `target_id: <viewed contact>`, so a dropdown label always describes the *other* party.
 - **Only `status: confirmed` edges are fact.** `suggested` edges (household-inferred) must never be
   projected to standards, graphed, or treated as real outside a review surface.
-- **Cadence resets on a *qualifying interaction*, not on completing a task** (`91.10`).
+- **Cadence resets on a *qualifying interaction*, not on completing a task**.
   `Activity.Qualifying()` exists for this and has had no consumer yet.
 - **CardDAV/REST writes are full-overwrite by design.** `reconcileContactSync` intentionally discards
   local edits on remote change — documented, pinned by a test. Do **not** copy that policy into new

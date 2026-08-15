@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Tier 3c item 9 , re-dispatching
+//, re-dispatching
 // Phase 3a of docs/adrs/0003-golden-fixtures-external-test-oracle.md: computeSignature,
 // retryAt, saveDelivery, deliverWebhook, TriggerWebhooks and
 // TestWebhookDelivery were all at 0% (or near it) coverage. This file covers

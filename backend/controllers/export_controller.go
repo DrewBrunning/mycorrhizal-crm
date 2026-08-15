@@ -137,7 +137,7 @@ func groupingNamesByContact(db *gorm.DB, userID uint, joinTable, entityTable, jo
 // preserved so existing export links/URLs keep working. An unknown token is
 // an explicit 400 rather than a silent narrowing, so a typo can't silently
 // drop fields from an export. include_sensitive accepts true/1 as the
-// explicit §91.13 opt-in override (never implied by any section selection).
+// explicit opt-in override (never implied by any section selection).
 //
 // The second return is false when the caller should abort (an error has
 // already been written to the response).
@@ -222,7 +222,7 @@ func ExportData(c *gin.Context) {
 		valueByContactAndDef[fv.EntityID][fv.FieldDefinitionID] = fv.Value
 	}
 
-	// §3d WP4: relationships now come from RelationshipEdge, not the legacy
+	// relationships now come from RelationshipEdge, not the legacy
 	// models.Relationship table. Names are resolved via a VCardUID map built
 	// from the contacts already fetched above, since an edge only carries
 	// its endpoints' VCardUID, not a nested contact.
@@ -329,7 +329,7 @@ func ExportData(c *gin.Context) {
 	}
 	// Custom-field headers come from the v2 definitions' Labels (user-
 	// authored, so the header row gets the same csvSafe treatment as the data
-	// rows -- the Tier 1 formula-injection finding stays closed).
+	// rows -- the formula-injection finding stays closed).
 	for _, def := range definitions {
 		contactHeaders = append(contactHeaders, def.Label)
 	}
@@ -373,7 +373,7 @@ func ExportData(c *gin.Context) {
 	}
 	writer.Flush()
 
-	// Write relationships section. §3d WP4: reads RelationshipEdge, not the
+	// Write relationships section. reads RelationshipEdge, not the
 	// legacy models.Relationship table. Deliberately includes every
 	// status/sensitivity — this is the user's own full personal-data backup,
 	// not a share to another party, so unlike RecordForContact's vCard/
@@ -615,7 +615,7 @@ func ExportContactsAsVCF(c *gin.Context, photoDir string) {
 	// WP-97 / T9: the ?sections= field picker and ?include_sensitive= opt-in
 	// override apply here (the shared Card filter runs before the adapter) —
 	// NOT to ExportData, which is the user's own full CSV backup and
-	// deliberately includes everything (§92.6b's trap).
+	// deliberately includes everything .
 	sel, ok := parseExportFieldSelection(c)
 	if !ok {
 		return

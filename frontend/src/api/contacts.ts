@@ -820,7 +820,7 @@ export async function getAllContacts(params: Omit<GetContactsParams, 'cursor'> =
 }
 
 // Resolves a batch of Contact.VCardUID values to full Contact objects in one
-// request, via GET /contacts' ?vcard_uid= filter (§3d WP0). Needed because
+// request, via GET /contacts' ?vcard_uid= filter. Needed because
 // RelationshipEdge.SourceID/TargetID (api/relationshipEdges.ts) are bare
 // VCardUID strings with no nested contact data. includeArchived: true so an
 // edge pointing at a since-archived contact still resolves instead of
@@ -845,7 +845,7 @@ export async function getContactsByUid(uids: string[]): Promise<Map<string, Cont
 
 // getContactRecord/updateContactRecord/createContactRecord read and write
 // Card/CRMEnvelope directly. Every contact-editing component has migrated
-// onto these (see, Tier 0 items 3-6) -- toContactRecordInput
+// onto these -- toContactRecordInput
 // (below) still exists for the e2e test fixtures' convenience, but nothing
 // in the app itself round-trips a full record through the flat Contact shape
 // anymore.

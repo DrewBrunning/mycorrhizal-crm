@@ -20,12 +20,12 @@ const (
 // ExternalIdentity is the generic integration substrate's identity-link
 // entity (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md): "this contact IS
 // this thing in that external system." One Contact (by VCardUID) may have
-// many identities across many systems — the "identity hub" of §90 — so no
+// many identities across many systems — the "identity hub" — so no
 // integration ever grows bespoke columns (ticket T14's whole reason for
 // existing).
 //
 // EntityID references Contact.VCardUID (models/contact.go), never the numeric
-// ID — the graph invariant (§90 D3) every WP-80+ entity follows.
+// ID — the graph invariant every WP-80+ entity follows.
 //
 // System-specific data (e.g. an Immich person's name) belongs in Metadata,
 // a map[string]interface{} JSON column following RelationshipEdge.Metadata's

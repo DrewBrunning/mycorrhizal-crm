@@ -11,11 +11,11 @@ import (
 
 // ProfilePictureURL returns the relative URL to the contact's existing
 // profile-picture endpoint (GET /api/v1/contacts/:id/profile_picture) for a
-// contact that has a photo, or "" when it has none. It is M6 §1's
+// contact that has a photo, or "" when it has none. It is M6's
 // response-shape change: the list/detail photo fields carry this URL instead
 // of the raw stored value (a base64 data URI or a legacy disk-file name), so
 // a native client can hand it straight to an authenticated image loader
-// (M6 §1). The
+// (M6). The
 // endpoint itself is unchanged and still serves raw bytes.
 //
 // preferThumbnail selects the lightweight ?thumbnail=true variant when a
@@ -102,7 +102,7 @@ type ContactSummary struct {
 	Birthday     string `json:"birthday"`
 	Org          string `json:"org"`
 	Photo        string `json:"photo"`
-	// PhotoThumbnail is M6 §1's response-shape change: it carries a relative
+	// PhotoThumbnail is M6's response-shape change: it carries a relative
 	// URL to the profile-picture thumbnail endpoint (ProfilePictureURL) when
 	// a photo exists, and is omitted (omitempty) when none does — never the
 	// raw stored base64 data URI or legacy disk-file name.
@@ -147,7 +147,7 @@ func NewContactSummary(c *Contact) ContactSummary {
 // includes= augments the slim list shape, it does not upgrade it to the
 // detail shape.
 //
-// Relationships was removed from this shape in §3d WP4 alongside the
+// Relationships was removed from this shape alongside the
 // includes=relationships removal in contact_controller.go's GetContacts.
 type ContactSummaryWithRelations struct {
 	ContactSummary
@@ -226,7 +226,7 @@ type ContactRecordResponse struct {
 	CRM         contactmodel.CRMEnvelope `json:"crm"`
 	Passthrough contactmodel.Passthrough `json:"passthrough,omitempty"`
 	Photo       string                   `json:"photo"`
-	// PhotoThumbnail is M6 §1's response-shape change, exactly as on
+	// PhotoThumbnail is M6's response-shape change, exactly as on
 	// ContactSummary: a relative URL to the profile-picture thumbnail
 	// endpoint when a photo exists, omitted (omitempty) when none does.
 	PhotoThumbnail string `json:"photo_thumbnail,omitempty"`
@@ -238,7 +238,7 @@ type ContactRecordResponse struct {
 	// the full reasoning on why these are still included here even though
 	// dedicated /contacts/:id/notes-style endpoints also exist).
 	//
-	// Relationships was removed in §3d WP4 — see GetContact's doc comment.
+	// Relationships was removed — see GetContact's doc comment.
 	Notes      []Note     `json:"notes,omitempty"`
 	Activities []Activity `json:"activities,omitempty"`
 	Reminders  []Reminder `json:"reminders,omitempty"`
@@ -274,7 +274,7 @@ func NewContactRecordResponse(c *Contact, photoDir string, db *gorm.DB) ContactR
 		Reminders:      c.Reminders,
 	}
 
-	// M6 §1: the Card.Media photo entry's URI carries the relative
+	// M6: the Card.Media photo entry's URI carries the relative
 	// profile-picture URL too, so a client rendering the detail avatar from
 	// Card.Media can hand it to an image loader. Only the READ response is
 	// rewritten — the persisted Card (which feeds CardDAV and the VCF/

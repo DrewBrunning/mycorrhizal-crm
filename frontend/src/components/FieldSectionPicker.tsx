@@ -34,7 +34,7 @@ interface FieldSectionPickerProps {
 // opt-out (checked by default, owned by the caller via `selected`);
 // sensitivity-marked sections are opt-in AND gated: disabled, visually
 // flagged, and only interactive after the deliberate "reveal" confirmation
-// below -- an unchecked box alone is not enough (§92.6b's second
+// below -- an unchecked box alone is not enough (second
 // clarification).
 export default function FieldSectionPicker({
   selected,

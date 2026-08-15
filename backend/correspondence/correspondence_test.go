@@ -58,7 +58,7 @@ func parseSegment(segment string) (name string, bracket string) {
 	return name, "[kind=X]"
 }
 
-// resolveNeutralPath walks path per the §20.2 algorithm, starting from
+// resolveNeutralPath walks path per the algorithm, starting from
 // contactmodel.Record. It returns an error describing the first failure, or
 // nil if the path resolves.
 func resolveNeutralPath(path string) error {
@@ -104,10 +104,10 @@ func TestNeutralPathResolves(t *testing.T) {
 	}
 }
 
-// --- (c) every transform name exists in the 20.4 transforms registry -----------
+// --- (c) every transform name exists in the transforms registry -----------
 
 // validTransforms is the hardcoded name list from docs/adrs/0002-correspondence-table-locked-oracle.md
-// §20.4. These are names only, for this mechanical check — the transform
+// These are names only, for this mechanical check — the transform
 // implementations themselves belong to the adapter WPs (30/40/50).
 var validTransforms = map[string]bool{
 	"identity":          true,
@@ -136,7 +136,7 @@ func TestTransformNamesAreRegistered(t *testing.T) {
 		r := r
 		t.Run(r.ConceptID, func(t *testing.T) {
 			if !validTransforms[r.Transform] {
-				t.Errorf("concept_id %q: transform %q is not in the 20.4 registry", r.ConceptID, r.Transform)
+				t.Errorf("concept_id %q: transform %q is not in the registry", r.ConceptID, r.Transform)
 			}
 		})
 	}
@@ -165,7 +165,7 @@ var vcard4Properties = map[string]bool{
 }
 
 // vcard3Properties is the exact property-name list from docs/adrs/0001-neutral-hub-and-spoke-contact-model.md
-// §30.C's consts.go section: "Per RFC 2426 §5 ..., plus the X- extension
+// consts.go section: "Per RFC 2426 §5 ..., plus the X- extension
 // properties this table actually maps to in docs/adrs/0002-correspondence-table-locked-oracle.md".
 var vcard3Properties = map[string]bool{
 	"BEGIN": true, "END": true, "SOURCE": true, "NAME": true, "FN": true,
@@ -181,7 +181,7 @@ var vcard3Properties = map[string]bool{
 
 // baseProp strips a structured-value index suffix like "N[0]" -> "N" and
 // recognizes the "-" (none) and "*verbatim*" (escape-hatch passthrough,
-// 20.3 pt.vcard row) sentinel values, which are not checked against the IANA
+// pt.vcard row) sentinel values, which are not checked against the IANA
 // list.
 func baseProp(prop string) (name string, skip bool) {
 	if prop == "-" || prop == "*verbatim*" {

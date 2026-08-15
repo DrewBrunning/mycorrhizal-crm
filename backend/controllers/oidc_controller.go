@@ -15,7 +15,7 @@ import (
 )
 
 // androidOIDCScheme is the custom URL scheme the Android app's MainActivity
-// intent filter declares (M6 §4 — M6). When a login flow is started with ?client=android, the
+// intent filter declares (M6). When a login flow is started with ?client=android, the
 // callback delivers the JWT to <scheme>://oidc/callback?token=…&language=…
 // &date_format=… instead of setting the web's httpOnly cookies and redirecting
 // to "/" — a native client cannot read a cookie set in a Custom Tab's browser
@@ -26,7 +26,7 @@ const androidOIDCScheme = "mycorrhizal"
 // client: the web SPA's /login?error=<code> for the default flow, or the
 // Android app's custom-scheme deep link for the client=android flow — so the
 // native client can surface the failure instead of landing on a dead browser
-// page. The token itself is never placed in an error redirect (M6 §4's
+// page. The token itself is never placed in an error redirect (M6's
 // security note); only the error code travels, exactly as on web.
 func oidcErrorRedirect(c *gin.Context, android bool, code string) {
 	target := "/login?error=" + code
@@ -72,7 +72,7 @@ func OIDCLoginHandler(provider *services.OIDCProvider, cfg *config.Config) gin.H
 		c.SetCookie("oidc_nonce", nonce, 600, "/api/v1/auth/oidc/callback", cfg.CookieDomain, cfg.CookieSecure, true)
 		c.SetCookie("oidc_pkce", pkceVerifier, 600, "/api/v1/auth/oidc/callback", cfg.CookieDomain, cfg.CookieSecure, true)
 
-		// M6 §4: remember a native-client login start so the callback can
+		// M6: remember a native-client login start so the callback can
 		// deliver the token to the app's deep link instead of the web SPA.
 		// The cookie (not just the query param) is what the callback trusts,
 		// so an attacker cannot force the token into a redirect they control
@@ -91,7 +91,7 @@ func OIDCCallbackHandler(provider *services.OIDCProvider, cfg *config.Config) gi
 	return func(c *gin.Context) {
 		log := logger.FromContext(c)
 
-		// M6 §4: was this flow started by the native client? The oidc_client
+		// M6: was this flow started by the native client? The oidc_client
 		// cookie is set by /auth/oidc/login?client=android and cleared here
 		// like the other one-time cookies. The token is delivered via the app
 		// deep link for this flow only — the default flow keeps its exact
@@ -193,13 +193,13 @@ func OIDCCallbackHandler(provider *services.OIDCProvider, cfg *config.Config) gi
 		}
 
 		if android {
-			// M6 §4: deliver the token to the app's own intent filter via the
+			// M6: deliver the token to the app's own intent filter via the
 			// custom-scheme deep link. The httpOnly auth_token/id_token
 			// cookies are deliberately NOT set here — a native client cannot
 			// read a cookie set in a Custom Tab's browser context, and
 			// minting a browser session it cannot manage would be worse than
 			// not minting one. The token is scoped to this one branch: the
-			// default flow below never places it in a redirect (M6 §4's
+			// default flow below never places it in a redirect (M6's
 			// security note). state/nonce/PKCE were all verified above,
 			// identically for both clients.
 			params := url.Values{}

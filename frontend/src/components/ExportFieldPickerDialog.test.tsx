@@ -45,7 +45,7 @@ test('a locked sensitive control stays untouched by clicks', () => {
   expect(relationships).not.toBeChecked();
 });
 
-// The binding foot-gun guard (92.6b clarification): the sensitive control is
+// The binding foot-gun guard: the sensitive control is
 // not interactive until the deliberate reveal action is taken.
 test('sensitive controls become interactive only after the reveal action', () => {
   renderDialog();

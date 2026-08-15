@@ -2,7 +2,7 @@ import { test, expect } from './fixtures';
 import { createTestContact, deleteTestContact } from './fixtures';
 import { API_BASE_URL } from './global-setup';
 
-// §3d WP3 : replaces
+// replaces
 // relationships.spec.ts now that the Relationships tab talks to
 // RelationshipEdge instead of the legacy models.Relationship. Accept/Reject
 // (the suggestion-review flow) is intentionally not covered here -- nothing

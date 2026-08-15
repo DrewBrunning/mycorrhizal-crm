@@ -133,8 +133,8 @@ func TestGetContacts_SummaryHasNicknameNoCircles(t *testing.T) {
 	assert.NotContains(t, item, "circles", "circles must be gone from the DTO entirely, not present-and-empty")
 }
 
-// TestGetContacts_FiltersByVCardUID pins down §3d WP0
-// : the RelationshipEdge
+// TestGetContacts_FiltersByVCardUID pins down
+// the RelationshipEdge
 // frontend needs to resolve a batch of Contact.VCardUID values (edge
 // SourceID/TargetID, which carry no nested contact data) back into
 // displayable Contacts. Proves the ?vcard_uid= filter matches multiple
@@ -182,7 +182,7 @@ func TestGetContacts_FiltersByVCardUID(t *testing.T) {
 }
 
 // TestGetContacts_VCardUIDFilter_RealMigratedSchema is the real-DB check for
-// §3d WP0: unlike the AutoMigrate-backed test above, this runs against a
+// unlike the AutoMigrate-backed test above, this runs against a
 // database.InitDB-migrated file DB, confirming the `vcard_uid`/`archived`
 // columns the new filter queries actually exist with those exact names in
 // the real migration SQL (this fork's own recurring bug class).
@@ -950,8 +950,7 @@ func TestDeleteContact(t *testing.T) {
 	assert.Equal(t, "Contact deleted", responseBody["message"])
 }
 
-// TestDeleteContact_CleansUpReferencingRows is the regression test for Tier
-// 3c item 1 : deleting a contact
+// TestDeleteContact_CleansUpReferencingRows is the regression test: deleting a contact
 // must remove every row that references it via Contact.VCardUID (or, for
 // ContactSyncLink, Contact.ID), but must NOT delete the shared
 // Household/Circle/Tag/FieldDefinition containers other contacts may still

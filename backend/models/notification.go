@@ -50,7 +50,7 @@ type NotificationDelivery struct {
 }
 
 // NotificationConfig holds a user's connection settings for the push-style
-// channels. Same shape/pattern as ImmichConfig (the §93.4 exception where a
+// channels. Same shape/pattern as ImmichConfig (the exception where a
 // small typed per-user config table is right): soft-deletes, and the real
 // uniqueness is the migration's PARTIAL index (000013: WHERE deleted_at IS
 // NULL) so a removed config can be re-created. The Gotify token is stored

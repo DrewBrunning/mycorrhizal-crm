@@ -33,7 +33,7 @@ func (ci *Circle) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// CircleMember is the membership join (§91.5's "members" — circle_members
+// CircleMember is the membership join ("members" — circle_members
 // join → entity UUIDs), following HouseholdMember's exact template
 // (household.go): uint primary key, no soft-delete, MemberVCardUID is a
 // Contact.VCardUID (the graph invariant), unique per (circle, member).

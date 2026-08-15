@@ -100,7 +100,7 @@ type LifeEventInput struct {
 }
 
 // ConversationAgendaInput is the DTO for creating/updating a ConversationAgenda
-// (conversation_agenda.go, §91.11). Only content fields; the resolved state
+// (conversation_agenda.go). Only content fields; the resolved state
 // (discussed_at / activity_id) is mutated by PATCH /:id/discuss, never by
 // create/update — updating an item's content must not silently re-open or
 // re-close it.
@@ -118,7 +118,7 @@ type ConversationAgendaDiscussInput struct {
 	ActivityID *uint `json:"activity_id,omitempty"`
 }
 
-// GiftInput is the DTO for creating/updating a Gift (§91.11, T20b). Status
+// GiftInput is the DTO for creating/updating a Gift. Status
 // defaults to "idea" server-side when omitted — a gift idea is captured
 // opportunistically without choosing a state. ValueCents/Currency must be set
 // together (explicit-currency rule, enforced in the controller since this
@@ -140,7 +140,7 @@ type GiftInput struct {
 }
 
 // CadencePolicyInput is the DTO for creating/updating a CadencePolicy
-// (cadence_policy.go, §91.10). QualifyingTypes is deliberately not
+// (cadence_policy.go). QualifyingTypes is deliberately not
 // `oneof`-validated: Activity.Type is an open classifier, so a policy may
 // name types outside the current InteractionType* constants. An empty list
 // means every default-qualifying type counts (CadencePolicy.Qualifies).
@@ -172,7 +172,7 @@ type FieldDefinitionInput struct {
 
 // FieldValueInput is one element of ContactFieldValuesInput — a
 // FieldValue to write for one FieldDefinition of one contact.
-// Value is the raw JSON payload (§94.4): a Multi field is a JSON array,
+// Value is the raw JSON payload: a Multi field is a JSON array,
 // a scalar is a bare JSON value (string/number/boolean). It is validated
 // against the definition's Type+Constraints in the controller via
 // services.ValidateFieldValue — a type mismatch is a 400, not a 500.
@@ -190,7 +190,7 @@ type ContactFieldValuesInput struct {
 }
 
 // PreferenceInput is the DTO for creating/updating a Preference
-// (preference.go, §91.9). Category is deliberately not `oneof`-validated —
+// (preference.go). Category is deliberately not `oneof`-validated —
 // it is an open classifier (see Preference's doc comment). Sensitivity
 // defaults to normal server-side when omitted (mirroring
 // FieldValue/RelationshipEdge's own defaults), not validated as required.
@@ -306,8 +306,8 @@ type ChangePasswordInput struct {
 // ThinContactInput creates a not-yet-existing "thin" Contact inline as one
 // endpoint of a RelationshipEdge — the graph-model equivalent of the legacy
 // Relationship{Name, Gender, Birthday, RelatedContactID: nil} case (the
-// legacy model and its one-time migration tool are both gone as of §3d
-// WP5; this comment is kept only as historical context for the field
+// legacy model and its one-time migration tool are both gone;
+// this comment is kept only as historical context for the field
 // mapping's origin).
 type ThinContactInput struct {
 	Name     string `json:"name" validate:"required,min=1,max=100"`

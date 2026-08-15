@@ -23,7 +23,7 @@ export const QUALIFYING_INTERACTION_TYPE_TOKENS = [
 ] as const;
 export type InteractionType = (typeof QUALIFYING_INTERACTION_TYPE_TOKENS)[number];
 
-// Derived relationship health (§91.10) -- computed from the timeline, never
+// Derived relationship health  -- computed from the timeline, never
 // persisted. `has_qualifying_interaction` stays false until the contact has
 // had at least one qualifying interaction (cadence does NOT count from the
 // contact's creation date).

@@ -210,7 +210,7 @@ func applyEmails(c *Contact, card contactmodel.Card, proj contactmodel.Projectio
 
 // applyPhones mirrors applyEmails for the "phone" row (Card.Phones[] ->
 // Phones[], Label -> Type), including the empty-case fallback: found by
-// Tier 3c item 11a's audit  as
+// audit as
 // a real, live bug — this function cleared c.Phones but left the c.Phone
 // scalar untouched when card.Phones was empty, so removing a contact's last
 // phone number (via REST PUT, CardDAV sync, or VCF import) silently left a
@@ -376,7 +376,7 @@ func applyMedia(c *Contact, card contactmodel.Card, photoDir string) {
 
 	data, mediaType, photoURL := photostore.DecodePhotoURI(photo.URI, photo.MediaType)
 	if len(data) == 0 && photoURL == "" {
-		// M6 §1 round-trip repair: a photo URI that is neither embedded data
+		// M6 round-trip repair: a photo URI that is neither embedded data
 		// nor a fetchable URL — e.g. the relative profile-picture URL the
 		// read path now exposes in Card.Media, which the web client PUTs back
 		// verbatim on the next edit — is this contact's own photo pointer, not

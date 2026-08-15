@@ -23,7 +23,7 @@ func setupTagProjectionTestDB(t *testing.T) *gorm.DB {
 	return db
 }
 
-// WP-84's Tag -> Card.Keywords projection (§91.5): a contact tagged with two
+// WP-84's Tag -> Card.Keywords projection: a contact tagged with two
 // Tags gets both tag names merged into RecordForContact's Card.Keywords,
 // alongside any pre-existing passthrough keyword, with no duplication.
 func TestRecordForContact_ProjectsTagsOntoKeywords(t *testing.T) {

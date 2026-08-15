@@ -51,7 +51,7 @@ func TestExport_PassthroughUnknownTopLevelPropertyIsTrueInverse(t *testing.T) {
 	rfctest.AssertJSONPointer(t, out, "/uid", "pt-jscontact-roundtrip-example")
 }
 
-// TestExport_PassthroughDeDupGuard exercises 20.5's de-dup guard: a
+// TestExport_PassthroughDeDupGuard exercises de-dup guard: a
 // passthrough entry recorded under a pointer that collides with a property
 // this adapter actually maps (e.g. "/uid") must never shadow or duplicate
 // the mapped value.

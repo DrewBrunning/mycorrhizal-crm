@@ -7,7 +7,7 @@
 // here are governed entirely by docs/adrs/0002-correspondence-table-locked-oracle.md (the
 // oracle); see that file's rows for the concept_id backing every field
 // touched below. Because JSContact is, per docs/adrs/0001-neutral-hub-and-spoke-contact-model.md
-// §30.A, "the near-identity spoke" (contactmodel's Card/Name/Address/... were
+// "the near-identity spoke" (contactmodel's Card/Name/Address/... were
 // shaped directly after it), nearly every mapping here is a straight field
 // copy between the two (structurally near-identical, separately owned) type
 // sets rather than a format-specific transform.
@@ -31,7 +31,7 @@ var _ contactmodel.Exporter = Adapter{}
 
 // knownCardTopLevelKeys is the set of top-level JSON keys this adapter
 // actively maps to/from the neutral model. Anything else found at the top
-// level of an incoming document is, per 20.3's "pt.jscontact" row, unmapped
+// level of an incoming document is, "pt.jscontact" row, unmapped
 // JSContact data that must be preserved via Record.Passthrough.JSContact
 // rather than silently dropped (0.5's degradation policy).
 //
@@ -858,7 +858,7 @@ func importUnknownTopLevel(raw []byte, r *contactmodel.Record) error {
 // exist in the exported document (e.g. the referenced collection element's
 // ID is no longer present on this Record) is left un-spliced rather than
 // fabricating one — same fail-safe philosophy as before. The de-dup guard
-// (20.5) is preserved: a pointer whose final segment already exists in the
+// is preserved: a pointer whose final segment already exists in the
 // document (i.e. collides with a mapped/known property) is skipped, so a
 // mapped property can never be shadowed/duplicated by a passthrough entry.
 func spliceJSContactPassthrough(raw []byte, pt map[string]json.RawMessage) ([]byte, error) {

@@ -6,7 +6,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// ImmichConfig holds a user's Immich connection settings — the §93.4
+// ImmichConfig holds a user's Immich connection settings — the
 // exception where a small typed config table is acceptable, because the
 // base URL + API key are genuinely per-user-global (one Immich instance per
 // user), not per-contact (which is where ExternalIdentity.metadata lives).

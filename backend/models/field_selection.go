@@ -43,7 +43,7 @@ const (
 	SectionCustomFields   = "custom_fields"
 )
 
-// sensitiveSections are the sections whose data can carry a §91.13 sensitivity
+// sensitiveSections are the sections whose data can carry a sensitivity
 // above "normal". Only these are affected by FieldSelection.IncludeSensitive —
 // the opt-in override that lets one export include private/secret items just
 // this once. Tags (SectionKeywords) and every other section have no
@@ -65,7 +65,7 @@ func FieldSections() []string {
 }
 
 // IsSensitiveSection reports whether a section's data can carry a
-// sensitivity above "normal" (§91.13), i.e. whether it is gated behind the
+// sensitivity above "normal", i.e. whether it is gated behind the
 // IncludeSensitive opt-in override.
 func IsSensitiveSection(token string) bool {
 	return sensitiveSections[token]
@@ -85,7 +85,7 @@ var validFieldSections = func() map[string]bool {
 // are simply not selected. A nil map is the zero value and means "no sections
 // selected"; use FieldSelectionAll for the all-on default.
 //
-// IncludeSensitive is the explicit §91.13 opt-in override: when true,
+// IncludeSensitive is the explicit opt-in override: when true,
 // projection steps that normally filter to sensitivity='normal' (relationship
 // edges, hobby preferences, vCard-projected custom fields) also include their
 // private/secret items. This is the backend half of the foot-gun guard — it

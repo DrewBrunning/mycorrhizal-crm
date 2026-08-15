@@ -33,7 +33,7 @@ func (t *Tag) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// ContactTag is the tagging join (§91.5's "taggings (contact ↔ tag)"),
+// ContactTag is the tagging join ("taggings (contact ↔ tag)"),
 // following HouseholdMember's exact template (household.go): uint primary
 // key, no soft-delete, ContactVCardUID is a Contact.VCardUID (the graph
 // invariant), unique per (tag, contact).

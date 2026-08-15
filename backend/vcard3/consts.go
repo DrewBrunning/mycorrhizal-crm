@@ -6,7 +6,7 @@
 //
 // This file (consts.go, WP-50) declares the exported property and parameter
 // name constants transcribed verbatim from docs/adrs/0001-neutral-hub-and-spoke-contact-model.md
-// §30.C's "consts.go" block, itself drawn from RFC 2426 §5 (the standard 3.0
+// "consts.go" block, itself drawn from RFC 2426 §5 (the standard 3.0
 // property set) plus the X- extension properties this table actually maps to
 // in docs/adrs/0002-correspondence-table-locked-oracle.md. The string VALUES must exactly
 // equal the RFC 2426 spellings.

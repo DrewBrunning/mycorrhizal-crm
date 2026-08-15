@@ -144,7 +144,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.POST("/contact-shares/:id/decline", controllers.DeclineContactShare)
 
 			// RelationshipEdge routes (graph-model relationship API; replaces the
-			// legacy /contacts/:id/relationships stack, removed in §3d WP5)
+			// legacy /contacts/:id/relationships stack, removed)
 			protected.POST("/relationship-edges", middleware.ValidateJSONMiddleware(&models.RelationshipEdgeInput{}), controllers.CreateRelationshipEdge)
 			protected.GET("/relationship-edges", controllers.ListRelationshipEdges)
 			protected.GET("/relationship-edges/:id", controllers.GetRelationshipEdge)

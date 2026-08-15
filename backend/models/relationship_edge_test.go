@@ -225,7 +225,7 @@ func TestRecordForContact_ProjectsSymmetricEdge(t *testing.T) {
 	}
 }
 
-// §91.2: "only confirmed edges are authoritative" — a suggested edge (e.g.
+// "only confirmed edges are authoritative" — a suggested edge (e.g.
 // household-inferred, awaiting user review) must never appear in an export.
 func TestRecordForContact_DoesNotProjectSuggestedEdge(t *testing.T) {
 	db := setupRelationshipTestDB(t)
@@ -249,7 +249,7 @@ func TestRecordForContact_DoesNotProjectSuggestedEdge(t *testing.T) {
 	assert.Empty(t, record.Card.RelatedTo)
 }
 
-// §91.13: anything above "normal" sensitivity is excluded by default from
+// anything above "normal" sensitivity is excluded by default from
 // exports. Private and secret are both tested since the gate is a single
 // equality check that could accidentally only cover one of them.
 func TestRecordForContact_DoesNotProjectAboveNormalSensitivity(t *testing.T) {

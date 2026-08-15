@@ -9,7 +9,7 @@ import {
 } from '../api/preferences';
 import { handleFetchError, handleError, ErrorNotifier } from '../utils/errorHandler';
 
-// usePreferences loads and manages the structured Preferences (§91.9) for one
+// usePreferences loads and manages the structured Preferences  for one
 // contact, keyed by the contact's VCardUID (entity_id).
 export function usePreferences(entityId: string | undefined, notifier?: ErrorNotifier) {
   const [preferences, setPreferences] = useState<Preference[]>([]);
