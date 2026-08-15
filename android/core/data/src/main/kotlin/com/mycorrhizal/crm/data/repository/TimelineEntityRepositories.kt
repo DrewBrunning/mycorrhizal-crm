@@ -176,8 +176,8 @@ class ConversationAgendaRepositoryImpl @Inject constructor(
         return result
     }
 
-    override suspend fun discuss(id: String): Result<ConversationAgenda> {
-        val result = apiClient.discussConversationAgenda(id)
+    override suspend fun discuss(id: String, activityId: Int?): Result<ConversationAgenda> {
+        val result = apiClient.discussConversationAgenda(id, activityId)
         result.getOrNull()?.let { dao.upsert(it.toCached(it.entityId)) }
         return result
     }

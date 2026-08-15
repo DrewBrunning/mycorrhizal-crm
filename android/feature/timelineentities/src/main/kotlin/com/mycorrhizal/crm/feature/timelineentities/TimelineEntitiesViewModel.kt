@@ -4,27 +4,38 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mycorrhizal.crm.domain.repository.ActivityRepository
 import com.mycorrhizal.crm.domain.repository.ConversationAgendaRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.GiftRepository
 import com.mycorrhizal.crm.domain.repository.LifeEventRepository
 import com.mycorrhizal.crm.domain.repository.PreferenceRepository
+import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ConversationAgenda
 import com.mycorrhizal.crm.model.network.ConversationAgendaInput
+import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.Gift
 import com.mycorrhizal.crm.model.network.GiftInput
+import com.mycorrhizal.crm.model.network.GiftStatuses
 import com.mycorrhizal.crm.model.network.LifeEvent
 import com.mycorrhizal.crm.model.network.LifeEventInput
+import com.mycorrhizal.crm.model.network.PartialDate
 import com.mycorrhizal.crm.model.network.Preference
 import com.mycorrhizal.crm.model.network.PreferenceInput
+import com.mycorrhizal.crm.model.network.PreferenceSensitivities
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import javax.inject.Inject
 
 /**
@@ -36,7 +47,13 @@ class ContactUidResolver(private val contactRepository: ContactRepository) {
         contactRepository.getContact(contactId).getOrNull()?.card?.uid
 }
 
-data class EntityItem(val id: String, val label: String, val url: String? = null)
+data class EntityItem(
+    val id: String,
+    val label: String,
+    val url: String? = null,
+    /** Optional list-grouping key (e.g. "open"/"discussed", "food_drink"/"media"/"other"). */
+    val sectionKey: String? = null,
+)
 
 data class EntityListUiState(
     val entityId: String = "",
@@ -47,10 +64,77 @@ data class EntityListUiState(
     val deletingId: String? = null,
 )
 
+// --- M18 form-data carriers. Each mirrors the fields its dialog now models;
+// update() builds the full-overwrite input from these, so every field the form
+// DOESN'T show is still carried forward from the loaded entity. ---
+
+data class LifeEventFormData(
+    val type: String = "",
+    /** null = uncategorized (the legacy sentinel); never the sentinel string itself. */
+    val category: String? = null,
+    val description: String = "",
+    val date: PartialDate? = null,
+    val relatedEntityIds: List<String> = emptyList(),
+    val remind: Boolean = false,
+)
+
+data class GiftFormData(
+    val status: String = GiftStatuses.IDEA,
+    val description: String = "",
+    val url: String? = null,
+    val notes: String? = null,
+    val occasion: String? = null,
+    /** Local `YYYY-MM-DD`; converted to a UTC ISO instant on save. */
+    val date: String? = null,
+    val valueCents: Long? = null,
+    val currency: String? = null,
+    val lifeEventId: String? = null,
+    val activityId: Int? = null,
+)
+
+data class PreferenceFormData(
+    val category: String,
+    val key: String? = null,
+    val value: String,
+    val sensitivity: String = PreferenceSensitivities.NORMAL,
+)
+
+/**
+ * Gift `YYYY-MM-DD` -> UTC ISO instant, matching the web's
+ * `new Date("YYYY-MM-DDT00:00:00").toISOString()`: the chosen date is treated
+ * as local midnight and converted to UTC. Without this the stored instant and
+ * the web-visible date would drift for non-UTC users (review-pass fix).
+ */
+fun giftDateToIso(date: String): String? {
+    val normalized = date.trim()
+    if (normalized.isBlank()) return null
+    return runCatching { LocalDate.parse(normalized) }
+        .getOrNull()
+        ?.atStartOfDay(ZoneId.systemDefault())
+        ?.toInstant()
+        ?.toString()
+}
+
+/**
+ * Stored UTC ISO instant -> the local `YYYY-MM-DD` it represents, mirroring
+ * web's toDateInputValue (getFullYear/getMonth/getDate — deliberately NOT the
+ * UTC date part, which would show the previous day west of UTC).
+ */
+fun giftDateFromIso(iso: String?): String {
+    if (iso.isNullOrBlank()) return ""
+    return runCatching {
+        Instant.parse(iso).atZone(ZoneId.systemDefault()).toLocalDate().toString()
+    }.getOrDefault("")
+}
+
+// ---------------------------------------------------------------------------
+// Life events
+// ---------------------------------------------------------------------------
+
 @HiltViewModel
 class LifeEventsViewModel @Inject constructor(
     private val lifeEventRepository: LifeEventRepository,
-    contactRepository: ContactRepository,
+    private val contactRepository: ContactRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
     private val resolver = ContactUidResolver(contactRepository)
@@ -58,12 +142,20 @@ class LifeEventsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(EntityListUiState())
     val uiState: StateFlow<EntityListUiState> = _uiState.asStateFlow()
 
-    // The loaded entities behind the current EntityItem rows, kept so the
-    // edit dialog can be pre-filled from the real object (EntityItem only
-    // carries the derived label/url, not every field) and so update() can
-    // preserve every field the mini edit form doesn't touch -- see its own
-    // doc comment for why that preservation is required, not optional.
     private var loaded: List<LifeEvent> = emptyList()
+
+    // M18: related-contact search + selection for the life-event form.
+    private val _relatedSearchQuery = MutableStateFlow("")
+    val relatedSearchQuery: StateFlow<String> = _relatedSearchQuery.asStateFlow()
+    private val _relatedSearchResults = MutableStateFlow<List<ContactSummary>>(emptyList())
+    val relatedSearchResults: StateFlow<List<ContactSummary>> = _relatedSearchResults.asStateFlow()
+    private val _relatedSearchLoading = MutableStateFlow(false)
+    val relatedSearchLoading: StateFlow<Boolean> = _relatedSearchLoading.asStateFlow()
+    /** The currently selected related contacts (the form's multi-select value). */
+    private val _relatedContacts = MutableStateFlow<List<ContactSummary>>(emptyList())
+    val relatedContacts: StateFlow<List<ContactSummary>> = _relatedContacts.asStateFlow()
+
+    private var relatedSearchJob: Job? = null
 
     init { load() }
 
@@ -92,38 +184,84 @@ class LifeEventsViewModel @Inject constructor(
 
     fun findById(id: String): LifeEvent? = loaded.find { it.id == id }
 
-    fun create(type: String, description: String) {
-        val uid = _uiState.value.entityId
-        if (uid.isBlank() || description.isBlank()) return
+    /** Resolves the edit dialog's initial related contacts for display. */
+    fun onDialogOpened(initial: LifeEvent?) {
+        val uids = initial?.relatedEntityIds.orEmpty().filter { it.isNotBlank() }
+        if (uids.isEmpty()) {
+            _relatedContacts.value = emptyList()
+            return
+        }
         viewModelScope.launch {
-            lifeEventRepository.create(LifeEventInput(entityId = uid, type = type.takeIf { it.isNotBlank() }, description = description))
-                .foldApiError(
-                    onSuccess = { load() },
-                    onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
-                )
+            contactRepository.resolveByUid(uids).onSuccess { resolved ->
+                _relatedContacts.value = uids.mapNotNull { resolved[it] }
+            }
+        }
+    }
+
+    fun searchRelated(query: String) {
+        _relatedSearchQuery.value = query
+        relatedSearchJob?.cancel()
+        if (query.isBlank()) {
+            _relatedSearchResults.value = emptyList()
+            _relatedSearchLoading.value = false
+            return
+        }
+        relatedSearchJob = viewModelScope.launch {
+            delay(SEARCH_DEBOUNCE_MS)
+            _relatedSearchLoading.value = true
+            contactRepository.listContacts(search = query, limit = 25).fold(
+                onSuccess = { page ->
+                    val selected = _relatedContacts.value.map { it.uid }.toSet()
+                    _relatedSearchResults.value = page.contacts.filter { c -> c.uid != null && c.uid !in selected }
+                    _relatedSearchLoading.value = false
+                },
+                onFailure = {
+                    _relatedSearchResults.value = emptyList()
+                    _relatedSearchLoading.value = false
+                },
+            )
+        }
+    }
+
+    fun addRelated(contact: ContactSummary) {
+        if (contact.uid == null) return
+        _relatedContacts.value = _relatedContacts.value + contact
+        _relatedSearchQuery.value = ""
+        _relatedSearchResults.value = emptyList()
+    }
+
+    fun removeRelated(uid: String) {
+        _relatedContacts.value = _relatedContacts.value.filterNot { it.uid == uid }
+    }
+
+    fun clearRelatedSearch() {
+        relatedSearchJob?.cancel()
+        _relatedSearchQuery.value = ""
+        _relatedSearchResults.value = emptyList()
+        _relatedSearchLoading.value = false
+    }
+
+    fun create(form: LifeEventFormData) {
+        val uid = _uiState.value.entityId
+        if (uid.isBlank() || form.type.isBlank()) return
+        viewModelScope.launch {
+            lifeEventRepository.create(form.toInput(uid)).foldApiError(
+                onSuccess = { load() },
+                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
+            )
         }
     }
 
     // UpdateLifeEvent (life_event_controller.go) is a full overwrite of every
-    // field from the input, not a merge -- so type/category/date/description/
-    // source/relatedEntityIds/remind all have to be carried forward from
-    // `original` except the two the mini edit form actually edits, or a save
-    // would silently null out category/date/source/relatedEntityIds/remind.
-    fun update(original: LifeEvent, type: String, description: String) {
-        if (description.isBlank()) return
+    // field from the input — so source (which the form never edits) must be
+    // carried forward from `original`, while the now-editable fields come
+    // straight from the form (an emptied optional persists as cleared).
+    fun update(original: LifeEvent, form: LifeEventFormData) {
+        if (form.type.isBlank()) return
         viewModelScope.launch {
             lifeEventRepository.update(
                 original.id,
-                LifeEventInput(
-                    entityId = original.entityId,
-                    type = type.takeIf { it.isNotBlank() },
-                    category = original.category,
-                    date = original.date,
-                    description = description,
-                    source = original.source,
-                    relatedEntityIds = original.relatedEntityIds,
-                    remind = original.remind,
-                ),
+                form.toInput(original.entityId).copy(source = original.source),
             ).foldApiError(
                 onSuccess = { load() },
                 onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
@@ -143,11 +281,32 @@ class LifeEventsViewModel @Inject constructor(
     }
 
     fun onErrorShown() { _uiState.update { it.copy(error = null, errorRes = null) } }
+
+    private companion object {
+        const val SEARCH_DEBOUNCE_MS = 300L
+    }
 }
+
+private fun LifeEventFormData.toInput(entityId: String): LifeEventInput =
+    LifeEventInput(
+        entityId = entityId,
+        type = type.takeIf { it.isNotBlank() },
+        category = category,
+        date = date,
+        description = description,
+        relatedEntityIds = relatedEntityIds.ifEmpty { null },
+        remind = remind,
+    )
+
+// ---------------------------------------------------------------------------
+// Gifts
+// ---------------------------------------------------------------------------
 
 @HiltViewModel
 class GiftsViewModel @Inject constructor(
     private val giftRepository: GiftRepository,
+    private val lifeEventRepository: LifeEventRepository,
+    private val activityRepository: ActivityRepository,
     contactRepository: ContactRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
@@ -155,7 +314,14 @@ class GiftsViewModel @Inject constructor(
     private val contactId: Int = (savedStateHandle["contactId"] as? Int) ?: 0
     private val _uiState = MutableStateFlow(EntityListUiState())
     val uiState: StateFlow<EntityListUiState> = _uiState.asStateFlow()
+
     private var loaded: List<Gift> = emptyList()
+
+    // M18: picker data for the gift form (life-event + activity links).
+    private val _lifeEvents = MutableStateFlow<List<LifeEvent>>(emptyList())
+    val lifeEvents: StateFlow<List<LifeEvent>> = _lifeEvents.asStateFlow()
+    private val _activities = MutableStateFlow<List<Activity>>(emptyList())
+    val activities: StateFlow<List<Activity>> = _activities.asStateFlow()
 
     init { load() }
 
@@ -179,45 +345,67 @@ class GiftsViewModel @Inject constructor(
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
                 },
             )
+            loadPickers(uid)
         }
+    }
+
+    /** Best-effort: the gift form's life-event/activity pickers degrade to hidden when empty. */
+    private suspend fun loadPickers(uid: String) {
+        lifeEventRepository.listForContact(uid).onSuccess { _lifeEvents.value = it }
+        activityRepository.listForContact(contactId).onSuccess { _activities.value = it.activities }
     }
 
     fun findById(id: String): Gift? = loaded.find { it.id == id }
 
-    fun create(description: String) {
+    fun create(form: GiftFormData) {
         val uid = _uiState.value.entityId
-        if (uid.isBlank() || description.isBlank()) return
+        if (uid.isBlank() || form.description.isBlank()) return
         viewModelScope.launch {
-            giftRepository.create(GiftInput(entityId = uid, description = description))
-                .foldApiError(
-                    onSuccess = { load() },
-                    onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
-                )
+            giftRepository.create(form.toInput(uid)).foldApiError(
+                onSuccess = { load() },
+                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
+            )
         }
     }
 
-    // UpdateGift is a full overwrite (gift_controller.go) -- status/occasion/
-    // url/notes/date/valueCents/currency/lifeEventId/activityId all have to
-    // survive from `original`, since this mini edit form only edits the
-    // description. Losing e.g. a "given" status back to the "idea" default,
-    // or an attached url/value, would be real user data loss on save.
-    fun update(original: Gift, description: String) {
-        if (description.isBlank()) return
+    // UpdateGift is a full overwrite (gift_controller.go) -- every field the
+    // form now shows comes from the form (a cleared optional persists as
+    // cleared); nothing is left to carry forward.
+    fun update(original: Gift, form: GiftFormData) {
+        if (form.description.isBlank()) return
+        viewModelScope.launch {
+            giftRepository.update(original.id, form.toInput(original.entityId)).foldApiError(
+                onSuccess = { load() },
+                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
+            )
+        }
+    }
+
+    /**
+     * Mark-given one-click transition (web's GiftList mark-given): a full
+     * overwrite flipping status to "given" and defaulting the date to now when
+     * the gift had none. Only meaningful for idea/purchased gifts — given and
+     * received are left alone (review-pass fix: the guard must match the UI's
+     * hidden-button rule).
+     */
+    fun markGiven(id: String) {
+        val gift = loaded.find { it.id == id } ?: return
+        if (gift.status == GiftStatuses.GIVEN || gift.status == GiftStatuses.RECEIVED) return
         viewModelScope.launch {
             giftRepository.update(
-                original.id,
+                id,
                 GiftInput(
-                    entityId = original.entityId,
-                    status = original.status,
-                    occasion = original.occasion,
-                    description = description,
-                    url = original.url,
-                    notes = original.notes,
-                    date = original.date,
-                    valueCents = original.valueCents,
-                    currency = original.currency,
-                    lifeEventId = original.lifeEventId,
-                    activityId = original.activityId,
+                    entityId = gift.entityId,
+                    status = GiftStatuses.GIVEN,
+                    occasion = gift.occasion,
+                    description = gift.description,
+                    url = gift.url,
+                    notes = gift.notes,
+                    date = gift.date ?: currentUtcIso(),
+                    valueCents = gift.valueCents,
+                    currency = gift.currency,
+                    lifeEventId = gift.lifeEventId,
+                    activityId = gift.activityId,
                 ),
             ).foldApiError(
                 onSuccess = { load() },
@@ -240,6 +428,29 @@ class GiftsViewModel @Inject constructor(
     fun onErrorShown() { _uiState.update { it.copy(error = null, errorRes = null) } }
 }
 
+private fun GiftFormData.toInput(entityId: String): GiftInput =
+    GiftInput(
+        entityId = entityId,
+        status = status,
+        occasion = occasion?.trim()?.takeIf { it.isNotBlank() },
+        description = description,
+        url = url?.trim()?.takeIf { it.isNotBlank() },
+        notes = notes?.trim()?.takeIf { it.isNotBlank() },
+        date = giftDateToIso(date.orEmpty()),
+        valueCents = valueCents,
+        currency = currency?.trim()?.uppercase()?.takeIf { it.isNotBlank() },
+        lifeEventId = lifeEventId,
+        activityId = activityId,
+    )
+
+/** `now` as a UTC ISO instant — the mark-given default date. */
+private fun currentUtcIso(): String =
+    java.time.Instant.now().toString()
+
+// ---------------------------------------------------------------------------
+// Preferences
+// ---------------------------------------------------------------------------
+
 @HiltViewModel
 class PreferencesViewModel @Inject constructor(
     private val preferenceRepository: PreferenceRepository,
@@ -250,6 +461,7 @@ class PreferencesViewModel @Inject constructor(
     private val contactId: Int = (savedStateHandle["contactId"] as? Int) ?: 0
     private val _uiState = MutableStateFlow(EntityListUiState())
     val uiState: StateFlow<EntityListUiState> = _uiState.asStateFlow()
+
     private var loaded: List<Preference> = emptyList()
 
     init { load() }
@@ -268,7 +480,23 @@ class PreferencesViewModel @Inject constructor(
             preferenceRepository.listForContact(uid).foldApiError(
                 onSuccess = { items ->
                     loaded = items
-                    _uiState.update { it.copy(isLoading = false, items = items.map { p -> EntityItem(p.id, preferenceLabel(p)) }) }
+                    // M18: group by section (Food & Drink / Media / Other),
+                    // mirroring web's PreferenceList. The server returns items
+                    // in updated_at order, which is NOT grouped — sort into
+                    // contiguous sections so the scaffold's change-detecting
+                    // headers can't interleave/repeat (review-pass fix).
+                    // Clothing sizes are NOT part of the grouped list — they
+                    // render in the dedicated panel above it.
+                    val sectionOrder = mapOf("food_drink" to 0, "media" to 1, "other" to 2)
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            items = items
+                                .filter { it.category != PREFERENCE_CLOTHING_SIZE }
+                                .sortedBy { sectionOrder[preferenceSection(it.category)] ?: 2 }
+                                .map { p -> EntityItem(p.id, preferenceLabel(p), sectionKey = preferenceSection(p.category)) },
+                        )
+                    }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
@@ -279,29 +507,61 @@ class PreferencesViewModel @Inject constructor(
 
     fun findById(id: String): Preference? = loaded.find { it.id == id }
 
-    fun create(category: String, value: String) {
+    /** Clothing-size preferences (`category = "clothing_size"`), for the dedicated panel. */
+    val clothingSizes: List<Preference>
+        get() = loaded.filter { it.category == PREFERENCE_CLOTHING_SIZE }
+
+    fun create(form: PreferenceFormData) {
         val uid = _uiState.value.entityId
-        if (uid.isBlank() || category.isBlank() || value.isBlank()) return
+        if (uid.isBlank() || form.category.isBlank() || form.value.isBlank()) return
         viewModelScope.launch {
-            preferenceRepository.create(PreferenceInput(entityId = uid, category = category, value = value))
-                .foldApiError(
-                    onSuccess = { load() },
-                    onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
-                )
+            preferenceRepository.create(form.toInput(uid)).foldApiError(
+                onSuccess = { load() },
+                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
+            )
         }
     }
 
-    // UpdatePreference is a full overwrite (preference_controller.go) -- key/
-    // source/confidence/lastConfirmed/sensitivity all have to survive from
-    // `original`, since this mini edit form only edits category/value.
-    fun update(original: Preference, category: String, value: String) {
-        if (category.isBlank() || value.isBlank()) return
+    // UpdatePreference is a full overwrite (preference_controller.go) -- source/
+    // confidence/lastConfirmed are never shown by the form, so they carry
+    // forward; everything shown comes from the form (a cleared key persists as
+    // cleared, not as the old key).
+    fun update(original: Preference, form: PreferenceFormData) {
+        if (form.category.isBlank() || form.value.isBlank()) return
+        viewModelScope.launch {
+            preferenceRepository.update(
+                original.id,
+                form.toInput(original.entityId).copy(
+                    source = original.source,
+                    confidence = original.confidence,
+                    lastConfirmed = original.lastConfirmed,
+                ),
+            ).foldApiError(
+                onSuccess = { load() },
+                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
+            )
+        }
+    }
+
+    // --- Clothing sizes (M18: the ClothingSizesPanel equivalent) ---
+
+    fun createClothingSize(value: String) {
+        create(
+            PreferenceFormData(
+                category = PREFERENCE_CLOTHING_SIZE,
+                value = value,
+            ),
+        )
+    }
+
+    fun updateClothingSize(original: Preference, value: String) {
+        if (value.isBlank()) return
         viewModelScope.launch {
             preferenceRepository.update(
                 original.id,
                 PreferenceInput(
                     entityId = original.entityId,
-                    category = category,
+                    category = original.category,
                     key = original.key,
                     value = value,
                     source = original.source,
@@ -328,11 +588,38 @@ class PreferencesViewModel @Inject constructor(
     }
 
     fun onErrorShown() { _uiState.update { it.copy(error = null, errorRes = null) } }
+
+    private companion object {
+        const val PREFERENCE_CLOTHING_SIZE = "clothing_size"
+    }
 }
+
+private fun PreferenceFormData.toInput(entityId: String): PreferenceInput =
+    PreferenceInput(
+        entityId = entityId,
+        category = category,
+        key = key?.trim()?.takeIf { it.isNotBlank() },
+        value = value,
+        source = "user",
+        confidence = 1.0,
+        sensitivity = sensitivity,
+    )
+
+/** Web's PreferenceList grouping: food/drink together, media alone, everything else Other. */
+fun preferenceSection(category: String): String = when (category) {
+    "food", "drink" -> "food_drink"
+    "media" -> "media"
+    else -> "other"
+}
+
+// ---------------------------------------------------------------------------
+// Conversation agenda
+// ---------------------------------------------------------------------------
 
 @HiltViewModel
 class ConversationAgendaViewModel @Inject constructor(
     private val agendaRepository: ConversationAgendaRepository,
+    private val activityRepository: ActivityRepository,
     contactRepository: ContactRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
@@ -340,7 +627,15 @@ class ConversationAgendaViewModel @Inject constructor(
     private val contactId: Int = (savedStateHandle["contactId"] as? Int) ?: 0
     private val _uiState = MutableStateFlow(EntityListUiState())
     val uiState: StateFlow<EntityListUiState> = _uiState.asStateFlow()
+
     private var loaded: List<ConversationAgenda> = emptyList()
+
+    // M18: the mark-discussed dialog's activity picker.
+    private val _activities = MutableStateFlow<List<Activity>>(emptyList())
+    val activities: StateFlow<List<Activity>> = _activities.asStateFlow()
+
+    private val _discussingId = MutableStateFlow<String?>(null)
+    val discussingId: StateFlow<String?> = _discussingId.asStateFlow()
 
     init { load() }
 
@@ -358,33 +653,57 @@ class ConversationAgendaViewModel @Inject constructor(
             agendaRepository.listForContact(uid).foldApiError(
                 onSuccess = { items ->
                     loaded = items
-                    _uiState.update { it.copy(isLoading = false, items = items.map { a -> EntityItem(a.id, agendaLabel(a), url = a.referenceUrl) }) }
+                    // M18: open/discussed section split (discussed_at == null),
+                    // sorted so open items come first regardless of the
+                    // server's updated_at order — the scaffold's section
+                    // headers require contiguous groups (review-pass fix).
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            items = items
+                                .sortedBy { if (it.discussedAt == null) 0 else 1 }
+                                .map { a ->
+                                    EntityItem(
+                                        a.id,
+                                        agendaLabel(a),
+                                        url = a.referenceUrl,
+                                        sectionKey = if (a.discussedAt == null) "open" else "discussed",
+                                    )
+                                },
+                        )
+                    }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
                 },
             )
+            activityRepository.listForContact(contactId).onSuccess { _activities.value = it.activities }
         }
     }
 
     fun findById(id: String): ConversationAgenda? = loaded.find { it.id == id }
 
-    fun create(content: String) {
+    fun create(content: String, referenceUrl: String?) {
         val uid = _uiState.value.entityId
         if (uid.isBlank() || content.isBlank()) return
         viewModelScope.launch {
-            agendaRepository.create(ConversationAgendaInput(entityId = uid, content = content))
-                .foldApiError(
-                    onSuccess = { load() },
-                    onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
-                )
+            agendaRepository.create(
+                ConversationAgendaInput(
+                    entityId = uid,
+                    content = content,
+                    referenceUrl = referenceUrl?.trim()?.takeIf { it.isNotBlank() },
+                ),
+            ).foldApiError(
+                onSuccess = { load() },
+                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
+            )
         }
     }
 
     // UpdateConversationAgenda is a full overwrite (conversation_agenda_
-    // controller.go) -- referenceUrl has to survive from `original`, since
-    // this mini edit form only edits content.
-    fun update(original: ConversationAgenda, content: String) {
+    // controller.go) -- referenceUrl is now editable, so the form is
+    // authoritative; a cleared URL persists as cleared.
+    fun update(original: ConversationAgenda, content: String, referenceUrl: String?) {
         if (content.isBlank()) return
         viewModelScope.launch {
             agendaRepository.update(
@@ -392,13 +711,38 @@ class ConversationAgendaViewModel @Inject constructor(
                 ConversationAgendaInput(
                     entityId = original.entityId,
                     content = content,
-                    referenceUrl = original.referenceUrl,
+                    referenceUrl = referenceUrl?.trim()?.takeIf { it.isNotBlank() },
                 ),
             ).foldApiError(
                 onSuccess = { load() },
                 onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
             )
         }
+    }
+
+    /**
+     * Mark-discussed, optionally linked to an activity (web's MarkDiscussedDialog):
+     * PATCH discuss with `{ activity_id }` (or an empty body when unlinked).
+     */
+    fun markDiscussed(id: String, activityId: Int?) {
+        if (_uiState.value.deletingId != null) return
+        viewModelScope.launch {
+            _discussingId.value = id
+            agendaRepository.discuss(id, activityId).foldApiError(
+                onSuccess = {
+                    _discussingId.value = null
+                    load()
+                },
+                onError = { e ->
+                    _discussingId.value = null
+                    _uiState.update { it.copy(error = e.displayMessage) }
+                },
+            )
+        }
+    }
+
+    fun clearDiscussing() {
+        _discussingId.value = null
     }
 
     fun delete(id: String) {

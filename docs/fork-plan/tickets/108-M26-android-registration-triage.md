@@ -7,7 +7,7 @@
 | **Size** | M — 2 new endpoints for registration, plus the triage UI (which needs none) |
 | **Source** | [M8](89-M8-web-android-parity-audit.md) audit, 2026-08-11 |
 | **Depends on** | Nothing |
-| **Status** | TO BE DONE |
+| **Status** | **DONE 2026-08-15** — see the landing note. |
 
 Neither surface was marked deliberately-not-on-mobile at M8 sign-off (unlike admin user management,
 which was), so both default to build-it per the parity target — filed together because both are

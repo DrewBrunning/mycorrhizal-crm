@@ -3,7 +3,6 @@ package com.mycorrhizal.crm
 import androidx.annotation.StringRes
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -17,28 +16,25 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.HomeWork
 import androidx.compose.material.icons.outlined.IosShare
 import androidx.compose.material.icons.outlined.Label
-import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.Icon
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -48,6 +44,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.rememberDrawerState
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.activity.compose.BackHandler
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination
@@ -59,6 +56,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.mycorrhizal.crm.feature.auth.LoginScreen
+import com.mycorrhizal.crm.feature.auth.RegisterScreen
+import com.mycorrhizal.crm.feature.auth.ForgotPasswordScreen
 import com.mycorrhizal.crm.feature.audit.AuditScreen
 import com.mycorrhizal.crm.feature.cadence.CadenceScreen
 import com.mycorrhizal.crm.feature.circles.CircleDetailScreen
@@ -69,10 +68,12 @@ import com.mycorrhizal.crm.feature.contacts.ContactListScreen
 import com.mycorrhizal.crm.feature.contacts.DashboardScreen
 import com.mycorrhizal.crm.feature.contacts.PrepViewScreen
 import com.mycorrhizal.crm.feature.contacts.MergeContactsScreen
+import com.mycorrhizal.crm.feature.circles.TriageScreen
 import com.mycorrhizal.crm.feature.households.HouseholdDetailScreen
 import com.mycorrhizal.crm.feature.households.HouseholdsScreen
 import com.mycorrhizal.crm.feature.imports.ImportContactsScreen
 import com.mycorrhizal.crm.feature.imports.VcfImportScreen
+import com.mycorrhizal.crm.feature.network.NetworkScreen
 import com.mycorrhizal.crm.feature.relationships.RelationshipsScreen
 import com.mycorrhizal.crm.feature.settings.CustomLinkActionsScreen
 import com.mycorrhizal.crm.feature.settings.NotificationChannelsScreen
@@ -98,6 +99,7 @@ import com.mycorrhizal.crm.feature.timeline.RemindersScreen
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.LocalDarkTheme
 import com.mycorrhizal.crm.ui.LocalDrawerOpen
+import com.mycorrhizal.crm.ui.LocalServerUrl
 
 private data class DrawerDestination(
     val route: String,
@@ -147,23 +149,50 @@ fun MycorrhizalApp(
     val session by mainViewModel.session.collectAsStateWithLifecycle()
 
     if (!session.isLoggedIn) {
+        // M26: the unauthenticated tree is a tiny router over the auth
+        // screens — login, register, forgot-password — since they are not
+        // part of the main NavHost. The system back button returns to the
+        // login screen from the register/forgot screens instead of exiting
+        // the app (review-pass fix).
+        var authScreen by rememberSaveable { mutableStateOf(AuthScreen.LOGIN) }
         val context = LocalContext.current
-        LoginScreen(
-            onLoggedIn = { /* session flow flips isLoggedIn, recomposition swaps the tree */ },
-            onSignInWithSso = { serverUrl ->
-                val url = serverUrl.trim().trimEnd('/') + "/api/v1/auth/oidc/login"
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                runCatching { context.startActivity(intent) }
-            },
-        )
+        BackHandler(enabled = authScreen != AuthScreen.LOGIN) {
+            authScreen = AuthScreen.LOGIN
+        }
+        when (authScreen) {
+            AuthScreen.LOGIN -> LoginScreen(
+                onLoggedIn = { /* session flow flips isLoggedIn, recomposition swaps the tree */ },
+                onSignInWithSso = { serverUrl ->
+                    // M6 §4: `client=android` makes the backend redirect back to
+                    // the mycorrhizal://oidc/callback deep link (MainActivity)
+                    // instead of the web cookie path — without it this whole
+                    // native flow is unreachable (review-pass fix).
+                    val url = serverUrl.trim().trimEnd('/') + "/api/v1/auth/oidc/login?client=android"
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                    runCatching { context.startActivity(intent) }
+                },
+                onRegisterClick = { authScreen = AuthScreen.REGISTER },
+                onForgotPasswordClick = { authScreen = AuthScreen.FORGOT_PASSWORD },
+            )
+            AuthScreen.REGISTER -> RegisterScreen(
+                onRegistered = { /* auto-login flips isLoggedIn */ },
+                onBack = { authScreen = AuthScreen.LOGIN },
+            )
+            AuthScreen.FORGOT_PASSWORD -> ForgotPasswordScreen(
+                onBack = { authScreen = AuthScreen.LOGIN },
+            )
+        }
         return
     }
 
-    MainScaffold(darkTheme = darkTheme)
+    MainScaffold(darkTheme = darkTheme, serverUrl = session.serverUrl.orEmpty())
 }
 
+/** The M26 unauthenticated-tree router destinations. */
+private enum class AuthScreen { LOGIN, REGISTER, FORGOT_PASSWORD }
+
 @Composable
-private fun MainScaffold(darkTheme: Boolean) {
+private fun MainScaffold(darkTheme: Boolean, serverUrl: String) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
@@ -201,7 +230,14 @@ private fun MainScaffold(darkTheme: Boolean) {
         }
     }
 
-    CompositionLocalProvider(LocalDrawerOpen provides drawerState.isOpen, LocalDarkTheme provides darkTheme) {
+    // M5 §3.1: the server origin reaches every avatar so relative photo paths
+    // resolve to per-server absolute URLs (which are also Coil's disk-cache
+    // keys — see LocalServerUrl).
+    CompositionLocalProvider(
+        LocalDrawerOpen provides drawerState.isOpen,
+        LocalDarkTheme provides darkTheme,
+        LocalServerUrl provides serverUrl,
+    ) {
         ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
@@ -336,6 +372,7 @@ private fun MainScaffold(darkTheme: Boolean) {
                     onViewPreferences = { id -> navController.navigate("contacts/$id/preferences") },
                     onViewAgenda = { id -> navController.navigate("contacts/$id/agenda") },
                     onViewPrep = { id -> navController.navigate("contacts/$id/prep") },
+                    onExploreConnections = { id -> navController.navigate("contacts/$id/network") },
                     onShareContact = { uid ->
                         if (uid.isNotBlank()) {
                             navController.navigate("contacts/$contactId/share?uid=${Uri.encode(uid)}")
@@ -577,6 +614,8 @@ private fun MainScaffold(darkTheme: Boolean) {
                     onCustomLinks = { navController.navigate("custom-links") },
                     onWebhooks = { navController.navigate("webhooks") },
                     onNotificationChannels = { navController.navigate("notification-channels") },
+                    // M26: the one-time legacy circle/tag cleanup tool.
+                    onCircleTagTriage = { navController.navigate("circle-tag-triage") },
                     onLocaleChanged = recreateActivity,
                 )
             }
@@ -601,6 +640,12 @@ private fun MainScaffold(darkTheme: Boolean) {
             }
             composable("notification-channels") {
                 NotificationChannelsScreen(
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            // M26: one-time legacy circle/tag cleanup (reached from Settings).
+            composable("circle-tag-triage") {
+                TriageScreen(
                     onBack = { navController.popBackStack() },
                 )
             }
@@ -632,7 +677,26 @@ private fun MainScaffold(darkTheme: Boolean) {
                     onBack = { navController.popBackStack() },
                 )
             }
-            composable("network") { PlaceholderScreen(R.string.nav_network) { scope.launch { drawerState.open() } } }
+            // M14: the ego-centric network list (drawer entry — "start from"
+            // defaults to the self contact, else a picker; the contact-detail
+            // entry below passes the viewed contact as the starting point).
+            composable("network") {
+                NetworkScreen(
+                    showMenu = true,
+                    onMenuClick = { scope.launch { drawerState.open() } },
+                    onOpenContact = { id -> navController.navigate("contacts/$id") },
+                )
+            }
+            composable(
+                route = "contacts/{contactId}/network",
+                arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            ) {
+                NetworkScreen(
+                    showMenu = false,
+                    onBack = { navController.popBackStack() },
+                    onOpenContact = { id -> navController.navigate("contacts/$id") },
+                )
+            }
             composable("households") {
                 HouseholdsScreen(
                     onMenuClick = { scope.launch { drawerState.open() } },
@@ -651,41 +715,6 @@ private fun MainScaffold(darkTheme: Boolean) {
     }
     }
 }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun PlaceholderScreen(
-    @StringRes titleRes: Int,
-    onMenuClick: () -> Unit = {},
-) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                navigationIcon = {
-                    IconButton(onClick = onMenuClick) {
-                        Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
-                    }
-                },
-                title = {
-                    Text(stringResource(titleRes), style = MaterialTheme.typography.titleLarge)
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
-            )
-        },
-    ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-            Text(
-                text = stringResource(R.string.coming_soon, stringResource(titleRes)),
-                style = MaterialTheme.typography.bodyLarge,
-            )
-        }
-    }
 }
 
 /** Launches the native Contacts QuickContact card for an imported contact (§7.5.4). */

@@ -50,6 +50,10 @@ class LoginViewModel @Inject constructor(
 
     fun onServerUrlChange(value: String) {
         _uiState.update { it.copy(serverUrl = value) }
+        // Persist immediately (not just on submit): the register and
+        // forgot-password flows are reached from this screen and read the
+        // server URL from the session manager (M26).
+        viewModelScope.launch { sessionManager.setServerUrl(value.trim().trimEnd('/')) }
     }
 
     fun onModeChange(mode: LoginMode) {

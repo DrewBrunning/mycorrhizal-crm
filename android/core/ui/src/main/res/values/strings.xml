@@ -22,7 +22,6 @@
     <string name="nav_households">Households</string>
     <string name="nav_circles">Circles</string>
     <string name="nav_tags">Tags</string>
-    <string name="coming_soon">%1$s — coming in a later phase</string>
     <string name="cd_menu">Menu</string>
     <string name="cd_back">Back</string>
 
@@ -37,11 +36,42 @@
     <string name="login_api_token_hint">mycorrhizal_…</string>
     <string name="login_sign_in">Sign in</string>
     <string name="login_sso">Sign in with SSO</string>
+    <string name="oidc_login_failed">Sign-in with SSO failed. Try again or sign in with your password.</string>
     <string name="login_error_valid_server_url">Enter a valid server URL, e.g. https://crm.example.com</string>
     <string name="login_error_identifier_required">Username or email is required</string>
     <string name="login_error_password_required">Password is required</string>
     <string name="login_error_token_required">API token is required</string>
     <string name="login_error_token_prefix">API tokens start with \'mycorrhizal_\'</string>
+
+    <!-- M26: registration + forgot password -->
+    <string name="login_no_account">No account? Create one</string>
+    <string name="login_forgot_password">Forgot password?</string>
+    <string name="register_title">Create account</string>
+    <string name="register_subtitle">Set up a new account on your server</string>
+    <string name="register_username">Username</string>
+    <string name="register_email">Email</string>
+    <string name="register_create">Create account</string>
+    <string name="register_back_to_login">Back to sign in</string>
+    <string name="register_checking_strength">Checking password strength…</string>
+    <string name="register_password_strong">Password looks good</string>
+    <string name="register_error_username_required">Username is required</string>
+    <string name="register_error_email_required">Email is required</string>
+    <string name="register_error_password_required">Password is required</string>
+    <string name="register_error_password_weak">Password is too weak</string>
+    <string name="register_created_login_failed">Account created. Please sign in.</string>
+    <string name="forgot_password_title">Reset password</string>
+    <string name="forgot_password_request_hint">Enter your account email and we\'ll send a reset link.</string>
+    <string name="forgot_password_email">Email</string>
+    <string name="forgot_password_send">Send reset email</string>
+    <string name="forgot_password_token">Reset token</string>
+    <string name="forgot_password_new_password">New password</string>
+    <string name="forgot_password_confirm_password">Confirm new password</string>
+    <string name="forgot_password_reset">Reset password</string>
+    <string name="forgot_password_done">Password reset successful. You can now sign in.</string>
+    <string name="forgot_password_error_email_required">Email is required</string>
+    <string name="forgot_password_error_token_required">Reset token is required</string>
+    <string name="forgot_password_error_password_required">New password is required</string>
+    <string name="action_close">Close</string>
 
     <!-- Contact list -->
     <string name="contacts_search_hint">Search contacts</string>
@@ -462,6 +492,22 @@
     <string name="circles_members_empty">No members yet</string>
     <string name="circles_error_missing_id">Missing circle id</string>
 
+    <!-- Circle & tag triage (M26) -->
+    <string name="settings_circle_tag_triage">Circle &amp; tag triage</string>
+    <string name="triage_title">Circle &amp; tag triage</string>
+    <string name="triage_name">Name</string>
+    <string name="triage_circle">Circle</string>
+    <string name="triage_tag">Tag</string>
+    <string name="triage_skip">Skip</string>
+    <string name="triage_contacts_count">%1$d contacts</string>
+    <string name="triage_summary">%1$d circles, %2$d tags, %3$d skipped</string>
+    <string name="triage_apply">Apply</string>
+    <string name="triage_empty">No legacy circle strings to clean up.</string>
+    <string name="triage_done_title">Triage complete</string>
+    <string name="triage_done_message">Created %1$d circle(s) and %2$d tag(s).</string>
+    <string name="triage_done_partial">%1$d item(s) could not be created and %2$d member add(s) failed. Run triage again to retry.</string>
+    <string name="action_done">Done</string>
+
     <!-- Shared actions -->
     <string name="action_create">Create</string>
     <string name="action_save">Save</string>
@@ -557,6 +603,26 @@
     <string name="relationships_delete_confirm">Delete the relationship with %1$s?</string>
     <string name="relationships_reject_title">Reject suggestion?</string>
     <string name="relationships_reject_confirm">Reject the suggested relationship with %1$s?</string>
+
+    <!-- Network graph (M14) -->
+    <string name="contact_network">Explore connections</string>
+    <string name="network_start_from">Start from</string>
+    <string name="network_change">Change</string>
+    <string name="network_pick_prompt">Choose a starting contact to explore their network.</string>
+    <string name="network_pick_button">Choose contact</string>
+    <string name="network_pick_title">Start from…</string>
+    <string name="network_search_contacts">Search contacts</string>
+    <string name="network_pick_no_results">Type to search for a contact.</string>
+    <string name="network_depth">Depth</string>
+    <string name="network_direct">Direct</string>
+    <string name="network_hops">%1$d hops away</string>
+    <string name="network_relation">Relation</string>
+    <string name="network_relation_hint">e.g. sibling_of or brother</string>
+    <string name="network_relation_apply">Apply</string>
+    <string name="network_all_circles">All circles</string>
+    <string name="network_empty">No connections found. Add relationships to build a network here.</string>
+    <string name="network_row_description">%1$s — %2$s</string>
+    <string name="network_error_no_vcard_uid">Contact has no VCard UID</string>
 
     <!-- Contact shares (M15) -->
     <string name="shares_title">Contact shares</string>
@@ -662,6 +728,64 @@
     <string name="agenda_new">New item</string>
     <string name="agenda_edit">Edit item</string>
     <string name="agenda_content">Content</string>
+    <!-- M18: field richness across the four timeline entities -->
+    <string name="life_events_select_category">Select a category…</string>
+    <string name="life_events_select_category_first">Select a category first</string>
+    <string name="life_events_custom_type">Add a new life event type</string>
+    <string name="life_events_custom_type_label">Custom event name</string>
+    <string name="life_events_year">Year</string>
+    <string name="life_events_month">Month</string>
+    <string name="life_events_day">Day</string>
+    <string name="life_events_related">Related to</string>
+    <string name="life_events_search_related">Search contacts</string>
+    <string name="life_events_remove_related">Remove %1$s</string>
+    <string name="life_events_remind">Remind me yearly</string>
+    <string name="life_events_category_home_living">Home &amp; Living</string>
+    <string name="life_events_category_health_wellness">Health &amp; Wellness</string>
+    <string name="life_events_category_work_education">Work &amp; Education</string>
+    <string name="life_events_category_travel_experiences">Travel &amp; Experiences</string>
+    <string name="life_events_category_family_relationships">Family &amp; Relationships</string>
+    <string name="life_events_category_uncategorized">Other / Uncategorized</string>
+    <string name="gifts_status_idea">Idea</string>
+    <string name="gifts_status_purchased">Purchased</string>
+    <string name="gifts_status_given">Given</string>
+    <string name="gifts_status_received">Received</string>
+    <string name="gifts_url">URL</string>
+    <string name="gifts_url_invalid">Enter a valid http(s) URL</string>
+    <string name="gifts_notes">Notes</string>
+    <string name="gifts_occasion">Occasion</string>
+    <string name="gifts_date">Date (YYYY-MM-DD)</string>
+    <string name="gifts_date_invalid">Enter a date in YYYY-MM-DD format</string>
+    <string name="gifts_amount">Amount</string>
+    <string name="gifts_currency">Currency</string>
+    <string name="gifts_life_event">Life event</string>
+    <string name="gifts_activity">Activity</string>
+    <string name="gifts_none">None</string>
+    <string name="gifts_value_currency_required">Amount and currency must be set together</string>
+    <string name="gifts_mark_given">Mark given</string>
+    <string name="preferences_key">Key</string>
+    <string name="preferences_category_food">Food</string>
+    <string name="preferences_category_drink">Drink</string>
+    <string name="preferences_category_media">Media</string>
+    <string name="preferences_key_favorite">Favorite</string>
+    <string name="preferences_key_dislike">Dislike</string>
+    <string name="preferences_key_allergy">Allergy</string>
+    <string name="preferences_key_show">Show</string>
+    <string name="preferences_key_movie">Movie</string>
+    <string name="preferences_key_music">Music</string>
+    <string name="preferences_section_food_drink">Food &amp; Drink</string>
+    <string name="preferences_section_media">Media</string>
+    <string name="preferences_section_other">Other</string>
+    <string name="preferences_clothing_sizes">Clothing sizes</string>
+    <string name="preferences_clothing_hint">e.g. M, 42, S/M</string>
+    <string name="preferences_clothing_add">Add size</string>
+    <string name="preferences_clothing_empty">No clothing sizes yet</string>
+    <string name="agenda_reference_url">Reference URL</string>
+    <string name="agenda_mark_discussed">Mark discussed</string>
+    <string name="agenda_discussed_link_activity">Link an activity (optional)</string>
+    <string name="agenda_discussed_button">Discuss</string>
+    <string name="agenda_section_open">Open</string>
+    <string name="agenda_section_discussed">Discussed</string>
 
     <!-- Merge & bulk -->
     <string name="merge_title">Merge contacts</string>

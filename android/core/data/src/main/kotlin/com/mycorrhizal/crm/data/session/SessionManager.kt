@@ -42,6 +42,15 @@ interface SessionManager : TokenProvider, BaseUrlProvider {
     /** Persist a full session (server URL + bearer token + profile). */
     suspend fun setSession(serverUrl: String, token: String, state: SessionState)
 
+    /**
+     * Suspends until the persisted session has been hydrated into memory
+     * (the async [DefaultSessionManager.init] at startup). Callers that must
+     * read [serverUrl] or write a session before any user interaction — the
+     * M5 OIDC cold-start deep link — await this first, or they'd read a null
+     * URL and race the hydration write (review-pass fix).
+     */
+    suspend fun awaitHydrated()
+
     /** Merge profile details (userId, admin, language, …) into the session. */
     suspend fun setProfile(profile: SessionState)
 

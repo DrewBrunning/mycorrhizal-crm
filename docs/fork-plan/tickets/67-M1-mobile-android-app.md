@@ -3071,3 +3071,14 @@ backend is already merged, so the app-side FCM work is unblocked —
 [M6](85-M6-photo-url-user-prefs-oidc.md)), the absent `androidTest` tier (there are zero
 instrumented tests and CI runs none), release signing, and the unverified Telegram/Zoom/Discord
 MIMETYPEs.
+
+**M5 §6 decision (2026-08-15), recorded here as the ticket requires:** the
+Robolectric tier is the whole test pyramid — deliberately, not by accident.
+Robolectric already covers the Room migrations (`Migration13To14Test` builds a
+real v13 database), the Compose screens, and the ViewModel layers; the
+genuinely device-only surfaces (the real `ContentResolver` against
+`ContactsContract`, WorkManager's actual scheduling, the foreground-service
+and overlay-permission paths) are each covered by dedicated hand-verification
+notes on the tickets that touch them (T67/T76). An emulator CI job is a
+real-but-deferred cost; the reasoning lives in M5's landing note so it doesn't
+get re-litigated at each grooming pass.

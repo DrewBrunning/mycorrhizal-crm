@@ -32,6 +32,7 @@ class ContactRepositoryImpl @Inject constructor(
         limit: Int,
         search: String?,
         circle: String?,
+        circleLegacy: String?,
         includeArchived: Boolean?,
     ): Result<ContactsPage> {
         val result = apiClient.listContacts(
@@ -40,6 +41,7 @@ class ContactRepositoryImpl @Inject constructor(
             search = search,
             includeArchived = includeArchived,
             circle = circle,
+            circleLegacy = circleLegacy,
         )
         val page = result.getOrElse { error ->
             // Network failure: serve whatever is cached for this search term.
@@ -60,6 +62,9 @@ class ContactRepositoryImpl @Inject constructor(
             ),
         )
     }
+
+    override suspend fun listLegacyCircles(): Result<List<String>> =
+        apiClient.listLegacyCircles()
 
     override suspend fun resolveByUid(uids: List<String>): Result<Map<String, ContactSummary>> {
         val distinctUids = uids.distinct()

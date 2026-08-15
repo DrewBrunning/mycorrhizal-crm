@@ -192,9 +192,10 @@ fun HouseholdDetailScreen(
 
 fun displayNameFor(contact: ContactSummary?): String? {
     if (contact == null) return null
-    contact.fn?.takeIf { it.isNotBlank() }?.let { return it }
-    val name = listOfNotNull(contact.firstname, contact.lastname).filter { it.isNotBlank() }.joinToString(" ")
-    return name.ifBlank { contact.nickname.orEmpty() }
+    // M5 §3.2: use the shared components-first derivation (firstname "nickname"
+    // lastname) instead of a local fn-first copy that regressed to
+    // given-name-only — same fix as RelationshipsScreen.
+    return contact.displayName.takeIf { !it.startsWith("#") } ?: contact.nickname
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

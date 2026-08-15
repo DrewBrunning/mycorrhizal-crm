@@ -87,4 +87,29 @@ class LoginScreenTest {
         setContent(uiState = LoginUiState(isLoading = true))
         composeTestRule.onNodeWithText("Sign in").assertDoesNotExist()
     }
+
+    // M26: the login screen links the register and forgot-password flows.
+    @Test
+    fun `register and forgot-password links are present and invoke their callbacks`() {
+        var registered = false
+        var forgot = false
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                LoginScreenContent(
+                    uiState = LoginUiState(),
+                    onServerUrlChange = {},
+                    onModeChange = {},
+                    onSubmit = { _, _, _, _ -> },
+                    onRegisterClick = { registered = true },
+                    onForgotPasswordClick = { forgot = true },
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("No account? Create one").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("Forgot password?").performScrollTo().performClick()
+
+        assertEquals(true, registered)
+        assertEquals(true, forgot)
+    }
 }
