@@ -64,7 +64,11 @@ class ContactRepositoryImpl @Inject constructor(
     override suspend fun resolveByUid(uids: List<String>): Result<Map<String, ContactSummary>> {
         val distinctUids = uids.distinct()
         if (distinctUids.isEmpty()) return Result.success(emptyMap())
-        val result = apiClient.listContacts(vcardUids = distinctUids)
+        // includeArchived: true matches web's getContactsByUid — a reference (an audit
+        // event, a relationship edge) can point at an archived contact, and it must still
+        // resolve to a name/link rather than silently vanishing (GetContacts excludes
+        // archived by default, as does the ?vcard_uid= batch path).
+        val result = apiClient.listContacts(vcardUids = distinctUids, includeArchived = true)
         return result.fold(
             onSuccess = { page ->
                 Result.success(page.contacts.mapNotNull { c -> c.uid?.let { it to c } }.toMap())

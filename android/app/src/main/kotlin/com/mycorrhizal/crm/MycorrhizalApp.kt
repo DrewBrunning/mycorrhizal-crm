@@ -12,6 +12,7 @@ import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material.icons.outlined.EventNote
 import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material.icons.outlined.Group
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.HomeWork
 import androidx.compose.material.icons.outlined.IosShare
@@ -58,6 +59,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.mycorrhizal.crm.feature.auth.LoginScreen
+import com.mycorrhizal.crm.feature.audit.AuditScreen
 import com.mycorrhizal.crm.feature.cadence.CadenceScreen
 import com.mycorrhizal.crm.feature.circles.CircleDetailScreen
 import com.mycorrhizal.crm.feature.circles.CirclesScreen
@@ -116,6 +118,7 @@ private val secondaryDestinations = listOf(
     DrawerDestination("circles", R.string.nav_circles, Icons.Outlined.Group),
     DrawerDestination("tags", R.string.nav_tags, Icons.Outlined.Label),
     DrawerDestination("households", R.string.nav_households, Icons.Outlined.HomeWork),
+    DrawerDestination("audit", R.string.nav_audit, Icons.Outlined.History),
     DrawerDestination("import", R.string.import_title, Icons.Outlined.FileUpload),
     DrawerDestination("settings", R.string.nav_settings, Icons.Outlined.Settings),
 )
@@ -569,6 +572,15 @@ private fun MainScaffold(darkTheme: Boolean) {
                     onCustomLinks = { navController.navigate("custom-links") },
                 )
             }
+            // M16: the read-only audit log (web's /audit), reachable from the
+            // drawer. Contact rows link to the contact detail when the UID
+            // resolves.
+            composable("audit") {
+                AuditScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenContact = { id -> navController.navigate("contacts/$id") },
+                )
+            }
             composable("custom-links") {
                 CustomLinkActionsScreen(
                     onBack = { navController.popBackStack() },
@@ -615,6 +627,7 @@ private fun MainScaffold(darkTheme: Boolean) {
             ) {
                 HouseholdDetailScreen(
                     onBack = { navController.popBackStack() },
+                    onNavigateToContact = { id -> navController.navigate("contacts/$id") },
                 )
         }
     }

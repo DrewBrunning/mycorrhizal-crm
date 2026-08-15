@@ -35,6 +35,7 @@ dependencies {
     implementation(project(":feature:settings"))
     implementation(project(":feature:cadence"))
     implementation(project(":feature:shares"))
+    implementation(project(":feature:audit"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
