@@ -22,6 +22,12 @@ import com.mycorrhizal.crm.ui.R
  * Debounced contact-search field shared by the note and activity forms'
  * pickers: a query box (with a loading spinner) and a result list that calls
  * [onPick] when a row is tapped. Mirrors the RelationshipsScreen picker.
+ *
+ * [hiddenMatchCount] (default 0) renders an extra caption when the caller
+ * narrowed the server's deliberately-broad results client-side (the merge
+ * picker's T101/T112 strict-name filter) — a count of rows the server matched
+ * on other fields, so silently-hidden results are disclosed rather than
+ * dropped without a trace. Note/activity pickers don't set it.
  */
 @Composable
 fun ContactSearchField(
@@ -31,6 +37,7 @@ fun ContactSearchField(
     onQueryChange: (String) -> Unit,
     onPick: (ContactSummary) -> Unit,
     labelRes: Int,
+    hiddenMatchCount: Int = 0,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
@@ -52,20 +59,42 @@ fun ContactSearchField(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            results.isEmpty() && !loading -> Text(
+            // "No contacts found" only when the server genuinely returned nothing.
+            // If the caller's strict filter dropped every result, the caption
+            // below explains it instead ("0 shown, N matched on other fields") —
+            // the web merge picker's T101 behaviour.
+            !loading && results.isEmpty() && hiddenMatchCount == 0 -> Text(
                 text = stringResource(R.string.timeline_no_contacts_found),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            else -> LazyColumn(modifier = Modifier.heightIn(max = 200.dp)) {
-                items(results, key = { it.id }) { contact ->
+            else -> {
+                if (results.isNotEmpty()) {
+                    LazyColumn(modifier = Modifier.heightIn(max = 200.dp)) {
+                        items(results, key = { it.id }) { contact ->
+                            Text(
+                                text = contact.displayName,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onPick(contact) }
+                                    .padding(vertical = 8.dp),
+                            )
+                        }
+                    }
+                }
+                // T112: disclose rows the strict-name filter dropped (the server
+                // may have matched them on email/phone/address). Only set by the
+                // merge picker; note/activity pickers leave the default 0.
+                if (hiddenMatchCount > 0) {
                     Text(
-                        text = contact.displayName,
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onPick(contact) }
-                            .padding(vertical = 8.dp),
+                        text = stringResource(
+                            R.string.merge_hidden_matches,
+                            results.size,
+                            hiddenMatchCount,
+                        ),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }

@@ -148,6 +148,36 @@ class MergeContactsViewModelTest {
         assertEquals(5, vm.uiState.value.searchResults.first().id)
     }
 
+    // T112: web T101 parity — the server search is deliberately broad (name +
+    // email + phone + address + FTS), so a page can contain a contact matched
+    // only on an unrelated field. The merge picker must not offer it, and must
+    // disclose the drop via hiddenMatchCount instead of silently hiding it.
+    @Test
+    fun `search results are strict-name-filtered with a hidden count`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { contactRepository.listContacts(cursor = null, limit = 100, search = "Jordan") } returns
+            Result.success(
+                ContactsPage(
+                    contacts = listOf(
+                        ContactSummary(id = 5, uid = "uid-5", firstname = "Jordan", lastname = "Lee"),
+                        // Server matched this on an address/email/FTS field; its
+                        // display name does not contain "Jordan" and it must not
+                        // be offered as a merge target.
+                        ContactSummary(id = 7, uid = "uid-7", firstname = "Meike", lastname = "Schmidt"),
+                    ),
+                    nextCursor = null, limit = 100, sync = null,
+                ),
+            )
+
+        val vm = viewModel()
+        vm.setPair(1, 0)
+
+        vm.onSearchQueryChange("Jordan")
+        advanceUntilIdle()
+
+        assertEquals(listOf(5), vm.uiState.value.searchResults.map { it.id })
+        assertEquals(1, vm.uiState.value.hiddenMatchCount)
+    }
+
     @Test
     fun `a blank search fires no request`() = runTest(mainDispatcherRule.testDispatcher) {
         val vm = viewModel()

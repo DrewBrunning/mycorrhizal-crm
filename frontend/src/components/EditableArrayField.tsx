@@ -91,20 +91,25 @@ export default function EditableArrayField<T>({
       {icon}
       <Box sx={{ flexGrow: 1, minWidth: 0 }}>
         {/* T63: see EditableField.tsx's matching comment -- same reasoning. */}
-        <Typography variant="caption" color="text.secondary" sx={{ fontFamily: '"IBM Plex Mono", monospace' }}>
-          {label}
-        </Typography>
+        {/* T109: the edit pencil sits beside the field-name label (matching
+            Name and Circles/Tags, T89) instead of at the far right of the
+            row -- see EditableField.tsx's matching comment. */}
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Typography variant="caption" color="text.secondary" sx={{ fontFamily: '"IBM Plex Mono", monospace' }}>
+            {label}
+          </Typography>
+          <IconButton
+            className="edit-button"
+            size="small"
+            onClick={startEdit}
+            aria-label={t('common.edit')}
+            sx={{ ml: 0.5, p: 0.25, opacity: 0, transition: 'opacity 0.2s' }}
+          >
+            <EditIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+        </Box>
         <Box sx={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{renderDisplay(value)}</Box>
       </Box>
-      <IconButton
-        className="edit-button"
-        size="small"
-        onClick={startEdit}
-        aria-label={t('common.edit')}
-        sx={{ opacity: 0, transition: 'opacity 0.2s' }}
-      >
-        <EditIcon fontSize="small" />
-      </IconButton>
     </Box>
   );
 }

@@ -79,9 +79,12 @@ function renderInformation(
 // Scopes to the EditableArrayField row whose caption text matches `label`
 // (e.g. "Phone") -- every row shares the generic "Edit"/copy aria-labels,
 // so tests must not query those globally.
+// T109: the caption now shares a flex wrapper with its edit pencil, so the
+// outer row is three levels up from the caption (wrapper -> value box ->
+// row) instead of two.
 function fieldRow(label: string): HTMLElement {
   const caption = screen.getByText(label);
-  const outerBox = caption.parentElement?.parentElement;
+  const outerBox = caption.parentElement?.parentElement?.parentElement;
   if (!outerBox) throw new Error(`could not locate field row for "${label}"`);
   return outerBox as HTMLElement;
 }

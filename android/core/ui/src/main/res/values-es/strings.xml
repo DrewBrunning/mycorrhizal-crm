@@ -802,6 +802,7 @@
     <string name="merge_keep_hint">El contacto que abriste se conservará. Busca el otro contacto para fusionarlo en él.</string>
     <string name="merge_pick_other">Elegir el otro contacto</string>
     <string name="merge_picked_other">%1$s se fusionará en el contacto conservado.</string>
+    <string name="merge_hidden_matches">%1$d mostrados, %2$d coinciden en otros campos</string>
     <string name="merge_move_header">Se moverá al contacto conservado:</string>
     <string name="merge_nothing_to_move">Nada que mover.</string>
     <string name="merge_count_notes">%1$d notas</string>

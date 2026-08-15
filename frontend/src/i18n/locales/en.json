@@ -819,7 +819,9 @@
     "results": "{{count}} connections",
     "empty": "No connections found within this depth.",
     "noRelationMatches": "No connections match \"{{relation}}\".",
-    "notAvailable": "Not available."
+    "notAvailable": "Not available.",
+    "viewAll": "View all",
+    "showLess": "Show less"
   },
   "immich": {
     "settings": {

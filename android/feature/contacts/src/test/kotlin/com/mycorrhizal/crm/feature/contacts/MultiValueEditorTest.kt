@@ -3,6 +3,10 @@ package com.mycorrhizal.crm.feature.contacts
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.autofill.AutofillTree
+import androidx.compose.ui.autofill.AutofillType
+import androidx.compose.ui.platform.LocalAutofillTree
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
@@ -12,12 +16,15 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
 import com.mycorrhizal.crm.model.network.Email
 import com.mycorrhizal.crm.model.network.Phone
+import com.mycorrhizal.crm.ui.components.AutofillOutlinedTextField
 import com.mycorrhizal.crm.ui.components.EmailSpec
 import com.mycorrhizal.crm.ui.components.MultiValueEditor
 import com.mycorrhizal.crm.ui.components.PhoneSpec
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -133,5 +140,60 @@ class MultiValueEditorTest {
         composeTestRule.onNodeWithText("Email").assertIsDisplayed()
         composeTestRule.onNodeWithText("Value 1").assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription("Add").assertIsDisplayed()
+    }
+
+    // --- T115: Android autofill hints --------------------------------------
+    // The contact form's fields (via AutofillOutlinedTextField) must advertise
+    // their AutofillType and route a framework fill into the field's own state
+    // (the same onValueChange a keystroke uses), so a fill goes through the
+    // normal save/validation path.
+
+    @OptIn(ExperimentalComposeUiApi::class)
+    @Test
+    fun `autofill field registers its type and routes a fill to the value`() {
+        var text by mutableStateOf("")
+        var tree: AutofillTree? = null
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                tree = LocalAutofillTree.current
+                AutofillOutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    label = "Given name",
+                    autofillType = AutofillType.PersonFirstName,
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        val registered = tree?.children?.values?.singleOrNull()
+        assertNotNull("field must register exactly one AutofillNode", registered)
+        assertEquals(listOf(AutofillType.PersonFirstName), registered!!.autofillTypes)
+
+        // Simulate the framework filling the field.
+        registered.onFill?.invoke("Jordan")
+        assertEquals("Jordan", text)
+    }
+
+    @OptIn(ExperimentalComposeUiApi::class)
+    @Test
+    fun `autofill field without a type registers without hints`() {
+        var tree: AutofillTree? = null
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                tree = LocalAutofillTree.current
+                AutofillOutlinedTextField(
+                    value = "",
+                    onValueChange = {},
+                    label = "No hint",
+                    autofillType = null,
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        val registered = tree?.children?.values?.singleOrNull()
+        assertNotNull(registered)
+        assertTrue("no-type node carries an empty hint list", registered!!.autofillTypes.isEmpty())
     }
 }

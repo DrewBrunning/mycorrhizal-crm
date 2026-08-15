@@ -797,6 +797,7 @@
     <string name="merge_keep_hint">The contact you opened will be kept. Search for the other contact to merge into it.</string>
     <string name="merge_pick_other">Pick the other contact</string>
     <string name="merge_picked_other">Will merge %1$s into the kept contact.</string>
+    <string name="merge_hidden_matches">%1$d shown, %2$d matched on other fields</string>
     <string name="merge_move_header">Will move to the kept contact:</string>
     <string name="merge_nothing_to_move">Nothing to move.</string>
     <string name="merge_count_notes">%1$d notes</string>

@@ -802,6 +802,7 @@
     <string name="merge_keep_hint">Der geöffnete Kontakt wird behalten. Suche nach dem anderen Kontakt, der hinein zusammengeführt werden soll.</string>
     <string name="merge_pick_other">Anderen Kontakt auswählen</string>
     <string name="merge_picked_other">%1$s wird in den behaltenen Kontakt zusammengeführt.</string>
+    <string name="merge_hidden_matches">%1$d angezeigt, %2$d über andere Felder gefunden</string>
     <string name="merge_move_header">Wird zum behaltenen Kontakt verschoben:</string>
     <string name="merge_nothing_to_move">Nichts zu verschieben.</string>
     <string name="merge_count_notes">%1$d Notizen</string>

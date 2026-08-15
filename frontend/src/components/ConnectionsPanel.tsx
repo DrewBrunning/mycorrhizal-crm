@@ -25,6 +25,9 @@ interface ConnectionsPanelProps {
 
 const DEPTHS = [1, 2, 3, 4, 5];
 
+// T114: how many chains the panel previews before the "View all" toggle.
+const PREVIEW_LIMIT = 5;
+
 // ConnectionsPanel is the contact page's multi-hop traversal surface (T10):
 // "who is this person connected to, and how?" Given the contact, it lists every
 // reachable person within a chosen depth, each with its relation chain
@@ -36,12 +39,21 @@ export default function ConnectionsPanel({ contactUid }: ConnectionsPanelProps) 
   const navigate = useNavigate();
   const { connections, loading, error, refresh } = useConnections(contactUid);
 
-  const [depth, setDepth] = useState(3);
+  // Default to 1 hop, not 3: a 3-hop traversal floods a contact page's
+  // Connections card with second/third-degree strangers before the user has
+  // asked for them (testing feedback).
+  const [depth, setDepth] = useState(1);
   // relation is the live input value (no request per keystroke); appliedRelation
   // is the last one actually sent, so a depth change keeps the applied filter
   // instead of silently dropping it while the input still shows it.
   const [relation, setRelation] = useState('');
   const [appliedRelation, setAppliedRelation] = useState('');
+  // T114: the panel previews the first 5 chains and reveals the rest on
+  // demand (the timeline's T78 pattern) -- a deep network can otherwise
+  // render dozens of cards here. Re-collapses whenever a new result set
+  // lands (depth/relation change), so a fresh query never re-opens a long
+  // list the user didn't ask to expand.
+  const [showAll, setShowAll] = useState(false);
 
   // T31 made this panel render on every contact page view (it used to mount
   // only when its tab was opened), so the depth-3 traversal must not fire as
@@ -77,6 +89,11 @@ export default function ConnectionsPanel({ contactUid }: ConnectionsPanelProps) 
     if (!visible) return;
     refresh({ depth, relation: appliedRelation.trim() || undefined, overrideUid: contactUid });
   }, [contactUid, depth, refresh, appliedRelation, visible]);
+
+  // T114: a new result set re-collapses the preview.
+  useEffect(() => {
+    setShowAll(false);
+  }, [connections]);
 
   const handleApplyRelation = () => {
     setAppliedRelation(relation.trim());
@@ -169,8 +186,13 @@ export default function ConnectionsPanel({ contactUid }: ConnectionsPanelProps) 
             </>
           )}
           <Stack spacing={1}>
-            {connections.chains.map(renderChain)}
+            {(showAll ? connections.chains : connections.chains.slice(0, PREVIEW_LIMIT)).map(renderChain)}
           </Stack>
+          {connections.chains.length > PREVIEW_LIMIT && (
+            <Button size="small" variant="outlined" onClick={() => setShowAll((v) => !v)}>
+              {showAll ? t('connections.showLess') : t('connections.viewAll')}
+            </Button>
+          )}
         </>
       )}
     </Stack>
