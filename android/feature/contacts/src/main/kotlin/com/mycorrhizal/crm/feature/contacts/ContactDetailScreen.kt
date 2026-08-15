@@ -156,6 +156,10 @@ fun ContactDetailScreen(
     onViewAgenda: (Int) -> Unit = {},
     // M11: the N2 prep-view briefing (replaces the "coming soon" stub).
     onViewPrep: (Int) -> Unit = {},
+    // M15: the "Share this contact" flow (replaces the "coming soon" stub).
+    // Carries the contact's VCard UID — the Share screen needs only that to
+    // POST the share, and ContactDetailViewModel already loaded it.
+    onShareContact: (String) -> Unit = {},
     onEditActivity: (Int) -> Unit = {},
     onEditNote: (Int) -> Unit = {},
     onEditReminder: (Int) -> Unit = {},
@@ -200,9 +204,6 @@ fun ContactDetailScreen(
     var pendingUndoCompletionId by remember { mutableStateOf<Int?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    // M24: the share stub stays (M15 is a separate ticket); prep view (M11) now
-    // navigates instead of surfacing the "coming in a later phase" notice.
-    val shareComingSoon = stringResource(R.string.coming_soon, stringResource(R.string.contact_share))
 
     // M24: action failures (delete/archive/export/membership writes) set `state.error`, which
     // the EmptyState branch already shows when there is no contact to render. For a loaded
@@ -410,7 +411,7 @@ fun ContactDetailScreen(
                                     text = { Text(stringResource(R.string.contact_share)) },
                                     onClick = {
                                         menuExpanded = false
-                                        scope.launch { snackbarHostState.showSnackbar(shareComingSoon) }
+                                        onShareContact(contact.uid.orEmpty())
                                     },
                                 )
                                 DropdownMenuItem(

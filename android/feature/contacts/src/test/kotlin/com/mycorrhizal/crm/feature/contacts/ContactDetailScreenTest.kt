@@ -25,6 +25,9 @@ import com.mycorrhizal.crm.model.network.Phone
 import com.mycorrhizal.crm.model.network.PartialDate
 import com.mycorrhizal.crm.model.network.Resource
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
+import io.mockk.every
+import io.mockk.mockk
+import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -442,5 +445,35 @@ class ContactDetailScreenTest {
         composeTestRule.onNodeWithText("Add circle").performClick()
         composeTestRule.onNodeWithText("family").performClick()
         assertEquals("family", added)
+    }
+
+    // --- M15: the share entry point lives in the header's action menu ---
+
+    @Test
+    fun `share contact in the action menu invokes onShareContact with the vcard uid`() {
+        // M15 ticket test case 4: the share action must be reachable from a
+        // contact's own header, not only from a shares list. This renders the
+        // FULL ContactDetailScreen (not just ContactDetailContent) with a
+        // mocked ViewModel so the top-bar action menu is present.
+        val contact = ContactRecordResponse(id = 5, uid = "uid-5", card = Card(name = Name(full = "Dana White")))
+        val viewModel = mockk<ContactDetailViewModel>(relaxed = true)
+        every { viewModel.uiState } returns MutableStateFlow(ContactDetailUiState(contact = contact))
+        every { viewModel.events } returns MutableStateFlow<ContactDetailEvent?>(null)
+
+        var sharedUid: String? = null
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailScreen(
+                    onBack = {},
+                    onShareContact = { sharedUid = it },
+                    viewModel = viewModel,
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithContentDescription("Contact actions").performClick()
+        composeTestRule.onNodeWithText("Share contact").performClick()
+
+        assertEquals("uid-5", sharedUid)
     }
 }

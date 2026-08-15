@@ -20,6 +20,7 @@
     <string name="nav_tags">Etiquetas</string>
     <string name="nav_circles">Círculos</string>
     <string name="nav_network">Red</string>
+    <string name="nav_shares">Compartidos</string>
     <string name="nav_households">Hogares</string>
     <string name="coming_soon">%1$s — disponible en una fase posterior</string>
     <string name="cd_menu">Menú</string>
@@ -459,6 +460,57 @@
     <string name="relationships_delete_confirm">¿Eliminar la relación con %1$s?</string>
     <string name="relationships_reject_title">¿Rechazar sugerencia?</string>
     <string name="relationships_reject_confirm">¿Rechazar la relación sugerida con %1$s?</string>
+
+    <!-- Contact shares (M15) -->
+    <string name="shares_title">Compartición de contactos</string>
+    <string name="shares_tab_incoming">Entrantes</string>
+    <string name="shares_tab_outgoing">Salientes</string>
+    <string name="shares_incoming_empty">No hay comparticiones entrantes.</string>
+    <string name="shares_outgoing_empty">Aún no has compartido ningún contacto.</string>
+    <string name="shares_from">De %1$s</string>
+    <string name="shares_to">Para %1$s</string>
+    <string name="shares_status_pending">Pendiente</string>
+    <string name="shares_status_accepted">Aceptada</string>
+    <string name="shares_status_declined">Rechazada</string>
+    <string name="shares_accept">Aceptar</string>
+    <string name="shares_decline">Rechazar</string>
+    <string name="shares_decline_confirm_title">¿Rechazar esta compartición?</string>
+    <string name="shares_decline_confirm_message">¿Rechazar la compartición de %1$s? La copia del remitente no se ve afectada.</string>
+    <string name="shares_accept_dialog_title">Revisar contacto compartido</string>
+    <string name="shares_accept_dialog_duplicate_of">Coincide: %1$s (%2$s)</string>
+    <string name="shares_accept_dialog_action_add">Añadir como contacto nuevo</string>
+    <string name="shares_accept_dialog_action_update">Fusionar con el contacto existente</string>
+    <string name="shares_accept_dialog_action_skip">Omitir</string>
+    <string name="shares_accept_dialog_confirm">Confirmar</string>
+    <string name="shares_accept_dialog_confirming">Confirmando…</string>
+    <string name="shares_share_dialog_title">Compartir contacto</string>
+    <string name="shares_share_dialog_description">Envía una copia filtrada y única de este contacto a otro usuario de esta instancia. Ellos deciden si aceptarla.</string>
+    <string name="shares_recipient">Destinatario</string>
+    <string name="shares_no_recipients">No hay otros usuarios en esta instancia con quienes compartir.</string>
+    <string name="shares_error_no_vcard_uid">Este contacto no tiene UID de vCard — no se puede compartir.</string>
+    <string name="shares_share_button">Compartir</string>
+    <string name="shares_sharing">Compartiendo…</string>
+    <string name="shares_fields_label">Campos a incluir</string>
+    <string name="shares_reveal_button">Activar campos confidenciales</string>
+    <string name="shares_reveal_title">¿Incluir datos confidenciales?</string>
+    <string name="shares_reveal_confirm">Algunos de estos campos pueden contener información privada o confidencial, como relaciones privadas o campos personalizados. Permanecen excluidos salvo que los incluyas aquí deliberadamente.</string>
+    <string name="shares_reveal_confirm_button">Activar</string>
+    <string name="shares_section_emails">Correos electrónicos</string>
+    <string name="shares_section_phones">Teléfonos</string>
+    <string name="shares_section_addresses">Direcciones</string>
+    <string name="shares_section_organizations">Organizaciones</string>
+    <string name="shares_section_anniversaries">Aniversarios</string>
+    <string name="shares_section_media">Fotos</string>
+    <string name="shares_section_online_services">Servicios en línea</string>
+    <string name="shares_section_links">Enlaces</string>
+    <string name="shares_section_notes">Notas</string>
+    <string name="shares_section_keywords">Etiquetas</string>
+    <string name="shares_section_related_to">Relaciones</string>
+    <string name="shares_section_personal_info">Información personal</string>
+    <string name="shares_section_speak_to_as">Pronombres y tratamiento</string>
+    <string name="shares_section_members">Miembros del grupo</string>
+    <string name="shares_section_languages">Idiomas preferidos</string>
+    <string name="shares_section_custom_fields">Campos personalizados</string>
 
     <!-- Cadence (T19 relationship health) -->
     <string name="cadence_title">Cadencia</string>

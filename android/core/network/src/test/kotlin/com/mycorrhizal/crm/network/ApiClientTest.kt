@@ -1798,4 +1798,212 @@ class ApiClientTest {
         assertEquals("DELETE", request.method)
         assertEquals("/api/v1/cadence-policies/p1", request.path)
     }
+
+    // --- M15: contact sharing (7 new client methods) ---
+
+    @Test
+    fun `list incoming contact shares parses the cursor page with usernames`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "contact_shares": [
+                        {"id": "s1", "from_user_id": 7, "to_user_id": 1, "contact_display_name": "Dana White", "status": "pending"},
+                        {"id": "s2", "from_user_id": 7, "to_user_id": 1, "contact_display_name": "Riley Stone", "status": "declined", "responded_at": "2026-08-01T10:00:00Z"}
+                      ],
+                      "usernames": {"7": "dana"},
+                      "total": 2,
+                      "next_cursor": "cursor-2",
+                      "limit": 25
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        val result = client.listIncomingContactShares()
+
+        assertTrue(result.isSuccess)
+        val page = result.getOrThrow()
+        assertEquals(2, page.contactShares.size)
+        assertEquals("s1", page.contactShares[0].id)
+        assertEquals(7, page.contactShares[0].fromUserId)
+        assertEquals("Dana White", page.contactShares[0].contactDisplayName)
+        assertEquals("pending", page.contactShares[0].status)
+        assertEquals("dana", page.usernames["7"])
+        assertEquals("cursor-2", page.nextCursor)
+
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/api/v1/contact-shares/incoming", request.path)
+    }
+
+    @Test
+    fun `list incoming contact shares sends cursor and limit query parameters`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"contact_shares":[],"usernames":{},"total":0,"next_cursor":"","limit":25}"""),
+        )
+
+        client.listIncomingContactShares(cursor = "c1", limit = 10)
+
+        val request = server.takeRequest()
+        assertEquals("/api/v1/contact-shares/incoming?cursor=c1&limit=10", request.path)
+    }
+
+    @Test
+    fun `list outgoing contact shares parses the cursor page`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "contact_shares": [
+                        {"id": "s3", "from_user_id": 1, "to_user_id": 9, "contact_display_name": "Casey Tran", "status": "accepted", "responded_at": "2026-08-02T09:00:00Z"}
+                      ],
+                      "usernames": {"9": "casey"},
+                      "total": 1,
+                      "next_cursor": "",
+                      "limit": 25
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        val result = client.listOutgoingContactShares()
+
+        assertTrue(result.isSuccess)
+        val page = result.getOrThrow()
+        assertEquals(1, page.contactShares.size)
+        assertEquals("s3", page.contactShares[0].id)
+        assertEquals(9, page.contactShares[0].toUserId)
+        assertEquals("accepted", page.contactShares[0].status)
+        assertEquals("casey", page.usernames["9"])
+
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/api/v1/contact-shares/outgoing", request.path)
+    }
+
+    @Test
+    fun `create contact share posts the input and unwraps the created share`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """{"message": "Share created", "contact_share":
+                        {"id": "s1", "from_user_id": 1, "to_user_id": 9, "contact_display_name": "Casey Tran", "status": "pending"}}""",
+                ),
+        )
+
+        val result = client.createContactShare(
+            com.mycorrhizal.crm.model.network.ContactShareInput(
+                toUserId = 9,
+                vcardUid = "uid-1",
+                sections = listOf("emails", "phones"),
+                includeSensitive = true,
+            ),
+        )
+
+        assertTrue(result.isSuccess)
+        assertEquals("s1", result.getOrThrow().id)
+        assertEquals("Casey Tran", result.getOrThrow().contactDisplayName)
+
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/contact-shares", request.path)
+        val body = request.body.readUtf8()
+        assertTrue(body.contains("\"to_user_id\":9"))
+        assertTrue(body.contains("\"vcard_uid\":\"uid-1\""))
+        assertTrue(body.contains("\"include_sensitive\":true"))
+    }
+
+    @Test
+    fun `accept contact share posts to the accept route and parses the preview`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """{"session_id": "import-1", "rows": [
+                        {"row_index": 0, "parsed_contact": {"firstname": "Dana", "lastname": "White"},
+                         "duplicate_match": {"existing_contact_id": 3, "existing_firstname": "Dana", "existing_lastname": "White", "match_reason": "name"},
+                         "suggested_action": "update"}],
+                        "total_rows": 1, "valid_rows": 1, "duplicate_count": 1, "error_count": 0}""",
+                ),
+        )
+
+        val result = client.acceptContactShare("s1")
+
+        assertTrue(result.isSuccess)
+        val preview = result.getOrThrow()
+        assertEquals("import-1", preview.sessionId)
+        assertEquals(1, preview.rows.size)
+        assertEquals("update", preview.rows[0].suggestedAction)
+        assertEquals(3L, preview.rows[0].duplicateMatch?.existingContactId)
+        assertEquals("name", preview.rows[0].duplicateMatch?.matchReason)
+
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/contact-shares/s1/accept", request.path)
+    }
+
+    @Test
+    fun `confirm contact share posts the session and per-row actions to the confirm route`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"total_processed": 1, "created": 1, "updated": 0, "skipped": 0, "errors": []}"""),
+        )
+
+        val result = client.confirmContactShare(
+            "s1",
+            com.mycorrhizal.crm.model.network.ImportConfirmRequest(
+                sessionId = "import-1",
+                actions = listOf(com.mycorrhizal.crm.model.network.RowImportAction(rowIndex = 0, action = "update")),
+            ),
+        )
+
+        assertTrue(result.isSuccess)
+        assertEquals(1, result.getOrThrow().created)
+
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/contact-shares/s1/confirm", request.path)
+        val body = request.body.readUtf8()
+        assertTrue(body.contains("import-1"))
+        assertTrue(body.contains("\"action\":\"update\""))
+    }
+
+    @Test
+    fun `decline contact share posts to the decline route`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"message": "Share declined"}"""))
+
+        val result = client.declineContactShare("s1")
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/contact-shares/s1/decline", request.path)
+    }
+
+    @Test
+    fun `get user directory parses the users list`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"users": [{"id": 9, "username": "casey"}, {"id": 7, "username": "dana"}]}"""),
+        )
+
+        val result = client.getUserDirectory()
+
+        assertTrue(result.isSuccess)
+        val users = result.getOrThrow()
+        assertEquals(2, users.size)
+        assertEquals(9, users[0].id)
+        assertEquals("casey", users[0].username)
+        assertEquals("dana", users[1].username)
+
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/api/v1/users/directory", request.path)
+    }
 }
