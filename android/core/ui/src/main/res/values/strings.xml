@@ -36,6 +36,7 @@
     <string name="login_api_token_hint">mycorrhizal_…</string>
     <string name="login_sign_in">Sign in</string>
     <string name="login_sso">Sign in with SSO</string>
+    <string name="oidc_login_failed">Sign-in with SSO failed. Try again or sign in with your password.</string>
     <string name="login_error_valid_server_url">Enter a valid server URL, e.g. https://crm.example.com</string>
     <string name="login_error_identifier_required">Username or email is required</string>
     <string name="login_error_password_required">Password is required</string>

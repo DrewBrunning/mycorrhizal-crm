@@ -3,8 +3,33 @@ plugins {
     id("mycorrhizal.android.hilt")
 }
 
+// M5 §7: release signing via env/properties only — never committed. With no
+// keystore configured the release build stays unsigned (assembleDebug and the
+// CI gate are unaffected); set the five variables below to produce a
+// distributable APK. Delivery method is decided by whoever wires a CI job to
+// these; the keystore itself must never be in the repo.
+val signingStoreFile: String? =
+    providers.gradleProperty("SIGNING_STORE_FILE").orNull ?: System.getenv("SIGNING_STORE_FILE")
+val signingStorePassword: String? =
+    providers.gradleProperty("SIGNING_STORE_PASSWORD").orNull ?: System.getenv("SIGNING_STORE_PASSWORD")
+val signingKeyAlias: String? =
+    providers.gradleProperty("SIGNING_KEY_ALIAS").orNull ?: System.getenv("SIGNING_KEY_ALIAS")
+val signingKeyPassword: String? =
+    providers.gradleProperty("SIGNING_KEY_PASSWORD").orNull ?: System.getenv("SIGNING_KEY_PASSWORD")
+
 android {
     namespace = "com.mycorrhizal.crm"
+
+    signingConfigs {
+        if (signingStoreFile != null) {
+            create("release") {
+                storeFile = file(signingStoreFile)
+                storePassword = signingStorePassword
+                keyAlias = signingKeyAlias
+                keyPassword = signingKeyPassword
+            }
+        }
+    }
 
     buildTypes {
         release {
@@ -14,6 +39,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 }
@@ -37,6 +63,11 @@ dependencies {
     implementation(project(":feature:shares"))
     implementation(project(":feature:audit"))
     implementation(project(":feature:network"))
+
+    // M5 §3.1: Coil's image loader is wired to the authenticated OkHttp stack
+    // in MycorrhizalApplication so profile photos load with the bearer JWT.
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

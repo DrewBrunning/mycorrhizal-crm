@@ -35,6 +35,7 @@
     <string name="login_api_token">Jeton API</string>
     <string name="login_api_token_hint">mycorrhizal_…</string>
     <string name="login_sso">Se connecter avec SSO</string>
+    <string name="oidc_login_failed">La connexion SSO a échoué. Réessayez ou connectez-vous avec votre mot de passe.</string>
     <string name="login_sign_in">Se connecter</string>
     <string name="login_error_valid_server_url">Saisissez une URL de serveur valide, p. ex. https://crm.example.com</string>
     <string name="login_error_identifier_required">Le nom d\'utilisateur ou l\'e-mail est requis</string>

@@ -35,6 +35,7 @@
     <string name="login_api_token">API-Token</string>
     <string name="login_api_token_hint">mycorrhizal_…</string>
     <string name="login_sso">Mit SSO anmelden</string>
+    <string name="oidc_login_failed">Die SSO-Anmeldung ist fehlgeschlagen. Versuche es erneut oder melde dich mit deinem Passwort an.</string>
     <string name="login_sign_in">Anmelden</string>
     <string name="login_error_valid_server_url">Gib eine gültige Server-URL ein, z. B. https://crm.example.com</string>
     <string name="login_error_identifier_required">Benutzername oder E-Mail ist erforderlich</string>

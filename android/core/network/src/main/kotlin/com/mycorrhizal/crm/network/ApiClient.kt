@@ -1381,7 +1381,14 @@ class ApiClient(
     }
 
     companion object {
-        private const val PLACEHOLDER_ORIGIN = "http://mycorrhizal.invalid"
+        /**
+         * Every request is built against this placeholder origin and rewritten
+         * onto the configured server by [BaseUrlInterceptor]. Public so Coil
+         * (M5 §3.1) can build absolute URLs for the relative profile-photo
+         * paths the backend returns — the same interceptors then rewrite the
+         * host AND attach the auth header, since BaseUrl runs before Auth.
+         */
+        const val PLACEHOLDER_ORIGIN = "http://mycorrhizal.invalid"
         private const val API_V1 = "/api/v1"
         private const val LOGIN_PATH = "$API_V1/login"
         private const val ME_PATH = "$API_V1/users/me"
