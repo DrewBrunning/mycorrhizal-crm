@@ -33,7 +33,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import javax.inject.Inject
 
 /**
@@ -98,20 +100,30 @@ data class PreferenceFormData(
 )
 
 /**
- * Gift `YYYY-MM-DD` -> UTC ISO instant (`2026-08-10T00:00:00Z`), matching the
- * web's `new Date("YYYY-MM-DDT00:00:00").toISOString()` on the date value.
+ * Gift `YYYY-MM-DD` -> UTC ISO instant, matching the web's
+ * `new Date("YYYY-MM-DDT00:00:00").toISOString()`: the chosen date is treated
+ * as local midnight and converted to UTC. Without this the stored instant and
+ * the web-visible date would drift for non-UTC users (review-pass fix).
  */
 fun giftDateToIso(date: String): String? {
     val normalized = date.trim()
     if (normalized.isBlank()) return null
-    return runCatching { LocalDate.parse(normalized) }.getOrNull()?.let { "${it}T00:00:00Z" }
+    return runCatching { LocalDate.parse(normalized) }
+        .getOrNull()
+        ?.atStartOfDay(ZoneId.systemDefault())
+        ?.toInstant()
+        ?.toString()
 }
 
-/** Stored UTC ISO instant -> the `YYYY-MM-DD` it encodes (UTC date part, per [com.mycorrhizal.crm.model.util.DateFormat]). */
+/**
+ * Stored UTC ISO instant -> the local `YYYY-MM-DD` it represents, mirroring
+ * web's toDateInputValue (getFullYear/getMonth/getDate — deliberately NOT the
+ * UTC date part, which would show the previous day west of UTC).
+ */
 fun giftDateFromIso(iso: String?): String {
     if (iso.isNullOrBlank()) return ""
     return runCatching {
-        LocalDate.parse(iso.substring(0, minOf(10, iso.length))).toString()
+        Instant.parse(iso).atZone(ZoneId.systemDefault()).toLocalDate().toString()
     }.getOrDefault("")
 }
 
@@ -372,11 +384,13 @@ class GiftsViewModel @Inject constructor(
     /**
      * Mark-given one-click transition (web's GiftList mark-given): a full
      * overwrite flipping status to "given" and defaulting the date to now when
-     * the gift had none. Only meaningful for idea/purchased gifts.
+     * the gift had none. Only meaningful for idea/purchased gifts — given and
+     * received are left alone (review-pass fix: the guard must match the UI's
+     * hidden-button rule).
      */
     fun markGiven(id: String) {
         val gift = loaded.find { it.id == id } ?: return
-        if (gift.status == GiftStatuses.GIVEN) return
+        if (gift.status == GiftStatuses.GIVEN || gift.status == GiftStatuses.RECEIVED) return
         viewModelScope.launch {
             giftRepository.update(
                 id,
@@ -467,14 +481,19 @@ class PreferencesViewModel @Inject constructor(
                 onSuccess = { items ->
                     loaded = items
                     // M18: group by section (Food & Drink / Media / Other),
-                    // mirroring web's PreferenceList. Clothing sizes are NOT
-                    // part of the grouped list — they render in the dedicated
-                    // panel above it.
+                    // mirroring web's PreferenceList. The server returns items
+                    // in updated_at order, which is NOT grouped — sort into
+                    // contiguous sections so the scaffold's change-detecting
+                    // headers can't interleave/repeat (review-pass fix).
+                    // Clothing sizes are NOT part of the grouped list — they
+                    // render in the dedicated panel above it.
+                    val sectionOrder = mapOf("food_drink" to 0, "media" to 1, "other" to 2)
                     _uiState.update {
                         it.copy(
                             isLoading = false,
                             items = items
                                 .filter { it.category != PREFERENCE_CLOTHING_SIZE }
+                                .sortedBy { sectionOrder[preferenceSection(it.category)] ?: 2 }
                                 .map { p -> EntityItem(p.id, preferenceLabel(p), sectionKey = preferenceSection(p.category)) },
                         )
                     }
@@ -634,18 +653,23 @@ class ConversationAgendaViewModel @Inject constructor(
             agendaRepository.listForContact(uid).foldApiError(
                 onSuccess = { items ->
                     loaded = items
-                    // M18: open/discussed section split (discussed_at == null).
+                    // M18: open/discussed section split (discussed_at == null),
+                    // sorted so open items come first regardless of the
+                    // server's updated_at order — the scaffold's section
+                    // headers require contiguous groups (review-pass fix).
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            items = items.map { a ->
-                                EntityItem(
-                                    a.id,
-                                    agendaLabel(a),
-                                    url = a.referenceUrl,
-                                    sectionKey = if (a.discussedAt == null) "open" else "discussed",
-                                )
-                            },
+                            items = items
+                                .sortedBy { if (it.discussedAt == null) 0 else 1 }
+                                .map { a ->
+                                    EntityItem(
+                                        a.id,
+                                        agendaLabel(a),
+                                        url = a.referenceUrl,
+                                        sectionKey = if (a.discussedAt == null) "open" else "discussed",
+                                    )
+                                },
                         )
                     }
                 },

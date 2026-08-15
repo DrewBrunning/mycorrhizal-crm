@@ -682,7 +682,6 @@
     <string name="agenda_edit">Edit item</string>
     <string name="agenda_content">Content</string>
     <!-- M18: field richness across the four timeline entities -->
-    <string name="life_events_category">Category</string>
     <string name="life_events_select_category">Select a category…</string>
     <string name="life_events_select_category_first">Select a category first</string>
     <string name="life_events_custom_type">Add a new life event type</string>
@@ -700,7 +699,6 @@
     <string name="life_events_category_travel_experiences">Travel &amp; Experiences</string>
     <string name="life_events_category_family_relationships">Family &amp; Relationships</string>
     <string name="life_events_category_uncategorized">Other / Uncategorized</string>
-    <string name="gifts_status">Status</string>
     <string name="gifts_status_idea">Idea</string>
     <string name="gifts_status_purchased">Purchased</string>
     <string name="gifts_status_given">Given</string>
@@ -710,6 +708,7 @@
     <string name="gifts_notes">Notes</string>
     <string name="gifts_occasion">Occasion</string>
     <string name="gifts_date">Date (YYYY-MM-DD)</string>
+    <string name="gifts_date_invalid">Enter a date in YYYY-MM-DD format</string>
     <string name="gifts_amount">Amount</string>
     <string name="gifts_currency">Currency</string>
     <string name="gifts_life_event">Life event</string>
@@ -718,7 +717,6 @@
     <string name="gifts_value_currency_required">Amount and currency must be set together</string>
     <string name="gifts_mark_given">Mark given</string>
     <string name="preferences_key">Key</string>
-    <string name="preferences_sensitivity">Sensitivity</string>
     <string name="preferences_category_food">Food</string>
     <string name="preferences_category_drink">Drink</string>
     <string name="preferences_category_media">Media</string>

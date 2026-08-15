@@ -686,7 +686,6 @@
     <string name="agenda_content">Contenido</string>
 
     <!-- M18: field richness across the four timeline entities -->
-    <string name="life_events_category">Categoría</string>
     <string name="life_events_select_category">Selecciona una categoría…</string>
     <string name="life_events_select_category_first">Selecciona primero una categoría</string>
     <string name="life_events_custom_type">Añadir un nuevo tipo de evento vital</string>
@@ -704,7 +703,6 @@
     <string name="life_events_category_travel_experiences">Viajes y experiencias</string>
     <string name="life_events_category_family_relationships">Familia y relaciones</string>
     <string name="life_events_category_uncategorized">Otros / Sin categoría</string>
-    <string name="gifts_status">Estado</string>
     <string name="gifts_status_idea">Idea</string>
     <string name="gifts_status_purchased">Comprado</string>
     <string name="gifts_status_given">Regalado</string>
@@ -714,6 +712,7 @@
     <string name="gifts_notes">Notas</string>
     <string name="gifts_occasion">Ocasión</string>
     <string name="gifts_date">Fecha (AAAA-MM-DD)</string>
+    <string name="gifts_date_invalid">Introduce una fecha en formato AAAA-MM-DD</string>
     <string name="gifts_amount">Importe</string>
     <string name="gifts_currency">Moneda</string>
     <string name="gifts_life_event">Evento vital</string>
@@ -722,7 +721,6 @@
     <string name="gifts_value_currency_required">El importe y la moneda deben indicarse juntos</string>
     <string name="gifts_mark_given">Marcar como regalado</string>
     <string name="preferences_key">Clave</string>
-    <string name="preferences_sensitivity">Sensibilidad</string>
     <string name="preferences_category_food">Comida</string>
     <string name="preferences_category_drink">Bebida</string>
     <string name="preferences_category_media">Medios</string>

@@ -13,6 +13,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
 import com.mycorrhizal.crm.model.network.ConversationAgenda
+import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.Gift
 import com.mycorrhizal.crm.model.network.GiftStatuses
 import com.mycorrhizal.crm.model.network.LifeEvent
@@ -20,6 +21,7 @@ import com.mycorrhizal.crm.model.network.Preference
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -254,6 +256,58 @@ class LifeEventDialogTest {
         composeTestRule.onNodeWithText("3").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Started at Acme").performScrollTo().assertIsDisplayed()
     }
+
+    @Test
+    fun `a legacy event with no category falls back to the uncategorized sentinel and keeps its type editable`() {
+        var confirmed: LifeEventFormData? = null
+        setContent(
+            // Pre-T36 rows carry category NULL, which Go serializes as an
+            // absent JSON key — the dialog must land on the sentinel, not the
+            // empty "select a category" state (review-pass fix).
+            initial = LifeEvent(
+                id = "e1",
+                entityId = "uid",
+                type = "went to the lake",
+                description = "Summer trip",
+            ),
+            onConfirm = { confirmed = it },
+        )
+
+        composeTestRule.onNodeWithText("Other / Uncategorized").assertIsDisplayed()
+        // The type is free text under the sentinel, and editable.
+        composeTestRule.onNodeWithText("went to the lake").assertIsDisplayed()
+        composeTestRule.onNodeWithText("went to the lake").performTextReplacement("went to the sea")
+        composeTestRule.onNodeWithText("Save").performClick()
+
+        // Saving sends category null (never the sentinel string).
+        assertEquals(null, confirmed?.category)
+        assertEquals("went to the sea", confirmed?.type)
+    }
+
+    @Test
+    fun `removing a related contact invokes onRemoveRelated`() {
+        var removed: String? = null
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                LifeEventDialog(
+                    initial = null,
+                    relatedContacts = listOf(ContactSummary(id = 1, uid = "u1", fn = "Alice")),
+                    contactSearchQuery = "",
+                    contactSearchResults = emptyList(),
+                    contactSearchLoading = false,
+                    onSearchContacts = {},
+                    onAddRelated = {},
+                    onRemoveRelated = { removed = it },
+                    onConfirm = {},
+                    onDismiss = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithContentDescription("Remove Alice").performClick()
+
+        assertEquals("u1", removed)
+    }
 }
 
 @RunWith(RobolectricTestRunner::class)
@@ -487,5 +541,62 @@ class AgendaDialogTest {
         composeTestRule.onNodeWithText("Create").performClick()
 
         assertEquals("https://example.com/article", confirmedUrl)
+    }
+}
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+class MarkDiscussedDialogTest {
+    @get:Rule
+    val composeTestRule = createComposeRule()
+
+    @Test
+    fun `marking discussed without a link confirms with no activity`() {
+        var confirmedCalled = false
+        var confirmed: Int? = null
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                MarkDiscussedDialog(
+                    item = ConversationAgenda(id = "a1", entityId = "uid", content = "Ask about the move"),
+                    activities = emptyList(),
+                    confirming = false,
+                    onConfirm = { confirmed = it; confirmedCalled = true },
+                    onDismiss = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Ask about the move").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Discuss").performClick()
+
+        assertTrue(confirmedCalled)
+        assertEquals(null, confirmed)
+    }
+
+    @Test
+    fun `the activity selector links a chosen activity`() {
+        var confirmed: Int? = null
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                MarkDiscussedDialog(
+                    item = ConversationAgenda(id = "a1", entityId = "uid", content = "Ask about the move"),
+                    activities = listOf(
+                        com.mycorrhizal.crm.model.network.Activity(id = 7, title = "Coffee chat"),
+                        com.mycorrhizal.crm.model.network.Activity(id = 8, title = "Dinner"),
+                    ),
+                    confirming = false,
+                    onConfirm = { confirmed = it },
+                    onDismiss = {},
+                )
+            }
+        }
+
+        // The selector defaults to "None"; pick the Dinner activity.
+        composeTestRule.onNodeWithText("None").performClick()
+        composeTestRule.onNodeWithText("Dinner").performClick()
+        composeTestRule.onNodeWithText("Discuss").performClick()
+
+        assertEquals(8, confirmed)
     }
 }

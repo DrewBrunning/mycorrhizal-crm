@@ -18,6 +18,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -2730,5 +2731,45 @@ class ApiClientTest {
 
         assertTrue(result.isSuccess)
         assertEquals("self-uid", result.getOrThrow().selfContactVCardUid)
+    }
+
+    // --- M18: conversation-agenda discuss sends the activity link ---
+
+    @Test
+    fun `discussConversationAgenda with an activity sends activity_id`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"id":"a1","entity_id":"uid","content":"Ask","activity_id":7,"discussed_at":"2026-08-01T10:00:00Z"}"""),
+        )
+
+        val result = client.discussConversationAgenda("a1", activityId = 7)
+
+        assertTrue(result.isSuccess)
+        assertEquals(7, result.getOrThrow().activityId)
+        val request = server.takeRequest()
+        assertEquals("PATCH", request.method)
+        assertEquals("/api/v1/conversation-agenda/a1/discuss", request.path)
+        // Moshi omits nulls by default, so an explicit id serializes as {activity_id: 7}.
+        assertTrue(request.body.readUtf8().contains("""{"activity_id":7}"""))
+    }
+
+    @Test
+    fun `discussConversationAgenda without an activity sends an empty body`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"id":"a1","entity_id":"uid","content":"Ask"}"""),
+        )
+
+        val result = client.discussConversationAgenda("a1", activityId = null)
+
+        assertTrue(result.isSuccess)
+        assertNull(result.getOrThrow().activityId)
+        val request = server.takeRequest()
+        assertEquals("PATCH", request.method)
+        // Marking discussed without a link is an empty object — matching web's
+        // MarkDiscussedDialog (`{}` when unlinked).
+        assertEquals("{}", request.body.readUtf8())
     }
 }

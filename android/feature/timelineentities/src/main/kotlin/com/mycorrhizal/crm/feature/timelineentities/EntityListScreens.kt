@@ -306,13 +306,16 @@ internal fun LifeEventDialog(
 ) {
     val isEditing = initial != null
     // Category state: a real token, "" (nothing chosen yet), or the
-    // "uncategorized" sentinel (only reachable when the loaded category is a
-    // legacy/unknown value — brand-new events must pick a real category).
+    // "uncategorized" sentinel (only reachable for existing data whose
+    // category is a legacy/unknown value or absent — brand-new events must
+    // pick a real category). The sentinel falls back on `initial != null`,
+    // NOT `initial?.category != null`: pre-T36 rows carry category NULL, which
+    // Go serializes as an absent JSON key (review-pass fix).
     var category by remember(initial) {
         mutableStateOf(
             initial?.category
                 ?.takeIf { it in LifeEventCategory.ALL }
-                ?: (if (initial?.category != null) LIFE_EVENT_UNCATEGORIZED else ""),
+                ?: (if (initial != null) LIFE_EVENT_UNCATEGORIZED else ""),
         )
     }
     var type by remember(initial) { mutableStateOf(initial?.type ?: "") }
@@ -631,9 +634,11 @@ internal fun GiftDialog(
     val hasCurrency = currency.isNotBlank()
     // The pair is enforced together (backend: validateGiftValueCurrency).
     val pairValid = (hasAmount == hasCurrency)
+    val currencyLengthValid = currency.isBlank() || currency.length == 3
     val normalizedUrl = normalizeHttpUrl(url)
     val urlValid = url.isBlank() || normalizedUrl != null
-    val canSave = description.isNotBlank() && pairValid && urlValid
+    val dateValid = date.isBlank() || giftDateToIso(date) != null
+    val canSave = description.isNotBlank() && pairValid && currencyLengthValid && urlValid && dateValid
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -666,6 +671,8 @@ internal fun GiftDialog(
                     value = date, onValueChange = { date = it },
                     label = { Text(stringResource(R.string.gifts_date)) }, singleLine = true,
                     placeholder = { Text("2026-08-10") },
+                    isError = !dateValid,
+                    supportingText = if (dateValid) null else { { Text(stringResource(R.string.gifts_date_invalid)) } },
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
@@ -723,7 +730,10 @@ internal fun GiftDialog(
                             notes = notes,
                             occasion = occasion,
                             date = date,
-                            valueCents = parsedAmount?.movePointRight(2)?.toLong(),
+                            // Only a non-negative amount is a real amount; a
+                            // negative/zero-blank entry sends null (review-pass
+                            // fix — web rejects negatives client-side).
+                            valueCents = if (hasAmount) parsedAmount!!.movePointRight(2).toLong() else null,
                             currency = currency,
                             lifeEventId = lifeEventId,
                             activityId = activityId,
@@ -1264,15 +1274,18 @@ fun ConversationAgendaScreen(
                     item = item,
                     activities = activities,
                     confirming = discussingId == id,
-                    onConfirm = { activityId ->
-                        viewModel.markDiscussed(id, activityId)
-                        pendingDiscussId = null
-                    },
+                    onConfirm = { activityId -> viewModel.markDiscussed(id, activityId) },
                     onDismiss = {
                         viewModel.clearDiscussing()
                         pendingDiscussId = null
                     },
                 )
+                // Keep the dialog open (button disabled) while the PATCH is in
+                // flight, and close it once it resolves — so the in-flight
+                // state is real, not dead (review-pass fix).
+                LaunchedEffect(discussingId) {
+                    if (discussingId == null) pendingDiscussId = null
+                }
             }
         }
     }
@@ -1280,7 +1293,7 @@ fun ConversationAgendaScreen(
 
 /** Web's MarkDiscussedDialog — marks an item discussed, optionally linked to an activity. */
 @Composable
-private fun MarkDiscussedDialog(
+internal fun MarkDiscussedDialog(
     item: ConversationAgenda,
     activities: List<Activity>,
     confirming: Boolean,

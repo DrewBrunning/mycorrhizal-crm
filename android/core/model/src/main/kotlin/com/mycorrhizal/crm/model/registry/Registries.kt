@@ -63,15 +63,6 @@ object LifeEventTypes {
     fun forCategory(category: String): List<String> = BY_CATEGORY[category].orEmpty()
 }
 
-object GiftStatus {
-    const val IDEA = "idea"
-    const val PURCHASED = "purchased"
-    const val GIVEN = "given"
-    const val RECEIVED = "received"
-
-    val ALL = listOf(IDEA, PURCHASED, GIVEN, RECEIVED)
-}
-
 object PreferenceCategory {
     const val FOOD = "food"
     const val DRINK = "drink"

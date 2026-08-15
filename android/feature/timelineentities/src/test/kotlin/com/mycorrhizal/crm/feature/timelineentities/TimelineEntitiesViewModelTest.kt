@@ -26,12 +26,33 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TestWatcher
+import org.junit.runner.Description
+import java.util.TimeZone
+
+/**
+ * The gift-date helpers convert between local dates and UTC instants using the
+ * device zone (matching web). Tests assert exact ISO strings, so they pin the
+ * zone to UTC to be runnable anywhere.
+ */
+class UtcTimezoneRule : TestWatcher() {
+    private val original = TimeZone.getDefault()
+    override fun starting(description: Description) {
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
+    }
+
+    override fun finished(description: Description) {
+        TimeZone.setDefault(original)
+    }
+}
 
 private const val UID = "11111111-1111-1111-1111-111111111111"
 
@@ -239,6 +260,7 @@ class LifeEventsViewModelTest {
 
 class GiftsViewModelTest {
     @get:Rule val mainDispatcherRule = MainDispatcherRule()
+    @get:Rule val utcTimezone = UtcTimezoneRule()
     private val repo = mockk<GiftRepository>()
     private val lifeEventRepo = mockk<LifeEventRepository>()
     private val activityRepo = mockk<ActivityRepository>()
@@ -379,6 +401,39 @@ class GiftsViewModelTest {
         coVerify { repo.update("g1", match { it.date == "2026-01-01T00:00:00Z" }) }
     }
 
+    @Test fun `markGiven is a no-op for an already-given or received gift`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            stubContact(contacts)
+            val given = Gift(id = "g1", entityId = UID, status = GiftStatuses.GIVEN, description = "Socks")
+            val received = Gift(id = "g2", entityId = UID, status = GiftStatuses.RECEIVED, description = "Mug")
+            coEvery { repo.listForContact(UID) } returns Result.success(listOf(given, received))
+            val vm = vm(); advanceUntilIdle()
+
+            vm.markGiven("g1")
+            vm.markGiven("g2")
+            advanceUntilIdle()
+
+            coVerify(exactly = 0) { repo.update(any(), any()) }
+        }
+
+    @Test fun `clearing the gift date persists as cleared`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            stubContact(contacts)
+            val original = Gift(
+                id = "g1", entityId = UID, status = "given", description = "Socks",
+                date = "2026-01-01T00:00:00Z",
+            )
+            coEvery { repo.listForContact(UID) } returns Result.success(listOf(original))
+            coEvery { repo.update("g1", any()) } returns Result.success(original)
+            val vm = vm(); advanceUntilIdle()
+
+            // The user emptied the date field.
+            vm.update(original, giftForm(status = "given", description = "Socks", date = null))
+            advanceUntilIdle()
+
+            coVerify { repo.update("g1", match { it.date == null }) }
+        }
+
     @Test fun `findById returns the loaded entity by id`() = runTest(mainDispatcherRule.testDispatcher) {
         stubContact(contacts)
         coEvery { repo.listForContact(UID) } returns Result.success(
@@ -418,6 +473,29 @@ class PreferencesViewModelTest {
         assertEquals(listOf("food_drink", "media", "other"), vm.uiState.value.items.map { it.sectionKey })
         assertEquals("food: allergy = peanuts", vm.uiState.value.items[0].label)
     }
+
+    @Test fun `interleaved preferences are sorted into contiguous sections`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            stubContact(contacts)
+            // Server order is updated_at desc, which interleaves sections; the
+            // ViewModel must group them contiguously so the scaffold's
+            // change-detecting headers can't repeat (review-pass fix).
+            coEvery { repo.listForContact(UID) } returns Result.success(
+                listOf(
+                    Preference(id = "p1", entityId = UID, category = "media", value = "Movie"),
+                    Preference(id = "p2", entityId = UID, category = "food", value = "spicy"),
+                    Preference(id = "p3", entityId = UID, category = "drink", value = "tea"),
+                    Preference(id = "p4", entityId = UID, category = "hobby", value = "pottery"),
+                    Preference(id = "p5", entityId = UID, category = "media", value = "Album"),
+                ),
+            )
+            val vm = vm(); advanceUntilIdle()
+            // Each section appears exactly once, in order.
+            assertEquals(
+                listOf("food_drink", "food_drink", "media", "media", "other"),
+                vm.uiState.value.items.map { it.sectionKey },
+            )
+        }
 
     @Test fun `clothing-size preferences are surfaced for the dedicated panel`() =
         runTest(mainDispatcherRule.testDispatcher) {
@@ -549,6 +627,26 @@ class ConversationAgendaViewModelTest {
             assertEquals("https://example.com/listing", vm.uiState.value.items[0].url)
         }
 
+    @Test fun `interleaved open and discussed items are sorted into contiguous sections`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            stubContact(contacts)
+            // Server order is updated_at desc — discussing bumps updated_at, so
+            // a discussed item can sort FIRST between open items; the
+            // ViewModel must group open-then-discussed contiguously.
+            coEvery { repo.listForContact(UID) } returns Result.success(
+                listOf(
+                    ConversationAgenda(id = "a1", entityId = UID, content = "Done", discussedAt = "2026-08-01T10:00:00Z"),
+                    ConversationAgenda(id = "a2", entityId = UID, content = "Open 1"),
+                    ConversationAgenda(id = "a3", entityId = UID, content = "Done 2", discussedAt = "2026-08-02T10:00:00Z"),
+                ),
+            )
+            val vm = vm(); advanceUntilIdle()
+            assertEquals(
+                listOf("open", "discussed", "discussed"),
+                vm.uiState.value.items.map { it.sectionKey },
+            )
+        }
+
     @Test fun `create sends the reference url`() = runTest(mainDispatcherRule.testDispatcher) {
         stubContact(contacts)
         coEvery { repo.listForContact(UID) } returns Result.success(emptyList())
@@ -626,6 +724,8 @@ class ConversationAgendaViewModelTest {
 // --- M18 pure helpers ---
 
 class GiftDateHelpersTest {
+    @get:Rule val utcTimezone = UtcTimezoneRule()
+
     @Test fun `giftDateToIso converts a local date to a UTC midnight instant`() {
         assertEquals("2026-08-10T00:00:00Z", giftDateToIso("2026-08-10"))
     }
@@ -635,7 +735,7 @@ class GiftDateHelpersTest {
         assertEquals(null, giftDateToIso("  "))
     }
 
-    @Test fun `giftDateFromIso reads the UTC date part`() {
+    @Test fun `giftDateFromIso reads the local date part`() {
         assertEquals("2026-08-10", giftDateFromIso("2026-08-10T00:00:00Z"))
         assertEquals("2026-08-10", giftDateFromIso("2026-08-10T22:00:00.000Z"))
     }
