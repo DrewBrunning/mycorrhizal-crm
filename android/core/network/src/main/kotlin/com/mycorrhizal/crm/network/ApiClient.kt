@@ -11,6 +11,8 @@ import com.mycorrhizal.crm.model.network.ActivityInput
 import com.mycorrhizal.crm.model.network.AddCircleMemberResponse
 import com.mycorrhizal.crm.model.network.AddContactTagResponse
 import com.mycorrhizal.crm.model.network.AddHouseholdMemberResponse
+import com.mycorrhizal.crm.model.network.AuditEventsResponse
+import com.mycorrhizal.crm.model.network.AuditUndoResponse
 import com.mycorrhizal.crm.model.network.BackendError
 import com.mycorrhizal.crm.model.network.BirthdaysResponse
 import com.mycorrhizal.crm.model.network.CadencePoliciesResponse
@@ -921,6 +923,38 @@ class ApiClient(
             moshi.adapter(ImportPreviewResponse::class.java).fromJson(body)
         }
 
+    // --- Audit trail (M16, mirroring web's AuditPage over T18/T60's backend) ---
+
+    /**
+     * GET /audit — the caller's immutable event log, newest first, with
+     * server-side entity_type/entity_id filters (the backend does all the
+     * IDOR gating). [limit] is the window (default 100, max 500); the API has
+     * no cursor, so "load more" re-fetches with a larger limit.
+     */
+    suspend fun getAuditEvents(
+        entityType: String? = null,
+        entityId: String? = null,
+        limit: Int = 100,
+    ): Result<AuditEventsResponse> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$AUDIT_PATH".toHttpUrl().newBuilder()
+        urlBuilder.addQueryParameter("limit", limit.toString())
+        entityType?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("entity_type", it) }
+        entityId?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("entity_id", it) }
+        return executeGet(urlBuilder.build().toString()) { _, body ->
+            moshi.adapter(AuditEventsResponse::class.java).fromJson(body)
+        }
+    }
+
+    /**
+     * POST /audit/:id/undo — reverts a contact-update event from its before
+     * snapshot. Backend rejects every other entity / a delete event with 400,
+     * and 410 once the event has aged past AUDIT_RETENTION_DAYS.
+     */
+    suspend fun undoAuditEvent(id: Long): Result<AuditUndoResponse> =
+        executePostEmpty("$AUDIT_PATH/$id/undo") { _, body ->
+            moshi.adapter(AuditUndoResponse::class.java).fromJson(body)
+        }
+
     private suspend fun <T> executeGet(
         url: String,
         mapper: (okhttp3.Response, String) -> T?,
@@ -1113,6 +1147,7 @@ class ApiClient(
         private const val CADENCE_POLICIES_PATH = "$API_V1/cadence-policies"
         private const val DASHBOARD_PATH = "$API_V1/dashboard"
         private const val EXPORT_VCF_PATH = "$API_V1/export/vcf"
+        private const val AUDIT_PATH = "$API_V1/audit"
         private const val AUTH_COOKIE = "auth_token"    }
 }
 

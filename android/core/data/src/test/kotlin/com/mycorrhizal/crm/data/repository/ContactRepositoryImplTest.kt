@@ -139,7 +139,9 @@ class ContactRepositoryImplTest {
 
     @Test
     fun `resolveByUid maps the response by VCardUID`() = runTest {
-        coEvery { apiClient.listContacts(vcardUids = listOf("u1", "u2")) } returns Result.success(
+        coEvery {
+            apiClient.listContacts(vcardUids = listOf("u1", "u2"), includeArchived = true)
+        } returns Result.success(
             com.mycorrhizal.crm.model.network.ContactsPage(
                 contacts = listOf(
                     ContactSummary(id = 1, uid = "u1", fn = "Alice"),
@@ -156,6 +158,27 @@ class ContactRepositoryImplTest {
         assertEquals(2, map.size)
         assertEquals("Alice", map["u1"]?.fn)
         assertEquals("Bob", map["u2"]?.fn)
+    }
+
+    @Test
+    fun `resolveByUid requests archived contacts so a reference to one still resolves`() = runTest {
+        // Web's getContactsByUid sends include_archived=true (an edge/audit
+        // reference can point at an archived contact); the Android mirror must
+        // too, or an archived contact's uid silently fails to resolve.
+        coEvery { apiClient.listContacts(vcardUids = any(), includeArchived = true) } returns Result.success(
+            com.mycorrhizal.crm.model.network.ContactsPage(
+                contacts = listOf(ContactSummary(id = 3, uid = "u3", fn = "Carol", archived = true)),
+                nextCursor = "",
+            ),
+        )
+
+        val result = repository.resolveByUid(listOf("u3"))
+
+        assertTrue(result.isSuccess)
+        assertEquals("Carol", result.getOrThrow()["u3"]?.fn)
+        io.mockk.coVerify(exactly = 1) {
+            apiClient.listContacts(vcardUids = listOf("u3"), includeArchived = true)
+        }
     }
 
     @Test

@@ -622,4 +622,34 @@
     <string name="import_vcf_result">Importation terminée : %1$d créés, %2$d mis à jour, %3$d ignorés.</string>
     <string name="import_vcf_error_too_large">Le fichier est trop volumineux. La taille maximale est de 50 Mo.</string>
     <string name="import_vcf_error_invalid_file">Impossible de lire ce fichier. Choisissez un fichier .vcf.</string>
+
+    <!-- Audit trail (M16) -->
+    <string name="nav_audit">Journal d\'audit</string>
+    <string name="audit_title">Journal d\'audit</string>
+    <string name="audit_description">Toutes les créations, modifications et suppressions de vos contacts et enregistrements, des plus récentes aux plus anciennes.</string>
+    <string name="audit_filters_entity_type">Type d\'entité</string>
+    <string name="audit_filters_entity_type_all">Tous les types</string>
+    <string name="audit_filters_entity_id">ID d\'entité</string>
+    <string name="audit_filters_clear">Effacer les filtres</string>
+    <string name="audit_operations_create">Créé</string>
+    <string name="audit_operations_update">Modifié</string>
+    <string name="audit_operations_delete">Supprimé</string>
+    <string name="audit_entity_types_contact">Contact</string>
+    <string name="audit_entity_types_note">Note</string>
+    <string name="audit_entity_types_activity">Activité</string>
+    <string name="audit_entity_types_life_event">Événement de vie</string>
+    <string name="audit_entity_types_gift">Cadeau</string>
+    <string name="audit_entity_types_circle">Cercle</string>
+    <string name="audit_entity_types_tag">Étiquette</string>
+    <string name="audit_entity_types_household">Foyer</string>
+    <string name="audit_entity_types_reminder">Rappel</string>
+    <string name="audit_empty">Aucun événement d\'audit ne correspond à vos filtres.</string>
+    <string name="audit_empty_no_filters">Aucun événement d\'audit pour le moment. Les modifications apportées à vos contacts et autres enregistrements apparaîtront ici.</string>
+    <string name="audit_undo_button">Annuler</string>
+    <string name="audit_undo_confirm_title">Annuler cette modification ?</string>
+    <string name="audit_undo_confirm_message">Restaurer %1$s dans son état antérieur du %2$s ?</string>
+    <string name="audit_undo_confirm">Annuler</string>
+    <string name="audit_undo_success">Contact restauré dans son état antérieur</string>
+    <string name="audit_undo_retention_gone">Cet événement est hors de sa fenêtre de conservation et ne peut plus être annulé</string>
+    <string name="audit_undo_partial_note">Les détails qui n\'ont jamais été enregistrés dans cette entrée (pronoms, informations personnelles, détails d\'adresse) sont conservés tels quels.</string>
 </resources>

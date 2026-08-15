@@ -16,6 +16,7 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -1797,6 +1798,99 @@ class ApiClientTest {
         val request = server.takeRequest()
         assertEquals("DELETE", request.method)
         assertEquals("/api/v1/cadence-policies/p1", request.path)
+    }
+
+    // --- M16: audit trail ---
+
+    @Test
+    fun `get audit events parses the event list and defaults the limit`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "audit_events": [
+                        {"id": 3, "created_at": "2026-08-14T10:00:00Z", "entity_type": "contact", "entity_id": "uid-1", "operation": "update", "before_snapshot": "{}"},
+                        {"id": 2, "created_at": "2026-08-14T09:00:00Z", "entity_type": "note", "entity_id": "7", "operation": "create"},
+                        {"id": 1, "created_at": "2026-08-14T08:00:00Z", "entity_type": "contact", "entity_id": "uid-2", "operation": "delete", "before_snapshot": "{}"}
+                      ],
+                      "total": 3
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        val result = client.getAuditEvents()
+
+        assertTrue(result.isSuccess)
+        val page = result.getOrThrow()
+        assertEquals(3, page.auditEvents.size)
+        assertEquals(3, page.total)
+        val first = page.auditEvents[0]
+        assertEquals(3L, first.id)
+        assertEquals("contact", first.entityType)
+        assertEquals("update", first.operation)
+        assertTrue(first.canUndo)
+        assertFalse(page.auditEvents[2].canUndo)
+        assertEquals("2026-08-14T10:00:00Z", first.createdAt)
+
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/api/v1/audit?limit=100", request.path)
+    }
+
+    @Test
+    fun `get audit events sends the entity filters on the query string`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"audit_events":[],"total":0}"""),
+        )
+
+        client.getAuditEvents(entityType = "contact", entityId = "uid-1", limit = 250)
+
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/api/v1/audit?limit=250&entity_type=contact&entity_id=uid-1", request.path)
+    }
+
+    @Test
+    fun `get audit events omits blank filters`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"audit_events":[],"total":0}"""),
+        )
+
+        client.getAuditEvents(entityType = "  ", entityId = "")
+
+        val request = server.takeRequest()
+        assertEquals("/api/v1/audit?limit=100", request.path)
+    }
+
+    @Test
+    fun `undo audit event posts to the event's undo route`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"message": "Contact restored to its previous state"}"""),
+        )
+
+        val result = client.undoAuditEvent(42L)
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/audit/42/undo", request.path)
+    }
+
+    @Test
+    fun `undo audit event maps a 410 to a client error with the backend message`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(410).setBody("""{"error":{"code":"gone","message":"past retention window"}}"""),
+        )
+
+        val result = client.undoAuditEvent(42L)
+
+        assertTrue(result.isFailure)
+        val error = result.exceptionOrNull() as ApiError
+        assertTrue(error is ApiError.Client)
+        assertEquals(410, (error as ApiError.Client).code)
     }
 
     // --- M22: household relationship & shared-address suggestions ---
