@@ -1,4 +1,4 @@
--- P1 (docs/fork-plan/tickets/31-P1-contact-sharing.md) — one-time filtered
+-- P1 — one-time filtered
 -- contact copy shared from one user to another on the same instance. This is
 -- NOT a standing/live share (that's P1b, deferred): payload is a frozen
 -- T9-filtered JSContact snapshot serialized once at creation time.

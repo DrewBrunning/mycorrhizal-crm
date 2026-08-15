@@ -46,7 +46,7 @@ data class ImportUiState(
 )
 
 /**
- * T96 (docs/fork-plan/tickets/140-T96-import-duplicate-merge-review.md): the
+ * T96: the
  * device-contacts import no longer creates every selected contact
  * unconditionally. Selecting a set now submits them to
  * [ApiClient.uploadImportRecords] — the server's preview pipeline: validation,

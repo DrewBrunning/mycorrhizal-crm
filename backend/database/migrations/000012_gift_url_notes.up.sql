@@ -1,7 +1,7 @@
--- T35 (docs/fork-plan/tickets/44-T35-gift-tracking-gaps.md) — two additive
+-- T35 — two additive
 -- nullable columns on `gifts`, found using the shipped T20b feature for real:
 --
---   url   — a link to the thing itself, for an idea captured as "she mentioned
+--   url  — a link to the thing itself, for an idea captured as "she mentioned
 --           she liked this specific item" with a product page to reference
 --           later. Validated `safeurl` on write (models/gift.go) and re-checked
 --           client-side before it is used as an href.

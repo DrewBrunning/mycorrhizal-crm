@@ -1,4 +1,4 @@
--- N9 (docs/fork-plan/tickets/30-N9-notification-channels.md) — delivery of
+-- N9 — delivery of
 -- reminders beyond email.
 --
 -- Five additions:

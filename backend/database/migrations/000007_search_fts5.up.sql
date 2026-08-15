@@ -1,4 +1,4 @@
--- T11 (docs/fork-plan/tickets/24-T11-search-fts5.md) — FTS5 full-text over
+-- T11 — FTS5 full-text over
 -- contacts, notes, and interactions (activities). Derived data: the virtual
 -- tables + triggers are rebuildable from source at any time (services/
 -- search_service.go RebuildSearchIndex), which is exactly why this is safe

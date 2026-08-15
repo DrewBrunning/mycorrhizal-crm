@@ -1,4 +1,4 @@
--- T79 (docs/fork-plan/tickets/123-T79-flat-address-projection-too-narrow.md)
+-- T79 
 -- Deliberate no-op.
 --
 -- 000022 is a one-way data recovery, not a schema change: there is no column

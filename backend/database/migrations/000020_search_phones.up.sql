@@ -1,4 +1,4 @@
--- T69 (docs/fork-plan/tickets/113-T69-phone-search-tokenization.md) — search
+-- T69 — search
 -- must find a contact by phone regardless of punctuation/grouping/country-code
 -- differences between the query and the stored value.
 --

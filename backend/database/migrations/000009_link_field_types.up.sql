@@ -1,4 +1,4 @@
--- T34 (docs/fork-plan/tickets/43-T34-contact-field-linking.md) — LinkFieldType,
+-- T34 — LinkFieldType,
 -- the user-configurable registry of messaging/social link types (name,
 -- URI-template protocol with a {value} placeholder, category, icon,
 -- position). This is a deliberate exception to the usual hardcoded-enum
