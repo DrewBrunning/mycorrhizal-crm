@@ -5,7 +5,7 @@ This directory has two layers:
 1. **Golden fixtures** (locked) — copied byte-for-byte from `docs/golden-fixtures/` per
    `docs/adrs/0003-golden-fixtures-external-test-oracle.md`. Do NOT hand-edit these. The table below is copied verbatim from
    that directory's own `SOURCES.md`.
-2. **Per-concept minimal fixtures** (this WP, WP-60) — small hand-authored/spec-anchored fixtures added
+2. **Per-concept minimal fixtures** (this WP) — small hand-authored/spec-anchored fixtures added
    to cover `docs/adrs/0002-correspondence-table-locked-oracle.md` concepts that have no golden (RFC-worked-example)
    fixture, so later WPs (30b/40b/50) have a focused single-concept fixture to write import tests
    against. See the second table below.
@@ -43,7 +43,7 @@ unchanged RFC 6350 baseline behavior (e.g. a second plain `EMAIL` line). Rule:
 - Either way, a fixture is added to this directory (and this table) **before** the adapter test that
   consumes it is written — never inline test-literal strings for RFC-sourced concepts.
 
-## 2. Per-concept minimal fixtures (added by WP-60)
+## 2. Per-concept minimal fixtures (added)
 
 Every row below is a concept from `docs/adrs/0002-correspondence-table-locked-oracle.md` that has **no** golden
 fixture above. Each is a minimal vCard 4.0 card (`BEGIN/VERSION/UID/FN` + the one property under test),
@@ -97,7 +97,7 @@ concept group" (singular), not one per concept **per format**. To keep this WP's
 proportionate to its acceptance bar ("Loader compiles; fixtures parse" — `docs/adrs/0001-neutral-hub-and-spoke-contact-model.md`), the 30
 concepts above got a single vCard 4.0 fixture each (the richest/most-common target format), plus two
 illustrative JSContact fixtures (`phone`, `email`) to show the Id-map collection shape referenced in
-`docs/adrs/0003-golden-fixtures-external-test-oracle.md`'s pseudo-example. WP-30b (JSContact adapter) and WP-50 (vCard 3.0
+`docs/adrs/0003-golden-fixtures-external-test-oracle.md`'s pseudo-example. (JSContact adapter) and (vCard 3.0
 adapter) may need additional same-concept fixtures in their own format (JSContact JSON / vCard 3.0) for
 their focused import/export tests — those can either be added here (extending this directory) or as
 package-local `testdata/` fixtures per `docs/adrs/0003-golden-fixtures-external-test-oracle.md`'s layout; this WP does not attempt to

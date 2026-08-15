@@ -42,8 +42,7 @@ func ProfilePictureURL(id uint, photo, photoThumbnail string, preferThumbnail bo
 // ContactSummaryColumns is the fixed set of columns needed to build a
 // ContactSummary (list-view) response. Selecting only these avoids the
 // over-fetch (heavy JSON columns like card/emails/phones/addresses/...) that
-// the removed fields= param used to exist to let callers opt out of (Gap 3
-// in docs/adrs/0001-neutral-hub-and-spoke-contact-model.md WP-71) — now that the list
+// the removed fields= param used to exist to let callers opt out of (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md) — now that the list
 // endpoint has a fixed slim shape, this is baked in rather than
 // caller-configurable.
 //
@@ -59,7 +58,7 @@ var ContactSummaryColumns = []string{
 }
 
 // ContactSummary is the slim per-item shape for GET /api/v1/contacts (list).
-// Per docs/adrs/0001-neutral-hub-and-spoke-contact-model.md WP-71 ("Mobile-CRUD-real"
+// Per docs/adrs/0001-neutral-hub-and-spoke-contact-model.md ("Mobile-CRUD-real"
 // section), it wraps contactmodel.Projection's own fields (Firstname,
 // Lastname, FN, PrimaryEmail, PrimaryPhone, Birthday, Org) plus the record's
 // identity (UID) and the existing Photo/PhotoThumbnail — deliberately a new
@@ -117,7 +116,7 @@ type ContactSummary struct {
 // NewContactSummary builds a ContactSummary directly from a Contact's own
 // already-denormalized columns (Firstname/Lastname/FN/Email/Phone/Birthday/
 // Org), rather than re-deriving them a third time via
-// RecordFromContact+contactmodel.DeriveProjection: WP-70's BeforeSave
+// RecordFromContact+contactmodel.DeriveProjection: BeforeSave
 // already keeps those columns in sync with the neutral Card on every
 // create/update, so reading them directly here is the single derivation
 // path, just read from its cached/persisted destination instead of
@@ -141,8 +140,7 @@ func NewContactSummary(c *Contact) ContactSummary {
 }
 
 // ContactSummaryWithRelations extends ContactSummary with the sub-resource
-// arrays requested via includes= (notes/activities/reminders). Per Gap 2's
-// binding resolution, this is used only when includes= is non-empty; plain
+// arrays requested via includes= (notes/activities/reminders). This is used only when includes= is non-empty; plain
 // ContactSummary is used otherwise. It is intentionally NOT a full Card:
 // includes= augments the slim list shape, it does not upgrade it to the
 // detail shape.
@@ -169,7 +167,7 @@ func NewContactSummaryWithRelations(c *Contact) ContactSummaryWithRelations {
 }
 
 // ContactRecordInput is the request body for POST /api/v1/contacts and
-// PUT /api/v1/contacts/{id} (WP-71 item 3): the full neutral Card/CRM shape,
+// PUT /api/v1/contacts/{id}: the full neutral Card/CRM shape,
 // nested — not the old flat ContactInput. Gender rides alongside Card/CRM
 // rather than inside either: per RecordFromContact/ApplyRecordToContact's
 // own extensive documentation, Gender is a legacy CRM concept with
@@ -179,7 +177,7 @@ func NewContactSummaryWithRelations(c *Contact) ContactSummaryWithRelations {
 // wire DTO instead.
 //
 // Validation is deliberately light on Card/CRM/Passthrough: per this WP's
-// item 5 (graceful, non-strict validation sourced from the neutral model's
+// (graceful, non-strict validation sourced from the neutral model's
 // own degradation policy, docs/adrs/0001-neutral-hub-and-spoke-contact-model.md), nothing here
 // hard-fails on an unrecognized enum value (e.g. an unexpected
 // NameComponent.Kind, Anniversary.Kind, or PersonalInfo.Kind) — contactmodel
@@ -207,10 +205,10 @@ func (in *ContactRecordInput) ToRecord() *contactmodel.Record {
 
 // ContactRecordResponse is the full neutral detail-view response shape for
 // GET /api/v1/contacts/{id}, and the response returned by POST/PUT
-// /api/v1/contacts (a symmetric read/write contract, per WP-71's
+// /api/v1/contacts (a symmetric read/write contract,
 // "Mobile-CRUD-real" section). Card/CRM/Passthrough are exposed under their
 // own top-level names here rather than by giving models.Contact's existing
-// (WP-70) `json:"-"` Card/CRM/Passthrough fields real JSON tags — this keeps
+// `json:"-"` Card/CRM/Passthrough fields real JSON tags — this keeps
 // Contact's own default JSON shape (still relied on by GetContactsRandom,
 // Archive/UnarchiveContact, etc., all out of this WP's Gap list) completely
 // unchanged, and gives this response a clean place to add
@@ -249,13 +247,13 @@ type ContactRecordResponse struct {
 // RecordFromContact directly) so the response reflects what's actually
 // persisted, including data with no flat-field home (SpeakToAs,
 // PersonalInfo, ...) — calling RecordFromContact fresh here was a real,
-// live bug (found while auditing WP-73's work): it silently dropped exactly
+// live bug (found while auditing work): it silently dropped exactly
 // that data from GET/POST/PUT responses. See RecordForContact's doc
 // comment. photoDir (config.Config.ProfilePhotoDir) is forwarded through it
-// so the response's Card.Media carries the contact's photo (WP-73's
+// so the response's Card.Media carries the contact's photo (
 // photo-bridging prerequisite) in addition to the existing top-level
 // Photo/PhotoThumbnail fields below. db is forwarded to RecordForContact for
-// relationship-graph projection (WP-80); pass nil to skip it.
+// relationship-graph projection; pass nil to skip it.
 func NewContactRecordResponse(c *Contact, photoDir string, db *gorm.DB) ContactRecordResponse {
 	record := RecordForContact(c, photoDir, db)
 	resp := ContactRecordResponse{

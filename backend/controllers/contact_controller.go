@@ -60,7 +60,7 @@ func CreateContact(c *gin.Context) {
 		return
 	}
 
-	// Get validated input from validation middleware. Per WP-71 item 3, this
+	// Get validated input from validation middleware., this
 	// is the new nested Card/CRM shape (models.ContactRecordInput), not the
 	// old flat models.ContactInput.
 	input, err := middleware.GetValidated[models.ContactRecordInput](c)
@@ -208,8 +208,7 @@ func GetContacts(c *gin.Context) {
 		return
 	}
 
-	// NOTE: the fields= partial-projection param is gone (Gap 3 in
-	// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md WP-71) — deliberately, not
+	// NOTE: the fields= partial-projection param is gone (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md) — deliberately, not
 	// an oversight. It is simply no longer read; a request that still sends
 	// it is not rejected, it just has no effect. The fixed ContactSummary
 	// shape (below) now serves the reason fields= existed (avoiding
@@ -320,7 +319,7 @@ func GetContacts(c *gin.Context) {
 		return
 	}
 
-	// Parse relationships to include with validation. Per Gap 2, this
+	// Parse relationships to include with validation. This
 	// mechanic is preserved exactly as-is; only the per-item shape changes
 	// (ContactSummary, extended to ContactSummaryWithRelations when any
 	// includes= relation is requested).
@@ -470,9 +469,9 @@ func GetContacts(c *gin.Context) {
 		}
 	}
 
-	// Map contacts to the slim ContactSummary shape (Gap 2/3): plain
+	// Map contacts to the slim ContactSummary shape: plain
 	// ContactSummary normally, or ContactSummaryWithRelations when includes=
-	// requested at least one relation — never the full Card, per WP-71's
+	// requested at least one relation — never the full Card,
 	// binding "list returns []ContactSummary, not the full Card" rule.
 	if includesRequested {
 		items := make([]models.ContactSummaryWithRelations, len(contacts))
@@ -578,11 +577,11 @@ func GetContact(c *gin.Context) {
 
 	db := c.MustGet("db").(*gorm.DB)
 
-	// NOTE: fields= is gone here too (Gap 3) — the detail endpoint now always
+	// NOTE: fields= is gone here too — the detail endpoint now always
 	// returns the full neutral Record/Card (ContactRecordResponse), which is
 	// what fields= partial-fetching existed to approximate a slice of.
 	//
-	// Preload behavior: kept exactly as the pre-WP-71 "no fields=" branch
+	// Preload behavior: kept exactly as the  "no fields=" branch
 	// (always preload all associations) — dedicated endpoints like
 	// GET /contacts/:id/notes already exist and may make this redundant for
 	// some callers, but changing that is a separate, larger decision this WP
@@ -591,7 +590,7 @@ func GetContact(c *gin.Context) {
 	//
 	// Relationships is no longer preloaded here — the legacy
 	// models.Relationship association had zero remaining readers once the
-	// RelationshipEdge frontend UI shipped in WP3 (it fetches relationships
+	// RelationshipEdge frontend UI shipped  (it fetches relationships
 	// via its own /relationship-edges endpoint, not off this response).
 	var contact models.Contact
 	query := db.Where("user_id = ?", userID).

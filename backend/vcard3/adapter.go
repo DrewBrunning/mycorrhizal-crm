@@ -822,7 +822,7 @@ func importLinks(card vcard.Card, rec *contactmodel.Record) {
 // X-SOCIALPROFILE explicitly), but AGENT is otherwise one of our "known"
 // properties with no import destination at all, which would silently drop
 // data on a round trip rather than degrade gracefully — so it is treated
-// symmetrically with the other redirected concepts. See the final WP-50
+// symmetrically with the other redirected concepts. See the final
 // report for this judgment call.
 func importAgentRelated(card vcard.Card, rec *contactmodel.Record) {
 	for _, f := range card[PropAgent] {
@@ -898,7 +898,7 @@ func featToType(f string) string {
 // tokens text/textphone/main-number, which RFC 2426 doesn't define but which
 // this adapter still emits/parses permissively (graceful degradation, not a
 // hard error) since the `phone`/TEL row itself is fully mapped (not a
-// concept) — see the final WP-50 report.
+// concept) — see the final report.
 var telFeatureTokens = map[string]string{
 	"VOICE":       "voice",
 	"FAX":         "fax",
@@ -1226,7 +1226,7 @@ func knownPropNames() map[string]bool {
 // direction, converting an unrecognized vCard field into the neutral
 // JCardProp shape (RFC 9555 "vCardProps"). Since JCardProp has no dedicated
 // Group field, a non-empty property group is preserved as a synthetic
-// "group" param entry (a documented judgment call — see the final WP-50
+// "group" param entry (a documented judgment call — see the final
 // report).
 func fieldToJCardProp(name string, f *vcard.Field) contactmodel.JCardProp {
 	params := map[string]any{}

@@ -2,7 +2,7 @@
 
 Every fixture here is copied VERBATIM from an RFC. They are the external ground truth for the
 directional tests (import: file → expected neutral fields; export: expected neutral → these bytes).
-WP-60 copies this directory into `backend/internal/rfctest/fixtures/`. Do NOT hand-edit values.
+ copies this directory into `backend/internal/rfctest/fixtures/`. Do NOT hand-edit values.
 
 | Fixture | Source | Concept(s) |
 |---|---|---|

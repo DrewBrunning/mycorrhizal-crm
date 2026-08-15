@@ -1,6 +1,6 @@
 # RFC 2426 — vCard 3.0 baseline (confirmed reference for `vcard3`)
 
-Transcribed from RFC 2426. This is the baseline `backend/vcard3` implements (WP-50).
+Transcribed from RFC 2426. This is the baseline `backend/vcard3` implements .
 
 ## 1. Canonical example vCard (§7, Authors' Addresses) — golden fixture `rfc2426-baseline`
 

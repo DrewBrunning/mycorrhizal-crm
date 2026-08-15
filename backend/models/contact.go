@@ -18,11 +18,11 @@ import (
 // than threaded in from main.go: BeforeSave is a GORM hook with a fixed
 // signature (tx *gorm.DB) error — it has no per-call parameter to receive a
 // photoDir through, unlike RecordFromContact/ApplyRecordToContact's own
-// explicit photoDir parameter (added for WP-73's photo-bridging
+// explicit photoDir parameter (added  photo-bridging
 // prerequisite, docs/adrs/0001-neutral-hub-and-spoke-contact-model.md). A
 // package-level var populated at process-init time is the least-invasive way
 // to give BeforeSave the same capability without changing its signature or
-// reaching into files outside backend/models' WP-73 file scope (this WP does
+// reaching into files outside backend/models' file scope (this WP does
 // not touch main.go). Environment variables are already present in the OS
 // process environment before the Go binary starts (this codebase does not
 // load a .env file itself — see config/config.go), so reading it here at var-
@@ -138,7 +138,7 @@ type Contact struct {
 
 	Archived bool `gorm:"default:false" json:"archived"`
 
-	// Neutral RFC 9553/9554/9555 representation (WP-70, P1 — see
+	// Neutral RFC 9553/9554/9555 representation (P1 — see
 	// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md). This is a second,
 	// parallel representation of the same data already held in the legacy
 	// flat/array fields above: purely additive, nothing existing is removed,
@@ -146,7 +146,7 @@ type Contact struct {
 	// contact_record.go) via BeforeSave on every save, and by the one-shot
 	// cmd/backfill-contact-records tool for rows that predate this WP.
 	// Nothing else reads these fields yet (hence json:"-": exposing them on
-	// the wire is P2's job, per WP-71's API/DTO rewrite), so adding them
+	// the wire is P2's job,  API/DTO rewrite), so adding them
 	// carries no compile or behavior risk to any other package.
 	Card        contactmodel.Card        `gorm:"column:card;type:text;serializer:json" json:"-"`
 	CRM         contactmodel.CRMEnvelope `gorm:"column:crm;type:text;serializer:json" json:"-"`
@@ -188,24 +188,24 @@ type Contact struct {
 
 	// cardSetDirectly is a transient, in-memory-only marker (unexported, so
 	// GORM ignores it entirely — no column, nothing to tag) set by
-	// ApplyRecordToContact (contact_record_reverse.go, WP-71/P2) to tell
+	// ApplyRecordToContact (contact_record_reverse.go, P2) to tell
 	// BeforeSave below "Card/CRM/Passthrough were just set directly from an
 	// authoritative contactmodel.Record — do not re-derive and overwrite them
 	// from the flat legacy fields on this save."
 	//
-	// Without this, BeforeSave's original (WP-70/P1) unconditional
+	// Without this, BeforeSave's original (P1) unconditional
 	// `c.Card = RecordFromContact(c, photoDir).Card` would silently discard
 	// any Card-only data with no flat-field home (SpeakToAs, PersonalInfo,
 	// SocialProfiles, OtherOnlineServices, Keywords, extra name
 	// components, additional Organizations/Titles, RelatedTo, Members,
 	// Localizations, ...) on every single save of a contact created/updated
 	// through the new nested REST API or the VCF/JSContact import path —
-	// defeating the entire point of WP-71 accepting/returning the full
+	// defeating the entire point  accepting/returning the full
 	// neutral Record. Flat-field-only writers (CSV import's
 	// BuildContactFromRow, MergeImportedContact's merge-by-flat-fields path,
 	// and anything else that never calls ApplyRecordToContact) never set
 	// this flag, so BeforeSave's original flat->Card derivation keeps running
-	// for them exactly as it did in WP-70 — this is what keeps their Card
+	// for them exactly as it did  — this is what keeps their Card
 	// column in sync at all, since they have no other way to populate it.
 	cardSetDirectly bool
 }
@@ -301,7 +301,7 @@ func DeriveSortName(lastname, firstname string) string {
 // ad-hoc "first array entry wins" logic for Email/Phone is superseded by
 // DeriveProjection's own (equivalent, Pref-aware) primary-value selection,
 // so there is one derivation path, not two competing ones (see
-// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md WP-70). Address has no
+// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md ). Address has no
 // neutral projection field (Address stays a free-text legacy scalar), so its
 // ad-hoc sync from the first Addresses[] entry is kept as-is.
 //

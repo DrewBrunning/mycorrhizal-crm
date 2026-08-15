@@ -4,7 +4,7 @@ import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './cl
 export interface ContactValue {
   type: string;
   value: string;
-  // Rich-field passthrough (WP11, T29): the flat editing shape only exposes
+  // Rich-field passthrough (T29): the flat editing shape only exposes
   // type+value, so pref/label/features/extra-contexts are carried alongside
   // and re-emitted on save rather than silently dropped (the same pattern
   // ContactAddress.passthrough uses for non-standard address components).
@@ -33,7 +33,7 @@ export interface ContactAddress {
   // fields rendered above (room, building, district, landmark, etc.) so they
   // survive an edit-and-save cycle through the flat editing shape (T25).
   passthrough?: CardAddressComponent[];
-  // Rich-field passthrough (WP11, T29): coordinates/timeZone/pref/full etc.
+  // Rich-field passthrough (T29): coordinates/timeZone/pref/full etc.
   // are carried alongside and re-emitted on save rather than dropped.
   coordinates?: string;
   timeZone?: string;
@@ -496,7 +496,7 @@ export function valuesToCardImpp(values: ContactValue[]): CardOnlineService[] {
 }
 
 // ---------------------------------------------------------------------------
-// OnlineService helpers (WP3). Shared by SocialProfiles, OtherOnlineServices
+// OnlineService helpers . Shared by SocialProfiles, OtherOnlineServices
 // and the upgraded IMPP editor. The rich struct carries service/user/uri and
 // full context/pref/label; only uri+service are surfaced as direct inputs —
 // everything else is preserved through the round trip by the nested editors.
@@ -996,7 +996,7 @@ export async function getContactsByLegacyCircle(circle: string): Promise<{ conta
 
 // Get random contacts (returns 5 contacts). NOTE: unlike every other
 // endpoint in this file, GetContactsRandom was deliberately left out of the
-// WP-71 nested-Card API migration on the backend (see
+// nested-Card API migration on the backend (see
 // docs/adrs/0001-neutral-hub-and-spoke-contact-model.md) -- it still serializes
 // models.Contact's raw GORM struct directly, which is already the flat
 // legacy shape (down to gorm.Model's untagged "ID" field matching this
@@ -1032,7 +1032,7 @@ export async function getUpcomingBirthdays(): Promise<Birthday[]> {
 }
 
 // Archive a contact (deletes all reminders). Like GetContactsRandom above,
-// ArchiveContact/UnarchiveContact were deliberately left out of the WP-71
+// ArchiveContact/UnarchiveContact were deliberately left out of the
 // nested-Card API migration and still return models.Contact's raw flat
 // JSON directly -- no toLegacyContact translation needed or correct here.
 export async function archiveContact(

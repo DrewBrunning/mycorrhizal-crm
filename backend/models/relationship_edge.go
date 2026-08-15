@@ -20,7 +20,7 @@ const (
 	// RelationshipStatusConfirmed edges are authoritative: they are eligible
 	// to project into Card.RelatedTo on export (models/contact_record.go).
 	RelationshipStatusConfirmed = "confirmed"
-	// RelationshipStatusSuggested edges await user approval (WP-83's
+	// RelationshipStatusSuggested edges await user approval (
 	// household-inference mechanism is the first producer of these) and are
 	// never treated as fact — never projected, never read as a hard edge by
 	// anything outside a review surface.
@@ -37,7 +37,7 @@ const (
 // RelationshipEdge is the relationship graph's edge entity (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md) — the internal source of truth for
 // relationships between two Contacts, per D3. Distinct from the legacy models.Relationship (a flat,
 // free-text table this entity is not built on top of and does not yet
-// replace — that cutover is WP-81, a separate later work package).
+// replace — that cutover is, a separate later work package).
 //
 // SourceID/TargetID reference Contact.VCardUID (models/contact.go), which is
 // already a UUID generated for every Contact unconditionally — no new column

@@ -16,7 +16,7 @@ import (
 //go:embed testdata/correspondence.tsv
 var correspondenceTSV []byte
 
-// Row is one row of the correspondence table ( for column meanings).
+// Row is one row of the correspondence table (for column meanings).
 type Row struct {
 	ConceptID, NeutralPath, JSPtr                        string
 	V4Prop, V4Params, V3Prop, V3Params, Transform, Notes string

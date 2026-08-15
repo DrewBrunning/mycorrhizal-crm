@@ -230,7 +230,7 @@ type Pronouns struct {
 }
 
 // PersonalInfo is one hobby/interest/expertise entry (JSContact personalInfo
-// / vCard EXPERTISE, HOBBY, INTEREST). Kind ∈ expertise|hobby|interest ;
+// / vCard EXPERTISE, HOBBY, INTEREST). Kind ∈ expertise|hobby|interest;
 // Level ∈ high|medium|low
 type PersonalInfo struct {
 	ID     string `json:"id,omitempty"`

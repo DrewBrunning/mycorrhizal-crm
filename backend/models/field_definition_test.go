@@ -100,7 +100,7 @@ func TestFieldDefinitionAllowsSameKeyForDifferentUsers(t *testing.T) {
 }
 
 // FieldConstraints must round-trip through a real save/reload exactly as
-// stored -- not just compile, per the WP-83 lesson that only a real
+// stored -- not just compile, per the lesson that only a real
 // AutoMigrate-backed save/reload catches column/serializer mismatches.
 func TestFieldDefinitionConstraintsRoundTrip(t *testing.T) {
 	db := setupFieldDefinitionTestDB(t)

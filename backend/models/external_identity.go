@@ -25,7 +25,7 @@ const (
 // existing).
 //
 // EntityID references Contact.VCardUID (models/contact.go), never the numeric
-// ID — the graph invariant every WP-80+ entity follows.
+// ID — the graph invariant every + entity follows.
 //
 // System-specific data (e.g. an Immich person's name) belongs in Metadata,
 // a map[string]interface{} JSON column following RelationshipEdge.Metadata's

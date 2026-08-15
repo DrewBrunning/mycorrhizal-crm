@@ -464,7 +464,7 @@ func TestUpdateActivity(t *testing.T) {
 	assert.Equal(t, activityUpdate.Title, responseBody.Title)
 }
 
-// WP-84c gap fix: Type/ExternalRef (added to Activity in WP-84) previously
+// gap fix: Type/ExternalRef (added to Activity ) previously
 // round-tripped on read but could never be set via the API — Create/Update
 // never copied them from ActivityInput onto the model.
 func TestCreateActivitySetsTypeAndExternalRef(t *testing.T) {

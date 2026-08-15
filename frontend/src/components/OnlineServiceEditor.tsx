@@ -22,7 +22,7 @@ interface OnlineServiceEditorProps {
   label: string;
   value: CardOnlineService[];
   onChange: (next: CardOnlineService[]) => void;
-  /** When true, the service-name field is editable (WP3's social/other services). */
+  /** When true, the service-name field is editable (social/other services). */
   showService?: boolean;
   /** When true, the URI field is the only value input (IMPP-style). */
   uriOnly?: boolean;

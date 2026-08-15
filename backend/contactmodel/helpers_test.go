@@ -14,7 +14,7 @@ func ptr[T any](v T) *T {
 
 // assertRoundTrip marshals original to JSON, unmarshals into a fresh zero
 // value of the same type, and asserts the result is deeply equal to
-// original. This is the "constructor + round-trip test" WP-10 acceptance
+// original. This is the "constructor + round-trip test" acceptance
 // criterion for every exported struct type.
 func assertRoundTrip[T any](t *testing.T, original T) {
 	t.Helper()

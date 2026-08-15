@@ -238,7 +238,7 @@ func TestRecordFromContact_FullyPopulated(t *testing.T) {
 		t.Errorf("Record.Envelope.Circles = %+v, want [friends work]", env.Circles)
 	}
 
-	// WP-73 photo-bridging prerequisite: Contact.PhotoThumbnail (there is no
+	// photo-bridging prerequisite: Contact.PhotoThumbnail (there is no
 	// Contact.Photo/on-disk file in this test, so ReadContactPhoto falls back
 	// to the thumbnail) bridges into a single Card.Media{Kind:"photo"} entry,
 	// encoded as the same "data:<mediaType>;base64,<data>" URI convention the
@@ -331,7 +331,7 @@ func TestRecordFromContact_ScalarOnlyFallback(t *testing.T) {
 }
 
 // TestRecordForContact_PrefersPersistedCardOverFreshDerivation is the
-// regression test for a real, live bug found while auditing WP-73's work:
+// regression test for a real, live bug found while auditing work:
 // three call sites (CardDAV export, the REST API's detail/write response,
 // and VCF/JSContact export) each independently called RecordFromContact a
 // second time on a contact whose Card was already persisted, which silently
@@ -445,7 +445,7 @@ func TestBeforeSave_DoesNotBlankScalarOnlyContact(t *testing.T) {
 }
 
 // TestRoundTrip_ProjectionStable is the round-trip check called for by
-// WP-70: for a sample of contacts, re-deriving the projection from a
+// for a sample of contacts, re-deriving the projection from a
 // contact that has already gone through BeforeSave (simulating an
 // already-migrated row) must reproduce an equal projection, i.e.
 // RecordFromContact -> DeriveProjection is a stable fixed point, not a

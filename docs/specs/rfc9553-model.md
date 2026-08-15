@@ -42,7 +42,7 @@ String · `coordinates` String · `timeZone` String · `contexts` String[Boolean
 - **phoneticSystem**: `ipa, jyut, piny`. **phoneticScript**: script subtag per RFC 5646 §2.2.3.
 - `isOrdered` false ⇒ `defaultSeparator` unused. `sortAs` = map component-kind → sort key.
 
-## 3. Collection typing (drives the JSContact codec, WP-30a)
+## 3. Collection typing (drives the JSContact codec)
 
 Id-keyed maps (`Id[Object]` → neutral **slice + `ID`**): `emails, phones, addresses, nicknames,
 organizations, titles, onlineServices, media, calendars, schedulingAddresses, cryptoKeys, directories,

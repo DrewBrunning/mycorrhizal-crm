@@ -20,7 +20,7 @@ import (
 )
 
 // TestDeleteUser_CleansUpAllOwnedRows is the regression test
-// item 1: DeleteUser must not
+// DeleteUser must not
 // leave orphaned rows in any of the 14 tables that reference a user, not just
 // the handful it originally covered.
 func TestDeleteUser_CleansUpAllOwnedRows(t *testing.T) {

@@ -116,7 +116,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 				controllers.ConfirmVCFImport(c, cfg)
 			})
 
-			// Contact import routes (JSContact JSON) — WP-71 Gap 4 extension.
+			// Contact import routes (JSContact JSON) —  extension.
 			// Confirmation deliberately reuses /contacts/import/vcf/confirm
 			// (see UploadJSContactForImport's doc comment): the session it
 			// creates is format-agnostic once parsed into []VCFContactData.
@@ -193,7 +193,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.PUT("/activities/:id", middleware.ValidateJSONMiddleware(&models.ActivityInput{}), controllers.UpdateActivity)
 			protected.DELETE("/activities/:id", controllers.DeleteActivity)
 
-			// Circle routes (WP-84c)
+			// Circle routes
 			protected.POST("/circles", middleware.ValidateJSONMiddleware(&models.CircleInput{}), controllers.CreateCircle)
 			protected.GET("/circles", controllers.ListCircles)
 			protected.GET("/circles/:id", controllers.GetCircle)
@@ -230,7 +230,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.POST("/households/suggestions/accept", middleware.ValidateJSONMiddleware(&models.AcceptHouseholdSuggestionInput{}), controllers.AcceptAddressHouseholdSuggestion)
 			protected.POST("/households/suggestions/dismiss", middleware.ValidateJSONMiddleware(&models.DismissHouseholdSuggestionInput{}), controllers.DismissAddressHouseholdSuggestion)
 
-			// Tag routes (WP-84c)
+			// Tag routes
 			protected.POST("/tags", middleware.ValidateJSONMiddleware(&models.TagInput{}), controllers.CreateTag)
 			protected.GET("/tags", controllers.ListTags)
 			protected.GET("/tags/:id", controllers.GetTag)
@@ -251,7 +251,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.GET("/contacts/:id/field-values", controllers.ListContactFieldValues)
 			protected.PUT("/contacts/:id/field-values", middleware.ValidateJSONMiddleware(&models.ContactFieldValuesInput{}), controllers.ReplaceContactFieldValues)
 
-			// LifeEvent routes (WP-84c)
+			// LifeEvent routes
 			protected.POST("/life-events", middleware.ValidateJSONMiddleware(&models.LifeEventInput{}), controllers.CreateLifeEvent)
 			protected.GET("/life-events", controllers.ListLifeEvents)
 			protected.GET("/life-events/:id", controllers.GetLifeEvent)
@@ -367,7 +367,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.POST("/calendars/:id/sync", controllers.SyncCalendarSubscription)
 
 			// Contact subscription routes (CardDAV client: sync contacts in
-			// from an external address book, WP-73b)
+			// from an external address book)
 			protected.GET("/contact-subscriptions", controllers.ListContactSubscriptions)
 			protected.POST("/contact-subscriptions", middleware.ValidateJSONMiddleware(&models.ContactSubscriptionInput{}), controllers.CreateContactSubscription)
 			protected.PUT("/contact-subscriptions/:id", middleware.ValidateJSONMiddleware(&models.ContactSubscriptionInput{}), controllers.UpdateContactSubscription)

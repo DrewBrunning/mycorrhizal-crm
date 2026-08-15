@@ -107,7 +107,7 @@ func TestSquashedSchemaHasNoLegacyRelationshipsTable(t *testing.T) {
 	).Scan(&count).Error)
 	assert.Zero(t, count, "relationships table should be dropped by migration 000035")
 
-	// relationship_edges (its replacement, WP-80) must still be present.
+	// relationship_edges (its replacement) must still be present.
 	require.NoError(t, db.Raw(
 		"SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'relationship_edges'",
 	).Scan(&count).Error)

@@ -325,7 +325,7 @@ export default function ContactDetailPage() {
     // CRMEnvelope.Kind (T27): human|animal. Defaults to human so the
     // header's Kind select always has a valid selection.
     kind: 'human',
-    // Card.Kind (WP13, T29) + Card.Language (WP4, T29).
+    // Card.Kind (T29) + Card.Language (T29).
     cardKind: '',
     language: '',
   });
@@ -1210,7 +1210,7 @@ export default function ContactDetailPage() {
 
     // Preserve the existing name's rich metadata (sortAs, phonetic system,
     // separators) and each component's phonetic value so an imported contact
-    // never loses them on a UI edit-and-save (WP10, T29).
+    // never loses them on a UI edit-and-save (T29).
     const existingName = record.card?.name;
     const existingComps = existingName?.components || [];
     const phoneticFor = (kind: string) => existingComps.find((c) => c.kind === kind)?.phonetic;

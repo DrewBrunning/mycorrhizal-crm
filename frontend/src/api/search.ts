@@ -1,4 +1,4 @@
-// Full-text search API (T11 / WP-86): search across contacts, notes, and
+// Full-text search API (T11): search across contacts, notes, and
 // interactions. Backed by backend FTS5; user-scoped server-side.
 import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
 

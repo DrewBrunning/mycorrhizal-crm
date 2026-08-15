@@ -128,7 +128,7 @@ func groupingNamesByContact(db *gorm.DB, userID uint, joinTable, entityTable, jo
 }
 
 // parseExportFieldSelection reads the ?sections= and ?include_sensitive=
-// query params accepted by the vCard/JSContact export handlers (WP-97 / T9,
+// query params accepted by the vCard/JSContact export handlers (T9,
 // T9). sections is a
 // comma-separated list of field-selection section tokens
 // (models.FieldSections); identity data (name/uid/...) is always included.
@@ -583,7 +583,7 @@ func ExportData(c *gin.Context) {
 
 // ExportContactsAsVCF exports all user contacts as a VCF (vCard) file.
 //
-// Per docs/adrs/0001-neutral-hub-and-spoke-contact-model.md WP-71 Gap 4, this now
+// Per docs/adrs/0001-neutral-hub-and-spoke-contact-model.md, this now
 // routes through the vcard4/vcard3 adapters instead of the legacy
 // carddav.ContactToVCard mapper. ?version=3 (or "3.0") selects vCard 3.0;
 // anything else (including absent) defaults to 4.0, per the "advertise 4.0
@@ -594,14 +594,14 @@ func ExportData(c *gin.Context) {
 // any data with no flat-field home (SpeakToAs, PersonalInfo, ...); calling
 // RecordFromContact fresh here would silently drop it from the export. See
 // RecordForContact's doc comment; this was a real bug found and fixed
-// across three call sites while auditing WP-73's work.
+// across three call sites while auditing work.
 //
 // photoDir (config.Config.ProfilePhotoDir, from routes.go's call site) is
 // forwarded through RecordForContact: per
-// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md WP-73's photo-bridging
+// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md photo-bridging
 // prerequisite, Contact.Photo/PhotoThumbnail bridges into a
 // Card.Media{Kind:"photo"} entry, which the vcard4/vcard3 adapters encode
-// as an embedded PHOTO property — closing WP-71's previously-documented
+// as an embedded PHOTO property — closing previously-documented
 // "VCF export doesn't embed photos" gap.
 func ExportContactsAsVCF(c *gin.Context, photoDir string) {
 	db := c.MustGet("db").(*gorm.DB)
@@ -612,7 +612,7 @@ func ExportContactsAsVCF(c *gin.Context, photoDir string) {
 		return
 	}
 
-	// WP-97 / T9: the ?sections= field picker and ?include_sensitive= opt-in
+	// T9: the ?sections= field picker and ?include_sensitive= opt-in
 	// override apply here (the shared Card filter runs before the adapter) —
 	// NOT to ExportData, which is the user's own full CSV backup and
 	// deliberately includes everything .
@@ -678,7 +678,7 @@ func ExportContactsAsVCF(c *gin.Context, photoDir string) {
 
 // ExportContactsAsJSContact exports all user contacts as a single JSON
 // document: a JSON array of RFC 9553 JSContact Card objects (one per
-// contact) — the "Card set" option from WP-71's task list, chosen over a
+// contact) — the "Card set" option  task list, chosen over a
 // single merged document since each contact is an independent Card with its
 // own @type/uid, not sub-objects of one another.
 //
@@ -697,7 +697,7 @@ func ExportContactsAsJSContact(c *gin.Context) {
 		return
 	}
 
-	// Same WP-97 / T9 field-picker query params as ExportContactsAsVCF; never
+	// Same T9 field-picker query params as ExportContactsAsVCF; never
 	// applied to ExportData (the user's own full CSV backup).
 	sel, ok := parseExportFieldSelection(c)
 	if !ok {

@@ -78,7 +78,7 @@ func TestRelationTypeRegistryInversesAreConsistent(t *testing.T) {
 	}
 }
 
-// MatchLegacyRelationType is what WP-81's migration uses to resolve legacy
+// MatchLegacyRelationType is what migration uses to resolve legacy
 // free-text Relationship.Type values to a registered token.
 func TestMatchLegacyRelationType(t *testing.T) {
 	tests := []struct {

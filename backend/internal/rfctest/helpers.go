@@ -1,5 +1,5 @@
 // Package rfctest provides shared test fixtures and assertion helpers for the
-// jscontact/vcard4/vcard3 adapter test suites (WP-30b/40b/50). It intentionally
+// jscontact/vcard4/vcard3 adapter test suites ( /40b/50). It intentionally
 // depends on nothing but the standard library, contactmodel (for
 // NeutralFromJSON's target type), and github.com/emersion/go-vcard (for
 // AssertVCardLine's parsing) — no gorm/gin/models imports.

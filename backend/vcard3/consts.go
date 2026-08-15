@@ -4,7 +4,7 @@
 // adapter tuned to 3.0 (see docs/adrs/0001-neutral-hub-and-spoke-contact-model.md) — it shares
 // no emit code and no imports with backend/vcard4.
 //
-// This file (consts.go, WP-50) declares the exported property and parameter
+// This file (consts.go) declares the exported property and parameter
 // name constants transcribed verbatim from docs/adrs/0001-neutral-hub-and-spoke-contact-model.md
 // "consts.go" block, itself drawn from RFC 2426 §5 (the standard 3.0
 // property set) plus the X- extension properties this table actually maps to

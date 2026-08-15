@@ -6,8 +6,8 @@
 // contactmodel.JCardProp, which is reused directly for the vCardProps
 // passthrough field, per docs/adrs/0001-neutral-hub-and-spoke-contact-model.md
 //
-// This file (WP-30a) contains types only. Neutral-model conversion
-// (ToNeutral/FromNeutral) is WP-30b's adapter.go, not this file.
+// This file  contains types only. Neutral-model conversion
+// (ToNeutral/FromNeutral) is adapter.go, not this file.
 package jscontact
 
 import (
@@ -133,7 +133,7 @@ type AddressComponent struct {
 
 // Organization's field shape follows backend/contactmodel.Organization (RFC
 // 9553's Organization/OrgUnit objects are not enumerated in
-// docs/specs/rfc9553-model.md §1; see this package's codec_test.go / the WP-30a
+// docs/specs/rfc9553-model.md §1; see this package's codec_test.go / the
 // report for the flagged gap).
 type Organization struct {
 	Type   string    `json:"@type"`

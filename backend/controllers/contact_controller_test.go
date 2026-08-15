@@ -441,7 +441,7 @@ func TestGetContact(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 
 	// GET /contacts/:id now returns the full neutral ContactRecordResponse
-	// (Card/CRM/Passthrough nested), not a flat models.Contact (Gap 3/item 2).
+	// (Card/CRM/Passthrough nested), not a flat models.Contact.
 	var responseBody models.ContactRecordResponse
 	json.Unmarshal(w.Body.Bytes(), &responseBody)
 	assert.Equal(t, contact.ID, responseBody.ID)
@@ -456,7 +456,7 @@ func TestGetContact(t *testing.T) {
 	}
 }
 
-// TestGetContactsFieldsParamIgnored asserts fields= is gone (Gap 3): passing
+// TestGetContactsFieldsParamIgnored asserts fields= is gone: passing
 // it no longer restricts or alters the response shape, which is always the
 // fixed ContactSummary regardless of what (if anything) fields= requests.
 func TestGetContactsFieldsParamIgnored(t *testing.T) {
@@ -586,7 +586,7 @@ func TestGetContactWithRelationships(t *testing.T) {
 	assert.Len(t, reminders, 1)
 }
 
-// TestGetContactsArchiveAndCircleFiltering asserts Gap 2's binding
+// TestGetContactsArchiveAndCircleFiltering asserts the binding
 // preservation of the archive-filtering and circle-filtering mechanics
 // against the new ContactSummary item shape.
 func TestGetContactsArchiveAndCircleFiltering(t *testing.T) {

@@ -10,7 +10,7 @@ import (
 )
 
 // TestNewContactRecordResponse_PreservesPersistedCardOnlyData is the
-// regression test for a real, live bug (found while auditing WP-73's work):
+// regression test for a real, live bug (found while auditing work):
 // NewContactRecordResponse called RecordFromContact directly, which
 // silently drops any Card-only data with no flat-field home (SpeakToAs
 // here) from GET /api/v1/contacts/{id} and the POST/PUT response bodies —

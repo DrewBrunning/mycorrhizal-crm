@@ -29,7 +29,7 @@ import (
 // unlike adr.geo/adr.tz, with no alternate v3 property to redirect to):
 // anniversary.place.birth, anniversary.place.death (RFC 6474 is 4.0-only),
 // and pt.jscontact (whose own row notes literally say "3.0 warn-drop"). This
-// is a documented judgment call — see the final WP-50 report.
+// is a documented judgment call — see the final report.
 
 func hasWarn(diags []contactmodel.Diagnostic, concept string) bool {
 	for _, d := range diags {

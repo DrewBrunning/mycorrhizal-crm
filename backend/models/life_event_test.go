@@ -84,7 +84,7 @@ func TestLifeEventBeforeCreatePreservesExplicitID(t *testing.T) {
 
 // A year-only PartialDate ("known only to a year") and a
 // multi-entry RelatedEntityIDs list must both round-trip through a real
-// save/reload exactly as stored -- not just compile, per the WP-83 lesson
+// save/reload exactly as stored -- not just compile, per the lesson
 // that only a real AutoMigrate-backed save/reload catches column/serializer
 // mismatches.
 func TestLifeEventPartialDateAndRelatedEntityIDsRoundTrip(t *testing.T) {
@@ -118,7 +118,7 @@ func TestLifeEventPartialDateAndRelatedEntityIDsRoundTrip(t *testing.T) {
 }
 
 // TestLifeEventCategoryRoundTrips pins T36's Category column against a real
-// migrated-schema save/reload, per the WP-83 lesson (only a real DB catches
+// migrated-schema save/reload, per the lesson (only a real DB catches
 // column/tag mismatches AutoMigrate-only tests can't see).
 func TestLifeEventCategoryRoundTrips(t *testing.T) {
 	db := setupLifeEventTestDB(t)

@@ -33,7 +33,7 @@ func mustMarshal(t *testing.T, v interface{}) json.RawMessage {
 	return b
 }
 
-// WP-84b's FieldValue -> Passthrough.VCard projection: a
+// FieldValue -> Passthrough.VCard projection: a
 // "vcard:X-<NAME>"-projected, normal-sensitivity field appears as a JCardProp
 // in RecordForContact's output.
 func TestRecordForContact_ProjectsVCardCustomField(t *testing.T) {

@@ -92,7 +92,7 @@ These are real bugs that shipped, not hypotheticals.
 
 2. **Never set `Card`/`CRM` by direct field mutation before `Create`.** `BeforeSave` derives the flat
    denormalized columns from the nested model; mutating the struct field directly skips it and your data
-   silently doesn't persist. Use `ApplyRecordToContact`. This bit WP-81 and WP-83 the same way.
+   silently doesn't persist. Use `ApplyRecordToContact`. This bit and the same way.
 
 3. **`RecordForContact`, not `RecordFromContact`.** The former reads what is actually persisted
    (including data with no flat-field home — `SpeakToAs`, `PersonalInfo`, projections); the latter
@@ -108,7 +108,7 @@ These are real bugs that shipped, not hypotheticals.
    audited.
 
 5. **Ownership scoping is not optional.** Every handler scopes by `user_id` (or `Contact.VCardUID` for
-   WP-80+ graph entities). There are zero IDOR holes today — keep it that way.
+ + graph entities). There are zero IDOR holes today — keep it that way.
 
 6. **Cascade deletes are manual.** Soft delete does not fire SQL `CASCADE`. `DeleteContact` and
    `DeleteUser` enumerate every dependent table explicitly — if you add an entity, add it there. Use

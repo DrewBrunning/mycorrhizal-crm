@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// Full-text search over contacts, notes, and interactions (T11 / WP-86,
+// Full-text search over contacts, notes, and interactions (T11,
 // T11; addresses added by T38,
 // T38; phones added by T69,
 // T69). Backed by FTS5

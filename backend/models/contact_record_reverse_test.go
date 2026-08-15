@@ -84,13 +84,13 @@ func TestApplyRecordToContact_RealPhotoRoundTripStillPersists(t *testing.T) {
 	}
 }
 
-// TestApplyRecordToContact_RoundTrip exercises WP-71 Gap 1: RecordFromContact
+// TestApplyRecordToContact_RoundTrip: RecordFromContact
 // a fully-populated Contact into a Record, ApplyRecordToContact that Record
 // onto a fresh Contact, and assert the result matches the original closely
 // enough that nothing was silently lost in a way the doc doesn't already
 // call out as an accepted, documented lossy case.
 //
-// Also exercises WP-73's photo-bridging prerequisite end-to-end: original
+// Also  photo-bridging prerequisite end-to-end: original
 // (fullyPopulatedContact) carries a PhotoThumbnail, which RecordFromContact
 // bridges into record.Card.Media, which ApplyRecordToContact (given a real
 // photoDir) then decodes and persists back to disk — proving the photo
@@ -215,7 +215,7 @@ func TestApplyRecordToContact_RoundTrip(t *testing.T) {
 		t.Errorf("got.VCardExtra = %q, want \"\" (Passthrough is not re-serialized back into the legacy VCardExtra column)", got.VCardExtra)
 	}
 
-	// WP-73 photo-bridging prerequisite: the photo bridged into
+	// photo-bridging prerequisite: the photo bridged into
 	// record.Card.Media by RecordFromContact (from original.PhotoThumbnail,
 	// since original.Photo has no on-disk file) round-trips through
 	// ApplyRecordToContact back onto disk and onto got.Photo/PhotoThumbnail.
@@ -367,7 +367,7 @@ func TestApplyRecordToContact_NilSafety(t *testing.T) {
 }
 
 // TestApplyRecordToContact_PreservesUnmappedCardData asserts the central
-// claim of Gap 1's resolution: Card-only data with no flat-field home
+// claim of the resolution: Card-only data with no flat-field home
 // (SpeakToAs here) is preserved on c.Card even though nothing on the flat
 // side reflects it, and — critically — survives a subsequent BeforeSave
 // untouched (this is what the cardSetDirectly guard exists to protect;

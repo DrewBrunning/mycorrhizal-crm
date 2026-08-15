@@ -2,7 +2,7 @@ package vcard3
 
 import "strings"
 
-// This file (components.go, WP-50) is a low-level, pure structured-value
+// This file (components.go) is a low-level, pure structured-value
 // codec: escaping/splitting/joining of vCard TEXT structured values, and the
 // N and ADR component assemblers, trimmed to vCard 3.0's legacy-only field
 // counts (5-field N, 7-field ADR — no 9554 expansion, no PROP-ID/component

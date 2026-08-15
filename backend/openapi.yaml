@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Mycorrhizal CRM API
   description: >
-    REST API for Mycorrhizal's contact model. As of WP-71 (P2,
+    REST API for Mycorrhizal's contact model. As  (P2,
     docs/adrs/0001-neutral-hub-and-spoke-contact-model.md), the contact endpoints speak
     the neutral RFC 9553-shaped model (contactmodel.Record/Card) rather than
     the legacy flat Contact DTO. GET /contacts (list) returns a slim
@@ -36,7 +36,7 @@ info:
       scope for this spec by design. It is enabled separately via
       `CARDDAV_ENABLED`.
     - **Deliberate omissions (not bugs):** `fields=` on GET /contacts is
-      gone (WP-71 Gap 3) and is silently ignored if sent;
+      gone  and is silently ignored if sent;
       `includes=relationships` was removed and is likewise a no-op
       rather than an error. The only Redocly lint warnings left are on
       genuinely-public endpoints that return no 4xx by design — /health
@@ -555,8 +555,8 @@ paths:
       description: >
         Returns a page of ContactSummary items — never the full Card, so a
         mobile contact-list screen doesn't have to fetch every contact's
-        nested data (see docs/adrs/0001-neutral-hub-and-spoke-contact-model.md WP-71
-        Gap 2). Pagination is cursor-based (T17): rows are ordered by the
+        nested data (see docs/adrs/0001-neutral-hub-and-spoke-contact-model.md).
+        Pagination is cursor-based (T17): rows are ordered by the
         (updated_at, id) feed key and a page is resumed with next_cursor.
         ?since= turns the endpoint into a change feed returning every row
         changed after the cursor — including soft-deleted rows marked
@@ -4941,7 +4941,7 @@ paths:
         - name: sections
           in: query
           description: >
-            Comma-separated field sections to include (WP-97/T9 selective
+            Comma-separated field sections to include (T9 selective
             export). One of: emails, phones, addresses, organizations,
             anniversaries, media, online_services, links, notes, keywords,
             related_to, personal_info, speak_to_as, members, languages,
@@ -4975,7 +4975,7 @@ paths:
         - name: sections
           in: query
           description: >
-            Comma-separated field sections to include (WP-97/T9 selective
+            Comma-separated field sections to include (T9 selective
             export). One of: emails, phones, addresses, organizations,
             anniversaries, media, online_services, links, notes, keywords,
             related_to, personal_info, speak_to_as, members, languages,
@@ -5042,7 +5042,7 @@ paths:
       summary: Traverse the relationship graph from a contact (multi-hop chains)
       operationId: getGraphConnections
       description: >
-        Graph traversal + multi-hop chains (T10/WP-85). From a starting contact
+        Graph traversal + multi-hop chains (T10). From a starting contact
         (?from, a Contact.VCardUID), list every reachable contact within
         ?depth hops, each with the chain of relation steps describing how it
         is related to the anchor ("John's sister's husband"). Inferred
@@ -5097,7 +5097,7 @@ paths:
       summary: Full-text search across contacts, notes, and interactions
       operationId: searchAll
       description: >
-        FTS5-backed search (T11/WP-86) over the caller's contacts, notes, and
+        FTS5-backed search (T11) over the caller's contacts, notes, and
         interactions (activities), grouped into three sections. User-scoped
         (never crosses users); soft-deleted and secret items are excluded. When
         the whole query is a relation-type synonym ("brother"), resolved_relation
@@ -8854,7 +8854,7 @@ components:
         type: { type: string, enum: [relationship, activity] }
         label: { type: string }
 
-    # --- Import (preserved from WP-73b) ---
+    # --- Import (preserved ) ---
     ColumnMapping:
       type: object
       required: [csv_column]
@@ -8997,7 +8997,7 @@ components:
         skipped: { type: integer }
         errors: { type: array, items: { type: string } }
 
-    # --- Neutral RFC 9553 contact model (preserved from WP-71) ---
+    # --- Neutral RFC 9553 contact model (preserved ) ---
     CRMEnvelope:
       type: object
       description: Mycorrhizal-specific data outside any contact-exchange standard.

@@ -25,33 +25,33 @@ import (
 // SocialProfiles, extra name components, ...). Calling RecordFromContact
 // again on a read path silently discards all of that, reconstructing only
 // what the (necessarily lossy) flat fields can represent — this was a real,
-// live bug found three times independently: once during WP-73 (CardDAV
+// live bug found three times independently: once during (CardDAV
 // export, fixed as this function's prototype), and twice more here (REST
 // API detail/write responses in contact_summary.go, and VCF/JSContact
-// export in export_controller.go) while auditing WP-73's work. All three
+// export in export_controller.go) while auditing work. All three
 // call sites now go through this one function instead of guessing at the
 // same fix independently — see docs/adrs/0001-neutral-hub-and-spoke-contact-model.md
-// WP-70's "Shared mapping function" note; the same discipline applies here.
+// "Shared mapping function" note; the same discipline applies here.
 //
 // Falls back to a fresh RecordFromContact derivation only when c.Card is
 // still the zero value — i.e. a pre-migration row that hasn't been through
 // cmd/backfill-contact-records yet, or a Contact that was never saved (so
 // BeforeSave never ran). This protects those cases from exporting/serving a
 // near-empty Card instead of the best-effort flat-field reconstruction.
-// db is used to project confirmed relationship-graph edges (WP-80, docs/adrs/0001-neutral-hub-and-spoke-contact-model.md) into the returned Record's
+// db is used to project confirmed relationship-graph edges (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md) into the returned Record's
 // Card.RelatedTo — see projectRelationshipEdges below. Passing nil skips
 // projection entirely (Card.RelatedTo is returned exactly as stored), which
-// existing callers that predate WP-80 and don't have a *gorm.DB handy can
+// existing callers that predate and don't have a *gorm.DB handy can
 // rely on rather than being forced to thread one through immediately.
 //
 // This is the plain default (all sections, sensitivity never overridden);
-// see RecordForContactFiltered for the WP-97/T9 variant that applies a
+// see RecordForContactFiltered for the T9 variant that applies a
 // field selection and an explicit sensitivity opt-in.
 func RecordForContact(c *Contact, photoDir string, db *gorm.DB) *contactmodel.Record {
 	return RecordForContactFiltered(c, photoDir, db, nil)
 }
 
-// RecordForContactFiltered is RecordForContact plus WP-97/T9's field
+// RecordForContactFiltered is RecordForContact plus T9's field
 // selection (T9): sel carries
 // (a) the sensitivity override (FieldSelection.IncludeSensitive),
 // threaded into the projection queries below so private/secret relationship
@@ -93,7 +93,7 @@ func RecordForContactFiltered(c *Contact, photoDir string, db *gorm.DB, sel *Fie
 	return record
 }
 
-// projectRelationshipEdges is WP-80's "Card.RelatedTo projection wiring": it
+// projectRelationshipEdges is "Card.RelatedTo projection wiring": it
 // synthesizes graph-derived contactmodel.Relation entries for every
 // confirmed, normal-sensitivity RelationshipEdge touching vcardUID, and
 // returns them appended to a COPY of existing (imported/passthrough)
@@ -119,7 +119,7 @@ func RecordForContactFiltered(c *Contact, photoDir string, db *gorm.DB, sel *Fie
 // failure can't accidentally
 // leak a suggested or sensitive edge into an export.
 //
-// includeSensitive is WP-97/T9's explicit opt-in override: when true, the
+// includeSensitive is T9's explicit opt-in override: when true, the
 // sensitivity='normal' clause is dropped so private/secret edges project for
 // exactly this read. Confirmed-status remains unconditional either way.
 func projectRelationshipEdges(db *gorm.DB, vcardUID string, existing []contactmodel.Relation, includeSensitive bool) []contactmodel.Relation {
@@ -186,7 +186,7 @@ func projectRelationshipEdges(db *gorm.DB, vcardUID string, existing []contactmo
 	return result
 }
 
-// projectTags is WP-84's Tag -> Card.Keywords projection: tags are
+// projectTags is Tag -> Card.Keywords projection: tags are
 // "an attribute a set of people share" and have a clean standards home
 // (vCard CATEGORIES / JSContact keywords), unlike Circles which stay
 // internal-only. Structurally identical to projectRelationshipEdges above —
@@ -244,7 +244,7 @@ func projectTags(db *gorm.DB, vcardUID string, existing []string) []string {
 // existing personalInfo entries" rather than failing the whole read), and
 // sensitivity is filtered in the query itself (only
 // sensitivity='normal' preferences project), never in the caller. The
-// includeSensitive flag is WP-97/T9's explicit opt-in override: when true,
+// includeSensitive flag is T9's explicit opt-in override: when true,
 // the sensitivity='normal' clause is dropped for exactly this read.
 func projectPreferences(db *gorm.DB, vcardUID string, existing []contactmodel.PersonalInfo, includeSensitive bool) []contactmodel.PersonalInfo {
 	if db == nil || vcardUID == "" {
@@ -283,7 +283,7 @@ func projectPreferences(db *gorm.DB, vcardUID string, existing []contactmodel.Pe
 	return result
 }
 
-// projectCustomFields is WP-84b's FieldValue -> Passthrough.VCard projection
+// projectCustomFields is FieldValue -> Passthrough.VCard projection
 // (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md): a definition whose Projection
 // is "vcard:X-<NAME>" rides the existing JCardProp/passthrough machinery,
 // exactly like an imported unknown vCard property, except the CRM itself is
@@ -297,7 +297,7 @@ func projectPreferences(db *gorm.DB, vcardUID string, existing []contactmodel.Pe
 // Note the target is Passthrough.VCard, a Record-level field (sibling of
 // Card), not something nested under Card — unlike projectTags/
 // projectRelationshipEdges above, which both write into card.* fields. The
-// includeSensitive flag is WP-97/T9's explicit opt-in override: when true,
+// includeSensitive flag is T9's explicit opt-in override: when true,
 // the field_definitions.sensitivity='normal' clause is dropped for exactly
 // this read.
 func projectCustomFields(db *gorm.DB, vcardUID string, existing []contactmodel.JCardProp, includeSensitive bool) []contactmodel.JCardProp {
@@ -350,7 +350,7 @@ func projectCustomFields(db *gorm.DB, vcardUID string, existing []contactmodel.J
 // BeforeSave (contact.go, runs per-save) and the one-shot
 // cmd/backfill-contact-records tool (runs per-row at migration time) call
 // this same function — per
-// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md WP-70's "Shared mapping
+// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md "Shared mapping
 // function" note, there must be exactly one Contact->Record mapping, not two
 // competing implementations.
 //
@@ -362,7 +362,7 @@ func projectCustomFields(db *gorm.DB, vcardUID string, existing []contactmodel.J
 // ProfilePhotoDir), needed to bridge Contact.Photo (a filename on disk,
 // relative to photoDir) into a self-contained Card.Media{Kind:"photo"} entry
 // — see buildMedia below and docs/adrs/0001-neutral-hub-and-spoke-contact-model.md
-// WP-73's photo-bridging prerequisite. Pass "" when the disk-backed photo is
+// photo-bridging prerequisite. Pass "" when the disk-backed photo is
 // genuinely unavailable/irrelevant to the caller (e.g. a context with no
 // filesystem access): buildMedia still falls back to the base64
 // PhotoThumbnail in that case, so photo data is only fully lost if neither
@@ -558,9 +558,9 @@ func buildLinks(c *Contact) []contactmodel.Resource {
 
 // buildMedia bridges the disk-based Contact.Photo/PhotoThumbnail into a
 // single Card.Media{Kind:"photo"} entry, per
-// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md WP-73's photo-bridging
+// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md photo-bridging
 // prerequisite: without this, retiring carddav's legacy mapper for the live
-// CardDAV server (and, before that, WP-71's VCF/JSContact export) would
+// CardDAV server (and, before that, VCF/JSContact export) would
 // silently stop serving contact photos, since neither RecordFromContact nor
 // ApplyRecordToContact touched Photo/PhotoThumbnail <-> Card.Media at all
 // until now.

@@ -54,7 +54,7 @@ type FieldConstraints struct {
 	Multi bool `json:"multi,omitempty"`
 }
 
-// FieldDefinition is the schema half of WP-84b's custom-fields system
+// FieldDefinition is the schema half  custom-fields system
 // (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md) -- a user-defined, typed,
 // optionally validated and standards-projected property, generalizing the
 // retired untyped v1. Distinct from native
@@ -121,7 +121,7 @@ type FieldValue struct {
 	UserID            uint   `gorm:"not null;index" json:"-"`
 
 	// EntityID is a Contact.VCardUID -- the graph invariant every join
-	// entity has followed since WP-80 (never a bare Contact.ID).
+	// entity has followed since (never a bare Contact.ID).
 	EntityID string `gorm:"column:entity_id;not null;index;uniqueIndex:idx_field_value_definition_entity,priority:2" json:"entity_id" validate:"required,uuid4"`
 
 	Value json.RawMessage `gorm:"type:text;serializer:json" json:"value"`

@@ -9,7 +9,7 @@ import (
 )
 
 // Conventional (not validated — same open-classifier reasoning as
-// CRMEnvelope.Kind (WP-82) and HouseholdMember.Role (WP-83)) values for
+// CRMEnvelope.Kind  and HouseholdMember.Role ) values for
 // Activity.Type. docs/adrs/0001-neutral-hub-and-spoke-contact-model.md lists these
 // with a trailing "…", signalling an open, extensible set rather than a
 // closed system state.
@@ -50,7 +50,7 @@ type Activity struct {
 	Type string `json:"type,omitempty"`
 
 	// ExternalRef optionally links this Interaction to an ExternalActivity
-	// (future WP-89) or an existing calendar_event_links row
+	// or an existing calendar_event_links row
 	// (services/calendar_sync_service.go) — a plain opaque string reference,
 	// no FK: the referenced tables belong to different, not-yet-built or
 	// separately-owned subsystems.
@@ -126,10 +126,10 @@ func (a *Activity) AfterSave(tx *gorm.DB) error {
 }
 
 // nonQualifyingInteractionTypes are passive/social-media-like interaction
-// types that do not count toward a relationship-maintenance cadence (
-// future WP-94) — everything else counts by default. No consumer exists yet
-// (cadence is unbuilt), matching how WP-80 defined RelationshipSource
-// constants before WP-83 had a consumer for them.
+// types that do not count toward a relationship-maintenance cadence —
+// everything else counts by default. No consumer exists yet
+// (cadence is unbuilt), matching how defined RelationshipSource
+// constants before had a consumer for them.
 var nonQualifyingInteractionTypes = map[string]bool{
 	InteractionTypePhoto: true,
 }

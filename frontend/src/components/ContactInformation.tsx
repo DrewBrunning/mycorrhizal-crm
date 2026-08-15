@@ -983,7 +983,7 @@ export default function ContactInformation({
           ))}
 
           {/* Card metadata: the read-only imported-resource + relatedTo/members
-              sections (WP7/WP8) — present to prevent silent data loss and to
+              sections  — present to prevent silent data loss and to
               make imported data visible, not editable (full editing UI is
               T29b). Grouped under the same "Card metadata" heading the header
               and Add-dialog use for language/contact-kind. Collapsible because

@@ -1,6 +1,6 @@
-// This file (adapter.go, WP-40b) implements the vCard 4.0 <-> neutral-model
+// This file (adapter.go) implements the vCard 4.0 <-> neutral-model
 // adapter: contactmodel.Importer/Exporter per docs/adrs/0001-neutral-hub-and-spoke-contact-model.md
-// built on top of consts.go/components.go (WP-40a) and driven entirely
+// built on top of consts.go/components.go  and driven entirely
 // by docs/adrs/0002-correspondence-table-locked-oracle.md (the oracle — see that file's rows
 // for the concept_id backing every field touched below; no mapping
 // here is invented beyond what a row states).
@@ -386,7 +386,7 @@ func vcardTimestampToRFC3339(v string) string {
 // "-"): RFC 9554 §3.3 defines vCard4 LANGUAGE as a dedicated property —
 // "default language of human-readable values" — a direct 1:1 match for
 // Card.Language (transform identity). v3 (RFC 2426) predates this property
-// entirely, so it stays "-" and warn-drops on 3.0 export only (WP-50's
+// entirely, so it stays "-" and warn-drops on 3.0 export only (
 // concern, not this adapter's).
 // ---------------------------------------------------------------------------
 

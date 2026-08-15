@@ -28,7 +28,7 @@ interface ExportFieldPickerDialogProps {
   onExport: (format: ExportFormat, selection: ExportSelection) => Promise<void>;
 }
 
-// ExportFieldPickerDialog is the WP-97/T9 "choose which fields to export"
+// ExportFieldPickerDialog is the T9 "choose which fields to export"
 // dialog (Google-Contacts-style coarse-grained picker). Ordinary sections are
 // opt-out (checked by default); sensitivity-marked sections  are
 // opt-in AND gated: their controls are disabled, visually flagged with a

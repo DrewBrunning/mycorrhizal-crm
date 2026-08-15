@@ -9,13 +9,13 @@ import (
 // ApplyRecordToContact is the single, shared mapping from the neutral
 // contactmodel.Record shape back onto a *Contact's legacy flat/array fields
 // — the exact inverse of RecordFromContact (contact_record.go). Per
-// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md WP-71 Gap 1, both
+// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md, both
 // CreateContact and UpdateContact (contact_controller.go) call this one
 // function to turn the new nested REST input into a Contact, and the VCF/
-// JSContact import path (services/import_service.go, Gap 4) calls it to turn
+// JSContact import path (services/import_service.go) calls it to turn
 // an imported Record into a candidate Contact before feeding it through the
 // existing (unmodified) DetectDuplicate/MergeImportedContact functions. There
-// must be exactly one Record->Contact mapping, mirroring WP-70's read-side
+// must be exactly one Record->Contact mapping, mirroring read-side
 // rule applied here to the write side.
 //
 // Field-by-field decisions cite the corresponding docs/adrs/0002-correspondence-table-locked-oracle.md concept_id/row, same convention as RecordFromContact.
@@ -24,12 +24,12 @@ import (
 // Three things every caller must know:
 //
 //  1. c.Card / c.CRM / c.Passthrough are set directly from r (the "authoritative
-//     full-fidelity copy" — WP-71's own words): whatever richer data r carries
+//     full-fidelity copy" — own words): whatever richer data r carries
 //     that has no flat-field home (SpeakToAs, PersonalInfo, SocialProfiles,
 //     OtherOnlineServices, Keywords, extra Organizations/Titles, extra
 //     name components, RelatedTo, Members, Localizations, ...) is preserved
 //     there even though it isn't mirrored into a flat scalar/array below. The
-//     flat-field population is for backward-compat readers only (WP-70's "old
+//     flat-field population is for backward-compat readers only ("old
 //     fields stay fully functional" rule) — it is not meant to be a complete
 //     re-encoding of r.
 //  2. This function marks the Contact so BeforeSave (contact.go) will NOT

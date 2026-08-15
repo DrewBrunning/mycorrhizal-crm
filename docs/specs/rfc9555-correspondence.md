@@ -62,7 +62,7 @@ Section numbers are RFC 9555 unless noted.
 | `prodId` | `PRODID` | — | §2.11.5 |
 | `created` | `CREATED` | — | §2.11.3 |
 | `updated` | `REV` | — | §2.11.6 |
-| `language` | `LANGUAGE` | — | RFC 9554 §3.3 — dedicated vCard4 property, "default language of human-readable values"; direct match for JSContact `language` ("default language for the Card," RFC 9553 §1.4.9). **Correction (found during WP-40b review):** an earlier pass of this transcription omitted this row entirely, which propagated into `docs/adrs/0002-correspondence-table-locked-oracle.md`'s `language` row incorrectly marking `v4_prop` as `-`. No vCard 3.0 equivalent — RFC 2426 predates this property. |
+| `language` | `LANGUAGE` | — | RFC 9554 §3.3 — dedicated vCard4 property, "default language of human-readable values"; direct match for JSContact `language` ("default language for the Card," RFC 9553 §1.4.9). **Correction (found during review):** an earlier pass of this transcription omitted this row entirely, which propagated into `docs/adrs/0002-correspondence-table-locked-oracle.md`'s `language` row incorrectly marking `v4_prop` as `-`. No vCard 3.0 equivalent — RFC 2426 predates this property. |
 
 ## 2. Escape-hatch rules (verbatim key sentences)
 

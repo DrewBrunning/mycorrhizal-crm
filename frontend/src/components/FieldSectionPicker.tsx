@@ -25,7 +25,7 @@ interface FieldSectionPickerProps {
   onReveal: () => void;
 }
 
-// FieldSectionPicker is the WP-97/T9 "choose which fields" checkbox list
+// FieldSectionPicker is the T9 "choose which fields" checkbox list
 // (Google-Contacts-style coarse-grained picker), extracted out of
 // ExportFieldPickerDialog so P1 contact sharing's ShareContactDialog can
 // reuse it exactly rather than reimplementing the sensitivity foot-gun guard

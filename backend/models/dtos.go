@@ -14,7 +14,7 @@ type ActivityInput struct {
 	Location    string    `json:"location" validate:"max=300"`
 	Date        time.Time `json:"date" validate:"required"`
 	ContactIDs  []uint    `json:"contact_ids"` // Accept an array of contact IDs for many-to-many association
-	// Type/ExternalRef are WP-84's Interaction fields (activity.go) -- open/
+	// Type/ExternalRef are Interaction fields (activity.go) -- open/
 	// conventional, no oneof validation, matching Activity.Type's own doc
 	// comment on why it's deliberately unvalidated.
 	Type        string `json:"type,omitempty"`
@@ -236,7 +236,7 @@ type CalendarSubscriptionResponse struct {
 }
 
 // ContactSubscriptionInput is the DTO for creating/updating a CardDAV
-// contact subscription (WP-73b). Credentials are optional (some servers
+// contact subscription . Credentials are optional (some servers
 // allow anonymous/public read). On update, an empty password keeps the
 // stored one; set ClearPassword to remove it. Mirrors
 // CalendarSubscriptionInput's shape, minus PastDays/FutureDays (no contacts
@@ -384,7 +384,7 @@ type GraphResponse struct {
 	Edges []GraphEdge `json:"edges"`
 }
 
-// GraphChainStep is one hop in a traversal chain (T10 / WP-85). Relation is
+// GraphChainStep is one hop in a traversal chain (T10). Relation is
 // the *display* token describing what the NEXT contact is to the PREVIOUS
 // contact in the chain — the inverse is already applied when the hop walked
 // against the edge's stored direction. For "John's sister's husband" the

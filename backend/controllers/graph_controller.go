@@ -134,7 +134,7 @@ func GetGraph(c *gin.Context) {
 }
 
 // GetGraphConnections implements graph traversal + multi-hop chains (T10 /
-// WP-85): from a starting contact, list every reachable contact within
+// ): from a starting contact, list every reachable contact within
 // ?depth= hops, each with the chain of relations describing how it is related
 // to the anchor ("John's sister's husband"). Inferred relations (a grandparent
 // from two parent_of edges) are computed, never stored.

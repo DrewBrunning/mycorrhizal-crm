@@ -47,7 +47,7 @@ export async function exportDataAsCsv(): Promise<void> {
   await downloadFileFromResponse(response, 'mycorrhizal-export.csv');
 }
 
-// --- WP-97 / T9: selective field export + sensitivity gating -----------------
+// --- T9: selective field export + sensitivity gating -----------------
 
 export type ExportFormat = 'vcf4' | 'vcf3' | 'jscontact';
 

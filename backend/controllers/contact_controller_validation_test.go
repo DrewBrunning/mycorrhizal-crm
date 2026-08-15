@@ -155,14 +155,14 @@ func TestCreateContact_RealValidation_EmptyGenderAccepted(t *testing.T) {
 	assert.Equal(t, "", contact["gender"])
 }
 
-// TestCreateContact_RealValidation_ThinEntityAccepted is WP-82's locking-in
-// test for the "nothing but name required" thin-entity invariant (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md) — investigation during WP-82's planning
+// TestCreateContact_RealValidation_ThinEntityAccepted is locking-in
+// test for the "nothing but name required" thin-entity invariant (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md) — investigation during planning
 // found this already worked end-to-end (both here and in the frontend's
 // AddContactDialog), so this asserts that finding rather than building
 // anything new. A request carrying only a given-name component — no email,
 // phone, address, gender, or any CRM field — must succeed and produce a
 // Contact with that name and nothing else, exactly what a pet or a minor
-// child's relationship-graph node (WP-80/81) needs to exist as.
+// child's relationship-graph node ( /81) needs to exist as.
 func TestCreateContact_RealValidation_ThinEntityAccepted(t *testing.T) {
 	db, router := newValidatedContactRouter()
 
@@ -191,7 +191,7 @@ func TestCreateContact_RealValidation_ThinEntityAccepted(t *testing.T) {
 
 	// The stronger assertion: the persisted row itself has nothing but the
 	// name — this is what actually makes a bare-name Contact valid as a
-	// WP-80/81 relationship-graph node.
+	// /81 relationship-graph node.
 	var stored models.Contact
 	require.NoError(t, db.First(&stored).Error)
 	assert.Equal(t, "Fluffy", stored.Firstname)
@@ -202,7 +202,7 @@ func TestCreateContact_RealValidation_ThinEntityAccepted(t *testing.T) {
 }
 
 // TestCreateContact_RealValidation_KindAccepted proves CRMEnvelope.Kind
-// (WP-82, contactmodel/envelope.go) round-trips through the real create path
+// (contactmodel/envelope.go) round-trips through the real create path
 // with zero extra wiring — CRM is copied wholesale between Contact.CRM and
 // contactmodel.Record.Envelope, so a new field needs no code change anywhere
 // in that path, only in the struct definition itself. Also exercises an

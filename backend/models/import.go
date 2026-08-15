@@ -107,7 +107,7 @@ type ImportRowPreview struct {
 	// default to "skip"; the user may still override to Keep Both.
 	BatchDuplicateOf *int `json:"batch_duplicate_of"`
 
-	// Diagnostics surfaces contactmodel.Diagnostic events (WP-71 Gap 4) from
+	// Diagnostics surfaces contactmodel.Diagnostic events  from
 	// the vcard4/vcard3/jscontact adapter that parsed this row — e.g. a
 	// gracefully-dropped, no-target-home field (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md
 	// degradation policy). Empty for CSV-import rows (which don't go

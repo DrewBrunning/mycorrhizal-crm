@@ -2,7 +2,7 @@
 // contactmodel.Importer/Exporter adapter that maps it to/from the neutral
 // model.
 //
-// This file (WP-30b) implements the JSContact <-> neutral-model adapter.
+// This file  implements the JSContact <-> neutral-model adapter.
 // Mapping decisions
 // here are governed entirely by docs/adrs/0002-correspondence-table-locked-oracle.md (the
 // oracle); see that file's rows for the concept_id backing every field

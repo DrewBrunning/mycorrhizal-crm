@@ -36,7 +36,7 @@ func createHouseholdTestUser(t *testing.T, db *gorm.DB) models.User {
 // ordinary human contact). Setting Contact.CRM directly before Create does
 // NOT survive BeforeSave — it rebuilds CRM from the flat fields via
 // RecordFromContact, discarding any pre-existing nested CRM data unless
-// ApplyRecordToContact set cardSetDirectly first (the same fix WP-81's
+// ApplyRecordToContact set cardSetDirectly first (the same fix
 // TestRecordForContact_MergesWithPassthroughWithoutDuplication needed for
 // the identical reason). Confirmed by two tests failing with every "pet"
 // silently classified as an adult before this fix.

@@ -48,6 +48,6 @@ type CircleMember struct {
 	// Explicit column name, matching HouseholdMember.MemberVCardUID's own
 	// fix — GORM's default namer would otherwise split "VCardUID" into
 	// v_card_uid, mismatching the raw-SQL migration's member_vcard_uid-style
-	// column (a caught, documented bug from WP-83, not a hypothetical here).
+	// column (a caught, documented bug, not a hypothetical here).
 	MemberVCardUID string `gorm:"column:member_vcard_uid;not null;index;uniqueIndex:idx_circle_member,priority:2" json:"member_vcard_uid" validate:"required,uuid4"`
 }

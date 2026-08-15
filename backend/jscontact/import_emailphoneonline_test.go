@@ -18,7 +18,7 @@ func init() {
 }
 
 func TestImport_Email(t *testing.T) {
-	// email.jscontact.json: hand-authored minimal fixture (WP-60), RFC 9553
+	// email.jscontact.json: hand-authored minimal fixture, RFC 9553
 	// §2.3.1 EmailAddress object shape.
 	raw := rfctest.LoadFixture("email.jscontact.json")
 	rec, _, err := Adapter{}.Import(raw)
@@ -34,7 +34,7 @@ func TestImport_Email(t *testing.T) {
 }
 
 func TestImport_Phone(t *testing.T) {
-	// phone.jscontact.json: hand-authored minimal fixture (WP-60), RFC 9553
+	// phone.jscontact.json: hand-authored minimal fixture, RFC 9553
 	// §2.3.3 Phone object shape.
 	raw := rfctest.LoadFixture("phone.jscontact.json")
 	rec, _, err := Adapter{}.Import(raw)

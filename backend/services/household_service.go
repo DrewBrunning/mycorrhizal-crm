@@ -16,10 +16,10 @@ import (
 )
 
 // memberClass is the suggestion engine's classification of a household
-// member — see classifyMember. Confirmed with the user during WP-83
+// member — see classifyMember. Confirmed with the user during
 // planning: derived from Role + Contact.CRM.Kind only, never from
 // Birthday/age (birthdays are frequently unknown, especially for the thin
-// entities WP-81 promotes name-only relationships into).
+// entities promotes name-only relationships into).
 type memberClass int
 
 const (
@@ -30,7 +30,7 @@ const (
 
 // classifyMember decides what role a household member plays in the
 // suggestion rules below. Pet/animal is authoritative from Contact.CRM.Kind
-// (WP-82 built that field for exactly this). Among humans, only an explicit
+// (built that field for exactly this). Among humans, only an explicit
 // "child" Role means child — every other Role value (including future ones
 // this switch doesn't know about) defaults to adult, so the engine never
 // blocks on an unrecognized or missing Role.

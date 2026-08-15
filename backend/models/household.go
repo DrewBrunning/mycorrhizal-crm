@@ -92,7 +92,7 @@ type HouseholdMember struct {
 	MemberVCardUID string `gorm:"column:member_vcard_uid;not null;index;uniqueIndex:idx_household_member,priority:2" json:"member_vcard_uid" validate:"required,uuid4"`
 
 	// Role is conventional, not enforced (HouseholdRole* constants above) —
-	// deliberately unvalidated, same reasoning as CRMEnvelope.Kind (WP-82):
+	// deliberately unvalidated, same reasoning as CRMEnvelope.Kind :
 	// it's an open, descriptive classifier the suggestion engine must
 	// degrade gracefully on (anything other than "child" or a pet-kind
 	// contact just counts as an adult), not a closed system state.

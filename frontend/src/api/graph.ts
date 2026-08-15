@@ -15,7 +15,7 @@ export async function getGraph(): Promise<GraphResponse> {
   return response.json();
 }
 
-// --- Graph traversal / multi-hop chains (T10 / WP-85) ---
+// --- Graph traversal / multi-hop chains (T10) ---
 
 export interface GraphChainStep {
   contact_id: number;

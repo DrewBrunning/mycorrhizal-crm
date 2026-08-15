@@ -6,7 +6,7 @@ import (
 	"mycorrhizal/contactmodel"
 )
 
-// Field-selection section tokens for WP-97 / T9 (selective field export +
+// Field-selection section tokens  / T9 (selective field export +
 // sensitivity gating, T9).
 //
 // These are the coarse-grained, Google-Contacts-picker-style sections a user
@@ -79,7 +79,7 @@ var validFieldSections = func() map[string]bool {
 	return m
 }()
 
-// FieldSelection is one export's "which fields" picker state (WP-97 / T9).
+// FieldSelection is one export's "which fields" picker state (T9).
 //
 // Sections maps each selected section token to true. Absent/unknown tokens
 // are simply not selected. A nil map is the zero value and means "no sections

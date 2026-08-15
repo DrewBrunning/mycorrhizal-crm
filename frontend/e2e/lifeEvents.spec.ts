@@ -22,7 +22,7 @@ function lifeEventCard(page: Page, typeText: string) {
 }
 
 /**
- * Life events (T5 / WP-84) — a pre-alpha ticket with no e2e coverage.
+ * Life events (T5) — a pre-alpha ticket with no e2e coverage.
  *
  * Worth exercising end to end because LifeEvent is one of the entities that
  * keys off Contact.VCardUID rather than the numeric contact ID, and it carries

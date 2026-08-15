@@ -18,7 +18,7 @@ import (
 // createHouseholdTestContact optionally sets CRM.Kind (pass "" for an
 // ordinary human contact). Setting Contact.CRM directly before Create does
 // NOT survive BeforeSave — it rebuilds CRM from the flat fields, discarding
-// the nested kind (the exact WP-81/WP-83 trap the ticket warns about). Use
+// the nested kind (the exact  trap the ticket warns about). Use
 // ApplyRecordToContact, mirroring household_service_test.go.
 func createHouseholdTestContact(t *testing.T, db *gorm.DB, userID uint, firstname, kind string) models.Contact {
 	t.Helper()

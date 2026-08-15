@@ -28,7 +28,7 @@ func newTestBackend(t *testing.T) (*Backend, *gorm.DB) {
 }
 
 // TestPutGetAddressObject_VCard4RoundTrip is the concrete, end-to-end proof
-// for docs/adrs/0001-neutral-hub-and-spoke-contact-model.md WP-73's mapper-retirement
+// for docs/adrs/0001-neutral-hub-and-spoke-contact-model.md mapper-retirement
 // step: a vCard 4.0 body carrying PRONOUNS and GRAMGENDER — properties the
 // retired legacy carddav.VCardToContact/ContactToVCard mapper never
 // understood at all — is PUT through Backend.PutAddressObject (which now

@@ -7,7 +7,7 @@ import { Card } from '../api/contacts';
 
 afterEach(cleanup);
 
-test('renders imported calendar, directory and contact-uri resources read-only (WP7)', () => {
+test('renders imported calendar, directory and contact-uri resources read-only', () => {
   const card: Card = {
     calendars: [{ uri: 'https://cal.example.com/ada.ics' }],
     directories: [{ uri: 'https://dir.example.com/ada', kind: 'entry' }],
@@ -25,7 +25,7 @@ test('renders nothing when no resources exist', () => {
   expect(screen.queryByText('Imported Resources')).toBeNull();
 });
 
-test('renders relatedTo and members read-only (WP8)', () => {
+test('renders relatedTo and members read-only', () => {
   const card: Card = {
     relatedTo: [{ target: 'uid:other-contact', relations: ['friend'] }],
     members: ['uid:member-a', 'uid:member-b'],

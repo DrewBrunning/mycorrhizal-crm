@@ -7,7 +7,7 @@ interface ImportedResourcesSectionProps {
 }
 
 // Maps each read-only resource field to its display label i18n key. These are
-// the low-usage, high-importance vCard extension properties (WP7): they get
+// the low-usage, high-importance vCard extension properties: they get
 // full editing UI in a later ticket (T29b), but must be *visible* and
 // round-trip-preserved here so an imported contact never loses them on the
 // next UI edit-and-save.
