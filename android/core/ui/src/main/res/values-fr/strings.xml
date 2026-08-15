@@ -18,7 +18,6 @@
     <string name="nav_home">Accueil</string>
     <string name="nav_settings">Paramètres</string>
     <string name="nav_tags">Étiquettes</string>
-    <string name="nav_bulk">Opérations groupées</string>
     <string name="nav_circles">Cercles</string>
     <string name="nav_network">Réseau</string>
     <string name="nav_households">Foyers</string>
@@ -48,6 +47,14 @@
     <string name="contacts_empty">Aucun contact pour le moment</string>
     <string name="contacts_new">Nouveau contact</string>
     <string name="contacts_photo_description">Photo de %1$s</string>
+    <!-- M23 : étendue de la liste — filtre par cercle, bascule des archivés, sélection groupée intégrée -->
+    <string name="contacts_filter_circle">Cercle</string>
+    <string name="contacts_all_circles">Tous les cercles</string>
+    <string name="contacts_show_archived">Afficher les archivés</string>
+    <string name="contacts_select_mode">Sélectionner des contacts</string>
+    <string name="contacts_exit_select_mode">Quitter la sélection</string>
+    <string name="contacts_selected_count">%1$d sélectionnés</string>
+    <string name="contacts_select_all">Tout sélectionner</string>
 
     <!-- Contact list: cross-entity search (T87) -->
     <string name="contacts_search_results_header">%1$d correspondances dans les notes et les activités</string>
@@ -530,13 +537,35 @@
 
     <!-- Merge & bulk -->
     <string name="merge_title">Fusionner des contacts</string>
-    <string name="merge_other_id">ID de l\'autre contact</string>
     <string name="merge_preview">Aperçu de la fusion</string>
-    <string name="merge_summary">%1$d notes, %2$d activités et %3$d relations seront déplacées vers le contact conservé.</string>
     <string name="merge_no_conflicts">Aucun conflit de champs — la fusion est prête.</string>
     <string name="merge_commit">Fusionner</string>
     <string name="merge_done">Contacts fusionnés.</string>
-    <string name="bulk_title">Opérations groupées</string>
+    <!-- M23 : cible de fusion par recherche + ventilation complète des associations -->
+    <string name="merge_keep_hint">Le contact que vous avez ouvert sera conservé. Recherchez l\'autre contact à fusionner dedans.</string>
+    <string name="merge_pick_other">Choisir l\'autre contact</string>
+    <string name="merge_picked_other">%1$s sera fusionné dans le contact conservé.</string>
+    <string name="merge_move_header">Sera déplacé vers le contact conservé :</string>
+    <string name="merge_nothing_to_move">Rien à déplacer.</string>
+    <string name="merge_count_notes">%1$d notes</string>
+    <string name="merge_count_activities">%1$d activités</string>
+    <string name="merge_count_reminders">%1$d rappels</string>
+    <string name="merge_count_reminder_completions">%1$d accomplissements de rappels</string>
+    <string name="merge_count_edges">%1$d relations</string>
+    <string name="merge_count_household">%1$d appartenances à un foyer</string>
+    <string name="merge_count_circles">%1$d appartenances à un cercle</string>
+    <string name="merge_count_tags">%1$d étiquettes</string>
+    <string name="merge_count_life_events">%1$d événements de vie</string>
+    <string name="merge_count_life_event_references">%1$d références d\'événements de vie</string>
+    <string name="merge_count_agenda">%1$d éléments d\'ordre du jour</string>
+    <string name="merge_count_gifts">%1$d éléments de cadeaux</string>
+    <string name="merge_count_field_values">%1$d valeurs de champs personnalisés</string>
+    <string name="merge_count_sync_links">%1$d liens de synchronisation</string>
+    <string name="merge_count_attachments">%1$d pièces jointes</string>
+    <string name="merge_count_preferences">%1$d préférences</string>
+    <string name="merge_count_external_identities">%1$d identités externes</string>
+    <string name="merge_count_external_activities">%1$d activités externes</string>
+    <string name="merge_count_cadence">%1$d politiques de cadence</string>
     <string name="bulk_archive">Archiver</string>
     <string name="bulk_unarchive">Désarchiver</string>
     <string name="bulk_add_circle">Ajouter à un cercle</string>

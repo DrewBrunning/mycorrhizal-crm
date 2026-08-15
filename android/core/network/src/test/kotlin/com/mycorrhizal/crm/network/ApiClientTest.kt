@@ -142,6 +142,30 @@ class ApiClientTest {
     }
 
     @Test
+    fun `list contacts sends the circle filter and archived toggle on the query string`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"contacts":[],"next_cursor":""}"""),
+        )
+
+        client.listContacts(includeArchived = true, circle = "Book club")
+
+        val request = server.takeRequest()
+        assertEquals("/api/v1/contacts?include_archived=true&circle=Book%20club", request.path)
+    }
+
+    @Test
+    fun `list contacts omits a blank circle filter`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"contacts":[],"next_cursor":""}"""),
+        )
+
+        client.listContacts(circle = "   ")
+
+        val request = server.takeRequest()
+        assertEquals("/api/v1/contacts", request.path)
+    }
+
+    @Test
     fun `list contacts with vcardUids sends repeatable vcard_uid params and skips pagination params`() = runBlocking {
         server.enqueue(
             MockResponse().setResponseCode(200).setBody("""{"contacts":[],"next_cursor":""}"""),

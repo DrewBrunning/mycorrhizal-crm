@@ -18,7 +18,6 @@
     <string name="nav_home">Inicio</string>
     <string name="nav_settings">Ajustes</string>
     <string name="nav_tags">Etiquetas</string>
-    <string name="nav_bulk">Operaciones masivas</string>
     <string name="nav_circles">Círculos</string>
     <string name="nav_network">Red</string>
     <string name="nav_households">Hogares</string>
@@ -48,6 +47,14 @@
     <string name="contacts_empty">Aún no hay contactos</string>
     <string name="contacts_new">Nuevo contacto</string>
     <string name="contacts_photo_description">Foto de %1$s</string>
+    <!-- M23: amplitud de la lista — filtro de círculo, conmutador de archivados, selección masiva integrada -->
+    <string name="contacts_filter_circle">Círculo</string>
+    <string name="contacts_all_circles">Todos los círculos</string>
+    <string name="contacts_show_archived">Mostrar archivados</string>
+    <string name="contacts_select_mode">Seleccionar contactos</string>
+    <string name="contacts_exit_select_mode">Salir de la selección</string>
+    <string name="contacts_selected_count">%1$d seleccionados</string>
+    <string name="contacts_select_all">Seleccionar todos</string>
 
     <!-- Contact list: cross-entity search (T87) -->
     <string name="contacts_search_results_header">%1$d coincidencias en notas y actividades</string>
@@ -530,13 +537,35 @@
 
     <!-- Merge & bulk -->
     <string name="merge_title">Fusionar contactos</string>
-    <string name="merge_other_id">ID del otro contacto</string>
     <string name="merge_preview">Vista previa de fusión</string>
-    <string name="merge_summary">Se moverán %1$d notas, %2$d actividades y %3$d relaciones al contacto conservado.</string>
     <string name="merge_no_conflicts">Sin conflictos de campos — la fusión está lista.</string>
     <string name="merge_commit">Fusionar</string>
     <string name="merge_done">Contactos fusionados.</string>
-    <string name="bulk_title">Operaciones masivas</string>
+    <!-- M23: destino de fusión por búsqueda + desglose completo de asociaciones -->
+    <string name="merge_keep_hint">El contacto que abriste se conservará. Busca el otro contacto para fusionarlo en él.</string>
+    <string name="merge_pick_other">Elegir el otro contacto</string>
+    <string name="merge_picked_other">%1$s se fusionará en el contacto conservado.</string>
+    <string name="merge_move_header">Se moverá al contacto conservado:</string>
+    <string name="merge_nothing_to_move">Nada que mover.</string>
+    <string name="merge_count_notes">%1$d notas</string>
+    <string name="merge_count_activities">%1$d actividades</string>
+    <string name="merge_count_reminders">%1$d recordatorios</string>
+    <string name="merge_count_reminder_completions">%1$d completaciones de recordatorios</string>
+    <string name="merge_count_edges">%1$d relaciones</string>
+    <string name="merge_count_household">%1$d membresías de hogar</string>
+    <string name="merge_count_circles">%1$d membresías de círculo</string>
+    <string name="merge_count_tags">%1$d etiquetas</string>
+    <string name="merge_count_life_events">%1$d eventos de vida</string>
+    <string name="merge_count_life_event_references">%1$d referencias de eventos de vida</string>
+    <string name="merge_count_agenda">%1$d elementos de agenda de conversación</string>
+    <string name="merge_count_gifts">%1$d elementos de regalos</string>
+    <string name="merge_count_field_values">%1$d valores de campos personalizados</string>
+    <string name="merge_count_sync_links">%1$d enlaces de sincronización</string>
+    <string name="merge_count_attachments">%1$d archivos adjuntos</string>
+    <string name="merge_count_preferences">%1$d preferencias</string>
+    <string name="merge_count_external_identities">%1$d identidades externas</string>
+    <string name="merge_count_external_activities">%1$d actividades externas</string>
+    <string name="merge_count_cadence">%1$d políticas de cadencia</string>
     <string name="bulk_archive">Archivar</string>
     <string name="bulk_unarchive">Desarchivar</string>
     <string name="bulk_add_circle">Añadir a un círculo</string>

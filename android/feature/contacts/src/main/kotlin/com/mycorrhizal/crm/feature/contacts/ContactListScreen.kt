@@ -1,39 +1,52 @@
 package com.mycorrhizal.crm.feature.contacts
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Checklist
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Menu
-import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -47,8 +60,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
@@ -58,6 +69,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.mycorrhizal.crm.model.network.BulkActions
+import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.SearchActivityHit
 import com.mycorrhizal.crm.model.network.SearchNoteHit
@@ -105,6 +118,12 @@ fun ContactListScreen(
         // A click only routes through the ViewModel event; the LaunchedEffect
         // above performs the actual navigation so each tap navigates once.
         onContactClick = viewModel::onContactClick,
+        onCircleFilterChange = viewModel::onCircleFilterChange,
+        onIncludeArchivedChange = viewModel::onIncludeArchivedChange,
+        onToggleSelection = viewModel::toggleSelection,
+        onToggleSelectAll = viewModel::toggleSelectAll,
+        onRunBulkAction = viewModel::runBulkAction,
+        onBulkResultShown = viewModel::onBulkResultShown,
         onCreateContact = onCreateContact,
         onMenuClick = onMenuClick,
         onImportContacts = onImportContacts,
@@ -117,12 +136,18 @@ fun ContactListScreen(
  * Stateless screen content — the four canonical states (loading / empty /
  * error / populated) are testable directly via this composable (ticket §10.4).
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ContactListScreenContent(
     uiState: ContactListUiState,
     onSearchQueryChange: (String) -> Unit,
     onContactClick: (Int) -> Unit,
+    onCircleFilterChange: (String?) -> Unit = {},
+    onIncludeArchivedChange: (Boolean) -> Unit = {},
+    onToggleSelection: (Int) -> Unit = {},
+    onToggleSelectAll: () -> Unit = {},
+    onRunBulkAction: (String, String?, String?) -> Unit = { _, _, _ -> },
+    onBulkResultShown: () -> Unit = {},
     onCreateContact: () -> Unit = {},
     onMenuClick: () -> Unit = {},
     onImportContacts: () -> Unit = {},
@@ -131,6 +156,16 @@ fun ContactListScreenContent(
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     var search by rememberSaveable { mutableStateOf(uiState.searchQuery) }
+    // M23: inline bulk-selection mode (web parity). The selection *set* lives in the
+    // ViewModel so filter changes can clear it; this flag is pure screen chrome.
+    var selectMode by rememberSaveable { mutableStateOf(false) }
+    // Set while a circle/tag picker dialog is open; the action it's picking
+    // for (add vs remove) travels alongside it so confirming the picker can
+    // set pendingAction directly (ported from the retired BulkOperationsScreen).
+    var picker by remember { mutableStateOf<Pair<BulkPickerTarget, String>?>(null) }
+    var pendingAction by remember { mutableStateOf<String?>(null) }
+    var pendingCircleId by remember { mutableStateOf<String?>(null) }
+    var pendingTagId by remember { mutableStateOf<String?>(null) }
     val listState = rememberLazyListState()
 
     // M9: infinite scroll — fire loadNextPage() once the user scrolls within 5 rows of the end
@@ -165,7 +200,45 @@ fun ContactListScreenContent(
                     }
                 },
                 title = {
-                    Text(stringResource(R.string.nav_contacts), style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        text = if (selectMode) {
+                            stringResource(R.string.contacts_selected_count, uiState.selected.size)
+                        } else {
+                            stringResource(R.string.nav_contacts)
+                        },
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                },
+                actions = {
+                    if (selectMode) {
+                        TextButton(
+                            onClick = onToggleSelectAll,
+                            modifier = Modifier.testTag("select-all"),
+                        ) {
+                            Text(stringResource(R.string.contacts_select_all), color = MaterialTheme.colorScheme.onPrimary)
+                        }
+                        IconButton(
+                            onClick = { selectMode = false },
+                            modifier = Modifier.testTag("exit-select-mode"),
+                        ) {
+                            Icon(
+                                Icons.Outlined.Close,
+                                contentDescription = stringResource(R.string.contacts_exit_select_mode),
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                            )
+                        }
+                    } else {
+                        IconButton(
+                            onClick = { selectMode = true },
+                            modifier = Modifier.testTag("enter-select-mode"),
+                        ) {
+                            Icon(
+                                Icons.Outlined.Checklist,
+                                contentDescription = stringResource(R.string.contacts_select_mode),
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                            )
+                        }
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
@@ -176,8 +249,24 @@ fun ContactListScreenContent(
             )
         },
         floatingActionButton = {
-            BrandFab(onClick = onCreateContact) {
-                Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.contacts_new))
+            if (!selectMode) {
+                BrandFab(onClick = onCreateContact) {
+                    Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.contacts_new))
+                }
+            }
+        },
+        bottomBar = {
+            if (selectMode && uiState.selected.isNotEmpty()) {
+                BulkActionBar(
+                    isRunning = uiState.isBulkRunning,
+                    onArchive = { pendingAction = BulkActions.ARCHIVE },
+                    onUnarchive = { pendingAction = BulkActions.UNARCHIVE },
+                    onDelete = { pendingAction = BulkActions.DELETE },
+                    onAddCircle = { picker = BulkPickerTarget.CIRCLE to BulkActions.ADD_CIRCLE },
+                    onRemoveCircle = { picker = BulkPickerTarget.CIRCLE to BulkActions.REMOVE_CIRCLE },
+                    onAddTag = { picker = BulkPickerTarget.TAG to BulkActions.ADD_TAG },
+                    onRemoveTag = { picker = BulkPickerTarget.TAG to BulkActions.REMOVE_TAG },
+                )
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -198,6 +287,14 @@ fun ContactListScreenContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+
+            ContactListFilterRow(
+                circles = uiState.circles,
+                circleFilter = uiState.circleFilter,
+                includeArchived = uiState.includeArchived,
+                onCircleFilterChange = onCircleFilterChange,
+                onIncludeArchivedChange = onIncludeArchivedChange,
             )
 
             // T87: the notes/activities section trails every state (loading/empty/error/
@@ -235,7 +332,15 @@ fun ContactListScreenContent(
                         items(uiState.contacts, key = { it.id }) { contact ->
                             ContactListItem(
                                 contact = contact,
-                                onClick = { onContactClick(contact.id) },
+                                selected = contact.id in uiState.selected,
+                                selectMode = selectMode,
+                                onClick = {
+                                    if (selectMode) onToggleSelection(contact.id) else onContactClick(contact.id)
+                                },
+                                onLongClick = {
+                                    selectMode = true
+                                    onToggleSelection(contact.id)
+                                },
                             )
                         }
                         if (uiState.pagination.isLoadingMore) {
@@ -260,28 +365,268 @@ fun ContactListScreenContent(
         }
     }
 
+    picker?.let { (target, action) ->
+        val names: List<Pair<String, String>> = when (target) {
+            BulkPickerTarget.CIRCLE -> uiState.circles.map { it.id to it.name }
+            BulkPickerTarget.TAG -> uiState.tags.map { it.id to it.name }
+        }
+        AlertDialog(
+            onDismissRequest = { picker = null },
+            title = {
+                Text(
+                    stringResource(
+                        if (target == BulkPickerTarget.CIRCLE) R.string.bulk_pick_circle else R.string.bulk_pick_tag,
+                    ),
+                )
+            },
+            text = {
+                if (names.isEmpty()) {
+                    Text(
+                        stringResource(
+                            if (target == BulkPickerTarget.CIRCLE) R.string.bulk_no_circles else R.string.bulk_no_tags,
+                        ),
+                    )
+                } else {
+                    LazyColumn(modifier = Modifier.heightIn(max = 320.dp)) {
+                        items(names, key = { it.first }) { (id, name) ->
+                            Text(
+                                text = name,
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        when (target) {
+                                            BulkPickerTarget.CIRCLE -> pendingCircleId = id
+                                            BulkPickerTarget.TAG -> pendingTagId = id
+                                        }
+                                        pendingAction = action
+                                        picker = null
+                                    }
+                                    .padding(vertical = 12.dp),
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { picker = null }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
+
+    pendingAction?.let { action ->
+        AlertDialog(
+            onDismissRequest = {
+                pendingAction = null
+                pendingCircleId = null
+                pendingTagId = null
+            },
+            title = { Text(stringResource(R.string.bulk_confirm_title)) },
+            text = { Text(stringResource(R.string.bulk_confirm_body, uiState.selected.size)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onRunBulkAction(action, pendingCircleId, pendingTagId)
+                        pendingAction = null
+                        pendingCircleId = null
+                        pendingTagId = null
+                    },
+                ) {
+                    Text(stringResource(R.string.action_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        pendingAction = null
+                        pendingCircleId = null
+                        pendingTagId = null
+                    },
+                ) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
+
     uiState.error?.let { message ->
         LaunchedEffect(message) {
             snackbarHostState.showSnackbar(message)
             onErrorShown()
         }
     }
+
+    uiState.bulkResult?.let { result ->
+        val message = stringResource(R.string.bulk_result, result.succeeded, result.failed)
+        LaunchedEffect(result) {
+            snackbarHostState.showSnackbar(message)
+            onBulkResultShown()
+        }
+    }
 }
 
+/**
+ * M23: which circle/tag-scoped action a picker dialog is choosing an id for.
+ * Archive/unarchive/delete need no id and skip the picker, going straight to
+ * the existing confirm dialog.
+ */
+private enum class BulkPickerTarget { CIRCLE, TAG }
+
+/**
+ * M23: the circle filter + archived toggle row above the list — the two list-breadth
+ * controls web's ContactsPage filter row owns, missing on Android until now.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ContactListFilterRow(
+    circles: List<Circle>,
+    circleFilter: String?,
+    includeArchived: Boolean,
+    onCircleFilterChange: (String?) -> Unit,
+    onIncludeArchivedChange: (Boolean) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+    ) {
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = it },
+            modifier = Modifier.weight(1f),
+        ) {
+            OutlinedTextField(
+                value = circleFilter ?: stringResource(R.string.contacts_all_circles),
+                onValueChange = {},
+                readOnly = true,
+                label = { Text(stringResource(R.string.contacts_filter_circle)) },
+                singleLine = true,
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                    .testTag("circle-filter"),
+            )
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+            ) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.contacts_all_circles)) },
+                    onClick = {
+                        expanded = false
+                        onCircleFilterChange(null)
+                    },
+                )
+                circles.forEach { circle ->
+                    DropdownMenuItem(
+                        text = { Text(circle.name) },
+                        onClick = {
+                            expanded = false
+                            onCircleFilterChange(circle.name)
+                        },
+                    )
+                }
+            }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Switch(
+                checked = includeArchived,
+                onCheckedChange = onIncludeArchivedChange,
+                modifier = Modifier.testTag("archived-toggle"),
+            )
+            Text(
+                text = stringResource(R.string.contacts_show_archived),
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+    }
+}
+
+/**
+ * M23: the inline bulk-action bar shown under selection mode (web's BulkActionsBar).
+ * The action row is a horizontalScroll'd Row of seven buttons, so the later ones
+ * (tag actions) sit off the initial viewport — tests must performScrollTo() first.
+ */
+@Composable
+private fun BulkActionBar(
+    isRunning: Boolean,
+    onArchive: () -> Unit,
+    onUnarchive: () -> Unit,
+    onDelete: () -> Unit,
+    onAddCircle: () -> Unit,
+    onRemoveCircle: () -> Unit,
+    onAddTag: () -> Unit,
+    onRemoveTag: () -> Unit,
+) {
+    Surface(
+        tonalElevation = 3.dp,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+        ) {
+            TextButton(onClick = onArchive, enabled = !isRunning, modifier = Modifier.testTag("bulk-archive")) {
+                Text(stringResource(R.string.bulk_archive))
+            }
+            TextButton(onClick = onUnarchive, enabled = !isRunning, modifier = Modifier.testTag("bulk-unarchive")) {
+                Text(stringResource(R.string.bulk_unarchive))
+            }
+            TextButton(onClick = onDelete, enabled = !isRunning, modifier = Modifier.testTag("bulk-delete")) {
+                Text(stringResource(R.string.action_delete))
+            }
+            TextButton(onClick = onAddCircle, enabled = !isRunning, modifier = Modifier.testTag("bulk-add-circle")) {
+                Text(stringResource(R.string.bulk_add_circle))
+            }
+            TextButton(onClick = onRemoveCircle, enabled = !isRunning, modifier = Modifier.testTag("bulk-remove-circle")) {
+                Text(stringResource(R.string.bulk_remove_circle))
+            }
+            TextButton(onClick = onAddTag, enabled = !isRunning, modifier = Modifier.testTag("bulk-add-tag")) {
+                Text(stringResource(R.string.bulk_add_tag))
+            }
+            TextButton(onClick = onRemoveTag, enabled = !isRunning, modifier = Modifier.testTag("bulk-remove-tag")) {
+                Text(stringResource(R.string.bulk_remove_tag))
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ContactListItem(
     contact: ContactSummary,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    selected: Boolean = false,
+    selectMode: Boolean = false,
+    onLongClick: () -> Unit = onClick,
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick,
+            )
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        if (selectMode) {
+            Checkbox(
+                checked = selected,
+                onCheckedChange = { onClick() },
+            )
+        }
         ContactAvatar(
             photoUri = contact.photoThumbnail,
             contentDescription = stringResource(R.string.contacts_photo_description, contact.displayName),

@@ -11,6 +11,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextInput
+import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.SearchActivityHit
 import com.mycorrhizal.crm.model.network.SearchNoteHit
@@ -38,6 +39,11 @@ class ContactListScreenTest {
         onContactClick: (Int) -> Unit = {},
         onSearchQueryChange: (String) -> Unit = {},
         onLoadMore: () -> Unit = {},
+        onCircleFilterChange: (String?) -> Unit = {},
+        onIncludeArchivedChange: (Boolean) -> Unit = {},
+        onToggleSelection: (Int) -> Unit = {},
+        onToggleSelectAll: () -> Unit = {},
+        onRunBulkAction: (String, String?, String?) -> Unit = { _, _, _ -> },
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -46,6 +52,11 @@ class ContactListScreenTest {
                     onContactClick = onContactClick,
                     onSearchQueryChange = onSearchQueryChange,
                     onLoadMore = onLoadMore,
+                    onCircleFilterChange = onCircleFilterChange,
+                    onIncludeArchivedChange = onIncludeArchivedChange,
+                    onToggleSelection = onToggleSelection,
+                    onToggleSelectAll = onToggleSelectAll,
+                    onRunBulkAction = onRunBulkAction,
                 )
             }
         }
@@ -195,7 +206,9 @@ class ContactListScreenTest {
                 searchResult = SearchResult(resolvedRelation = "parent_of"),
             ),
         )
-        composeTestRule.onNodeWithText("Matched relationship: parent_of").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Matched relationship: parent_of")
+            .performScrollTo()
+            .assertIsDisplayed()
     }
 
     // M9 item 3: ContactListViewModel.loadNextPage() was implemented and unit-tested but had
@@ -249,5 +262,110 @@ class ContactListScreenTest {
         composeTestRule.waitForIdle()
 
         assertEquals(0, loadMoreCalls)
+    }
+
+    // --- M23: circle filter + archived toggle ---------------------------------
+
+    @Test
+    fun `circle filter dropdown lists the loaded circles and selecting one filters`() {
+        var filter: String? = "unset"
+        setContent(
+            ContactListUiState(
+                isLoading = false,
+                contacts = listOf(ContactSummary(id = 1, fn = "Alice", firstname = "Alice")),
+                circles = listOf(Circle(id = "c-1", name = "Book club"), Circle(id = "c-2", name = "Family")),
+            ),
+            onCircleFilterChange = { filter = it },
+        )
+
+        composeTestRule.onNodeWithTag("circle-filter").performClick()
+        composeTestRule.onNodeWithText("Book club").performClick()
+
+        assertEquals("Book club", filter)
+    }
+
+    @Test
+    fun `circle filter shows all circles by default`() {
+        setContent(
+            ContactListUiState(
+                isLoading = false,
+                contacts = emptyList(),
+                circles = listOf(Circle(id = "c-1", name = "Book club")),
+            ),
+        )
+
+        composeTestRule.onNodeWithText("All circles").assertIsDisplayed()
+    }
+
+    @Test
+    fun `archived toggle fires the callback`() {
+        var toggled: Boolean? = null
+        setContent(
+            ContactListUiState(isLoading = false, contacts = emptyList()),
+            onIncludeArchivedChange = { toggled = it },
+        )
+
+        composeTestRule.onNodeWithTag("archived-toggle").performClick()
+
+        assertEquals(true, toggled)
+    }
+
+    // --- M23: inline bulk selection ------------------------------------------
+
+    @Test
+    fun `entering select mode shows the selection title and row taps toggle`() {
+        var toggledId: Int? = null
+        setContent(
+            ContactListUiState(
+                isLoading = false,
+                contacts = listOf(ContactSummary(id = 1, uid = "u1", fn = "Alice", firstname = "Alice")),
+            ),
+            onToggleSelection = { toggledId = it },
+        )
+
+        composeTestRule.onNodeWithTag("enter-select-mode").performClick()
+        composeTestRule.onNodeWithText("0 selected").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Alice").performClick()
+
+        assertEquals(1, toggledId)
+    }
+
+    @Test
+    fun `select all in select mode fires the callback`() {
+        var selectAllCalls = 0
+        setContent(
+            ContactListUiState(
+                isLoading = false,
+                contacts = listOf(ContactSummary(id = 1, fn = "Alice", firstname = "Alice")),
+            ),
+            onToggleSelectAll = { selectAllCalls++ },
+        )
+
+        composeTestRule.onNodeWithTag("enter-select-mode").performClick()
+        composeTestRule.onNodeWithTag("select-all").performClick()
+
+        assertEquals(1, selectAllCalls)
+    }
+
+    @Test
+    fun `a selected row in select mode runs a bulk action after confirming`() {
+        var ran: Triple<String, String?, String?>? = null
+        setContent(
+            ContactListUiState(
+                isLoading = false,
+                contacts = listOf(ContactSummary(id = 1, uid = "u1", fn = "Alice", firstname = "Alice")),
+                selected = setOf(1),
+            ),
+            onRunBulkAction = { action, circleId, tagId -> ran = Triple(action, circleId, tagId) },
+        )
+
+        composeTestRule.onNodeWithTag("enter-select-mode").performClick()
+        composeTestRule.onNodeWithTag("bulk-archive").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("Confirm bulk action?").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Confirm").performClick()
+
+        assertEquals("archive", ran?.first)
+        assertEquals(null, ran?.second)
+        assertEquals(null, ran?.third)
     }
 }

@@ -72,6 +72,48 @@ class ContactRepositoryImplTest {
     }
 
     @Test
+    fun `listContacts forwards the circle filter and archived toggle to the client`() = runTest {
+        // M23: the list's filter dropdown + archived switch are only as good as the
+        // repository's willingness to pass them through — this pins the data layer.
+        coEvery { apiClient.listContacts(any(), any(), any(), any(), any()) } returns Result.success(
+            com.mycorrhizal.crm.model.network.ContactsPage(contacts = emptyList(), nextCursor = ""),
+        )
+
+        repository.listContacts(circle = "Friends", includeArchived = true)
+
+        io.mockk.coVerify(exactly = 1) {
+            apiClient.listContacts(
+                cursor = null,
+                limit = 50,
+                search = null,
+                includeArchived = true,
+                circle = "Friends",
+            )
+        }
+    }
+
+    @Test
+    fun `listContacts leaves the circle filter and archived toggle null by default`() = runTest {
+        // A plain list request must not send include_archived/circle (the backend treats
+        // absent as the default) — proving the defaults are null, not false/empty.
+        coEvery { apiClient.listContacts(any(), any(), any(), any(), any()) } returns Result.success(
+            com.mycorrhizal.crm.model.network.ContactsPage(contacts = emptyList(), nextCursor = ""),
+        )
+
+        repository.listContacts()
+
+        io.mockk.coVerify(exactly = 1) {
+            apiClient.listContacts(
+                cursor = null,
+                limit = 50,
+                search = null,
+                includeArchived = null,
+                circle = null,
+            )
+        }
+    }
+
+    @Test
     fun `listContacts applies incremental sync deletions to the cache`() = runTest {
         coEvery { apiClient.listContacts(any(), any(), any(), any()) } returns Result.success(
             com.mycorrhizal.crm.model.network.ContactsPage(

@@ -18,7 +18,6 @@
     <string name="nav_home">Start</string>
     <string name="nav_settings">Einstellungen</string>
     <string name="nav_tags">Tags</string>
-    <string name="nav_bulk">Stapeloperationen</string>
     <string name="nav_circles">Kreise</string>
     <string name="nav_network">Netzwerk</string>
     <string name="nav_households">Haushalte</string>
@@ -48,6 +47,14 @@
     <string name="contacts_empty">Noch keine Kontakte</string>
     <string name="contacts_new">Neuer Kontakt</string>
     <string name="contacts_photo_description">Foto von %1$s</string>
+    <!-- M23: Listenbreite — Kreisfilter, Archiv-Umschalter, Inline-Stapelauswahl -->
+    <string name="contacts_filter_circle">Kreis</string>
+    <string name="contacts_all_circles">Alle Kreise</string>
+    <string name="contacts_show_archived">Archivierte anzeigen</string>
+    <string name="contacts_select_mode">Kontakte auswählen</string>
+    <string name="contacts_exit_select_mode">Auswahl beenden</string>
+    <string name="contacts_selected_count">%1$d ausgewählt</string>
+    <string name="contacts_select_all">Alle auswählen</string>
 
     <!-- Contact list: cross-entity search (T87) -->
     <string name="contacts_search_results_header">%1$d Treffer in Notizen und Interaktionen</string>
@@ -530,13 +537,35 @@
 
     <!-- Merge & bulk -->
     <string name="merge_title">Kontakte zusammenführen</string>
-    <string name="merge_other_id">ID des anderen Kontakts</string>
     <string name="merge_preview">Zusammenführung anzeigen</string>
-    <string name="merge_summary">%1$d Notizen, %2$d Aktivitäten, %3$d Beziehungen werden zum behaltenen Kontakt verschoben.</string>
     <string name="merge_no_conflicts">Keine Feldkonflikte — Zusammenführung bereit.</string>
     <string name="merge_commit">Zusammenführen</string>
     <string name="merge_done">Kontakte zusammengeführt.</string>
-    <string name="bulk_title">Stapeloperationen</string>
+    <!-- M23: Zusammenführungsziel per Suche + vollständige Zuordnungsaufschlüsselung -->
+    <string name="merge_keep_hint">Der geöffnete Kontakt wird behalten. Suche nach dem anderen Kontakt, der hinein zusammengeführt werden soll.</string>
+    <string name="merge_pick_other">Anderen Kontakt auswählen</string>
+    <string name="merge_picked_other">%1$s wird in den behaltenen Kontakt zusammengeführt.</string>
+    <string name="merge_move_header">Wird zum behaltenen Kontakt verschoben:</string>
+    <string name="merge_nothing_to_move">Nichts zu verschieben.</string>
+    <string name="merge_count_notes">%1$d Notizen</string>
+    <string name="merge_count_activities">%1$d Aktivitäten</string>
+    <string name="merge_count_reminders">%1$d Erinnerungen</string>
+    <string name="merge_count_reminder_completions">%1$d Erinnerungsabschlüsse</string>
+    <string name="merge_count_edges">%1$d Beziehungsverbindungen</string>
+    <string name="merge_count_household">%1$d Haushaltsmitgliedschaften</string>
+    <string name="merge_count_circles">%1$d Kreismitgliedschaften</string>
+    <string name="merge_count_tags">%1$d Tags</string>
+    <string name="merge_count_life_events">%1$d Lebensereignisse</string>
+    <string name="merge_count_life_event_references">%1$d Lebensereignis-Referenzen</string>
+    <string name="merge_count_agenda">%1$d Gesprächsagenda-Punkte</string>
+    <string name="merge_count_gifts">%1$d Geschenkeinträge</string>
+    <string name="merge_count_field_values">%1$d benutzerdefinierte Feldwerte</string>
+    <string name="merge_count_sync_links">%1$d Sync-Verknüpfungen</string>
+    <string name="merge_count_attachments">%1$d Anhänge</string>
+    <string name="merge_count_preferences">%1$d Präferenzen</string>
+    <string name="merge_count_external_identities">%1$d externe Identitäten</string>
+    <string name="merge_count_external_activities">%1$d externe Aktivitäten</string>
+    <string name="merge_count_cadence">%1$d Cadence-Richtlinien</string>
     <string name="bulk_archive">Archivieren</string>
     <string name="bulk_unarchive">Archiv aufheben</string>
     <string name="bulk_add_circle">Zu Kreis hinzufügen</string>

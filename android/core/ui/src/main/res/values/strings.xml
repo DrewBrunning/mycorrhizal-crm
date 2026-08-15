@@ -21,7 +21,6 @@
     <string name="nav_households">Households</string>
     <string name="nav_circles">Circles</string>
     <string name="nav_tags">Tags</string>
-    <string name="nav_bulk">Bulk operations</string>
     <string name="coming_soon">%1$s — coming in a later phase</string>
     <string name="cd_menu">Menu</string>
     <string name="cd_back">Back</string>
@@ -48,6 +47,14 @@
     <string name="contacts_empty">No contacts yet</string>
     <string name="contacts_new">New contact</string>
     <string name="contacts_photo_description">Photo of %1$s</string>
+    <!-- M23: list breadth — circle filter, archived toggle, inline bulk selection -->
+    <string name="contacts_filter_circle">Circle</string>
+    <string name="contacts_all_circles">All circles</string>
+    <string name="contacts_show_archived">Show archived</string>
+    <string name="contacts_select_mode">Select contacts</string>
+    <string name="contacts_exit_select_mode">Exit selection</string>
+    <string name="contacts_selected_count">%1$d selected</string>
+    <string name="contacts_select_all">Select all</string>
 
     <!-- Contact list: cross-entity search (T87) -->
     <string name="contacts_search_results_header">%1$d matches in notes and activities</string>
@@ -526,13 +533,35 @@
 
     <!-- Merge & bulk -->
     <string name="merge_title">Merge contacts</string>
-    <string name="merge_other_id">Other contact ID to merge</string>
     <string name="merge_preview">Preview merge</string>
-    <string name="merge_summary">%1$d notes, %2$d activities, %3$d relationship edges will be moved to the kept contact.</string>
     <string name="merge_no_conflicts">No field conflicts — merge is ready.</string>
     <string name="merge_commit">Merge</string>
     <string name="merge_done">Contacts merged.</string>
-    <string name="bulk_title">Bulk operations</string>
+    <!-- M23: search-based merge target + full association breakdown -->
+    <string name="merge_keep_hint">The contact you opened will be kept. Search for the other contact to merge into it.</string>
+    <string name="merge_pick_other">Pick the other contact</string>
+    <string name="merge_picked_other">Will merge %1$s into the kept contact.</string>
+    <string name="merge_move_header">Will move to the kept contact:</string>
+    <string name="merge_nothing_to_move">Nothing to move.</string>
+    <string name="merge_count_notes">%1$d notes</string>
+    <string name="merge_count_activities">%1$d activities</string>
+    <string name="merge_count_reminders">%1$d reminders</string>
+    <string name="merge_count_reminder_completions">%1$d reminder completions</string>
+    <string name="merge_count_edges">%1$d relationship edges</string>
+    <string name="merge_count_household">%1$d household memberships</string>
+    <string name="merge_count_circles">%1$d circle memberships</string>
+    <string name="merge_count_tags">%1$d tags</string>
+    <string name="merge_count_life_events">%1$d life events</string>
+    <string name="merge_count_life_event_references">%1$d life event references</string>
+    <string name="merge_count_agenda">%1$d conversation agenda items</string>
+    <string name="merge_count_gifts">%1$d gift items</string>
+    <string name="merge_count_field_values">%1$d custom field values</string>
+    <string name="merge_count_sync_links">%1$d sync links</string>
+    <string name="merge_count_attachments">%1$d attachments</string>
+    <string name="merge_count_preferences">%1$d preferences</string>
+    <string name="merge_count_external_identities">%1$d external identities</string>
+    <string name="merge_count_external_activities">%1$d external activities</string>
+    <string name="merge_count_cadence">%1$d cadence policies</string>
     <string name="bulk_archive">Archive</string>
     <string name="bulk_unarchive">Unarchive</string>
     <string name="bulk_add_circle">Add to circle</string>
