@@ -198,4 +198,71 @@ class AuthRepositoryImplTest {
         assertTrue(result.isFailure)
         assertEquals("Invalid value for field 'current_password'", (result.exceptionOrNull() as ApiError).displayMessage)
     }
+
+    // --- M26: registration + password reset ---
+
+    @Test
+    fun `register delegates to the api client and maps success to Unit`() = runTest {
+        val h = Harness()
+        coEvery { h.apiClient.register("alice", "a@x.com", "hunter2hunter2") } returns Result.success(
+            com.mycorrhizal.crm.model.network.MessageResponse(message = "User registered successfully"),
+        )
+
+        val result = h.repository.register("alice", "a@x.com", "hunter2hunter2")
+
+        assertTrue(result.isSuccess)
+        coVerify { h.apiClient.register("alice", "a@x.com", "hunter2hunter2") }
+    }
+
+    @Test
+    fun `register propagates a duplicate-account rejection`() = runTest {
+        val h = Harness()
+        coEvery { h.apiClient.register(any(), any(), any()) } returns Result.failure(
+            ApiError.Client(409, "User already exists"),
+        )
+
+        val result = h.repository.register("alice", "a@x.com", "hunter2hunter2")
+
+        assertTrue(result.isFailure)
+        assertEquals("User already exists", (result.exceptionOrNull() as ApiError).displayMessage)
+    }
+
+    @Test
+    fun `checkPasswordStrength returns the parsed verdict`() = runTest {
+        val h = Harness()
+        coEvery { h.apiClient.checkPasswordStrength("short") } returns Result.success(
+            com.mycorrhizal.crm.model.network.PasswordStrength(isValid = false, score = 1, feedback = "too weak"),
+        )
+
+        val result = h.repository.checkPasswordStrength("short")
+
+        assertTrue(result.isSuccess)
+        assertEquals(false, result.getOrThrow().isValid)
+    }
+
+    @Test
+    fun `requestPasswordReset returns the server message`() = runTest {
+        val h = Harness()
+        coEvery { h.apiClient.requestPasswordReset("a@x.com") } returns Result.success(
+            com.mycorrhizal.crm.model.network.MessageResponse(message = "If an account exists, password reset instructions were sent"),
+        )
+
+        val result = h.repository.requestPasswordReset("a@x.com")
+
+        assertTrue(result.isSuccess)
+        assertEquals("If an account exists, password reset instructions were sent", result.getOrThrow())
+    }
+
+    @Test
+    fun `confirmPasswordReset delegates to the api client`() = runTest {
+        val h = Harness()
+        coEvery { h.apiClient.confirmPasswordReset("token-1", "newpass123") } returns Result.success(
+            com.mycorrhizal.crm.model.network.MessageResponse(message = "Password reset successful"),
+        )
+
+        val result = h.repository.confirmPasswordReset("token-1", "newpass123")
+
+        assertTrue(result.isSuccess)
+        coVerify { h.apiClient.confirmPasswordReset("token-1", "newpass123") }
+    }
 }

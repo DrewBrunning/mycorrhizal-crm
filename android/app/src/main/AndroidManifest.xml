@@ -53,10 +53,23 @@
             tools:node="remove" />
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- M5 §5: the OIDC native return. The backend's /auth/oidc/login
+                 with client=android redirects here on success
+                 (mycorrhizal://oidc/callback?token=…&language=…&date_format=…)
+                 and with error=… on every failure. singleTask so the deep link
+                 is delivered to the running activity (onNewIntent) rather than
+                 stacking a second instance. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="mycorrhizal" android:host="oidc" android:pathPrefix="/callback" />
             </intent-filter>
         </activity>
 

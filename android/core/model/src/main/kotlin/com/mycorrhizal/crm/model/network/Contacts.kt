@@ -31,8 +31,21 @@ data class ContactSummary(
     @Json(name = "device_lookup_key") val deviceLookupKey: String? = null,
 ) {
     val displayName: String
-        get() = fn?.takeIf { it.isNotBlank() }
-            ?: listOfNotNull(firstname, lastname).joinToString(" ").ifBlank { "#$id" }
+        get() {
+            // M5 §3.2: derive from the name components the way web's
+            // ContactsPage does — `firstname "nickname" lastname` — instead of
+            // preferring `fn` verbatim. The backend's `fn` is often a
+            // given-name-only value for CRM contacts, so the list showed just
+            // "Elizabeth" where web showed "Elizabeth Brunning". Falls back to
+            // `fn`, then the id.
+            val parts = listOfNotNull(
+                firstname?.takeIf { it.isNotBlank() },
+                nickname?.takeIf { it.isNotBlank() }?.let { "\"$it\"" },
+                lastname?.takeIf { it.isNotBlank() },
+            )
+            if (parts.isNotEmpty()) return parts.joinToString(" ")
+            return fn?.takeIf { it.isNotBlank() } ?: "#$id"
+        }
 }
 
 /** GET /contacts response envelope (T17 cursor pagination). */
