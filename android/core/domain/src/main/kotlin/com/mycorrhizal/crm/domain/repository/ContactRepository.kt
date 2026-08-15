@@ -32,8 +32,16 @@ interface ContactRepository {
         limit: Int = 50,
         search: String? = null,
         circle: String? = null,
+        circleLegacy: String? = null,
         includeArchived: Boolean? = null,
     ): Result<ContactsPage>
+
+    /**
+     * M26: GET /contacts/circles?legacy=true — the distinct legacy free-text
+     * circle strings still in the old flat `contacts.circles` JSON column, for
+     * the circle/tag-triage tool.
+     */
+    suspend fun listLegacyCircles(): Result<List<String>>
 
     /** Fetch one contact from the server, falling back to the cached copy. */
     suspend fun getContact(id: Int): Result<ContactRecordResponse>
