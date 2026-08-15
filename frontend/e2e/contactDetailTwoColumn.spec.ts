@@ -11,15 +11,25 @@ import type { Page, Locator } from '@playwright/test';
 //             2-up in a grid (single-card sections and everything below lg
 //             render exactly as before).
 //
+// Two later changes altered guards in this file, so the history is worth
+// keeping straight:
+//   - T109 (2026-08-15) moved the edit pencil from the far right of the field
+//     row to beside the field-name label, which obsoleted every
+//     "action-cluster gap" proxy for the two-column grid. The guards now use
+//     row *width* (single-column rows span the full card; half-column rows
+//     don't) instead of edit-button distance.
+//   - The 2026-08-15 testing round dropped `fullWidth` from the Connections
+//     panel (it is a list, not the graph), so Relationships and Connections
+//     are now equal half-columns in the "people" section.
+//
 // These specs measure real geometry (bounding boxes) rather than asserting
 // classes, because the complaint the ticket fixes is a *distance* and only
-// layout can prove it's actually shorter. The pre-fix numbers, from the
-// ticket: field row 1136px wide, value ~34px in, actions at the far right
-// edge — up to ~1100px of reach on a short value.
+// layout can prove it's actually shorter.
 function fieldRow(page: Page, label: string): Locator {
-  // ContactInformation rows are icon | content Box | actions; the caption
-  // label is inside the content Box, so two parents up is the row root.
-  return page.getByText(label, { exact: true }).first().locator('..').locator('..');
+  // ContactInformation rows are icon | content Box. T109 moved the edit
+  // pencil into the caption's own flex wrapper, so the caption is now three
+  // boxes up from the row root (caption -> label row -> content box -> row).
+  return page.getByText(label, { exact: true }).first().locator('..').locator('..').locator('..');
 }
 
 test.describe('T74 field action distance — Level 1, field grid', () => {
@@ -74,7 +84,7 @@ test.describe('T74 field action distance — Level 1, field grid', () => {
     }
   });
 
-  test('stays a single column at 1280px and 1024px — and actions stay far below lg', async ({ page }) => {
+  test('stays a single column at 1280px and 1024px', async ({ page }) => {
     const contact = await createTestContact(page.request, {
       phones: [{ type: 'mobile', value: '+1 555-0101' }],
     });
@@ -98,19 +108,17 @@ test.describe('T74 field action distance — Level 1, field grid', () => {
           expect(pBox!.x).toBeCloseTo(bBox!.x, 0);
           expect(pBox!.y).toBeGreaterThan(bBox!.y);
 
-          // Regression guard for the ticket's core complaint: below lg the
-          // field row is back to full width, so the action cluster sits far
-          // from a short value again (that is the intended, unchanged
-          // single-column behavior — the complaint was specific to wide
-          // screens). Measured ~690px; the two-column gap is under ~500px.
+          // Below lg the field grid is a single column, so a field row spans
+          // the full card width. T109 moved the edit pencil next to the field
+          // name, so the old "action cluster sits far from the value" proxy for
+          // single-column no longer holds — the row width is the faithful guard
+          // that the grid doesn't leak below lg. Numbers at 1024: the 256px
+          // drawer leaves a 768px content column, so a full row is ~672px while
+          // a half-column row would be ~330px — 500 sits cleanly between.
           const row = fieldRow(page, 'Phone');
-          const value = row.locator('a[href^="tel:"]').first();
-          const edit = row.getByRole('button', { name: 'Edit' });
-          const [valueBox, editBox] = await Promise.all([value.boundingBox(), edit.boundingBox()]);
-          expect(valueBox && editBox).toBeTruthy();
-          const gap = editBox!.x - valueBox!.x;
-          console.log(`T74: phone value→edit gap at ${width}px = ${Math.round(gap)}px`);
-          expect(gap).toBeGreaterThan(600);
+          const rowBox = await row.boundingBox();
+          expect(rowBox, 'phone field row must be present').toBeTruthy();
+          expect(rowBox!.width).toBeGreaterThan(500);
         }
       }
     } finally {
@@ -180,7 +188,7 @@ test.describe('T74 section cards — Level 2, 2-up PanelCards', () => {
     }
   });
 
-  test('Relationships sits in a half column and the Connections panel spans full width (people)', async ({ page }) => {
+  test('Relationships and Connections sit side by side as equal half-columns (people)', async ({ page }) => {
     const contact = await createTestContact(page.request);
 
     try {
@@ -188,22 +196,18 @@ test.describe('T74 section cards — Level 2, 2-up PanelCards', () => {
       await page.goto(`/contacts/${contact.ID}`);
       await waitForLoading(page);
 
-      // Per the merged design the ConnectionsPanel gets a full-width row of
-      // its own below Relationships (the T74 design called it a graph, so it
-      // deliberately doesn't squeeze into a half column): Relationships is
-      // confined to one grid column while Connections spans both.
+      // Testing-round feedback: Connections is a list (T10's ego-centric chain
+      // panel), not the force-graph, so it shares the "people" section's second
+      // column with Relationships instead of taking a full-width row of its own.
+      await expectSideBySide(page, 'Relationships', 'Connections');
       const relationships = page.getByRole('heading', { name: 'Relationships', exact: true });
       const connections = page.getByRole('heading', { name: 'Connections', exact: true });
-      await expect(relationships).toBeVisible();
-      await expect(connections).toBeVisible();
       const card = (heading: Locator) => heading.locator('..').locator('..').locator('..');
-      const relCard = card(relationships);
-      const conCard = card(connections);
-      const [relBox, conBox] = await Promise.all([relCard.boundingBox(), conCard.boundingBox()]);
+      const [relBox, conBox] = await Promise.all([card(relationships).boundingBox(), card(connections).boundingBox()]);
       expect(relBox && conBox).toBeTruthy();
-      // A half-column card is ~530px wide; the full-width Connections card is
-      // ~1168px — well over 1.5x.
-      expect(conBox!.width).toBeGreaterThan(relBox!.width * 1.5);
+      // Both are half columns (~556px each) — equal width, not the old
+      // full-width Connections (~1168px) the pre-issue-8 layout produced.
+      expect(Math.abs(conBox!.width - relBox!.width)).toBeLessThan(40);
     } finally {
       await deleteTestContact(page.request, contact.ID);
     }

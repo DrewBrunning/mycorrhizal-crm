@@ -610,3 +610,35 @@ test('a merge whose selected rows left the loaded page alerts and clears the sta
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   alertSpy.mockRestore();
 });
+
+// T111: the search field, filter toolbar and bulk-action bar are pinned above
+// the scrolling list. Climb from an element to its nearest `position: sticky`
+// ancestor (MUI's `sx` emits a CSS class, so this must use getComputedStyle,
+// not a class/attribute selector) and assert the search field and the bulk
+// bar share one sticky container that the contact cards do NOT live in.
+function closestSticky(el: Element | null): Element | null {
+  let cur: Element | null = el;
+  while (cur) {
+    if (getComputedStyle(cur).position === 'sticky') return cur;
+    cur = cur.parentElement;
+  }
+  return null;
+}
+
+test('search, filters and bulk actions are pinned above the scrolling list (T111)', async () => {
+  mockTwoPages();
+  renderPage();
+
+  const search = await screen.findByLabelText(/search contacts/i);
+  const sticky = closestSticky(search);
+  expect(sticky, 'search field must live inside a sticky container').not.toBeNull();
+
+  // The bulk bar (its "Select all" is always visible once contacts load) shares
+  // the same sticky container, so bulk actions stay reachable while scrolling.
+  const selectAll = screen.getByLabelText('Select all');
+  expect(closestSticky(selectAll)).toBe(sticky);
+
+  // The contact cards are outside the sticky block — they are what scrolls.
+  const alice = screen.getByLabelText('Select Alice');
+  expect(closestSticky(alice)).not.toBe(sticky);
+});

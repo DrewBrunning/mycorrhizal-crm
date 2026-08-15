@@ -1533,10 +1533,11 @@ export default function ContactDetailPage() {
             onReject={handleRejectSuggestion}
           />
         </PanelCard>
-        {/* fullWidth: the force-graph needs real width to be usable, so it
-            gets its own full-width row below Relationships rather than
-            squeezing into a ~530px column. */}
-        <PanelCard title={t('connections.title')} fullWidth>
+        {/* Testing feedback: Connections is a list (T10's ego-centric chain
+            panel), not the force-graph, so it belongs in the second column
+            next to Relationships at lg+ rather than holding a full-width row
+            on its own. */}
+        <PanelCard title={t('connections.title')}>
           <ConnectionsPanel contactUid={record.uid} />
         </PanelCard>
       </SectionGroup>

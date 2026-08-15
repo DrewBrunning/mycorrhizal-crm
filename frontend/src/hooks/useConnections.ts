@@ -20,7 +20,10 @@ export function useConnections(fromUid: string | undefined) {
       try {
         const result = await getConnections({
           from: uid,
-          depth: opts?.depth ?? 3,
+          // Default to 1 hop, matching ConnectionsPanel's default (testing
+          // feedback) — the hook should never silently fall back to a wider
+          // traversal than the panel's own default.
+          depth: opts?.depth ?? 1,
           relation: opts?.relation?.trim() || undefined,
         });
         setConnections(result);

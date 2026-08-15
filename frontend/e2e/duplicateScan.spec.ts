@@ -39,17 +39,24 @@ test.describe('Duplicate scan', () => {
     });
 
     try {
-      // --- API contract: the scan returns both pairs with the right reasons
-      const scan = await request.get(`${API_BASE_URL}/contacts/duplicates`);
-      expect(scan.ok(), `scan failed: ${await scan.text()}`).toBeTruthy();
-      const body = await scan.json();
-      const hasPair = (uids: string[]) =>
-        body.pairs.some(
-          (p: { a: { uid: string }; b: { uid: string }; reasons: string[] }) =>
-            (p.a.uid === uids[0] && p.b.uid === uids[1]) || (p.a.uid === uids[1] && p.b.uid === uids[0])
+      // --- API contract: the scan returns both pairs with the right reasons.
+      // The scan is a read that can briefly miss the just-created contacts
+      // through a stale WAL read snapshot, so poll until both pairs surface.
+      const hasPair = (pairs: { a: { uid: string }; b: { uid: string } }[], uids: string[]) =>
+        pairs.some(
+          (p) => (p.a.uid === uids[0] && p.b.uid === uids[1]) || (p.a.uid === uids[1] && p.b.uid === uids[0])
         );
-      expect(hasPair([keeper.uid, loser.uid]), 'same-email pair must be detected').toBeTruthy();
-      expect(hasPair([phoneA.uid, phoneB.uid]), 'country-code phone pair must be detected').toBeTruthy();
+      await expect
+        .poll(
+          async () => {
+            const res = await request.get(`${API_BASE_URL}/contacts/duplicates`);
+            if (!res.ok()) throw new Error(`scan failed: ${await res.text()}`);
+            const pairs = (await res.json()).pairs as { a: { uid: string }; b: { uid: string } }[];
+            return hasPair(pairs, [keeper.uid, loser.uid]) && hasPair(pairs, [phoneA.uid, phoneB.uid]);
+          },
+          { message: 'scan must detect the same-email and country-code phone pairs', timeout: 10000 }
+        )
+        .toBe(true);
 
       // --- UI: open the review dialog from the Contacts page
       await page.goto('/contacts');
@@ -81,15 +88,22 @@ test.describe('Duplicate scan', () => {
 
       await expect(reviewDialog.getByText(`${E2E_CONTACT_PREFIX}${runId}PhoneA Scan`)).not.toBeVisible({ timeout: 10000 });
 
-      // The dismissal is a server-side fact: the scan endpoint agrees.
-      const afterDismiss = await (await request.get(`${API_BASE_URL}/contacts/duplicates`)).json();
-      expect(
-        afterDismiss.pairs.some(
-          (p: { a: { uid: string }; b: { uid: string } }) =>
-            (p.a.uid === phoneA.uid && p.b.uid === phoneB.uid) || (p.a.uid === phoneB.uid && p.b.uid === phoneA.uid)
-        ),
-        'a dismissed pair must not be offered again by the scan'
-      ).toBeFalsy();
+      // The dismissal is a server-side fact: the scan endpoint agrees. The
+      // dismissal write and a follow-up scan can race through the WAL read
+      // snapshot, so poll until the pair drops out.
+      await expect
+        .poll(
+          async () => {
+            const res = await request.get(`${API_BASE_URL}/contacts/duplicates`);
+            if (!res.ok()) throw new Error(`scan failed: ${await res.text()}`);
+            const pairs = (await res.json()).pairs as { a: { uid: string }; b: { uid: string } }[];
+            return pairs.some(
+              (p) => (p.a.uid === phoneA.uid && p.b.uid === phoneB.uid) || (p.a.uid === phoneB.uid && p.b.uid === phoneA.uid)
+            );
+          },
+          { message: 'a dismissed pair must not be offered again by the scan', timeout: 10000 }
+        )
+        .toBe(false);
 
       // --- Persistence: reopen the dialog and the pair stays gone
       await reviewDialog.getByRole('button', { name: 'Close' }).click();

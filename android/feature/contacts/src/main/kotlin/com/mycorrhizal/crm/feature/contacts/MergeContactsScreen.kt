@@ -126,6 +126,7 @@ fun MergeContactsScreenContent(
                 onQueryChange = onSearchQueryChange,
                 onPick = onPick,
                 labelRes = R.string.merge_pick_other,
+                hiddenMatchCount = state.hiddenMatchCount,
                 modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
             )
 

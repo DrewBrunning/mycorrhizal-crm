@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalComposeUiApi::class)
+
 package com.mycorrhizal.crm.feature.contacts
 
 import androidx.compose.foundation.layout.Arrangement
@@ -40,6 +42,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.autofill.AutofillType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -49,6 +53,7 @@ import com.mycorrhizal.crm.model.network.Email
 import com.mycorrhizal.crm.model.network.Phone
 import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.ui.components.AddressEditor
+import com.mycorrhizal.crm.ui.components.AutofillOutlinedTextField
 import com.mycorrhizal.crm.ui.components.EmailSpec
 import com.mycorrhizal.crm.ui.components.LinkSpec
 import com.mycorrhizal.crm.ui.components.MultiValueEditor
@@ -192,40 +197,46 @@ fun ContactFormContent(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         SectionLabel(stringResource(R.string.contact_name_section))
-        OutlinedTextField(
+        // T115: the name fields advertise their AutofillType so the Android
+        // Autofill service can offer a fill (Google/device address book).
+        AutofillOutlinedTextField(
             value = state.prefix,
             onValueChange = onPrefixChange,
-            label = { Text(stringResource(R.string.contact_prefix)) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            label = stringResource(R.string.contact_prefix),
+            autofillType = AutofillType.PersonNamePrefix,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(
+            AutofillOutlinedTextField(
                 value = state.givenName,
                 onValueChange = onGivenNameChange,
-                label = { Text(stringResource(R.string.contact_given_name)) },
-                singleLine = true,
+                label = stringResource(R.string.contact_given_name),
+                autofillType = AutofillType.PersonFirstName,
                 modifier = Modifier.weight(1f),
             )
-            OutlinedTextField(
+            AutofillOutlinedTextField(
                 value = state.surname,
                 onValueChange = onSurnameChange,
-                label = { Text(stringResource(R.string.contact_surname)) },
-                singleLine = true,
+                label = stringResource(R.string.contact_surname),
+                autofillType = AutofillType.PersonLastName,
                 modifier = Modifier.weight(1f),
             )
         }
-        OutlinedTextField(
+        AutofillOutlinedTextField(
             value = state.middleName,
             onValueChange = onMiddleNameChange,
-            label = { Text(stringResource(R.string.contact_middle_name)) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            label = stringResource(R.string.contact_middle_name),
+            autofillType = AutofillType.PersonMiddleName,
         )
-        OutlinedTextField(
+        AutofillOutlinedTextField(
             value = state.suffix,
             onValueChange = onSuffixChange,
-            label = { Text(stringResource(R.string.contact_suffix)) },
+            label = stringResource(R.string.contact_suffix),
+            autofillType = AutofillType.PersonNameSuffix,
+        )
+        OutlinedTextField(
+            value = state.nickname,
+            onValueChange = onNicknameChange,
+            label = { Text(stringResource(R.string.contact_nickname)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )

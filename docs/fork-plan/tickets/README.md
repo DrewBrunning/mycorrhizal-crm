@@ -188,23 +188,56 @@ idea, not a bug — filed in Deferred → Feature ideas instead, not ranked here
 >   `:feature:tracking` and M8's Cluster F). The only genuinely-unbuilt Android-native piece is the
 >   in-overlay quick-capture *sheet*, already tracked as M5 §4.
 
+> **Testing-round triage, 2026-08-15.** Nine issues from the latest round, one ticket per issue
+> (T109–T115) plus two one-line fixes done inline (Connections now defaults to 1 hop instead of 3; the
+> Connections panel is no longer `fullWidth`, so it sits next to Relationships in the two-column "people"
+> section). One of the nine (extraneous names in a merge search) was already fixed on **web** by
+> [T101](145-T101-merge-picker-strict-match.md) but shipped **unfixed on Android** in M23's merge screen —
+> it's filed as [T112](156-T112-android-merge-search-strict-match.md). The most interesting find is
+> [T113](157-T113-duplicate-scan-self-pairs.md): the T93 duplicate scan's phone tier can pair a contact
+> with *itself* when two of its own numbers share a `PhoneKey`, which is exactly what the reported
+> `"merge_id must differ from keep_id"` error was.
+>
+> **All seven implemented 2026-08-15** on `feature/t109-t115-testing-round` (see each ticket's landing
+> note). Worth reading there: T115's note records an environment finding — under AGP 9.3.1/Gradle 9.5.0 the
+> `feature:contacts` module does **not discover newly-added test files** (new files in `core:ui` /
+> `feature:timeline` and new methods in existing files are fine), which is why T115's tests live in the
+> existing `MultiValueEditorTest` rather than a new file. Frontend (`tsc` + 716 vitest), backend (`go build
+> ./... && go vet ./... && go test ./...`), and Android (`testDebugUnitTest` on core:ui/contacts/timeline +
+> `lintDebug` + `:app:assembleDebug`) all green. Browser/on-device hand-verification for the visual tickets
+> (T109/T110/T111/T114) and T115's autofill prompt is still outstanding — no browser/device in the build
+> environment. **Review pass (same day):** the autofill wrapper's bounding-box tracking moved out of Compose
+> state (it was firing recomposition on every scroll); the Android merge search now shows the hidden-match
+> caption even when the strict filter hid *every* server result (web parity); a T111 sticky-container
+> regression test was added; and `useConnections`' latent `depth ?? 3` fallback was aligned to the panel's
+> new depth-1 default. **CI follow-up (same day):** the T74 e2e guards in `contactDetailTwoColumn.spec.ts`
+> were failing on CI because T109's pencil move and the Connections `fullWidth` removal invalidated their
+> geometry proxies — the below-lg guard now asserts row width, the Connections section card asserts equal
+> half-columns, and the `fieldRow` helper climbs one more level; full 182-test e2e suite green against the
+> Docker test stack.
+
 ### Backend
 
 | Ticket | Status |
 |---|---|
 | [T104](148-T104-suggest-relationships-from-relationships.md) · Suggest relationships from relationships | **NOT READY** — needs a design pass first; see the ticket. R3. |
+| [T113](157-T113-duplicate-scan-self-pairs.md) · Duplicate scan pairs a contact with itself | **DONE** (2026-08-15 — `SELECT DISTINCT` in the phone tier + `addTier` self-pair guard; root cause of the "merge_id must differ from keep_id" report; regression test hand-verified) |
 
 ### Web
 
 | Ticket | Status |
 |---|---|
-| | |
+| [T111](155-T111-contacts-sticky-toolbar.md) · Contacts: pin search/filters/bulk actions above the scrolling list | **DONE** (2026-08-15 — sticky header block inside the page's max-width box; bulk actions stay reachable while scrolling. Landed with T110 in one commit.) |
+| [T110](154-T110-contacts-toolbar-overlap.md) · Contacts toolbar "Add Contact" overlaps when wrapping | **DONE** (2026-08-15 — flex `gap` container replaces the `Stack`'s margin spacing so wrapped lines don't touch) |
+| [T109](153-T109-field-edit-button-by-label.md) · Field edit pencil to the field name, not the far right | **DONE** (2026-08-15 — the pencil rides the caption in `EditableField`/`EditableArrayField`; copy button stays right) |
+| [T114](158-T114-connections-top-five.md) · Collapse Connections to its top five | **DONE** (2026-08-15 — 5 by default + "View all (N)"/"Show less", re-collapses on a fresh query) |
 
 ### Android
 
 | Ticket | Status |
 |---|---|
-| | |
+| [T112](156-T112-android-merge-search-strict-match.md) · Android merge search shows contacts that don't contain the typed string | **DONE** (2026-08-15 — client-side strict `displayName` filter + hidden-match caption in `MergeContactsViewModel`, T101's web fix ported; test hand-verified) |
+| [T115](159-T115-android-autofill.md) · Contact form fields don't prompt for autofill | **DONE** (2026-08-15 — `AutofillOutlinedTextField` wiring name/email/phone/address fields through `AutofillType`/`AutofillNode`; on-device prompt verification still outstanding) |
 
 > **N8 (2FA/TOTP) moved to Feature ideas, 2026-08-07.** For a self-hosted instance
 > going through OIDC the IdP already owns 2FA, so app-level TOTP is redundant there; it only

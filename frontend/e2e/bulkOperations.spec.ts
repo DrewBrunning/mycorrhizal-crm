@@ -77,9 +77,16 @@ test.describe('Bulk operations', () => {
 
       await expect(page.getByText(/\d+ selected/)).not.toBeVisible();
 
+      // Each contact must be gone. The delete commit and a follow-up GET can
+      // race through SQLite's pooled connections (a WAL read snapshot), so
+      // poll briefly rather than asserting a single immediate request.
       for (const c of contacts) {
-        const lookup = await page.request.get(`${API_BASE_URL}/contacts/${c.ID}`);
-        expect(lookup.status(), `contact ${c.ID} should be gone after bulk delete`).toBe(404);
+        await expect
+          .poll(async () => (await page.request.get(`${API_BASE_URL}/contacts/${c.ID}`)).status(), {
+            message: `contact ${c.ID} should be gone after bulk delete`,
+            timeout: 10000,
+          })
+          .toBe(404);
       }
     } finally {
       await page.request.delete(`${API_BASE_URL}/tags/${tag.id}`).catch(() => {});

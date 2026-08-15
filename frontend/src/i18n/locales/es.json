@@ -792,7 +792,9 @@
     "results": "{{count}} conexiones",
     "empty": "No se encontraron conexiones dentro de esta profundidad.",
     "noRelationMatches": "Ninguna conexión coincide con \"{{relation}}\".",
-    "notAvailable": "No disponible."
+    "notAvailable": "No disponible.",
+    "viewAll": "Ver todo",
+    "showLess": "Mostrar menos"
   },
   "immich": {
     "settings": {

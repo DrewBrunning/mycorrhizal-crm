@@ -101,11 +101,16 @@ test.describe('Contacts', () => {
       // desktop width (1280×720) where the inline Delete button is visible.
       await page.getByRole('button', { name: 'Delete' }).click();
 
-      // Redirects back to the list, and the contact is gone.
+      // Redirects back to the list, and the contact is gone. The delete commit
+      // and a follow-up GET can race through SQLite's pooled connections (a WAL
+      // read snapshot), so poll briefly rather than asserting a single request.
       await expect(page).toHaveURL(/\/contacts$/);
-
-      const lookup = await page.request.get(`${API_BASE_URL}/contacts/${contact.ID}`);
-      expect(lookup.status()).toBe(404);
+      await expect
+        .poll(async () => (await page.request.get(`${API_BASE_URL}/contacts/${contact.ID}`)).status(), {
+          message: 'the deleted contact must no longer be retrievable',
+          timeout: 10000,
+        })
+        .toBe(404);
     } finally {
       await deleteTestContact(page.request, contact.ID);
     }

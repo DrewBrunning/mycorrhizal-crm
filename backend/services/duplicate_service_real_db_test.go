@@ -69,3 +69,54 @@ func TestFindDuplicatePairs_QueryCountIsBounded(t *testing.T) {
 
 	assert.LessOrEqual(t, count, 6, "duplicate scan must issue a constant, small number of queries regardless of contact count")
 }
+
+// TestFindDuplicatePairs_NeverPairsContactWithItself pins T113: the phone
+// tier must not pair a contact with itself. FlattenPhones emits a duplicate
+// token when a contact has two numbers that reduce to the same PhoneKey (e.g.
+// "+1 800 555 1234" → digits "18005551234" + key "8005551234" next to
+// "800-555-1234" → digits "8005551234" whose key equals its digits), so
+// without the DISTINCT guard the scan grouped that one contact's own rows and
+// produced a pair whose two sides are the same person — which surfaced in the
+// review UI as a same-person "duplicate" whose Merge failed with "merge_id
+// must differ from keep_id".
+func TestFindDuplicatePairs_NeverPairsContactWithItself(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "dup-selfpair.db")
+	db, err := database.InitDB(dbPath)
+	require.NoError(t, err)
+
+	user := models.User{Username: "selfpair", Password: "password123!A", Email: "selfpair@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	// Self-key: two numbers that reduce to the same last-10 key, so
+	// FlattenPhones emits the key token twice for this one contact.
+	self := models.Contact{UserID: user.ID, Firstname: "Jordan", Lastname: "Duplicate",
+		Phones: []models.ContactPhone{
+			{Type: "mobile", Value: "+1 800 555 1234"},
+			{Type: "home", Value: "800-555-1234"},
+		}}
+	require.NoError(t, db.Create(&self).Error)
+
+	// Real duplicate: a genuinely different contact sharing the same key.
+	other := models.Contact{UserID: user.ID, Firstname: "Meike", Lastname: "Other",
+		Phones: []models.ContactPhone{{Type: "mobile", Value: "(800) 555-1234"}}}
+	require.NoError(t, db.Create(&other).Error)
+
+	pairs, err := FindDuplicatePairs(db, user.ID)
+	require.NoError(t, err)
+
+	// No pair may be a contact against itself, whatever the tier.
+	for _, p := range pairs {
+		assert.NotEqual(t, p.A.UID, p.B.UID,
+			"duplicate scan must never pair a contact with itself: %s == %s", p.A.UID, p.B.UID)
+	}
+
+	// The genuine cross-contact phone match must still be detected.
+	var found bool
+	for _, p := range pairs {
+		aUID, bUID := p.A.UID, p.B.UID
+		if (aUID == self.VCardUID && bUID == other.VCardUID) || (aUID == other.VCardUID && bUID == self.VCardUID) {
+			found = true
+		}
+	}
+	assert.True(t, found, "shared PhoneKey between two different contacts must still be reported as a duplicate")
+}

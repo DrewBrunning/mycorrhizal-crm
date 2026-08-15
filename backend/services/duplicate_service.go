@@ -112,6 +112,14 @@ func FindDuplicatePairs(db *gorm.DB, userID uint) ([]models.DuplicatePair, error
 	// and PhoneKeys, see FlattenPhones in models/contact.go) via a json_each
 	// split, keep tokens of at least 7 digits (PhoneKey returns "" below 7),
 	// then keep only tokens shared by more than one contact.
+	//
+	// T113: the outer SELECT is DISTINCT on (id, token) so a single contact can
+	// never emit the same token twice. FlattenPhones legitimately emits a
+	// duplicate token when a contact has two numbers that reduce to the same
+	// PhoneKey (e.g. "+1 800 555 1234" next to "800-555-1234"), and without
+	// DISTINCT the scan would pair that contact with ITSELF — which then made
+	// the web review surface offer a same-person merge that failed with
+	// "merge_id must differ from keep_id".
 	var phoneRows []tierRow
 	if err := db.Raw(`WITH split AS (
 			SELECT contacts.id, value AS token
@@ -120,7 +128,7 @@ func FindDuplicatePairs(db *gorm.DB, userID uint) ([]models.DuplicatePair, error
 			  AND json_valid('["' || replace(phones_normalized, ' ', '","') || '"]')
 			  AND length(value) >= 7
 		)
-		SELECT split.id, token AS key, '' AS key2 FROM split
+		SELECT DISTINCT split.id, token AS key, '' AS key2 FROM split
 		WHERE token IN (SELECT token FROM split GROUP BY token HAVING COUNT(*) > 1)`, userID).Scan(&phoneRows).Error; err != nil {
 		return nil, err
 	}
@@ -139,6 +147,13 @@ func FindDuplicatePairs(db *gorm.DB, userID uint) ([]models.DuplicatePair, error
 			for i := 0; i < len(group); i++ {
 				for j := i + 1; j < len(group); j++ {
 					a, b := group[i], group[j]
+					// T113: defense in depth for any tier that could hand us a
+					// self-row (a contact twice in its own group) -- the phone
+					// tier is DISTINCT-guarded at the SQL, but a future tier
+					// must not silently pair a contact with itself either.
+					if a == b {
+						continue
+					}
 					if a > b {
 						a, b = b, a
 					}

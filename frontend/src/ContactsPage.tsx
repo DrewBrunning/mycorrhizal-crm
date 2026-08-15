@@ -320,145 +320,174 @@ export default function ContactsPage() {
       <Typography variant="h5" gutterBottom sx={{ mb: 2 }}>
         {t('contacts.title')}
       </Typography>
-      <TextField
-        label={t('contacts.searchPlaceholder')}
-        value={searchInput}
-        onChange={(e) => setSearchInput(e.target.value)}
-        fullWidth
-        size="small"
-        sx={{ mb: 2 }}
-        helperText={searchInput.trim().length === 1 ? t('contacts.searchMinLengthHint') : undefined}
-        slotProps={{
-          input: {
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon />
-              </InputAdornment>
-            ),
-            endAdornment: searchInput ? (
-              <InputAdornment position="end">
-                <IconButton size="small" onClick={() => setSearchInput('')} aria-label={t('contacts.searchClear')}>
-                  <ClearIcon fontSize="small" />
-                </IconButton>
-              </InputAdornment>
-            ) : undefined,
-          },
+      {/* T111: search, filters and bulk actions are pinned above the scrolling
+          list. The sticky offset clears the fixed AppBar (the same
+          { xs: 56, sm: 64 } top ContactDetailPage's jump-nav uses), and the
+          opaque background keeps scrolling cards from showing through. */}
+      <Box
+        sx={{
+          position: 'sticky',
+          top: { xs: 56, sm: 64 },
+          zIndex: 10,
+          bgcolor: 'background.paper',
+          pt: 1,
+          pb: 1.5,
+          mb: 1.5,
         }}
-      />
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} mb={2} alignItems="center" flexWrap="wrap">
-        <FormControl sx={{ minWidth: 180 }} size="small">
-          <InputLabel id="circle-select-label">{t('contacts.filterByCircle')}</InputLabel>
-          <Select
-            labelId="circle-select-label"
-            value={selectedCircle}
-            label={t('contacts.filterByCircle')}
-            onChange={e => setSelectedCircle(e.target.value)}
-          >
-            <MenuItem value="">{t('contacts.allCircles')}</MenuItem>
-            {circles.map(c => (
-              <MenuItem key={c.id} value={c.name}>{c.name}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        <FormControl sx={{ minWidth: 220 }} size="small">
-          <InputLabel id="sort-select-label">{t('contacts.sortBy')}</InputLabel>
-          <Select
-            labelId="sort-select-label"
-            value={`${sort}:${order}`}
-            label={t('contacts.sortBy')}
-            onChange={e => setSortSelection(e.target.value)}
-          >
-            <MenuItem value="name:asc">{t('contacts.sortNameAsc')}</MenuItem>
-            <MenuItem value="name:desc">{t('contacts.sortNameDesc')}</MenuItem>
-            <MenuItem value="updated_at:desc">{t('contacts.sortUpdatedDesc')}</MenuItem>
-            <MenuItem value="updated_at:asc">{t('contacts.sortUpdatedAsc')}</MenuItem>
-          </Select>
-        </FormControl>
-        <FormControlLabel
-          control={
-            <Switch
-              checked={showArchived}
-              onChange={(e) => setShowArchived(e.target.checked)}
-              size="small"
-            />
-          }
-          label={t('contacts.showArchived')}
-          sx={{ ml: 0.5, whiteSpace: 'nowrap' }}
+      >
+        <TextField
+          label={t('contacts.searchPlaceholder')}
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          fullWidth
+          size="small"
+          sx={{ mb: 1.5 }}
+          helperText={searchInput.trim().length === 1 ? t('contacts.searchMinLengthHint') : undefined}
+          slotProps={{
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+              endAdornment: searchInput ? (
+                <InputAdornment position="end">
+                  <IconButton size="small" onClick={() => setSearchInput('')} aria-label={t('contacts.searchClear')}>
+                    <ClearIcon fontSize="small" />
+                  </IconButton>
+                </InputAdornment>
+              ) : undefined,
+            },
+          }}
         />
-        {/* T103: the contact-info filter defaults ON; "Show all" turns it off.
-            Label matches the ticket — the unchecked default is the filter. */}
-        <FormControlLabel
-          control={
-            <Switch
-              checked={showAll}
-              onChange={(e) => toggleShowAll(e.target.checked)}
-              size="small"
-            />
-          }
-          label={t('contacts.showAll')}
-          sx={{ ml: 0.5, whiteSpace: 'nowrap' }}
-        />
-        <Button
-          variant="outlined"
-          startIcon={<FileUploadIcon />}
-          onClick={() => setImportDialogOpen(true)}
-          sx={{ whiteSpace: 'nowrap' }}
+        {/* T110: a plain flex container with CSS `gap`, not Stack's
+            margin-based spacing -- margin spacing leaves no cross-axis gap
+            between *wrapped* flex lines, so the toolbar's buttons
+            touched/overlapped when the row wrapped at mid widths. */}
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            alignItems: { xs: 'stretch', sm: 'center' },
+            flexWrap: 'wrap',
+            gap: 1.5,
+            mb: 1.5,
+          }}
         >
-          {t('contacts.import.button', 'Import')}
-        </Button>
-        <Button
-          variant="outlined"
-          startIcon={<DifferenceIcon />}
-          onClick={() => setReviewDuplicatesOpen(true)}
-          sx={{ whiteSpace: 'nowrap' }}
-        >
-          {t('contacts.reviewDuplicates')}
-        </Button>
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<PersonAddIcon />}
-          onClick={() => setAddDialogOpen(true)}
-          sx={{ whiteSpace: 'nowrap' }}
-        >
-          {t('contacts.add.button')}
-        </Button>
-      </Stack>
-      {/* T103: disclose the default-on filter so it never reads as silently
-          lost data — a user who imported 500 contacts and sees 340 must be
-          able to tell that the 160 were hidden, not deleted. */}
-      {!showAll && hiddenCount !== undefined && hiddenCount > 0 && (
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          {t('contacts.hiddenContactable', { count: hiddenCount })}
-        </Typography>
-      )}
-      {selectedCircle && (
-        <Box sx={{ mb: 2, p: 1.5, bgcolor: 'action.hover', borderRadius: 1, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-          <Chip 
-            label={selectedCircle} 
-            size="small" 
-            onDelete={clearCircle} 
+          <FormControl sx={{ minWidth: 180 }} size="small">
+            <InputLabel id="circle-select-label">{t('contacts.filterByCircle')}</InputLabel>
+            <Select
+              labelId="circle-select-label"
+              value={selectedCircle}
+              label={t('contacts.filterByCircle')}
+              onChange={e => setSelectedCircle(e.target.value)}
+            >
+              <MenuItem value="">{t('contacts.allCircles')}</MenuItem>
+              {circles.map(c => (
+                <MenuItem key={c.id} value={c.name}>{c.name}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl sx={{ minWidth: 220 }} size="small">
+            <InputLabel id="sort-select-label">{t('contacts.sortBy')}</InputLabel>
+            <Select
+              labelId="sort-select-label"
+              value={`${sort}:${order}`}
+              label={t('contacts.sortBy')}
+              onChange={e => setSortSelection(e.target.value)}
+            >
+              <MenuItem value="name:asc">{t('contacts.sortNameAsc')}</MenuItem>
+              <MenuItem value="name:desc">{t('contacts.sortNameDesc')}</MenuItem>
+              <MenuItem value="updated_at:desc">{t('contacts.sortUpdatedDesc')}</MenuItem>
+              <MenuItem value="updated_at:asc">{t('contacts.sortUpdatedAsc')}</MenuItem>
+            </Select>
+          </FormControl>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={showArchived}
+                onChange={(e) => setShowArchived(e.target.checked)}
+                size="small"
+              />
+            }
+            label={t('contacts.showArchived')}
+            sx={{ whiteSpace: 'nowrap' }}
           />
+          {/* T103: the contact-info filter defaults ON; "Show all" turns it off.
+              Label matches the ticket — the unchecked default is the filter. */}
+          <FormControlLabel
+            control={
+              <Switch
+                checked={showAll}
+                onChange={(e) => toggleShowAll(e.target.checked)}
+                size="small"
+              />
+            }
+            label={t('contacts.showAll')}
+            sx={{ whiteSpace: 'nowrap' }}
+          />
+          <Button
+            variant="outlined"
+            startIcon={<FileUploadIcon />}
+            onClick={() => setImportDialogOpen(true)}
+            sx={{ whiteSpace: 'nowrap' }}
+          >
+            {t('contacts.import.button', 'Import')}
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<DifferenceIcon />}
+            onClick={() => setReviewDuplicatesOpen(true)}
+            sx={{ whiteSpace: 'nowrap' }}
+          >
+            {t('contacts.reviewDuplicates')}
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<PersonAddIcon />}
+            onClick={() => setAddDialogOpen(true)}
+            sx={{ whiteSpace: 'nowrap' }}
+          >
+            {t('contacts.add.button')}
+          </Button>
         </Box>
-      )}
-      <BulkActionsBar
-        selectedCount={selectedUids.size}
-        loadedCount={contacts.length}
-        allSelected={allSelected}
-        circles={circles}
-        tags={tags}
-        busy={bulkBusy}
-        onSelectAll={toggleSelectAll}
-        onClear={clearSelection}
-        onAddCircle={handleAddCircle}
-        onRemoveCircle={handleRemoveCircle}
-        onAddTag={handleAddTag}
-        onRemoveTag={handleRemoveTag}
-        onArchive={handleArchive}
-        onUnarchive={handleUnarchive}
-        onMerge={handleBulkMerge}
-        onDelete={handleBulkDelete}
-      />
+        {/* T103: disclose the default-on filter so it never reads as silently
+            lost data — a user who imported 500 contacts and sees 340 must be
+            able to tell that the 160 were hidden, not deleted. */}
+        {!showAll && hiddenCount !== undefined && hiddenCount > 0 && (
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            {t('contacts.hiddenContactable', { count: hiddenCount })}
+          </Typography>
+        )}
+        {selectedCircle && (
+          <Box sx={{ mb: 1.5, p: 1.5, bgcolor: 'action.hover', borderRadius: 1, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+            <Chip
+              label={selectedCircle}
+              size="small"
+              onDelete={clearCircle}
+            />
+          </Box>
+        )}
+        <BulkActionsBar
+          selectedCount={selectedUids.size}
+          loadedCount={contacts.length}
+          allSelected={allSelected}
+          circles={circles}
+          tags={tags}
+          busy={bulkBusy}
+          onSelectAll={toggleSelectAll}
+          onClear={clearSelection}
+          onAddCircle={handleAddCircle}
+          onRemoveCircle={handleRemoveCircle}
+          onAddTag={handleAddTag}
+          onRemoveTag={handleRemoveTag}
+          onArchive={handleArchive}
+          onUnarchive={handleUnarchive}
+          onMerge={handleBulkMerge}
+          onDelete={handleBulkDelete}
+        />
+      </Box>
       {loading && contacts.length === 0 ? (
         <ContactListSkeleton count={10} />
       ) : (

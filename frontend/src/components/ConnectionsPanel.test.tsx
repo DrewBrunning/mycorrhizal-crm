@@ -97,6 +97,10 @@ test('changing the depth reloads with the new value', async () => {
 
   await waitFor(() => expect(requested.length).toBeGreaterThanOrEqual(1));
 
+  // The panel defaults to 1 hop (testing feedback), so the initial fetch must
+  // request it — a regression back to the old depth-3 default would show here.
+  expect(requested[0]).toContain('depth=1');
+
   fireEvent.mouseDown(screen.getByLabelText('Depth'));
   fireEvent.click(screen.getByText('2'));
   await waitFor(() => {
@@ -153,4 +157,41 @@ test('changing the depth after applying a filter keeps the filter', async () => 
   await waitFor(() => {
     expect(requested.some((u) => u.includes('depth=2') && u.includes('relation=brother'))).toBe(true);
   });
+});
+
+// T114: more than five chains render only five by default, with a "View all"
+// toggle revealing the rest (the timeline's T78 pattern).
+test('previews the first five chains and reveals the rest on demand', async () => {
+  const manyChains = (from: number, to: number) =>
+    Array.from({ length: to - from + 1 }, (_, i) => ({
+      target_id: from + i,
+      target_vcard_uid: `c${from + i}-uid`,
+      target_name: `Contact ${from + i}`,
+      depth: 1,
+      steps: [{ contact_id: from + i, contact_vcard_uid: `c${from + i}-uid`, contact_name: `Contact ${from + i}`, relation: 'sibling_of' }],
+    }));
+  mockGraph('/graph/connections?', () => ({
+    from_vcard_uid: 'john-uid',
+    from_name: 'John',
+    depth: 1,
+    chains: manyChains(1, 7),
+  }));
+  renderPanel();
+
+  await waitFor(() => {
+    expect(screen.getAllByText('Contact 1').length).toBeGreaterThan(0);
+  });
+
+  // Only the first five render before expanding (each contact appears twice:
+  // as the chain's target_name and as its own step link).
+  expect(screen.getAllByText('Contact 5').length).toBeGreaterThan(0);
+  expect(screen.queryAllByText('Contact 6').length).toBe(0);
+  expect(screen.queryAllByText('Contact 7').length).toBe(0);
+  expect(screen.getByRole('button', { name: 'View all' })).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'View all' }));
+
+  expect(screen.getAllByText('Contact 6').length).toBeGreaterThan(0);
+  expect(screen.getAllByText('Contact 7').length).toBeGreaterThan(0);
+  expect(screen.getByRole('button', { name: 'Show less' })).toBeInTheDocument();
 });

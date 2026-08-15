@@ -73,9 +73,26 @@ export default function EditableField({
               IBM Plex Sans field value below it -- component-scoped since
               "caption" is reused 60+ times elsewhere (timestamps, hints,
               error text) and isn't safe to retheme globally. */}
-          <Typography variant="caption" color="text.secondary" sx={{ fontFamily: '"IBM Plex Mono", monospace' }}>
-            {label}
-          </Typography>
+          {/* T109: the edit pencil sits beside the field-name label, matching
+              Name and Circles/Tags (T89), not at the far right of the row.
+              The label row is a flex sibling so the pencil rides the caption
+              baseline; the value keeps its own row below. */}
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: '"IBM Plex Mono", monospace' }}>
+              {label}
+            </Typography>
+            {!isEditing && (
+              <IconButton
+                className="edit-icon"
+                size="small"
+                color="primary"
+                onClick={() => onEditStart(field, value)}
+                sx={{ ml: 0.5, p: 0.25, opacity: 0, transition: 'opacity 0.2s' }}
+              >
+                <EditIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            )}
+          </Box>
           {isEditing ? (
             <Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
@@ -130,21 +147,9 @@ export default function EditableField({
             </Typography>
           )}
         </Box>
-        {!isEditing && (
+        {!isEditing && value && (
           <Box sx={{ display: 'flex', alignItems: 'center', ml: 1 }}>
-            {value && <CopyButton value={value} label={label} />}
-            <IconButton
-              className="edit-icon"
-              size="small"
-              color="primary"
-              onClick={() => onEditStart(field, value)}
-              sx={{
-                opacity: 0,
-                transition: 'opacity 0.2s',
-              }}
-            >
-              <EditIcon fontSize="small" />
-            </IconButton>
+            <CopyButton value={value} label={label} />
           </Box>
         )}
       </Box>

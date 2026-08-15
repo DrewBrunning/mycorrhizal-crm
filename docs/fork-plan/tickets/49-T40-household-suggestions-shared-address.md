@@ -95,3 +95,12 @@ trusting client-supplied hashes/addresses); dismiss recomputes the hash pair and
 checked 409 on duplicates. Covered by a real-migrated-schema controller test (detection,
 normalization, dismissal persistence, cross-user isolation, duplicate guard, accept
 round-trip), a migration up/down test, a component test, and an e2e spec.
+
+**CI follow-up (2026-08-15):** the e2e spec's `getByText(eitherOrder)` assertion was matching both the
+household card's title *and* its members rows (each row shows both names beside its role select — the
+`innerText` of a MUI `Select` flattens its floating label "Role" + value "Adult" + hidden label, which is
+why the failure's DOM showed `RoleAdultRole`; that is normal Select markup, not a broken i18n key), which
+tripped Playwright's strict mode. The assertion is now scoped to the card title (`.MuiTypography-h6`), and
+the suggestion-scan step retries via `expect(...).toPass()` because the scan can briefly miss freshly-
+created contacts through the backend's pooled SQLite WAL read snapshots (the T93 race). Single-run CI
+scenario re-verified green (3 fresh-DB runs) plus the full 182-test suite.

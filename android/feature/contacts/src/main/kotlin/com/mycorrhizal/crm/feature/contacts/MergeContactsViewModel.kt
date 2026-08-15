@@ -26,6 +26,10 @@ data class MergeUiState(
     // searchResults never include the keeper — a contact can't merge into itself.
     val searchQuery: String = "",
     val searchResults: List<ContactSummary> = emptyList(),
+    // T112: how many of the server's deliberately-broad results the client-side
+    // strict-name filter dropped, so the picker can say so instead of silently
+    // hiding rows (web T101 parity). Reset to 0 whenever the results clear.
+    val hiddenMatchCount: Int = 0,
     val isSearching: Boolean = false,
     val pickedOther: ContactSummary? = null,
     val preview: ContactMergePreviewResponse? = null,
@@ -54,7 +58,7 @@ class MergeContactsViewModel @Inject constructor(
 
     /** M23: debounced server search for the merge target, excluding the keeper. */
     fun onSearchQueryChange(query: String) {
-        _uiState.update { it.copy(searchQuery = query, searchResults = emptyList(), isSearching = false) }
+        _uiState.update { it.copy(searchQuery = query, searchResults = emptyList(), hiddenMatchCount = 0, isSearching = false) }
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
             if (query.isBlank()) return@launch
@@ -63,10 +67,23 @@ class MergeContactsViewModel @Inject constructor(
             contactRepository.listContacts(search = query.trim(), limit = SEARCH_LIMIT).foldApiError(
                 onSuccess = { page ->
                     val keepId = _uiState.value.keepId
+                    val trimmed = _uiState.value.searchQuery.trim()
+                    // T112: web T101 parity — the server search is deliberately
+                    // broad (name AND email AND phone AND address AND FTS tokens),
+                    // which is right for the contacts list but surfaces unrelated
+                    // contacts in a picker that feeds a destructive merge. Keep the
+                    // wide server query (so a phone/email search still reaches the
+                    // right contact) but only offer rows whose displayed name
+                    // contains what was typed.
+                    val withoutKeeper = page.contacts.filter { contact -> contact.id != keepId.toInt() }
+                    val matched = withoutKeeper.filter { contact ->
+                        contact.displayName.contains(trimmed, ignoreCase = true)
+                    }
                     _uiState.update {
                         it.copy(
                             isSearching = false,
-                            searchResults = page.contacts.filter { contact -> contact.id != keepId.toInt() },
+                            searchResults = matched,
+                            hiddenMatchCount = withoutKeeper.size - matched.size,
                         )
                     }
                 },
@@ -85,6 +102,7 @@ class MergeContactsViewModel @Inject constructor(
                 pickedOther = contact,
                 searchQuery = "",
                 searchResults = emptyList(),
+                hiddenMatchCount = 0,
                 isSearching = false,
                 preview = null,
                 resolutions = emptyMap(),
