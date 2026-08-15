@@ -16,6 +16,7 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -2118,5 +2119,249 @@ class ApiClientTest {
 
         assertTrue(result.isSuccess)
         assertTrue(result.getOrThrow().isEmpty())
+    }
+
+    // --- M16: audit trail ---
+
+    @Test
+    fun `get audit events parses the event list and defaults the limit`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "audit_events": [
+                        {"id": 3, "created_at": "2026-08-14T10:00:00Z", "entity_type": "contact", "entity_id": "uid-1", "operation": "update", "before_snapshot": "{}"},
+                        {"id": 2, "created_at": "2026-08-14T09:00:00Z", "entity_type": "note", "entity_id": "7", "operation": "create"},
+                        {"id": 1, "created_at": "2026-08-14T08:00:00Z", "entity_type": "contact", "entity_id": "uid-2", "operation": "delete", "before_snapshot": "{}"}
+                      ],
+                      "total": 3
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        val result = client.getAuditEvents()
+
+        assertTrue(result.isSuccess)
+        val page = result.getOrThrow()
+        assertEquals(3, page.auditEvents.size)
+        assertEquals(3, page.total)
+        val first = page.auditEvents[0]
+        assertEquals(3L, first.id)
+        assertEquals("contact", first.entityType)
+        assertEquals("update", first.operation)
+        assertTrue(first.canUndo)
+        assertFalse(page.auditEvents[2].canUndo)
+        assertEquals("2026-08-14T10:00:00Z", first.createdAt)
+
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/api/v1/audit?limit=100", request.path)
+    }
+
+    @Test
+    fun `get audit events sends the entity filters on the query string`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"audit_events":[],"total":0}"""),
+        )
+
+        client.getAuditEvents(entityType = "contact", entityId = "uid-1", limit = 250)
+
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/api/v1/audit?limit=250&entity_type=contact&entity_id=uid-1", request.path)
+    }
+
+    @Test
+    fun `get audit events omits blank filters`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"audit_events":[],"total":0}"""),
+        )
+
+        client.getAuditEvents(entityType = "  ", entityId = "")
+
+        val request = server.takeRequest()
+        assertEquals("/api/v1/audit?limit=100", request.path)
+    }
+
+    @Test
+    fun `undo audit event posts to the event's undo route`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"message": "Contact restored to its previous state"}"""),
+        )
+
+        val result = client.undoAuditEvent(42L)
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/audit/42/undo", request.path)
+    }
+
+    @Test
+    fun `undo audit event maps a 410 to a client error with the backend message`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(410).setBody("""{"error":{"code":"gone","message":"past retention window"}}"""),
+        )
+
+        val result = client.undoAuditEvent(42L)
+
+        assertTrue(result.isFailure)
+        val error = result.exceptionOrNull() as ApiError
+        assertTrue(error is ApiError.Client)
+        assertEquals(410, (error as ApiError.Client).code)
+    }
+
+    // --- M22: household relationship & shared-address suggestions ---
+
+    @Test
+    fun `suggest household relationships posts an empty body and parses the response`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "message": "Relationship suggestions generated",
+                      "household_id": "h1",
+                      "suggested_edges": [
+                        {"id": "e1", "source_id": "u1", "target_id": "u2", "type": "spouse_of", "status": "suggested", "source": "household-inferred", "confidence": 0.8}
+                      ],
+                      "total": 1
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        val result = client.suggestHouseholdRelationships("h1")
+
+        assertTrue(result.isSuccess)
+        assertEquals("h1", result.getOrThrow().householdId)
+        assertEquals(1, result.getOrThrow().suggestedEdges.size)
+        assertEquals("spouse_of", result.getOrThrow().suggestedEdges[0].type)
+        assertEquals("suggested", result.getOrThrow().suggestedEdges[0].status)
+
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/households/h1/suggest-relationships", request.path)
+        assertEquals(0, request.body.size)
+    }
+
+    @Test
+    fun `suggest household relationships tolerates an absent suggested_edges key`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """{"message": "Relationship suggestions generated", "household_id": "h1", "total": 0}""",
+                ),
+        )
+
+        val result = client.suggestHouseholdRelationships("h1")
+
+        assertTrue(result.isSuccess)
+        assertTrue(result.getOrThrow().suggestedEdges.isEmpty())
+    }
+
+    @Test
+    fun `suggest address households parses the suggestions`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "suggestions": [
+                        {
+                          "address_hash": "ah1",
+                          "member_hash": "mh1",
+                          "member_vcard_uids": ["u1", "u2"],
+                          "address": {"components": [{"kind": "locality", "value": "Berlin"}], "full": "1 Main St, Berlin"}
+                        }
+                      ],
+                      "total": 1
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        val result = client.suggestAddressHouseholds()
+
+        assertTrue(result.isSuccess)
+        val suggestions = result.getOrThrow().suggestions
+        assertEquals(1, suggestions.size)
+        assertEquals(listOf("u1", "u2"), suggestions[0].memberVCardUids)
+        assertEquals("Berlin", suggestions[0].address?.components?.get(0)?.value)
+
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/households/suggest-addresses", request.path)
+    }
+
+    @Test
+    fun `suggest address households tolerates an absent suggestions key`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"total": 0}"""),
+        )
+
+        val result = client.suggestAddressHouseholds()
+
+        assertTrue(result.isSuccess)
+        assertTrue(result.getOrThrow().suggestions.isEmpty())
+    }
+
+    @Test
+    fun `accept household suggestion posts member uids and unwraps the household`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(201)
+                .setBody(
+                    """{"household": {"id": "h9", "name": "Alice & Bob", "type": "family_unit"}}""",
+                ),
+        )
+
+        val input = com.mycorrhizal.crm.model.network.AcceptHouseholdSuggestionInput(
+            memberVCardUids = listOf("u1", "u2"),
+        )
+        val result = client.acceptHouseholdSuggestion(input)
+
+        assertTrue(result.isSuccess)
+        assertEquals("h9", result.getOrThrow().id)
+        assertEquals("Alice & Bob", result.getOrThrow().name)
+
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/households/suggestions/accept", request.path)
+        val body = request.body.readUtf8()
+        assertTrue(body.contains("member_vcard_uids"))
+        assertTrue(body.contains("u1"))
+        assertTrue(body.contains("u2"))
+    }
+
+    @Test
+    fun `dismiss household suggestion posts member uids`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"message": "Household suggestion dismissed"}"""),
+        )
+
+        val input = com.mycorrhizal.crm.model.network.DismissHouseholdSuggestionInput(
+            memberVCardUids = listOf("u1", "u2"),
+        )
+        val result = client.dismissHouseholdSuggestion(input)
+
+        assertTrue(result.isSuccess)
+
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/households/suggestions/dismiss", request.path)
+        val body = request.body.readUtf8()
+        assertTrue(body.contains("member_vcard_uids"))
+        assertTrue(body.contains("u1"))
     }
 }

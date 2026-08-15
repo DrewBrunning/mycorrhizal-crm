@@ -6,10 +6,14 @@ import com.mycorrhizal.crm.data.local.CachedHouseholdMember
 import com.mycorrhizal.crm.data.local.CachedHouseholdMemberDao
 import com.mycorrhizal.crm.domain.repository.HouseholdDetail
 import com.mycorrhizal.crm.domain.repository.HouseholdRepository
+import com.mycorrhizal.crm.model.network.AcceptHouseholdSuggestionInput
+import com.mycorrhizal.crm.model.network.AddressHouseholdSuggestion
+import com.mycorrhizal.crm.model.network.DismissHouseholdSuggestionInput
 import com.mycorrhizal.crm.model.network.Household
 import com.mycorrhizal.crm.model.network.HouseholdInput
 import com.mycorrhizal.crm.model.network.HouseholdMember
 import com.mycorrhizal.crm.model.network.HouseholdMemberInput
+import com.mycorrhizal.crm.model.network.RelationshipEdge
 import com.mycorrhizal.crm.network.ApiClient
 import javax.inject.Inject
 
@@ -72,7 +76,11 @@ class HouseholdRepositoryImpl @Inject constructor(
     override suspend fun addMember(id: String, vcardUid: String, role: String?): Result<HouseholdMember> {
         val result = apiClient.addHouseholdMember(
             id,
-            HouseholdMemberInput(memberVCardUid = vcardUid, role = role),
+            // role must never serialize as null: the backend's member DTOs bind
+            // `role` into a Go `string`, which rejects an explicit JSON null
+            // with a 400. "" means "no role" (and the backend's `omitempty`
+            // drops it entirely on add).
+            HouseholdMemberInput(memberVCardUid = vcardUid, role = role.orEmpty()),
         )
         result.getOrNull()?.let { memberDao.upsertAll(listOf(it.toCached())) }
         return result
@@ -90,7 +98,10 @@ class HouseholdRepositoryImpl @Inject constructor(
         val result = apiClient.updateHouseholdMember(
             id,
             vcardUid,
-            HouseholdMemberInput(memberVCardUid = vcardUid, role = role),
+            // Same null-role rule as addMember: the backend's PATCH binds role
+            // into a plain Go string, so an explicit JSON null is a 400. ""
+            // clears the role (matches web's `role: ''`).
+            HouseholdMemberInput(memberVCardUid = vcardUid, role = role.orEmpty()),
         )
         if (result.isSuccess) {
             // Re-pull the member rows so the cache reflects the new role.
@@ -101,6 +112,21 @@ class HouseholdRepositoryImpl @Inject constructor(
         }
         return result
     }
+
+    override suspend fun suggestRelationships(id: String): Result<List<RelationshipEdge>> =
+        apiClient.suggestHouseholdRelationships(id).map { it.suggestedEdges }
+
+    override suspend fun suggestAddressHouseholds(): Result<List<AddressHouseholdSuggestion>> =
+        apiClient.suggestAddressHouseholds().map { it.suggestions }
+
+    override suspend fun acceptAddressSuggestion(input: AcceptHouseholdSuggestionInput): Result<Household> =
+        apiClient.acceptHouseholdSuggestion(input).map { household ->
+            householdDao.upsert(household.toCached())
+            household
+        }
+
+    override suspend fun dismissAddressSuggestion(input: DismissHouseholdSuggestionInput): Result<Unit> =
+        apiClient.dismissHouseholdSuggestion(input)
 
     private fun Household.toCached(): CachedHousehold = CachedHousehold(
         id = id,

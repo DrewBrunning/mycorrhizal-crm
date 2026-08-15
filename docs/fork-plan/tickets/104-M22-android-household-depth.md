@@ -7,7 +7,7 @@
 | **Size** | M — 4 new endpoints and two suggestion surfaces |
 | **Source** | [M8](89-M8-web-android-parity-audit.md) audit, 2026-08-11 |
 | **Depends on** | Nothing |
-| **Status** | TO BE DONE |
+| **Status** | **DONE** (2026-08-14 — see the landing note below) |
 
 Household core CRUD (create/edit/delete household, add/remove member) already has native parity.
 What's missing, per `HouseholdsPage.tsx`/`HouseholdList.tsx`/`AddressHouseholdSuggestions.tsx`:
@@ -92,3 +92,93 @@ JUnit4 + MockK (`mockk`/`coEvery`) + Turbine + `runTest` with `MainDispatcherRul
 mock the repository — `feature/contacts/.../ContactListViewModelTest.kt` is the reference. New
 `ApiClient` methods get a MockWebServer test in `core/network` — `ApiClientTest.kt` is the reference.
 Hand-verify per `/CLAUDE.md`: break the code, confirm the new test fails, restore.
+
+---
+
+## Landing note (2026-08-14)
+
+Landed on `feature/M22-android-household-depth`. All five Done-when items shipped; on-device
+hand-verification against an instance with a household and a pending T40 suggestion is still
+outstanding (same status as M23's landing note — see the board).
+
+**Endpoints.** The four new client methods from the contract landed in `ApiClient` and are threaded
+through `HouseholdRepository`/`HouseholdRepositoryImpl` (which also mirrors an accepted household
+into the Room cache, matching the module's online-first pattern):
+
+- `suggestHouseholdRelationships(id)` — `POST /households/{id}/suggest-relationships`, empty body.
+- `suggestAddressHouseholds()` — `POST /households/suggest-addresses`, empty body.
+- `acceptHouseholdSuggestion(input)` — `POST /households/suggestions/accept`, unwraps `{household}`.
+- `dismissHouseholdSuggestion(input)` — `POST /households/suggestions/dismiss`.
+
+Role editing (`PATCH /households/{id}/members/{vcard_uid}`) already existed at the client layer
+(`updateHouseholdMember`); this ticket gave it its first consumer.
+
+**Name resolution reuses M21's approach wholesale** (`ContactRepository.resolveByUid`), including its
+degrade-gracefully policy: unresolved members render as "Unknown contact" rather than the raw UID,
+and a resolution failure is not surfaced as the screen's error. Rows resolve to tappable contact
+navigation via the same `onNavigateToContact` route the relationships list uses.
+
+**Design decisions taken:**
+- The "suggest relationships" trigger lives in the household **detail** screen's top-bar action
+  (disabled below 2 members, spinner while running), not on the list card like web — the detail
+  screen is where membership is actually visible on Android, so the disable-condition is free.
+  The generated edges are `suggested`-status edges reviewed on the members' contact pages, exactly
+  as web's message text says.
+- Add-member is a debounced contact search + a constrained `ExposedDropdownMenuBox` role picker over
+  `HOUSEHOLD_ROLES` (web's `['adult','child','pet','roommate']`, mirrored as `HouseholdRoles`).
+  Existing members are excluded from results and also guarded at the confirm button.
+- T40 suggestions render as a section above the household list (header + cards with resolved member
+  names, the shared address line, Accept/Dismiss). Accept removes the card and refreshes the list so
+  the materialized household appears; dismiss removes the card. Both hit the same `(address_hash,
+  member_hash)` identity web uses.
+- **T64 was honored from the start**: both suggestion collection keys default to `emptyList()` in
+  the DTOs, and a MockWebServer test feeds `{"total": 0}` — `suggestions` key **absent** — asserting
+  a clean empty parse. Hand-verified: removing the default makes that test fail.
+- `households_role` was reworded from "Role (optional)" to "Role" — roles are now always picked from
+  the constrained picker, so the "(optional)" framing was stale. The old free-text
+  `households_member_vcard_uid` string was deleted (dead after the search-based picker).
+
+**Strings:** 23 new/updated keys across all five locales (values, de/es/fr/it) — including the four
+role labels, the search hints, the two suggestion-result messages (one count-parameterized), and the
+accept/dismiss/section strings. `LocalesConsistencyTest` green.
+
+**Tests (all hand-verified to fail against the broken behavior before restoring):**
+- 6 new `ApiClientTest` MockWebServer tests (paths, methods, empty-body assertion, unwrapping, and
+  the two T64 absent-key cases).
+- `HouseholdsViewModelTest`: scan loads suggestions / empty scan renders empty state / scan failure /
+  accept removes + reloads the household list / dismiss removes / suggestion member-name resolution.
+- `HouseholdDetailViewModelTest`: name resolution on load, `updateMemberRole` round-trip (broken-repo
+  call caught by `coVerify`), `suggestRelationships` count + no-new-suggestions messaging,
+  <2-members no-op, search excluding existing members, blank-search no-op.
+
+**CI gate green:** `./gradlew testDebugUnitTest`, `./gradlew lintDebug` (households module: "No
+issues found"), `./gradlew assembleDebug`.
+
+---
+
+### Review pass, same day
+
+A full review of the above found and fixed one real bug and a few test gaps:
+
+- **"No role" would have sent `role: null` and gotten a 400.** The role picker's "No role" option
+  passed `null` through to `HouseholdMemberInput(role = null)`, which Moshi serializes as
+  `"role":null` — and the backend's PATCH binds `role` into a plain Go `string` (`memberUpdate{Role
+  string}`, no pointer), which rejects an explicit JSON null with a 400. The whole clear-a-role path
+  was broken. Fixed at two layers: the repository's `addMember`/`updateMember` now normalize
+  `role.orEmpty()` before building the input (the backend's add DTO is `omitempty`, so `""` drops the
+  field entirely), and `updateMemberRole` stores the normalized value. Hand-verified: reverting the
+  normalization makes the two new repo tests fail. Web's equivalent always sends `role: ''`, never
+  null — this closes the same latent pre-existing hole in the old free-text add dialog.
+- **`HouseholdRepositoryImpl` had no test file at all.** New `HouseholdRepositoryImplTest`
+  (Robolectric + in-memory Room, the `RelationshipEdgeRepositoryImplTest` pattern): the four new
+  methods map/upsert/delegate correctly, accept failure leaves the cache untouched, and the null-role
+  normalization is pinned on the wire via arg capture.
+- **`formatSuggestionAddress` had no unit test.** New `HouseholdSuggestionFormatTest`: full-text
+  precedence, component ordering/skipping, duplicate-kind handling, null/blank cases.
+- **Missing error paths** now covered: `updateMemberRole` failure (error surfaces, updating flag
+  resets, role unchanged), search failure (loading clears, no error surfaced — matching M21's
+  search-policy), accept failure (error surfaces, suggestion retained, pending cleared).
+- **Cleanups:** removed a dead `SEARCH_DEBOUNCE_MS` in `HouseholdsViewModel`'s companion, an unused
+  `key` local in the suggestion list, scoped the accept/dismiss button disable to the in-flight card
+  instead of every card (matching web's per-card pending), and made `displayNameFor`'s nickname
+  fallback return `""` like M21's rather than a nullable nickname.

@@ -14,18 +14,23 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -45,10 +50,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mycorrhizal.crm.model.network.AddressHouseholdSuggestion
+import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.Household
 import com.mycorrhizal.crm.model.network.HouseholdTypes
+import com.mycorrhizal.crm.model.network.formatSuggestionAddress
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
@@ -76,6 +84,25 @@ fun HouseholdsScreen(
                 title = {
                     Text(stringResource(R.string.households_title), style = MaterialTheme.typography.titleLarge)
                 },
+                actions = {
+                    IconButton(
+                        onClick = { viewModel.scanAddressSuggestions() },
+                        enabled = !state.suggestionsLoading,
+                    ) {
+                        if (state.suggestionsLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.padding(6.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                            )
+                        } else {
+                            Icon(
+                                Icons.Outlined.LocationOn,
+                                contentDescription = stringResource(R.string.households_suggest_addresses),
+                            )
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
@@ -94,9 +121,9 @@ fun HouseholdsScreen(
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when {
                 state.isLoading -> LoadingSkeleton()
-                state.households.isEmpty() && state.error == null ->
+                state.households.isEmpty() && !state.suggestionsLoaded && state.error == null ->
                     EmptyState(message = stringResource(R.string.households_empty))
-                state.households.isEmpty() && state.error != null -> {
+                state.households.isEmpty() && !state.suggestionsLoaded && state.error != null -> {
                     Text(
                         text = state.error.orEmpty(),
                         color = MaterialTheme.colorScheme.error,
@@ -105,6 +132,43 @@ fun HouseholdsScreen(
                 }
                 else -> {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        if (state.suggestionsLoaded) {
+                            item(key = "suggestion-header") {
+                                Text(
+                                    text = stringResource(R.string.households_address_suggestions),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                )
+                            }
+                            if (state.addressSuggestions.isEmpty()) {
+                                item(key = "suggestion-empty") {
+                                    Text(
+                                        text = stringResource(R.string.households_no_address_suggestions),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                    )
+                                }
+                            } else {
+                                items(
+                                    state.addressSuggestions,
+                                    key = { suggestionKey(it) },
+                                ) { suggestion ->
+                                    val key = suggestionKey(suggestion)
+                                    AddressSuggestionCard(
+                                        suggestion = suggestion,
+                                        contactsByUid = state.contactsByUid,
+                                        pending = state.pendingSuggestionKey == "accept:$key" ||
+                                            state.pendingSuggestionKey == "dismiss:$key",
+                                        onAccept = { viewModel.acceptSuggestion(suggestion) },
+                                        onDismiss = { viewModel.dismissSuggestion(suggestion) },
+                                    )
+                                }
+                            }
+                            item(key = "suggestion-divider") {
+                                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                            }
+                        }
                         items(state.households, key = { it.id }) { household ->
                             HouseholdListItem(
                                 household = household,
@@ -139,7 +203,61 @@ fun HouseholdsScreen(
             viewModel.onErrorShown()
         }
     }
+
+    val infoMessage = state.infoRes?.let { res ->
+        val count = state.infoCount
+        if (count != null) stringResource(res, count) else stringResource(res)
+    }
+
+    infoMessage?.let { message ->
+        LaunchedEffect(message) {
+            snackbarHostState.showSnackbar(message)
+            viewModel.onInfoShown()
+        }
+    }
 }
+
+@Composable
+private fun AddressSuggestionCard(
+    suggestion: AddressHouseholdSuggestion,
+    contactsByUid: Map<String, ContactSummary>,
+    pending: Boolean,
+    onAccept: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val membersText = suggestion.memberVCardUids.joinToString(" · ") { uid ->
+        val contact = contactsByUid[uid]
+        if (contact != null) displayNameFor(contact) ?: uid else uid
+    }
+    OutlinedCard(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                text = membersText,
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Text(
+                text = formatSuggestionAddress(suggestion.address),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(top = 8.dp),
+            ) {
+                TextButton(onClick = onAccept, enabled = !pending) {
+                    Icon(Icons.Outlined.AutoAwesome, contentDescription = null, modifier = Modifier.padding(end = 4.dp))
+                    Text(stringResource(R.string.households_accept_suggestion))
+                }
+                TextButton(onClick = onDismiss, enabled = !pending) {
+                    Text(stringResource(R.string.households_dismiss_suggestion))
+                }
+            }
+        }
+    }
+}
+
+private fun suggestionKey(suggestion: AddressHouseholdSuggestion): String =
+    "${suggestion.addressHash}:${suggestion.memberHash}"
 
 @Composable
 private fun HouseholdListItem(
