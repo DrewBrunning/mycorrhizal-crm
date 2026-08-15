@@ -63,13 +63,16 @@ Everything in this section is **built and working today**. Things that are plann
 - **External Links:** Deep-link a contact into other systems you run, with a configurable link-type registry (`tel:`, `sms:`, WhatsApp, and anything else you define).
 - **Audit Trail:** A per-record history of what changed and when.
 
+### Native Apps
+- **Android app:** A Kotlin/Jetpack Compose client in `android/` — login (including OIDC SSO), contact list + detail with offline cache, dashboard and prep view, call/SMS tracking with a quick-capture overlay, device-contacts and VCF import, circles, tags, households, relationships and the network graph, the timeline (life events, gifts, preferences, agenda), reminders, cadence, contact sharing, audit trail, and per-user settings (profile, notification channels, webhooks, link actions).
+
 ### On the roadmap
 
 Not built yet. Listed so the feature set above can be read as a description of what exists rather than of what is intended:
 
 - **Files & Documents:** Integrations with Seafile and Paperless-ngx via APIs and OwnCloud/NextCloud via WebDAV.
 - **Two-Factor Authentication:** TOTP as a second factor on login. SSO via OIDC is available today as an alternative.
-- **Native Android app client:** Phase 1 (core client) shipped 2026-08-10 in `android/` — login against the beta backend, contact list + detail, offline cache. Call/SMS tracking, quick-capture, and device-contacts import are planned follow-up phases.
+- **Android app (follow-ups):** Tablet two-pane layout, FCM push notifications, and a formal accessibility pass.
 
 ---
 
@@ -129,7 +132,7 @@ image is required). The easiest way to run it is with Docker Compose:
 ## Contributing
 
 ### Bugs and feature requests
-This application is currently in beta. Bugs are expected in testing, but are hopefully few and far-between. Please submit issues via GitHub to note 
+This application is currently in beta. Bugs are expected in testing, but are hopefully few and far-between. Please submit issues via GitHub.
 
 ### Development
 To set up this repository for development, follow these steps:
