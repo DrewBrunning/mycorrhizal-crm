@@ -206,7 +206,6 @@ idea, not a bug — filed in Deferred → Feature ideas instead, not ranked here
 |---|---|
 | [M5](84-M5-android-polish-and-hardening.md) · Android polish & hardening (deferred M1 scope + native-endpoint consumers) | **TO BE DONE**. R3. Independently-shippable container: tablet layout, accessibility audit, contact-photo rendering (gated on M6 §1), FCM client (§5a), quick-capture sheet, release signing, instrumented-test decision. |
 | [M23](105-M23-android-contact-list-bulk-breadth.md) · Contact list & bulk breadth | **TO BE DONE**. R3. No circle filter or archived toggle on the main list; merge requires typing a raw numeric ID instead of searching. |
-| [M22](104-M22-android-household-depth.md) · Household management depth | **TO BE DONE**. R3. Core CRUD has parity; role-editing, name resolution, AI suggestions, and T40 address-based suggestions don't. |
 | [M25](107-M25-android-settings-profile-channels.md) · Settings: profile & channels | **TO BE DONE**. R3. Language/date-format are read-only; theme, password change, webhooks, and ntfy/Gotify config don't exist at all. |
 | [M15](97-M15-android-contact-sharing.md) · Contact sharing (P1) | **TO BE DONE**. R3. Zero footprint, including the entry point on a contact's own header. |
 | [M16](98-M16-android-audit-trail.md) · Audit trail + undo (T60) | **TO BE DONE**. R3. Zero footprint. |
@@ -267,6 +266,7 @@ Kept for reference/lookup, not ranked — order below is roughly the sequence th
 
 | Ticket | Status |
 |---|---|
+| [M22](104-M22-android-household-depth.md) · Household management depth | **DONE** (2026-08-14 — role editing in place via PATCH with a constrained role picker, member names resolved via M21's `resolveByUid` with tappable navigation, add-member is a debounced contact search instead of a raw UID field, the "suggest relationships" trigger lives in the detail screen's top bar, and the T40 shared-address suggestions section (scan/accept/dismiss, T64-guarded) renders above the household list. 6 new `ApiClient` MockWebServer tests + 13 new ViewModel tests, all hand-verified; CI gate green. See the ticket's landing note — on-device hand-verification still outstanding) |
 | [N1](01-N1-contact-merge.md) · Contact merge / dedupe | **DONE** |
 | [N4](02-N4-notes-capture-inbox.md) · Notes: dead-end journal → capture inbox | **DONE** |
 | [T5](03-T5-lifeevent-frontend.md) · LifeEvent frontend + timeline | **DONE** |
