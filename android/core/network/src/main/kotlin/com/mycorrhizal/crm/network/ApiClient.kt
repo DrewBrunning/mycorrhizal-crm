@@ -1,5 +1,10 @@
 package com.mycorrhizal.crm.network
 
+import com.mycorrhizal.crm.model.network.AcceptHouseholdSuggestionInput
+import com.mycorrhizal.crm.model.network.AcceptHouseholdSuggestionResponse
+import com.mycorrhizal.crm.model.network.AddressSuggestionsResponse
+import com.mycorrhizal.crm.model.network.DismissHouseholdSuggestionInput
+import com.mycorrhizal.crm.model.network.SuggestRelationshipsResponse
 import com.mycorrhizal.crm.model.network.ActivitiesPage
 import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ActivityInput
@@ -674,6 +679,28 @@ class ApiClient(
     /** PATCH /api/v1/households/{id}/members/{vcard_uid} — update role/since/until. */
     suspend fun updateHouseholdMember(id: String, vcardUid: String, input: HouseholdMemberInput): Result<Unit> =
         executePatch("$PLACEHOLDER_ORIGIN$HOUSEHOLDS_PATH/$id/members/$vcardUid", input)
+
+    /** POST /api/v1/households/{id}/suggest-relationships — trigger the relationship-suggestion engine. */
+    suspend fun suggestHouseholdRelationships(id: String): Result<SuggestRelationshipsResponse> =
+        executePostEmpty("$HOUSEHOLDS_PATH/$id/suggest-relationships") { _, body ->
+            moshi.adapter(SuggestRelationshipsResponse::class.java).fromJson(body)
+        }
+
+    /** POST /api/v1/households/suggest-addresses — T40 shared-address scan (read-only, idempotent). */
+    suspend fun suggestAddressHouseholds(): Result<AddressSuggestionsResponse> =
+        executePostEmpty("$HOUSEHOLDS_PATH/suggest-addresses") { _, body ->
+            moshi.adapter(AddressSuggestionsResponse::class.java).fromJson(body)
+        }
+
+    /** POST /api/v1/households/suggestions/accept — materialize a household from a suggested group; unwrapped `{ household }`. */
+    suspend fun acceptHouseholdSuggestion(input: AcceptHouseholdSuggestionInput): Result<Household> =
+        executePost("$HOUSEHOLDS_PATH/suggestions/accept", input) { _, body ->
+            moshi.adapter(AcceptHouseholdSuggestionResponse::class.java).fromJson(body)?.household
+        }
+
+    /** POST /api/v1/households/suggestions/dismiss — permanently dismiss a suggested group. */
+    suspend fun dismissHouseholdSuggestion(input: DismissHouseholdSuggestionInput): Result<Unit> =
+        executePost("$HOUSEHOLDS_PATH/suggestions/dismiss", input) { _, _ -> Unit }
 
     /** GET /api/v1/relationship-edges — cursor-paginated, filtered by contact. */
     suspend fun listRelationshipEdges(

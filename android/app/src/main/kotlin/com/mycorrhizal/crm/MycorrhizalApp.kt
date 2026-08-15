@@ -596,6 +596,7 @@ private fun MainScaffold(darkTheme: Boolean) {
             ) {
                 HouseholdDetailScreen(
                     onBack = { navController.popBackStack() },
+                    onNavigateToContact = { id -> navController.navigate("contacts/$id") },
                 )
         }
     }

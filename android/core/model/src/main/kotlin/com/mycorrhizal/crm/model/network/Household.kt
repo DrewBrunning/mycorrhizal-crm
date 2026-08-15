@@ -15,6 +15,19 @@ object HouseholdTypes {
     val ALL: List<String> = listOf(FAMILY_UNIT, ROOMMATES, OTHER)
 }
 
+/**
+ * Conventional (not enforced) role tokens, mirroring backend/models/
+ * household.go's HouseholdRole* constants (frontend trap 4 — hardcoded
+ * mirror, kept in sync by hand).
+ */
+object HouseholdRoles {
+    const val ADULT = "adult"
+    const val CHILD = "child"
+    const val PET = "pet"
+    const val ROOMMATE = "roommate"
+    val ALL: List<String> = listOf(ADULT, CHILD, PET, ROOMMATE)
+}
+
 @JsonClass(generateAdapter = true)
 data class Household(
     val id: String = "",
@@ -82,3 +95,74 @@ data class HouseholdMemberInput(
     val since: String? = null,
     val until: String? = null,
 )
+
+/** POST /households/{id}/suggest-relationships response — newly created suggested edges. */
+@JsonClass(generateAdapter = true)
+data class SuggestRelationshipsResponse(
+    val message: String? = null,
+    @Json(name = "household_id") val householdId: String? = null,
+    @Json(name = "suggested_edges") val suggestedEdges: List<RelationshipEdge> = emptyList(),
+    val total: Int = 0,
+)
+
+/**
+ * One T40 (shared-address) household suggestion. The (address_hash,
+ * member_hash) pair is the stable identity the server recomputes on
+ * accept/dismiss; member_vcard_uids is the suggested group.
+ */
+@JsonClass(generateAdapter = true)
+data class AddressHouseholdSuggestion(
+    @Json(name = "address_hash") val addressHash: String = "",
+    @Json(name = "member_hash") val memberHash: String = "",
+    @Json(name = "member_vcard_uids") val memberVCardUids: List<String> = emptyList(),
+    val address: Address? = null,
+)
+
+/** POST /households/suggest-addresses response. */
+@JsonClass(generateAdapter = true)
+data class AddressSuggestionsResponse(
+    val suggestions: List<AddressHouseholdSuggestion> = emptyList(),
+    val total: Int = 0,
+)
+
+/** POST /households/suggestions/accept body. */
+@JsonClass(generateAdapter = true)
+data class AcceptHouseholdSuggestionInput(
+    @Json(name = "member_vcard_uids") val memberVCardUids: List<String>,
+    val name: String? = null,
+    val type: String? = null,
+)
+
+/** POST /households/suggestions/accept response — wrapped `{ household }`, unwrapped in ApiClient. */
+@JsonClass(generateAdapter = true)
+data class AcceptHouseholdSuggestionResponse(
+    val household: Household? = null,
+)
+
+/** POST /households/suggestions/dismiss body. */
+@JsonClass(generateAdapter = true)
+data class DismissHouseholdSuggestionInput(
+    @Json(name = "member_vcard_uids") val memberVCardUids: List<String>,
+)
+
+/**
+ * Renders a suggestion's address as a single display line (street, locality,
+ * region, postcode, country), falling back to the full text when present.
+ * Mirrors web's formatSuggestionAddress. The sub-street parts (PO box /
+ * apartment / floor) are deliberately NOT rendered: a suggestion's address is
+ * a *building*-level shared address (matching backend AddressNormalizedKey's
+ * scope, which also excludes them).
+ */
+fun formatSuggestionAddress(address: Address?): String {
+    if (address == null) return ""
+    address.full?.takeIf { it.isNotBlank() }?.let { return it }
+    val byKind: Map<String, String> = buildMap {
+        address.components.orEmpty().forEach { comp ->
+            if (comp.kind != null && !containsKey(comp.kind)) put(comp.kind, comp.value.orEmpty())
+        }
+    }
+    return listOf("name", "locality", "region", "postcode", "country")
+        .map { byKind[it].orEmpty().trim() }
+        .filter { it.isNotEmpty() }
+        .joinToString(", ")
+}
