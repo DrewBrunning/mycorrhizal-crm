@@ -31,11 +31,15 @@ class ContactRepositoryImpl @Inject constructor(
         cursor: String?,
         limit: Int,
         search: String?,
+        circle: String?,
+        includeArchived: Boolean?,
     ): Result<ContactsPage> {
         val result = apiClient.listContacts(
             cursor = cursor,
             limit = limit,
             search = search,
+            includeArchived = includeArchived,
+            circle = circle,
         )
         val page = result.getOrElse { error ->
             // Network failure: serve whatever is cached for this search term.

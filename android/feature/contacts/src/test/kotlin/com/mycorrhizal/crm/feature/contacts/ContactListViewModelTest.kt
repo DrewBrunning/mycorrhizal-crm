@@ -1,8 +1,13 @@
 package com.mycorrhizal.crm.feature.contacts
 
 import app.cash.turbine.test
+import com.mycorrhizal.crm.domain.repository.BulkOperationRepository
+import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ContactsPage
+import com.mycorrhizal.crm.domain.repository.TagRepository
+import com.mycorrhizal.crm.model.network.BulkOperationResult
+import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.SearchNoteHit
 import com.mycorrhizal.crm.model.network.SearchResult
@@ -31,14 +36,20 @@ class ContactListViewModelTest {
         ContactsPage(contacts = contacts.toList(), nextCursor = nextCursor, limit = 50, sync = null)
 
     /** Fresh repository + ApiClient mocks and ViewModel; stubs the cache stream the VM collects
-     *  on init and defaults /search to an empty (never-called-in-most-tests) result. */
+     *  on init, defaults /search to an empty (never-called-in-most-tests) result, and stubs the
+     *  M23 circle/tag list loads so the dropdown/picker state is deterministic. */
     private fun newViewModel(): Triple<ContactListViewModel, ContactRepository, ApiClient> {
         val repo = mockk<ContactRepository>()
         val apiClient = mockk<ApiClient>()
+        val circleRepository = mockk<CircleRepository>()
+        val bulkRepository = mockk<BulkOperationRepository>()
+        val tagRepository = mockk<TagRepository>()
         coEvery { repo.observeContacts() } returns emptyFlow()
         coEvery { repo.searchLocal(any()) } returns emptyList()
         coEvery { apiClient.search(any(), any(), any()) } returns Result.success(SearchResult())
-        return Triple(ContactListViewModel(repo, apiClient), repo, apiClient)
+        coEvery { circleRepository.list() } returns Result.success(emptyList())
+        coEvery { tagRepository.list() } returns Result.success(emptyList())
+        return Triple(ContactListViewModel(repo, apiClient, circleRepository, bulkRepository, tagRepository), repo, apiClient)
     }
 
     @Test
@@ -306,5 +317,223 @@ class ContactListViewModelTest {
         viewModel.onSearchQueryChange("")
         advanceUntilIdle()
         assertNull(viewModel.uiState.value.searchResult)
+    }
+
+    // --- M23: circle filter -------------------------------------------------
+
+    @Test
+    fun `circle filter is forwarded to the repository and resets pagination`() = runTest(mainDispatcherRule.testDispatcher) {
+        val (viewModel, contactRepository) = newViewModel()
+        // First unfiltered page pages forward; the filtered request must start fresh (cursor null).
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+            Result.success(page(ContactSummary(id = 1, fn = "Alice"), nextCursor = "cursor2"))
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, circle = "Friends") } returns
+            Result.success(page(ContactSummary(id = 2, fn = "Bob")))
+
+        advanceUntilIdle()
+        assertEquals(1, viewModel.uiState.value.contacts.size)
+
+        viewModel.onCircleFilterChange("Friends")
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals("Friends", state.circleFilter)
+        assertEquals(1, state.contacts.size)
+        assertEquals("Bob", state.contacts[0].fn)
+        // A filter change is a fresh query, not a filtered page appended onto the previous list.
+        assertNull(state.pagination.nextCursor)
+        coVerify { contactRepository.listContacts(cursor = null, limit = 50, search = null, circle = "Friends") }
+    }
+
+    @Test
+    fun `clearing the circle filter reloads the full list`() = runTest(mainDispatcherRule.testDispatcher) {
+        val (viewModel, contactRepository) = newViewModel()
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, circle = "Friends") } returns
+            Result.success(page(ContactSummary(id = 2, fn = "Bob")))
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+            Result.success(page(ContactSummary(id = 1, fn = "Alice")))
+
+        viewModel.onCircleFilterChange("Friends")
+        advanceUntilIdle()
+        assertEquals("Bob", viewModel.uiState.value.contacts.firstOrNull()?.fn)
+
+        viewModel.onCircleFilterChange(null)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertNull(state.circleFilter)
+        assertEquals("Alice", state.contacts.firstOrNull()?.fn)
+    }
+
+    // --- M23: archived toggle -------------------------------------------------
+
+    @Test
+    fun `archived toggle is forwarded to the repository`() = runTest(mainDispatcherRule.testDispatcher) {
+        val (viewModel, contactRepository) = newViewModel()
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, includeArchived = true) } returns
+            Result.success(page(ContactSummary(id = 1, fn = "Alice", archived = true)))
+
+        viewModel.onIncludeArchivedChange(true)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertTrue(state.includeArchived)
+        assertEquals(1, state.contacts.size)
+        coVerify { contactRepository.listContacts(cursor = null, limit = 50, search = null, includeArchived = true) }
+    }
+
+    // --- M23: selection is cleared when the visible set changes (test case 3) ---
+
+    @Test
+    fun `changing the circle filter clears the selection`() = runTest(mainDispatcherRule.testDispatcher) {
+        val (viewModel, contactRepository) = newViewModel()
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+            Result.success(page(ContactSummary(id = 1, uid = "u1", fn = "Alice"), ContactSummary(id = 2, uid = "u2", fn = "Bob")))
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, circle = "Friends") } returns
+            Result.success(page(ContactSummary(id = 3, uid = "u3", fn = "Carol")))
+
+        advanceUntilIdle()
+        viewModel.toggleSelection(1)
+        assertEquals(setOf(1), viewModel.uiState.value.selected)
+
+        viewModel.onCircleFilterChange("Friends")
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.selected.isEmpty())
+    }
+
+    @Test
+    fun `changing the archived toggle clears the selection`() = runTest(mainDispatcherRule.testDispatcher) {
+        val (viewModel, contactRepository) = newViewModel()
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+            Result.success(page(ContactSummary(id = 1, uid = "u1", fn = "Alice")))
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, includeArchived = true) } returns
+            Result.success(page())
+
+        advanceUntilIdle()
+        viewModel.toggleSelection(1)
+        assertEquals(setOf(1), viewModel.uiState.value.selected)
+
+        viewModel.onIncludeArchivedChange(true)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.selected.isEmpty())
+    }
+
+    @Test
+    fun `changing the search query clears the selection`() = runTest(mainDispatcherRule.testDispatcher) {
+        val (viewModel, contactRepository) = newViewModel()
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+            Result.success(page(ContactSummary(id = 1, uid = "u1", fn = "Alice")))
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "ali") } returns
+            Result.success(page())
+
+        advanceUntilIdle()
+        viewModel.toggleSelection(1)
+        assertEquals(setOf(1), viewModel.uiState.value.selected)
+
+        viewModel.onSearchQueryChange("ali")
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.selected.isEmpty())
+    }
+
+    // --- M23: inline bulk selection --------------------------------------------
+
+    @Test
+    fun `select all selects every loaded contact`() = runTest(mainDispatcherRule.testDispatcher) {
+        val (viewModel, contactRepository) = newViewModel()
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+            Result.success(page(ContactSummary(id = 1, fn = "Alice"), ContactSummary(id = 2, fn = "Bob")))
+
+        advanceUntilIdle()
+        viewModel.toggleSelectAll()
+
+        assertEquals(setOf(1, 2), viewModel.uiState.value.selected)
+    }
+
+    @Test
+    fun `select all toggles off when every loaded contact is selected`() = runTest(mainDispatcherRule.testDispatcher) {
+        val (viewModel, contactRepository) = newViewModel()
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+            Result.success(page(ContactSummary(id = 1, fn = "Alice"), ContactSummary(id = 2, fn = "Bob")))
+
+        advanceUntilIdle()
+        viewModel.toggleSelectAll()
+        viewModel.toggleSelectAll()
+
+        assertTrue(viewModel.uiState.value.selected.isEmpty())
+    }
+
+    @Test
+    fun `select all preserves out-of-page selections while adding the loaded page`() = runTest(mainDispatcherRule.testDispatcher) {
+        val (viewModel, contactRepository) = newViewModel()
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+            Result.success(page(ContactSummary(id = 1, fn = "Alice"), ContactSummary(id = 2, fn = "Bob")))
+
+        advanceUntilIdle()
+        // A selection can outlive the rows that carried it (web keys by uid precisely
+        // because of this) — select an id not on the loaded page, then select-all must ADD
+        // the page to the existing selection, never replace it.
+        viewModel.toggleSelection(99)
+        viewModel.toggleSelectAll()
+
+        assertEquals(setOf(99, 1, 2), viewModel.uiState.value.selected)
+    }
+
+    @Test
+    fun `a bulk action runs with the selected uids and clears the selection on success`() = runTest(mainDispatcherRule.testDispatcher) {
+        val (viewModel, contactRepository) = newViewModel()
+        val bulkRepository = mockk<BulkOperationRepository>()
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+            Result.success(page(ContactSummary(id = 1, uid = "u1", fn = "Alice"), ContactSummary(id = 2, uid = "u2", fn = "Bob")))
+        coEvery {
+            bulkRepository.run(match { it.action == "archive" && it.vcardUids.toSet() == setOf("u1", "u2") })
+        } returns Result.success(BulkOperationResult(action = "archive", total = 2, succeeded = 2, failed = 0))
+
+        // Recreate with the stubbed bulk repo so runBulkAction verifies against it.
+        // (The helper's bulk repo is anonymous, so this test wires its own.)
+        val apiClient = mockk<ApiClient>()
+        coEvery { apiClient.search(any(), any(), any()) } returns Result.success(SearchResult())
+        val circleRepository = mockk<CircleRepository>()
+        coEvery { circleRepository.list() } returns Result.success(emptyList())
+        val tagRepository = mockk<TagRepository>()
+        coEvery { tagRepository.list() } returns Result.success(emptyList())
+        val vm = ContactListViewModel(contactRepository, apiClient, circleRepository, bulkRepository, tagRepository)
+
+        advanceUntilIdle()
+        vm.toggleSelection(1)
+        vm.toggleSelection(2)
+        vm.runBulkAction("archive")
+        advanceUntilIdle()
+
+        assertEquals(2, vm.uiState.value.bulkResult?.succeeded)
+        assertTrue(vm.uiState.value.selected.isEmpty())
+    }
+
+    @Test
+    fun `a failed bulk action leaves the selection untouched and surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
+        val (viewModel, contactRepository) = newViewModel()
+        val bulkRepository = mockk<BulkOperationRepository>()
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+            Result.success(page(ContactSummary(id = 1, uid = "u1", fn = "Alice")))
+        coEvery {
+            bulkRepository.run(match { it.action == "archive" })
+        } returns Result.failure(ApiError.Client(400, "boom"))
+        val apiClient = mockk<ApiClient>()
+        coEvery { apiClient.search(any(), any(), any()) } returns Result.success(SearchResult())
+        val circleRepository = mockk<CircleRepository>()
+        coEvery { circleRepository.list() } returns Result.success(emptyList())
+        val tagRepository = mockk<TagRepository>()
+        coEvery { tagRepository.list() } returns Result.success(emptyList())
+        val vm = ContactListViewModel(contactRepository, apiClient, circleRepository, bulkRepository, tagRepository)
+
+        advanceUntilIdle()
+        vm.toggleSelection(1)
+        vm.runBulkAction("archive")
+        advanceUntilIdle()
+
+        assertEquals(setOf(1), vm.uiState.value.selected)
+        assertEquals("boom", vm.uiState.value.error)
     }
 }

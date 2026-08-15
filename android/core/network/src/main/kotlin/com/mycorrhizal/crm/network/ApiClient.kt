@@ -140,6 +140,9 @@ class ApiClient(
         limit: Int? = null,
         search: String? = null,
         includeArchived: Boolean? = null,
+        // M23: filters by a circle NAME — the backend's `?circle=` matches
+        // `circles.name` (contact_controller.go), matching web's filter value.
+        circle: String? = null,
         vcardUids: List<String>? = null,
     ): Result<ContactsPage> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$CONTACTS_PATH".toHttpUrl().newBuilder()
@@ -155,6 +158,7 @@ class ApiClient(
             limit?.let { urlBuilder.addQueryParameter("limit", it.toString()) }
             search?.let { urlBuilder.addQueryParameter("search", it) }
             includeArchived?.let { urlBuilder.addQueryParameter("include_archived", it.toString()) }
+            circle?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("circle", it) }
         }
         return executeGet(urlBuilder.build().toString()) { _, body ->
             moshi.adapter(ContactsPage::class.java).fromJson(body)

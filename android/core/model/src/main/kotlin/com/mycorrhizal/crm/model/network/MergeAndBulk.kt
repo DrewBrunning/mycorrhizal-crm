@@ -60,6 +60,14 @@ data class ContactMergeAssociationCounts(
     @Json(name = "gift_items") val giftItems: Long = 0,
     @Json(name = "field_values") val fieldValues: Long = 0,
     @Json(name = "contact_sync_links") val contactSyncLinks: Long = 0,
+    // T107: merge used to silently destroy these; the backend now re-points them
+    // (or adopts cadence policies as a conflict). Mirrored so M23's breakdown
+    // can show them, matching web's category set.
+    val attachments: Long = 0,
+    val preferences: Long = 0,
+    @Json(name = "external_identities") val externalIdentities: Long = 0,
+    @Json(name = "external_activities") val externalActivities: Long = 0,
+    @Json(name = "cadence_policies") val cadencePolicies: Long = 0,
 )
 
 @JsonClass(generateAdapter = true)
