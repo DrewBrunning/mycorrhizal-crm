@@ -318,8 +318,8 @@
     <string name="reminder_new">Neue Erinnerung</string>
     <string name="reminder_edit">Erinnerung bearbeiten</string>
     <string name="reminder_message">Nachricht</string>
-    <string name="reminder_remind_at">Erinnern am (ISO 8601)</string>
-    <string name="reminder_remind_at_hint">2026-08-10T14:00:00Z</string>
+    <string name="reminder_remind_at">Erinnern am</string>
+    <string name="reminder_remind_at_hint">2026-08-10</string>
     <string name="reminder_recurrence">Wiederholung</string>
     <string name="reminder_email">E-Mail-Erinnerung</string>
     <string name="reminder_create">Erinnerung erstellen</string>
@@ -340,6 +340,19 @@
     <string name="reminder_recurrence_six_months">Alle 6 Monate</string>
     <string name="reminder_recurrence_yearly">Jährlich</string>
     <string name="cd_new_reminder">Neue Erinnerung</string>
+    <string name="reminder_delete_title">Erinnerung löschen?</string>
+    <string name="reminder_delete_confirm">Diese Erinnerung löschen? „%1$s“</string>
+    <string name="cd_delete_reminder">Erinnerung löschen</string>
+    <string name="reminder_overdue">Überfällig</string>
+    <string name="reminder_flexible">Flexibel</string>
+    <string name="reminder_pick_date">Datum auswählen</string>
+    <string name="reminder_reoccur_from_completion">Ab Erledigungsdatum neu planen</string>
+    <string name="reminder_reoccur_from_completion_hint">Bei Erledigung wird die nächste Erinnerung ab dem Erledigungsdatum statt ab dem ursprünglichen Datum geplant.</string>
+    <string name="reminder_completed">Erinnerung erledigt</string>
+    <string name="cd_undo_completion">Erledigung rückgängig machen</string>
+    <string name="reminder_completion_undo_title">Erledigte Erinnerung rückgängig machen?</string>
+    <string name="reminder_completion_undo_confirm">Diese erledigte Erinnerung aus der Zeitleiste entfernen?</string>
+    <string name="reminder_completion_undo">Rückgängig</string>
 
     <!-- Zeitleiste -->
     <string name="timeline_empty">Noch keine Zeitleisten-Einträge</string>

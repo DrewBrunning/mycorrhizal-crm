@@ -167,10 +167,32 @@ idea, not a bug — filed in Deferred → Feature ideas instead, not ranked here
 > inference rules are a design pass, not an implementation detail, and the ticket says so rather than
 > pretending otherwise.
 
+> **Board reconciliation, 2026-08-14.** A read-through of the board against the ticket files and the
+> live backend found four places the two disagreed, all fixed in this pass:
+>
+> - **[M6](85-M6-photo-url-user-prefs-oidc.md) promoted from Feature ideas to the Backend list**, with
+>   §3 (user-prefs PATCH) marked superseded — `PATCH /users/language` and `PATCH /users/date-format`
+>   already exist (`backend/routes/routes.go`), so M6's proposed `PATCH /users/me` duplicated them and
+>   would have diverged from what web already uses. M6's two live gaps are §1 (a photo URL in the
+>   list/detail payloads, which today carry only a base64 `data:` URI Android can't hand to an image
+>   loader) and §4 (OIDC `client=android` native return, so the SSO button can reach the app). Both
+>   block Android work: M5 §3.1 photos, and M25's otherwise-SSO-less login.
+> - **[M5](84-M5-android-polish-and-hardening.md) promoted from Feature ideas to the Android list** —
+>   it was filed under "lower confidence it gets built," but it is the Android-client counterpart to
+>   the already-shipped M2/M3/M4 backend tickets, and two of its §5 items were already stale (dashboard
+>   consumption → done by M10; `PATCH /users/me` → superseded, see M6 above).
+> - **[M18](100-M18-android-entity-field-richness.md) unblocked** — its M17 dependency landed
+>   2026-08-14, but the board still read BLOCKED.
+> - **Stale Deferred note fixed** — the Mobile-clients blurb said call/SMS tracking + quick-capture are
+>   "still deferred on API-surface stability," but M1 Phase 4/5 shipped them 2026-08-10 (confirmed in
+>   `:feature:tracking` and M8's Cluster F). The only genuinely-unbuilt Android-native piece is the
+>   in-overlay quick-capture *sheet*, already tracked as M5 §4.
+
 ### Backend
 
 | Ticket | Status |
 |---|---|
+| [M6](85-M6-photo-url-user-prefs-oidc.md) · Photo URL serving + OIDC native return (its two live gaps) | **TO BE DONE**. R2. Blocks M5 §3.1 (Android photos) and M25's SSO-less login. §3 (user-prefs PATCH) superseded — `PATCH /users/language`/`/users/date-format` already exist. |
 | [T104](148-T104-suggest-relationships-from-relationships.md) · Suggest relationships from relationships | **NOT READY** — needs a design pass first; see the ticket. R3. |
 
 ### Web
@@ -183,14 +205,14 @@ idea, not a bug — filed in Deferred → Feature ideas instead, not ranked here
 
 | Ticket | Status |
 |---|---|
-| [M20](102-M20-android-reminders-depth.md) · Reminders depth | **TO BE DONE**. R4. No delete, no overdue styling, no reoccur-from-completion, no auto-date-from-recurrence. |
+| [M5](84-M5-android-polish-and-hardening.md) · Android polish & hardening (deferred M1 scope + native-endpoint consumers) | **TO BE DONE**. R3. Independently-shippable container: tablet layout, accessibility audit, contact-photo rendering (gated on M6 §1), FCM client (§5a), quick-capture sheet, release signing, instrumented-test decision. |
 | [M23](105-M23-android-contact-list-bulk-breadth.md) · Contact list & bulk breadth | **TO BE DONE**. R3. No circle filter or archived toggle on the main list; merge requires typing a raw numeric ID instead of searching. |
 | [M22](104-M22-android-household-depth.md) · Household management depth | **TO BE DONE**. R3. Core CRUD has parity; role-editing, name resolution, AI suggestions, and T40 address-based suggestions don't. |
 | [M25](107-M25-android-settings-profile-channels.md) · Settings: profile & channels | **TO BE DONE**. R3. Language/date-format are read-only; theme, password change, webhooks, and ntfy/Gotify config don't exist at all. |
 | [M15](97-M15-android-contact-sharing.md) · Contact sharing (P1) | **TO BE DONE**. R3. Zero footprint, including the entry point on a contact's own header. |
 | [M16](98-M16-android-audit-trail.md) · Audit trail + undo (T60) | **TO BE DONE**. R3. Zero footprint. |
 | [M14](96-M14-android-network-graph.md) · Network graph | **TO BE DONE**. R3. M. **Design pass completed 2026-08-11** — ego-centric and list-first over `GET /graph/connections`, not a force-graph. That endpoint (T10) already returns resolved names and per-hop relation chains with inverses applied, so the hard part is server-side and the client needs no layout engine, canvas, or gesture arbitration — and every row is TalkBack-readable, which a drawn graph never is. Activity nodes are a deliberate v1 exclusion (the timeline answers that better on a phone); a radial view is deferred, not rejected. |
-| [M18](100-M18-android-entity-field-richness.md) · Field richness: Life Events/Gifts/Preferences/Agenda | **BLOCKED** on M17 (edit needs to exist before these fields are worth adding to an edit form). R3. |
+| [M18](100-M18-android-entity-field-richness.md) · Field richness: Life Events/Gifts/Preferences/Agenda | **TO BE DONE** (was BLOCKED on M17 — M17 landed 2026-08-14, awaiting on-device verification). R3. |
 | [M26](108-M26-android-registration-triage.md) · Registration + circle/tag triage | **TO BE DONE**. R2. Both real but low-frequency: one-time account creation, one-time legacy cleanup. |
 
 > **N8 (2FA/TOTP) moved to Feature ideas, 2026-08-07.** For a self-hosted instance
@@ -207,11 +229,12 @@ ticket — pulled in only when a concrete need arises, never implemented straigh
 into three categories, 2026-08-06, because "deferred" was hiding a real difference in how solidified
 each idea actually is.
 
-**Mobile clients** — a real, intended project (a native Android app). **M1's Phase 1 (core client)
-shipped 2026-08-10** (see its landing note); the remaining phases and the mobile-only features
-(call/SMS tracking, quick-capture) are still deferred on API-surface stability as later phases of the
-same ticket. **T57 (the bulk-import API for external clients) shipped 2026-08-14** — pulled in once
-M1 became its concrete consumer.
+**Mobile clients** — a real, intended project (a native Android app). **M1's Phases 1–5 shipped
+2026-08-10** (see its landing note) — including the mobile-only features (call/SMS tracking, the
+quick-capture *pill*, QuickContact, custom link actions; the pre-filled in-overlay quick-capture
+*sheet* remains as [M5](84-M5-android-polish-and-hardening.md) §4). What stays deferred is only the
+local-model pilot (P4) below. **T57 (the bulk-import API for external clients) shipped 2026-08-14** —
+pulled in once M1 became its concrete consumer.
 
 | Ticket | Notes |
 |---|---|
@@ -238,8 +261,6 @@ Planned features that these get built at all.
 | [P2f](75-P2f-audiobookshelf-integration.md) · Audiobookshelf integration | R1. Same shape of idea as P2e, for Audiobookshelf. |
 | [P3](76-P3-ai-ollama-layer.md) · AI / Ollama layer | R1. Summarization, entity/relationship extraction, memory-curator suggestions. Gated on the propose-then-approve pattern; `90` D1 is explicit this is not an AI-first project. |
 | [T61](80-T61-contact-picker-api.md) · W3C Contact Picker API for PWA import | R1. Lets the PWA read device contacts directly (Chrome on Android only) instead of requiring a file export first. Narrow audience — Android + PWA + no native app installed. |
-| [M6](85-M6-photo-url-user-prefs-oidc.md) · Backend endpoints the Android app needs (photo URL, user prefs, OIDC native return) | R2. From the M1 Phase-5 review: expose the profile-picture URL in list/detail payloads, `PATCH /users/me`, and a `client=android` OIDC callback that returns the token via a custom-scheme deep link. Was `82-M1-missing-endpoints`; renumbered 2026-08-11 to clear the duplicate `82-`, and its fourth item (the dashboard composite) is now M3. |
-| [M5](84-M5-android-polish-and-hardening.md) · Android app: deferred polish, native-endpoint consumers, and the missing test tier | R3. The **Android-client counterpart to M2/M3/M4**, which are all backend-side. The work M1 shipped without: tablet layout + accessibility audit (M1 items 31/32, explicitly deferred), the four recorded UI deviations from the web, the in-overlay quick-capture sheet, the app-side clients for M2 (unblocked now — M2's backend is merged), M3, M4 and the M1-endpoints items, and a decision about the absent instrumented-test tier. A container of independently shippable sections, not an all-or-nothing gate. Filed 2026-08-11 after a full review pass of `android/` — that pass's *defect* fixes landed separately, see M1's review-pass note. |
 
 ## Done
 
@@ -383,6 +404,7 @@ Kept for reference/lookup, not ranked — order below is roughly the sequence th
 | [M24](106-M24-android-contact-form-detail-actions.md) · Contact form & detail-page actions | **DONE** (2026-08-14, implemented 2026-08-13). All three new `ApiClient` methods (`deleteContact`, `archiveContact`, `unarchiveContact`) plus single-contact vCard export landed with repository cache-sync; the detail screen gained the ⋮ action menu (delete/archive/unarchive with confirmations that name the contact, post-delete navigation, export via the share sheet through a new FileProvider, stay-in-touch → pre-filled quarterly reminder, share/prep stubs), inline circle/tag chip editors (seeded from join-row derivations, not the stale flat `crm.circles`), and the form gained prefix/middle/suffix, kind, language, and circles/tags as autocomplete-of-existing (memberships reconciled via the join-row sub-resources on save). 32 new keys in all five locales. CI gate green with `--rerun-tasks`; hand-verified per `/CLAUDE.md`. Profile-picture upload deferred (crop needs a dependency), JSContact single-contact export deliberately not offered (backend ignores `?vcard_uid=` there), share/prep as stub menu items. On-device verified on a Pixel 8a: created a throwaway test contact, exercised the ⋮ menu (all 7 items present), exported a real vCard 4.0 through the share sheet, and archived it with a confirmation dialog that named the contact and warned about reminder loss — matching the ticket's semantics exactly. See the landing note. |
 | [M11](93-M11-android-prep-view.md) · Prep view (N2) | **IMPLEMENTED, AWAITING ON-DEVICE VERIFICATION** (2026-08-14). All seven sections (cadence health card reading server-provided health fields verbatim, agenda, last interaction + recent notes, relationships with tap-through to the other party's record, life events, upcoming reminders, upcoming dates with "in N days" chips) ship over the real `GET /contacts/:id/briefing` endpoint, reached from the contact detail's ⋮ menu (the M24 "coming soon" stub) via a new `contacts/{contactId}/prep` route. The six collection blocks use the `NotesPage`-style nullable-raw normalization, so web's absent-key crash (`/CLAUDE.md` trap #8) cannot recur; `getBriefing` + `Briefing.kt` models added, 21 strings ×5 locales, 4 MockWebServer + 6 ViewModel tests all hand-verified; `testDebugUnitTest`/`lintDebug`/`assembleDebug --rerun-tasks` green. **Review pass (same day)** fixed a real UTC-vs-device-zone date-shift bug (web renders briefing dates in UTC; Android was using the device zone), honored the session `date_format` via the `DateFormat` util, matched web's cadence warning/success colors, added relationship-row chevrons, a retry double-tap guard, a 4-case Robolectric/Compose UI test, and a fully-populated seven-section Playwright spec (181/181 e2e, 707 vitest, backend `go test ./...` all green). On-device hand-verify still outstanding — no device in the build environment. See the landing note. |
 | [M17](99-M17-android-entity-scaffold-edit-delete-confirm.md) · Entity-list scaffold: add edit + delete-confirmation | **IMPLEMENTED, AWAITING ON-DEVICE VERIFICATION** (2026-08-14). `EntityListScaffold` gained a row-tap `onItemClick` (the ticket's literal spec, not a pencil icon) and a shared delete-confirmation dialog, fixing Life Events/Gifts/Preferences/Agenda from one change. Each entity's create dialog became a reusable `XxxDialog(initial, onConfirm, onDismiss)`, reused in edit mode with pre-filled fields — no field-level richness added (M18's job). Real finding: checking the four `Update*` controllers (not assuming) found they're full overwrites, not merges, so `update()` carries every untouched field forward from the loaded entity or an edit would silently reset e.g. a gift's status/url/value. 6 new strings ×5 locales; `TimelineEntitiesViewModelTest` (findById/update per entity ×4) + new `EntityListScreensTest` (shared scaffold mechanics + one dialog round-trip per entity) all hand-verified — both a scaffold revert and an update-field-preservation revert were confirmed to fail their matching new test before being restored. `testDebugUnitTest` (whole project)/`lintDebug` (`feature:timelineentities` clean)/`assembleDebug` all green. On-device verification still outstanding — no device in the build environment. See the landing note. |
+| [M20](102-M20-android-reminders-depth.md) · Reminders depth | **DONE** (2026-08-14 — see the landing note: delete-with-confirm + `DELETE /reminders/:id`, per-contact completions + undo (`GET /contacts/:id/reminder-completions` + `DELETE /reminder-completions/:id`), overdue styling with the due-today-not-overdue off-by-one pinned, by-mail + flexible chips, Material3 date picker with min-date, auto-date-from-recurrence on create, and the reoccur-from-completion switch. The three new client methods landed with MockWebServer tests incl. the nil-slice JSON-null trap; the completion rows render on the contact-detail timeline with an undo action mirroring web. On-device verification outstanding, same gap as M19/M11/M17). |
 | ~~[M13](95-M13-android-real-search.md) · Real full-text search~~ | **SUPERSEDED** by [T87](131-T87-android-fold-search-into-contact-list.md), 2026-08-12. Not dropped — its endpoint contract, test cases and conventions were carried over verbatim. The file is kept for that provenance; the work is T87's. |
 | [M7](88-M7-android-contact-record-coverage.md) · Contact record: the editor covers 8 of ~30 field groups | **DONE** (2026-08-13 — one generic `MultiValueEditor<T>` + `MultiValueSpec<T>` (the design's exact interface) now covers Email/Phone/OnlineService/Link/Title/PersonalInfo with the `copy()`-not-reconstruct rule baked in, `pref` exclusivity as list-level editor logic, and new-row defaults in `blank()` (phone `cell` moved here from T81's `onPhoneAdd`); a dedicated `AddressEditor` edits `card.addresses[]` with the real `name`/`locality` kinds and preserves extra contexts; organization+department, the three online-service lists, links, personal info, and the three CRM-envelope strings (`how_we_met`/`work_information`/`contact_information`) all became editable. T81's index-based email/phone API was superseded by the editor's object-preserving `onChange(List<T>)`; `ValueListEditor` deleted. 36 strings ×5 locales. Parameterized spec tests + editor UI tests + viewmodel cases, all hand-verified; CI gate green. A follow-up review corrected the type field to `contexts[0]` (phones `features[0] ?: contexts[0]`) to match the web (was `label`), gave online services a `service`-name field + `CONTEXT_OPTIONS`, and dropped their `pref` star. Every Tier-2 group got an explicit verdict — all out of scope for mobile, mirroring the web (read-only Card metadata there). On-device Pixel 8a verify still outstanding — no device in the build env. See the ticket's landing note.) |
 | [M12](94-M12-android-cadence-policy.md) · Cadence policy panel | **DONE** (2026-08-14). Full cadence surface landed in a new `feature/cadence` module: five new `ApiClient` methods (list/get/create/update/delete, each MockWebServer-tested; create's wrapped vs update's raw response asymmetry handled; `OverdueCadence`'s policy/health upgraded from `Map` to typed `CadencePolicy`/`CadenceHealth`), a `CadencePolicyRepository` (interface + online-first impl with a full-resync Room cache and hand-written migration 14→15), a screen mirroring web's `CadencePanel`/`CadenceDialog` (interval pill, overdue/on-track/no-interactions status row, next-due/last-interaction captions, qualifying-type pills, edit/delete, positive-interval validation, add affordance only in the no-policy state), the `contacts/{contactId}/cadence` route, and a ContactDetail entry point. Health is read, never recomputed (`isOverdue` only reads `overdue_by`), pinned by a screen test feeding a contradicting server verdict; empty qualifying selection is preserved as empty (never defaulted), hand-verified failing when broken. 28 `cadence_*` keys + `action_edit` + `contact_cadence` in all five locales. `testDebugUnitTest`/`lintDebug`/`assembleDebug --rerun-tasks` green; on-device round-trip with web not yet verified (no device in the build env). Unblocks M11's health card and M10's overdue widget. |

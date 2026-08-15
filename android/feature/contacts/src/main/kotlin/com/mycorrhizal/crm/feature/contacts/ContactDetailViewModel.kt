@@ -12,6 +12,7 @@ import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.FieldDefinition
+import com.mycorrhizal.crm.model.network.ReminderCompletion
 import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
@@ -54,6 +55,13 @@ data class ContactDetailUiState(
     val contactTags: List<Tag> = emptyList(),
     /** True while a mutating action (delete/archive/unarchive/export) is in flight. */
     val isMutating: Boolean = false,
+    /**
+     * M20: the contact's reminder completions (web's "Reminder completed"
+     * timeline entries). Fetched independently from the contact record — the
+     * record payload carries reminders, not completions. A fetch failure
+     * silently leaves it empty; the timeline simply lacks completion rows.
+     */
+    val completions: List<ReminderCompletion> = emptyList(),
 )
 
 sealed interface ContactDetailEvent {
@@ -125,6 +133,38 @@ class ContactDetailViewModel @Inject constructor(
             )
         }
         loadCustomFields()
+        loadCompletions()
+    }
+
+    /**
+     * M20: reminder completions are a separate endpoint from the contact
+     * record, so the timeline can show (and undo) "Reminder completed" rows.
+     * A failure silently leaves the list empty — never errors the screen.
+     */
+    private fun loadCompletions() {
+        if (contactId == 0) return
+        viewModelScope.launch {
+            reminderRepository.listCompletions(contactId).foldApiError(
+                onSuccess = { completions -> _uiState.update { it.copy(completions = completions) } },
+                onError = {},
+            )
+        }
+    }
+
+    /**
+     * M20: delete a reminder completion (web's undo of a "Reminder completed"
+     * timeline entry), then reload so the row disappears.
+     */
+    fun undoCompletion(id: Int) {
+        if (contactId == 0) return
+        viewModelScope.launch {
+            reminderRepository.deleteCompletion(id).foldApiError(
+                onSuccess = { loadCompletions() },
+                onError = { error ->
+                    _uiState.update { it.copy(error = error.displayMessage) }
+                },
+            )
+        }
     }
 
     /**

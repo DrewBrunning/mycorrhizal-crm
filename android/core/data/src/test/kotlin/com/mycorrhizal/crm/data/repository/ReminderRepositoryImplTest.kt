@@ -4,8 +4,10 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.mycorrhizal.crm.data.local.AppDatabase
+import com.mycorrhizal.crm.model.network.CompletionsResponse
 import com.mycorrhizal.crm.model.network.ContactRemindersResponse
 import com.mycorrhizal.crm.model.network.Reminder
+import com.mycorrhizal.crm.model.network.ReminderCompletion
 import com.mycorrhizal.crm.model.network.ReminderCompleteResponse
 import com.mycorrhizal.crm.model.network.ReminderRecurrence
 import com.mycorrhizal.crm.network.ApiClient
@@ -117,5 +119,59 @@ class ReminderRepositoryImplTest {
         assertTrue(result.isFailure)
         val error = result.exceptionOrNull() as ApiError
         assertEquals(404, (error as ApiError.Client).code)
+    }
+
+    @Test
+    fun `delete drops the cached row on success`() = runTest {
+        db.cachedReminderDao().upsert(
+            com.mycorrhizal.crm.data.local.CachedReminder(id = 1, message = "Call Dana"),
+        )
+        coEvery { apiClient.deleteReminder(1) } returns Result.success(Unit)
+
+        val result = repository.delete(1)
+
+        assertTrue(result.isSuccess)
+        assertNull(db.cachedReminderDao().getById(1))
+    }
+
+    @Test
+    fun `delete failure keeps the cached row`() = runTest {
+        db.cachedReminderDao().upsert(
+            com.mycorrhizal.crm.data.local.CachedReminder(id = 1, message = "Call Dana"),
+        )
+        coEvery { apiClient.deleteReminder(1) } returns Result.failure(
+            ApiError.Client(404, "Reminder not found"),
+        )
+
+        val result = repository.delete(1)
+
+        assertTrue(result.isFailure)
+        assertEquals("Call Dana", db.cachedReminderDao().getById(1)?.message)
+    }
+
+    @Test
+    fun `listCompletions returns the contact's completions`() = runTest {
+        coEvery { apiClient.listContactReminderCompletions(5) } returns Result.success(
+            CompletionsResponse(
+                completionsRaw = listOf(
+                    ReminderCompletion(id = 1, contactId = 5, message = "Done", completedAt = "2026-08-12T10:00:00Z"),
+                ),
+            ),
+        )
+
+        val result = repository.listCompletions(5)
+
+        assertTrue(result.isSuccess)
+        assertEquals(1, result.getOrThrow().size)
+        assertEquals("Done", result.getOrThrow()[0].message)
+    }
+
+    @Test
+    fun `deleteCompletion calls through to the client`() = runTest {
+        coEvery { apiClient.deleteReminderCompletion(7) } returns Result.success(Unit)
+
+        val result = repository.deleteCompletion(7)
+
+        assertTrue(result.isSuccess)
     }
 }

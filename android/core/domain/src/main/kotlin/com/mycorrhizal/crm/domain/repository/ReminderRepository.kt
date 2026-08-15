@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm.domain.repository
 
 import com.mycorrhizal.crm.model.network.Reminder
+import com.mycorrhizal.crm.model.network.ReminderCompletion
 
 /**
  * Reminder data access. Online-first: writes go to the server and the
@@ -21,4 +22,13 @@ interface ReminderRepository {
 
     /** Mark a reminder complete; recurring reminders reschedule and return the reminder. */
     suspend fun complete(id: Int): Result<Reminder?>
+
+    /** Delete a reminder. */
+    suspend fun delete(id: Int): Result<Unit>
+
+    /** A contact's reminder completions (completion timeline). */
+    suspend fun listCompletions(contactId: Int): Result<List<ReminderCompletion>>
+
+    /** Delete a reminder completion (undo). */
+    suspend fun deleteCompletion(id: Int): Result<Unit>
 }

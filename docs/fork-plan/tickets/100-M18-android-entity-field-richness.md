@@ -6,8 +6,8 @@
 | **Rating** | 3 — large; consider splitting per entity once scoped for real |
 | **Size** | S–M — no new endpoints; fields added across four existing forms |
 | **Source** | [M8](89-M8-web-android-parity-audit.md) audit, 2026-08-11 |
-| **Depends on** | [M17](99-M17-android-entity-scaffold-edit-delete-confirm.md) (edit needs to exist before these fields are worth adding to an edit form, not just create) |
-| **Status** | TO BE DONE |
+| **Depends on** | [M17](99-M17-android-entity-scaffold-edit-delete-confirm.md) (edit needs to exist before these fields are worth adding to an edit form, not just create) — **M17 landed 2026-08-14**, so this dependency is satisfied (M17 is only awaiting on-device verification, not code) |
+| **Status** | TO BE DONE (unblocked 2026-08-14) |
 
 Each of the four entities sharing Android's `EntityListScreens.kt` scaffold has a create dialog
 that models only a fraction of its web counterpart's fields. This ticket is the field-by-field
@@ -82,7 +82,9 @@ calls. **This ticket needs no new endpoints.**
 
 ### Blocked on M17
 
-Edit has to exist before fields are worth adding to an edit form. Don't start this first.
+Edit has to exist before fields are worth adding to an edit form. **This blocker cleared 2026-08-14**
+— M17 landed (edit + delete-confirmation live in `EntityListScaffold`), and only its on-device
+verification is outstanding, so M18 no longer needs to wait on M17.
 
 ### Test cases
 

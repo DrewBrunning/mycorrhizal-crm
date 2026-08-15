@@ -71,6 +71,13 @@ cases and the CI gate below close that difference.
 Ten new client methods — the language and date-format PATCHes are why those settings are currently
 read-only. Theme is a local preference with no endpoint.
 
+> **Clarification 2026-08-14:** every route in this table **already exists on the backend** — the
+> "In `ApiClient`? No" column means *the Android `ApiClient` lacks the method*, not that a backend
+> endpoint is missing. The language/date-format/password routes are the same ones web already uses
+> (`backend/routes/routes.go`, `frontend/src/api/users.ts`). There is no backend ticket for this
+> work; it is Android-client + UI only. ([M6 §3](85-M6-photo-url-user-prefs-oidc.md) once proposed a
+> `PATCH /users/me` for these; that was superseded in favour of the existing routes.)
+
 ### Test cases
 
 1. **Language and date format** persist to the server and the UI reflects the change without a

@@ -5,7 +5,7 @@
 | **Rating** | 2 |
 | **Source** | M1 Phase-5 review pass, 2026-08-10 (on-device findings + the Android app's missing pieces) |
 | **Depends on** | M1 Phases 1–5 (shipped). FCM endpoints are **not** here — they're [M2](81-M2-fcm-mobile-push.md). |
-| **Status** | Scoped. Three of its original four gaps are still live; §2 (dashboard) was taken over by [M3](82-M3-dashboard-overview-endpoint.md). |
+| **Status** | Scoped. **Two** of its original four gaps are still live — §1 (photo URL) and §4 (OIDC native return). §2 (dashboard) was taken over by [M3](82-M3-dashboard-overview-endpoint.md); §3 (user prefs) is **superseded** — the write endpoints already exist (see §3 below). Promoted to the Backend list 2026-08-14. |
 
 > **Renumbered 2026-08-11**, from `82-M1-missing-endpoints.md` to `85`/`M6`. The 2026-08-10
 > mobile-API session filed M2/M3/M4 at 81/82/83 without retiring the tickets they overlapped, so
@@ -52,17 +52,23 @@ was re-scoped in full as [M3](82-M3-dashboard-overview-endpoint.md) on 2026-08-1
 picked up the equivalent web `DashboardPage` fan-out. **Build it from M3, not from here.** The
 heading is kept so §3/§4's numbering still matches anything that cited it.
 
-### 3. User preferences update — Android can't change language/date-format
+### 3. User preferences update — **SUPERSEDED: the write endpoints already exist**
 
-**Problem.** `GET /users/me` returns `language`/`date_format`, and the Android Settings displays
-them, but there is **no write path** — a user can only change these on the web. The Android
-Settings "Language"/"Date format" rows are read-only stubs.
+**Superseded 2026-08-14.** The premise ("no write path") was wrong. The backend already exposes
+`PATCH /api/v1/users/language` and `PATCH /api/v1/users/date-format`
+(`backend/routes/routes.go:51-52`), and these are exactly what the web profile form calls
+(`frontend/src/api/users.ts` → `/users/language`, `/users/date-format`). The proposed
+`PATCH /users/me` below would have *duplicated* them and diverged from web. There is **no backend
+work here** — the only remaining piece is the Android client wiring those two existing routes,
+which is [M25](107-M25-android-settings-profile-channels.md)'s job (its contract table already
+lists the correct routes). Kept only so §4's numbering still matches anything that cited it.
 
-**Proposal — new endpoint:**
-- `PATCH /api/v1/users/me` → `{ language?, date_format? }`, returns the updated `UserProfile`
-  (same shape as `GET /users/me`). Validates against the same enums the web profile form uses.
-
-Backend test bar: partial update (only provided fields change), enum validation, owner-scoped.
+> ~~**Problem.** `GET /users/me` returns `language`/`date_format`, and the Android Settings displays
+> them, but there is **no write path** — a user can only change these on the web. The Android
+> Settings "Language"/"Date format" rows are read-only stubs.~~
+>
+> ~~**Proposal — new endpoint:** `PATCH /api/v1/users/me` → `{ language?, date_format? }`, returns
+> the updated `UserProfile` (same shape as `GET /users/me`).~~
 
 ### 4. OIDC native return — the SSO button exists but the token can't reach the app
 
@@ -105,7 +111,6 @@ unchanged; state/nonce/PKCE still enforced on the callback regardless of client.
 - Backend `go build ./... && go vet ./... && gofmt -l . && go test ./...` green.
 - List/detail responses expose the photo URL (not a raw disk path); `?thumbnail=true` still serves
   bytes; photo-less contacts omit the field.
-- `PATCH /users/me` updates language/date-format with enum validation.
 - `client=android` OIDC flow returns the token via the custom-scheme deep link; the web flow is
   byte-for-byte unchanged; state/nonce/PKCE enforced on both.
 - All new behavior covered by controller/real-DB tests.
