@@ -31,9 +31,9 @@ export interface ProfileValues {
   nickname: string;
   // CRMEnvelope.Kind (T27): human|animal.
   kind: string;
-  // Card.Kind (WP13, T29): individual|group|org|location|application|device.
+  // Card.Kind (T29): individual|group|org|location|application|device.
   cardKind: string;
-  // Card.Language (WP4, T29): default language tag.
+  // Card.Language (T29): default language tag.
   language: string;
 }
 

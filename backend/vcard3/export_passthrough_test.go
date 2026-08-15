@@ -25,7 +25,7 @@ func TestExport_PassthroughVCard(t *testing.T) {
 	rfctest.AssertVCardLine(t, out, "X-CUSTOM-PROP", nil, "hello")
 }
 
-// De-dup guard (20.5): a passthrough entry whose name is already produced by
+// De-dup guard: a passthrough entry whose name is already produced by
 // a mapped row (e.g. UID) must not be re-emitted a second time.
 func TestExport_PassthroughVCard_DedupGuard(t *testing.T) {
 	val, _ := json.Marshal("should-not-appear")

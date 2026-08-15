@@ -11,7 +11,7 @@ import (
 )
 
 // TestMergeImportedContact_RealDB_VCF is the real-DB regression test for T49
-// (docs/fork-plan/tickets/58-T49-vcf-import-merge-corrupts-existing-contact.md),
+// (T49),
 // modeled directly on the ticket's own reproduction: create a contact with a
 // real phone/email and a linked Gift, then run it through the exact sequence
 // ConfirmVCF's "update" branch uses -- MergeImportedContact(&existing,

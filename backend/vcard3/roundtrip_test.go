@@ -27,12 +27,12 @@ func neutralRoundtripFixture(pref int) *contactmodel.Record {
 }
 
 // roundtrip_test.go: a handful of P -> neutral -> P and neutral -> P ->
-// neutral spot checks (40-testing.md §40.1 point 4). Confidence only, not
+// neutral spot checks (docs/adrs/0003-golden-fixtures-external-test-oracle.md point 4). Confidence only, not
 // exhaustive — the per-concept import_*/export_*_test.go files own field
 // correctness.
 
 // TestRoundtrip_RFC2426Baseline is the authoritative golden-fixture check
-// (60-review-gates.md §60.1): Frank Dawson's example vCard from RFC 2426 §7,
+// (docs/adrs/0003-golden-fixtures-external-test-oracle.md): Frank Dawson's example vCard from RFC 2426 §7,
 // copied verbatim into backend/internal/rfctest/fixtures/rfc2426-baseline.v3.vcf.
 // It is imported and checked against the RFC-documented values directly,
 // independent of any correspondence-row bookkeeping, so a shared

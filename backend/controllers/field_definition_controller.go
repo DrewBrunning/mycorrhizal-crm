@@ -12,7 +12,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// This file is T6 (docs/fork-plan/tickets/11-T6-custom-fields-api.md): the
+// This file is T6: the
 // CRUD routes that make the already-built FieldDefinition/FieldValue model
 // reachable. Endpoint shape follows circle_controller.go's idiom (the newer
 // controllers use), ownership is by user_id everywhere, and every FieldValue
@@ -34,7 +34,7 @@ import (
 // Sensitivity on the internal API: ALL sensitivities are returned (and
 // accepted) here, because this is the owner's own CRM surface -- the same
 // stance export_controller.go documents for the full-data CSV backup. The
-// §91.13 "exclude non-normal from anything that leaves the instance" rule is
+// "exclude non-normal from anything that leaves the instance" rule is
 // enforced where it actually matters, in the projection path: projectCustomFields
 // (models/contact_record.go) filters sensitivity='normal' in the query for
 // vCard/JSContact export. Filtering here too would make private/secret
@@ -162,12 +162,12 @@ func ListFieldDefinitions(c *gin.Context) {
 }
 
 // UpdateFieldDefinition replaces a FieldDefinition's editable fields. Key is
-// deliberately immutable: it is the stable machine name (§94.3 "the map key /
+// deliberately immutable: it is the stable machine name ("the map key /
 // API field name"), so changing it would silently orphan every FieldValue's
 // key-based identity and break the "upgrade type/constraints in place, never
-// rename" migration story (§94.6). Label is editable (it is display), as are
+// rename" migration story. Label is editable (it is display), as are
 // Type/Constraints/Projection/Sensitivity -- a user can upgrade a migrated
-// definition's type/constraints/projection in place exactly as §94.6 promises.
+// definition's type/constraints/projection in place exactly promises.
 func UpdateFieldDefinition(c *gin.Context) {
 	id := c.Param("id")
 	db := c.MustGet("db").(*gorm.DB)
@@ -244,7 +244,7 @@ func DeleteFieldDefinition(c *gin.Context) {
 }
 
 // ListContactFieldValues returns every FieldValue on the contact referenced
-// by :id, owned by the authenticated user. The :id is the contact's numeric
+// by:id, owned by the authenticated user. The:id is the contact's numeric
 // ID (the same path parameter every /contacts/:id/<subresource> route uses);
 // values are stored against the contact's VCardUID (the graph invariant, see
 // FieldValue.EntityID's doc comment), resolved here. All sensitivities are

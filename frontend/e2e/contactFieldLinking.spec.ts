@@ -1,7 +1,7 @@
 import { test, expect } from './fixtures';
 import { createTestContact, deleteTestContact } from './fixtures';
 
-// T34 (docs/fork-plan/tickets/43-T34-contact-field-linking.md) — tappable
+// T34 — tappable
 // contact fields (tel:/sms:/mailto:/geo:) + universal copy buttons.
 //
 // Phone/email/address are all in DEFAULT_ENABLED_CONTACT_FIELDS

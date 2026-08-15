@@ -1,4 +1,4 @@
-// ContactShare API calls -- P1 (docs/fork-plan/tickets/31-P1-contact-sharing.md):
+// ContactShare API calls -- P1:
 // one-time filtered copy of a contact between two users on the same instance.
 // Accept/confirm reuse the existing VCF/JSContact import types (api/import.ts)
 // since the backend delegates straight to the same import-session pipeline.

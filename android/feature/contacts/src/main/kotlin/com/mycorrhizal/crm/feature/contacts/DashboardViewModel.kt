@@ -40,8 +40,7 @@ data class DashboardUiState(
 )
 
 /**
- * M10 — the M3 dashboard composite consumer
- * (docs/fork-plan/tickets/92-M10-android-dashboard-composite.md). One
+ * M10 — the M3 dashboard composite consumer. One
  * `GET /dashboard` call populates all four widgets (birthdays, upcoming
  * reminders, random "stay in touch" contacts, overdue cadences) — the
  * composite replaced the two legacy endpoints this ViewModel used to fan out

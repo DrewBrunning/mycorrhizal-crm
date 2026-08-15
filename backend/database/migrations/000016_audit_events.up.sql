@@ -1,4 +1,4 @@
--- T18 (docs/fork-plan/tickets/34-T18-audit-trail.md) — append-only audit log.
+-- T18 — append-only audit log.
 --
 -- One row per create/update/delete of an audited entity, with a `before`
 -- JSON snapshot for update/delete events so undo (updates only) can restore

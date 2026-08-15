@@ -14,7 +14,7 @@ import (
 )
 
 // GetDuplicatePairs is T93's read endpoint
-// (docs/fork-plan/tickets/137-T93-duplicate-scan-endpoint-and-review.md):
+// (T93):
 // returns the caller's duplicate-candidate pairs strongest-first, offset-
 // paginated. The pairs are computed fresh on every request by
 // services.FindDuplicatePairs — a constant number of SQL queries regardless

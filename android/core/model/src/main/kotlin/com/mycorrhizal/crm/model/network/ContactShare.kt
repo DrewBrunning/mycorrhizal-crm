@@ -17,7 +17,7 @@ object ContactShareStatuses {
 
 /**
  * A one-time, filtered copy of a contact offered from one user to another on
- * the same instance (P1, docs/fork-plan/tickets/31-P1-contact-sharing.md). The
+ * the same instance (P1). The
  * payload is a frozen JSContact snapshot — editing the original contact after
  * sharing has no effect. UUID-string PK.
  */

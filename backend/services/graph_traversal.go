@@ -9,8 +9,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// Graph traversal + multi-hop chains (T10 / WP-85, docs/fork-plan/tickets/
-// 23-T10-graph-traversal.md): "Teddy's owner", "John's sister's husband".
+// Graph traversal + multi-hop chains (T10 / T10): "Teddy's owner", "John's sister's husband".
 //
 // The traversal is a recursive CTE over relationship_edges. Inferred
 // relations (a grandparent from two parent_of edges) are computed at query
@@ -58,7 +57,7 @@ type traversalRow struct {
 // demands it):
 //   - only Status: confirmed edges (a suggested edge is never treated as a
 //     hard fact outside a review surface);
-//   - sensitivity != secret is excluded (§91.13: a secret edge must not leak
+//   - sensitivity != secret is excluded (a secret edge must not leak
 //     into a derived traversal result); private edges remain visible, the same
 //     as the graph display.
 //

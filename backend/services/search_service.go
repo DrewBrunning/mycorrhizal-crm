@@ -8,10 +8,10 @@ import (
 	"gorm.io/gorm"
 )
 
-// Full-text search over contacts, notes, and interactions (T11 / WP-86,
-// docs/fork-plan/tickets/24-T11-search-fts5.md; addresses added by T38,
-// docs/fork-plan/tickets/47-T38-search-address-fields.md; phones added by T69,
-// docs/fork-plan/tickets/113-T69-phone-search-tokenization.md). Backed by FTS5
+// Full-text search over contacts, notes, and interactions (T11,
+// T11; addresses added by T38,
+// T38; phones added by T69,
+// T69). Backed by FTS5
 // virtual tables kept in sync by triggers (migrations 000007 + 000010 +
 // 000020); the index is derived data and can be rebuilt at any time via
 // RebuildSearchIndex.
@@ -102,7 +102,7 @@ func ftsQuery(term string) string {
 // full digit string (models.NormalizePhoneDigits) and its PhoneKey, and
 // reports whether the term is phone-shaped at all: mostly digits, with every
 // non-digit character drawn from the ones phone numbers are written with —
-// + ( ) - . / and whitespace. A term like "alice" or "800 flowers" is not
+// + ( ) -. / and whitespace. A term like "alice" or "800 flowers" is not
 // phone-shaped, so ordinary text search is untouched. The two-token shape
 // mirrors the phones_normalized index column (T69): a query of the full digits
 // ("18005551234") or of the canonical key ("8005551234") both resolve.
@@ -142,7 +142,7 @@ func phoneFTSMatch(digits, key string) string {
 //
 // Both Search (this file, the cross-entity /search endpoint) and
 // applyContactSearch (controllers/contact_controller.go, GET
-// /contacts?search=, T85 — docs/fork-plan/tickets/129-T85-contacts-list-fts-search.md)
+// /contacts?search=, T85 — T85)
 // call this, so the two paths' notion of "what a contacts_fts match looks
 // like" cannot drift apart the way it would if each reimplemented the
 // phone-vs-plain choice separately.

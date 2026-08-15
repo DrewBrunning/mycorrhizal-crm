@@ -746,8 +746,7 @@ export default function ImportContactsDialog({
   );
 }
 
-// --- T96 review-step helpers (docs/fork-plan/tickets/
-// 140-T96-import-duplicate-merge-review.md) -------------------------------
+// --- T96 review-step helpers (T96) -------------------------------
 
 // isConflictRow reports whether a row needs a conscious decision: it matches an
 // existing record (duplicate_match) or duplicates an earlier row of the same

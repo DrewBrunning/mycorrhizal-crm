@@ -15,8 +15,7 @@ const (
 )
 
 // LinkFieldType is a user-configurable messaging/social link type — name,
-// URI-template protocol, category, icon (docs/fork-plan/tickets/
-// 43-T34-contact-field-linking.md). Deliberately NOT a hardcoded
+// URI-template protocol, category, icon (T34). Deliberately NOT a hardcoded
 // oneof-validated enum like this repo's usual registries (CLAUDE.md
 // frontend-trap-4): the whole point is that a wrong or missing template is
 // fixable by the user without a code change, closer to Monica's "Contact

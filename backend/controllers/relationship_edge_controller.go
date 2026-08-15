@@ -331,7 +331,7 @@ func DeleteRelationshipEdge(c *gin.Context) {
 }
 
 // AcceptRelationshipEdge promotes a Status: suggested edge to confirmed --
-// the only consumer WP-83's household-inference engine
+// the only consumer household-inference engine
 // (services/household_service.go) has anywhere in the app today. A
 // dedicated endpoint rather than folding this into UpdateRelationshipEdge's
 // PUT: PUT is full-replace and requires resending Type/Sensitivity/Metadata/

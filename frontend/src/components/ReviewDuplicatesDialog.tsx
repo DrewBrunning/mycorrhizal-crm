@@ -30,8 +30,7 @@ function contactName(c: Contact): string {
 }
 
 // PairLine renders one candidate pair with its reasons, confidence, and the
-// Merge / Not-a-duplicate actions (T93 — docs/fork-plan/tickets/
-// 137-T93-duplicate-scan-endpoint-and-review.md).
+// Merge / Not-a-duplicate actions (T93 — T93).
 function PairLine({
   pair,
   onMerge,

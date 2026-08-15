@@ -8,7 +8,7 @@ import { getDashboard, DashboardResponse } from './api/dashboard';
 import { getUpcomingReminders, completeReminder, skipReminder } from './api/reminders';
 import { listCircles } from './api/circles';
 
-// M3 (docs/fork-plan/tickets/82-M3-dashboard-overview-endpoint.md): the page
+// M3: the page
 // now fetches one GET /dashboard composite instead of fanning out to four
 // endpoints plus a per-reminder contact lookup. This codebase's vitest has
 // no auto-cleanup (CLAUDE.md frontend trap #1).

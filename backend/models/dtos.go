@@ -14,7 +14,7 @@ type ActivityInput struct {
 	Location    string    `json:"location" validate:"max=300"`
 	Date        time.Time `json:"date" validate:"required"`
 	ContactIDs  []uint    `json:"contact_ids"` // Accept an array of contact IDs for many-to-many association
-	// Type/ExternalRef are WP-84's Interaction fields (activity.go) -- open/
+	// Type/ExternalRef are Interaction fields (activity.go) -- open/
 	// conventional, no oneof validation, matching Activity.Type's own doc
 	// comment on why it's deliberately unvalidated.
 	Type        string `json:"type,omitempty"`
@@ -55,8 +55,7 @@ type HouseholdMemberInput struct {
 }
 
 // AcceptHouseholdSuggestionInput is the DTO for POST /households/suggestions/
-// accept (T40 — docs/fork-plan/tickets/49-T40-household-suggestions-shared-
-// address.md). The suggested group is identified by its member VCardUIDs; the
+// accept (T40 — T40). The suggested group is identified by its member VCardUIDs; the
 // server recomputes the shared address and the dismissal hashes from the
 // members' real contacts data, so a client can neither fabricate a group nor
 // dismiss/accept an arbitrary hash. Name/Type are optional with server-side
@@ -101,7 +100,7 @@ type LifeEventInput struct {
 }
 
 // ConversationAgendaInput is the DTO for creating/updating a ConversationAgenda
-// (conversation_agenda.go, §91.11). Only content fields; the resolved state
+// (conversation_agenda.go). Only content fields; the resolved state
 // (discussed_at / activity_id) is mutated by PATCH /:id/discuss, never by
 // create/update — updating an item's content must not silently re-open or
 // re-close it.
@@ -119,7 +118,7 @@ type ConversationAgendaDiscussInput struct {
 	ActivityID *uint `json:"activity_id,omitempty"`
 }
 
-// GiftInput is the DTO for creating/updating a Gift (§91.11, T20b). Status
+// GiftInput is the DTO for creating/updating a Gift. Status
 // defaults to "idea" server-side when omitted — a gift idea is captured
 // opportunistically without choosing a state. ValueCents/Currency must be set
 // together (explicit-currency rule, enforced in the controller since this
@@ -141,7 +140,7 @@ type GiftInput struct {
 }
 
 // CadencePolicyInput is the DTO for creating/updating a CadencePolicy
-// (cadence_policy.go, §91.10). QualifyingTypes is deliberately not
+// (cadence_policy.go). QualifyingTypes is deliberately not
 // `oneof`-validated: Activity.Type is an open classifier, so a policy may
 // name types outside the current InteractionType* constants. An empty list
 // means every default-qualifying type counts (CadencePolicy.Qualifies).
@@ -152,7 +151,7 @@ type CadencePolicyInput struct {
 }
 
 // FieldDefinitionInput is the DTO for creating/updating a FieldDefinition
-// (field_definition.go, docs/fork-plan/94-custom-fields.md §94.3). Label is
+// (field_definition.go, docs/adrs/0001-neutral-hub-and-spoke-contact-model.md). Label is
 // display; Key is the stable machine name and — unlike every other field —
 // is immutable after creation (see UpdateFieldDefinition's doc comment in
 // field_definition_controller.go). Target/Type/Projection/Sensitivity each
@@ -173,7 +172,7 @@ type FieldDefinitionInput struct {
 
 // FieldValueInput is one element of ContactFieldValuesInput — a
 // FieldValue to write for one FieldDefinition of one contact.
-// Value is the raw JSON payload (§94.4): a Multi field is a JSON array,
+// Value is the raw JSON payload: a Multi field is a JSON array,
 // a scalar is a bare JSON value (string/number/boolean). It is validated
 // against the definition's Type+Constraints in the controller via
 // services.ValidateFieldValue — a type mismatch is a 400, not a 500.
@@ -191,7 +190,7 @@ type ContactFieldValuesInput struct {
 }
 
 // PreferenceInput is the DTO for creating/updating a Preference
-// (preference.go, §91.9). Category is deliberately not `oneof`-validated —
+// (preference.go). Category is deliberately not `oneof`-validated —
 // it is an open classifier (see Preference's doc comment). Sensitivity
 // defaults to normal server-side when omitted (mirroring
 // FieldValue/RelationshipEdge's own defaults), not validated as required.
@@ -237,7 +236,7 @@ type CalendarSubscriptionResponse struct {
 }
 
 // ContactSubscriptionInput is the DTO for creating/updating a CardDAV
-// contact subscription (WP-73b). Credentials are optional (some servers
+// contact subscription . Credentials are optional (some servers
 // allow anonymous/public read). On update, an empty password keeps the
 // stored one; set ClearPassword to remove it. Mirrors
 // CalendarSubscriptionInput's shape, minus PastDays/FutureDays (no contacts
@@ -307,8 +306,8 @@ type ChangePasswordInput struct {
 // ThinContactInput creates a not-yet-existing "thin" Contact inline as one
 // endpoint of a RelationshipEdge — the graph-model equivalent of the legacy
 // Relationship{Name, Gender, Birthday, RelatedContactID: nil} case (the
-// legacy model and its one-time migration tool are both gone as of §3d
-// WP5; this comment is kept only as historical context for the field
+// legacy model and its one-time migration tool are both gone;
+// this comment is kept only as historical context for the field
 // mapping's origin).
 type ThinContactInput struct {
 	Name     string `json:"name" validate:"required,min=1,max=100"`
@@ -385,7 +384,7 @@ type GraphResponse struct {
 	Edges []GraphEdge `json:"edges"`
 }
 
-// GraphChainStep is one hop in a traversal chain (T10 / WP-85). Relation is
+// GraphChainStep is one hop in a traversal chain (T10). Relation is
 // the *display* token describing what the NEXT contact is to the PREVIOUS
 // contact in the chain — the inverse is already applied when the hop walked
 // against the edge's stored direction. For "John's sister's husband" the

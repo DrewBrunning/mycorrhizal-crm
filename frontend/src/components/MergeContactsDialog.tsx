@@ -76,7 +76,7 @@ const contactOptionLabel = (option: Contact) => `${option.firstname} ${option.la
 const contactFilterOptions = createFilterOptions<Contact>({ stringify: contactOptionLabel });
 
 // MergeContactsDialog is ticket N1's frontend entry point
-// (docs/fork-plan/tickets/01-N1-contact-merge.md), extended by T92/T93 with
+// (N1), extended by T92/T93 with
 // the fixed-pair mode above. Single mode: "merge into another contact"
 // always treats the viewed contact as the loser and the picked contact as
 // the keeper.

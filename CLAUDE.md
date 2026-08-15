@@ -11,12 +11,10 @@ items below are recurring bug classes that have shipped broken more than once.
 
 | Where | What |
 |---|---|
-| `docs/fork-plan/tickets/README.md` | **The status board — the live plan.** Single source of truth for what's outstanding and its order. |
-| `docs/fork-plan/tickets/` | One file per ticket, self-contained enough to implement from. |
-| `docs/fork-plan/91-envelope-data-model.md` | Entity specs with field tables. The detailed source. |
-| `docs/fork-plan/92-delivery-roadmap.md` | WP scope detail. **Not** the execution order or status — `tickets/README.md` is. |
-| `docs/fork-plan/95-backlog-and-priorities.md` | Dated grooming journal — *why* past decisions were made. **Not** the execution order or status. |
-| `docs/fork-plan/00`–`50` | Neutral model, adapters, correspondence, integration history. |
+| **GitHub Issues** | **The backlog — the live plan.** Single source of truth for what's outstanding; open work is filed as feature requests or bug reports. |
+| `docs/adrs/` | Architecture decision records — the load-bearing decisions behind the neutral contact model, the correspondence oracle, golden fixtures, and delete semantics. |
+| `docs/specs/` | Curated RFC 6350/2426/9553/9554/9555 excerpts — the external ground truth. |
+| `docs/golden-fixtures/` | Verbatim RFC example cards — the external test oracle. |
 | `backend/` | Go. Gin + GORM + SQLite, raw-SQL migrations. |
 | `frontend/` | React 18 + TypeScript + MUI + vitest + Playwright. |
 
@@ -76,8 +74,8 @@ same port) — see T51's landing note.
 - **Never commit to `main` or merge without being asked.**
 - **Hand-verify your tests.** Break the code, confirm the new test actually fails, restore. A test that
   has never failed has proven nothing. This has caught real bugs here repeatedly.
-- Update `docs/fork-plan/tickets/README.md`'s status column when a ticket lands, and add a short landing
-  note to that ticket's own file — that pair is the sole status record now, nowhere else.
+- Close the corresponding GitHub issue when a ticket lands; the issue body plus the commit history is the
+  status record.
 
 ## Backend traps
 
@@ -94,7 +92,7 @@ These are real bugs that shipped, not hypotheticals.
 
 2. **Never set `Card`/`CRM` by direct field mutation before `Create`.** `BeforeSave` derives the flat
    denormalized columns from the nested model; mutating the struct field directly skips it and your data
-   silently doesn't persist. Use `ApplyRecordToContact`. This bit WP-81 and WP-83 the same way.
+   silently doesn't persist. Use `ApplyRecordToContact`. This bit and the same way.
 
 3. **`RecordForContact`, not `RecordFromContact`.** The former reads what is actually persisted
    (including data with no flat-field home — `SpeakToAs`, `PersonalInfo`, projections); the latter
@@ -110,7 +108,7 @@ These are real bugs that shipped, not hypotheticals.
    audited.
 
 5. **Ownership scoping is not optional.** Every handler scopes by `user_id` (or `Contact.VCardUID` for
-   WP-80+ graph entities). There are zero IDOR holes today — keep it that way.
+ + graph entities). There are zero IDOR holes today — keep it that way.
 
 6. **Cascade deletes are manual.** Soft delete does not fire SQL `CASCADE`. `DeleteContact` and
    `DeleteUser` enumerate every dependent table explicitly — if you add an entity, add it there. Use
@@ -137,7 +135,7 @@ These are real bugs that shipped, not hypotheticals.
    `... WHERE deleted_at IS NULL` — the way `idx_contacts_vcard_uid_user` does.
 
    **Operation-based variance was considered and rejected** ("cascades hard, single deletes soft"): it
-   makes every future cascade site a chance to forget an `Unscoped()`, and the failure is silent. Tier 3c
+   makes every future cascade site a chance to forget an `Unscoped`, and the failure is silent.
    item 1 found 14 tables `DeleteUser`/`DeleteContact` had already missed. See the T26 ticket.
 
    `gorm.Model` gives soft delete for free, **but only works on uint-PK entities**. The UUID-string-PK
@@ -173,7 +171,7 @@ These are real bugs that shipped, not hypotheticals.
   their ID in `BeforeCreate`. Everything older uses `gorm.Model`'s uint PK.
 - Validation lives in struct tags + `middleware.ValidateJSONMiddleware`; custom validators
   (`phone`, `birthday`, `safeurl`, `relation_type`) are registered in `middleware/`.
-- Sensitivity (`normal|private|secret`, `91.13`): anything above `normal` is excluded from exports and
+- Sensitivity (`normal|private|secret`): anything above `normal` is excluded from exports and
   external sync **in the query**, not in the caller.
 
 ## Frontend traps
@@ -224,7 +222,7 @@ These are real bugs that shipped, not hypotheticals.
   `target_id: <viewed contact>`, so a dropdown label always describes the *other* party.
 - **Only `status: confirmed` edges are fact.** `suggested` edges (household-inferred) must never be
   projected to standards, graphed, or treated as real outside a review surface.
-- **Cadence resets on a *qualifying interaction*, not on completing a task** (`91.10`).
+- **Cadence resets on a *qualifying interaction*, not on completing a task**.
   `Activity.Qualifying()` exists for this and has had no consumer yet.
 - **CardDAV/REST writes are full-overwrite by design.** `reconcileContactSync` intentionally discards
   local edits on remote change — documented, pinned by a test. Do **not** copy that policy into new
@@ -234,9 +232,9 @@ These are real bugs that shipped, not hypotheticals.
 
 ## Security posture
 
-A full security review landed (14 findings, all patched — see `95`'s Tier 1). Keep it: parameterized SQL
+A full security review landed (14 findings, all patched). Keep it: parameterized SQL
 only, no `os/exec`, templates from an embedded FS, `user_id` scoping everywhere, explicit field
 allowlists on updates (no mass assignment), CSV values neutralized against formula injection, SSRF guards
 enforced in the transport dialer. Go toolchain is pinned; don't float it.
 
-Known and accepted: no 2FA yet (ticketed as N8).
+Known and accepted: no 2FA yet (GitHub issue #158).

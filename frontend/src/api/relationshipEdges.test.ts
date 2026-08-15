@@ -10,7 +10,7 @@ import {
   getOtherPartyId,
 } from './relationshipEdges';
 
-// §3d WP3 (docs/fork-plan/95-backlog-and-priorities.md): the direction-
+// the direction-
 // resolution logic below is the highest-risk code in this WP -- getting it
 // backwards would silently create/display incorrectly-labeled relationships.
 // Every asymmetric pair is asserted explicitly in both directions; every

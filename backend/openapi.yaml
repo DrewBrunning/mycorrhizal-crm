@@ -2,8 +2,8 @@ openapi: 3.0.3
 info:
   title: Mycorrhizal CRM API
   description: >
-    REST API for Mycorrhizal's contact model. As of WP-71 (P2,
-    docs/fork-plan/50-integration-and-rebrand.md), the contact endpoints speak
+    REST API for Mycorrhizal's contact model. As  (P2,
+    docs/adrs/0001-neutral-hub-and-spoke-contact-model.md), the contact endpoints speak
     the neutral RFC 9553-shaped model (contactmodel.Record/Card) rather than
     the legacy flat Contact DTO. GET /contacts (list) returns a slim
     ContactSummary per item; GET/POST/PUT /contacts/{id} exchange the full
@@ -11,7 +11,7 @@ info:
     symmetric read/write contract.
 
 
-    T8 (docs/fork-plan/tickets/16-T8-openapi.md) extended this spec to cover
+    T8 (T8) extended this spec to cover
     the whole REST surface: every route registered by
     backend/routes/routes.go under /api/v1 plus the unversioned /health. The
     drift test (backend/openapi_test.go) enumerates the live Gin router and
@@ -36,8 +36,8 @@ info:
       scope for this spec by design. It is enabled separately via
       `CARDDAV_ENABLED`.
     - **Deliberate omissions (not bugs):** `fields=` on GET /contacts is
-      gone (WP-71 Gap 3) and is silently ignored if sent;
-      `includes=relationships` was removed in §3d WP4 and is likewise a no-op
+      gone  and is silently ignored if sent;
+      `includes=relationships` was removed and is likewise a no-op
       rather than an error. The only Redocly lint warnings left are on
       genuinely-public endpoints that return no 4xx by design — /health
       (200/503), /auth/oidc/config (200), the OIDC login/callback redirects
@@ -45,7 +45,7 @@ info:
       them.
     - **Pagination:** every list endpoint returns the offset-shaped envelope
       `{ <items>: [...], "total", "page", "limit" }` documented below. T17
-      (docs/fork-plan/tickets/17-T17-change-feeds.md) will replace this with
+      (T17) will replace this with
       cursor-based pagination pre-alpha; when that lands, every paginated
       response in this spec must be revised together (the drift test keeps the
       route surface honest, not the envelope).
@@ -555,8 +555,8 @@ paths:
       description: >
         Returns a page of ContactSummary items — never the full Card, so a
         mobile contact-list screen doesn't have to fetch every contact's
-        nested data (see docs/fork-plan/50-integration-and-rebrand.md WP-71
-        Gap 2). Pagination is cursor-based (T17): rows are ordered by the
+        nested data (see docs/adrs/0001-neutral-hub-and-spoke-contact-model.md).
+        Pagination is cursor-based (T17): rows are ordered by the
         (updated_at, id) feed key and a page is resumed with next_cursor.
         ?since= turns the endpoint into a change feed returning every row
         changed after the cursor — including soft-deleted rows marked
@@ -664,7 +664,7 @@ paths:
           description: >
             Comma-separated subset of notes,activities,reminders. When set,
             each item is a ContactSummaryWithRelations instead of a plain
-            ContactSummary. includes=relationships was removed in §3d WP4 and
+            ContactSummary. includes=relationships was removed and
             is a no-op (not an error).
           schema: { type: string }
       responses:
@@ -1191,7 +1191,7 @@ paths:
         health, open agenda items, confirmed relationships, life events,
         upcoming reminders, and upcoming dates. Pure aggregation of existing
         data — never persisted, every block degrades to empty when its source
-        is absent. Secret-sensitivity relationships are excluded (91.13): a
+        is absent. Secret-sensitivity relationships are excluded : a
         secret relationship must not surface on a screen likely to be open in
         front of the person it concerns.
       responses:
@@ -1550,7 +1550,7 @@ paths:
         "400":
           description: A CSV-sourced session ID was sent here, no prior preview cached, or unknown/expired/foreign session.
 
-  # --- Contact sharing (P1, docs/fork-plan/tickets/31-P1-contact-sharing.md) ---
+  # --- Contact sharing (P1, P1) ---
   # One-time filtered copy between two users on the same instance -- not a
   # standing/live share (P1b, deferred). Accept is preview-only (parses the
   # stored payload through the same import machinery as
@@ -4184,7 +4184,7 @@ paths:
       summary: Create a gift record
       operationId: createGift
       description: >
-        "What did I give them last year?" (§91.11) against a contact. Covers an
+        "What did I give them last year?"  against a contact. Covers an
         idea captured opportunistically (status defaults to idea), the
         offered/given gift with its date, and a received gift. Any value must
         carry an explicit ISO 4217 currency. Optionally links the LifeEvent or
@@ -4941,7 +4941,7 @@ paths:
         - name: sections
           in: query
           description: >
-            Comma-separated field sections to include (WP-97/T9 selective
+            Comma-separated field sections to include (T9 selective
             export). One of: emails, phones, addresses, organizations,
             anniversaries, media, online_services, links, notes, keywords,
             related_to, personal_info, speak_to_as, members, languages,
@@ -4953,7 +4953,7 @@ paths:
         - name: include_sensitive
           in: query
           description: >
-            Explicit opt-in override (91.13): when true, private/secret
+            Explicit opt-in override : when true, private/secret
             items in the selected sensitivity-bearing sections (related_to,
             personal_info, custom_fields) are included in this one export.
             Defaults to false.
@@ -4975,7 +4975,7 @@ paths:
         - name: sections
           in: query
           description: >
-            Comma-separated field sections to include (WP-97/T9 selective
+            Comma-separated field sections to include (T9 selective
             export). One of: emails, phones, addresses, organizations,
             anniversaries, media, online_services, links, notes, keywords,
             related_to, personal_info, speak_to_as, members, languages,
@@ -4987,7 +4987,7 @@ paths:
         - name: include_sensitive
           in: query
           description: >
-            Explicit opt-in override (91.13): when true, private/secret
+            Explicit opt-in override : when true, private/secret
             items in the selected sensitivity-bearing sections (related_to,
             personal_info, custom_fields) are included in this one export.
             Defaults to false.
@@ -5042,7 +5042,7 @@ paths:
       summary: Traverse the relationship graph from a contact (multi-hop chains)
       operationId: getGraphConnections
       description: >
-        Graph traversal + multi-hop chains (T10/WP-85). From a starting contact
+        Graph traversal + multi-hop chains (T10). From a starting contact
         (?from, a Contact.VCardUID), list every reachable contact within
         ?depth hops, each with the chain of relation steps describing how it
         is related to the anchor ("John's sister's husband"). Inferred
@@ -5097,7 +5097,7 @@ paths:
       summary: Full-text search across contacts, notes, and interactions
       operationId: searchAll
       description: >
-        FTS5-backed search (T11/WP-86) over the caller's contacts, notes, and
+        FTS5-backed search (T11) over the caller's contacts, notes, and
         interactions (activities), grouped into three sections. User-scoped
         (never crosses users); soft-deleted and secret items are excluded. When
         the whole query is a relation-type synonym ("brother"), resolved_relation
@@ -7164,7 +7164,7 @@ components:
       description: >
         Request body for POST /contacts and PUT /contacts/{id}. Gender rides
         alongside card/crm since it has no neutral-model home (see
-        docs/fork-plan/50-integration-and-rebrand.md's RecordFromContact
+        docs/adrs/0001-neutral-hub-and-spoke-contact-model.md's RecordFromContact
         notes).
       properties:
         gender:
@@ -7413,7 +7413,7 @@ components:
     BriefingCadenceHealth:
       type: object
       description: >
-        The DERIVED relationship-health read-model (91.10), never stored.
+        The DERIVED relationship-health read-model , never stored.
         has_qualifying_interaction stays false until the contact has at least
         one qualifying interaction; overdue_by is whole calendar days past due
         (0 when due today or later).
@@ -7537,7 +7537,7 @@ components:
       description: >
         One structured postal address in the flat legacy shape. The three
         sub-street fields (PO box, apartment, floor) were added in T79
-        (docs/fork-plan/tickets/123-T79-flat-address-projection-too-narrow.md);
+        (T79);
         the remaining RFC 9553 component kinds ride the nested Card shape's
         AddressComponent kinds instead.
       properties:
@@ -7836,7 +7836,7 @@ components:
           items: { type: string }
         include_sensitive:
           type: boolean
-          description: §91.13 opt-in override to include private/secret items within the selected sections.
+          description: opt-in override to include private/secret items within the selected sections.
     ContactShare:
       type: object
       properties:
@@ -8279,7 +8279,7 @@ components:
     ConversationAgenda:
       type: object
       description: >
-        "Things to bring up next time I see them" (§91.11). Contextual memory
+        "Things to bring up next time I see them" . Contextual memory
         surfaced on the contact view, explicitly NOT date-scheduled. resolved
         by discussed_at, never by a timer.
       properties:
@@ -8318,7 +8318,7 @@ components:
     Gift:
       type: object
       description: >
-        "What did I give them last year?" (§91.11) against a contact — an idea
+        "What did I give them last year?"  against a contact — an idea
         captured opportunistically, the offered/given gift, or a received gift.
         Status defaults to idea; any value carries an explicit ISO 4217
         currency.
@@ -8422,7 +8422,7 @@ components:
       type: object
       description: >
         A relationship-maintenance rule — "stay in touch every N days"
-        (§91.10). Health is DERIVED (see CadenceHealth), never stored; this
+        . Health is DERIVED (see CadenceHealth), never stored; this
         entity carries only the rule itself.
       properties:
         id: { type: string, format: uuid }
@@ -8444,7 +8444,7 @@ components:
     CadenceHealth:
       type: object
       description: >
-        The DERIVED relationship-health read-model (§91.10) — computed from
+        The DERIVED relationship-health read-model  — computed from
         the timeline, never persisted. Undefined (has_qualifying_interaction
         false) until the contact has at least one qualifying interaction;
         cadence does NOT count from the contact's creation date.
@@ -8854,7 +8854,7 @@ components:
         type: { type: string, enum: [relationship, activity] }
         label: { type: string }
 
-    # --- Import (preserved from WP-73b) ---
+    # --- Import (preserved ) ---
     ColumnMapping:
       type: object
       required: [csv_column]
@@ -8997,7 +8997,7 @@ components:
         skipped: { type: integer }
         errors: { type: array, items: { type: string } }
 
-    # --- Neutral RFC 9553 contact model (preserved from WP-71) ---
+    # --- Neutral RFC 9553 contact model (preserved ) ---
     CRMEnvelope:
       type: object
       description: Mycorrhizal-specific data outside any contact-exchange standard.
@@ -9008,7 +9008,7 @@ components:
         contact_information: { type: string }
     Passthrough:
       type: object
-      description: Unmapped data preserved verbatim (docs/fork-plan/00-overview.md §0.5).
+      description: Unmapped data preserved verbatim (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md).
       properties:
         vCardProps:
           type: array
@@ -9262,7 +9262,7 @@ components:
       description: >
         Neutral superset of a contact's standardized data (union of RFC 9553
         JSContact + the IANA vCard-elements registry). See
-        docs/fork-plan/20-correspondence.md for the full field-by-field
+        docs/adrs/0002-correspondence-table-locked-oracle.md for the full field-by-field
         mapping to/from vCard 3.0/4.0 and JSContact.
       properties:
         uid: { type: string }

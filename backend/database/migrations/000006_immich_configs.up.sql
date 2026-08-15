@@ -1,4 +1,4 @@
--- T15/T16 (docs/fork-plan/tickets/33-T15-T16-immich.md) — the Immich
+-- T15/T16 — the Immich
 -- connection config, one row per user. This is the §93.4 exception where a
 -- small typed config table is acceptable: the Immich base URL + API key are
 -- genuinely per-user-global (not per-contact), so they do not belong in

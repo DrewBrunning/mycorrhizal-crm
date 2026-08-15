@@ -156,8 +156,7 @@ type UserDirectoryEntry struct {
 // ListUserDirectory returns every OTHER user on the instance (id + username
 // only) for any authenticated user — unlike ListUsers, which is admin-only
 // and returns the full user record. This exists to populate the recipient
-// picker for P1 contact sharing (docs/fork-plan/tickets/31-P1-contact-
-// sharing.md): sharing a contact needs to name a recipient, and there was
+// picker for P1 contact sharing: sharing a contact needs to name a recipient, and there was
 // previously no way for a non-admin user to discover who else is on the
 // instance.
 func ListUserDirectory(c *gin.Context) {

@@ -1,5 +1,5 @@
 // LinkFieldType API calls (T34) — the user-configurable messaging/social
-// link-type registry (docs/fork-plan/tickets/43-T34-contact-field-linking.md).
+// link-type registry (T34).
 // Deliberately NOT a hardcoded oneof mirror like this codebase's other
 // enums (contactFields.ts's own frontend-trap-4 convention) — see the
 // ticket's "Decisions made" section for why this one is a real CRUD

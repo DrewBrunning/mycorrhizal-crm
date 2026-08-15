@@ -143,8 +143,8 @@ func idMapFromSlice[T any](items []T, getKey func(T) string) map[string]T {
 // inside "name") was lost before adapter.go ever got a chance to preserve it
 // -- adapter.go's importUnknownTopLevel/spliceJSContactPassthrough only ever
 // covered the Card's own top-level properties. This violates
-// docs/fork-plan/00-overview.md §0.5 ("genuinely unmappable/unknown data...
-// preserve, don't reject") and docs/fork-plan/30-adapters.md §30.A rule 5
+// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md ("genuinely unmappable/unknown data...
+// preserve, don't reject") and docs/adrs/0001-neutral-hub-and-spoke-contact-model.md rule 5
 // ("Unknown top-level or object properties on import ->
 // Record.Passthrough.JSContact[pointer]" -- "or object" means nested-in-an-
 // object too, not just top-level).
@@ -220,7 +220,7 @@ func captureExtra(data []byte, known map[string]bool) map[string]json.RawMessage
 // mergeExtraJSON splices extra's entries into the already-marshaled JSON
 // object base, skipping any key base already defines (a known field must
 // never be shadowed or duplicated by a captured-unknown one -- the same
-// de-dup guard adapter.go applies at the top level, 20.5). Returns base
+// de-dup guard adapter.go applies at the top level). Returns base
 // unchanged if extra is empty (the overwhelmingly common case, so this never
 // touches the marshal fast path for objects with no captured unknowns).
 func mergeExtraJSON(base []byte, extra map[string]json.RawMessage) ([]byte, error) {

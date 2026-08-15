@@ -20,7 +20,7 @@ import (
 )
 
 // CreateContactShare exports the sender's contact through T9's field
-// selection (models.RecordForContactFiltered — this is what gets the §91.13
+// selection (models.RecordForContactFiltered — this is what gets the
 // sensitivity gating enforced server-side, not just by the UI), serializes it
 // once as a JSContact "Card set" (matching ExportContactsAsJSContact's own
 // shape, so ParseJSContact's array-form path is exercised identically to a

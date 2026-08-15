@@ -167,11 +167,11 @@ type ImmichAsset struct {
 // (ticket T15/T16). It intentionally implements only the endpoints this
 // integration relies on:
 //
-//   - GET /api/people                 — browse/search persons to link (L1)
-//   - GET /api/people/:id/statistics  — photo count (L1 display)
-//   - GET /api/people/:id/assets      — latest appearance (L1 display, L2)
-//   - GET /api/people/:id/thumbnail   — person thumbnail (L1 display)
-//   - GET /api/assets/:id/thumbnail   — one photo's image (contact-photo picker)
+//   - GET /api/people                — browse/search persons to link (L1)
+//   - GET /api/people/:id/statistics — photo count (L1 display)
+//   - GET /api/people/:id/assets     — latest appearance (L1 display, L2)
+//   - GET /api/people/:id/thumbnail  — person thumbnail (L1 display)
+//   - GET /api/assets/:id/thumbnail  — one photo's image (contact-photo picker)
 //
 // "Pin what you rely on and fail gracefully" (T16 trap): every parse is
 // defensive, and any unexpected response shape maps to ErrImmichInvalidData

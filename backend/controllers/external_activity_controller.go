@@ -13,7 +13,7 @@ import (
 
 // CreateExternalActivity creates a new ExternalActivity (external_activity.go)
 // for the authenticated user — the L2 "enrichment" write of the generic
-// integration substrate (§91.12, ticket T14): an event that happened in an
+// integration substrate: an event that happened in an
 // external system, linkable into the contact's timeline. Same ownership check
 // + natural-key 409 as CreateExternalIdentity.
 func CreateExternalActivity(c *gin.Context) {

@@ -4,8 +4,7 @@ import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
 
 /**
- * The M3 "today/overview" composite (docs/fork-plan/tickets/
- * 82-M3-dashboard-overview-endpoint.md) — one `GET /dashboard` call
+ * The M3 "today/overview" composite — one `GET /dashboard` call
  * replacing the four-request fan-out (`/contacts/birthdays`,
  * `/contacts/random`, `/reminders/upcoming`, `/cadence-policies/overdue`)
  * the dashboard used to fire. Every block degrades to `[]` when empty — the

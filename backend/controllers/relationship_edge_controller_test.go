@@ -708,7 +708,7 @@ func TestAcceptRelationshipEdge_WrongUser404s(t *testing.T) {
 // middleware.ValidateJSONMiddleware(&models.RelationshipEdgeInput{}) (not
 // withValidated's bypass) to prove the relation_type validator tag actually
 // rejects unregistered tokens through the real request path, and that
-// synonym matching (MatchLegacyRelationType, used only by the WP-81
+// synonym matching (MatchLegacyRelationType, used only by the
 // migration tool) does NOT apply here -- a synonym like "mother_of" is not
 // itself a registry key and must be rejected too.
 func TestCreateRelationshipEdge_RealValidation_RelationType(t *testing.T) {

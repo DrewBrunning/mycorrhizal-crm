@@ -9,7 +9,7 @@ import { getAuditEvents, undoAuditEvent, AuditEvent } from './api/audit';
 import { getContactsByUid, Contact } from './api/contacts';
 import { ApiError } from './api/client';
 
-// T60 (docs/fork-plan/tickets/79-T60-audit-trail-ui.md). This codebase's vitest
+// T60. This codebase's vitest
 // has no auto-cleanup, so it must be done explicitly (CLAUDE.md frontend trap #1).
 afterEach(() => {
   cleanup();

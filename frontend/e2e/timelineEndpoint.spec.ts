@@ -3,8 +3,7 @@ import { createTestContact, deleteTestContact } from './fixtures';
 import { API_BASE_URL } from './global-setup';
 
 /**
- * T66 (docs/fork-plan/tickets/110-T66-contact-timeline-bounded-view-and-
- * explorer.md) — backend-only: the paginated, filterable merged timeline
+ * T66 — backend-only: the paginated, filterable merged timeline
  * endpoint and the bounded M4 contact-detail composite. The web timeline
  * explorer that consumes them is T78, so the e2e surface here is the API
  * itself, driven through Playwright's authenticated `request` fixture exactly

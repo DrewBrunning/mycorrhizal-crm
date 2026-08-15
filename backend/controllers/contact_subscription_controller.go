@@ -156,7 +156,7 @@ func DeleteContactSubscription(c *gin.Context) {
 	}
 
 	// Synced contacts stay (they are real, user-owned Contact rows per
-	// WP-73b's decision); only the subscription and its sync links go.
+	// decision); only the subscription and its sync links go.
 	if err := db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("subscription_id = ?", subscription.ID).Delete(&models.ContactSyncLink{}).Error; err != nil {
 			return err

@@ -109,7 +109,7 @@ func TestCardRoundTrip(t *testing.T) {
 // TestRecordRoundTrip verifies the JSON-serialized parts of Record (Card,
 // Envelope, Passthrough) survive a round trip. Record.UID and Record.ETag are
 // deliberately `json:"-"` (persistence-layer identity, not part of the Card
-// payload per §10.5/§10 preamble) so they are — by design — NOT expected to
+// payload preamble) so they are — by design — NOT expected to
 // survive a JSON marshal/unmarshal cycle; a plain reflect.DeepEqual of the
 // whole literal would therefore incorrectly fail on those two fields alone.
 func TestRecordRoundTrip(t *testing.T) {

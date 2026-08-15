@@ -1,5 +1,4 @@
-// Notification channel API calls — N9 (docs/fork-plan/tickets/
-// 30-N9-notification-channels.md): per-user ntfy/Gotify config, the per-user
+// Notification channel API calls — N9: per-user ntfy/Gotify config, the per-user
 // channel toggles, per-channel test notifications, and Web Push device
 // registrations. The channels listed here must stay in sync with the backend
 // models.AllNotificationChannels (no dynamic type-list endpoint exists).
@@ -51,7 +50,7 @@ export interface NotificationTestResult {
 }
 
 // DeviceRegistration is a mobile push device token registered by a native
-// client (M2, docs/fork-plan/tickets/81-M2-fcm-mobile-push.md) — the FCM/APNS
+// client (M2, M2) — the FCM/APNS
 // counterpart to PushSubscription's Web Push (VAPID) shape. The web app never
 // registers a device; it only lists/deletes the ones the Android/iOS app
 // registered.

@@ -11,7 +11,7 @@ import (
 // exercises. init() (rather than inside a Test func body) so registration
 // happens unconditionally whenever the test binary starts, independent of
 // any -run filter — this is what makes TestCoverage_* mechanically reliable
-// rather than aspirational (40-testing.md §40.5).
+// rather than aspirational (docs/adrs/0003-golden-fixtures-external-test-oracle.md).
 var (
 	importCoverage = map[string]bool{}
 	exportCoverage = map[string]bool{}
@@ -32,7 +32,7 @@ func registerExportCoverage(conceptIDs ...string) {
 // TestCoverage_AllMappedConceptsHaveImportAndExportTests iterates
 // correspondence.Load() and asserts that every concept with a vCard3 home
 // (v3_prop not "-") has been exercised by at least one import test and one
-// export test in this package (40-testing.md §40.5).
+// export test in this package (docs/adrs/0003-golden-fixtures-external-test-oracle.md).
 func TestCoverage_AllMappedConceptsHaveImportAndExportTests(t *testing.T) {
 	for _, row := range correspondence.Load() {
 		if row.V3Prop == "-" {

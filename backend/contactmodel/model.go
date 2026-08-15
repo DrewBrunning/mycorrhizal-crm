@@ -25,7 +25,7 @@ type Card struct {
 	Phones              []Phone         `json:"phones,omitempty"`
 	ImppAddresses       []OnlineService `json:"imppAddresses,omitempty"`       // vCard IMPP only
 	SocialProfiles      []OnlineService `json:"socialProfiles,omitempty"`      // vCard SOCIALPROFILE only (9554)
-	OtherOnlineServices []OnlineService `json:"otherOnlineServices,omitempty"` // unclassified: GUI-added with no vCard-property preference, or JSContact-imported with no vCardName hint (RFC 9555 §2.15.3). NOT exported to vCard (no safe default property to guess) — see 20-correspondence.md §20.7
+	OtherOnlineServices []OnlineService `json:"otherOnlineServices,omitempty"` // unclassified: GUI-added with no vCard-property preference, or JSContact-imported with no vCardName hint (RFC 9555 §2.15.3). NOT exported to vCard (no safe default property to guess) — see docs/adrs/0002-correspondence-table-locked-oracle.md
 	Addresses           []Address       `json:"addresses,omitempty"`
 	Anniversaries       []Anniversary   `json:"anniversaries,omitempty"`
 	SpeakToAs           *SpeakToAs      `json:"speakToAs,omitempty"`
@@ -230,7 +230,7 @@ type Pronouns struct {
 }
 
 // PersonalInfo is one hobby/interest/expertise entry (JSContact personalInfo
-// / vCard EXPERTISE, HOBBY, INTEREST). Kind ∈ expertise|hobby|interest ;
+// / vCard EXPERTISE, HOBBY, INTEREST). Kind ∈ expertise|hobby|interest;
 // Level ∈ high|medium|low
 type PersonalInfo struct {
 	ID     string `json:"id,omitempty"`
@@ -304,7 +304,7 @@ type Record struct {
 	ETag string `json:"-"`
 }
 
-// ctx2type (docs/fork-plan/20-correspondence.md §20.4): the neutral model's
+// ctx2type (docs/adrs/0002-correspondence-table-locked-oracle.md): the neutral model's
 // Contexts vocabulary is private/work; the vCard TYPE parameter and this
 // project's legacy flat fields both use home/work. RFC 9554 adds
 // billing/delivery for addresses, which are identical in both directions.

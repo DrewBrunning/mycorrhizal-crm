@@ -113,7 +113,7 @@ func TestExportData(t *testing.T) {
 	}
 	db.Create(&contact2)
 
-	// Create a relationship edge (§3d WP4: RELATIONSHIPS now reads
+	// Create a relationship edge (RELATIONSHIPS now reads
 	// RelationshipEdge, not the legacy models.Relationship table)
 	edge := models.RelationshipEdge{
 		UserID:      user.ID,
@@ -519,7 +519,7 @@ func TestExportContactsAsVCF_Empty(t *testing.T) {
 }
 
 // TestExportContactsAsVCF_PhotoBridging is a regression test for the exact
-// bug class fixed 3x while auditing WP-73 (see export_controller.go's and
+// bug class fixed 3x while auditing (see export_controller.go's and
 // models/contact_record.go's RecordForContact doc comments):
 // ExportContactsAsVCF must build its contactmodel.Record via
 // models.RecordForContact, which -- once the persisted Contact.Card is
@@ -759,7 +759,7 @@ func TestExportContactsAsJSContact_PhotoBridging(t *testing.T) {
 	assert.True(t, found, "expected a media entry with kind=photo and the actual embedded photo data, got media=%v", media)
 }
 
-// --- WP-97 / T9 selective export (sections= + include_sensitive=) ---
+// --- T9 selective export (sections= + include_sensitive=) ---
 
 // The ?sections= field picker must actually narrow a vCard export, and an
 // absent param must preserve the pre-T9 all-sections behavior.
@@ -805,7 +805,7 @@ func TestExportContactsAsVCF_UnknownSection_BadRequest(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
-// The §91.13 opt-in override flows through the HTTP surface: a secret edge is
+// The opt-in override flows through the HTTP surface: a secret edge is
 // absent by default and present only with ?include_sensitive=true.
 func TestExportContactsAsVCF_IncludeSensitiveOptIn(t *testing.T) {
 	db, router := setupRouter()

@@ -15,8 +15,7 @@ const (
 )
 
 // ContactShare is a one-time, filtered copy of a contact offered from one
-// user to another user on the same instance (P1, docs/fork-plan/tickets/
-// 31-P1-contact-sharing.md). This is NOT a standing/live share — Payload is
+// user to another user on the same instance (P1, P1). This is NOT a standing/live share — Payload is
 // a frozen snapshot serialized once at creation time; editing the original
 // Contact afterward has no effect on a pending or accepted share. A
 // standing/permissioned share is P1b (deferred, XL — see 37-deferred.md).

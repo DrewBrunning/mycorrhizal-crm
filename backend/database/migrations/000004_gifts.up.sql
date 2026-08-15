@@ -1,4 +1,4 @@
--- T20b (docs/fork-plan/tickets/28-T20b-gift-tracking.md) —
+-- T20b —
 -- Gift: "what did I give them last year?" (§91.11) against a contact, covering
 -- the three states that make the feature useful — an idea captured
 -- opportunistically, the offered/given gift with its date, and a received gift

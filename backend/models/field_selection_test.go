@@ -273,7 +273,7 @@ func buildSensitiveProjectionFixture(t *testing.T) (*gorm.DB, User, Contact) {
 	return db, user, alice
 }
 
-// The ticket's binding sensitivity rule (91.13 + 92.6b): a sensitive item is
+// The ticket's binding sensitivity rule: a sensitive item is
 // excluded by default and included only when the caller explicitly opts in —
 // a plain RecordForContact (or an all-sections selection without the flag)
 // must not leak it, and RecordForContactFiltered with IncludeSensitive must

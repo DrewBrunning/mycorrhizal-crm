@@ -1,5 +1,5 @@
 // ExternalIdentity / ExternalActivity API calls — T14
-// (docs/fork-plan/tickets/32-T14-external-link-substrate.md): the generic
+// (T14): the generic
 // integration substrate. ExternalIdentity = "this contact IS this thing in
 // that external system"; ExternalActivity = something that happened in an
 // external system, linkable into a contact's timeline. System-agnostic — no

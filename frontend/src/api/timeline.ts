@@ -1,6 +1,5 @@
 // Contact timeline API calls -- backend endpoint is T66
-// (docs/fork-plan/tickets/110-T66-contact-timeline-bounded-view-and-
-// explorer.md), consumed here by the T78 web explorer. GET
+// (T66), consumed here by the T78 web explorer. GET
 // /contacts/:id/timeline returns a cursor-paginated page of a contact's
 // merged timeline across all six event types, filterable by ?type=
 // (comma-separated subset) and ?bucket= (recency).

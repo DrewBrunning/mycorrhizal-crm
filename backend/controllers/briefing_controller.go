@@ -14,7 +14,7 @@ import (
 )
 
 // GetContactBriefing returns the N2 "prep view" composition for one contact
-// (docs/fork-plan/tickets/22-N2-prep-view.md): everything the user needs to
+// (N2): everything the user needs to
 // remember about this person before seeing them, in one response.
 //
 // It is read-only — a pure aggregation of existing data (activities, notes,
@@ -23,7 +23,7 @@ import (
 // its zero value when the source is empty or the feature isn't built yet.
 //
 // Ownership: the contact must belong to the caller (user_id scoping, the
-// standing CLAUDE.md trap 5). Sensitivity (91.13): relationship edges with
+// standing CLAUDE.md trap 5). Sensitivity: relationship edges with
 // `secret` sensitivity are excluded in the query — a secret relationship must
 // not surface on a screen likely to be open in front of the person it
 // concerns (private relationships stay: the briefing is the user's own
@@ -141,7 +141,7 @@ func buildContactBriefing(db *gorm.DB, userID uint, contact *models.Contact, now
 	briefing.OpenAgendaItems = agenda
 
 	// --- Relationships: confirmed edges involving this contact, excluding
-	// sensitive ones (91.13) in the query, resolved with the other party's
+	// sensitive ones  in the query, resolved with the other party's
 	// name and the display token read from this contact's perspective.
 	if err := attachBriefingRelationships(db, userID, contact, briefing); err != nil {
 		return nil, err
@@ -211,7 +211,7 @@ func normalizeBriefingSlices(b *models.ContactBriefing) {
 
 // attachBriefingRelationships resolves the briefing's relationship block.
 // Only status:confirmed edges are included; suggested edges are never fact.
-// Sensitivity: only `secret` edges are excluded (91.13) — a secret
+// Sensitivity: only `secret` edges are excluded — a secret
 // relationship must not surface on a screen likely to be open in front of the
 // person it concerns. `private` relationships stay: the briefing is the
 // user's own screen, and private means "only you should see it" — the
@@ -231,7 +231,7 @@ func attachBriefingRelationships(db *gorm.DB, userID uint, contact *models.Conta
 // (contact_detail_controller.go) can reuse the exact same confirmed-only,
 // secret-excluded, other-party-name-resolved logic rather than re-deriving
 // it. Only status:confirmed edges are included; suggested edges are never
-// fact. Sensitivity: only `secret` edges are excluded (91.13) — see
+// fact. Sensitivity: only `secret` edges are excluded — see
 // attachBriefingRelationships' doc comment for the full reasoning.
 func resolveConfirmedRelationships(db *gorm.DB, userID uint, contact *models.Contact) ([]models.BriefingRelationship, error) {
 	var edges []models.RelationshipEdge

@@ -24,8 +24,8 @@ const (
 )
 
 // ExternalActivity is the generic integration substrate's event entity
-// (docs/fork-plan/91-envelope-data-model.md §91.12): something that happened
-// in an external system, linkable into a contact's timeline (§91.8) without
+// (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md): something that happened
+// in an external system, linkable into a contact's timeline  without
 // the CRM owning the source data — the photo stays in Immich, the CRM stores
 // a reference + a timeline entry.
 //

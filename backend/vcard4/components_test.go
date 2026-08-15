@@ -268,7 +268,7 @@ func TestPropIDGetSet(t *testing.T) {
 
 // TestLabelHandlingHandBuiltFieldGroups exercises groupForIndex,
 // isXABLabelField and labelFromXABLabel together against two hand-built
-// X-ABLabel-style field groups, simulating how WP-40b's adapter will use
+// X-ABLabel-style field groups, simulating how adapter will use
 // them: allocate a group for a value field with a custom (non-standard)
 // label, then resolve that label back out of the X-ABLabel property's field
 // list on import.

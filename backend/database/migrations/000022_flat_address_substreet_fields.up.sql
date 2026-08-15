@@ -1,4 +1,4 @@
--- T79 (docs/fork-plan/tickets/123-T79-flat-address-projection-too-narrow.md)
+-- T79 
 -- The flat ContactAddress projection gained PO box / apartment / floor slots.
 --
 -- No schema change is needed: `contacts.addresses` is a JSON column and old

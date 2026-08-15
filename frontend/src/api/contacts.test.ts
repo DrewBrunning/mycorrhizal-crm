@@ -49,7 +49,7 @@ describe('email conversion', () => {
     expect(cardEmailsToValues(undefined)).toEqual([]);
   });
 
-  test('preserves pref and label through the round trip (WP11)', () => {
+  test('preserves pref and label through the round trip', () => {
     const card = [{ address: 'work@example.com', contexts: ['work', 'private'], pref: 1, label: 'Main' }];
     const values = cardEmailsToValues(card);
     expect(values[0].pref).toBe(1);
@@ -78,7 +78,7 @@ describe('phone conversion', () => {
     ]);
   });
 
-  test('preserves features and pref through the round trip (WP11)', () => {
+  test('preserves features and pref through the round trip', () => {
     const card = [{ number: '555-1234', features: ['cell', 'text'], contexts: ['work'], pref: 2, label: 'Work cell' }];
     const values = cardPhonesToValues(card);
     expect(values[0].features).toEqual(['cell', 'text']);
@@ -214,7 +214,7 @@ describe('address conversion', () => {
     expect(valuesToCardAddresses([{ type: 'home', street: '', city: '', region: '', postal: '', country: '' }])).toEqual([]);
   });
 
-  test('preserves coordinates, timeZone, pref and full through the round trip (WP11)', () => {
+  test('preserves coordinates, timeZone, pref and full through the round trip', () => {
     const card = [
       {
         components: [
@@ -236,7 +236,7 @@ describe('address conversion', () => {
   });
 });
 
-describe('online service conversion (WP3)', () => {
+describe('online service conversion', () => {
   test('round-trips social profile rows with service/uri/user', () => {
     const rows = onlineServicesToRows([
       { service: 'Mastodon', uri: 'https://mastodon.social/@ada', user: '@ada', contexts: ['work'], pref: 1, label: 'Work' },
@@ -340,8 +340,8 @@ describe('title fields', () => {
 describe('toContactRecordInput', () => {
   // toLegacyContact/getContact/createContact/updateContact were retired once
   // every contact-editing component migrated onto getContactRecord/
-  // updateContactRecord/createContactRecord (docs/fork-plan/95, Tier 0 items
-  // 3-7) -- toContactRecordInput itself survives only for e2e test fixtures
+  // updateContactRecord/createContactRecord -- toContactRecordInput itself
+  // survives only for e2e test fixtures
   // (e2e/fixtures.ts, e2e/global-setup.ts), which still find it convenient
   // to build nested payloads from simple flat test data.
   test('builds an equivalent nested shape from a flat Contact-like input', () => {

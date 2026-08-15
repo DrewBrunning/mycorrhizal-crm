@@ -2,7 +2,7 @@ import { test, expect } from './fixtures';
 import { createTestContact, deleteTestContact, waitForLoading } from './fixtures';
 import { API_BASE_URL } from './global-setup';
 
-// N5 bulk operations (docs/fork-plan/tickets/27-N5-bulk-operations.md). Uses
+// N5 bulk operations. Uses
 // a `?search=` filter to scope the contacts list to exactly this test's own
 // throwaway contacts, rather than relying on "select all" over whatever else
 // happens to be seeded/leftover in the shared test account -- the list page

@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// T96 (docs/fork-plan/tickets/140-T96-import-duplicate-merge-review.md): the
+// T96: the
 // import preview must show, per duplicate row, exactly what the "Merge"
 // (update) action will change — scalars overwritten (incoming-wins-when-
 // non-empty) and multi-valued entries appended (additive T49). These tests

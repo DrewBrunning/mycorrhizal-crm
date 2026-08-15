@@ -59,7 +59,7 @@ type ContactSyncStats struct {
 }
 
 // ContactSyncService pulls contacts in from an external CardDAV address
-// book (WP-73b — the opposite direction of the CardDAV *server*, WP-73).
+// book ( — the opposite direction of the CardDAV *server*).
 //
 // Architecture mirrors CalendarSyncService (services/calendar_sync_service.go)
 // exactly: subscription config, per-subscription sync-mutex, encrypted
@@ -216,7 +216,7 @@ func (s *ContactSyncService) SyncSubscription(ctx context.Context, db *gorm.DB, 
 //
 // v1 treats sub.URL as a direct address-book collection URL, skipping
 // FindCurrentUserPrincipal/FindAddressBookHomeSet/FindAddressBooks discovery
-// entirely (docs/fork-plan/50-integration-and-rebrand.md WP-73b's accepted
+// entirely (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md accepted
 // v1 simplification) — full discovery, and syncing more than one address
 // book per subscription, are both documented fast-follows, not implemented
 // here.
@@ -279,7 +279,7 @@ func (s *ContactSyncService) syncSubscription(ctx context.Context, db *gorm.DB, 
 // a future go-webdav version starts honoring it.)
 //
 // fullRefetch is true when sync-collection wasn't usable (any error is
-// treated as "unsupported", per WP-73b's own note that go-webdav exposes no
+// treated as "unsupported",  own note that go-webdav exposes no
 // typed "sync-collection unsupported" error) and a full QueryAddressBook was
 // used instead. QueryAddressBook returns the address book's *entire* current
 // membership, not a delta — reconcileContactSync uses fullRefetch to know it
@@ -344,7 +344,7 @@ func classifyContactSyncError(err error) error {
 
 // reconcileContactSync applies a batch of changed/deleted CardDAV address
 // objects to the local database: creating or updating real Contact rows
-// (via models.ApplyRecordToContact, WP-71's shared Record->Contact mapping
+// (via models.ApplyRecordToContact, shared Record->Contact mapping
 // — no third mapping is written here) and archiving Contacts whose remote
 // object was deleted. Kept as a standalone function (not a method, and
 // taking already-fetched data rather than a live *carddav.Client) so it can
@@ -434,9 +434,8 @@ func reconcileContactSync(db *gorm.DB, sub *models.ContactSubscription, updated 
 				// Full-replace, not a field-level merge: ApplyRecordToContact
 				// repopulates every flat field from the incoming Record,
 				// so a local-only edit to a field the remote vCard doesn't
-				// carry is silently discarded here. Confirmed intentional
-				// (docs/fork-plan/95-backlog-and-priorities.md Tier 3c item
-				// 11a) — no model tracks per-field modified-since-sync
+				// carry is silently discarded here. Confirmed intentional —
+				// no model tracks per-field modified-since-sync
 				// state, so a real merge isn't a small fix; pinned down by
 				// TestReconcileContactSyncOverwritesLocalEditsOnRemoteChange.
 				models.ApplyRecordToContact(&contact, record, photoDir)
@@ -492,8 +491,7 @@ func reconcileContactSync(db *gorm.DB, sub *models.ContactSubscription, updated 
 			}
 
 			// Archive, not hard-delete — matches how Contact.Archived is
-			// already used elsewhere (docs/fork-plan/50-integration-and-
-			// rebrand.md WP-73b's explicit decision). Loading the row first
+			// already used elsewhere (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md explicit decision). Loading the row first
 			// (rather than a bulk Model(&models.Contact{}).Where(...).Update)
 			// matters: Contact.AfterSave (contact.go) recomputes ETag via
 			// tx.Model(c) using the receiver's own ID/UpdatedAt, and a bulk

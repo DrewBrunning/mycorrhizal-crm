@@ -20,8 +20,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// T66 (docs/fork-plan/tickets/110-T66-contact-timeline-bounded-view-and-
-// explorer.md) — the paginated, filterable timeline endpoint and the bounded
+// T66 — the paginated, filterable timeline endpoint and the bounded
 // M4 composite. Every test runs against database.InitDB's real migrated
 // schema (CLAUDE.md trap 1): the timeline endpoint reads the exact
 // hand-written columns (occurred_at, completed_at, entity_id, ...) a

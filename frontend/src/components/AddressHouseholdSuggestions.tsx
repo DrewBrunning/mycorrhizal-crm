@@ -7,7 +7,7 @@ import { AddressHouseholdSuggestion, formatSuggestionAddress } from '../api/hous
 import { getContactsByUid, Contact } from '../api/contacts';
 import { handleFetchError } from '../utils/errorHandler';
 
-// T40 (docs/fork-plan/tickets/49-T40-household-suggestions-shared-address.md):
+// T40:
 // the review surface for contacts who share an address but are not in a
 // household together yet. Propose-then-approve only — accept materializes a
 // Household, dismiss permanently stops the scan from offering the group again.
@@ -18,7 +18,7 @@ interface AddressHouseholdSuggestionsProps {
   busy: boolean;
 }
 
-// T64 (docs/fork-plan/tickets/90-T64-household-suggestions-null-crash.md):
+// T64:
 // module-scope, not a `[] ` literal inside the component body. `suggestionsProp
 // ?? []` looks equivalent but isn't: when suggestionsProp is null/undefined,
 // the `[]` on the right of `??` is a fresh array on *every* render, which

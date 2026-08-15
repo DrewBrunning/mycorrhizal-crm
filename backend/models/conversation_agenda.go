@@ -8,8 +8,8 @@ import (
 )
 
 // ConversationAgenda is "things to bring up next time I see them" — contextual
-// memory surfaced on the contact view (docs/fork-plan/91-envelope-data-model.md
-// §91.11, ticket T21). It is deliberately NOT date-scheduled: an agenda item
+// memory surfaced on the contact view (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md
+// ). It is deliberately NOT date-scheduled: an agenda item
 // has no due date and no completion cron (that is what distinguishes it from a
 // Reminder). It is surfaced by context, not by time, and is resolved by
 // marking it discussed — optionally linking the interaction (Activity) that
@@ -31,7 +31,7 @@ type ConversationAgenda struct {
 	UserID uint `gorm:"not null;index" json:"-"`
 
 	// EntityID is the subject Contact, referenced by Contact.VCardUID — the
-	// same graph invariant every join/reference entity follows (§90 D3). An
+	// same graph invariant every join/reference entity follows. An
 	// agenda item is keyed to the contact it will be discussed with, never to
 	// a date.
 	EntityID string `gorm:"column:entity_id;not null;index" json:"entity_id" validate:"required,uuid4"`
@@ -44,7 +44,7 @@ type ConversationAgenda struct {
 	ReferenceURL string `json:"reference_url,omitempty" validate:"omitempty,httpurl,max=2000"`
 
 	// DiscussedAt is the "resolved/discussed flag with the date it was
-	// discussed" (§91.11). nil = still open (surfaced in the open list); set =
+	// discussed". nil = still open (surfaced in the open list); set =
 	// resolved, but the row stays visible so "we talked about this on the 3rd"
 	// remains answerable. Deliberately not a completion cron — the item is
 	// resolved by context (the next conversation), never by a timer.

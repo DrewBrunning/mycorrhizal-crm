@@ -10,7 +10,7 @@ import (
 )
 
 // TestNewContactRecordResponse_PreservesPersistedCardOnlyData is the
-// regression test for a real, live bug (found while auditing WP-73's work):
+// regression test for a real, live bug (found while auditing work):
 // NewContactRecordResponse called RecordFromContact directly, which
 // silently drops any Card-only data with no flat-field home (SpeakToAs
 // here) from GET /api/v1/contacts/{id} and the POST/PUT response bodies —
@@ -70,7 +70,7 @@ func TestNewContactSummary_IncludesNickname(t *testing.T) {
 	}
 }
 
-// TestProfilePictureURL pins M6 §1's URL derivation (the response-shape
+// TestProfilePictureURL pins M6's URL derivation (the response-shape
 // change): a base64 thumbnail yields the lightweight ?thumbnail=true variant,
 // a disk photo without a decodable thumbnail yields the full-photo variant,
 // and a contact with neither (or only a legacy filename thumbnail, which the
@@ -102,7 +102,7 @@ func TestProfilePictureURL(t *testing.T) {
 }
 
 // TestNewContactSummary_PhotoThumbnailIsURL pins that the list DTO carries the
-// M6 §1 profile-picture URL — never the raw base64 thumbnail it is derived
+// M6 profile-picture URL — never the raw base64 thumbnail it is derived
 // from (the query layer's side of this is pinned against the real migrated
 // schema in contact_photo_url_test.go, where GORM's column Select actually
 // runs).
@@ -121,7 +121,7 @@ func TestNewContactSummary_PhotoThumbnailIsURL(t *testing.T) {
 	}
 }
 
-// TestNewContactRecordResponse_MediaPhotoURIIsURL pins the detail DTO's M6 §1
+// TestNewContactRecordResponse_MediaPhotoURIIsURL pins the detail DTO's M6
 // half: the top-level photo_thumbnail carries the thumbnail URL, and the
 // Card.Media photo entry's URI is rewritten to the relative profile-picture
 // URL (full-photo variant when a disk photo exists) rather than the data URI

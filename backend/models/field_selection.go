@@ -6,8 +6,8 @@ import (
 	"mycorrhizal/contactmodel"
 )
 
-// Field-selection section tokens for WP-97 / T9 (selective field export +
-// sensitivity gating, docs/fork-plan/tickets/13-T9-selective-export.md).
+// Field-selection section tokens  / T9 (selective field export +
+// sensitivity gating, T9).
 //
 // These are the coarse-grained, Google-Contacts-picker-style sections a user
 // can choose when exporting a contact card — deliberately NOT per-value
@@ -43,7 +43,7 @@ const (
 	SectionCustomFields   = "custom_fields"
 )
 
-// sensitiveSections are the sections whose data can carry a §91.13 sensitivity
+// sensitiveSections are the sections whose data can carry a sensitivity
 // above "normal". Only these are affected by FieldSelection.IncludeSensitive —
 // the opt-in override that lets one export include private/secret items just
 // this once. Tags (SectionKeywords) and every other section have no
@@ -65,7 +65,7 @@ func FieldSections() []string {
 }
 
 // IsSensitiveSection reports whether a section's data can carry a
-// sensitivity above "normal" (§91.13), i.e. whether it is gated behind the
+// sensitivity above "normal", i.e. whether it is gated behind the
 // IncludeSensitive opt-in override.
 func IsSensitiveSection(token string) bool {
 	return sensitiveSections[token]
@@ -79,19 +79,18 @@ var validFieldSections = func() map[string]bool {
 	return m
 }()
 
-// FieldSelection is one export's "which fields" picker state (WP-97 / T9).
+// FieldSelection is one export's "which fields" picker state (T9).
 //
 // Sections maps each selected section token to true. Absent/unknown tokens
 // are simply not selected. A nil map is the zero value and means "no sections
 // selected"; use FieldSelectionAll for the all-on default.
 //
-// IncludeSensitive is the explicit §91.13 opt-in override: when true,
+// IncludeSensitive is the explicit opt-in override: when true,
 // projection steps that normally filter to sensitivity='normal' (relationship
 // edges, hobby preferences, vCard-projected custom fields) also include their
 // private/secret items. This is the backend half of the foot-gun guard — it
 // is a separate, intentional flag that no amount of ordinary section-checking
-// can imply (docs/fork-plan/92-delivery-roadmap.md §92.6b's second
-// clarification).
+// can imply.
 type FieldSelection struct {
 	Sections         map[string]bool
 	IncludeSensitive bool
@@ -137,8 +136,7 @@ func (f *FieldSelection) Has(token string) bool {
 // This is the single filter point the whole ticket is built around: it runs
 // BEFORE any exporter, and because vcard3/vcard4/jscontact all consume the
 // same neutral Card, one function applies identically to all three formats
-// with zero changes to any adapter (docs/fork-plan/92-delivery-roadmap.md
-// §92.6b).
+// with zero changes to any adapter.
 func ApplyFieldSelection(record *contactmodel.Record, sel *FieldSelection) *contactmodel.Record {
 	if record == nil || sel == nil {
 		return record

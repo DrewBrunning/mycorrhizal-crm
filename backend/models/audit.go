@@ -33,7 +33,7 @@ const (
 )
 
 // AuditEvent is one immutable create/update/delete record for an audited
-// entity (T18, docs/fork-plan/tickets/34-T18-audit-trail.md), feeding undo,
+// entity (T18, T18), feeding undo,
 // sync, and debugging. Append-only by construction: it has no update/delete
 // receiver methods, and migration 000016's BEFORE UPDATE / BEFORE DELETE
 // triggers hard-reject any such write at the DB level.
@@ -79,8 +79,7 @@ var auditDenyList = map[string]bool{
 // Contact implements it to include its nested Card/CRM/Passthrough columns,
 // which are json:"-" on the struct (so the REST API serves the nested model
 // through ContactRecordResponse rather than leaking the storage shape) and
-// were therefore never captured by the audit trail — see T82 (docs/fork-plan/
-// tickets/126-T82-audit-snapshots-miss-nested-contact-data.md).
+// were therefore never captured by the audit trail — see T82.
 type auditSnapshotProvider interface {
 	auditSnapshot() any
 }

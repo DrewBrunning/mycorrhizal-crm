@@ -3,8 +3,7 @@ package models
 import "time"
 
 // Timeline event types — the six raw types a contact's timeline merges
-// (T66, docs/fork-plan/tickets/110-T66-contact-timeline-bounded-view-and-
-// explorer.md). They mirror the data model 1:1, matching the web timeline's
+// (T66, T66). They mirror the data model 1:1, matching the web timeline's
 // discriminated union (ContactTimeline.tsx) and the type-filter vocabulary
 // fixed by the T66/T78 platform split (design decision 1: revisit only if a
 // second external-activity source ever ships alongside Immich).

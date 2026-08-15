@@ -28,7 +28,7 @@ func TestExport_PassthroughUnknownProperty(t *testing.T) {
 }
 
 func TestExport_PassthroughDeDupGuard(t *testing.T) {
-	// 20.5's de-dup guard: a passthrough entry whose name collides with a
+	// de-dup guard: a passthrough entry whose name collides with a
 	// mapped property must NOT also be re-emitted verbatim.
 	valJSON, _ := json.Marshal("stray-uid-should-not-appear")
 	rec := &contactmodel.Record{

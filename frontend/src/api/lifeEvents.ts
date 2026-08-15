@@ -1,7 +1,6 @@
 import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
 
-// LifeEvent category tokens — T36 (docs/fork-plan/tickets/45-T36-life-event-
-// categories.md). Hardcoded mirror of backend/models/life_event.go's
+// LifeEvent category tokens — T36. Hardcoded mirror of backend/models/life_event.go's
 // LifeEventCategory* constants (frontend-trap-4 in CLAUDE.md: there is no
 // dynamic type-list endpoint, by design — keep this in sync by hand).
 export const LIFE_EVENT_CATEGORIES = [

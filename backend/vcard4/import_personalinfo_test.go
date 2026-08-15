@@ -26,7 +26,7 @@ func TestImport_Expertise(t *testing.T) {
 	if pi.Kind != "expertise" || pi.Value != "chemistry" {
 		t.Errorf("PersonalInfo[0] = %+v", pi)
 	}
-	// vCard EXPERTISE LEVEL=expert <-> neutral level "high" (20.4 personalinfo transform).
+	// vCard EXPERTISE LEVEL=expert <-> neutral level "high" .
 	if pi.Level != "high" {
 		t.Errorf("Level = %q, want high (expert->high)", pi.Level)
 	}

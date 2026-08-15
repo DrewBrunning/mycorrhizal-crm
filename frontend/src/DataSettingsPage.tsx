@@ -34,7 +34,7 @@ export default function DataSettingsPage() {
   const [customExportError, setCustomExportError] = useState('');
   const [customExportSuccess, setCustomExportSuccess] = useState('');
 
-  // T56 (docs/fork-plan/tickets/65-T56-bulk-contacts-import-flow.md): the
+  // T56: the
   // bulk import entry point, reusing the exact same wizard the Contacts page
   // uses — one import flow, two doors.
   const [importOpen, setImportOpen] = useState(false);

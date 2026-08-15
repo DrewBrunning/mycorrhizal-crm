@@ -11,25 +11,25 @@ import (
 	"mycorrhizal/contactmodel"
 )
 
-// degrade_test.go asserts, for every docs/fork-plan/20-correspondence.md
-// §20.6 "no-3.0-home" concept, that exporting a Record carrying that concept
+// degrade_test.go asserts, for every docs/adrs/0002-correspondence-table-locked-oracle.md
+// "no-3.0-home" concept, that exporting a Record carrying that concept
 // (a) appends a contactmodel.Diagnostic{Severity:"warn", Concept: <id>},
 // (b) the concept's value is left untouched on the source Record (obviously
 // true here since Export never mutates its input, but asserted explicitly
 // for the representative cases below), and (c) the field is correctly
-// absent from the vCard 3.0 output — except the two concepts 20.6 itself
+// absent from the vCard 3.0 output — except the two concepts itself
 // documents as being redirected onto a real 3.0 property instead of purely
 // dropped (anniversary.wedding -> X-ANNIVERSARY; related -> AGENT), where the
 // warning still fires but the value legitimately appears via that
-// escape-hatch property. See docs/fork-plan/60-review-gates.md §60.3.
+// escape-hatch property. See docs/adrs/0003-golden-fixtures-external-test-oracle.md
 //
-// Beyond the 17 concepts 20.6 names directly, this file also asserts three
-// extra cases that are not spelled out in 20.6's prose summary but are
+// Beyond the 17 concepts names directly, this file also asserts three
+// extra cases that are not spelled out prose summary but are
 // unambiguous "no-3.0-home" rows in the table itself (V3Prop == "-", and,
 // unlike adr.geo/adr.tz, with no alternate v3 property to redirect to):
 // anniversary.place.birth, anniversary.place.death (RFC 6474 is 4.0-only),
 // and pt.jscontact (whose own row notes literally say "3.0 warn-drop"). This
-// is a documented judgment call — see the final WP-50 report.
+// is a documented judgment call — see the final report.
 
 func hasWarn(diags []contactmodel.Diagnostic, concept string) bool {
 	for _, d := range diags {
@@ -86,7 +86,7 @@ func TestDegrade_Created(t *testing.T) {
 }
 
 // TestDegrade_Language covers the `language` concept: per
-// docs/fork-plan/20-correspondence.md's corrected language row and §20.6
+// docs/adrs/0002-correspondence-table-locked-oracle.md's corrected language row
 // (now explicitly listing `language`), P0 scope is a plain warn-drop like any
 // other no-3.0-home concept — the richer "apply as default LANGUAGE param on
 // other properties" behavior (RFC 9555) is deferred post-P0, and never loses
@@ -305,7 +305,7 @@ func TestDegrade_ContactURI(t *testing.T) {
 	}
 }
 
-// TestDegrade_OtherOnlineServices covers Card.OtherOnlineServices (20.7): it
+// TestDegrade_OtherOnlineServices covers Card.OtherOnlineServices: it
 // has no vCard export at all, in either 3.0 or 4.0, because neither IMPP nor
 // SOCIALPROFILE is a safe default guess for genuinely unclassified data.
 func TestDegrade_OtherOnlineServices(t *testing.T) {

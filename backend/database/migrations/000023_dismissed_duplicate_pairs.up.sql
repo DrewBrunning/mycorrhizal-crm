@@ -1,4 +1,4 @@
--- T93 (docs/fork-plan/tickets/137-T93-duplicate-scan-endpoint-and-review.md) —
+-- T93 —
 -- permanent dismissal memory for duplicate-contact pairs.
 --
 -- The duplicate scanner (services/duplicate_service.go) re-derives candidate

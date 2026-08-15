@@ -1,4 +1,4 @@
--- N7 (docs/fork-plan/tickets/29-N7-attachments.md) — file/document attachments
+-- N7 — file/document attachments
 -- per contact.
 --
 -- The row is metadata; the bytes live on disk under a server-generated UUID

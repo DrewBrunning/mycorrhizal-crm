@@ -14,7 +14,7 @@ import (
 )
 
 // GetContactDetail returns the M4 contact-detail composite
-// (docs/fork-plan/tickets/83-M4-contact-detail-composite.md): everything
+// (M4): everything
 // ContactDetailPage.tsx renders for one contact, in one call — the record
 // itself plus every sub-resource block the page currently fetches with
 // ~21 separate requests. Read-only, no writes, no cache; follows the N2

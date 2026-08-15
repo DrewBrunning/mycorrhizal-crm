@@ -1,4 +1,4 @@
-// Attachment API calls -- N7 (docs/fork-plan/tickets/29-N7-attachments.md).
+// Attachment API calls -- N7.
 import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
 
 export interface Attachment {

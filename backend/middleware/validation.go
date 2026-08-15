@@ -275,8 +275,8 @@ func validateLifeEventCategory(fl validator.FieldLevel) bool {
 	return models.IsKnownLifeEventCategory(fl.Field().String())
 }
 
-// fieldDefinitionProjectionPattern matches FieldDefinition.Projection (WP-84b,
-// docs/fork-plan/94-custom-fields.md §94.5): "internal-only" (default, never
+// fieldDefinitionProjectionPattern matches FieldDefinition.Projection (
+// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md): "internal-only" (default, never
 // exported) or "vcard:X-<NAME>" (projects via the existing JCardProp/
 // Passthrough machinery -- see models/contact_record.go's projectCustomFields).
 // The doc's third option, a raw "jscontact:<pointer>" projection, is
@@ -304,7 +304,7 @@ func ValidateEmail(email string) bool {
 // through the same package-level validate singleton ValidateStruct uses --
 // so it sees the same registered custom validators (phone, birthday,
 // safeurl, ...) plus the validator library's built-ins (min, max, oneof,
-// uri, ...). This is the primitive WP-84b's definition-driven FieldValue
+// uri, ...). This is the primitive definition-driven FieldValue
 // validation (services/custom_field_service.go) needs: ValidateStruct only
 // works against a whole tagged Go struct known at compile time, but a custom
 // field's validation rule comes from a FieldDefinition row at runtime, not a

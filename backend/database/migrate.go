@@ -25,7 +25,7 @@ var migrationsFS embed.FS
 //     and docs/deployment.md's Backups section), which snapshots the live
 //     database consistently. Persisted in the database file itself once set,
 //     so this only needs to run against a real file, never ":memory:".
-//   - foreign_keys(1): turns on real FK enforcement (Tier 3c item 8) --
+//   - foreign_keys(1): turns on real FK enforcement  --
 //     unlike journal_mode this is a per-connection setting, not persisted in
 //     the file, so it must be supplied via the DSN (applied by the driver on
 //     every new physical connection it opens) rather than a one-time

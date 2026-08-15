@@ -43,7 +43,7 @@ type CalendarEventLink struct {
 	ContentHash    string    `gorm:"not null" json:"-"`
 
 	// RemoteETag is the remote calendar object's ETag as last observed (T13,
-	// docs/fork-plan/tickets/36-T13-two-way-calendar.md), used as the If-Match
+	// T13), used as the If-Match
 	// precondition when pushing a local edit back out. NULL until the next
 	// CalDAV query captures it, and always NULL for plain-ICS-fallback
 	// subscriptions (which have no write path).

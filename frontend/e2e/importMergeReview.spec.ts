@@ -3,8 +3,7 @@ import { createTestContact, deleteTestContact, waitForLoading } from './fixtures
 import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 
 /**
- * Import merge review (T96 — docs/fork-plan/tickets/140-T96-import-duplicate-
- * merge-review.md). The decision cards' contract is exactly what a unit test
+ * Import merge review (T96 — T96). The decision cards' contract is exactly what a unit test
  * can't see: that the "Merge / Keep Both / Discard New" choice on a real
  * duplicate row really drives what lands in the database, that the diff shown
  * describes the actual merge, and that a within-batch duplicate collapses

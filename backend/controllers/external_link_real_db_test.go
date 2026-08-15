@@ -19,7 +19,7 @@ import (
 )
 
 // TestExternalLinkSubstrate_RealMigratedSchema is the real-DB check for T14:
-// every other controller test uses AutoMigrate against :memory: sqlite, which
+// every other controller test uses AutoMigrate against:memory: sqlite, which
 // derives its schema from the same Go struct tags the application code uses —
 // it cannot catch a GORM column-tag mismatch against the real hand-written
 // migration SQL (this fork's own recurring bug class, e.g. ContactSyncLink.

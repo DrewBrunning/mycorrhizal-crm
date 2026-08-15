@@ -234,7 +234,7 @@ func TestSearch_SpecialCharactersDoNotError(t *testing.T) {
 	}
 }
 
-// TestSearch_SecretSensitivityNotFindable pins T11's sensitivity rule (§91.13):
+// TestSearch_SecretSensitivityNotFindable pins T11's sensitivity rule:
 // a secret-sensitivity item must never surface through full-text search. The
 // FTS index intentionally covers only non-sensitive columns (contacts' basic
 // fields, notes, activity titles) — relationship edges, tags, and custom-field

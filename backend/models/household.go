@@ -26,10 +26,9 @@ const (
 	HouseholdRoleRoommate = "roommate"
 )
 
-// Household is a co-residence grouping of people and pets (docs/fork-plan/
-// 91-envelope-data-model.md §91.3) — distinct from a Circle (social grouping,
+// Household is a co-residence grouping of people and pets (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md) — distinct from a Circle (social grouping,
 // how I know them) and from the relationship graph itself (a household is a
-// node reached via membership, not a dyadic RelationshipEdge; see §91.2's
+// node reached via membership, not a dyadic RelationshipEdge;
 // "Household is a node, not a relationship edge" section for why the two
 // stay separate — relationships outlive households).
 //
@@ -46,13 +45,13 @@ type Household struct {
 	UserID uint   `gorm:"not null;index" json:"-"`
 	Name   string `gorm:"not null" json:"name"`
 
-	// Type drives the suggestion engine's rules (§91.4) — a closed switch
+	// Type drives the suggestion engine's rules — a closed switch
 	// with specific consequences per value, the same role RelationshipEdge.
 	// Status plays, so (unlike Role below) it IS validated.
 	Type string `gorm:"not null" json:"type" validate:"required,oneof=family_unit roommates other"`
 
 	// Address is an attribute, not identity — members who move keep the
-	// household (§91.3). Reuses the neutral Address shape (contactmodel,
+	// household. Reuses the neutral Address shape (contactmodel,
 	// already used for Contact.Card) rather than a new type; JSON-serialized
 	// like Contact.Card/CRM/Passthrough.
 	Address *contactmodel.Address `gorm:"type:text;serializer:json" json:"address,omitempty"`
@@ -67,10 +66,10 @@ func (h *Household) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// HouseholdMember is the membership edge (§91.3's "Membership edge" —
+// HouseholdMember is the membership edge ("Membership edge" —
 // household_id, entity_id, role, since/until). MemberVCardUID is a
 // Contact.VCardUID, not Contact.ID — the same graph invariant
-// RelationshipEdge.SourceID/TargetID follow (§90 D3: every relationship-graph
+// RelationshipEdge.SourceID/TargetID follow (every relationship-graph
 // endpoint is referenced by its stable UUID, never a bare string or a
 // database-internal integer).
 //
@@ -93,7 +92,7 @@ type HouseholdMember struct {
 	MemberVCardUID string `gorm:"column:member_vcard_uid;not null;index;uniqueIndex:idx_household_member,priority:2" json:"member_vcard_uid" validate:"required,uuid4"`
 
 	// Role is conventional, not enforced (HouseholdRole* constants above) —
-	// deliberately unvalidated, same reasoning as CRMEnvelope.Kind (WP-82):
+	// deliberately unvalidated, same reasoning as CRMEnvelope.Kind :
 	// it's an open, descriptive classifier the suggestion engine must
 	// degrade gracefully on (anything other than "child" or a pet-kind
 	// contact just counts as an adult), not a closed system state.
@@ -107,7 +106,7 @@ type HouseholdMember struct {
 }
 
 // DismissedHouseholdSuggestion is T40's permanent rejection memory
-// (docs/fork-plan/tickets/49-T40-household-suggestions-shared-address.md):
+// (T40):
 // one row per dismissed address-based household-suggestion group, identified
 // by (user_id, address_hash, member_hash) where address_hash is SHA-256 of
 // the normalized shared-address key and member_hash is SHA-256 of the sorted

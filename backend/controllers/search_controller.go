@@ -13,7 +13,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// SearchAll implements GET /search (T11 / WP-86): full-text search across the
+// SearchAll implements GET /search (T11): full-text search across the
 // caller's contacts, notes, and interactions, grouped into three sections.
 // Query params: q=<term> (required), limit=<n> (per section, default 10,
 // max 50). The response echoes a resolved_relation when the whole query is a

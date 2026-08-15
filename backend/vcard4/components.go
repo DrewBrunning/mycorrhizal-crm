@@ -7,11 +7,11 @@ import (
 	"github.com/emersion/go-vcard"
 )
 
-// This file (components.go, WP-40a) is a low-level, pure structured-value
+// This file (components.go) is a low-level, pure structured-value
 // codec: escaping/splitting/joining of vCard TEXT structured values, the N
 // and ADR component assemblers, and the group-based custom-label helpers. It
 // has no dependency on contactmodel or correspondence — the neutral<->vcard4
-// field mapping is WP-40b's adapter.go, which does not exist yet.
+// field mapping is adapter.go, which does not exist yet.
 //
 // The escape/split logic is salvaged and generalized from
 // backend/carddav/vcard_mapper.go's escapeComponent/splitComponents; the

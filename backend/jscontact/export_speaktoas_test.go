@@ -28,7 +28,7 @@ func TestExport_GrammaticalGender(t *testing.T) {
 func TestExport_GrammaticalGender_MultipleCollapseByLanguage(t *testing.T) {
 	// JSContact's speakToAs.grammaticalGender is a scalar (RFC 9553 §2.2.4),
 	// so multiple neutral GrammaticalGenders entries must collapse to one on
-	// export. 20-correspondence.md's "gramgender" row: prefer the entry whose
+	// export. docs/adrs/0002-correspondence-table-locked-oracle.md "gramgender" row: prefer the entry whose
 	// Language matches Card.Language; otherwise use the first entry.
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID:      "gramgender-multi-example",

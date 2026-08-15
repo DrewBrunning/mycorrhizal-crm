@@ -1,7 +1,7 @@
 import { test, expect } from './fixtures';
 import { createTestContact, deleteTestContact } from './fixtures';
 
-// T40 (docs/fork-plan/tickets/49-T40-household-suggestions-shared-address.md):
+// T40:
 // contacts who share an address but are not in a household together are
 // surfaced as a suggestion on the Households page, and accepting the
 // suggestion materializes a real Household with both as members.

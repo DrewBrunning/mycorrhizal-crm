@@ -1,6 +1,5 @@
-// ConversationAgenda API calls -- T21 (docs/fork-plan/tickets/
-// 21-T21-conversation-agenda.md, docs/fork-plan/91-envelope-data-model.md
-// §91.11): "things to bring up next time I see them". Contextual memory for a
+// ConversationAgenda API calls -- T21 (T21, docs/adrs/0001-neutral-hub-and-spoke-contact-model.md
+// ): "things to bring up next time I see them". Contextual memory for a
 // contact, deliberately NOT date-scheduled — resolved by marking it discussed
 // (discussConversationAgenda), never by a timer.
 import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';

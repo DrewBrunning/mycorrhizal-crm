@@ -9,7 +9,7 @@ import "testing"
 // .Kind. calendar/freebusy and link/contacturi, however, now route by the
 // wire Calendar/Link object's own .Kind into two DISCRETE neutral fields
 // each (Card.Calendars vs Card.FreeBusyURLs; Card.Links vs Card.ContactURIs)
-// — see 20-correspondence.md's "calendar"/"freebusy" and "link"/"contacturi"
+// — see docs/adrs/0002-correspondence-table-locked-oracle.md "calendar"/"freebusy" and "link"/"contacturi"
 // rows. Values below match the corresponding golden *.v4.vcf fixtures' URIs
 // (no dedicated .jscontact.json fixture exists per-concept).
 func init() {

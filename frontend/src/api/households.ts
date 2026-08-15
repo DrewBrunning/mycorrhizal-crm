@@ -1,4 +1,4 @@
-// Household API calls -- T1 (docs/fork-plan/tickets/09-T1-households.md).
+// Household API calls -- T1.
 import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
 import { RelationshipEdge } from './relationshipEdges';
 
@@ -172,8 +172,7 @@ export async function suggestHouseholdRelationships(
 }
 
 // ---------------------------------------------------------------------------
-// T40 address-based household suggestions (docs/fork-plan/tickets/
-// 49-T40-household-suggestions-shared-address.md).
+// T40 address-based household suggestions (T40).
 // ---------------------------------------------------------------------------
 
 // A neutral AddressComponent pair, mirroring contactmodel.AddressComponent's

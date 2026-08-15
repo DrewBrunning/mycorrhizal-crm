@@ -4,7 +4,7 @@ import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './cl
 export interface ContactValue {
   type: string;
   value: string;
-  // Rich-field passthrough (WP11, T29): the flat editing shape only exposes
+  // Rich-field passthrough (T29): the flat editing shape only exposes
   // type+value, so pref/label/features/extra-contexts are carried alongside
   // and re-emitted on save rather than silently dropped (the same pattern
   // ContactAddress.passthrough uses for non-standard address components).
@@ -33,7 +33,7 @@ export interface ContactAddress {
   // fields rendered above (room, building, district, landmark, etc.) so they
   // survive an edit-and-save cycle through the flat editing shape (T25).
   passthrough?: CardAddressComponent[];
-  // Rich-field passthrough (WP11, T29): coordinates/timeZone/pref/full etc.
+  // Rich-field passthrough (T29): coordinates/timeZone/pref/full etc.
   // are carried alongside and re-emitted on save rather than dropped.
   coordinates?: string;
   timeZone?: string;
@@ -496,7 +496,7 @@ export function valuesToCardImpp(values: ContactValue[]): CardOnlineService[] {
 }
 
 // ---------------------------------------------------------------------------
-// OnlineService helpers (WP3). Shared by SocialProfiles, OtherOnlineServices
+// OnlineService helpers . Shared by SocialProfiles, OtherOnlineServices
 // and the upgraded IMPP editor. The rich struct carries service/user/uri and
 // full context/pref/label; only uri+service are surfaced as direct inputs —
 // everything else is preserved through the round trip by the nested editors.
@@ -538,7 +538,7 @@ export function rowsToOnlineServices(rows: OnlineServiceRow[]): CardOnlineServic
     }));
 }
 
-// ctx2type (docs/fork-plan/20-correspondence.md §20.4), mirroring the Go
+// ctx2type (docs/adrs/0002-correspondence-table-locked-oracle.md), mirroring the Go
 // contactmodel.ContextToTypeToken map. The neutral model's Contexts vocabulary
 // is private/work; the flat shape this file's adapters produce — and the
 // `contacts.types.*` i18n keys that render it — use home/work.
@@ -820,7 +820,7 @@ export async function getAllContacts(params: Omit<GetContactsParams, 'cursor'> =
 }
 
 // Resolves a batch of Contact.VCardUID values to full Contact objects in one
-// request, via GET /contacts' ?vcard_uid= filter (§3d WP0). Needed because
+// request, via GET /contacts' ?vcard_uid= filter. Needed because
 // RelationshipEdge.SourceID/TargetID (api/relationshipEdges.ts) are bare
 // VCardUID strings with no nested contact data. includeArchived: true so an
 // edge pointing at a since-archived contact still resolves instead of
@@ -845,7 +845,7 @@ export async function getContactsByUid(uids: string[]): Promise<Map<string, Cont
 
 // getContactRecord/updateContactRecord/createContactRecord read and write
 // Card/CRMEnvelope directly. Every contact-editing component has migrated
-// onto these (see docs/fork-plan/95, Tier 0 items 3-6) -- toContactRecordInput
+// onto these -- toContactRecordInput
 // (below) still exists for the e2e test fixtures' convenience, but nothing
 // in the app itself round-trips a full record through the flat Contact shape
 // anymore.
@@ -996,8 +996,8 @@ export async function getContactsByLegacyCircle(circle: string): Promise<{ conta
 
 // Get random contacts (returns 5 contacts). NOTE: unlike every other
 // endpoint in this file, GetContactsRandom was deliberately left out of the
-// WP-71 nested-Card API migration on the backend (see
-// docs/fork-plan/50-integration-and-rebrand.md) -- it still serializes
+// nested-Card API migration on the backend (see
+// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md) -- it still serializes
 // models.Contact's raw GORM struct directly, which is already the flat
 // legacy shape (down to gorm.Model's untagged "ID" field matching this
 // type's capital ID). Do NOT route this through toLegacyContact/
@@ -1032,7 +1032,7 @@ export async function getUpcomingBirthdays(): Promise<Birthday[]> {
 }
 
 // Archive a contact (deletes all reminders). Like GetContactsRandom above,
-// ArchiveContact/UnarchiveContact were deliberately left out of the WP-71
+// ArchiveContact/UnarchiveContact were deliberately left out of the
 // nested-Card API migration and still return models.Contact's raw flat
 // JSON directly -- no toLegacyContact translation needed or correct here.
 export async function archiveContact(

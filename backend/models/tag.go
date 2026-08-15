@@ -8,7 +8,7 @@ import (
 )
 
 // Tag is an attribute a set of people share, even if they don't know each
-// other (docs/fork-plan/91-envelope-data-model.md §91.5) — a property of the
+// other (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md) — a property of the
 // person, distinct from Circle (a social grouping, circle.go). Unlike
 // Circle, Tag has a standards home: it projects onto Card.Keywords (vCard
 // CATEGORIES / JSContact keywords) — see projectTags in contact_record.go.
@@ -33,7 +33,7 @@ func (t *Tag) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// ContactTag is the tagging join (§91.5's "taggings (contact ↔ tag)"),
+// ContactTag is the tagging join ("taggings (contact ↔ tag)"),
 // following HouseholdMember's exact template (household.go): uint primary
 // key, no soft-delete, ContactVCardUID is a Contact.VCardUID (the graph
 // invariant), unique per (tag, contact).

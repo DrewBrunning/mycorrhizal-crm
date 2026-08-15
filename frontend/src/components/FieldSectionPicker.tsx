@@ -25,16 +25,16 @@ interface FieldSectionPickerProps {
   onReveal: () => void;
 }
 
-// FieldSectionPicker is the WP-97/T9 "choose which fields" checkbox list
+// FieldSectionPicker is the T9 "choose which fields" checkbox list
 // (Google-Contacts-style coarse-grained picker), extracted out of
 // ExportFieldPickerDialog so P1 contact sharing's ShareContactDialog can
 // reuse it exactly rather than reimplementing the sensitivity foot-gun guard
-// (docs/fork-plan/tickets/13-T9-selective-export.md explicitly calls this
+// (T9 explicitly calls this
 // picker out as meant to be reused by sharing). Ordinary sections are
 // opt-out (checked by default, owned by the caller via `selected`);
 // sensitivity-marked sections are opt-in AND gated: disabled, visually
 // flagged, and only interactive after the deliberate "reveal" confirmation
-// below -- an unchecked box alone is not enough (§92.6b's second
+// below -- an unchecked box alone is not enough (second
 // clarification).
 export default function FieldSectionPicker({
   selected,

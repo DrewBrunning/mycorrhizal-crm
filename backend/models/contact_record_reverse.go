@@ -9,28 +9,27 @@ import (
 // ApplyRecordToContact is the single, shared mapping from the neutral
 // contactmodel.Record shape back onto a *Contact's legacy flat/array fields
 // — the exact inverse of RecordFromContact (contact_record.go). Per
-// docs/fork-plan/50-integration-and-rebrand.md WP-71 Gap 1, both
+// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md, both
 // CreateContact and UpdateContact (contact_controller.go) call this one
 // function to turn the new nested REST input into a Contact, and the VCF/
-// JSContact import path (services/import_service.go, Gap 4) calls it to turn
+// JSContact import path (services/import_service.go) calls it to turn
 // an imported Record into a candidate Contact before feeding it through the
 // existing (unmodified) DetectDuplicate/MergeImportedContact functions. There
-// must be exactly one Record->Contact mapping, mirroring WP-70's read-side
+// must be exactly one Record->Contact mapping, mirroring read-side
 // rule applied here to the write side.
 //
-// Field-by-field decisions cite the corresponding docs/fork-plan/
-// 20-correspondence.md concept_id/row, same convention as RecordFromContact.
+// Field-by-field decisions cite the corresponding docs/adrs/0002-correspondence-table-locked-oracle.md concept_id/row, same convention as RecordFromContact.
 // ApplyRecordToContact never panics, including when c or r is nil.
 //
 // Three things every caller must know:
 //
 //  1. c.Card / c.CRM / c.Passthrough are set directly from r (the "authoritative
-//     full-fidelity copy" — WP-71's own words): whatever richer data r carries
+//     full-fidelity copy" — own words): whatever richer data r carries
 //     that has no flat-field home (SpeakToAs, PersonalInfo, SocialProfiles,
 //     OtherOnlineServices, Keywords, extra Organizations/Titles, extra
 //     name components, RelatedTo, Members, Localizations, ...) is preserved
 //     there even though it isn't mirrored into a flat scalar/array below. The
-//     flat-field population is for backward-compat readers only (WP-70's "old
+//     flat-field population is for backward-compat readers only ("old
 //     fields stay fully functional" rule) — it is not meant to be a complete
 //     re-encoding of r.
 //  2. This function marks the Contact so BeforeSave (contact.go) will NOT
@@ -211,7 +210,7 @@ func applyEmails(c *Contact, card contactmodel.Card, proj contactmodel.Projectio
 
 // applyPhones mirrors applyEmails for the "phone" row (Card.Phones[] ->
 // Phones[], Label -> Type), including the empty-case fallback: found by
-// Tier 3c item 11a's audit (docs/fork-plan/95-backlog-and-priorities.md) as
+// audit as
 // a real, live bug — this function cleared c.Phones but left the c.Phone
 // scalar untouched when card.Phones was empty, so removing a contact's last
 // phone number (via REST PUT, CardDAV sync, or VCF import) silently left a
@@ -233,7 +232,7 @@ func applyPhones(c *Contact, card contactmodel.Card, proj contactmodel.Projectio
 // back into the legacy IMPPs array, exactly mirroring the forward direction
 // (buildImpp only ever reads from c.IMPPs, never from SocialProfiles/
 // OtherOnlineServices) — see the three-array design note in
-// docs/fork-plan/20-correspondence.md §20.7. Card.SocialProfiles and
+// docs/adrs/0002-correspondence-table-locked-oracle.md Card.SocialProfiles and
 // Card.OtherOnlineServices have no legacy flat-field home at all: that data
 // is not lost (it stays fully intact on c.Card, assigned by the caller after
 // this function returns), it simply isn't mirrored into any pre-existing
@@ -377,7 +376,7 @@ func applyMedia(c *Contact, card contactmodel.Card, photoDir string) {
 
 	data, mediaType, photoURL := photostore.DecodePhotoURI(photo.URI, photo.MediaType)
 	if len(data) == 0 && photoURL == "" {
-		// M6 §1 round-trip repair: a photo URI that is neither embedded data
+		// M6 round-trip repair: a photo URI that is neither embedded data
 		// nor a fetchable URL — e.g. the relative profile-picture URL the
 		// read path now exposes in Card.Media, which the web client PUTs back
 		// verbatim on the next edit — is this contact's own photo pointer, not
