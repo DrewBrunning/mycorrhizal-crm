@@ -23,11 +23,16 @@ interface ContactRepository {
      * Fetch a page from the server and refresh the local cache.
      * Returns the fetched page on success; on network failure falls back to
      * whatever is cached locally so the UI degrades gracefully offline.
+     * [circle] filters by circle NAME (the backend's `?circle=` matches
+     * `circles.name`); [includeArchived] widens the row set to archived
+     * contacts when true.
      */
     suspend fun listContacts(
         cursor: String? = null,
         limit: Int = 50,
         search: String? = null,
+        circle: String? = null,
+        includeArchived: Boolean? = null,
     ): Result<ContactsPage>
 
     /** Fetch one contact from the server, falling back to the cached copy. */

@@ -18,7 +18,6 @@
     <string name="nav_home">Home</string>
     <string name="nav_settings">Impostazioni</string>
     <string name="nav_tags">Etichette</string>
-    <string name="nav_bulk">Operazioni in blocco</string>
     <string name="nav_circles">Cerchi</string>
     <string name="nav_network">Rete</string>
     <string name="nav_households">Nuclei familiari</string>
@@ -48,6 +47,14 @@
     <string name="contacts_empty">Ancora nessun contatto</string>
     <string name="contacts_new">Nuovo contatto</string>
     <string name="contacts_photo_description">Foto di %1$s</string>
+    <!-- M23: ampiezza dell'elenco — filtro cerchio, interruttore archiviati, selezione in blocco integrata -->
+    <string name="contacts_filter_circle">Cerchio</string>
+    <string name="contacts_all_circles">Tutti i cerchi</string>
+    <string name="contacts_show_archived">Mostra archiviati</string>
+    <string name="contacts_select_mode">Seleziona contatti</string>
+    <string name="contacts_exit_select_mode">Esci dalla selezione</string>
+    <string name="contacts_selected_count">%1$d selezionati</string>
+    <string name="contacts_select_all">Seleziona tutto</string>
 
     <!-- Contact list: cross-entity search (T87) -->
     <string name="contacts_search_results_header">%1$d corrispondenze in note e attività</string>
@@ -511,13 +518,35 @@
 
     <!-- Merge & bulk -->
     <string name="merge_title">Unisci contatti</string>
-    <string name="merge_other_id">ID dell\'altro contatto</string>
     <string name="merge_preview">Anteprima unione</string>
-    <string name="merge_summary">%1$d note, %2$d attività e %3$d relazioni saranno spostate sul contatto mantenuto.</string>
     <string name="merge_no_conflicts">Nessun conflitto di campi — l\'unione è pronta.</string>
     <string name="merge_commit">Unisci</string>
     <string name="merge_done">Contatti uniti.</string>
-    <string name="bulk_title">Operazioni in blocco</string>
+    <!-- M23: destinazione dell'unione tramite ricerca + ripartizione completa delle associazioni -->
+    <string name="merge_keep_hint">Il contatto che hai aperto verrà mantenuto. Cerca l\'altro contatto da unire in esso.</string>
+    <string name="merge_pick_other">Scegli l\'altro contatto</string>
+    <string name="merge_picked_other">%1$s verrà unito nel contatto mantenuto.</string>
+    <string name="merge_move_header">Verrà spostato sul contatto mantenuto:</string>
+    <string name="merge_nothing_to_move">Niente da spostare.</string>
+    <string name="merge_count_notes">%1$d note</string>
+    <string name="merge_count_activities">%1$d attività</string>
+    <string name="merge_count_reminders">%1$d promemoria</string>
+    <string name="merge_count_reminder_completions">%1$d completamenti di promemoria</string>
+    <string name="merge_count_edges">%1$d relazioni</string>
+    <string name="merge_count_household">%1$d appartenenze a nuclei familiari</string>
+    <string name="merge_count_circles">%1$d appartenenze a cerchi</string>
+    <string name="merge_count_tags">%1$d etichette</string>
+    <string name="merge_count_life_events">%1$d eventi di vita</string>
+    <string name="merge_count_life_event_references">%1$d riferimenti a eventi di vita</string>
+    <string name="merge_count_agenda">%1$d elementi di ordine del giorno</string>
+    <string name="merge_count_gifts">%1$d elementi regalo</string>
+    <string name="merge_count_field_values">%1$d valori di campi personalizzati</string>
+    <string name="merge_count_sync_links">%1$d collegamenti di sincronizzazione</string>
+    <string name="merge_count_attachments">%1$d allegati</string>
+    <string name="merge_count_preferences">%1$d preferenze</string>
+    <string name="merge_count_external_identities">%1$d identità esterne</string>
+    <string name="merge_count_external_activities">%1$d attività esterne</string>
+    <string name="merge_count_cadence">%1$d politiche di cadenza</string>
     <string name="bulk_archive">Archivia</string>
     <string name="bulk_unarchive">Annulla archiviazione</string>
     <string name="bulk_add_circle">Aggiungi a un cerchio</string>

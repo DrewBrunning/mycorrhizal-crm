@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.Contacts
 import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material.icons.outlined.EventNote
@@ -66,7 +65,6 @@ import com.mycorrhizal.crm.feature.contacts.ContactFormScreen
 import com.mycorrhizal.crm.feature.contacts.ContactListScreen
 import com.mycorrhizal.crm.feature.contacts.DashboardScreen
 import com.mycorrhizal.crm.feature.contacts.PrepViewScreen
-import com.mycorrhizal.crm.feature.contacts.BulkOperationsScreen
 import com.mycorrhizal.crm.feature.contacts.MergeContactsScreen
 import com.mycorrhizal.crm.feature.households.HouseholdDetailScreen
 import com.mycorrhizal.crm.feature.households.HouseholdsScreen
@@ -114,7 +112,6 @@ private val secondaryDestinations = listOf(
     DrawerDestination("circles", R.string.nav_circles, Icons.Outlined.Group),
     DrawerDestination("tags", R.string.nav_tags, Icons.Outlined.Label),
     DrawerDestination("households", R.string.nav_households, Icons.Outlined.HomeWork),
-    DrawerDestination("bulk", R.string.nav_bulk, Icons.Outlined.Checklist),
     DrawerDestination("import", R.string.import_title, Icons.Outlined.FileUpload),
     DrawerDestination("settings", R.string.nav_settings, Icons.Outlined.Settings),
 )
@@ -267,11 +264,6 @@ private fun MainScaffold(darkTheme: Boolean) {
                     onCreateContact = { navController.navigate("contacts/new") },
                     onMenuClick = { scope.launch { drawerState.open() } },
                     onImportContacts = { navController.navigate("import") },
-                )
-            }
-            composable("bulk") {
-                BulkOperationsScreen(
-                    onMenuClick = { scope.launch { drawerState.open() } },
                 )
             }
             composable("import") {

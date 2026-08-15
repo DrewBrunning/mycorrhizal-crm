@@ -1,18 +1,12 @@
 package com.mycorrhizal.crm.feature.contacts
 
-import com.mycorrhizal.crm.domain.repository.BulkOperationRepository
-import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ContactsPage
 import com.mycorrhizal.crm.domain.repository.MergeRepository
-import com.mycorrhizal.crm.domain.repository.TagRepository
-import com.mycorrhizal.crm.model.network.BulkOperationResult
-import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.ContactMergePreviewResponse
 import com.mycorrhizal.crm.model.network.ContactMergeRequest
 import com.mycorrhizal.crm.model.network.ContactMergeResolution
 import com.mycorrhizal.crm.model.network.ContactSummary
-import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
 import io.mockk.coEvery
@@ -31,6 +25,10 @@ class MergeContactsViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val mergeRepository = mockk<MergeRepository>()
+    private val contactRepository = mockk<ContactRepository>()
+
+    private fun viewModel(): MergeContactsViewModel =
+        MergeContactsViewModel(mergeRepository, contactRepository)
 
     @Test
     fun `preview loads and exposes conflicts`() = runTest(mainDispatcherRule.testDispatcher) {
@@ -48,7 +46,7 @@ class MergeContactsViewModelTest {
             ),
         )
 
-        val vm = MergeContactsViewModel(mergeRepository)
+        val vm = viewModel()
         vm.setPair(1, 2)
         vm.preview()
         advanceUntilIdle()
@@ -64,7 +62,7 @@ class MergeContactsViewModelTest {
             com.mycorrhizal.crm.model.network.ContactRecordResponse(id = 1),
         )
 
-        val vm = MergeContactsViewModel(mergeRepository)
+        val vm = viewModel()
         vm.setPair(1, 2)
         vm.resolve("firstname", "Dana")
         vm.commit()
@@ -82,144 +80,98 @@ class MergeContactsViewModelTest {
     fun `preview failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { mergeRepository.preview(any()) } returns Result.failure(ApiError.Client(400, "bad pair"))
 
-        val vm = MergeContactsViewModel(mergeRepository)
+        val vm = viewModel()
         vm.setPair(1, 1)
         vm.preview()
         advanceUntilIdle()
 
         assertEquals("bad pair", vm.uiState.value.error)
     }
-}
 
-class BulkOperationsViewModelTest {
-
-    @get:Rule
-    val mainDispatcherRule = MainDispatcherRule()
-
-    private val bulkRepository = mockk<BulkOperationRepository>()
-    private val contactRepository = mockk<ContactRepository>()
-    private val circleRepository = mockk<CircleRepository>()
-    private val tagRepository = mockk<TagRepository>()
-
-    private val threeContacts = ContactsPage(
-        contacts = listOf(
-            ContactSummary(id = 1, uid = "uid-1", fn = "Dana"),
-            ContactSummary(id = 2, uid = "uid-2", fn = "Carol"),
-            ContactSummary(id = 3, uid = "uid-3", fn = "Erin"),
-        ),
-        nextCursor = null,
-        limit = 100,
-        sync = null,
-    )
-
-    private fun stubCirclesAndTags(
-        circles: List<Circle> = listOf(Circle(id = "circle-1", name = "Book club")),
-        tags: List<Tag> = listOf(Tag(id = "tag-1", name = "VIP")),
-    ) {
-        coEvery { circleRepository.list() } returns Result.success(circles)
-        coEvery { tagRepository.list() } returns Result.success(tags)
-    }
-
-    private fun viewModel(): BulkOperationsViewModel =
-        BulkOperationsViewModel(bulkRepository, contactRepository, circleRepository, tagRepository)
+    // --- M23: search-based target picker (test case 4) ---
 
     @Test
-    fun `loads contacts and runs a bulk action on selected uids`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { contactRepository.listContacts() } returns Result.success(
-            ContactsPage(
-                contacts = listOf(
-                    ContactSummary(id = 1, uid = "uid-1", fn = "Dana"),
-                    ContactSummary(id = 2, uid = "uid-2", fn = "Carol"),
+    fun `a merge can be initiated by search without ever entering a numeric id`() = runTest(mainDispatcherRule.testDispatcher) {
+        // The reported gap: Android required typing the target's raw numeric ID. This test
+        // drives the whole flow — type a name, pick the row, preview fires — with no ID input.
+        coEvery { contactRepository.listContacts(cursor = null, limit = 100, search = "Dana") } returns
+            Result.success(
+                ContactsPage(
+                    contacts = listOf(
+                        ContactSummary(id = 5, uid = "uid-5", fn = "Dana White", firstname = "Dana"),
+                        ContactSummary(id = 7, uid = "uid-7", fn = "Dana Brown", firstname = "Dana"),
+                    ),
+                    nextCursor = null, limit = 100, sync = null,
                 ),
-                nextCursor = null,
-                limit = 100,
-                sync = null,
-            ),
+            )
+        coEvery { mergeRepository.preview(match { it.mergeId == 5L }) } returns Result.success(
+            ContactMergePreviewResponse(keepId = 1, mergeId = 5, resolution = ContactMergeResolution()),
         )
-        stubCirclesAndTags()
-        coEvery {
-            bulkRepository.run(
-                match { it.action == "archive" && it.vcardUids == listOf("uid-1") },
-            )
-        } returns Result.success(BulkOperationResult(action = "archive", total = 1, succeeded = 1, failed = 0))
 
         val vm = viewModel()
+        vm.setPair(1, 0)
+
+        vm.onSearchQueryChange("Dana")
         advanceUntilIdle()
 
-        assertEquals(2, vm.uiState.value.contacts.size)
-        vm.toggle(1)
-        vm.run("archive")
+        assertEquals(2, vm.uiState.value.searchResults.size)
+
+        vm.selectOther(vm.uiState.value.searchResults.first())
         advanceUntilIdle()
 
-        assertEquals(1, vm.uiState.value.result?.succeeded)
+        assertEquals(5L, vm.uiState.value.mergeId)
+        assertEquals(5L, vm.uiState.value.preview?.mergeId)
+        coVerify { mergeRepository.preview(match { it.keepId == 1L && it.mergeId == 5L }) }
     }
 
-    // M9 item 2 / ticket test case 2 (first half): selecting several contacts and running a
-    // circle action issues exactly one bulkOperation call carrying every selected uid plus the
-    // chosen circle id.
     @Test
-    fun `adding a circle sends every selected uid and the circle id in one call`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { contactRepository.listContacts() } returns Result.success(threeContacts)
-        stubCirclesAndTags()
-        coEvery {
-            bulkRepository.run(
-                match { it.action == "add_circle" && it.circleId == "circle-1" },
+    fun `search results exclude the keeper`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { contactRepository.listContacts(cursor = null, limit = 100, search = "Dana") } returns
+            Result.success(
+                ContactsPage(
+                    contacts = listOf(
+                        // id 3 == keepId: a contact can't merge into itself and must not be offered.
+                        ContactSummary(id = 3, uid = "uid-3", fn = "Dana Self"),
+                        ContactSummary(id = 5, uid = "uid-5", fn = "Dana White"),
+                    ),
+                    nextCursor = null, limit = 100, sync = null,
+                ),
             )
-        } returns Result.success(BulkOperationResult(action = "add_circle", total = 3, succeeded = 3, failed = 0))
 
         val vm = viewModel()
+        vm.setPair(3, 0)
+
+        vm.onSearchQueryChange("Dana")
         advanceUntilIdle()
 
-        vm.toggle(1)
-        vm.toggle(2)
-        vm.toggle(3)
-        vm.run("add_circle", circleId = "circle-1")
-        advanceUntilIdle()
-
-        coVerify(exactly = 1) {
-            bulkRepository.run(
-                match { it.action == "add_circle" && it.circleId == "circle-1" && it.vcardUids.toSet() == setOf("uid-1", "uid-2", "uid-3") },
-            )
-        }
-        assertEquals(3, vm.uiState.value.result?.succeeded)
-        assertTrue(vm.uiState.value.selected.isEmpty())
+        assertEquals(1, vm.uiState.value.searchResults.size)
+        assertEquals(5, vm.uiState.value.searchResults.first().id)
     }
 
-    // M9 item 2 / ticket test case 2 (second half): a failed run must NOT clear the selection —
-    // only a successful one does. This is what the ViewModel already does; this test is what
-    // proves it and would fail if that behavior regressed.
     @Test
-    fun `a failed bulk action leaves the selection untouched`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { contactRepository.listContacts() } returns Result.success(threeContacts)
-        stubCirclesAndTags()
-        coEvery {
-            bulkRepository.run(match { it.action == "add_tag" })
-        } returns Result.failure(ApiError.Client(500, "server error"))
+    fun `a blank search fires no request`() = runTest(mainDispatcherRule.testDispatcher) {
+        val vm = viewModel()
+        vm.setPair(1, 0)
+
+        vm.onSearchQueryChange("")
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { contactRepository.listContacts(any(), any(), any()) }
+        assertTrue(vm.uiState.value.searchResults.isEmpty())
+    }
+
+    @Test
+    fun `search failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { contactRepository.listContacts(cursor = null, limit = 100, search = "zzz") } returns
+            Result.failure(ApiError.Client(500, "server error"))
 
         val vm = viewModel()
+        vm.setPair(1, 0)
+
+        vm.onSearchQueryChange("zzz")
         advanceUntilIdle()
 
-        vm.toggle(1)
-        vm.toggle(2)
-        vm.run("add_tag", tagId = "tag-1")
-        advanceUntilIdle()
-
-        assertEquals(setOf(1, 2), vm.uiState.value.selected)
         assertEquals("server error", vm.uiState.value.error)
-    }
-
-    @Test
-    fun `loads circles and tags for the pickers`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { contactRepository.listContacts() } returns Result.success(threeContacts)
-        stubCirclesAndTags(
-            circles = listOf(Circle(id = "c-1", name = "Book club"), Circle(id = "c-2", name = "Family")),
-            tags = listOf(Tag(id = "t-1", name = "VIP")),
-        )
-
-        val vm = viewModel()
-        advanceUntilIdle()
-
-        assertEquals(2, vm.uiState.value.circles.size)
-        assertEquals(1, vm.uiState.value.tags.size)
+        assertTrue(vm.uiState.value.searchResults.isEmpty())
     }
 }
