@@ -19,6 +19,7 @@ import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Repeat
+import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
@@ -50,11 +51,18 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mycorrhizal.crm.model.network.Reminder
 import com.mycorrhizal.crm.model.network.ReminderRecurrence
+import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.theme.MycorrhizalColors
 import com.mycorrhizal.crm.ui.R
 
+/**
+ * M20: per-contact reminders list. The hilt-backed wrapper; the stateful UI
+ * lives in [RemindersScreenContent] so the delete-confirm flow is directly
+ * testable (M19's ActivitiesScreen/ActivitiesScreenContent split).
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RemindersScreen(
@@ -64,6 +72,29 @@ fun RemindersScreen(
     viewModel: RemindersViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    RemindersScreenContent(
+        uiState = state,
+        onBack = onBack,
+        onCreateReminder = onCreateReminder,
+        onEditReminder = onEditReminder,
+        onComplete = viewModel::complete,
+        onDelete = viewModel::delete,
+        onErrorShown = viewModel::onErrorShown,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RemindersScreenContent(
+    uiState: RemindersUiState,
+    onBack: () -> Unit = {},
+    onCreateReminder: () -> Unit = {},
+    onEditReminder: (Int) -> Unit = {},
+    onComplete: (Int) -> Unit = {},
+    onDelete: (Int) -> Unit = {},
+    onErrorShown: () -> Unit = {},
+) {
+    val state = uiState
     val snackbarHostState = remember { SnackbarHostState() }
     var pendingDelete by remember { mutableStateOf<Reminder?>(null) }
 
@@ -105,8 +136,9 @@ fun RemindersScreen(
                         items(state.reminders, key = { it.id }) { reminder ->
                             ReminderListItem(
                                 reminder = reminder,
+                                dateFormat = state.dateFormat,
                                 onClick = { onEditReminder(reminder.id) },
-                                onComplete = { viewModel.complete(reminder.id) },
+                                onComplete = { onComplete(reminder.id) },
                                 onDelete = { pendingDelete = reminder },
                                 isCompleting = state.completingId == reminder.id,
                                 isDeleting = state.deletingId == reminder.id,
@@ -125,7 +157,7 @@ fun RemindersScreen(
             text = { Text(stringResource(R.string.reminder_delete_confirm, reminder.message.orEmpty().take(80))) },
             confirmButton = {
                 TextButton(onClick = {
-                    viewModel.delete(reminder.id)
+                    onDelete(reminder.id)
                     pendingDelete = null
                 }) {
                     Text(stringResource(R.string.action_delete))
@@ -146,7 +178,7 @@ fun RemindersScreen(
     if (listError != null && state.reminders.isNotEmpty()) {
         LaunchedEffect(listError) {
             snackbarHostState.showSnackbar(listError)
-            viewModel.onErrorShown()
+            onErrorShown()
         }
     }
 }
@@ -159,9 +191,11 @@ fun ReminderListItem(
     onDelete: () -> Unit,
     isCompleting: Boolean,
     isDeleting: Boolean = false,
+    dateFormat: String? = null,
     modifier: Modifier = Modifier,
 ) {
     val overdue = reminder.isOverdue()
+    val dateText = DateFormat.formatTimestamp(reminder.remindAt, dateFormat ?: DateFormat.EU)
 
     Card(
         modifier = modifier
@@ -171,7 +205,7 @@ fun ReminderListItem(
         border = if (overdue) {
             BorderStroke(
                 width = 2.dp,
-                color = MaterialTheme.colorScheme.error,
+                color = MycorrhizalColors.chanterelle,
             )
         } else {
             null
@@ -198,30 +232,37 @@ fun ReminderListItem(
                     )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    // Web's date chip is the overdue indicator: it is colored warning
+                    // (chanterelle here) when the reminder is overdue.
+                    if (dateText.isNotBlank()) {
+                        ReminderBadge(
+                            text = dateText,
+                            leadingIcon = if (overdue) Icons.Outlined.Warning else null,
+                            containerColor = if (overdue) MycorrhizalColors.chanterelle else MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (overdue) androidx.compose.ui.graphics.Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                     if (overdue) {
-                        AssistChip(
-                            onClick = {},
-                            label = {
-                                Text(stringResource(R.string.reminder_overdue), style = MaterialTheme.typography.labelSmall)
-                            },
+                        ReminderBadge(
+                            text = stringResource(R.string.reminder_overdue),
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer,
                         )
                     }
                     if (reminder.byMail == true) {
-                        AssistChip(
-                            onClick = {},
-                            label = { Text(stringResource(R.string.reminder_email_chip)) },
-                            leadingIcon = {
-                                Icon(Icons.Outlined.Email, contentDescription = null, Modifier.size(16.dp))
-                            },
+                        ReminderBadge(
+                            text = stringResource(R.string.reminder_email_chip),
+                            leadingIcon = Icons.Outlined.Email,
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     if (reminder.reoccurFromCompletion == true && recurrence != null) {
-                        AssistChip(
-                            onClick = {},
-                            label = { Text(stringResource(R.string.reminder_flexible)) },
-                            leadingIcon = {
-                                Icon(Icons.Outlined.Repeat, contentDescription = null, Modifier.size(16.dp))
-                            },
+                        ReminderBadge(
+                            text = stringResource(R.string.reminder_flexible),
+                            leadingIcon = Icons.Outlined.Repeat,
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
@@ -262,4 +303,29 @@ private fun Reminder.recurrenceLabel(): Int = when (recurrence) {
     ReminderRecurrence.SIX_MONTHS -> R.string.reminder_recurrence_six_months
     ReminderRecurrence.YEARLY -> R.string.reminder_recurrence_yearly
     else -> R.string.reminder_recurrence_once
+}
+
+@Composable
+private fun ReminderBadge(
+    text: String,
+    leadingIcon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    containerColor: androidx.compose.ui.graphics.Color,
+    contentColor: androidx.compose.ui.graphics.Color,
+) {
+    androidx.compose.material3.Surface(
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+        color = containerColor,
+        contentColor = contentColor,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            if (leadingIcon != null) {
+                Icon(leadingIcon, contentDescription = null, modifier = Modifier.size(12.dp))
+            }
+            Text(text, style = MaterialTheme.typography.labelSmall)
+        }
+    }
 }

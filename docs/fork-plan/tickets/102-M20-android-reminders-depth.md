@@ -138,3 +138,51 @@ New strings ×5 locales, real translations, `LocalesConsistencyTest` green. Gate
 occurrence, undo-reloads-the-list) — each failed the pinned test when reverted, then passed
 restored. **On-device verification still outstanding** — no physical device in this build
 environment, same gap M19/M11/M17 landed with.
+
+### Review pass (2026-08-14)
+
+A review pass fixed six things the first implementation got wrong, each caught by reading the code
+against web's `ReminderList.tsx`/`ReminderDialog.tsx` (and pinned by new/updated tests):
+
+- **The list card showed no due date at all.** Web's card leads with a `formatDate(remind_at)` chip
+  (the overdue indicator is that chip turning warning); Android showed message + recurrence + badges
+  but no date. `RemindersScreen`/`RemindersScreenContent` now render the formatted date chip via the
+  user's `date_format` (wired through `RemindersViewModel` → `AuthRepository.observeSession`, the
+  same pattern `DashboardViewModel` uses), colored `chanterelle` with a Warning icon when overdue —
+  matching both web's `warning.main` and the M10 dashboard's overdue treatment. Pinned by a screen
+  test asserting the formatted date text renders.
+- **Overdue border/color used Material `error` (red) where web uses warning and the app's own
+  dashboard uses `chanterelle`.** Switched the border and date chip to `chanterelle`, keeping an
+  explicit `errorContainer` "Overdue" chip so the state isn't color-only (web relies on color alone;
+  the chip keeps it visible in tests and for color-blind users).
+- **Delete-confirm flow was untestable and therefore untested.** `RemindersScreen` kept the
+  `AlertDialog` and the list inline with `hiltViewModel()`, so the screen test could only drive
+  `ReminderListItem` callbacks directly — it never exercised the "confirmed before firing" contract
+  (M20 test case 1). Split into `RemindersScreen` (thin hilt wrapper) + `RemindersScreenContent`
+  (stateless, M19's `ActivitiesScreenContent` pattern) and added the three M19-style tests: delete
+  asks first (no call), cancel inert (no call, item stays), confirm calls with the right id. Each
+  fails if the dialog is bypassed (hand-verified).
+- **Create mode deviated from web on the auto-date.** Web prefills the date on open
+  (`getDateForRecurrence(initialRec)` — today for `once`) and `handleRecurrenceChange` recomputes
+  for *every* recurrence including back to `once` (→ today). Android started blank and skipped
+  `once`. Now: create mode opens with today pre-filled (or the prefilled recurrence's offset), and
+  changing recurrence in create mode always recomputes (including `once` → today). Pinned by
+  `create mode starts with once recurrence and today's pre-filled date` and `changing recurrence to
+  once in create mode auto-fills today` (both hand-verified to fail when reverted).
+- **The DatePicker's confirm button said "Create reminder"** (a copy-paste of the save-button
+  label) and the date field displayed the raw ISO string under a "(ISO 8601)" label. Confirm now
+  reads `action_confirm` ("Confirm"); the field shows the date part only, and the label/hint strings
+  were simplified ("Remind at" / `2026-08-10`) in all five locales. The picker also now keeps the
+  initial date selectable even when it's in the past (editing an overdue reminder) while still
+  blocking new picks before today — web's `min` attribute semantics.
+- **Undo-completion fired without confirmation.** Web's `ContactDetailPage` wraps the delete in
+  `window.confirm`; Android called `DELETE /reminder-completions/:id` straight from the row. It now
+  routes through an `AlertDialog` in `ContactDetailScreen` (matching the delete/archive confirms),
+  with three new strings ×5 locales.
+- **No `ReminderFormScreenTest` existed** despite the form gaining a date picker, a recurrence
+  dropdown, and the reoccur-from-completion switch. Added one (M19's `NoteFormScreenTest` pattern):
+  prefilled date renders, the reoccur switch shows for recurring and is hidden for `once`, the
+  switch toggles the callback, and the save button fires `onSave`.
+
+Gate green after the pass: full `testDebugUnitTest`, `lintDebug`, `assembleDebug`. On-device
+verification still outstanding.

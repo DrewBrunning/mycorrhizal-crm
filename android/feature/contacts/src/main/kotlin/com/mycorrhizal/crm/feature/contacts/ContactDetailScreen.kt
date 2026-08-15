@@ -194,6 +194,10 @@ fun ContactDetailScreen(
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showArchiveConfirm by remember { mutableStateOf(false) }
     var showUnarchiveConfirm by remember { mutableStateOf(false) }
+    // M20: undoing a completed reminder deletes its timeline entry — web's
+    // ContactDetailPage confirms (`window.confirm`), so Android confirms too
+    // (M17's delete-is-confirmed-first rule).
+    var pendingUndoCompletionId by remember { mutableStateOf<Int?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     // M24: the share stub stays (M15 is a separate ticket); prep view (M11) now
@@ -480,7 +484,7 @@ fun ContactDetailScreen(
                     onEditReminder = onEditReminder,
                     onCompleteReminder = viewModel::completeReminder,
                     completions = state.completions,
-                    onUndoCompletion = viewModel::undoCompletion,
+                    onUndoCompletion = { id -> pendingUndoCompletionId = id },
                 )
             }
         }
@@ -575,6 +579,29 @@ fun ContactDetailScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showUnarchiveConfirm = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
+    pendingUndoCompletionId?.let { completionId ->
+        AlertDialog(
+            onDismissRequest = { pendingUndoCompletionId = null },
+            title = { Text(stringResource(R.string.reminder_completion_undo_title)) },
+            text = { Text(stringResource(R.string.reminder_completion_undo_confirm)) },
+            confirmButton = {
+                TextButton(
+                    enabled = !state.isMutating,
+                    onClick = {
+                        pendingUndoCompletionId = null
+                        viewModel.undoCompletion(completionId)
+                    },
+                ) {
+                    Text(stringResource(R.string.reminder_completion_undo), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingUndoCompletionId = null }) {
                     Text(stringResource(R.string.action_cancel))
                 }
             },

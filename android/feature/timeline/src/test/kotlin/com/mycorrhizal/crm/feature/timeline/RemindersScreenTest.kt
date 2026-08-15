@@ -1,11 +1,5 @@
 package com.mycorrhizal.crm.feature.timeline
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Scaffold
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -14,10 +8,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.mycorrhizal.crm.model.network.Reminder
 import com.mycorrhizal.crm.model.network.ReminderRecurrence
-import com.mycorrhizal.crm.ui.components.EmptyState
-import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -37,35 +30,22 @@ class RemindersScreenTest {
 
     private fun setContent(
         state: RemindersUiState,
+        onBack: () -> Unit = {},
+        onCreateReminder: () -> Unit = {},
         onEditReminder: (Int) -> Unit = {},
         onCompleteReminder: (Int) -> Unit = {},
         onDeleteReminder: (Int) -> Unit = {},
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                Scaffold { padding ->
-                    Box(modifier = Modifier.padding(padding)) {
-                        when {
-                            state.isLoading -> LoadingSkeleton()
-                            state.reminders.isEmpty() && state.error == null ->
-                                EmptyState("No reminders yet")
-                            else -> {
-                                LazyColumn {
-                                    items(state.reminders) { reminder ->
-                                        ReminderListItem(
-                                            reminder = reminder,
-                                            onClick = { onEditReminder(reminder.id) },
-                                            onComplete = { onCompleteReminder(reminder.id) },
-                                            onDelete = { onDeleteReminder(reminder.id) },
-                                            isCompleting = state.completingId == reminder.id,
-                                            isDeleting = state.deletingId == reminder.id,
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                RemindersScreenContent(
+                    uiState = state,
+                    onBack = onBack,
+                    onCreateReminder = onCreateReminder,
+                    onEditReminder = onEditReminder,
+                    onComplete = onCompleteReminder,
+                    onDelete = onDeleteReminder,
+                )
             }
         }
     }
@@ -121,17 +101,52 @@ class RemindersScreenTest {
     }
 
     @Test
-    fun `delete button invokes the delete callback`() {
+    fun `delete asks first -- tapping delete shows a confirmation and does not call onDelete`() {
         var deletedId: Int? = null
         setContent(
             RemindersUiState(
                 contactId = 5,
-                reminders = listOf(Reminder(id = 1, message = "Call Dana")),
+                reminders = listOf(Reminder(id = 7, message = "Call Dana")),
             ),
             onDeleteReminder = { deletedId = it },
         )
         composeTestRule.onNodeWithContentDescription("Delete reminder").performClick()
-        assertEquals(1, deletedId)
+
+        composeTestRule.onNodeWithText("Delete reminder?").assertIsDisplayed()
+        assertNull(deletedId)
+    }
+
+    @Test
+    fun `cancel is inert -- dismissing the confirmation issues no call and leaves the item present`() {
+        var deletedId: Int? = null
+        setContent(
+            RemindersUiState(
+                contactId = 5,
+                reminders = listOf(Reminder(id = 7, message = "Call Dana")),
+            ),
+            onDeleteReminder = { deletedId = it },
+        )
+        composeTestRule.onNodeWithContentDescription("Delete reminder").performClick()
+        composeTestRule.onNodeWithText("Cancel").performClick()
+
+        assertNull(deletedId)
+        composeTestRule.onNodeWithText("Call Dana").assertIsDisplayed()
+    }
+
+    @Test
+    fun `confirming the dialog calls onDelete with the right id`() {
+        var deletedId: Int? = null
+        setContent(
+            RemindersUiState(
+                contactId = 5,
+                reminders = listOf(Reminder(id = 7, message = "Call Dana")),
+            ),
+            onDeleteReminder = { deletedId = it },
+        )
+        composeTestRule.onNodeWithContentDescription("Delete reminder").performClick()
+        composeTestRule.onNodeWithText("Delete").performClick()
+
+        assertEquals(7, deletedId)
     }
 
     @Test
@@ -210,5 +225,19 @@ class RemindersScreenTest {
             ),
         )
         assertTrue(composeTestRule.onAllNodesWithText("Flexible").fetchSemanticsNodes().isEmpty())
+    }
+
+    @Test
+    fun `shows the formatted due date chip`() {
+        setContent(
+            RemindersUiState(
+                contactId = 5,
+                reminders = listOf(
+                    Reminder(id = 1, message = "Call Dana", remindAt = "2026-08-10T00:00:00Z"),
+                ),
+            ),
+            // Default EU format renders "10 August 2026".
+        )
+        composeTestRule.onNodeWithText("10 August 2026").assertIsDisplayed()
     }
 }

@@ -1,7 +1,9 @@
 package com.mycorrhizal.crm.feature.timeline
 
 import androidx.lifecycle.SavedStateHandle
+import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.ReminderRepository
+import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.model.network.Reminder
 import com.mycorrhizal.crm.model.network.ReminderRecurrence
 import com.mycorrhizal.crm.network.ApiError
@@ -9,7 +11,9 @@ import com.mycorrhizal.crm.testing.MainDispatcherRule
 import com.mycorrhizal.crm.ui.R
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -18,6 +22,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import java.time.LocalDate
 
 class RemindersViewModelTest {
 
@@ -25,9 +30,12 @@ class RemindersViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val reminderRepository = mockk<ReminderRepository>()
+    private val authRepository = mockk<AuthRepository>()
 
-    private fun viewModel(contactId: Int = 5): RemindersViewModel =
-        RemindersViewModel(reminderRepository, SavedStateHandle(mapOf("contactId" to contactId)))
+    private fun viewModel(contactId: Int = 5): RemindersViewModel {
+        every { authRepository.observeSession() } returns flowOf(SessionState())
+        return RemindersViewModel(reminderRepository, authRepository, SavedStateHandle(mapOf("contactId" to contactId)))
+    }
 
     @Test
     fun `loads the contact's reminders on init`() = runTest(mainDispatcherRule.testDispatcher) {
@@ -186,12 +194,15 @@ class ReminderFormViewModelTest {
     }
 
     @Test
-    fun `create mode starts with once recurrence`() {
+    fun `create mode starts with once recurrence and today's pre-filled date`() {
         val vm = createViewModel()
         val state = vm.uiState.value
         assertFalse(state.isEdit)
         assertEquals(ReminderRecurrence.ONCE, state.recurrence)
         assertEquals(5, state.contactId)
+        // Web prefills getDateForRecurrence on create; M20 mirrors it.
+        val today = LocalDate.now().toString()
+        assertEquals("${today}T00:00:00Z", state.remindAt)
     }
 
     @Test
@@ -212,10 +223,14 @@ class ReminderFormViewModelTest {
     }
 
     @Test
-    fun `changing recurrence to once in create mode does not auto-fill a date`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `changing recurrence to once in create mode auto-fills today`() = runTest(mainDispatcherRule.testDispatcher) {
+        // Web's handleRecurrenceChange sets the date for *every* recurrence, including
+        // once (which resets to today). M20 matches that rather than leaving the date stale.
         val vm = createViewModel()
+        vm.onRecurrenceChange(ReminderRecurrence.WEEKLY)
         vm.onRecurrenceChange(ReminderRecurrence.ONCE)
-        assertEquals("", vm.uiState.value.remindAt)
+        val today = LocalDate.now().toString()
+        assertEquals("${today}T00:00:00Z", vm.uiState.value.remindAt)
     }
 
     @Test

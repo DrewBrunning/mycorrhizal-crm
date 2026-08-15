@@ -119,6 +119,14 @@ class ReminderFormViewModel @Inject constructor(
             reminderId = reminderId,
             message = prefillMessage.orEmpty(),
             recurrence = prefillRecurrence ?: ReminderRecurrence.ONCE,
+            // Web's ReminderDialog prefills the due date on create (getDateForRecurrence
+            // of the initial recurrence — today for `once`). M20 mirrors that; the
+            // create form never opens with an empty date.
+            remindAt = if (reminderId == null) {
+                "${ReminderFormState.dateForRecurrence(prefillRecurrence ?: ReminderRecurrence.ONCE)}T00:00:00Z"
+            } else {
+                ""
+            },
         ),
     )
     val uiState: StateFlow<ReminderFormState> = _uiState.asStateFlow()
@@ -151,11 +159,13 @@ class ReminderFormViewModel @Inject constructor(
     /**
      * Mirrors web's `handleRecurrenceChange` (ReminderDialog.tsx:81-86): in
      * create mode, choosing a recurrence auto-fills the due date with the
-     * recurrence's default offset (weekly → +1 week, ...). Edit mode never
-     * overwrites the existing date.
+     * recurrence's default offset (weekly → +1 week, ...). Web does this for
+     * **every** recurrence — including switching back to `once`, which resets
+     * to today — so the Android mirror does too. Edit mode never overwrites
+     * the existing date.
      */
     fun onRecurrenceChange(value: String) = _uiState.update { state ->
-        if (state.reminderId == null && value != ReminderRecurrence.ONCE) {
+        if (state.reminderId == null) {
             state.copy(
                 recurrence = value,
                 remindAt = "${ReminderFormState.dateForRecurrence(value)}T00:00:00Z",

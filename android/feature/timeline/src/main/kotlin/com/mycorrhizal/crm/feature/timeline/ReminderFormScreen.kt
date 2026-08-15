@@ -152,10 +152,10 @@ fun ReminderFormContent(
             modifier = Modifier.fillMaxWidth(),
         )
         OutlinedTextField(
-            value = state.remindAt,
+            value = state.remindAt.take(10),
             onValueChange = onRemindAtChange,
             label = { Text(stringResource(R.string.reminder_remind_at)) },
-            placeholder = { Text(stringResource(R.string.activity_date_hint)) },
+            placeholder = { Text(stringResource(R.string.reminder_remind_at_hint)) },
             singleLine = true,
             readOnly = true,
             trailingIcon = {
@@ -260,9 +260,15 @@ private fun ReminderDatePickerDialog(
     }
     val pickerState = rememberDatePickerState(
         initialSelectedDateMillis = initialMillis,
+        // Web's `min: today` attribute lets an existing past date (an overdue
+        // reminder being edited) stay in the field but blocks *picking* a new
+        // date before today. Mirror that: the initial date is always selectable,
+        // anything else must be today or later.
         selectableDates = object : SelectableDates {
-            override fun isSelectableDate(utcTimeMillis: Long): Boolean =
-                Instant.ofEpochMilli(utcTimeMillis).atZone(ZoneOffset.UTC).toLocalDate() >= today
+            override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                if (utcTimeMillis == initialMillis) return true
+                return Instant.ofEpochMilli(utcTimeMillis).atZone(ZoneOffset.UTC).toLocalDate() >= today
+            }
         },
     )
 
@@ -275,7 +281,7 @@ private fun ReminderDatePickerDialog(
                     onCreate("${date}T00:00:00Z")
                 }
             }) {
-                Text(stringResource(R.string.reminder_create))
+                Text(stringResource(R.string.action_confirm))
             }
         },
         dismissButton = {
