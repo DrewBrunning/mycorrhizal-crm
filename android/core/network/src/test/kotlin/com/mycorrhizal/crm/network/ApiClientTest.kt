@@ -2772,4 +2772,130 @@ class ApiClientTest {
         // MarkDiscussedDialog (`{}` when unlinked).
         assertEquals("{}", request.body.readUtf8())
     }
+
+    // --- M26: registration + password reset ---
+
+    @Test
+    fun `register posts username email and password`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(201)
+                .setBody("""{"message":"User registered successfully"}"""),
+        )
+
+        val result = client.register("alice", "alice@example.com", "hunter2hunter2")
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/register", request.path)
+        val body = request.body.readUtf8()
+        assertTrue(body.contains("""{"username":"alice","email":"alice@example.com","password":"hunter2hunter2"}"""))
+    }
+
+    @Test
+    fun `register surfaces the duplicate-account conflict message`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(409)
+                .setBody("""{"error":{"code":"ALREADY_EXISTS","message":"User already exists","details":{"email":"alice@example.com"}}}"""),
+        )
+
+        val result = client.register("alice", "alice@example.com", "hunter2hunter2")
+
+        assertTrue(result.isFailure)
+        val error = result.exceptionOrNull() as ApiError
+        assertTrue(error is ApiError.Client)
+        assertEquals(409, (error as ApiError.Client).code)
+    }
+
+    @Test
+    fun `checkPasswordStrength posts the password and parses the verdict`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """{"is_valid":false,"entropy":18.3,"score":1,"feedback":"Password is too short","min_entropy":50.0,"char_set_size":26,"length":8}""",
+                ),
+        )
+
+        val result = client.checkPasswordStrength("shortpw")
+
+        assertTrue(result.isSuccess)
+        val strength = result.getOrThrow()
+        assertFalse(strength.isValid)
+        assertEquals(18.3, strength.entropy!!, 0.001)
+        assertEquals("Password is too short", strength.feedback)
+        val request = server.takeRequest()
+        assertEquals("/api/v1/check-password-strength", request.path)
+        assertTrue(request.body.readUtf8().contains("""{"password":"shortpw"}"""))
+    }
+
+    @Test
+    fun `requestPasswordReset posts the email and reads the anti-enumeration message`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"message":"If an account exists, password reset instructions were sent"}"""),
+        )
+
+        val result = client.requestPasswordReset("alice@example.com")
+
+        assertTrue(result.isSuccess)
+        assertEquals("If an account exists, password reset instructions were sent", result.getOrThrow().message)
+        val request = server.takeRequest()
+        assertEquals("/api/v1/password-reset/request", request.path)
+        assertTrue(request.body.readUtf8().contains("""{"email":"alice@example.com"}"""))
+    }
+
+    @Test
+    fun `confirmPasswordReset posts the token and password`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"message":"Password reset successful"}"""),
+        )
+
+        val result = client.confirmPasswordReset("reset-token-123", "newpassword123")
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("/api/v1/password-reset/confirm", request.path)
+        val body = request.body.readUtf8()
+        assertTrue(body.contains("""{"token":"reset-token-123","password":"newpassword123"}"""))
+    }
+
+    // --- M26: circle/tag triage ---
+
+    @Test
+    fun `listLegacyCircles parses a bare JSON array`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""["Friends from school","Ski club"]"""),
+        )
+
+        val result = client.listLegacyCircles()
+
+        assertTrue(result.isSuccess)
+        assertEquals(listOf("Friends from school", "Ski club"), result.getOrThrow())
+        val request = server.takeRequest()
+        assertEquals("/api/v1/contacts/circles?legacy=true", request.path)
+    }
+
+    @Test
+    fun `listContacts sends circle_legacy for the triage contact lookup`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"contacts":[{"id":1,"uid":"u1","fn":"Alice"}],"limit":500}"""),
+        )
+
+        val result = client.listContacts(circleLegacy = "Ski club", limit = 500)
+
+        assertTrue(result.isSuccess)
+        assertEquals(1, result.getOrThrow().contacts.size)
+        val request = server.takeRequest()
+        assertEquals("/api/v1/contacts?limit=500&circle_legacy=Ski%20club", request.path)
+    }
 }

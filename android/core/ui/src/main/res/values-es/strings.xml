@@ -42,6 +42,35 @@
     <string name="login_error_token_required">Se requiere el token de API</string>
     <string name="login_error_token_prefix">Los tokens de API comienzan con \'mycorrhizal_\'</string>
 
+    <!-- M26: registration + forgot password -->
+    <string name="login_no_account">¿No tienes cuenta? Crea una</string>
+    <string name="login_forgot_password">¿Olvidaste tu contraseña?</string>
+    <string name="register_title">Crear cuenta</string>
+    <string name="register_subtitle">Configura una nueva cuenta en tu servidor</string>
+    <string name="register_username">Nombre de usuario</string>
+    <string name="register_email">Correo electrónico</string>
+    <string name="register_create">Crear cuenta</string>
+    <string name="register_back_to_login">Volver a iniciar sesión</string>
+    <string name="register_checking_strength">Comprobando la fortaleza de la contraseña…</string>
+    <string name="register_password_strong">La contraseña se ve bien</string>
+    <string name="register_error_username_required">El nombre de usuario es obligatorio</string>
+    <string name="register_error_email_required">El correo electrónico es obligatorio</string>
+    <string name="register_error_password_required">La contraseña es obligatoria</string>
+    <string name="register_error_password_weak">La contraseña es demasiado débil</string>
+    <string name="forgot_password_title">Restablecer contraseña</string>
+    <string name="forgot_password_request_hint">Introduce el correo de tu cuenta y te enviaremos un enlace de restablecimiento.</string>
+    <string name="forgot_password_email">Correo electrónico</string>
+    <string name="forgot_password_send">Enviar correo de restablecimiento</string>
+    <string name="forgot_password_token">Token de restablecimiento</string>
+    <string name="forgot_password_new_password">Nueva contraseña</string>
+    <string name="forgot_password_confirm_password">Confirmar nueva contraseña</string>
+    <string name="forgot_password_reset">Restablecer contraseña</string>
+    <string name="forgot_password_done">Contraseña restablecida correctamente. Ya puedes iniciar sesión.</string>
+    <string name="forgot_password_error_email_required">El correo electrónico es obligatorio</string>
+    <string name="forgot_password_error_token_required">El token de restablecimiento es obligatorio</string>
+    <string name="forgot_password_error_password_required">La nueva contraseña es obligatoria</string>
+    <string name="action_close">Cerrar</string>
+
     <!-- Lista de contactos -->
     <string name="contacts_search_hint">Buscar contactos</string>
     <string name="contacts_empty">Aún no hay contactos</string>
@@ -461,6 +490,21 @@
     <string name="circles_empty">Aún no hay círculos</string>
     <string name="circles_members_empty">Aún no hay miembros</string>
     <string name="circles_error_missing_id">Falta el ID del círculo</string>
+
+    <!-- Circle & tag triage (M26) -->
+    <string name="settings_circle_tag_triage">Clasificación de círculos y etiquetas</string>
+    <string name="triage_title">Clasificación de círculos y etiquetas</string>
+    <string name="triage_name">Nombre</string>
+    <string name="triage_circle">Círculo</string>
+    <string name="triage_tag">Etiqueta</string>
+    <string name="triage_skip">Omitir</string>
+    <string name="triage_contacts_count">%1$d contactos</string>
+    <string name="triage_summary">%1$d círculos, %2$d etiquetas, %3$d omitidos</string>
+    <string name="triage_apply">Aplicar</string>
+    <string name="triage_empty">No hay cadenas de círculos heredadas que limpiar.</string>
+    <string name="triage_done_title">Clasificación completada</string>
+    <string name="triage_done_message">Se crearon %1$d círculo(s) y %2$d etiqueta(s).</string>
+    <string name="action_done">Hecho</string>
     <string name="action_create">Crear</string>
     <string name="action_save">Guardar</string>
     <string name="action_edit">Editar</string>

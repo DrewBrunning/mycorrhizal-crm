@@ -31,7 +31,10 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -52,6 +55,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.mycorrhizal.crm.feature.auth.LoginScreen
+import com.mycorrhizal.crm.feature.auth.RegisterScreen
+import com.mycorrhizal.crm.feature.auth.ForgotPasswordScreen
 import com.mycorrhizal.crm.feature.audit.AuditScreen
 import com.mycorrhizal.crm.feature.cadence.CadenceScreen
 import com.mycorrhizal.crm.feature.circles.CircleDetailScreen
@@ -62,6 +67,7 @@ import com.mycorrhizal.crm.feature.contacts.ContactListScreen
 import com.mycorrhizal.crm.feature.contacts.DashboardScreen
 import com.mycorrhizal.crm.feature.contacts.PrepViewScreen
 import com.mycorrhizal.crm.feature.contacts.MergeContactsScreen
+import com.mycorrhizal.crm.feature.circles.TriageScreen
 import com.mycorrhizal.crm.feature.households.HouseholdDetailScreen
 import com.mycorrhizal.crm.feature.households.HouseholdsScreen
 import com.mycorrhizal.crm.feature.imports.ImportContactsScreen
@@ -141,20 +147,38 @@ fun MycorrhizalApp(
     val session by mainViewModel.session.collectAsStateWithLifecycle()
 
     if (!session.isLoggedIn) {
+        // M26: the unauthenticated tree is a tiny router over the auth
+        // screens — login, register, forgot-password — since they are not
+        // part of the main NavHost.
+        var authScreen by rememberSaveable { mutableStateOf(AuthScreen.LOGIN) }
         val context = LocalContext.current
-        LoginScreen(
-            onLoggedIn = { /* session flow flips isLoggedIn, recomposition swaps the tree */ },
-            onSignInWithSso = { serverUrl ->
-                val url = serverUrl.trim().trimEnd('/') + "/api/v1/auth/oidc/login"
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                runCatching { context.startActivity(intent) }
-            },
-        )
+        when (authScreen) {
+            AuthScreen.LOGIN -> LoginScreen(
+                onLoggedIn = { /* session flow flips isLoggedIn, recomposition swaps the tree */ },
+                onSignInWithSso = { serverUrl ->
+                    val url = serverUrl.trim().trimEnd('/') + "/api/v1/auth/oidc/login"
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                    runCatching { context.startActivity(intent) }
+                },
+                onRegisterClick = { authScreen = AuthScreen.REGISTER },
+                onForgotPasswordClick = { authScreen = AuthScreen.FORGOT_PASSWORD },
+            )
+            AuthScreen.REGISTER -> RegisterScreen(
+                onRegistered = { /* auto-login flips isLoggedIn */ },
+                onBack = { authScreen = AuthScreen.LOGIN },
+            )
+            AuthScreen.FORGOT_PASSWORD -> ForgotPasswordScreen(
+                onBack = { authScreen = AuthScreen.LOGIN },
+            )
+        }
         return
     }
 
     MainScaffold(darkTheme = darkTheme)
 }
+
+/** The M26 unauthenticated-tree router destinations. */
+private enum class AuthScreen { LOGIN, REGISTER, FORGOT_PASSWORD }
 
 @Composable
 private fun MainScaffold(darkTheme: Boolean) {
@@ -572,6 +596,8 @@ private fun MainScaffold(darkTheme: Boolean) {
                     onCustomLinks = { navController.navigate("custom-links") },
                     onWebhooks = { navController.navigate("webhooks") },
                     onNotificationChannels = { navController.navigate("notification-channels") },
+                    // M26: the one-time legacy circle/tag cleanup tool.
+                    onCircleTagTriage = { navController.navigate("circle-tag-triage") },
                     onLocaleChanged = recreateActivity,
                 )
             }
@@ -596,6 +622,12 @@ private fun MainScaffold(darkTheme: Boolean) {
             }
             composable("notification-channels") {
                 NotificationChannelsScreen(
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            // M26: one-time legacy circle/tag cleanup (reached from Settings).
+            composable("circle-tag-triage") {
+                TriageScreen(
                     onBack = { navController.popBackStack() },
                 )
             }

@@ -42,6 +42,35 @@
     <string name="login_error_token_required">Il token API è obbligatorio</string>
     <string name="login_error_token_prefix">I token API iniziano con \'mycorrhizal_\'</string>
 
+    <!-- M26: registration + forgot password -->
+    <string name="login_no_account">Non hai un account? Creane uno</string>
+    <string name="login_forgot_password">Hai dimenticato la password?</string>
+    <string name="register_title">Crea account</string>
+    <string name="register_subtitle">Configura un nuovo account sul tuo server</string>
+    <string name="register_username">Nome utente</string>
+    <string name="register_email">E-mail</string>
+    <string name="register_create">Crea account</string>
+    <string name="register_back_to_login">Torna al login</string>
+    <string name="register_checking_strength">Controllo della robustezza della password…</string>
+    <string name="register_password_strong">La password sembra buona</string>
+    <string name="register_error_username_required">Il nome utente è obbligatorio</string>
+    <string name="register_error_email_required">L\'e-mail è obbligatoria</string>
+    <string name="register_error_password_required">La password è obbligatoria</string>
+    <string name="register_error_password_weak">La password è troppo debole</string>
+    <string name="forgot_password_title">Reimposta password</string>
+    <string name="forgot_password_request_hint">Inserisci l\'e-mail del tuo account e ti invieremo un link di reimpostazione.</string>
+    <string name="forgot_password_email">E-mail</string>
+    <string name="forgot_password_send">Invia e-mail di reimpostazione</string>
+    <string name="forgot_password_token">Token di reimpostazione</string>
+    <string name="forgot_password_new_password">Nuova password</string>
+    <string name="forgot_password_confirm_password">Conferma nuova password</string>
+    <string name="forgot_password_reset">Reimposta password</string>
+    <string name="forgot_password_done">Password reimpostata correttamente. Ora puoi accedere.</string>
+    <string name="forgot_password_error_email_required">L\'e-mail è obbligatoria</string>
+    <string name="forgot_password_error_token_required">Il token di reimpostazione è obbligatorio</string>
+    <string name="forgot_password_error_password_required">La nuova password è obbligatoria</string>
+    <string name="action_close">Chiudi</string>
+
     <!-- Contact list -->
     <string name="contacts_search_hint">Cerca contatti</string>
     <string name="contacts_empty">Ancora nessun contatto</string>
@@ -461,6 +490,21 @@
     <string name="circles_empty">Ancora nessun cerchio</string>
     <string name="circles_members_empty">Ancora nessun membro</string>
     <string name="circles_error_missing_id">ID cerchio mancante</string>
+
+    <!-- Circle & tag triage (M26) -->
+    <string name="settings_circle_tag_triage">Classificazione cerchi ed etichette</string>
+    <string name="triage_title">Classificazione cerchi ed etichette</string>
+    <string name="triage_name">Nome</string>
+    <string name="triage_circle">Cerchio</string>
+    <string name="triage_tag">Etichetta</string>
+    <string name="triage_skip">Salta</string>
+    <string name="triage_contacts_count">%1$d contatti</string>
+    <string name="triage_summary">%1$d cerchi, %2$d etichette, %3$d saltati</string>
+    <string name="triage_apply">Applica</string>
+    <string name="triage_empty">Nessuna vecchia stringa di cerchio da pulire.</string>
+    <string name="triage_done_title">Classificazione completata</string>
+    <string name="triage_done_message">Creati %1$d cerchi e %2$d etichette.</string>
+    <string name="action_done">Fatto</string>
     <string name="action_create">Crea</string>
     <string name="action_save">Salva</string>
     <string name="action_edit">Modifica</string>

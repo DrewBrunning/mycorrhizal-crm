@@ -39,3 +39,49 @@ data class UserProfile(
     // /users/me, so this is reliably populated for pre-000018 accounts too.
     @Json(name = "self_contact_vcard_uid") val selfContactVCardUid: String? = null,
 )
+
+// --- M26: account creation + password reset (all public, rate-limited) ---
+
+/** POST /register body — `language` optional (defaults server-side). */
+@JsonClass(generateAdapter = true)
+data class RegisterRequest(
+    val username: String,
+    val email: String,
+    val password: String,
+    val language: String? = null,
+)
+
+/** POST /check-password-strength body. */
+@JsonClass(generateAdapter = true)
+data class CheckPasswordStrengthRequest(
+    val password: String,
+)
+
+/**
+ * POST /check-password-strength response — a raw, unwrapped PasswordStrength
+ * object. [isValid] is entropy >= 50 bits; [feedback] is a human-readable
+ * reason; [score] is 0..4.
+ */
+@JsonClass(generateAdapter = true)
+data class PasswordStrength(
+    @Json(name = "is_valid") val isValid: Boolean = false,
+    val entropy: Double? = null,
+    val score: Int = 0,
+    val feedback: String? = null,
+    @Json(name = "min_entropy") val minEntropy: Double? = null,
+    @Json(name = "char_set_size") val charSetSize: Int? = null,
+    val length: Int? = null,
+)
+
+/** POST /password-reset/request body. */
+@JsonClass(generateAdapter = true)
+data class PasswordResetRequest(
+    val email: String,
+)
+
+/** POST /password-reset/confirm body. */
+@JsonClass(generateAdapter = true)
+data class PasswordResetConfirmRequest(
+    val token: String,
+    val password: String,
+)

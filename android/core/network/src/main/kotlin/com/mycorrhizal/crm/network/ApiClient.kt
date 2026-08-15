@@ -19,6 +19,7 @@ import com.mycorrhizal.crm.model.network.CadencePoliciesResponse
 import com.mycorrhizal.crm.model.network.CadencePolicy
 import com.mycorrhizal.crm.model.network.CadencePolicyInput
 import com.mycorrhizal.crm.model.network.ChangePasswordRequest
+import com.mycorrhizal.crm.model.network.CheckPasswordStrengthRequest
 import com.mycorrhizal.crm.model.network.ContactBriefing
 import com.mycorrhizal.crm.model.network.CreateCadencePolicyResponse
 import com.mycorrhizal.crm.model.network.OverdueCadencesResponse
@@ -90,9 +91,13 @@ import com.mycorrhizal.crm.model.network.NotificationConfig
 import com.mycorrhizal.crm.model.network.NotificationConfigInput
 import com.mycorrhizal.crm.model.network.NotificationTestChannelRequest
 import com.mycorrhizal.crm.model.network.NotificationTestResult
+import com.mycorrhizal.crm.model.network.PasswordResetConfirmRequest
+import com.mycorrhizal.crm.model.network.PasswordResetRequest
+import com.mycorrhizal.crm.model.network.PasswordStrength
 import com.mycorrhizal.crm.model.network.Preference
 import com.mycorrhizal.crm.model.network.PreferenceInput
 import com.mycorrhizal.crm.model.network.PreferencesPage
+import com.mycorrhizal.crm.model.network.RegisterRequest
 import com.mycorrhizal.crm.model.network.RelationshipEdge
 import com.mycorrhizal.crm.model.network.RelationshipEdgeInput
 import com.mycorrhizal.crm.model.network.RelationshipEdgesPage
@@ -162,6 +167,37 @@ class ApiClient(
     suspend fun currentUser(): Result<UserProfile> =
         executeGet("$PLACEHOLDER_ORIGIN$ME_PATH") { _, body ->
             moshi.adapter(UserProfile::class.java).fromJson(body)
+        }
+
+    // M26: account creation + password reset. All public and rate-limited
+    // server-side (AuthRateLimitMiddleware); the register flow auto-logs-in on
+    // success (the ticket's test case 3), so this surface pairs with [login].
+
+    /** POST /api/v1/register — 201 `{ message }`; 409 on duplicate email/username. */
+    suspend fun register(username: String, email: String, password: String): Result<MessageResponse> =
+        executePost(REGISTER_PATH, RegisterRequest(username = username, email = email, password = password)) { _, body ->
+            moshi.adapter(MessageResponse::class.java).fromJson(body)
+        }
+
+    /** POST /api/v1/check-password-strength — raw, unwrapped [PasswordStrength]. */
+    suspend fun checkPasswordStrength(password: String): Result<PasswordStrength> =
+        executePost(CHECK_PASSWORD_STRENGTH_PATH, CheckPasswordStrengthRequest(password)) { _, body ->
+            moshi.adapter(PasswordStrength::class.java).fromJson(body)
+        }
+
+    /** POST /api/v1/password-reset/request — anti-enumeration: always the same message. */
+    suspend fun requestPasswordReset(email: String): Result<MessageResponse> =
+        executePost(PASSWORD_RESET_REQUEST_PATH, PasswordResetRequest(email)) { _, body ->
+            moshi.adapter(MessageResponse::class.java).fromJson(body)
+        }
+
+    /** POST /api/v1/password-reset/confirm — resets the password and bumps TokenVersion. */
+    suspend fun confirmPasswordReset(token: String, password: String): Result<MessageResponse> =
+        executePost(
+            PASSWORD_RESET_CONFIRM_PATH,
+            PasswordResetConfirmRequest(token = token, password = password),
+        ) { _, body ->
+            moshi.adapter(MessageResponse::class.java).fromJson(body)
         }
 
     // --- M25: settings surfaces (profile prefs, webhooks, notification channels) ---
@@ -253,6 +289,10 @@ class ApiClient(
         // M23: filters by a circle NAME — the backend's `?circle=` matches
         // `circles.name` (contact_controller.go), matching web's filter value.
         circle: String? = null,
+        // M26: the circle/tag-triage lookup — `?circle_legacy=` filters by a
+        // legacy free-text circle string from the old flat `contacts.circles`
+        // JSON column (CircleTagTriagePage's contact collection).
+        circleLegacy: String? = null,
         vcardUids: List<String>? = null,
     ): Result<ContactsPage> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$CONTACTS_PATH".toHttpUrl().newBuilder()
@@ -269,11 +309,25 @@ class ApiClient(
             search?.let { urlBuilder.addQueryParameter("search", it) }
             includeArchived?.let { urlBuilder.addQueryParameter("include_archived", it.toString()) }
             circle?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("circle", it) }
+            circleLegacy?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("circle_legacy", it) }
         }
         return executeGet(urlBuilder.build().toString()) { _, body ->
             moshi.adapter(ContactsPage::class.java).fromJson(body)
         }
     }
+
+    /**
+     * M26: GET /api/v1/contacts/circles?legacy=true — the distinct legacy
+     * free-text circle strings still sitting in the old flat `contacts.circles`
+     * JSON column, as a bare JSON array of strings. The circle/tag-triage tool
+     * classifies each one.
+     */
+    suspend fun listLegacyCircles(): Result<List<String>> =
+        executeGet("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/circles?legacy=true") { _, body ->
+            moshi.adapter<List<String>>(
+                com.squareup.moshi.Types.newParameterizedType(List::class.java, String::class.java),
+            ).fromJson(body)
+        }
 
     /** GET /api/v1/contacts/{id} (full neutral Record/Card). */
     suspend fun getContact(id: Int): Result<ContactRecordResponse> =
@@ -1331,6 +1385,10 @@ class ApiClient(
         private const val API_V1 = "/api/v1"
         private const val LOGIN_PATH = "$API_V1/login"
         private const val ME_PATH = "$API_V1/users/me"
+        private const val REGISTER_PATH = "$API_V1/register"
+        private const val CHECK_PASSWORD_STRENGTH_PATH = "$API_V1/check-password-strength"
+        private const val PASSWORD_RESET_REQUEST_PATH = "$API_V1/password-reset/request"
+        private const val PASSWORD_RESET_CONFIRM_PATH = "$API_V1/password-reset/confirm"
         private const val USERS_PATH = "$API_V1/users"
         private const val WEBHOOKS_PATH = "$API_V1/webhooks"
         private const val NOTIFICATIONS_CONFIG_PATH = "$API_V1/notifications/config"

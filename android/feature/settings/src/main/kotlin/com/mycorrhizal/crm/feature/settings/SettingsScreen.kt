@@ -56,6 +56,8 @@ fun SettingsScreen(
     onCustomLinks: () -> Unit = {},
     onWebhooks: () -> Unit = {},
     onNotificationChannels: () -> Unit = {},
+    // M26: the one-time legacy circle/tag cleanup tool.
+    onCircleTagTriage: () -> Unit = {},
     onLocaleChanged: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
@@ -108,6 +110,7 @@ fun SettingsScreen(
             onCustomLinks = onCustomLinks,
             onWebhooks = onWebhooks,
             onNotificationChannels = onNotificationChannels,
+            onCircleTagTriage = onCircleTagTriage,
             onLanguageChange = viewModel::updateLanguage,
             onDateFormatChange = viewModel::updateDateFormat,
             onThemeChange = viewModel::setThemePreference,
@@ -127,6 +130,7 @@ fun SettingsContent(
     onCustomLinks: () -> Unit = {},
     onWebhooks: () -> Unit = {},
     onNotificationChannels: () -> Unit = {},
+    onCircleTagTriage: () -> Unit = {},
     onLanguageChange: (String) -> Unit = {},
     onDateFormatChange: (String) -> Unit = {},
     onThemeChange: (String) -> Unit = {},
@@ -277,6 +281,9 @@ fun SettingsContent(
         // M25: channels surfaces.
         NavigationRow(stringResource(R.string.settings_webhooks_title), onClick = onWebhooks)
         NavigationRow(stringResource(R.string.settings_notifications_title), onClick = onNotificationChannels)
+
+        // M26: one-time legacy circle/tag cleanup.
+        NavigationRow(stringResource(R.string.settings_circle_tag_triage), onClick = onCircleTagTriage)
 
         Button(
             onClick = onCustomLinks,

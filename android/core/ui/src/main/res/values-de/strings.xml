@@ -42,6 +42,35 @@
     <string name="login_error_token_required">API-Token ist erforderlich</string>
     <string name="login_error_token_prefix">API-Token beginnen mit \'mycorrhizal_\'</string>
 
+    <!-- M26: registration + forgot password -->
+    <string name="login_no_account">Kein Konto? Eines erstellen</string>
+    <string name="login_forgot_password">Passwort vergessen?</string>
+    <string name="register_title">Konto erstellen</string>
+    <string name="register_subtitle">Ein neues Konto auf deinem Server einrichten</string>
+    <string name="register_username">Benutzername</string>
+    <string name="register_email">E-Mail</string>
+    <string name="register_create">Konto erstellen</string>
+    <string name="register_back_to_login">Zurück zur Anmeldung</string>
+    <string name="register_checking_strength">Passwortstärke wird geprüft…</string>
+    <string name="register_password_strong">Passwort sieht gut aus</string>
+    <string name="register_error_username_required">Benutzername ist erforderlich</string>
+    <string name="register_error_email_required">E-Mail ist erforderlich</string>
+    <string name="register_error_password_required">Passwort ist erforderlich</string>
+    <string name="register_error_password_weak">Das Passwort ist zu schwach</string>
+    <string name="forgot_password_title">Passwort zurücksetzen</string>
+    <string name="forgot_password_request_hint">Gib die E-Mail deines Kontos ein und wir senden einen Zurücksetzungs-Link.</string>
+    <string name="forgot_password_email">E-Mail</string>
+    <string name="forgot_password_send">Zurücksetzungs-E-Mail senden</string>
+    <string name="forgot_password_token">Zurücksetzungstoken</string>
+    <string name="forgot_password_new_password">Neues Passwort</string>
+    <string name="forgot_password_confirm_password">Neues Passwort bestätigen</string>
+    <string name="forgot_password_reset">Passwort zurücksetzen</string>
+    <string name="forgot_password_done">Passwort erfolgreich zurückgesetzt. Du kannst dich jetzt anmelden.</string>
+    <string name="forgot_password_error_email_required">E-Mail ist erforderlich</string>
+    <string name="forgot_password_error_token_required">Zurücksetzungstoken ist erforderlich</string>
+    <string name="forgot_password_error_password_required">Neues Passwort ist erforderlich</string>
+    <string name="action_close">Schließen</string>
+
     <!-- Kontaktliste -->
     <string name="contacts_search_hint">Kontakte suchen</string>
     <string name="contacts_empty">Noch keine Kontakte</string>
@@ -461,6 +490,21 @@
     <string name="circles_empty">Noch keine Kreise</string>
     <string name="circles_members_empty">Noch keine Mitglieder</string>
     <string name="circles_error_missing_id">Fehlende Kreis-ID</string>
+
+    <!-- Circle & tag triage (M26) -->
+    <string name="settings_circle_tag_triage">Kreis- &amp; Tag-Bereinigung</string>
+    <string name="triage_title">Kreis- &amp; Tag-Bereinigung</string>
+    <string name="triage_name">Name</string>
+    <string name="triage_circle">Kreis</string>
+    <string name="triage_tag">Tag</string>
+    <string name="triage_skip">Überspringen</string>
+    <string name="triage_contacts_count">%1$d Kontakte</string>
+    <string name="triage_summary">%1$d Kreise, %2$d Tags, %3$d übersprungen</string>
+    <string name="triage_apply">Übernehmen</string>
+    <string name="triage_empty">Keine alten Kreisbegriffe zum Bereinigen.</string>
+    <string name="triage_done_title">Bereinigung abgeschlossen</string>
+    <string name="triage_done_message">%1$d Kreis(e) und %2$d Tag(s) erstellt.</string>
+    <string name="action_done">Fertig</string>
     <string name="action_create">Erstellen</string>
     <string name="action_save">Speichern</string>
     <string name="action_edit">Bearbeiten</string>
