@@ -87,6 +87,10 @@ class NetworkViewModel @Inject constructor(
     val uiState: StateFlow<NetworkUiState> = _uiState.asStateFlow()
 
     private var searchJob: Job? = null
+    // The in-flight traversal. Cancelled before every relaunch so a rapid
+    // depth/relation/from change can't let an older response land last and
+    // show a network for the previous settings (review-pass fix).
+    private var connectionsJob: Job? = null
 
     init {
         load()
@@ -158,7 +162,12 @@ class NetworkViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = false) }
             return
         }
-        viewModelScope.launch {
+        // Cancel the previous traversal: only the response for the CURRENT
+        // depth/relation/from may write to the list (review-pass fix for the
+        // out-of-order race where the last-to-complete, not the last-issued,
+        // request won).
+        connectionsJob?.cancel()
+        connectionsJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null, errorRes = null) }
             val depth = _uiState.value.depth
             val relation = _uiState.value.appliedRelation
@@ -175,7 +184,10 @@ class NetworkViewModel @Inject constructor(
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
+                    // Clear the stale chains so a failed depth/relation change
+                    // can't keep showing the previous settings' list under the
+                    // new chip/input (review-pass fix).
+                    _uiState.update { it.copy(isLoading = false, allChains = emptyList(), error = error.displayMessage) }
                 },
             )
         }
@@ -196,11 +208,13 @@ class NetworkViewModel @Inject constructor(
      * Applies the typed relation filter verbatim — a registry token or
      * synonym is passed straight through to the endpoint, never resolved
      * on-device (the server resolves it). Clearing the field removes the
-     * filter.
+     * filter. Re-applying the already-applied value is a no-op (no refetch).
      */
     fun applyRelation() {
         val value = _uiState.value.relationInput.trim()
-        _uiState.update { it.copy(appliedRelation = value.takeIf { it.isNotBlank() }) }
+        val applied = value.takeIf { it.isNotBlank() }
+        if (applied == _uiState.value.appliedRelation) return
+        _uiState.update { it.copy(appliedRelation = applied) }
         loadConnections()
     }
 

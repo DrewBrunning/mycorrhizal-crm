@@ -38,6 +38,15 @@ data class GraphChain(
     val stepsOrEmpty: List<GraphChainStep> get() = steps ?: emptyList()
 
     /**
+     * [targetName] with the backend's own fallback applied: the traversal's
+     * name-resolution query excludes soft-deleted contacts, so such a step
+     * arrives with a blank name and `target_id == 0` — the server renders
+     * those as "Unknown" and Android mirrors that (review-pass fix), rather
+     * than showing an empty row title.
+     */
+    val displayName: String get() = targetName.ifBlank { "Unknown" }
+
+    /**
      * The readable hop-by-hop path to this target, e.g.
      * `"Sister (sibling of) → Bob (spouse of)"`. Relations are display tokens
      * with the inverse already applied server-side; Android renders them the
@@ -47,7 +56,7 @@ data class GraphChain(
     val readablePath: String
         get() = stepsOrEmpty.joinToString(" → ") { step ->
             val relation = step.relation.replace('_', ' ')
-            "${step.contactName} ($relation)"
+            "${step.contactName.ifBlank { "Unknown" }} ($relation)"
         }
 }
 

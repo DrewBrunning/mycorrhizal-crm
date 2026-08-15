@@ -16,6 +16,8 @@ import com.mycorrhizal.crm.testing.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -132,6 +134,20 @@ class NetworkViewModelTest {
             assertTrue(vm.uiState.value.allChains.isEmpty())
             assertTrue(vm.uiState.value.groupedChains.isEmpty())
             assertNull(vm.uiState.value.error)
+        }
+
+    @Test
+    fun `drawer entry without a self contact prompts instead of firing a request`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { graphRepository.circlesWithMembers() } returns Result.success(emptyList())
+            coEvery { graphRepository.selfContactVCardUid() } returns Result.success(null)
+
+            val vm = viewModel(contactId = null)
+            advanceUntilIdle()
+
+            assertFalse(vm.uiState.value.isLoading)
+            assertTrue(vm.uiState.value.hasFrom.not())
+            coVerify(exactly = 0) { graphRepository.getConnections(any(), any(), any()) }
         }
 
     @Test
@@ -328,5 +344,68 @@ class NetworkViewModelTest {
 
             assertFalse(vm.uiState.value.isLoading)
             assertEquals("depth must be at most 5", vm.uiState.value.error)
+        }
+
+    @Test
+    fun `a rapid depth change cancels the in-flight traversal so the newer response wins`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            stubFrom()
+            coEvery { graphRepository.circlesWithMembers() } returns Result.success(emptyList())
+            // The depth-2 request is slow; the user switches to depth 3 while
+            // it is still in flight. Without cancellation the depth-2 response
+            // would land last and show the old network under the new chip.
+            coEvery { graphRepository.getConnections(from = "uid-1", depth = 2, relation = null) } coAnswers {
+                delay(1000)
+                Result.success(
+                    GraphConnectionsResponse(
+                        chains = listOf(chain(10, "t1", "Old", 1, steps = listOf(GraphChainStep(10, "t1", "Old", "child_of")))),
+                    ),
+                )
+            }
+            coEvery { graphRepository.getConnections(from = "uid-1", depth = 3, relation = null) } returns
+                Result.success(
+                    GraphConnectionsResponse(
+                        chains = listOf(chain(20, "t2", "New", 1, steps = listOf(GraphChainStep(20, "t2", "New", "spouse_of")))),
+                    ),
+                )
+
+            val vm = viewModel(contactId = 1)
+            // Let the first request start (still inside its delay), then switch.
+            advanceTimeBy(10)
+            vm.setDepth(3)
+            advanceUntilIdle()
+            // If the first coroutine were NOT cancelled, this would let its
+            // delayed response land and clobber the depth-3 result.
+            advanceTimeBy(1000)
+            advanceUntilIdle()
+
+            assertEquals(listOf("New"), vm.uiState.value.allChains.map { it.displayName })
+        }
+
+    @Test
+    fun `a failed depth change clears stale chains and surfaces the error`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            stubFrom()
+            coEvery { graphRepository.circlesWithMembers() } returns Result.success(emptyList())
+            coEvery { graphRepository.getConnections(from = "uid-1", depth = 2, relation = null) } returns
+                Result.success(
+                    GraphConnectionsResponse(
+                        chains = listOf(chain(10, "t1", "Carol", 1, steps = listOf(GraphChainStep(10, "t1", "Carol", "child_of")))),
+                    ),
+                )
+            coEvery { graphRepository.getConnections(from = "uid-1", depth = 3, relation = null) } returns
+                Result.failure(ApiError.Client(500, "boom"))
+
+            val vm = viewModel(contactId = 1)
+            advanceUntilIdle()
+            assertEquals(1, vm.uiState.value.allChains.size)
+
+            vm.setDepth(3)
+            advanceUntilIdle()
+
+            // Stale depth-2 rows must not linger under the depth-3 chip.
+            assertTrue(vm.uiState.value.allChains.isEmpty())
+            assertTrue(vm.uiState.value.groupedChains.isEmpty())
+            assertEquals("boom", vm.uiState.value.error)
         }
 }

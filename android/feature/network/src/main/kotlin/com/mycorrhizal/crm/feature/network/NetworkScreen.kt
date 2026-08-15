@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -140,13 +139,23 @@ fun NetworkScreenContent(
                     LoadingSkeleton()
                 }
             } else if (!uiState.hasFrom) {
-                // No starting contact yet (drawer entry without a self contact).
+                // No starting contact yet (drawer entry without a self contact)
+                // — or a hard start error like "no VCard UID", which is shown
+                // above the picker affordance so the user can recover.
                 Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier.padding(24.dp),
                     ) {
+                        val startError = uiState.errorRes?.let { stringResource(it) }
+                        if (startError != null) {
+                            Text(
+                                text = startError,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                        }
                         Text(
                             text = stringResource(R.string.network_pick_prompt),
                             style = MaterialTheme.typography.bodyLarge,
@@ -187,10 +196,15 @@ fun NetworkScreenContent(
         }
     }
 
-    uiState.error?.let { message ->
-        LaunchedEffect(message) {
-            snackbarHostState.showSnackbar(message)
-            onErrorShown()
+    // The snackbar is for fetch failures that leave stale content on screen
+    // (an empty result already shows the error inline below the controls) —
+    // presenting both for an empty failure would double-announce it.
+    if (uiState.groupedChains.isNotEmpty()) {
+        uiState.error?.let { message ->
+            LaunchedEffect(message) {
+                snackbarHostState.showSnackbar(message)
+                onErrorShown()
+            }
         }
     }
 
@@ -373,7 +387,7 @@ private fun NetworkRow(
 ) {
     val contentDescription = stringResource(
         R.string.network_row_description,
-        chain.targetName,
+        chain.displayName,
         chain.readablePath,
     )
     val clickable = if (chain.targetId != 0) {
@@ -393,7 +407,7 @@ private fun NetworkRow(
     ) {
         Column {
             Text(
-                text = chain.targetName,
+                text = chain.displayName,
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -410,7 +424,7 @@ private fun NetworkRow(
 }
 
 @Composable
-private fun ContactPickerDialog(
+internal fun ContactPickerDialog(
     uiState: NetworkUiState,
     onDismiss: () -> Unit,
     onSearch: (String) -> Unit,
@@ -426,7 +440,7 @@ private fun ContactPickerDialog(
                     onValueChange = onSearch,
                     label = { Text(stringResource(R.string.network_search_contacts)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().testTag("picker-search"),
                 )
                 if (uiState.contactSearchLoading) {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
@@ -437,8 +451,8 @@ private fun ContactPickerDialog(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 } else {
-                    LazyColumn(modifier = Modifier.heightIn(max = 300.dp)) {
-                        items(uiState.contactSearchResults, key = { it.uid ?: it.id.toString() }) { contact ->
+                    Column {
+                        uiState.contactSearchResults.forEach { contact ->
                             TextButton(
                                 onClick = { onSelect(contact) },
                                 modifier = Modifier.fillMaxWidth(),
@@ -454,7 +468,9 @@ private fun ContactPickerDialog(
                 }
             }
         },
-        confirmButton = {},
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
         },
