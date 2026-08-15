@@ -2,7 +2,7 @@ module mycorrhizal
 
 go 1.25.3
 
-toolchain go1.26.5
+toolchain go1.26.6
 
 require (
 	github.com/SherClockHolmes/webpush-go v1.4.0

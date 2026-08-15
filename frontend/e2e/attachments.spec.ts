@@ -35,7 +35,6 @@ test.describe('Contact attachments', () => {
       expect(list.ok()).toBeTruthy();
       const body = await list.json();
       expect(body.total).toBe(1);
-      const attachmentId = body.attachments[0].ID;
 
       // Deleting it removes it from the list.
       await page.locator('#attachments').getByLabel('Delete').first().click();

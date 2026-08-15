@@ -1,0 +1,71 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly, so new query packs get a chance to run against the latest code.
+    - cron: '37 4 * * 1'
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: go
+            build-mode: none
+          - language: javascript-typescript
+            build-mode: none
+          - language: java-kotlin
+            build-mode: manual
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          queries: security-extended
+
+      # The Android app (android/) is Kotlin/Java, which CodeQL cannot extract in
+      # 'none' mode — the compiler has to actually run so the build tracer can see it.
+      # Mirrors the JDK/Gradle setup in android-tests.yml.
+      - name: Set up JDK 17
+        if: matrix.language == 'java-kotlin'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Gradle
+        if: matrix.language == 'java-kotlin'
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build Android app
+        if: matrix.language == 'java-kotlin'
+        working-directory: android
+        # --no-daemon: the build tracer injects its agent into the compiler JVM; the
+        #   Kotlin compiler runs in-process inside the Gradle daemon, so a reused
+        #   daemon would miss the agent.
+        # --no-build-cache: forces real compilation. setup-gradle restores ~/.gradle,
+        #   and a FROM-CACHE Kotlin compile skips the compiler entirely, so the tracer
+        #   extracts nothing.
+        run: ./gradlew --no-daemon --no-build-cache assembleDebug
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: '/language:${{ matrix.language }}'

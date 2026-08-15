@@ -1,4 +1,4 @@
-import { test as base, Page, Locator, APIRequestContext, expect } from '@playwright/test';
+import { Page, Locator, APIRequestContext, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';

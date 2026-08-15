@@ -42,7 +42,7 @@ func BackupSnapshot(srcPath, outPath string) error {
 	}
 
 	dir := filepath.Dir(outPath)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return fmt.Errorf("create backup output directory %q: %w", dir, err)
 	}
 
@@ -90,7 +90,7 @@ func backupSnapshot(sqlDB *sql.DB, outPath string) error {
 	// is inlined and single quotes are escaped (the only escaping SQLite needs
 	// inside a string literal). The path is operator-supplied, never user input.
 	escaped := strings.ReplaceAll(outPath, "'", "''")
-	if _, err := sqlDB.Exec("VACUUM INTO '" + escaped + "'"); err != nil {
+	if _, err := sqlDB.Exec("VACUUM INTO '" + escaped + "'"); err != nil { // #nosec G202 -- operator-supplied path, quotes escaped; not user input
 		return fmt.Errorf("VACUUM INTO %q: %w", outPath, err)
 	}
 	return nil

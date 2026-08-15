@@ -413,7 +413,7 @@ func pushRecordSize(payloadLen int) uint32 {
 	if size > int(webpush.MaxRecordSize) {
 		return webpush.MaxRecordSize
 	}
-	return uint32(size)
+	return uint32(size) // #nosec G115 -- size is clamped to webpush.MaxRecordSize above, so it cannot overflow
 }
 
 // sendPushMessage delivers one Web Push message to a subscription. Returns
@@ -565,7 +565,7 @@ const fcmMessagingScope = "https://www.googleapis.com/auth/firebase.messaging"
 // them at a fake Google server (the fakeChannelServer pattern) — the production
 // values are Google's real endpoints.
 var (
-	fcmTokenEndpoint = "https://oauth2.googleapis.com/token"
+	fcmTokenEndpoint = "https://oauth2.googleapis.com/token" // #nosec G101 -- public OAuth2 endpoint URL, not a credential
 	fcmSendEndpoint  = "https://fcm.googleapis.com/v1"
 )
 
@@ -594,7 +594,7 @@ func LoadFCMServiceAccount(path string) (*fcmServiceAccount, error) {
 	if path == "" {
 		return nil, nil
 	}
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) // #nosec G304 -- path is an operator-supplied config path, not request input
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrFCMInvalidServiceAccount, err)
 	}

@@ -95,7 +95,7 @@ export default function AddNoteDialog({ open, onClose, onSave, noteContactId, no
         lockedContact ? noteContactId : selectedContact?.ID
       );
       handleClose();
-    } catch (err) {
+    } catch {
       setError(t('noteDialog.saveError'));
     } finally {
       setSaving(false);
