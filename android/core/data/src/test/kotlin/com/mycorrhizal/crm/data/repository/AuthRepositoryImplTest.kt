@@ -3,11 +3,13 @@ package com.mycorrhizal.crm.data.repository
 import com.mycorrhizal.crm.data.session.DefaultSessionManager
 import com.mycorrhizal.crm.data.session.FakeSessionPrefsStorage
 import com.mycorrhizal.crm.data.session.FakeTokenStorage
+import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.model.network.UserProfile
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.LoginResult
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -124,5 +126,76 @@ class AuthRepositoryImplTest {
 
         assertEquals(null, h.tokenStorage.stored)
         assertFalse(h.sessionManager.observeSession().first().isLoggedIn)
+    }
+
+    // --- M25 ---
+
+    @Test
+    fun `updateLanguage patches the server and merges the language into the session`() = runTest {
+        val h = Harness()
+        h.sessionManager.setSession("https://crm.example.com", "jwt", SessionState(language = "en"))
+        coEvery { h.apiClient.updateLanguage("de") } returns Result.success(
+            com.mycorrhizal.crm.model.network.MessageResponse(message = "Language updated successfully"),
+        )
+
+        val result = h.repository.updateLanguage("de")
+
+        assertTrue(result.isSuccess)
+        coVerify { h.apiClient.updateLanguage("de") }
+        assertEquals("de", h.sessionManager.observeSession().first().language)
+    }
+
+    @Test
+    fun `updateLanguage propagates a server rejection`() = runTest {
+        val h = Harness()
+        coEvery { h.apiClient.updateLanguage("xx") } returns Result.failure(
+            ApiError.Client(400, "Invalid value for field 'language'"),
+        )
+
+        val result = h.repository.updateLanguage("xx")
+
+        assertTrue(result.isFailure)
+        assertEquals("Invalid value for field 'language'", (result.exceptionOrNull() as ApiError).displayMessage)
+    }
+
+    @Test
+    fun `updateDateFormat patches the server and merges the format into the session`() = runTest {
+        val h = Harness()
+        h.sessionManager.setSession("https://crm.example.com", "jwt", SessionState(dateFormat = "eu"))
+        coEvery { h.apiClient.updateDateFormat("us") } returns Result.success(
+            com.mycorrhizal.crm.model.network.MessageResponse(message = "Date format updated successfully"),
+        )
+
+        val result = h.repository.updateDateFormat("us")
+
+        assertTrue(result.isSuccess)
+        coVerify { h.apiClient.updateDateFormat("us") }
+        assertEquals("us", h.sessionManager.observeSession().first().dateFormat)
+    }
+
+    @Test
+    fun `changePassword delegates to the api client`() = runTest {
+        val h = Harness()
+        coEvery { h.apiClient.changePassword("old", "new") } returns Result.success(
+            com.mycorrhizal.crm.model.network.MessageResponse(message = "Password updated successfully"),
+        )
+
+        val result = h.repository.changePassword("old", "new")
+
+        assertTrue(result.isSuccess)
+        coVerify { h.apiClient.changePassword("old", "new") }
+    }
+
+    @Test
+    fun `changePassword surfaces a wrong current password as the server message`() = runTest {
+        val h = Harness()
+        coEvery { h.apiClient.changePassword("wrong", "new") } returns Result.failure(
+            ApiError.Client(400, "Invalid value for field 'current_password'"),
+        )
+
+        val result = h.repository.changePassword("wrong", "new")
+
+        assertTrue(result.isFailure)
+        assertEquals("Invalid value for field 'current_password'", (result.exceptionOrNull() as ApiError).displayMessage)
     }
 }

@@ -18,6 +18,7 @@ import com.mycorrhizal.crm.model.network.BirthdaysResponse
 import com.mycorrhizal.crm.model.network.CadencePoliciesResponse
 import com.mycorrhizal.crm.model.network.CadencePolicy
 import com.mycorrhizal.crm.model.network.CadencePolicyInput
+import com.mycorrhizal.crm.model.network.ChangePasswordRequest
 import com.mycorrhizal.crm.model.network.ContactBriefing
 import com.mycorrhizal.crm.model.network.CreateCadencePolicyResponse
 import com.mycorrhizal.crm.model.network.OverdueCadencesResponse
@@ -79,9 +80,14 @@ import com.mycorrhizal.crm.model.network.LifeEventInput
 import com.mycorrhizal.crm.model.network.LifeEventsPage
 import com.mycorrhizal.crm.model.network.LoginRequest
 import com.mycorrhizal.crm.model.network.LoginResponse
+import com.mycorrhizal.crm.model.network.MessageResponse
 import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.model.network.NoteInput
 import com.mycorrhizal.crm.model.network.NotesPage
+import com.mycorrhizal.crm.model.network.NotificationConfig
+import com.mycorrhizal.crm.model.network.NotificationConfigInput
+import com.mycorrhizal.crm.model.network.NotificationTestChannelRequest
+import com.mycorrhizal.crm.model.network.NotificationTestResult
 import com.mycorrhizal.crm.model.network.Preference
 import com.mycorrhizal.crm.model.network.PreferenceInput
 import com.mycorrhizal.crm.model.network.PreferencesPage
@@ -102,6 +108,15 @@ import com.mycorrhizal.crm.model.network.ContactSharesPage
 import com.mycorrhizal.crm.model.network.CreateContactShareResponse
 import com.mycorrhizal.crm.model.network.UserDirectoryEntry
 import com.mycorrhizal.crm.model.network.UserDirectoryResponse
+import com.mycorrhizal.crm.model.network.UpdateDateFormatRequest
+import com.mycorrhizal.crm.model.network.UpdateLanguageRequest
+import com.mycorrhizal.crm.model.network.Webhook
+import com.mycorrhizal.crm.model.network.WebhookCreateResponse
+import com.mycorrhizal.crm.model.network.WebhookDelivery
+import com.mycorrhizal.crm.model.network.WebhookDeliveriesResponse
+import com.mycorrhizal.crm.model.network.WebhookInput
+import com.mycorrhizal.crm.model.network.WebhooksResponse
+import com.mycorrhizal.crm.model.network.WebhookTestResponse
 import com.squareup.moshi.Moshi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -145,6 +160,86 @@ class ApiClient(
     suspend fun currentUser(): Result<UserProfile> =
         executeGet("$PLACEHOLDER_ORIGIN$ME_PATH") { _, body ->
             moshi.adapter(UserProfile::class.java).fromJson(body)
+        }
+
+    // --- M25: settings surfaces (profile prefs, webhooks, notification channels) ---
+    // All endpoints pre-date the Android client (route table in
+    // backend/routes/routes.go); the gap this ticket closes is the missing
+    // client surface, not the backend.
+
+    /** PATCH /api/v1/users/language — the same route web's SettingsPage uses. */
+    suspend fun updateLanguage(language: String): Result<MessageResponse> =
+        executePatch("$PLACEHOLDER_ORIGIN$USERS_PATH/language", UpdateLanguageRequest(language)) { _, body ->
+            moshi.adapter(MessageResponse::class.java).fromJson(body)
+        }
+
+    /** PATCH /api/v1/users/date-format — the same route web's SettingsPage uses. */
+    suspend fun updateDateFormat(dateFormat: String): Result<MessageResponse> =
+        executePatch("$PLACEHOLDER_ORIGIN$USERS_PATH/date-format", UpdateDateFormatRequest(dateFormat)) { _, body ->
+            moshi.adapter(MessageResponse::class.java).fromJson(body)
+        }
+
+    /**
+     * POST /api/v1/users/change-password — the server bumps TokenVersion on
+     * success, invalidating every JWT (including the caller's bearer token),
+     * so the Android session must re-login afterwards. A wrong current
+     * password is a 400 with the server's message, surfaced via [ApiError].
+     */
+    suspend fun changePassword(currentPassword: String, newPassword: String): Result<MessageResponse> =
+        executePost("$USERS_PATH/change-password", ChangePasswordRequest(currentPassword, newPassword)) { _, body ->
+            moshi.adapter(MessageResponse::class.java).fromJson(body)
+        }
+
+    /** GET /api/v1/notifications/config — flat per-user notification config. */
+    suspend fun getNotificationConfig(): Result<NotificationConfig> =
+        executeGet("$PLACEHOLDER_ORIGIN$NOTIFICATIONS_CONFIG_PATH") { _, body ->
+            moshi.adapter(NotificationConfig::class.java).fromJson(body)
+        }
+
+    /** PUT /api/v1/notifications/config — full config echo; the token is never returned. */
+    suspend fun saveNotificationConfig(input: NotificationConfigInput): Result<NotificationConfig> =
+        executePut("$PLACEHOLDER_ORIGIN$NOTIFICATIONS_CONFIG_PATH", input) { _, body ->
+            moshi.adapter(NotificationConfig::class.java).fromJson(body)
+        }
+
+    /** POST /api/v1/notifications/config/test — diagnosed failures are HTTP 200 `{ok:false}`. */
+    suspend fun testNotificationChannel(channel: String): Result<NotificationTestResult> =
+        executePost("$NOTIFICATIONS_CONFIG_PATH/test", NotificationTestChannelRequest(channel)) { _, body ->
+            moshi.adapter(NotificationTestResult::class.java).fromJson(body)
+        }
+
+    /** GET /api/v1/webhooks — `{ webhooks: [...] }`, unwrapped here. */
+    suspend fun listWebhooks(): Result<List<Webhook>> =
+        executeGet("$PLACEHOLDER_ORIGIN$WEBHOOKS_PATH") { _, body ->
+            moshi.adapter(WebhooksResponse::class.java).fromJson(body)?.webhooks
+        }
+
+    /** POST /api/v1/webhooks — 201; the only response that carries the plaintext secret. */
+    suspend fun createWebhook(input: WebhookInput): Result<WebhookCreateResponse> =
+        executePost(WEBHOOKS_PATH, input) { _, body ->
+            moshi.adapter(WebhookCreateResponse::class.java).fromJson(body)
+        }
+
+    /** PUT /api/v1/webhooks/{id} — raw Webhook response (no secret). */
+    suspend fun updateWebhook(id: Int, input: WebhookInput): Result<Webhook> =
+        executePut("$PLACEHOLDER_ORIGIN$WEBHOOKS_PATH/$id", input) { _, body ->
+            moshi.adapter(Webhook::class.java).fromJson(body)
+        }
+
+    /** DELETE /api/v1/webhooks/{id} — `{ message }`. */
+    suspend fun deleteWebhook(id: Int): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$WEBHOOKS_PATH/$id")
+
+    /** POST /api/v1/webhooks/{id}/test — `{ delivery: {...} }`, unwrapped here. */
+    suspend fun testWebhook(id: Int): Result<WebhookDelivery> =
+        executePostEmpty("$WEBHOOKS_PATH/$id/test") { _, body ->
+            moshi.adapter(WebhookTestResponse::class.java).fromJson(body)?.delivery
+        }
+
+    /** GET /api/v1/webhooks/{id}/deliveries — `{ deliveries: [...] }`, most recent 50, unwrapped here. */
+    suspend fun getWebhookDeliveries(id: Int): Result<List<WebhookDelivery>> =
+        executeGet("$PLACEHOLDER_ORIGIN$WEBHOOKS_PATH/$id/deliveries") { _, body ->
+            moshi.adapter(WebhookDeliveriesResponse::class.java).fromJson(body)?.deliveries
         }
 
     /** GET /api/v1/contacts (cursor-paginated list). */
@@ -1199,6 +1294,9 @@ class ApiClient(
         private const val API_V1 = "/api/v1"
         private const val LOGIN_PATH = "$API_V1/login"
         private const val ME_PATH = "$API_V1/users/me"
+        private const val USERS_PATH = "$API_V1/users"
+        private const val WEBHOOKS_PATH = "$API_V1/webhooks"
+        private const val NOTIFICATIONS_CONFIG_PATH = "$API_V1/notifications/config"
         private const val CONTACTS_PATH = "$API_V1/contacts"
         private const val SEARCH_PATH = "$API_V1/search"
         private const val FIELD_DEFINITIONS_PATH = "$API_V1/field-definitions"
@@ -1218,7 +1316,6 @@ class ApiClient(
         private const val DASHBOARD_PATH = "$API_V1/dashboard"
         private const val EXPORT_VCF_PATH = "$API_V1/export/vcf"
         private const val CONTACT_SHARES_PATH = "$API_V1/contact-shares"
-        private const val USERS_PATH = "$API_V1/users"
         private const val AUDIT_PATH = "$API_V1/audit"
         private const val AUTH_COOKIE = "auth_token"    }
 }

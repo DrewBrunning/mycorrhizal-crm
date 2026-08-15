@@ -3,11 +3,14 @@ package com.mycorrhizal.crm.feature.settings
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.domain.repository.TrackingSettingsRepository
+import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,16 +26,29 @@ data class SettingsUiState(
     val callTrackingEnabled: Boolean = false,
     val smsTrackingEnabled: Boolean = false,
     val notificationsEnabled: Boolean = true,
+    val themePreference: String = AppSettingsRepository.THEME_SYSTEM,
+    val isChangingPassword: Boolean = false,
+    /** Static password validation error as a string resource id, resolved in the UI (mirrors LoginViewModel). */
+    @StringRes val passwordErrorRes: Int? = null,
+    /** Dynamic password-change error text (server message). */
+    val passwordError: String? = null,
 )
 
 sealed interface SettingsEvent {
     data object LoggedOut : SettingsEvent
+
+    /** A language change was persisted — the Activity must recreate to re-resolve resources. */
+    data object LocaleChanged : SettingsEvent
+
+    /** Password change succeeded; the server invalidated every JWT, so the user must re-login. */
+    data object PasswordChanged : SettingsEvent
 }
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val trackingSettings: TrackingSettingsRepository,
+    private val appSettings: AppSettingsRepository,
     @ApplicationContext private val appContext: Context,
 ) : ViewModel() {
 
@@ -55,6 +71,11 @@ class SettingsViewModel @Inject constructor(
                     smsTrackingEnabled = trackingSettings.smsTrackingEnabled(),
                     notificationsEnabled = trackingSettings.notificationsEnabled(),
                 )
+            }
+        }
+        viewModelScope.launch {
+            appSettings.themePreference().collect { pref ->
+                _uiState.update { it.copy(themePreference = pref) }
             }
         }
     }
@@ -81,6 +102,73 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { trackingSettings.setNotificationsEnabled(enabled) }
     }
 
+    // --- M25: profile & channels ---
+
+    /**
+     * Persist the language server-side and locally, then request a locale
+     * change. The activity recreates on [SettingsEvent.LocaleChanged] so the
+     * `values-XX` resources resolve in the new language without a restart.
+     */
+    fun updateLanguage(language: String) {
+        val current = _uiState.value.session.language
+        if (language == current) return
+        viewModelScope.launch {
+            authRepository.updateLanguage(language).onSuccess {
+                appSettings.setLanguageOverride(language)
+                _events.value = SettingsEvent.LocaleChanged
+            }
+        }
+    }
+
+    /** Persist the date-format preference server-side; SessionState re-emits so screens update live. */
+    fun updateDateFormat(dateFormat: String) {
+        val current = _uiState.value.session.dateFormat
+        if (dateFormat == current) return
+        viewModelScope.launch {
+            authRepository.updateDateFormat(dateFormat)
+        }
+    }
+
+    fun setThemePreference(preference: String) {
+        viewModelScope.launch {
+            appSettings.setThemePreference(preference)
+        }
+    }
+
+    /**
+     * Change the password. [newPassword] must equal [confirmPassword]; the
+     * mismatch is a UI validation error, never sent to the server. On success
+     * the server invalidates every JWT, so the session is cleared and
+     * [SettingsEvent.PasswordChanged] asks the user to sign in again. Passwords
+     * never live in [SettingsUiState].
+     */
+    fun changePassword(currentPassword: String, newPassword: String, confirmPassword: String) {
+        if (_uiState.value.isChangingPassword) return
+        if (newPassword != confirmPassword) {
+            _uiState.update { it.copy(passwordErrorRes = R.string.settings_password_mismatch, passwordError = null) }
+            return
+        }
+        _uiState.update { it.copy(isChangingPassword = true, passwordErrorRes = null, passwordError = null) }
+        viewModelScope.launch {
+            authRepository.changePassword(currentPassword, newPassword)
+                .onSuccess {
+                    _uiState.update { it.copy(isChangingPassword = false) }
+                    // Every JWT was invalidated server-side; the web re-issues a
+                    // cookie, a bearer-token client cannot. Force a clean re-login.
+                    authRepository.logout()
+                    _events.value = SettingsEvent.PasswordChanged
+                }
+                .onFailure { error ->
+                    _uiState.update {
+                        it.copy(isChangingPassword = false, passwordError = error.displayMessage())
+                    }
+                }
+        }
+    }
+
+    private fun Throwable.displayMessage(): String =
+        (this as? com.mycorrhizal.crm.network.ApiError)?.displayMessage ?: message ?: "error"
+
     private fun startCallDetectionService() {
         val intent = Intent(appContext, com.mycorrhizal.crm.feature.tracking.CallDetectionService::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -105,7 +193,8 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun onLoggedOutShown() {
+    /** Clear the one-shot event so the screen's LaunchedEffect doesn't re-fire it. */
+    fun onEventShown() {
         _events.value = null
     }
 }

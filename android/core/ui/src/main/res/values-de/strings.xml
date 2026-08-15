@@ -241,6 +241,86 @@
     <string name="custom_links_mime">MIMETYPE</string>
     <string name="custom_links_template">Intent-URI ({handle})</string>
 
+    <!-- Settings: appearance (M25) -->
+    <string name="settings_appearance">Darstellung</string>
+    <string name="settings_theme">Design</string>
+    <string name="settings_theme_system">Systemeinstellung verwenden</string>
+    <string name="settings_theme_light">Helles Design</string>
+    <string name="settings_theme_dark">Dunkles Design</string>
+    <string name="settings_date_format_eu">Europäisch (TT.MM.JJJJ)</string>
+    <string name="settings_date_format_us">US (MM/TT/JJJJ)</string>
+    <string name="settings_date_format_iso">ISO (JJJJ-MM-TT)</string>
+    <string name="settings_date_format_ca">Kanada (TT/MM/JJJJ)</string>
+    <string name="settings_date_format_eu_hyphen">Europäisch mit Bindestrichen (TT-MM-JJJJ)</string>
+    <string name="settings_date_format_us_mmm">US abgekürzt (MMM T, JJJJ)</string>
+    <string name="settings_date_format_us_mmmm">US ausgeschrieben (MMMM T, JJJJ)</string>
+    <string name="settings_date_format_eu_mmm">Europäisch abgekürzt (T MMM, JJJJ)</string>
+    <string name="settings_date_format_eu_mmmm">Europäisch ausgeschrieben (TT MMMM, JJJJ)</string>
+
+    <!-- Settings: password change (M25) -->
+    <string name="settings_password_title">Passwort ändern</string>
+    <string name="settings_password_current">Aktuelles Passwort</string>
+    <string name="settings_password_new">Neues Passwort</string>
+    <string name="settings_password_confirm">Neues Passwort bestätigen</string>
+    <string name="settings_password_change_button">Passwort aktualisieren</string>
+    <string name="settings_password_mismatch">Die neuen Passwörter stimmen nicht überein.</string>
+
+    <!-- Settings: webhooks (M25) -->
+    <string name="settings_webhooks_title">Webhooks</string>
+    <string name="settings_webhooks_description">HTTP-POST-Benachrichtigungen empfangen, wenn Ereignisse in deinem CRM auftreten.</string>
+    <string name="settings_webhooks_add">Webhook hinzufügen</string>
+    <string name="settings_webhooks_edit">Bearbeiten</string>
+    <string name="settings_webhooks_delete">Löschen</string>
+    <string name="settings_webhooks_delete_title">Webhook löschen</string>
+    <string name="settings_webhooks_delete_body">"%1$s" löschen? Alle zukünftigen Zustellungen werden gestoppt.</string>
+    <string name="settings_webhooks_test">Testen</string>
+    <string name="settings_webhooks_active">Aktiv</string>
+    <string name="settings_webhooks_inactive">Inaktiv</string>
+    <string name="settings_webhooks_events">Ereignisse</string>
+    <string name="settings_webhooks_events_count">%1$d Ereignisse</string>
+    <string name="settings_webhooks_name">Name</string>
+    <string name="settings_webhooks_url">URL</string>
+    <string name="settings_webhooks_empty">Noch keine Webhooks konfiguriert.</string>
+    <string name="settings_webhooks_show_deliveries">Letzte Zustellungen</string>
+    <string name="settings_webhooks_hide_deliveries">Zustellungen ausblenden</string>
+    <string name="settings_webhooks_no_deliveries">Noch keine Zustellungen.</string>
+    <string name="settings_webhooks_test_success">Test zugestellt (%1$s)</string>
+    <string name="settings_webhooks_secret_title">Webhook-Secret</string>
+    <string name="settings_webhooks_secret_warning">Dieses Secret wird nur einmal angezeigt. Kopiere es, bevor du schließt.</string>
+    <string name="settings_webhooks_event_contact_created">Kontakt erstellt</string>
+    <string name="settings_webhooks_event_contact_updated">Kontakt aktualisiert</string>
+    <string name="settings_webhooks_event_contact_deleted">Kontakt gelöscht</string>
+    <string name="settings_webhooks_event_note_created">Notiz erstellt</string>
+    <string name="settings_webhooks_event_note_updated">Notiz aktualisiert</string>
+    <string name="settings_webhooks_event_note_deleted">Notiz gelöscht</string>
+    <string name="settings_webhooks_event_activity_created">Aktivität erstellt</string>
+    <string name="settings_webhooks_event_activity_updated">Aktivität aktualisiert</string>
+    <string name="settings_webhooks_event_activity_deleted">Aktivität gelöscht</string>
+    <string name="settings_webhooks_event_reminder_triggered">Erinnerung ausgelöst</string>
+    <string name="settings_webhooks_event_birthday_occurred">Geburtstag</string>
+
+    <!-- Settings: notification channels — ntfy/Gotify (M25) -->
+    <string name="settings_notifications_title">Benachrichtigungskanäle</string>
+    <string name="settings_notifications_description">Wähle, wie dich Erinnerungs-Benachrichtigungen erreichen. E-Mail wird serverseitig konfiguriert und pro Erinnerung aktiviert; die Kanäle unten liefern Erinnerungen an deine selbst gehosteten Push-Dienste.</string>
+    <string name="settings_notifications_ntfy">ntfy</string>
+    <string name="settings_notifications_ntfy_enable">Erinnerungen per ntfy senden</string>
+    <string name="settings_notifications_ntfy_url">ntfy-Server-URL</string>
+    <string name="settings_notifications_ntfy_topic">Thema</string>
+    <string name="settings_notifications_gotify">Gotify</string>
+    <string name="settings_notifications_gotify_enable">Erinnerungen per Gotify senden</string>
+    <string name="settings_notifications_gotify_url">Gotify-Server-URL</string>
+    <string name="settings_notifications_gotify_token">App-Token</string>
+    <string name="settings_notifications_gotify_token_hint_existing">Ein Token ist bereits gespeichert. Leer lassen, um es zu behalten.</string>
+    <string name="settings_notifications_gotify_token_hint_new">Erstelle einen App-Token in deiner Gotify-Instanz.</string>
+    <string name="settings_notifications_test">Testbenachrichtigung senden</string>
+    <string name="settings_notifications_testing">Wird gesendet…</string>
+    <string name="settings_notifications_test_success">Testbenachrichtigung über %1$s gesendet</string>
+    <string name="settings_notifications_test_failed">Test fehlgeschlagen: %1$s</string>
+    <string name="settings_notifications_save">Benachrichtigungseinstellungen speichern</string>
+
+    <string name="settings_save">Speichern</string>
+    <string name="settings_ok">OK</string>
+
     <!-- Notifications (tracking alerts / channels) -->
     <string name="notification_channel_reminders_name">Erinnerungen</string>
     <string name="notification_channel_reminders_description">Kontakterinnerungen und Nachfassaktionen</string>
