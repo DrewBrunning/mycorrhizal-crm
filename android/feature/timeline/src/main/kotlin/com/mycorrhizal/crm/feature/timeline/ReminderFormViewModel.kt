@@ -19,7 +19,8 @@ import javax.inject.Inject
 
 /**
  * Editable form state for a reminder. `message`, `remind_at`, `recurrence`
- * are required by the backend.
+ * are required by the backend. `reoccur_from_completion` mirrors web's
+ * ReminderDialog default (true); it only applies to recurring reminders.
  */
 data class ReminderFormState(
     val contactId: Int = 0,
@@ -28,6 +29,7 @@ data class ReminderFormState(
     val remindAt: String = "",
     val recurrence: String = ReminderRecurrence.ONCE,
     val byMail: Boolean = false,
+    val reoccurFromCompletion: Boolean = true,
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
     @StringRes val errorRes: Int? = null,
@@ -42,6 +44,7 @@ data class ReminderFormState(
         remindAt = remindAt.trim().ifBlank { null },
         recurrence = recurrence,
         byMail = byMail,
+        reoccurFromCompletion = reoccurFromCompletion,
         contactId = contactId.takeIf { it != 0 },
     )
 
@@ -57,6 +60,24 @@ data class ReminderFormState(
         val ISO_DATETIME_REGEX = Regex(
             """\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})""",
         )
+
+        /**
+         * Web's `getDateForRecurrence` (ReminderDialog.tsx): the default due
+         * date on create for a chosen recurrence, computed from today. Returns
+         * `YYYY-MM-DD`; the form stores full ISO-8601, so callers append the
+         * time part.
+         */
+        fun dateForRecurrence(recurrence: String): String {
+            val today = java.time.LocalDate.now()
+            return when (recurrence) {
+                ReminderRecurrence.WEEKLY -> today.plusWeeks(1)
+                ReminderRecurrence.MONTHLY -> today.plusMonths(1)
+                ReminderRecurrence.QUARTERLY -> today.plusMonths(3)
+                ReminderRecurrence.SIX_MONTHS -> today.plusMonths(6)
+                ReminderRecurrence.YEARLY -> today.plusYears(1)
+                else -> today
+            }.toString()
+        }
     }
 }
 
@@ -98,6 +119,14 @@ class ReminderFormViewModel @Inject constructor(
             reminderId = reminderId,
             message = prefillMessage.orEmpty(),
             recurrence = prefillRecurrence ?: ReminderRecurrence.ONCE,
+            // Web's ReminderDialog prefills the due date on create (getDateForRecurrence
+            // of the initial recurrence — today for `once`). M20 mirrors that; the
+            // create form never opens with an empty date.
+            remindAt = if (reminderId == null) {
+                "${ReminderFormState.dateForRecurrence(prefillRecurrence ?: ReminderRecurrence.ONCE)}T00:00:00Z"
+            } else {
+                ""
+            },
         ),
     )
     val uiState: StateFlow<ReminderFormState> = _uiState.asStateFlow()
@@ -126,8 +155,28 @@ class ReminderFormViewModel @Inject constructor(
 
     fun onMessageChange(value: String) = _uiState.update { it.copy(message = value) }
     fun onRemindAtChange(value: String) = _uiState.update { it.copy(remindAt = value) }
-    fun onRecurrenceChange(value: String) = _uiState.update { it.copy(recurrence = value) }
+
+    /**
+     * Mirrors web's `handleRecurrenceChange` (ReminderDialog.tsx:81-86): in
+     * create mode, choosing a recurrence auto-fills the due date with the
+     * recurrence's default offset (weekly → +1 week, ...). Web does this for
+     * **every** recurrence — including switching back to `once`, which resets
+     * to today — so the Android mirror does too. Edit mode never overwrites
+     * the existing date.
+     */
+    fun onRecurrenceChange(value: String) = _uiState.update { state ->
+        if (state.reminderId == null) {
+            state.copy(
+                recurrence = value,
+                remindAt = "${ReminderFormState.dateForRecurrence(value)}T00:00:00Z",
+            )
+        } else {
+            state.copy(recurrence = value)
+        }
+    }
+
     fun onByMailChange(value: Boolean) = _uiState.update { it.copy(byMail = value) }
+    fun onReoccurFromCompletionChange(value: Boolean) = _uiState.update { it.copy(reoccurFromCompletion = value) }
     fun onErrorShown() = _uiState.update { it.copy(errorRes = null, error = null) }
 
     fun save() {
@@ -166,5 +215,6 @@ class ReminderFormViewModel @Inject constructor(
         remindAt = reminder.remindAt.orEmpty(),
         recurrence = reminder.recurrence ?: ReminderRecurrence.ONCE,
         byMail = reminder.byMail ?: false,
+        reoccurFromCompletion = reminder.reoccurFromCompletion ?: true,
     )
 }

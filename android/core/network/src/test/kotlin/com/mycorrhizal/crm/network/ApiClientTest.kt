@@ -1195,6 +1195,112 @@ class ApiClientTest {
     }
 
     @Test
+    fun `delete reminder sends a DELETE and succeeds`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"message":"Reminder deleted"}"""),
+        )
+
+        val result = client.deleteReminder(7)
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("DELETE", request.method)
+        assertEquals("/api/v1/reminders/7", request.path)
+    }
+
+    @Test
+    fun `delete reminder surfaces a 404 as a failure`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(404).setBody("""{"error":"Reminder not found"}"""),
+        )
+
+        val result = client.deleteReminder(999)
+
+        assertTrue(result.isFailure)
+    }
+
+    @Test
+    fun `list contact reminder completions parses the wrapped completions array`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """
+                {
+                  "completions": [
+                    {"ID": 1, "contact_id": 5, "message": "Call Dana", "completed_at": "2026-08-12T10:00:00Z"},
+                    {"ID": 2, "reminder_id": 3, "contact_id": 5, "message": "Gift", "completed_at": "2026-08-11T09:00:00Z"}
+                  ]
+                }
+                """.trimIndent(),
+            ),
+        )
+
+        val result = client.listContactReminderCompletions(5)
+
+        assertTrue(result.isSuccess)
+        val completions = result.getOrThrow().completions
+        assertEquals(2, completions.size)
+        assertEquals("Call Dana", completions[0].message)
+        assertEquals(1, completions[0].id)
+        assertEquals(3, completions[1].reminderId)
+
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/api/v1/contacts/5/reminder-completions", request.path)
+    }
+
+    @Test
+    fun `list contact reminder completions normalizes an empty completions array`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"completions": []}"""),
+        )
+
+        val result = client.listContactReminderCompletions(5)
+
+        assertTrue(result.isSuccess)
+        assertTrue(result.getOrThrow().completions.isEmpty())
+    }
+
+    @Test
+    fun `list contact reminder completions normalizes an explicit JSON null to an empty list`() = runBlocking {
+        // The backend's GetCompletionsForContact uses a nil Go slice when a contact has no
+        // completions, which gin.H serializes as JSON null, not []. Must not crash (the
+        // /CLAUDE.md trap #8 family — a collection field that's absent OR null).
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"completions": null}"""),
+        )
+
+        val result = client.listContactReminderCompletions(5)
+
+        assertTrue(result.isSuccess)
+        assertTrue(result.getOrThrow().completions.isEmpty())
+    }
+
+    @Test
+    fun `delete reminder completion sends a DELETE and succeeds`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"message":"Reminder completion deleted"}"""),
+        )
+
+        val result = client.deleteReminderCompletion(7)
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("DELETE", request.method)
+        assertEquals("/api/v1/reminder-completions/7", request.path)
+    }
+
+    @Test
+    fun `delete reminder completion surfaces a 404 as a failure`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(404).setBody("""{"error":"Reminder completion not found"}"""),
+        )
+
+        val result = client.deleteReminderCompletion(999)
+
+        assertTrue(result.isFailure)
+    }
+
+    @Test
     fun `search parses notes and activities with snippets and resolved_relation`() = runBlocking {
         server.enqueue(
             MockResponse()

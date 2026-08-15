@@ -316,8 +316,8 @@
     <string name="reminder_new">New reminder</string>
     <string name="reminder_edit">Edit reminder</string>
     <string name="reminder_message">Message</string>
-    <string name="reminder_remind_at">Remind at (ISO 8601)</string>
-    <string name="reminder_remind_at_hint">2026-08-10T14:00:00Z</string>
+    <string name="reminder_remind_at">Remind at</string>
+    <string name="reminder_remind_at_hint">2026-08-10</string>
     <string name="reminder_recurrence">Recurrence</string>
     <string name="reminder_email">Email reminder</string>
     <string name="reminder_create">Create reminder</string>
@@ -340,6 +340,19 @@
     <string name="reminder_recurrence_six_months">Every 6 months</string>
     <string name="reminder_recurrence_yearly">Yearly</string>
     <string name="cd_new_reminder">New reminder</string>
+    <string name="reminder_delete_title">Delete reminder?</string>
+    <string name="reminder_delete_confirm">Delete this reminder? \"%1$s\"</string>
+    <string name="cd_delete_reminder">Delete reminder</string>
+    <string name="reminder_overdue">Overdue</string>
+    <string name="reminder_flexible">Flexible</string>
+    <string name="reminder_pick_date">Pick a date</string>
+    <string name="reminder_reoccur_from_completion">Reschedule from completion date</string>
+    <string name="reminder_reoccur_from_completion_hint">When completed, the next reminder is scheduled from the completion date instead of the original date.</string>
+    <string name="reminder_completed">Reminder completed</string>
+    <string name="cd_undo_completion">Undo completion</string>
+    <string name="reminder_completion_undo_title">Undo completed reminder?</string>
+    <string name="reminder_completion_undo_confirm">Remove this completed reminder from the timeline?</string>
+    <string name="reminder_completion_undo">Undo</string>
 
     <!-- Timeline -->
     <string name="timeline_empty">No timeline entries yet</string>

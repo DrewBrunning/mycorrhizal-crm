@@ -318,8 +318,8 @@
     <string name="reminder_new">Nuovo promemoria</string>
     <string name="reminder_edit">Modifica promemoria</string>
     <string name="reminder_message">Messaggio</string>
-    <string name="reminder_remind_at">Promemoria alle (ISO 8601)</string>
-    <string name="reminder_remind_at_hint">2026-08-10T14:00:00Z</string>
+    <string name="reminder_remind_at">Promemoria alle</string>
+    <string name="reminder_remind_at_hint">2026-08-10</string>
     <string name="reminder_recurrence">Ricorrenza</string>
     <string name="reminder_email">Promemoria via email</string>
     <string name="reminder_create">Crea promemoria</string>
@@ -340,6 +340,19 @@
     <string name="reminder_recurrence_six_months">Ogni 6 mesi</string>
     <string name="reminder_recurrence_yearly">Annuale</string>
     <string name="cd_new_reminder">Nuovo promemoria</string>
+    <string name="reminder_delete_title">Eliminare il promemoria?</string>
+    <string name="reminder_delete_confirm">Eliminare questo promemoria? \"%1$s\"</string>
+    <string name="cd_delete_reminder">Elimina promemoria</string>
+    <string name="reminder_overdue">Scaduto</string>
+    <string name="reminder_flexible">Flessibile</string>
+    <string name="reminder_pick_date">Scegli una data</string>
+    <string name="reminder_reoccur_from_completion">Riprogramma dalla data di completamento</string>
+    <string name="reminder_reoccur_from_completion_hint">Al completamento, il prossimo promemoria verrà programmato dalla data di completamento invece che dalla data originale.</string>
+    <string name="reminder_completed">Promemoria completato</string>
+    <string name="cd_undo_completion">Annulla completamento</string>
+    <string name="reminder_completion_undo_title">Annullare il promemoria completato?</string>
+    <string name="reminder_completion_undo_confirm">Rimuovere questo promemoria completato dalla cronologia?</string>
+    <string name="reminder_completion_undo">Annulla</string>
 
     <!-- Timeline -->
     <string name="timeline_empty">Ancora nessuna voce nella cronologia</string>

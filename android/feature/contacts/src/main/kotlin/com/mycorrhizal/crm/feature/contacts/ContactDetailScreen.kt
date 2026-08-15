@@ -96,6 +96,7 @@ import com.mycorrhizal.crm.model.network.Email
 import com.mycorrhizal.crm.model.network.FieldDefinition
 import com.mycorrhizal.crm.model.network.OnlineService
 import com.mycorrhizal.crm.model.network.Phone
+import com.mycorrhizal.crm.model.network.ReminderCompletion
 import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.model.network.fieldValueDisplay
 import com.mycorrhizal.crm.model.util.DateFormat
@@ -193,6 +194,10 @@ fun ContactDetailScreen(
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showArchiveConfirm by remember { mutableStateOf(false) }
     var showUnarchiveConfirm by remember { mutableStateOf(false) }
+    // M20: undoing a completed reminder deletes its timeline entry — web's
+    // ContactDetailPage confirms (`window.confirm`), so Android confirms too
+    // (M17's delete-is-confirmed-first rule).
+    var pendingUndoCompletionId by remember { mutableStateOf<Int?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     // M24: the share stub stays (M15 is a separate ticket); prep view (M11) now
@@ -478,6 +483,8 @@ fun ContactDetailScreen(
                     onEditNote = onEditNote,
                     onEditReminder = onEditReminder,
                     onCompleteReminder = viewModel::completeReminder,
+                    completions = state.completions,
+                    onUndoCompletion = { id -> pendingUndoCompletionId = id },
                 )
             }
         }
@@ -577,6 +584,29 @@ fun ContactDetailScreen(
             },
         )
     }
+    pendingUndoCompletionId?.let { completionId ->
+        AlertDialog(
+            onDismissRequest = { pendingUndoCompletionId = null },
+            title = { Text(stringResource(R.string.reminder_completion_undo_title)) },
+            text = { Text(stringResource(R.string.reminder_completion_undo_confirm)) },
+            confirmButton = {
+                TextButton(
+                    enabled = !state.isMutating,
+                    onClick = {
+                        pendingUndoCompletionId = null
+                        viewModel.undoCompletion(completionId)
+                    },
+                ) {
+                    Text(stringResource(R.string.reminder_completion_undo), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingUndoCompletionId = null }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
 }
 
 @Composable
@@ -617,6 +647,8 @@ fun ContactDetailContent(
     onEditNote: (Int) -> Unit = {},
     onEditReminder: (Int) -> Unit = {},
     onCompleteReminder: (Int) -> Unit = {},
+    completions: List<ReminderCompletion> = emptyList(),
+    onUndoCompletion: (Int) -> Unit = {},
 ) {
     val card = contact.card
     LazyColumn(
@@ -798,11 +830,12 @@ fun ContactDetailContent(
             // newest-first (Phase 2 item 10). Tapping a row routes to its edit form.
             SectionTitle(stringResource(R.string.contact_timeline))
             TimelineSection(
-                items = contact.toTimelineItems(),
+                items = contact.toTimelineItems(completions),
                 onEditActivity = onEditActivity,
                 onEditNote = onEditNote,
                 onEditReminder = onEditReminder,
                 onCompleteReminder = onCompleteReminder,
+                onUndoCompletion = onUndoCompletion,
             )
         }
         if (deviceLookupKey != null) {

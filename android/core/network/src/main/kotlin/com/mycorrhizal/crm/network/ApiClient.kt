@@ -41,6 +41,7 @@ import com.mycorrhizal.crm.model.network.CreateLifeEventResponse
 import com.mycorrhizal.crm.model.network.CreateNoteResponse
 import com.mycorrhizal.crm.model.network.CreatePreferenceResponse
 import com.mycorrhizal.crm.model.network.CreateRelationshipEdgeResponse
+import com.mycorrhizal.crm.model.network.CompletionsResponse
 import com.mycorrhizal.crm.model.network.CreateReminderResponse
 import com.mycorrhizal.crm.model.network.CreateTagResponse
 import com.mycorrhizal.crm.model.network.ConversationAgenda
@@ -458,6 +459,20 @@ class ApiClient(
         executeGet("$PLACEHOLDER_ORIGIN$REMINDERS_PATH/$id") { _, body ->
             moshi.adapter(Reminder::class.java).fromJson(body)
         }
+
+    /** DELETE /api/v1/reminders/{id} — delete a reminder. */
+    suspend fun deleteReminder(id: Int): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$REMINDERS_PATH/$id")
+
+    /** GET /api/v1/contacts/{id}/reminder-completions — a contact's completion timeline. */
+    suspend fun listContactReminderCompletions(contactId: Int): Result<CompletionsResponse> =
+        executeGet("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/reminder-completions") { _, body ->
+            moshi.adapter(CompletionsResponse::class.java).fromJson(body)
+        }
+
+    /** DELETE /api/v1/reminder-completions/{id} — remove a completion (undo). */
+    suspend fun deleteReminderCompletion(id: Int): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$REMINDER_COMPLETIONS_PATH/$id")
 
     /** GET /api/v1/contacts/birthdays — upcoming birthdays. */
     suspend fun listUpcomingBirthdays(): Result<BirthdaysResponse> =
@@ -1055,6 +1070,7 @@ class ApiClient(
         private const val ACTIVITIES_PATH = "$API_V1/activities"
         private const val NOTES_PATH = "$API_V1/notes"
         private const val REMINDERS_PATH = "$API_V1/reminders"
+        private const val REMINDER_COMPLETIONS_PATH = "$API_V1/reminder-completions"
         private const val CIRCLES_PATH = "$API_V1/circles"
         private const val TAGS_PATH = "$API_V1/tags"
         private const val HOUSEHOLDS_PATH = "$API_V1/households"

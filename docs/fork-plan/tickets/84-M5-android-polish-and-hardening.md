@@ -5,7 +5,7 @@
 | **Rating** | 3 |
 | **Source** | Post-M1 review pass, 2026-08-11 (full read of `android/` after Phases 1–5 landed) |
 | **Depends on** | M1 Phases 1–5 (shipped). Items §3 and §5 are gated on the backend tickets noted inline. |
-| **Status** | Scoped, not started. |
+| **Status** | Scoped, not started. Promoted to the Android list 2026-08-14 (was under Feature ideas). |
 
 This is the Android-client counterpart to the M-series backend tickets: [M2](81-M2-fcm-mobile-push.md)
 (FCM push), [M3](82-M3-dashboard-overview-endpoint.md) (`GET /dashboard`), and
@@ -103,15 +103,15 @@ M1 ticket / follow-up commits", which in practice meant untracked. This section 
 live:
 
 - **Photo URL** ([M6](85-M6-photo-url-user-prefs-oidc.md) §1) → §3.1 above.
-- **`GET /dashboard`** ([M3](82-M3-dashboard-overview-endpoint.md)) → the Android Dashboard
-  currently makes three separate authenticated requests (birthdays, reminders, overdue cadences)
-  on every open. Collapse to one call.
+- **`GET /dashboard`** ([M3](82-M3-dashboard-overview-endpoint.md)) → **DONE 2026-08-14 by
+  [M10](92-M10-android-dashboard-composite.md)** — `DashboardViewModel` now makes a single
+  `GET /dashboard` call. Nothing left here.
 - **`GET /contacts/:id/detail`** ([M4](83-M4-contact-detail-composite.md)) → not in the original
   M1-endpoints list; adopt the composite on the contact detail once it exists.
-- **`PATCH /users/me`** ([M6](85-M6-photo-url-user-prefs-oidc.md) §3) → Settings shows Language
-  and Date format as read-only rows. Make them editable. (The read path is already wired, and the
-  date-format preference is now actually *used* — the contact detail honours it as of the
-  2026-08-11 pass.)
+- **User-prefs write** (was `PATCH /users/me`, [M6](85-M6-photo-url-user-prefs-oidc.md) §3) →
+  **superseded** — the backend routes already exist (`PATCH /users/language`,
+  `PATCH /users/date-format`), so there is no M6 backend half; the Android client + Settings UI is
+  now owned by [M25](107-M25-android-settings-profile-channels.md), not this ticket.
 - **OIDC native return** ([M6](85-M6-photo-url-user-prefs-oidc.md) §4) → the app has no SSO path
   at all today; the deep-link handling (`mycorrhizal://oidc/callback`) and its intent filter land
   here once the backend's `client=android` branch exists.

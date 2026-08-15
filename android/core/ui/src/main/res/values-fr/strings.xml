@@ -318,8 +318,8 @@
     <string name="reminder_new">Nouveau rappel</string>
     <string name="reminder_edit">Modifier le rappel</string>
     <string name="reminder_message">Message</string>
-    <string name="reminder_remind_at">Rappeler à (ISO 8601)</string>
-    <string name="reminder_remind_at_hint">2026-08-10T14:00:00Z</string>
+    <string name="reminder_remind_at">Rappeler à</string>
+    <string name="reminder_remind_at_hint">2026-08-10</string>
     <string name="reminder_recurrence">Récurrence</string>
     <string name="reminder_email">Rappel par e-mail</string>
     <string name="reminder_create">Créer le rappel</string>
@@ -340,6 +340,19 @@
     <string name="reminder_recurrence_six_months">Tous les 6 mois</string>
     <string name="reminder_recurrence_yearly">Annuel</string>
     <string name="cd_new_reminder">Nouveau rappel</string>
+    <string name="reminder_delete_title">Supprimer le rappel ?</string>
+    <string name="reminder_delete_confirm">Supprimer ce rappel ? \"%1$s\"</string>
+    <string name="cd_delete_reminder">Supprimer le rappel</string>
+    <string name="reminder_overdue">En retard</string>
+    <string name="reminder_flexible">Flexible</string>
+    <string name="reminder_pick_date">Choisir une date</string>
+    <string name="reminder_reoccur_from_completion">Reprogrammer depuis la date de complétion</string>
+    <string name="reminder_reoccur_from_completion_hint">Une fois terminé, le prochain rappel sera programmé à partir de la date de complétion plutôt que de la date initiale.</string>
+    <string name="reminder_completed">Rappel terminé</string>
+    <string name="cd_undo_completion">Annuler la complétion</string>
+    <string name="reminder_completion_undo_title">Annuler le rappel terminé ?</string>
+    <string name="reminder_completion_undo_confirm">Supprimer ce rappel terminé de la chronologie ?</string>
+    <string name="reminder_completion_undo">Annuler</string>
 
     <!-- Timeline -->
     <string name="timeline_empty">Aucune entrée de chronologie pour le moment</string>
