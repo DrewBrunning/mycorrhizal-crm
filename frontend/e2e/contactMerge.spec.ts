@@ -59,9 +59,16 @@ test.describe('Contact merge', () => {
       });
       expect(commit.ok(), `merge failed: ${await commit.text()}`).toBeTruthy();
 
-      // The loser is gone.
-      const loserResponse = await request.get(`${API_BASE_URL}/contacts/${loser.ID}`);
-      expect(loserResponse.status(), 'the merged-away contact must no longer be retrievable').toBe(404);
+      // The loser is gone. The merge commit and a follow-up GET can race
+      // through SQLite's pooled connections (a WAL read snapshot), so poll
+      // briefly rather than asserting a single immediate request — the same
+      // caveat T93's spec documents.
+      await expect
+        .poll(async () => (await request.get(`${API_BASE_URL}/contacts/${loser.ID}`)).status(), {
+          message: 'the merged-away contact must no longer be retrievable',
+          timeout: 10000,
+        })
+        .toBe(404);
 
       // The note moved rather than being deleted with its old owner. This is
       // the failure that would silently lose user data.
