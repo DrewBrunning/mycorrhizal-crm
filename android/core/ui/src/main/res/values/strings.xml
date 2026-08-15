@@ -57,6 +57,7 @@
     <string name="register_error_email_required">Email is required</string>
     <string name="register_error_password_required">Password is required</string>
     <string name="register_error_password_weak">Password is too weak</string>
+    <string name="register_created_login_failed">Account created. Please sign in.</string>
     <string name="forgot_password_title">Reset password</string>
     <string name="forgot_password_request_hint">Enter your account email and we\'ll send a reset link.</string>
     <string name="forgot_password_email">Email</string>
@@ -503,6 +504,7 @@
     <string name="triage_empty">No legacy circle strings to clean up.</string>
     <string name="triage_done_title">Triage complete</string>
     <string name="triage_done_message">Created %1$d circle(s) and %2$d tag(s).</string>
+    <string name="triage_done_partial">%1$d item(s) could not be created and %2$d member add(s) failed. Run triage again to retry.</string>
     <string name="action_done">Done</string>
 
     <!-- Shared actions -->

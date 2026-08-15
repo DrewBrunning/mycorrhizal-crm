@@ -37,7 +37,8 @@ import com.mycorrhizal.crm.ui.R
 /**
  * M26: new-account creation. Reached from the login screen; on success the
  * ViewModel auto-logs-in with the same credentials (the ticket's test case 3)
- * and fires [onRegistered].
+ * and fires [onRegistered]. Credentials live in local state and are passed up
+ * on submit — never held in the ViewModel (LoginViewModel's convention).
  */
 @Composable
 fun RegisterScreen(
@@ -58,8 +59,6 @@ fun RegisterScreen(
     RegisterScreenContent(
         uiState = state,
         onServerUrlChange = viewModel::onServerUrlChange,
-        onUsernameChange = viewModel::onUsernameChange,
-        onEmailChange = viewModel::onEmailChange,
         onPasswordChange = viewModel::onPasswordChange,
         onSubmit = viewModel::submit,
         onBack = onBack,
@@ -71,14 +70,18 @@ fun RegisterScreen(
 fun RegisterScreenContent(
     uiState: RegisterUiState,
     onServerUrlChange: (String) -> Unit,
-    onUsernameChange: (String) -> Unit,
-    onEmailChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
-    onSubmit: () -> Unit,
+    onSubmit: (username: String, email: String, password: String) -> Unit,
     onBack: () -> Unit,
     onErrorShown: () -> Unit,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
+
+    var username by rememberSaveable { mutableStateOf("") }
+    var email by rememberSaveable { mutableStateOf("") }
+    // The password is deliberately NOT saveable (never persisted across
+    // process death), matching LoginScreenContent.
+    var password by remember { mutableStateOf("") }
 
     Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { padding ->
         Column(
@@ -109,26 +112,27 @@ fun RegisterScreenContent(
                 modifier = Modifier.fillMaxWidth(),
             )
             OutlinedTextField(
-                value = uiState.username,
-                onValueChange = onUsernameChange,
+                value = username,
+                onValueChange = { username = it },
                 label = { Text(stringResource(R.string.register_username)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
             OutlinedTextField(
-                value = uiState.email,
-                onValueChange = onEmailChange,
+                value = email,
+                onValueChange = { email = it },
                 label = { Text(stringResource(R.string.register_email)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 modifier = Modifier.fillMaxWidth(),
             )
             OutlinedTextField(
-                value = uiState.password,
-                onValueChange = onPasswordChange,
+                value = password,
+                onValueChange = { password = it; onPasswordChange(it) },
                 label = { Text(stringResource(R.string.login_mode_password)) },
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 modifier = Modifier.fillMaxWidth(),
             )
             // M26: the server's strength verdict, surfaced BEFORE submit.
@@ -150,10 +154,13 @@ fun RegisterScreenContent(
                 )
             }
 
-            if (uiState.isLoading) {
+            if (uiState.isLoading || uiState.checkingStrength) {
                 CircularProgressIndicator()
             } else {
-                Button(onClick = onSubmit, modifier = Modifier.fillMaxWidth()) {
+                Button(
+                    onClick = { onSubmit(username, email, password) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
                     Text(stringResource(R.string.register_create))
                 }
             }

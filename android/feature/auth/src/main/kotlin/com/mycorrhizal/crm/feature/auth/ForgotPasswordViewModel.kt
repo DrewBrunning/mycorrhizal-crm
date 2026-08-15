@@ -19,13 +19,16 @@ import javax.inject.Inject
 /** Mirrors web's ForgotPasswordDialog ResetStep = 'request' | 'confirm' | 'done'. */
 enum class PasswordResetStep { REQUEST, CONFIRM, DONE }
 
+/**
+ * Forgot-password state. The two passwords are deliberately NOT stored here —
+ * the screen holds them in local state and passes them up on confirm, matching
+ * LoginViewModel's convention (no credentials in ViewModel state).
+ */
 data class ForgotPasswordUiState(
     val serverUrl: String = "",
     val step: PasswordResetStep = PasswordResetStep.REQUEST,
     val email: String = "",
     val token: String = "",
-    val newPassword: String = "",
-    val confirmPassword: String = "",
     val isLoading: Boolean = false,
     val error: String? = null,
     @StringRes val errorRes: Int? = null,
@@ -59,14 +62,6 @@ class ForgotPasswordViewModel @Inject constructor(
 
     fun onTokenChange(value: String) {
         _uiState.update { it.copy(token = value, error = null, errorRes = null) }
-    }
-
-    fun onNewPasswordChange(value: String) {
-        _uiState.update { it.copy(newPassword = value, error = null, errorRes = null) }
-    }
-
-    fun onConfirmPasswordChange(value: String) {
-        _uiState.update { it.copy(confirmPassword = value, error = null, errorRes = null) }
     }
 
     fun onErrorShown() {
@@ -106,25 +101,25 @@ class ForgotPasswordViewModel @Inject constructor(
         }
     }
 
-    /** Step 2: POST /password-reset/confirm with the emailed token. */
-    fun confirmReset() {
+    /** Step 2: POST /password-reset/confirm with the emailed token. [newPassword] comes from the screen. */
+    fun confirmReset(token: String, newPassword: String, confirmPassword: String) {
         val state = _uiState.value
         if (state.isLoading) return
-        if (state.token.isBlank()) {
+        if (token.isBlank()) {
             _uiState.update { it.copy(errorRes = R.string.forgot_password_error_token_required, error = null) }
             return
         }
-        if (state.newPassword.isBlank()) {
+        if (newPassword.isBlank()) {
             _uiState.update { it.copy(errorRes = R.string.forgot_password_error_password_required, error = null) }
             return
         }
-        if (state.newPassword != state.confirmPassword) {
+        if (newPassword != confirmPassword) {
             _uiState.update { it.copy(errorRes = R.string.settings_password_mismatch, error = null) }
             return
         }
         _uiState.update { it.copy(isLoading = true, error = null, errorRes = null) }
         viewModelScope.launch {
-            authRepository.confirmPasswordReset(state.token.trim(), state.newPassword).fold(
+            authRepository.confirmPasswordReset(token.trim(), newPassword).fold(
                 onSuccess = {
                     _uiState.update { it.copy(isLoading = false, step = PasswordResetStep.DONE) }
                 },
@@ -137,7 +132,7 @@ class ForgotPasswordViewModel @Inject constructor(
 
     fun onDone() {
         _uiState.update {
-            it.copy(step = PasswordResetStep.REQUEST, email = "", token = "", newPassword = "", confirmPassword = "")
+            it.copy(step = PasswordResetStep.REQUEST, email = "", token = "", requestMessage = null)
         }
     }
 }

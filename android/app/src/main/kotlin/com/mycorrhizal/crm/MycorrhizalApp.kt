@@ -44,6 +44,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.rememberDrawerState
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.activity.compose.BackHandler
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination
@@ -149,9 +150,14 @@ fun MycorrhizalApp(
     if (!session.isLoggedIn) {
         // M26: the unauthenticated tree is a tiny router over the auth
         // screens — login, register, forgot-password — since they are not
-        // part of the main NavHost.
+        // part of the main NavHost. The system back button returns to the
+        // login screen from the register/forgot screens instead of exiting
+        // the app (review-pass fix).
         var authScreen by rememberSaveable { mutableStateOf(AuthScreen.LOGIN) }
         val context = LocalContext.current
+        BackHandler(enabled = authScreen != AuthScreen.LOGIN) {
+            authScreen = AuthScreen.LOGIN
+        }
         when (authScreen) {
             AuthScreen.LOGIN -> LoginScreen(
                 onLoggedIn = { /* session flow flips isLoggedIn, recomposition swaps the tree */ },

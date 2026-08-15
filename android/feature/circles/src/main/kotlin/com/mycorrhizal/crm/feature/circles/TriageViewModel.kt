@@ -38,6 +38,10 @@ data class TriageUiState(
     val done: Boolean = false,
     val appliedCircles: Int = 0,
     val appliedTags: Int = 0,
+    /** Items that could not be created (create failed and no existing entity found). */
+    val failedItems: Int = 0,
+    /** Member adds that failed (a contact could not be added to a created entity). */
+    val memberAddFailures: Int = 0,
 ) {
     val circleItems: List<TriageItem> get() = items.filter { it.classification == TriageClassification.CIRCLE }
     val tagItems: List<TriageItem> get() = items.filter { it.classification == TriageClassification.TAG }
@@ -110,8 +114,10 @@ class TriageViewModel @Inject constructor(
     /**
      * Apply: create the classified circles/tags (reusing an existing entity of
      * the same name so a re-run doesn't duplicate), then add every contact
-     * that still carries the legacy string as a member. Per-item failures are
-     * skipped, not fatal — one bad string must not block the rest.
+     * that still carries the legacy string as a member. A create that fails
+     * falls back to a fresh name lookup (matching web's treat-a-duplicate-
+     * create-as-success) before the item is counted as failed; member-add
+     * failures are counted, never fatal.
      */
     fun apply() {
         val state = _uiState.value
@@ -123,39 +129,71 @@ class TriageViewModel @Inject constructor(
 
             var appliedCircles = 0
             var appliedTags = 0
+            var failedItems = 0
+            var memberAddFailures = 0
             for (item in state.circleItems) {
                 val name = item.name.trim()
                 if (name.isBlank()) continue
-                val circleId = existingCircles[name] ?: circleRepository.create(name).getOrNull()?.id
+                val circleId = existingCircles[name] ?: createCircleWithFallback(name, existingCircles)
                 if (circleId != null) {
-                    addMembers(circleId, item, isCircle = true)
+                    memberAddFailures += addMembers(circleId, item, isCircle = true)
                     appliedCircles++
+                } else {
+                    failedItems++
                 }
             }
             for (item in state.tagItems) {
                 val name = item.name.trim()
                 if (name.isBlank()) continue
-                val tagId = existingTags[name] ?: tagRepository.create(name).getOrNull()?.id
+                val tagId = existingTags[name] ?: createTagWithFallback(name, existingTags)
                 if (tagId != null) {
-                    addMembers(tagId, item, isCircle = false)
+                    memberAddFailures += addMembers(tagId, item, isCircle = false)
                     appliedTags++
+                } else {
+                    failedItems++
                 }
             }
             _uiState.update {
-                it.copy(applying = false, done = true, appliedCircles = appliedCircles, appliedTags = appliedTags)
+                it.copy(
+                    applying = false,
+                    done = true,
+                    appliedCircles = appliedCircles,
+                    appliedTags = appliedTags,
+                    failedItems = failedItems,
+                    memberAddFailures = memberAddFailures,
+                )
             }
         }
     }
 
-    private suspend fun addMembers(entityId: String, item: TriageItem, isCircle: Boolean) {
+    /** Create, falling back to a fresh name lookup when the create fails (web's 409-as-success). */
+    private suspend fun createCircleWithFallback(name: String, known: Map<String, String>): String? {
+        val created = circleRepository.create(name).getOrNull()?.id
+        if (created != null) return created
+        return circleRepository.list(limit = 200).getOrNull().orEmpty()
+            .firstOrNull { it.name == name }?.id ?: known[name]
+    }
+
+    private suspend fun createTagWithFallback(name: String, known: Map<String, String>): String? {
+        val created = tagRepository.create(name).getOrNull()?.id
+        if (created != null) return created
+        return tagRepository.list(limit = 200).getOrNull().orEmpty()
+            .firstOrNull { it.name == name }?.id ?: known[name]
+    }
+
+    /** Adds every contact carrying the legacy string; returns the number of failed member adds. */
+    private suspend fun addMembers(entityId: String, item: TriageItem, isCircle: Boolean): Int {
         val contacts = contactRepository.listContacts(circleLegacy = item.original, limit = 500).getOrNull()?.contacts.orEmpty()
+        var failures = 0
         for (contact in contacts) {
             val uid = contact.uid ?: continue
-            if (isCircle) {
-                circleRepository.addMember(entityId, uid)
+            val ok = if (isCircle) {
+                circleRepository.addMember(entityId, uid).isSuccess
             } else {
-                tagRepository.addContact(entityId, uid)
+                tagRepository.addContact(entityId, uid).isSuccess
             }
+            if (!ok) failures++
         }
+        return failures
     }
 }

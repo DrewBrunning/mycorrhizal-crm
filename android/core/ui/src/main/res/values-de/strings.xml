@@ -57,6 +57,7 @@
     <string name="register_error_email_required">E-Mail ist erforderlich</string>
     <string name="register_error_password_required">Passwort ist erforderlich</string>
     <string name="register_error_password_weak">Das Passwort ist zu schwach</string>
+    <string name="register_created_login_failed">Konto erstellt. Bitte melde dich an.</string>
     <string name="forgot_password_title">Passwort zurücksetzen</string>
     <string name="forgot_password_request_hint">Gib die E-Mail deines Kontos ein und wir senden einen Zurücksetzungs-Link.</string>
     <string name="forgot_password_email">E-Mail</string>
@@ -504,6 +505,7 @@
     <string name="triage_empty">Keine alten Kreisbegriffe zum Bereinigen.</string>
     <string name="triage_done_title">Bereinigung abgeschlossen</string>
     <string name="triage_done_message">%1$d Kreis(e) und %2$d Tag(s) erstellt.</string>
+    <string name="triage_done_partial">%1$d Punkt(e) konnten nicht erstellt und %2$d Mitglieder-Zuweisung(en) schlugen fehl. Führe die Bereinigung erneut aus, um es zu wiederholen.</string>
     <string name="action_done">Fertig</string>
     <string name="action_create">Erstellen</string>
     <string name="action_save">Speichern</string>

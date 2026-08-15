@@ -57,6 +57,7 @@
     <string name="register_error_email_required">L\'e-mail è obbligatoria</string>
     <string name="register_error_password_required">La password è obbligatoria</string>
     <string name="register_error_password_weak">La password è troppo debole</string>
+    <string name="register_created_login_failed">Account creato. Accedi per favore.</string>
     <string name="forgot_password_title">Reimposta password</string>
     <string name="forgot_password_request_hint">Inserisci l\'e-mail del tuo account e ti invieremo un link di reimpostazione.</string>
     <string name="forgot_password_email">E-mail</string>
@@ -504,6 +505,7 @@
     <string name="triage_empty">Nessuna vecchia stringa di cerchio da pulire.</string>
     <string name="triage_done_title">Classificazione completata</string>
     <string name="triage_done_message">Creati %1$d cerchi e %2$d etichette.</string>
+    <string name="triage_done_partial">%1$d elemento(i) non creati e %2$d assegnazione(i) di membro fallite. Esegui di nuovo la classificazione per riprovare.</string>
     <string name="action_done">Fatto</string>
     <string name="action_create">Crea</string>
     <string name="action_save">Salva</string>

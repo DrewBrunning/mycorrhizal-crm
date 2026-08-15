@@ -57,6 +57,7 @@
     <string name="register_error_email_required">L\'e-mail est requis</string>
     <string name="register_error_password_required">Le mot de passe est requis</string>
     <string name="register_error_password_weak">Le mot de passe est trop faible</string>
+    <string name="register_created_login_failed">Compte créé. Veuillez vous connecter.</string>
     <string name="forgot_password_title">Réinitialiser le mot de passe</string>
     <string name="forgot_password_request_hint">Saisissez l\'e-mail de votre compte et nous vous enverrons un lien de réinitialisation.</string>
     <string name="forgot_password_email">E-mail</string>
@@ -504,6 +505,7 @@
     <string name="triage_empty">Aucune ancienne chaîne de cercle à nettoyer.</string>
     <string name="triage_done_title">Tri terminé</string>
     <string name="triage_done_message">%1$d cercle(s) et %2$d étiquette(s) créés.</string>
+    <string name="triage_done_partial">%1$d élément(s) n\'ont pas pu être créés et %2$d ajout(s) de membre ont échoué. Relancez le tri pour réessayer.</string>
     <string name="action_done">Terminé</string>
     <string name="action_create">Créer</string>
     <string name="action_save">Enregistrer</string>

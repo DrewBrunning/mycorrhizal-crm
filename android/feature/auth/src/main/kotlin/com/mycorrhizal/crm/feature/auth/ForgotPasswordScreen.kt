@@ -20,7 +20,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -34,7 +37,8 @@ import com.mycorrhizal.crm.ui.R
 /**
  * M26: the two-step forgot-password flow (request -> confirm), mirroring web's
  * ForgotPasswordDialog. Step 1 posts the email; step 2 exchanges the emailed
- * token + a new password.
+ * token + a new password. The two passwords live in local screen state, never
+ * the ViewModel (LoginViewModel's convention).
  */
 @Composable
 fun ForgotPasswordScreen(
@@ -48,8 +52,6 @@ fun ForgotPasswordScreen(
         onServerUrlChange = viewModel::onServerUrlChange,
         onEmailChange = viewModel::onEmailChange,
         onTokenChange = viewModel::onTokenChange,
-        onNewPasswordChange = viewModel::onNewPasswordChange,
-        onConfirmPasswordChange = viewModel::onConfirmPasswordChange,
         onRequestReset = viewModel::requestReset,
         onConfirmReset = viewModel::confirmReset,
         onDone = viewModel::onDone,
@@ -64,15 +66,17 @@ fun ForgotPasswordScreenContent(
     onServerUrlChange: (String) -> Unit,
     onEmailChange: (String) -> Unit,
     onTokenChange: (String) -> Unit,
-    onNewPasswordChange: (String) -> Unit,
-    onConfirmPasswordChange: (String) -> Unit,
     onRequestReset: () -> Unit,
-    onConfirmReset: () -> Unit,
+    onConfirmReset: (token: String, newPassword: String, confirmPassword: String) -> Unit,
     onDone: () -> Unit,
     onBack: () -> Unit,
     onErrorShown: () -> Unit,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
+
+    var token by rememberSaveable { mutableStateOf("") }
+    var newPassword by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
 
     Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { padding ->
         Column(
@@ -129,32 +133,37 @@ fun ForgotPasswordScreenContent(
                         )
                     }
                     OutlinedTextField(
-                        value = uiState.token,
-                        onValueChange = onTokenChange,
+                        value = token,
+                        onValueChange = { token = it; onTokenChange(it) },
                         label = { Text(stringResource(R.string.forgot_password_token)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     OutlinedTextField(
-                        value = uiState.newPassword,
-                        onValueChange = onNewPasswordChange,
+                        value = newPassword,
+                        onValueChange = { newPassword = it },
                         label = { Text(stringResource(R.string.forgot_password_new_password)) },
                         singleLine = true,
                         visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         modifier = Modifier.fillMaxWidth(),
                     )
                     OutlinedTextField(
-                        value = uiState.confirmPassword,
-                        onValueChange = onConfirmPasswordChange,
+                        value = confirmPassword,
+                        onValueChange = { confirmPassword = it },
                         label = { Text(stringResource(R.string.forgot_password_confirm_password)) },
                         singleLine = true,
                         visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         modifier = Modifier.fillMaxWidth(),
                     )
                     if (uiState.isLoading) {
                         CircularProgressIndicator()
                     } else {
-                        Button(onClick = onConfirmReset, modifier = Modifier.fillMaxWidth()) {
+                        Button(
+                            onClick = { onConfirmReset(token, newPassword, confirmPassword) },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
                             Text(stringResource(R.string.forgot_password_reset))
                         }
                     }

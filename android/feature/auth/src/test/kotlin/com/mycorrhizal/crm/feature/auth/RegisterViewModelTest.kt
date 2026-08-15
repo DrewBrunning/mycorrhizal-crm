@@ -37,6 +37,11 @@ class RegisterViewModelTest {
     private fun weakStrength() = PasswordStrength(isValid = false, score = 1, feedback = "Password is too short")
     private fun strongStrength() = PasswordStrength(isValid = true, score = 4, feedback = "Password is very strong")
 
+    /** Types a password and lets the debounced strength check resolve. */
+    private fun RegisterViewModel.typeStrongPassword() {
+        onPasswordChange("hunter2hunter2")
+    }
+
     @Test
     fun `a known-weak password blocks submit without calling register`() =
         runTest(mainDispatcherRule.testDispatcher) {
@@ -44,17 +49,34 @@ class RegisterViewModelTest {
             val vm = viewModel()
             advanceUntilIdle()
 
-            vm.onUsernameChange("alice")
-            vm.onEmailChange("alice@example.com")
             vm.onPasswordChange("short")
             advanceUntilIdle()
             assertTrue(vm.uiState.value.passwordChecked)
 
-            vm.submit()
+            vm.submit("alice", "alice@example.com", "short")
             advanceUntilIdle()
 
             assertFalse(vm.uiState.value.isLoading)
             assertEquals("Password is too short", vm.uiState.value.error)
+            coVerify(exactly = 0) { authRepository.register(any(), any(), any()) }
+        }
+
+    @Test
+    fun `submit while the strength check is still in flight is blocked`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { authRepository.checkPasswordStrength(any()) } coAnswers {
+                kotlinx.coroutines.delay(1000)
+                Result.success(strongStrength())
+            }
+            val vm = viewModel()
+            advanceUntilIdle()
+
+            vm.onPasswordChange("hunter2hunter2")
+            // Do NOT advance past the debounce: the verdict hasn't landed.
+            vm.submit("alice", "alice@example.com", "hunter2hunter2")
+            advanceUntilIdle()
+
+            assertTrue(vm.uiState.value.isLoading.not())
             coVerify(exactly = 0) { authRepository.register(any(), any(), any()) }
         }
 
@@ -67,12 +89,10 @@ class RegisterViewModelTest {
             val vm = viewModel()
             advanceUntilIdle()
 
-            vm.onUsernameChange("alice")
-            vm.onEmailChange("alice@example.com")
             vm.onPasswordChange("hunter2hunter2")
             advanceUntilIdle()
 
-            vm.submit()
+            vm.submit("alice", "alice@example.com", "hunter2hunter2")
             advanceUntilIdle()
 
             coVerify { authRepository.register("alice", "alice@example.com", "hunter2hunter2") }
@@ -89,12 +109,10 @@ class RegisterViewModelTest {
             val vm = viewModel()
             advanceUntilIdle()
 
-            vm.onUsernameChange("alice")
-            vm.onEmailChange("alice@example.com")
             vm.onPasswordChange("hunter2hunter2")
             advanceUntilIdle()
 
-            vm.submit()
+            vm.submit("alice", "alice@example.com", "hunter2hunter2")
             advanceUntilIdle()
 
             assertFalse(vm.uiState.value.isLoading)
@@ -103,7 +121,7 @@ class RegisterViewModelTest {
         }
 
     @Test
-    fun `a failed auto-login after a successful register surfaces the error instead of pretending`() =
+    fun `a failed auto-login after a successful register points the user at sign-in`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { authRepository.checkPasswordStrength("hunter2hunter2") } returns Result.success(strongStrength())
             coEvery { authRepository.register(any(), any(), any()) } returns Result.success(Unit)
@@ -112,15 +130,13 @@ class RegisterViewModelTest {
             val vm = viewModel()
             advanceUntilIdle()
 
-            vm.onUsernameChange("alice")
-            vm.onEmailChange("alice@example.com")
             vm.onPasswordChange("hunter2hunter2")
             advanceUntilIdle()
 
-            vm.submit()
+            vm.submit("alice", "alice@example.com", "hunter2hunter2")
             advanceUntilIdle()
 
-            assertEquals("boom", vm.uiState.value.error)
+            assertEquals(com.mycorrhizal.crm.ui.R.string.register_created_login_failed, vm.uiState.value.errorRes)
             assertTrue(vm.uiState.value.isLoading.not())
         }
 
@@ -130,7 +146,7 @@ class RegisterViewModelTest {
             val vm = viewModel()
             advanceUntilIdle()
 
-            vm.submit()
+            vm.submit("", "", "")
             advanceUntilIdle()
 
             assertTrue(vm.uiState.value.errorRes != null)
@@ -145,10 +161,10 @@ class RegisterViewModelTest {
             advanceUntilIdle()
             vm.onServerUrlChange("not a url")
 
-            vm.onUsernameChange("alice")
-            vm.onEmailChange("alice@example.com")
             vm.onPasswordChange("hunter2hunter2")
-            vm.submit()
+            advanceUntilIdle()
+
+            vm.submit("alice", "alice@example.com", "hunter2hunter2")
             advanceUntilIdle()
 
             assertEquals(com.mycorrhizal.crm.ui.R.string.login_error_valid_server_url, vm.uiState.value.errorRes)

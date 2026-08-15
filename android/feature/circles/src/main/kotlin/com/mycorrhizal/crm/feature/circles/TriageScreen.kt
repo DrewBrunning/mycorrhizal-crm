@@ -94,10 +94,16 @@ fun TriageScreen(
         }
     }
 
-    state.error?.let { message ->
-        LaunchedEffect(message) {
-            snackbarHostState.showSnackbar(message)
-            viewModel.onErrorShown()
+    // Errors render inline when there is no list to show, so the snackbar is
+    // only for failures that leave content on screen — otherwise the snackbar
+    // would clear the error and flip the empty state into "nothing to clean
+    // up" (review-pass fix).
+    if (state.items.isNotEmpty()) {
+        state.error?.let { message ->
+            LaunchedEffect(message) {
+                snackbarHostState.showSnackbar(message)
+                viewModel.onErrorShown()
+            }
         }
     }
 }
@@ -188,6 +194,13 @@ internal fun DoneContent(state: TriageUiState, onBack: () -> Unit) {
             text = stringResource(R.string.triage_done_message, state.appliedCircles, state.appliedTags),
             style = MaterialTheme.typography.bodyLarge,
         )
+        if (state.failedItems > 0 || state.memberAddFailures > 0) {
+            Text(
+                text = stringResource(R.string.triage_done_partial, state.failedItems, state.memberAddFailures),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
         Button(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.action_done))
         }

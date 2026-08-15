@@ -61,6 +61,22 @@ class ForgotPasswordViewModelTest {
         }
 
     @Test
+    fun `a failed request stays on the request step and is retryable`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { authRepository.requestPasswordReset(any()) } returns
+                Result.failure(com.mycorrhizal.crm.network.ApiError.Client(400, "invalid email"))
+            val vm = viewModel()
+            advanceUntilIdle()
+
+            vm.onEmailChange("bad")
+            vm.requestReset()
+            advanceUntilIdle()
+
+            assertEquals(PasswordResetStep.REQUEST, vm.uiState.value.step)
+            assertEquals("invalid email", vm.uiState.value.error)
+        }
+
+    @Test
     fun `confirming a reset with a token and matching passwords completes the flow`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { authRepository.requestPasswordReset(any()) } returns Result.success("sent")
@@ -72,9 +88,7 @@ class ForgotPasswordViewModelTest {
             advanceUntilIdle()
 
             vm.onTokenChange("token-1")
-            vm.onNewPasswordChange("newpass123")
-            vm.onConfirmPasswordChange("newpass123")
-            vm.confirmReset()
+            vm.confirmReset("token-1", "newpass123", "newpass123")
             advanceUntilIdle()
 
             assertEquals(PasswordResetStep.DONE, vm.uiState.value.step)
@@ -91,10 +105,7 @@ class ForgotPasswordViewModelTest {
             vm.requestReset()
             advanceUntilIdle()
 
-            vm.onTokenChange("token-1")
-            vm.onNewPasswordChange("newpass123")
-            vm.onConfirmPasswordChange("different")
-            vm.confirmReset()
+            vm.confirmReset("token-1", "newpass123", "different")
             advanceUntilIdle()
 
             assertEquals(PasswordResetStep.CONFIRM, vm.uiState.value.step)

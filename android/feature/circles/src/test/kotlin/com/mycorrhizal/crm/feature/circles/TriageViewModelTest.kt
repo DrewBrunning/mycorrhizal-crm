@@ -170,4 +170,60 @@ class TriageViewModelTest {
             coVerify(exactly = 0) { circleRepository.create(any()) }
             coVerify(exactly = 0) { tagRepository.create(any()) }
         }
+
+    @Test
+    fun `member-add failures are counted, not fatal`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { contactRepository.listLegacyCircles() } returns Result.success(listOf("Friends"))
+            coEvery { contactRepository.listContacts(circleLegacy = "Friends", limit = 500) } returns
+                Result.success(contactsPage("u1", "u2"))
+            coEvery { circleRepository.list(limit = 200) } returns Result.success(emptyList())
+            coEvery { tagRepository.list(limit = 200) } returns Result.success(emptyList())
+            coEvery { circleRepository.create("Friends") } returns Result.success(Circle(id = "c1", name = "Friends"))
+            coEvery { circleRepository.addMember("c1", "u1") } returns Result.success(
+                com.mycorrhizal.crm.model.network.CircleMember(circleId = "c1", memberVCardUid = "u1"),
+            )
+            coEvery { circleRepository.addMember("c1", "u2") } returns
+                Result.failure(com.mycorrhizal.crm.network.ApiError.Client(500, "boom"))
+
+            val vm = viewModel()
+            advanceUntilIdle()
+            vm.apply()
+            advanceUntilIdle()
+
+            val state = vm.uiState.value
+            assertTrue(state.done)
+            assertEquals(1, state.memberAddFailures)
+            // The entity was still created; the failure did not abort the apply.
+            coVerify { circleRepository.create("Friends") }
+        }
+
+    @Test
+    fun `a failed create falls back to a fresh name lookup before counting the item as failed`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { contactRepository.listLegacyCircles() } returns Result.success(listOf("Friends"))
+            coEvery { contactRepository.listContacts(circleLegacy = "Friends", limit = 500) } returns
+                Result.success(contactsPage("u1"))
+            coEvery { circleRepository.list(limit = 200) } returns
+                Result.success(listOf(Circle(id = "c9", name = "Friends")))
+            coEvery { tagRepository.list(limit = 200) } returns Result.success(emptyList())
+            // The create itself fails (e.g. a duplicate race); the fresh list
+            // still finds the existing entity — matching web's duplicate-as-
+            // success, and members still get added.
+            coEvery { circleRepository.create("Friends") } returns
+                Result.failure(com.mycorrhizal.crm.network.ApiError.Client(409, "exists"))
+            coEvery { circleRepository.addMember("c9", "u1") } returns Result.success(
+                com.mycorrhizal.crm.model.network.CircleMember(circleId = "c9", memberVCardUid = "u1"),
+            )
+
+            val vm = viewModel()
+            advanceUntilIdle()
+            vm.apply()
+            advanceUntilIdle()
+
+            val state = vm.uiState.value
+            assertTrue(state.done)
+            assertEquals(0, state.failedItems)
+            coVerify { circleRepository.addMember("c9", "u1") }
+        }
 }

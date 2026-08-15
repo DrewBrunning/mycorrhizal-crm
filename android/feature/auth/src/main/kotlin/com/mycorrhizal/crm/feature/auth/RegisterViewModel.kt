@@ -22,11 +22,15 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * Registration state. Deliberately carries NO credentials (username/email/
+ * password): the screen holds them in local `remember` state and passes them
+ * up on submit, matching LoginViewModel's tested convention — a password must
+ * not linger in ViewModel state. Only the server's strength VERDICT (not the
+ * password) is kept, for the pre-submit gate.
+ */
 data class RegisterUiState(
     val serverUrl: String = "",
-    val username: String = "",
-    val email: String = "",
-    val password: String = "",
     val isLoading: Boolean = false,
     val error: String? = null,
     @StringRes val errorRes: Int? = null,
@@ -68,30 +72,29 @@ class RegisterViewModel @Inject constructor(
         viewModelScope.launch { sessionManager.setServerUrl(value.trim().trimEnd('/')) }
     }
 
-    fun onUsernameChange(value: String) {
-        _uiState.update { it.copy(username = value, error = null, errorRes = null) }
-    }
-
-    fun onEmailChange(value: String) {
-        _uiState.update { it.copy(email = value, error = null, errorRes = null) }
-    }
-
     /**
      * Debounced server-side strength check on the password field (M26's test
      * case 1: the response is surfaced BEFORE submission, and a weak password
-     * blocks submit rather than failing server-side). The check only fires for
-     * a non-blank password; failures are silent (the register submit still
-     * carries the real validation).
+     * blocks submit rather than failing server-side). [value] is transient —
+     * it is used for the check and discarded, never stored in state. The
+     * checking flag is set IMMEDIATELY (before the debounce) so a submit can
+     * never race past an in-flight check (review-pass fix). Failures are
+     * silent (the register submit still carries the real validation).
      */
     fun onPasswordChange(value: String) {
         _uiState.update {
-            it.copy(password = value, error = null, errorRes = null, passwordStrength = null, passwordChecked = false)
+            it.copy(
+                error = null,
+                errorRes = null,
+                passwordStrength = null,
+                passwordChecked = false,
+                checkingStrength = value.isNotBlank(),
+            )
         }
         strengthJob?.cancel()
         if (value.isBlank()) return
         strengthJob = viewModelScope.launch {
             delay(STRENGTH_DEBOUNCE_MS)
-            _uiState.update { it.copy(checkingStrength = true) }
             authRepository.checkPasswordStrength(value).fold(
                 onSuccess = { strength ->
                     _uiState.update {
@@ -99,6 +102,7 @@ class RegisterViewModel @Inject constructor(
                     }
                 },
                 onFailure = {
+                    // The check is best-effort; the server is the backstop.
                     _uiState.update { it.copy(checkingStrength = false) }
                 },
             )
@@ -113,8 +117,9 @@ class RegisterViewModel @Inject constructor(
      * Creates the account and auto-logs-in (the ticket's test case 3: register
      * itself sets no session — the web redirects to /login — so Android
      * exchanges the same credentials for a JWT instead of asking twice).
+     * [username], [email] and [password] come from the screen's local state.
      */
-    fun submit() {
+    fun submit(username: String, email: String, password: String) {
         val state = _uiState.value
         if (state.isLoading) return
 
@@ -124,17 +129,22 @@ class RegisterViewModel @Inject constructor(
             return
         }
         val validationError = when {
-            state.username.isBlank() -> R.string.register_error_username_required
-            state.email.isBlank() -> R.string.register_error_email_required
-            state.password.isBlank() -> R.string.register_error_password_required
+            username.isBlank() -> R.string.register_error_username_required
+            email.isBlank() -> R.string.register_error_email_required
+            password.isBlank() -> R.string.register_error_password_required
             else -> null
         }
         if (validationError != null) {
             _uiState.update { it.copy(errorRes = validationError, error = null) }
             return
         }
-        // A known-weak password blocks submit — the strength response is the
-        // pre-submission gate (test case 1).
+        // The pre-submit strength gate (test case 1): a known-weak password
+        // blocks submit, and an in-flight check also blocks (a verdict that
+        // hasn't landed yet must not be raced past — review-pass fix).
+        if (state.checkingStrength) {
+            _uiState.update { it.copy(errorRes = R.string.register_checking_strength, error = null) }
+            return
+        }
         if (state.passwordChecked && state.passwordStrength?.isValid == false) {
             val feedback = state.passwordStrength?.feedback
             if (feedback.isNullOrBlank()) {
@@ -145,22 +155,27 @@ class RegisterViewModel @Inject constructor(
             return
         }
 
+        val trimmedUsername = username.trim()
+        val trimmedEmail = email.trim()
         _uiState.update { it.copy(isLoading = true, error = null, errorRes = null) }
         viewModelScope.launch {
             sessionManager.setServerUrl(trimmedUrl)
-            val registered = authRepository.register(state.username.trim(), state.email.trim(), state.password)
+            val registered = authRepository.register(trimmedUsername, trimmedEmail, password)
             if (registered.isFailure) {
                 _uiState.update {
                     it.copy(isLoading = false, error = registered.exceptionOrNull()?.toApiError()?.registerMessage())
                 }
                 return@launch
             }
-            val login = authRepository.login(state.email.trim(), state.password)
+            val login = authRepository.login(trimmedEmail, password)
             if (login.isFailure) {
                 // Registration succeeded but the follow-up login failed (e.g.
-                // server hiccup). Tell the user to sign in manually rather than
-                // pretending the flow is done.
-                _uiState.update { it.copy(isLoading = false, error = login.exceptionOrNull()?.toApiError()?.registerMessage()) }
+                // server hiccup). The account exists — say so, and point the
+                // user at the sign-in screen rather than a confusing 409 on
+                // retry (review-pass fix).
+                _uiState.update {
+                    it.copy(isLoading = false, errorRes = R.string.register_created_login_failed, error = null)
+                }
                 return@launch
             }
             _uiState.update { it.copy(isLoading = false) }

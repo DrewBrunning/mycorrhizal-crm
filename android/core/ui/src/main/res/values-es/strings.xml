@@ -57,6 +57,7 @@
     <string name="register_error_email_required">El correo electrónico es obligatorio</string>
     <string name="register_error_password_required">La contraseña es obligatoria</string>
     <string name="register_error_password_weak">La contraseña es demasiado débil</string>
+    <string name="register_created_login_failed">Cuenta creada. Inicia sesión.</string>
     <string name="forgot_password_title">Restablecer contraseña</string>
     <string name="forgot_password_request_hint">Introduce el correo de tu cuenta y te enviaremos un enlace de restablecimiento.</string>
     <string name="forgot_password_email">Correo electrónico</string>
@@ -504,6 +505,7 @@
     <string name="triage_empty">No hay cadenas de círculos heredadas que limpiar.</string>
     <string name="triage_done_title">Clasificación completada</string>
     <string name="triage_done_message">Se crearon %1$d círculo(s) y %2$d etiqueta(s).</string>
+    <string name="triage_done_partial">No se pudieron crear %1$d elemento(s) y %2$d asignación(es) de miembro fallaron. Vuelve a ejecutar la clasificación para reintentar.</string>
     <string name="action_done">Hecho</string>
     <string name="action_create">Crear</string>
     <string name="action_save">Guardar</string>
