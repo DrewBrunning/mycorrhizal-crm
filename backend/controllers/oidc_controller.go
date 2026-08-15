@@ -116,7 +116,7 @@ func OIDCCallbackHandler(provider *services.OIDCProvider, cfg *config.Config) gi
 		c.SetCookie("oidc_state", "", -1, "/api/v1/auth/oidc/callback", cfg.CookieDomain, cfg.CookieSecure, true)
 		c.SetCookie("oidc_nonce", "", -1, "/api/v1/auth/oidc/callback", cfg.CookieDomain, cfg.CookieSecure, true)
 		c.SetCookie("oidc_pkce", "", -1, "/api/v1/auth/oidc/callback", cfg.CookieDomain, cfg.CookieSecure, true)
-		c.SetCookie("oidc_client", "", -1, "/api/v1/auth/oidc/callback", cfg.CookieDomain, cfg.CookieSecure, true)
+		c.SetCookie("oidc_client", "", -1, "/api/v1/auth/oidc/callback", cfg.CookieDomain, true, true)
 
 		if err != nil || stateCookie == "" {
 			log.Warn().Msg("OIDC callback: missing state cookie")
