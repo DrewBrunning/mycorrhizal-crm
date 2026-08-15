@@ -12,7 +12,7 @@ import (
 )
 
 // ValidateFieldValue checks a raw JSON value against a FieldDefinition's
-// Type + Constraints (docs/fork-plan/94-custom-fields.md §94.4: "Validation
+// Type + Constraints (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md: "Validation
 // on write is driven by the definition's type + constraints, routed to the
 // matching validator"). Lives in services, not models, because the
 // validators it reuses (middleware.ValidateVar/ValidateEmail) live in

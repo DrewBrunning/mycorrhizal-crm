@@ -28,7 +28,7 @@ type importSessionData struct {
 	csvContacts []models.Contact // CSV contacts built during preview (nil for VCF imports)
 
 	// boundShareID, when non-empty, ties this session to the ContactShare
-	// (P1, docs/fork-plan/tickets/31-P1-contact-sharing.md) whose accept step
+	// (P1, P1) whose accept step
 	// created it — see CreateVCFSessionForShare/SessionBelongsToShare below.
 	// Empty for ordinary CSV/VCF/JSContact import sessions.
 	boundShareID string

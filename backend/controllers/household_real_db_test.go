@@ -16,7 +16,7 @@ import (
 )
 
 // TestHouseholdSuggestions_RealMigratedSchema is the real-DB check for T1
-// (docs/fork-plan/tickets/09-T1-households.md): every other controller test
+// (T1): every other controller test
 // in this package uses AutoMigrate against :memory: sqlite, which derives
 // its schema from the same Go struct tags the application code uses — it
 // cannot catch a GORM column-tag mismatch against the real migration SQL

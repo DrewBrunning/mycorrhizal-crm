@@ -57,7 +57,7 @@ func csvSafeRecord(record []string) []string {
 }
 
 // serializeFieldValueForCSV renders one FieldValue's raw JSON payload as the
-// single string a CSV cell holds (docs/fork-plan/94-custom-fields.md §94.4):
+// single string a CSV cell holds (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md):
 // a scalar keeps its text form (strings verbatim, numbers/bools stringified)
 // and a Multi field joins its elements with "; " — the same separator the
 // export uses for Circles and food preferences. String-first parsing is the
@@ -129,7 +129,7 @@ func groupingNamesByContact(db *gorm.DB, userID uint, joinTable, entityTable, jo
 
 // parseExportFieldSelection reads the ?sections= and ?include_sensitive=
 // query params accepted by the vCard/JSContact export handlers (WP-97 / T9,
-// docs/fork-plan/tickets/13-T9-selective-export.md). sections is a
+// T9). sections is a
 // comma-separated list of field-selection section tokens
 // (models.FieldSections); identity data (name/uid/...) is always included.
 //
@@ -179,7 +179,7 @@ func ExportData(c *gin.Context) {
 		return
 	}
 
-	// T7 (docs/fork-plan/tickets/12-T7-custom-fields-frontend.md): the CSV
+	// T7: the CSV
 	// export's custom-field columns now source from the v2 system
 	// (FieldDefinition + FieldValue) instead of the retired untyped v1. Every
 	// definition the user has becomes a header column -- like the v1 names
@@ -583,7 +583,7 @@ func ExportData(c *gin.Context) {
 
 // ExportContactsAsVCF exports all user contacts as a VCF (vCard) file.
 //
-// Per docs/fork-plan/50-integration-and-rebrand.md WP-71 Gap 4, this now
+// Per docs/adrs/0001-neutral-hub-and-spoke-contact-model.md WP-71 Gap 4, this now
 // routes through the vcard4/vcard3 adapters instead of the legacy
 // carddav.ContactToVCard mapper. ?version=3 (or "3.0") selects vCard 3.0;
 // anything else (including absent) defaults to 4.0, per the "advertise 4.0
@@ -598,7 +598,7 @@ func ExportData(c *gin.Context) {
 //
 // photoDir (config.Config.ProfilePhotoDir, from routes.go's call site) is
 // forwarded through RecordForContact: per
-// docs/fork-plan/50-integration-and-rebrand.md WP-73's photo-bridging
+// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md WP-73's photo-bridging
 // prerequisite, Contact.Photo/PhotoThumbnail bridges into a
 // Card.Media{Kind:"photo"} entry, which the vcard4/vcard3 adapters encode
 // as an embedded PHOTO property — closing WP-71's previously-documented

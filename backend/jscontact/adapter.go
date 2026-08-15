@@ -4,9 +4,9 @@
 //
 // This file (WP-30b) implements the JSContact <-> neutral-model adapter.
 // Mapping decisions
-// here are governed entirely by docs/fork-plan/20-correspondence.md (the
+// here are governed entirely by docs/adrs/0002-correspondence-table-locked-oracle.md (the
 // oracle); see that file's rows for the concept_id backing every field
-// touched below. Because JSContact is, per docs/fork-plan/30-adapters.md
+// touched below. Because JSContact is, per docs/adrs/0001-neutral-hub-and-spoke-contact-model.md
 // §30.A, "the near-identity spoke" (contactmodel's Card/Name/Address/... were
 // shaped directly after it), nearly every mapping here is a straight field
 // copy between the two (structurally near-identical, separately owned) type
@@ -184,7 +184,7 @@ func copyBoolPtr(p *bool) *bool {
 
 // --- identity / meta: uid, kind, prodid, created, updated, language --------
 //
-// NOTE on "created": docs/fork-plan/20-correspondence.md's "created" row was
+// NOTE on "created": docs/adrs/0002-correspondence-table-locked-oracle.md's "created" row was
 // corrected by a later audit (it was wrongly "-"; RFC 9553 §2.1.3 defines
 // Card.created as a real, optional Card-level UTCDateTime) and now reads
 // js_ptr "/created". This adapter maps Card.Created <-> contactmodel's
@@ -321,7 +321,7 @@ func exportOrganizationsTitles(r *contactmodel.Record, c *Card) {
 
 // --- emails / phones / online services --------------------------------------
 //
-// onlineServices three-way split (20-correspondence.md §20.7): JSContact's
+// onlineServices three-way split (docs/adrs/0002-correspondence-table-locked-oracle.md): JSContact's
 // onlineServices has no kind-style discriminator of its own, so the RFC 9555
 // §2.15.3 `vCardName` escape hatch is the only signal available at import
 // time. A "IMPP" hint (case-insensitively, per the RFC's own comparison rule
@@ -540,7 +540,7 @@ func exportAnniversaries(r *contactmodel.Record, c *Card) {
 
 // --- speakToAs -------------------------------------------------------------
 //
-// gramgender (20-correspondence.md's "gramgender" row): JSContact's own
+// gramgender (docs/adrs/0002-correspondence-table-locked-oracle.md "gramgender" row): JSContact's own
 // speakToAs.grammaticalGender is a genuine RFC 9553 §2.2.4 scalar (this wire
 // shape does not change), but the neutral model's SpeakToAs.GrammaticalGenders
 // is a slice (RFC 9554 §3.2 cardinality "*", one per LANGUAGE). JSContact
@@ -584,7 +584,7 @@ func exportSpeakToAs(r *contactmodel.Record, c *Card) {
 }
 
 // selectGrammaticalGender implements the export-selection rule from
-// 20-correspondence.md's "gramgender" row: if cardLanguage is set and some
+// docs/adrs/0002-correspondence-table-locked-oracle.md "gramgender" row: if cardLanguage is set and some
 // entry's Language matches it, use that entry's Value; otherwise use the
 // first entry's Value, if any; otherwise "".
 func selectGrammaticalGender(cardLanguage string, genders []contactmodel.GrammaticalGender) string {
@@ -650,7 +650,7 @@ func exportNotesKeywords(r *contactmodel.Record, c *Card) {
 // JSContact's own object model, unchanged.
 //
 // calendars and links, however, now split into discrete neutral fields
-// (20-correspondence.md's "calendar"/"freebusy" and "link"/"contacturi"
+// (docs/adrs/0002-correspondence-table-locked-oracle.md "calendar"/"freebusy" and "link"/"contacturi"
 // rows): unlike onlineServices, the wire Calendar/Link types already carry
 // their own `Kind` field, so routing is unambiguous straight off that field
 // — no escape-hatch hint needed. Calendar.Kind=="freeBusy" -> FreeBusyURLs,

@@ -289,7 +289,7 @@ export default function ContactDetailPage() {
   const { showError, showSuccess } = useSnackbar();
   const { formatBirthdayForInput, parseBirthdayInput, autoFormatBirthdayInput } = useDateFormat();
   // record is the single source of truth, fetched/written directly against
-  // the nested Card/CRM wire shape -- see docs/fork-plan/95.
+  // the nested Card/CRM wire shape -- see.
   const [record, setRecord] = useState<ContactRecordResponse | null>(null);
   // T90: VCardUID of the caller's "Me" contact. Seeded from the localStorage
   // cache (written at login / after a Settings picker change) so a fresh page

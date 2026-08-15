@@ -1,5 +1,5 @@
 // Package attachments holds the disk-I/O helpers for contact file/document
-// attachments (N7, docs/fork-plan/tickets/29-N7-attachments.md), mirroring
+// attachments (N7, N7), mirroring
 // the photostore package's shape: server-generated UUID filenames only, and
 // every path back to disk goes through a stored name that is validated against
 // traversal before reaching filepath.Join.

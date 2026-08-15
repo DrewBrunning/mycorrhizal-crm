@@ -110,7 +110,7 @@ func TestDaysUntilBirthday_UnparsableMonthOrDayReturns999(t *testing.T) {
 }
 
 // TestDaysUntilBirthday_DecemberToJanuaryBoundary is the explicit Dec 31 ->
-// Jan 1 boundary case called out in docs/fork-plan/45-test-coverage-closure.md
+// Jan 1 boundary case called out in docs/adrs/0003-golden-fixtures-external-test-oracle.md
 // Phase 3b: today is Dec 31, birthday is Jan 1 (tomorrow). The birthday-this-
 // year (Jan 1 of the *current* now.Year()) is necessarily "before" today
 // (Dec 31 of that same year), so the function must wrap it forward into next

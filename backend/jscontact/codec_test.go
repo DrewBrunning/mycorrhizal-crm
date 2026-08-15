@@ -60,7 +60,7 @@ func TestFixtureRoundTripFixedPoint(t *testing.T) {
 }
 
 // TestJohnDoeFixtureFields spot-checks the RFC 9553 Fig. 6 golden fixture
-// (docs/fork-plan/golden-fixtures/johndoe.jscontact.json) imports the
+// (docs/golden-fixtures/johndoe.jscontact.json) imports the
 // expected scalar/structured fields, beyond the generic fixed-point check.
 func TestJohnDoeFixtureFields(t *testing.T) {
 	raw, err := os.ReadFile(filepath.Join("testdata", "johndoe.jscontact.json"))
@@ -104,7 +104,7 @@ func TestJohnDoeFixtureFields(t *testing.T) {
 }
 
 // TestTitleRoleFixtureFields spot-checks the title/organization Id-map
-// golden fixture (docs/fork-plan/golden-fixtures/title-role.jscontact.json).
+// golden fixture (docs/golden-fixtures/title-role.jscontact.json).
 func TestTitleRoleFixtureFields(t *testing.T) {
 	raw, err := os.ReadFile(filepath.Join("testdata", "title-role.jscontact.json"))
 	if err != nil {

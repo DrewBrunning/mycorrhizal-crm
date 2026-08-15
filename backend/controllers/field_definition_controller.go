@@ -12,7 +12,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// This file is T6 (docs/fork-plan/tickets/11-T6-custom-fields-api.md): the
+// This file is T6: the
 // CRUD routes that make the already-built FieldDefinition/FieldValue model
 // reachable. Endpoint shape follows circle_controller.go's idiom (the newer
 // controllers use), ownership is by user_id everywhere, and every FieldValue

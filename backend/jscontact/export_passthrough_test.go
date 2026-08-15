@@ -31,7 +31,7 @@ func TestExport_PassthroughVCardProps(t *testing.T) {
 // TestExport_PassthroughUnknownTopLevelPropertyIsTrueInverse exercises the
 // review-gate requirement that passthrough be a true inverse: importing a
 // fixture with an unknown top-level property and re-exporting it must
-// re-emit that property unchanged (60-review-gates.md §60.3).
+// re-emit that property unchanged (docs/adrs/0003-golden-fixtures-external-test-oracle.md).
 func TestExport_PassthroughUnknownTopLevelPropertyIsTrueInverse(t *testing.T) {
 	raw := []byte(`{
 		"@type": "Card", "version": "1.0", "uid": "pt-jscontact-roundtrip-example",

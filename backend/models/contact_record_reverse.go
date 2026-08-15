@@ -9,7 +9,7 @@ import (
 // ApplyRecordToContact is the single, shared mapping from the neutral
 // contactmodel.Record shape back onto a *Contact's legacy flat/array fields
 // — the exact inverse of RecordFromContact (contact_record.go). Per
-// docs/fork-plan/50-integration-and-rebrand.md WP-71 Gap 1, both
+// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md WP-71 Gap 1, both
 // CreateContact and UpdateContact (contact_controller.go) call this one
 // function to turn the new nested REST input into a Contact, and the VCF/
 // JSContact import path (services/import_service.go, Gap 4) calls it to turn
@@ -18,8 +18,7 @@ import (
 // must be exactly one Record->Contact mapping, mirroring WP-70's read-side
 // rule applied here to the write side.
 //
-// Field-by-field decisions cite the corresponding docs/fork-plan/
-// 20-correspondence.md concept_id/row, same convention as RecordFromContact.
+// Field-by-field decisions cite the corresponding docs/adrs/0002-correspondence-table-locked-oracle.md concept_id/row, same convention as RecordFromContact.
 // ApplyRecordToContact never panics, including when c or r is nil.
 //
 // Three things every caller must know:
@@ -211,7 +210,7 @@ func applyEmails(c *Contact, card contactmodel.Card, proj contactmodel.Projectio
 
 // applyPhones mirrors applyEmails for the "phone" row (Card.Phones[] ->
 // Phones[], Label -> Type), including the empty-case fallback: found by
-// Tier 3c item 11a's audit (docs/fork-plan/95-backlog-and-priorities.md) as
+// Tier 3c item 11a's audit  as
 // a real, live bug — this function cleared c.Phones but left the c.Phone
 // scalar untouched when card.Phones was empty, so removing a contact's last
 // phone number (via REST PUT, CardDAV sync, or VCF import) silently left a
@@ -233,7 +232,7 @@ func applyPhones(c *Contact, card contactmodel.Card, proj contactmodel.Projectio
 // back into the legacy IMPPs array, exactly mirroring the forward direction
 // (buildImpp only ever reads from c.IMPPs, never from SocialProfiles/
 // OtherOnlineServices) — see the three-array design note in
-// docs/fork-plan/20-correspondence.md §20.7. Card.SocialProfiles and
+// docs/adrs/0002-correspondence-table-locked-oracle.md Card.SocialProfiles and
 // Card.OtherOnlineServices have no legacy flat-field home at all: that data
 // is not lost (it stays fully intact on c.Card, assigned by the caller after
 // this function returns), it simply isn't mirrored into any pre-existing

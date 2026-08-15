@@ -36,7 +36,7 @@ const (
 // ListAddressObjects (and advertised as the export default) when a request
 // doesn't otherwise indicate it needs 3.0 — see requestedVCardVersion.
 //
-// Per docs/fork-plan/50-integration-and-rebrand.md WP-73's content-
+// Per docs/adrs/0001-neutral-hub-and-spoke-contact-model.md WP-73's content-
 // negotiation step, "emit 4.0 by default, 3.0 for clients that require it".
 // Kept as a package-level var read from CARDDAV_DEFAULT_VCARD_VERSION
 // (rather than a new config.Config field) since backend/config is outside
@@ -333,8 +333,7 @@ func (b *Backend) PutAddressObject(ctx context.Context, urlPath string, card vca
 	}
 
 	// Route the incoming vCard through the vcard4/vcard3 adapters instead of
-	// the legacy carddav.VCardToContact mapper (docs/fork-plan/
-	// 50-integration-and-rebrand.md WP-73). go-webdav's Put handler has
+	// the legacy carddav.VCardToContact mapper (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md WP-73). go-webdav's Put handler has
 	// already decoded the request body into `card` (a vcard.Card) before
 	// calling us, so we re-encode it back to bytes for the adapter's Import
 	// (which does its own go-vcard parsing) — this keeps a single
@@ -416,7 +415,7 @@ func (b *Backend) DeleteAddressObject(ctx context.Context, urlPath string) error
 
 // contactToAddressObject converts a Contact to a CardDAV AddressObject.
 //
-// Per docs/fork-plan/50-integration-and-rebrand.md WP-73, this now builds the
+// Per docs/adrs/0001-neutral-hub-and-spoke-contact-model.md WP-73, this now builds the
 // card via RecordFromContact + the vcard4/vcard3 adapters (chosen by
 // requestedVCardVersion's content negotiation) instead of the legacy
 // carddav.ContactToVCard mapper. The adapter's Export returns serialized

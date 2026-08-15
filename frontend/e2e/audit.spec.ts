@@ -3,7 +3,7 @@ import { createTestContact, deleteTestContact } from './fixtures';
 import { API_BASE_URL } from './global-setup';
 import { toContactRecordInput } from '../src/api/contacts';
 
-// T60 (docs/fork-plan/tickets/79-T60-audit-trail-ui.md) — the audit log page.
+// T60 — the audit log page.
 //
 // The audit backend (T18) records events fire-and-forget from a goroutine, so
 // an event is guaranteed to land shortly AFTER the API call that caused it

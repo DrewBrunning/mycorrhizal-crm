@@ -15,7 +15,7 @@ import (
 // LifeEvent.Type. §91.6 lists these with a trailing "…", signalling an open,
 // extensible set.
 //
-// T36 (docs/fork-plan/tickets/45-T36-life-event-categories.md) added the 37
+// T36 added the 37
 // tokens below the original seven — Monica-style categorized defaults, five
 // per-category groups reproduced in full in the ticket. Each token's
 // category lives in life_event_type_registry.go's LifeEventTypeCategories,
@@ -98,8 +98,7 @@ const (
 	LifeEventSourceAISuggested = "ai-suggested"
 )
 
-// LifeEvent is a permanent fact about an entity's life (docs/fork-plan/
-// 91-envelope-data-model.md §91.6) — "what happened in *their* life", as
+// LifeEvent is a permanent fact about an entity's life (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md) — "what happened in *their* life", as
 // opposed to Interaction/Activity ("what happened between *us*", §91.7).
 //
 // UUID-string-primary-key entity, following Household's exact template

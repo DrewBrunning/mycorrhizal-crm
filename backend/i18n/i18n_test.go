@@ -3,7 +3,7 @@ package i18n
 import "testing"
 
 // TestNormalizeSupportedLanguage is the regression test for backlog item 12
-// (docs/fork-plan/95-backlog-and-priorities.md): IsValidLanguage used to
+// : IsValidLanguage used to
 // normalize via normalizeLanguage, which falls back to DefaultLanguage for
 // any unrecognized input, so it returned true for literally any string.
 // NormalizeSupportedLanguage must genuinely reject empty/unsupported input.

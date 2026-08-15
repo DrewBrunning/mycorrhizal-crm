@@ -1,7 +1,7 @@
 package models
 
 // DashboardReminder is one upcoming reminder enriched with its contact's
-// display name (M3, docs/fork-plan/tickets/82-M3-dashboard-overview-endpoint.md
+// display name (M3, M3
 // design decision 2) so the dashboard composite's consumer never has to
 // issue a second per-reminder contact fetch. Display name is
 // nickname-preferred, falling back to firstname+lastname — the same rule

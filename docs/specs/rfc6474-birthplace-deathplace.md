@@ -27,7 +27,7 @@ DEATHDATE;19531015T231000Z
 DEATHDATE;VALUE=text:circa 1800
 ```
 
-## ⚠ Correction to `10-neutral-model.md` / `20-correspondence.md`
+## ⚠ Correction to `docs/adrs/0001-neutral-hub-and-spoke-contact-model.md` / `docs/adrs/0002-correspondence-table-locked-oracle.md`
 
 **`Anniversary.Place` is typed `*Address` (a full structured postal address) in the neutral model —
 matching JSContact's `Anniversary.place` (RFC 9553 §2.8.1, also `Address`). But vCard's BIRTHPLACE/
@@ -47,5 +47,5 @@ a 1:1 field mapping:
 - This is a **defect-detectable-but-not-strictly-fatal** case per the degradation policy (0.5): losing
   structured components on vCard export is expected and warned, not an error.
 
-Update `20-correspondence.md`'s `anniversary.place.birth`/`anniversary.place.death` rows' `notes`
+Update `docs/adrs/0002-correspondence-table-locked-oracle.md`'s `anniversary.place.birth`/`anniversary.place.death` rows' `notes`
 column to state this explicitly (done — see that file).

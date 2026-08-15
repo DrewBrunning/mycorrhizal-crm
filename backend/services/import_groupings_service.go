@@ -9,7 +9,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// Grouping materialisation for imports (T3 — docs/fork-plan/95's Circle/Tag
+// Grouping materialisation for imports (T3 — Circle/Tag
 // backend call-site rewiring).
 //
 // The problem this solves: CSV/vCard import parsed circle-ish columns into the

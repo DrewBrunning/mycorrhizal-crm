@@ -16,7 +16,7 @@ import (
 )
 
 // TestRelationshipEdgeAndGraph_RealMigratedSchema is the real-DB check for
-// §3d WP1+WP2 (docs/fork-plan/95-backlog-and-priorities.md): every other
+// §3d WP1+WP2 : every other
 // test in this package uses AutoMigrate against :memory: sqlite, which
 // derives its schema from the same Go struct tags the application code
 // uses -- it cannot catch a GORM column-tag mismatch against the real

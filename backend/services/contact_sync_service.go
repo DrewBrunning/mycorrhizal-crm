@@ -216,7 +216,7 @@ func (s *ContactSyncService) SyncSubscription(ctx context.Context, db *gorm.DB, 
 //
 // v1 treats sub.URL as a direct address-book collection URL, skipping
 // FindCurrentUserPrincipal/FindAddressBookHomeSet/FindAddressBooks discovery
-// entirely (docs/fork-plan/50-integration-and-rebrand.md WP-73b's accepted
+// entirely (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md WP-73b's accepted
 // v1 simplification) — full discovery, and syncing more than one address
 // book per subscription, are both documented fast-follows, not implemented
 // here.
@@ -434,9 +434,8 @@ func reconcileContactSync(db *gorm.DB, sub *models.ContactSubscription, updated 
 				// Full-replace, not a field-level merge: ApplyRecordToContact
 				// repopulates every flat field from the incoming Record,
 				// so a local-only edit to a field the remote vCard doesn't
-				// carry is silently discarded here. Confirmed intentional
-				// (docs/fork-plan/95-backlog-and-priorities.md Tier 3c item
-				// 11a) — no model tracks per-field modified-since-sync
+				// carry is silently discarded here. Confirmed intentional —
+				// no model tracks per-field modified-since-sync
 				// state, so a real merge isn't a small fix; pinned down by
 				// TestReconcileContactSyncOverwritesLocalEditsOnRemoteChange.
 				models.ApplyRecordToContact(&contact, record, photoDir)
@@ -492,8 +491,7 @@ func reconcileContactSync(db *gorm.DB, sub *models.ContactSubscription, updated 
 			}
 
 			// Archive, not hard-delete — matches how Contact.Archived is
-			// already used elsewhere (docs/fork-plan/50-integration-and-
-			// rebrand.md WP-73b's explicit decision). Loading the row first
+			// already used elsewhere (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md WP-73b's explicit decision). Loading the row first
 			// (rather than a bulk Model(&models.Contact{}).Where(...).Update)
 			// matters: Contact.AfterSave (contact.go) recomputes ETag via
 			// tx.Model(c) using the receiver's own ID/UpdatedAt, and a bulk

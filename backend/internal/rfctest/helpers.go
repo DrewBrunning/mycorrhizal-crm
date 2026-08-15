@@ -40,7 +40,7 @@ func LoadFixture(name string) []byte {
 // tReporter is the subset of *testing.T's API the internal assert
 // implementations need. AssertVCardLine/AssertJSONPointer/NeutralFromJSON take
 // a concrete *testing.T (which satisfies tReporter) as their public API per
-// 40-testing.md §40.4; routing through this interface internally lets
+// docs/adrs/0003-golden-fixtures-external-test-oracle.md; routing through this interface internally lets
 // helpers_test.go self-test the "reports a clear failure, does not panic"
 // paths with a fake reporter instead of failing the real test binary.
 type tReporter interface {

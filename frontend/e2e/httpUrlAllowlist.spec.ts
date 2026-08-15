@@ -3,8 +3,7 @@ import { createTestContact, deleteTestContact, waitForLoading } from './fixtures
 import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 
 /**
- * Web-link http(s) allowlist (T41, docs/fork-plan/tickets/
- * 50-T41-http-url-allowlist.md).
+ * Web-link http(s) allowlist (T41, T41).
  *
  * The four web-link fields (gift URL, agenda reference_url, external identity
  * URL, Immich base URL) moved from the `safeurl` blocklist to the `httpurl`

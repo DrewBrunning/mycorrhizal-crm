@@ -3,7 +3,7 @@ info:
   title: Mycorrhizal CRM API
   description: >
     REST API for Mycorrhizal's contact model. As of WP-71 (P2,
-    docs/fork-plan/50-integration-and-rebrand.md), the contact endpoints speak
+    docs/adrs/0001-neutral-hub-and-spoke-contact-model.md), the contact endpoints speak
     the neutral RFC 9553-shaped model (contactmodel.Record/Card) rather than
     the legacy flat Contact DTO. GET /contacts (list) returns a slim
     ContactSummary per item; GET/POST/PUT /contacts/{id} exchange the full
@@ -11,7 +11,7 @@ info:
     symmetric read/write contract.
 
 
-    T8 (docs/fork-plan/tickets/16-T8-openapi.md) extended this spec to cover
+    T8 (T8) extended this spec to cover
     the whole REST surface: every route registered by
     backend/routes/routes.go under /api/v1 plus the unversioned /health. The
     drift test (backend/openapi_test.go) enumerates the live Gin router and
@@ -45,7 +45,7 @@ info:
       them.
     - **Pagination:** every list endpoint returns the offset-shaped envelope
       `{ <items>: [...], "total", "page", "limit" }` documented below. T17
-      (docs/fork-plan/tickets/17-T17-change-feeds.md) will replace this with
+      (T17) will replace this with
       cursor-based pagination pre-alpha; when that lands, every paginated
       response in this spec must be revised together (the drift test keeps the
       route surface honest, not the envelope).
@@ -555,7 +555,7 @@ paths:
       description: >
         Returns a page of ContactSummary items — never the full Card, so a
         mobile contact-list screen doesn't have to fetch every contact's
-        nested data (see docs/fork-plan/50-integration-and-rebrand.md WP-71
+        nested data (see docs/adrs/0001-neutral-hub-and-spoke-contact-model.md WP-71
         Gap 2). Pagination is cursor-based (T17): rows are ordered by the
         (updated_at, id) feed key and a page is resumed with next_cursor.
         ?since= turns the endpoint into a change feed returning every row
@@ -1550,7 +1550,7 @@ paths:
         "400":
           description: A CSV-sourced session ID was sent here, no prior preview cached, or unknown/expired/foreign session.
 
-  # --- Contact sharing (P1, docs/fork-plan/tickets/31-P1-contact-sharing.md) ---
+  # --- Contact sharing (P1, P1) ---
   # One-time filtered copy between two users on the same instance -- not a
   # standing/live share (P1b, deferred). Accept is preview-only (parses the
   # stored payload through the same import machinery as
@@ -7164,7 +7164,7 @@ components:
       description: >
         Request body for POST /contacts and PUT /contacts/{id}. Gender rides
         alongside card/crm since it has no neutral-model home (see
-        docs/fork-plan/50-integration-and-rebrand.md's RecordFromContact
+        docs/adrs/0001-neutral-hub-and-spoke-contact-model.md's RecordFromContact
         notes).
       properties:
         gender:
@@ -7537,7 +7537,7 @@ components:
       description: >
         One structured postal address in the flat legacy shape. The three
         sub-street fields (PO box, apartment, floor) were added in T79
-        (docs/fork-plan/tickets/123-T79-flat-address-projection-too-narrow.md);
+        (T79);
         the remaining RFC 9553 component kinds ride the nested Card shape's
         AddressComponent kinds instead.
       properties:
@@ -9008,7 +9008,7 @@ components:
         contact_information: { type: string }
     Passthrough:
       type: object
-      description: Unmapped data preserved verbatim (docs/fork-plan/00-overview.md §0.5).
+      description: Unmapped data preserved verbatim (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md).
       properties:
         vCardProps:
           type: array
@@ -9262,7 +9262,7 @@ components:
       description: >
         Neutral superset of a contact's standardized data (union of RFC 9553
         JSContact + the IANA vCard-elements registry). See
-        docs/fork-plan/20-correspondence.md for the full field-by-field
+        docs/adrs/0002-correspondence-table-locked-oracle.md for the full field-by-field
         mapping to/from vCard 3.0/4.0 and JSContact.
       properties:
         uid: { type: string }

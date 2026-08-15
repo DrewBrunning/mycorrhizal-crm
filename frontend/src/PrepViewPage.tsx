@@ -28,7 +28,7 @@ import { useDateFormat } from './DateFormatProvider';
 import { handleFetchError } from './utils/errorHandler';
 import { useSnackbar } from './context/SnackbarContext';
 
-// N2 prep view (docs/fork-plan/tickets/22-N2-prep-view.md): the "person
+// N2 prep view: the "person
 // briefing" — everything the user wants to remember in the five minutes
 // before seeing someone, scannable in under a minute. Read-only: a pure
 // composition of data the contact page already surfaces, assembled server-side

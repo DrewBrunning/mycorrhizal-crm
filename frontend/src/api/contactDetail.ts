@@ -1,5 +1,4 @@
-// M4 contact-detail composite (docs/fork-plan/tickets/
-// 83-M4-contact-detail-composite.md): everything ContactDetailPage.tsx
+// M4 contact-detail composite (M4): everything ContactDetailPage.tsx
 // renders for one contact, in one call, replacing the ~21-endpoint fan-out.
 //
 // This module is a standalone api surface for the composite's OpenAPI

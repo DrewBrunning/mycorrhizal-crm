@@ -6,7 +6,7 @@ of guessing. For anything not covered here, consult the canonical RFC.
 
 | File | Source | Use |
 |---|---|---|
-| `rfc9555-correspondence.md` | RFC 9555 (JSContact↔vCard conversion) | **The oracle authority** behind `docs/fork-plan/20-correspondence.md` |
+| `rfc9555-correspondence.md` | RFC 9555 (JSContact↔vCard conversion) | **The oracle authority** behind `docs/adrs/0002-correspondence-table-locked-oracle.md` |
 | `rfc9553-model.md` | RFC 9553 (JSContact) | Object shapes, value formats, Id-map classification |
 | `rfc9554-vcard-extensions.md` | RFC 9554 (vCard extensions) | New properties/parameters + N/ADR expansion, verbatim examples |
 | `rfc6350-baseline.md` | RFC 6350 (vCard 4.0 base) | Baseline grammar/cardinality `vcard4` builds on; states the salvage-not-reimplement decision |
@@ -29,19 +29,20 @@ Canonical sources (fetch full text if needed — all nine have now been transcri
   transcribed**; only needed if a `JCardProp`/`vCardProps` escape-hatch bug requires checking the exact
   jCard tuple encoding. Fetch on demand.
 
-**Rule for implementers:** the mapping in `20-correspondence.md` is LOCKED against
+**Rule for implementers:** the mapping in `docs/adrs/0002-correspondence-table-locked-oracle.md` is LOCKED against
 `rfc9555-correspondence.md`. Do not invent or alter a mapping. If a needed mapping is missing,
-escalate to a reviewer (see `docs/fork-plan/60-review-gates.md`).
+escalate to a reviewer (see `docs/adrs/0003-golden-fixtures-external-test-oracle.md`).
 
 ## Why RFCs, not just the IANA registries
 
 The two IANA registries (vcard-elements, jscontact) are the authority for **coverage** — "does this
 property/parameter/type/value exist, and which RFC defines it." That's exactly how they're used in
-`10-neutral-model.md` §10.7 and `30-adapters.md`'s `consts.go` name lists: transcribed directly as
+the adapter `consts.go` name lists (`backend/vcard4/consts.go`, `backend/vcard3/consts.go`,
+`backend/jscontact/types.go`): transcribed directly as
 completeness checklists. They are **not** sufficient for **behavior** — a registry entry is a one-line
 index (e.g. `GRAMGENDER — RFC 9554`); it carries no value syntax, no cardinality, no examples, and
 critically **no cross-format mapping**. IANA does not publish a JSContact↔vCard correspondence
-registry at all — that mapping exists only as RFC 9555 prose, which is why `20-correspondence.md` is
+registry at all — that mapping exists only as RFC 9555 prose, which is why `docs/adrs/0002-correspondence-table-locked-oracle.md` is
 built from `rfc9555-correspondence.md`, not from the registries.
 
 **Maintenance caveat:** the registries are living documents (updated as new properties are registered

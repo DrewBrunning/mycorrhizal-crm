@@ -1,14 +1,14 @@
 // This file (adapter.go, WP-40b) implements the vCard 4.0 <-> neutral-model
-// adapter: contactmodel.Importer/Exporter per docs/fork-plan/00-overview.md
+// adapter: contactmodel.Importer/Exporter per docs/adrs/0001-neutral-hub-and-spoke-contact-model.md
 // §0.4, built on top of consts.go/components.go (WP-40a) and driven entirely
-// by docs/fork-plan/20-correspondence.md (the oracle — see that file's rows
+// by docs/adrs/0002-correspondence-table-locked-oracle.md (the oracle — see that file's rows
 // for the concept_id backing every field touched below; per §0.6 no mapping
 // here is invented beyond what a row states).
 //
 // Low-level line/property parsing is delegated to
 // github.com/emersion/go-vcard (vcard.Decoder/vcard.Encoder over
 // vcard.Card = map[string][]*vcard.Field); this file only does the
-// neutral<->vCard4 field mapping and value transforms named in 20-correspondence.md
+// neutral<->vCard4 field mapping and value transforms named in docs/adrs/0002-correspondence-table-locked-oracle.md
 // §20.4.
 package vcard4
 
@@ -37,7 +37,7 @@ var _ contactmodel.Exporter = Adapter{}
 // ---------------------------------------------------------------------------
 // Mapped-property set: derived from correspondence.Load() so it can never
 // drift from the oracle. Any vCard property name NOT in this set is, per 0.5
-// and 20-correspondence.md's "pt.vcard" row, unknown data preserved via
+// and docs/adrs/0002-correspondence-table-locked-oracle.md "pt.vcard" row, unknown data preserved via
 // Record.Passthrough.VCard rather than silently dropped.
 // ---------------------------------------------------------------------------
 
@@ -281,7 +281,7 @@ func addTypeTokens(f *vcard.Field, tokens ...string) {
 }
 
 // idOrSynthetic returns id, or a short deterministic synthetic id
-// (prefix + 1-based index) if id is empty — 30-adapters.md §30.B: "carry
+// (prefix + 1-based index) if id is empty — docs/adrs/0001-neutral-hub-and-spoke-contact-model.md: "carry
 // PROP-ID = element.ID (generate if empty) so identity survives" a round
 // trip.
 func idOrSynthetic(id, prefix string, idx int) string {
@@ -382,7 +382,7 @@ func vcardTimestampToRFC3339(v string) string {
 // ---------------------------------------------------------------------------
 // Identity / meta: uid, kind, prodid, updated, created, language.
 //
-// "language" was corrected in 20-correspondence.md (was wrongly v4_prop
+// "language" was corrected in docs/adrs/0002-correspondence-table-locked-oracle.md (was wrongly v4_prop
 // "-"): RFC 9554 §3.3 defines vCard4 LANGUAGE as a dedicated property —
 // "default language of human-readable values" — a direct 1:1 match for
 // Card.Language (transform identity). v3 (RFC 2426) predates this property
@@ -436,7 +436,7 @@ func exportIdentity(rec *contactmodel.Record, card vcard.Card) {
 // Name: FN (+DERIVED), N components (name.surname..generation), N phonetic
 // variant (name.phonetic).
 //
-// JUDGMENT CALL (flagged per docs/fork-plan/60-review-gates.md §60.4 — not a
+// JUDGMENT CALL (flagged per docs/adrs/0003-golden-fixtures-external-test-oracle.md — not a
 // silent invention): the "name.phonetic" row's neutral_path names only
 // Card.Name.PhoneticScript, but its v4_params column also scopes PHONETIC
 // and SCRIPT (and ALTID for pairing). Two neutral fields exist for exactly
@@ -451,7 +451,7 @@ func exportIdentity(rec *contactmodel.Record, card vcard.Card) {
 // ---------------------------------------------------------------------------
 
 // nComponentKindOrder mirrors N's wire order (RFC 9554 §2.2) to the
-// NameComponent.Kind vocabulary (10-neutral-model.md / model.go): Family ->
+// NameComponent.Kind vocabulary (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md / model.go): Family ->
 // surname, Given -> given, Additional -> given2, Prefix -> title, Suffix ->
 // credential, Surname2 -> surname2, Generation -> generation.
 func importName(card vcard.Card, rec *contactmodel.Record, diags *[]contactmodel.Diagnostic) {
@@ -517,7 +517,7 @@ func importName(card vcard.Card, rec *contactmodel.Record, diags *[]contactmodel
 
 	if fn != nil {
 		if paramIsTrue(fn, ParamDerived) {
-			// 30-adapters.md §30.B: never import a DERIVED value as
+			// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md: never import a DERIVED value as
 			// authoritative. It's otherwise-mapped (name.full), so per 0.5
 			// it is simply not imported (not passthrough either) — an info
 			// Diagnostic notes the drop.
@@ -821,7 +821,7 @@ func serviceTypeAndUsername(f *vcard.Field) (service, user string) {
 
 // importOnlineServices routes IMPP into Card.ImppAddresses and SOCIALPROFILE
 // into Card.SocialProfiles. vCard import is always unambiguous about
-// provenance (20-correspondence.md §20.7's "three-array design") — which
+// provenance (docs/adrs/0002-correspondence-table-locked-oracle.md "three-array design") — which
 // property produced a value IS which array it belongs in, so no per-element
 // tag is needed here. Card.OtherOnlineServices is never populated by vCard
 // import (only JSContact import, with no vCardName hint, produces it).
@@ -1053,7 +1053,7 @@ func importAddresses(card vcard.Card, rec *contactmodel.Record, diags *[]contact
 //
 // This is a confirmed limitation of the pinned go-vcard version, not
 // something fixable from this package without forking it (disallowed by
-// 30-adapters.md §30.B). The workaround below does not fork go-vcard: it
+// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md). The workaround below does not fork go-vcard: it
 // substitutes a comma/colon-free sentinel token for GEO's value so the
 // stock Encoder produces valid, parseable output, then splices the
 // correctly quoted real value into the final byte stream afterward — a
@@ -1093,7 +1093,7 @@ func exportAddresses(rec *contactmodel.Record, card vcard.Card, splices *[]geoSp
 // parsePartialDate parses a vCard DATE-AND-OR-TIME value into a
 // contactmodel.PartialDate, accepting both the RFC 6350 basic form
 // (YYYYMMDD / --MMDD / YYYY, as in the golden fixtures) and the extended
-// dashed form (YYYY-MM-DD / --MM-DD) that 20-correspondence.md §20.4's
+// dashed form (YYYY-MM-DD / --MM-DD) that docs/adrs/0002-correspondence-table-locked-oracle.md
 // date_partial transform documents as the canonical shape — both are valid
 // ISO 8601 date forms and RFC 6350 §4.3 permits either.
 func parsePartialDate(v string) *contactmodel.PartialDate {
@@ -1349,8 +1349,8 @@ func importSpeakToAs(card vcard.Card, rec *contactmodel.Record, diags *[]contact
 	// RFC 9554 §3.2 gives GRAMGENDER cardinality "*" (multiple occurrences
 	// distinguished by LANGUAGE), and SpeakToAs.GrammaticalGenders is now a
 	// slice matching that cardinality exactly — every occurrence is stored
-	// losslessly, no diagnostic needed (see 10-neutral-model.md's SpeakToAs
-	// doc comment and 20-correspondence.md's gramgender row).
+	// losslessly, no diagnostic needed (see docs/adrs/0001-neutral-hub-and-spoke-contact-model.md SpeakToAs
+	// doc comment and docs/adrs/0002-correspondence-table-locked-oracle.md gramgender row).
 	for i, f := range card[PropGramgender] {
 		s.GrammaticalGenders = append(s.GrammaticalGenders, contactmodel.GrammaticalGender{
 			ID:       idOrSynthetic(propID(f), "gg", i),

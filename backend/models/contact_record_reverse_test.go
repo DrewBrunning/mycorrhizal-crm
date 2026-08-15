@@ -11,8 +11,7 @@ import (
 )
 
 // TestApplyRecordToContact_ReDerivesRelativePhotoURL is the regression test
-// for M6 §1's write-path round-trip (docs/fork-plan/tickets/85-M6-photo-url-
-// user-prefs-oidc.md): the read response now exposes Card.Media's photo uri as
+// for M6 §1's write-path round-trip (M6): the read response now exposes Card.Media's photo uri as
 // a relative profile-picture URL, and the web client PUTs that card back
 // verbatim on the next edit. applyMedia must recognize that relative URL as
 // "this contact's own photo pointer" and re-derive the entry from the flat
@@ -238,7 +237,7 @@ func TestApplyRecordToContact_RoundTrip(t *testing.T) {
 }
 
 // TestAddressMapping_RoundTripsSubStreetFields pins T79
-// (docs/fork-plan/tickets/123-T79-flat-address-projection-too-narrow.md):
+// (T79):
 // the flat ContactAddress gained PO box / apartment / floor slots, so both
 // directions of the flat<->neutral mapping must carry them. A vCard-imported
 // address holding those components must land on the flat struct (and back
@@ -442,7 +441,7 @@ func TestApplyRecordToContact_PreservesCRMKind(t *testing.T) {
 
 // TestApplyRecordToContact_ClearsPhoneScalarWhenPhonesRemoved is the
 // regression guard for a real bug found by Tier 3c item 11a's audit
-// (docs/fork-plan/95-backlog-and-priorities.md): applyPhones cleared
+// : applyPhones cleared
 // c.Phones but left the c.Phone scalar untouched when the incoming Record
 // had no phones at all, unlike its sibling applyEmails (which always
 // resets c.Email, falling back to proj.PrimaryEmail). A contact whose last

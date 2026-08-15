@@ -92,8 +92,7 @@ func parseContactSort(c *gin.Context) (string, *apperrors.AppError) {
 }
 
 // ---------------------------------------------------------------------------
-// Cursor pagination + change feeds (T17 — docs/fork-plan/tickets/
-// 17-T17-change-feeds.md).
+// Cursor pagination + change feeds (T17 — T17).
 //
 // Every list endpoint paginates with an opaque cursor instead of
 // page/offset. The cursor is base64url("<RFC3339Nano UTC updated_at>|<id>")

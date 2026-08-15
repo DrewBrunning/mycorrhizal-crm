@@ -351,8 +351,7 @@ func SendReminders(db *gorm.DB, config config.Config) error {
 // quiet week doesn't show an empty dashboard). Shared by
 // GetUpcomingReminders (reminder_controller.go) and the M3 dashboard
 // composite (dashboard_controller.go) — one place for this rule so the two
-// callers can never drift apart (docs/fork-plan/tickets/
-// 82-M3-dashboard-overview-endpoint.md's "reuse the exact semantics" trap).
+// callers can never drift apart (M3's "reuse the exact semantics" trap).
 func GetUpcomingReminders(db *gorm.DB, userID uint, now time.Time) ([]models.Reminder, error) {
 	sevenDaysFromNow := now.AddDate(0, 0, 7)
 

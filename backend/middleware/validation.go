@@ -276,7 +276,7 @@ func validateLifeEventCategory(fl validator.FieldLevel) bool {
 }
 
 // fieldDefinitionProjectionPattern matches FieldDefinition.Projection (WP-84b,
-// docs/fork-plan/94-custom-fields.md §94.5): "internal-only" (default, never
+// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md): "internal-only" (default, never
 // exported) or "vcard:X-<NAME>" (projects via the existing JCardProp/
 // Passthrough machinery -- see models/contact_record.go's projectCustomFields).
 // The doc's third option, a raw "jscontact:<pointer>" projection, is

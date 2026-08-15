@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// T96 (docs/fork-plan/tickets/140-T96-import-duplicate-merge-review.md):
+// T96:
 // Android's device-contacts import must get the same server-side
 // merge/keep-both/discard machinery as every other import path. These tests
 // cover POST /contacts/import/records — the endpoint that feeds a batch of

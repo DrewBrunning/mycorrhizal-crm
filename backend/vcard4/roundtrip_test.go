@@ -7,7 +7,7 @@ import (
 	"mycorrhizal/internal/rfctest"
 )
 
-// Spot-check round trips (40-testing.md §40.1 point 4): a handful of
+// Spot-check round trips (docs/adrs/0003-golden-fixtures-external-test-oracle.md point 4): a handful of
 // P -> neutral -> P and neutral -> P -> neutral checks on whole fixtures,
 // confidence only (not exhaustive field coverage — that's the
 // import_*/export_*/coverage_test.go job).
@@ -145,9 +145,9 @@ func TestRoundtrip_TitleRole(t *testing.T) {
 	}
 }
 
-// TestRoundtrip_PropIDIdentity is a dedicated check for 60-review-gates.md
+// TestRoundtrip_PropIDIdentity is a dedicated check for docs/adrs/0003-golden-fixtures-external-test-oracle.md
 // §60.3's "PROP-ID/ID round-trips" bullet: an element's ID, once exported as
-// PROP-ID, must come back as the same ID on re-import (30-adapters.md §30.B).
+// PROP-ID, must come back as the same ID on re-import (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md).
 func TestRoundtrip_PropIDIdentity(t *testing.T) {
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Name: &contactmodel.Name{Full: "Test"},

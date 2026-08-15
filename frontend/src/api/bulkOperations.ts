@@ -1,4 +1,4 @@
-// Bulk contact operations (N5 — docs/fork-plan/tickets/27-N5-bulk-operations.md).
+// Bulk contact operations (N5 — N5).
 // A single batch endpoint runs one action across many contacts with
 // partial-success semantics. Mirrors backend/models/bulk_operation.go and
 // controllers/bulk_operation_controller.go.

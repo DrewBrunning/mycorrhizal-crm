@@ -16,8 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestThinContactPetKind_RealMigratedSchema is the T37 (docs/fork-plan/
-// tickets/46-T37-pet-relationship-kind-default.md) core round-trip against
+// TestThinContactPetKind_RealMigratedSchema is the T37 core round-trip against
 // the real migrated schema: a thin contact created as the pet side of an
 // owned_by/owns edge must persist with Contact.CRM.Kind == "animal", so the
 // household-suggestion engine (household_service.go's classifyMember) treats

@@ -13,7 +13,7 @@ import (
 )
 
 // BulkContactOperation runs one bulk action across many contacts with
-// partial-success semantics (N5 — docs/fork-plan/tickets/27-N5-bulk-operations.md).
+// partial-success semantics (N5 — N5).
 //
 // Every target is resolved through Contact.VCardUID scoped to the
 // authenticated user, which serves three purposes at once:

@@ -31,7 +31,7 @@ func setupWebhookRetryTestDB(t *testing.T) *gorm.DB {
 }
 
 // TestProcessWebhookRetriesSkipsWhenLocked is the regression test for Tier 3c
-// item 4 (docs/fork-plan/95-backlog-and-priorities.md): ProcessWebhookRetries
+// item 4 : ProcessWebhookRetries
 // previously had no job lock at all, unlike reminders/calendar sync, so
 // multiple instances could double-process the same retry window.
 func TestProcessWebhookRetriesSkipsWhenLocked(t *testing.T) {

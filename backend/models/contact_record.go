@@ -30,7 +30,7 @@ import (
 // API detail/write responses in contact_summary.go, and VCF/JSContact
 // export in export_controller.go) while auditing WP-73's work. All three
 // call sites now go through this one function instead of guessing at the
-// same fix independently — see docs/fork-plan/50-integration-and-rebrand.md
+// same fix independently — see docs/adrs/0001-neutral-hub-and-spoke-contact-model.md
 // WP-70's "Shared mapping function" note; the same discipline applies here.
 //
 // Falls back to a fresh RecordFromContact derivation only when c.Card is
@@ -38,8 +38,7 @@ import (
 // cmd/backfill-contact-records yet, or a Contact that was never saved (so
 // BeforeSave never ran). This protects those cases from exporting/serving a
 // near-empty Card instead of the best-effort flat-field reconstruction.
-// db is used to project confirmed relationship-graph edges (WP-80, docs/
-// fork-plan/91-envelope-data-model.md §91.2) into the returned Record's
+// db is used to project confirmed relationship-graph edges (WP-80, docs/adrs/0001-neutral-hub-and-spoke-contact-model.md) into the returned Record's
 // Card.RelatedTo — see projectRelationshipEdges below. Passing nil skips
 // projection entirely (Card.RelatedTo is returned exactly as stored), which
 // existing callers that predate WP-80 and don't have a *gorm.DB handy can
@@ -53,7 +52,7 @@ func RecordForContact(c *Contact, photoDir string, db *gorm.DB) *contactmodel.Re
 }
 
 // RecordForContactFiltered is RecordForContact plus WP-97/T9's field
-// selection (docs/fork-plan/tickets/13-T9-selective-export.md): sel carries
+// selection (T9): sel carries
 // (a) the §91.13 sensitivity override (FieldSelection.IncludeSensitive),
 // threaded into the projection queries below so private/secret relationship
 // edges, hobby preferences, and vCard-projected custom fields can be included
@@ -101,8 +100,7 @@ func RecordForContactFiltered(c *Contact, photoDir string, db *gorm.DB, sel *Fie
 // entries. It never mutates existing's backing array and the result is never
 // written back to Contact.Card — this is pure read-time synthesis, so
 // Card.RelatedTo's passthrough entries stay exactly as imported regardless
-// of how many times a Record is read (docs/fork-plan/90-vision-and-
-// reconciliation.md D3: the graph is the source of truth, Card.RelatedTo is
+// of how many times a Record is read (the graph is the source of truth, Card.RelatedTo is
 // "the export projection... not a second source of truth").
 //
 // A single edge can project onto BOTH endpoints' cards, because vCard
@@ -236,7 +234,7 @@ func projectTags(db *gorm.DB, vcardUID string, existing []string) []string {
 }
 
 // projectPreferences is T20a's Preference -> Card.PersonalInfo projection
-// (docs/fork-plan/91-envelope-data-model.md §91.9): "a Preference of category
+// (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md): "a Preference of category
 // hobby may project to Card.PersonalInfo, but most preference categories have
 // no standard home and stay internal." So hobby-category preferences become
 // PersonalInfo{Kind:"hobby", Value:<value>} entries appended to a COPY of
@@ -286,7 +284,7 @@ func projectPreferences(db *gorm.DB, vcardUID string, existing []contactmodel.Pe
 }
 
 // projectCustomFields is WP-84b's FieldValue -> Passthrough.VCard projection
-// (docs/fork-plan/94-custom-fields.md §94.5): a definition whose Projection
+// (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md): a definition whose Projection
 // is "vcard:X-<NAME>" rides the existing JCardProp/passthrough machinery,
 // exactly like an imported unknown vCard property, except the CRM itself is
 // the source rather than an external file. "internal-only" definitions (the
@@ -352,18 +350,18 @@ func projectCustomFields(db *gorm.DB, vcardUID string, existing []contactmodel.J
 // BeforeSave (contact.go, runs per-save) and the one-shot
 // cmd/backfill-contact-records tool (runs per-row at migration time) call
 // this same function — per
-// docs/fork-plan/50-integration-and-rebrand.md WP-70's "Shared mapping
+// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md WP-70's "Shared mapping
 // function" note, there must be exactly one Contact->Record mapping, not two
 // competing implementations.
 //
 // Field-by-field mapping decisions cite the corresponding
-// docs/fork-plan/20-correspondence.md concept_id/row. RecordFromContact
+// docs/adrs/0002-correspondence-table-locked-oracle.md concept_id/row. RecordFromContact
 // never panics, including on a nil receiver or a zero-value *Contact.
 //
 // photoDir is the configured profile-photo directory (config.Config.
 // ProfilePhotoDir), needed to bridge Contact.Photo (a filename on disk,
 // relative to photoDir) into a self-contained Card.Media{Kind:"photo"} entry
-// — see buildMedia below and docs/fork-plan/50-integration-and-rebrand.md
+// — see buildMedia below and docs/adrs/0001-neutral-hub-and-spoke-contact-model.md
 // WP-73's photo-bridging prerequisite. Pass "" when the disk-backed photo is
 // genuinely unavailable/irrelevant to the caller (e.g. a context with no
 // filesystem access): buildMedia still falls back to the base64
@@ -379,7 +377,7 @@ func RecordFromContact(c *Contact, photoDir string) *contactmodel.Record {
 	record.ETag = c.ETag
 
 	record.Card = contactmodel.Card{
-		UID:           c.VCardUID, // 20-correspondence.md "uid" row: Card.UID <- VCardUID
+		UID:           c.VCardUID, // docs/adrs/0002-correspondence-table-locked-oracle.md "uid" row: Card.UID <- VCardUID
 		Name:          buildName(c),
 		Nicknames:     buildNicknames(c),
 		Organizations: buildOrganizations(c),
@@ -410,7 +408,7 @@ func RecordFromContact(c *Contact, photoDir string) *contactmodel.Record {
 	// field ... is deliberately not the same concept as vCard GENDER or
 	// JSContact speakToAs. There is no correspondence row for it — it never
 	// round-trips through the standardized Card, by design."). So Gender has
-	// no home in Card, by design, and 20-correspondence.md has no row for it.
+	// no home in Card, by design, and docs/adrs/0002-correspondence-table-locked-oracle.md has no row for it.
 	//
 	// That same spec note describes Gender as living in CRMEnvelope, but
 	// contactmodel.CRMEnvelope (backend/contactmodel/envelope.go) has no
@@ -439,7 +437,7 @@ func RecordFromContact(c *Contact, photoDir string) *contactmodel.Record {
 }
 
 // buildName maps Firstname/Lastname/MiddleName/Prefix/Suffix into
-// Card.Name.Components, per 20-correspondence.md's Name section
+// Card.Name.Components, per docs/adrs/0002-correspondence-table-locked-oracle.md Name section
 // (name.given, name.surname, name.given2, name.title, name.credential rows;
 // vCard N order Family;Given;Additional;Prefix;Suffix). Card.Name.Full (vCard
 // FN) is deliberately left unset: the legacy Contact has no separate FN
@@ -560,7 +558,7 @@ func buildLinks(c *Contact) []contactmodel.Resource {
 
 // buildMedia bridges the disk-based Contact.Photo/PhotoThumbnail into a
 // single Card.Media{Kind:"photo"} entry, per
-// docs/fork-plan/50-integration-and-rebrand.md WP-73's photo-bridging
+// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md WP-73's photo-bridging
 // prerequisite: without this, retiring carddav's legacy mapper for the live
 // CardDAV server (and, before that, WP-71's VCF/JSContact export) would
 // silently stop serving contact photos, since neither RecordFromContact nor
@@ -586,7 +584,7 @@ func buildMedia(c *Contact, photoDir string) []contactmodel.Resource {
 // buildAddresses maps Addresses[] onto the "adr" row (Card.Addresses[]),
 // splitting the flat ContactAddress fields into AddressComponent entries.
 // AddressComponent.Kind "name" is used for Street per JSContact's
-// component-kind registry (10-neutral-model.md), which represents the
+// component-kind registry (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md), which represents the
 // street name (there is no distinct "street" kind — "name" plus "number"
 // together cover it, and the legacy ContactAddress has no separate
 // street-number field to populate "number" from).

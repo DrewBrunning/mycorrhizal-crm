@@ -7,7 +7,7 @@ import (
 )
 
 // Field-selection section tokens for WP-97 / T9 (selective field export +
-// sensitivity gating, docs/fork-plan/tickets/13-T9-selective-export.md).
+// sensitivity gating, T9).
 //
 // These are the coarse-grained, Google-Contacts-picker-style sections a user
 // can choose when exporting a contact card — deliberately NOT per-value
@@ -90,8 +90,7 @@ var validFieldSections = func() map[string]bool {
 // edges, hobby preferences, vCard-projected custom fields) also include their
 // private/secret items. This is the backend half of the foot-gun guard — it
 // is a separate, intentional flag that no amount of ordinary section-checking
-// can imply (docs/fork-plan/92-delivery-roadmap.md §92.6b's second
-// clarification).
+// can imply.
 type FieldSelection struct {
 	Sections         map[string]bool
 	IncludeSensitive bool
@@ -137,8 +136,7 @@ func (f *FieldSelection) Has(token string) bool {
 // This is the single filter point the whole ticket is built around: it runs
 // BEFORE any exporter, and because vcard3/vcard4/jscontact all consume the
 // same neutral Card, one function applies identically to all three formats
-// with zero changes to any adapter (docs/fork-plan/92-delivery-roadmap.md
-// §92.6b).
+// with zero changes to any adapter.
 func ApplyFieldSelection(record *contactmodel.Record, sel *FieldSelection) *contactmodel.Record {
 	if record == nil || sel == nil {
 		return record

@@ -1,9 +1,9 @@
 // Package vcard4 implements the vCard 4.0 format adapter (RFC 6350, plus the
 // RFC 9554/6474/6715/8605 extensions), part of the neutral-model conversion
-// hub described in docs/fork-plan/00-overview.md.
+// hub described in docs/adrs/0001-neutral-hub-and-spoke-contact-model.md.
 //
 // This file (consts.go, WP-40a) declares the exported property and parameter
-// name constants transcribed verbatim from docs/fork-plan/30-adapters.md
+// name constants transcribed verbatim from docs/adrs/0001-neutral-hub-and-spoke-contact-model.md
 // §30.B's "consts.go property names" block, which in turn comes from the IANA
 // vcard-elements registry. The string VALUES must exactly equal the IANA
 // spellings: WP-20's correspondence test hardcodes the same list and checks

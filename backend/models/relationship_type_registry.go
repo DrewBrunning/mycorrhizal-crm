@@ -9,8 +9,7 @@ import (
 // token, whether that reciprocal is itself (symmetric), search synonyms
 // (unused until WP-86's traversal/search work), and the RFC 6350 §6.6.6
 // RELATED TYPE token it projects to on export — empty when the relation has
-// no standard equivalent and must stay internal (docs/fork-plan/91-envelope-
-// data-model.md §91.2's "deliberately lossy" export rule).
+// no standard equivalent and must stay internal (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md's "deliberately lossy" export rule).
 type relationTypeDef struct {
 	Inverse      string
 	Symmetric    bool

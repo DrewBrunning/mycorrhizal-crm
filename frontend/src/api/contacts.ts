@@ -538,7 +538,7 @@ export function rowsToOnlineServices(rows: OnlineServiceRow[]): CardOnlineServic
     }));
 }
 
-// ctx2type (docs/fork-plan/20-correspondence.md §20.4), mirroring the Go
+// ctx2type (docs/adrs/0002-correspondence-table-locked-oracle.md), mirroring the Go
 // contactmodel.ContextToTypeToken map. The neutral model's Contexts vocabulary
 // is private/work; the flat shape this file's adapters produce — and the
 // `contacts.types.*` i18n keys that render it — use home/work.
@@ -845,7 +845,7 @@ export async function getContactsByUid(uids: string[]): Promise<Map<string, Cont
 
 // getContactRecord/updateContactRecord/createContactRecord read and write
 // Card/CRMEnvelope directly. Every contact-editing component has migrated
-// onto these (see docs/fork-plan/95, Tier 0 items 3-6) -- toContactRecordInput
+// onto these (see, Tier 0 items 3-6) -- toContactRecordInput
 // (below) still exists for the e2e test fixtures' convenience, but nothing
 // in the app itself round-trips a full record through the flat Contact shape
 // anymore.
@@ -997,7 +997,7 @@ export async function getContactsByLegacyCircle(circle: string): Promise<{ conta
 // Get random contacts (returns 5 contacts). NOTE: unlike every other
 // endpoint in this file, GetContactsRandom was deliberately left out of the
 // WP-71 nested-Card API migration on the backend (see
-// docs/fork-plan/50-integration-and-rebrand.md) -- it still serializes
+// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md) -- it still serializes
 // models.Contact's raw GORM struct directly, which is already the flat
 // legacy shape (down to gorm.Model's untagged "ID" field matching this
 // type's capital ID). Do NOT route this through toLegacyContact/

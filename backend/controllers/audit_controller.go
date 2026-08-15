@@ -46,7 +46,7 @@ func ListAuditEvents(c *gin.Context) {
 }
 
 // UndoAuditEvent reverts an update by restoring the event's before snapshot
-// (T18, docs/fork-plan/tickets/34-T18-audit-trail.md). Deliberately updates
+// (T18, T18). Deliberately updates
 // only:
 //
 //   - delete events are rejected — restoring a cascade-deleted row across the
@@ -101,8 +101,7 @@ func UndoAuditEvent(c *gin.Context) {
 
 // undoContact restores a Contact from the event's before snapshot.
 //
-// The snapshot has two shapes (T82, docs/fork-plan/tickets/126-T82-audit-
-// snapshots-miss-nested-contact-data.md), and undo must handle both:
+// The snapshot has two shapes (T82, T82), and undo must handle both:
 //
 //   - Events written before T82's capture change were marshaled by
 //     json.Marshal(&Contact), which omits Card/CRM/Passthrough (all json:"-"),

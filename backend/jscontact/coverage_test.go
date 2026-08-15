@@ -11,7 +11,7 @@ import (
 // exercises. init() (rather than inside a Test func body) so registration
 // happens unconditionally whenever the test binary starts, independent of
 // any -run filter — this is what makes TestCoverage_* mechanically reliable
-// rather than aspirational (40-testing.md §40.5).
+// rather than aspirational (docs/adrs/0003-golden-fixtures-external-test-oracle.md).
 var (
 	importCoverage = map[string]bool{}
 	exportCoverage = map[string]bool{}

@@ -19,7 +19,7 @@ import (
 // signature (tx *gorm.DB) error — it has no per-call parameter to receive a
 // photoDir through, unlike RecordFromContact/ApplyRecordToContact's own
 // explicit photoDir parameter (added for WP-73's photo-bridging
-// prerequisite, docs/fork-plan/50-integration-and-rebrand.md). A
+// prerequisite, docs/adrs/0001-neutral-hub-and-spoke-contact-model.md). A
 // package-level var populated at process-init time is the least-invasive way
 // to give BeforeSave the same capability without changing its signature or
 // reaching into files outside backend/models' WP-73 file scope (this WP does
@@ -59,7 +59,7 @@ type ContactIMPP struct {
 
 // ContactAddress is a single structured postal address (vCard ADR).
 //
-// T79 (docs/fork-plan/tickets/123-T79-flat-address-projection-too-narrow.md)
+// T79
 // widened this from the original five fields with the sub-street slots a vCard
 // ADR can carry and a person actually types: POBox (vCard ADR position 1),
 // Apartment (position 2, the "extended address" / address-line-2 slot), and
@@ -139,7 +139,7 @@ type Contact struct {
 	Archived bool `gorm:"default:false" json:"archived"`
 
 	// Neutral RFC 9553/9554/9555 representation (WP-70, P1 — see
-	// docs/fork-plan/50-integration-and-rebrand.md). This is a second,
+	// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md). This is a second,
 	// parallel representation of the same data already held in the legacy
 	// flat/array fields above: purely additive, nothing existing is removed,
 	// renamed, or stops being populated. Populated by RecordFromContact (see
@@ -211,7 +211,7 @@ type Contact struct {
 }
 
 // renders a structured address as a single human-readable line, used to keep the legacy Address scalar in sync for search/list views.
-// T79 (docs/fork-plan/tickets/123-T79-flat-address-projection-too-narrow.md):
+// T79:
 // the sub-street parts (PO box / apartment / floor) sit between street and
 // city, the conventional ordering. Migration 000022's SQL backfill mirrors
 // this exact component order.
@@ -301,7 +301,7 @@ func DeriveSortName(lastname, firstname string) string {
 // ad-hoc "first array entry wins" logic for Email/Phone is superseded by
 // DeriveProjection's own (equivalent, Pref-aware) primary-value selection,
 // so there is one derivation path, not two competing ones (see
-// docs/fork-plan/50-integration-and-rebrand.md WP-70). Address has no
+// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md WP-70). Address has no
 // neutral projection field (Address stays a free-text legacy scalar), so its
 // ad-hoc sync from the first Addresses[] entry is kept as-is.
 //
@@ -316,8 +316,7 @@ func DeriveSortName(lastname, firstname string) string {
 // columns with no prior value and no back-compat concern, so they are always
 // assigned directly.
 //
-// T75 address-merge rule (docs/fork-plan/tickets/119-T75-plain-save-destroys-
-// card-only-data.md): on the non-cardSetDirectly path, the fresh Card
+// T75 address-merge rule (T75): on the non-cardSetDirectly path, the fresh Card
 // derivation is MERGED onto the loaded Card, not substituted for it. Flat
 // fields are authoritative for what they can express; the loaded Card is
 // authoritative for what they cannot. Flat-owned Card sub-structures are

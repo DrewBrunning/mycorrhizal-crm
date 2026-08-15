@@ -47,7 +47,7 @@ var duplicateReasons = []string{
 }
 
 // FindDuplicatePairs scans a user's contacts for duplicate candidates
-// (T93, docs/fork-plan/tickets/137-T93-duplicate-scan-endpoint-and-review.md).
+// (T93, T93).
 //
 // It answers the set-wide question "which pairs of my contacts look like the
 // same person?" — the deliberate counterpart of DetectDuplicate (import_service

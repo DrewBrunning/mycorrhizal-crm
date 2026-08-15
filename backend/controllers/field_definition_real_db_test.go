@@ -17,7 +17,7 @@ import (
 )
 
 // TestCustomFieldsRealMigratedSchema is the real-DB check for T6
-// (docs/fork-plan/tickets/11-T6-custom-fields-api.md): the ticket's own trap
+// (T6): the ticket's own trap
 // is that AutoMigrate-based tests cannot see a schema mismatch between the
 // Go struct tags and the hand-written migration SQL (the recurring bug class
 // behind ContactSyncLink.ETag). This test runs the FieldDefinition/FieldValue

@@ -3,7 +3,7 @@ import { waitForLoading, createTestContact, deleteTestContact } from './fixtures
 import { E2E_CONTACT_PREFIX } from './global-setup';
 
 /**
- * T103 (docs/fork-plan/tickets/147-T103-contacts-list-has-contact-info-filter.md) —
+ * T103 —
  * the Contacts list defaults to contacts with at least one email/phone/URL and
  * exposes a "Show all" switch to reveal the rest. Backend predicate is pinned
  * by the Go suite; this spec drives the real UI: the default-on filter, the

@@ -306,7 +306,7 @@ func TestSendReminders(t *testing.T) {
 }
 
 // TestSendReminders_ExcludesCompletedAndAlreadySentReminders pins down Tier
-// 3c item 11b (docs/fork-plan/95-backlog-and-priorities.md): SendReminders'
+// 3c item 11b : SendReminders'
 // eligibility filter (`completed = false AND email_sent = false`) had never
 // been exercised with an already-completed or already-sent reminder sitting
 // alongside a genuinely eligible one — only ever tested against reminders

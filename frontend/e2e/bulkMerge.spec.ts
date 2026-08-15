@@ -3,8 +3,7 @@ import { createTestContact, deleteTestContact, waitForLoading, stableClick } fro
 import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 
 /**
- * Bulk merge from the contacts list (T92 — docs/fork-plan/tickets/
- * 136-T92-bulk-merge-from-contacts-list.md). Merge is pairwise, so the
+ * Bulk merge from the contacts list (T92 — T92). Merge is pairwise, so the
  * Contacts page's bulk bar only enables it at exactly two selected rows:
  * anything else (one, or three-plus) is disabled with an explanatory tooltip.
  * Selecting two opens MergeContactsDialog in pair mode (neither row is

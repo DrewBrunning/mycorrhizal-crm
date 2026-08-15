@@ -24,8 +24,7 @@ interface ShareContactDialogProps {
   onShared?: () => void;
 }
 
-// ShareContactDialog is P1's "Share" dialog (docs/fork-plan/tickets/
-// 31-P1-contact-sharing.md) -- a one-time filtered copy sent to another user
+// ShareContactDialog is P1's "Share" dialog (P1) -- a one-time filtered copy sent to another user
 // on the same instance. Reuses T9's FieldSectionPicker exactly (the same
 // sensitivity foot-gun guard ExportFieldPickerDialog uses), swapping the
 // format radio group for a recipient picker since JSContact is the only wire

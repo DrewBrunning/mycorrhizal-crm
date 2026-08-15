@@ -11,12 +11,10 @@ items below are recurring bug classes that have shipped broken more than once.
 
 | Where | What |
 |---|---|
-| `docs/fork-plan/tickets/README.md` | **The status board — the live plan.** Single source of truth for what's outstanding and its order. |
-| `docs/fork-plan/tickets/` | One file per ticket, self-contained enough to implement from. |
-| `docs/fork-plan/91-envelope-data-model.md` | Entity specs with field tables. The detailed source. |
-| `docs/fork-plan/92-delivery-roadmap.md` | WP scope detail. **Not** the execution order or status — `tickets/README.md` is. |
-| `docs/fork-plan/95-backlog-and-priorities.md` | Dated grooming journal — *why* past decisions were made. **Not** the execution order or status. |
-| `docs/fork-plan/00`–`50` | Neutral model, adapters, correspondence, integration history. |
+| **GitHub Issues** | **The backlog — the live plan.** Single source of truth for what's outstanding; open work is filed as feature requests or bug reports. |
+| `docs/adrs/` | Architecture decision records — the load-bearing decisions behind the neutral contact model, the correspondence oracle, golden fixtures, and delete semantics. |
+| `docs/specs/` | Curated RFC 6350/2426/9553/9554/9555 excerpts — the external ground truth. |
+| `docs/golden-fixtures/` | Verbatim RFC example cards — the external test oracle. |
 | `backend/` | Go. Gin + GORM + SQLite, raw-SQL migrations. |
 | `frontend/` | React 18 + TypeScript + MUI + vitest + Playwright. |
 
@@ -76,8 +74,8 @@ same port) — see T51's landing note.
 - **Never commit to `main` or merge without being asked.**
 - **Hand-verify your tests.** Break the code, confirm the new test actually fails, restore. A test that
   has never failed has proven nothing. This has caught real bugs here repeatedly.
-- Update `docs/fork-plan/tickets/README.md`'s status column when a ticket lands, and add a short landing
-  note to that ticket's own file — that pair is the sole status record now, nowhere else.
+- Close the corresponding GitHub issue when a ticket lands; the issue body plus the commit history is the
+  status record.
 
 ## Backend traps
 
@@ -234,9 +232,9 @@ These are real bugs that shipped, not hypotheticals.
 
 ## Security posture
 
-A full security review landed (14 findings, all patched — see `95`'s Tier 1). Keep it: parameterized SQL
+A full security review landed (14 findings, all patched). Keep it: parameterized SQL
 only, no `os/exec`, templates from an embedded FS, `user_id` scoping everywhere, explicit field
 allowlists on updates (no mass assignment), CSV values neutralized against formula injection, SSRF guards
 enforced in the transport dialer. Go toolchain is pinned; don't float it.
 
-Known and accepted: no 2FA yet (ticketed as N8).
+Known and accepted: no 2FA yet (GitHub issue #158).

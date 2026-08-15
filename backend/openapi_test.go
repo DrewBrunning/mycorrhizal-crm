@@ -35,13 +35,13 @@ func loadOpenAPIDoc(t *testing.T) *openapi3.T {
 }
 
 // TestOpenAPISpecValidates loads and validates backend/openapi.yaml (WP-71
-// item 6, docs/fork-plan/50-integration-and-rebrand.md): the spec must be
+// item 6, docs/adrs/0001-neutral-hub-and-spoke-contact-model.md): the spec must be
 // well-formed OpenAPI 3.0 and internally consistent (every $ref resolves,
 // every schema/path is structurally valid). This is a Go-based check
 // (github.com/getkin/kin-openapi, added as a test-only dependency) rather
 // than a Node/swagger-cli install, per this WP's own tooling note (no local
 // Node toolchain is assumed available; Go/Docker is this repo's confirmed
-// toolchain — docs/fork-plan/70-environment.md).
+// toolchain).
 func TestOpenAPISpecValidates(t *testing.T) {
 	doc := loadOpenAPIDoc(t)
 

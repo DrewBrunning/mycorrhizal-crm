@@ -2,7 +2,7 @@ import { test, expect } from './fixtures';
 import { waitForLoading } from './fixtures';
 import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 
-// T56 (docs/fork-plan/tickets/65-T56-bulk-contacts-import-flow.md): the bulk
+// T56: the bulk
 // import entry point lives in Settings → Data, alongside the export UI, and
 // reuses the same wizard as the Contacts page — now with bulk controls. This
 // drives the real dialog end to end through the file input.

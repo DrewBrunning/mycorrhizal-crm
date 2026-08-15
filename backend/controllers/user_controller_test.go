@@ -528,7 +528,7 @@ func TestUpdateLanguage_Succeeds(t *testing.T) {
 }
 
 // TestUpdateLanguage_RejectsUnsupportedCode is the regression test for
-// backlog item 12 (docs/fork-plan/95-backlog-and-priorities.md):
+// backlog item 12:
 // i18n.IsValidLanguage used to normalize via i18n.normalizeLanguage, which
 // falls back to "en" for any unrecognized input, so the rejection branch
 // below was unreachable for any input at all. i18n.NormalizeSupportedLanguage

@@ -103,7 +103,7 @@ func CreateContact(c *gin.Context) {
 
 // applyContactSearch filters a contacts query by a free-text term. The base
 // clause is LIKE-based substring matching over flat columns; T85
-// (docs/fork-plan/tickets/129-T85-contacts-list-fts-search.md) ORs in an FTS5
+// (T85) ORs in an FTS5
 // prefix-token match on contacts_fts, narrowing the same row set the LIKE
 // clause narrows rather than replacing it — see the ticket's "FTS as a
 // filter, not a ranker" decision and its "LIKE and FTS do not match the same
@@ -209,7 +209,7 @@ func GetContacts(c *gin.Context) {
 	}
 
 	// NOTE: the fields= partial-projection param is gone (Gap 3 in
-	// docs/fork-plan/50-integration-and-rebrand.md WP-71) — deliberately, not
+	// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md WP-71) — deliberately, not
 	// an oversight. It is simply no longer read; a request that still sends
 	// it is not rejected, it just has no effect. The fixed ContactSummary
 	// shape (below) now serves the reason fields= existed (avoiding

@@ -54,7 +54,7 @@ type DuplicateMatch struct {
 
 // ImportScalarChange is one scalar field the "Merge" (update) action will
 // overwrite on the matched existing contact, reported as a before/after pair
-// (T96 — docs/fork-plan/tickets/140-T96-import-duplicate-merge-review.md).
+// (T96 — T96).
 // Field is a stable camelCase key so the client can group/label by it; Label
 // is the human-readable fallback the server already knows.
 type ImportScalarChange struct {
@@ -109,7 +109,7 @@ type ImportRowPreview struct {
 
 	// Diagnostics surfaces contactmodel.Diagnostic events (WP-71 Gap 4) from
 	// the vcard4/vcard3/jscontact adapter that parsed this row — e.g. a
-	// gracefully-dropped, no-target-home field (docs/fork-plan/00-overview.md
+	// gracefully-dropped, no-target-home field (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md
 	// §0.5's degradation policy). Empty for CSV-import rows (which don't go
 	// through an adapter at all). Additive: existing preview consumers that
 	// don't know about this field are unaffected.

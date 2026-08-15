@@ -9,9 +9,9 @@ import (
 )
 
 // Full-text search over contacts, notes, and interactions (T11 / WP-86,
-// docs/fork-plan/tickets/24-T11-search-fts5.md; addresses added by T38,
-// docs/fork-plan/tickets/47-T38-search-address-fields.md; phones added by T69,
-// docs/fork-plan/tickets/113-T69-phone-search-tokenization.md). Backed by FTS5
+// T11; addresses added by T38,
+// T38; phones added by T69,
+// T69). Backed by FTS5
 // virtual tables kept in sync by triggers (migrations 000007 + 000010 +
 // 000020); the index is derived data and can be rebuilt at any time via
 // RebuildSearchIndex.
@@ -142,7 +142,7 @@ func phoneFTSMatch(digits, key string) string {
 //
 // Both Search (this file, the cross-entity /search endpoint) and
 // applyContactSearch (controllers/contact_controller.go, GET
-// /contacts?search=, T85 — docs/fork-plan/tickets/129-T85-contacts-list-fts-search.md)
+// /contacts?search=, T85 — T85)
 // call this, so the two paths' notion of "what a contacts_fts match looks
 // like" cannot drift apart the way it would if each reimplemented the
 // phone-vs-plain choice separately.

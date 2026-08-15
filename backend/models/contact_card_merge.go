@@ -11,7 +11,7 @@ import (
 // full-fidelity Record already persisted on that Contact (loaded), and
 // returns the Record BeforeSave should write back.
 //
-// T75 (docs/fork-plan/tickets/119-T75-plain-save-destroys-card-only-data.md):
+// T75:
 // BeforeSave used to overwrite the loaded Card/CRM/Passthrough wholesale with
 // the fresh flat-field derivation, which silently destroyed every member that
 // has no flat-field home — pronouns (SpeakToAs), hobbies/expertise
@@ -104,7 +104,7 @@ func mergeRecordFromFlat(loaded, fresh contactmodel.Record) contactmodel.Record 
 // scalar dirty comparison below), everything else survives from loaded.
 func mergeCardWithFlat(loaded, fresh contactmodel.Card) contactmodel.Card {
 	merged := loaded
-	// Card.UID mirrors the flat VCardUID column (20-correspondence.md "uid"
+	// Card.UID mirrors the flat VCardUID column (docs/adrs/0002-correspondence-table-locked-oracle.md "uid"
 	// row, populated by RecordFromContact), so it is flat-owned — always from
 	// fresh, never carried over from a stale loaded value.
 	merged.UID = fresh.UID

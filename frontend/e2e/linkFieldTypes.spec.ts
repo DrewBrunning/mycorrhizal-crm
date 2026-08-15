@@ -1,7 +1,7 @@
 import { test, expect } from './fixtures';
 import { API_BASE_URL } from './global-setup';
 
-// T34 (docs/fork-plan/tickets/43-T34-contact-field-linking.md) — the
+// T34 — the
 // LinkFieldType Settings CRUD screen. Each test creates its own uniquely
 // named (timestamped) custom type and deletes it again in a finally block,
 // so a crashed run doesn't leave registry cruft behind for the shared

@@ -56,14 +56,12 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// T90: mark a contact as "Me". Single-purpose, follows the shape of
 			// the other /users mutation routes above.
 			protected.PATCH("/users/me/self-contact", middleware.ValidateJSONMiddleware(&models.SelfContactInput{}), controllers.UpdateSelfContact)
-			// P1 contact sharing recipient picker (docs/fork-plan/tickets/
-			// 31-P1-contact-sharing.md) — the only non-admin way to discover
+			// P1 contact sharing recipient picker — the only non-admin way to discover
 			// other users on the instance; deliberately thinner than
 			// admin-only ListUsers (id+username only).
 			protected.GET("/users/directory", controllers.ListUserDirectory)
 
-			// M3 dashboard composite (docs/fork-plan/tickets/
-			// 82-M3-dashboard-overview-endpoint.md): birthdays + random
+			// M3 dashboard composite: birthdays + random
 			// contacts + upcoming reminders + overdue cadences in one call.
 			protected.GET("/dashboard", controllers.GetDashboard)
 
@@ -78,8 +76,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// N5 bulk operations — registered before /contacts/:id so the
 			// literal path is never captured as a contact ID.
 			protected.POST("/contacts/bulk", middleware.ValidateJSONMiddleware(&models.BulkContactOperationInput{}), controllers.BulkContactOperation)
-			// T93 duplicate scan (docs/fork-plan/tickets/
-			// 137-T93-duplicate-scan-endpoint-and-review.md) — registered
+			// T93 duplicate scan — registered
 			// before /contacts/:id like the other literal paths above, so
 			// "duplicates" is never captured as a contact ID.
 			protected.GET("/contacts/duplicates", controllers.GetDuplicatePairs)
@@ -90,8 +87,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// GET /contacts/:id so the literal /briefing path is never
 			// captured as a contact ID.
 			protected.GET("/contacts/:id/briefing", controllers.GetContactBriefing)
-			// M4 contact-detail composite (docs/fork-plan/tickets/
-			// 83-M4-contact-detail-composite.md): everything the contact
+			// M4 contact-detail composite (M4): everything the contact
 			// detail screen renders, in one call. Same ordering note as
 			// /briefing above — registered after GET /contacts/:id so the
 			// literal /detail path is never captured as a contact ID.
@@ -132,7 +128,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// confirmed via the shared /contacts/import/vcf/confirm endpoint.
 			protected.POST("/contacts/import/records", middleware.ValidateJSONMiddleware(&models.ImportRecordsRequest{}), controllers.UploadImportRecords)
 
-			// P1 contact sharing (docs/fork-plan/tickets/31-P1-contact-sharing.md)
+			// P1 contact sharing
 			// — one-time filtered copy between two users on the same
 			// instance. Accept is preview-only (parses the stored payload
 			// through the same import pipeline above); Confirm delegates to
@@ -156,8 +152,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.DELETE("/relationship-edges/:id", controllers.DeleteRelationshipEdge)
 			protected.PATCH("/relationship-edges/:id/accept", controllers.AcceptRelationshipEdge)
 
-			// Attachment routes (N7 — docs/fork-plan/tickets/
-			// 29-N7-attachments.md). Registered before /contacts/:id reads
+			// Attachment routes (N7 — N7). Registered before /contacts/:id reads
 			// where needed; download/delete are addressed by attachment ID.
 			protected.POST("/contacts/:id/attachments", func(c *gin.Context) {
 				controllers.UploadAttachment(c, cfg)
@@ -207,7 +202,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.POST("/circles/:id/members", middleware.ValidateJSONMiddleware(&models.CircleMemberInput{}), controllers.AddCircleMember)
 			protected.DELETE("/circles/:id/members/:vcard_uid", controllers.RemoveCircleMember)
 
-			// LinkFieldType routes (T34 — docs/fork-plan/tickets/43-T34-contact-field-linking.md)
+			// LinkFieldType routes (T34 — T34)
 			protected.POST("/link-field-types", middleware.ValidateJSONMiddleware(&models.LinkFieldTypeInput{}), controllers.CreateLinkFieldType)
 			protected.GET("/link-field-types", controllers.ListLinkFieldTypes)
 			protected.GET("/link-field-types/:id", controllers.GetLinkFieldType)
@@ -215,7 +210,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.PUT("/link-field-types/:id", middleware.ValidateJSONMiddleware(&models.LinkFieldTypeInput{}), controllers.UpdateLinkFieldType)
 			protected.DELETE("/link-field-types/:id", controllers.DeleteLinkFieldType)
 
-			// Household routes (T1 — docs/fork-plan/tickets/09-T1-households.md)
+			// Household routes (T1 — T1)
 			protected.POST("/households", middleware.ValidateJSONMiddleware(&models.HouseholdInput{}), controllers.CreateHousehold)
 			protected.GET("/households", controllers.ListHouseholds)
 			protected.GET("/households/:id", controllers.GetHousehold)
@@ -226,8 +221,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.PATCH("/households/:id/members/:vcard_uid", controllers.UpdateHouseholdMember)
 			protected.POST("/households/:id/suggest-relationships", controllers.SuggestHouseholdRelationships)
 
-			// T40 address-based household suggestions (docs/fork-plan/
-			// tickets/49-T40-household-suggestions-shared-address.md). The
+			// T40 address-based household suggestions (T40). The
 			// literal /suggestions paths are registered before any /:id
 			// capture would matter (there is no GET /households/:id/... below
 			// that could collide), and accept/dismiss re-validate the group
@@ -245,8 +239,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.POST("/tags/:id/contacts", middleware.ValidateJSONMiddleware(&models.ContactTagInput{}), controllers.AddContactTag)
 			protected.DELETE("/tags/:id/contacts/:vcard_uid", controllers.RemoveContactTag)
 
-			// Custom field definition routes (T6 — docs/fork-plan/tickets/
-			// 11-T6-custom-fields-api.md). FieldValue routes are nested under
+			// Custom field definition routes (T6 — T6). FieldValue routes are nested under
 			// the contact (GET/PUT /contacts/:id/field-values) per the
 			// endpoint-shape decision documented in
 			// field_definition_controller.go.
@@ -265,8 +258,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.PUT("/life-events/:id", middleware.ValidateJSONMiddleware(&models.LifeEventInput{}), controllers.UpdateLifeEvent)
 			protected.DELETE("/life-events/:id", controllers.DeleteLifeEvent)
 
-			// ConversationAgenda routes (T21 — docs/fork-plan/tickets/
-			// 21-T21-conversation-agenda.md). /:id/discuss is registered
+			// ConversationAgenda routes (T21 — T21). /:id/discuss is registered
 			// after /:id reads but the PATCH method never collides with
 			// them.
 			protected.POST("/conversation-agenda", middleware.ValidateJSONMiddleware(&models.ConversationAgendaInput{}), controllers.CreateConversationAgenda)
@@ -276,21 +268,21 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.PATCH("/conversation-agenda/:id/discuss", middleware.ValidateJSONMiddleware(&models.ConversationAgendaDiscussInput{}), controllers.DiscussConversationAgenda)
 			protected.DELETE("/conversation-agenda/:id", controllers.DeleteConversationAgenda)
 
-			// Gift routes (T20b — docs/fork-plan/tickets/28-T20b-gift-tracking.md)
+			// Gift routes (T20b — T20b)
 			protected.POST("/gifts", middleware.ValidateJSONMiddleware(&models.GiftInput{}), controllers.CreateGift)
 			protected.GET("/gifts", controllers.ListGifts)
 			protected.GET("/gifts/:id", controllers.GetGift)
 			protected.PUT("/gifts/:id", middleware.ValidateJSONMiddleware(&models.GiftInput{}), controllers.UpdateGift)
 			protected.DELETE("/gifts/:id", controllers.DeleteGift)
 
-			// Preference routes (T20a — docs/fork-plan/tickets/10-T20a-preferences.md)
+			// Preference routes (T20a — T20a)
 			protected.POST("/preferences", middleware.ValidateJSONMiddleware(&models.PreferenceInput{}), controllers.CreatePreference)
 			protected.GET("/preferences", controllers.ListPreferences)
 			protected.GET("/preferences/:id", controllers.GetPreference)
 			protected.PUT("/preferences/:id", middleware.ValidateJSONMiddleware(&models.PreferenceInput{}), controllers.UpdatePreference)
 			protected.DELETE("/preferences/:id", controllers.DeletePreference)
 
-			// CadencePolicy routes (T19 — docs/fork-plan/tickets/20-T19-cadence.md).
+			// CadencePolicy routes (T19 — T19).
 			// /overdue is registered before /:id so the literal path is never
 			// captured as a policy ID.
 			protected.GET("/cadence-policies/overdue", controllers.GetOverdueCadences)
@@ -345,13 +337,11 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.POST("/webhooks/:id/test", controllers.TestWebhook)
 			protected.GET("/webhooks/:id/deliveries", controllers.GetWebhookDeliveries)
 
-			// Audit trail routes (T18 — docs/fork-plan/tickets/
-			// 34-T18-audit-trail.md). Read-only log surface + update-only undo.
+			// Audit trail routes (T18 — T18). Read-only log surface + update-only undo.
 			protected.GET("/audit", controllers.ListAuditEvents)
 			protected.POST("/audit/:id/undo", controllers.UndoAuditEvent)
 
-			// Notification routes (N9 — docs/fork-plan/tickets/
-			// 30-N9-notification-channels.md). Per-user channel config, the
+			// Notification routes (N9 — N9). Per-user channel config, the
 			// per-user channel toggles, per-channel test notification, and Web
 			// Push device registrations.
 			protected.GET("/notifications/config", controllers.GetNotificationConfig)
@@ -361,8 +351,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.POST("/notifications/push-subscriptions", middleware.ValidateJSONMiddleware(&models.PushSubscriptionInput{}), controllers.CreatePushSubscription)
 			protected.DELETE("/notifications/push-subscriptions/:id", controllers.DeletePushSubscription)
 
-			// Mobile push device registrations (M2 — docs/fork-plan/tickets/
-			// 81-M2-fcm-mobile-push.md). Platform-agnostic: a device registers
+			// Mobile push device registrations (M2 — M2). Platform-agnostic: a device registers
 			// a token + client (fcm today, apns accepted), the backend
 			// dispatches delivery by client. The web app never enrolls
 			// devices; it lists and deletes them in Settings.
@@ -385,8 +374,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.DELETE("/contact-subscriptions/:id", controllers.DeleteContactSubscription)
 			protected.POST("/contact-subscriptions/:id/sync", controllers.SyncContactSubscription)
 
-			// ExternalIdentity routes (T14 — docs/fork-plan/tickets/
-			// 32-T14-external-link-substrate.md): the generic integration
+			// ExternalIdentity routes (T14 — T14): the generic integration
 			// substrate's link/enrichment CRUD. System-agnostic — no
 			// integration-specific route lives here.
 			protected.POST("/external-identities", middleware.ValidateJSONMiddleware(&models.ExternalIdentityInput{}), controllers.CreateExternalIdentity)
@@ -403,8 +391,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.PUT("/external-activities/:id", middleware.ValidateJSONMiddleware(&models.ExternalActivityInput{}), controllers.UpdateExternalActivity)
 			protected.DELETE("/external-activities/:id", controllers.DeleteExternalActivity)
 
-			// Immich routes (T15/T16 — docs/fork-plan/tickets/
-			// 33-T15-T16-immich.md): the first concrete integration on the
+			// Immich routes (T15/T16 — T15/T16): the first concrete integration on the
 			// generic substrate. Config is per-user-global; links are written
 			// as ExternalIdentity (system: "immich"), enrichment as
 			// ExternalActivity. /contacts/:vcard_uid/thumbnail is the hardened
@@ -460,7 +447,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 }
 
 // registerCalDAVRoutes sets up CalDAV endpoints for Interaction/LifeEvent
-// sync (T12b, docs/fork-plan/tickets/35-T12b-caldav-serve.md). Authentication
+// sync (T12b, T12b). Authentication
 // reuses the CardDAV BasicAuth path (password or a DAV-scoped API token), so
 // both DAV surfaces share one credential story. Read-only: clients subscribe,
 // they never write through this endpoint.

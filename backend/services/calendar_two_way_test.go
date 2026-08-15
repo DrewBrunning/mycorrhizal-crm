@@ -19,7 +19,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// T13 two-way calendar sync (docs/fork-plan/tickets/36-T13-two-way-calendar.md)
+// T13 two-way calendar sync (T13)
 //
 // Conflict policy under test (documented in pushLocalEdits' doc comment):
 // local-wins on both-changed, no automatic deletions in either direction.

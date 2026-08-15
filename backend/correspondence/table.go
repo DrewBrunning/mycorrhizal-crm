@@ -1,6 +1,6 @@
 // Package correspondence is the typed accessor for the correspondence oracle:
 // the neutral ⇄ JSContact ⇄ vCard4 ⇄ vCard3 mapping table authored in
-// docs/fork-plan/20-correspondence.md and materialized as testdata/correspondence.tsv.
+// docs/adrs/0002-correspondence-table-locked-oracle.md and materialized as testdata/correspondence.tsv.
 // This package contains no mapping logic itself — it only parses and indexes
 // the table so adapters and tests can consume it.
 package correspondence

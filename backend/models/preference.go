@@ -8,7 +8,7 @@ import (
 )
 
 // Category values stored on Preference.Category — the conventional, open set
-// from docs/fork-plan/91-envelope-data-model.md §91.9 (trailing "…" there:
+// from docs/adrs/0001-neutral-hub-and-spoke-contact-model.md (trailing "…" there:
 // food, drink, clothing_size, hobby, gift, dislike, media, …). Deliberately
 // NOT validated with a `oneof` tag, matching the open-classifier reasoning of
 // LifeEvent.Type/HouseholdMember.Role: the suggestion engine (and future AI
@@ -34,7 +34,7 @@ const (
 )
 
 // Preference is one structured personal fact about an entity
-// (docs/fork-plan/91-envelope-data-model.md §91.9) — "important info that
+// (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md) — "important info that
 // currently only lives in notes or the single Contact.FoodPreference
 // free-text field", generalized: a category/key/value triple with provenance
 // and staleness tracking.

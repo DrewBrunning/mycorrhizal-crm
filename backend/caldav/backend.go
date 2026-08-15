@@ -1,11 +1,11 @@
 // Package caldav serves the CRM's own Interactions (Activities) and
 // LifeEvents out as a CalDAV/iCalendar collection that external calendar
-// clients can subscribe to (docs/fork-plan/tickets/35-T12b-caldav-serve.md).
+// clients can subscribe to (T12b).
 // The import direction — a subscribed remote calendar becoming Activities —
 // lives in services/calendar_sync_service.go; this package is the serve half.
 //
 // T12b is read-only by design: PutCalendarObject/DeleteCalendarObject return
-// errors. Two-way (T13, docs/fork-plan/tickets/36-T13-two-way-calendar.md) is
+// errors. Two-way (T13, T13) is
 // about pushing CRM edits out to a *subscribed* remote calendar, which is a
 // CalendarSyncService concern, not a server-side PUT path.
 package caldav

@@ -2,11 +2,11 @@
 
 This directory has two layers:
 
-1. **Golden fixtures** (locked) — copied byte-for-byte from `docs/fork-plan/golden-fixtures/` per
-   `docs/fork-plan/60-review-gates.md`. Do NOT hand-edit these. The table below is copied verbatim from
+1. **Golden fixtures** (locked) — copied byte-for-byte from `docs/golden-fixtures/` per
+   `docs/adrs/0003-golden-fixtures-external-test-oracle.md`. Do NOT hand-edit these. The table below is copied verbatim from
    that directory's own `SOURCES.md`.
 2. **Per-concept minimal fixtures** (this WP, WP-60) — small hand-authored/spec-anchored fixtures added
-   to cover `docs/fork-plan/20-correspondence.md` §20.3 concepts that have no golden (RFC-worked-example)
+   to cover `docs/adrs/0002-correspondence-table-locked-oracle.md` concepts that have no golden (RFC-worked-example)
    fixture, so later WPs (30b/40b/50) have a focused single-concept fixture to write import tests
    against. See the second table below.
 
@@ -28,7 +28,7 @@ This directory has two layers:
 | rfc6350-baseline.v4.vcf | RFC 6350 §7.2.1 | minimal valid 4.0 card; FN, N, EMAIL, UID, PID/CLIENTPIDMAP passthrough |
 | rfc2426-baseline.v3.vcf | RFC 2426 §7 | **vCard 3.0** baseline: FN, ORG, multi-ADR/TEL/EMAIL with comma-joined TYPE lists, URL |
 
-### Fixture-coverage fallback rule (binding, inherited from `docs/fork-plan/golden-fixtures/SOURCES.md`)
+### Fixture-coverage fallback rule (binding, inherited from `docs/golden-fixtures/SOURCES.md`)
 
 Not every mapped concept has an RFC-provided worked example — most RFCs don't bother illustrating
 unchanged RFC 6350 baseline behavior (e.g. a second plain `EMAIL` line). Rule:
@@ -45,7 +45,7 @@ unchanged RFC 6350 baseline behavior (e.g. a second plain `EMAIL` line). Rule:
 
 ## 2. Per-concept minimal fixtures (added by WP-60)
 
-Every row below is a concept from `docs/fork-plan/20-correspondence.md` §20.3 that has **no** golden
+Every row below is a concept from `docs/adrs/0002-correspondence-table-locked-oracle.md` that has **no** golden
 fixture above. Each is a minimal vCard 4.0 card (`BEGIN/VERSION/UID/FN` + the one property under test),
 except `phone`/`email` which are also given as minimal JSContact fragments (illustrating the Id-map
 collection shape) since `email`/`phone` are already exercised on the vCard side by the golden baseline
@@ -61,7 +61,7 @@ doc (never contradicting it).
 | updated.v4.vcf | updated | REV | verbatim RFC 6350 §4.3 TIMESTAMP grammar example (`docs/specs/rfc6350-baseline.md` §1), applied as a REV value |
 | language.v4.vcf | language | LANGUAGE | verbatim RFC 9554 §3.3 (`docs/specs/rfc9554-vcard-extensions.md` §1: `LANGUAGE:de-AT`) |
 | nickname.v4.vcf | nickname | NICKNAME | hand-authored, minimal, RFC-syntax-conformant (baseline RFC 6350 §6.2.3 text-list property) |
-| org-unit.v4.vcf | org.unit | ORG | hand-authored, minimal, RFC-syntax-conformant (baseline RFC 6350 §6.6.4 `name;unit1;unit2` structured value, per `org_units` transform in `20-correspondence.md` §20.4) |
+| org-unit.v4.vcf | org.unit | ORG | hand-authored, minimal, RFC-syntax-conformant (baseline RFC 6350 §6.6.4 `name;unit1;unit2` structured value, per `org_units` transform in `docs/adrs/0002-correspondence-table-locked-oracle.md`) |
 | impp.v4.vcf | impp | IMPP | hand-authored, minimal, RFC-syntax-conformant (baseline RFC 6350 §6.4.3 URI-typed property) |
 | adr-tz.v4.vcf | adr.tz | ADR;TZ= | hand-authored, minimal, RFC-syntax-conformant (ADR structure extends the `rfc6350-baseline`/`adr-expanded` golden cards' 7/18-field convention with a TZ param) |
 | anniversary-birth.v4.vcf | anniversary.birth | BDAY | verbatim RFC 6350 §4.3 DATE grammar example (`docs/specs/rfc6350-baseline.md` §1: `19850412`), applied as a BDAY value |
@@ -92,13 +92,13 @@ doc (never contradicting it).
 
 ### Scope note (flagged, not silently decided)
 
-Per `docs/fork-plan/40-testing.md` §40.4, "per-concept minimal" fixtures are "one tiny fixture per
+Per `docs/adrs/0003-golden-fixtures-external-test-oracle.md`, "per-concept minimal" fixtures are "one tiny fixture per
 concept group" (singular), not one per concept **per format**. To keep this WP's fixture count
-proportionate to its acceptance bar ("Loader compiles; fixtures parse" — `00-overview.md` §0.7), the 30
+proportionate to its acceptance bar ("Loader compiles; fixtures parse" — `docs/adrs/0001-neutral-hub-and-spoke-contact-model.md`), the 30
 concepts above got a single vCard 4.0 fixture each (the richest/most-common target format), plus two
 illustrative JSContact fixtures (`phone`, `email`) to show the Id-map collection shape referenced in
-`docs/fork-plan/40-testing.md` §40.3's pseudo-example. WP-30b (JSContact adapter) and WP-50 (vCard 3.0
+`docs/adrs/0003-golden-fixtures-external-test-oracle.md`'s pseudo-example. WP-30b (JSContact adapter) and WP-50 (vCard 3.0
 adapter) may need additional same-concept fixtures in their own format (JSContact JSON / vCard 3.0) for
 their focused import/export tests — those can either be added here (extending this directory) or as
-package-local `testdata/` fixtures per `40-testing.md` §40.2's layout; this WP does not attempt to
+package-local `testdata/` fixtures per `docs/adrs/0003-golden-fixtures-external-test-oracle.md`'s layout; this WP does not attempt to
 pre-populate every concept in all three formats.

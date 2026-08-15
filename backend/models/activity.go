@@ -10,7 +10,7 @@ import (
 
 // Conventional (not validated — same open-classifier reasoning as
 // CRMEnvelope.Kind (WP-82) and HouseholdMember.Role (WP-83)) values for
-// Activity.Type. docs/fork-plan/91-envelope-data-model.md §91.7 lists these
+// Activity.Type. docs/adrs/0001-neutral-hub-and-spoke-contact-model.md lists these
 // with a trailing "…", signalling an open, extensible set rather than a
 // closed system state.
 const (
@@ -25,7 +25,7 @@ const (
 )
 
 // Activity struct to represent shared activities with one or more contacts
-// — "Interaction" in docs/fork-plan/91-envelope-data-model.md §91.7 ("what
+// — "Interaction" in docs/adrs/0001-neutral-hub-and-spoke-contact-model.md ("what
 // happened between us"). §91.7 generalizes rather than replaces this v1:
 // UUID/Type/ExternalRef are additive columns alongside the existing int PK,
 // following Contact.VCardUID's own precedent (contact.go) for adding a

@@ -2,7 +2,7 @@ package controllers
 
 // This file exercises models.ContactRecordInput through the REAL
 // middleware.ValidateJSONMiddleware + apperrors.ErrorHandlerMiddleware chain
-// (per docs/fork-plan/45-test-coverage-closure.md, work package TC-1.6),
+// (per docs/adrs/0003-golden-fixtures-external-test-oracle.md, work package TC-1.6),
 // rather than the withValidated test helper used elsewhere in
 // contact_controller_test.go, which bypasses validation/JSON-bind entirely.
 // It follows the exact wiring pattern established in
@@ -156,9 +156,7 @@ func TestCreateContact_RealValidation_EmptyGenderAccepted(t *testing.T) {
 }
 
 // TestCreateContact_RealValidation_ThinEntityAccepted is WP-82's locking-in
-// test for the "nothing but name required" thin-entity invariant (docs/
-// fork-plan/90-vision-and-reconciliation.md D3, docs/fork-plan/
-// 91-envelope-data-model.md §91.1) — investigation during WP-82's planning
+// test for the "nothing but name required" thin-entity invariant (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md) — investigation during WP-82's planning
 // found this already worked end-to-end (both here and in the frontend's
 // AddContactDialog), so this asserts that finding rather than building
 // anything new. A request carrying only a given-name component — no email,

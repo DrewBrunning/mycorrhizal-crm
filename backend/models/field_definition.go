@@ -9,7 +9,7 @@ import (
 )
 
 // Target values stored on FieldDefinition.Target -- which entity kind a
-// custom field attaches to. docs/fork-plan/94-custom-fields.md §94.3: "contact
+// custom field attaches to. docs/adrs/0001-neutral-hub-and-spoke-contact-model.md: "contact
 // initially; model allows relationship/household/... later." A closed,
 // single-value enum today, widened when a second target actually ships.
 const (
@@ -55,7 +55,7 @@ type FieldConstraints struct {
 }
 
 // FieldDefinition is the schema half of WP-84b's custom-fields system
-// (docs/fork-plan/94-custom-fields.md §94.3) -- a user-defined, typed,
+// (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md) -- a user-defined, typed,
 // optionally validated and standards-projected property, generalizing the
 // retired untyped v1. Distinct from native
 // contactmodel.Card fields: this is the user's escape hatch for concepts the

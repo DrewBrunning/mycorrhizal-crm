@@ -8,7 +8,7 @@ import (
 )
 
 // CadencePolicy is a relationship-maintenance rule — "stay in touch every N
-// days" (docs/fork-plan/91-envelope-data-model.md §91.10, T19).
+// days" (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md, T19).
 //
 // Relationship-driven, deliberately distinct from date-driven Reminders and
 // action-driven Tasks: the cadence resets on a *qualifying interaction*

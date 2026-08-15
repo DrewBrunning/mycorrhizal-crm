@@ -19,8 +19,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Tier 3c item 9 (docs/fork-plan/95-backlog-and-priorities.md), re-dispatching
-// Phase 3a of docs/fork-plan/45-test-coverage-closure.md: computeSignature,
+// Tier 3c item 9 , re-dispatching
+// Phase 3a of docs/adrs/0003-golden-fixtures-external-test-oracle.md: computeSignature,
 // retryAt, saveDelivery, deliverWebhook, TriggerWebhooks and
 // TestWebhookDelivery were all at 0% (or near it) coverage. This file covers
 // the delivery path itself (signing, backoff, persistence, actual HTTP

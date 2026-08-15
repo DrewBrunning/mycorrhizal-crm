@@ -3,7 +3,7 @@ package models
 import "time"
 
 // ContactBriefing is the read-only composition behind GET /contacts/:id/
-// briefing (N2 — docs/fork-plan/tickets/22-N2-prep-view.md): everything the
+// briefing (N2 — N2): everything the
 // user wants to know about a person in the five minutes before seeing them,
 // in one response. It is a pure aggregation of existing data — never
 // persisted, never cached; every field degrades to its zero value when the

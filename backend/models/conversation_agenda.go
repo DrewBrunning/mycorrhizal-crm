@@ -8,7 +8,7 @@ import (
 )
 
 // ConversationAgenda is "things to bring up next time I see them" — contextual
-// memory surfaced on the contact view (docs/fork-plan/91-envelope-data-model.md
+// memory surfaced on the contact view (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md
 // §91.11, ticket T21). It is deliberately NOT date-scheduled: an agenda item
 // has no due date and no completion cron (that is what distinguishes it from a
 // Reminder). It is surfaced by context, not by time, and is resolved by

@@ -34,7 +34,7 @@ func testJPEGDataURL() string {
 
 // fullyPopulatedContact builds a *Contact with every field RecordFromContact
 // maps populated, so tests can assert each lands in its correct neutral
-// home per docs/fork-plan/20-correspondence.md.
+// home per docs/adrs/0002-correspondence-table-locked-oracle.md.
 func fullyPopulatedContact() *Contact {
 	return &Contact{
 		Firstname:   "Jane",
@@ -78,7 +78,7 @@ func fullyPopulatedContact() *Contact {
 }
 
 // TestRecordFromContact_FullyPopulated asserts every mapped Contact field
-// lands in the neutral home documented by 20-correspondence.md.
+// lands in the neutral home documented by docs/adrs/0002-correspondence-table-locked-oracle.md.
 func TestRecordFromContact_FullyPopulated(t *testing.T) {
 	c := fullyPopulatedContact()
 	record := RecordFromContact(c, "")
@@ -583,7 +583,7 @@ func TestContactETagBulkUpdateOnZeroValueReceiverDoesNotCorrupt(t *testing.T) {
 // TestFormatAddress pins the human-readable display line used to keep the
 // legacy Address scalar (and, through FlattenAddresses, the searchable
 // AddressesFlat column) in sync with the structured Addresses[] JSON. T79
-// (docs/fork-plan/tickets/123-T79-flat-address-projection-too-narrow.md)
+// (T79)
 // widened the projection with the sub-street parts a vCard ADR can carry, and
 // the conventional display ordering puts them between street and city.
 func TestFormatAddress(t *testing.T) {

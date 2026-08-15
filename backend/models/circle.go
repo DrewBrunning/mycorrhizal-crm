@@ -8,7 +8,7 @@ import (
 )
 
 // Circle is a social grouping — "how I know them / that they likely know
-// each other" (docs/fork-plan/91-envelope-data-model.md §91.5). Distinct
+// each other" (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md). Distinct
 // from Tag (an attribute of the person, tag.go): a circle says something
 // about *my* connection/context, not about the contact as an individual, so
 // it has no standards projection.

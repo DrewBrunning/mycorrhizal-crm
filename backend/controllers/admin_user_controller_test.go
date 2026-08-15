@@ -20,7 +20,7 @@ import (
 )
 
 // TestDeleteUser_CleansUpAllOwnedRows is the regression test for Tier 3c
-// item 1 (docs/fork-plan/95-backlog-and-priorities.md): DeleteUser must not
+// item 1 : DeleteUser must not
 // leave orphaned rows in any of the 14 tables that reference a user, not just
 // the handful it originally covered.
 func TestDeleteUser_CleansUpAllOwnedRows(t *testing.T) {
@@ -77,7 +77,7 @@ func TestDeleteUser_CleansUpAllOwnedRows(t *testing.T) {
 	require.NoError(t, db.Create(&activity).Error)
 	require.NoError(t, db.Create(&models.CalendarEventLink{SubscriptionID: calSub.ID, UserID: target.ID, UID: "evt-1", ActivityID: activity.ID, ContentHash: "h"}).Error)
 
-	// P1 (docs/fork-plan/tickets/31-P1-contact-sharing.md): ContactShare has
+	// P1: ContactShare has
 	// TWO owning columns, not one -- a departing user's rows must be swept
 	// whether they were the sender or the recipient.
 	var admin models.User
@@ -679,7 +679,7 @@ func TestUpdateUser_DuplicateUsername_Conflict(t *testing.T) {
 // --- UpdateUser: admin/last-admin-protection invariants ---
 //
 // These tests cover the privilege-escalation-adjacent concern called out by
-// Phase 3b of docs/fork-plan/45-test-coverage-closure.md. DeleteUser (see
+// Phase 3b of docs/adrs/0003-golden-fixtures-external-test-oracle.md. DeleteUser (see
 // TestDeleteUser_CleansUpAllOwnedRows above and DeleteUser's own guards at
 // admin_user_controller.go:272-301) blocks self-deletion and last-admin
 // deletion; the question here is whether UpdateUser has equivalent guards

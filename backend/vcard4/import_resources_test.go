@@ -8,7 +8,7 @@ import (
 
 // Concepts: photo, logo, sound, calendar, freebusy, caladruri, key,
 // directory, source, link, contacturi. All per-concept fixtures (see
-// docs/fork-plan/... / backend/internal/rfctest/fixtures/SOURCES.md);
+// docs/golden-fixtures/SOURCES.md and backend/internal/rfctest/fixtures/SOURCES.md);
 // directory/contacturi are RFC 6715/8605 verbatim examples.
 func init() {
 	registerImportCoverage(

@@ -8,13 +8,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Tier 3c item 11c (docs/fork-plan/95-backlog-and-priorities.md): MergeImportedContact's
+// Tier 3c item 11c : MergeImportedContact's
 // "incoming wins when non-empty, existing survives when incoming blank" policy had only ever
 // been asserted for a single scalar field (Phone, in TestParseVCF_DuplicateDetectionAndMerge).
 // These tests pin the same policy down for every array field (Emails/Phones/Addresses/URLs/
 // IMPPs/Circles) and for the "existing survives" direction, which was never asserted at all.
 //
-// T49 (docs/fork-plan/tickets/58-T49-vcf-import-merge-corrupts-existing-contact.md) replaced
+// T49 replaced
 // the array fields' "replace whenever incoming has any entries" semantics with an additive
 // merge: existing entries always survive, and only genuinely new (non-blank, not-already-
 // present) incoming entries get appended. TestMergeImportedContact_ArrayFieldsOverwriteWhenIncomingNonEmpty

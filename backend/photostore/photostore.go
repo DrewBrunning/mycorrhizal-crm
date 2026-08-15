@@ -5,7 +5,7 @@
 // (raw base64, a data: URI, or a vCard PHOTO field).
 //
 // Extracted from backend/carddav/vcard_mapper.go per
-// docs/fork-plan/50-integration-and-rebrand.md WP-73's photo-bridging
+// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md WP-73's photo-bridging
 // prerequisite: backend/models needs this logic too (to bridge
 // Contact.Photo/PhotoThumbnail <-> contactmodel.Card.Media), but carddav
 // already imports models (carddav/auth.go, carddav/backend.go), so models

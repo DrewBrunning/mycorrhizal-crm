@@ -22,7 +22,7 @@ import (
 
 // Import limits
 //
-// Sized for T56 (docs/fork-plan/tickets/65-T56-bulk-contacts-import-flow.md):
+// Sized for T56:
 // a Google Takeout or other contacts-app full export can run into the
 // hundreds of contacts — and, for VCF, carry a photo per contact — so these
 // caps are generous enough to bring an entire existing address book in one
@@ -121,8 +121,7 @@ func sniffVCardVersion(block []byte) string {
 	}
 }
 
-// diagnosticsToStrings renders adapter Diagnostics (docs/fork-plan/
-// 00-overview.md §0.5's degradation policy) as human-readable strings for
+// diagnosticsToStrings renders adapter Diagnostics (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md's degradation policy) as human-readable strings for
 // models.ImportRowPreview.Diagnostics.
 func diagnosticsToStrings(diags []contactmodel.Diagnostic) []string {
 	if len(diags) == 0 {
@@ -166,7 +165,7 @@ func extractPhotoFromRecord(rec *contactmodel.Record) (data []byte, mediaType st
 
 // ParseVCF reads and parses a VCF file, returning contact data and previews.
 //
-// Per docs/fork-plan/50-integration-and-rebrand.md WP-71 Gap 4, this now
+// Per docs/adrs/0001-neutral-hub-and-spoke-contact-model.md WP-71 Gap 4, this now
 // splits the file into per-card blocks, sniffs each block's VERSION, and
 // routes it through the vcard4/vcard3 adapter accordingly — replacing the
 // legacy carddav.VCardToContact mapper — then turns the resulting

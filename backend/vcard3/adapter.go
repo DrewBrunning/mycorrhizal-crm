@@ -15,8 +15,8 @@ import (
 )
 
 // Adapter implements contactmodel.Importer and contactmodel.Exporter for
-// legacy vCard 3.0 (RFC 2426). See docs/fork-plan/30-adapters.md §30.C for
-// the binding rules this file follows, and docs/fork-plan/20-correspondence.md
+// legacy vCard 3.0 (RFC 2426). See docs/adrs/0001-neutral-hub-and-spoke-contact-model.md for
+// the binding rules this file follows, and docs/adrs/0002-correspondence-table-locked-oracle.md
 // (§20.3 table, §20.6 degradation summary) for the mapping this file
 // implements. This adapter shares no code with backend/vcard4 or
 // backend/jscontact and does not import either package.
@@ -30,9 +30,9 @@ var _ contactmodel.Exporter = Adapter{}
 // ---------------------------------------------------------------------
 
 // Export renders r into vCard 3.0 wire bytes. Per the degradation policy
-// (docs/fork-plan/00-overview.md §0.5), it never returns an error for
+// (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md), it never returns an error for
 // unmappable/degraded data: every concept named in
-// docs/fork-plan/20-correspondence.md §20.6 as having no vCard 3.0 home
+// docs/adrs/0002-correspondence-table-locked-oracle.md as having no vCard 3.0 home
 // yields a contactmodel.Diagnostic{Severity:"warn"} and is omitted from the
 // output, while remaining untouched on the input Record.
 func (Adapter) Export(r *contactmodel.Record) ([]byte, []contactmodel.Diagnostic, error) {
@@ -67,7 +67,7 @@ func (Adapter) Export(r *contactmodel.Record) ([]byte, []contactmodel.Diagnostic
 		warn(&diags, "created", "vCard 3.0 has no CREATED property (RFC 9554); dropped")
 	}
 	if r.Card.Language != "" {
-		warn(&diags, "language", "vCard 3.0 has no home for a card-level default language in this P0 scope; dropped (RFC 9555's richer 'apply as default LANGUAGE param' behavior is deferred post-P0 per 20-correspondence.md's language row)")
+		warn(&diags, "language", "vCard 3.0 has no home for a card-level default language in this P0 scope; dropped (RFC 9555's richer 'apply as default LANGUAGE param' behavior is deferred post-P0 per docs/adrs/0002-correspondence-table-locked-oracle.md language row)")
 	}
 
 	// --- Name ---
@@ -195,7 +195,7 @@ func (Adapter) Export(r *contactmodel.Record) ([]byte, []contactmodel.Diagnostic
 	// SOCIALPROFILE is a safe default guess for genuinely unclassified data.
 	for range r.Card.OtherOnlineServices {
 		// Concept "onlineservice.other" (not "impp"): OtherOnlineServices has
-		// no correspondence-table row at all (20-correspondence.md SS20.7) —
+		// no correspondence-table row at all (docs/adrs/0002-correspondence-table-locked-oracle.md SS20.7) —
 		// it is not the `impp` concept, just an unclassified bucket that
 		// happens to share the OnlineService element type.
 		warn(&diags, "onlineservice.other", "Card.OtherOnlineServices has no vCard export (neither IMPP nor SOCIALPROFILE is a safe default for unclassified data); dropped")
@@ -818,7 +818,7 @@ func importLinks(card vcard.Card, rec *contactmodel.Record) {
 // importAgentRelated reverses the "related" concept's export-side AGENT
 // redirect (20.6: "3.0: no RELATED → AGENT/warn") so a vcard3 round-trip
 // preserves the relation's target. This isn't separately called out by
-// 30-adapters.md's import rule (which only names X-ANNIVERSARY/
+// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md import rule (which only names X-ANNIVERSARY/
 // X-SOCIALPROFILE explicitly), but AGENT is otherwise one of our "known"
 // properties with no import destination at all, which would silently drop
 // data on a round trip rather than degrade gracefully — so it is treated
@@ -1175,7 +1175,7 @@ func parseDataURI(uri string) (data, mediatype string, ok bool) {
 // exportMediaField implements the `media_uri` transform's export direction:
 // a data: URI becomes inline ENCODING=b/TYPE=... (RFC 2426 §3.1.4); any other
 // URI (the source is already a URI) is emitted as a bare value, per
-// docs/specs/rfc2426-v3-baseline.md §4 and 30-adapters.md §30.C.
+// docs/specs/rfc2426-v3-baseline.md §4 and docs/adrs/0001-neutral-hub-and-spoke-contact-model.md
 func exportMediaField(uri, mediaType string) *vcard.Field {
 	if data, mt, ok := parseDataURI(uri); ok {
 		if mt == "" {

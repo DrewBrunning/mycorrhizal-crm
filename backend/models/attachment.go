@@ -2,8 +2,7 @@ package models
 
 import "gorm.io/gorm"
 
-// Attachment is one file/document attached to a contact (N7, docs/fork-plan/
-// tickets/29-N7-attachments.md). The row is metadata; the bytes live on disk
+// Attachment is one file/document attached to a contact (N7, N7). The row is metadata; the bytes live on disk
 // under a server-generated UUID filename (StoredName) in the configured
 // attachments directory — never a user-supplied name reaching filepath.Join.
 //

@@ -13,7 +13,7 @@ import (
 
 // mergeScalarFields is the field table backing both ComputeContactMergeResolution
 // and ApplyContactMergeResolution: every scalar covered by ticket N1's
-// "Resolution by field class" table (docs/fork-plan/tickets/01-N1-contact-merge.md).
+// "Resolution by field class" table (N1).
 // Deliberately excludes Email/Phone/Address: those are legacy scalars
 // Contact.BeforeSave (models/contact.go) derives from Emails[0]/Phones[0]/
 // Addresses[0] on every save -- resolving them here and then letting

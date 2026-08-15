@@ -394,8 +394,7 @@ func SuggestHouseholdRelationships(c *gin.Context) {
 	})
 }
 
-// SuggestAddressHouseholds is T40's detection trigger (docs/fork-plan/
-// tickets/49-T40-household-suggestions-shared-address.md): scan the caller's
+// SuggestAddressHouseholds is T40's detection trigger: scan the caller's
 // non-archived contacts, group them by normalized address, and return every
 // group of 2+ that is not already a co-resident household and not dismissed.
 // Read-only and idempotent — it persists nothing. The returned suggestions

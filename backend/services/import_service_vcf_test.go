@@ -174,8 +174,7 @@ func TestParseVCF_TooManyContacts(t *testing.T) {
 	assert.Contains(t, err.Error(), "too many contacts")
 }
 
-// TestParseVCF_OverLegacyLimitSucceeds pins T56's (docs/fork-plan/tickets/
-// 65-T56-bulk-contacts-import-flow.md) raised ceiling: 1001 contacts — just
+// TestParseVCF_OverLegacyLimitSucceeds pins T56's raised ceiling: 1001 contacts — just
 // over the old 1000-contact cap, the size of a real full address-book import
 // — must parse cleanly now instead of being rejected.
 func TestParseVCF_OverLegacyLimitSucceeds(t *testing.T) {

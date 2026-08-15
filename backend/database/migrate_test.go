@@ -124,7 +124,7 @@ func TestMigrationsAddCredentialLifecycleColumns(t *testing.T) {
 }
 
 // TestForeignKeysEnforced is the regression test for Tier 3c item 8
-// (docs/fork-plan/95-backlog-and-priorities.md): foreign_keys is a
+// : foreign_keys is a
 // per-connection SQLite setting, not persisted in the database file, so it
 // must be supplied via the DSN on every InitDB call (openDSN) rather than a
 // one-time PRAGMA statement.
@@ -453,7 +453,7 @@ func TestSearchAddressesMigrationBackfillsExistingRows(t *testing.T) {
 }
 
 // TestFlatAddressSubStreetMigrationBackfillsStrandedCardData is the T79
-// (docs/fork-plan/tickets/123-T79-flat-address-projection-too-narrow.md)
+// (T79)
 // data-recovery test: a contact whose card still holds postOfficeBox/
 // apartment/floor components — imported from a VCF before the flat projection
 // gained slots for them — must have that detail recovered into the flat

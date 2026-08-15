@@ -29,7 +29,7 @@ interface FieldSectionPickerProps {
 // (Google-Contacts-style coarse-grained picker), extracted out of
 // ExportFieldPickerDialog so P1 contact sharing's ShareContactDialog can
 // reuse it exactly rather than reimplementing the sensitivity foot-gun guard
-// (docs/fork-plan/tickets/13-T9-selective-export.md explicitly calls this
+// (T9 explicitly calls this
 // picker out as meant to be reused by sharing). Ordinary sections are
 // opt-out (checked by default, owned by the caller via `selected`);
 // sensitivity-marked sections are opt-in AND gated: disabled, visually

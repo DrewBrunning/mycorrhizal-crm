@@ -8,11 +8,11 @@ import "strings"
 // counts (5-field N, 7-field ADR — no 9554 expansion, no PROP-ID/component
 // params). It has no dependency on contactmodel or correspondence.
 //
-// Per docs/fork-plan/30-adapters.md §30.C's correction: this is a **fresh,
+// Per docs/adrs/0001-neutral-hub-and-spoke-contact-model.md's correction: this is a **fresh,
 // duplicated** copy of the same kind of logic backend/vcard4/components.go
 // has (itself salvaged from backend/carddav/vcard_mapper.go), not an import
 // of vcard4 — vcard4's functions are unexported and no adapter package may
-// import another adapter package (docs/fork-plan/00-overview.md §0.6). The
+// import another adapter package (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md). The
 // escaping rules are confirmed against docs/specs/rfc2426-v3-baseline.md
 // (same backslash-escape family as 4.0: backslash, semicolon as the
 // structured-value separator, plus comma/newline handled by go-vcard's own

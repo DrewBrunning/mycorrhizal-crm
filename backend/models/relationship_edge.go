@@ -34,10 +34,8 @@ const (
 	RelationshipSensitivitySecret  = "secret"
 )
 
-// RelationshipEdge is the relationship graph's edge entity (docs/fork-plan/
-// 91-envelope-data-model.md §91.2) — the internal source of truth for
-// relationships between two Contacts, per docs/fork-plan/90-vision-and-
-// reconciliation.md D3. Distinct from the legacy models.Relationship (a flat,
+// RelationshipEdge is the relationship graph's edge entity (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md) — the internal source of truth for
+// relationships between two Contacts, per D3. Distinct from the legacy models.Relationship (a flat,
 // free-text table this entity is not built on top of and does not yet
 // replace — that cutover is WP-81, a separate later work package).
 //

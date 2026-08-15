@@ -207,7 +207,7 @@ test.describe('Life events', () => {
     }
   });
 
-  // T36 (docs/fork-plan/tickets/45-T36-life-event-categories.md): the
+  // T36: the
   // cascading category -> type picker, its per-category custom-type
   // affordance, and the "Other / Uncategorized" bucket for a pre-existing
   // event with no category.

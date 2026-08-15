@@ -26,7 +26,7 @@ import (
 // photoURLTestRouter builds a real-migrated-schema router (database.InitDB,
 // not AutoMigrate — CLAUDE.md backend trap 1) with the contacts list, detail,
 // and profile-picture endpoints wired, for M6 §1's response-shape tests
-// (docs/fork-plan/tickets/85-M6-photo-url-user-prefs-oidc.md §1).
+// (M6 §1).
 func photoURLTestRouter(t *testing.T) (*gorm.DB, *gin.Engine, *config.Config, models.User) {
 	t.Helper()
 	photoDir := t.TempDir()

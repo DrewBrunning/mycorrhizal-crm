@@ -743,7 +743,7 @@ func importEvents(db *gorm.DB, sub *models.CalendarSubscription, events []calend
 }
 
 // ---------------------------------------------------------------------------
-// T13 — two-way calendar sync (docs/fork-plan/tickets/36-T13-two-way-calendar.md)
+// T13 — two-way calendar sync (T13)
 //
 // CONFLICT POLICY — read before changing anything here.
 //

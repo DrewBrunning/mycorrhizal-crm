@@ -4,7 +4,7 @@
 // and ergonomic Go slices. This package intentionally defines its OWN type
 // set — separate from backend/contactmodel's neutral model — except for
 // contactmodel.JCardProp, which is reused directly for the vCardProps
-// passthrough field, per docs/fork-plan/30-adapters.md §30.A.
+// passthrough field, per docs/adrs/0001-neutral-hub-and-spoke-contact-model.md
 //
 // This file (WP-30a) contains types only. Neutral-model conversion
 // (ToNeutral/FromNeutral) is WP-30b's adapter.go, not this file.
@@ -26,7 +26,7 @@ import (
 // unrecognized nested key round-trips instead of being silently discarded by
 // Go's default json.Unmarshal behavior (the defect this fix addresses; see
 // codec.go's "nested-unknown-property capture" section and
-// docs/fork-plan/30-adapters.md §30.A rule 5). adapter.go reads these
+// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md rule 5). adapter.go reads these
 // directly (same package) to populate Record.Passthrough.JSContact at the
 // correct nested JSON pointer.
 //
@@ -153,7 +153,7 @@ type OrgUnit struct {
 }
 
 // Title's Kind ∈ title|role. Field shape follows backend/contactmodel.Title;
-// confirmed against the title-role golden fixture (docs/fork-plan/golden-fixtures/title-role.jscontact.json).
+// confirmed against the title-role golden fixture (docs/golden-fixtures/title-role.jscontact.json).
 type Title struct {
 	Type           string `json:"@type"`
 	ID             string `json:"-"`

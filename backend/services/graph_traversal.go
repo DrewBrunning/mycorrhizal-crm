@@ -9,8 +9,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// Graph traversal + multi-hop chains (T10 / WP-85, docs/fork-plan/tickets/
-// 23-T10-graph-traversal.md): "Teddy's owner", "John's sister's husband".
+// Graph traversal + multi-hop chains (T10 / WP-85, T10): "Teddy's owner", "John's sister's husband".
 //
 // The traversal is a recursive CTE over relationship_edges. Inferred
 // relations (a grandparent from two parent_of edges) are computed at query

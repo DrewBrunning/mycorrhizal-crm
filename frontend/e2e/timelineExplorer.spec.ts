@@ -3,7 +3,7 @@ import { createTestContact, deleteTestContact, waitForLoading, stableClick } fro
 import { API_BASE_URL } from './global-setup';
 import type { APIRequestContext } from '@playwright/test';
 
-// T78 (docs/fork-plan/tickets/122-T78-web-timeline-bounded-view-explorer.md):
+// T78:
 // the render side of the T66 work -- the contact timeline section truncates
 // to the 5 most recent merged events, and a "View all" button opens a
 // paginated, filterable explorer dialog over the T66 cursor endpoint. The

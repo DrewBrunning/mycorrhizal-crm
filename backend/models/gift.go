@@ -21,8 +21,7 @@ const (
 	GiftStatusReceived  = "received"
 )
 
-// Gift is a gift record against a contact (docs/fork-plan/
-// 91-envelope-data-model.md §91.11, ticket T20b): "what did I give them last
+// Gift is a gift record against a contact (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md, ticket T20b): "what did I give them last
 // year?" — plus the occasion, an optional value with an explicit currency, and
 // an optional link to the LifeEvent or Activity it relates to.
 //

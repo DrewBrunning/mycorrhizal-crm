@@ -10,7 +10,7 @@ import (
 // Rows: Card.UID/UID/identity; Card.Kind/KIND/identity; Card.ProdID/PRODID/identity;
 // Card.Updated/REV/ts_rfc3339; Card.Created/CREATED/ts_rfc3339 (9554 CREATED,
 // golden fixture created.v4.vcf); Card.Language/LANGUAGE/identity (RFC 9554
-// §3.3 — corrected in 20-correspondence.md, was wrongly v4_prop "-").
+// §3.3 — corrected in docs/adrs/0002-correspondence-table-locked-oracle.md, was wrongly v4_prop "-").
 func init() {
 	registerImportCoverage("uid", "kind", "prodid", "updated", "created", "language")
 }

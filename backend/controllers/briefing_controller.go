@@ -14,7 +14,7 @@ import (
 )
 
 // GetContactBriefing returns the N2 "prep view" composition for one contact
-// (docs/fork-plan/tickets/22-N2-prep-view.md): everything the user needs to
+// (N2): everything the user needs to
 // remember about this person before seeing them, in one response.
 //
 // It is read-only — a pure aggregation of existing data (activities, notes,

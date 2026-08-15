@@ -7,7 +7,7 @@ import (
 )
 
 // expectedLifeEventTypeCount is 7 pre-existing constants + 37 new ones added
-// by T36 (docs/fork-plan/tickets/45-T36-life-event-categories.md), the exact
+// by T36, the exact
 // count the ticket itself states.
 const expectedLifeEventTypeCount = 44
 

@@ -35,7 +35,7 @@ func TestNoDuplicateConceptID(t *testing.T) {
 // --- (b) every neutral_path resolves against contactmodel.Record ---------------
 //
 // This implements exactly the resolution algorithm given in
-// docs/fork-plan/20-correspondence.md §20.2 — pure reflect, no custom path DSL
+// docs/adrs/0002-correspondence-table-locked-oracle.md — pure reflect, no custom path DSL
 // beyond the grammar, no enum-value checking.
 
 // parseSegment splits one path segment into its field name and bracket kind.
@@ -106,7 +106,7 @@ func TestNeutralPathResolves(t *testing.T) {
 
 // --- (c) every transform name exists in the 20.4 transforms registry -----------
 
-// validTransforms is the hardcoded name list from docs/fork-plan/20-correspondence.md
+// validTransforms is the hardcoded name list from docs/adrs/0002-correspondence-table-locked-oracle.md
 // §20.4. These are names only, for this mechanical check — the transform
 // implementations themselves belong to the adapter WPs (30/40/50).
 var validTransforms = map[string]bool{
@@ -144,9 +144,9 @@ func TestTransformNamesAreRegistered(t *testing.T) {
 
 // --- (d) every v4_prop/v3_prop (when not "-") is a real IANA property name -----
 //
-// Hardcoded for this check only, from docs/fork-plan/30-adapters.md.
+// Hardcoded for this check only, from docs/adrs/0001-neutral-hub-and-spoke-contact-model.md.
 
-// vcard4Properties is the exact property-name list from 30-adapters.md §30.B's
+// vcard4Properties is the exact property-name list from docs/adrs/0001-neutral-hub-and-spoke-contact-model.md
 // consts.go section ("from IANA vcard-elements; all must appear").
 var vcard4Properties = map[string]bool{
 	"SOURCE": true, "KIND": true, "XML": true, "FN": true, "N": true,
@@ -164,9 +164,9 @@ var vcard4Properties = map[string]bool{
 	"SOCIALPROFILE": true, "JSPROP": true,
 }
 
-// vcard3Properties is the exact property-name list from 30-adapters.md
+// vcard3Properties is the exact property-name list from docs/adrs/0001-neutral-hub-and-spoke-contact-model.md
 // §30.C's consts.go section: "Per RFC 2426 §5 ..., plus the X- extension
-// properties this table actually maps to in 20-correspondence.md".
+// properties this table actually maps to in docs/adrs/0002-correspondence-table-locked-oracle.md".
 var vcard3Properties = map[string]bool{
 	"BEGIN": true, "END": true, "SOURCE": true, "NAME": true, "FN": true,
 	"N": true, "NICKNAME": true, "PHOTO": true, "BDAY": true, "ADR": true,

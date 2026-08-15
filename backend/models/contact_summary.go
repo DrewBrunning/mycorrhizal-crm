@@ -15,7 +15,7 @@ import (
 // response-shape change: the list/detail photo fields carry this URL instead
 // of the raw stored value (a base64 data URI or a legacy disk-file name), so
 // a native client can hand it straight to an authenticated image loader
-// (docs/fork-plan/tickets/85-M6-photo-url-user-prefs-oidc.md §1). The
+// (M6 §1). The
 // endpoint itself is unchanged and still serves raw bytes.
 //
 // preferThumbnail selects the lightweight ?thumbnail=true variant when a
@@ -43,7 +43,7 @@ func ProfilePictureURL(id uint, photo, photoThumbnail string, preferThumbnail bo
 // ContactSummary (list-view) response. Selecting only these avoids the
 // over-fetch (heavy JSON columns like card/emails/phones/addresses/...) that
 // the removed fields= param used to exist to let callers opt out of (Gap 3
-// in docs/fork-plan/50-integration-and-rebrand.md WP-71) — now that the list
+// in docs/adrs/0001-neutral-hub-and-spoke-contact-model.md WP-71) — now that the list
 // endpoint has a fixed slim shape, this is baked in rather than
 // caller-configurable.
 //
@@ -59,7 +59,7 @@ var ContactSummaryColumns = []string{
 }
 
 // ContactSummary is the slim per-item shape for GET /api/v1/contacts (list).
-// Per docs/fork-plan/50-integration-and-rebrand.md WP-71 ("Mobile-CRUD-real"
+// Per docs/adrs/0001-neutral-hub-and-spoke-contact-model.md WP-71 ("Mobile-CRUD-real"
 // section), it wraps contactmodel.Projection's own fields (Firstname,
 // Lastname, FN, PrimaryEmail, PrimaryPhone, Birthday, Org) plus the record's
 // identity (UID) and the existing Photo/PhotoThumbnail — deliberately a new
@@ -180,7 +180,7 @@ func NewContactSummaryWithRelations(c *Contact) ContactSummaryWithRelations {
 //
 // Validation is deliberately light on Card/CRM/Passthrough: per this WP's
 // item 5 (graceful, non-strict validation sourced from the neutral model's
-// own degradation policy, docs/fork-plan/00-overview.md §0.5), nothing here
+// own degradation policy, docs/adrs/0001-neutral-hub-and-spoke-contact-model.md), nothing here
 // hard-fails on an unrecognized enum value (e.g. an unexpected
 // NameComponent.Kind, Anniversary.Kind, or PersonalInfo.Kind) — contactmodel
 // itself (a P0-locked package, out of this WP's scope to modify) carries no

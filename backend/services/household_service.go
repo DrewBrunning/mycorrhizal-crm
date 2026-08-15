@@ -49,8 +49,7 @@ type classifiedMember struct {
 	class    memberClass
 }
 
-// GenerateHouseholdSuggestions is the mechanism from docs/fork-plan/
-// 91-envelope-data-model.md §91.4: re-scans a household's CURRENT membership
+// GenerateHouseholdSuggestions is the mechanism from docs/adrs/0001-neutral-hub-and-spoke-contact-model.md: re-scans a household's CURRENT membership
 // and idempotently ensures a suggested RelationshipEdge exists for every
 // applicable pair, rather than diffing what changed since a prior call —
 // simpler and safe to call repeatedly (e.g. after every membership add).
@@ -199,7 +198,7 @@ func suggestEdgeIfNew(db *gorm.DB, userID uint, sourceID, targetID, edgeType str
 
 // ---------------------------------------------------------------------------
 // T40 — address-based household suggestions
-// (docs/fork-plan/tickets/49-T40-household-suggestions-shared-address.md)
+// (T40)
 //
 // The T1 engine above only proposes RelationshipEdges *within* an existing
 // household. This half scans contacts who share a normalized address but

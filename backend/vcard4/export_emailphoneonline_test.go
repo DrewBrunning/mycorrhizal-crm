@@ -24,7 +24,7 @@ func TestExport_Email(t *testing.T) {
 }
 
 func TestExport_Phone(t *testing.T) {
-	// 40-testing.md §40.3's worked example: feat2type/pref transforms.
+	// docs/adrs/0003-golden-fixtures-external-test-oracle.md worked example: feat2type/pref transforms.
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		Phones: []contactmodel.Phone{{Number: "+15551234567", Features: []string{"cell"}, Pref: intPtr(1)}},
 	}}
@@ -48,7 +48,7 @@ func TestExport_Impp(t *testing.T) {
 
 // TestExport_OnlineServiceServiceTypeUsername covers the bug fix's export
 // side: SERVICE-TYPE/USERNAME must not be lost when an OnlineService that
-// came from IMPP carries them. Per 20-correspondence.md §20.7's three-array
+// came from IMPP carries them. Per docs/adrs/0002-correspondence-table-locked-oracle.md three-array
 // design, which array an entry lives in IS the provenance decision — an
 // ImppAddresses entry always emits as IMPP (never SOCIALPROFILE), carrying
 // its SERVICE-TYPE/USERNAME params (RFC 9554 §4.9/§4.10 allows both on
@@ -93,7 +93,7 @@ func TestExport_SocialProfileTextValue(t *testing.T) {
 
 // TestExport_OtherOnlineServicesWarnDrop covers Card.OtherOnlineServices
 // (unclassified online services, e.g. GUI-added or JSContact-imported with
-// no vCardName hint): per 20-correspondence.md §20.7, neither IMPP nor
+// no vCardName hint): per docs/adrs/0002-correspondence-table-locked-oracle.md, neither IMPP nor
 // SOCIALPROFILE is a safe default guess, so these entries are dropped from
 // vCard export entirely and reported via a warn Diagnostic.
 func TestExport_OtherOnlineServicesWarnDrop(t *testing.T) {

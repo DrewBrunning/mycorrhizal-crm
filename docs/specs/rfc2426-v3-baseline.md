@@ -25,7 +25,7 @@ itself a TYPE token in 3.0, unlike 4.0 where it's a dedicated parameter).
 ## 2. N / ADR structured syntax (§3.1.2, §3.2.1)
 
 **N**: exactly 5 components — `Family;Given;Additional;Prefix;Suffix`. No secondary-surname/generation
-(those are RFC 9554/4.0-only — see `20-correspondence.md`'s degradation table).
+(those are RFC 9554/4.0-only — see `docs/adrs/0002-correspondence-table-locked-oracle.md`'s degradation table).
 Example: `N:Public;John;Quinlan;Mr.;Esq.`
 
 **ADR**: exactly 7 components — `POBox;Ext;Street;Locality;Region;PostalCode;Country`. No room/floor/
@@ -41,7 +41,7 @@ Example: `ADR;TYPE=dom,home,postal,parcel:;;123 Main Street;Any Town;CA;91921-12
 - Note the 3.0 idiom: TYPE is a **comma-joined list of tokens on one parameter**, not the 4.0 style of
   repeatable `TYPE=` occurrences — `correspondence.tsv`'s `v3_params` values should be read/emitted
   accordingly (this is exactly what `backend/carddav/vcard_mapper.go`'s existing `addTypedField`/
-  `typeTokens` already do — salvage, don't reinvent, per `30-adapters.md` §30.C).
+  `typeTokens` already do — salvage, don't reinvent, per `docs/adrs/0001-neutral-hub-and-spoke-contact-model.md`).
 
 ## 4. PHOTO inline encoding (§3.1.4)
 
@@ -56,7 +56,7 @@ BDAY, ADR, LABEL, TEL, EMAIL, MAILER, TZ, GEO, TITLE, ROLE, LOGO, AGENT, ORG, CA
 REV, SORT-STRING, SOUND, UID, URL, VERSION, CLASS, KEY`. No sex/gender concept exists at all. This
 matches the existing Meerkat behavior confirmed during exploration: `ContactToVCard` never emits
 GENDER on any output. There is no `v3_prop` for `speakToAs`/`gramgender`/`pronouns`/CRM-`gender` in
-`20-correspondence.md` — this is intentional, not an oversight, and needs no `v3_prop` column entry
+`docs/adrs/0002-correspondence-table-locked-oracle.md` — this is intentional, not an oversight, and needs no `v3_prop` column entry
 beyond the existing `-` (degrade).
 
 ## 6. `LABEL` (§3.2.2) — 3.0-specific, superseded by 4.0's `LABEL` parameter
@@ -66,4 +66,4 @@ paired with `ADR` by shared `TYPE`. RFC 9554/6350 fold this into an `ADR` **para
 `rfc9554-vcard-extensions.md` §2 `LABEL` param example). `vcard3`'s adapter must emit/parse the
 **property** form (`LABEL;TYPE=...:<text>` as its own line, matched to its `ADR` by `TYPE`); `vcard4`'s
 must use the **parameter** form (`ADR;LABEL="...":...`). This is reflected in the `adr` row of
-`20-correspondence.md` (`v3_params = TYPE` only, with the property-vs-parameter distinction noted).
+`docs/adrs/0002-correspondence-table-locked-oracle.md` (`v3_params = TYPE` only, with the property-vs-parameter distinction noted).

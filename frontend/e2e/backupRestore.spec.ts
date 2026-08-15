@@ -7,7 +7,7 @@ import * as net from 'net';
 import { fileURLToPath } from 'url';
 import { toContactRecordInput } from '../src/api/contacts';
 
-// N6 (docs/fork-plan/tickets/26-N6-backup-restore.md): full backup/restore.
+// N6: full backup/restore.
 // The ticket is a docs + Makefile task with a hard requirement that the
 // *documented procedure is actually tested* — back up a populated instance,
 // destroy the .db and the photo directory, restore, and verify contacts,

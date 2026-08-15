@@ -3,7 +3,7 @@ import { waitForLoading, stableClick } from './fixtures';
 import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 import type { APIRequestContext } from '@playwright/test';
 
-// T75 (docs/fork-plan/tickets/119-T75-plain-save-destroys-card-only-data.md):
+// T75:
 // a plain `db.Save` on a loaded contact used to silently destroy all Card-only
 // data — pronouns (SpeakToAs), hobbies (PersonalInfo), address components
 // outside the flat projection (apartment / PO box), pet kind, imported

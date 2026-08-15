@@ -3,7 +3,7 @@ import { createTestContact, deleteTestContact, waitForLoading, stableClick, with
 import { API_BASE_URL } from './global-setup';
 import { DEFAULT_ENABLED_CONTACT_FIELDS } from '../src/contactFields';
 
-// T44 (docs/fork-plan/tickets/53-T44-link-field-type-registry-not-in-editors.md)
+// T44
 // — the LinkFieldType registry must reach the editors, not just the display
 // resolution. Social Profiles / Other Online Services / Instant Messaging are
 // all opt-in contact fields (not in DEFAULT_ENABLED_CONTACT_FIELDS), so each

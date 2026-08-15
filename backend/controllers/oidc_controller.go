@@ -15,8 +15,7 @@ import (
 )
 
 // androidOIDCScheme is the custom URL scheme the Android app's MainActivity
-// intent filter declares (M6 §4 — docs/fork-plan/tickets/85-M6-photo-url-
-// user-prefs-oidc.md). When a login flow is started with ?client=android, the
+// intent filter declares (M6 §4 — M6). When a login flow is started with ?client=android, the
 // callback delivers the JWT to <scheme>://oidc/callback?token=…&language=…
 // &date_format=… instead of setting the web's httpOnly cookies and redirecting
 // to "/" — a native client cannot read a cookie set in a Custom Tab's browser

@@ -1,4 +1,4 @@
-// Immich API calls — T15/T16 (docs/fork-plan/tickets/33-T15-T16-immich.md):
+// Immich API calls — T15/T16 (T15/T16):
 // the first concrete integration on the generic substrate. Connection config
 // is per-user-global; links are written as ExternalIdentity (system:
 // "immich"); enrichment lands as ExternalActivity. All of these go through

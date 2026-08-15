@@ -20,7 +20,7 @@ import (
 )
 
 // TestDuplicatePairs_RealMigratedSchema is T93's
-// (docs/fork-plan/tickets/137-T93-duplicate-scan-endpoint-and-review.md)
+// (T93)
 // end-to-end round trip against the real migrated schema (database.InitDB —
 // /CLAUDE.md backend trap #1): detection across all three tiers (incl. the
 // T68 country-code phone case and a shared NON-primary number, which

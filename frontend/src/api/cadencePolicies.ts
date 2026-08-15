@@ -1,4 +1,4 @@
-// CadencePolicy API calls -- T19 (docs/fork-plan/tickets/20-T19-cadence.md),
+// CadencePolicy API calls -- T19,
 // relationship-maintenance rules ("stay in touch every N days") with
 // DERIVED health (never stored).
 import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';

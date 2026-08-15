@@ -340,7 +340,7 @@ describe('title fields', () => {
 describe('toContactRecordInput', () => {
   // toLegacyContact/getContact/createContact/updateContact were retired once
   // every contact-editing component migrated onto getContactRecord/
-  // updateContactRecord/createContactRecord (docs/fork-plan/95, Tier 0 items
+  // updateContactRecord/createContactRecord (, Tier 0 items
   // 3-7) -- toContactRecordInput itself survives only for e2e test fixtures
   // (e2e/fixtures.ts, e2e/global-setup.ts), which still find it convenient
   // to build nested payloads from simple flat test data.

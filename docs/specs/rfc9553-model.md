@@ -1,12 +1,12 @@
 # RFC 9553 — JSContact object shapes & value formats (confirmed)
 
-Transcribed from RFC 9553. Resolves the open `VERIFY` points in `docs/fork-plan/10-neutral-model.md`.
+Transcribed from RFC 9553. Resolves the open `VERIFY` points in `docs/adrs/0001-neutral-hub-and-spoke-contact-model.md`.
 
 ## 1. Object property lists (name · type · required)
 
 **Card.created** (§2.1.3) — "The date and time when the Card was created." Value: UTCDateTime.
 Cardinality: optional. **Correction (found during post-P0 review):** this property was missing from
-this transcription entirely, which propagated into `20-correspondence.md`'s `created` row wrongly
+this transcription entirely, which propagated into `docs/adrs/0002-correspondence-table-locked-oracle.md`'s `created` row wrongly
 marking `js_ptr` as `-` (no JSContact home) — a real bug (silent data loss on vCard4→JSContact export),
 now fixed. Confirmed directly against RFC 9553 §2.1.3 (fetched fresh, not just IANA-registry-inferred).
 **Pronouns** (§2.2.4): `pronouns` String **required** (the pronoun text) · `contexts` String[Boolean]

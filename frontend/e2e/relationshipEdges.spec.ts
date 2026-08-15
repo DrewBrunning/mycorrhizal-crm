@@ -2,7 +2,7 @@ import { test, expect } from './fixtures';
 import { createTestContact, deleteTestContact } from './fixtures';
 import { API_BASE_URL } from './global-setup';
 
-// §3d WP3 (docs/fork-plan/95-backlog-and-priorities.md): replaces
+// §3d WP3 : replaces
 // relationships.spec.ts now that the Relationships tab talks to
 // RelationshipEdge instead of the legacy models.Relationship. Accept/Reject
 // (the suggestion-review flow) is intentionally not covered here -- nothing
@@ -120,7 +120,7 @@ test.describe('RelationshipEdges', () => {
     }
   });
 
-  // T37 (docs/fork-plan/tickets/46-T37-pet-relationship-kind-default.md):
+  // T37:
   // creating a pet via the "enter manually" path must default the new
   // contact's CRM.Kind to animal, so the household engine doesn't treat it as
   // a human adult. Verified end-to-end: create the pet from a human contact's

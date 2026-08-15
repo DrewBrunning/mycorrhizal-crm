@@ -24,8 +24,7 @@ import (
 const timelinePreviewLimit = 5
 
 // ---------------------------------------------------------------------------
-// Contact timeline (T66 — docs/fork-plan/tickets/
-// 110-T66-contact-timeline-bounded-view-and-explorer.md).
+// Contact timeline (T66 — T66).
 //
 // GET /contacts/:id/timeline is the paginated, filterable view of a
 // contact's merged timeline across all six event types, built on T17's

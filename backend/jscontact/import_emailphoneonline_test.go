@@ -97,7 +97,7 @@ func TestImport_SocialProfile(t *testing.T) {
 }
 
 func TestImport_OnlineServiceNoVCardNameHint(t *testing.T) {
-	// No vCardName hint at all: per 20-correspondence.md §20.7, this must
+	// No vCardName hint at all: per docs/adrs/0002-correspondence-table-locked-oracle.md, this must
 	// route to Card.OtherOnlineServices — never guessed into ImppAddresses
 	// or SocialProfiles by a presence-based heuristic (e.g. service/user set).
 	raw := []byte(`{

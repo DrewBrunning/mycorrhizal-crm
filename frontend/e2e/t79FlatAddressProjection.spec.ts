@@ -3,7 +3,7 @@ import { waitForLoading, deleteTestContact } from './fixtures';
 import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 import type { APIRequestContext } from '@playwright/test';
 
-// T79 (docs/fork-plan/tickets/123-T79-flat-address-projection-too-narrow.md):
+// T79:
 // the flat address projection had no slot for PO box / apartment / floor, so
 // a VCF-imported address carrying those parts (vCard ADR positions 1-2 and
 // RFC 9554's floor) was invisible in the UI, unsearchable, and destroyed on

@@ -14,7 +14,7 @@ import (
 )
 
 // TestActivityAndLifeEventETag_RealMigratedSchema is the real-DB check for
-// T12a (docs/fork-plan/tickets/14-T12a-etag-primitives.md). The AutoMigrate
+// T12a. The AutoMigrate
 // test DBs used elsewhere (setupActivityTestDB / setupLifeEventTestDB)
 // derive their schema from the same Go struct tags the application code
 // uses, so they cannot catch a GORM column-tag mismatch against the real

@@ -55,8 +55,7 @@ type HouseholdMemberInput struct {
 }
 
 // AcceptHouseholdSuggestionInput is the DTO for POST /households/suggestions/
-// accept (T40 — docs/fork-plan/tickets/49-T40-household-suggestions-shared-
-// address.md). The suggested group is identified by its member VCardUIDs; the
+// accept (T40 — T40). The suggested group is identified by its member VCardUIDs; the
 // server recomputes the shared address and the dismissal hashes from the
 // members' real contacts data, so a client can neither fabricate a group nor
 // dismiss/accept an arbitrary hash. Name/Type are optional with server-side
@@ -152,7 +151,7 @@ type CadencePolicyInput struct {
 }
 
 // FieldDefinitionInput is the DTO for creating/updating a FieldDefinition
-// (field_definition.go, docs/fork-plan/94-custom-fields.md §94.3). Label is
+// (field_definition.go, docs/adrs/0001-neutral-hub-and-spoke-contact-model.md). Label is
 // display; Key is the stable machine name and — unlike every other field —
 // is immutable after creation (see UpdateFieldDefinition's doc comment in
 // field_definition_controller.go). Target/Type/Projection/Sensitivity each

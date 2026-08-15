@@ -95,7 +95,7 @@ func TestGetContacts(t *testing.T) {
 }
 
 // TestGetContacts_SummaryHasNicknameNoCircles is T108's regression test
-// (docs/fork-plan/tickets/152-T108-contact-summary-missing-columns.md):
+// (T108):
 // contactSummaryColumns (the fixed Select() list GetContacts actually runs)
 // never included "nickname", so every ContactSummary shipped an empty
 // nickname despite the DTO and NewContactSummary both carrying it correctly
@@ -134,7 +134,7 @@ func TestGetContacts_SummaryHasNicknameNoCircles(t *testing.T) {
 }
 
 // TestGetContacts_FiltersByVCardUID pins down §3d WP0
-// (docs/fork-plan/95-backlog-and-priorities.md): the RelationshipEdge
+// : the RelationshipEdge
 // frontend needs to resolve a batch of Contact.VCardUID values (edge
 // SourceID/TargetID, which carry no nested contact data) back into
 // displayable Contacts. Proves the ?vcard_uid= filter matches multiple
@@ -951,7 +951,7 @@ func TestDeleteContact(t *testing.T) {
 }
 
 // TestDeleteContact_CleansUpReferencingRows is the regression test for Tier
-// 3c item 1 (docs/fork-plan/95-backlog-and-priorities.md): deleting a contact
+// 3c item 1 : deleting a contact
 // must remove every row that references it via Contact.VCardUID (or, for
 // ContactSyncLink, Contact.ID), but must NOT delete the shared
 // Household/Circle/Tag/FieldDefinition containers other contacts may still
