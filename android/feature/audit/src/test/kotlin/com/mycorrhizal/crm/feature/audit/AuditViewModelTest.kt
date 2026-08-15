@@ -204,15 +204,121 @@ class AuditViewModelTest {
     }
 
     @Test
-    fun `a resolve failure degrades to an empty map`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a resolve failure keeps the previously resolved map`() = runTest(mainDispatcherRule.testDispatcher) {
+        // First load resolves uid-1 successfully.
         stubList(AuditEventsResponse(auditEvents = listOf(event(1, entityId = "uid-1"))))
-        coEvery { contactRepository.resolveByUid(any()) } returns Result.failure(ApiError.Network(IOException("offline")))
+        stubResolve(mapOf("uid-1" to ContactSummary(id = 5, uid = "uid-1", firstname = "Dana", lastname = "White")))
+
+        val vm = viewModel()
+        advanceUntilIdle()
+        assertEquals(5, vm.uiState.value.contactsByUid["uid-1"]?.id)
+
+        // A second load's resolve fails — the existing map must survive (web's
+        // useContactsForEvents `.catch` leaves it in place too).
+        coEvery { auditRepository.list(entityType = any(), entityId = any(), limit = any()) } returns
+            Result.success(AuditEventsResponse(auditEvents = listOf(event(2, entityId = "uid-2"))))
+        coEvery { contactRepository.resolveByUid(listOf("uid-2")) } returns
+            Result.failure(ApiError.Network(IOException("offline")))
+
+        vm.load()
+        advanceUntilIdle()
+
+        assertEquals(5, vm.uiState.value.contactsByUid["uid-1"]?.id)
+        assertNull(vm.uiState.value.error)
+    }
+
+    @Test
+    fun `a list failure does not resolve uids and keeps the prior rows and map`() = runTest(mainDispatcherRule.testDispatcher) {
+        stubList(AuditEventsResponse(auditEvents = listOf(event(1, entityId = "uid-1"))))
+        stubResolve(mapOf("uid-1" to ContactSummary(id = 5, uid = "uid-1", firstname = "Dana", lastname = "White")))
 
         val vm = viewModel()
         advanceUntilIdle()
 
-        assertTrue(vm.uiState.value.contactsByUid.isEmpty())
-        assertNull(vm.uiState.value.error)
+        // The next load fails: events + resolved map stay, error surfaces.
+        coEvery { auditRepository.list(entityType = any(), entityId = any(), limit = any()) } returns
+            Result.failure(ApiError.Client(500, "boom"))
+
+        vm.load()
+        advanceUntilIdle()
+
+        assertEquals("boom", vm.uiState.value.error)
+        assertEquals(1, vm.uiState.value.events.size)
+        assertEquals(5, vm.uiState.value.contactsByUid["uid-1"]?.id)
+        // No resolve attempt on the failure path.
+        io.mockk.coVerify(exactly = 1) { contactRepository.resolveByUid(any()) }
+    }
+
+    @Test
+    fun `a stale list response cannot overwrite a newer one`() = runTest(mainDispatcherRule.testDispatcher) {
+        // Gate the first response so the second request (a filter change) can
+        // overtake it — the stale response must be discarded, not applied.
+        val firstGate = kotlinx.coroutines.CompletableDeferred<Result<AuditEventsResponse>>()
+        val secondGate = kotlinx.coroutines.CompletableDeferred<Result<AuditEventsResponse>>()
+        var call = 0
+        coEvery { auditRepository.list(entityType = any(), entityId = any(), limit = any()) } coAnswers {
+            if (call++ == 0) firstGate.await() else secondGate.await()
+        }
+        coEvery { contactRepository.resolveByUid(any()) } returns Result.success(emptyMap())
+
+        val vm = viewModel()
+        // First request is in flight (gated); a filter change fires a second.
+        vm.applyEntityType(AuditEntityTypes.NOTE)
+        // The newer request returns first and must win.
+        secondGate.complete(Result.success(AuditEventsResponse(auditEvents = listOf(event(9, type = AuditEntityTypes.NOTE)))))
+        advanceUntilIdle()
+        assertEquals(1, vm.uiState.value.events.size)
+        assertEquals(AuditEntityTypes.NOTE, vm.uiState.value.events[0].entityType)
+
+        // Now the stale first response lands — it must not clobber the result.
+        firstGate.complete(Result.success(AuditEventsResponse(auditEvents = listOf(event(1)))))
+        advanceUntilIdle()
+        assertEquals(1, vm.uiState.value.events.size)
+        assertEquals(AuditEntityTypes.NOTE, vm.uiState.value.events[0].entityType)
+        assertEquals(AuditEntityTypes.NOTE, vm.uiState.value.entityType)
+    }
+
+    @Test
+    fun `load more stops growing at the 500 cap`() = runTest(mainDispatcherRule.testDispatcher) {
+        val full = (1L..500L).map { event(id = it) }
+        stubList(AuditEventsResponse(auditEvents = full))
+        stubResolve(emptyMap())
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        // Walk the window up to the cap; each step re-fetches the full list.
+        repeat(4) {
+            assertTrue(vm.uiState.value.canLoadMore)
+            vm.loadMore()
+            advanceUntilIdle()
+        }
+        assertEquals(500, vm.uiState.value.limit)
+        assertFalse(vm.uiState.value.canLoadMore)
+        coVerify {
+            auditRepository.list(entityType = null, entityId = null, limit = 500)
+        }
+    }
+
+    @Test
+    fun `a second undo while one is in flight is ignored`() = runTest(mainDispatcherRule.testDispatcher) {
+        stubList(AuditEventsResponse(auditEvents = listOf(event(1))))
+        stubResolve(emptyMap())
+        val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        coEvery { auditRepository.undo(1L) } coAnswers {
+            gate.await()
+            Result.success(Unit)
+        }
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.undo(1L)
+        vm.undo(1L) // isUndoing is already true — must not fire a second request.
+        gate.complete(Unit)
+        advanceUntilIdle()
+
+        io.mockk.coVerify(exactly = 1) { auditRepository.undo(1L) }
     }
 
     @Test

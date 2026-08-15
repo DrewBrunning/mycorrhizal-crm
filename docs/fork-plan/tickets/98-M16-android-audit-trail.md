@@ -110,19 +110,60 @@ exactly what T75/T82 undo does and never promises a full revert.
 - `ApiClientTest` (+6): filters land on the query string (`limit`, `entity_type`, `entity_id`, blank
   filters omitted), the event list + `canUndo` parse, undo POSTs to `/audit/:id/undo`, and a 410
   maps to `ApiError.Client(410)`.
-- `AuditViewModelTest` (+12): default window fetch, load failure, entity-type filter resets the
+- `AuditViewModelTest` (+16): default window fetch, load failure, entity-type filter resets the
   window, entity-id debounce fires exactly one request before the delay and one after, clear-filters,
   load-more growth, partial-window has no load-more, contact-UID resolution populates the link map,
-  resolve-failure degrades silently, undo → refresh (two list calls), 410 vs other-code undo failure.
-- `AuditScreenTest` (+5, Robolectric): delete event renders **no** undo button, unresolved UID shows
+  resolve-failure keeps the previous map, list-failure keeps prior rows+map and skips resolution,
+  stale-response-discarded (out-of-order guard), load-more stops at the 500 cap, double-undo ignored
+  while in flight, undo → refresh (two list calls), 410 vs other-code undo failure.
+- `AuditScreenTest` (+7, Robolectric): delete event renders **no** undo button, unresolved UID shows
   raw text with no link node, resolved UID is a tappable contact-detail link, load-more button
-  appears only when more rows exist, and the filter toolbar renders "All types" with a disabled
-  Clear-filters until a filter is active.
+  appears only when more rows exist, the filter toolbar renders "All types" with a disabled
+  Clear-filters until a filter is active, full-screen undo confirm → refresh flow (ticket test case
+  2), and Clear-filters enabled from the entity-id *input* value.
 
 **Strings:** 28 new keys (`nav_audit` + `audit_*`) translated in all five locales, with the web
 JSON's existing translations reused so the four non-English copies stay aligned with web.
 
 **Gate:** `./gradlew testDebugUnitTest`, `./gradlew lintDebug`, `./gradlew assembleDebug` all green.
+
+---
+
+## Review-pass note (2026-08-14, same branch)
+
+A review pass over the landed implementation found and fixed four issues, plus closed the testing
+gaps that review exposed:
+
+- **`resolveByUid` never requested archived contacts (parity bug affecting both consumers).** Web's
+  shared `getContactsByUid` always sends `include_archived: true` (an audit event — or a relationship
+  edge — can reference an archived contact, and it must still resolve to a name/link). Android's
+  `resolveByUid` called `listContacts(vcardUids = …)` with no archived flag, so an archived contact's
+  UID silently failed to resolve and its row fell back to raw UID. Fixed at the shared helper (both
+  M16 and the relationships screen benefit); the existing `resolveByUid` stubs were updated and a new
+  test pins the `includeArchived = true` request.
+- **`resolveContactUids` raced and ran on failure.** It was called unconditionally after the list
+  fold, so a list *failure* re-resolved the stale previous rows and, on a resolve failure, cleared
+  the link map (web keeps both when a fetch fails — its `.catch` is a no-op). It also had no
+  out-of-order guard: a resolve in flight for an older request could overwrite a newer request's
+  links (web's `cancelled` flag exists precisely for this). Now resolution runs only on success,
+  only for that request's events, and drops its write if a newer request has started. Hand-verified:
+  removing the guard fails the new stale-response test; resolving on failure fails the
+  list-failure test; clearing on resolve-failure fails the keep-map test.
+- **`undo`'s re-entrancy guard was dispatcher-dependent.** `isUndoing` was set *inside* the launched
+  coroutine, so on a dispatcher that defers the body (the test `StandardTestDispatcher`) two rapid
+  `undo()` calls both passed the guard. Moved the flag set before the `launch` so the guard is
+  synchronous and dispatcher-independent. Hand-verified: removing the guard fails the double-undo test.
+- **`hasFilters` used the applied (debounced) value, not the input value.** Web's Clear button is
+  enabled as soon as the entity-id field has text — even before the 350ms debounce fires — and the
+  empty-state message keys off the same input-derived flag. Android computed it from the applied
+  `state.entityId`, so Clear stayed disabled while typing. Now computed from `entityIdInput`, and the
+  full-screen test asserts the disabled→enabled transition on text entry.
+- **Deprecation + test-setup fixes.** `Icons.Outlined.Undo` → `Icons.AutoMirrored.Outlined.Undo`
+  (lint flagged the deprecation). The full-screen tests needed a taller Robolectric window
+  (`qualifiers = "w480dp-h1600dp"`) — at the 320x414 default the filter toolbar consumed most of the
+  height and the LazyColumn's rows rendered with zero bounds, so the undo button was present but not
+  clickable. The bug (button invisible in the viewport) is test-infrastructure-only, not a product
+  bug — a real device window is far taller.
 
 **Not done / deferred:** on-device hand-verification (the ticket's "make a change, undo it via the
 Android audit screen" step) — no device attached to this worktree. The screen mirrors the web

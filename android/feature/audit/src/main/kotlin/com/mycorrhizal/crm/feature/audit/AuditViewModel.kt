@@ -114,6 +114,12 @@ class AuditViewModel @Inject constructor(
                 limit = state.limit,
             )
             if (requestRef != requestId) return@launch
+            // Resolve contact UIDs only on success and only for this request's
+            // events — a list failure leaves the previous rows + link map in
+            // place (matching web, which keeps both when a fetch fails), and
+            // a resolve in flight for an older request must not overwrite a
+            // newer one (web's `cancelled` flag guards the same race).
+            val events = result.getOrNull()?.auditEvents
             result.foldApiError(
                 onSuccess = { response ->
                     _uiState.update {
@@ -126,7 +132,9 @@ class AuditViewModel @Inject constructor(
                     }
                 },
             )
-            resolveContactUids()
+            if (events != null) {
+                resolveContactUids(requestId, events)
+            }
         }
     }
 
@@ -180,8 +188,11 @@ class AuditViewModel @Inject constructor(
      */
     fun undo(id: Long) {
         if (_uiState.value.isUndoing) return
+        // Set synchronously (not inside the coroutine) so the re-entrancy
+        // guard holds even when the dispatcher defers the body — a double tap
+        // on confirm must never fire a second request.
+        _uiState.update { it.copy(isUndoing = true) }
         viewModelScope.launch {
-            _uiState.update { it.copy(isUndoing = true) }
             val result = auditRepository.undo(id)
             _uiState.update { it.copy(isUndoing = false) }
             val outcome = result.fold(
@@ -207,25 +218,36 @@ class AuditViewModel @Inject constructor(
     }
 
     /**
-     * Resolve the loaded events' contact UIDs to display summaries (the
-     * entity-id cell's link target). A failure is a nicety — the raw UID is
-     * still rendered — so it degrades silently rather than surfacing an error
+     * Resolve [events]' contact UIDs to display summaries (the entity-id
+     * cell's link target). A failure is a nicety — the raw UID is still
+     * rendered — so it degrades silently rather than surfacing an error
      * (web: useContactsForEvents swallows its failure too).
+     *
+     * [requestId] guards the write: if a newer list request has started since
+     * this one, its resolution wins and this one's result is dropped (web's
+     * `cancelled` flag guards the same out-of-order race). On resolve failure
+     * the existing map is kept — web's `.catch(() => {})` leaves it in place
+     * too, and dropping previously-resolved links for rows that are still
+     * shown would be a needless regression.
      */
-    private suspend fun resolveContactUids() {
-        val uids = _uiState.value.events
+    private suspend fun resolveContactUids(requestId: Int, events: List<AuditEvent>) {
+        val uids = events
             .filter { it.entityType == AuditEntityTypes.CONTACT }
             .mapNotNull { it.entityId.takeIf { uid -> uid.isNotBlank() } }
             .distinct()
         if (uids.isEmpty()) {
-            _uiState.update { it.copy(contactsByUid = emptyMap()) }
+            if (requestRef == requestId) {
+                _uiState.update { it.copy(contactsByUid = emptyMap()) }
+            }
             return
         }
         contactRepository.resolveByUid(uids).foldApiError(
             onSuccess = { byUid ->
-                _uiState.update { it.copy(contactsByUid = byUid) }
+                if (requestRef == requestId) {
+                    _uiState.update { it.copy(contactsByUid = byUid) }
+                }
             },
-            onError = { _uiState.update { it.copy(contactsByUid = emptyMap()) } },
+            onError = { /* keep the existing map — see the doc comment */ },
         )
     }
 }

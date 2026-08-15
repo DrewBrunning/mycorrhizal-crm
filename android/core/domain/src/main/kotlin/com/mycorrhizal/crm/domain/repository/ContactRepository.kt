@@ -44,6 +44,9 @@ interface ContactRepository {
      * a RelationshipEdge's raw source/target UID into a name -- not cached
      * locally). Empty input short-circuits without a network call. A UID
      * with no matching contact is simply absent from the result map.
+     * Includes archived contacts (mirrors web's `getContactsByUid`, which
+     * sends `include_archived: true`) so a reference to an archived contact
+     * still resolves to a name/link instead of silently vanishing.
      */
     suspend fun resolveByUid(uids: List<String>): Result<Map<String, ContactSummary>>
 

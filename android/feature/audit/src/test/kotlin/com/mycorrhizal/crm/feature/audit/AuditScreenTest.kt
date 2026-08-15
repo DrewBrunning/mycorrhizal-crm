@@ -1,16 +1,25 @@
 package com.mycorrhizal.crm.feature.audit
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
+import com.mycorrhizal.crm.domain.repository.AuditRepository
+import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.model.network.AuditEvent
 import com.mycorrhizal.crm.model.network.AuditEntityTypes
+import com.mycorrhizal.crm.model.network.AuditEventsResponse
 import com.mycorrhizal.crm.model.network.AuditOperations
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.mockk
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -21,7 +30,10 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+// A taller window so the full-screen flows (filter toolbar + LazyColumn rows)
+// fit in the viewport — at Robolectric's tiny default (320x414) the filter
+// toolbar consumes most of the height and list rows render with zero bounds.
+@Config(sdk = [35], qualifiers = "w480dp-h1600dp")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class AuditScreenTest {
 
@@ -164,5 +176,61 @@ class AuditScreenTest {
         // and the clear button's disabled state (no active filters).
         composeTestRule.onNodeWithText("All types").assertIsDisplayed()
         composeTestRule.onNodeWithTag("audit-clear-filters").assertIsNotEnabled()
+    }
+
+    // --- Full-screen flows (ticket test cases 2 + the hasFilters wiring) ---
+
+    /** Renders [AuditScreen] against a real ViewModel backed by mocked repos. */
+    private fun setScreen(
+        auditRepository: AuditRepository,
+        contactRepository: ContactRepository,
+    ) {
+        val viewModel = AuditViewModel(auditRepository, contactRepository)
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                AuditScreen(onBack = {}, onOpenContact = {}, viewModel = viewModel)
+            }
+        }
+        composeTestRule.waitForIdle()
+    }
+
+    @Test
+    fun `confirming undo runs the undo then refreshes the list`() {
+        val auditRepository = mockk<AuditRepository>()
+        val contactRepository = mockk<ContactRepository>()
+        coEvery { auditRepository.list(entityType = any(), entityId = any(), limit = any()) } returns
+            Result.success(AuditEventsResponse(auditEvents = listOf(contactUpdate(id = 1))))
+        coEvery { contactRepository.resolveByUid(any()) } returns Result.success(emptyMap())
+        coEvery { auditRepository.undo(1L) } returns Result.success(Unit)
+
+        setScreen(auditRepository, contactRepository)
+        composeTestRule.onNodeWithTag("audit-undo-1").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Undo this change?").assertIsDisplayed()
+
+        // Confirm: undo fires, then the list re-fetches (2 list calls total:
+        // the initial load + the post-undo refresh).
+        composeTestRule.onAllNodesWithText("Undo")[1].performClick()
+        composeTestRule.waitForIdle()
+
+        coVerify(exactly = 1) { auditRepository.undo(1L) }
+        coVerify(exactly = 2) { auditRepository.list(entityType = null, entityId = null, limit = 100) }
+    }
+
+    @Test
+    fun `the clear filters button is enabled while the entity id input has text`() {
+        val auditRepository = mockk<AuditRepository>()
+        val contactRepository = mockk<ContactRepository>()
+        coEvery { auditRepository.list(entityType = any(), entityId = any(), limit = any()) } returns
+            Result.success(AuditEventsResponse(auditEvents = emptyList()))
+        coEvery { contactRepository.resolveByUid(any()) } returns Result.success(emptyMap())
+
+        setScreen(auditRepository, contactRepository)
+        // Initially no filters → disabled (mirrors web's `hasFilters`).
+        composeTestRule.onNodeWithTag("audit-clear-filters").assertIsNotEnabled()
+        // Typing into the field enables Clear immediately — web's Clear is
+        // enabled from the *input* value, before the 350ms debounce applies.
+        composeTestRule.onNodeWithTag("audit-entity-id").performTextInput("uid-9")
+        composeTestRule.onNodeWithTag("audit-clear-filters").assertIsEnabled()
     }
 }

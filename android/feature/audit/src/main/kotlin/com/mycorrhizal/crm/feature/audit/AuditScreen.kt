@@ -14,9 +14,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material.icons.outlined.Clear
 import androidx.compose.material.icons.outlined.History
-import androidx.compose.material.icons.outlined.Undo
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -92,6 +92,11 @@ fun AuditScreen(
 
     var pendingUndo by remember { mutableStateOf<AuditEvent?>(null) }
 
+    // Mirrors web's `hasFilters` — computed from the *input* value, not the
+    // applied (debounced) one, so the Clear button is enabled as soon as the
+    // field has text, even before the 350ms debounce fires the request.
+    val hasFilters = state.entityType != null || entityIdInput.isNotBlank()
+
     // One-shot undo outcomes surface as a snackbar (410 → its own message).
     val undoSuccessText = stringResource(R.string.audit_undo_success)
     val undoRetentionText = stringResource(R.string.audit_undo_retention_gone)
@@ -139,7 +144,7 @@ fun AuditScreen(
             AuditFilterToolbar(
                 entityType = state.entityType,
                 entityIdInput = entityIdInput,
-                hasFilters = state.hasActiveFilters,
+                hasFilters = hasFilters,
                 onEntityTypeChange = viewModel::applyEntityType,
                 onEntityIdChange = {
                     entityIdInput = it
@@ -168,7 +173,7 @@ fun AuditScreen(
                     state.events.isEmpty() ->
                         EmptyState(
                             message = stringResource(
-                                if (state.hasActiveFilters) R.string.audit_empty
+                                if (hasFilters) R.string.audit_empty
                                 else R.string.audit_empty_no_filters
                             ),
                             icon = {
@@ -307,7 +312,7 @@ internal fun AuditEventList(
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().testTag("audit-list"),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+        contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(events, key = { it.id }) { event ->
@@ -406,7 +411,7 @@ internal fun AuditEventRow(
                         .testTag("audit-undo-${event.id}")
                         .align(Alignment.End),
                 ) {
-                    Icon(Icons.Outlined.Undo, contentDescription = null)
+                    Icon(Icons.AutoMirrored.Outlined.Undo, contentDescription = null)
                     Text(stringResource(R.string.audit_undo_button), modifier = Modifier.padding(start = 4.dp))
                 }
             }
