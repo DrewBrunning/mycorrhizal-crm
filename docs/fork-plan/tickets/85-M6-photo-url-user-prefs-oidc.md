@@ -5,7 +5,7 @@
 | **Rating** | 2 |
 | **Source** | M1 Phase-5 review pass, 2026-08-10 (on-device findings + the Android app's missing pieces) |
 | **Depends on** | M1 Phases 1–5 (shipped). FCM endpoints are **not** here — they're [M2](81-M2-fcm-mobile-push.md). |
-| **Status** | Scoped. **Two** of its original four gaps are still live — §1 (photo URL) and §4 (OIDC native return). §2 (dashboard) was taken over by [M3](82-M3-dashboard-overview-endpoint.md); §3 (user prefs) is **superseded** — the write endpoints already exist (see §3 below). Promoted to the Backend list 2026-08-14. |
+| **Status** | **DONE** (2026-08-14 — §1 photo URL response-shape change + §4 OIDC native return; see the landing note). §2 (dashboard) was taken over by [M3](82-M3-dashboard-overview-endpoint.md); §3 (user prefs) is **superseded** — the write endpoints already exist (see §3 below). |
 
 > **Renumbered 2026-08-11**, from `82-M1-missing-endpoints.md` to `85`/`M6`. The 2026-08-10
 > mobile-API session filed M2/M3/M4 at 81/82/83 without retiring the tickets they overlapped, so
@@ -13,6 +13,72 @@
 > moves clear of M3's number; the fully-superseded `81-N10-fcm-push.md` was retired into
 > [M2](81-M2-fcm-mobile-push.md) (backend) and [M5](84-M5-android-polish-and-hardening.md) §5
 > (its Android half). Old links to `82-M1-missing-endpoints.md` will not resolve.
+
+> **Landing note, 2026-08-14** (the two live gaps, both backend-only):
+>
+> **§1 photo URL serving.** `ContactSummary.photo_thumbnail` and `ContactRecordResponse.
+> photo_thumbnail` now carry a relative URL to the existing `GET /contacts/{id}/profile_picture`
+> endpoint instead of the raw stored value — preferring `?thumbnail=true` when a base64 thumbnail
+> is stored, falling back to the no-param full-photo variant for a disk photo whose thumbnail is a
+> legacy filename (the thumbnail endpoint can't serve those), and **omitted entirely** for
+> photo-less contacts (`omitempty`). The detail response's `Card.Media` photo entry's `uri` is
+> rewritten to the same URL (full-photo variant) **on the read path only**: the slice is copied
+> before rewriting, so the persisted Card is never mutated — exports (VCF/JSContact) and CardDAV
+> keep the self-contained data URI, and the web edit round-trip (which PUTs the loaded Card back,
+> media included) can't corrupt the stored photo (the T75 BeforeSave merge already re-derives the
+> flat-owned photo entry from `Photo`/`PhotoThumbnail` regardless). The `?thumbnail=true` endpoint
+> itself is untouched and still serves raw bytes.
+>
+> One deliberate deviation from a literal reading of the proposal: `ContactSummary.photo` (and
+> the response's top-level `photo`) still carries the raw disk filename, not a URL — the proposal
+> named only `photo_thumbnail` and Card `media[].uri`, and `photo`'s only web consumer is a
+> truthiness gate. URL-ifying it is a one-line follow-up if a client ever needs the full photo URL
+> at the top level.
+>
+> **§4 OIDC native return.** `GET /auth/oidc/login?client=android` sets an `oidc_client` cookie
+> (scoped to the callback path, cleared like the other one-time cookies). The callback then, and
+> only then, redirects to `mycorrhizal://oidc/callback?token=<jwt>&language=<lang>&date_format=<fmt>`
+> on success — deliberately **without** setting the httpOnly `auth_token`/`id_token` cookies (a
+> native client can't read a Custom-Tab cookie, and minting a browser session it can't manage is
+> worse than none) — and to the same deep link with `error=<code>` on every failure path.
+> state/nonce/PKCE are verified identically for both clients, and the token is only ever placed in
+> a redirect when the `oidc_client=android` cookie is present (it can't be triggered by appending
+> `client=android` to a callback URL the attacker can't otherwise authenticate). The web flow is
+> byte-for-byte unchanged (`/login?error=…` failures, cookie + `/` success). The custom scheme
+> `mycorrhizal://` is a backend constant matching the intent filter M5 §5 declares; no config knob
+> was added (no consumer for one yet).
+>
+> **Tests.** Models unit tests for `ProfilePictureURL` derivation and both DTOs; a real-schema
+> (`database.InitDB`) controller test pinning the list/detail URL shape, the photo-less omission
+> (raw-JSON absence), the Card.Media read-path rewrite (and that it doesn't mutate the persisted
+> Card), and that both exposed URL variants actually serve bytes over the unchanged endpoint. OIDC:
+> login cookie set/no-set, android success deep-link (valid 3-part JWT + the user's real
+> language/date_format + no auth cookies + one-time-cookie clearing), android provider-denied/
+> state-mismatch/missing-PKCE deep-link errors, and non-android `client` values keeping the web
+> flow. All new tests hand-verified to fail against the reintroduced bug before being restored.
+> Full gates green (`go build/vet/fmt/test ./...`, frontend `tsc` + 714 vitest).
+>
+> **Review-pass finding, 2026-08-14** (fixed before landing). The read path exposes the relative URL
+> in `Card.Media`, and the web client PUTs the loaded card back verbatim on every edit — so the URL
+> would have **round-tripped into the persisted `contacts.card`** via `ApplyRecordToContact`'s
+> `applyMedia` (which assigns `c.Card = r.Card` with the shared Media backing), breaking VCF/JSContact
+> export and CardDAV (no external consumer can fetch a relative path). Fixed in `applyMedia`: a photo
+> entry whose URI is neither embedded data nor a fetchable URL is recognized as this contact's own
+> photo pointer and re-derived from the flat `Photo`/`PhotoThumbnail` instead of being persisted.
+> Pinned by the model-level `TestApplyRecordToContact_ReDerivesRelativePhotoURL` (hand-verified to
+> fail pre-fix) and the full real-schema controller round-trip
+> `TestContactsDetail_PUTRoundTripDoesNotPersistPhotoURL`. A second review-pass finding: a photo
+> entry in `Card.Media` that is *not* backed by a flat `Photo`/`PhotoThumbnail` (imported directly
+> while `photoDir` was unavailable) has no profile-picture endpoint to point at — the rewrite now
+> leaves its original URI untouched instead of blanking it
+> (`TestNewContactRecordResponse_UnbackedMediaPhotoKept`).
+>
+> **Wire-shape consequences for consumers.** (1) Web avatars render the relative URL — resolves
+> through the prod nginx `/api/` proxy (httpOnly cookie auth), but not through the bare Vite dev
+> server (no `/api` proxy), a dev-only cosmetic regression; `ContactSummaryDTO.photo_thumbnail`
+> became `?: string` in the TS type (the field is now genuinely absent for photo-less contacts,
+> `/CLAUDE.md` frontend trap 8). (2) The Android client consumes this in M5 §3.1 (relative-URL
+> resolution + Coil on the auth'd client); the OIDC deep link's consumer is M25's SSO login.
 
 ## Why this exists
 

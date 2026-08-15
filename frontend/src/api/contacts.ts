@@ -360,7 +360,12 @@ export interface ContactSummaryDTO {
   birthday: string;
   org: string;
   photo: string;
-  photo_thumbnail: string;
+  // M6 (backend response-shape change): now a relative profile-picture URL
+  // when the contact has a photo, and ABSENT on the wire when it has none —
+  // hence optional here (CLAUDE.md frontend trap 8: a required TS field with
+  // a backend omitempty is a crash waiting to happen). Consumers must guard
+  // with `|| undefined` before handing it to an <img src>.
+  photo_thumbnail?: string;
   archived: boolean;
 }
 

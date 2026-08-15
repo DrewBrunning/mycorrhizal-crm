@@ -10,6 +10,81 @@ import (
 	"mycorrhizal/contactmodel"
 )
 
+// TestApplyRecordToContact_ReDerivesRelativePhotoURL is the regression test
+// for M6 §1's write-path round-trip (docs/fork-plan/tickets/85-M6-photo-url-
+// user-prefs-oidc.md): the read response now exposes Card.Media's photo uri as
+// a relative profile-picture URL, and the web client PUTs that card back
+// verbatim on the next edit. applyMedia must recognize that relative URL as
+// "this contact's own photo pointer" and re-derive the entry from the flat
+// Photo/PhotoThumbnail — persisting the dead URL instead would break VCF/
+// JSContact export and CardDAV, whose consumers cannot fetch a relative path.
+func TestApplyRecordToContact_ReDerivesRelativePhotoURL(t *testing.T) {
+	photoDir := t.TempDir()
+	writeTestJPEG(t, filepath.Join(photoDir, "disk_photo.jpg"))
+
+	contact := &Contact{
+		Photo:          "disk_photo.jpg",
+		PhotoThumbnail: testJPEGDataURL(),
+	}
+
+	incoming := &contactmodel.Record{
+		Card: contactmodel.Card{
+			Name: &contactmodel.Name{Components: []contactmodel.NameComponent{{Kind: "given", Value: "Ada"}}},
+			Media: []contactmodel.Resource{
+				{Kind: "photo", URI: "/api/v1/contacts/5/profile_picture"},
+			},
+		},
+	}
+
+	ApplyRecordToContact(contact, incoming, photoDir)
+
+	if len(contact.Card.Media) != 1 {
+		t.Fatalf("Card.Media = %+v, want the single photo entry preserved (repaired, not dropped)", contact.Card.Media)
+	}
+	photo := contact.Card.Media[0]
+	if photo.Kind != "photo" {
+		t.Fatalf("Card.Media[0].Kind = %q, want photo", photo.Kind)
+	}
+	if photo.URI == "/api/v1/contacts/5/profile_picture" {
+		t.Error("the relative profile-picture URL must NOT be persisted into the Card; the entry must be re-derived from the flat photo")
+	}
+	if !strings.HasPrefix(photo.URI, "data:image/jpeg;base64,") {
+		t.Errorf("Card.Media[0].URI = %q, want a data URI re-derived from the on-disk photo", photo.URI)
+	}
+	if contact.Photo != "disk_photo.jpg" {
+		t.Errorf("contact.Photo = %q, want unchanged (no new photo was applied)", contact.Photo)
+	}
+}
+
+// TestApplyRecordToContact_RealPhotoRoundTripStillPersists pins that the
+// applyMedia repair only fires for non-data, non-URL garbage: a real embedded
+// data-URI photo in the incoming card is still decoded and persisted to disk
+// (the pre-M6 behavior the round-trip test at the top of this file depends on).
+func TestApplyRecordToContact_RealPhotoRoundTripStillPersists(t *testing.T) {
+	photoDir := t.TempDir()
+	thumb := testJPEGDataURL()
+
+	contact := &Contact{}
+	incoming := &contactmodel.Record{
+		Card: contactmodel.Card{
+			Name:  &contactmodel.Name{Components: []contactmodel.NameComponent{{Kind: "given", Value: "Ada"}}},
+			Media: []contactmodel.Resource{{Kind: "photo", URI: thumb, MediaType: "image/jpeg"}},
+		},
+	}
+
+	ApplyRecordToContact(contact, incoming, photoDir)
+
+	if contact.Photo == "" {
+		t.Error("a real data-URI photo must still be persisted to disk and onto Contact.Photo")
+	}
+	if !strings.HasPrefix(contact.PhotoThumbnail, "data:image/jpeg;base64,") {
+		t.Errorf("Contact.PhotoThumbnail = %q, want a data:image/jpeg;base64,... thumbnail", contact.PhotoThumbnail)
+	}
+	if len(contact.Card.Media) != 1 || !strings.HasPrefix(contact.Card.Media[0].URI, "data:image/jpeg;base64,") {
+		t.Errorf("Card.Media[0] = %+v, want the embedded data-URI photo entry preserved", contact.Card.Media)
+	}
+}
+
 // TestApplyRecordToContact_RoundTrip exercises WP-71 Gap 1: RecordFromContact
 // a fully-populated Contact into a Record, ApplyRecordToContact that Record
 // onto a fresh Contact, and assert the result matches the original closely

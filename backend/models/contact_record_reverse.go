@@ -376,6 +376,24 @@ func applyMedia(c *Contact, card contactmodel.Card, photoDir string) {
 	}
 
 	data, mediaType, photoURL := photostore.DecodePhotoURI(photo.URI, photo.MediaType)
+	if len(data) == 0 && photoURL == "" {
+		// M6 §1 round-trip repair: a photo URI that is neither embedded data
+		// nor a fetchable URL — e.g. the relative profile-picture URL the
+		// read path now exposes in Card.Media, which the web client PUTs back
+		// verbatim on the next edit — is this contact's own photo pointer, not
+		// new photo data. The photo is flat-owned (Contact.Photo/
+		// PhotoThumbnail), so re-derive the entry from the current flat state
+		// rather than persisting a dead relative URL that would break VCF/
+		// JSContact export and CardDAV (no external consumer can fetch it).
+		// photo points into card.Media, whose backing array is shared with
+		// the c.Card that ApplyRecordToContact assigns from, so this repair is
+		// exactly what gets persisted.
+		if uri, mt := photostore.ReadContactPhotoDataURI(c.Photo, c.PhotoThumbnail, photoDir); uri != "" {
+			photo.URI = uri
+			photo.MediaType = mt
+		}
+		return
+	}
 	if len(data) == 0 && photoURL != "" {
 		fetched, fetchedMediaType, err := photostore.FetchPhotoFromURL(photoURL)
 		if err != nil {
