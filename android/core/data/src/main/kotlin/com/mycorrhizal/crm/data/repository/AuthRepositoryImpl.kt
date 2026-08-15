@@ -3,6 +3,7 @@ package com.mycorrhizal.crm.data.repository
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.SessionState
+import com.mycorrhizal.crm.model.network.PasswordStrength
 import com.mycorrhizal.crm.model.network.UserProfile
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
@@ -56,6 +57,38 @@ class AuthRepositoryImpl @Inject constructor(
         val profile = apiClient.currentUser().getOrElse { return Result.failure(it.toApiError()) }
         persistSession(token, profile)
         return Result.success(Unit)
+    }
+
+    override suspend fun register(username: String, email: String, password: String): Result<Unit> {
+        val result = apiClient.register(username, email, password)
+        return result.fold(
+            onSuccess = { Result.success(Unit) },
+            onFailure = { Result.failure(it.toApiError()) },
+        )
+    }
+
+    override suspend fun checkPasswordStrength(password: String): Result<PasswordStrength> {
+        val result = apiClient.checkPasswordStrength(password)
+        return result.fold(
+            onSuccess = { Result.success(it) },
+            onFailure = { Result.failure(it.toApiError()) },
+        )
+    }
+
+    override suspend fun requestPasswordReset(email: String): Result<String> {
+        val result = apiClient.requestPasswordReset(email)
+        return result.fold(
+            onSuccess = { message -> Result.success(message?.message ?: "") },
+            onFailure = { Result.failure(it.toApiError()) },
+        )
+    }
+
+    override suspend fun confirmPasswordReset(token: String, password: String): Result<Unit> {
+        val result = apiClient.confirmPasswordReset(token, password)
+        return result.fold(
+            onSuccess = { Result.success(Unit) },
+            onFailure = { Result.failure(it.toApiError()) },
+        )
     }
 
     override suspend fun fetchCurrentUser(): Result<UserProfile> = apiClient.currentUser()

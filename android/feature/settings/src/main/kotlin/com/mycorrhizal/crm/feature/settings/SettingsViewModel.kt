@@ -2,7 +2,6 @@ package com.mycorrhizal.crm.feature.settings
 
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -170,12 +169,11 @@ class SettingsViewModel @Inject constructor(
         (this as? com.mycorrhizal.crm.network.ApiError)?.displayMessage ?: message ?: "error"
 
     private fun startCallDetectionService() {
-        val intent = Intent(appContext, com.mycorrhizal.crm.feature.tracking.CallDetectionService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            appContext.startForegroundService(intent)
-        } else {
-            appContext.startService(intent)
-        }
+        // minSdk is 26, so startForegroundService is always the correct path
+        // (the pre-O branch could never be taken — M5 §7 cleanup).
+        appContext.startForegroundService(
+            Intent(appContext, com.mycorrhizal.crm.feature.tracking.CallDetectionService::class.java),
+        )
     }
 
     private fun stopCallDetectionService() {

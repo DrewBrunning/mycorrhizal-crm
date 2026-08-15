@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.domain.repository
 
+import com.mycorrhizal.crm.model.network.PasswordStrength
 import com.mycorrhizal.crm.model.network.UserProfile
 import kotlinx.coroutines.flow.Flow
 
@@ -23,6 +24,20 @@ interface AuthRepository {
 
     /** Authenticate with a `mycorrhizal_` API token (no password). */
     suspend fun loginWithApiToken(token: String): Result<Unit>
+
+    // M26: account creation + password reset.
+
+    /** POST /register — creates the account. Does NOT authenticate; call [login] after. */
+    suspend fun register(username: String, email: String, password: String): Result<Unit>
+
+    /** POST /check-password-strength — server-side entropy/score for the register form. */
+    suspend fun checkPasswordStrength(password: String): Result<PasswordStrength>
+
+    /** POST /password-reset/request — anti-enumeration: the same message for known and unknown emails. */
+    suspend fun requestPasswordReset(email: String): Result<String>
+
+    /** POST /password-reset/confirm — resets the password with the emailed token. */
+    suspend fun confirmPasswordReset(token: String, password: String): Result<Unit>
 
     /** Fetch the current user profile from the server (validates the token). */
     suspend fun fetchCurrentUser(): Result<UserProfile>

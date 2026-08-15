@@ -44,6 +44,9 @@ import com.mycorrhizal.crm.ui.R
 fun LoginScreen(
     onLoggedIn: () -> Unit,
     onSignInWithSso: (String) -> Unit = {},
+    // M26: links to the register and forgot-password flows.
+    onRegisterClick: () -> Unit = {},
+    onForgotPasswordClick: () -> Unit = {},
     viewModel: LoginViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -63,6 +66,8 @@ fun LoginScreen(
         onModeChange = viewModel::onModeChange,
         onSubmit = viewModel::onSubmit,
         onSignInWithSso = onSignInWithSso,
+        onRegisterClick = onRegisterClick,
+        onForgotPasswordClick = onForgotPasswordClick,
         onErrorShown = viewModel::onErrorShown,
     )
 }
@@ -79,6 +84,8 @@ fun LoginScreenContent(
     onModeChange: (LoginMode) -> Unit,
     onSubmit: (serverUrl: String, identifier: String, password: String, apiToken: String) -> Unit,
     onSignInWithSso: (String) -> Unit = {},
+    onRegisterClick: () -> Unit = {},
+    onForgotPasswordClick: () -> Unit = {},
     onErrorShown: () -> Unit = {},
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -183,6 +190,22 @@ fun LoginScreenContent(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(stringResource(R.string.login_sso))
+            }
+
+            // M26: account creation + password reset live on the same screen
+            // as sign-in on web (LoginPage.tsx links both), so Android keeps
+            // them together here too.
+            TextButton(
+                onClick = onRegisterClick,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.login_no_account))
+            }
+            TextButton(
+                onClick = onForgotPasswordClick,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.login_forgot_password))
             }
 
             val errorMessage = uiState.errorRes?.let { stringResource(it) } ?: uiState.error

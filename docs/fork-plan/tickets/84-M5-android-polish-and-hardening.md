@@ -5,7 +5,7 @@
 | **Rating** | 3 |
 | **Source** | Post-M1 review pass, 2026-08-11 (full read of `android/` after Phases 1–5 landed) |
 | **Depends on** | M1 Phases 1–5 (shipped). Items §3 and §5 are gated on the backend tickets noted inline. |
-| **Status** | Scoped, not started. Promoted to the Android list 2026-08-14 (was under Feature ideas). |
+| **Status** | **PARTIAL — §3.1, §3.2, §5, §7 done 2026-08-15** (see the landing note for the per-section ledger and the deliberately-deferred items). |
 
 This is the Android-client counterpart to the M-series backend tickets: [M2](81-M2-fcm-mobile-push.md)
 (FCM push), [M3](82-M3-dashboard-overview-endpoint.md) (`GET /dashboard`), and
@@ -205,3 +205,87 @@ Per section:
 - New tests hand-verified per `/CLAUDE.md` (broken, seen to fail, restored).
 - On-device verification on the Pixel 8a for anything with a device-only surface, matching how
   every M1 phase was signed off.
+
+---
+
+## Landing note (2026-08-15)
+
+A container ticket with independently-shippable sections; this pass shipped
+four of them and made explicit, recorded decisions on the rest rather than
+leaving them implicit.
+
+**Shipped:**
+
+- **§3.1 Contact photos** (the M6 §1 consumer). Coil is now wired to the
+  app's authenticated OkHttp stack — `SingletonImageLoader.setSafe` with the
+  `OkHttpNetworkFetcherFactory` over the same client that carries the
+  `BaseUrl` + `Auth` interceptors — and `ContactAvatar` resolves the backend's
+  relative profile-photo paths (`/api/v1/contacts/{id}/profile_picture…`)
+  against the configured server origin via a new `LocalServerUrl`
+  composition local. The result is an absolute URL that (a) reaches the right
+  server and carries the JWT and (b) is the Coil disk-cache key, so switching
+  servers can't serve one instance's cached avatar to another. The old
+  `uri.startsWith("http")` guard that dropped every relative URL onto the
+  person-icon fallback is gone. (`resolvePhotoUri` extracted and unit-tested.)
+- **§3.2 Last name in the list/detail.** `ContactSummary.displayName` now
+  derives `firstname "nickname" lastname` the way web's `ContactsPage` does,
+  instead of preferring a given-name-only `fn`; the two other surfaces with
+  their own fn-first `displayNameFor` copies (households, relationships) now
+  use the shared derivation, so the same contact renders the same name
+  everywhere.
+- **§5 OIDC native return.** Manifest gains the `mycorrhizal://oidc/callback`
+  intent-filter (`singleTask`), the SSO button now sends `?client=android`
+  (without it the backend takes the web path and the deep link is
+  unreachable), and `MainActivity` stores the returned JWT — after awaiting
+  session hydration (a cold-start race), validating it via `/users/me` (a
+  stale token clears the session instead of flipping the app to logged-in),
+  and enriching the profile like a normal login. `parseOidcReturn` extracted
+  and unit-tested (incl. the path check — MainActivity is exported).
+- **§7 hardening.** Release signing from env/properties
+  (`SIGNING_STORE_FILE`/`_PASSWORD`/`_KEY_ALIAS`/`_KEY_PASSWORD`, all four
+  required together, never committed; unsigned otherwise). The two dead
+  API-26 `SDK_INT` guards removed (minSdk is 26) and `mipmap-anydpi-v26`
+  merged into `mipmap-anydpi`. Household address suggestions (§7) were found
+  already implemented (M22) — nothing to do.
+
+**Deliberately deferred, decisions recorded:**
+
+- **§1 Tablet layout** (NavigationRail + two-pane list/detail at Expanded).
+  Real host-level work with its own test bar; not attempted in this pass.
+  It remains the single largest §1 item.
+- **§4 Quick-capture sheet** (in-overlay activity form). The overlay's pill
+  (graceful-degradation path) still ships; the pre-filled in-overlay sheet is
+  a separate service-surface feature.
+- **§5a FCM client.** Genuinely blocked on an external resource: a Firebase
+  project + `google-services.json`. The WorkManager polling workers stay the
+  sole path until then (they already are, and that is the de-Googled-device
+  safety net by design). Implementing the service without the config would
+  fail at runtime (`FirebaseApp` not initialized).
+- **§6 Instrumented-test tier.** Decision recorded explicitly (the ticket's
+  allowed alternative): the Robolectric tier **is** the whole pyramid for
+  now. Rationale: Robolectric already covers the Room migrations
+  (`Migration13To14Test`), the Compose screens, and the ViewModel layers; the
+  genuinely device-only surfaces (real `ContentResolver` against
+  `ContactsContract`, WorkManager scheduling, the foreground-service/overlay
+  paths) are each covered by dedicated hand-verification notes on the
+  tickets that touch them (T67/T76/M1). Adding an emulator CI job is a
+  real-but-deferred cost, not an accidental omission. (Recorded in M1's
+  landing note too.)
+- **§3.3 Font roles** — already resolved by T99 (EB Garamond dropped).
+  **§3.4 Section styling** — cosmetic, lowest priority, left.
+  **§7 MIMETYPE verification** (Telegram/Zoom/Discord) — cannot verify
+  without a device with those apps; the entries stay with their
+  "unverified-guess" comment (a wrong MIMETYPE is indistinguishable from "app
+  not installed", which is a pre-existing acceptance, not a regression).
+
+**Review pass (2026-08-15):** an independent review found and fixed six real
+issues in the shipped code — the SSO button missing `client=android` (the
+deep-link receiver was otherwise dead from the UI), the cold-start hydration
+race (now `awaitHydrated()`), per-server Coil cache keys, the OIDC JWT not
+being validated/enriched, the missing `/callback` path check, and the two
+local `displayNameFor` copies regressing to fn-first.
+
+**Gate:** `testDebugUnitTest`/`lintDebug`/`assembleDebug` green; the
+display-name derivation was hand-verified against a reintroduced fn-first bug.
+**On-device verification: outstanding** — no device in the build environment
+(photos + OIDC round-trip need the Pixel 8a).
