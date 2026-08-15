@@ -7,7 +7,7 @@
 | **Size** | S–M — 2 endpoints, one list screen, one confirm dialog |
 | **Source** | [M8](89-M8-web-android-parity-audit.md) audit, 2026-08-11 |
 | **Depends on** | Nothing — T60/T18's backend already exists and serves web today |
-| **Status** | TO BE DONE |
+| **Status** | **DONE** (2026-08-14 — new `:feature:audit` module: `GET /audit` + `POST /audit/:id/undo` in `ApiClient`, an `AuditRepository` pass-through, `AuditViewModel`/`AuditScreen` mirroring `AuditPage.tsx`, and a drawer entry. All four test cases pinned; see the landing note) |
 
 `/audit` (`AuditPage.tsx`) has zero Android footprint — a repo-wide search for "audit" in
 `android/**/*.kt` returns no hits.
@@ -75,3 +75,56 @@ JUnit4 + MockK (`mockk`/`coEvery`) + Turbine + `runTest` with `MainDispatcherRul
 mock the repository — `feature/contacts/.../ContactListViewModelTest.kt` is the reference. New
 `ApiClient` methods get a MockWebServer test in `core/network` — `ApiClientTest.kt` is the reference.
 Hand-verify per `/CLAUDE.md`: break the code, confirm the new test fails, restore.
+
+---
+
+## Landing note (2026-08-14)
+
+Shipped as a new `:feature:audit` module following the `cadence` feature's shape (the most recent
+standalone feature), with the model + network + repository + DI wiring across the four core modules.
+
+**What web's `useAudit`/`AuditPage.tsx` semantics were carried over verbatim:**
+
+- **No-cursor pagination.** The API only returns the newest `limit` rows (default 100, cap 500), so
+  "load more" re-fetches with a grown window, and `canLoadMore = events.size >= limit && limit < 500`
+  is the only signal available — same as web's hook.
+- **A filter change resets the window to 100** so a grown window never masks the filtered result
+  (the ticket's "don't filter client-side over a full fetch" rule, in both directions).
+- **Entity-id filter is debounced** at 350ms, matching web's `useDebouncedValue`.
+- **Undo is gated to `entity_type == contact && operation == update`** via `AuditEvent.canUndo`, so a
+  delete/other-entity event renders no button at all — test case 3 asserts the button is *absent*,
+  not that the 400 error is surfaced.
+- **410 handling:** undo failures where the event aged past `AUDIT_RETENTION_DAYS` show web's
+  `retentionGone` string; every other failure shows the server's own message.
+- **Contact links resolve via `?vcard_uid=`** (the pre-existing `ContactRepository.resolveByUid`),
+  including archived contacts; a UID that doesn't resolve (deleted contact) falls back to its raw
+  uid as plain text, exactly like web's `useContactsForEvents`. Resolution failure is a silent
+  degrade, never an error surface.
+
+**Partial-undo honesty:** the confirm dialog carries the `partialNote` string verbatim from web
+("Details that were never captured in this record … are preserved unchanged"), so the screen says
+exactly what T75/T82 undo does and never promises a full revert.
+
+**Tests** (hand-verified — each broke before the fix, confirmed, restored):
+
+- `ApiClientTest` (+6): filters land on the query string (`limit`, `entity_type`, `entity_id`, blank
+  filters omitted), the event list + `canUndo` parse, undo POSTs to `/audit/:id/undo`, and a 410
+  maps to `ApiError.Client(410)`.
+- `AuditViewModelTest` (+12): default window fetch, load failure, entity-type filter resets the
+  window, entity-id debounce fires exactly one request before the delay and one after, clear-filters,
+  load-more growth, partial-window has no load-more, contact-UID resolution populates the link map,
+  resolve-failure degrades silently, undo → refresh (two list calls), 410 vs other-code undo failure.
+- `AuditScreenTest` (+5, Robolectric): delete event renders **no** undo button, unresolved UID shows
+  raw text with no link node, resolved UID is a tappable contact-detail link, load-more button
+  appears only when more rows exist, and the filter toolbar renders "All types" with a disabled
+  Clear-filters until a filter is active.
+
+**Strings:** 28 new keys (`nav_audit` + `audit_*`) translated in all five locales, with the web
+JSON's existing translations reused so the four non-English copies stay aligned with web.
+
+**Gate:** `./gradlew testDebugUnitTest`, `./gradlew lintDebug`, `./gradlew assembleDebug` all green.
+
+**Not done / deferred:** on-device hand-verification (the ticket's "make a change, undo it via the
+Android audit screen" step) — no device attached to this worktree. The screen mirrors the web
+behavior that is already live-verified on web, and every behavior is covered by the unit/UI tests
+above; the device pass remains from the ticket's Done-when checklist.

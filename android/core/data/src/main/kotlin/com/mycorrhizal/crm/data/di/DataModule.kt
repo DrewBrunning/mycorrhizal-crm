@@ -20,6 +20,7 @@ import com.mycorrhizal.crm.data.local.CachedReminderDao
 import com.mycorrhizal.crm.data.local.CachedTagDao
 import com.mycorrhizal.crm.data.local.PendingInteractionDao
 import com.mycorrhizal.crm.data.repository.ActivityRepositoryImpl
+import com.mycorrhizal.crm.data.repository.AuditRepositoryImpl
 import com.mycorrhizal.crm.data.repository.AuthRepositoryImpl
 import com.mycorrhizal.crm.data.repository.CadencePolicyRepositoryImpl
 import com.mycorrhizal.crm.data.repository.CircleRepositoryImpl
@@ -43,6 +44,7 @@ import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.data.session.SessionPrefsStorage
 import com.mycorrhizal.crm.data.session.TokenStorage
 import com.mycorrhizal.crm.domain.repository.ActivityRepository
+import com.mycorrhizal.crm.domain.repository.AuditRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.BulkOperationRepository
 import com.mycorrhizal.crm.domain.repository.CadencePolicyRepository
@@ -213,6 +215,10 @@ abstract class DataBindsModule {
     @Binds
     @Singleton
     abstract fun bindAuthRepository(impl: AuthRepositoryImpl): AuthRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindAuditRepository(impl: AuditRepositoryImpl): AuditRepository
 
     @Binds
     @Singleton

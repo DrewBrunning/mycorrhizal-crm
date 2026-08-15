@@ -598,4 +598,34 @@
     <string name="import_vcf_result">Import complete: %1$d created, %2$d updated, %3$d skipped.</string>
     <string name="import_vcf_error_too_large">File is too large. Maximum size is 50MB.</string>
     <string name="import_vcf_error_invalid_file">Couldn\'t read that file. Choose a .vcf file.</string>
+
+    <!-- Audit trail (M16) -->
+    <string name="nav_audit">Audit log</string>
+    <string name="audit_title">Audit log</string>
+    <string name="audit_description">Every create, update and delete across your contacts and records, newest first.</string>
+    <string name="audit_filters_entity_type">Entity type</string>
+    <string name="audit_filters_entity_type_all">All types</string>
+    <string name="audit_filters_entity_id">Entity ID</string>
+    <string name="audit_filters_clear">Clear filters</string>
+    <string name="audit_operations_create">Created</string>
+    <string name="audit_operations_update">Updated</string>
+    <string name="audit_operations_delete">Deleted</string>
+    <string name="audit_entity_types_contact">Contact</string>
+    <string name="audit_entity_types_note">Note</string>
+    <string name="audit_entity_types_activity">Activity</string>
+    <string name="audit_entity_types_life_event">Life event</string>
+    <string name="audit_entity_types_gift">Gift</string>
+    <string name="audit_entity_types_circle">Circle</string>
+    <string name="audit_entity_types_tag">Tag</string>
+    <string name="audit_entity_types_household">Household</string>
+    <string name="audit_entity_types_reminder">Reminder</string>
+    <string name="audit_empty">No audit events match your filters.</string>
+    <string name="audit_empty_no_filters">No audit events yet. Changes you make to your contacts and other records will appear here.</string>
+    <string name="audit_undo_button">Undo</string>
+    <string name="audit_undo_confirm_title">Undo this change?</string>
+    <string name="audit_undo_confirm_message">Restore the %1$s to its previous state as of %2$s?</string>
+    <string name="audit_undo_confirm">Undo</string>
+    <string name="audit_undo_success">Contact restored to its previous state</string>
+    <string name="audit_undo_retention_gone">This event is past its retention window and can no longer be undone</string>
+    <string name="audit_undo_partial_note">Details that were never captured in this record (pronouns, personal information, address details) are preserved unchanged.</string>
 </resources>
