@@ -1,5 +1,7 @@
 package com.mycorrhizal.crm.domain.repository
 
+import com.mycorrhizal.crm.model.network.ApplyContactAddressSuggestionInput
+import com.mycorrhizal.crm.model.network.ContactAddressSuggestion
 import com.mycorrhizal.crm.model.network.ContactRecordInput
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ContactSummary
@@ -113,4 +115,19 @@ interface ContactRepository {
 
     /** Cached contact detail as a reactive stream. */
     fun observeContact(id: Int): Flow<ContactRecordResponse?>
+
+    /**
+     * 167: scan for contact-address suggestions — the addresses a contact
+     * probably shares because of a confirmed parent/child, spouse, or roommate
+     * edge, or household membership. Read-only and idempotent; nothing is
+     * written until [applyContactAddressSuggestion].
+     */
+    suspend fun suggestContactAddresses(): Result<List<ContactAddressSuggestion>>
+
+    /**
+     * 167: apply one address suggestion. The server re-derives the address
+     * from the current graph (the relationship or household must still hold),
+     * so the client only names the suggestion by identity.
+     */
+    suspend fun applyContactAddressSuggestion(input: ApplyContactAddressSuggestionInput): Result<Unit>
 }

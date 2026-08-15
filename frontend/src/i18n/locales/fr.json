@@ -87,7 +87,8 @@
     "acceptSuggestion": "Accepter",
     "dismissSuggestion": "Ignorer",
     "suggestionAccepted": "Foyer créé à partir de la suggestion",
-    "suggestionDismissed": "Suggestion ignorée"
+    "suggestionDismissed": "Suggestion ignorée",
+    "addressSuggestionsAvailable": "De nouvelles suggestions d'adresses sont disponibles — examinez-les sous Réglages → Données."
   },
   "circlesTags": {
     "title": "Cercles et étiquettes",
@@ -1056,6 +1057,29 @@
         "title": "Importer des contacts",
         "description": "Importez un carnet d'adresses complet — une exportation Google Takeout, une exportation CSV ou VCF d'une autre application de contacts, ou un fichier JSON JSContact. Le même flux de validation que sur la page Contacts est utilisé, avec des actions groupées pour les gros fichiers.",
         "importButton": "Importer des contacts"
+      },
+      "propose": {
+        "title": "Proposer des données",
+        "description": "Laissez l'application découvrir ce que vos données impliquent sans le dire explicitement. Les suggestions ne sont que des propositions : examinez et acceptez chacune avant qu'elle ne devienne définitive.",
+        "suggestRelationships": "Suggérer des relations",
+        "suggestingRelationships": "Suggestion…",
+        "suggestAddresses": "Suggérer des adresses",
+        "suggestingAddresses": "Suggestion…",
+        "relationshipsGenerated": "{{count}} nouvelles suggestions de relations générées — examinez-les ci-dessous.",
+        "noRelationshipSuggestions": "Aucune nouvelle suggestion de relation pour le moment.",
+        "relationshipsError": "Impossible de générer les suggestions de relations.",
+        "addressesGenerated": "{{count}} suggestions d'adresses trouvées — examinez-les ci-dessous.",
+        "noAddressSuggestions": "Aucune suggestion d'adresse pour le moment.",
+        "addressesError": "Impossible de rechercher des suggestions d'adresses.",
+        "suggestionsLoadError": "Impossible de charger les suggestions.",
+        "loadingSuggestions": "Chargement…",
+        "refreshSuggestions": "Actualiser",
+        "addressSuggestionsTitle": "Adresses suggérées",
+        "addressScanError": "Impossible de rechercher des suggestions d'adresses.",
+        "addressReasonRelationship": "Partagée avec {{name}} ({{relation}})",
+        "addressReasonHousehold": "Foyer : {{name}}",
+        "applyAddress": "Appliquer",
+        "addressApplied": "Adresse ajoutée"
       }
     },
     "exportFieldPicker": {
@@ -1171,6 +1195,7 @@
     "reject": "Rejeter",
     "rejectMessage": "Êtes-vous sûr de vouloir rejeter cette relation suggérée ?",
     "unknownContact": "Contact inconnu",
+    "addressSuggestionsAvailable": "De nouvelles suggestions d'adresses sont disponibles — examinez-les sous Réglages → Données.",
     "otherPartyReadOnlyHint": "Pour modifier les informations de cette personne, ouvrez sa fiche contact.",
     "sensitivity": "Confidentialité",
     "sensitivityNormal": "Normale",

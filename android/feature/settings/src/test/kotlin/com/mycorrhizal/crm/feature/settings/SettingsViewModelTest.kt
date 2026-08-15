@@ -3,8 +3,10 @@ package com.mycorrhizal.crm.feature.settings
 import android.content.Context
 import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
+import com.mycorrhizal.crm.domain.repository.RelationshipEdgeRepository
 import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.domain.repository.TrackingSettingsRepository
+import com.mycorrhizal.crm.model.network.RelationshipEdge
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
 import com.mycorrhizal.crm.ui.R
@@ -30,6 +32,7 @@ class SettingsViewModelTest {
     private val authRepository = mockk<AuthRepository>()
     private val trackingSettings = mockk<TrackingSettingsRepository>()
     private val appSettings = mockk<AppSettingsRepository>()
+    private val relationshipEdgeRepository = mockk<RelationshipEdgeRepository>()
     private val appContext = mockk<Context>(relaxed = true)
 
     private fun viewModel(
@@ -41,7 +44,7 @@ class SettingsViewModelTest {
         coEvery { trackingSettings.notificationsEnabled() } returns true
         every { authRepository.observeSession() } returns MutableStateFlow(session)
         coEvery { appSettings.themePreference() } returns flowOf(themePreference)
-        return SettingsViewModel(authRepository, trackingSettings, appSettings, appContext)
+        return SettingsViewModel(authRepository, trackingSettings, appSettings, relationshipEdgeRepository, appContext)
     }
 
     @Test
@@ -196,5 +199,64 @@ class SettingsViewModelTest {
         advanceUntilIdle()
 
         assertEquals(AppSettingsRepository.THEME_DARK, vm.uiState.value.themePreference)
+    }
+
+    // --- T104 ---
+
+    @Test
+    fun `suggestRelationships records the count of newly created edges`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val edge = RelationshipEdge(id = "e1", type = "parent_of")
+            coEvery { relationshipEdgeRepository.suggest() } returns Result.success(listOf(edge))
+            val vm = viewModel()
+            advanceUntilIdle()
+
+            vm.suggestRelationships()
+            advanceUntilIdle()
+
+            coVerify { relationshipEdgeRepository.suggest() }
+            assertEquals(1, vm.uiState.value.suggestedRelationshipCount)
+            assertNull(vm.uiState.value.relationshipSuggestErrorRes)
+            assertTrue(!vm.uiState.value.isSuggestingRelationships)
+        }
+
+    @Test
+    fun `suggestRelationships with no new edges reports zero`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { relationshipEdgeRepository.suggest() } returns Result.success(emptyList())
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.suggestRelationships()
+        advanceUntilIdle()
+
+        assertEquals(0, vm.uiState.value.suggestedRelationshipCount)
+        assertNull(vm.uiState.value.relationshipSuggestErrorRes)
+    }
+
+    @Test
+    fun `suggestRelationships failure surfaces the error resource`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { relationshipEdgeRepository.suggest() } returns Result.failure(ApiError.Client(500, "boom"))
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.suggestRelationships()
+        advanceUntilIdle()
+
+        assertEquals(R.string.settings_suggest_relationships_error, vm.uiState.value.relationshipSuggestErrorRes)
+        assertNull(vm.uiState.value.suggestedRelationshipCount)
+    }
+
+    @Test
+    fun `onRelationshipSuggestBannerShown clears the result banner`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { relationshipEdgeRepository.suggest() } returns Result.success(listOf(RelationshipEdge(id = "e1")))
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.suggestRelationships()
+        advanceUntilIdle()
+        assertEquals(1, vm.uiState.value.suggestedRelationshipCount)
+
+        vm.onRelationshipSuggestBannerShown()
+        assertNull(vm.uiState.value.suggestedRelationshipCount)
     }
 }

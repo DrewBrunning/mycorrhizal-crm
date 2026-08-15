@@ -1108,6 +1108,84 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+
+  # --- Contact-address suggestions (inverse of T40): propose addresses a
+  # contact probably shares, from confirmed relationships and households. ---
+  /contacts/address-suggestions:
+    post:
+      summary: Scan for contact-address suggestions
+      operationId: suggestContactAddresses
+      description: >
+        Proposes addresses for a contact based on who they are related to
+        (confirmed parent/child, spouse, roommate edges) and which household
+        they are in. Read-only and idempotent — nothing is persisted; the
+        client renders the suggestions and lets the user apply or ignore each
+        one via /contacts/address-suggestions/apply.
+      responses:
+        "200":
+          description: Suggestions found.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  suggestions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ContactAddressSuggestion"
+                  total: { type: integer }
+        "500":
+          description: Database error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /contacts/address-suggestions/apply:
+    post:
+      summary: Apply a contact-address suggestion
+      operationId: applyContactAddressSuggestion
+      description: >
+        Adds the address a suggestion points at to the contact, re-deriving it
+        server-side from the current graph (the confirmed relationship or
+        household membership must still hold, and the source must still carry
+        that address) rather than trusting the client. Appending goes through
+        the same save path as a normal contact edit, so no other contact data
+        is touched.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplyContactAddressSuggestionInput"
+      responses:
+        "200":
+          description: Address added to the contact.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  contact_vcard_uid: { type: string, format: uuid }
+        "400":
+          description: Invalid suggestion identity (bad source_kind or missing fields).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Contact or source not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: The link, address, or membership no longer holds, or the contact already has the address.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /contacts/{id}:
     parameters:
       - name: id
@@ -1833,6 +1911,36 @@ paths:
                 $ref: "#/components/schemas/Error"
         "404":
           description: An existing endpoint contact was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /relationship-edges/suggest:
+    post:
+      summary: Suggest relationships from relationships
+      operationId: suggestRelationshipEdges
+      description: >
+        T104: runs one round of two-hop graph inference over the caller's
+        confirmed relationship edges and persists the newly-derived
+        suggestions (Status=suggested, Source=graph-inferred). Opt-in, one
+        round per press, and idempotent — re-running never duplicates an
+        existing edge. Returns only the edges this call newly created.
+      responses:
+        "200":
+          description: Suggestions generated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  suggested_edges:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/RelationshipEdge"
+                  total: { type: integer }
+        "500":
+          description: Database error.
           content:
             application/json:
               schema:
@@ -7961,6 +8069,38 @@ components:
           type: array
           minItems: 2
           items: { type: string, format: uuid }
+    ContactAddressSuggestion:
+      type: object
+      description: >
+        One contact-address suggestion: the recipient contact should consider
+        the address the Source carries, because a confirmed relationship
+        (parent/child, spouse, roommate) or household membership implies a
+        shared residence. SourceKind is "relationship" or "household"; for a
+        relationship source, SourceID is the other contact's VCardUID and
+        RelationType reads from the recipient's perspective.
+      properties:
+        contact_vcard_uid: { type: string, format: uuid }
+        contact_name: { type: string }
+        source_kind: { type: string, enum: [relationship, household] }
+        source_id: { type: string }
+        source_name: { type: string }
+        relation_type: { type: string }
+        address:
+          $ref: "#/components/schemas/Address"
+        address_key:
+          type: string
+          description: Normalized address identity (street + city/region + postal + country).
+    ApplyContactAddressSuggestionInput:
+      type: object
+      description: >
+        Names one address suggestion by its identity. The address itself is
+        never sent: the server re-derives it from the current graph.
+      required: [contact_vcard_uid, source_kind, source_id, address_key]
+      properties:
+        contact_vcard_uid: { type: string, format: uuid }
+        source_kind: { type: string, enum: [relationship, household] }
+        source_id: { type: string }
+        address_key: { type: string }
     AuditEvent:
       type: object
       description: One immutable create/update/delete record in the audit log (T18).

@@ -78,4 +78,34 @@ class RelationshipEdgeRepositoryImplTest {
         assertTrue(result.isFailure)
         assertNull(db.cachedRelationshipEdgeDao().getById("e1"))
     }
+
+    // --- T104 ---
+
+    @Test
+    fun `suggest maps the response to its suggested edges`() = runTest {
+        val edges = listOf(
+            RelationshipEdge(
+                id = "e1", sourceId = "u1", targetId = "u2",
+                type = RelationshipEdgeTypes.PARENT_OF, status = "suggested", source = "graph-inferred",
+            ),
+        )
+        coEvery { apiClient.suggestRelationshipEdges() } returns
+            Result.success(com.mycorrhizal.crm.model.network.RelationshipSuggestionsResponse(suggestedEdges = edges, total = 1))
+
+        val result = repository.suggest()
+
+        assertTrue(result.isSuccess)
+        assertEquals(edges, result.getOrThrow())
+    }
+
+    @Test
+    fun `suggest failure propagates`() = runTest {
+        coEvery { apiClient.suggestRelationshipEdges() } returns Result.failure(
+            ApiError.Client(500, "boom"),
+        )
+
+        val result = repository.suggest()
+
+        assertTrue(result.isFailure)
+    }
 }

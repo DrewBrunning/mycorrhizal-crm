@@ -65,6 +65,9 @@ class RelationshipEdgeRepositoryImpl @Inject constructor(
         return result
     }
 
+    override suspend fun suggest(): Result<List<RelationshipEdge>> =
+        apiClient.suggestRelationshipEdges().map { it.suggestedEdges }
+
     private fun RelationshipEdge.toCached(): CachedRelationshipEdge = CachedRelationshipEdge(
         id = id,
         sourceId = sourceId,

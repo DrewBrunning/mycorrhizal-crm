@@ -82,7 +82,7 @@ func GenerateHouseholdSuggestions(db *gorm.DB, household models.Household) ([]mo
 
 	created := []models.RelationshipEdge{}
 	suggest := func(sourceID, targetID, edgeType string, confidence float64) error {
-		edge, err := suggestEdgeIfNew(db, household.UserID, sourceID, targetID, edgeType, confidence)
+		edge, err := suggestEdgeIfNew(db, household.UserID, sourceID, targetID, edgeType, models.RelationshipSourceHouseholdInferred, confidence)
 		if err != nil {
 			return err
 		}
@@ -162,8 +162,13 @@ func GenerateHouseholdSuggestions(db *gorm.DB, household models.Household) ([]mo
 // `confirmed` edge is never re-suggested over, any more than a `suggested`
 // one is duplicated.
 //
+// source is the provenance token stamped on the created edge — the two
+// callers pass their own (household-inferred for GenerateHouseholdSuggestions,
+// graph-inferred for GenerateGraphSuggestions) so a suggestion's Source
+// always records which engine made it.
+//
 // Returns the created edge, or nil if one already existed.
-func suggestEdgeIfNew(db *gorm.DB, userID uint, sourceID, targetID, edgeType string, confidence float64) (*models.RelationshipEdge, error) {
+func suggestEdgeIfNew(db *gorm.DB, userID uint, sourceID, targetID, edgeType, source string, confidence float64) (*models.RelationshipEdge, error) {
 	inverse := models.InverseRelationType(edgeType)
 
 	var count int64
@@ -185,7 +190,7 @@ func suggestEdgeIfNew(db *gorm.DB, userID uint, sourceID, targetID, edgeType str
 		TargetID:    targetID,
 		Type:        edgeType,
 		Directional: !models.IsSymmetricRelationType(edgeType),
-		Source:      models.RelationshipSourceHouseholdInferred,
+		Source:      source,
 		Confidence:  confidence,
 		Status:      models.RelationshipStatusSuggested,
 		Sensitivity: models.RelationshipSensitivityNormal,

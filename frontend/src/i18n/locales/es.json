@@ -87,7 +87,8 @@
     "acceptSuggestion": "Aceptar",
     "dismissSuggestion": "Descartar",
     "suggestionAccepted": "Hogar creado a partir de la sugerencia",
-    "suggestionDismissed": "Sugerencia descartada"
+    "suggestionDismissed": "Sugerencia descartada",
+    "addressSuggestionsAvailable": "Hay nuevas sugerencias de direcciones — revíselas en Ajustes → Datos."
   },
   "circlesTags": {
     "title": "Círculos y etiquetas",
@@ -1056,6 +1057,29 @@
         "title": "Importar contactos",
         "description": "Trae una agenda completa: una exportación de Google Takeout, una exportación CSV o VCF de otra app de contactos, o un archivo JSON de JSContact. Se usa el mismo flujo de revisión que en la página de Contactos, con controles masivos para archivos grandes.",
         "importButton": "Importar contactos"
+      },
+      "propose": {
+        "title": "Proponer datos",
+        "description": "Deje que la aplicación encuentre cosas que sus datos implican pero aún no dicen. Las sugerencias solo son propuestas: revíselas y acepte cada una antes de que se vuelva definitiva.",
+        "suggestRelationships": "Sugerir relaciones",
+        "suggestingRelationships": "Sugiriendo…",
+        "suggestAddresses": "Sugerir direcciones",
+        "suggestingAddresses": "Sugiriendo…",
+        "relationshipsGenerated": "Se generaron {{count}} sugerencias de relaciones nuevas; revíselas abajo.",
+        "noRelationshipSuggestions": "No hay sugerencias de relaciones nuevas en este momento.",
+        "relationshipsError": "No se pudieron generar las sugerencias de relaciones.",
+        "addressesGenerated": "Se encontraron {{count}} sugerencias de direcciones; revíselas abajo.",
+        "noAddressSuggestions": "No hay sugerencias de direcciones en este momento.",
+        "addressesError": "No se pudieron buscar sugerencias de direcciones.",
+        "suggestionsLoadError": "No se pudieron cargar las sugerencias.",
+        "loadingSuggestions": "Cargando…",
+        "refreshSuggestions": "Actualizar",
+        "addressSuggestionsTitle": "Direcciones sugeridas",
+        "addressScanError": "No se pudieron buscar sugerencias de direcciones.",
+        "addressReasonRelationship": "Compartida con {{name}} ({{relation}})",
+        "addressReasonHousehold": "Hogar: {{name}}",
+        "applyAddress": "Aplicar",
+        "addressApplied": "Dirección añadida"
       }
     },
     "exportFieldPicker": {
@@ -1171,6 +1195,7 @@
     "reject": "Rechazar",
     "rejectMessage": "¿Estás seguro de que quieres rechazar esta relación sugerida?",
     "unknownContact": "Contacto desconocido",
+    "addressSuggestionsAvailable": "Hay nuevas sugerencias de direcciones — revíselas en Ajustes → Datos.",
     "otherPartyReadOnlyHint": "Para editar los datos de esta persona, abre su página de contacto.",
     "sensitivity": "Confidencialidad",
     "sensitivityNormal": "Normal",

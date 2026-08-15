@@ -7,8 +7,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
+import com.mycorrhizal.crm.domain.repository.RelationshipEdgeRepository
 import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.domain.repository.TrackingSettingsRepository
+import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -31,6 +33,11 @@ data class SettingsUiState(
     @StringRes val passwordErrorRes: Int? = null,
     /** Dynamic password-change error text (server message). */
     val passwordError: String? = null,
+    /** T104: an in-flight suggest-relationships run. */
+    val isSuggestingRelationships: Boolean = false,
+    /** Number of relationship edges the last suggest run newly created (null = not yet run). */
+    val suggestedRelationshipCount: Int? = null,
+    @StringRes val relationshipSuggestErrorRes: Int? = null,
 )
 
 sealed interface SettingsEvent {
@@ -48,6 +55,7 @@ class SettingsViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val trackingSettings: TrackingSettingsRepository,
     private val appSettings: AppSettingsRepository,
+    private val relationshipEdgeRepository: RelationshipEdgeRepository,
     @ApplicationContext private val appContext: Context,
 ) : ViewModel() {
 
@@ -194,5 +202,41 @@ class SettingsViewModel @Inject constructor(
     /** Clear the one-shot event so the screen's LaunchedEffect doesn't re-fire it. */
     fun onEventShown() {
         _events.value = null
+    }
+
+    /**
+     * T104: run one round of graph inference over the user's confirmed edges.
+     * Opt-in (button press), one round per press, idempotent. The generated
+     * suggestions appear in the existing review surface — a contact's
+     * Relationships screen shows its suggested edges.
+     */
+    fun suggestRelationships() {
+        if (_uiState.value.isSuggestingRelationships) return
+        _uiState.update { it.copy(isSuggestingRelationships = true, relationshipSuggestErrorRes = null) }
+        viewModelScope.launch {
+            relationshipEdgeRepository.suggest().foldApiError(
+                onSuccess = { edges ->
+                    _uiState.update {
+                        it.copy(
+                            isSuggestingRelationships = false,
+                            suggestedRelationshipCount = edges.size,
+                        )
+                    }
+                },
+                onError = { _ ->
+                    _uiState.update {
+                        it.copy(
+                            isSuggestingRelationships = false,
+                            relationshipSuggestErrorRes = R.string.settings_suggest_relationships_error,
+                        )
+                    }
+                },
+            )
+        }
+    }
+
+    /** Clear the T104 result banner so it doesn't linger on the next visit. */
+    fun onRelationshipSuggestBannerShown() {
+        _uiState.update { it.copy(suggestedRelationshipCount = null, relationshipSuggestErrorRes = null) }
     }
 }

@@ -111,3 +111,15 @@ data class RelationshipEdgesPage(
 data class CreateRelationshipEdgeResponse(
     @Json(name = "relationship_edge") val relationshipEdge: RelationshipEdge? = null,
 )
+
+/**
+ * POST /relationship-edges/suggest response — the edges one round of graph
+ * inference (T104) newly created. Deliberately NOT the household-shaped
+ * SuggestRelationshipsResponse: there is no household_id here.
+ */
+@JsonClass(generateAdapter = true)
+data class RelationshipSuggestionsResponse(
+    val message: String? = null,
+    @Json(name = "suggested_edges") val suggestedEdges: List<RelationshipEdge> = emptyList(),
+    val total: Int = 0,
+)

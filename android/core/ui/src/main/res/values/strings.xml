@@ -250,6 +250,24 @@
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>
+    <string name="settings_data">Data</string>
+    <string name="settings_data_review">Data suggestions</string>
+    <string name="settings_suggest_relationships">Suggest relationships</string>
+    <string name="settings_relationships_suggested">%1$d new relationship suggestions generated — review them on a contact\'s Relationships screen.</string>
+    <string name="settings_relationships_none">No new relationship suggestions.</string>
+    <string name="settings_suggest_relationships_error">Could not generate relationship suggestions.</string>
+    <string name="data_relationships_section">Relationships</string>
+    <string name="data_relationships_description">Let the app find relationships your existing ones imply. Suggestions are only proposals — review each one before accepting.</string>
+    <string name="data_relationships_generated">%1$d new relationship suggestions generated — review them on a contact\'s Relationships screen.</string>
+    <string name="data_relationships_none">No new relationship suggestions.</string>
+    <string name="data_address_section">Addresses</string>
+    <string name="data_address_description">Propose addresses a contact probably shares — from a confirmed relationship or household membership.</string>
+    <string name="data_suggest_addresses">Suggest addresses</string>
+    <string name="data_address_suggestions_empty">No address suggestions right now.</string>
+    <string name="data_address_reason_relationship">Shared with %1$s (%2$s)</string>
+    <string name="data_address_reason_household">Household: %1$s</string>
+    <string name="data_apply_address">Apply</string>
+    <string name="data_address_applied">Address added</string>
     <string name="settings_session">Session</string>
     <string name="settings_server">Server</string>
     <string name="settings_username">Username</string>

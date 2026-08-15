@@ -249,6 +249,24 @@
 
     <!-- Einstellungen -->
     <string name="settings_title">Einstellungen</string>
+    <string name="settings_data">Daten</string>
+    <string name="settings_data_review">Datenvorschläge</string>
+    <string name="settings_suggest_relationships">Beziehungen vorschlagen</string>
+    <string name="settings_relationships_suggested">%1$d neue Beziehungsvorschläge erstellt – auf der Beziehungsseite eines Kontakts prüfen.</string>
+    <string name="settings_relationships_none">Momentan keine neuen Beziehungsvorschläge.</string>
+    <string name="settings_suggest_relationships_error">Beziehungsvorschläge konnten nicht erstellt werden.</string>
+    <string name="data_relationships_section">Beziehungen</string>
+    <string name="data_relationships_description">Lassen Sie die App Beziehungen finden, die Ihre bestehenden nahelegen. Vorschläge sind nur Vorschläge – prüfen Sie jeden einzeln, bevor Sie ihn bestätigen.</string>
+    <string name="data_relationships_generated">%1$d neue Beziehungsvorschläge erstellt – auf der Beziehungsseite eines Kontakts prüfen.</string>
+    <string name="data_relationships_none">Momentan keine neuen Beziehungsvorschläge.</string>
+    <string name="data_address_section">Adressen</string>
+    <string name="data_address_description">Adressen vorschlagen, die ein Kontakt vermutlich teilt – aus einer bestätigten Beziehung oder Haushaltsmitgliedschaft.</string>
+    <string name="data_suggest_addresses">Adressen vorschlagen</string>
+    <string name="data_address_suggestions_empty">Momentan keine Adressvorschläge.</string>
+    <string name="data_address_reason_relationship">Geteilt mit %1$s (%2$s)</string>
+    <string name="data_address_reason_household">Haushalt: %1$s</string>
+    <string name="data_apply_address">Übernehmen</string>
+    <string name="data_address_applied">Adresse hinzugefügt</string>
     <string name="settings_session">Sitzung</string>
     <string name="settings_server">Server</string>
     <string name="settings_username">Benutzername</string>

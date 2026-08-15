@@ -11,8 +11,12 @@ import (
 const (
 	RelationshipSourceUserConfirmed     = "user-confirmed"
 	RelationshipSourceHouseholdInferred = "household-inferred"
-	RelationshipSourceImported          = "imported"
-	RelationshipSourceAISuggested       = "ai-suggested"
+	// RelationshipSourceGraphInferred marks edges derived by composing other
+	// confirmed edges (T104 — services.GenerateGraphSuggestions). Same
+	// "inferred, not fact" semantics as the household-inferred source.
+	RelationshipSourceGraphInferred = "graph-inferred"
+	RelationshipSourceImported      = "imported"
+	RelationshipSourceAISuggested   = "ai-suggested"
 )
 
 // Status values stored on RelationshipEdge.Status.
@@ -91,7 +95,7 @@ type RelationshipEdge struct {
 
 	// Source is provenance: how this edge came to exist. Confidence is 0-1;
 	// user-confirmed edges are always 1.0, inferred/suggested ones lower.
-	Source     string  `gorm:"not null" json:"source" validate:"required,oneof=user-confirmed household-inferred imported ai-suggested"`
+	Source     string  `gorm:"not null" json:"source" validate:"required,oneof=user-confirmed household-inferred imported ai-suggested graph-inferred"`
 	Confidence float64 `gorm:"not null;default:1" json:"confidence" validate:"gte=0,lte=1"`
 
 	// Status gates authority: only "confirmed" edges are ever projected to

@@ -87,7 +87,8 @@
     "acceptSuggestion": "Übernehmen",
     "dismissSuggestion": "Verwerfen",
     "suggestionAccepted": "Haushalt aus dem Vorschlag erstellt",
-    "suggestionDismissed": "Vorschlag verworfen"
+    "suggestionDismissed": "Vorschlag verworfen",
+    "addressSuggestionsAvailable": "Neue Adressvorschläge verfügbar – unter Einstellungen → Daten prüfen."
   },
   "circlesTags": {
     "title": "Kreise & Tags",
@@ -1056,6 +1057,29 @@
         "title": "Kontakte importieren",
         "description": "Ein komplettes Adressbuch importieren — einen Google-Takeout-Export, einen CSV- oder VCF-Export einer anderen Kontakte-App oder eine JSContact-JSON-Datei. Es wird derselbe Prüfablauf wie auf der Kontakteseite verwendet, mit Sammelaktionen für große Dateien.",
         "importButton": "Kontakte importieren"
+      },
+      "propose": {
+        "title": "Daten vorschlagen",
+        "description": "Lassen Sie die App Dinge finden, die Ihre Daten andeuten, aber noch nicht ausdrücklich sagen. Vorschläge sind nur Vorschläge – prüfen und bestätigen Sie jeden einzeln, bevor er verbindlich wird.",
+        "suggestRelationships": "Beziehungen vorschlagen",
+        "suggestingRelationships": "Vorschlagen…",
+        "suggestAddresses": "Adressen vorschlagen",
+        "suggestingAddresses": "Vorschlagen…",
+        "relationshipsGenerated": "{{count}} neue Beziehungsvorschläge erstellt – unten prüfen.",
+        "noRelationshipSuggestions": "Momentan keine neuen Beziehungsvorschläge.",
+        "relationshipsError": "Beziehungsvorschläge konnten nicht erstellt werden.",
+        "addressesGenerated": "{{count}} Adressvorschläge gefunden – unten prüfen.",
+        "noAddressSuggestions": "Momentan keine Adressvorschläge.",
+        "addressesError": "Adressvorschläge konnten nicht gesucht werden.",
+        "suggestionsLoadError": "Vorschläge konnten nicht geladen werden.",
+        "loadingSuggestions": "Wird geladen…",
+        "refreshSuggestions": "Aktualisieren",
+        "addressSuggestionsTitle": "Vorgeschlagene Adressen",
+        "addressScanError": "Adressvorschläge konnten nicht gesucht werden.",
+        "addressReasonRelationship": "Geteilt mit {{name}} ({{relation}})",
+        "addressReasonHousehold": "Haushalt: {{name}}",
+        "applyAddress": "Übernehmen",
+        "addressApplied": "Adresse hinzugefügt"
       }
     },
     "exportFieldPicker": {
@@ -1171,6 +1195,7 @@
     "reject": "Ablehnen",
     "rejectMessage": "Möchten Sie diese vorgeschlagene Beziehung wirklich ablehnen?",
     "unknownContact": "Unbekannter Kontakt",
+    "addressSuggestionsAvailable": "Neue Adressvorschläge verfügbar – unter Einstellungen → Daten prüfen.",
     "otherPartyReadOnlyHint": "Um die Angaben dieser Person zu bearbeiten, öffnen Sie deren Kontaktseite.",
     "sensitivity": "Vertraulichkeit",
     "sensitivityNormal": "Normal",

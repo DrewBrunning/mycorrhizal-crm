@@ -56,8 +56,9 @@ fun SettingsScreen(
     onCustomLinks: () -> Unit = {},
     onWebhooks: () -> Unit = {},
     onNotificationChannels: () -> Unit = {},
-    // M26: the one-time legacy circle/tag cleanup tool.
     onCircleTagTriage: () -> Unit = {},
+    // T104 + data suggestions: the Data review surface and its trigger.
+    onData: () -> Unit = {},
     onLocaleChanged: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
@@ -111,6 +112,8 @@ fun SettingsScreen(
             onWebhooks = onWebhooks,
             onNotificationChannels = onNotificationChannels,
             onCircleTagTriage = onCircleTagTriage,
+            onData = onData,
+            onSuggestRelationships = viewModel::suggestRelationships,
             onLanguageChange = viewModel::updateLanguage,
             onDateFormatChange = viewModel::updateDateFormat,
             onThemeChange = viewModel::setThemePreference,
@@ -131,6 +134,8 @@ fun SettingsContent(
     onWebhooks: () -> Unit = {},
     onNotificationChannels: () -> Unit = {},
     onCircleTagTriage: () -> Unit = {},
+    onData: () -> Unit = {},
+    onSuggestRelationships: () -> Unit = {},
     onLanguageChange: (String) -> Unit = {},
     onDateFormatChange: (String) -> Unit = {},
     onThemeChange: (String) -> Unit = {},
@@ -258,6 +263,42 @@ fun SettingsContent(
             }
             Text(stringResource(R.string.settings_password_change_button))
         }
+
+        HorizontalDivider()
+
+        // T104: propose data from what the graph already implies — the trigger
+        // for graph-inferred relationship suggestions plus the Data screen that
+        // reviews them (and the address-suggestion scan).
+        Text(stringResource(R.string.settings_data), style = MaterialTheme.typography.titleMedium)
+        state.relationshipSuggestErrorRes?.let { res ->
+            Text(
+                text = stringResource(res),
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+        state.suggestedRelationshipCount?.let { count ->
+            Text(
+                text = if (count > 0) {
+                    stringResource(R.string.settings_relationships_suggested, count)
+                } else {
+                    stringResource(R.string.settings_relationships_none)
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Button(
+            onClick = onSuggestRelationships,
+            enabled = !state.isSuggestingRelationships,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            if (state.isSuggestingRelationships) {
+                CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
+            }
+            Text(stringResource(R.string.settings_suggest_relationships))
+        }
+        NavigationRow(stringResource(R.string.settings_data_review), onClick = onData)
 
         HorizontalDivider()
 

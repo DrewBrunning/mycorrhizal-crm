@@ -249,6 +249,24 @@
 
     <!-- Ajustes -->
     <string name="settings_title">Ajustes</string>
+    <string name="settings_data">Datos</string>
+    <string name="settings_data_review">Sugerencias de datos</string>
+    <string name="settings_suggest_relationships">Sugerir relaciones</string>
+    <string name="settings_relationships_suggested">Se generaron %1$d sugerencias de relaciones nuevas; revíselas en la pantalla de Relaciones de un contacto.</string>
+    <string name="settings_relationships_none">No hay sugerencias de relaciones nuevas.</string>
+    <string name="settings_suggest_relationships_error">No se pudieron generar las sugerencias de relaciones.</string>
+    <string name="data_relationships_section">Relaciones</string>
+    <string name="data_relationships_description">Deje que la aplicación encuentre relaciones que sus relaciones existentes implican. Las sugerencias solo son propuestas: revíselas antes de aceptarlas.</string>
+    <string name="data_relationships_generated">Se generaron %1$d sugerencias de relaciones nuevas; revíselas en la pantalla de Relaciones de un contacto.</string>
+    <string name="data_relationships_none">No hay sugerencias de relaciones nuevas.</string>
+    <string name="data_address_section">Direcciones</string>
+    <string name="data_address_description">Proponga direcciones que un contacto probablemente comparte — por una relación confirmada o pertenencia a un hogar.</string>
+    <string name="data_suggest_addresses">Sugerir direcciones</string>
+    <string name="data_address_suggestions_empty">No hay sugerencias de direcciones en este momento.</string>
+    <string name="data_address_reason_relationship">Compartida con %1$s (%2$s)</string>
+    <string name="data_address_reason_household">Hogar: %1$s</string>
+    <string name="data_apply_address">Aplicar</string>
+    <string name="data_address_applied">Dirección añadida</string>
     <string name="settings_session">Sesión</string>
     <string name="settings_server">Servidor</string>
     <string name="settings_username">Nombre de usuario</string>

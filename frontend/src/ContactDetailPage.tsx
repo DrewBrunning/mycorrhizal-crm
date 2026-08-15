@@ -108,7 +108,8 @@ import GiftDialog, { GiftFormData } from './components/GiftDialog';
 import { CadencePolicy, CadencePolicyInput } from './api/cadencePolicies';
 import { Preference, PREFERENCE_CLOTHING_SIZE } from './api/preferences';
 import { LifeEventFormData } from './components/LifeEventDialog';
-import { getOtherPartyId } from './api/relationshipEdges';
+import { getOtherPartyId, RelationshipEdgeInput } from './api/relationshipEdges';
+import { suggestContactAddresses } from './api/dataSuggestions';
 import { LifeEvent } from './api/lifeEvents';
 import { PartialDate } from './api/lifeEvents';
 import { ConversationAgenda } from './api/conversationAgenda';
@@ -286,7 +287,7 @@ export default function ContactDetailPage() {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { showError, showSuccess } = useSnackbar();
+  const { showError, showSuccess, showInfo } = useSnackbar();
   const { formatBirthdayForInput, parseBirthdayInput, autoFormatBirthdayInput } = useDateFormat();
   // record is the single source of truth, fetched/written directly against
   // the nested Card/CRM wire shape -- see.
@@ -464,6 +465,23 @@ export default function ContactDetailPage() {
     handleSave: handleSavePreference,
     handleDelete: handleDeletePreference,
   } = usePreferences(record?.uid, { showError });
+
+  // 167: creation-time trigger for the address-suggestion engine. After a
+  // relationship link is saved, a quick scan may surface addresses the other
+  // party's record implies (a spouse/roommate linked whose address was entered
+  // separately). Best-effort: nudge the user toward the Data-page review
+  // surface; a failing scan must never break the save flow.
+  const handleRelationshipSaved = async (input: RelationshipEdgeInput) => {
+    await handleSaveRelationshipEdge(input);
+    try {
+      const result = await suggestContactAddresses();
+      if ((result.suggestions?.length ?? 0) > 0) {
+        showInfo(t('relationships.addressSuggestionsAvailable'));
+      }
+    } catch {
+      // Best-effort nudge only.
+    }
+  };
 
   const {
     policy: cadencePolicy,
@@ -1772,7 +1790,7 @@ export default function ContactDetailPage() {
           setRelationshipDialogOpen(false);
           setEditingEdge(null);
         }}
-        onSave={handleSaveRelationshipEdge}
+        onSave={handleRelationshipSaved}
         edge={editingEdge}
         viewedContactUid={record?.uid || ''}
         otherPartyContact={editingEdgeOtherParty}

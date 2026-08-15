@@ -492,4 +492,52 @@ class ContactRepositoryImplTest {
         val error = result.exceptionOrNull() as ApiError
         assertEquals(400, (error as ApiError.Client).code)
     }
+
+    // --- 167: contact-address suggestions ---
+
+    @Test
+    fun `suggestContactAddresses maps the response to its suggestions`() = runTest {
+        val suggestions = listOf(
+            com.mycorrhizal.crm.model.network.ContactAddressSuggestion(
+                contactVCardUid = "alice-uid",
+                contactName = "Alice",
+                sourceKind = "relationship",
+                sourceId = "bob-uid",
+                sourceName = "Bob",
+                relationType = "spouse_of",
+                addressKey = "key1",
+            ),
+        )
+        coEvery { apiClient.suggestContactAddresses() } returns
+            Result.success(com.mycorrhizal.crm.model.network.ContactAddressSuggestionsResponse(suggestions = suggestions, total = 1))
+
+        val result = repository.suggestContactAddresses()
+
+        assertTrue(result.isSuccess)
+        assertEquals(suggestions, result.getOrThrow())
+    }
+
+    @Test
+    fun `suggestContactAddresses propagates a backend failure`() = runTest {
+        coEvery { apiClient.suggestContactAddresses() } returns Result.failure(ApiError.Client(500, "boom"))
+
+        val result = repository.suggestContactAddresses()
+
+        assertTrue(result.isFailure)
+    }
+
+    @Test
+    fun `applyContactAddressSuggestion delegates to the api client`() = runTest {
+        val input = com.mycorrhizal.crm.model.network.ApplyContactAddressSuggestionInput(
+            contactVCardUid = "alice-uid",
+            sourceKind = "relationship",
+            sourceId = "bob-uid",
+            addressKey = "key1",
+        )
+        coEvery { apiClient.applyContactAddressSuggestion(input) } returns Result.success(Unit)
+
+        val result = repository.applyContactAddressSuggestion(input)
+
+        assertTrue(result.isSuccess)
+    }
 }

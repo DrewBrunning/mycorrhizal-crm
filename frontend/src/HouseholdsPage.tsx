@@ -15,6 +15,7 @@ import {
   acceptAddressHouseholdSuggestion,
   dismissAddressHouseholdSuggestion,
 } from './api/households';
+import { suggestContactAddresses } from './api/dataSuggestions';
 import { getContactsByUid, Contact } from './api/contacts';
 import { handleFetchError } from './utils/errorHandler';
 
@@ -77,6 +78,16 @@ export default function HouseholdsPage() {
     } else {
       await handleCreate(data);
       showSuccess(t('household.created'));
+      // 167 creation-time trigger: a new household implies a shared address
+      // for its members — surface the Data-page scan as a nudge. Best-effort.
+      try {
+        const result = await suggestContactAddresses();
+        if ((result.suggestions?.length ?? 0) > 0) {
+          showInfo(t('household.addressSuggestionsAvailable'));
+        }
+      } catch {
+        // Best-effort nudge only.
+      }
     }
   };
 

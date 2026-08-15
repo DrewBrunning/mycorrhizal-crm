@@ -5,6 +5,7 @@ import (
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
+	"mycorrhizal/services"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -330,19 +331,19 @@ func DeleteRelationshipEdge(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Relationship edge deleted"})
 }
 
-// AcceptRelationshipEdge promotes a Status: suggested edge to confirmed --
-// the only consumer household-inference engine
-// (services/household_service.go) has anywhere in the app today. A
-// dedicated endpoint rather than folding this into UpdateRelationshipEdge's
-// PUT: PUT is full-replace and requires resending Type/Sensitivity/Metadata/
-// SourceID/TargetID, which is both bad ergonomics for a single-field
-// transition and a real hazard -- a client trying to "just accept" would
-// silently be able to edit the type/sensitivity/endpoints in the same call.
-// Source/Confidence are left untouched deliberately: accepting only changes
-// authority (Status), not provenance -- the edge should keep showing it
-// originated from household inference even once accepted. Rejection has no
-// equivalent dedicated endpoint: it's just DELETE (see
-// DeleteRelationshipEdge).
+// AcceptRelationshipEdge promotes a Status: suggested edge to confirmed -- the
+// only consumer the household- and graph-inference engines'
+// (services.GenerateHouseholdSuggestions / GenerateGraphSuggestions) suggested
+// edges have anywhere in the app today. A dedicated endpoint rather than
+// folding this into UpdateRelationshipEdge's PUT: PUT is full-replace and
+// requires resending Type/Sensitivity/Metadata/SourceID/TargetID, which is
+// both bad ergonomics for a single-field transition and a real hazard -- a
+// client trying to "just accept" would silently be able to edit the
+// type/sensitivity/endpoints in the same call. Source/Confidence are left
+// untouched deliberately: accepting only changes authority (Status), not
+// provenance -- the edge should keep showing it originated from inference
+// even once accepted. Rejection has no equivalent dedicated endpoint: it's
+// just DELETE (see DeleteRelationshipEdge).
 func AcceptRelationshipEdge(c *gin.Context) {
 	id := c.Param("id")
 	db := c.MustGet("db").(*gorm.DB)
@@ -373,4 +374,31 @@ func AcceptRelationshipEdge(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, edge)
+}
+
+// SuggestRelationshipEdges is the T104 trigger: run one round of graph
+// inference (services.GenerateGraphSuggestions) over the caller's confirmed
+// edges and persist any newly-derived suggestions. Ownership-scoped to the
+// authenticated user by construction — the engine loads and writes only the
+// caller's own edges. Opt-in (the user presses the button), one round per
+// press, and idempotent: re-running never duplicates, exactly like the
+// household engine.
+func SuggestRelationshipEdges(c *gin.Context) {
+	db := c.MustGet("db").(*gorm.DB)
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+
+	created, err := services.GenerateGraphSuggestions(db, userID)
+	if err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to generate relationship suggestions").WithError(err))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":         "Relationship suggestions generated",
+		"suggested_edges": created,
+		"total":           len(created),
+	})
 }

@@ -193,4 +193,40 @@ class SettingsScreenTest {
         composeTestRule.onNodeWithText("Notification channels").performScrollTo().performClick()
         assertTrue(channels)
     }
+
+    // --- T104 / data suggestions ---
+
+    @Test
+    fun `suggest relationships button invokes the callback`() {
+        var suggested = false
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                SettingsContent(
+                    state = SettingsUiState(),
+                    onSuggestRelationships = { suggested = true },
+                    onLogout = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Suggest relationships").performScrollTo().performClick()
+        assertTrue(suggested)
+    }
+
+    @Test
+    fun `data row invokes the data navigation callback`() {
+        var data = false
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                SettingsContent(
+                    state = SettingsUiState(),
+                    onData = { data = true },
+                    onLogout = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Data suggestions").performScrollTo().performClick()
+        assertTrue(data)
+    }
 }
