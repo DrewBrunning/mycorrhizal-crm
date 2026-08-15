@@ -95,7 +95,7 @@ func TestGetContacts(t *testing.T) {
 }
 
 // TestGetContacts_SummaryHasNicknameNoCircles is T108's regression test
-// (docs/fork-plan/tickets/152-T108-contact-summary-missing-columns.md):
+// (T108):
 // contactSummaryColumns (the fixed Select() list GetContacts actually runs)
 // never included "nickname", so every ContactSummary shipped an empty
 // nickname despite the DTO and NewContactSummary both carrying it correctly
@@ -133,8 +133,8 @@ func TestGetContacts_SummaryHasNicknameNoCircles(t *testing.T) {
 	assert.NotContains(t, item, "circles", "circles must be gone from the DTO entirely, not present-and-empty")
 }
 
-// TestGetContacts_FiltersByVCardUID pins down §3d WP0
-// (docs/fork-plan/95-backlog-and-priorities.md): the RelationshipEdge
+// TestGetContacts_FiltersByVCardUID pins down
+// the RelationshipEdge
 // frontend needs to resolve a batch of Contact.VCardUID values (edge
 // SourceID/TargetID, which carry no nested contact data) back into
 // displayable Contacts. Proves the ?vcard_uid= filter matches multiple
@@ -182,7 +182,7 @@ func TestGetContacts_FiltersByVCardUID(t *testing.T) {
 }
 
 // TestGetContacts_VCardUIDFilter_RealMigratedSchema is the real-DB check for
-// §3d WP0: unlike the AutoMigrate-backed test above, this runs against a
+// unlike the AutoMigrate-backed test above, this runs against a
 // database.InitDB-migrated file DB, confirming the `vcard_uid`/`archived`
 // columns the new filter queries actually exist with those exact names in
 // the real migration SQL (this fork's own recurring bug class).
@@ -441,7 +441,7 @@ func TestGetContact(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 
 	// GET /contacts/:id now returns the full neutral ContactRecordResponse
-	// (Card/CRM/Passthrough nested), not a flat models.Contact (Gap 3/item 2).
+	// (Card/CRM/Passthrough nested), not a flat models.Contact.
 	var responseBody models.ContactRecordResponse
 	json.Unmarshal(w.Body.Bytes(), &responseBody)
 	assert.Equal(t, contact.ID, responseBody.ID)
@@ -456,7 +456,7 @@ func TestGetContact(t *testing.T) {
 	}
 }
 
-// TestGetContactsFieldsParamIgnored asserts fields= is gone (Gap 3): passing
+// TestGetContactsFieldsParamIgnored asserts fields= is gone: passing
 // it no longer restricts or alters the response shape, which is always the
 // fixed ContactSummary regardless of what (if anything) fields= requests.
 func TestGetContactsFieldsParamIgnored(t *testing.T) {
@@ -586,7 +586,7 @@ func TestGetContactWithRelationships(t *testing.T) {
 	assert.Len(t, reminders, 1)
 }
 
-// TestGetContactsArchiveAndCircleFiltering asserts Gap 2's binding
+// TestGetContactsArchiveAndCircleFiltering asserts the binding
 // preservation of the archive-filtering and circle-filtering mechanics
 // against the new ContactSummary item shape.
 func TestGetContactsArchiveAndCircleFiltering(t *testing.T) {
@@ -950,8 +950,7 @@ func TestDeleteContact(t *testing.T) {
 	assert.Equal(t, "Contact deleted", responseBody["message"])
 }
 
-// TestDeleteContact_CleansUpReferencingRows is the regression test for Tier
-// 3c item 1 (docs/fork-plan/95-backlog-and-priorities.md): deleting a contact
+// TestDeleteContact_CleansUpReferencingRows is the regression test: deleting a contact
 // must remove every row that references it via Contact.VCardUID (or, for
 // ContactSyncLink, Contact.ID), but must NOT delete the shared
 // Household/Circle/Tag/FieldDefinition containers other contacts may still

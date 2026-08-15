@@ -34,14 +34,14 @@ func loadOpenAPIDoc(t *testing.T) *openapi3.T {
 	return doc
 }
 
-// TestOpenAPISpecValidates loads and validates backend/openapi.yaml (WP-71
-// item 6, docs/fork-plan/50-integration-and-rebrand.md): the spec must be
+// TestOpenAPISpecValidates loads and validates backend/openapi.yaml (
+// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md): the spec must be
 // well-formed OpenAPI 3.0 and internally consistent (every $ref resolves,
 // every schema/path is structurally valid). This is a Go-based check
 // (github.com/getkin/kin-openapi, added as a test-only dependency) rather
 // than a Node/swagger-cli install, per this WP's own tooling note (no local
 // Node toolchain is assumed available; Go/Docker is this repo's confirmed
-// toolchain — docs/fork-plan/70-environment.md).
+// toolchain).
 func TestOpenAPISpecValidates(t *testing.T) {
 	doc := loadOpenAPIDoc(t)
 
@@ -51,7 +51,7 @@ func TestOpenAPISpecValidates(t *testing.T) {
 	// covered by TestOpenAPIRouteCoverage (drift), which enumerates the live
 	// router — this list guards the schema half of the contract.
 	wantSchemas := []string{
-		// WP-71 nested-Card contact API.
+		// nested-Card contact API.
 		"ContactSummary", "ContactSummaryWithRelations", "ContactRecordInput",
 		"ContactRecordResponse", "Card", "CRMEnvelope", "Passthrough",
 		"JCardProp", "Timestamp", "PartialDate", "AnniversaryDate",
@@ -60,7 +60,7 @@ func TestOpenAPISpecValidates(t *testing.T) {
 		"AddressComponent", "Address", "GrammaticalGender", "Pronouns",
 		"SpeakToAs", "PersonalInfo", "Author", "CardNote", "Resource",
 		"LanguagePref", "Relation",
-		// WP-73b import + contact-subscription surface.
+		// import + contact-subscription surface.
 		"ColumnMapping", "ImportUploadResponse", "ImportPreviewRequest",
 		"DuplicateMatch", "ImportRowPreview", "ImportPreviewResponse",
 		"RowImportAction", "ImportConfirmRequest", "ImportResult",
@@ -127,7 +127,7 @@ func TestOpenAPISpecValidates(t *testing.T) {
 	// GET /contacts must document the cursor-pagination + change-feed query
 	// mechanics T17 requires (cursor/since/limit/order plus the surviving
 	// search/archive/circle/includes filters), the sort= control T73 adds,
-	// and must NOT document the removed page/fields params (Gap 3: removed,
+	// and must NOT document the removed page/fields params (removed,
 	// not just undocumented-but-still-there).
 	contactsGet := doc.Paths.Find("/contacts").Get
 	wantParams := []string{"cursor", "since", "limit", "order", "sort", "search", "include_archived", "archived", "circle", "includes"}

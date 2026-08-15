@@ -13,9 +13,9 @@ const (
 )
 
 // ContactSubscription is a saved CardDAV address book a user syncs contacts
-// in from (WP-73b: opposite direction of the CardDAV *server*, WP-73).
+// in from (opposite direction of the CardDAV *server*).
 // Mirrors CalendarSubscription's shape exactly (see
-// docs/fork-plan/50-integration-and-rebrand.md WP-73b), minus the
+// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md ), minus the
 // PastDays/FutureDays window fields, which have no contacts analog.
 //
 // SyncToken is the RFC 6578 sync-collection token returned by the remote

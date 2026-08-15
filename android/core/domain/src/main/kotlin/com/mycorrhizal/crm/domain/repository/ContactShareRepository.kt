@@ -9,8 +9,8 @@ import com.mycorrhizal.crm.model.network.RowImportAction
 import com.mycorrhizal.crm.model.network.UserDirectoryEntry
 
 /**
- * Contact-share data access (P1, docs/fork-plan/tickets/31-P1-contact-sharing
- * .md). Online-first: a share is a frozen snapshot between two users — the
+ * Contact-share data access (P1). Online-first: a share is a frozen snapshot
+ * between two users — the
  * inbox/outbox lists and the accept preview are inherently online data with
  * no offline value, so nothing is mirrored into the Room cache (the web
  * client doesn't cache them either).

@@ -2,7 +2,7 @@ import { test, expect } from './fixtures';
 import { withExclusiveUserSettings } from './fixtures';
 import { API_BASE_URL } from './global-setup';
 
-// N9 (docs/fork-plan/tickets/30-N9-notification-channels.md) — the
+// N9 — the
 // notification channel settings surface plus the push-subscription API.
 //
 // The happy-path "delivers to a real ntfy/Gotify instance" is covered by the

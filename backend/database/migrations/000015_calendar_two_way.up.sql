@@ -1,4 +1,4 @@
--- T13 (docs/fork-plan/tickets/36-T13-two-way-calendar.md) — two-way calendar
+-- T13 — two-way calendar
 -- sync: push local CRM edits back out to a subscribed remote calendar.
 --
 --   remote_etag — the remote calendar object's ETag, captured from the

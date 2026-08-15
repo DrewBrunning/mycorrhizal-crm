@@ -57,8 +57,8 @@ import com.mycorrhizal.crm.ui.theme.MycorrhizalFonts
 import com.mycorrhizal.crm.ui.R
 
 /**
- * M11 — the N2 prep-view briefing for Android (docs/fork-plan/tickets/
- * 22-N2-prep-view.md): "everything the user wants to remember in the five
+ * M11 — the N2 prep-view briefing for Android (N2): "everything the user
+ * wants to remember in the five
  * minutes before seeing someone, scannable in under a minute". A read-only
  * rendering of GET /contacts/:id/briefing; the backend assembles every block,
  * so each section here just reads the server-provided values (the cadence/

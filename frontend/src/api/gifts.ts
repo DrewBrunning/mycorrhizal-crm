@@ -1,5 +1,5 @@
-// Gift API calls -- T20b (docs/fork-plan/tickets/28-T20b-gift-tracking.md,
-// docs/fork-plan/91-envelope-data-model.md §91.11): "what did I give them last
+// Gift API calls -- T20b (T20b,
+// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md): "what did I give them last
 // year?" against a contact. Covers the states that make the feature useful —
 // an idea captured opportunistically (status defaults to idea), the
 // offered/given gift with its date, and a received gift (reciprocity /

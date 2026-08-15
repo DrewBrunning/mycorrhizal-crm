@@ -3,7 +3,7 @@ import { createTestContact, deleteTestContact } from './fixtures';
 import { API_BASE_URL } from './global-setup';
 
 /**
- * T73 (docs/fork-plan/tickets/117-T73-contacts-list-sort-control.md) — the
+ * T73 — the
  * contacts list endpoint now supports ?sort=name, ordering by a denormalized
  * sort_name key (lower(trim(lastname)) else lower(trim(firstname))). This
  * ticket is backend-only: the web sort control that consumes it is T77, so

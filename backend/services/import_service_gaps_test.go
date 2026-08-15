@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TC-1.4 (docs/fork-plan/45-test-coverage-closure.md): gap-fill tests for the
+// TC-1.4 (docs/adrs/0003-golden-fixtures-external-test-oracle.md): gap-fill tests for the
 // previously 0%-or-low functions in import_service.go: ParseCSV,
 // GenerateCSVPreview, GetStringField, NormalizeBirthday, NormalizeGender,
 // CreateMergeNote, plus branch closure on diagnosticsToStrings and
@@ -60,7 +60,7 @@ func TestParseCSV_HeaderOnlyNoDataRows(t *testing.T) {
 
 // TestParseCSV_RaggedRows confirms ParseCSV is lenient about inconsistent
 // column counts (FieldsPerRecord = -1 in the implementation) rather than
-// hard-failing, per the degradation policy (00-overview.md §0.5) applied
+// hard-failing, per the degradation policy (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md) applied
 // generally across this fork's import paths.
 func TestParseCSV_RaggedRows(t *testing.T) {
 	reader := strings.NewReader("A,B,C\n1,2\n1,2,3,4\n")
@@ -147,7 +147,7 @@ func TestGetStringField(t *testing.T) {
 	assert.Equal(t, "Ada", GetStringField(parsed, "firstname"))
 
 	// Non-string types must not panic; graceful empty-string fallback per the
-	// degradation policy (00-overview.md §0.5).
+	// degradation policy (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md).
 	assert.NotPanics(t, func() {
 		assert.Equal(t, "", GetStringField(parsed, "age"))
 	})
@@ -187,7 +187,7 @@ func TestNormalizeBirthday_LegacyDotFormatNoYear(t *testing.T) {
 // through every recognized-format branch and returns the input unchanged
 // (comment: "Unknown format - return as-is (will fail validation)") rather
 // than erroring or blanking the value — a graceful passthrough consistent
-// with the degradation policy (00-overview.md §0.5: never hard-fail on
+// with the degradation policy (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md: never hard-fail on
 // unmappable/unusual data), even though the passed-through value will later
 // fail ValidateImportedContact's format check.
 func TestNormalizeBirthday_GarbagePassesThroughUnchanged(t *testing.T) {

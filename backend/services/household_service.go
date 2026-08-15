@@ -16,10 +16,10 @@ import (
 )
 
 // memberClass is the suggestion engine's classification of a household
-// member — see classifyMember. Confirmed with the user during WP-83
+// member — see classifyMember. Confirmed with the user during
 // planning: derived from Role + Contact.CRM.Kind only, never from
 // Birthday/age (birthdays are frequently unknown, especially for the thin
-// entities WP-81 promotes name-only relationships into).
+// entities promotes name-only relationships into).
 type memberClass int
 
 const (
@@ -30,7 +30,7 @@ const (
 
 // classifyMember decides what role a household member plays in the
 // suggestion rules below. Pet/animal is authoritative from Contact.CRM.Kind
-// (WP-82 built that field for exactly this). Among humans, only an explicit
+// (built that field for exactly this). Among humans, only an explicit
 // "child" Role means child — every other Role value (including future ones
 // this switch doesn't know about) defaults to adult, so the engine never
 // blocks on an unrecognized or missing Role.
@@ -49,14 +49,13 @@ type classifiedMember struct {
 	class    memberClass
 }
 
-// GenerateHouseholdSuggestions is the mechanism from docs/fork-plan/
-// 91-envelope-data-model.md §91.4: re-scans a household's CURRENT membership
+// GenerateHouseholdSuggestions is the mechanism from docs/adrs/0001-neutral-hub-and-spoke-contact-model.md: re-scans a household's CURRENT membership
 // and idempotently ensures a suggested RelationshipEdge exists for every
 // applicable pair, rather than diffing what changed since a prior call —
 // simpler and safe to call repeatedly (e.g. after every membership add).
 //
 // Every generated edge has Status: suggested, Source: household-inferred —
-// §91.4 is explicit that a household's membership is never treated as a
+// is explicit that a household's membership is never treated as a
 // hard fact on its own, no matter how confidently the type implies a
 // relationship. Confirming or rejecting a suggestion is a user action in a
 // review surface this WP does not build (P-later, per the roadmap).
@@ -95,7 +94,7 @@ func GenerateHouseholdSuggestions(db *gorm.DB, household models.Household) ([]mo
 
 	switch household.Type {
 	case models.HouseholdTypeFamilyUnit:
-		// §91.4: adult<->adult spouse_of; adult->child parent_of; every
+		// adult<->adult spouse_of; adult->child parent_of; every
 		// HUMAN (adult or child, not just adult) -> pet owned_by.
 		const familyConfidence = 0.8
 		for i := 0; i < len(classified); i++ {
@@ -125,14 +124,14 @@ func GenerateHouseholdSuggestions(db *gorm.DB, household models.Household) ([]mo
 					if err := suggest(a.vcardUID, b.vcardUID, "owned_by", familyConfidence); err != nil {
 						return created, err
 					}
-				// child<->child and pet<->pet: no rule in §91.4; skipped.
+				// child<->child and pet<->pet: no rule; skipped.
 				default:
 				}
 			}
 		}
 
 	case models.HouseholdTypeRoommates:
-		// §91.4: member<->member roommate_of only — explicitly never
+		// member<->member roommate_of only — explicitly never
 		// parent/owner/spouse, regardless of role or kind.
 		const roommateConfidence = 0.4
 		for i := 0; i < len(classified); i++ {
@@ -145,7 +144,7 @@ func GenerateHouseholdSuggestions(db *gorm.DB, household models.Household) ([]mo
 
 	default:
 		// "other", and any type value this switch doesn't recognize: no
-		// structural inference (§91.4's own table says exactly this for
+		// structural inference (own table says exactly this for
 		// "other" — unrecognized values get the same treatment, not an
 		// error, matching how the rest of this WP degrades on open enums).
 	}
@@ -199,7 +198,7 @@ func suggestEdgeIfNew(db *gorm.DB, userID uint, sourceID, targetID, edgeType str
 
 // ---------------------------------------------------------------------------
 // T40 — address-based household suggestions
-// (docs/fork-plan/tickets/49-T40-household-suggestions-shared-address.md)
+// (T40)
 //
 // The T1 engine above only proposes RelationshipEdges *within* an existing
 // household. This half scans contacts who share a normalized address but

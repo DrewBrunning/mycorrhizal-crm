@@ -1,4 +1,4 @@
--- M2 (docs/fork-plan/tickets/81-M2-fcm-mobile-push.md) — mobile push device
+-- M2 — mobile push device
 -- registrations, generalized for any push client (fcm today, apns later).
 --
 -- The web app's push path (N9) registers browser Web Push subscriptions in

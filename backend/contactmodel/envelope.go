@@ -6,8 +6,7 @@ type CRMEnvelope struct {
 	// Kind is the envelope-side entity kind: human|animal.
 	// Distinct from Card.Kind (model.go — the standard vCard/
 	// JSContact KIND: individual|group|org|location|application|device,
-	// which has no pet/animal value) — WP-82, docs/fork-plan/91-envelope-
-	// data-model.md §91.1. Unenforced at the API boundary, same as Card.Kind
+	// which has no pet/animal value) —, docs/adrs/0001-neutral-hub-and-spoke-contact-model.md Unenforced at the API boundary, same as Card.Kind
 	// and every other CRMEnvelope field: unrecognized values are accepted
 	// and preserved, not rejected (see controllers/
 	// contact_controller_validation_test.go's header for why).

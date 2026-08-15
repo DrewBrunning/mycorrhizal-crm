@@ -12,7 +12,7 @@ import (
 )
 
 // TestVCardImportSaveExportRoundTrip_SubStreetParts is T79's
-// (docs/fork-plan/tickets/123-T79-flat-address-projection-too-narrow.md)
+// (T79)
 // item-5 round trip, against a real migrated schema (CLAUDE.md backend trap
 // #1): a vCard carrying a populated PO box, apartment and floor imports,
 // survives a save, and exports back to the same vCard fields.
@@ -102,7 +102,7 @@ func TestVCardImportSaveExportRoundTrip_SubStreetParts(t *testing.T) {
 }
 
 // TestVCardImportAddressType is T91
-// (docs/fork-plan/tickets/135-T91-imported-address-type-private.md): the whole
+// (T91): the whole
 // path, end to end, because the bug was only visible across a package
 // boundary. vcard4's importer maps ADR;TYPE=HOME to the neutral Contexts token
 // "private" (correct, RFC 9553), and the flat projection then used to copy

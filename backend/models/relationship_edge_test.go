@@ -78,7 +78,7 @@ func TestRelationTypeRegistryInversesAreConsistent(t *testing.T) {
 	}
 }
 
-// MatchLegacyRelationType is what WP-81's migration uses to resolve legacy
+// MatchLegacyRelationType is what migration uses to resolve legacy
 // free-text Relationship.Type values to a registered token.
 func TestMatchLegacyRelationType(t *testing.T) {
 	tests := []struct {
@@ -225,7 +225,7 @@ func TestRecordForContact_ProjectsSymmetricEdge(t *testing.T) {
 	}
 }
 
-// §91.2: "only confirmed edges are authoritative" — a suggested edge (e.g.
+// "only confirmed edges are authoritative" — a suggested edge (e.g.
 // household-inferred, awaiting user review) must never appear in an export.
 func TestRecordForContact_DoesNotProjectSuggestedEdge(t *testing.T) {
 	db := setupRelationshipTestDB(t)
@@ -249,7 +249,7 @@ func TestRecordForContact_DoesNotProjectSuggestedEdge(t *testing.T) {
 	assert.Empty(t, record.Card.RelatedTo)
 }
 
-// §91.13: anything above "normal" sensitivity is excluded by default from
+// anything above "normal" sensitivity is excluded by default from
 // exports. Private and secret are both tested since the gate is a single
 // equality check that could accidentally only cover one of them.
 func TestRecordForContact_DoesNotProjectAboveNormalSensitivity(t *testing.T) {

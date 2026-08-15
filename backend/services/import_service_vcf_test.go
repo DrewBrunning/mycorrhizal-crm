@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestParseVCF_BasicImport_VCard4 exercises WP-71 Gap 4: ParseVCF now routes
+// TestParseVCF_BasicImport_VCard4: ParseVCF now routes
 // through the vcard4 adapter (sniffed from VERSION:4.0) instead of the
 // legacy carddav.VCardToContact mapper, and the resulting Record is turned
 // into a flat *models.Contact via models.ApplyRecordToContact.
@@ -101,7 +101,7 @@ func TestParseVCF_MultipleCardsSplit(t *testing.T) {
 	assert.Equal(t, "Bob", contacts[1].Contact.Firstname)
 }
 
-// TestParseVCF_DuplicateDetectionAndMerge exercises the Gap 4 promise most
+// TestParseVCF_DuplicateDetectionAndMerge exercises the promise most
 // directly: duplicate-detection/merge UX (DetectDuplicate/
 // MergeImportedContact, unchanged) must keep working against the new
 // adapter-produced flat Contact fields.
@@ -174,8 +174,7 @@ func TestParseVCF_TooManyContacts(t *testing.T) {
 	assert.Contains(t, err.Error(), "too many contacts")
 }
 
-// TestParseVCF_OverLegacyLimitSucceeds pins T56's (docs/fork-plan/tickets/
-// 65-T56-bulk-contacts-import-flow.md) raised ceiling: 1001 contacts — just
+// TestParseVCF_OverLegacyLimitSucceeds pins T56's raised ceiling: 1001 contacts — just
 // over the old 1000-contact cap, the size of a real full address-book import
 // — must parse cleanly now instead of being rejected.
 func TestParseVCF_OverLegacyLimitSucceeds(t *testing.T) {
@@ -210,7 +209,7 @@ func TestParseVCF_MalformedBlockSkipped(t *testing.T) {
 }
 
 // TestParseJSContact_BasicImport exercises the new JSContact import path
-// (Gap 4 extension). It builds a JSContact document via the jscontact
+// (extension). It builds a JSContact document via the jscontact
 // Adapter's own Export (rather than hand-authoring wire JSON, which risks
 // drifting from the real shape), then feeds it back through
 // services.ParseJSContact and asserts the round trip lands the same data.

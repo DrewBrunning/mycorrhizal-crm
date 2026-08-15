@@ -1,9 +1,8 @@
-// M4 contact-detail composite (docs/fork-plan/tickets/
-// 83-M4-contact-detail-composite.md): everything ContactDetailPage.tsx
+// M4 contact-detail composite (M4): everything ContactDetailPage.tsx
 // renders for one contact, in one call, replacing the ~21-endpoint fan-out.
 //
 // This module is a standalone api surface for the composite's OpenAPI
-// contract -- the Android client's target (M1 §4.2 ContactDetailScreen).
+// contract -- the Android client's target (M1 ContactDetailScreen).
 // ContactDetailPage.tsx itself is NOT rewired onto this endpoint (its
 // incremental per-hook loading is deliberate web UX); that's a separate,
 // later ticket if it happens at all.

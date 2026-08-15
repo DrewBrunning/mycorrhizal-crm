@@ -36,7 +36,7 @@ func createHouseholdTestUser(t *testing.T, db *gorm.DB) models.User {
 // ordinary human contact). Setting Contact.CRM directly before Create does
 // NOT survive BeforeSave — it rebuilds CRM from the flat fields via
 // RecordFromContact, discarding any pre-existing nested CRM data unless
-// ApplyRecordToContact set cardSetDirectly first (the same fix WP-81's
+// ApplyRecordToContact set cardSetDirectly first (the same fix
 // TestRecordForContact_MergesWithPassthroughWithoutDuplication needed for
 // the identical reason). Confirmed by two tests failing with every "pet"
 // silently classified as an adult before this fix.
@@ -77,7 +77,7 @@ func edgeTypeCounts(t *testing.T, db *gorm.DB, userID uint) map[string]int {
 }
 
 // TestGenerateHouseholdSuggestions_FamilyUnit is the plan's worked example:
-// 2 adults + 1 child + 1 pet. Note this asserts 3 owned_by, not 2 — §91.4
+// 2 adults + 1 child + 1 pet. Note this asserts 3 owned_by, not 2 —
 // says "every human -> household pet owned_by", not "every ADULT", so the
 // child also gets an owned_by suggestion to the pet. (Caught while
 // implementing the engine, not just while writing this test: the plan's
@@ -124,7 +124,7 @@ func TestGenerateHouseholdSuggestions_FamilyUnit(t *testing.T) {
 	}
 }
 
-// §91.4: roommates households suggest ONLY roommate_of, regardless of role
+// roommates households suggest ONLY roommate_of, regardless of role
 // or kind — explicitly never parent/owner/spouse. A pet in a roommates
 // household still just gets roommate_of, not owned_by.
 func TestGenerateHouseholdSuggestions_Roommates(t *testing.T) {

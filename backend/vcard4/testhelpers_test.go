@@ -8,7 +8,7 @@ import (
 
 // Small literal-construction helpers shared by the import_*/export_*/
 // roundtrip test files in this package (std `testing` only, no testify —
-// 00-overview.md §0.6).
+// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md).
 
 func intPtr(v int) *int { return &v }
 

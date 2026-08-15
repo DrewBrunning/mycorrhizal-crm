@@ -7,7 +7,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-// T1 (docs/fork-plan/tickets/09-T1-households.md): the trigger endpoint and
+// T1: the trigger endpoint and
 // the review-inbox query must agree on the shape of a generated suggestion —
 // the trigger's output is exactly what feeds RelationshipEdgeList's suggested
 // section on each member's contact page, for the first time against real data.

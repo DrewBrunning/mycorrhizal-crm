@@ -1,4 +1,4 @@
--- T73 (docs/fork-plan/tickets/117-T73-contacts-list-sort-control.md) — the
+-- T73 — the
 -- contacts list can only be sorted by most-recently-edited (T17's
 -- compile-time-fixed (updated_at, id) cursor order). This migration adds the
 -- denormalized name-sort key the new ?sort=name control orders by.

@@ -3,7 +3,7 @@ package models
 import "time"
 
 // ContactBriefing is the read-only composition behind GET /contacts/:id/
-// briefing (N2 — docs/fork-plan/tickets/22-N2-prep-view.md): everything the
+// briefing (N2 — N2): everything the
 // user wants to know about a person in the five minutes before seeing them,
 // in one response. It is a pure aggregation of existing data — never
 // persisted, never cached; every field degrades to its zero value when the
@@ -21,7 +21,7 @@ import "time"
 //     freshly-created contact is in, so it broke the prep view on first use.
 //     The frontend type (frontend/src/api/briefings.ts) declares these fields
 //     required, which is the contract this struct now actually honours.
-//   - Sensitivity (91.13): `secret` relationships are excluded in the query —
+//   - Sensitivity: `secret` relationships are excluded in the query —
 //     a secret relationship has no business on a screen likely to be open in
 //     front of the person it concerns. `private` relationships stay: the
 //     briefing is the user's own screen, and private gates sharing/exposure
@@ -97,7 +97,7 @@ type BriefingCadence struct {
 	Health BriefingCadenceHealth `json:"health"`
 }
 
-// BriefingCadenceHealth is the DERIVED relationship-health read-model (§91.10)
+// BriefingCadenceHealth is the DERIVED relationship-health read-model
 // as carried on the briefing — the same fields services.CadenceHealth
 // computes, mirrored here to keep the models package import-clean. See
 // services/cadence_service.go for the semantics: HasQualifyingInteraction is

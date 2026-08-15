@@ -157,7 +157,7 @@ func UploadVCFForImport(c *gin.Context, cfg *config.Config) {
 }
 
 // UploadJSContactForImport handles a JSContact JSON file upload and returns a
-// preview directly, mirroring UploadVCFForImport (WP-71 Gap 4 extension: a
+// preview directly, mirroring UploadVCFForImport (extension: a
 // new import path, no legacy equivalent). Content sniffing here is by file
 // extension (.json) rather than a shared upload endpoint that inspects
 // Content-Type/body — kept as a separate route for simplicity, matching the

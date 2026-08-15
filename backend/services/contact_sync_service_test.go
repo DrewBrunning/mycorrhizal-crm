@@ -158,8 +158,7 @@ func TestReconcileContactSyncUpdatesExistingLinkedContact(t *testing.T) {
 	assert.Equal(t, "bob.new@example.com", contact.Email)
 }
 
-// TestReconcileContactSyncOverwritesLocalEditsOnRemoteChange pins down Tier
-// 3c item 11a (docs/fork-plan/95-backlog-and-priorities.md): does a local
+// TestReconcileContactSyncOverwritesLocalEditsOnRemoteChange pins down: does a local
 // edit to a field the remote vCard doesn't touch survive a sync, or get
 // silently discarded? Confirmed intentional, not a bug: models.
 // ApplyRecordToContact (its own doc comment) treats the incoming Record as
@@ -327,7 +326,7 @@ func TestReconcileContactSyncFullRefetchComputesDeletions(t *testing.T) {
 	assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
 }
 
-// TestReconcileContactSyncPhotoRoundTrips confirms the wiring into WP-73's
+// TestReconcileContactSyncPhotoRoundTrips confirms the wiring into
 // photo bridge (models.ApplyRecordToContact's photoDir handling) -- not
 // re-testing that bridge's own internals, just that a synced vCard's PHOTO
 // ends up on Contact.Photo/PhotoThumbnail when photoDir is supplied.

@@ -1,5 +1,5 @@
-// Preference API calls -- T20a (docs/fork-plan/tickets/10-T20a-preferences.md,
-// docs/fork-plan/91-envelope-data-model.md §91.9).
+// Preference API calls -- T20a (T20a,
+// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md).
 import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
 
 // Mirrors backend/models/preference.go's conventional (open) category set.
@@ -27,7 +27,7 @@ export const PREFERENCE_DEFAULT_KEYS: Record<PreferenceCategory, string[]> = {
 // a valid category on the wire.
 export const PREFERENCE_CLOTHING_SIZE = 'clothing_size';
 
-// Mirrors backend/models/preference.go's closed Source set (§91.9).
+// Mirrors backend/models/preference.go's closed Source set .
 export type PreferenceSource = 'conversation_note' | 'user' | 'ai-suggested' | 'external';
 // Mirrors the shared normal/private/secret set (RelationshipEdgeSensitivity).
 export type PreferenceSensitivity = 'normal' | 'private' | 'secret';

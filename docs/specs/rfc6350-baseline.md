@@ -20,7 +20,7 @@ Valid examples: DATE `19850412`, `1985-04`, `1985`, `--0412`, `---12`. TIME `102
 `102200Z`, `102200-0800`. DATE-TIME `19961022T140000`, `--1022T1400`, `---22T14`. TIMESTAMP
 `19961022T140000Z`, `19961022T140000-05`. UTC-OFFSET (§4.7): `sign hour [minute]`, e.g. `+0500`.
 
-This is the grammar the `date_partial` transform (`20-correspondence.md` §20.4) must parse/emit for
+This is the grammar the `date_partial` transform (`docs/adrs/0002-correspondence-table-locked-oracle.md`) must parse/emit for
 BDAY/ANNIVERSARY/DEATHDATE ↔ `contactmodel.AnniversaryDate`/`PartialDate`. `backend/carddav/
 vcard_mapper.go`'s `normalizeBirthday` already handles the common subset (`YYYY-MM-DD`, `--MM-DD`,
 `YYYYMMDD`, `--MMDD`) — extend it for the additional reduced forms above if a golden fixture exercises
@@ -32,7 +32,7 @@ Escape in TEXT values: `,` → `\,`; `;` → `\;` (compound/structured propertie
 `\n`. Line folding: fold at 75 octets (CRLF + one leading whitespace on the continuation; unfold by
 removing `CRLF + immediately-following whitespace`). `backend/carddav/vcard_mapper.go`'s
 `escapeComponent`/`splitComponents` already implement the structured-value half of this — reuse as
-described in `30-adapters.md` §30.B.
+described in `docs/adrs/0001-neutral-hub-and-spoke-contact-model.md`
 
 ## 3. Generic TYPE / PREF parameters (§5.3, §5.6)
 
@@ -74,6 +74,6 @@ JSContact/9554 correspondence row references them); they round-trip via `Passthr
 | TZ | text, URI, or utc-offset | 0..* |
 | GEO | URI (`geo:` scheme) | 0..* |
 
-Note: Meerkat's CRM `Gender` field (free text, in `CRMEnvelope` per `10-neutral-model.md`) is
+Note: Meerkat's CRM `Gender` field (free text, in `CRMEnvelope` per `docs/adrs/0001-neutral-hub-and-spoke-contact-model.md`) is
 deliberately **not** the same concept as vCard `GENDER` or JSContact `speakToAs`. There is no
 correspondence row for it — it never round-trips through the standardized Card, by design.

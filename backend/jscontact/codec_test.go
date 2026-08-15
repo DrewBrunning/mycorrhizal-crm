@@ -28,7 +28,7 @@ func canonicalize(t *testing.T, data []byte) []byte {
 // TestFixtureRoundTripFixedPoint asserts, for every *.json fixture under
 // testdata/, that Marshal(Unmarshal(x)) is a fixed point: re-running
 // Unmarshal/Marshal on that output reproduces the identical bytes. This is
-// the WP-30a acceptance criterion — raw byte equality against the original
+// the acceptance criterion — raw byte equality against the original
 // input isn't required (whitespace/key-order in the source fixture need not
 // match our canonical form), but the codec's own canonical form must be
 // stable under repeated round-tripping.
@@ -60,7 +60,7 @@ func TestFixtureRoundTripFixedPoint(t *testing.T) {
 }
 
 // TestJohnDoeFixtureFields spot-checks the RFC 9553 Fig. 6 golden fixture
-// (docs/fork-plan/golden-fixtures/johndoe.jscontact.json) imports the
+// (docs/golden-fixtures/johndoe.jscontact.json) imports the
 // expected scalar/structured fields, beyond the generic fixed-point check.
 func TestJohnDoeFixtureFields(t *testing.T) {
 	raw, err := os.ReadFile(filepath.Join("testdata", "johndoe.jscontact.json"))
@@ -104,7 +104,7 @@ func TestJohnDoeFixtureFields(t *testing.T) {
 }
 
 // TestTitleRoleFixtureFields spot-checks the title/organization Id-map
-// golden fixture (docs/fork-plan/golden-fixtures/title-role.jscontact.json).
+// golden fixture (docs/golden-fixtures/title-role.jscontact.json).
 func TestTitleRoleFixtureFields(t *testing.T) {
 	raw, err := os.ReadFile(filepath.Join("testdata", "title-role.jscontact.json"))
 	if err != nil {
@@ -461,7 +461,7 @@ func TestUnmarshalUnknownNestedFieldsPreserved(t *testing.T) {
 	}
 
 	// Fixed-point check: a second Unmarshal/Marshal pass must reproduce the
-	// same bytes (the WP-30a acceptance criterion), confirming the captured
+	// same bytes (the acceptance criterion), confirming the captured
 	// "somethingUnknown" key isn't just preserved once but stably so.
 	c2, err := Unmarshal(out)
 	if err != nil {

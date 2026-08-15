@@ -17,7 +17,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// T85 (docs/fork-plan/tickets/129-T85-contacts-list-fts-search.md): GET
+// T85: GET
 // /contacts?search= gains an FTS5 clause, OR-ed onto the existing LIKE
 // clause, so it composes with the list's circle/archived/sort/cursor
 // filters. These tests run against database.InitDB (not AutoMigrate) — the

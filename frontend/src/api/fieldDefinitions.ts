@@ -1,4 +1,4 @@
-// Custom field v2 API calls -- T6/T7 (docs/fork-plan/tickets/11-T6-custom-fields-api.md,
+// Custom field v2 API calls -- T6/T7 (T6,
 // 12-T7-custom-fields-frontend.md). Mirrors backend/models/field_definition.go
 // and dtos.go's FieldDefinitionInput/ContactFieldValuesInput by hand -- no
 // dynamic schema endpoint exists anywhere in this codebase, so the type token
@@ -64,7 +64,7 @@ export interface FieldDefinitionInput {
   sensitivity?: FieldSensitivity;
 }
 
-// FieldValue.value is the raw JSON payload (§94.4): a scalar definition holds
+// FieldValue.value is the raw JSON payload: a scalar definition holds
 // a bare value (string/number/boolean), a Multi definition holds an array.
 export interface FieldValue {
   id: number;

@@ -50,8 +50,8 @@ func TestConversationAgendaBeforeCreatePreservesExplicitID(t *testing.T) {
 	assert.Equal(t, "explicit-id", item.ID)
 }
 
-// The discussed flag with its date is the agenda's only resolution mechanism
-// (§91.11) — pin that it round-trips and stays queryable both ways.
+// The discussed flag with its date is the agenda's only resolution mechanism —
+// pin that it round-trips and stays queryable both ways.
 func TestConversationAgendaDiscussedAtRoundTrip(t *testing.T) {
 	db := setupConversationAgendaTestDB(t)
 	user := User{Username: "tester", Password: "x", Email: "tester@example.com"}

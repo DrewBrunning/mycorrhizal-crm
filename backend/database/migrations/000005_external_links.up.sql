@@ -1,4 +1,4 @@
--- T14 (docs/fork-plan/tickets/32-T14-external-link-substrate.md) — the
+-- T14 — the
 -- generic integration substrate (§91.12): two tables serve every future
 -- integration (Immich, Paperless-ngx, Matrix, GitHub, ...) so none of them
 -- ever grows bespoke columns.

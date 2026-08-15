@@ -3,8 +3,7 @@ package models
 import "sort"
 
 // lifeEventCategoryOrder is the display/definition order for the five T36
-// categories, matching the order the user supplied in the ticket (docs/
-// fork-plan/tickets/45-T36-life-event-categories.md) — the same order Monica
+// categories, matching the order the user supplied in the ticket (T36) — the same order Monica
 // settled on through real use. Exported via LifeEventCategories() rather
 // than as a public var so callers can't mutate the backing order.
 var lifeEventCategoryOrder = []string{

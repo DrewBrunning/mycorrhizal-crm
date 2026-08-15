@@ -25,8 +25,8 @@ import (
 
 // photoURLTestRouter builds a real-migrated-schema router (database.InitDB,
 // not AutoMigrate — CLAUDE.md backend trap 1) with the contacts list, detail,
-// and profile-picture endpoints wired, for M6 §1's response-shape tests
-// (docs/fork-plan/tickets/85-M6-photo-url-user-prefs-oidc.md §1).
+// and profile-picture endpoints wired, for M6's response-shape tests
+// (M6).
 func photoURLTestRouter(t *testing.T) (*gorm.DB, *gin.Engine, *config.Config, models.User) {
 	t.Helper()
 	photoDir := t.TempDir()
@@ -81,7 +81,7 @@ func photoDataURL(t *testing.T) string {
 	return "data:image/jpeg;base64," + base64.StdEncoding.EncodeToString(buf.Bytes())
 }
 
-// TestContactsListDetail_PhotoURLIsServed pins M6 §1's response-shape change
+// TestContactsListDetail_PhotoURLIsServed pins M6's response-shape change
 // against the real migrated schema: the list/detail photo_thumbnail carries a
 // relative profile-picture URL (never the raw base64 thumbnail or a legacy
 // disk-file name), a photo-less contact omits the field entirely, the
@@ -156,7 +156,7 @@ func TestContactsListDetail_PhotoURLIsServed(t *testing.T) {
 }
 
 // TestContactsDetail_PUTRoundTripDoesNotPersistPhotoURL pins the write-path
-// half of M6 §1's response-shape change end to end (real migrated schema):
+// half of M6's response-shape change end to end (real migrated schema):
 // the web client PUTs the loaded Card back verbatim on every edit, so the
 // now-relative Card.Media photo uri would round-trip into storage — and a
 // persisted relative URL would break VCF/JSContact export and CardDAV, whose

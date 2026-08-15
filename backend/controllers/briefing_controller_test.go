@@ -256,7 +256,7 @@ func TestGetContactBriefing_ExcludesSensitiveAndSuggestedRelationships(t *testin
 	require.NoError(t, db.Create(&carol).Error)
 	require.NoError(t, db.Create(&dan).Error)
 
-	// Secret edge — must be excluded (91.13: secret must never surface on a
+	// Secret edge — must be excluded (secret must never surface on a
 	// screen likely to be open in front of the person it concerns).
 	secretEdge := models.RelationshipEdge{
 		UserID: user.ID, SourceID: alice.VCardUID, TargetID: bob.VCardUID, Type: "partner_of",

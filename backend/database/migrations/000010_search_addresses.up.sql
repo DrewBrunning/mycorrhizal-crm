@@ -1,4 +1,4 @@
--- T38 (docs/fork-plan/tickets/47-T38-search-address-fields.md) — search must
+-- T38 — search must
 -- index address fields.
 --
 -- T11 (000007) built FTS5 search over contacts but never indexed addresses:

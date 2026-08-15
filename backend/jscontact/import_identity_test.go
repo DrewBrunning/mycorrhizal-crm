@@ -7,7 +7,7 @@ import (
 )
 
 // Concepts: uid, kind, prodid, created, updated, language.
-// Rows (docs/fork-plan/20-correspondence.md §20.3 "Identity / meta"):
+// Rows (docs/adrs/0002-correspondence-table-locked-oracle.md "Identity / meta"):
 //
 //	uid      Card.UID           /uid       identity
 //	kind     Card.Kind          /kind      identity

@@ -3,8 +3,7 @@ import { createTestContact, deleteTestContact, waitForLoading, stableClick } fro
 import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 
 /**
- * Duplicate scan (T93 — docs/fork-plan/tickets/137-T93-duplicate-scan-
- * endpoint-and-review.md). The review surface's contract is exactly the kind
+ * Duplicate scan (T93 — T93). The review surface's contract is exactly the kind
  * of thing a unit test can't see: that the pairs the dialog lists match what
  * the scan endpoint returns, that a dismissal actually persists across dialog
  * reopenings, and that Merge opens the pair merge flow against the right two

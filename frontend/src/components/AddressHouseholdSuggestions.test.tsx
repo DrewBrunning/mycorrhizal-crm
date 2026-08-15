@@ -90,7 +90,7 @@ test('shows the empty state with no suggestions', () => {
   ).toBeInTheDocument();
 });
 
-// T64 (docs/fork-plan/tickets/90-T64-household-suggestions-null-crash.md): the
+// T64: the
 // TS type promises a non-nullable array, but a Go nil slice marshals as
 // `null`, and that reached this component unguarded. `as any` simulates the
 // malformed API response the real bug produced — the assertion is that this

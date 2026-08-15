@@ -8,13 +8,13 @@ import "testing"
 // Values below match the RFC 9554 §3.2/§3.4 worked examples also used by the
 // golden gramgender.v4.vcf / pronouns.v4.vcf fixtures (GRAMGENDER:feminine;
 // PRONOUNS PREF=1:xe/xir, PREF=2:they/them) — no dedicated .jscontact.json
-// fixture exists for these concepts (per 40-testing.md §40.4's scope note),
+// fixture exists for these concepts (per docs/adrs/0003-golden-fixtures-external-test-oracle.md scope note),
 // so the same values are hand-built here as inline JSON.
 //
 // JSContact's own speakToAs.grammaticalGender is a scalar (RFC 9553 §2.2.4)
 // with no language tag, so import always produces a single-element (or nil)
 // GrammaticalGenders slice with Language left empty — see
-// 20-correspondence.md's "gramgender" row.
+// docs/adrs/0002-correspondence-table-locked-oracle.md "gramgender" row.
 func init() {
 	registerImportCoverage("gramgender", "pronouns")
 }

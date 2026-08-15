@@ -1,4 +1,4 @@
--- T40 (docs/fork-plan/tickets/49-T40-household-suggestions-shared-address.md) —
+-- T40 —
 -- permanent dismissal memory for address-based household suggestions.
 --
 --   address_hash = SHA-256 hex of the normalized shared-address key.

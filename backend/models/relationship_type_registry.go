@@ -7,10 +7,9 @@ import (
 
 // relationTypeDef describes one canonical relation-role token: its reciprocal
 // token, whether that reciprocal is itself (symmetric), search synonyms
-// (unused until WP-86's traversal/search work), and the RFC 6350 §6.6.6
+// (unused until traversal/search work), and the RFC 6350 §6.6.6
 // RELATED TYPE token it projects to on export — empty when the relation has
-// no standard equivalent and must stay internal (docs/fork-plan/91-envelope-
-// data-model.md §91.2's "deliberately lossy" export rule).
+// no standard equivalent and must stay internal (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md's "deliberately lossy" export rule).
 type relationTypeDef struct {
 	Inverse      string
 	Symmetric    bool
@@ -76,7 +75,7 @@ var relationTypeRegistry = map[string]relationTypeDef{
 	// No RFC 6350 token distinguishes an unmarried romantic partner from a
 	// spouse, and reusing "spouse" would misrepresent the relationship on
 	// export — so this stays non-projecting like co_parent_of below, per
-	// §91.2's own examples of edge types with no standard home.
+	// own examples of edge types with no standard home.
 	"partner_of": {
 		Inverse:   "partner_of",
 		Symmetric: true,
@@ -95,7 +94,7 @@ var relationTypeRegistry = map[string]relationTypeDef{
 		Inverse:  "mentor_of",
 		Synonyms: []string{"mentee"},
 	},
-	// Fork-invented (pets, §90 D3's thin-entity graph invariant); no RFC 6350
+	// Fork-invented (pets); no RFC 6350
 	// equivalent.
 	"owned_by": {
 		Inverse:  "owns",
@@ -105,11 +104,11 @@ var relationTypeRegistry = map[string]relationTypeDef{
 		Inverse:  "owned_by",
 		Synonyms: []string{"owner"},
 	},
-	// Affinity edges (§91.2 "Affinity edges" subsection) — pairwise
+	// Affinity edges ("Affinity edges" subsection) — pairwise
 	// compatibility, not a structural bond. Always non-projecting:
 	// gets_along_with has no vCard equivalent, and conflicts_with must never
 	// reach an export regardless (its sensitivity defaults to private/secret
-	// at the call site that creates it, per §91.13 — the registry doesn't
+	// at the call site that creates it, — the registry doesn't
 	// enforce that, the creation path does).
 	"gets_along_with": {
 		Inverse:   "gets_along_with",
@@ -121,7 +120,7 @@ var relationTypeRegistry = map[string]relationTypeDef{
 	},
 
 	// related_to is the deliberate fallback for a known relationship whose
-	// specific nature couldn't be determined — WP-81's migration uses this
+	// specific nature couldn't be determined — migration uses this
 	// for legacy free-text Type values that match nothing above (e.g.
 	// "Work", "Family": real values found in this codebase's own test
 	// fixtures with no home in the vocabulary above). Unlike every other
@@ -147,7 +146,7 @@ func IsKnownRelationType(token string) bool {
 }
 
 // InverseRelationType returns the reciprocal token for a known relation type,
-// or "" if token is unregistered. Never stored (§91.2: "store one edge,
+// or "" if token is unregistered. Never stored ("store one edge,
 // derive the inverse") — always derived through this function.
 func InverseRelationType(token string) string {
 	return relationTypeRegistry[token].Inverse
@@ -155,7 +154,7 @@ func InverseRelationType(token string) string {
 
 // IsSymmetricRelationType reports whether a registered token's reciprocal is
 // itself (e.g. spouse_of), as opposed to a distinct inverse token (e.g.
-// parent_of/child_of). Unregistered tokens report false. Used by WP-81's
+// parent_of/child_of). Unregistered tokens report false. Used
 // migration to derive RelationshipEdge.Directional from the matched type
 // rather than hardcoding it, since legacy data has no separate concept of
 // directionality to read it from.
@@ -171,14 +170,14 @@ func RelationVCardTypeTag(token string) string {
 }
 
 // MatchLegacyRelationType resolves free text (a legacy Relationship.Type
-// value, or eventually a WP-86 search query term) to a registered relation
+// value, or eventually a search query term) to a registered relation
 // token, via a case-insensitive match against registry keys and Synonyms,
 // with simple pluralization tolerance ("Friends" -> "friend"). Returns
-// ok=false if nothing matches — callers (WP-81's migration) fall back to the
+// ok=false if nothing matches — callers (migration) fall back to the
 // "related_to" token in that case rather than dropping the relationship.
 //
 // Deliberately a plain function over the registry rather than a method or a
-// separate lookup table: this is the same matching problem WP-86's search
+// separate lookup table: this is the same matching problem search
 // will eventually need ("mom"/"mother" -> parent_of), so it belongs with the
 // registry it reads from, not duplicated per caller.
 func MatchLegacyRelationType(text string) (string, bool) {

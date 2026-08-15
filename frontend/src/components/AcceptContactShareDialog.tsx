@@ -28,8 +28,7 @@ interface AcceptContactShareDialogProps {
   onConfirm: (shareId: string, sessionId: string, actions: RowImportAction[]) => Promise<unknown>;
 }
 
-// AcceptContactShareDialog is P1's single-row confirm step (docs/fork-plan/
-// tickets/31-P1-contact-sharing.md) -- a scoped-down version of
+// AcceptContactShareDialog is P1's single-row confirm step (P1) -- a scoped-down version of
 // ImportContactsDialog's preview table (duplicate-match chip + add/update/
 // skip picker), since a share is always exactly one contact. This is the
 // "ask-the-user" merge-policy decision made concrete: the recipient

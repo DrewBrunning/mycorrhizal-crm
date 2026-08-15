@@ -1,5 +1,4 @@
-// M3 dashboard composite (docs/fork-plan/tickets/
-// 82-M3-dashboard-overview-endpoint.md) — one call replacing the
+// M3 dashboard composite — one call replacing the
 // birthdays/random-contacts/upcoming-reminders/overdue-cadences Promise.all
 // DashboardPage used to fire, plus its per-reminder contact-name N+1.
 import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';

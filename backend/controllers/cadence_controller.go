@@ -40,7 +40,7 @@ func policyHealth(c *gin.Context, db *gorm.DB, userID uint, policy *models.Caden
 	return cadencePolicyWithHealth{CadencePolicy: *policy, Health: health}, true
 }
 
-// CreateCadencePolicy creates a new CadencePolicy (cadence_policy.go, §91.10)
+// CreateCadencePolicy creates a new CadencePolicy (cadence_policy.go)
 // for the authenticated user. One policy per contact: an existing non-deleted
 // policy for the same entity is a checked 409 ErrAlreadyExists (the partial
 // unique index idx_cadence_policies_user_entity is the backstop, not the

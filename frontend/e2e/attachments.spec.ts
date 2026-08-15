@@ -2,7 +2,7 @@ import { test, expect } from './fixtures';
 import { createTestContact, deleteTestContact } from './fixtures';
 import { API_BASE_URL } from './global-setup';
 
-// N7 (docs/fork-plan/tickets/29-N7-attachments.md): a contact's attachments
+// N7: a contact's attachments
 // section supports upload, list, and delete through the real UI.
 test.describe('Contact attachments', () => {
   test('uploads an attachment and deletes it', async ({ page, request }) => {

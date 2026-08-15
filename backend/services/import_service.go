@@ -22,7 +22,7 @@ import (
 
 // Import limits
 //
-// Sized for T56 (docs/fork-plan/tickets/65-T56-bulk-contacts-import-flow.md):
+// Sized for T56:
 // a Google Takeout or other contacts-app full export can run into the
 // hundreds of contacts — and, for VCF, carry a photo per contact — so these
 // caps are generous enough to bring an entire existing address book in one
@@ -79,7 +79,7 @@ func ParseCSV(reader io.Reader) (headers []string, rows [][]string, err error) {
 
 // vcardBlockRE splits a multi-contact .vcf file into individual
 // "BEGIN:VCARD ... END:VCARD" blocks, each fed independently to the
-// vcard4/vcard3 adapters below (WP-71 Gap 4): those adapters' Import
+// vcard4/vcard3 adapters below: those adapters' Import
 // functions each parse exactly one card (see vcard4/vcard3's own Import doc
 // comments), so a file containing several concatenated vCards — the normal
 // shape of a .vcf export — has to be split before each block is handed to
@@ -121,8 +121,7 @@ func sniffVCardVersion(block []byte) string {
 	}
 }
 
-// diagnosticsToStrings renders adapter Diagnostics (docs/fork-plan/
-// 00-overview.md §0.5's degradation policy) as human-readable strings for
+// diagnosticsToStrings renders adapter Diagnostics (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md's degradation policy) as human-readable strings for
 // models.ImportRowPreview.Diagnostics.
 func diagnosticsToStrings(diags []contactmodel.Diagnostic) []string {
 	if len(diags) == 0 {
@@ -145,7 +144,7 @@ func diagnosticsToStrings(diags []contactmodel.Diagnostic) []string {
 // goes through the vcard4/vcard3/jscontact adapters instead of
 // carddav.VCardToContact. Delegates the actual decoding to
 // photostore.DecodePhotoURI (the same helper backend/models uses to bridge
-// Card.Media <-> Contact.Photo/PhotoThumbnail, per WP-73's photo-bridging
+// Card.Media <-> Contact.Photo/PhotoThumbnail,  photo-bridging
 // prerequisite) so there is one decode implementation, not two.
 func extractPhotoFromRecord(rec *contactmodel.Record) (data []byte, mediaType string, url string) {
 	if rec == nil {
@@ -166,12 +165,12 @@ func extractPhotoFromRecord(rec *contactmodel.Record) (data []byte, mediaType st
 
 // ParseVCF reads and parses a VCF file, returning contact data and previews.
 //
-// Per docs/fork-plan/50-integration-and-rebrand.md WP-71 Gap 4, this now
+// Per docs/adrs/0001-neutral-hub-and-spoke-contact-model.md, this now
 // splits the file into per-card blocks, sniffs each block's VERSION, and
 // routes it through the vcard4/vcard3 adapter accordingly — replacing the
 // legacy carddav.VCardToContact mapper — then turns the resulting
 // contactmodel.Record into a candidate *models.Contact via
-// models.ApplyRecordToContact (Gap 1's shared Record->Contact mapping).
+// models.ApplyRecordToContact (shared Record->Contact mapping).
 // DetectDuplicate/MergeImportedContact/CreateMergeNote/ContactToPreviewMap/
 // ValidateImportedContact are all unchanged: they already operate on the
 // resulting flat Contact fields, which ApplyRecordToContact populates.
@@ -262,7 +261,7 @@ func ParseVCF(reader io.Reader, db *gorm.DB, userID uint) (contacts []VCFContact
 	return contacts, previews, stats, nil
 }
 
-// ParseJSContact reads and parses a JSContact JSON import (WP-71 Gap 4
+// ParseJSContact reads and parses a JSContact JSON import (
 // extension: this import path is new, there is no legacy equivalent to
 // replace). The file may be a single JSContact Card object, or a JSON array
 // of Card objects (the same "Card set" shape ExportContactsAsJSContact

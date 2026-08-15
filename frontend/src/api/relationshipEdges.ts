@@ -1,4 +1,4 @@
-// RelationshipEdge API calls -- §3d WP3 (docs/fork-plan/95-backlog-and-priorities.md),
+// RelationshipEdge API calls -- ,
 // replaces api/relationships.ts's legacy models.Relationship-backed calls.
 import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
 

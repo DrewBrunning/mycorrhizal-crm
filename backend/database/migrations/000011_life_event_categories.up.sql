@@ -1,4 +1,4 @@
--- T36 (docs/fork-plan/tickets/45-T36-life-event-categories.md) — life event
+-- T36 — life event
 -- categories + expanded default types.
 --
 -- Additive nullable column: LifeEvent.Type stays the existing unvalidated

@@ -186,9 +186,9 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
   // T33 information-architecture pass: the nav bar had grown to ten
   // destinations. Each is classified so the mobile AppBar knows where it
   // lives:
-  //   primary  — used constantly, kept as visible icons in the AppBar below sm
+  //   primary — used constantly, kept as visible icons in the AppBar below sm
   //              (Contacts, Notes)
-  //   account  — Settings, Data settings, User Management; collapsed into the
+  //   account — Settings, Data settings, User Management; collapsed into the
   //              account menu instead of the main nav row
   //   everything else is secondary and lives in the hamburger drawer.
   const primaryNavItems = useMemo(

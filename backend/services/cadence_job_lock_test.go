@@ -22,7 +22,7 @@ func setupCadenceJobTestDB(t *testing.T) *gorm.DB {
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err)
 	// ProcessOverdueCadences dispatches deliveries through goroutines, so a
-	// single connection must serve them all (the :memory: sqlite gotcha).
+	// single connection must serve them all (the:memory: sqlite gotcha).
 	sqlDB, err := db.DB()
 	require.NoError(t, err)
 	sqlDB.SetMaxOpenConns(1)

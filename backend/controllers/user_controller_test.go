@@ -527,8 +527,7 @@ func TestUpdateLanguage_Succeeds(t *testing.T) {
 	assert.Equal(t, "de", updated.Language)
 }
 
-// TestUpdateLanguage_RejectsUnsupportedCode is the regression test for
-// backlog item 12 (docs/fork-plan/95-backlog-and-priorities.md):
+// TestUpdateLanguage_RejectsUnsupportedCode is the regression test:
 // i18n.IsValidLanguage used to normalize via i18n.normalizeLanguage, which
 // falls back to "en" for any unrecognized input, so the rejection branch
 // below was unreachable for any input at all. i18n.NormalizeSupportedLanguage
@@ -563,7 +562,7 @@ func TestUpdateLanguage_RejectsUnsupportedCode(t *testing.T) {
 	assert.NotEqual(t, "xx", reloaded.Language)
 }
 
-// TestUpdateLanguage_NormalizesBeforePersisting is the other half of item 12:
+// TestUpdateLanguage_NormalizesBeforePersisting is the other half:
 // UpdateLanguage used to persist input.Language raw/unnormalized even when
 // valid, so e.g. "DE-AT" would be stored verbatim instead of as "de".
 func TestUpdateLanguage_NormalizesBeforePersisting(t *testing.T) {

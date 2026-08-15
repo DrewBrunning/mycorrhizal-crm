@@ -149,7 +149,7 @@ func TestGetGraph_ContactsRelationshipsAndActivities(t *testing.T) {
 	assert.Equal(t, "c-2", edgeToB.Target)
 }
 
-// TestGetGraph_ExcludesSuggestedRelationshipEdges pins down the WP2 behavior
+// TestGetGraph_ExcludesSuggestedRelationshipEdges pins down the behavior
 // change: a "suggested" RelationshipEdge (e.g. household-inferred, awaiting
 // user review) must never appear in the graph -- only "confirmed" edges are
 // graphed, per RelationshipEdge.Status's own doc comment.

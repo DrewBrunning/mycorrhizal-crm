@@ -31,11 +31,11 @@ ORG-DIRECTORY;PREF=1:ldap://ldap.tech.example/o=Example%20Tech,ou=Engineering
 ```
 **Errata check (verified 2026-07-25):** RFC 6715 Erratum 3341 (verified) corrects a typo in the RFC's
 own §5 IANA-registration summary table — `ORG-URI` → `ORG-DIRECTORY`. No effect on our docs; we already
-use the correct spelling `ORG-DIRECTORY` throughout `20-correspondence.md`/`30-adapters.md`.
+use the correct spelling `ORG-DIRECTORY` throughout `docs/adrs/0002-correspondence-table-locked-oracle.md`/`docs/adrs/0001-neutral-hub-and-spoke-contact-model.md`.
 
 ## INDEX parameter (§3.1)
 "Used in a multi-valued property to indicate the position of this value within the set of values."
 Strictly positive integers (no zero). This is the vCard-side counterpart of JSContact
 `PersonalInfo.listAs` / `Directory.listAs` (both `UnsignedInt`, RFC 9553) — already reflected as
-`INDEX` in the `personalinfo`/`directory` rows of `20-correspondence.md`. No fix needed; this document
+`INDEX` in the `personalinfo`/`directory` rows of `docs/adrs/0002-correspondence-table-locked-oracle.md`. No fix needed; this document
 exists to confirm (not correct) what was already assumed from the IANA registry summary alone.

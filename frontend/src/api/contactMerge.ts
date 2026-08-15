@@ -1,5 +1,5 @@
 // Contact merge/dedupe API calls -- ticket N1
-// (docs/fork-plan/tickets/01-N1-contact-merge.md). Mirrors backend/models/
+// (N1). Mirrors backend/models/
 // contact_merge.go's DTOs by hand -- no dynamic schema endpoint exists
 // anywhere in this codebase, so this must be kept in sync manually if the
 // backend shape changes.

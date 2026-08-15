@@ -16,7 +16,7 @@ import {
 import { useSnackbar } from '../context/SnackbarContext';
 import { getErrorMessage } from '../utils/errorHandler';
 
-// N7 (docs/fork-plan/tickets/29-N7-attachments.md): a contact's file/document
+// N7: a contact's file/document
 // attachments — upload, list, download, delete.
 interface AttachmentsSectionProps {
   contactId: number | string;

@@ -17,7 +17,7 @@ import (
 )
 
 // TestContactShare_RealMigratedSchema is P1's real-DB check (CLAUDE.md trap
-// #1): every other contact-share test runs against AutoMigrate on :memory:
+// #1): every other contact-share test runs against AutoMigrate on:memory:
 // sqlite, which derives its schema from the same Go struct tags the app code
 // uses and so cannot catch a GORM column-name mismatch against the real
 // hand-written migration (000008_contact_shares) — this fork's own recurring

@@ -1,4 +1,4 @@
-// ContactBriefing API — N2 (docs/fork-plan/tickets/22-N2-prep-view.md):
+// ContactBriefing API — N2:
 // the read-only "prep view" composition for a contact. One endpoint returns
 // everything the user wants to remember before seeing a person, assembled
 // server-side from existing data (activities, notes, cadence health, agenda

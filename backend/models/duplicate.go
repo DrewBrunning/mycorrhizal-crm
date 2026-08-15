@@ -3,7 +3,7 @@ package models
 import "time"
 
 // DismissedDuplicatePair is T93's permanent "not a duplicate" memory
-// (docs/fork-plan/tickets/137-T93-duplicate-scan-endpoint-and-review.md): one
+// (T93): one
 // row per dismissed duplicate-pair candidate, identified by the ORDERED
 // (user_id, uid_low, uid_high) triple of Contact.VCardUIDs. Ordering means
 // (A,B) and (B,A) can never both be stored.

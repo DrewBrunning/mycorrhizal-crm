@@ -15,4 +15,4 @@ CONTACT-URI:https://contact.example.com
 CONTACT-URI;PREF=1:mailto:contact@example.com
 ```
 
-No corrections needed to `20-correspondence.md`'s `contacturi` row — confirms what was already assumed.
+No corrections needed to `docs/adrs/0002-correspondence-table-locked-oracle.md`'s `contacturi` row — confirms what was already assumed.

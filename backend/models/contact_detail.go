@@ -4,8 +4,7 @@ import "time"
 
 // ContactDetailUser is the "user" block of the M4 contact-detail composite:
 // only what the detail screen needs from the current user, not the whole
-// admin user object (docs/fork-plan/tickets/
-// 83-M4-contact-detail-composite.md design decision 4).
+// admin user object (M4 design decision 4).
 type ContactDetailUser struct {
 	EnabledContactFields []string `json:"enabled_contact_fields"`
 }

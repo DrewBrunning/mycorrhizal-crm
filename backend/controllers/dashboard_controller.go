@@ -13,7 +13,7 @@ import (
 )
 
 // GetDashboard returns the M3 "today/overview" composite
-// (docs/fork-plan/tickets/82-M3-dashboard-overview-endpoint.md): upcoming
+// (M3): upcoming
 // birthdays, a handful of random contacts, upcoming reminders (with the
 // contact's display name embedded, N+1-free), and overdue cadences — the
 // four requests the web DashboardPage used to fire separately (plus a

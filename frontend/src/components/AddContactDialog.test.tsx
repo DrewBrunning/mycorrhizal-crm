@@ -87,7 +87,7 @@ test('submits crm.kind = animal when Animal is selected (T27)', async () => {
   expect(mocked.mock.calls[0][0].crm.kind).toBe('animal');
 });
 
-test('submits card.language when set (WP4)', async () => {
+test('submits card.language when set', async () => {
   const mocked = vi.mocked(createContactRecord).mockResolvedValue({
     id: 4,
     uid: 'uid-4',

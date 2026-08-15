@@ -47,7 +47,7 @@ export async function exportDataAsCsv(): Promise<void> {
   await downloadFileFromResponse(response, 'mycorrhizal-export.csv');
 }
 
-// --- WP-97 / T9: selective field export + sensitivity gating -----------------
+// --- T9: selective field export + sensitivity gating -----------------
 
 export type ExportFormat = 'vcf4' | 'vcf3' | 'jscontact';
 
@@ -81,7 +81,7 @@ export const EXPORT_FIELD_SECTIONS: ExportFieldSection[] = [
 
 export interface ExportSelection {
   sections: string[];
-  // Explicit §91.13 opt-in override: include private/secret items in the
+  // Explicit opt-in override: include private/secret items in the
   // sensitivity-bearing sections just this time. Never implied by merely
   // checking a section — the UI gates this behind a deliberate reveal action.
   includeSensitive: boolean;
@@ -174,7 +174,7 @@ export async function exportContact(format: ExportFormat, vcardUID: string, sele
  * Export all contacts as VCF (vCard 4.0), all sections included
  * Downloads a VCF file containing all contacts with their photos. Sends every
  * section token (the pre-T9 "no selection" default), with sensitivity items
- * still opt-out: the backend's §91.13 default-exclude keeps private/secret
+ * still opt-out: the backend's default-exclude keeps private/secret
  * data out unless include_sensitive is explicitly sent.
  */
 export async function exportContactsAsVcf(): Promise<void> {

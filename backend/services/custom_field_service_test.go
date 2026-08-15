@@ -99,7 +99,7 @@ func TestValidateFieldValue_EnumWithNoAllowedValuesConfigured(t *testing.T) {
 	assert.Error(t, ValidateFieldValue(def, raw(t, "M")), "misconfigured definition (no Values) must not silently pass")
 }
 
-// §94.4's list<T>: Constraints.Multi turns any scalar type into a
+// list<T>: Constraints.Multi turns any scalar type into a
 // JSON-array-of-that-type, each element validated independently.
 func TestValidateFieldValue_MultiValuedEnum(t *testing.T) {
 	def := models.FieldDefinition{

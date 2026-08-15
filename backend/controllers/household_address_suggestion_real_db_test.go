@@ -16,8 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestAddressHouseholdSuggestions_RealMigratedSchema is T40's (docs/fork-plan/
-// tickets/49-T40-household-suggestions-shared-address.md) end-to-end round
+// TestAddressHouseholdSuggestions_RealMigratedSchema is T40's end-to-end round
 // trip against the real migrated schema: detection, dismissal persistence
 // across passes, cross-user isolation, the unique-index guard on duplicate
 // dismissals, and the accept flow that materializes a Household. Runs against
@@ -189,7 +188,7 @@ func TestAddressHouseholdSuggestions_RealMigratedSchema(t *testing.T) {
 }
 
 // TestAddressHouseholdSuggestions_EmptyResultIsJSONArrayNotNull is T64
-// (docs/fork-plan/tickets/90-T64-household-suggestions-null-crash.md): an
+// (T64): an
 // account with zero qualifying groups must get back literal `"suggestions":[]`
 // in the raw response body, not `"suggestions":null`. Decoding into a Go
 // struct would make `null` and `[]` indistinguishable (both unmarshal into a

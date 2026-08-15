@@ -14,7 +14,7 @@ import (
 )
 
 // TestBulkContactOperation_RealMigratedSchema is the real-DB check for N5:
-// every other bulk-operation test runs against AutoMigrate on :memory: sqlite
+// every other bulk-operation test runs against AutoMigrate on:memory: sqlite
 // (via setupRouter), which derives its schema from the same Go struct tags
 // the application code uses — it cannot catch a GORM column-tag mismatch
 // against the real hand-written migration SQL (this fork's own recurring bug

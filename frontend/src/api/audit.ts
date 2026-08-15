@@ -1,4 +1,4 @@
-// Audit event API calls -- T60 (docs/fork-plan/tickets/79-T60-audit-trail-ui.md),
+// Audit event API calls -- T60,
 // the frontend half of T18's already-shipped backend (GET /audit, POST
 // /audit/:id/undo).
 import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';

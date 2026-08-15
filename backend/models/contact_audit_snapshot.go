@@ -7,8 +7,7 @@ import (
 )
 
 // ContactAuditSnapshot is the shape marshaled as a Contact's audit
-// before-snapshot (T82, docs/fork-plan/tickets/126-T82-audit-snapshots-miss-
-// nested-contact-data.md).
+// before-snapshot (T82, T82).
 //
 // The embedded Contact carries the flat fields at the top level exactly as
 // pre-T82 snapshots did. Card/CRM/Passthrough are added as explicit top-level

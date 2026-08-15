@@ -41,7 +41,7 @@ func TestExport_NameComponents(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Export: %v", err)
 	}
-	// n_component (20.4): N order = Family;Given;Additional;Prefix;Suffix;Surname2;Generation.
+	// n_component: N order = Family;Given;Additional;Prefix;Suffix;Surname2;Generation.
 	rfctest.AssertVCardLine(t, out, "N", nil, "Stevenson;John;Philip;Dr.;Jr.;Torres;Jr.")
 }
 

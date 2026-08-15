@@ -1,4 +1,4 @@
--- T21 (docs/fork-plan/tickets/21-T21-conversation-agenda.md) —
+-- T21 —
 -- ConversationAgenda: "things to bring up next time I see them" (§91.11).
 -- Contextual memory surfaced on the contact view, explicitly NOT
 -- date-scheduled — no due date anywhere, which is what distinguishes it from

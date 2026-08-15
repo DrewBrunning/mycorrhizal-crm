@@ -3,7 +3,7 @@ import { createTestContact, deleteTestContact, waitForLoading } from './fixtures
 import { E2E_CONTACT_PREFIX } from './global-setup';
 
 /**
- * T77 (docs/fork-plan/tickets/121-T77-web-contacts-list-sort-control.md) — the
+ * T77 — the
  * web sort control that consumes T73's backend ?sort=. The backend ordering
  * itself is pinned by contactSort.spec.ts (API-level); this spec drives the
  * real Contacts page Select and proves the control is wired end to end:

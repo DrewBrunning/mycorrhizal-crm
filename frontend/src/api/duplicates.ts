@@ -1,5 +1,5 @@
 // Duplicate-scan API calls -- T93
-// (docs/fork-plan/tickets/137-T93-duplicate-scan-endpoint-and-review.md).
+// (T93).
 // Mirrors backend/models/duplicate.go's DTOs by hand -- no dynamic schema
 // endpoint exists anywhere in this codebase, so this must be kept in sync
 // manually if the backend shape changes.

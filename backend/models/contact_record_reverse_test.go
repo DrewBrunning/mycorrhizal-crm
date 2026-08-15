@@ -11,8 +11,7 @@ import (
 )
 
 // TestApplyRecordToContact_ReDerivesRelativePhotoURL is the regression test
-// for M6 §1's write-path round-trip (docs/fork-plan/tickets/85-M6-photo-url-
-// user-prefs-oidc.md): the read response now exposes Card.Media's photo uri as
+// for M6's write-path round-trip (M6): the read response now exposes Card.Media's photo uri as
 // a relative profile-picture URL, and the web client PUTs that card back
 // verbatim on the next edit. applyMedia must recognize that relative URL as
 // "this contact's own photo pointer" and re-derive the entry from the flat
@@ -85,13 +84,13 @@ func TestApplyRecordToContact_RealPhotoRoundTripStillPersists(t *testing.T) {
 	}
 }
 
-// TestApplyRecordToContact_RoundTrip exercises WP-71 Gap 1: RecordFromContact
+// TestApplyRecordToContact_RoundTrip: RecordFromContact
 // a fully-populated Contact into a Record, ApplyRecordToContact that Record
 // onto a fresh Contact, and assert the result matches the original closely
 // enough that nothing was silently lost in a way the doc doesn't already
 // call out as an accepted, documented lossy case.
 //
-// Also exercises WP-73's photo-bridging prerequisite end-to-end: original
+// Also  photo-bridging prerequisite end-to-end: original
 // (fullyPopulatedContact) carries a PhotoThumbnail, which RecordFromContact
 // bridges into record.Card.Media, which ApplyRecordToContact (given a real
 // photoDir) then decodes and persists back to disk — proving the photo
@@ -216,7 +215,7 @@ func TestApplyRecordToContact_RoundTrip(t *testing.T) {
 		t.Errorf("got.VCardExtra = %q, want \"\" (Passthrough is not re-serialized back into the legacy VCardExtra column)", got.VCardExtra)
 	}
 
-	// WP-73 photo-bridging prerequisite: the photo bridged into
+	// photo-bridging prerequisite: the photo bridged into
 	// record.Card.Media by RecordFromContact (from original.PhotoThumbnail,
 	// since original.Photo has no on-disk file) round-trips through
 	// ApplyRecordToContact back onto disk and onto got.Photo/PhotoThumbnail.
@@ -238,7 +237,7 @@ func TestApplyRecordToContact_RoundTrip(t *testing.T) {
 }
 
 // TestAddressMapping_RoundTripsSubStreetFields pins T79
-// (docs/fork-plan/tickets/123-T79-flat-address-projection-too-narrow.md):
+// (T79):
 // the flat ContactAddress gained PO box / apartment / floor slots, so both
 // directions of the flat<->neutral mapping must carry them. A vCard-imported
 // address holding those components must land on the flat struct (and back
@@ -368,7 +367,7 @@ func TestApplyRecordToContact_NilSafety(t *testing.T) {
 }
 
 // TestApplyRecordToContact_PreservesUnmappedCardData asserts the central
-// claim of Gap 1's resolution: Card-only data with no flat-field home
+// claim of the resolution: Card-only data with no flat-field home
 // (SpeakToAs here) is preserved on c.Card even though nothing on the flat
 // side reflects it, and — critically — survives a subsequent BeforeSave
 // untouched (this is what the cardSetDirectly guard exists to protect;
@@ -441,8 +440,8 @@ func TestApplyRecordToContact_PreservesCRMKind(t *testing.T) {
 }
 
 // TestApplyRecordToContact_ClearsPhoneScalarWhenPhonesRemoved is the
-// regression guard for a real bug found by Tier 3c item 11a's audit
-// (docs/fork-plan/95-backlog-and-priorities.md): applyPhones cleared
+// regression guard for a real bug found by audit:
+// applyPhones cleared
 // c.Phones but left the c.Phone scalar untouched when the incoming Record
 // had no phones at all, unlike its sibling applyEmails (which always
 // resets c.Email, falling back to proj.PrimaryEmail). A contact whose last

@@ -1,6 +1,6 @@
 package models
 
-// Bulk contact operations (N5 — docs/fork-plan/tickets/27-N5-bulk-operations.md).
+// Bulk contact operations (N5 — N5).
 // A single batch endpoint runs one action across many contacts with
 // partial-success semantics instead of all-or-nothing: the response reports
 // which contacts succeeded and which failed.

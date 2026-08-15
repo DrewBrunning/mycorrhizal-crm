@@ -57,7 +57,7 @@ func csvSafeRecord(record []string) []string {
 }
 
 // serializeFieldValueForCSV renders one FieldValue's raw JSON payload as the
-// single string a CSV cell holds (docs/fork-plan/94-custom-fields.md §94.4):
+// single string a CSV cell holds (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md):
 // a scalar keeps its text form (strings verbatim, numbers/bools stringified)
 // and a Multi field joins its elements with "; " — the same separator the
 // export uses for Circles and food preferences. String-first parsing is the
@@ -128,8 +128,8 @@ func groupingNamesByContact(db *gorm.DB, userID uint, joinTable, entityTable, jo
 }
 
 // parseExportFieldSelection reads the ?sections= and ?include_sensitive=
-// query params accepted by the vCard/JSContact export handlers (WP-97 / T9,
-// docs/fork-plan/tickets/13-T9-selective-export.md). sections is a
+// query params accepted by the vCard/JSContact export handlers (T9,
+// T9). sections is a
 // comma-separated list of field-selection section tokens
 // (models.FieldSections); identity data (name/uid/...) is always included.
 //
@@ -137,7 +137,7 @@ func groupingNamesByContact(db *gorm.DB, userID uint, joinTable, entityTable, jo
 // preserved so existing export links/URLs keep working. An unknown token is
 // an explicit 400 rather than a silent narrowing, so a typo can't silently
 // drop fields from an export. include_sensitive accepts true/1 as the
-// explicit §91.13 opt-in override (never implied by any section selection).
+// explicit opt-in override (never implied by any section selection).
 //
 // The second return is false when the caller should abort (an error has
 // already been written to the response).
@@ -179,7 +179,7 @@ func ExportData(c *gin.Context) {
 		return
 	}
 
-	// T7 (docs/fork-plan/tickets/12-T7-custom-fields-frontend.md): the CSV
+	// T7: the CSV
 	// export's custom-field columns now source from the v2 system
 	// (FieldDefinition + FieldValue) instead of the retired untyped v1. Every
 	// definition the user has becomes a header column -- like the v1 names
@@ -222,7 +222,7 @@ func ExportData(c *gin.Context) {
 		valueByContactAndDef[fv.EntityID][fv.FieldDefinitionID] = fv.Value
 	}
 
-	// §3d WP4: relationships now come from RelationshipEdge, not the legacy
+	// relationships now come from RelationshipEdge, not the legacy
 	// models.Relationship table. Names are resolved via a VCardUID map built
 	// from the contacts already fetched above, since an edge only carries
 	// its endpoints' VCardUID, not a nested contact.
@@ -329,7 +329,7 @@ func ExportData(c *gin.Context) {
 	}
 	// Custom-field headers come from the v2 definitions' Labels (user-
 	// authored, so the header row gets the same csvSafe treatment as the data
-	// rows -- the Tier 1 formula-injection finding stays closed).
+	// rows -- the formula-injection finding stays closed).
 	for _, def := range definitions {
 		contactHeaders = append(contactHeaders, def.Label)
 	}
@@ -373,7 +373,7 @@ func ExportData(c *gin.Context) {
 	}
 	writer.Flush()
 
-	// Write relationships section. §3d WP4: reads RelationshipEdge, not the
+	// Write relationships section. reads RelationshipEdge, not the
 	// legacy models.Relationship table. Deliberately includes every
 	// status/sensitivity — this is the user's own full personal-data backup,
 	// not a share to another party, so unlike RecordForContact's vCard/
@@ -583,7 +583,7 @@ func ExportData(c *gin.Context) {
 
 // ExportContactsAsVCF exports all user contacts as a VCF (vCard) file.
 //
-// Per docs/fork-plan/50-integration-and-rebrand.md WP-71 Gap 4, this now
+// Per docs/adrs/0001-neutral-hub-and-spoke-contact-model.md, this now
 // routes through the vcard4/vcard3 adapters instead of the legacy
 // carddav.ContactToVCard mapper. ?version=3 (or "3.0") selects vCard 3.0;
 // anything else (including absent) defaults to 4.0, per the "advertise 4.0
@@ -594,14 +594,14 @@ func ExportData(c *gin.Context) {
 // any data with no flat-field home (SpeakToAs, PersonalInfo, ...); calling
 // RecordFromContact fresh here would silently drop it from the export. See
 // RecordForContact's doc comment; this was a real bug found and fixed
-// across three call sites while auditing WP-73's work.
+// across three call sites while auditing work.
 //
 // photoDir (config.Config.ProfilePhotoDir, from routes.go's call site) is
 // forwarded through RecordForContact: per
-// docs/fork-plan/50-integration-and-rebrand.md WP-73's photo-bridging
+// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md photo-bridging
 // prerequisite, Contact.Photo/PhotoThumbnail bridges into a
 // Card.Media{Kind:"photo"} entry, which the vcard4/vcard3 adapters encode
-// as an embedded PHOTO property — closing WP-71's previously-documented
+// as an embedded PHOTO property — closing previously-documented
 // "VCF export doesn't embed photos" gap.
 func ExportContactsAsVCF(c *gin.Context, photoDir string) {
 	db := c.MustGet("db").(*gorm.DB)
@@ -612,10 +612,10 @@ func ExportContactsAsVCF(c *gin.Context, photoDir string) {
 		return
 	}
 
-	// WP-97 / T9: the ?sections= field picker and ?include_sensitive= opt-in
+	// T9: the ?sections= field picker and ?include_sensitive= opt-in
 	// override apply here (the shared Card filter runs before the adapter) —
 	// NOT to ExportData, which is the user's own full CSV backup and
-	// deliberately includes everything (§92.6b's trap).
+	// deliberately includes everything .
 	sel, ok := parseExportFieldSelection(c)
 	if !ok {
 		return
@@ -678,7 +678,7 @@ func ExportContactsAsVCF(c *gin.Context, photoDir string) {
 
 // ExportContactsAsJSContact exports all user contacts as a single JSON
 // document: a JSON array of RFC 9553 JSContact Card objects (one per
-// contact) — the "Card set" option from WP-71's task list, chosen over a
+// contact) — the "Card set" option  task list, chosen over a
 // single merged document since each contact is an independent Card with its
 // own @type/uid, not sub-objects of one another.
 //
@@ -697,7 +697,7 @@ func ExportContactsAsJSContact(c *gin.Context) {
 		return
 	}
 
-	// Same WP-97 / T9 field-picker query params as ExportContactsAsVCF; never
+	// Same T9 field-picker query params as ExportContactsAsVCF; never
 	// applied to ExportData (the user's own full CSV backup).
 	sel, ok := parseExportFieldSelection(c)
 	if !ok {

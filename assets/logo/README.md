@@ -63,7 +63,7 @@ palette file, just close to it.
 | `icon-dark-192.png` / `-512.png` | `icons/dark/icon-192.png` / `icon-512.png` | Same, dark mode |
 | `mark-mycelium-light-512.png` | `icons/light/maskable-icon-512.png` | PWA maskable icon, light mode — reuses the transparent mark directly rather than a separate filled asset; the OS applies its own background/mask |
 | `mark-mycelium-dark-512.png` | `icons/dark/maskable-icon-512.png` | Same, dark mode |
-| `simplified-mark-white-96.png` | `icons/light/notification-icon-96.png` and `icons/dark/notification-icon-96.png` (identical) | OS notification icon — generated ahead of need, not yet referenced by any app code. Ticket: `docs/fork-plan/tickets/30-N9-notification-channels.md` |
+| `simplified-mark-white-96.png` | `icons/light/notification-icon-96.png` and `icons/dark/notification-icon-96.png` (identical) | OS notification icon — generated ahead of need, not yet referenced by any app code. Ticket: `N9` |
 | — (`icon-1024.png`, bone-filled, resized to 180px) | `apple-touch-icon.png` | iOS home screen (`index.html`'s `<link rel="apple-touch-icon">` — Apple doesn't read `manifest.json`) |
 
 **Not currently consumed anywhere**: `mark-white-1024.png`, `simplified-mark-white-32/192/512.png`

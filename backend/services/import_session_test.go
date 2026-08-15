@@ -1133,7 +1133,7 @@ func TestConfirmVCF_Add_PhotoURL_Success_PersistsPhoto(t *testing.T) {
 	// to a loopback address, so this fetch is expected to be blocked by that
 	// (correct, security-relevant) guard rather than actually succeeding.
 	// What we're really proving here is the degradation-policy behavior this
-	// package promises (docs/fork-plan/00-overview.md §0.5): the contact
+	// package promises (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md): the contact
 	// import itself must still succeed and must not error out just because
 	// its photo could not be fetched.
 	assert.Empty(t, persisted.Photo, "photo fetch from a loopback URL is expected to be blocked by SSRF protection, not silently allowed")
@@ -1159,7 +1159,7 @@ func TestConfirmVCF_Add_PhotoURLFetchFailure_ContactStillCreatedPhotoSkipped(t *
 	req := models.ImportConfirmRequest{SessionID: id, Actions: []models.RowImportAction{{RowIndex: 0, Action: "add"}}}
 	result, appErr := m.ConfirmVCF(db, 1, req, cfg, log)
 
-	// The degradation policy (docs/fork-plan/00-overview.md §0.5) requires
+	// The degradation policy (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md) requires
 	// this to be a soft failure: the contact is still created even though
 	// its photo could not be fetched.
 	require.Nil(t, appErr)

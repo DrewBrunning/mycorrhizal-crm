@@ -13,7 +13,7 @@ import (
 
 // CreateExternalIdentity creates a new ExternalIdentity (external_identity.go)
 // for the authenticated user — the L1 "linking" write of the generic
-// integration substrate (§91.12, ticket T14). Verifies the target contact
+// integration substrate. Verifies the target contact
 // belongs to the user first, then checks the (system, external_id, user_id)
 // natural key so a duplicate link is a clear 409, not a sniffed constraint
 // error (the CircleMember precedent). Hard delete + unique key = a re-sync

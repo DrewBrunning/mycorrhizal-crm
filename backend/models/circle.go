@@ -8,7 +8,7 @@ import (
 )
 
 // Circle is a social grouping — "how I know them / that they likely know
-// each other" (docs/fork-plan/91-envelope-data-model.md §91.5). Distinct
+// each other" (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md). Distinct
 // from Tag (an attribute of the person, tag.go): a circle says something
 // about *my* connection/context, not about the contact as an individual, so
 // it has no standards projection.
@@ -33,7 +33,7 @@ func (ci *Circle) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// CircleMember is the membership join (§91.5's "members" — circle_members
+// CircleMember is the membership join ("members" — circle_members
 // join → entity UUIDs), following HouseholdMember's exact template
 // (household.go): uint primary key, no soft-delete, MemberVCardUID is a
 // Contact.VCardUID (the graph invariant), unique per (circle, member).
@@ -48,6 +48,6 @@ type CircleMember struct {
 	// Explicit column name, matching HouseholdMember.MemberVCardUID's own
 	// fix — GORM's default namer would otherwise split "VCardUID" into
 	// v_card_uid, mismatching the raw-SQL migration's member_vcard_uid-style
-	// column (a caught, documented bug from WP-83, not a hypothetical here).
+	// column (a caught, documented bug, not a hypothetical here).
 	MemberVCardUID string `gorm:"column:member_vcard_uid;not null;index;uniqueIndex:idx_circle_member,priority:2" json:"member_vcard_uid" validate:"required,uuid4"`
 }

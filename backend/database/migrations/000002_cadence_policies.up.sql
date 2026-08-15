@@ -1,7 +1,6 @@
--- T19 (docs/fork-plan/tickets/20-T19-cadence.md) — CadencePolicy
--- relationship-maintenance rule (docs/fork-plan/91-envelope-data-model.md
--- §91.10). Health (next_due / overdue_by) is derived from the timeline,
--- never stored, so this table carries no derived columns.
+-- T19 — CadencePolicy
+-- relationship-maintenance rule. Health (next_due / overdue_by) is derived
+-- from the timeline, never stored, so this table carries no derived columns.
 --
 -- Soft-delete (deleted_at), per T26: user-authored content. The natural key
 -- (user_id, entity_id) is a PARTIAL unique index (WHERE deleted_at IS NULL)

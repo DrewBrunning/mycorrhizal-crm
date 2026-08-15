@@ -23,7 +23,7 @@ func setupTagProjectionTestDB(t *testing.T) *gorm.DB {
 	return db
 }
 
-// WP-84's Tag -> Card.Keywords projection (§91.5): a contact tagged with two
+// Tag -> Card.Keywords projection: a contact tagged with two
 // Tags gets both tag names merged into RecordForContact's Card.Keywords,
 // alongside any pre-existing passthrough keyword, with no duplication.
 func TestRecordForContact_ProjectsTagsOntoKeywords(t *testing.T) {
@@ -52,7 +52,7 @@ func TestRecordForContact_ProjectsTagsOntoKeywords(t *testing.T) {
 // Setting Contact.Card directly before Save does NOT survive BeforeSave — it
 // rebuilds Card from the flat fields via RecordFromContact, discarding any
 // pre-existing nested Card data unless ApplyRecordToContact set
-// cardSetDirectly first (the same WP-81/WP-83 pitfall documented in
+// cardSetDirectly first (the same  pitfall documented in
 // services/household_service_test.go's createHouseholdTestContact).
 func TestRecordForContact_ProjectsTagsDedupesAgainstExistingKeywords(t *testing.T) {
 	db := setupTagProjectionTestDB(t)

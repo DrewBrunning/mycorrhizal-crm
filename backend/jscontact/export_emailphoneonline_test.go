@@ -71,7 +71,7 @@ func TestExport_SocialProfile(t *testing.T) {
 
 func TestExport_OtherOnlineServiceNoVCardNameTag(t *testing.T) {
 	// OtherOnlineServices entries have genuinely unknown origin, so export
-	// must NOT fabricate a vCardName tag (20-correspondence.md §20.7).
+	// must NOT fabricate a vCardName tag (docs/adrs/0002-correspondence-table-locked-oracle.md).
 	rec := &contactmodel.Record{Card: contactmodel.Card{
 		UID: "unclassified-example",
 		OtherOnlineServices: []contactmodel.OnlineService{

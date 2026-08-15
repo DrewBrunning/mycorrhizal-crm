@@ -41,7 +41,7 @@ const OPERATION_COLORS: Record<AuditEvent['operation'], 'success' | 'info' | 'er
   delete: 'error',
 };
 
-// T60 (docs/fork-plan/tickets/79-T60-audit-trail-ui.md): the read-only audit
+// T60: the read-only audit
 // log backed by T18's already-shipped GET /audit. Reverse-chronological list
 // with an entity-type/entity-id filter toolbar and a Contact-only Undo
 // affordance on update events (POST /audit/:id/undo; every other entity or a

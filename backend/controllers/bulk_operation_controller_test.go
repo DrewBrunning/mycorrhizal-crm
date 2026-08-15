@@ -16,7 +16,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// N5 bulk-operation tests (docs/fork-plan/tickets/27-N5-bulk-operations.md).
+// N5 bulk-operation tests (N5).
 // These pin the contract the frontend relies on: partial-success semantics,
 // ownership scoping (a foreign contact is a reported failure, never silently
 // skipped), and duplicate-add tolerance (an already-present membership is

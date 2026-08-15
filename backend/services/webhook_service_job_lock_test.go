@@ -17,7 +17,7 @@ func setupWebhookRetryTestDB(t *testing.T) *gorm.DB {
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err)
 
-	// :memory: sqlite is per-connection; deliverWebhook and ProcessWebhookRetries
+	//:memory: sqlite is per-connection; deliverWebhook and ProcessWebhookRetries
 	// dispatch through goroutines, so a second pooled connection would see an
 	// empty (table-less) database. Pin to a single connection, matching the
 	// convention used by the other services *_test.go DB setups that touch
@@ -30,8 +30,8 @@ func setupWebhookRetryTestDB(t *testing.T) *gorm.DB {
 	return db
 }
 
-// TestProcessWebhookRetriesSkipsWhenLocked is the regression test for Tier 3c
-// item 4 (docs/fork-plan/95-backlog-and-priorities.md): ProcessWebhookRetries
+// TestProcessWebhookRetriesSkipsWhenLocked is the regression test
+// ProcessWebhookRetries
 // previously had no job lock at all, unlike reminders/calendar sync, so
 // multiple instances could double-process the same retry window.
 func TestProcessWebhookRetriesSkipsWhenLocked(t *testing.T) {

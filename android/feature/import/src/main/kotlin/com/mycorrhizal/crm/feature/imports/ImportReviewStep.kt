@@ -24,8 +24,8 @@ import com.mycorrhizal.crm.model.network.ImportRowPreview
 import com.mycorrhizal.crm.ui.R
 
 /**
- * T96 (docs/fork-plan/tickets/140-T96-import-duplicate-merge-review.md):
- * the shared per-row merge-decision review step, used by both the VCF-file
+ * T96: the shared per-row merge-decision review step, used by both the
+ * VCF-file
  * import screen and the device-contacts import screen. Each row shows the
  * contact, its match/diff summary (what "Merge" will change), and the
  * Merge / Keep Both / Discard New choice. The confirm button reports the

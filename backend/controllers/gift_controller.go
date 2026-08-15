@@ -59,7 +59,7 @@ func verifyOwnedActivity(c *gin.Context, db *gorm.DB, userID uint, id *uint) boo
 	return true
 }
 
-// CreateGift creates a new Gift (gift.go, §91.11 / T20b) for the authenticated
+// CreateGift creates a new Gift (gift.go) for the authenticated
 // user, scoped to a Contact they own via EntityID. Status defaults to "idea" —
 // a gift idea is captured opportunistically, mid conversation, without
 // choosing a state. The optional LifeEvent/Activity references must belong to

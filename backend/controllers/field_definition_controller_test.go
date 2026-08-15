@@ -15,7 +15,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// T6 (docs/fork-plan/tickets/11-T6-custom-fields-api.md) controller tests for
+// T6 controller tests for
 // the FieldDefinition/FieldValue API surface. These use the package's
 // setupRouter() AutoMigrate idiom (see field_definition_real_db_test.go for
 // the real-migrated-schema round trip).

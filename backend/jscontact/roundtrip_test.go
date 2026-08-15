@@ -6,7 +6,7 @@ import (
 	"mycorrhizal/internal/rfctest"
 )
 
-// Spot-check round-trips (40-testing.md §40.1 point 4): jscontact -> neutral
+// Spot-check round-trips (docs/adrs/0003-golden-fixtures-external-test-oracle.md point 4): jscontact -> neutral
 // -> jscontact on whole fixtures, asserting key fields survive. Confidence
 // only, not exhaustive — the per-concept import/export tests already cover
 // individual fields directly against the correspondence table.

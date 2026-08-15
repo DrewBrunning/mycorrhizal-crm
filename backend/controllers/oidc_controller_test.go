@@ -99,7 +99,7 @@ func TestOIDCLoginHandler(t *testing.T) {
 	assert.NotEmpty(t, q.Get("code_challenge"))
 }
 
-// TestOIDCLoginHandler_AndroidClientCookie pins M6 §4's login half: only
+// TestOIDCLoginHandler_AndroidClientCookie pins M6's login half: only
 // ?client=android sets the oidc_client cookie (the callback's flag for the
 // deep-link return), the other three cookies are always set, and the
 // client=android marker must NOT leak into the provider authorization URL.
@@ -280,7 +280,7 @@ func fullCookieSet(state, nonce, pkce string) map[string]string {
 	return map[string]string{"oidc_state": state, "oidc_nonce": nonce, "oidc_pkce": pkce}
 }
 
-// androidCookieSet is fullCookieSet plus M6 §4's oidc_client=android cookie,
+// androidCookieSet is fullCookieSet plus M6's oidc_client=android cookie,
 // the flag that routes the callback to the app's deep link.
 func androidCookieSet(state, nonce, pkce string) map[string]string {
 	return map[string]string{
@@ -594,7 +594,7 @@ func TestOIDCCallbackHandler_SuccessAutoProvisionsNewUser(t *testing.T) {
 	assert.NotEmpty(t, authCookie.Value)
 }
 
-// --- M6 §4: the client=android callback returns the token via the app's
+// --- M6: the client=android callback returns the token via the app's
 // custom-scheme deep link instead of the web SPA's cookie + "/" redirect.
 
 func TestOIDCCallbackHandler_AndroidSuccessDeepLink(t *testing.T) {
@@ -676,7 +676,7 @@ func TestOIDCCallbackHandler_AndroidStateMismatchUsesDeepLink(t *testing.T) {
 
 	// Same missing/cleared-cookie mechanics the web flow enforces, routed to
 	// the app's deep link instead of /login?error=… — state/nonce/PKCE are
-	// verified identically for both clients (M6 §4's test bar).
+	// verified identically for both clients (M6's test bar).
 	req := callbackRequest(androidCookieSet("cookie-state", "n", "p"), url.Values{"state": {"different-state"}, "code": {"c"}})
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)

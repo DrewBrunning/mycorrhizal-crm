@@ -11,7 +11,7 @@ const DUPLICATES_PAGE_SIZE = 100;
 const DUPLICATES_MAX_PAGES = 50;
 
 // useDuplicatePairs drives the T93 duplicate-review surface
-// (docs/fork-plan/tickets/137-T93-duplicate-scan-endpoint-and-review.md). The
+// (T93). The
 // pairs are recomputed server-side on every fetch and dismissed pairs are
 // already filtered out, so the client is stateless across reloads — refresh
 // always restarts from page one and appends until the scan is exhausted.

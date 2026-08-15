@@ -34,7 +34,7 @@ func testJPEGDataURL() string {
 
 // fullyPopulatedContact builds a *Contact with every field RecordFromContact
 // maps populated, so tests can assert each lands in its correct neutral
-// home per docs/fork-plan/20-correspondence.md.
+// home per docs/adrs/0002-correspondence-table-locked-oracle.md.
 func fullyPopulatedContact() *Contact {
 	return &Contact{
 		Firstname:   "Jane",
@@ -78,7 +78,7 @@ func fullyPopulatedContact() *Contact {
 }
 
 // TestRecordFromContact_FullyPopulated asserts every mapped Contact field
-// lands in the neutral home documented by 20-correspondence.md.
+// lands in the neutral home documented by docs/adrs/0002-correspondence-table-locked-oracle.md.
 func TestRecordFromContact_FullyPopulated(t *testing.T) {
 	c := fullyPopulatedContact()
 	record := RecordFromContact(c, "")
@@ -157,7 +157,7 @@ func TestRecordFromContact_FullyPopulated(t *testing.T) {
 		t.Errorf("Card.Phones = %+v, want [{Number:+15551234567 Label:cell}]", card.Phones)
 	}
 
-	// "impp" row: Card.ImppAddresses[].URI ; legacy Type -> Service, per this
+	// "impp" row: Card.ImppAddresses[].URI; legacy Type -> Service, per this
 	// WP's explicit instruction (Type holds a service name, not a category)
 	if len(card.ImppAddresses) != 1 || card.ImppAddresses[0].Service != "telegram" || card.ImppAddresses[0].URI != "xmpp:jane@example.com" {
 		t.Errorf("Card.ImppAddresses = %+v, want [{Service:telegram URI:xmpp:jane@example.com}]", card.ImppAddresses)
@@ -238,7 +238,7 @@ func TestRecordFromContact_FullyPopulated(t *testing.T) {
 		t.Errorf("Record.Envelope.Circles = %+v, want [friends work]", env.Circles)
 	}
 
-	// WP-73 photo-bridging prerequisite: Contact.PhotoThumbnail (there is no
+	// photo-bridging prerequisite: Contact.PhotoThumbnail (there is no
 	// Contact.Photo/on-disk file in this test, so ReadContactPhoto falls back
 	// to the thumbnail) bridges into a single Card.Media{Kind:"photo"} entry,
 	// encoded as the same "data:<mediaType>;base64,<data>" URI convention the
@@ -331,7 +331,7 @@ func TestRecordFromContact_ScalarOnlyFallback(t *testing.T) {
 }
 
 // TestRecordForContact_PrefersPersistedCardOverFreshDerivation is the
-// regression test for a real, live bug found while auditing WP-73's work:
+// regression test for a real, live bug found while auditing work:
 // three call sites (CardDAV export, the REST API's detail/write response,
 // and VCF/JSContact export) each independently called RecordFromContact a
 // second time on a contact whose Card was already persisted, which silently
@@ -445,7 +445,7 @@ func TestBeforeSave_DoesNotBlankScalarOnlyContact(t *testing.T) {
 }
 
 // TestRoundTrip_ProjectionStable is the round-trip check called for by
-// WP-70: for a sample of contacts, re-deriving the projection from a
+// for a sample of contacts, re-deriving the projection from a
 // contact that has already gone through BeforeSave (simulating an
 // already-migrated row) must reproduce an equal projection, i.e.
 // RecordFromContact -> DeriveProjection is a stable fixed point, not a
@@ -583,7 +583,7 @@ func TestContactETagBulkUpdateOnZeroValueReceiverDoesNotCorrupt(t *testing.T) {
 // TestFormatAddress pins the human-readable display line used to keep the
 // legacy Address scalar (and, through FlattenAddresses, the searchable
 // AddressesFlat column) in sync with the structured Addresses[] JSON. T79
-// (docs/fork-plan/tickets/123-T79-flat-address-projection-too-narrow.md)
+// (T79)
 // widened the projection with the sub-street parts a vCard ADR can carry, and
 // the conventional display ordering puts them between street and city.
 func TestFormatAddress(t *testing.T) {

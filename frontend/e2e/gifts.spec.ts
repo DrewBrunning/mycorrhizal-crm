@@ -3,8 +3,7 @@ import { createTestContact, deleteTestContact, waitForLoading } from './fixtures
 import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 
 /**
- * Gift tracking (T20b + T35 + T46, docs/fork-plan/tickets/55-T46-gift-add-
- * entry-points-per-status.md).
+ * Gift tracking (T20b + T35 + T46, T46).
  *
  * T20b shipped with no e2e coverage at all; T35 adds the URL and notes fields
  * and a second, full-form entry point next to the quick-add input. T46 then

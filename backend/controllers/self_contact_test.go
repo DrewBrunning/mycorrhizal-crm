@@ -20,7 +20,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// T90 (docs/fork-plan/tickets/134-T90-mark-contact-as-me.md): every test in
+// T90: every test in
 // this file runs against a database.InitDB real migrated schema, not
 // AutoMigrate — the self-contact column exists in migration 000018, and the
 // whole point of the lazy-backfill half of the ticket is that it is a real
