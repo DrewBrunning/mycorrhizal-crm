@@ -7,7 +7,7 @@
 | **Size** | S–M — no new endpoints; fields added across four existing forms |
 | **Source** | [M8](89-M8-web-android-parity-audit.md) audit, 2026-08-11 |
 | **Depends on** | [M17](99-M17-android-entity-scaffold-edit-delete-confirm.md) (edit needs to exist before these fields are worth adding to an edit form, not just create) — **M17 landed 2026-08-14**, so this dependency is satisfied (M17 is only awaiting on-device verification, not code) |
-| **Status** | TO BE DONE (unblocked 2026-08-14) |
+| **Status** | **DONE 2026-08-15** — see the landing note. |
 
 Each of the four entities sharing Android's `EntityListScreens.kt` scaffold has a create dialog
 that models only a fraction of its web counterpart's fields. This ticket is the field-by-field
@@ -109,3 +109,75 @@ JUnit4 + MockK (`mockk`/`coEvery`) + Turbine + `runTest` with `MainDispatcherRul
 mock the repository — `feature/contacts/.../ContactListViewModelTest.kt` is the reference. New
 `ApiClient` methods get a MockWebServer test in `core/network` — `ApiClientTest.kt` is the reference.
 Hand-verify per `/CLAUDE.md`: break the code, confirm the new test fails, restore.
+
+---
+
+## Landing note (2026-08-15)
+
+Implemented as one ticket, per the scope. Every field is creatable/editable on
+Android and rides the existing `update*` calls (no new endpoints — confirmed
+against the four controllers).
+
+**Life events:** category select (the five real tokens; the legacy
+"uncategorized" sentinel only reachable for existing rows whose category is
+unknown or absent — brand-new events must pick a real category), a
+category-scoped type select with a custom-type escape hatch, partial date
+(year/month/day, any subset), related-contacts multi-select (debounced search
+excluding already-selected, resolved back to names on edit), and a
+"remind me yearly" checkbox gated on month+day and force-coerced `false`
+otherwise. `LifeEventTypes` registry mirror added (`Registries.kt`).
+
+**Gifts:** status/section, URL (scheme-less values get `https://` prepended,
+mirroring web's `looksLikeAbsoluteUri` + http(s) allowlist), notes, occasion,
+date (local `YYYY-MM-DD` ⇄ UTC instant — matching web's
+`new Date("…T00:00:00").toISOString()`, so EU users don't see a day-shifted
+value), amount + currency enforced as a pair (backend
+`validateGiftValueCurrency`), life-event and activity link pickers, and a
+one-click mark-given action (idea/purchased → given, date defaulted to now
+when absent). Amount/currency/date invalid states block save instead of 400ing.
+
+**Preferences:** fixed category select (food/drink/media — `clothing_size` is
+deliberately not offered here, it lives in the clothing panel), freeSolo key
+with category-scoped suggestions, sensitivity select (carried through to the
+input — anything above normal is still excluded from exports/sync server-side
+in the query), and list section grouping (Food & Drink / Media / Other) via a
+new generic section-header capability on the shared `EntityListScaffold`.
+A `ClothingSizesPanel` equivalent (inline add/edit/delete of
+`clothing_size` preferences) sits above the grouped list.
+
+**Conversation agenda:** reference URL on create/edit, a mark-discussed dialog
+with an optional activity link (`PATCH discuss` now sends `{ activity_id }` or
+`{}` — wire shape pinned by MockWebServer tests), and an open/discussed
+section split.
+
+**The shared scaffold** gained optional section headers and a per-row extra
+action slot, so all four stay one implementation. `GiftStatuses`' dead twin in
+`Registries.kt` was deleted (T105 precedent).
+
+**Update-path semantics (T81-class):** every now-editable field comes from the
+form — a cleared optional persists as cleared, never re-carried — while
+genuinely unmodeled fields (`source`, `confidence`, `lastConfirmed`) still
+carry forward from the loaded entity. The gift clear-fields and
+mark-given-date tests were each hand-verified to fail against a reintroduced
+carry-forward / missing-date-default.
+
+**Review pass (2026-08-15):** an independent review found and fixed eight
+defects — the legacy-NULL-category sentinel never engaging (Go serializes
+`category` NULL as an absent key, so the fallback had to key off `initial !=
+null`, not `initial?.category != null`), section headers interleaving because
+the server returns updated_at order (both ViewModels now sort into contiguous
+sections), the currency-length gate not actually gating, the gift date having
+no validation (an invalid date silently erased the stored one on the
+full-overwrite save), device-zone date drift, markGiven not blocking
+`received`, negative amounts serializing as `value_cents`, and the
+mark-discussed dialog's in-flight state being dead.
+
+**Test coverage:** `TimelineEntitiesViewModelTest` (round-trips per entity,
+cleared-fields-persist-as-cleared, unmodeled-field survival, interleaved
+section sorting, markGiven, clothing sizes, related-search exclusion, pure
+date/section helpers), `EntityListScreensTest` (each dialog's new fields +
+edit prefill, the legacy-uncategorized fallback, MarkDiscussedDialog, the
+scaffold sections + extra-action slot), `ApiClientTest` (discuss wire shapes).
+`testDebugUnitTest`/`lintDebug`/`assembleDebug` green.
+
+**On-device verification: outstanding** — no device in the build environment.
