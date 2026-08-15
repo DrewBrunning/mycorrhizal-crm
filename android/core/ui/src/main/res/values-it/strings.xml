@@ -249,6 +249,24 @@
 
     <!-- Settings -->
     <string name="settings_title">Impostazioni</string>
+    <string name="settings_data">Dati</string>
+    <string name="settings_data_review">Suggerimenti sui dati</string>
+    <string name="settings_suggest_relationships">Suggerisci relazioni</string>
+    <string name="settings_relationships_suggested">Generati %1$d nuovi suggerimenti di relazioni: rivedili nella schermata Relazioni di un contatto.</string>
+    <string name="settings_relationships_none">Nessun nuovo suggerimento di relazioni.</string>
+    <string name="settings_suggest_relationships_error">Impossibile generare i suggerimenti di relazioni.</string>
+    <string name="data_relationships_section">Relazioni</string>
+    <string name="data_relationships_description">Lascia che l\'app trovi relazioni implicite in quelle esistenti. I suggerimenti sono solo proposte: rivedili prima di accettarli.</string>
+    <string name="data_relationships_generated">Generati %1$d nuovi suggerimenti di relazioni: rivedili nella schermata Relazioni di un contatto.</string>
+    <string name="data_relationships_none">Nessun nuovo suggerimento di relazioni.</string>
+    <string name="data_address_section">Indirizzi</string>
+    <string name="data_address_description">Proponi gli indirizzi che un contatto probabilmente condivide — da una relazione confermata o dall\'appartenenza a una famiglia.</string>
+    <string name="data_suggest_addresses">Suggerisci indirizzi</string>
+    <string name="data_address_suggestions_empty">Nessun suggerimento di indirizzi al momento.</string>
+    <string name="data_address_reason_relationship">Condiviso con %1$s (%2$s)</string>
+    <string name="data_address_reason_household">Famiglia: %1$s</string>
+    <string name="data_apply_address">Applica</string>
+    <string name="data_address_applied">Indirizzo aggiunto</string>
     <string name="settings_session">Sessione</string>
     <string name="settings_server">Server</string>
     <string name="settings_username">Nome utente</string>

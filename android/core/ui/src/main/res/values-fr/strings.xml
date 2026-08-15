@@ -249,6 +249,24 @@
 
     <!-- Settings -->
     <string name="settings_title">Paramètres</string>
+    <string name="settings_data">Données</string>
+    <string name="settings_data_review">Suggestions de données</string>
+    <string name="settings_suggest_relationships">Suggérer des relations</string>
+    <string name="settings_relationships_suggested">%1$d nouvelles suggestions de relations générées — examinez-les dans l\'écran Relations d\'un contact.</string>
+    <string name="settings_relationships_none">Aucune nouvelle suggestion de relation.</string>
+    <string name="settings_suggest_relationships_error">Impossible de générer les suggestions de relations.</string>
+    <string name="data_relationships_section">Relations</string>
+    <string name="data_relationships_description">Laissez l\'application découvrir des relations que vos relations existantes impliquent. Les suggestions ne sont que des propositions : examinez-les avant de les accepter.</string>
+    <string name="data_relationships_generated">%1$d nouvelles suggestions de relations générées — examinez-les dans l\'écran Relations d\'un contact.</string>
+    <string name="data_relationships_none">Aucune nouvelle suggestion de relation.</string>
+    <string name="data_address_section">Adresses</string>
+    <string name="data_address_description">Proposez les adresses qu\'un contact partage probablement — d\'après une relation confirmée ou une appartenance à un foyer.</string>
+    <string name="data_suggest_addresses">Suggérer des adresses</string>
+    <string name="data_address_suggestions_empty">Aucune suggestion d\'adresse pour le moment.</string>
+    <string name="data_address_reason_relationship">Partagée avec %1$s (%2$s)</string>
+    <string name="data_address_reason_household">Foyer : %1$s</string>
+    <string name="data_apply_address">Appliquer</string>
+    <string name="data_address_applied">Adresse ajoutée</string>
     <string name="settings_session">Session</string>
     <string name="settings_server">Serveur</string>
     <string name="settings_username">Nom d\'utilisateur</string>

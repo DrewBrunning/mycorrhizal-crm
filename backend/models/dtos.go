@@ -72,6 +72,18 @@ type DismissHouseholdSuggestionInput struct {
 	MemberVCardUIDs []string `json:"member_vcard_uids" validate:"required,min=2,dive,required,uuid4"`
 }
 
+// ApplyContactAddressSuggestionInput is the DTO for POST
+// /contacts/address-suggestions/apply: it names a single address suggestion by
+// its identity (the recipient contact, the source that implies the shared
+// address, and the normalized address key). The server re-derives the address
+// from the current graph rather than trusting the client to supply it.
+type ApplyContactAddressSuggestionInput struct {
+	ContactVCardUID string `json:"contact_vcard_uid" validate:"required,uuid4"`
+	SourceKind      string `json:"source_kind" validate:"required,oneof=relationship household"`
+	SourceID        string `json:"source_id" validate:"required"`
+	AddressKey      string `json:"address_key" validate:"required"`
+}
+
 // TagInput is the DTO for creating/updating a Tag (tag.go). Only Name is
 // editable here -- tagging lifecycle lives in its own AddContactTag/
 // RemoveContactTag endpoints, not folded into update.

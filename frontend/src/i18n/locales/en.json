@@ -87,7 +87,8 @@
     "acceptSuggestion": "Accept",
     "dismissSuggestion": "Dismiss",
     "suggestionAccepted": "Household created from the suggestion",
-    "suggestionDismissed": "Suggestion dismissed"
+    "suggestionDismissed": "Suggestion dismissed",
+    "addressSuggestionsAvailable": "New address suggestions are available — review them under Settings → Data."
   },
   "circlesTags": {
     "title": "Circles & Tags",
@@ -1083,6 +1084,29 @@
         "title": "Import Contacts",
         "description": "Bring in a full address book — a Google Takeout export, another contacts app's CSV or VCF export, or a JSContact JSON file. The same review flow as the Contacts page is used, with bulk controls for large files.",
         "importButton": "Import Contacts"
+      },
+      "propose": {
+        "title": "Propose data",
+        "description": "Let the app find things your data implies but doesn't yet say. Suggestions are only proposals — review and accept each one before it becomes real.",
+        "suggestRelationships": "Suggest relationships",
+        "suggestingRelationships": "Suggesting…",
+        "suggestAddresses": "Suggest addresses",
+        "suggestingAddresses": "Suggesting…",
+        "relationshipsGenerated": "{{count}} new relationship suggestions generated — review them below.",
+        "noRelationshipSuggestions": "No new relationship suggestions right now.",
+        "relationshipsError": "Could not generate relationship suggestions.",
+        "addressesGenerated": "{{count}} address suggestions found — review them below.",
+        "noAddressSuggestions": "No address suggestions right now.",
+        "addressesError": "Could not scan for address suggestions.",
+        "suggestionsLoadError": "Could not load suggestions.",
+        "loadingSuggestions": "Loading…",
+        "refreshSuggestions": "Refresh",
+        "addressSuggestionsTitle": "Suggested addresses",
+        "addressScanError": "Could not scan for address suggestions.",
+        "addressReasonRelationship": "Shared with {{name}} ({{relation}})",
+        "addressReasonHousehold": "Household: {{name}}",
+        "applyAddress": "Apply",
+        "addressApplied": "Address added"
       }
     },
     "exportFieldPicker": {
@@ -1198,6 +1222,7 @@
     "reject": "Reject",
     "rejectMessage": "Are you sure you want to reject this suggested relationship?",
     "unknownContact": "Unknown contact",
+    "addressSuggestionsAvailable": "New address suggestions are available — review them under Settings → Data.",
     "otherPartyReadOnlyHint": "To edit this person's own details, open their contact page.",
     "sensitivity": "Sensitivity",
     "sensitivityNormal": "Normal",

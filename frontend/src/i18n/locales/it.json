@@ -87,7 +87,8 @@
     "acceptSuggestion": "Accetta",
     "dismissSuggestion": "Ignora",
     "suggestionAccepted": "Nucleo familiare creato dal suggerimento",
-    "suggestionDismissed": "Suggerimento ignorato"
+    "suggestionDismissed": "Suggerimento ignorato",
+    "addressSuggestionsAvailable": "Ci sono nuovi suggerimenti di indirizzi: rivedili in Impostazioni → Dati."
   },
   "circlesTags": {
     "title": "Cerchie e tag",
@@ -1056,6 +1057,29 @@
         "title": "Importa contatti",
         "description": "Importa un'intera rubrica: un export di Google Takeout, un export CSV o VCF di un'altra app di contatti, o un file JSON JSContact. Viene usato lo stesso flusso di revisione della pagina Contatti, con controlli bulk per file di grandi dimensioni.",
         "importButton": "Importa contatti"
+      },
+      "propose": {
+        "title": "Proponi dati",
+        "description": "Lascia che l'app trovi ciò che i tuoi dati implicano ma non dicono ancora. I suggerimenti sono solo proposte: rivedi e accetta ciascuno prima che diventi reale.",
+        "suggestRelationships": "Suggerisci relazioni",
+        "suggestingRelationships": "Suggerimento…",
+        "suggestAddresses": "Suggerisci indirizzi",
+        "suggestingAddresses": "Suggerimento…",
+        "relationshipsGenerated": "Generati {{count}} nuovi suggerimenti di relazioni: rivedili qui sotto.",
+        "noRelationshipSuggestions": "Nessun nuovo suggerimento di relazioni al momento.",
+        "relationshipsError": "Impossibile generare i suggerimenti di relazioni.",
+        "addressesGenerated": "Trovati {{count}} suggerimenti di indirizzi: rivedili qui sotto.",
+        "noAddressSuggestions": "Nessun suggerimento di indirizzi al momento.",
+        "addressesError": "Impossibile cercare suggerimenti di indirizzi.",
+        "suggestionsLoadError": "Impossibile caricare i suggerimenti.",
+        "loadingSuggestions": "Caricamento…",
+        "refreshSuggestions": "Aggiorna",
+        "addressSuggestionsTitle": "Indirizzi suggeriti",
+        "addressScanError": "Impossibile cercare suggerimenti di indirizzi.",
+        "addressReasonRelationship": "Condiviso con {{name}} ({{relation}})",
+        "addressReasonHousehold": "Famiglia: {{name}}",
+        "applyAddress": "Applica",
+        "addressApplied": "Indirizzo aggiunto"
       }
     },
     "exportFieldPicker": {
@@ -1171,6 +1195,7 @@
     "reject": "Rifiuta",
     "rejectMessage": "Sei sicuro di voler rifiutare questo rapporto suggerito?",
     "unknownContact": "Contatto sconosciuto",
+    "addressSuggestionsAvailable": "Ci sono nuovi suggerimenti di indirizzi: rivedili in Impostazioni → Dati.",
     "otherPartyReadOnlyHint": "Per modificare i dati di questa persona, apri la sua pagina contatto.",
     "sensitivity": "Riservatezza",
     "sensitivityNormal": "Normale",

@@ -32,4 +32,13 @@ interface RelationshipEdgeRepository {
 
     /** Delete an edge (also rejects a suggestion). */
     suspend fun delete(id: String): Result<Unit>
+
+    /**
+     * T104: run one round of two-hop graph inference over the user's
+     * confirmed edges and return the edges this call newly created
+     * (Status=suggested, Source=graph-inferred). Opt-in, one round per call,
+     * idempotent. The review surface is the per-contact suggested-edges list
+     * on the Relationships screen.
+     */
+    suspend fun suggest(): Result<List<RelationshipEdge>>
 }

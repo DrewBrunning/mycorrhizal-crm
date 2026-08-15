@@ -14,12 +14,18 @@ import {
 import DownloadIcon from '@mui/icons-material/Download';
 import TuneIcon from '@mui/icons-material/Tune';
 import UploadIcon from '@mui/icons-material/Upload';
+import InsightsIcon from '@mui/icons-material/Insights';
 import { exportContacts, exportDataAsCsv, exportContactsAsVcf, ExportFormat, ExportSelection } from './api/export';
+import { suggestRelationshipEdges } from './api/relationshipEdges';
+import { suggestContactAddresses } from './api/dataSuggestions';
 import CustomFieldsSettings from './components/CustomFieldsSettings';
 import ContactFieldSettings from './components/ContactFieldSettings';
 import CalendarSyncSettings from './components/CalendarSyncSettings';
 import ExportFieldPickerDialog from './components/ExportFieldPickerDialog';
 import ImportContactsDialog from './components/ImportContactsDialog';
+import RelationshipSuggestionsInbox from './components/RelationshipSuggestionsInbox';
+import ContactAddressSuggestions from './components/ContactAddressSuggestions';
+import { handleFetchError } from './utils/errorHandler';
 
 export default function DataSettingsPage() {
   const { t } = useTranslation();
@@ -38,6 +44,58 @@ export default function DataSettingsPage() {
   // bulk import entry point, reusing the exact same wizard the Contacts page
   // uses — one import flow, two doors.
   const [importOpen, setImportOpen] = useState(false);
+
+  // T104 + address suggestions: opt-in triggers for the inference engines,
+  // plus the message state for the last run. Bumping the load keys reloads
+  // the inboxes below.
+  const [suggestingRelationships, setSuggestingRelationships] = useState(false);
+  const [relationshipSuggestMessage, setRelationshipSuggestMessage] = useState<string | null>(null);
+  const [relationshipSuggestError, setRelationshipSuggestError] = useState<string | null>(null);
+  const [relationshipLoadKey, setRelationshipLoadKey] = useState(0);
+  const [suggestingAddresses, setSuggestingAddresses] = useState(false);
+  const [addressSuggestMessage, setAddressSuggestMessage] = useState<string | null>(null);
+  const [addressSuggestError, setAddressSuggestError] = useState<string | null>(null);
+  const [addressLoadKey, setAddressLoadKey] = useState(0);
+
+  const handleSuggestRelationships = async () => {
+    setRelationshipSuggestError('');
+    setRelationshipSuggestMessage('');
+    setSuggestingRelationships(true);
+    try {
+      const result = await suggestRelationshipEdges();
+      setRelationshipLoadKey((n) => n + 1);
+      setRelationshipSuggestMessage(
+        result.total > 0
+          ? t('settings.data.propose.relationshipsGenerated', { count: result.total })
+          : t('settings.data.propose.noRelationshipSuggestions')
+      );
+    } catch (error) {
+      handleFetchError(error, 'suggesting relationships');
+      setRelationshipSuggestError(t('settings.data.propose.relationshipsError'));
+    } finally {
+      setSuggestingRelationships(false);
+    }
+  };
+
+  const handleSuggestAddresses = async () => {
+    setAddressSuggestError('');
+    setAddressSuggestMessage('');
+    setSuggestingAddresses(true);
+    try {
+      const result = await suggestContactAddresses();
+      setAddressLoadKey((n) => n + 1);
+      setAddressSuggestMessage(
+        result.total > 0
+          ? t('settings.data.propose.addressesGenerated', { count: result.total })
+          : t('settings.data.propose.noAddressSuggestions')
+      );
+    } catch (error) {
+      handleFetchError(error, 'suggesting addresses');
+      setAddressSuggestError(t('settings.data.propose.addressesError'));
+    } finally {
+      setSuggestingAddresses(false);
+    }
+  };
 
   const handleExportData = async () => {
     setExportError('');
@@ -97,6 +155,55 @@ export default function DataSettingsPage() {
       <CustomFieldsSettings />
 
       <CalendarSyncSettings />
+
+      <Card sx={{ mb: 2 }}>
+        <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+            <InsightsIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }} />
+            <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+              {t('settings.data.propose.title')}
+            </Typography>
+          </Box>
+          <Divider sx={{ mb: 1.5 }} />
+
+          <Stack spacing={1.5}>
+            <Typography variant="body2" color="text.secondary">
+              {t('settings.data.propose.description')}
+            </Typography>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={suggestingRelationships ? <CircularProgress size={16} color="inherit" /> : undefined}
+                onClick={handleSuggestRelationships}
+                disabled={suggestingRelationships}
+              >
+                {suggestingRelationships
+                  ? t('settings.data.propose.suggestingRelationships')
+                  : t('settings.data.propose.suggestRelationships')}
+              </Button>
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={suggestingAddresses ? <CircularProgress size={16} color="inherit" /> : undefined}
+                onClick={handleSuggestAddresses}
+                disabled={suggestingAddresses}
+              >
+                {suggestingAddresses
+                  ? t('settings.data.propose.suggestingAddresses')
+                  : t('settings.data.propose.suggestAddresses')}
+              </Button>
+            </Stack>
+            {relationshipSuggestError && <Alert severity="error" sx={{ py: 0 }}>{relationshipSuggestError}</Alert>}
+            {relationshipSuggestMessage && <Alert severity="info" sx={{ py: 0 }}>{relationshipSuggestMessage}</Alert>}
+            {addressSuggestError && <Alert severity="error" sx={{ py: 0 }}>{addressSuggestError}</Alert>}
+            {addressSuggestMessage && <Alert severity="info" sx={{ py: 0 }}>{addressSuggestMessage}</Alert>}
+          </Stack>
+
+          <RelationshipSuggestionsInbox loadKey={relationshipLoadKey} />
+          <ContactAddressSuggestions loadKey={addressLoadKey} />
+        </CardContent>
+      </Card>
 
       <Card sx={{ mb: 2 }}>
         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>

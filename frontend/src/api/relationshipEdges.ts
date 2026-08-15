@@ -13,7 +13,7 @@ export type RelationshipEdgeType =
   | 'roommate_of' | 'coworker_of' | 'partner_of' | 'co_parent_of' | 'mentor_of' | 'mentee_of'
   | 'owned_by' | 'owns' | 'gets_along_with' | 'conflicts_with' | 'related_to';
 
-export type RelationshipEdgeSource = 'user-confirmed' | 'household-inferred' | 'imported' | 'ai-suggested';
+export type RelationshipEdgeSource = 'user-confirmed' | 'household-inferred' | 'imported' | 'ai-suggested' | 'graph-inferred';
 export type RelationshipEdgeStatus = 'confirmed' | 'suggested';
 export type RelationshipEdgeSensitivity = 'normal' | 'private' | 'secret';
 
@@ -93,6 +93,12 @@ export interface GetRelationshipEdgesParams {
   limit?: number;
 }
 
+export interface SuggestRelationshipEdgesResponse {
+  message: string;
+  suggested_edges: RelationshipEdge[];
+  total: number;
+}
+
 export async function getRelationshipEdges(params: GetRelationshipEdgesParams): Promise<RelationshipEdgesResponse> {
   const { contactId, status, type, cursor, limit = 100 } = params;
   const queryParams = new URLSearchParams({ contact_id: contactId, limit: limit.toString() });
@@ -150,6 +156,40 @@ export async function acceptRelationshipEdge(id: string): Promise<RelationshipEd
 // reject. Exposed as a distinct name so callers/hooks read intent clearly;
 // it is literally deleteRelationshipEdge under the hood.
 export const rejectRelationshipEdge = deleteRelationshipEdge;
+
+// ---------------------------------------------------------------------------
+// T104 graph-inference surface: trigger one round of two-hop suggestions over
+// the user's confirmed edges, and page through every pending suggestion
+// across all contacts (the global suggestion inbox — the backend's list
+// endpoint works without a contact_id filter).
+// ---------------------------------------------------------------------------
+
+// POST /relationship-edges/suggest — opt-in, one round per press, idempotent.
+// Returns the edges newly created by this call.
+export async function suggestRelationshipEdges(): Promise<SuggestRelationshipEdgesResponse> {
+  const response = await apiFetch(`${API_BASE_URL}/relationship-edges/suggest`, {
+    method: 'POST', headers: getAuthHeaders(),
+  });
+  if (!response.ok) throw await parseErrorResponse(response);
+  return response.json();
+}
+
+// GET /relationship-edges?status=suggested with no contact filter — every
+// pending suggestion across the user's whole graph, for the review inbox.
+export async function listSuggestedRelationshipEdges(params?: {
+  cursor?: string;
+  limit?: number;
+}): Promise<RelationshipEdgesResponse> {
+  const queryParams = new URLSearchParams({ status: 'suggested' });
+  const { cursor, limit = 100 } = params || {};
+  if (cursor) queryParams.append('cursor', cursor);
+  queryParams.append('limit', String(limit));
+  const response = await apiFetch(`${API_BASE_URL}/relationship-edges?${queryParams.toString()}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) throw await parseErrorResponse(response);
+  return response.json();
+}
 
 // ---------------------------------------------------------------------------
 // Direction resolution -- the highest-risk logic in this file.

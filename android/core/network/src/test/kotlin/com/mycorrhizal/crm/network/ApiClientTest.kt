@@ -2578,6 +2578,135 @@ class ApiClientTest {
         assertTrue(body.contains("u1"))
     }
 
+    // --- T104: graph-inferred relationship suggestions + address suggestions ---
+
+    @Test
+    fun `suggest relationship edges posts an empty body to the suggest path`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "message": "Relationship suggestions generated",
+                      "suggested_edges": [
+                        {"id": "e1", "source_id": "u1", "target_id": "u2", "type": "parent_of", "status": "suggested", "source": "graph-inferred", "confidence": 0.7}
+                      ],
+                      "total": 1
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        val result = client.suggestRelationshipEdges()
+
+        assertTrue(result.isSuccess)
+        assertEquals(1, result.getOrThrow().suggestedEdges.size)
+        assertEquals("graph-inferred", result.getOrThrow().suggestedEdges[0].source)
+        assertEquals("parent_of", result.getOrThrow().suggestedEdges[0].type)
+
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/relationship-edges/suggest", request.path)
+        assertEquals(0, request.body.size)
+    }
+
+    @Test
+    fun `suggest relationship edges tolerates an absent suggested_edges key`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"message": "Relationship suggestions generated", "total": 0}"""),
+        )
+
+        val result = client.suggestRelationshipEdges()
+
+        assertTrue(result.isSuccess)
+        assertTrue(result.getOrThrow().suggestedEdges.isEmpty())
+    }
+
+    @Test
+    fun `suggest contact addresses parses the suggestions`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "suggestions": [
+                        {
+                          "contact_vcard_uid": "alice-uid",
+                          "contact_name": "Alice Anderson",
+                          "source_kind": "relationship",
+                          "source_id": "bob-uid",
+                          "source_name": "Bob Brown",
+                          "relation_type": "spouse_of",
+                          "address": {"components": [{"kind": "name", "value": "742 Clark St"}], "full": "742 Clark St, Springfield"},
+                          "address_key": "742 clark st|springfield"
+                        }
+                      ],
+                      "total": 1
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        val result = client.suggestContactAddresses()
+
+        assertTrue(result.isSuccess)
+        val suggestions = result.getOrThrow().suggestions
+        assertEquals(1, suggestions.size)
+        assertEquals("alice-uid", suggestions[0].contactVCardUid)
+        assertEquals("spouse_of", suggestions[0].relationType)
+        assertEquals("742 clark st|springfield", suggestions[0].addressKey)
+
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/contacts/address-suggestions", request.path)
+        assertEquals(0, request.body.size)
+    }
+
+    @Test
+    fun `suggest contact addresses tolerates an absent suggestions key`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"total": 0}"""),
+        )
+
+        val result = client.suggestContactAddresses()
+
+        assertTrue(result.isSuccess)
+        assertTrue(result.getOrThrow().suggestions.isEmpty())
+    }
+
+    @Test
+    fun `apply contact address suggestion posts the suggestion identity`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"message": "Address added to contact", "contact_vcard_uid": "alice-uid"}"""),
+        )
+
+        val input = com.mycorrhizal.crm.model.network.ApplyContactAddressSuggestionInput(
+            contactVCardUid = "alice-uid",
+            sourceKind = "relationship",
+            sourceId = "bob-uid",
+            addressKey = "742 clark st|springfield",
+        )
+        val result = client.applyContactAddressSuggestion(input)
+
+        assertTrue(result.isSuccess)
+
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/contacts/address-suggestions/apply", request.path)
+        val body = request.body.readUtf8()
+        assertTrue(body.contains("alice-uid"))
+        assertTrue(body.contains("relationship"))
+        assertTrue(body.contains("742 clark st|springfield"))
+    }
+
     // --- M14: ego-centric network graph ---
 
     @Test

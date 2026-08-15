@@ -5,6 +5,8 @@ import com.mycorrhizal.crm.data.local.CachedContactDao
 import com.mycorrhizal.crm.data.local.PhoneKey
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ContactsPage
+import com.mycorrhizal.crm.model.network.ApplyContactAddressSuggestionInput
+import com.mycorrhizal.crm.model.network.ContactAddressSuggestion
 import com.mycorrhizal.crm.model.network.ContactRecordInput
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ContactSummary
@@ -295,6 +297,12 @@ class ContactRepositoryImpl @Inject constructor(
         card = card,
         crm = crm,
     )
+
+    override suspend fun suggestContactAddresses(): Result<List<ContactAddressSuggestion>> =
+        apiClient.suggestContactAddresses().map { it.suggestions }
+
+    override suspend fun applyContactAddressSuggestion(input: ApplyContactAddressSuggestionInput): Result<Unit> =
+        apiClient.applyContactAddressSuggestion(input)
 
     private fun CachedContact.toSummary(): ContactSummary = ContactSummary(
         id = id,

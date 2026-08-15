@@ -3,7 +3,11 @@ package com.mycorrhizal.crm.network
 import com.mycorrhizal.crm.model.network.AcceptHouseholdSuggestionInput
 import com.mycorrhizal.crm.model.network.AcceptHouseholdSuggestionResponse
 import com.mycorrhizal.crm.model.network.AddressSuggestionsResponse
+import com.mycorrhizal.crm.model.network.ApplyContactAddressSuggestionInput
+import com.mycorrhizal.crm.model.network.ContactAddressSuggestion
+import com.mycorrhizal.crm.model.network.ContactAddressSuggestionsResponse
 import com.mycorrhizal.crm.model.network.DismissHouseholdSuggestionInput
+import com.mycorrhizal.crm.model.network.RelationshipSuggestionsResponse
 import com.mycorrhizal.crm.model.network.SuggestRelationshipsResponse
 import com.mycorrhizal.crm.model.network.ActivitiesPage
 import com.mycorrhizal.crm.model.network.Activity
@@ -897,6 +901,22 @@ class ApiClient(
     /** DELETE /api/v1/relationship-edges/{id} — doubles as reject for suggestions. */
     suspend fun deleteRelationshipEdge(id: String): Result<Unit> =
         executeDelete("$PLACEHOLDER_ORIGIN$RELATIONSHIP_EDGES_PATH/$id")
+
+    /** POST /api/v1/relationship-edges/suggest — T104 graph-inference trigger (one round, idempotent). */
+    suspend fun suggestRelationshipEdges(): Result<RelationshipSuggestionsResponse> =
+        executePostEmpty("$RELATIONSHIP_EDGES_PATH/suggest") { _, body ->
+            moshi.adapter(RelationshipSuggestionsResponse::class.java).fromJson(body)
+        }
+
+    /** POST /api/v1/contacts/address-suggestions — read-only, idempotent address-suggestion scan. */
+    suspend fun suggestContactAddresses(): Result<ContactAddressSuggestionsResponse> =
+        executePostEmpty("$CONTACTS_PATH/address-suggestions") { _, body ->
+            moshi.adapter(ContactAddressSuggestionsResponse::class.java).fromJson(body)
+        }
+
+    /** POST /api/v1/contacts/address-suggestions/apply — apply one address suggestion. */
+    suspend fun applyContactAddressSuggestion(input: ApplyContactAddressSuggestionInput): Result<Unit> =
+        executePost("$CONTACTS_PATH/address-suggestions/apply", input) { _, _ -> Unit }
 
     // --- Life events ---
 

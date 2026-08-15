@@ -81,6 +81,11 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// "duplicates" is never captured as a contact ID.
 			protected.GET("/contacts/duplicates", controllers.GetDuplicatePairs)
 			protected.POST("/contacts/duplicates/dismiss", middleware.ValidateJSONMiddleware(&models.DuplicateDismissalInput{}), controllers.DismissDuplicatePair)
+			// Contact-address suggestions — registered before /contacts/:id so
+			// the literal /address-suggestions path is never captured as a
+			// contact ID.
+			protected.POST("/contacts/address-suggestions", controllers.SuggestContactAddresses)
+			protected.POST("/contacts/address-suggestions/apply", middleware.ValidateJSONMiddleware(&models.ApplyContactAddressSuggestionInput{}), controllers.ApplyContactAddressSuggestion)
 			protected.GET("/contacts/:id", controllers.GetContact)
 			// N2 prep view: read-only aggregation of everything the user
 			// wants to remember before seeing this contact. Registered after
@@ -147,6 +152,9 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// legacy /contacts/:id/relationships stack, removed)
 			protected.POST("/relationship-edges", middleware.ValidateJSONMiddleware(&models.RelationshipEdgeInput{}), controllers.CreateRelationshipEdge)
 			protected.GET("/relationship-edges", controllers.ListRelationshipEdges)
+			// T104 graph-inference trigger — registered before /relationship-edges/:id
+			// so the literal /suggest path is never captured as an edge ID.
+			protected.POST("/relationship-edges/suggest", controllers.SuggestRelationshipEdges)
 			protected.GET("/relationship-edges/:id", controllers.GetRelationshipEdge)
 			protected.PUT("/relationship-edges/:id", middleware.ValidateJSONMiddleware(&models.RelationshipEdgeInput{}), controllers.UpdateRelationshipEdge)
 			protected.DELETE("/relationship-edges/:id", controllers.DeleteRelationshipEdge)
