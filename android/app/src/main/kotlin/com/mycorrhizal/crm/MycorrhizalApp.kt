@@ -99,6 +99,7 @@ import com.mycorrhizal.crm.feature.timeline.RemindersScreen
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.LocalDarkTheme
 import com.mycorrhizal.crm.ui.LocalDrawerOpen
+import com.mycorrhizal.crm.ui.LocalServerUrl
 
 private data class DrawerDestination(
     val route: String,
@@ -162,7 +163,11 @@ fun MycorrhizalApp(
             AuthScreen.LOGIN -> LoginScreen(
                 onLoggedIn = { /* session flow flips isLoggedIn, recomposition swaps the tree */ },
                 onSignInWithSso = { serverUrl ->
-                    val url = serverUrl.trim().trimEnd('/') + "/api/v1/auth/oidc/login"
+                    // M6 §4: `client=android` makes the backend redirect back to
+                    // the mycorrhizal://oidc/callback deep link (MainActivity)
+                    // instead of the web cookie path — without it this whole
+                    // native flow is unreachable (review-pass fix).
+                    val url = serverUrl.trim().trimEnd('/') + "/api/v1/auth/oidc/login?client=android"
                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                     runCatching { context.startActivity(intent) }
                 },
@@ -180,14 +185,14 @@ fun MycorrhizalApp(
         return
     }
 
-    MainScaffold(darkTheme = darkTheme)
+    MainScaffold(darkTheme = darkTheme, serverUrl = session.serverUrl.orEmpty())
 }
 
 /** The M26 unauthenticated-tree router destinations. */
 private enum class AuthScreen { LOGIN, REGISTER, FORGOT_PASSWORD }
 
 @Composable
-private fun MainScaffold(darkTheme: Boolean) {
+private fun MainScaffold(darkTheme: Boolean, serverUrl: String) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
@@ -225,7 +230,14 @@ private fun MainScaffold(darkTheme: Boolean) {
         }
     }
 
-    CompositionLocalProvider(LocalDrawerOpen provides drawerState.isOpen, LocalDarkTheme provides darkTheme) {
+    // M5 §3.1: the server origin reaches every avatar so relative photo paths
+    // resolve to per-server absolute URLs (which are also Coil's disk-cache
+    // keys — see LocalServerUrl).
+    CompositionLocalProvider(
+        LocalDrawerOpen provides drawerState.isOpen,
+        LocalDarkTheme provides darkTheme,
+        LocalServerUrl provides serverUrl,
+    ) {
         ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {

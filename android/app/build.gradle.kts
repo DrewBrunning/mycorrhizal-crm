@@ -3,27 +3,30 @@ plugins {
     id("mycorrhizal.android.hilt")
 }
 
-// M5 §7: release signing via env/properties only — never committed. With no
-// keystore configured the release build stays unsigned (assembleDebug and the
-// CI gate are unaffected); set the five variables below to produce a
-// distributable APK. Delivery method is decided by whoever wires a CI job to
-// these; the keystore itself must never be in the repo.
-val signingStoreFile: String? =
-    providers.gradleProperty("SIGNING_STORE_FILE").orNull ?: System.getenv("SIGNING_STORE_FILE")
-val signingStorePassword: String? =
-    providers.gradleProperty("SIGNING_STORE_PASSWORD").orNull ?: System.getenv("SIGNING_STORE_PASSWORD")
-val signingKeyAlias: String? =
-    providers.gradleProperty("SIGNING_KEY_ALIAS").orNull ?: System.getenv("SIGNING_KEY_ALIAS")
-val signingKeyPassword: String? =
-    providers.gradleProperty("SIGNING_KEY_PASSWORD").orNull ?: System.getenv("SIGNING_KEY_PASSWORD")
+// M5 §7: release signing via env/properties only — never committed. All four
+// variables are required together (a partial set fails fast rather than
+// producing an unsigned-with-null-passwords APK at package time); with none
+// set the release build stays unsigned (assembleDebug and the CI gate are
+// unaffected). Delivery method is decided by whoever wires a CI job to these;
+// the keystore itself must never be in the repo.
+fun envOrProperty(name: String): String? {
+    val value = providers.gradleProperty(name).orNull ?: System.getenv(name)
+    return value?.takeIf { it.isNotBlank() }
+}
+
+val signingStoreFile = envOrProperty("SIGNING_STORE_FILE")
+val signingStorePassword = envOrProperty("SIGNING_STORE_PASSWORD")
+val signingKeyAlias = envOrProperty("SIGNING_KEY_ALIAS")
+val signingKeyPassword = envOrProperty("SIGNING_KEY_PASSWORD")
+val releaseSigningConfigured = listOf(signingStoreFile, signingStorePassword, signingKeyAlias, signingKeyPassword).all { it != null }
 
 android {
     namespace = "com.mycorrhizal.crm"
 
     signingConfigs {
-        if (signingStoreFile != null) {
+        if (releaseSigningConfigured) {
             create("release") {
-                storeFile = file(signingStoreFile)
+                storeFile = file(signingStoreFile!!)
                 storePassword = signingStorePassword
                 keyAlias = signingKeyAlias
                 keyPassword = signingKeyPassword

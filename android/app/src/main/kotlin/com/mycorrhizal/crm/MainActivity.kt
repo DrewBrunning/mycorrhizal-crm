@@ -18,6 +18,7 @@ import androidx.lifecycle.lifecycleScope
 import com.mycorrhizal.crm.data.repository.AppLocale
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
+import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.theme.MycorrhizalColors
@@ -46,6 +47,9 @@ class MainActivity : ComponentActivity() {
     // it cannot hand to bearer-token Android).
     @Inject
     lateinit var sessionManager: SessionManager
+
+    @Inject
+    lateinit var authRepository: AuthRepository
 
     // M25: the user's chosen UI language must reach the very first frame.
     // attachBaseContext runs before Hilt injection, so the locale comes from
@@ -138,12 +142,36 @@ class MainActivity : ComponentActivity() {
             is OidcReturn.Success -> {
                 val result = parsed
                 lifecycleScope.launch {
+                    // The persisted session hydrates asynchronously at startup;
+                    // a cold-start deep link must await it or it'd read a null
+                    // server URL and drop the JWT (review-pass fix).
+                    sessionManager.awaitHydrated()
                     val serverUrl = sessionManager.serverUrl()
                     if (serverUrl.isNullOrBlank()) return@launch
                     sessionManager.setSession(
                         serverUrl = serverUrl,
                         token = result.token,
                         state = SessionState(language = result.language, dateFormat = result.dateFormat),
+                    )
+                    // Validate the JWT against the server and enrich the
+                    // profile the way a normal login does (user id/username/
+                    // admin for Settings); a stale/expired token never flips
+                    // the app to logged-in (review-pass fix).
+                    val profile = authRepository.fetchCurrentUser()
+                    profile.fold(
+                        onSuccess = { user ->
+                            sessionManager.setProfile(
+                                SessionState(
+                                    userId = user.id.takeIf { it != 0 },
+                                    username = user.username,
+                                    isAdmin = user.isAdmin,
+                                ),
+                            )
+                        },
+                        onFailure = {
+                            sessionManager.clearSession()
+                            Toast.makeText(this@MainActivity, getString(R.string.oidc_login_failed), Toast.LENGTH_LONG).show()
+                        },
                     )
                 }
             }
@@ -166,6 +194,10 @@ internal sealed interface OidcReturn {
 
 internal fun parseOidcReturn(uri: Uri?): OidcReturn? {
     if (uri == null || uri.scheme != "mycorrhizal" || uri.host != "oidc") return null
+    // Path check too, not just host: MainActivity is exported, so any app on
+    // the device could otherwise hit us with an explicit-component VIEW intent
+    // (review-pass fix).
+    if (uri.path != "/callback") return null
     if (uri.getQueryParameter("error") != null) return OidcReturn.Failure
     val token = uri.getQueryParameter("token")
     if (token.isNullOrBlank()) return null

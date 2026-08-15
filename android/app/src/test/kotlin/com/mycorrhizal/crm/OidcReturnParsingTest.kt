@@ -51,6 +51,13 @@ class OidcReturnParsingTest {
     }
 
     @Test
+    fun `a token on a different path of the oidc host is ignored`() {
+        // MainActivity is exported, so the path is part of the contract too —
+        // an explicit-component VIEW intent must not be able to inject a token.
+        assertNull(parseOidcReturn(Uri.parse("mycorrhizal://oidc/other?token=abc")))
+    }
+
+    @Test
     fun `a token-less success is ignored`() {
         assertNull(parseOidcReturn(Uri.parse("mycorrhizal://oidc/callback")))
     }

@@ -13,8 +13,11 @@ import javax.inject.Singleton
 
 /**
  * Provides the application-scoped OkHttpClient with the ticket §2.2
- * interceptor chain: Auth → BaseUrl → Logging (debug) → Retry. The token
- * and base-URL providers come from the SessionManager (wired in core:data).
+ * interceptor chain. The ACTUAL order is BaseUrl → Auth → Retry (then Logging
+ * in debug) — see NetworkFactory; BaseUrl must run before Auth so Auth's host
+ * check sees the rewritten URL. The token and base-URL providers come from the
+ * SessionManager (wired in core:data). This exact ordering is load-bearing for
+ * M5 §3.1 (Coil reuses this client for photo URLs).
  */
 @Module
 @InstallIn(SingletonComponent::class)
