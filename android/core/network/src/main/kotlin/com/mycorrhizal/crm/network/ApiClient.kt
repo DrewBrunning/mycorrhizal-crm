@@ -102,6 +102,12 @@ import com.mycorrhizal.crm.model.network.TagDetailResponse
 import com.mycorrhizal.crm.model.network.TagInput
 import com.mycorrhizal.crm.model.network.TagsPage
 import com.mycorrhizal.crm.model.network.UserProfile
+import com.mycorrhizal.crm.model.network.ContactShare
+import com.mycorrhizal.crm.model.network.ContactShareInput
+import com.mycorrhizal.crm.model.network.ContactSharesPage
+import com.mycorrhizal.crm.model.network.CreateContactShareResponse
+import com.mycorrhizal.crm.model.network.UserDirectoryEntry
+import com.mycorrhizal.crm.model.network.UserDirectoryResponse
 import com.mycorrhizal.crm.model.network.UpdateDateFormatRequest
 import com.mycorrhizal.crm.model.network.UpdateLanguageRequest
 import com.mycorrhizal.crm.model.network.Webhook
@@ -1018,6 +1024,70 @@ class ApiClient(
             moshi.adapter(ImportPreviewResponse::class.java).fromJson(body)
         }
 
+    // M15: contact sharing (P1) — the backend endpoints have served web since
+    // P1 shipped; this closes the missing Android client surface (the ticket's
+    // 7-endpoint diff against ApiClient).
+
+    /** GET /api/v1/contact-shares/incoming — shares offered TO the current user, cursor-paginated. */
+    suspend fun listIncomingContactShares(
+        cursor: String? = null,
+        limit: Int? = null,
+    ): Result<ContactSharesPage> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$CONTACT_SHARES_PATH/incoming".toHttpUrl().newBuilder()
+        cursor?.let { urlBuilder.addQueryParameter("cursor", it) }
+        limit?.let { urlBuilder.addQueryParameter("limit", it.toString()) }
+        return executeGet(urlBuilder.build().toString()) { _, body ->
+            moshi.adapter(ContactSharesPage::class.java).fromJson(body)
+        }
+    }
+
+    /** GET /api/v1/contact-shares/outgoing — shares the current user has sent, cursor-paginated. */
+    suspend fun listOutgoingContactShares(
+        cursor: String? = null,
+        limit: Int? = null,
+    ): Result<ContactSharesPage> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$CONTACT_SHARES_PATH/outgoing".toHttpUrl().newBuilder()
+        cursor?.let { urlBuilder.addQueryParameter("cursor", it) }
+        limit?.let { urlBuilder.addQueryParameter("limit", it.toString()) }
+        return executeGet(urlBuilder.build().toString()) { _, body ->
+            moshi.adapter(ContactSharesPage::class.java).fromJson(body)
+        }
+    }
+
+    /** POST /api/v1/contact-shares — offers a filtered one-time copy; wrapped `{ message, contact_share }`. */
+    suspend fun createContactShare(input: ContactShareInput): Result<ContactShare> =
+        executePost(CONTACT_SHARES_PATH, input) { _, body ->
+            moshi.adapter(CreateContactShareResponse::class.java).fromJson(body)?.contactShare
+        }
+
+    /**
+     * POST /api/v1/contact-shares/{id}/accept — PREVIEW-ONLY: runs the share's
+     * payload through the import pipeline and returns an ImportPreviewResponse
+     * with duplicate matches. Does NOT change the share's status (that is
+     * [confirmContactShare]'s job). The recipient picks add/update/skip per
+     * row from this preview, then confirms.
+     */
+    suspend fun acceptContactShare(id: String): Result<ImportPreviewResponse> =
+        executePostEmpty("$CONTACT_SHARES_PATH/$id/accept") { _, body ->
+            moshi.adapter(ImportPreviewResponse::class.java).fromJson(body)
+        }
+
+    /** POST /api/v1/contact-shares/{id}/confirm — finalizes an accepted share with the chosen per-row actions. */
+    suspend fun confirmContactShare(id: String, request: ImportConfirmRequest): Result<ImportResult> =
+        executePost("$CONTACT_SHARES_PATH/$id/confirm", request) { _, body ->
+            moshi.adapter(ImportResult::class.java).fromJson(body)
+        }
+
+    /** POST /api/v1/contact-shares/{id}/decline — flips a pending share to declined. */
+    suspend fun declineContactShare(id: String): Result<Unit> =
+        executePostEmpty("$CONTACT_SHARES_PATH/$id/decline") { _, _ -> Unit }
+
+    /** GET /api/v1/users/directory — every other user (id + username), for the recipient picker. */
+    suspend fun getUserDirectory(): Result<List<UserDirectoryEntry>> =
+        executeGet("$PLACEHOLDER_ORIGIN$USERS_PATH/directory") { _, body ->
+            moshi.adapter(UserDirectoryResponse::class.java).fromJson(body)?.users
+        }
+
     // --- Audit trail (M16, mirroring web's AuditPage over T18/T60's backend) ---
 
     /**
@@ -1245,6 +1315,7 @@ class ApiClient(
         private const val CADENCE_POLICIES_PATH = "$API_V1/cadence-policies"
         private const val DASHBOARD_PATH = "$API_V1/dashboard"
         private const val EXPORT_VCF_PATH = "$API_V1/export/vcf"
+        private const val CONTACT_SHARES_PATH = "$API_V1/contact-shares"
         private const val AUDIT_PATH = "$API_V1/audit"
         private const val AUTH_COOKIE = "auth_token"    }
 }

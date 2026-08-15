@@ -26,6 +26,7 @@ import com.mycorrhizal.crm.data.repository.CadencePolicyRepositoryImpl
 import com.mycorrhizal.crm.data.repository.CircleRepositoryImpl
 import com.mycorrhizal.crm.data.repository.CustomLinkActionRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ContactRepositoryImpl
+import com.mycorrhizal.crm.data.repository.ContactShareRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ConversationAgendaRepositoryImpl
 import com.mycorrhizal.crm.data.repository.GiftRepositoryImpl
 import com.mycorrhizal.crm.data.repository.HouseholdRepositoryImpl
@@ -54,6 +55,7 @@ import com.mycorrhizal.crm.domain.repository.CadencePolicyRepository
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.CustomLinkActionRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
+import com.mycorrhizal.crm.domain.repository.ContactShareRepository
 import com.mycorrhizal.crm.domain.repository.ConversationAgendaRepository
 import com.mycorrhizal.crm.domain.repository.GiftRepository
 import com.mycorrhizal.crm.domain.repository.HouseholdRepository
@@ -297,6 +299,10 @@ abstract class DataBindsModule {
     @Binds
     @Singleton
     abstract fun bindTrackingSettingsRepository(impl: TrackingSettingsRepositoryImpl): TrackingSettingsRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindContactShareRepository(impl: ContactShareRepositoryImpl): ContactShareRepository
 
     @Binds
     @Singleton

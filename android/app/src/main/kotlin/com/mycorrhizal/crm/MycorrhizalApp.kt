@@ -15,6 +15,7 @@ import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.HomeWork
+import androidx.compose.material.icons.outlined.IosShare
 import androidx.compose.material.icons.outlined.Label
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Settings
@@ -77,6 +78,8 @@ import com.mycorrhizal.crm.feature.settings.CustomLinkActionsScreen
 import com.mycorrhizal.crm.feature.settings.NotificationChannelsScreen
 import com.mycorrhizal.crm.feature.settings.SettingsScreen
 import com.mycorrhizal.crm.feature.settings.WebhooksScreen
+import com.mycorrhizal.crm.feature.shares.ContactSharesScreen
+import com.mycorrhizal.crm.feature.shares.ShareContactScreen
 import com.mycorrhizal.crm.feature.timelineentities.ConversationAgendaScreen
 import com.mycorrhizal.crm.feature.timelineentities.GiftsScreen
 import com.mycorrhizal.crm.feature.timelineentities.LifeEventsScreen
@@ -113,6 +116,7 @@ private val primaryDestinations = listOf(
 /** Secondary destinations, below the primary set in the drawer. */
 private val secondaryDestinations = listOf(
     DrawerDestination("network", R.string.nav_network, Icons.Outlined.Share),
+    DrawerDestination("shares", R.string.nav_shares, Icons.Outlined.IosShare),
     DrawerDestination("circles", R.string.nav_circles, Icons.Outlined.Group),
     DrawerDestination("tags", R.string.nav_tags, Icons.Outlined.Label),
     DrawerDestination("households", R.string.nav_households, Icons.Outlined.HomeWork),
@@ -332,6 +336,11 @@ private fun MainScaffold(darkTheme: Boolean) {
                     onViewPreferences = { id -> navController.navigate("contacts/$id/preferences") },
                     onViewAgenda = { id -> navController.navigate("contacts/$id/agenda") },
                     onViewPrep = { id -> navController.navigate("contacts/$id/prep") },
+                    onShareContact = { uid ->
+                        if (uid.isNotBlank()) {
+                            navController.navigate("contacts/$contactId/share?uid=${Uri.encode(uid)}")
+                        }
+                    },
                     onEditActivity = { id -> navController.navigate("contacts/$contactId/activities/$id/edit") },
                     onEditNote = { id -> navController.navigate("contacts/$contactId/notes/$id/edit") },
                     onEditReminder = { id -> navController.navigate("contacts/$contactId/reminders/$id/edit") },
@@ -512,6 +521,28 @@ private fun MainScaffold(darkTheme: Boolean) {
                 PrepViewScreen(
                     onBack = { navController.popBackStack() },
                     onOpenContact = { id -> navController.navigate("contacts/$id") },
+                )
+            }
+            // M15: the standalone contact-shares inbox/outbox (drawer-reachable,
+            // mirroring web's ContactSharesPage.tsx).
+            composable("shares") {
+                ContactSharesScreen(
+                    onMenuClick = { scope.launch { drawerState.open() } },
+                )
+            }
+            // M15: the "Share this contact" flow, reached from ContactDetailScreen's
+            // ⋮ action menu (mirroring web's ShareContactDialog.tsx from ContactHeader).
+            // The contact's VCard UID is passed through navigation so the screen does
+            // not re-fetch the contact — matching web's vcardUID-as-prop.
+            composable(
+                route = "contacts/{contactId}/share?uid={uid}",
+                arguments = listOf(
+                    navArgument("contactId") { type = NavType.IntType },
+                    navArgument("uid") { type = NavType.StringType; defaultValue = "" },
+                ),
+            ) {
+                ShareContactScreen(
+                    onBack = { navController.popBackStack() },
                 )
             }
             // M9: contact-agnostic drawer entries — the N4 unfiled-notes inbox and the
