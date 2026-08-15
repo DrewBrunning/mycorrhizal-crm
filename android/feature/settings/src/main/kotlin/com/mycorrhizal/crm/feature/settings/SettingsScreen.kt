@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm.feature.settings
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -8,30 +9,43 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
 import com.mycorrhizal.crm.ui.R
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -40,15 +54,32 @@ fun SettingsScreen(
     onMenuClick: () -> Unit,
     onLoggedOut: () -> Unit,
     onCustomLinks: () -> Unit = {},
+    onWebhooks: () -> Unit = {},
+    onNotificationChannels: () -> Unit = {},
+    onLocaleChanged: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val events by viewModel.events.collectAsStateWithLifecycle()
 
     LaunchedEffect(events) {
-        if (events is SettingsEvent.LoggedOut) {
-            viewModel.onLoggedOutShown()
-            onLoggedOut()
+        when (events) {
+            SettingsEvent.LoggedOut -> {
+                viewModel.onEventShown()
+                onLoggedOut()
+            }
+            // The activity recreates to re-resolve values-XX resources.
+            SettingsEvent.LocaleChanged -> {
+                viewModel.onEventShown()
+                onLocaleChanged()
+            }
+            // A password change invalidated every JWT; the session is cleared
+            // and the login screen takes over (see onLoggedOut).
+            SettingsEvent.PasswordChanged -> {
+                viewModel.onEventShown()
+                onLoggedOut()
+            }
+            null -> Unit
         }
     }
 
@@ -75,6 +106,12 @@ fun SettingsScreen(
         SettingsContent(
             state = state,
             onCustomLinks = onCustomLinks,
+            onWebhooks = onWebhooks,
+            onNotificationChannels = onNotificationChannels,
+            onLanguageChange = viewModel::updateLanguage,
+            onDateFormatChange = viewModel::updateDateFormat,
+            onThemeChange = viewModel::setThemePreference,
+            onChangePassword = viewModel::changePassword,
             onCallTrackingChange = viewModel::setCallTrackingEnabled,
             onSmsTrackingChange = viewModel::setSmsTrackingEnabled,
             onNotificationsChange = viewModel::setNotificationsEnabled,
@@ -88,6 +125,12 @@ fun SettingsScreen(
 fun SettingsContent(
     state: SettingsUiState,
     onCustomLinks: () -> Unit = {},
+    onWebhooks: () -> Unit = {},
+    onNotificationChannels: () -> Unit = {},
+    onLanguageChange: (String) -> Unit = {},
+    onDateFormatChange: (String) -> Unit = {},
+    onThemeChange: (String) -> Unit = {},
+    onChangePassword: (String, String, String) -> Unit = { _, _, _ -> },
     onCallTrackingChange: (Boolean) -> Unit = {},
     onSmsTrackingChange: (Boolean) -> Unit = {},
     onNotificationsChange: (Boolean) -> Unit = {},
@@ -95,6 +138,9 @@ fun SettingsContent(
     modifier: Modifier = Modifier,
 ) {
     var confirmLogout by remember { mutableStateOf(false) }
+    var currentPassword by remember { mutableStateOf("") }
+    var newPassword by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
 
     Column(
         modifier = modifier
@@ -107,12 +153,109 @@ fun SettingsContent(
         val dash = stringResource(R.string.settings_value_placeholder)
         InfoRow(stringResource(R.string.settings_server), state.session.serverUrl ?: dash)
         InfoRow(stringResource(R.string.settings_username), state.session.username ?: dash)
-        InfoRow(stringResource(R.string.settings_language), state.session.language ?: dash)
-        InfoRow(stringResource(R.string.settings_date_format), state.session.dateFormat ?: dash)
         InfoRow(
             stringResource(R.string.settings_admin),
             if (state.session.isAdmin) stringResource(R.string.settings_yes) else stringResource(R.string.settings_no),
         )
+
+        HorizontalDivider()
+
+        // M25: appearance — language / date format / theme, editable.
+        Text(stringResource(R.string.settings_appearance), style = MaterialTheme.typography.titleMedium)
+        SettingDropdown(
+            label = stringResource(R.string.settings_language),
+            value = state.session.language.orEmpty(),
+            options = listOf("en", "de", "it", "es", "fr"),
+            optionLabel = { lang -> languageName(lang) },
+            onSelect = onLanguageChange,
+        )
+        SettingDropdown(
+            label = stringResource(R.string.settings_date_format),
+            value = state.session.dateFormat.orEmpty(),
+            options = DATE_FORMAT_OPTIONS,
+            optionLabel = { fmt -> dateFormatName(fmt) },
+            onSelect = onDateFormatChange,
+        )
+        SettingDropdown(
+            label = stringResource(R.string.settings_theme),
+            value = state.themePreference,
+            options = listOf(
+                AppSettingsRepository.THEME_SYSTEM,
+                AppSettingsRepository.THEME_LIGHT,
+                AppSettingsRepository.THEME_DARK,
+            ),
+            optionLabel = { pref ->
+                when (pref) {
+                    AppSettingsRepository.THEME_LIGHT -> stringResource(R.string.settings_theme_light)
+                    AppSettingsRepository.THEME_DARK -> stringResource(R.string.settings_theme_dark)
+                    else -> stringResource(R.string.settings_theme_system)
+                }
+            },
+            onSelect = onThemeChange,
+        )
+
+        HorizontalDivider()
+
+        // M25: password change.
+        Text(stringResource(R.string.settings_password_title), style = MaterialTheme.typography.titleMedium)
+        state.passwordErrorRes?.let { res ->
+            Text(
+                text = stringResource(res),
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+        state.passwordError?.let { error ->
+            Text(
+                text = error,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+        OutlinedTextField(
+            value = currentPassword,
+            onValueChange = { currentPassword = it },
+            label = { Text(stringResource(R.string.settings_password_current)) },
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+            value = newPassword,
+            onValueChange = { newPassword = it },
+            label = { Text(stringResource(R.string.settings_password_new)) },
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+            value = confirmPassword,
+            onValueChange = { confirmPassword = it },
+            label = { Text(stringResource(R.string.settings_password_confirm)) },
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedButton(
+            onClick = {
+                onChangePassword(currentPassword, newPassword, confirmPassword)
+                currentPassword = ""
+                newPassword = ""
+                confirmPassword = ""
+            },
+            enabled = !state.isChangingPassword && newPassword.isNotBlank() && confirmPassword.isNotBlank(),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            if (state.isChangingPassword) {
+                CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
+            }
+            Text(stringResource(R.string.settings_password_change_button))
+        }
+
+        HorizontalDivider()
 
         Text(stringResource(R.string.settings_tracking), style = MaterialTheme.typography.titleMedium)
         ToggleRow(
@@ -130,6 +273,11 @@ fun SettingsContent(
             checked = state.notificationsEnabled,
             onCheckedChange = onNotificationsChange,
         )
+
+        // M25: channels surfaces.
+        NavigationRow(stringResource(R.string.settings_webhooks_title), onClick = onWebhooks)
+        NavigationRow(stringResource(R.string.settings_notifications_title), onClick = onNotificationChannels)
+
         Button(
             onClick = onCustomLinks,
             modifier = Modifier.fillMaxWidth(),
@@ -191,9 +339,98 @@ private fun ToggleRow(
             .fillMaxWidth()
             .padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
+
+@Composable
+private fun SettingDropdown(
+    label: String,
+    value: String,
+    options: List<String>,
+    optionLabel: @Composable (String) -> String,
+    onSelect: (String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Column {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Box {
+            OutlinedButton(
+                onClick = { expanded = true },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = if (value.isEmpty()) stringResource(R.string.settings_value_placeholder) else optionLabel(value),
+                    modifier = Modifier.weight(1f),
+                )
+                Icon(
+                    Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                    contentDescription = null,
+                )
+            }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                options.forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(optionLabel(option)) },
+                        onClick = {
+                            expanded = false
+                            onSelect(option)
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NavigationRow(label: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyLarge)
+        Icon(
+            Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun languageName(tag: String): String = when (tag) {
+    "de" -> "Deutsch"
+    "it" -> "Italiano"
+    "es" -> "Español"
+    "fr" -> "Français"
+    else -> "English"
+}
+
+@Composable
+private fun dateFormatName(format: String): String = when (format) {
+    "us" -> stringResource(R.string.settings_date_format_us)
+    "iso" -> stringResource(R.string.settings_date_format_iso)
+    "ca" -> stringResource(R.string.settings_date_format_ca)
+    "eu-hyphen" -> stringResource(R.string.settings_date_format_eu_hyphen)
+    "us-mmm" -> stringResource(R.string.settings_date_format_us_mmm)
+    "us-mmmm" -> stringResource(R.string.settings_date_format_us_mmmm)
+    "eu-mmm" -> stringResource(R.string.settings_date_format_eu_mmm)
+    "eu-mmmm" -> stringResource(R.string.settings_date_format_eu_mmmm)
+    else -> stringResource(R.string.settings_date_format_eu)
+}
+
+private val DATE_FORMAT_OPTIONS = listOf(
+    "eu", "us", "iso", "ca", "eu-hyphen", "us-mmm", "us-mmmm", "eu-mmm", "eu-mmmm",
+)

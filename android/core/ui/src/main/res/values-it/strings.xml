@@ -240,6 +240,86 @@
     <string name="custom_links_mime">MIMETYPE</string>
     <string name="custom_links_template">URI intent ({handle})</string>
 
+    <!-- Settings: appearance (M25) -->
+    <string name="settings_appearance">Aspetto</string>
+    <string name="settings_theme">Tema</string>
+    <string name="settings_theme_system">Usa predefinito di sistema</string>
+    <string name="settings_theme_light">Modalità chiara</string>
+    <string name="settings_theme_dark">Modalità scura</string>
+    <string name="settings_date_format_eu">Europeo (GG.MM.AAAA)</string>
+    <string name="settings_date_format_us">Americano (MM/GG/AAAA)</string>
+    <string name="settings_date_format_iso">ISO (AAAA-MM-GG)</string>
+    <string name="settings_date_format_ca">Canada (GG/MM/AAAA)</string>
+    <string name="settings_date_format_eu_hyphen">Europeo con trattini (GG-MM-AAAA)</string>
+    <string name="settings_date_format_us_mmm">Americano abbreviato (MMM G, AAAA)</string>
+    <string name="settings_date_format_us_mmmm">Americano esteso (MMMM G, AAAA)</string>
+    <string name="settings_date_format_eu_mmm">Europeo abbreviato (G MMM, AAAA)</string>
+    <string name="settings_date_format_eu_mmmm">Europeo esteso (GG MMMM, AAAA)</string>
+
+    <!-- Settings: password change (M25) -->
+    <string name="settings_password_title">Cambia Password</string>
+    <string name="settings_password_current">Password attuale</string>
+    <string name="settings_password_new">Nuova password</string>
+    <string name="settings_password_confirm">Conferma nuova password</string>
+    <string name="settings_password_change_button">Aggiorna password</string>
+    <string name="settings_password_mismatch">Le nuove password non coincidono.</string>
+
+    <!-- Settings: webhooks (M25) -->
+    <string name="settings_webhooks_title">Webhooks</string>
+    <string name="settings_webhooks_description">Ricevi notifiche HTTP POST quando si verificano eventi nel tuo CRM.</string>
+    <string name="settings_webhooks_add">Aggiungi Webhook</string>
+    <string name="settings_webhooks_edit">Modifica</string>
+    <string name="settings_webhooks_delete">Elimina</string>
+    <string name="settings_webhooks_delete_title">Elimina Webhook</string>
+    <string name="settings_webhooks_delete_body">Eliminare "%1$s"? Tutte le consegne future verranno interrotte.</string>
+    <string name="settings_webhooks_test">Testa</string>
+    <string name="settings_webhooks_active">Attivo</string>
+    <string name="settings_webhooks_inactive">Inattivo</string>
+    <string name="settings_webhooks_events">Eventi</string>
+    <string name="settings_webhooks_events_count">%1$d eventi</string>
+    <string name="settings_webhooks_name">Nome</string>
+    <string name="settings_webhooks_url">URL</string>
+    <string name="settings_webhooks_empty">Nessun webhook configurato.</string>
+    <string name="settings_webhooks_show_deliveries">Consegne recenti</string>
+    <string name="settings_webhooks_hide_deliveries">Nascondi consegne</string>
+    <string name="settings_webhooks_no_deliveries">Nessuna consegna ancora.</string>
+    <string name="settings_webhooks_test_success">Test consegnato (%1$s)</string>
+    <string name="settings_webhooks_secret_title">Segreto Webhook</string>
+    <string name="settings_webhooks_secret_warning">Questo segreto viene mostrato solo una volta. Copialo prima di chiudere.</string>
+    <string name="settings_webhooks_event_contact_created">Contatto creato</string>
+    <string name="settings_webhooks_event_contact_updated">Contatto aggiornato</string>
+    <string name="settings_webhooks_event_contact_deleted">Contatto eliminato</string>
+    <string name="settings_webhooks_event_note_created">Nota creata</string>
+    <string name="settings_webhooks_event_note_updated">Nota aggiornata</string>
+    <string name="settings_webhooks_event_note_deleted">Nota eliminata</string>
+    <string name="settings_webhooks_event_activity_created">Attività creata</string>
+    <string name="settings_webhooks_event_activity_updated">Attività aggiornata</string>
+    <string name="settings_webhooks_event_activity_deleted">Attività eliminata</string>
+    <string name="settings_webhooks_event_reminder_triggered">Promemoria attivato</string>
+    <string name="settings_webhooks_event_birthday_occurred">Compleanno</string>
+
+    <!-- Settings: notification channels — ntfy/Gotify (M25) -->
+    <string name="settings_notifications_title">Canali di notifica</string>
+    <string name="settings_notifications_description">Scegli come ricevere i promemoria. L\'email è configurata lato server e attivata per ogni promemoria; i canali qui sotto inviano i promemoria ai tuoi servizi push self-hosted.</string>
+    <string name="settings_notifications_ntfy">ntfy</string>
+    <string name="settings_notifications_ntfy_enable">Invia promemoria via ntfy</string>
+    <string name="settings_notifications_ntfy_url">URL server ntfy</string>
+    <string name="settings_notifications_ntfy_topic">Argomento</string>
+    <string name="settings_notifications_gotify">Gotify</string>
+    <string name="settings_notifications_gotify_enable">Invia promemoria via Gotify</string>
+    <string name="settings_notifications_gotify_url">URL server Gotify</string>
+    <string name="settings_notifications_gotify_token">Token app</string>
+    <string name="settings_notifications_gotify_token_hint_existing">Un token è già salvato. Lascia il campo vuoto per mantenerlo.</string>
+    <string name="settings_notifications_gotify_token_hint_new">Crea un token app nella tua istanza Gotify.</string>
+    <string name="settings_notifications_test">Invia notifica di prova</string>
+    <string name="settings_notifications_testing">Invio…</string>
+    <string name="settings_notifications_test_success">Notifica di prova inviata via %1$s</string>
+    <string name="settings_notifications_test_failed">Test fallito: %1$s</string>
+    <string name="settings_notifications_save">Salva impostazioni notifiche</string>
+
+    <string name="settings_save">Salva</string>
+    <string name="settings_ok">OK</string>
+
     <!-- Notifications (tracking alerts / channels) -->
     <string name="notification_channel_reminders_name">Promemoria</string>
     <string name="notification_channel_reminders_description">Promemoria di contatto e follow-up</string>

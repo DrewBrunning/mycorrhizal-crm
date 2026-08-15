@@ -1798,4 +1798,325 @@ class ApiClientTest {
         assertEquals("DELETE", request.method)
         assertEquals("/api/v1/cadence-policies/p1", request.path)
     }
+
+    // --- M25: settings surfaces (profile prefs, webhooks, notification channels) ---
+
+    @Test
+    fun `update language sends a PATCH to the language route with the body`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"message": "Language updated successfully", "language": "de"}"""),
+        )
+
+        val result = client.updateLanguage("de")
+
+        assertTrue(result.isSuccess)
+        assertEquals("Language updated successfully", result.getOrThrow().message)
+        val request = server.takeRequest()
+        assertEquals("PATCH", request.method)
+        assertEquals("/api/v1/users/language", request.path)
+        assertTrue(request.body.readUtf8().contains("\"language\":\"de\""))
+    }
+
+    @Test
+    fun `update date format sends a PATCH to the date-format route with the body`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"message": "Date format updated successfully", "date_format": "us"}"""),
+        )
+
+        val result = client.updateDateFormat("us")
+
+        assertTrue(result.isSuccess)
+        assertEquals("Date format updated successfully", result.getOrThrow().message)
+        val request = server.takeRequest()
+        assertEquals("PATCH", request.method)
+        assertEquals("/api/v1/users/date-format", request.path)
+        assertTrue(request.body.readUtf8().contains("\"date_format\":\"us\""))
+    }
+
+    @Test
+    fun `change password posts current and new password and parses the message`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"message": "Password updated successfully"}"""),
+        )
+
+        val result = client.changePassword("old-pass", "new-pass")
+
+        assertTrue(result.isSuccess)
+        assertEquals("Password updated successfully", result.getOrThrow().message)
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/users/change-password", request.path)
+        val body = request.body.readUtf8()
+        assertTrue(body.contains("\"current_password\":\"old-pass\""))
+        assertTrue(body.contains("\"new_password\":\"new-pass\""))
+    }
+
+    @Test
+    fun `change password surfaces a wrong-current-password 400`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(400).setBody(
+                """{"error":{"code":"INVALID_INPUT","message":"Invalid value for field 'current_password'",
+                    "details":{"reason":"Current password is incorrect","field":"current_password"}}}""",
+            ),
+        )
+
+        val result = client.changePassword("wrong", "new-pass")
+
+        assertTrue(result.isFailure)
+        val error = result.exceptionOrNull() as ApiError
+        assertTrue(error is ApiError.Client)
+        assertEquals(400, (error as ApiError.Client).code)
+        assertTrue(error.displayMessage.contains("Invalid value for field 'current_password'"))
+    }
+
+    @Test
+    fun `get notification config parses the flat config`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"ntfy_url":"https://ntfy.sh","ntfy_topic":"my-reminders",
+                    "gotify_url":"http://gotify:8080","gotify_has_token":true,
+                    "notify_ntfy":true,"notify_gotify":false,"notify_push":false,
+                    "vapid_public_key":"key"}""",
+            ),
+        )
+
+        val result = client.getNotificationConfig()
+
+        assertTrue(result.isSuccess)
+        val config = result.getOrThrow()
+        assertEquals("https://ntfy.sh", config.ntfyUrl)
+        assertEquals("my-reminders", config.ntfyTopic)
+        assertTrue(config.gotifyHasToken)
+        assertTrue(config.notifyNtfy)
+        val request = server.takeRequest()
+        assertEquals("/api/v1/notifications/config", request.path)
+    }
+
+    @Test
+    fun `save notification config sends a PUT and parses the echoed config`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"ntfy_url":"https://ntfy.sh","ntfy_topic":"t","gotify_url":"","gotify_has_token":false,
+                    "notify_ntfy":true,"notify_gotify":false,"notify_push":false,"vapid_public_key":"key"}""",
+            ),
+        )
+
+        val result = client.saveNotificationConfig(
+            com.mycorrhizal.crm.model.network.NotificationConfigInput(
+                ntfyUrl = "https://ntfy.sh",
+                ntfyTopic = "t",
+                notifyNtfy = true,
+            ),
+        )
+
+        assertTrue(result.isSuccess)
+        assertEquals("https://ntfy.sh", result.getOrThrow().ntfyUrl)
+        val request = server.takeRequest()
+        assertEquals("PUT", request.method)
+        assertEquals("/api/v1/notifications/config", request.path)
+        val body = request.body.readUtf8()
+        assertTrue(body.contains("\"ntfy_url\":\"https://ntfy.sh\""))
+        // Unset fields are omitted, not serialized as null — the backend's pointer
+        // semantics rely on absent keys keeping the stored value.
+        assertTrue(!body.contains("notify_gotify"))
+        assertTrue(!body.contains("gotify_token"))
+    }
+
+    @Test
+    fun `test notification channel posts the channel and parses ok true`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"ok": true}"""))
+
+        val result = client.testNotificationChannel("ntfy")
+
+        assertTrue(result.isSuccess)
+        assertTrue(result.getOrThrow().ok)
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/notifications/config/test", request.path)
+        assertTrue(request.body.readUtf8().contains("\"channel\":\"ntfy\""))
+    }
+
+    @Test
+    fun `test notification channel parses a diagnosed failure as ok false`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"ok": false, "error": "ntfy is not configured - set a URL and topic and save first"}""",
+            ),
+        )
+
+        val result = client.testNotificationChannel("ntfy")
+
+        assertTrue(result.isSuccess)
+        assertTrue(!result.getOrThrow().ok)
+        assertTrue(result.getOrThrow().error!!.contains("not configured"))
+    }
+
+    @Test
+    fun `list webhooks parses and unwraps the webhooks array`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"webhooks":[
+                    {"id":1,"name":"Hook A","url":"https://example.com/a","events":["contact.created"],"is_active":true,"created_at":"2026-08-01T00:00:00Z"},
+                    {"id":2,"name":"Hook B","url":"https://example.com/b","events":["note.created","note.updated"],"is_active":false,"created_at":"2026-08-02T00:00:00Z"}
+                ]}""",
+            ),
+        )
+
+        val result = client.listWebhooks()
+
+        assertTrue(result.isSuccess)
+        val webhooks = result.getOrThrow()
+        assertEquals(2, webhooks.size)
+        assertEquals("Hook A", webhooks[0].name)
+        assertTrue(webhooks[0].isActive)
+        assertEquals(listOf("note.created", "note.updated"), webhooks[1].events)
+        val request = server.takeRequest()
+        assertEquals("/api/v1/webhooks", request.path)
+    }
+
+    @Test
+    fun `create webhook posts the input and returns the secret once`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(201).setBody(
+                """{"id": 9, "name": "Hook A", "url": "https://example.com/a",
+                    "events": ["contact.created"], "is_active": true,
+                    "created_at": "2026-08-01T00:00:00Z", "secret": "base64secret"}""",
+            ),
+        )
+
+        val result = client.createWebhook(
+            com.mycorrhizal.crm.model.network.WebhookInput(
+                name = "Hook A",
+                url = "https://example.com/a",
+                events = listOf("contact.created"),
+                isActive = true,
+            ),
+        )
+
+        assertTrue(result.isSuccess)
+        assertEquals(9, result.getOrThrow().id)
+        assertEquals("base64secret", result.getOrThrow().secret)
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/webhooks", request.path)
+        val body = request.body.readUtf8()
+        assertTrue(body.contains("\"name\":\"Hook A\""))
+        assertTrue(body.contains("\"is_active\":true"))
+    }
+
+    @Test
+    fun `update webhook sends a PUT and parses the raw webhook`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"id": 9, "name": "Hook A2", "url": "https://example.com/a2",
+                    "events": ["contact.created","contact.updated"], "is_active": false,
+                    "created_at": "2026-08-01T00:00:00Z"}""",
+            ),
+        )
+
+        val result = client.updateWebhook(
+            9,
+            com.mycorrhizal.crm.model.network.WebhookInput(
+                name = "Hook A2",
+                url = "https://example.com/a2",
+                events = listOf("contact.created", "contact.updated"),
+                isActive = false,
+            ),
+        )
+
+        assertTrue(result.isSuccess)
+        assertEquals("Hook A2", result.getOrThrow().name)
+        assertTrue(!result.getOrThrow().isActive)
+        assertEquals(2, result.getOrThrow().events.size)
+        val request = server.takeRequest()
+        assertEquals("PUT", request.method)
+        assertEquals("/api/v1/webhooks/9", request.path)
+        assertTrue(request.body.readUtf8().contains("\"is_active\":false"))
+    }
+
+    @Test
+    fun `delete webhook sends a DELETE to the webhook route`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"message": "Webhook deleted"}"""))
+
+        val result = client.deleteWebhook(9)
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("DELETE", request.method)
+        assertEquals("/api/v1/webhooks/9", request.path)
+    }
+
+    @Test
+    fun `test webhook posts and unwraps the delivery`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"delivery": {"id": 1, "webhook_id": 9, "event_type": "test", "status_code": 200,
+                    "error": null, "attempts": 1, "next_retry_at": null, "created_at": "2026-08-01T00:00:00Z"}}""",
+            ),
+        )
+
+        val result = client.testWebhook(9)
+
+        assertTrue(result.isSuccess)
+        assertEquals("test", result.getOrThrow().eventType)
+        assertEquals(200, result.getOrThrow().statusCode)
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/webhooks/9/test", request.path)
+    }
+
+    @Test
+    fun `test webhook parses a failed delivery with a status code and error`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"delivery": {"id": 2, "webhook_id": 9, "event_type": "test", "status_code": 500,
+                    "error": "connection refused", "attempts": 3, "next_retry_at": "2026-08-01T01:00:00Z",
+                    "created_at": "2026-08-01T00:00:00Z"}}""",
+            ),
+        )
+
+        val result = client.testWebhook(9)
+
+        assertTrue(result.isSuccess)
+        val delivery = result.getOrThrow()
+        assertEquals(500, delivery.statusCode)
+        assertEquals("connection refused", delivery.error)
+        assertEquals(3, delivery.attempts)
+        assertNotNull(delivery.nextRetryAt)
+    }
+
+    @Test
+    fun `get webhook deliveries parses and unwraps the deliveries array`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"deliveries":[
+                    {"id": 1, "webhook_id": 9, "event_type": "contact.created", "status_code": 200,
+                     "error": null, "attempts": 1, "next_retry_at": null, "created_at": "2026-08-01T00:00:00Z"},
+                    {"id": 2, "webhook_id": 9, "event_type": "test", "status_code": 500,
+                     "error": "boom", "attempts": 2, "next_retry_at": null, "created_at": "2026-08-01T00:01:00Z"}
+                ]}""",
+            ),
+        )
+
+        val result = client.getWebhookDeliveries(9)
+
+        assertTrue(result.isSuccess)
+        val deliveries = result.getOrThrow()
+        assertEquals(2, deliveries.size)
+        assertEquals("contact.created", deliveries[0].eventType)
+        assertEquals(500, deliveries[1].statusCode)
+        assertEquals("boom", deliveries[1].error)
+        val request = server.takeRequest()
+        assertEquals("/api/v1/webhooks/9/deliveries", request.path)
+    }
+
+    @Test
+    fun `get webhook deliveries normalizes an empty array`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"deliveries": []}"""))
+
+        val result = client.getWebhookDeliveries(9)
+
+        assertTrue(result.isSuccess)
+        assertTrue(result.getOrThrow().isEmpty())
+    }
 }

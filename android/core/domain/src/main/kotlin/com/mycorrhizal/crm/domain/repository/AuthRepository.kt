@@ -27,6 +27,20 @@ interface AuthRepository {
     /** Fetch the current user profile from the server (validates the token). */
     suspend fun fetchCurrentUser(): Result<UserProfile>
 
+    /** PATCH the server language pref and update the in-session profile so `observeSession()` re-emits. */
+    suspend fun updateLanguage(language: String): Result<Unit>
+
+    /** PATCH the server date-format pref and update the in-session profile so `observeSession()` re-emits. */
+    suspend fun updateDateFormat(dateFormat: String): Result<Unit>
+
+    /**
+     * POST /users/change-password. On success the server bumps TokenVersion,
+     * invalidating every JWT (including this session's), so the caller must
+     * re-login — the web re-issues a cookie, bearer-token Android cannot.
+     * A wrong current password surfaces the server's 400 message.
+     */
+    suspend fun changePassword(currentPassword: String, newPassword: String): Result<Unit>
+
     /** Clear the stored session (token + cached prefs). */
     suspend fun logout()
 

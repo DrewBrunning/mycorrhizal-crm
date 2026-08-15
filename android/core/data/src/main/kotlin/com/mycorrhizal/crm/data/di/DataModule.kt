@@ -38,6 +38,9 @@ import com.mycorrhizal.crm.data.repository.ReminderRepositoryImpl
 import com.mycorrhizal.crm.data.repository.RelationshipEdgeRepositoryImpl
 import com.mycorrhizal.crm.data.repository.TagRepositoryImpl
 import com.mycorrhizal.crm.data.repository.TrackingSettingsRepositoryImpl
+import com.mycorrhizal.crm.data.repository.NotificationSettingsRepositoryImpl
+import com.mycorrhizal.crm.data.repository.AppSettingsRepositoryImpl
+import com.mycorrhizal.crm.data.repository.WebhookRepositoryImpl
 import com.mycorrhizal.crm.data.session.DefaultSessionManager
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.data.session.SessionPrefsStorage
@@ -61,6 +64,9 @@ import com.mycorrhizal.crm.domain.repository.ReminderRepository
 import com.mycorrhizal.crm.domain.repository.RelationshipEdgeRepository
 import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.domain.repository.TrackingSettingsRepository
+import com.mycorrhizal.crm.domain.repository.NotificationSettingsRepository
+import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
+import com.mycorrhizal.crm.domain.repository.WebhookRepository
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.BaseUrlProvider
 import com.mycorrhizal.crm.network.NetworkFactory
@@ -285,4 +291,16 @@ abstract class DataBindsModule {
     @Binds
     @Singleton
     abstract fun bindTrackingSettingsRepository(impl: TrackingSettingsRepositoryImpl): TrackingSettingsRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindWebhookRepository(impl: WebhookRepositoryImpl): WebhookRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindNotificationSettingsRepository(impl: NotificationSettingsRepositoryImpl): NotificationSettingsRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindThemePreferencesRepository(impl: AppSettingsRepositoryImpl): AppSettingsRepository
 }

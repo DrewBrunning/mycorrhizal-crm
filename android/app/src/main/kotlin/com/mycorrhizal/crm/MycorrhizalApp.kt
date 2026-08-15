@@ -72,7 +72,9 @@ import com.mycorrhizal.crm.feature.imports.ImportContactsScreen
 import com.mycorrhizal.crm.feature.imports.VcfImportScreen
 import com.mycorrhizal.crm.feature.relationships.RelationshipsScreen
 import com.mycorrhizal.crm.feature.settings.CustomLinkActionsScreen
+import com.mycorrhizal.crm.feature.settings.NotificationChannelsScreen
 import com.mycorrhizal.crm.feature.settings.SettingsScreen
+import com.mycorrhizal.crm.feature.settings.WebhooksScreen
 import com.mycorrhizal.crm.feature.timelineentities.ConversationAgendaScreen
 import com.mycorrhizal.crm.feature.timelineentities.GiftsScreen
 import com.mycorrhizal.crm.feature.timelineentities.LifeEventsScreen
@@ -175,6 +177,9 @@ private fun MainScaffold(darkTheme: Boolean) {
     // other role here (surfaceContainerLow) follows the intuitive direction,
     // so it needs `!darkTheme`.
     val activity = LocalContext.current as android.app.Activity
+    // M25: the language setting needs the whole activity recreated so
+    // attachBaseContext re-wraps resources in the new locale.
+    val recreateActivity = { activity.recreate() }
     val primaryArgb = MaterialTheme.colorScheme.primary.toArgbCompat()
     val surfaceContainerLowArgb = MaterialTheme.colorScheme.surfaceContainerLow.toArgbCompat()
     LaunchedEffect(drawerState.isOpen, darkTheme, primaryArgb, surfaceContainerLowArgb) {
@@ -536,10 +541,23 @@ private fun MainScaffold(darkTheme: Boolean) {
                     onMenuClick = { scope.launch { drawerState.open() } },
                     onLoggedOut = { navController.popBackStack() },
                     onCustomLinks = { navController.navigate("custom-links") },
+                    onWebhooks = { navController.navigate("webhooks") },
+                    onNotificationChannels = { navController.navigate("notification-channels") },
+                    onLocaleChanged = recreateActivity,
                 )
             }
             composable("custom-links") {
                 CustomLinkActionsScreen(
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            composable("webhooks") {
+                WebhooksScreen(
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            composable("notification-channels") {
+                NotificationChannelsScreen(
                     onBack = { navController.popBackStack() },
                 )
             }
