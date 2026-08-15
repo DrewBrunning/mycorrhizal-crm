@@ -1,7 +1,9 @@
 package com.mycorrhizal.crm.data.session
 
 import com.mycorrhizal.crm.domain.repository.SessionState
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -86,5 +88,27 @@ class DefaultSessionManagerTest {
         assertTrue(state.isAdmin)
         assertEquals("de", state.language)
         assertEquals("alice", state.username)
+    }
+
+    // M5 §5: a cold-start OIDC deep link must await hydration before reading
+    // the server URL / writing the session — otherwise it races the async
+    // startup init() (review-pass fix).
+    @Test
+    fun `awaitHydrated suspends until init completes`() = runTest {
+        val (manager, tokenStorage) = manager()
+        tokenStorage.stored = "stored-jwt"
+
+        var hydrated = false
+        val awaiting = async { manager.awaitHydrated(); hydrated = true }
+
+        // Not yet hydrated: init hasn't run, await is still suspended.
+        advanceUntilIdle()
+        assertFalse(hydrated)
+
+        manager.init()
+        advanceUntilIdle()
+
+        assertTrue(hydrated)
+        assertEquals("stored-jwt", manager.bearerToken())
     }
 }

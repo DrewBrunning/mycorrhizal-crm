@@ -29,6 +29,7 @@ import com.mycorrhizal.crm.data.repository.ContactRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ContactShareRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ConversationAgendaRepositoryImpl
 import com.mycorrhizal.crm.data.repository.GiftRepositoryImpl
+import com.mycorrhizal.crm.data.repository.GraphRepositoryImpl
 import com.mycorrhizal.crm.data.repository.HouseholdRepositoryImpl
 import com.mycorrhizal.crm.data.repository.LifeEventRepositoryImpl
 import com.mycorrhizal.crm.data.repository.MergeRepositoryImpl
@@ -58,6 +59,7 @@ import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ContactShareRepository
 import com.mycorrhizal.crm.domain.repository.ConversationAgendaRepository
 import com.mycorrhizal.crm.domain.repository.GiftRepository
+import com.mycorrhizal.crm.domain.repository.GraphRepository
 import com.mycorrhizal.crm.domain.repository.HouseholdRepository
 import com.mycorrhizal.crm.domain.repository.LifeEventRepository
 import com.mycorrhizal.crm.domain.repository.MergeRepository
@@ -267,6 +269,10 @@ abstract class DataBindsModule {
     @Binds
     @Singleton
     abstract fun bindGiftRepository(impl: GiftRepositoryImpl): GiftRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindGraphRepository(impl: GraphRepositoryImpl): GraphRepository
 
     @Binds
     @Singleton

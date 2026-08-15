@@ -160,6 +160,8 @@ fun ContactDetailScreen(
     // Carries the contact's VCard UID — the Share screen needs only that to
     // POST the share, and ContactDetailViewModel already loaded it.
     onShareContact: (String) -> Unit = {},
+    // M14: the ego-centric network list, starting from this contact.
+    onExploreConnections: (Int) -> Unit = {},
     onEditActivity: (Int) -> Unit = {},
     onEditNote: (Int) -> Unit = {},
     onEditReminder: (Int) -> Unit = {},
@@ -419,6 +421,13 @@ fun ContactDetailScreen(
                                     onClick = {
                                         menuExpanded = false
                                         onViewPrep(contact.id)
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.contact_network)) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onExploreConnections(contact.id)
                                     },
                                 )
                                 DropdownMenuItem(

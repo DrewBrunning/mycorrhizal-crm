@@ -18,6 +18,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -2575,5 +2576,326 @@ class ApiClientTest {
         val body = request.body.readUtf8()
         assertTrue(body.contains("member_vcard_uids"))
         assertTrue(body.contains("u1"))
+    }
+
+    // --- M14: ego-centric network graph ---
+
+    @Test
+    fun `getConnections sends from, depth and relation on the query string`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "from_vcard_uid": "from-1",
+                      "from_name": "Alice",
+                      "depth": 3,
+                      "chains": []
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        // relation is a registry synonym — it must be passed through verbatim,
+        // never resolved on-device (M14 design: the server resolves it).
+        val result = client.getConnections(from = "from-1", depth = 3, relation = "brother")
+
+        assertTrue(result.isSuccess)
+        assertEquals("from-1", result.getOrThrow().fromVCardUid)
+
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/api/v1/graph/connections?from=from-1&depth=3&relation=brother", request.path)
+    }
+
+    @Test
+    fun `getConnections omits depth and relation when not set`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"from_vcard_uid":"from-1","from_name":"Alice","depth":2,"chains":[]}"""),
+        )
+
+        val result = client.getConnections(from = "from-1")
+
+        assertTrue(result.isSuccess)
+        assertEquals("/api/v1/graph/connections?from=from-1", server.takeRequest().path)
+    }
+
+    @Test
+    fun `getConnections parses resolved names, inverse relations and step chains`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "from_vcard_uid": "from-1",
+                      "from_name": "Alice",
+                      "depth": 2,
+                      "chains": [
+                        {
+                          "target_id": 10,
+                          "target_vcard_uid": "t1",
+                          "target_name": "Carol",
+                          "depth": 1,
+                          "steps": [
+                            {"contact_id": 10, "contact_vcard_uid": "t1", "contact_name": "Carol", "relation": "child_of"}
+                          ]
+                        },
+                        {
+                          "target_id": 20,
+                          "target_vcard_uid": "t2",
+                          "target_name": "Dave",
+                          "depth": 2,
+                          "steps": [
+                            {"contact_id": 11, "contact_vcard_uid": "t1", "contact_name": "Carol", "relation": "sibling_of"},
+                            {"contact_id": 20, "contact_vcard_uid": "t2", "contact_name": "Dave", "relation": "spouse_of"}
+                          ]
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        val result = client.getConnections(from = "from-1")
+
+        assertTrue(result.isSuccess)
+        val chains = result.getOrThrow().chainsOrEmpty
+        assertEquals(2, chains.size)
+        assertEquals("Carol", chains[0].targetName)
+        assertEquals("child_of", chains[0].stepsOrEmpty[0].relation)
+        assertEquals(2, chains[1].stepsOrEmpty.size)
+        assertEquals("Dave", chains[1].stepsOrEmpty[1].contactName)
+    }
+
+    @Test
+    fun `getConnections tolerates an absent chains key`() = runBlocking {
+        // The backend always serializes [], but the contract must not break on
+        // an absent key either (`/CLAUDE.md` frontend trap #8).
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"from_vcard_uid":"from-1","from_name":"Alice","depth":2}"""),
+        )
+
+        val result = client.getConnections(from = "from-1")
+
+        assertTrue(result.isSuccess)
+        assertTrue(result.getOrThrow().chainsOrEmpty.isEmpty())
+    }
+
+    @Test
+    fun `getConnections tolerates an explicit null chains value`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"from_vcard_uid":"from-1","from_name":"Alice","depth":2,"chains":null}"""),
+        )
+
+        val result = client.getConnections(from = "from-1")
+
+        assertTrue(result.isSuccess)
+        assertTrue(result.getOrThrow().chainsOrEmpty.isEmpty())
+    }
+
+    @Test
+    fun `getConnections maps a 404 unknown-from to a Client error`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(404)
+                .setBody("""{"error":{"code":"NOT_FOUND","message":"Contact not found","details":{"vcard_uid":"ghost"}}}"""),
+        )
+
+        val result = client.getConnections(from = "ghost")
+
+        assertTrue(result.isFailure)
+        val error = result.exceptionOrNull() as ApiError
+        assertTrue(error is ApiError.Client)
+        assertEquals(404, (error as ApiError.Client).code)
+    }
+
+    @Test
+    fun `currentUser parses the self contact vcard uid`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """{"id":1,"username":"alice","email":"a@x.com","language":"en","date_format":"eu","is_admin":false,"self_contact_vcard_uid":"self-uid"}""",
+                ),
+        )
+
+        val result = client.currentUser()
+
+        assertTrue(result.isSuccess)
+        assertEquals("self-uid", result.getOrThrow().selfContactVCardUid)
+    }
+
+    // --- M18: conversation-agenda discuss sends the activity link ---
+
+    @Test
+    fun `discussConversationAgenda with an activity sends activity_id`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"id":"a1","entity_id":"uid","content":"Ask","activity_id":7,"discussed_at":"2026-08-01T10:00:00Z"}"""),
+        )
+
+        val result = client.discussConversationAgenda("a1", activityId = 7)
+
+        assertTrue(result.isSuccess)
+        assertEquals(7, result.getOrThrow().activityId)
+        val request = server.takeRequest()
+        assertEquals("PATCH", request.method)
+        assertEquals("/api/v1/conversation-agenda/a1/discuss", request.path)
+        // Moshi omits nulls by default, so an explicit id serializes as {activity_id: 7}.
+        assertTrue(request.body.readUtf8().contains("""{"activity_id":7}"""))
+    }
+
+    @Test
+    fun `discussConversationAgenda without an activity sends an empty body`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"id":"a1","entity_id":"uid","content":"Ask"}"""),
+        )
+
+        val result = client.discussConversationAgenda("a1", activityId = null)
+
+        assertTrue(result.isSuccess)
+        assertNull(result.getOrThrow().activityId)
+        val request = server.takeRequest()
+        assertEquals("PATCH", request.method)
+        // Marking discussed without a link is an empty object — matching web's
+        // MarkDiscussedDialog (`{}` when unlinked).
+        assertEquals("{}", request.body.readUtf8())
+    }
+
+    // --- M26: registration + password reset ---
+
+    @Test
+    fun `register posts username email and password`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(201)
+                .setBody("""{"message":"User registered successfully"}"""),
+        )
+
+        val result = client.register("alice", "alice@example.com", "hunter2hunter2")
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/register", request.path)
+        val body = request.body.readUtf8()
+        assertTrue(body.contains("""{"username":"alice","email":"alice@example.com","password":"hunter2hunter2"}"""))
+    }
+
+    @Test
+    fun `register surfaces the duplicate-account conflict message`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(409)
+                .setBody("""{"error":{"code":"ALREADY_EXISTS","message":"User already exists","details":{"email":"alice@example.com"}}}"""),
+        )
+
+        val result = client.register("alice", "alice@example.com", "hunter2hunter2")
+
+        assertTrue(result.isFailure)
+        val error = result.exceptionOrNull() as ApiError
+        assertTrue(error is ApiError.Client)
+        assertEquals(409, (error as ApiError.Client).code)
+    }
+
+    @Test
+    fun `checkPasswordStrength posts the password and parses the verdict`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """{"is_valid":false,"entropy":18.3,"score":1,"feedback":"Password is too short","min_entropy":50.0,"char_set_size":26,"length":8}""",
+                ),
+        )
+
+        val result = client.checkPasswordStrength("shortpw")
+
+        assertTrue(result.isSuccess)
+        val strength = result.getOrThrow()
+        assertFalse(strength.isValid)
+        assertEquals(18.3, strength.entropy!!, 0.001)
+        assertEquals("Password is too short", strength.feedback)
+        val request = server.takeRequest()
+        assertEquals("/api/v1/check-password-strength", request.path)
+        assertTrue(request.body.readUtf8().contains("""{"password":"shortpw"}"""))
+    }
+
+    @Test
+    fun `requestPasswordReset posts the email and reads the anti-enumeration message`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"message":"If an account exists, password reset instructions were sent"}"""),
+        )
+
+        val result = client.requestPasswordReset("alice@example.com")
+
+        assertTrue(result.isSuccess)
+        assertEquals("If an account exists, password reset instructions were sent", result.getOrThrow().message)
+        val request = server.takeRequest()
+        assertEquals("/api/v1/password-reset/request", request.path)
+        assertTrue(request.body.readUtf8().contains("""{"email":"alice@example.com"}"""))
+    }
+
+    @Test
+    fun `confirmPasswordReset posts the token and password`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"message":"Password reset successful"}"""),
+        )
+
+        val result = client.confirmPasswordReset("reset-token-123", "newpassword123")
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("/api/v1/password-reset/confirm", request.path)
+        val body = request.body.readUtf8()
+        assertTrue(body.contains("""{"token":"reset-token-123","password":"newpassword123"}"""))
+    }
+
+    // --- M26: circle/tag triage ---
+
+    @Test
+    fun `listLegacyCircles parses a bare JSON array`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""["Friends from school","Ski club"]"""),
+        )
+
+        val result = client.listLegacyCircles()
+
+        assertTrue(result.isSuccess)
+        assertEquals(listOf("Friends from school", "Ski club"), result.getOrThrow())
+        val request = server.takeRequest()
+        assertEquals("/api/v1/contacts/circles?legacy=true", request.path)
+    }
+
+    @Test
+    fun `listContacts sends circle_legacy for the triage contact lookup`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"contacts":[{"id":1,"uid":"u1","fn":"Alice"}],"limit":500}"""),
+        )
+
+        val result = client.listContacts(circleLegacy = "Ski club", limit = 500)
+
+        assertTrue(result.isSuccess)
+        assertEquals(1, result.getOrThrow().contacts.size)
+        val request = server.takeRequest()
+        assertEquals("/api/v1/contacts?limit=500&circle_legacy=Ski%20club", request.path)
     }
 }

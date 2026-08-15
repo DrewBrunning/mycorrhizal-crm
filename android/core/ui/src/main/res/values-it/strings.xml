@@ -22,7 +22,6 @@
     <string name="nav_network">Rete</string>
     <string name="nav_shares">Condivisioni</string>
     <string name="nav_households">Nuclei familiari</string>
-    <string name="coming_soon">%1$s — disponibile in una fase successiva</string>
     <string name="cd_menu">Menu</string>
     <string name="cd_back">Indietro</string>
 
@@ -36,12 +35,43 @@
     <string name="login_api_token">Token API</string>
     <string name="login_api_token_hint">mycorrhizal_…</string>
     <string name="login_sso">Accedi con SSO</string>
+    <string name="oidc_login_failed">Accesso SSO non riuscito. Riprova oppure accedi con la tua password.</string>
     <string name="login_sign_in">Accedi</string>
     <string name="login_error_valid_server_url">Inserisci un URL del server valido, es. https://crm.example.com</string>
     <string name="login_error_identifier_required">Nome utente o email richiesti</string>
     <string name="login_error_password_required">La password è obbligatoria</string>
     <string name="login_error_token_required">Il token API è obbligatorio</string>
     <string name="login_error_token_prefix">I token API iniziano con \'mycorrhizal_\'</string>
+
+    <!-- M26: registration + forgot password -->
+    <string name="login_no_account">Non hai un account? Creane uno</string>
+    <string name="login_forgot_password">Hai dimenticato la password?</string>
+    <string name="register_title">Crea account</string>
+    <string name="register_subtitle">Configura un nuovo account sul tuo server</string>
+    <string name="register_username">Nome utente</string>
+    <string name="register_email">E-mail</string>
+    <string name="register_create">Crea account</string>
+    <string name="register_back_to_login">Torna al login</string>
+    <string name="register_checking_strength">Controllo della robustezza della password…</string>
+    <string name="register_password_strong">La password sembra buona</string>
+    <string name="register_error_username_required">Il nome utente è obbligatorio</string>
+    <string name="register_error_email_required">L\'e-mail è obbligatoria</string>
+    <string name="register_error_password_required">La password è obbligatoria</string>
+    <string name="register_error_password_weak">La password è troppo debole</string>
+    <string name="register_created_login_failed">Account creato. Accedi per favore.</string>
+    <string name="forgot_password_title">Reimposta password</string>
+    <string name="forgot_password_request_hint">Inserisci l\'e-mail del tuo account e ti invieremo un link di reimpostazione.</string>
+    <string name="forgot_password_email">E-mail</string>
+    <string name="forgot_password_send">Invia e-mail di reimpostazione</string>
+    <string name="forgot_password_token">Token di reimpostazione</string>
+    <string name="forgot_password_new_password">Nuova password</string>
+    <string name="forgot_password_confirm_password">Conferma nuova password</string>
+    <string name="forgot_password_reset">Reimposta password</string>
+    <string name="forgot_password_done">Password reimpostata correttamente. Ora puoi accedere.</string>
+    <string name="forgot_password_error_email_required">L\'e-mail è obbligatoria</string>
+    <string name="forgot_password_error_token_required">Il token di reimpostazione è obbligatorio</string>
+    <string name="forgot_password_error_password_required">La nuova password è obbligatoria</string>
+    <string name="action_close">Chiudi</string>
 
     <!-- Contact list -->
     <string name="contacts_search_hint">Cerca contatti</string>
@@ -462,6 +492,22 @@
     <string name="circles_empty">Ancora nessun cerchio</string>
     <string name="circles_members_empty">Ancora nessun membro</string>
     <string name="circles_error_missing_id">ID cerchio mancante</string>
+
+    <!-- Circle & tag triage (M26) -->
+    <string name="settings_circle_tag_triage">Classificazione cerchi ed etichette</string>
+    <string name="triage_title">Classificazione cerchi ed etichette</string>
+    <string name="triage_name">Nome</string>
+    <string name="triage_circle">Cerchio</string>
+    <string name="triage_tag">Etichetta</string>
+    <string name="triage_skip">Salta</string>
+    <string name="triage_contacts_count">%1$d contatti</string>
+    <string name="triage_summary">%1$d cerchi, %2$d etichette, %3$d saltati</string>
+    <string name="triage_apply">Applica</string>
+    <string name="triage_empty">Nessuna vecchia stringa di cerchio da pulire.</string>
+    <string name="triage_done_title">Classificazione completata</string>
+    <string name="triage_done_message">Creati %1$d cerchi e %2$d etichette.</string>
+    <string name="triage_done_partial">%1$d elemento(i) non creati e %2$d assegnazione(i) di membro fallite. Esegui di nuovo la classificazione per riprovare.</string>
+    <string name="action_done">Fatto</string>
     <string name="action_create">Crea</string>
     <string name="action_save">Salva</string>
     <string name="action_edit">Modifica</string>
@@ -559,6 +605,26 @@
     <string name="relationships_delete_confirm">Eliminare la relazione con %1$s?</string>
     <string name="relationships_reject_title">Rifiutare il suggerimento?</string>
     <string name="relationships_reject_confirm">Rifiutare la relazione suggerita con %1$s?</string>
+
+    <!-- Network graph (M14) -->
+    <string name="contact_network">Esplora le connessioni</string>
+    <string name="network_start_from">Parti da</string>
+    <string name="network_change">Cambia</string>
+    <string name="network_pick_prompt">Scegli un contatto di partenza per esplorare la sua rete.</string>
+    <string name="network_pick_button">Scegli contatto</string>
+    <string name="network_pick_title">Parti da…</string>
+    <string name="network_search_contacts">Cerca contatti</string>
+    <string name="network_pick_no_results">Digita per cercare un contatto.</string>
+    <string name="network_depth">Profondità</string>
+    <string name="network_direct">Diretto</string>
+    <string name="network_hops">a %1$d salti</string>
+    <string name="network_relation">Relazione</string>
+    <string name="network_relation_hint">es. sibling_of o brother</string>
+    <string name="network_relation_apply">Applica</string>
+    <string name="network_all_circles">Tutti i cerchi</string>
+    <string name="network_empty">Nessuna connessione trovata. Aggiungi relazioni per costruire una rete qui.</string>
+    <string name="network_row_description">%1$s — %2$s</string>
+    <string name="network_error_no_vcard_uid">Il contatto non ha un UID VCard</string>
 
     <!-- Contact shares (M15) -->
     <string name="shares_title">Condivisione di contatti</string>
@@ -665,6 +731,65 @@
     <string name="agenda_new">Nuovo elemento</string>
     <string name="agenda_edit">Modifica elemento</string>
     <string name="agenda_content">Contenuto</string>
+
+    <!-- M18: field richness across the four timeline entities -->
+    <string name="life_events_select_category">Seleziona una categoria…</string>
+    <string name="life_events_select_category_first">Seleziona prima una categoria</string>
+    <string name="life_events_custom_type">Aggiungi un nuovo tipo di evento di vita</string>
+    <string name="life_events_custom_type_label">Nome evento personalizzato</string>
+    <string name="life_events_year">Anno</string>
+    <string name="life_events_month">Mese</string>
+    <string name="life_events_day">Giorno</string>
+    <string name="life_events_related">Relativo a</string>
+    <string name="life_events_search_related">Cerca contatti</string>
+    <string name="life_events_remove_related">Rimuovi %1$s</string>
+    <string name="life_events_remind">Ricordamelo ogni anno</string>
+    <string name="life_events_category_home_living">Casa e vita quotidiana</string>
+    <string name="life_events_category_health_wellness">Salute e benessere</string>
+    <string name="life_events_category_work_education">Lavoro e istruzione</string>
+    <string name="life_events_category_travel_experiences">Viaggi ed esperienze</string>
+    <string name="life_events_category_family_relationships">Famiglia e relazioni</string>
+    <string name="life_events_category_uncategorized">Altro / Non categorizzato</string>
+    <string name="gifts_status_idea">Idea</string>
+    <string name="gifts_status_purchased">Acquistato</string>
+    <string name="gifts_status_given">Regalato</string>
+    <string name="gifts_status_received">Ricevuto</string>
+    <string name="gifts_url">URL</string>
+    <string name="gifts_url_invalid">Inserisci un URL http(s) valido</string>
+    <string name="gifts_notes">Note</string>
+    <string name="gifts_occasion">Occasione</string>
+    <string name="gifts_date">Data (AAAA-MM-GG)</string>
+    <string name="gifts_date_invalid">Inserisci una data nel formato AAAA-MM-GG</string>
+    <string name="gifts_amount">Importo</string>
+    <string name="gifts_currency">Valuta</string>
+    <string name="gifts_life_event">Evento di vita</string>
+    <string name="gifts_activity">Attività</string>
+    <string name="gifts_none">Nessuno</string>
+    <string name="gifts_value_currency_required">Importo e valuta devono essere impostati insieme</string>
+    <string name="gifts_mark_given">Segna come regalato</string>
+    <string name="preferences_key">Chiave</string>
+    <string name="preferences_category_food">Cibo</string>
+    <string name="preferences_category_drink">Bevande</string>
+    <string name="preferences_category_media">Media</string>
+    <string name="preferences_key_favorite">Preferito</string>
+    <string name="preferences_key_dislike">Non piace</string>
+    <string name="preferences_key_allergy">Allergia</string>
+    <string name="preferences_key_show">Serie</string>
+    <string name="preferences_key_movie">Film</string>
+    <string name="preferences_key_music">Musica</string>
+    <string name="preferences_section_food_drink">Cibo e bevande</string>
+    <string name="preferences_section_media">Media</string>
+    <string name="preferences_section_other">Altro</string>
+    <string name="preferences_clothing_sizes">Taglie di abbigliamento</string>
+    <string name="preferences_clothing_hint">es. M, 42, S/M</string>
+    <string name="preferences_clothing_add">Aggiungi taglia</string>
+    <string name="preferences_clothing_empty">Nessuna taglia di abbigliamento</string>
+    <string name="agenda_reference_url">URL di riferimento</string>
+    <string name="agenda_mark_discussed">Segna come discusso</string>
+    <string name="agenda_discussed_link_activity">Collega un\'attività (facoltativo)</string>
+    <string name="agenda_discussed_button">Discusso</string>
+    <string name="agenda_section_open">Aperti</string>
+    <string name="agenda_section_discussed">Discuss</string>
 
 
     <!-- Merge & bulk -->

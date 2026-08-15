@@ -7,7 +7,7 @@
 | **Size** | M — smaller than it looked once the design settled on `/graph/connections` |
 | **Source** | [M8](89-M8-web-android-parity-audit.md) audit, 2026-08-11 |
 | **Depends on** | Nothing — T10's graph traversal backend already exists and serves web today |
-| **Status** | TO BE DONE — design pass completed 2026-08-11, direction chosen |
+| **Status** | **DONE 2026-08-15** — see the landing note. |
 
 `MycorrhizalApp.kt:498` wraps the `"network"` drawer route in `PlaceholderScreen`; no graph
 implementation exists anywhere in `android/`. M8's own ticket flagged this as "the clearest case" of
@@ -147,3 +147,68 @@ JUnit4 + MockK (`mockk`/`coEvery`) + Turbine + `runTest` with `MainDispatcherRul
 mock the repository — `feature/contacts/.../ContactListViewModelTest.kt` is the reference. New
 `ApiClient` methods get a MockWebServer test in `core/network` — `ApiClientTest.kt` is the reference.
 Hand-verify per `/CLAUDE.md`: break the code, confirm the new test fails, restore.
+
+---
+
+## Landing note (2026-08-15)
+
+Implemented per the design: an ego-centric, list-first network screen over
+`GET /graph/connections` — no layout engine, no canvas.
+
+**What landed** (new `:feature:network` module + `GraphRepository`):
+- `ApiClient.getConnections(from, depth, relation)` — `from` is a
+  Contact.VCardUID; depth/relation are optional query params; a registry
+  synonym like `"brother"` is passed through verbatim, never resolved
+  on-device.
+- `GraphConnectionsResponse`/`GraphChain`/`GraphChainStep` models with
+  nullable lists + `chainsOrEmpty`/`stepsOrEmpty` accessors (trap #8 — Moshi
+  rejects an explicit JSON `null` for a non-nullable list; raw-JSON
+  MockWebServer tests pin both the absent-key and explicit-null cases).
+- `NetworkScreen`/`NetworkViewModel`: a "start from" picker (search-based,
+  defaulting to the self contact via the `self_contact_vcard_uid` the backend
+  now returns on `/users/me`), a depth stepper (1–3, default 2 — the design's
+  mobile range), a verbatim relation filter, a client-side circle filter
+  (the endpoint has no circle param; web filters the whole graph client-side
+  too), and chains grouped under "Direct" / "N hops away" headers with each
+  row rendering the readable path (`Sister (sibling of) → Bob (spouse of)`).
+- Every row merges its descendants into a single semantics node with a full
+  content description — the TalkBack-traversable guarantee that justified
+  choosing a list over a canvas; rows whose `target_id` is 0 (a soft-deleted
+  intermediate the server degrades) render identically but aren't tappable,
+  and blank names fall back to the backend's own "Unknown" convention.
+- Entry points: the drawer's `network` route (no longer a
+  `PlaceholderScreen` — that composable and its `coming_soon` string were
+  deleted) and an "Explore connections" item on the contact detail's ⋮ menu.
+
+**Deliberate exclusions restated for the parity matrix:** activity nodes are
+NOT in the v1 list (the contact timeline answers "what happened with this
+person" better on a phone, and adding them would force a fall back to
+`/graph` and the whole layout problem). The radial visualization is deferred,
+not rejected. Pan/zoom/hover are replaced by the list, not ported.
+
+**Review pass (2026-08-15):** an independent review found four real defects,
+all fixed with regression tests — a dead error path (a starting contact with
+no VCardUID set `errorRes` the screen never read), an out-of-order traversal
+race (an uncancelled coroutine per call meant the last-to-complete request
+won; a stored `connectionsJob` is now cancelled before every relaunch and a
+delay-based test pins it), ghost rows rendering blank names (fixed via the
+"Unknown" fallback), and stale chains surviving a failed depth/relation
+change (chains are cleared on error).
+
+**Test coverage:** `ApiClientTest` (query building, parse, absent/null chains,
+404), `GraphRepositoryImplTest` (pass-through + the circle→member map),
+`NetworkViewModelTest` (13 cases: grouping, self-contact default, empty graph,
+relation pass-through/clear, circle filtering, no-uid error, search exclusion,
+from-selection, circle-failure isolation, the race, stale-clear), and
+`NetworkScreenTest` (Robolectric: depth grouping, empty state, the
+content-description + click-action accessibility assertions, tap-through,
+depth chip, relation apply, circle select, missing-from prompt, picker
+search/select/empty). Hand-verified per `/CLAUDE.md` (the null-chains and
+accessibility tests were each confirmed to fail against a reintroduced bug).
+
+**Gate:** `testDebugUnitTest`/`lintDebug`/`assembleDebug` all green.
+
+**On-device verification: outstanding** — no device in the build environment
+(same gap as M11/M17/M19/M20). The traversal endpoint, name resolution and
+inverse application are all server-side and already tested there; what remains
+is a visual pass on the Pixel 8a.

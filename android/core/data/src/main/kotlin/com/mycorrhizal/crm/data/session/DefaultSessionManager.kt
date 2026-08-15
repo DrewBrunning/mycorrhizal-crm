@@ -20,12 +20,18 @@ class DefaultSessionManager(
     private var cachedToken: String? = null
     private var cachedServerUrl: String? = null
     private val sessionState = MutableStateFlow(SessionState())
+    private val hydrated = kotlinx.coroutines.CompletableDeferred<Unit>()
 
     /** Load both cached values and surface the initial session. */
     suspend fun init() {
         cachedToken = tokenStorage.load()
         cachedServerUrl = prefsStorage.loadServerUrl()
         refreshState()
+        hydrated.complete(Unit)
+    }
+
+    override suspend fun awaitHydrated() {
+        hydrated.await()
     }
 
     override fun bearerToken(): String? = cachedToken
