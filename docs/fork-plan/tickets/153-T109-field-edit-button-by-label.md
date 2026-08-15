@@ -85,3 +85,12 @@ lives inside the content box they already scope to — their `getByLabel('Edit')
 pencil is now *next* to the value, so the gap is far under the bound). Not browser-hand-verified in this
 session — pinned at the unit level only.
 
+**CI follow-up (2026-08-15):** the T74 e2e guards in `contactDetailTwoColumn.spec.ts` broke on CI because
+this ticket's pencil move invalidated their "action-cluster distance" proxies. The `fieldRow` helper there
+now climbs three levels (caption → label row → content box → row), the below-lg single-column guard now
+asserts *row width* (~672px single vs ~330px half at 1024, threshold 500) instead of edit-button distance,
+and the header comment records the change. `linkFieldTypeEditors.spec.ts`'s helper was left at two levels —
+it only hovers and clicks the Edit button, both of which still resolve from the content box. Full 182-test
+e2e suite green against the Docker test stack.
+
+

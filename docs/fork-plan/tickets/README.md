@@ -210,7 +210,11 @@ idea, not a bug — filed in Deferred → Feature ideas instead, not ranked here
 > state (it was firing recomposition on every scroll); the Android merge search now shows the hidden-match
 > caption even when the strict filter hid *every* server result (web parity); a T111 sticky-container
 > regression test was added; and `useConnections`' latent `depth ?? 3` fallback was aligned to the panel's
-> new depth-1 default.
+> new depth-1 default. **CI follow-up (same day):** the T74 e2e guards in `contactDetailTwoColumn.spec.ts`
+> were failing on CI because T109's pencil move and the Connections `fullWidth` removal invalidated their
+> geometry proxies — the below-lg guard now asserts row width, the Connections section card asserts equal
+> half-columns, and the `fieldRow` helper climbs one more level; full 182-test e2e suite green against the
+> Docker test stack.
 
 ### Backend
 
