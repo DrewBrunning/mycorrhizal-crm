@@ -1,0 +1,129 @@
+name: Android APK Build
+
+# Build a ready-to-install APK for an arbitrary ref on demand, so Android
+# changes can be handed to a tester or sideloaded without a local toolchain.
+# Pick the ref and variant from the Actions tab -> "Run workflow".
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Git ref to build: branch, tag, or commit SHA'
+        required: true
+        default: 'main'
+        type: string
+      variant:
+        description: 'Build variant (debug APKs are self-signed and installable; release needs the signing secrets)'
+        required: true
+        default: 'debug'
+        type: choice
+        options:
+          - debug
+          - release
+
+env:
+  # The app has no local.properties, so the SDK path must come from the
+  # workflow environment. GitHub-hosted ubuntu runners install the SDK at this
+  # location and set ANDROID_HOME to it; state it explicitly since nothing in
+  # the repo does. If the runner image ever moves it, this is the knob.
+  ANDROID_HOME: /usr/local/lib/android/sdk
+
+jobs:
+  build-apk:
+    permissions:
+      contents: read
+    name: Build APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # The ref input, not the dispatch branch: github.ref on a manual run
+          # points at whichever branch the workflow was launched from, which is
+          # not necessarily the ref being built. Same trap as docker-publish.
+          # fetch-depth 0 so an arbitrary commit SHA (not just a branch tip)
+          # resolves under a shallow clone.
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # Same gate as android-tests.yml, run first so a broken ref fails here
+      # instead of producing a bad APK.
+      - name: Unit + integration tests (incl. Robolectric)
+        working-directory: android
+        run: ./gradlew testDebugUnitTest
+
+      - name: Lint
+        working-directory: android
+        run: ./gradlew lintDebug
+
+      # Release APKs are not installable without a real signature. The keystore
+      # itself never enters the repo; it is stored as a base64 secret and
+      # materialized on the runner. app/build.gradle.kts (M5 section 7) reads
+      # the four SIGNING_* env names below, and requires all four together --
+      # a partial set silently produces an unsigned (uninstallable) release
+      # APK, so fail here instead of uploading one.
+      - name: Materialize release keystore
+        if: inputs.variant == 'release'
+        id: keystore
+        env:
+          SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          missing=""
+          for var in SIGNING_KEYSTORE_BASE64 SIGNING_STORE_PASSWORD SIGNING_KEY_ALIAS SIGNING_KEY_PASSWORD; do
+            if [ -z "${!var}" ]; then
+              missing="$missing $var"
+            fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Release build requested but signing secrets are incomplete. Missing:$missing"
+            echo "::error::All four signing secrets must be set (SIGNING_KEYSTORE_BASE64, SIGNING_STORE_PASSWORD, SIGNING_KEY_ALIAS, SIGNING_KEY_PASSWORD), or pick the debug variant."
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP"
+          printf '%s' "$SIGNING_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/keystore.jks"
+          echo "store_file=$RUNNER_TEMP/keystore.jks" >> "$GITHUB_OUTPUT"
+
+      - name: Assemble debug APK
+        if: inputs.variant == 'debug'
+        working-directory: android
+        run: ./gradlew assembleDebug
+
+      - name: Assemble release APK
+        if: inputs.variant == 'release'
+        working-directory: android
+        env:
+          SIGNING_STORE_FILE: ${{ steps.keystore.outputs.store_file }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: ./gradlew assembleRelease
+
+      # Artifact names cannot contain '/', so sanitize the ref in a shell step
+      # (GitHub's expression language has no replace() function).
+      - name: Compute artifact name
+        id: artifact-name
+        env:
+          REF: ${{ inputs.ref }}
+        run: |
+          safe="${REF//\//-}"
+          echo "name=mycorrhizal-crm-${{ inputs.variant }}-${safe}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifact-name.outputs.name }}
+          path: android/app/build/outputs/apk/${{ inputs.variant }}/*.apk
+          if-no-files-found: error
