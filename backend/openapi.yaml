@@ -110,7 +110,13 @@ paths:
       description: >
         Only registered when OIDC_ENABLED=true. Sets three httpOnly cookies
         (oidc_state, oidc_nonce, oidc_pkce) and 302-redirects to the
-        provider's authorization endpoint.
+        provider's authorization endpoint. With ?client=android, also sets an
+        oidc_client cookie so the callback returns the token to the native
+        app's deep link instead of the web SPA (M6 §4).
+      parameters:
+        - name: client
+          in: query
+          schema: { type: string, enum: [android], description: "When present and equal to android, the callback delivers the JWT via the mycorrhizal://oidc/callback deep link." }
       responses:
         "302":
           description: Redirect to the provider's authorization URL.
@@ -124,8 +130,12 @@ paths:
       description: >
         Only registered when OIDC_ENABLED=true. Exchanges the code, verifies
         the ID token, provisions/finds the user and 302-redirects to / (or to
-        /login?error=… on any failure). Sets the auth_token and id_token
-        cookies on success.
+        /login?error=… on any failure), setting the auth_token and id_token
+        cookies on success. When the flow was started with ?client=android
+        (oidc_client cookie), success instead redirects to
+        mycorrhizal://oidc/callback?token=…&language=…&date_format=… and sets
+        no cookies; failures redirect to the same deep link with error=…
+        (M6 §4). state/nonce/PKCE are enforced identically for both flows.
       parameters:
         - name: code
           in: query
@@ -140,7 +150,7 @@ paths:
           schema: { type: string }
       responses:
         "302":
-          description: Redirect to / (success) or /login?error=… (failure).
+          description: Redirect to / (success) or /login?error=… (failure); the android flow uses the mycorrhizal://oidc/callback deep link for both.
 
   # --- Public auth ---
   /register:
@@ -7124,7 +7134,14 @@ components:
         birthday: { type: string, description: "ISO YYYY-MM-DD or year-less --MM-DD." }
         org: { type: string }
         photo: { type: string }
-        photo_thumbnail: { type: string, description: "Base64 data URL of the thumbnail." }
+        photo_thumbnail:
+          type: string
+          description: >
+            M6: relative URL to the contact's profile-picture endpoint
+            (GET /contacts/{id}/profile_picture), preferring ?thumbnail=true
+            when a base64 thumbnail is stored. Omitted entirely when the
+            contact has no photo. Never the raw base64 data URI or a legacy
+            disk-file name.
         archived: { type: boolean }
         deleted:
           type: boolean
@@ -7174,7 +7191,14 @@ components:
         passthrough:
           $ref: "#/components/schemas/Passthrough"
         photo: { type: string }
-        photo_thumbnail: { type: string }
+        photo_thumbnail:
+          type: string
+          description: >
+            M6: relative URL to the contact's profile-picture endpoint
+            (GET /contacts/{id}/profile_picture), preferring ?thumbnail=true
+            when a base64 thumbnail is stored. Omitted entirely when the
+            contact has no photo. The Card.Media photo entry's uri carries
+            the same URL (full-photo variant) on this response.
         archived: { type: boolean }
         notes: { type: array, items: { type: object } }
         activities: { type: array, items: { type: object } }
@@ -9207,7 +9231,13 @@ components:
       properties:
         id: { type: string }
         kind: { type: string, description: "photo|logo|sound (Media) or directory|entry (Directories); unset for single-purpose Resource fields." }
-        uri: { type: string }
+        uri:
+          type: string
+          description: >
+            M6: on contact READ responses, a Media entry with kind=photo
+            carries a relative URL to GET /contacts/{id}/profile_picture
+            (full-photo variant) instead of a data URI. Persisted/exported
+            Cards and Media entries of other kinds keep their original value.
         mediaType: { type: string }
         label: { type: string }
         contexts: { type: array, items: { type: string } }

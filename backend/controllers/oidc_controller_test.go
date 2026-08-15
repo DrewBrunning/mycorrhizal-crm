@@ -99,6 +99,53 @@ func TestOIDCLoginHandler(t *testing.T) {
 	assert.NotEmpty(t, q.Get("code_challenge"))
 }
 
+// TestOIDCLoginHandler_AndroidClientCookie pins M6 §4's login half: only
+// ?client=android sets the oidc_client cookie (the callback's flag for the
+// deep-link return), the other three cookies are always set, and the
+// client=android marker must NOT leak into the provider authorization URL.
+func TestOIDCLoginHandler_AndroidClientCookie(t *testing.T) {
+	provider := newFakeOIDCProviderForLogout(t, "")
+	cfg := &config.Config{CookieDomain: "", CookieSecure: false}
+
+	_, router := setupRouter()
+	router.GET("/login", OIDCLoginHandler(provider, cfg))
+
+	req, _ := http.NewRequest("GET", "/login?client=android", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusFound, w.Code)
+
+	clientCookie := findCookie(w.Result().Cookies(), "oidc_client")
+	require.NotNil(t, clientCookie, "client=android must set the oidc_client cookie")
+	assert.Equal(t, "android", clientCookie.Value)
+	for _, name := range []string{"oidc_state", "oidc_nonce", "oidc_pkce"} {
+		require.NotNil(t, findCookie(w.Result().Cookies(), name), "%s cookie must still be set", name)
+	}
+
+	loc := w.Header().Get("Location")
+	parsedLoc, err := url.Parse(loc)
+	require.NoError(t, err)
+	assert.NotEqual(t, "android", parsedLoc.Query().Get("client"),
+		"the client=android marker must not be forwarded to the provider")
+}
+
+func TestOIDCLoginHandler_NoClientCookieWithoutAndroidParam(t *testing.T) {
+	provider := newFakeOIDCProviderForLogout(t, "")
+	cfg := &config.Config{CookieDomain: "", CookieSecure: false}
+
+	_, router := setupRouter()
+	router.GET("/login", OIDCLoginHandler(provider, cfg))
+
+	req, _ := http.NewRequest("GET", "/login?client=web", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusFound, w.Code)
+	assert.Nil(t, findCookie(w.Result().Cookies(), "oidc_client"),
+		"any value other than android must keep the default web flow")
+}
+
 // --- fakeCallbackIDP: a full OpenID Provider (discovery + JWKS + /token)
 // backed by httptest.Server, issuing real RS256-signed ID tokens verified by
 // go-oidc over the wire. Replicated here (package controllers) from
@@ -231,6 +278,17 @@ func callbackRequest(cookies map[string]string, query url.Values) *http.Request 
 
 func fullCookieSet(state, nonce, pkce string) map[string]string {
 	return map[string]string{"oidc_state": state, "oidc_nonce": nonce, "oidc_pkce": pkce}
+}
+
+// androidCookieSet is fullCookieSet plus M6 §4's oidc_client=android cookie,
+// the flag that routes the callback to the app's deep link.
+func androidCookieSet(state, nonce, pkce string) map[string]string {
+	return map[string]string{
+		"oidc_state":  state,
+		"oidc_nonce":  nonce,
+		"oidc_pkce":   pkce,
+		"oidc_client": "android",
+	}
 }
 
 func assertRedirectsTo(t *testing.T, w *httptest.ResponseRecorder, path string) {
@@ -534,6 +592,115 @@ func TestOIDCCallbackHandler_SuccessAutoProvisionsNewUser(t *testing.T) {
 	authCookie := findCookie(w.Result().Cookies(), "auth_token")
 	require.NotNil(t, authCookie)
 	assert.NotEmpty(t, authCookie.Value)
+}
+
+// --- M6 §4: the client=android callback returns the token via the app's
+// custom-scheme deep link instead of the web SPA's cookie + "/" redirect.
+
+func TestOIDCCallbackHandler_AndroidSuccessDeepLink(t *testing.T) {
+	idp := newFakeCallbackIDP(t, "test-client")
+	idp.IDTokenClaims["nonce"] = "matching-nonce"
+	idp.IDTokenClaims["sub"] = "existing-subject"
+
+	provider, cfg := newCallbackTestSetup(t, idp)
+
+	db, router := setupRouter()
+	router.GET("/callback", OIDCCallbackHandler(provider, cfg))
+
+	subject := "existing-subject"
+	providerURL := idp.Server.URL
+	linkedUser := models.User{
+		Username:     "android-linked",
+		Password:     "",
+		Email:        "android-linked@example.com",
+		OIDCSubject:  &subject,
+		OIDCProvider: &providerURL,
+		// Non-default values: the deep link must carry the user's real
+		// language/date_format, not the defaults or a hardcoded pair.
+		Language:   "de",
+		DateFormat: "us",
+	}
+	require.NoError(t, db.Create(&linkedUser).Error)
+
+	req := callbackRequest(androidCookieSet("good-state", "matching-nonce", "good-pkce"),
+		url.Values{"state": {"good-state"}, "code": {"auth-code"}})
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusFound, w.Code)
+	loc, err := url.Parse(w.Header().Get("Location"))
+	require.NoError(t, err)
+	assert.Equal(t, "mycorrhizal", loc.Scheme)
+	assert.Equal(t, "oidc", loc.Host)
+	assert.Equal(t, "/callback", loc.Path)
+
+	q := loc.Query()
+	token := q.Get("token")
+	require.NotEmpty(t, token, "the deep link must carry the JWT")
+	assert.Equal(t, 3, len(splitJWT(token)), "expected a well-formed JWT (header.payload.signature)")
+	assert.Equal(t, "de", q.Get("language"))
+	assert.Equal(t, "us", q.Get("date_format"))
+
+	// The native client cannot read a cookie set in a Custom Tab's browser
+	// context, so the android flow must NOT mint one.
+	assert.Nil(t, findCookie(w.Result().Cookies(), "auth_token"))
+	assert.Nil(t, findCookie(w.Result().Cookies(), "id_token"))
+
+	// One-time cookies (including oidc_client) are cleared like the web flow.
+	for _, name := range []string{"oidc_state", "oidc_nonce", "oidc_pkce", "oidc_client"} {
+		c := findCookie(w.Result().Cookies(), name)
+		require.NotNil(t, c, "expected %s cookie to be cleared", name)
+		assert.Equal(t, -1, c.MaxAge)
+	}
+}
+
+func TestOIDCCallbackHandler_AndroidProviderDeniedUsesDeepLink(t *testing.T) {
+	_, router := setupRouter()
+	cfg := &config.Config{}
+	router.GET("/callback", OIDCCallbackHandler(nil, cfg))
+
+	req := callbackRequest(androidCookieSet("s", "n", "p"), url.Values{"error": {"access_denied"}})
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	loc, err := url.Parse(w.Header().Get("Location"))
+	require.NoError(t, err)
+	assert.Equal(t, "mycorrhizal", loc.Scheme)
+	assert.Equal(t, "oidc_denied", loc.Query().Get("error"))
+}
+
+func TestOIDCCallbackHandler_AndroidStateMismatchUsesDeepLink(t *testing.T) {
+	_, router := setupRouter()
+	cfg := &config.Config{}
+	router.GET("/callback", OIDCCallbackHandler(nil, cfg))
+
+	// Same missing/cleared-cookie mechanics the web flow enforces, routed to
+	// the app's deep link instead of /login?error=… — state/nonce/PKCE are
+	// verified identically for both clients (M6 §4's test bar).
+	req := callbackRequest(androidCookieSet("cookie-state", "n", "p"), url.Values{"state": {"different-state"}, "code": {"c"}})
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	loc, err := url.Parse(w.Header().Get("Location"))
+	require.NoError(t, err)
+	assert.Equal(t, "mycorrhizal", loc.Scheme)
+	assert.Equal(t, "oidc_error", loc.Query().Get("error"))
+}
+
+func TestOIDCCallbackHandler_AndroidStillRequiresPKCE(t *testing.T) {
+	_, router := setupRouter()
+	cfg := &config.Config{}
+	router.GET("/callback", OIDCCallbackHandler(nil, cfg))
+
+	req := callbackRequest(map[string]string{"oidc_state": "s", "oidc_nonce": "n", "oidc_client": "android"},
+		url.Values{"state": {"s"}, "code": {"c"}})
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	loc, err := url.Parse(w.Header().Get("Location"))
+	require.NoError(t, err)
+	assert.Equal(t, "mycorrhizal", loc.Scheme)
+	assert.Equal(t, "oidc_error", loc.Query().Get("error"))
 }
 
 func splitJWT(s string) []string {

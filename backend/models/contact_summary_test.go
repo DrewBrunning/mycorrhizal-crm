@@ -1,9 +1,12 @@
 package models
 
 import (
+	"strings"
 	"testing"
 
 	"mycorrhizal/contactmodel"
+
+	"gorm.io/gorm"
 )
 
 // TestNewContactRecordResponse_PreservesPersistedCardOnlyData is the
@@ -64,5 +67,128 @@ func TestNewContactSummary_IncludesNickname(t *testing.T) {
 
 	if summary.Nickname != "Countess" {
 		t.Errorf("ContactSummary.Nickname = %q, want %q", summary.Nickname, "Countess")
+	}
+}
+
+// TestProfilePictureURL pins M6 §1's URL derivation (the response-shape
+// change): a base64 thumbnail yields the lightweight ?thumbnail=true variant,
+// a disk photo without a decodable thumbnail yields the full-photo variant,
+// and a contact with neither (or only a legacy filename thumbnail, which the
+// endpoint can no longer serve) yields "" — which the DTOs' omitempty turns
+// into an absent field.
+func TestProfilePictureURL(t *testing.T) {
+	const thumb = "data:image/jpeg;base64,Zm9v"
+	tests := []struct {
+		name            string
+		photo           string
+		photoThumbnail  string
+		preferThumbnail bool
+		want            string
+	}{
+		{"data thumb preferred", "", thumb, true, "/api/v1/contacts/7/profile_picture?thumbnail=true"},
+		{"data thumb, full variant", "", thumb, false, "/api/v1/contacts/7/profile_picture?thumbnail=true"},
+		{"disk photo preferred", "uuid_photo.jpg", "", true, "/api/v1/contacts/7/profile_picture"},
+		{"disk photo beats legacy thumb", "uuid_photo.jpg", "legacy.jpg", true, "/api/v1/contacts/7/profile_picture"},
+		{"legacy thumb only", "", "legacy.jpg", true, ""},
+		{"nothing", "", "", true, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := ProfilePictureURL(7, tt.photo, tt.photoThumbnail, tt.preferThumbnail); got != tt.want {
+				t.Errorf("ProfilePictureURL(%q, %q, %v) = %q, want %q", tt.photo, tt.photoThumbnail, tt.preferThumbnail, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestNewContactSummary_PhotoThumbnailIsURL pins that the list DTO carries the
+// M6 §1 profile-picture URL — never the raw base64 thumbnail it is derived
+// from (the query layer's side of this is pinned against the real migrated
+// schema in contact_photo_url_test.go, where GORM's column Select actually
+// runs).
+func TestNewContactSummary_PhotoThumbnailIsURL(t *testing.T) {
+	const thumb = "data:image/jpeg;base64,Zm9v"
+	c := &Contact{Model: gorm.Model{ID: 3}, Firstname: "Ada", PhotoThumbnail: thumb}
+
+	summary := NewContactSummary(c)
+
+	want := "/api/v1/contacts/3/profile_picture?thumbnail=true"
+	if summary.PhotoThumbnail != want {
+		t.Errorf("ContactSummary.PhotoThumbnail = %q, want %q", summary.PhotoThumbnail, want)
+	}
+	if strings.Contains(summary.PhotoThumbnail, "data:image") {
+		t.Errorf("ContactSummary.PhotoThumbnail still leaks the raw base64 thumbnail: %q", summary.PhotoThumbnail)
+	}
+}
+
+// TestNewContactRecordResponse_MediaPhotoURIIsURL pins the detail DTO's M6 §1
+// half: the top-level photo_thumbnail carries the thumbnail URL, and the
+// Card.Media photo entry's URI is rewritten to the relative profile-picture
+// URL (full-photo variant when a disk photo exists) rather than the data URI
+// the persisted Card carries.
+func TestNewContactRecordResponse_MediaPhotoURIIsURL(t *testing.T) {
+	const thumb = "data:image/jpeg;base64,Zm9v"
+	c := &Contact{
+		Model:          gorm.Model{ID: 9},
+		Firstname:      "Grace",
+		Photo:          "uuid_photo.jpg",
+		PhotoThumbnail: thumb,
+		Card: contactmodel.Card{
+			Name:  &contactmodel.Name{Components: []contactmodel.NameComponent{{Kind: "given", Value: "Grace"}}},
+			Media: []contactmodel.Resource{{Kind: "photo", URI: thumb, MediaType: "image/jpeg"}},
+		},
+	}
+
+	resp := NewContactRecordResponse(c, "", nil)
+
+	if resp.PhotoThumbnail != "/api/v1/contacts/9/profile_picture?thumbnail=true" {
+		t.Errorf("ContactRecordResponse.PhotoThumbnail = %q, want the thumbnail URL", resp.PhotoThumbnail)
+	}
+	if len(resp.Card.Media) != 1 || resp.Card.Media[0].Kind != "photo" {
+		t.Fatalf("ContactRecordResponse.Card.Media = %+v, want 1 photo entry", resp.Card.Media)
+	}
+	wantURI := "/api/v1/contacts/9/profile_picture"
+	if resp.Card.Media[0].URI != wantURI {
+		t.Errorf("Card.Media[0].URI = %q, want %q (full-photo variant, never the raw data URI)", resp.Card.Media[0].URI, wantURI)
+	}
+
+	// The persisted Card must be untouched: only the READ response rewrites
+	// the media URI (exporters/CardDAV still need the self-contained data URI).
+	if c.Card.Media[0].URI != thumb {
+		t.Errorf("persisted Card.Media[0].URI was mutated to %q; the read-path rewrite must not write back", c.Card.Media[0].URI)
+	}
+}
+
+// TestNewContactRecordResponse_UnbackedMediaPhotoKept is the regression test
+// for a review-pass finding: a Card.Media photo entry that is NOT backed by a
+// flat Photo/PhotoThumbnail (e.g. one imported directly into Card.Media while
+// photoDir was unavailable, so applyMedia never bridged it to flat) has no
+// profile-picture endpoint to point at. Its URI must be left untouched — the
+// original imported data URI — rather than blanked to the empty string by the
+// M6 rewrite.
+func TestNewContactRecordResponse_UnbackedMediaPhotoKept(t *testing.T) {
+	const importedPhoto = "data:image/png;base64,QUJDRA=="
+	c := &Contact{
+		Model:     gorm.Model{ID: 11},
+		Firstname: "Imported",
+		Card: contactmodel.Card{
+			Name: &contactmodel.Name{Components: []contactmodel.NameComponent{{Kind: "given", Value: "Imported"}}},
+			Media: []contactmodel.Resource{
+				{Kind: "photo", URI: importedPhoto, MediaType: "image/png"},
+				{Kind: "logo", URI: "data:image/png;base64,TE9HTw==", MediaType: "image/png"},
+			},
+		},
+	}
+
+	resp := NewContactRecordResponse(c, "", nil)
+
+	if len(resp.Card.Media) != 2 {
+		t.Fatalf("ContactRecordResponse.Card.Media = %+v, want both entries preserved", resp.Card.Media)
+	}
+	if resp.Card.Media[0].Kind != "photo" || resp.Card.Media[0].URI != importedPhoto {
+		t.Errorf("unbacked photo entry = %+v, want its imported URI %q left untouched", resp.Card.Media[0], importedPhoto)
+	}
+	if resp.Card.Media[1].Kind != "logo" || resp.Card.Media[1].URI != "data:image/png;base64,TE9HTw==" {
+		t.Errorf("non-photo media entry was damaged: %+v", resp.Card.Media[1])
 	}
 }

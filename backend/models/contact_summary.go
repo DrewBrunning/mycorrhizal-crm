@@ -1,10 +1,43 @@
 package models
 
 import (
+	"fmt"
+	"strings"
+
 	"mycorrhizal/contactmodel"
 
 	"gorm.io/gorm"
 )
+
+// ProfilePictureURL returns the relative URL to the contact's existing
+// profile-picture endpoint (GET /api/v1/contacts/:id/profile_picture) for a
+// contact that has a photo, or "" when it has none. It is M6 §1's
+// response-shape change: the list/detail photo fields carry this URL instead
+// of the raw stored value (a base64 data URI or a legacy disk-file name), so
+// a native client can hand it straight to an authenticated image loader
+// (docs/fork-plan/tickets/85-M6-photo-url-user-prefs-oidc.md §1). The
+// endpoint itself is unchanged and still serves raw bytes.
+//
+// preferThumbnail selects the lightweight ?thumbnail=true variant when a
+// base64 data-URL thumbnail is stored. The thumbnail endpoint can only serve
+// that base64 thumbnail (legacy filename thumbnails and full-size disk photos
+// both live behind the no-param variant), so whenever preferThumbnail is set
+// but no decodable thumbnail exists, the full-photo variant is used instead.
+// When neither a disk photo nor a decodable thumbnail exists, "" is returned
+// and the caller's omitempty drops the field entirely, per the ticket's
+// "absent when none does".
+func ProfilePictureURL(id uint, photo, photoThumbnail string, preferThumbnail bool) string {
+	if preferThumbnail && strings.HasPrefix(photoThumbnail, "data:") {
+		return fmt.Sprintf("/api/v1/contacts/%d/profile_picture?thumbnail=true", id)
+	}
+	if photo != "" {
+		return fmt.Sprintf("/api/v1/contacts/%d/profile_picture", id)
+	}
+	if strings.HasPrefix(photoThumbnail, "data:") {
+		return fmt.Sprintf("/api/v1/contacts/%d/profile_picture?thumbnail=true", id)
+	}
+	return ""
+}
 
 // ContactSummaryColumns is the fixed set of columns needed to build a
 // ContactSummary (list-view) response. Selecting only these avoids the
@@ -58,18 +91,22 @@ var ContactSummaryColumns = []string{
 // consumer needs circles on the list endpoint, it should read from
 // circle_members (a join or a second query), not resurrect this field.
 type ContactSummary struct {
-	ID             uint   `json:"id"`
-	UID            string `json:"uid"`
-	Firstname      string `json:"firstname"`
-	Lastname       string `json:"lastname"`
-	Nickname       string `json:"nickname"`
-	FN             string `json:"fn"`
-	PrimaryEmail   string `json:"primary_email"`
-	PrimaryPhone   string `json:"primary_phone"`
-	Birthday       string `json:"birthday"`
-	Org            string `json:"org"`
-	Photo          string `json:"photo"`
-	PhotoThumbnail string `json:"photo_thumbnail"`
+	ID           uint   `json:"id"`
+	UID          string `json:"uid"`
+	Firstname    string `json:"firstname"`
+	Lastname     string `json:"lastname"`
+	Nickname     string `json:"nickname"`
+	FN           string `json:"fn"`
+	PrimaryEmail string `json:"primary_email"`
+	PrimaryPhone string `json:"primary_phone"`
+	Birthday     string `json:"birthday"`
+	Org          string `json:"org"`
+	Photo        string `json:"photo"`
+	// PhotoThumbnail is M6 §1's response-shape change: it carries a relative
+	// URL to the profile-picture thumbnail endpoint (ProfilePictureURL) when
+	// a photo exists, and is omitted (omitempty) when none does — never the
+	// raw stored base64 data URI or legacy disk-file name.
+	PhotoThumbnail string `json:"photo_thumbnail,omitempty"`
 	Archived       bool   `json:"archived"`
 	// Deleted is the T17 change-feed tombstone marker, set only by the
 	// ?since= feed path (which reads rows with Unscoped()). A plain list
@@ -98,7 +135,7 @@ func NewContactSummary(c *Contact) ContactSummary {
 		Birthday:       c.Birthday,
 		Org:            c.Org,
 		Photo:          c.Photo,
-		PhotoThumbnail: c.PhotoThumbnail,
+		PhotoThumbnail: ProfilePictureURL(c.ID, c.Photo, c.PhotoThumbnail, true),
 		Archived:       c.Archived,
 	}
 }
@@ -181,16 +218,19 @@ func (in *ContactRecordInput) ToRecord() *contactmodel.Record {
 // same way (UID/ETag surfaced as their own fields rather than the
 // Card.UID/etag columns).
 type ContactRecordResponse struct {
-	ID             uint                     `json:"id"`
-	UID            string                   `json:"uid"`
-	ETag           string                   `json:"etag"`
-	Gender         string                   `json:"gender"`
-	Card           contactmodel.Card        `json:"card"`
-	CRM            contactmodel.CRMEnvelope `json:"crm"`
-	Passthrough    contactmodel.Passthrough `json:"passthrough,omitempty"`
-	Photo          string                   `json:"photo"`
-	PhotoThumbnail string                   `json:"photo_thumbnail"`
-	Archived       bool                     `json:"archived"`
+	ID          uint                     `json:"id"`
+	UID         string                   `json:"uid"`
+	ETag        string                   `json:"etag"`
+	Gender      string                   `json:"gender"`
+	Card        contactmodel.Card        `json:"card"`
+	CRM         contactmodel.CRMEnvelope `json:"crm"`
+	Passthrough contactmodel.Passthrough `json:"passthrough,omitempty"`
+	Photo       string                   `json:"photo"`
+	// PhotoThumbnail is M6 §1's response-shape change, exactly as on
+	// ContactSummary: a relative URL to the profile-picture thumbnail
+	// endpoint when a photo exists, omitted (omitempty) when none does.
+	PhotoThumbnail string `json:"photo_thumbnail,omitempty"`
+	Archived       bool   `json:"archived"`
 
 	// Preserved from the existing GetContact/GetContacts preload-all
 	// behavior (Gap: "keep the existing preload behavior for backward
@@ -218,7 +258,7 @@ type ContactRecordResponse struct {
 // relationship-graph projection (WP-80); pass nil to skip it.
 func NewContactRecordResponse(c *Contact, photoDir string, db *gorm.DB) ContactRecordResponse {
 	record := RecordForContact(c, photoDir, db)
-	return ContactRecordResponse{
+	resp := ContactRecordResponse{
 		ID:             c.ID,
 		UID:            record.UID,
 		ETag:           record.ETag,
@@ -227,10 +267,43 @@ func NewContactRecordResponse(c *Contact, photoDir string, db *gorm.DB) ContactR
 		CRM:            record.Envelope,
 		Passthrough:    record.Passthrough,
 		Photo:          c.Photo,
-		PhotoThumbnail: c.PhotoThumbnail,
+		PhotoThumbnail: ProfilePictureURL(c.ID, c.Photo, c.PhotoThumbnail, true),
 		Archived:       c.Archived,
 		Notes:          c.Notes,
 		Activities:     c.Activities,
 		Reminders:      c.Reminders,
 	}
+
+	// M6 §1: the Card.Media photo entry's URI carries the relative
+	// profile-picture URL too, so a client rendering the detail avatar from
+	// Card.Media can hand it to an image loader. Only the READ response is
+	// rewritten — the persisted Card (which feeds CardDAV and the VCF/
+	// JSContact exporters) keeps its self-contained data URI. The full-photo
+	// variant (no ?thumbnail=true) is preferred so a detail avatar gets a
+	// real photo rather than the 48×48 thumbnail.
+	//
+	// An entry is rewritten ONLY when a URL actually exists: a photo entry
+	// that is not backed by a flat Photo/PhotoThumbnail (e.g. one imported
+	// into Card.Media directly while photoDir was unavailable) has no
+	// profile-picture endpoint to point at — its URI is left untouched rather
+	// than blanked, so the imported photo stays visible to clients.
+	//
+	// The slice is COPIED before rewriting: RecordForContact returns a struct
+	// copy whose Media slice still shares its backing array with the stored
+	// Card, so an in-place rewrite would silently corrupt the persisted card
+	// (exports would then carry a relative URL no external consumer can
+	// fetch, and the next web PUT would round-trip it). The copy detaches the
+	// response's media from the stored card.
+	media := make([]contactmodel.Resource, len(resp.Card.Media))
+	copy(media, resp.Card.Media)
+	for i := range media {
+		if media[i].Kind == "photo" {
+			if u := ProfilePictureURL(c.ID, c.Photo, c.PhotoThumbnail, false); u != "" {
+				media[i].URI = u
+			}
+		}
+	}
+	resp.Card.Media = media
+
+	return resp
 }
