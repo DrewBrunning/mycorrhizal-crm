@@ -80,7 +80,7 @@ func OIDCLoginHandler(provider *services.OIDCProvider, cfg *config.Config) gin.H
 		// by appending client=android to a callback URL they cannot otherwise
 		// authenticate.
 		if c.Query("client") == "android" {
-			c.SetCookie("oidc_client", "android", 600, "/api/v1/auth/oidc/callback", cfg.CookieDomain, cfg.CookieSecure, true)
+			c.SetCookie("oidc_client", "android", 600, "/api/v1/auth/oidc/callback", cfg.CookieDomain, true, true)
 		}
 
 		c.Redirect(http.StatusFound, provider.BuildAuthURL(state, nonce, pkceVerifier))
