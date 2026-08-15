@@ -111,10 +111,19 @@ jobs:
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
         run: ./gradlew assembleRelease
 
+      # Artifact names cannot contain '/', so sanitize the ref in a shell step
+      # (GitHub's expression language has no replace() function).
+      - name: Compute artifact name
+        id: artifact-name
+        env:
+          REF: ${{ inputs.ref }}
+        run: |
+          safe="${REF//\//-}"
+          echo "name=mycorrhizal-crm-${{ inputs.variant }}-${safe}" >> "$GITHUB_OUTPUT"
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          # Ref sanitized because artifact names cannot contain '/'.
-          name: mycorrhizal-crm-${{ inputs.variant }}-${{ replace(inputs.ref, '/', '-') }}
+          name: ${{ steps.artifact-name.outputs.name }}
           path: android/app/build/outputs/apk/${{ inputs.variant }}/*.apk
           if-no-files-found: error
