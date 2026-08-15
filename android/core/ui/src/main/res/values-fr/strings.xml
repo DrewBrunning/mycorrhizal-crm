@@ -22,7 +22,6 @@
     <string name="nav_network">Réseau</string>
     <string name="nav_shares">Partages</string>
     <string name="nav_households">Foyers</string>
-    <string name="coming_soon">%1$s — disponible dans une phase ultérieure</string>
     <string name="cd_menu">Menu</string>
     <string name="cd_back">Retour</string>
 
@@ -559,6 +558,26 @@
     <string name="relationships_delete_confirm">Supprimer la relation avec %1$s ?</string>
     <string name="relationships_reject_title">Rejeter la suggestion ?</string>
     <string name="relationships_reject_confirm">Rejeter la relation suggérée avec %1$s ?</string>
+
+    <!-- Network graph (M14) -->
+    <string name="contact_network">Explorer les connexions</string>
+    <string name="network_start_from">Commencer depuis</string>
+    <string name="network_change">Changer</string>
+    <string name="network_pick_prompt">Choisissez un contact de départ pour explorer son réseau.</string>
+    <string name="network_pick_button">Choisir un contact</string>
+    <string name="network_pick_title">Commencer depuis…</string>
+    <string name="network_search_contacts">Rechercher des contacts</string>
+    <string name="network_pick_no_results">Saisissez du texte pour rechercher un contact.</string>
+    <string name="network_depth">Profondeur</string>
+    <string name="network_direct">Direct</string>
+    <string name="network_hops">à %1$d sauts</string>
+    <string name="network_relation">Relation</string>
+    <string name="network_relation_hint">p. ex. sibling_of ou brother</string>
+    <string name="network_relation_apply">Appliquer</string>
+    <string name="network_all_circles">Tous les cercles</string>
+    <string name="network_empty">Aucune connexion trouvée. Ajoutez des relations pour construire un réseau ici.</string>
+    <string name="network_row_description">%1$s — %2$s</string>
+    <string name="network_error_no_vcard_uid">Le contact n\'a pas d\'UID VCard</string>
 
     <!-- Contact shares (M15) -->
     <string name="shares_title">Partages de contacts</string>

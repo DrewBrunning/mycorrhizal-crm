@@ -3,7 +3,6 @@ package com.mycorrhizal.crm
 import androidx.annotation.StringRes
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -17,28 +16,22 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.HomeWork
 import androidx.compose.material.icons.outlined.IosShare
 import androidx.compose.material.icons.outlined.Label
-import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.Icon
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -73,6 +66,7 @@ import com.mycorrhizal.crm.feature.households.HouseholdDetailScreen
 import com.mycorrhizal.crm.feature.households.HouseholdsScreen
 import com.mycorrhizal.crm.feature.imports.ImportContactsScreen
 import com.mycorrhizal.crm.feature.imports.VcfImportScreen
+import com.mycorrhizal.crm.feature.network.NetworkScreen
 import com.mycorrhizal.crm.feature.relationships.RelationshipsScreen
 import com.mycorrhizal.crm.feature.settings.CustomLinkActionsScreen
 import com.mycorrhizal.crm.feature.settings.NotificationChannelsScreen
@@ -336,6 +330,7 @@ private fun MainScaffold(darkTheme: Boolean) {
                     onViewPreferences = { id -> navController.navigate("contacts/$id/preferences") },
                     onViewAgenda = { id -> navController.navigate("contacts/$id/agenda") },
                     onViewPrep = { id -> navController.navigate("contacts/$id/prep") },
+                    onExploreConnections = { id -> navController.navigate("contacts/$id/network") },
                     onShareContact = { uid ->
                         if (uid.isNotBlank()) {
                             navController.navigate("contacts/$contactId/share?uid=${Uri.encode(uid)}")
@@ -632,7 +627,26 @@ private fun MainScaffold(darkTheme: Boolean) {
                     onBack = { navController.popBackStack() },
                 )
             }
-            composable("network") { PlaceholderScreen(R.string.nav_network) { scope.launch { drawerState.open() } } }
+            // M14: the ego-centric network list (drawer entry — "start from"
+            // defaults to the self contact, else a picker; the contact-detail
+            // entry below passes the viewed contact as the starting point).
+            composable("network") {
+                NetworkScreen(
+                    showMenu = true,
+                    onMenuClick = { scope.launch { drawerState.open() } },
+                    onOpenContact = { id -> navController.navigate("contacts/$id") },
+                )
+            }
+            composable(
+                route = "contacts/{contactId}/network",
+                arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            ) {
+                NetworkScreen(
+                    showMenu = false,
+                    onBack = { navController.popBackStack() },
+                    onOpenContact = { id -> navController.navigate("contacts/$id") },
+                )
+            }
             composable("households") {
                 HouseholdsScreen(
                     onMenuClick = { scope.launch { drawerState.open() } },
@@ -651,41 +665,6 @@ private fun MainScaffold(darkTheme: Boolean) {
     }
     }
 }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun PlaceholderScreen(
-    @StringRes titleRes: Int,
-    onMenuClick: () -> Unit = {},
-) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                navigationIcon = {
-                    IconButton(onClick = onMenuClick) {
-                        Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
-                    }
-                },
-                title = {
-                    Text(stringResource(titleRes), style = MaterialTheme.typography.titleLarge)
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
-            )
-        },
-    ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-            Text(
-                text = stringResource(R.string.coming_soon, stringResource(titleRes)),
-                style = MaterialTheme.typography.bodyLarge,
-            )
-        }
-    }
 }
 
 /** Launches the native Contacts QuickContact card for an imported contact (§7.5.4). */

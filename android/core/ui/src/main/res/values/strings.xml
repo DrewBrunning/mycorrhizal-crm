@@ -22,7 +22,6 @@
     <string name="nav_households">Households</string>
     <string name="nav_circles">Circles</string>
     <string name="nav_tags">Tags</string>
-    <string name="coming_soon">%1$s — coming in a later phase</string>
     <string name="cd_menu">Menu</string>
     <string name="cd_back">Back</string>
 
@@ -557,6 +556,26 @@
     <string name="relationships_delete_confirm">Delete the relationship with %1$s?</string>
     <string name="relationships_reject_title">Reject suggestion?</string>
     <string name="relationships_reject_confirm">Reject the suggested relationship with %1$s?</string>
+
+    <!-- Network graph (M14) -->
+    <string name="contact_network">Explore connections</string>
+    <string name="network_start_from">Start from</string>
+    <string name="network_change">Change</string>
+    <string name="network_pick_prompt">Choose a starting contact to explore their network.</string>
+    <string name="network_pick_button">Choose contact</string>
+    <string name="network_pick_title">Start from…</string>
+    <string name="network_search_contacts">Search contacts</string>
+    <string name="network_pick_no_results">Type to search for a contact.</string>
+    <string name="network_depth">Depth</string>
+    <string name="network_direct">Direct</string>
+    <string name="network_hops">%1$d hops away</string>
+    <string name="network_relation">Relation</string>
+    <string name="network_relation_hint">e.g. sibling_of or brother</string>
+    <string name="network_relation_apply">Apply</string>
+    <string name="network_all_circles">All circles</string>
+    <string name="network_empty">No connections found. Add relationships to build a network here.</string>
+    <string name="network_row_description">%1$s — %2$s</string>
+    <string name="network_error_no_vcard_uid">Contact has no VCard UID</string>
 
     <!-- Contact shares (M15) -->
     <string name="shares_title">Contact shares</string>

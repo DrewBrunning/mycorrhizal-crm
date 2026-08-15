@@ -64,6 +64,7 @@ import com.mycorrhizal.crm.model.network.DashboardResponse
 import com.mycorrhizal.crm.model.network.Gift
 import com.mycorrhizal.crm.model.network.GiftInput
 import com.mycorrhizal.crm.model.network.GiftsPage
+import com.mycorrhizal.crm.model.network.GraphConnectionsResponse
 import com.mycorrhizal.crm.model.network.Household
 import com.mycorrhizal.crm.model.network.HouseholdDetailResponse
 import com.mycorrhizal.crm.model.network.HouseholdInput
@@ -1120,6 +1121,33 @@ class ApiClient(
             moshi.adapter(AuditUndoResponse::class.java).fromJson(body)
         }
 
+    // M14: the ego-centric network graph. `GET /graph/connections` (T10's
+    // traversal) returns names already resolved and inverses already applied,
+    // so this client needs no name resolution of its own — the design decision
+    // that makes the mobile view a list rather than a force-graph.
+
+    /**
+     * GET /api/v1/graph/connections — every contact reachable from [from] (a
+     * Contact.VCardUID, NOT a numeric id) within [depth] hops, each carrying
+     * its resolved relation chain. [relation] accepts a canonical token or a
+     * registry synonym (e.g. `"brother"` → `sibling_of`) and is passed through
+     * verbatim — the server resolves it, an unresolvable value yields an empty
+     * chain set rather than an error.
+     */
+    suspend fun getConnections(
+        from: String,
+        depth: Int? = null,
+        relation: String? = null,
+    ): Result<GraphConnectionsResponse> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$GRAPH_CONNECTIONS_PATH".toHttpUrl().newBuilder()
+        urlBuilder.addQueryParameter("from", from)
+        depth?.let { urlBuilder.addQueryParameter("depth", it.toString()) }
+        relation?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("relation", it) }
+        return executeGet(urlBuilder.build().toString()) { _, body ->
+            moshi.adapter(GraphConnectionsResponse::class.java).fromJson(body)
+        }
+    }
+
     private suspend fun <T> executeGet(
         url: String,
         mapper: (okhttp3.Response, String) -> T?,
@@ -1317,6 +1345,7 @@ class ApiClient(
         private const val EXPORT_VCF_PATH = "$API_V1/export/vcf"
         private const val CONTACT_SHARES_PATH = "$API_V1/contact-shares"
         private const val AUDIT_PATH = "$API_V1/audit"
+        private const val GRAPH_CONNECTIONS_PATH = "$API_V1/graph/connections"
         private const val AUTH_COOKIE = "auth_token"    }
 }
 

@@ -33,4 +33,9 @@ data class UserProfile(
     @Json(name = "created_at") val createdAt: String? = null,
     @Json(name = "updated_at") val updatedAt: String? = null,
     @Json(name = "enabled_contact_fields") val enabledContactFields: List<String>? = null,
+    // T90: the "Me" contact pointer (users.self_contact_vcard_uid). Added for
+    // M14's network screen, which defaults its "start from" picker to the
+    // self contact when one is set; the backend backfills it lazily on every
+    // /users/me, so this is reliably populated for pre-000018 accounts too.
+    @Json(name = "self_contact_vcard_uid") val selfContactVCardUid: String? = null,
 )

@@ -2576,4 +2576,159 @@ class ApiClientTest {
         assertTrue(body.contains("member_vcard_uids"))
         assertTrue(body.contains("u1"))
     }
+
+    // --- M14: ego-centric network graph ---
+
+    @Test
+    fun `getConnections sends from, depth and relation on the query string`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "from_vcard_uid": "from-1",
+                      "from_name": "Alice",
+                      "depth": 3,
+                      "chains": []
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        // relation is a registry synonym — it must be passed through verbatim,
+        // never resolved on-device (M14 design: the server resolves it).
+        val result = client.getConnections(from = "from-1", depth = 3, relation = "brother")
+
+        assertTrue(result.isSuccess)
+        assertEquals("from-1", result.getOrThrow().fromVCardUid)
+
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/api/v1/graph/connections?from=from-1&depth=3&relation=brother", request.path)
+    }
+
+    @Test
+    fun `getConnections omits depth and relation when not set`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"from_vcard_uid":"from-1","from_name":"Alice","depth":2,"chains":[]}"""),
+        )
+
+        val result = client.getConnections(from = "from-1")
+
+        assertTrue(result.isSuccess)
+        assertEquals("/api/v1/graph/connections?from=from-1", server.takeRequest().path)
+    }
+
+    @Test
+    fun `getConnections parses resolved names, inverse relations and step chains`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "from_vcard_uid": "from-1",
+                      "from_name": "Alice",
+                      "depth": 2,
+                      "chains": [
+                        {
+                          "target_id": 10,
+                          "target_vcard_uid": "t1",
+                          "target_name": "Carol",
+                          "depth": 1,
+                          "steps": [
+                            {"contact_id": 10, "contact_vcard_uid": "t1", "contact_name": "Carol", "relation": "child_of"}
+                          ]
+                        },
+                        {
+                          "target_id": 20,
+                          "target_vcard_uid": "t2",
+                          "target_name": "Dave",
+                          "depth": 2,
+                          "steps": [
+                            {"contact_id": 11, "contact_vcard_uid": "t1", "contact_name": "Carol", "relation": "sibling_of"},
+                            {"contact_id": 20, "contact_vcard_uid": "t2", "contact_name": "Dave", "relation": "spouse_of"}
+                          ]
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        val result = client.getConnections(from = "from-1")
+
+        assertTrue(result.isSuccess)
+        val chains = result.getOrThrow().chainsOrEmpty
+        assertEquals(2, chains.size)
+        assertEquals("Carol", chains[0].targetName)
+        assertEquals("child_of", chains[0].stepsOrEmpty[0].relation)
+        assertEquals(2, chains[1].stepsOrEmpty.size)
+        assertEquals("Dave", chains[1].stepsOrEmpty[1].contactName)
+    }
+
+    @Test
+    fun `getConnections tolerates an absent chains key`() = runBlocking {
+        // The backend always serializes [], but the contract must not break on
+        // an absent key either (`/CLAUDE.md` frontend trap #8).
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"from_vcard_uid":"from-1","from_name":"Alice","depth":2}"""),
+        )
+
+        val result = client.getConnections(from = "from-1")
+
+        assertTrue(result.isSuccess)
+        assertTrue(result.getOrThrow().chainsOrEmpty.isEmpty())
+    }
+
+    @Test
+    fun `getConnections tolerates an explicit null chains value`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"from_vcard_uid":"from-1","from_name":"Alice","depth":2,"chains":null}"""),
+        )
+
+        val result = client.getConnections(from = "from-1")
+
+        assertTrue(result.isSuccess)
+        assertTrue(result.getOrThrow().chainsOrEmpty.isEmpty())
+    }
+
+    @Test
+    fun `getConnections maps a 404 unknown-from to a Client error`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(404)
+                .setBody("""{"error":{"code":"NOT_FOUND","message":"Contact not found","details":{"vcard_uid":"ghost"}}}"""),
+        )
+
+        val result = client.getConnections(from = "ghost")
+
+        assertTrue(result.isFailure)
+        val error = result.exceptionOrNull() as ApiError
+        assertTrue(error is ApiError.Client)
+        assertEquals(404, (error as ApiError.Client).code)
+    }
+
+    @Test
+    fun `currentUser parses the self contact vcard uid`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """{"id":1,"username":"alice","email":"a@x.com","language":"en","date_format":"eu","is_admin":false,"self_contact_vcard_uid":"self-uid"}""",
+                ),
+        )
+
+        val result = client.currentUser()
+
+        assertTrue(result.isSuccess)
+        assertEquals("self-uid", result.getOrThrow().selfContactVCardUid)
+    }
 }

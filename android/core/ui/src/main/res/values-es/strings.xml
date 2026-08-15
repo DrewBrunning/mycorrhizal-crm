@@ -22,7 +22,6 @@
     <string name="nav_network">Red</string>
     <string name="nav_shares">Compartidos</string>
     <string name="nav_households">Hogares</string>
-    <string name="coming_soon">%1$s — disponible en una fase posterior</string>
     <string name="cd_menu">Menú</string>
     <string name="cd_back">Atrás</string>
 
@@ -559,6 +558,26 @@
     <string name="relationships_delete_confirm">¿Eliminar la relación con %1$s?</string>
     <string name="relationships_reject_title">¿Rechazar sugerencia?</string>
     <string name="relationships_reject_confirm">¿Rechazar la relación sugerida con %1$s?</string>
+
+    <!-- Network graph (M14) -->
+    <string name="contact_network">Explorar conexiones</string>
+    <string name="network_start_from">Empezar desde</string>
+    <string name="network_change">Cambiar</string>
+    <string name="network_pick_prompt">Elige un contacto inicial para explorar su red.</string>
+    <string name="network_pick_button">Elegir contacto</string>
+    <string name="network_pick_title">Empezar desde…</string>
+    <string name="network_search_contacts">Buscar contactos</string>
+    <string name="network_pick_no_results">Escribe para buscar un contacto.</string>
+    <string name="network_depth">Profundidad</string>
+    <string name="network_direct">Directo</string>
+    <string name="network_hops">a %1$d saltos</string>
+    <string name="network_relation">Relación</string>
+    <string name="network_relation_hint">p. ej. sibling_of o brother</string>
+    <string name="network_relation_apply">Aplicar</string>
+    <string name="network_all_circles">Todos los círculos</string>
+    <string name="network_empty">No se encontraron conexiones. Añade relaciones para crear una red aquí.</string>
+    <string name="network_row_description">%1$s — %2$s</string>
+    <string name="network_error_no_vcard_uid">El contacto no tiene UID de VCard</string>
 
     <!-- Contact shares (M15) -->
     <string name="shares_title">Compartición de contactos</string>
