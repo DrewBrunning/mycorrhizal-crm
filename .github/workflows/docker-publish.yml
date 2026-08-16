@@ -166,10 +166,29 @@ jobs:
       security-events: write
 
     steps:
+      # Two mismatches between the reference the build actually publishes and
+      # the raw inputs the scan used to pass through:
+      #
+      # 1. Docker references must be lowercase, but github.repository preserves
+      #    the account's case (DrewBrunning) -- metadata-action lowercases the
+      #    image on the push side, so the published image is ghcr.io/drewbrunning/...
+      #    Passing the raw repository here made trivy fail to parse the reference
+      #    before it even contacted the registry.
+      # 2. The build tags with type=semver,pattern={{version}}, whose {{version}}
+      #    output drops the leading 'v' (RELEASE_TAG=v0.5.6 -> tag 0.5.6). The
+      #    v-prefixed tag is never pushed, so scanning that name would 404.
+      #
+      # Resolve the exact name the build pushed instead of re-deriving it
+      # differently in a second place.
+      - name: Resolve the image reference the build actually published
+        env:
+          RELEASE_TAG: ${{ env.RELEASE_TAG }}
+        run: echo "IMAGE_REF=ghcr.io/${GITHUB_REPOSITORY,,}:${RELEASE_TAG#v}" >> "$GITHUB_ENV"
+
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@0.35.0
         with:
-          image-ref: 'ghcr.io/${{ github.repository }}:${{ env.RELEASE_TAG }}'
+          image-ref: '${{ env.IMAGE_REF }}'
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
