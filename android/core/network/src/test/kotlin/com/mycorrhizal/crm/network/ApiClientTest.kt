@@ -1092,7 +1092,7 @@ class ApiClientTest {
                         {"type": "contact", "name": "Alice", "birthday": "--12-25", "photo_thumbnail": "data:image/png;base64,abc", "contact_id": 1}
                       ],
                       "random_contacts": [
-                        {"id": 3, "uid": "u3", "firstname": "Bob", "lastname": "Smith", "nickname": "Bobby", "circles": ["family"], "photo_thumbnail": "data:image/png;base64,def"}
+                        {"ID": 3, "firstname": "Bob", "lastname": "Smith", "nickname": "Bobby", "photo_thumbnail": "data:image/png;base64,def"}
                       ],
                       "upcoming_reminders": [
                         {"ID": 7, "message": "Call Dana", "remind_at": "2026-08-15T09:00:00Z", "recurrence": "weekly", "by_mail": true, "contact_id": 3, "contact_name": "Bobby Smith"}
@@ -1113,10 +1113,12 @@ class ApiClientTest {
         assertEquals(1, dashboard.birthdays.size)
         assertEquals("Alice", dashboard.birthdays[0].name)
         assertEquals(1L, dashboard.birthdays[0].contactId)
-        // Random contacts.
+        // Random contacts — id reads the wire's PascalCase `ID` (the random
+        // block is ContactResponse/gorm.Model, not the list's slim
+        // ContactSummary), so it must NOT default to 0 here.
         assertEquals(1, dashboard.randomContacts.size)
         assertEquals("Bobby", dashboard.randomContacts[0].nickname)
-        assertEquals(listOf("family"), dashboard.randomContacts[0].circles)
+        assertEquals(3, dashboard.randomContacts[0].id)
         // Upcoming reminders — the M3 embedded contact name must survive parsing.
         assertEquals(1, dashboard.upcomingReminders.size)
         assertEquals(7, dashboard.upcomingReminders[0].id)
