@@ -60,6 +60,7 @@ Everything in this section is **built and working today**. Things that are plann
 - **Expanded Life Event Reminders:** Automated reminders for major life events like anniversaries, complementing existing birthday tracking, organised into categories.
 - **Gift Tracking:** Modeled after [Monica](https://github.com/monicahq/monica), allowing you to track gift ideas, past gifts given, and received items, with links and notes.
 - **Immich Integration:** Link contacts directly to identified persons/faces in an [Immich](https://github.com/immich-app/immich) instance to easily view photos of individuals right from their profile.
+- **File Sharing Integrations:** Link contacts to documents in [Paperless-ngx](https://docs.paperless-ngx.com/) and to files/folders in [Seafile](https://www.seafile.com/) or [Nextcloud](https://nextcloud.com/)/[ownCloud](https://owncloud.com/) (via WebDAV). These are read-only links — the files stay on your own server.
 - **External Links:** Deep-link a contact into other systems you run, with a configurable link-type registry (`tel:`, `sms:`, WhatsApp, and anything else you define).
 - **Audit Trail:** A per-record history of what changed and when.
 
@@ -70,7 +71,6 @@ Everything in this section is **built and working today**. Things that are plann
 
 Not built yet. Listed so the feature set above can be read as a description of what exists rather than of what is intended:
 
-- **Files & Documents:** Integrations with Seafile and Paperless-ngx via APIs and OwnCloud/NextCloud via WebDAV.
 - **Two-Factor Authentication:** TOTP as a second factor on login. SSO via OIDC is available today as an alternative.
 - **Android app (follow-ups):** Tablet two-pane layout, FCM push notifications, and a formal accessibility pass.
 

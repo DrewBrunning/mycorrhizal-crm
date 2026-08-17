@@ -94,6 +94,10 @@ import { useContactFieldValues } from './hooks/useFieldDefinitions';
 import { FieldValueInput } from './api/fieldDefinitions';
 import { ExternalActivity } from './api/externalLinks';
 import { ImmichPerson, ImmichPersonSummary, getImmichConfig, getImmichContactSummary, linkImmichPerson, unlinkImmichPerson, syncImmich, getImmichPeople } from './api/immich';
+import { getPaperlessConfig, getPaperlessDocuments, linkPaperlessDocument, unlinkPaperlessDocument, PaperlessDocument } from './api/paperless';
+import { getSeafileConfig, getSeafileLibraries, getSeafileDir, linkSeafileItem, unlinkSeafileItem } from './api/seafile';
+import { getNextcloudConfig, getNextcloudDir, linkNextcloudItem, unlinkNextcloudItem, WebDAVItem } from './api/nextcloud';
+import { SeafileLinkTarget } from './components/SeafileFilePickerDialog';
 import { addCircleMember, removeCircleMember } from './api/circles';
 import { addContactTag, removeContactTag } from './api/tags';
 import { Circle } from './api/circles';
@@ -591,6 +595,79 @@ export default function ContactDetailPage() {
       .then((cfg) => setImmichConfigured(cfg.has_api_key))
       .catch(() => setImmichConfigured(false));
   }, []);
+
+  // File-sharing integrations (P2a/P2b/P2c): whether each is configured gates
+  // its "Add link" affordance on the contact page. Failures just leave the
+  // system hidden (the settings page is where connection problems surface).
+  const [fileSystemsConfigured, setFileSystemsConfigured] = useState<{
+    paperless: boolean;
+    seafile: boolean;
+    nextcloud: boolean;
+  }>({ paperless: false, seafile: false, nextcloud: false });
+
+  useEffect(() => {
+    Promise.allSettled([getPaperlessConfig(), getSeafileConfig(), getNextcloudConfig()]).then(([p, s, n]) => {
+      setFileSystemsConfigured({
+        paperless: p.status === 'fulfilled' && p.value.has_api_token,
+        seafile: s.status === 'fulfilled' && s.value.has_api_token,
+        nextcloud: n.status === 'fulfilled' && n.value.has_app_password,
+      });
+    });
+  }, []);
+
+  // File link handlers: link/unlink go through the integration endpoints,
+  // then refresh the generic ExternalIdentity list so the new row appears.
+  const handleLinkPaperless = useCallback(
+    async (doc: PaperlessDocument) => {
+      if (!record?.uid) return;
+      await linkPaperlessDocument(record.uid, doc.id);
+      await refreshExternalLinks(record.uid);
+    },
+    [record?.uid, refreshExternalLinks]
+  );
+
+  const handleLinkSeafile = useCallback(
+    async (target: SeafileLinkTarget) => {
+      if (!record?.uid) return;
+      await linkSeafileItem(record.uid, {
+        repo_id: target.repo_id,
+        path: target.path,
+        name: target.name,
+        type: target.type,
+        size: target.size,
+        mtime: target.mtime,
+      });
+      await refreshExternalLinks(record.uid);
+    },
+    [record?.uid, refreshExternalLinks]
+  );
+
+  const handleLinkNextcloud = useCallback(
+    async (item: WebDAVItem) => {
+      if (!record?.uid) return;
+      await linkNextcloudItem(record.uid, {
+        path: item.path,
+        name: item.name,
+        type: item.type,
+        size: item.size,
+        modified_at: item.modified_at,
+        file_id: item.file_id,
+      });
+      await refreshExternalLinks(record.uid);
+    },
+    [record?.uid, refreshExternalLinks]
+  );
+
+  const handleUnlinkFileSystem = useCallback(
+    async (system: 'paperless' | 'seafile' | 'nextcloud', identityId: string) => {
+      if (!record?.uid) return;
+      if (system === 'paperless') await unlinkPaperlessDocument(record.uid, identityId);
+      if (system === 'seafile') await unlinkSeafileItem(record.uid, identityId);
+      if (system === 'nextcloud') await unlinkNextcloudItem(record.uid, identityId);
+      await refreshExternalLinks(record.uid);
+    },
+    [record?.uid, refreshExternalLinks]
+  );
 
   // T31's sticky ContactJumpNav sits above every SectionGroup at zIndex 10.
   // SectionGroup's own scrollMarginTop only compensates when the *section*
@@ -1703,6 +1780,15 @@ export default function ContactDetailPage() {
             onUnlinkImmich={handleUnlinkImmich}
             onSyncImmich={handleSyncImmich}
             syncing={immichSyncing}
+            fileSystemsConfigured={fileSystemsConfigured}
+            onFetchPaperlessDocuments={(query) => getPaperlessDocuments(query)}
+            onLinkPaperless={handleLinkPaperless}
+            onFetchSeafileLibraries={() => getSeafileLibraries()}
+            onFetchSeafileDir={(repoId, path) => getSeafileDir(repoId, path)}
+            onLinkSeafile={handleLinkSeafile}
+            onFetchNextcloudDir={(path) => getNextcloudDir(path)}
+            onLinkNextcloud={handleLinkNextcloud}
+            onUnlinkFileSystem={handleUnlinkFileSystem}
           />
         </PanelCard>
       </SectionGroup>

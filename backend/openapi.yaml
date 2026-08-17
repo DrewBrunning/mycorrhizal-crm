@@ -7002,6 +7002,600 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  # --- Paperless-ngx (P2a) ---
+  /paperless/config:
+    get:
+      summary: Get the current user's Paperless-ngx connection config
+      operationId: getPaperlessConfig
+      description: >
+        Returns an empty default when not configured (200, not 404). The API
+        token is never returned — only whether one is stored (has_api_token).
+      responses:
+        "200":
+          description: The config (without the API token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaperlessConfigResponse"
+    put:
+      summary: Create or update the current user's Paperless-ngx connection
+      operationId: savePaperlessConfig
+      description: >
+        The API token is encrypted at rest (derived from JWT_SECRET_KEY). An
+        empty api_token on update keeps the stored token; a first-time connect
+        requires one.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaperlessConfigInput"
+      responses:
+        "200":
+          description: The updated config (without the API token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaperlessConfigResponse"
+        "400":
+          description: Validation failed, or a first-time connect omitted the API token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Remove the current user's Paperless-ngx connection
+      operationId: deletePaperlessConfig
+      description: Linked ExternalIdentity rows are kept.
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+  /paperless/test-connection:
+    post:
+      summary: Test the current user's saved Paperless connection
+      operationId: testPaperlessConnection
+      description: >
+        Checks reachability (unauthenticated ping) then API token validity
+        (GET /api/auth/me) against the currently saved connection, reporting
+        which stage failed rather than a generic error. Always 200 when the
+        check itself could run — ok:false is a successful diagnosis, not a
+        failure of this endpoint.
+      responses:
+        "200":
+          description: The diagnosis (ok may be true or false).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaperlessConnectionTestResult"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: No Paperless connection configured.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /paperless/documents:
+    get:
+      summary: Browse the user's Paperless documents (L1 picker)
+      operationId: listPaperlessDocuments
+      description: >
+        Lists documents in the user's Paperless instance, optionally filtered
+        by ?query= (searched by Paperless itself). Requires a configured
+        connection.
+      parameters:
+        - name: query
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: The document list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  documents:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PaperlessDocument"
+        "503":
+          description: Paperless unreachable, or the API token is invalid/expired.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /paperless/contacts/{vcard_uid}/link:
+    parameters:
+      - name: vcard_uid
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Link a Paperless document to a contact
+      operationId: linkPaperlessContact
+      description: >
+        Persists the link as an ExternalIdentity with system "paperless" — never
+        a column on Contact. The document is fetched by id under the user's own
+        token so the stored metadata is authoritative. Body: {document_id}.
+        409 on a duplicate link.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                document_id: { type: string }
+      responses:
+        "201":
+          description: Linked.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  external_identity:
+                    $ref: "#/components/schemas/ExternalIdentity"
+        "404":
+          description: Contact not found (or not owned by the caller).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: The document is already linked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /paperless/contacts/{vcard_uid}/links/{identity_id}:
+    parameters:
+      - name: vcard_uid
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: identity_id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      summary: Unlink a specific Paperless document from a contact
+      operationId: unlinkPaperlessContact
+      description: >
+        A contact can link many documents, so the ExternalIdentity id
+        identifies which one. Hard deletes the link row.
+      responses:
+        "200":
+          description: Unlinked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: No such Paperless link for this user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # --- Seafile (P2b) ---
+  /seafile/config:
+    get:
+      summary: Get the current user's Seafile connection config
+      operationId: getSeafileConfig
+      description: >
+        Returns an empty default when not configured (200, not 404). The API
+        token is never returned — only whether one is stored (has_api_token).
+      responses:
+        "200":
+          description: The config (without the API token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SeafileConfigResponse"
+    put:
+      summary: Create or update the current user's Seafile connection
+      operationId: saveSeafileConfig
+      description: >
+        The API token is encrypted at rest (derived from JWT_SECRET_KEY). An
+        empty api_token on update keeps the stored token; a first-time connect
+        requires one.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SeafileConfigInput"
+      responses:
+        "200":
+          description: The updated config (without the API token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SeafileConfigResponse"
+        "400":
+          description: Validation failed, or a first-time connect omitted the API token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Remove the current user's Seafile connection
+      operationId: deleteSeafileConfig
+      description: Linked ExternalIdentity rows are kept.
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+  /seafile/test-connection:
+    post:
+      summary: Test the current user's saved Seafile connection
+      operationId: testSeafileConnection
+      description: >
+        Checks reachability (unauthenticated ping) then API token validity
+        (GET /api2/auth/ping) against the currently saved connection, reporting
+        which stage failed rather than a generic error. Always 200 when the
+        check itself could run — ok:false is a successful diagnosis.
+      responses:
+        "200":
+          description: The diagnosis (ok may be true or false).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SeafileConnectionTestResult"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: No Seafile connection configured.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /seafile/libraries:
+    get:
+      summary: Browse the user's Seafile libraries (L1 picker)
+      operationId: listSeafileLibraries
+      description: Lists every library the token can access. Requires a configured connection.
+      responses:
+        "200":
+          description: The library list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  libraries:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/SeafileLibrary"
+        "503":
+          description: Seafile unreachable, or the API token is invalid/expired.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /seafile/libraries/{repo_id}/dir:
+    parameters:
+      - name: repo_id
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      summary: List a Seafile library folder's contents (L1 picker)
+      operationId: listSeafileDir
+      description: ?path= defaults to "/" (the library root).
+      parameters:
+        - name: path
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: The folder's file/dir entries.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/SeafileItem"
+        "503":
+          description: Seafile unreachable, or the API token is invalid/expired.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /seafile/contacts/{vcard_uid}/link:
+    parameters:
+      - name: vcard_uid
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Link a Seafile file/folder to a contact
+      operationId: linkSeafileContact
+      description: >
+        Persists the link as an ExternalIdentity with system "seafile" — never
+        a column on Contact. The external_id is repo_id + ":" + path; the URL
+        is the web-app /lib/ URL (not a share link, which can itself carry a
+        password/expiry). Body: {repo_id, path, name, type, size?, mtime?}.
+        409 on a duplicate link.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [repo_id, path, name, type]
+              properties:
+                repo_id: { type: string }
+                path: { type: string }
+                name: { type: string }
+                type: { type: string, enum: [file, dir] }
+                size: { type: integer }
+                mtime: { type: integer }
+      responses:
+        "201":
+          description: Linked.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  external_identity:
+                    $ref: "#/components/schemas/ExternalIdentity"
+        "404":
+          description: Contact not found (or not owned by the caller).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: The file/folder is already linked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /seafile/contacts/{vcard_uid}/links/{identity_id}:
+    parameters:
+      - name: vcard_uid
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: identity_id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      summary: Unlink a specific Seafile file/folder from a contact
+      operationId: unlinkSeafileContact
+      description: >
+        A contact can link many files/folders, so the ExternalIdentity id
+        identifies which one. Hard deletes the link row.
+      responses:
+        "200":
+          description: Unlinked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: No such Seafile link for this user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # --- Nextcloud / ownCloud WebDAV (P2c) ---
+  /nextcloud/config:
+    get:
+      summary: Get the current user's Nextcloud/ownCloud connection config
+      operationId: getWebDAVConfig
+      description: >
+        Returns an empty default when not configured (200, not 404). The app
+        password is never returned — only whether one is stored
+        (has_app_password).
+      responses:
+        "200":
+          description: The config (without the app password).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebDAVConfigResponse"
+    put:
+      summary: Create or update the current user's Nextcloud/ownCloud connection
+      operationId: saveWebDAVConfig
+      description: >
+        The app password is encrypted at rest (derived from JWT_SECRET_KEY). An
+        empty app_password on update keeps the stored password; a first-time
+        connect requires one. Only an app password is accepted — never the
+        account password.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebDAVConfigInput"
+      responses:
+        "200":
+          description: The updated config (without the app password).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebDAVConfigResponse"
+        "400":
+          description: Validation failed, or a first-time connect omitted the app password.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Remove the current user's Nextcloud/ownCloud connection
+      operationId: deleteWebDAVConfig
+      description: Linked ExternalIdentity rows are kept.
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+  /nextcloud/test-connection:
+    post:
+      summary: Test the current user's saved Nextcloud connection
+      operationId: testWebDAVConnection
+      description: >
+        A single PROPFIND on the dav root (WebDAV has no unauthenticated
+        reachability probe — the request either authenticates or it doesn't).
+        Always 200 when the check itself could run — ok:false is a successful
+        diagnosis.
+      responses:
+        "200":
+          description: The diagnosis (ok may be true or false).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebDAVConnectionTestResult"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: No Nextcloud connection configured.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /nextcloud/dir:
+    get:
+      summary: List a Nextcloud directory's contents (L1 picker)
+      operationId: listWebDAVDir
+      description: >
+        PROPFIND Depth:1 on a directory relative to the user's dav root.
+        ?path= defaults to "/" (the dav root). Requires a configured
+        connection.
+      parameters:
+        - name: path
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: The directory's file/dir entries.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/WebDAVItem"
+        "503":
+          description: Nextcloud unreachable, or the app password is invalid/expired.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /nextcloud/contacts/{vcard_uid}/link:
+    parameters:
+      - name: vcard_uid
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Link a Nextcloud file/folder to a contact
+      operationId: linkWebDAVContact
+      description: >
+        Persists the link as an ExternalIdentity with system "nextcloud" — never
+        a column on Contact. The external_id is the WebDAV path relative to the
+        dav root; the URL deep-links the files app (openfile when a file id is
+        available). Body: {path, name, type, size?, modified_at?, file_id?}.
+        409 on a duplicate link.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [path, name, type]
+              properties:
+                path: { type: string }
+                name: { type: string }
+                type: { type: string, enum: [file, dir] }
+                size: { type: integer }
+                modified_at: { type: string, format: date-time }
+                file_id: { type: string }
+      responses:
+        "201":
+          description: Linked.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  external_identity:
+                    $ref: "#/components/schemas/ExternalIdentity"
+        "404":
+          description: Contact not found (or not owned by the caller).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: The file/folder is already linked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /nextcloud/contacts/{vcard_uid}/links/{identity_id}:
+    parameters:
+      - name: vcard_uid
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: identity_id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      summary: Unlink a specific Nextcloud file/folder from a contact
+      operationId: unlinkWebDAVContact
+      description: >
+        A contact can link many files/folders, so the ExternalIdentity id
+        identifies which one. Hard deletes the link row.
+      responses:
+        "200":
+          description: Unlinked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: No such Nextcloud link for this user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   # --- Admin ---
   /admin/users:
     get:
@@ -8574,6 +9168,118 @@ components:
       properties:
         id: { type: string }
         occurred_at: { type: string, format: date-time }
+
+    # --- Paperless-ngx (P2a) ---
+    PaperlessConfigResponse:
+      type: object
+      description: The API-visible shape of a user's Paperless connection. The API token is never exposed.
+      properties:
+        base_url: { type: string }
+        has_api_token: { type: boolean }
+    PaperlessConfigInput:
+      type: object
+      required: [base_url]
+      properties:
+        base_url: { type: string }
+        api_token: { type: string, description: "Write-only: empty on update keeps the stored token; required on first connect." }
+    PaperlessConnectionTestResult:
+      type: object
+      description: >
+        Stage-by-stage diagnosis of a "Test connection" check — reachability
+        (unauthenticated ping) then auth (API token). ok:false is a successful
+        diagnosis of an upstream problem, not an application error, so this is
+        always returned with HTTP 200.
+      properties:
+        ok: { type: boolean }
+        stage: { type: string, enum: [reachability, auth, ok] }
+        message: { type: string }
+    PaperlessDocument:
+      type: object
+      description: A Paperless-ngx document as browsed by the L1 picker.
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        file_name: { type: string }
+        created: { type: string, description: "Document creation date (RFC 3339)." }
+        added: { type: string, description: "Date the document entered the archive (RFC 3339)." }
+
+    # --- Seafile (P2b) ---
+    SeafileConfigResponse:
+      type: object
+      description: The API-visible shape of a user's Seafile connection. The API token is never exposed.
+      properties:
+        base_url: { type: string }
+        has_api_token: { type: boolean }
+    SeafileConfigInput:
+      type: object
+      required: [base_url]
+      properties:
+        base_url: { type: string }
+        api_token: { type: string, description: "Write-only: empty on update keeps the stored token; required on first connect." }
+    SeafileConnectionTestResult:
+      type: object
+      description: >
+        Stage-by-stage diagnosis of a "Test connection" check — reachability
+        (unauthenticated ping) then auth (API token). ok:false is a successful
+        diagnosis of an upstream problem, not an application error.
+      properties:
+        ok: { type: boolean }
+        stage: { type: string, enum: [reachability, auth, ok] }
+        message: { type: string }
+    SeafileLibrary:
+      type: object
+      description: A Seafile library (repo) as browsed by the L1 picker.
+      properties:
+        id: { type: string }
+        name: { type: string }
+        type: { type: string, description: "library or virtual" }
+    SeafileItem:
+      type: object
+      description: One entry of a Seafile library folder listing (file or subfolder).
+      properties:
+        id: { type: string }
+        name: { type: string }
+        type: { type: string, description: "file or dir" }
+        size: { type: integer, description: "File size in bytes (0 for directories)." }
+        mtime: { type: integer, description: "Unix mtime seconds." }
+        parent_dir: { type: string }
+
+    # --- Nextcloud / ownCloud WebDAV (P2c) ---
+    WebDAVConfigResponse:
+      type: object
+      description: The API-visible shape of a user's Nextcloud/ownCloud connection. The app password is never exposed.
+      properties:
+        base_url: { type: string }
+        username: { type: string }
+        has_app_password: { type: boolean }
+    WebDAVConfigInput:
+      type: object
+      required: [base_url, username]
+      properties:
+        base_url: { type: string }
+        username: { type: string }
+        app_password: { type: string, description: "Write-only: empty on update keeps the stored password; required on first connect. Only an app password is accepted — never the account password." }
+    WebDAVConnectionTestResult:
+      type: object
+      description: >
+        Diagnosis of a "Test connection" check. WebDAV has no unauthenticated
+        reachability probe, so this is a single stage: a 401/403 is a
+        credential problem, anything else transport. ok:false is a successful
+        diagnosis of an upstream problem, not an application error.
+      properties:
+        ok: { type: boolean }
+        stage: { type: string, enum: [reachability, ok] }
+        message: { type: string }
+    WebDAVItem:
+      type: object
+      description: One entry of a PROPFIND Depth:1 listing (file or folder).
+      properties:
+        name: { type: string }
+        path: { type: string, description: "WebDAV path relative to the user's dav root, starting with '/'." }
+        type: { type: string, description: "file or dir" }
+        size: { type: integer, description: "File size in bytes." }
+        modified_at: { type: string, format: date-time, description: "Last-modified, normalized to RFC 3339 UTC." }
+        file_id: { type: string, description: "The server's stable file id, when exposed." }
 
     # --- Life events ---
     LifeEvent:

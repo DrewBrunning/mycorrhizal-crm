@@ -878,6 +878,101 @@
       "photoAlt": "Photo from Immich"
     }
   },
+  "fileLinks": {
+    "paperless": "Paperless-ngx",
+    "seafile": "Seafile",
+    "nextcloud": "Nextcloud / ownCloud",
+    "addLink": "Link {{system}}",
+    "unlink": "Unlink",
+    "unlinkConfirm": "Remove this {{system}} link from the contact?",
+    "unlinkFailed": "Could not unlink.",
+    "openExternal": "Open in {{system}}",
+    "created": "Created {{date}}",
+    "modified": "Modified {{date}}"
+  },
+  "paperless": {
+    "settings": {
+      "title": "Paperless-ngx",
+      "description": "Connect a self-hosted Paperless-ngx instance to link contacts to documents (contracts, scans, forms). The API token is stored encrypted and is only used to read from your own server.",
+      "baseUrl": "Base URL",
+      "apiToken": "API Token",
+      "apiTokenHintNew": "Paste the API token from your Paperless instance (Settings → API token).",
+      "apiTokenHintExisting": "A token is already stored. Leave the field empty to keep it.",
+      "saveButton": "Save connection",
+      "removeButton": "Remove connection",
+      "testConnectionButton": "Test connection",
+      "testingConnection": "Testing…",
+      "removeConfirm": "Remove the Paperless connection? Linked contacts keep their existing document links.",
+      "baseUrlRequired": "Base URL is required.",
+      "invalidBaseUrl": "Base URL must be an http:// or https:// URL.",
+      "saved": "Paperless connection saved",
+      "removed": "Paperless connection removed",
+      "saveFailed": "Failed to save the Paperless connection"
+    },
+    "search": {
+      "title": "Link a Paperless document",
+      "placeholder": "Search documents by title…",
+      "linkFailed": "Could not link this document.",
+      "noMatches": "No documents match. Try a different search, or check that Paperless has finished OCR.",
+      "untitled": "(untitled document)"
+    }
+  },
+  "seafile": {
+    "settings": {
+      "title": "Seafile",
+      "description": "Connect a self-hosted Seafile server to link contacts to files and folders in your libraries. The API token is stored encrypted and is only used to read from your own server.",
+      "baseUrl": "Server URL",
+      "apiToken": "API Token",
+      "apiTokenHintNew": "Paste the API token from your Seafile account (Avatar → Settings → API Token).",
+      "apiTokenHintExisting": "A token is already stored. Leave the field empty to keep it.",
+      "saveButton": "Save connection",
+      "removeButton": "Remove connection",
+      "testConnectionButton": "Test connection",
+      "testingConnection": "Testing…",
+      "removeConfirm": "Remove the Seafile connection? Linked contacts keep their existing file links.",
+      "baseUrlRequired": "Server URL is required.",
+      "invalidBaseUrl": "Server URL must be an http:// or https:// URL.",
+      "saved": "Seafile connection saved",
+      "removed": "Seafile connection removed",
+      "saveFailed": "Failed to save the Seafile connection"
+    },
+    "search": {
+      "titleLibraries": "Choose a library",
+      "titleBrowse": "Choose a file or folder",
+      "folder": "Folder",
+      "emptyFolder": "This folder is empty.",
+      "noLibraries": "No libraries found. Check that the token has access to at least one library.",
+      "linkFailed": "Could not link this item."
+    }
+  },
+  "nextcloud": {
+    "settings": {
+      "title": "Nextcloud / ownCloud",
+      "description": "Connect a self-hosted Nextcloud or ownCloud instance (over WebDAV) to link contacts to files and folders. The app password is stored encrypted and is only used to read from your own server. Only an app password is accepted — never your account password.",
+      "baseUrl": "Server URL",
+      "username": "Username",
+      "appPassword": "App Password",
+      "appPasswordHintNew": "Create an app password in your instance (Personal settings → Security → App passwords) and paste it here.",
+      "appPasswordHintExisting": "An app password is already stored. Leave the field empty to keep it.",
+      "saveButton": "Save connection",
+      "removeButton": "Remove connection",
+      "testConnectionButton": "Test connection",
+      "testingConnection": "Testing…",
+      "removeConfirm": "Remove the Nextcloud connection? Linked contacts keep their existing file links.",
+      "baseUrlRequired": "Server URL is required.",
+      "usernameRequired": "Username is required.",
+      "invalidBaseUrl": "Server URL must be an http:// or https:// URL.",
+      "saved": "Nextcloud connection saved",
+      "removed": "Nextcloud connection removed",
+      "saveFailed": "Failed to save the Nextcloud connection"
+    },
+    "search": {
+      "title": "Choose a file or folder",
+      "folder": "Folder",
+      "emptyFolder": "This folder is empty.",
+      "linkFailed": "Could not link this item."
+    }
+  },
   "profilePicture": {
     "title": "Upload Profile Picture",
     "selectImage": "Select an image",

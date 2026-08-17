@@ -21,7 +21,12 @@ import SyncIcon from '@mui/icons-material/Sync';
 import { useTranslation } from 'react-i18next';
 import { ExternalIdentity } from '../api/externalLinks';
 import { ImmichPerson, ImmichPersonSummary, immichThumbnailUrl } from '../api/immich';
+import { PaperlessDocument } from '../api/paperless';
+import { SeafileLibrary, SeafileItem } from '../api/seafile';
+import { WebDAVItem } from '../api/nextcloud';
 import ImmichPersonSearchDialog from './ImmichPersonSearchDialog';
+import FileLinksPanel, { FileSystem } from './FileLinksPanel';
+import { SeafileLinkTarget } from './SeafileFilePickerDialog';
 import AuthImg from './AuthImg';
 import { useDateFormat } from '../DateFormatProvider';
 import { isHttpUrlString } from '../utils/linkResolution';
@@ -38,14 +43,25 @@ interface ExternalLinkPanelProps {
   onUnlinkImmich: () => Promise<void>;
   onSyncImmich: () => Promise<void>;
   syncing?: boolean;
+  // File-sharing integrations (P2a/P2b/P2c): which systems are configured and
+  // the browse/link/unlink callbacks that power their pickers.
+  fileSystemsConfigured?: { paperless: boolean; seafile: boolean; nextcloud: boolean };
+  onFetchPaperlessDocuments?: (query?: string) => Promise<PaperlessDocument[]>;
+  onLinkPaperless?: (doc: PaperlessDocument) => Promise<void>;
+  onFetchSeafileLibraries?: () => Promise<SeafileLibrary[]>;
+  onFetchSeafileDir?: (repoId: string, path: string) => Promise<SeafileItem[]>;
+  onLinkSeafile?: (target: SeafileLinkTarget) => Promise<void>;
+  onFetchNextcloudDir?: (path?: string) => Promise<WebDAVItem[]>;
+  onLinkNextcloud?: (item: WebDAVItem) => Promise<void>;
+  onUnlinkFileSystem?: (system: FileSystem, identityId: string) => Promise<void>;
 }
 
 // ExternalLinkPanel is the contact page's "External links" surface (T14 + the
-// T15/T16 Immich surface). The substrate's ExternalIdentity list is generic —
-// Immich is currently the only integration, rendered as a richer row with the
-// live person summary (photo count, latest appearance, deep link, thumbnail)
-// and the link/unlink flow. Later integrations slot into the same generic
-// list without schema changes.
+// T15/T16 Immich surface + the P2a/P2b/P2c file-sharing surfaces). The
+// substrate's ExternalIdentity list is generic — Immich is rendered as a rich
+// row, the file-sharing integrations render through FileLinksPanel, and every
+// other system falls back to the generic list. Later integrations slot into
+// the same generic list without schema changes.
 export default function ExternalLinkPanel({
   contactUid,
   identities,
@@ -57,6 +73,15 @@ export default function ExternalLinkPanel({
   onUnlinkImmich,
   onSyncImmich,
   syncing = false,
+  fileSystemsConfigured,
+  onFetchPaperlessDocuments,
+  onLinkPaperless,
+  onFetchSeafileLibraries,
+  onFetchSeafileDir,
+  onLinkSeafile,
+  onFetchNextcloudDir,
+  onLinkNextcloud,
+  onUnlinkFileSystem,
 }: ExternalLinkPanelProps) {
   const { t } = useTranslation();
   const { formatDate } = useDateFormat();
@@ -64,6 +89,8 @@ export default function ExternalLinkPanel({
   const [error, setError] = useState('');
 
   const immichIdentity = identities.find((i) => i.system === 'immich');
+  const fileSystems = new Set(['paperless', 'seafile', 'nextcloud']);
+  const otherIdentities = identities.filter((i) => i.system !== 'immich' && !fileSystems.has(i.system));
 
   const handleLink = async (person: ImmichPerson) => {
     try {
@@ -178,7 +205,20 @@ export default function ExternalLinkPanel({
 
       {error && <Alert severity="error" sx={{ py: 0 }}>{error}</Alert>}
 
-      {identities.length > 0 && (
+      <FileLinksPanel
+        identities={identities}
+        configured={fileSystemsConfigured ?? { paperless: false, seafile: false, nextcloud: false }}
+        onFetchPaperlessDocuments={onFetchPaperlessDocuments}
+        onLinkPaperless={onLinkPaperless}
+        onFetchSeafileLibraries={onFetchSeafileLibraries}
+        onFetchSeafileDir={onFetchSeafileDir}
+        onLinkSeafile={onLinkSeafile}
+        onFetchNextcloudDir={onFetchNextcloudDir}
+        onLinkNextcloud={onLinkNextcloud}
+        onUnlink={onUnlinkFileSystem}
+      />
+
+      {otherIdentities.length > 0 && (
         <>
           <Divider />
           <Typography variant="subtitle2" color="text.secondary">
@@ -187,8 +227,7 @@ export default function ExternalLinkPanel({
           {loading ? (
             <CircularProgress size={24} />
           ) : (
-            identities
-              .filter((i) => i.system !== 'immich')
+            otherIdentities
               .map((identity) => (
                 <Paper key={identity.id} variant="outlined" sx={{ p: 1.5 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
