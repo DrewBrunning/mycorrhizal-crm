@@ -70,6 +70,25 @@ test('renders a household reason', async () => {
   vi.unstubAllGlobals();
 });
 
+// The backend serializes ContactAddressSuggestion.Address with
+// `components,omitempty`, so a source address with no non-empty flat fields
+// (e.g. an all-empty address row on a related contact) arrives as
+// `address: {}` — no `components`, no `full`. formatSuggestionAddress must
+// not throw on that shape, or the whole Data page lands in the ErrorBoundary
+// as soon as it opens.
+test('does not crash when a suggestion address has no components', async () => {
+  const bare: ContactAddressSuggestion = {
+    ...suggestion,
+    address: {},
+    address_key: 'a|b|c',
+  };
+  stubFetch([bare]);
+  render(<ContactAddressSuggestions loadKey={0} />);
+
+  expect(await screen.findByText('Alice Anderson')).toBeInTheDocument();
+  vi.unstubAllGlobals();
+});
+
 test('shows the empty state when there are no suggestions', async () => {
   stubFetch([]);
   render(<ContactAddressSuggestions loadKey={0} />);
