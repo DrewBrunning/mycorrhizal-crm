@@ -64,6 +64,9 @@ import {
 import { useSnackbar } from './context/SnackbarContext';
 import WebhooksSettings from './components/WebhooksSettings';
 import ImmichSettings from './components/ImmichSettings';
+import PaperlessSettings from './components/PaperlessSettings';
+import SeafileSettings from './components/SeafileSettings';
+import NextcloudSettings from './components/NextcloudSettings';
 import LinkFieldTypesSettings from './components/LinkFieldTypesSettings';
 import NotificationSettings from './components/NotificationSettings';
 import TwoFactorSettings from './components/TwoFactorSettings';
@@ -508,6 +511,12 @@ export default function SettingsPage() {
       <WebhooksSettings />
 
       <ImmichSettings />
+
+      <PaperlessSettings />
+
+      <SeafileSettings />
+
+      <NextcloudSettings />
 
       <NotificationSettings />
 

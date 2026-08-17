@@ -431,6 +431,44 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.GET("/immich/contacts/:vcard_uid/thumbnail", controllers.GetImmichThumbnail)
 			protected.GET("/immich/contacts/:vcard_uid/assets", controllers.ListImmichContactAssets)
 			protected.GET("/immich/contacts/:vcard_uid/assets/:asset_id/image", controllers.GetImmichAssetImage)
+
+			// Paperless-ngx routes (issue #155): link contacts to documents in a
+			// self-hosted Paperless-ngx instance. Config is per-user-global;
+			// links are written as ExternalIdentity (system: "paperless"). L1 is
+			// read-only linking — the document stays Paperless-owned.
+			protected.GET("/paperless/config", controllers.GetPaperlessConfig)
+			protected.PUT("/paperless/config", middleware.ValidateJSONMiddleware(&models.PaperlessConfigInput{}), controllers.SavePaperlessConfig)
+			protected.DELETE("/paperless/config", controllers.DeletePaperlessConfig)
+			protected.POST("/paperless/test-connection", controllers.TestPaperlessConnection)
+			protected.GET("/paperless/documents", controllers.ListPaperlessDocuments)
+			protected.POST("/paperless/contacts/:vcard_uid/link", controllers.LinkPaperlessContact)
+			protected.DELETE("/paperless/contacts/:vcard_uid/links/:identity_id", controllers.UnlinkPaperlessContact)
+
+			// Seafile routes (issue #156): link contacts to files/folders in a
+			// self-hosted Seafile library. Config is per-user-global; links are
+			// written as ExternalIdentity (system: "seafile"). L1 is read-only
+			// linking — files/folders stay Seafile-owned.
+			protected.GET("/seafile/config", controllers.GetSeafileConfig)
+			protected.PUT("/seafile/config", middleware.ValidateJSONMiddleware(&models.SeafileConfigInput{}), controllers.SaveSeafileConfig)
+			protected.DELETE("/seafile/config", controllers.DeleteSeafileConfig)
+			protected.POST("/seafile/test-connection", controllers.TestSeafileConnection)
+			protected.GET("/seafile/libraries", controllers.ListSeafileLibraries)
+			protected.GET("/seafile/libraries/:repo_id/dir", controllers.ListSeafileDir)
+			protected.POST("/seafile/contacts/:vcard_uid/link", controllers.LinkSeafileContact)
+			protected.DELETE("/seafile/contacts/:vcard_uid/links/:identity_id", controllers.UnlinkSeafileContact)
+
+			// Nextcloud / ownCloud (WebDAV) routes (issue #157): link contacts
+			// to files/folders over standard WebDAV. Config is per-user-global;
+			// links are written as ExternalIdentity (system: "nextcloud"). Only
+			// an app password is accepted — never the account password. L1 is
+			// read-only linking — files/folders stay on the instance.
+			protected.GET("/nextcloud/config", controllers.GetWebDAVConfig)
+			protected.PUT("/nextcloud/config", middleware.ValidateJSONMiddleware(&models.WebDAVConfigInput{}), controllers.SaveWebDAVConfig)
+			protected.DELETE("/nextcloud/config", controllers.DeleteWebDAVConfig)
+			protected.POST("/nextcloud/test-connection", controllers.TestWebDAVConnection)
+			protected.GET("/nextcloud/dir", controllers.ListWebDAVDir)
+			protected.POST("/nextcloud/contacts/:vcard_uid/link", controllers.LinkWebDAVContact)
+			protected.DELETE("/nextcloud/contacts/:vcard_uid/links/:identity_id", controllers.UnlinkWebDAVContact)
 		}
 
 		// Admin routes (admin authentication required)
