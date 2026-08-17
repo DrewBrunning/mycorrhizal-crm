@@ -57,7 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.Birthday
-import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.model.network.DashboardRandomContact
 import com.mycorrhizal.crm.model.network.DashboardReminder
 import com.mycorrhizal.crm.model.network.OverdueCadence
 import com.mycorrhizal.crm.model.network.PartialDate
@@ -407,7 +407,7 @@ private fun ReminderRow(
 }
 
 @Composable
-private fun RandomContactRow(contact: ContactSummary, onClick: () -> Unit) {
+private fun RandomContactRow(contact: DashboardRandomContact, onClick: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(12.dp),
@@ -497,12 +497,12 @@ private fun isOverdue(remindAt: String?): Boolean {
 }
 
 /** Display name for a random contact, matching web's `getContactName` (nickname-preferred). */
-private fun randomContactName(contact: ContactSummary): String {
+private fun randomContactName(contact: DashboardRandomContact): String {
     val nickname = contact.nickname
     return when {
         !nickname.isNullOrBlank() ->
             listOf(nickname, contact.lastname.orEmpty()).filter { it.isNotBlank() }.joinToString(" ")
-        else -> listOfNotNull(contact.firstname, contact.lastname).joinToString(" ").ifBlank { contact.fn ?: "#${contact.id}" }
+        else -> listOfNotNull(contact.firstname, contact.lastname).joinToString(" ").ifBlank { "#${contact.id}" }
     }
 }
 
