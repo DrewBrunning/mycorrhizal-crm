@@ -684,6 +684,14 @@ func DeleteUser(c *gin.Context) {
 			return err
 		}
 
+		// N8: hashed 2FA recovery codes (hard, join-shaped — a code is its
+		// hash; the FK cascade on recovery_codes.user_id would cover it, but
+		// the manual-cascade checklist stays complete rather than relying on
+		// the constraint)
+		if err := tx.Where("user_id = ?", userID).Delete(&models.RecoveryCode{}).Error; err != nil {
+			return err
+		}
+
 		// Delete contacts (hard)
 		if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.Contact{}).Error; err != nil {
 			return err

@@ -133,7 +133,12 @@
     "noAccount": "Pas de compte ? Inscrivez-vous",
     "forgotPassword": "Mot de passe oublié ?",
     "ssoButton": "Se connecter avec {{provider}}",
-    "orSeparator": "ou"
+    "orSeparator": "ou",
+      "twoFactorTitle": "Authentification à deux facteurs",
+      "twoFactorDescription": "Saisissez le code à 6 chiffres de votre application d'authentification, ou l'un de vos codes de récupération.",
+      "twoFactorCode": "Code de vérification",
+      "invalidCode": "Code invalide. Veuillez réessayer.",
+      "backToCredentials": "Retour à la connexion"
   },
   "passwordReset": {
     "title": "Réinitialiser le mot de passe",
@@ -916,6 +921,50 @@
       "success": "Mot de passe mis à jour avec succès.",
       "error": "Nous n'avons pas pu changer votre mot de passe. Veuillez réessayer.",
       "mismatch": "Les nouveaux mots de passe ne correspondent pas."
+    },
+    "twoFactor": {
+      "title": "Authentification à deux facteurs",
+      "description": "Ajoutez une deuxième étape à la connexion avec votre mot de passe : un code à 6 chiffres provenant d'une application d'authentification. Cela protège vos données même si votre mot de passe est volé.",
+      "enableButton": "Activer l'authentification à deux facteurs",
+      "settingUp": "Configuration en cours...",
+      "setupError": "Nous n'avons pas pu démarrer la configuration. Veuillez réessayer.",
+      "enabledBadge": "L'authentification à deux facteurs est activée",
+      "enabledDescription": "La connexion exige désormais un code de votre application d'authentification en plus de votre mot de passe. La synchronisation CardDAV et les jetons d'API ne sont pas concernés.",
+      "enableSuccess": "Authentification à deux facteurs activée.",
+      "disableButton": "Désactiver",
+      "regenerateButton": "Régénérer les codes de récupération",
+      "disableSuccess": "Authentification à deux facteurs désactivée.",
+      "regenerateSuccess": "Codes de récupération régénérés.",
+      "invalidCode": "Code invalide. Veuillez réessayer.",
+      "codePromptLabel": "Code de vérification",
+      "confirm": "Confirmer",
+      "submitting": "Veuillez patienter...",
+      "setup": {
+        "title": "Activer l'authentification à deux facteurs",
+        "description": "Scannez ce code QR avec votre application d'authentification (ou saisissez la clé manuellement), puis entrez le code à 6 chiffres qu'elle affiche pour confirmer.",
+        "manualKey": "Clé de configuration manuelle",
+        "codeLabel": "Code de vérification",
+        "codeHelp": "Code à 6 chiffres de votre application d'authentification.",
+        "confirmButton": "Activer et continuer",
+        "enabling": "Activation en cours..."
+      },
+      "disable": {
+        "title": "Désactiver l'authentification à deux facteurs",
+        "description": "Saisissez un code actuel de votre application d'authentification pour confirmer. Toutes les autres sessions seront déconnectées.",
+        "button": "Désactiver"
+      },
+      "regenerate": {
+        "title": "Régénérer les codes de récupération",
+        "description": "Saisissez un code actuel de votre application d'authentification. Les anciens codes de récupération cesseront immédiatement de fonctionner."
+      },
+      "recovery": {
+        "title": "Codes de récupération",
+        "warning": "Conservez ces codes dans un endroit sûr. Chaque code ne fonctionne qu'une seule fois et ne sera plus affiché.",
+        "description": "Utilisez un code de récupération pour vous connecter si vous perdez votre application d'authentification.",
+        "copy": "Copier tous les codes",
+        "copied": "Copié !",
+        "done": "Terminé"
+      }
     },
     "export": {
       "title": "Exporter les données",

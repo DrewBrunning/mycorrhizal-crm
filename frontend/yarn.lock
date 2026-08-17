@@ -4171,6 +4171,11 @@ punycode@^2.1.0, punycode@^2.3.1:
   resolved "https://registry.npmjs.org/punycode/-/punycode-2.3.1.tgz"
   integrity sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==
 
+qrcode.react@^4.2.0:
+  version "4.2.0"
+  resolved "https://registry.yarnpkg.com/qrcode.react/-/qrcode.react-4.2.0.tgz#1bce8363f348197d145c0da640929a24c83cbca3"
+  integrity sha512-QpgqWi8rD9DsS9EP3z7BT+5lY5SFhsqGjpgW5DY/i3mK4M9DTBNz3ErMi8BWYEfI3L0d8GIbGmcdFAS1uIRGjA==
+
 react-dom@^19.2.8:
   version "19.2.8"
   resolved "https://registry.yarnpkg.com/react-dom/-/react-dom-19.2.8.tgz#3b46b9eeda877cdff2cf13d2770fff4ae36c2ec2"

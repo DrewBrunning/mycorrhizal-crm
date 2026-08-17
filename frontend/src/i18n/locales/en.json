@@ -133,7 +133,12 @@
     "noAccount": "Don't have an account? Register",
     "forgotPassword": "Forgot your password?",
     "ssoButton": "Login with {{provider}}",
-    "orSeparator": "or"
+    "orSeparator": "or",
+    "twoFactorTitle": "Two-factor authentication",
+    "twoFactorDescription": "Enter the 6-digit code from your authenticator app, or one of your recovery codes.",
+    "twoFactorCode": "Verification code",
+    "invalidCode": "Invalid code. Please try again.",
+    "backToCredentials": "Back to sign in"
   },
   "passwordReset": {
     "title": "Reset Password",
@@ -943,6 +948,50 @@
       "success": "Password updated successfully.",
       "error": "We couldn't change your password. Please try again.",
       "mismatch": "New passwords do not match."
+    },
+    "twoFactor": {
+      "title": "Two-factor authentication",
+      "description": "Add a second step to sign-in with your password: a 6-digit code from an authenticator app. This protects your data even if your password is stolen.",
+      "enableButton": "Enable two-factor authentication",
+      "settingUp": "Setting up...",
+      "setupError": "We couldn't start setup. Please try again.",
+      "enabledBadge": "Two-factor authentication is enabled",
+      "enabledDescription": "Sign-in now requires a code from your authenticator app in addition to your password. CardDAV sync and API tokens are not affected.",
+      "enableSuccess": "Two-factor authentication enabled.",
+      "disableButton": "Disable",
+      "regenerateButton": "Regenerate recovery codes",
+      "disableSuccess": "Two-factor authentication disabled.",
+      "regenerateSuccess": "Recovery codes regenerated.",
+      "invalidCode": "Invalid code. Please try again.",
+      "codePromptLabel": "Verification code",
+      "confirm": "Confirm",
+      "submitting": "Please wait...",
+      "setup": {
+        "title": "Enable two-factor authentication",
+        "description": "Scan this QR code with your authenticator app (or enter the key manually), then enter the 6-digit code it shows to confirm.",
+        "manualKey": "Manual setup key",
+        "codeLabel": "Verification code",
+        "codeHelp": "6-digit code from your authenticator app.",
+        "confirmButton": "Enable and continue",
+        "enabling": "Enabling..."
+      },
+      "disable": {
+        "title": "Disable two-factor authentication",
+        "description": "Enter a current code from your authenticator app to confirm. All other sessions will be signed out.",
+        "button": "Disable"
+      },
+      "regenerate": {
+        "title": "Regenerate recovery codes",
+        "description": "Enter a current code from your authenticator app. The old recovery codes will stop working immediately."
+      },
+      "recovery": {
+        "title": "Recovery codes",
+        "warning": "Store these somewhere safe. Each code works only once, and they will not be shown again.",
+        "description": "Use a recovery code to sign in if you lose your authenticator app.",
+        "copy": "Copy all codes",
+        "copied": "Copied!",
+        "done": "Done"
+      }
     },
     "export": {
       "title": "Export Data",

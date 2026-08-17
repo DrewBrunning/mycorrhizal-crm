@@ -39,4 +39,15 @@ type User struct {
 	// on registration (migration 000018). Null for pre-existing users until
 	// they create or are assigned one. References contacts.vcard_uid.
 	SelfContactVCardUID *string `gorm:"column:self_contact_vcard_uid" json:"self_contact_vcard_uid,omitempty"`
+
+	// N8 two-factor auth (migration 000024). TOTPSecretEncrypted holds the TOTP
+	// shared secret AES-256-GCM encrypted at rest (services.EncryptCredential,
+	// HKDF-derived from JWT_SECRET_KEY) — never plaintext. The secret is stored
+	// when enrollment begins, so it may exist while TOTPEnabled is still false
+	// (pending confirmation). TOTPEnabled is the single source of truth for
+	// whether interactive login requires a second factor; CardDAV/API-token
+	// auth is deliberately unaffected (those are scoped credentials).
+	TOTPSecretEncrypted *string    `gorm:"column:totp_secret_encrypted" json:"-"`
+	TOTPEnabled         bool       `gorm:"column:totp_enabled;not null;default:false" json:"-"`
+	TOTPConfirmedAt     *time.Time `gorm:"column:totp_confirmed_at" json:"-"`
 }

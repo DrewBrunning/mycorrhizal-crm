@@ -169,6 +169,30 @@ func LoginUser(context *gin.Context, cfg *config.Config) {
 	// Successful login - clear any failed attempt tracking
 	accountLimiter.RecordSuccessfulLogin(identifier)
 
+	// N8: account has 2FA enabled — the password alone must not mint a
+	// session. Issue a short-lived, single-purpose challenge (no usable
+	// session, purpose=2fa JWT in an httpOnly cookie) and demand a TOTP or
+	// recovery code via POST /login/2fa before the real auth_token cookie.
+	if foundUser.TOTPEnabled {
+		pendingToken, err := services.Generate2FAChallengeToken(foundUser, cfg)
+		if err != nil {
+			apperrors.AbortWithError(context, apperrors.ErrInternal("Could not generate two-factor challenge").WithError(err))
+			return
+		}
+		context.SetSameSite(http.SameSiteLaxMode)
+		context.SetCookie(
+			"2fa_pending",    // name
+			pendingToken,     // value
+			600,              // maxAge in seconds (short-lived challenge)
+			"/",              // path
+			cfg.CookieDomain, // domain
+			cfg.CookieSecure, // secure
+			true,             // httpOnly
+		)
+		context.JSON(http.StatusOK, gin.H{"two_factor_required": true})
+		return
+	}
+
 	// Create JWT token
 	tokenString, err := services.GenerateToken(foundUser, cfg)
 	if err != nil {

@@ -104,6 +104,32 @@ func TestBasicAuthMiddleware_CardDAVScopeTokenAuthenticates(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 
+func TestBasicAuthMiddleware_UnaffectedByEnabledTwoFactor(t *testing.T) {
+	db, router := newAuthTestRouter(t)
+
+	// N8: 2FA gates INTERACTIVE login only. CardDAV authenticates with the
+	// account password or a scoped API token — neither path runs the
+	// two-step login, so a user with 2FA enabled must still sync CardDAV
+	// unchanged (otherwise enabling 2FA would silently break every synced
+	// device).
+	hashed, err := bcrypt.GenerateFromPassword([]byte("correct-password"), bcrypt.DefaultCost)
+	require.NoError(t, err)
+	user := models.User{
+		Username:            "twofa-sync-user",
+		Email:               "twofa-sync-user@example.com",
+		Password:            string(hashed),
+		TOTPEnabled:         true,
+		TOTPSecretEncrypted: &[]string{"encrypted-secret-blob"}[0],
+	}
+	require.NoError(t, db.Create(&user).Error)
+
+	// Password path still works.
+	assert.Equal(t, http.StatusOK, doBasicAuthRequest(router, "twofa-sync-user", "correct-password").Code)
+	// CardDAV-scoped token path still works.
+	plaintext := createTestToken(t, db, user.ID, "carddav")
+	assert.Equal(t, http.StatusOK, doBasicAuthRequest(router, "twofa-sync-user", plaintext).Code)
+}
+
 func TestBasicAuthMiddleware_SSOUserWithEmptyPasswordAuthenticatesViaToken(t *testing.T) {
 	db, router := newAuthTestRouter(t)
 

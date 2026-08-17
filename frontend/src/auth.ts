@@ -17,6 +17,10 @@ const USER_INFO_KEY = 'user_info';
 export interface LoginResponse {
   language?: string;
   date_format?: string;
+  // N8: present and true when the account has 2FA enabled. In that case NO
+  // session exists yet — call login2FA() with a TOTP/recovery code to
+  // complete the login.
+  two_factor_required?: boolean;
 }
 
 export interface LogoutResponse {
@@ -44,7 +48,51 @@ export async function loginUser(identifier: string, password: string): Promise<L
   }
   const data = await response.json();
 
+  // When 2FA is required the server set a short-lived 2fa_pending cookie but
+  // NO session — user info must not be cached until the second step succeeds.
+  if (data.two_factor_required) {
+    return { two_factor_required: true };
+  }
+
   // Fetch user info and cache it (since we can't read the httpOnly cookie)
+  await fetchAndCacheUserInfo();
+
+  return {
+    language: data.language,
+    date_format: data.date_format,
+  };
+}
+
+// login2FA completes interactive login for accounts with 2FA enabled: the
+// server requires the 2fa_pending cookie from the preceding /login call, so
+// this must run in the same browser context as loginUser.
+export async function login2FA(code: string): Promise<LoginResponse> {
+  const response = await fetch(`${API_BASE_URL}/login/2fa`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify({ code }),
+  });
+  if (!response.ok) {
+    // A 429 is the account lockout from repeated bad codes — the backend
+    // body carries the retry_after, so surface that instead of a generic
+    // "Invalid code" that would make a locked-out user keep guessing.
+    if (response.status === 429) {
+      let message = 'Too many failed attempts. Please try again later.';
+      try {
+        const data = await response.json();
+        if (data?.message) message = data.message;
+      } catch {
+        // fall back to the generic lockout message
+      }
+      throw new Error(message);
+    }
+    throw new Error('Invalid code');
+  }
+  const data = await response.json();
+
   await fetchAndCacheUserInfo();
 
   return {

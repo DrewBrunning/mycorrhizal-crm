@@ -33,6 +33,12 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 		v1.POST("/login", middleware.AuthRateLimitMiddleware(), func(c *gin.Context) {
 			controllers.LoginUser(c, cfg)
 		})
+		// N8: step 2 of interactive login — exchange a pending 2FA challenge
+		// (2fa_pending cookie set by /login) + a TOTP/recovery code for the
+		// real session cookie.
+		v1.POST("/login/2fa", middleware.AuthRateLimitMiddleware(), func(c *gin.Context) {
+			controllers.Complete2FALogin(c, cfg)
+		})
 		v1.POST("/logout", func(c *gin.Context) {
 			controllers.LogoutUser(c, cfg, oidcProvider)
 		})
@@ -56,6 +62,14 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// T90: mark a contact as "Me". Single-purpose, follows the shape of
 			// the other /users mutation routes above.
 			protected.PATCH("/users/me/self-contact", middleware.ValidateJSONMiddleware(&models.SelfContactInput{}), controllers.UpdateSelfContact)
+			// N8 2FA management (issue #158). Status is read-only; setup
+			// mints a pending secret, confirm flips it on + mints recovery
+			// codes, disable/regenerate gate on a live TOTP code.
+			protected.GET("/users/2fa/status", controllers.GetTwoFactorStatus)
+			protected.POST("/users/2fa/setup", controllers.SetupTwoFactor)
+			protected.POST("/users/2fa/confirm", controllers.ConfirmTwoFactor)
+			protected.POST("/users/2fa/disable", controllers.DisableTwoFactor)
+			protected.POST("/users/2fa/recovery-codes/regenerate", controllers.RegenerateRecoveryCodes)
 			// P1 contact sharing recipient picker — the only non-admin way to discover
 			// other users on the instance; deliberately thinner than
 			// admin-only ListUsers (id+username only).

@@ -70,6 +70,8 @@ func TestDeleteUser_CleansUpAllOwnedRows(t *testing.T) {
 	require.NoError(t, db.Create(&models.CardDAVSync{UserID: target.ID, SyncToken: "tok", LastModified: time.Now()}).Error)
 	require.NoError(t, db.Create(&models.ApiToken{UserID: target.ID, Name: "token", TokenHash: "hash"}).Error)
 	require.NoError(t, db.Create(&models.ReminderCompletion{UserID: target.ID, ContactID: contact.ID, Message: "done", CompletedAt: time.Now()}).Error)
+	// N8: hashed 2FA recovery codes must be swept with the account.
+	require.NoError(t, db.Create(&models.RecoveryCode{UserID: target.ID, CodeHash: "deadbeef"}).Error)
 
 	calSub := models.CalendarSubscription{UserID: target.ID, Name: "cal", URL: "https://example.com/cal.ics"}
 	require.NoError(t, db.Create(&calSub).Error)
@@ -129,6 +131,7 @@ func TestDeleteUser_CleansUpAllOwnedRows(t *testing.T) {
 	assertGone("ContactShare (target as sender)", &models.ContactShare{}, "id = ?", shareAsSender.ID)
 	assertGone("ContactShare (target as recipient)", &models.ContactShare{}, "id = ?", shareAsRecipient.ID)
 	assertGone("LinkFieldType", &models.LinkFieldType{}, "user_id = ?", target.ID)
+	assertGone("RecoveryCode", &models.RecoveryCode{}, "user_id = ?", target.ID)
 
 	// LinkFieldType is soft-deletable (T26); DeleteUser hard-deletes it
 	// (Unscoped, like CadencePolicy/Preference/LifeEvent) since there's no

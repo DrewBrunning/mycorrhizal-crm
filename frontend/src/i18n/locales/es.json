@@ -133,7 +133,12 @@
     "noAccount": "¿No tienes cuenta? Regístrate",
     "forgotPassword": "¿Olvidaste tu contraseña?",
     "ssoButton": "Iniciar sesión con {{provider}}",
-    "orSeparator": "o"
+    "orSeparator": "o",
+      "twoFactorTitle": "Autenticación de dos factores",
+      "twoFactorDescription": "Introduce el código de 6 dígitos de tu aplicación de autenticación o uno de tus códigos de recuperación.",
+      "twoFactorCode": "Código de verificación",
+      "invalidCode": "Código no válido. Inténtalo de nuevo.",
+      "backToCredentials": "Volver al inicio de sesión"
   },
   "passwordReset": {
     "title": "Restablecer Contraseña",
@@ -916,6 +921,50 @@
       "success": "Contraseña actualizada exitosamente.",
       "error": "No pudimos cambiar tu contraseña. Inténtalo de nuevo.",
       "mismatch": "Las nuevas contraseñas no coinciden."
+    },
+    "twoFactor": {
+      "title": "Autenticación de dos factores",
+      "description": "Añade un segundo paso al inicio de sesión con tu contraseña: un código de 6 dígitos de una aplicación de autenticación. Esto protege tus datos incluso si te roban la contraseña.",
+      "enableButton": "Activar la autenticación de dos factores",
+      "settingUp": "Configurando...",
+      "setupError": "No pudimos iniciar la configuración. Inténtalo de nuevo.",
+      "enabledBadge": "La autenticación de dos factores está activada",
+      "enabledDescription": "El inicio de sesión ahora requiere un código de tu aplicación de autenticación además de tu contraseña. La sincronización CardDAV y los tokens de API no se ven afectados.",
+      "enableSuccess": "Autenticación de dos factores activada.",
+      "disableButton": "Desactivar",
+      "regenerateButton": "Regenerar códigos de recuperación",
+      "disableSuccess": "Autenticación de dos factores desactivada.",
+      "regenerateSuccess": "Códigos de recuperación regenerados.",
+      "invalidCode": "Código no válido. Inténtalo de nuevo.",
+      "codePromptLabel": "Código de verificación",
+      "confirm": "Confirmar",
+      "submitting": "Espere, por favor...",
+      "setup": {
+        "title": "Activar la autenticación de dos factores",
+        "description": "Escanea este código QR con tu aplicación de autenticación (o introduce la clave manualmente) y luego escribe el código de 6 dígitos que muestra para confirmar.",
+        "manualKey": "Clave de configuración manual",
+        "codeLabel": "Código de verificación",
+        "codeHelp": "Código de 6 dígitos de tu aplicación de autenticación.",
+        "confirmButton": "Activar y continuar",
+        "enabling": "Activando..."
+      },
+      "disable": {
+        "title": "Desactivar la autenticación de dos factores",
+        "description": "Introduce un código actual de tu aplicación de autenticación para confirmar. Todas las demás sesiones se cerrarán.",
+        "button": "Desactivar"
+      },
+      "regenerate": {
+        "title": "Regenerar códigos de recuperación",
+        "description": "Introduce un código actual de tu aplicación de autenticación. Los códigos de recuperación antiguos dejarán de funcionar de inmediato."
+      },
+      "recovery": {
+        "title": "Códigos de recuperación",
+        "warning": "Guarda estos códigos en un lugar seguro. Cada código funciona solo una vez y no se volverá a mostrar.",
+        "description": "Usa un código de recuperación para iniciar sesión si pierdes tu aplicación de autenticación.",
+        "copy": "Copiar todos los códigos",
+        "copied": "¡Copiado!",
+        "done": "Hecho"
+      }
     },
     "export": {
       "title": "Exportar Datos",
