@@ -121,6 +121,11 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.DELETE("/contacts/:id", controllers.DeleteContact)
 			protected.POST("/contacts/:id/archive", controllers.ArchiveContact)
 			protected.POST("/contacts/:id/unarchive", controllers.UnarchiveContact)
+			// Issue #173: favorite toggle, same shape as archive/unarchive —
+			// a CRM-local flag toggled by its own endpoint, not through the
+			// nested Card/CRM payload.
+			protected.POST("/contacts/:id/favorite", controllers.FavoriteContact)
+			protected.POST("/contacts/:id/unfavorite", controllers.UnfavoriteContact)
 
 			// Contact import routes (CSV)
 			protected.POST("/contacts/import/upload", controllers.UploadCSVForImport)

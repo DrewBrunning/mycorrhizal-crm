@@ -1,5 +1,5 @@
 // Custom hook for fetching and managing contacts
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Dispatch, SetStateAction } from 'react';
 import { isAuthenticated } from '../auth';
 import {
   getContacts,
@@ -21,12 +21,16 @@ interface UseContactsResult {
   error: string | null;
   refetch: () => Promise<void>;
   loadMore: () => Promise<void>;
+  // Raw state setter, exposed so a consumer can apply a local, optimistic
+  // edit (e.g. ContactsPage's star toggle) without a full page-one refetch
+  // that would bounce scroll position on paginated pages.
+  setContacts: Dispatch<SetStateAction<Contact[]>>;
 }
 
 export function useContacts(params: GetContactsParams = {}): UseContactsResult {
   // Destructure params to use primitive values as dependencies
   // This prevents re-fetches when callers pass new object references with identical values
-  const { cursor: _ignored, limit, search, circle, sort, order, includeArchived, archived, hasContactInfo } = params;
+  const { cursor: _ignored, limit, search, circle, sort, order, includeArchived, archived, favorites, hasContactInfo } = params;
 
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [nextCursor, setNextCursor] = useState('');
@@ -52,6 +56,7 @@ export function useContacts(params: GetContactsParams = {}): UseContactsResult {
         order,
         includeArchived,
         archived,
+        favorites,
         hasContactInfo,
       });
       setContacts(data.contacts || []);
@@ -63,7 +68,7 @@ export function useContacts(params: GetContactsParams = {}): UseContactsResult {
     } finally {
       setLoading(false);
     }
-  }, [limit, search, circle, sort, order, includeArchived, archived, hasContactInfo]);
+  }, [limit, search, circle, sort, order, includeArchived, archived, favorites, hasContactInfo]);
 
   const loadMore = useCallback(async () => {
     if (!nextCursor) return;
@@ -79,6 +84,7 @@ export function useContacts(params: GetContactsParams = {}): UseContactsResult {
         order,
         includeArchived,
         archived,
+        favorites,
         hasContactInfo,
       });
       setContacts((prev) => [...prev, ...(data.contacts || [])]);
@@ -89,7 +95,7 @@ export function useContacts(params: GetContactsParams = {}): UseContactsResult {
     } finally {
       setLoading(false);
     }
-  }, [nextCursor, limit, search, circle, sort, order, includeArchived, archived, hasContactInfo]);
+  }, [nextCursor, limit, search, circle, sort, order, includeArchived, archived, favorites, hasContactInfo]);
 
   useEffect(() => {
     fetchFirst();
@@ -103,5 +109,6 @@ export function useContacts(params: GetContactsParams = {}): UseContactsResult {
     error,
     refetch: fetchFirst,
     loadMore,
+    setContacts,
   };
 }

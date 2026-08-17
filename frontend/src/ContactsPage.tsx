@@ -8,7 +8,7 @@ import { useSearch } from './hooks/useSearch';
 import { getCurrentUser } from './api/admin';
 import { resolveEnabledFields, ContactFieldKey } from './contactFields';
 import { BulkAction, runBulkOperation } from './api/bulkOperations';
-import { Contact } from './api/contacts';
+import { Contact, favoriteContact, unfavoriteContact } from './api/contacts';
 import AddContactDialog from './components/AddContactDialog';
 import ImportContactsDialog from './components/ImportContactsDialog';
 import BulkActionsBar from './components/BulkActionsBar';
@@ -39,6 +39,8 @@ import FileUploadIcon from '@mui/icons-material/FileUpload';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
 import DifferenceIcon from '@mui/icons-material/Difference';
+import StarIcon from '@mui/icons-material/Star';
+import StarBorderIcon from '@mui/icons-material/StarBorder';
 import { ContactListSkeleton } from './components/LoadingSkeletons';
 
 export default function ContactsPage() {
@@ -101,6 +103,10 @@ export default function ContactsPage() {
   const [mergePair, setMergePair] = useState<{ a: Contact; b: Contact } | null>(null);
   const [enabledFields, setEnabledFields] = useState<Set<ContactFieldKey>>(() => resolveEnabledFields(null));
   const [showArchived, setShowArchived] = useState(false);
+  // Issue #173: "Favorites only" — a quick filter toggle beside the archived
+  // switch. Local state like showArchived (both are transient list lenses,
+  // not shareable URLs).
+  const [showFavorites, setShowFavorites] = useState(false);
   const pageSize = 10;
 
   // T103: the contact-info filter defaults ON — the list is the app's front
@@ -138,7 +144,7 @@ export default function ContactsPage() {
   // explicitly).
   useEffect(() => {
     setSelectedUids(new Set());
-  }, [searchQuery, selectedCircle, showArchived, showAll]);
+  }, [searchQuery, selectedCircle, showArchived, showFavorites, showAll]);
 
   // T77 sort control: the URL's ?sort= and ?order= params own the list order
   // (same persistence mechanism as T86's ?search=). The web client opts into
@@ -176,11 +182,12 @@ export default function ContactsPage() {
     sort: sort as 'updated_at' | 'name',
     order: order as 'asc' | 'desc',
     includeArchived: showArchived,
+    favorites: showFavorites,
     hasContactInfo,
-  }), [searchQuery, selectedCircle, showArchived, sort, order, hasContactInfo]);
+  }), [searchQuery, selectedCircle, showArchived, showFavorites, sort, order, hasContactInfo]);
 
   // Use custom hook for fetching contacts
-  const { contacts, nextCursor, hiddenCount, loading, refetch, loadMore } = useContacts(contactParams);
+  const { contacts, nextCursor, hiddenCount, loading, refetch, loadMore, setContacts } = useContacts(contactParams);
 
   // Derived flags for the merged search surfaces (T86).
   const searchActive = searchQuery.trim().length >= 2;
@@ -243,6 +250,29 @@ export default function ContactsPage() {
   };
 
   const clearSelection = () => setSelectedUids(new Set());
+
+  // --- Issue #173: favorite toggle ------------------------------------------
+
+  // Toggles a single row's favorite flag. The optimistic flip keeps the star
+  // responsive; on failure the page refetches so the server state wins and
+  // the icon can't silently disagree with the database. Under the
+  // favorites-only lens, unfavoriting removes the row from the view (it no
+  // longer matches the filter) rather than leaving an empty star behind.
+  const handleToggleFavorite = async (contact: Contact) => {
+    const wasFavorite = !!contact.is_favorite;
+    setContacts((prev) => prev.map((c) => (c.uid === contact.uid ? { ...c, is_favorite: !wasFavorite } : c)));
+    try {
+      const updated = wasFavorite ? await unfavoriteContact(contact.ID) : await favoriteContact(contact.ID);
+      if (showFavorites && !updated.is_favorite) {
+        setContacts((prev) => prev.filter((c) => c.uid !== contact.uid));
+      } else {
+        setContacts((prev) => prev.map((c) => (c.uid === contact.uid ? { ...c, is_favorite: updated.is_favorite } : c)));
+      }
+    } catch (err) {
+      window.alert(t('contacts.favoriteError'));
+      await refetch();
+    }
+  };
 
   // --- N5 bulk actions -----------------------------------------------------
 
@@ -413,6 +443,19 @@ export default function ContactsPage() {
             label={t('contacts.showArchived')}
             sx={{ whiteSpace: 'nowrap' }}
           />
+          {/* Issue #173: favorites-only filter — mirror of the archived
+              switch. */}
+          <FormControlLabel
+            control={
+              <Switch
+                checked={showFavorites}
+                onChange={(e) => setShowFavorites(e.target.checked)}
+                size="small"
+              />
+            }
+            label={t('contacts.showFavorites')}
+            sx={{ whiteSpace: 'nowrap' }}
+          />
           {/* T103: the contact-info filter defaults ON; "Show all" turns it off.
               Label matches the ticket — the unchecked default is the filter. */}
           <FormControlLabel
@@ -517,6 +560,16 @@ export default function ContactsPage() {
                   disabled={bulkBusy}
                   inputProps={{ 'aria-label': t('bulk.selectContact', { name: `${contact.firstname} ${contact.lastname}`.trim() }) }}
                 />
+                {/* Issue #173: per-row favorite toggle. stopPropagation so the
+                    star click never navigates into the detail page. */}
+                <IconButton
+                  size="small"
+                  aria-label={contact.is_favorite ? t('contacts.unfavoriteContact', { name: `${contact.firstname} ${contact.lastname}`.trim() }) : t('contacts.favoriteContact', { name: `${contact.firstname} ${contact.lastname}`.trim() })}
+                  onClick={(e) => { e.stopPropagation(); handleToggleFavorite(contact); }}
+                  sx={{ mr: 0.5 }}
+                >
+                  {contact.is_favorite ? <StarIcon fontSize="small" sx={{ color: 'warning.main' }} /> : <StarBorderIcon fontSize="small" />}
+                </IconButton>
                 <Avatar src={contact.photo_thumbnail || undefined} sx={{ width: 48, height: 48, mr: 1.5, bgcolor: 'primary.main' }}>
                   {contact.firstname.charAt(0)}
                 </Avatar>

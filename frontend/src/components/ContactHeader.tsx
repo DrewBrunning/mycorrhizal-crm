@@ -1,6 +1,8 @@
 import { Box, Card, CardContent, Avatar, Typography, Chip, IconButton, Stack, TextField, Autocomplete, Button, SvgIcon, Menu, MenuItem, ListItemText, ListItemIcon, useTheme, useMediaQuery } from '@mui/material';
 import { useState } from 'react';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+import StarIcon from '@mui/icons-material/Star';
+import StarBorderIcon from '@mui/icons-material/StarBorder';
 import GroupIcon from '@mui/icons-material/Group';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import EditIcon from '@mui/icons-material/Edit';
@@ -60,6 +62,8 @@ interface ContactHeaderProps {
   onStayInTouch?: () => void;
   onArchiveContact?: () => void;
   onUnarchiveContact?: () => void;
+  // Issue #173: favorite toggle, rendered as a star beside the name.
+  onToggleFavorite?: () => void;
   onMergeContact?: () => void;
   onPrepView?: () => void;
   onShareContact?: () => void;
@@ -93,6 +97,7 @@ export default function ContactHeader({
   onStayInTouch,
   onArchiveContact,
   onUnarchiveContact,
+  onToggleFavorite,
   onMergeContact,
   onPrepView,
   onShareContact,
@@ -329,6 +334,18 @@ export default function ContactHeader({
                           sx={{ ml: 1, flexShrink: 0 }}
                         />
                       )}
+                      {onToggleFavorite && (
+                        // Issue #173: always-visible star toggle.
+                        <IconButton
+                          size="small"
+                          color="primary"
+                          onClick={onToggleFavorite}
+                          aria-label={record.is_favorite ? t('contactDetail.unfavoriteContact') : t('contactDetail.favoriteContact')}
+                          sx={{ ml: 0.5, flexShrink: 0 }}
+                        >
+                          {record.is_favorite ? <StarIcon fontSize="small" /> : <StarBorderIcon fontSize="small" />}
+                        </IconButton>
+                      )}
                       <IconButton
                         className="edit-icon"
                         size="small"
@@ -461,6 +478,18 @@ export default function ContactHeader({
                           size="small"
                           sx={{ ml: 1, flexShrink: 0 }}
                         />
+                      )}
+                      {onToggleFavorite && (
+                        // Issue #173: see the compact-layout star above.
+                        <IconButton
+                          size="small"
+                          color="primary"
+                          onClick={onToggleFavorite}
+                          aria-label={record.is_favorite ? t('contactDetail.unfavoriteContact') : t('contactDetail.favoriteContact')}
+                          sx={{ ml: 0.5, flexShrink: 0 }}
+                        >
+                          {record.is_favorite ? <StarIcon fontSize="small" /> : <StarBorderIcon fontSize="small" />}
+                        </IconButton>
                       )}
                       <IconButton
                         className="edit-icon"

@@ -843,6 +843,15 @@ paths:
           in: query
           description: When true (and include_archived is not set), return only archived contacts.
           schema: { type: boolean, default: false }
+        - name: favorites
+          in: query
+          description: >
+            When true, return only contacts the caller has marked as
+            favorites (issue #173). Composes with search/circle/archived/
+            sort/cursor like the other filters. Ignored by ?since= (the
+            change feed is sync state and must return every row regardless
+            of filters).
+          schema: { type: boolean, default: false }
         - name: has_contact_info
           in: query
           description: >
@@ -1645,6 +1654,58 @@ paths:
       responses:
         "200":
           description: The unarchived contact (raw Contact JSON).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactFlat"
+        "404":
+          description: Contact not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # Issue #173: favorite toggle. CRM-local flags with no neutral-model home,
+  # toggled by dedicated endpoints — same standing as archive/unarchive.
+  /contacts/{id}/favorite:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    post:
+      summary: Mark a contact as a favorite
+      operationId: favoriteContact
+      description: >
+        Sets the contact's CRM-local is_favorite flag (issue #173). The
+        flag never reaches CardDAV or the vCard3/vCard4/JSContact exporters.
+        Uses a hook-firing update, so the flip bumps the contact's ETag and
+        appears in the T17 ?since= change feed.
+      responses:
+        "200":
+          description: The favorited contact (raw Contact JSON).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactFlat"
+        "404":
+          description: Contact not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /contacts/{id}/unfavorite:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    post:
+      summary: Unmark a contact as a favorite
+      operationId: unfavoriteContact
+      responses:
+        "200":
+          description: The unfavorited contact (raw Contact JSON).
           content:
             application/json:
               schema:
@@ -7501,6 +7562,12 @@ components:
             contact has no photo. Never the raw base64 data URI or a legacy
             disk-file name.
         archived: { type: boolean }
+        is_favorite:
+          type: boolean
+          description: >
+            Issue #173: whether the caller marked this contact as a favorite.
+            Always present (a false default is still on the wire so clients
+            can treat it as required). CRM-local — never exported or synced.
         deleted:
           type: boolean
           description: >
@@ -7558,6 +7625,11 @@ components:
             contact has no photo. The Card.Media photo entry's uri carries
             the same URL (full-photo variant) on this response.
         archived: { type: boolean }
+        is_favorite:
+          type: boolean
+          description: >
+            Issue #173: whether the caller marked this contact as a favorite.
+            Always present. CRM-local — never exported or synced.
         notes: { type: array, items: { type: object } }
         activities: { type: array, items: { type: object } }
         reminders: { type: array, items: { type: object } }
@@ -7573,6 +7645,12 @@ components:
           items: { $ref: "#/components/schemas/Birthday" }
         random_contacts:
           type: array
+          items: { $ref: "#/components/schemas/ContactResponse" }
+        favorites:
+          type: array
+          description: >
+            Issue #173: the caller's favorite, non-archived contacts, sorted
+            by name (a quick-access block alongside random_contacts).
           items: { $ref: "#/components/schemas/ContactResponse" }
         upcoming_reminders:
           type: array

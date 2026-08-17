@@ -42,4 +42,8 @@ type DashboardResponse struct {
 	RandomContacts    []ContactResponse         `json:"random_contacts"`
 	UpcomingReminders []DashboardReminder       `json:"upcoming_reminders"`
 	Overdue           []DashboardOverdueCadence `json:"overdue"`
+	// Favorites (issue #173): the user's favorite, non-archived contacts,
+	// sorted by name — a quick-access block alongside the "stay in touch"
+	// nudge. Same no-omitempty discipline as every other block.
+	Favorites []ContactResponse `json:"favorites"`
 }

@@ -31,7 +31,7 @@ func TestGetDashboard_EmptyBlocksSerializeAsArrays(t *testing.T) {
 	var raw map[string]json.RawMessage
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &raw))
 
-	for _, key := range []string{"birthdays", "random_contacts", "upcoming_reminders", "overdue"} {
+	for _, key := range []string{"birthdays", "random_contacts", "upcoming_reminders", "overdue", "favorites"} {
 		block, present := raw[key]
 		require.Truef(t, present, "block %q must be present in the response even when empty", key)
 		assert.JSONEqf(t, "[]", string(block), "block %q must serialize as an empty array, not null", key)
@@ -123,4 +123,44 @@ func TestGetDashboard_ScopedToUser(t *testing.T) {
 	assert.Empty(t, resp.Birthdays)
 	assert.Empty(t, resp.UpcomingReminders)
 	assert.Empty(t, resp.RandomContacts)
+	assert.Empty(t, resp.Favorites)
+}
+
+// TestGetDashboard_FavoritesBlock seeds favorites (live and archived) and
+// plain contacts, and asserts the favorites block surfaces exactly the live
+// favorites in name order — and that non-favorites and archived favorites
+// never leak in (issue #173).
+func TestGetDashboard_FavoritesBlock(t *testing.T) {
+	db, router := setupRouter()
+	router.GET("/dashboard", GetDashboard)
+
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+
+	zebra := models.Contact{UserID: user.ID, Firstname: "Zebra", IsFavorite: true}
+	alpha := models.Contact{UserID: user.ID, Firstname: "Alpha", IsFavorite: true}
+	plain := models.Contact{UserID: user.ID, Firstname: "Plain"}
+	archivedFav := models.Contact{UserID: user.ID, Firstname: "Arch", IsFavorite: true, Archived: true}
+	require.NoError(t, db.Create(&zebra).Error)
+	require.NoError(t, db.Create(&alpha).Error)
+	require.NoError(t, db.Create(&plain).Error)
+	require.NoError(t, db.Create(&archivedFav).Error)
+
+	// Another user's favorite must not leak in (CLAUDE.md trap 5).
+	other := models.User{Username: "other-dash-fav", Password: "x", Email: "other-dash-fav@example.com"}
+	require.NoError(t, db.Create(&other).Error)
+	require.NoError(t, db.Create(&models.Contact{UserID: other.ID, Firstname: "Theirs", IsFavorite: true}).Error)
+
+	req, _ := http.NewRequest("GET", "/dashboard", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var resp models.DashboardResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+
+	require.Len(t, resp.Favorites, 2, "only the caller's live favorites")
+	assert.Equal(t, "Alpha", resp.Favorites[0].Firstname, "favorites must be name-ordered")
+	assert.Equal(t, "Zebra", resp.Favorites[1].Firstname)
+	assert.True(t, resp.Favorites[0].IsFavorite, "the wire flag must be true for a favorite")
 }

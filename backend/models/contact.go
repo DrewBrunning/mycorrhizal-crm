@@ -138,6 +138,14 @@ type Contact struct {
 
 	Archived bool `gorm:"default:false" json:"archived"`
 
+	// IsFavorite is a CRM-local flag (issue #173) with the same standing as
+	// Archived: it is user-set, not derived, and it has no neutral-model home
+	// (favoriting is not a vCard/JSContact property and must never leak into
+	// CardDAV or the vCard3/vCard4/JSContact exporters). The explicit column
+	// tag guards against GORM casing drift from the migration SQL (CLAUDE.md
+	// backend trap 1). Rides through BeforeSave/BeforeCreate untouched.
+	IsFavorite bool `gorm:"column:is_favorite;default:false" json:"is_favorite"`
+
 	// Neutral RFC 9553/9554/9555 representation (P1 — see
 	// docs/adrs/0001-neutral-hub-and-spoke-contact-model.md). This is a second,
 	// parallel representation of the same data already held in the legacy

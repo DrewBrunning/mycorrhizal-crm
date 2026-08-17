@@ -165,3 +165,41 @@ test('the overflow menu reads "This isn\'t me" on the current self contact (T90)
   expect(screen.getByText("This isn't me")).toBeInTheDocument();
   expect(screen.queryByText('This is me')).not.toBeInTheDocument();
 });
+
+// --- Issue #173: favorite star toggle --------------------------------------
+
+test('renders an outline star on a non-favorite and reports the toggle', () => {
+  mockMatchMedia(false);
+  const onToggleFavorite = vi.fn();
+  renderHeader({ onToggleFavorite });
+
+  const star = screen.getByLabelText('Mark as favorite');
+  expect(star).toBeInTheDocument();
+  fireEvent.click(star);
+  expect(onToggleFavorite).toHaveBeenCalledTimes(1);
+});
+
+test('renders a filled star on a favorite and reports the toggle', () => {
+  mockMatchMedia(false);
+  const onToggleFavorite = vi.fn();
+  renderHeader({ record: baseRecord({ is_favorite: true }), onToggleFavorite });
+
+  const star = screen.getByLabelText('Unmark as favorite');
+  expect(star).toBeInTheDocument();
+  fireEvent.click(star);
+  expect(onToggleFavorite).toHaveBeenCalledTimes(1);
+});
+
+test('renders the star in the compact layout too', () => {
+  mockMatchMedia(true);
+  renderHeader({ record: baseRecord({ is_favorite: true }), onToggleFavorite: vi.fn() });
+
+  expect(screen.getByLabelText('Unmark as favorite')).toBeInTheDocument();
+});
+
+test('renders no star when onToggleFavorite is not provided', () => {
+  mockMatchMedia(false);
+  renderHeader();
+  expect(screen.queryByLabelText('Mark as favorite')).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('Unmark as favorite')).not.toBeInTheDocument();
+});

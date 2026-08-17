@@ -54,7 +54,7 @@ func ProfilePictureURL(id uint, photo, photoThumbnail string, preferThumbnail bo
 // updated_at / sort_name / deleted_at) off this base.
 var ContactSummaryColumns = []string{
 	"id", "vcard_uid", "firstname", "lastname", "nickname", "fn", "email", "phone", "birthday", "org",
-	"photo", "photo_thumbnail", "archived",
+	"photo", "photo_thumbnail", "archived", "is_favorite",
 }
 
 // ContactSummary is the slim per-item shape for GET /api/v1/contacts (list).
@@ -107,6 +107,11 @@ type ContactSummary struct {
 	// raw stored base64 data URI or legacy disk-file name.
 	PhotoThumbnail string `json:"photo_thumbnail,omitempty"`
 	Archived       bool   `json:"archived"`
+	// IsFavorite is always on the wire (no omitempty): a bool defaulting to
+	// false must be present so the TS side can treat it as required — an
+	// absent is_favorite would read as undefined and break the star icon
+	// (CLAUDE.md frontend trap 8).
+	IsFavorite bool `json:"is_favorite"`
 	// Deleted is the T17 change-feed tombstone marker, set only by the
 	// ?since= feed path (which reads rows with Unscoped()). A plain list
 	// request never sets it.
@@ -136,6 +141,7 @@ func NewContactSummary(c *Contact) ContactSummary {
 		Photo:          c.Photo,
 		PhotoThumbnail: ProfilePictureURL(c.ID, c.Photo, c.PhotoThumbnail, true),
 		Archived:       c.Archived,
+		IsFavorite:     c.IsFavorite,
 	}
 }
 
@@ -229,6 +235,7 @@ type ContactRecordResponse struct {
 	// endpoint when a photo exists, omitted (omitempty) when none does.
 	PhotoThumbnail string `json:"photo_thumbnail,omitempty"`
 	Archived       bool   `json:"archived"`
+	IsFavorite     bool   `json:"is_favorite"`
 
 	// Preserved from the existing GetContact/GetContacts preload-all
 	// behavior (Gap: "keep the existing preload behavior for backward
@@ -267,6 +274,7 @@ func NewContactRecordResponse(c *Contact, photoDir string, db *gorm.DB) ContactR
 		Photo:          c.Photo,
 		PhotoThumbnail: ProfilePictureURL(c.ID, c.Photo, c.PhotoThumbnail, true),
 		Archived:       c.Archived,
+		IsFavorite:     c.IsFavorite,
 		Notes:          c.Notes,
 		Activities:     c.Activities,
 		Reminders:      c.Reminders,

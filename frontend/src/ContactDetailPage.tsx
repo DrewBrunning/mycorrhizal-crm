@@ -18,7 +18,9 @@ import {
   deleteContact,
   uploadProfilePicture,
   archiveContact,
-  unarchiveContact
+  unarchiveContact,
+  favoriteContact,
+  unfavoriteContact
 } from './api/contacts';
 import { getCurrentUser } from './api/admin';
 import { updateSelfContact } from './api/users';
@@ -1330,6 +1332,27 @@ export default function ContactDetailPage() {
     }
   };
 
+  // Issue #173: favorite toggle in the header — same optimistic-into-state
+  // shape as the archive handlers above, using the dedicated endpoint (the
+  // flag is CRM-local and never part of the Card/CRM payload).
+  const handleToggleFavorite = async () => {
+    if (!record || !id) return;
+
+    const wasFavorite = !!record.is_favorite;
+    setRecord({ ...record, is_favorite: !wasFavorite });
+    try {
+      const updatedContact = wasFavorite ? await unfavoriteContact(id) : await favoriteContact(id);
+      setRecord({ ...record, is_favorite: updatedContact.is_favorite });
+    } catch (err) {
+      console.error('Error toggling favorite:', err);
+      if (err instanceof ApiError) {
+        showError(err.getDisplayMessage());
+      } else {
+        showError(t('contactDetail.updateError'));
+      }
+    }
+  };
+
   const handleStayInTouch = () => {
     if (!record) return;
     const contactName = `${firstname}${lastname ? ' ' + lastname : ''}`;
@@ -1426,6 +1449,7 @@ export default function ContactDetailPage() {
         onStayInTouch={record.archived ? undefined : handleStayInTouch}
         onArchiveContact={record.archived ? undefined : handleArchiveContact}
         onUnarchiveContact={record.archived ? handleUnarchiveContact : undefined}
+        onToggleFavorite={handleToggleFavorite}
         onMergeContact={() => setMergeDialogOpen(true)}
         onPrepView={() => navigate(`/contacts/${record.id}/prep`)}
         onShareContact={() => setShareDialogOpen(true)}

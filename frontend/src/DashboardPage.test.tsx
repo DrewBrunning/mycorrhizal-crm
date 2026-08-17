@@ -37,7 +37,7 @@ const skipReminderMock = vi.mocked(skipReminder);
 const listCirclesMock = vi.mocked(listCircles);
 
 function emptyDashboard(): DashboardResponse {
-  return { birthdays: [], random_contacts: [], upcoming_reminders: [], overdue: [] };
+  return { birthdays: [], random_contacts: [], upcoming_reminders: [], overdue: [], favorites: [] };
 }
 
 beforeEach(() => {
@@ -66,6 +66,7 @@ test('fetches the dashboard composite once and renders all four blocks', async (
   getDashboardMock.mockResolvedValue({
     birthdays: [{ type: 'contact', name: 'Bea Birthday', birthday: '--08-20', contact_id: 1 }],
     random_contacts: [{ ID: 2, firstname: 'Randy', lastname: 'Contact', archived: false }],
+    favorites: [{ ID: 4, firstname: 'Fay', lastname: 'Vorite', is_favorite: true }],
     upcoming_reminders: [
       { ID: 9, message: 'Call Nicky', by_mail: false, remind_at: '2026-08-12T00:00:00Z', recurrence: 'once', reoccur_from_completion: true, completed: false, email_sent: false, contact_id: 3, contact_name: 'Nicky Name' },
     ],
@@ -76,6 +77,8 @@ test('fetches the dashboard composite once and renders all four blocks', async (
 
   await waitFor(() => expect(screen.getByText('Bea Birthday')).toBeInTheDocument());
   expect(screen.getByText('Randy Contact')).toBeInTheDocument();
+  // Issue #173: the favorites block renders its contacts.
+  expect(screen.getByText('Fay Vorite')).toBeInTheDocument();
   expect(screen.getByText('Call Nicky')).toBeInTheDocument();
   // The reminder's contact_name is embedded server-side (M3 design decision
   // 2) -- no separate per-reminder contact fetch happens.
@@ -90,6 +93,8 @@ test('empty dashboard renders each column\'s empty state without crashing', asyn
 
   await waitFor(() => expect(screen.getByText('No upcoming birthdays')).toBeInTheDocument());
   expect(screen.getByText('No upcoming reminders')).toBeInTheDocument();
+  // Issue #173: the favorites block's empty state.
+  expect(screen.getByText('No favorites yet')).toBeInTheDocument();
 });
 
 test('completing a reminder refetches via the plain upcoming-reminders endpoint and keeps the known contact name', async () => {

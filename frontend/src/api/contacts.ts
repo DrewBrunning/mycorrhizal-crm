@@ -74,6 +74,8 @@ export interface Contact {
   kind?: string;
   photo_thumbnail?: string;
   archived?: boolean;
+  // Issue #173: whether the caller marked this contact as a favorite.
+  is_favorite?: boolean;
   // Multi-valued vCard fields
   emails?: ContactValue[];
   phones?: ContactValue[];
@@ -337,6 +339,7 @@ export interface ContactRecordResponse {
   photo?: string;
   photo_thumbnail?: string;
   archived?: boolean;
+  is_favorite?: boolean;
 }
 
 // ContactSummaryDTO mirrors the backend's slim GET /contacts list
@@ -367,6 +370,9 @@ export interface ContactSummaryDTO {
   // with `|| undefined` before handing it to an <img src>.
   photo_thumbnail?: string;
   archived: boolean;
+  // Issue #173: required (not optional) — the backend always serializes it
+  // (no omitempty) so the star icon can treat it as present.
+  is_favorite: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -667,6 +673,7 @@ export function summaryToLegacyContact(summary: ContactSummaryDTO): Contact {
     photo_thumbnail: summary.photo_thumbnail || undefined,
     organization: summary.org || undefined,
     archived: summary.archived,
+    is_favorite: summary.is_favorite,
   };
 }
 
@@ -760,6 +767,9 @@ export interface GetContactsParams {
   order?: 'asc' | 'desc';
   includeArchived?: boolean;
   archived?: boolean;
+  // Issue #173: when true, only the caller's favorite contacts are returned.
+  // Composes with every other filter.
+  favorites?: boolean;
   // T103: when true, only contacts with at least one non-empty email, phone,
   // or URL are returned (the web Contacts page opts in by default). False and
   // absent both mean "show everything"; the server rejects any other value.
@@ -770,7 +780,7 @@ export interface GetContactsParams {
 export async function getContacts(
   params: GetContactsParams
 ): Promise<ContactsResponse> {
-  const { cursor, limit = 25, search = '', circle = '', sort, order, includeArchived, archived, hasContactInfo } = params;
+  const { cursor, limit = 25, search = '', circle = '', sort, order, includeArchived, archived, favorites, hasContactInfo } = params;
 
   const queryParams = new URLSearchParams({
     limit: limit.toString(),
@@ -783,6 +793,7 @@ export async function getContacts(
   if (order) queryParams.append('order', order);
   if (includeArchived) queryParams.append('include_archived', 'true');
   if (archived !== undefined) queryParams.append('archived', archived.toString());
+  if (favorites !== undefined) queryParams.append('favorites', favorites.toString());
   if (hasContactInfo !== undefined) queryParams.append('has_contact_info', hasContactInfo.toString());
 
   const response = await apiFetch(
@@ -1059,6 +1070,46 @@ export async function unarchiveContact(
 ): Promise<Contact> {
   const response = await apiFetch(
     `${API_BASE_URL}/contacts/${id}/unarchive`,
+    {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    }
+  );
+
+  if (!response.ok) {
+    throw await parseErrorResponse(response);
+  }
+
+  return response.json();
+}
+
+// Issue #173: favorite toggle. Same shape as archive/unarchive above — the
+// backend returns models.Contact's raw flat JSON, and the endpoint fires
+// hooks so the flip propagates through CardDAV sync and the ?since= feed.
+export async function favoriteContact(
+  id: string | number
+): Promise<Contact> {
+  const response = await apiFetch(
+    `${API_BASE_URL}/contacts/${id}/favorite`,
+    {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    }
+  );
+
+  if (!response.ok) {
+    throw await parseErrorResponse(response);
+  }
+
+  return response.json();
+}
+
+// Unfavorite a contact
+export async function unfavoriteContact(
+  id: string | number
+): Promise<Contact> {
+  const response = await apiFetch(
+    `${API_BASE_URL}/contacts/${id}/unfavorite`,
     {
       method: 'POST',
       headers: getAuthHeaders(),

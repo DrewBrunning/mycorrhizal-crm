@@ -18,6 +18,7 @@ export interface DashboardResponse {
   random_contacts: Contact[];
   upcoming_reminders: DashboardReminder[];
   overdue: OverdueCadence[];
+  favorites: Contact[];
 }
 
 export async function getDashboard(): Promise<DashboardResponse> {
