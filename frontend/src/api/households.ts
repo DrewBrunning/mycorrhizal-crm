@@ -187,7 +187,7 @@ export interface AddressHouseholdSuggestion {
   member_hash: string;
   member_vcard_uids: string[];
   address: {
-    components: AddressComponent[];
+    components?: AddressComponent[];
     full?: string;
   };
 }
@@ -205,9 +205,10 @@ export interface SuggestAddressHouseholdsResponse {
 // so showing one member's apartment would mislead. Backend FormatAddress
 // includes them on individual contact display; this is the household surface.
 export function formatSuggestionAddress(address: AddressHouseholdSuggestion['address']): string {
+  if (!address) return '';
   if (address.full) return address.full;
   const byKind: Record<string, string> = {};
-  for (const comp of address.components) {
+  for (const comp of address.components ?? []) {
     if (!(comp.kind in byKind)) byKind[comp.kind] = comp.value;
   }
   const parts = ['name', 'locality', 'region', 'postcode', 'country']

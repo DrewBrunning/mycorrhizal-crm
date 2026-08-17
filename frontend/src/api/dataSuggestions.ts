@@ -19,7 +19,7 @@ export interface ContactAddressSuggestion {
   source_name: string;
   relation_type?: string;
   address: {
-    components: AddressComponent[];
+    components?: AddressComponent[];
     full?: string;
   };
   // Normalized address identity (street + city/region + postal + country) —
@@ -34,11 +34,15 @@ export interface ContactAddressSuggestionsResponse {
 
 // Renders a suggestion's address as a single display line (street, locality,
 // region, postcode, country), falling back to the full text when present.
-// Same helper shape as households.ts's formatSuggestionAddress.
+// Same helper shape as households.ts's formatSuggestionAddress. Components is
+// optional because the backend serializes it `omitempty` -- a source address
+// with no non-empty parts arrives as `{}` and must render as an empty line,
+// not throw.
 export function formatSuggestionAddress(address: ContactAddressSuggestion['address']): string {
+  if (!address) return '';
   if (address.full) return address.full;
   const byKind: Record<string, string> = {};
-  for (const comp of address.components) {
+  for (const comp of address.components ?? []) {
     if (!(comp.kind in byKind)) byKind[comp.kind] = comp.value;
   }
   const parts = ['name', 'locality', 'region', 'postcode', 'country']
