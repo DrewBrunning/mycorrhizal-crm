@@ -13,7 +13,7 @@ import androidx.compose.ui.test.performScrollToNode
 import com.mycorrhizal.crm.model.network.Birthday
 import com.mycorrhizal.crm.model.network.CadenceHealth
 import com.mycorrhizal.crm.model.network.CadencePolicy
-import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.model.network.DashboardRandomContact
 import com.mycorrhizal.crm.model.network.DashboardReminder
 import com.mycorrhizal.crm.model.network.OverdueCadence
 import com.mycorrhizal.crm.model.util.DateFormat
@@ -61,7 +61,7 @@ class DashboardScreenTest {
                 contactName = "Bobby Smith",
             ),
         ),
-        randomContacts = listOf(ContactSummary(id = 4, firstname = "Rex", lastname = "Jones", nickname = "Rex")),
+        randomContacts = listOf(DashboardRandomContact(id = 4, firstname = "Rex", lastname = "Jones", nickname = "Rex")),
         overdueCadences = listOf(
             OverdueCadence(
                 policy = CadencePolicy(id = "c1", entityId = "u3"),

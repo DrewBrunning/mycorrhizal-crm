@@ -5,7 +5,7 @@ import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.model.network.Birthday
 import com.mycorrhizal.crm.model.network.CadenceHealth
 import com.mycorrhizal.crm.model.network.CadencePolicy
-import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.model.network.DashboardRandomContact
 import com.mycorrhizal.crm.model.network.DashboardReminder
 import com.mycorrhizal.crm.model.network.DashboardResponse
 import com.mycorrhizal.crm.model.network.OverdueCadence
@@ -41,7 +41,7 @@ class DashboardViewModelTest {
 
     private fun fullDashboard() = DashboardResponse(
         birthdays = listOf(Birthday(name = "Alice", contactId = 1L)),
-        randomContacts = listOf(ContactSummary(id = 3, firstname = "Bob", lastname = "Smith", nickname = "Bobby")),
+        randomContacts = listOf(DashboardRandomContact(id = 3, firstname = "Bob", lastname = "Smith", nickname = "Bobby")),
         upcomingReminders = listOf(
             DashboardReminder(id = 7, message = "Call Dana", remindAt = "2026-08-15T09:00:00Z", contactId = 3, contactName = "Bobby Smith"),
         ),

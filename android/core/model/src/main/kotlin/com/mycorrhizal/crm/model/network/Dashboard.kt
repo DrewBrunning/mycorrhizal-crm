@@ -15,15 +15,37 @@ import com.squareup.moshi.JsonClass
  * [DashboardReminder] is a flattened mirror of [Reminder] plus the
  * `contact_name` the backend embeds (M3 design decision 2) — the wire has the
  * reminder fields at the top level, so Moshi needs them spelled out rather
- * than nested. `random_contacts` reuses [ContactSummary] and `overdue`
- * reuses [OverdueCadence]; their wire shapes are unchanged by the composite.
+ * than nested. `random_contacts` is [DashboardRandomContact] (NOT
+ * [ContactSummary], see that type's doc) and `overdue` reuses
+ * [OverdueCadence]; their wire shapes are unchanged by the composite.
  */
 @JsonClass(generateAdapter = true)
 data class DashboardResponse(
     val birthdays: List<Birthday> = emptyList(),
-    @Json(name = "random_contacts") val randomContacts: List<ContactSummary> = emptyList(),
+    @Json(name = "random_contacts") val randomContacts: List<DashboardRandomContact> = emptyList(),
     @Json(name = "upcoming_reminders") val upcomingReminders: List<DashboardReminder> = emptyList(),
     val overdue: List<OverdueCadence> = emptyList(),
+)
+
+/**
+ * One `random_contacts` entry. Deliberately NOT [ContactSummary]: the
+ * dashboard composite serializes this block as `ContactResponse`, which
+ * embeds the raw `models.Contact` (gorm.Model identity keys serialize in
+ * PascalCase — `ID`), while the contacts list endpoint returns the slim
+ * `ContactSummaryDTO` with a lowercase `id`. Reusing [ContactSummary] here
+ * silently defaulted every random contact's id to 0 (Moshi found no `id`
+ * key), so the dashboard's LazyColumn keyed every row `"0"` and crashed with
+ * "Key \"0\" was already used" on any dashboard that had 2+ random contacts.
+ *
+ * Mirrors the wire's PascalCase ID the way [DashboardReminder] does.
+ */
+@JsonClass(generateAdapter = true)
+data class DashboardRandomContact(
+    @Json(name = "ID") val id: Int = 0,
+    val firstname: String? = null,
+    val lastname: String? = null,
+    val nickname: String? = null,
+    @Json(name = "photo_thumbnail") val photoThumbnail: String? = null,
 )
 
 /** One `upcoming_reminders` entry: a reminder with its contact's display name embedded. */
