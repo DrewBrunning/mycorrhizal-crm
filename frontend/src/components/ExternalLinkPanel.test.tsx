@@ -118,57 +118,81 @@ test('a non-http scheme Immich deep-link URL is shown as text, never as an href'
 });
 
 test('a generic identity with an unsafe URL is shown as text, never as an href', () => {
-  const paperless: ExternalIdentity = {
+  const matrix: ExternalIdentity = {
     id: 'ei-2',
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
     entity_id: 'alice-uid',
-    system: 'paperless',
-    external_id: 'doc-42',
-    url: 'ftp://paperless.example/documents/42',
+    system: 'matrix',
+    external_id: 'room-42',
+    url: 'ftp://matrix.example/rooms/42',
     metadata: {},
     sync_status: 'idle',
   };
-  renderPanel({ identities: [paperless] });
+  renderPanel({ identities: [matrix] });
 
   expect(screen.queryByRole('link')).not.toBeInTheDocument();
-  expect(screen.getByText('ftp://paperless.example/documents/42')).toBeInTheDocument();
+  expect(screen.getByText('ftp://matrix.example/rooms/42')).toBeInTheDocument();
 });
 
 test('a generic identity with a non-http scheme URL is shown as text, never as an href', () => {
+  const matrix: ExternalIdentity = {
+    id: 'ei-2',
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+    entity_id: 'alice-uid',
+    system: 'matrix',
+    external_id: 'room-42',
+    url: 'mailto:room@example.com',
+    metadata: {},
+    sync_status: 'idle',
+  };
+  renderPanel({ identities: [matrix] });
+
+  expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  expect(screen.getByText('mailto:room@example.com')).toBeInTheDocument();
+});
+
+test('generic non-Immich identities render under other integrations', () => {
+  const matrix: ExternalIdentity = {
+    id: 'ei-2',
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+    entity_id: 'alice-uid',
+    system: 'matrix',
+    external_id: 'room-42',
+    url: 'https://matrix.example/rooms/42',
+    metadata: {},
+    sync_status: 'idle',
+  };
+  renderPanel({ identities: [identity, matrix] });
+
+  // The Immich row is rich; the matrix identity shows in the generic list.
+  expect(screen.getByText('Other integrations')).toBeInTheDocument();
+  expect(screen.getByText('matrix')).toBeInTheDocument();
+  expect(screen.getByText('room-42')).toBeInTheDocument();
+});
+
+test('a file-system identity renders in the file links surface with its metadata', () => {
   const paperless: ExternalIdentity = {
     id: 'ei-2',
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
     entity_id: 'alice-uid',
     system: 'paperless',
-    external_id: 'doc-42',
-    url: 'mailto:doc@example.com',
-    metadata: {},
+    external_id: '42',
+    url: 'https://paperless.example/documents/42/details',
+    metadata: { title: 'Signed Contract' },
     sync_status: 'idle',
   };
   renderPanel({ identities: [paperless] });
 
-  expect(screen.queryByRole('link')).not.toBeInTheDocument();
-  expect(screen.getByText('mailto:doc@example.com')).toBeInTheDocument();
-});
-
-test('generic non-Immich identities render under other integrations', () => {
-  const paperless: ExternalIdentity = {
-    id: 'ei-2',
-    created_at: '2026-01-01T00:00:00Z',
-    updated_at: '2026-01-01T00:00:00Z',
-    entity_id: 'alice-uid',
-    system: 'paperless',
-    external_id: 'doc-42',
-    url: 'https://paperless.example/documents/42',
-    metadata: {},
-    sync_status: 'idle',
-  };
-  renderPanel({ identities: [identity, paperless] });
-
-  // The Immich row is rich; the paperless identity shows in the generic list.
-  expect(screen.getByText('Other integrations')).toBeInTheDocument();
-  expect(screen.getByText('paperless')).toBeInTheDocument();
-  expect(screen.getByText('doc-42')).toBeInTheDocument();
+  // The paperless identity renders as a file-link row (title from metadata),
+  // NOT in the generic "Other integrations" list.
+  expect(screen.getByText('Signed Contract')).toBeInTheDocument();
+  expect(screen.queryByText('Other integrations')).not.toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /Open in Paperless-ngx/ })).toHaveAttribute(
+    'href',
+    'https://paperless.example/documents/42/details'
+  );
 });

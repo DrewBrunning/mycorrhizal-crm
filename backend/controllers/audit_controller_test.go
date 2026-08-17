@@ -27,6 +27,12 @@ func setupAuditRouter(t *testing.T, cfg config.Config) (*gorm.DB, *gin.Engine, m
 	db, err := database.InitDB(filepath.Join(t.TempDir(), "audit-ctrl.db"))
 	require.NoError(t, err)
 	models.RegisterAuditDB(db)
+	// The audit recorder is a package-level global. Leaving it pointing at this
+	// test's temp-dir DB would make every later test (which has no audit DB of
+	// its own) fire audit hooks into a file the testing framework has already
+	// deleted — the source of intermittent, order-dependent failures. Reset it
+	// when this test finishes so unrelated tests skip audit wiring again.
+	t.Cleanup(func() { models.RegisterAuditDB(nil) })
 
 	user := models.User{Username: "auditctrl", Password: "password123!A", Email: "auditctrl@example.com"}
 	require.NoError(t, db.Create(&user).Error)

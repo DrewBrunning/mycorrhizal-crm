@@ -21,7 +21,13 @@ func newAuditTestDB(t *testing.T) *gorm.DB {
 	db, err := database.InitDB(filepath.Join(t.TempDir(), "audit-test.db"))
 	require.NoError(t, err)
 	RegisterAuditDB(db)
-	t.Cleanup(func() { AuditFlush() })
+	// AuditFlush drains in-flight writes, then unregister the recorder so a
+	// later test in this package (which has no audit DB of its own) does not
+	// fire hooks into this test's already-deleted temp-dir DB.
+	t.Cleanup(func() {
+		AuditFlush()
+		RegisterAuditDB(nil)
+	})
 	return db
 }
 

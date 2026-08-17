@@ -79,6 +79,12 @@ func TestDeleteUser_CleansUpAllOwnedRows(t *testing.T) {
 	require.NoError(t, db.Create(&activity).Error)
 	require.NoError(t, db.Create(&models.CalendarEventLink{SubscriptionID: calSub.ID, UserID: target.ID, UID: "evt-1", ActivityID: activity.ID, ContentHash: "h"}).Error)
 
+	// P2a/P2b/P2c: file-integration connection configs (per-user-global) must
+	// be swept with the account.
+	require.NoError(t, db.Create(&models.PaperlessConfig{UserID: target.ID, BaseURL: "https://paperless.example"}).Error)
+	require.NoError(t, db.Create(&models.SeafileConfig{UserID: target.ID, BaseURL: "https://seafile.example"}).Error)
+	require.NoError(t, db.Create(&models.WebDAVConfig{UserID: target.ID, BaseURL: "https://nc.example", Username: "alice"}).Error)
+
 	// P1: ContactShare has
 	// TWO owning columns, not one -- a departing user's rows must be swept
 	// whether they were the sender or the recipient.
@@ -132,6 +138,19 @@ func TestDeleteUser_CleansUpAllOwnedRows(t *testing.T) {
 	assertGone("ContactShare (target as recipient)", &models.ContactShare{}, "id = ?", shareAsRecipient.ID)
 	assertGone("LinkFieldType", &models.LinkFieldType{}, "user_id = ?", target.ID)
 	assertGone("RecoveryCode", &models.RecoveryCode{}, "user_id = ?", target.ID)
+	assertGone("PaperlessConfig", &models.PaperlessConfig{}, "user_id = ?", target.ID)
+	assertGone("SeafileConfig", &models.SeafileConfig{}, "user_id = ?", target.ID)
+	assertGone("WebDAVConfig", &models.WebDAVConfig{}, "user_id = ?", target.ID)
+
+	// The config tables soft-delete in normal life, so DeleteUser must
+	// hard-delete them (Unscoped) — assertGone alone wouldn't catch a plain
+	// soft-delete leaving the row behind (same reasoning as LinkFieldType
+	// above).
+	for _, model := range []any{&models.PaperlessConfig{}, &models.SeafileConfig{}, &models.WebDAVConfig{}} {
+		var unscopedConfigCount int64
+		require.NoError(t, db.Unscoped().Model(model).Where("user_id = ?", target.ID).Count(&unscopedConfigCount).Error)
+		assert.Zero(t, unscopedConfigCount, "config rows must be hard-deleted, not merely soft-deleted")
+	}
 
 	// LinkFieldType is soft-deletable (T26); DeleteUser hard-deletes it
 	// (Unscoped, like CadencePolicy/Preference/LifeEvent) since there's no

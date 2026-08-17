@@ -860,6 +860,101 @@
       "photoAlt": "Foto von Immich"
     }
   },
+  "fileLinks": {
+    "paperless": "Paperless-ngx",
+    "seafile": "Seafile",
+    "nextcloud": "Nextcloud / ownCloud",
+    "addLink": "{{system}} verknüpfen",
+    "unlink": "Verknüpfung lösen",
+    "unlinkConfirm": "Diese {{system}}-Verknüpfung vom Kontakt entfernen?",
+    "unlinkFailed": "Die Verknüpfung konnte nicht gelöst werden.",
+    "openExternal": "In {{system}} öffnen",
+    "created": "Erstellt {{date}}",
+    "modified": "Geändert {{date}}"
+  },
+  "paperless": {
+    "settings": {
+      "title": "Paperless-ngx",
+      "description": "Verbinden Sie eine selbst gehostete Paperless-ngx-Instanz, um Kontakte mit Dokumenten (Verträge, Scans, Formulare) zu verknüpfen. Das API-Token wird verschlüsselt gespeichert und nur zum Lesen von Ihrem eigenen Server verwendet.",
+      "baseUrl": "Basis-URL",
+      "apiToken": "API-Token",
+      "apiTokenHintNew": "API-Token aus Ihrer Paperless-Instanz einfügen (Einstellungen → API-Token).",
+      "apiTokenHintExisting": "Es ist bereits ein Token gespeichert. Feld leer lassen, um es zu behalten.",
+      "saveButton": "Verbindung speichern",
+      "removeButton": "Verbindung entfernen",
+      "testConnectionButton": "Verbindung testen",
+      "testingConnection": "Wird getestet…",
+      "removeConfirm": "Paperless-Verbindung entfernen? Verknüpfte Kontakte behalten ihre vorhandenen Dokumentverknüpfungen.",
+      "baseUrlRequired": "Basis-URL ist erforderlich.",
+      "invalidBaseUrl": "Die Basis-URL muss eine http://- oder https://-URL sein.",
+      "saved": "Paperless-Verbindung gespeichert",
+      "removed": "Paperless-Verbindung entfernt",
+      "saveFailed": "Paperless-Verbindung konnte nicht gespeichert werden"
+    },
+    "search": {
+      "title": "Paperless-Dokument verknüpfen",
+      "placeholder": "Dokumente nach Titel durchsuchen…",
+      "linkFailed": "Dieses Dokument konnte nicht verknüpft werden.",
+      "noMatches": "Keine passenden Dokumente. Versuchen Sie eine andere Suche oder prüfen Sie, ob Paperless die OCR abgeschlossen hat.",
+      "untitled": "(Dokument ohne Titel)"
+    }
+  },
+  "seafile": {
+    "settings": {
+      "title": "Seafile",
+      "description": "Verbinden Sie einen selbst gehosteten Seafile-Server, um Kontakte mit Dateien und Ordnern in Ihren Bibliotheken zu verknüpfen. Das API-Token wird verschlüsselt gespeichert und nur zum Lesen von Ihrem eigenen Server verwendet.",
+      "baseUrl": "Server-URL",
+      "apiToken": "API-Token",
+      "apiTokenHintNew": "API-Token aus Ihrem Seafile-Konto einfügen (Avatar → Einstellungen → API-Token).",
+      "apiTokenHintExisting": "Es ist bereits ein Token gespeichert. Feld leer lassen, um es zu behalten.",
+      "saveButton": "Verbindung speichern",
+      "removeButton": "Verbindung entfernen",
+      "testConnectionButton": "Verbindung testen",
+      "testingConnection": "Wird getestet…",
+      "removeConfirm": "Seafile-Verbindung entfernen? Verknüpfte Kontakte behalten ihre vorhandenen Dateiverknüpfungen.",
+      "baseUrlRequired": "Server-URL ist erforderlich.",
+      "invalidBaseUrl": "Die Server-URL muss eine http://- oder https://-URL sein.",
+      "saved": "Seafile-Verbindung gespeichert",
+      "removed": "Seafile-Verbindung entfernt",
+      "saveFailed": "Seafile-Verbindung konnte nicht gespeichert werden"
+    },
+    "search": {
+      "titleLibraries": "Bibliothek auswählen",
+      "titleBrowse": "Datei oder Ordner auswählen",
+      "folder": "Ordner",
+      "emptyFolder": "Dieser Ordner ist leer.",
+      "noLibraries": "Keine Bibliotheken gefunden. Prüfen Sie, ob das Token Zugriff auf mindestens eine Bibliothek hat.",
+      "linkFailed": "Dieses Element konnte nicht verknüpft werden."
+    }
+  },
+  "nextcloud": {
+    "settings": {
+      "title": "Nextcloud / ownCloud",
+      "description": "Verbinden Sie eine selbst gehostete Nextcloud- oder ownCloud-Instanz (über WebDAV), um Kontakte mit Dateien und Ordnern zu verknüpfen. Das App-Passwort wird verschlüsselt gespeichert und nur zum Lesen von Ihrem eigenen Server verwendet. Es wird nur ein App-Passwort akzeptiert – niemals Ihr Kontopasswort.",
+      "baseUrl": "Server-URL",
+      "username": "Benutzername",
+      "appPassword": "App-Passwort",
+      "appPasswordHintNew": "Erstellen Sie ein App-Passwort in Ihrer Instanz (Persönliche Einstellungen → Sicherheit → App-Passwörter) und fügen Sie es hier ein.",
+      "appPasswordHintExisting": "Es ist bereits ein App-Passwort gespeichert. Feld leer lassen, um es zu behalten.",
+      "saveButton": "Verbindung speichern",
+      "removeButton": "Verbindung entfernen",
+      "testConnectionButton": "Verbindung testen",
+      "testingConnection": "Wird getestet…",
+      "removeConfirm": "Nextcloud-Verbindung entfernen? Verknüpfte Kontakte behalten ihre vorhandenen Dateiverknüpfungen.",
+      "baseUrlRequired": "Server-URL ist erforderlich.",
+      "usernameRequired": "Benutzername ist erforderlich.",
+      "invalidBaseUrl": "Die Server-URL muss eine http://- oder https://-URL sein.",
+      "saved": "Nextcloud-Verbindung gespeichert",
+      "removed": "Nextcloud-Verbindung entfernt",
+      "saveFailed": "Nextcloud-Verbindung konnte nicht gespeichert werden"
+    },
+    "search": {
+      "title": "Datei oder Ordner auswählen",
+      "folder": "Ordner",
+      "emptyFolder": "Dieser Ordner ist leer.",
+      "linkFailed": "Dieses Element konnte nicht verknüpft werden."
+    }
+  },
   "profilePicture": {
     "title": "Profilbild hochladen",
     "selectImage": "Bild auswählen",

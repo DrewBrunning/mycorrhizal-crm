@@ -1,6 +1,16 @@
 import { test, expect } from './fixtures';
 import { waitForLoading, createTestContact, deleteTestContact } from './fixtures';
+import type { Page } from '@playwright/test';
 import { API_BASE_URL } from './global-setup';
+
+// The settings page carries several connection cards (Immich, Paperless,
+// Seafile, Nextcloud) that all label their URL field "Base URL" and their
+// action buttons "Save connection" / "Remove connection" / "Test connection".
+// Every such locator in this file must be scoped to the Immich card, or a
+// strict-mode violation resolves it to multiple elements.
+function immichCard(page: Page) {
+  return page.locator('.MuiCard-root', { has: page.getByText('Immich', { exact: true }) });
+}
 
 test.describe('Immich integration', () => {
   // Every test in this file reads and writes the *same* per-user
@@ -28,9 +38,9 @@ test.describe('Immich integration', () => {
     await waitForLoading(page);
 
     await expect(page.getByText('Immich').first()).toBeVisible();
-    await expect(page.getByLabel(/Base URL$/i)).toBeVisible();
+    await expect(immichCard(page).getByLabel(/Base URL$/i)).toBeVisible();
     await expect(page.getByLabel(/API Key/i)).toBeVisible();
-    await expect(page.getByRole('button', { name: /Save connection/i })).toBeVisible();
+    await expect(immichCard(page).getByRole('button', { name: /Save connection/i })).toBeVisible();
   });
 
   test('rejects a non-http base URL client-side with a readable message', async ({
@@ -39,9 +49,9 @@ test.describe('Immich integration', () => {
     await page.goto('/settings');
     await waitForLoading(page);
 
-    await page.getByLabel(/Base URL$/i).fill('ftp://immich.example');
+    await immichCard(page).getByLabel(/Base URL$/i).fill('ftp://immich.example');
     await page.getByLabel(/API Key/i).fill('test-key-123');
-    await page.getByRole('button', { name: /Save connection/i }).click();
+    await immichCard(page).getByRole('button', { name: /Save connection/i }).click();
 
     await expect(page.getByText(/http:\/\/ or https:\/\//i)).toBeVisible({ timeout: 5000 });
   });
@@ -50,11 +60,11 @@ test.describe('Immich integration', () => {
     await page.goto('/settings');
     await waitForLoading(page);
 
-    await page.getByLabel(/Base URL$/i).fill('https://immich.example');
+    await immichCard(page).getByLabel(/Base URL$/i).fill('https://immich.example');
     await page.getByLabel(/API Key/i).fill('test-api-key-abc');
-    await page.getByRole('button', { name: /Save connection/i }).click();
+    await immichCard(page).getByRole('button', { name: /Save connection/i }).click();
 
-    await expect(page.getByRole('button', { name: /Remove connection/i })).toBeVisible({
+    await expect(immichCard(page).getByRole('button', { name: /Remove connection/i })).toBeVisible({
       timeout: 5000,
     });
 
@@ -66,7 +76,7 @@ test.describe('Immich integration', () => {
     // and persisted.  (Sync toggle + test connection button are gated
     // on has_api_key which arrives in the same response — tested
     // separately in the API-seeded config test.)
-    await expect(page.getByRole('button', { name: /Remove connection/i })).toBeVisible({
+    await expect(immichCard(page).getByRole('button', { name: /Remove connection/i })).toBeVisible({
       timeout: 10000,
     });
   });
@@ -82,7 +92,7 @@ test.describe('Immich integration', () => {
     await page.goto('/settings');
     await waitForLoading(page);
 
-    await expect(page.getByRole('button', { name: /Remove connection/i })).toBeVisible();
+    await expect(immichCard(page).getByRole('button', { name: /Remove connection/i })).toBeVisible();
     await expect(
       page.getByText(/Automatically sync photo appearances/i),
     ).toBeVisible();
@@ -99,7 +109,7 @@ test.describe('Immich integration', () => {
     await page.goto('/settings');
     await waitForLoading(page);
 
-    const testBtn = page.getByRole('button', { name: /Test connection/i });
+    const testBtn = immichCard(page).getByRole('button', { name: /Test connection/i });
     await expect(testBtn).toBeVisible({ timeout: 5000 });
     await expect(testBtn).toBeEnabled();
 
@@ -123,10 +133,10 @@ test.describe('Immich integration', () => {
 
     page.once('dialog', (dialog) => dialog.accept());
 
-    await page.getByRole('button', { name: /Remove connection/i }).click();
+    await immichCard(page).getByRole('button', { name: /Remove connection/i }).click();
 
     await expect(page.getByLabel(/API Key/i)).toBeVisible({ timeout: 5000 });
-    await expect(page.getByRole('button', { name: /Save connection/i })).toBeVisible();
+    await expect(immichCard(page).getByRole('button', { name: /Save connection/i })).toBeVisible();
   });
 
   // ── Contact-page Immich surface ─────────────────────────────────
@@ -241,10 +251,10 @@ test.describe('Immich integration', () => {
     await page.goto('/settings');
     await waitForLoading(page);
 
-    await page.getByLabel(/Base URL$/i).fill('http://127.0.0.1:54321');
+    await immichCard(page).getByLabel(/Base URL$/i).fill('http://127.0.0.1:54321');
     await page.getByLabel(/API Key/i).fill('any-key');
-    await page.getByRole('button', { name: /Save connection/i }).click();
-    await expect(page.getByRole('button', { name: /Remove connection/i })).toBeVisible({
+    await immichCard(page).getByRole('button', { name: /Save connection/i }).click();
+    await expect(immichCard(page).getByRole('button', { name: /Remove connection/i })).toBeVisible({
       timeout: 5000,
     });
 

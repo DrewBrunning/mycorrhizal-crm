@@ -656,6 +656,18 @@ func DeleteUser(c *gin.Context) {
 			return err
 		}
 
+		// Delete the user's file-integration connection configs (P2a/P2b/P2c —
+		// Paperless-ngx, Seafile, Nextcloud/ownCloud WebDAV)
+		if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.PaperlessConfig{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.SeafileConfig{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.WebDAVConfig{}).Error; err != nil {
+			return err
+		}
+
 		// Delete the user's notification channel config and push device
 		// subscriptions (N9 — hard: account gone, no tombstoning needed)
 		if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.NotificationConfig{}).Error; err != nil {

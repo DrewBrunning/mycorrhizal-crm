@@ -854,10 +854,105 @@
     },
     "photoPicker": {
       "title": "Scegli una foto da Immich",
-      "noPhotos": "Nessuna foto trovata finora per questa persona.",
+      "noPhotos": "Ancora nessuna foto trovata per questa persona.",
       "loadFailed": "Impossibile caricare quella foto.",
       "primaryPhotoAlt": "Miniatura Immich attuale",
       "photoAlt": "Foto da Immich"
+    }
+  },
+  "fileLinks": {
+    "paperless": "Paperless-ngx",
+    "seafile": "Seafile",
+    "nextcloud": "Nextcloud / ownCloud",
+    "addLink": "Collega {{system}}",
+    "unlink": "Scollega",
+    "unlinkConfirm": "Rimuovere questo collegamento {{system}} dal contatto?",
+    "unlinkFailed": "Impossibile scollegare.",
+    "openExternal": "Apri in {{system}}",
+    "created": "Creato il {{date}}",
+    "modified": "Modificato il {{date}}"
+  },
+  "paperless": {
+    "settings": {
+      "title": "Paperless-ngx",
+      "description": "Collega un'istanza Paperless-ngx self-hosted per associare i contatti ai documenti (contratti, scansioni, moduli). Il token API viene archiviato crittografato e viene usato solo per leggere dal proprio server.",
+      "baseUrl": "URL di base",
+      "apiToken": "Token API",
+      "apiTokenHintNew": "Incolla il token API della tua istanza Paperless (Impostazioni → Token API).",
+      "apiTokenHintExisting": "Un token è già archiviato. Lascia il campo vuoto per conservarlo.",
+      "saveButton": "Salva connessione",
+      "removeButton": "Rimuovi connessione",
+      "testConnectionButton": "Testa connessione",
+      "testingConnection": "Test in corso…",
+      "removeConfirm": "Rimuovere la connessione Paperless? I contatti collegati conservano i loro collegamenti ai documenti.",
+      "baseUrlRequired": "L'URL di base è obbligatorio.",
+      "invalidBaseUrl": "L'URL di base deve essere un URL http:// o https://.",
+      "saved": "Connessione Paperless salvata",
+      "removed": "Connessione Paperless rimossa",
+      "saveFailed": "Impossibile salvare la connessione Paperless"
+    },
+    "search": {
+      "title": "Collega un documento Paperless",
+      "placeholder": "Cerca documenti per titolo…",
+      "linkFailed": "Impossibile collegare questo documento.",
+      "noMatches": "Nessun documento corrispondente. Prova un'altra ricerca o verifica che Paperless abbia completato l'OCR.",
+      "untitled": "(documento senza titolo)"
+    }
+  },
+  "seafile": {
+    "settings": {
+      "title": "Seafile",
+      "description": "Collega un server Seafile self-hosted per associare i contatti a file e cartelle delle tue librerie. Il token API viene archiviato crittografato e viene usato solo per leggere dal proprio server.",
+      "baseUrl": "URL del server",
+      "apiToken": "Token API",
+      "apiTokenHintNew": "Incolla il token API del tuo account Seafile (Avatar → Impostazioni → Token API).",
+      "apiTokenHintExisting": "Un token è già archiviato. Lascia il campo vuoto per conservarlo.",
+      "saveButton": "Salva connessione",
+      "removeButton": "Rimuovi connessione",
+      "testConnectionButton": "Testa connessione",
+      "testingConnection": "Test in corso…",
+      "removeConfirm": "Rimuovere la connessione Seafile? I contatti collegati conservano i loro collegamenti ai file.",
+      "baseUrlRequired": "L'URL del server è obbligatorio.",
+      "invalidBaseUrl": "L'URL del server deve essere un URL http:// o https://.",
+      "saved": "Connessione Seafile salvata",
+      "removed": "Connessione Seafile rimossa",
+      "saveFailed": "Impossibile salvare la connessione Seafile"
+    },
+    "search": {
+      "titleLibraries": "Scegli una libreria",
+      "titleBrowse": "Scegli un file o una cartella",
+      "folder": "Cartella",
+      "emptyFolder": "Questa cartella è vuota.",
+      "noLibraries": "Nessuna libreria trovata. Verifica che il token abbia accesso ad almeno una libreria.",
+      "linkFailed": "Impossibile collegare questo elemento."
+    }
+  },
+  "nextcloud": {
+    "settings": {
+      "title": "Nextcloud / ownCloud",
+      "description": "Collega un'istanza Nextcloud o ownCloud self-hosted (via WebDAV) per associare i contatti a file e cartelle. La password dell'app viene archiviata crittografata e viene usata solo per leggere dal proprio server. Viene accettata solo una password dell'app, mai la password del tuo account.",
+      "baseUrl": "URL del server",
+      "username": "Nome utente",
+      "appPassword": "Password dell'app",
+      "appPasswordHintNew": "Crea una password dell'app nella tua istanza (Impostazioni personali → Sicurezza → Password dell'app) e incollala qui.",
+      "appPasswordHintExisting": "Una password dell'app è già archiviata. Lascia il campo vuoto per conservarla.",
+      "saveButton": "Salva connessione",
+      "removeButton": "Rimuovi connessione",
+      "testConnectionButton": "Testa connessione",
+      "testingConnection": "Test in corso…",
+      "removeConfirm": "Rimuovere la connessione Nextcloud? I contatti collegati conservano i loro collegamenti ai file.",
+      "baseUrlRequired": "L'URL del server è obbligatorio.",
+      "usernameRequired": "Il nome utente è obbligatorio.",
+      "invalidBaseUrl": "L'URL del server deve essere un URL http:// o https://.",
+      "saved": "Connessione Nextcloud salvata",
+      "removed": "Connessione Nextcloud rimossa",
+      "saveFailed": "Impossibile salvare la connessione Nextcloud"
+    },
+    "search": {
+      "title": "Scegli un file o una cartella",
+      "folder": "Cartella",
+      "emptyFolder": "Questa cartella è vuota.",
+      "linkFailed": "Impossibile collegare questo elemento."
     }
   },
   "profilePicture": {

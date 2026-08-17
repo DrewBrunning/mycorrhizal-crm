@@ -860,6 +860,101 @@
       "photoAlt": "Photo depuis Immich"
     }
   },
+  "fileLinks": {
+    "paperless": "Paperless-ngx",
+    "seafile": "Seafile",
+    "nextcloud": "Nextcloud / ownCloud",
+    "addLink": "Lier {{system}}",
+    "unlink": "Délier",
+    "unlinkConfirm": "Retirer ce lien {{system}} du contact ?",
+    "unlinkFailed": "Impossible de délier.",
+    "openExternal": "Ouvrir dans {{system}}",
+    "created": "Créé le {{date}}",
+    "modified": "Modifié le {{date}}"
+  },
+  "paperless": {
+    "settings": {
+      "title": "Paperless-ngx",
+      "description": "Connectez une instance Paperless-ngx auto-hébergée pour lier des contacts à des documents (contrats, scans, formulaires). Le jeton API est stocké chiffré et ne sert qu'à lire sur votre propre serveur.",
+      "baseUrl": "URL de base",
+      "apiToken": "Jeton API",
+      "apiTokenHintNew": "Collez le jeton API de votre instance Paperless (Paramètres → Jeton API).",
+      "apiTokenHintExisting": "Un jeton est déjà stocké. Laissez le champ vide pour le conserver.",
+      "saveButton": "Enregistrer la connexion",
+      "removeButton": "Retirer la connexion",
+      "testConnectionButton": "Tester la connexion",
+      "testingConnection": "Test en cours…",
+      "removeConfirm": "Retirer la connexion Paperless ? Les contacts liés conservent leurs liens de documents.",
+      "baseUrlRequired": "L'URL de base est requise.",
+      "invalidBaseUrl": "L'URL de base doit être une URL http:// ou https://.",
+      "saved": "Connexion Paperless enregistrée",
+      "removed": "Connexion Paperless supprimée",
+      "saveFailed": "Impossible d'enregistrer la connexion Paperless"
+    },
+    "search": {
+      "title": "Lier un document Paperless",
+      "placeholder": "Rechercher des documents par titre…",
+      "linkFailed": "Impossible de lier ce document.",
+      "noMatches": "Aucun document correspondant. Essayez une autre recherche ou vérifiez que Paperless a terminé l'OCR.",
+      "untitled": "(document sans titre)"
+    }
+  },
+  "seafile": {
+    "settings": {
+      "title": "Seafile",
+      "description": "Connectez un serveur Seafile auto-hébergé pour lier des contacts à des fichiers et dossiers de vos bibliothèques. Le jeton API est stocké chiffré et ne sert qu'à lire sur votre propre serveur.",
+      "baseUrl": "URL du serveur",
+      "apiToken": "Jeton API",
+      "apiTokenHintNew": "Collez le jeton API de votre compte Seafile (Avatar → Paramètres → Jeton API).",
+      "apiTokenHintExisting": "Un jeton est déjà stocké. Laissez le champ vide pour le conserver.",
+      "saveButton": "Enregistrer la connexion",
+      "removeButton": "Retirer la connexion",
+      "testConnectionButton": "Tester la connexion",
+      "testingConnection": "Test en cours…",
+      "removeConfirm": "Retirer la connexion Seafile ? Les contacts liés conservent leurs liens de fichiers.",
+      "baseUrlRequired": "L'URL du serveur est requise.",
+      "invalidBaseUrl": "L'URL du serveur doit être une URL http:// ou https://.",
+      "saved": "Connexion Seafile enregistrée",
+      "removed": "Connexion Seafile supprimée",
+      "saveFailed": "Impossible d'enregistrer la connexion Seafile"
+    },
+    "search": {
+      "titleLibraries": "Choisir une bibliothèque",
+      "titleBrowse": "Choisir un fichier ou un dossier",
+      "folder": "Dossier",
+      "emptyFolder": "Ce dossier est vide.",
+      "noLibraries": "Aucune bibliothèque trouvée. Vérifiez que le jeton a accès à au moins une bibliothèque.",
+      "linkFailed": "Impossible de lier cet élément."
+    }
+  },
+  "nextcloud": {
+    "settings": {
+      "title": "Nextcloud / ownCloud",
+      "description": "Connectez une instance Nextcloud ou ownCloud auto-hébergée (via WebDAV) pour lier des contacts à des fichiers et dossiers. Le mot de passe d'application est stocké chiffré et ne sert qu'à lire sur votre propre serveur. Seul un mot de passe d'application est accepté — jamais le mot de passe de votre compte.",
+      "baseUrl": "URL du serveur",
+      "username": "Nom d'utilisateur",
+      "appPassword": "Mot de passe d'application",
+      "appPasswordHintNew": "Créez un mot de passe d'application dans votre instance (Paramètres personnels → Sécurité → Mots de passe d'application) et collez-le ici.",
+      "appPasswordHintExisting": "Un mot de passe d'application est déjà stocké. Laissez le champ vide pour le conserver.",
+      "saveButton": "Enregistrer la connexion",
+      "removeButton": "Retirer la connexion",
+      "testConnectionButton": "Tester la connexion",
+      "testingConnection": "Test en cours…",
+      "removeConfirm": "Retirer la connexion Nextcloud ? Les contacts liés conservent leurs liens de fichiers.",
+      "baseUrlRequired": "L'URL du serveur est requise.",
+      "usernameRequired": "Le nom d'utilisateur est requis.",
+      "invalidBaseUrl": "L'URL du serveur doit être une URL http:// ou https://.",
+      "saved": "Connexion Nextcloud enregistrée",
+      "removed": "Connexion Nextcloud supprimée",
+      "saveFailed": "Impossible d'enregistrer la connexion Nextcloud"
+    },
+    "search": {
+      "title": "Choisir un fichier ou un dossier",
+      "folder": "Dossier",
+      "emptyFolder": "Ce dossier est vide.",
+      "linkFailed": "Impossible de lier cet élément."
+    }
+  },
   "profilePicture": {
     "title": "Télécharger une photo de profil",
     "selectImage": "Sélectionner une image",
