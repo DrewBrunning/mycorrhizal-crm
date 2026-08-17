@@ -15,6 +15,7 @@
     "d3-force": "^3.0.0",
     "i18next": "^25.6.0",
     "i18next-browser-languagedetector": "^8.2.0",
+    "qrcode.react": "^4.2.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-easy-crop": "^5.5.5",

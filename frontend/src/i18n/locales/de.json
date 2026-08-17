@@ -133,7 +133,12 @@
     "noAccount": "Noch kein Konto? Registrieren",
     "forgotPassword": "Passwort vergessen?",
     "ssoButton": "Anmelden mit {{provider}}",
-    "orSeparator": "oder"
+    "orSeparator": "oder",
+      "twoFactorTitle": "Zwei-Faktor-Authentifizierung",
+      "twoFactorDescription": "Geben Sie den 6-stelligen Code aus Ihrer Authentifizierungs-App oder einen Ihrer Wiederherstellungscodes ein.",
+      "twoFactorCode": "Verifizierungscode",
+      "invalidCode": "Ungültiger Code. Bitte versuchen Sie es erneut.",
+      "backToCredentials": "Zurück zur Anmeldung"
   },
   "passwordReset": {
     "title": "Passwort zurücksetzen",
@@ -916,6 +921,50 @@
       "success": "Passwort erfolgreich aktualisiert.",
       "error": "Passwort konnte nicht geändert werden. Bitte versuchen Sie es erneut.",
       "mismatch": "Die neuen Passwörter stimmen nicht überein."
+    },
+    "twoFactor": {
+      "title": "Zwei-Faktor-Authentifizierung",
+      "description": "Fügen Sie dem Login mit Ihrem Passwort einen zweiten Schritt hinzu: einen 6-stelligen Code aus einer Authentifizierungs-App. Das schützt Ihre Daten, selbst wenn Ihr Passwort gestohlen wird.",
+      "enableButton": "Zwei-Faktor-Authentifizierung aktivieren",
+      "settingUp": "Wird eingerichtet...",
+      "setupError": "Die Einrichtung konnte nicht gestartet werden. Bitte versuchen Sie es erneut.",
+      "enabledBadge": "Zwei-Faktor-Authentifizierung ist aktiviert",
+      "enabledDescription": "Zum Anmelden ist jetzt neben Ihrem Passwort ein Code aus Ihrer Authentifizierungs-App erforderlich. CardDAV-Synchronisierung und API-Tokens sind davon nicht betroffen.",
+      "enableSuccess": "Zwei-Faktor-Authentifizierung aktiviert.",
+      "disableButton": "Deaktivieren",
+      "regenerateButton": "Wiederherstellungscodes neu generieren",
+      "disableSuccess": "Zwei-Faktor-Authentifizierung deaktiviert.",
+      "regenerateSuccess": "Wiederherstellungscodes neu generiert.",
+      "invalidCode": "Ungültiger Code. Bitte versuchen Sie es erneut.",
+      "codePromptLabel": "Verifizierungscode",
+      "confirm": "Bestätigen",
+      "submitting": "Bitte warten...",
+      "setup": {
+        "title": "Zwei-Faktor-Authentifizierung aktivieren",
+        "description": "Scannen Sie diesen QR-Code mit Ihrer Authentifizierungs-App (oder geben Sie den Schlüssel manuell ein) und geben Sie dann den angezeigten 6-stelligen Code zur Bestätigung ein.",
+        "manualKey": "Manueller Einrichtungsschlüssel",
+        "codeLabel": "Verifizierungscode",
+        "codeHelp": "6-stelliger Code aus Ihrer Authentifizierungs-App.",
+        "confirmButton": "Aktivieren und fortfahren",
+        "enabling": "Wird aktiviert..."
+      },
+      "disable": {
+        "title": "Zwei-Faktor-Authentifizierung deaktivieren",
+        "description": "Geben Sie einen aktuellen Code aus Ihrer Authentifizierungs-App ein. Alle anderen Sitzungen werden abgemeldet.",
+        "button": "Deaktivieren"
+      },
+      "regenerate": {
+        "title": "Wiederherstellungscodes neu generieren",
+        "description": "Geben Sie einen aktuellen Code aus Ihrer Authentifizierungs-App ein. Die alten Wiederherstellungscodes funktionieren sofort nicht mehr."
+      },
+      "recovery": {
+        "title": "Wiederherstellungscodes",
+        "warning": "Bewahren Sie diese Codes an einem sicheren Ort auf. Jeder Code funktioniert nur einmal und wird nicht erneut angezeigt.",
+        "description": "Verwenden Sie einen Wiederherstellungscode, wenn Sie Ihre Authentifizierungs-App verlieren.",
+        "copy": "Alle Codes kopieren",
+        "copied": "Kopiert!",
+        "done": "Fertig"
+      }
     },
     "export": {
       "title": "Daten exportieren",

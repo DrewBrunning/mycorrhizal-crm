@@ -1,5 +1,12 @@
 import { describe, test, expect, vi, afterEach } from 'vitest';
-import { updateSelfContact } from './users';
+import {
+  updateSelfContact,
+  getTwoFactorStatus,
+  setupTwoFactor,
+  confirmTwoFactor,
+  disableTwoFactor,
+  regenerateRecoveryCodes,
+} from './users';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -50,5 +57,82 @@ describe('updateSelfContact', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     await expect(updateSelfContact('uid-x')).rejects.toThrow('not yours');
+  });
+});
+
+// N8 (issue #158): 2FA management API wrappers.
+describe('two-factor API', () => {
+  test('getTwoFactorStatus GETs /users/2fa/status and maps enabled', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(responseBody({ enabled: true }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const status = await getTwoFactorStatus();
+    expect(status).toEqual({ enabled: true });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain('/users/2fa/status');
+    expect(init.method).toBe('GET');
+  });
+
+  test('setupTwoFactor POSTs /users/2fa/setup and returns secret + otpauth url', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      responseBody({ secret: 'JBSWY3DPEHPK3PXP', otpauth_url: 'otpauth://totp/...' })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await setupTwoFactor();
+    expect(result.secret).toBe('JBSWY3DPEHPK3PXP');
+    expect(result.otpauth_url).toContain('otpauth://');
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain('/users/2fa/setup');
+    expect(init.method).toBe('POST');
+  });
+
+  test('confirmTwoFactor POSTs the code and returns the recovery codes', async () => {
+    const codes = ['AAAAA-BBBBB-CCCCC', 'DDDDD-EEEEE-FFFFF'];
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      responseBody({ message: 'enabled', recovery_codes: codes })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await confirmTwoFactor('123456');
+    expect(result.recovery_codes).toEqual(codes);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain('/users/2fa/confirm');
+    expect(JSON.parse(init.body)).toEqual({ code: '123456' });
+  });
+
+  test('disableTwoFactor POSTs /users/2fa/disable with the code', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(responseBody({ message: 'disabled' }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await disableTwoFactor('123456');
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain('/users/2fa/disable');
+    expect(JSON.parse(init.body)).toEqual({ code: '123456' });
+  });
+
+  test('regenerateRecoveryCodes POSTs and returns the fresh codes', async () => {
+    const codes = ['GGGGG-HHHHH-IIIII'];
+    const fetchMock = vi.fn().mockResolvedValueOnce(responseBody({ recovery_codes: codes }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await regenerateRecoveryCodes('654321');
+    expect(result.recovery_codes).toEqual(codes);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain('/users/2fa/recovery-codes/regenerate');
+    expect(JSON.parse(init.body)).toEqual({ code: '654321' });
+  });
+
+  test('a failed 2FA call surfaces the backend message', async () => {
+    const body = { error: { code: 'INVALID_INPUT', message: 'x', details: { reason: 'Invalid code. Please try again.' } } };
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      json: async () => body,
+      text: async () => JSON.stringify(body),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(confirmTwoFactor('000000')).rejects.toThrow('Invalid code. Please try again.');
   });
 });

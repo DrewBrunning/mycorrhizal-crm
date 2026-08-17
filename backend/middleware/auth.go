@@ -106,6 +106,17 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 			return
 		}
 
+		// N8: tokens minted as step-2 login challenges (purpose: "2fa") are
+		// NEVER sessions. They are single-purpose — exchangeable for a session
+		// only via /login/2fa after a TOTP/recovery code — so rejecting them
+		// here means a leaked challenge can never double as a session even if
+		// it somehow reached a protected route.
+		if purpose, _ := claims["purpose"].(string); purpose == "2fa" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+			c.Abort()
+			return
+		}
+
 		if username, exists := claims["username"].(string); exists {
 			c.Set("username", username)
 		}

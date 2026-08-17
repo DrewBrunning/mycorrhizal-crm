@@ -66,6 +66,7 @@ import WebhooksSettings from './components/WebhooksSettings';
 import ImmichSettings from './components/ImmichSettings';
 import LinkFieldTypesSettings from './components/LinkFieldTypesSettings';
 import NotificationSettings from './components/NotificationSettings';
+import TwoFactorSettings from './components/TwoFactorSettings';
 
 export default function SettingsPage() {
   const { t, i18n } = useTranslation();
@@ -500,6 +501,9 @@ export default function SettingsPage() {
           </form>
         </CardContent>
       </Card>
+
+      {/* N8: TOTP two-factor auth */}
+      <TwoFactorSettings />
 
       <WebhooksSettings />
 

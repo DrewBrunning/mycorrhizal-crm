@@ -193,7 +193,10 @@ paths:
       description: >
         Sets the httpOnly auth_token cookie on success; the token is never in
         the response body. Accepts either `identifier` (username or email) or
-        the legacy `email` alias.
+        the legacy `email` alias. For accounts with two-factor authentication
+        (N8) the password alone is NOT enough: the response instead carries
+        `two_factor_required: true` and sets a short-lived httpOnly 2fa_pending
+        cookie that must be exchanged via POST /login/2fa for the real session.
       requestBody:
         required: true
         content:
@@ -202,14 +205,14 @@ paths:
               $ref: "#/components/schemas/LoginInput"
       responses:
         "200":
-          description: Logged in; auth_token cookie set.
+          description: >
+            Logged in (auth_token cookie set), or 2FA pending — when
+            two_factor_required is true the client must call POST /login/2fa
+            with a TOTP or recovery code before a session exists.
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  language: { type: string }
-                  date_format: { type: string }
+                $ref: "#/components/schemas/LoginResponse"
         "400":
           description: Missing identifier/password or malformed JSON.
           content:
@@ -224,6 +227,47 @@ paths:
                 $ref: "#/components/schemas/Error"
         "429":
           description: Account temporarily locked after repeated failures.
+  /login/2fa:
+    post:
+      summary: Complete login with a TOTP or recovery code
+      operationId: login2FA
+      security: []
+      description: >
+        Step 2 of interactive login for accounts with 2FA enabled. Requires the
+        short-lived 2fa_pending cookie set by POST /login and a valid TOTP code
+        or unused recovery code (which is consumed). On success sets the real
+        auth_token session cookie and clears 2fa_pending. The code-verification
+        step is rate-limited by account like the password step.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TwoFactorCodeInput"
+      responses:
+        "200":
+          description: Logged in; auth_token cookie set, 2fa_pending cleared.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  language: { type: string }
+                  date_format: { type: string }
+        "400":
+          description: Missing code or invalid code.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Missing/expired 2fa_pending challenge, or 2FA no longer enabled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          description: Account temporarily locked after repeated failed codes.
   /logout:
     post:
       summary: Log out (clears session cookies)
@@ -347,6 +391,178 @@ paths:
                 $ref: "#/components/schemas/Error"
         "403":
           description: Password changes are disabled in demo mode.
+  # --- N8 two-factor auth (issue #158) ---
+  /users/2fa/status:
+    get:
+      summary: Report whether the authenticated user has 2FA enabled
+      operationId: getTwoFactorStatus
+      description: UI switch only; never exposes the TOTP secret or recovery-code state.
+      responses:
+        "200":
+          description: The 2FA enrollment state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TwoFactorStatusResponse"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /users/2fa/setup:
+    post:
+      summary: Begin 2FA enrollment (mint a TOTP secret)
+      operationId: setupTwoFactor
+      description: >
+        Generates a fresh TOTP secret, stores its encrypted form, and returns
+        the plaintext secret + otpauth:// URL so the client can render a QR
+        code. 2FA is not enforced yet — POST /users/2fa/confirm flips it on.
+        Unavailable (403) for OIDC-provisioned accounts, whose second factor
+        belongs to their identity provider.
+      responses:
+        "200":
+          description: The pending TOTP secret and its otpauth URL.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TwoFactorSetupResponse"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: OIDC-provisioned account (2FA unavailable) or demo mode.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: 2FA is already enabled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /users/2fa/confirm:
+    post:
+      summary: Confirm 2FA enrollment with a live TOTP code
+      operationId: confirmTwoFactor
+      description: >
+        Validates a TOTP code against the secret minted by setup. On success
+        2FA is enabled, ten single-use recovery codes are minted (returned
+        plaintext, exactly once) and token_version is bumped, invalidating all
+        other sessions; the current session's cookie is re-issued.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TwoFactorCodeInput"
+      responses:
+        "200":
+          description: 2FA enabled; the one-time recovery codes.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TwoFactorConfirmResponse"
+        "400":
+          description: Missing or invalid code.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: 2FA already enabled, or setup was never run.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /users/2fa/disable:
+    post:
+      summary: Disable 2FA
+      operationId: disableTwoFactor
+      description: >
+        Requires a valid TOTP code. Clears the secret and all recovery codes and
+        bumps token_version (other sessions invalidated; the current session's
+        cookie is re-issued).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TwoFactorCodeInput"
+      responses:
+        "200":
+          description: 2FA disabled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Missing or invalid code.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: 2FA is not enabled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /users/2fa/recovery-codes/regenerate:
+    post:
+      summary: Regenerate the single-use recovery codes
+      operationId: regenerateRecoveryCodes
+      description: >
+        Requires a valid TOTP code (the recovery path must be gated on the
+        strongest available proof). Replaces all unused codes with a fresh set,
+        returned plaintext exactly once; the old codes stop working.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TwoFactorCodeInput"
+      responses:
+        "200":
+          description: The new one-time recovery codes.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TwoFactorConfirmResponse"
+        "400":
+          description: Missing or invalid code.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: 2FA is not enabled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /users/language:
     patch:
       summary: Update the authenticated user's UI language
@@ -7109,6 +7325,40 @@ components:
         identifier: { type: string, description: "Username or email." }
         email: { type: string, description: "Legacy alias for identifier." }
         password: { type: string }
+    LoginResponse:
+      type: object
+      properties:
+        language: { type: string }
+        date_format: { type: string }
+        two_factor_required:
+          type: boolean
+          description: "Present and true when the account has 2FA enabled: a session is NOT issued; POST /login/2fa with a TOTP/recovery code completes the login."
+    TwoFactorCodeInput:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+          description: "A 6-digit TOTP code or a recovery code (XXXXX-XXXXX-XXXXX)."
+    TwoFactorStatusResponse:
+      type: object
+      required: [enabled]
+      properties:
+        enabled: { type: boolean }
+    TwoFactorSetupResponse:
+      type: object
+      required: [secret, otpauth_url]
+      properties:
+        secret: { type: string, description: "Base32 TOTP shared secret (plaintext, shown exactly once)." }
+        otpauth_url: { type: string, description: "otpauth:// URI for the QR code." }
+    TwoFactorConfirmResponse:
+      type: object
+      properties:
+        message: { type: string }
+        recovery_codes:
+          type: array
+          items: { type: string }
+          description: "The new single-use recovery codes, returned plaintext exactly once."
     PasswordResetRequestInput:
       type: object
       required: [email]

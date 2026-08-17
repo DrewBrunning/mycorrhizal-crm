@@ -71,6 +71,9 @@ func TestOpenAPISpecValidates(t *testing.T) {
 		"PasswordResetConfirmInput", "ChangePasswordInput",
 		"UpdateLanguageInput", "UpdateDateFormatInput",
 		"EnabledContactFieldsInput", "PasswordStrength", "OIDCConfigResponse",
+		// N8 two-factor auth (issue #158).
+		"LoginResponse", "TwoFactorCodeInput", "TwoFactorStatusResponse",
+		"TwoFactorSetupResponse", "TwoFactorConfirmResponse",
 		"AdminUserResponse", "CurrentUserResponse", "AdminUsersListResponse",
 		"AdminUserUpdateInput", "AdminUserCreateInput",
 		"ContactFlat", "ContactResponse", "ContactEmail", "ContactPhone",

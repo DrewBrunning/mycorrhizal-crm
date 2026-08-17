@@ -59,3 +59,70 @@ export async function updateSelfContact(vcardUid: string | null): Promise<void> 
 
   await handleResponse(response, 'Unable to update self contact.');
 }
+
+// --- N8 two-factor auth (issue #158) ---
+
+export interface TwoFactorStatus {
+  enabled: boolean;
+}
+
+export interface TwoFactorSetupResult {
+  secret: string;
+  otpauth_url: string;
+}
+
+export interface RecoveryCodesResult {
+  recovery_codes: string[];
+}
+
+export async function getTwoFactorStatus(): Promise<TwoFactorStatus> {
+  const response = await apiFetch(`${API_BASE_URL}/users/2fa/status`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+
+  const data = await handleResponse(response, 'Unable to load two-factor status.');
+  return { enabled: !!data.enabled };
+}
+
+export async function setupTwoFactor(): Promise<TwoFactorSetupResult> {
+  const response = await apiFetch(`${API_BASE_URL}/users/2fa/setup`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+
+  const data = await handleResponse(response, 'Unable to start two-factor setup.');
+  return { secret: data.secret, otpauth_url: data.otpauth_url };
+}
+
+export async function confirmTwoFactor(code: string): Promise<RecoveryCodesResult> {
+  const response = await apiFetch(`${API_BASE_URL}/users/2fa/confirm`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ code }),
+  });
+
+  const data = await handleResponse(response, 'Unable to enable two-factor authentication.');
+  return { recovery_codes: data.recovery_codes || [] };
+}
+
+export async function disableTwoFactor(code: string): Promise<void> {
+  const response = await apiFetch(`${API_BASE_URL}/users/2fa/disable`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ code }),
+  });
+
+  await handleResponse(response, 'Unable to disable two-factor authentication.');
+}
+
+export async function regenerateRecoveryCodes(code: string): Promise<RecoveryCodesResult> {
+  const response = await apiFetch(`${API_BASE_URL}/users/2fa/recovery-codes/regenerate`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ code }),
+  });
+
+  const data = await handleResponse(response, 'Unable to regenerate recovery codes.');
+  return { recovery_codes: data.recovery_codes || [] };
+}
