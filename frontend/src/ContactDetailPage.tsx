@@ -1332,19 +1332,21 @@ export default function ContactDetailPage() {
     }
   };
 
-  // Issue #173: favorite toggle in the header — same optimistic-into-state
-  // shape as the archive handlers above, using the dedicated endpoint (the
-  // flag is CRM-local and never part of the Card/CRM payload).
+  // Issue #173: favorite toggle in the header. Optimistic into state, with a
+  // rollback on failure so the star can never silently disagree with the
+  // database — unlike the archive handlers below, which predate this pattern
+  // and leave the optimistic flip in place on error.
   const handleToggleFavorite = async () => {
     if (!record || !id) return;
 
     const wasFavorite = !!record.is_favorite;
-    setRecord({ ...record, is_favorite: !wasFavorite });
+    setRecord((prev) => (prev ? { ...prev, is_favorite: !wasFavorite } : prev));
     try {
       const updatedContact = wasFavorite ? await unfavoriteContact(id) : await favoriteContact(id);
-      setRecord({ ...record, is_favorite: updatedContact.is_favorite });
+      setRecord((prev) => (prev ? { ...prev, is_favorite: updatedContact.is_favorite } : prev));
     } catch (err) {
       console.error('Error toggling favorite:', err);
+      setRecord((prev) => (prev ? { ...prev, is_favorite: wasFavorite } : prev));
       if (err instanceof ApiError) {
         showError(err.getDisplayMessage());
       } else {

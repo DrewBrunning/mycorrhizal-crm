@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"mycorrhizal/database"
 	"mycorrhizal/models"
@@ -266,4 +267,68 @@ func TestGetContacts_FavoritesFilterComposesWithArchived(t *testing.T) {
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 	require.Len(t, resp.Contacts, 1)
 	assert.Equal(t, "Arch", resp.Contacts[0].Firstname)
+}
+
+// TestGetContacts_FavoritesFilterComposesWithSearch pins favorites composing
+// with search: both predicates are ANDed, so a search that matches a
+// non-favorite returns nothing when favorites=true.
+func TestGetContacts_FavoritesFilterComposesWithSearch(t *testing.T) {
+	db, router := setupRouter()
+	router.GET("/contacts", GetContacts)
+
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+
+	fav := models.Contact{UserID: user.ID, Firstname: "Alice", Lastname: "Fav", IsFavorite: true}
+	plain := models.Contact{UserID: user.ID, Firstname: "Alice", Lastname: "Plain"}
+	require.NoError(t, db.Create(&fav).Error)
+	require.NoError(t, db.Create(&plain).Error)
+
+	req, _ := http.NewRequest("GET", "/contacts?favorites=true&search=Alice", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var resp struct {
+		Contacts []models.ContactSummary `json:"contacts"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	require.Len(t, resp.Contacts, 1, "search+ favorites must AND: only the matching favorite")
+	assert.Equal(t, "Fav", resp.Contacts[0].Lastname)
+	assert.True(t, resp.Contacts[0].IsFavorite)
+}
+
+// TestChangeFeedIgnoresFavoritesFilter pins the contract documented in
+// openapi.yaml: ?favorites=true is a browsing lens and must be ignored by the
+// ?since= change feed, which is sync state carrying every row regardless of
+// filters. A replica that saw a favorite-only feed would silently diverge.
+func TestChangeFeedIgnoresFavoritesFilter(t *testing.T) {
+	db, router := setupRouterWithRetention(30)
+	var user models.User
+	db.First(&user)
+	router.GET("/contacts", GetContacts)
+	router.POST("/contacts/:id/favorite", FavoriteContact)
+
+	// Cursor positioned before both contacts exist.
+	cursor := EncodeCursor(time.Now().Add(-time.Second), uint(0))
+
+	fav := models.Contact{UserID: user.ID, Firstname: "FavA"}
+	plain := models.Contact{UserID: user.ID, Firstname: "PlainB"}
+	require.NoError(t, db.Create(&fav).Error)
+	require.NoError(t, db.Create(&plain).Error)
+
+	// Favorite only fav; PlainB stays a non-favorite.
+	req, _ := http.NewRequest("POST", "/contacts/"+idString(fav.ID)+"/favorite", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	feed := getContactsPage(t, router, "since="+cursor+"&favorites=true&limit=10")
+	require.Len(t, feed.Contacts, 2, "favorites must be ignored by the change feed — a replica needs every row")
+	names := map[string]bool{}
+	for _, raw := range feed.Contacts {
+		names[raw["firstname"].(string)] = true
+	}
+	assert.True(t, names["FavA"])
+	assert.True(t, names["PlainB"])
 }

@@ -133,7 +133,7 @@ func TestOpenAPISpecValidates(t *testing.T) {
 	// and must NOT document the removed page/fields params (removed,
 	// not just undocumented-but-still-there).
 	contactsGet := doc.Paths.Find("/contacts").Get
-	wantParams := []string{"cursor", "since", "limit", "order", "sort", "search", "include_archived", "archived", "circle", "includes"}
+	wantParams := []string{"cursor", "since", "limit", "order", "sort", "search", "include_archived", "archived", "favorites", "circle", "includes"}
 	gotParams := map[string]bool{}
 	for _, p := range contactsGet.Parameters {
 		gotParams[p.Value.Name] = true
