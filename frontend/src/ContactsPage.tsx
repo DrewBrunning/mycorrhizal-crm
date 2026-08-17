@@ -268,7 +268,7 @@ export default function ContactsPage() {
       } else {
         setContacts((prev) => prev.map((c) => (c.uid === contact.uid ? { ...c, is_favorite: updated.is_favorite } : c)));
       }
-    } catch (err) {
+    } catch {
       window.alert(t('contacts.favoriteError'));
       await refetch();
     }
