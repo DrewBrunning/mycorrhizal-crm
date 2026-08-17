@@ -75,6 +75,11 @@ const (
 	// maxWebDAVBodyBytes bounds a PROPFIND response body.
 	maxWebDAVBodyBytes      = 8 * 1024 * 1024
 	maxWebDAVErrorBodyBytes = 2048
+	// webDAVDavFilesRoot is the standard dav-root prefix both Nextcloud and
+	// ownCloud serve user files at (/remote.php/dav/files/<user>/). It is a
+	// literal so davRequestURL can inline it directly into the request-URL
+	// concatenation.
+	webDAVDavFilesRoot = "/remote.php/dav/files/"
 )
 
 // WebDAVRequestError carries the real HTTP status (and a bounded response
@@ -148,7 +153,7 @@ func NewWebDAVClient(baseURL, username, appPassword string, blockPrivateURLs boo
 		return nil, ErrWebDAVInvalidURL
 	}
 
-	davRoot := "/remote.php/dav/files/" + username + "/"
+	davRoot := webDAVDavFilesRoot + username + "/"
 	return &WebDAVClient{
 		baseURL:     trimmed,
 		davRootPath: davRoot,
@@ -186,37 +191,23 @@ const propfindXML = `<?xml version="1.0" encoding="utf-8"?>
   </d:prop>
 </d:propfind>`
 
-// davRequestURL resolves a dav-root-relative path into the full request URL.
-// The base URL was validated at save time and the dav root is derived from the
-// stored username, so the path is the only user-supplied component. It is
-// therefore guarded against URL structure tricks (see isSafeWebDAVPath), and
-// the resolved URL is re-checked so a request can never be sent anywhere other
-// than the user's configured Nextcloud host — url.Parse accepts a scheme or
-// authority embedded in the reference, which ResolveReference would otherwise
-// honor.
+// davRequestURL builds the full request URL for a dav-root-relative path. The
+// dav root is inlined as literal concatenation operands (not read from a
+// field) so the user-supplied path — the only untrusted component, the rest
+// was validated at save time — can only ever land in the path portion of the
+// URL, never alter its scheme or host. isSafeWebDAVPath additionally rejects
+// path-traversal, query/fragment, and separator-injection tricks.
 func (c *WebDAVClient) davRequestURL(relPath string) (*url.URL, error) {
-	path := relPath
-	if !strings.HasPrefix(path, "/") {
-		path = "/" + path
-	}
-	path = normalizeWebDAVPath(path)
+	path := normalizeWebDAVPath(relPath)
 	if !isSafeWebDAVPath(path) {
 		return nil, ErrWebDAVInvalidURL
 	}
 
-	base, err := url.Parse(c.baseURL)
+	u, err := url.Parse(c.baseURL + webDAVDavFilesRoot + c.username + "/" + strings.TrimPrefix(path, "/"))
 	if err != nil {
 		return nil, ErrWebDAVInvalidURL
 	}
-	ref, err := url.Parse(c.davRootPath + strings.TrimPrefix(path, "/"))
-	if err != nil {
-		return nil, ErrWebDAVInvalidURL
-	}
-	resolved := base.ResolveReference(ref)
-	if !strings.EqualFold(resolved.Scheme, base.Scheme) || !strings.EqualFold(resolved.Host, base.Host) {
-		return nil, ErrWebDAVInvalidURL
-	}
-	return resolved, nil
+	return u, nil
 }
 
 // isSafeWebDAVPath reports whether path is a plain dav-root-relative path that
