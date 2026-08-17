@@ -186,18 +186,71 @@ const propfindXML = `<?xml version="1.0" encoding="utf-8"?>
   </d:prop>
 </d:propfind>`
 
-// propfind performs a Depth:1 PROPFIND on a path relative to the dav root,
-// returning the parsed multistatus. Errors map to the sentinel set.
-func (c *WebDAVClient) propfind(relPath string) (*webdavMultistatus, error) {
+// davRequestURL resolves a dav-root-relative path into the full request URL.
+// The base URL was validated at save time and the dav root is derived from the
+// stored username, so the path is the only user-supplied component. It is
+// therefore guarded against URL structure tricks (see isSafeWebDAVPath), and
+// the resolved URL is re-checked so a request can never be sent anywhere other
+// than the user's configured Nextcloud host — url.Parse accepts a scheme or
+// authority embedded in the reference, which ResolveReference would otherwise
+// honor.
+func (c *WebDAVClient) davRequestURL(relPath string) (*url.URL, error) {
 	path := relPath
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
 	}
-	reqURL := c.baseURL + c.davRootPath + strings.TrimPrefix(path, "/")
+	path = normalizeWebDAVPath(path)
+	if !isSafeWebDAVPath(path) {
+		return nil, ErrWebDAVInvalidURL
+	}
+
+	base, err := url.Parse(c.baseURL)
+	if err != nil {
+		return nil, ErrWebDAVInvalidURL
+	}
+	ref, err := url.Parse(c.davRootPath + strings.TrimPrefix(path, "/"))
+	if err != nil {
+		return nil, ErrWebDAVInvalidURL
+	}
+	resolved := base.ResolveReference(ref)
+	if !strings.EqualFold(resolved.Scheme, base.Scheme) || !strings.EqualFold(resolved.Host, base.Host) {
+		return nil, ErrWebDAVInvalidURL
+	}
+	return resolved, nil
+}
+
+// isSafeWebDAVPath reports whether path is a plain dav-root-relative path that
+// cannot alter the request target: no backslash (URL path-separator aliasing),
+// no dot-dot segments (escaping the dav root), no query/fragment delimiters
+// (changing the requested resource), and no control characters.
+func isSafeWebDAVPath(path string) bool {
+	if strings.ContainsAny(path, "\\?#") {
+		return false
+	}
+	for _, r := range path {
+		if r < 0x20 || r == 0x7f {
+			return false
+		}
+	}
+	for _, seg := range strings.Split(path, "/") {
+		if seg == ".." {
+			return false
+		}
+	}
+	return true
+}
+
+// propfind performs a Depth:1 PROPFIND on a path relative to the dav root,
+// returning the parsed multistatus. Errors map to the sentinel set.
+func (c *WebDAVClient) propfind(relPath string) (*webdavMultistatus, error) {
+	reqURL, err := c.davRequestURL(relPath)
+	if err != nil {
+		return nil, err
+	}
 
 	// PROPFIND is not one of the stdlib http.Method constants; the method
 	// string is the canonical WebDAV verb.
-	req, err := http.NewRequest("PROPFIND", reqURL, strings.NewReader(propfindXML))
+	req, err := http.NewRequest("PROPFIND", reqURL.String(), strings.NewReader(propfindXML))
 	if err != nil {
 		return nil, ErrWebDAVInvalidURL
 	}
@@ -208,10 +261,10 @@ func (c *WebDAVClient) propfind(relPath string) (*webdavMultistatus, error) {
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		logger.Debug().Err(err).Str("url", reqURL).Msg("WebDAV PROPFIND failed")
+		logger.Debug().Err(err).Str("url", reqURL.String()).Msg("WebDAV PROPFIND failed")
 		return nil, fmt.Errorf("%w: %v", ErrWebDAVUnreachable, err)
 	}
-	logger.Debug().Str("url", reqURL).Int("status", resp.StatusCode).Msg("WebDAV PROPFIND")
+	logger.Debug().Str("url", reqURL.String()).Int("status", resp.StatusCode).Msg("WebDAV PROPFIND")
 	defer resp.Body.Close()
 
 	switch resp.StatusCode {
@@ -223,7 +276,7 @@ func (c *WebDAVClient) propfind(relPath string) (*webdavMultistatus, error) {
 		return nil, ErrWebDAVNotFound
 	default:
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, maxWebDAVErrorBodyBytes))
-		logger.Debug().Str("url", reqURL).Int("status", resp.StatusCode).
+		logger.Debug().Str("url", reqURL.String()).Int("status", resp.StatusCode).
 			Str("body", string(body)).Msg("WebDAV PROPFIND: unexpected status (Nextcloud responded, not unreachable)")
 		return nil, &WebDAVRequestError{StatusCode: resp.StatusCode, Status: resp.Status, Body: string(body)}
 	}

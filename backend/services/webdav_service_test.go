@@ -167,3 +167,55 @@ func TestWebDAVClient_RejectsUnexpectedStatus(t *testing.T) {
 	_, err = client.ListDir("/")
 	assert.ErrorIs(t, err, ErrWebDAVRequestFailed)
 }
+
+// TestWebDAVClient_RejectsUnsafePaths pins the SSRF guard on the
+// user-supplied browse path: a path that could alter the request target
+// (dav-root escape, query/fragment injection, path-separator aliasing) must
+// be refused as ErrWebDAVInvalidURL before any request is made, not forwarded
+// to the configured server.
+//
+// Note: a path like "//evil.example/x" cannot change the request host at all
+// — the dav root is always prepended, so the request URL always begins with
+// the configured base — which is why such inputs are not in this list.
+func TestWebDAVClient_RejectsUnsafePaths(t *testing.T) {
+	client, err := NewWebDAVClient("https://nc.example", "alice", "sekret", false)
+	require.NoError(t, err)
+
+	for _, tc := range []struct {
+		name string
+		path string
+	}{
+		{name: "dot-dot escape", path: "/../../etc"},
+		{name: "dot-dot segment", path: "/Documents/../.."},
+		{name: "query injection", path: "/Documents?page=2"},
+		{name: "fragment injection", path: "/Documents#top"},
+		{name: "backslash separator", path: "/a\\b"},
+		{name: "control character", path: "/a\x00b"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := client.ListDir(tc.path)
+			assert.ErrorIs(t, err, ErrWebDAVInvalidURL)
+		})
+	}
+}
+
+// TestWebDAVClient_ListDir_EncodesLegitPaths pins that a legitimate folder
+// name with characters that need URL escaping (spaces) still browses — the
+// safe URL construction escapes the path rather than refusing it.
+func TestWebDAVClient_ListDir_EncodesLegitPaths(t *testing.T) {
+	fake := newFakeWebDAVServer(t, "alice", "sekret")
+	defer fake.Close()
+	seedWebDAVFakeServer(fake, "alice")
+	fake.Items["/remote.php/dav/files/alice/My Documents"] = &fakeWebDAVItem{Name: "My Documents", IsDir: true}
+	fake.Items["/remote.php/dav/files/alice/My Documents/readme.txt"] = &fakeWebDAVItem{Name: "readme.txt", IsDir: false, Size: 128}
+
+	client, err := NewWebDAVClient(fake.URL(), "alice", "sekret", false)
+	require.NoError(t, err)
+
+	items, err := client.ListDir("/My Documents")
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	assert.Equal(t, "readme.txt", items[0].Name)
+	assert.Equal(t, "/My Documents/readme.txt", items[0].Path)
+	assert.Equal(t, "alice", fake.LastUser, "the request must reach the server at all")
+}
