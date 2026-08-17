@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.model.network.Birthday
-import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.model.network.DashboardRandomContact
 import com.mycorrhizal.crm.model.network.DashboardReminder
 import com.mycorrhizal.crm.model.network.OverdueCadence
 import com.mycorrhizal.crm.network.ApiClient
@@ -21,7 +21,7 @@ import javax.inject.Inject
 data class DashboardUiState(
     val birthdays: List<Birthday> = emptyList(),
     val upcomingReminders: List<DashboardReminder> = emptyList(),
-    val randomContacts: List<ContactSummary> = emptyList(),
+    val randomContacts: List<DashboardRandomContact> = emptyList(),
     val overdueCadences: List<OverdueCadence> = emptyList(),
     val isLoading: Boolean = false,
     /** The dashboard-wide load failure; the screen replaces the widgets with an error + retry. */
