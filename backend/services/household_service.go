@@ -162,6 +162,15 @@ func GenerateHouseholdSuggestions(db *gorm.DB, household models.Household) ([]mo
 // `confirmed` edge is never re-suggested over, any more than a `suggested`
 // one is duplicated.
 //
+// For a symmetric relation type the two storage directions are the same
+// fact, so this helper canonicalizes the direction (source_id < target_id)
+// before the existence check and insert. That keeps the stored direction
+// deterministic no matter which caller and which traversal order produced
+// the candidate pair — the graph engine iterates a Go map (random order per
+// run), and without canonicalization the same sibling/spouse edge was stored
+// as (A,B) on one run and (B,A) on another, which is the same fact but a
+// different row and a flaky test.
+//
 // source is the provenance token stamped on the created edge — the two
 // callers pass their own (household-inferred for GenerateHouseholdSuggestions,
 // graph-inferred for GenerateGraphSuggestions) so a suggestion's Source
@@ -170,6 +179,9 @@ func GenerateHouseholdSuggestions(db *gorm.DB, household models.Household) ([]mo
 // Returns the created edge, or nil if one already existed.
 func suggestEdgeIfNew(db *gorm.DB, userID uint, sourceID, targetID, edgeType, source string, confidence float64) (*models.RelationshipEdge, error) {
 	inverse := models.InverseRelationType(edgeType)
+	if models.IsSymmetricRelationType(edgeType) && sourceID > targetID {
+		sourceID, targetID = targetID, sourceID
+	}
 
 	var count int64
 	err := db.Model(&models.RelationshipEdge{}).Where(

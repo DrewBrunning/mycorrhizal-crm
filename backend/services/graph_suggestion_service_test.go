@@ -62,6 +62,15 @@ func edgeSet(t *testing.T, db *gorm.DB, userID uint) map[string]bool {
 	return set
 }
 
+// hasSymmetricEdge reports whether the set contains the symmetric fact
+// (a, b, edgeType) in EITHER storage direction. Symmetric types (sibling_of,
+// spouse_of) are the same relationship either way, and suggestEdgeIfNew
+// canonicalizes their stored direction (source_id < target_id), so an
+// assertion must not depend on which contact happens to sort first.
+func hasSymmetricEdge(set map[string]bool, a, b, edgeType string) bool {
+	return set[a+"|"+b+"|"+edgeType] || set[b+"|"+a+"|"+edgeType]
+}
+
 // TestGenerateGraphSuggestions_WorkedExampleThreePressSaturation replays the
 // ticket's worked example exactly: 2 parents, 4 children, minimal chaining,
 // 5 confirmed edges, then three press rounds. Press 1 yields 4 suggestions,
@@ -90,8 +99,8 @@ func TestGenerateGraphSuggestions_WorkedExampleThreePressSaturation(t *testing.T
 	set := edgeSet(t, db, user.ID)
 	assert.True(t, set[p2.VCardUID+"|"+c1.VCardUID+"|parent_of"], "R3 spouse·parent: P2 parent_of C1")
 	assert.True(t, set[p1.VCardUID+"|"+c2.VCardUID+"|parent_of"], "R2 parent·sibling: P1 parent_of C2")
-	assert.True(t, set[c1.VCardUID+"|"+c3.VCardUID+"|sibling_of"], "R1: C1 sibling_of C3")
-	assert.True(t, set[c2.VCardUID+"|"+c4.VCardUID+"|sibling_of"], "R1: C2 sibling_of C4")
+	assert.True(t, hasSymmetricEdge(set, c1.VCardUID, c3.VCardUID, "sibling_of"), "R1: C1 sibling_of C3")
+	assert.True(t, hasSymmetricEdge(set, c2.VCardUID, c4.VCardUID, "sibling_of"), "R1: C2 sibling_of C4")
 
 	// Every suggestion carries the graph-inferred provenance.
 	var suggested []models.RelationshipEdge
@@ -112,7 +121,7 @@ func TestGenerateGraphSuggestions_WorkedExampleThreePressSaturation(t *testing.T
 	assert.True(t, set[p2.VCardUID+"|"+c3.VCardUID+"|parent_of"])
 	assert.True(t, set[p1.VCardUID+"|"+c3.VCardUID+"|parent_of"])
 	assert.True(t, set[p1.VCardUID+"|"+c4.VCardUID+"|parent_of"])
-	assert.True(t, set[c1.VCardUID+"|"+c4.VCardUID+"|sibling_of"])
+	assert.True(t, hasSymmetricEdge(set, c1.VCardUID, c4.VCardUID, "sibling_of"))
 
 	acceptAllSuggested(t, db, user.ID)
 
