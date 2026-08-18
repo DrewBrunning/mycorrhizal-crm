@@ -21,6 +21,9 @@ import {
   getAllContacts,
   onlineServicesToRows,
   rowsToOnlineServices,
+  summaryToLegacyContact,
+  favoriteContact,
+  unfavoriteContact,
 } from './contacts';
 
 describe('email conversion', () => {
@@ -498,5 +501,81 @@ describe('getContacts cursor pagination (T17)', () => {
     expect((fetch as unknown as ReturnType<typeof vi.fn>)).toHaveBeenCalledTimes(2);
     const secondUrl = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[1][0] as string;
     expect(secondUrl).toContain('cursor=CURSOR-2');
+  });
+});
+
+// --- Issue #173 favorites ----------------------------------------------------
+
+describe('favorites', () => {
+  test('favorites=true is appended to the list URL', async () => {
+    vi.stubGlobal('fetch', vi.fn());
+    try {
+      (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ contacts: [], next_cursor: '', limit: 25 }),
+      });
+
+      await getContacts({ favorites: true });
+
+      const calledUrl = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+      expect(calledUrl).toContain('favorites=true');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  test('is_favorite maps through summaryToLegacyContact', () => {
+    const contact = summaryToLegacyContact({
+      id: 1, uid: 'u', firstname: 'Alice', lastname: '', nickname: '', fn: 'Alice',
+      primary_email: '', primary_phone: '', birthday: '', org: '', photo: '',
+      photo_thumbnail: '', archived: false, is_favorite: true,
+    });
+    expect(contact.is_favorite).toBe(true);
+
+    const plain = summaryToLegacyContact({
+      id: 2, uid: 'v', firstname: 'Bob', lastname: '', nickname: '', fn: 'Bob',
+      primary_email: '', primary_phone: '', birthday: '', org: '', photo: '',
+      photo_thumbnail: '', archived: false, is_favorite: false,
+    });
+    expect(plain.is_favorite).toBe(false);
+  });
+
+  test('favoriteContact POSTs to the favorite endpoint', async () => {
+    vi.stubGlobal('fetch', vi.fn());
+    try {
+      (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ ID: 7, is_favorite: true }),
+      });
+
+      const result = await favoriteContact(7);
+
+      expect(fetch).toHaveBeenCalledTimes(1);
+      const [url, init] = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(url).toContain('/contacts/7/favorite');
+      expect(init.method).toBe('POST');
+      expect(result.is_favorite).toBe(true);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  test('unfavoriteContact POSTs to the unfavorite endpoint', async () => {
+    vi.stubGlobal('fetch', vi.fn());
+    try {
+      (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ ID: 7, is_favorite: false }),
+      });
+
+      const result = await unfavoriteContact(7);
+
+      const [url, init] = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(url).toContain('/contacts/7/unfavorite');
+      expect(init.method).toBe('POST');
+      expect(result.is_favorite).toBe(false);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

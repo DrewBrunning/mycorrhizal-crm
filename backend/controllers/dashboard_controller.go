@@ -14,10 +14,11 @@ import (
 
 // GetDashboard returns the M3 "today/overview" composite
 // (M3): upcoming
-// birthdays, a handful of random contacts, upcoming reminders (with the
-// contact's display name embedded, N+1-free), and overdue cadences — the
-// four requests the web DashboardPage used to fire separately (plus a
-// per-reminder contact fetch), and the single call the Android client's
+// birthdays, a handful of random contacts, the user's favorites (issue
+// #173), upcoming reminders (with the contact's display name embedded,
+// N+1-free), and overdue cadences — the five blocks the web DashboardPage
+// used to fire separately (plus a per-reminder contact fetch), and the
+// single call the Android client's
 // three background pollers (ReminderNotificationWorker, CadenceCheckWorker,
 // BirthdayCheckWorker) can share.
 //
@@ -45,6 +46,12 @@ func GetDashboard(c *gin.Context) {
 		return
 	}
 
+	favoriteContacts, err := fetchFavoriteContacts(db, userID)
+	if err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve favorite contacts").WithError(err))
+		return
+	}
+
 	reminders, err := services.GetUpcomingReminders(db, userID, now)
 	if err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve reminders").WithError(err))
@@ -63,6 +70,7 @@ func GetDashboard(c *gin.Context) {
 		RandomContacts:    randomContacts,
 		UpcomingReminders: dashboardReminders,
 		Overdue:           toDashboardOverdueCadences(overdue),
+		Favorites:         favoriteContacts,
 	}
 	normalizeDashboardSlices(&resp)
 
@@ -81,6 +89,37 @@ func fetchRandomContacts(db *gorm.DB, userID uint) ([]models.ContactResponse, er
 		Select(selectedFields).
 		Order("RANDOM()").
 		Limit(5)
+
+	if err := query.Find(&contacts).Error; err != nil {
+		return nil, err
+	}
+
+	responses := make([]models.ContactResponse, len(contacts))
+	for i, contact := range contacts {
+		responses[i] = models.ContactResponse{
+			Contact:        contact,
+			PhotoThumbnail: contact.PhotoThumbnail,
+		}
+	}
+	return responses, nil
+}
+
+// fetchFavoriteContacts returns up to limit non-archived favorites, ordered
+// by name — the dashboard's quick-access favorites block (issue #173). Same
+// field selection shape as fetchRandomContacts so the two blocks render
+// identically; is_favorite is included in the projection so the flag is
+// actually true on the wire (not GORM's zero-value false).
+func fetchFavoriteContacts(db *gorm.DB, userID uint) ([]models.ContactResponse, error) {
+	const limit = 10
+	selectedFields := []string{"ID", "firstname", "lastname", "nickname", "circles", "photo_thumbnail", "is_favorite"}
+
+	var contacts []models.Contact
+	query := db.Model(&models.Contact{}).Where("user_id = ?", userID).
+		Where("archived = ?", false).
+		Where("is_favorite = ?", true).
+		Select(selectedFields).
+		Order("sort_name ASC, id ASC").
+		Limit(limit)
 
 	if err := query.Find(&contacts).Error; err != nil {
 		return nil, err
@@ -173,5 +212,8 @@ func normalizeDashboardSlices(resp *models.DashboardResponse) {
 	}
 	if resp.Overdue == nil {
 		resp.Overdue = []models.DashboardOverdueCadence{}
+	}
+	if resp.Favorites == nil {
+		resp.Favorites = []models.ContactResponse{}
 	}
 }

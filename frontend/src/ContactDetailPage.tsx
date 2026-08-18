@@ -18,7 +18,9 @@ import {
   deleteContact,
   uploadProfilePicture,
   archiveContact,
-  unarchiveContact
+  unarchiveContact,
+  favoriteContact,
+  unfavoriteContact
 } from './api/contacts';
 import { getCurrentUser } from './api/admin';
 import { updateSelfContact } from './api/users';
@@ -1407,6 +1409,29 @@ export default function ContactDetailPage() {
     }
   };
 
+  // Issue #173: favorite toggle in the header. Optimistic into state, with a
+  // rollback on failure so the star can never silently disagree with the
+  // database — unlike the archive handlers below, which predate this pattern
+  // and leave the optimistic flip in place on error.
+  const handleToggleFavorite = async () => {
+    if (!record || !id) return;
+
+    const wasFavorite = !!record.is_favorite;
+    setRecord((prev) => (prev ? { ...prev, is_favorite: !wasFavorite } : prev));
+    try {
+      const updatedContact = wasFavorite ? await unfavoriteContact(id) : await favoriteContact(id);
+      setRecord((prev) => (prev ? { ...prev, is_favorite: updatedContact.is_favorite } : prev));
+    } catch (err) {
+      console.error('Error toggling favorite:', err);
+      setRecord((prev) => (prev ? { ...prev, is_favorite: wasFavorite } : prev));
+      if (err instanceof ApiError) {
+        showError(err.getDisplayMessage());
+      } else {
+        showError(t('contactDetail.updateError'));
+      }
+    }
+  };
+
   const handleStayInTouch = () => {
     if (!record) return;
     const contactName = `${firstname}${lastname ? ' ' + lastname : ''}`;
@@ -1503,6 +1528,7 @@ export default function ContactDetailPage() {
         onStayInTouch={record.archived ? undefined : handleStayInTouch}
         onArchiveContact={record.archived ? undefined : handleArchiveContact}
         onUnarchiveContact={record.archived ? handleUnarchiveContact : undefined}
+        onToggleFavorite={handleToggleFavorite}
         onMergeContact={() => setMergeDialogOpen(true)}
         onPrepView={() => navigate(`/contacts/${record.id}/prep`)}
         onShareContact={() => setShareDialogOpen(true)}

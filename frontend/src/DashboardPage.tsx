@@ -16,6 +16,7 @@ import {
 } from '@mui/material';
 import CakeIcon from '@mui/icons-material/Cake';
 import ShuffleIcon from '@mui/icons-material/Shuffle';
+import StarIcon from '@mui/icons-material/Star';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
@@ -39,6 +40,8 @@ function DashboardPage() {
   const { formatBirthday: formatBirthdayDate, formatDate } = useDateFormat();
   const [birthdays, setBirthdays] = useState<Birthday[]>([]);
   const [randomContacts, setRandomContacts] = useState<Contact[]>([]);
+  // Issue #173: the favorites quick-access block.
+  const [favoriteContacts, setFavoriteContacts] = useState<Contact[]>([]);
   const [upcomingReminders, setUpcomingReminders] = useState<DashboardReminder[]>([]);
   const [overdueCadences, setOverdueCadences] = useState<OverdueCadence[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,6 +49,7 @@ function DashboardPage() {
   const [birthdaysInfoAnchor, setBirthdaysInfoAnchor] = useState<HTMLElement | null>(null);
   const [remindersInfoAnchor, setRemindersInfoAnchor] = useState<HTMLElement | null>(null);
   const [stayInTouchInfoAnchor, setStayInTouchInfoAnchor] = useState<HTMLElement | null>(null);
+  const [favoritesInfoAnchor, setFavoritesInfoAnchor] = useState<HTMLElement | null>(null);
 
   const { circleNamesByUid } = useCircles();
 
@@ -62,6 +66,7 @@ function DashboardPage() {
 
       setBirthdays(dashboard.birthdays);
       setRandomContacts(dashboard.random_contacts);
+      setFavoriteContacts(dashboard.favorites);
       setUpcomingReminders(dashboard.upcoming_reminders);
       setOverdueCadences(dashboard.overdue);
     } catch (err) {
@@ -166,9 +171,12 @@ function DashboardPage() {
         </Typography>
         <Box sx={{
           display: 'grid',
-          gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' },
+          gridTemplateColumns: { xs: '1fr', md: 'repeat(4, 1fr)' },
           gap: 3
         }}>
+          <Box>
+            <ContactListSkeleton count={5} />
+          </Box>
           <Box>
             <ContactListSkeleton count={5} />
           </Box>
@@ -208,10 +216,93 @@ function DashboardPage() {
 
       <Box sx={{
         display: 'grid',
-        gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' },
+        gridTemplateColumns: { xs: '1fr', md: 'repeat(4, 1fr)' },
         gap: 2
       }}>
-        {/* Column 1: Upcoming Birthdays */}
+        {/* Issue #173: Column 1 — Favorites (quick access). */}
+        <Box>
+          <Box sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <StarIcon color="primary" fontSize="small" />
+            <Typography variant="subtitle1" fontWeight={500}>
+              {t('dashboard.favorites')}
+            </Typography>
+            <IconButton
+              size="small"
+              onClick={(e) => setFavoritesInfoAnchor(e.currentTarget)}
+            >
+              <InfoOutlinedIcon fontSize="small" />
+            </IconButton>
+          </Box>
+          <Popover
+            open={Boolean(favoritesInfoAnchor)}
+            anchorEl={favoritesInfoAnchor}
+            onClose={() => setFavoritesInfoAnchor(null)}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+          >
+            <Box sx={{ p: 2, maxWidth: 320 }}>
+              <Typography variant="body2">{t('dashboard.favoritesInfo')}</Typography>
+            </Box>
+          </Popover>
+
+          {favoriteContacts.length === 0 ? (
+            <Card>
+              <CardContent sx={{ py: 2 }}>
+                <Typography variant="body2" color="text.secondary">
+                  {t('dashboard.noFavorites')}
+                </Typography>
+              </CardContent>
+            </Card>
+          ) : (
+            <Stack spacing={1.5}>
+              {favoriteContacts.map((contact) => (
+                <Card
+                  key={contact.ID}
+                  component={Link}
+                  to={`/contacts/${contact.ID}`}
+                  sx={{
+                    textDecoration: 'none',
+                    '&:hover': {
+                      boxShadow: 2,
+                      transform: 'translateY(-1px)',
+                      transition: 'all 0.2s'
+                    }
+                  }}
+                >
+                  <CardContent sx={{ py: 1.5 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Avatar
+                        src={contact.photo_thumbnail || undefined}
+                        sx={{ bgcolor: 'warning.main', width: 40, height: 40 }}
+                      >
+                        {contact.firstname.charAt(0)}
+                      </Avatar>
+                      <Box sx={{ flexGrow: 1 }}>
+                        <Typography variant="body2" fontWeight={500}>
+                          {getContactName(contact)}
+                        </Typography>
+                        {(circleNamesByUid.get(contact.uid || '') || []).length > 0 && (
+                          <Box sx={{ mt: 0.5 }}>
+                            {(circleNamesByUid.get(contact.uid || '') || []).slice(0, 2).map((circle, idx) => (
+                              <Chip
+                                key={idx}
+                                label={circle}
+                                size="small"
+                                variant="outlined"
+                                sx={{ mr: 0.5, height: 20, fontSize: '0.7rem' }}
+                              />
+                            ))}
+                          </Box>
+                        )}
+                      </Box>
+                    </Box>
+                  </CardContent>
+                </Card>
+              ))}
+            </Stack>
+          )}
+        </Box>
+
+        {/* Column 2: Upcoming Birthdays */}
         <Box>
           <Box sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
             <CakeIcon color="primary" fontSize="small" />

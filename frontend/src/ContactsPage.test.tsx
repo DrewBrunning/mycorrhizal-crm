@@ -5,7 +5,7 @@ import './i18n/config';
 import ContactsPage from './ContactsPage';
 import { SnackbarProvider } from './context/SnackbarContext';
 import { DateFormatProvider } from './DateFormatProvider';
-import { getContacts, Contact } from './api/contacts';
+import { getContacts, Contact, favoriteContact, unfavoriteContact } from './api/contacts';
 import { listCircles } from './api/circles';
 import { listTags } from './api/tags';
 import { getFieldDefinitions } from './api/fieldDefinitions';
@@ -19,7 +19,7 @@ afterEach(cleanup);
 
 vi.mock('./api/contacts', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api/contacts')>();
-  return { ...actual, getContacts: vi.fn() };
+  return { ...actual, getContacts: vi.fn(), favoriteContact: vi.fn(), unfavoriteContact: vi.fn() };
 });
 vi.mock('./api/circles', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api/circles')>();
@@ -65,6 +65,8 @@ vi.mock('./auth', async (importOriginal) => {
 
 beforeEach(() => {
   vi.mocked(getContacts).mockReset();
+  vi.mocked(favoriteContact).mockReset();
+  vi.mocked(unfavoriteContact).mockReset();
   vi.mocked(listCircles).mockReset();
   vi.mocked(listTags).mockReset();
   vi.mocked(getFieldDefinitions).mockReset();
@@ -81,8 +83,8 @@ beforeEach(() => {
   vi.mocked(searchAll).mockResolvedValue({ query: '', resolved_relation: '', contacts: [], notes: [], activities: [] } as never);
 });
 
-function contact(id: number, uid: string, firstname: string): Contact {
-  return { ID: id, uid, firstname, lastname: '', archived: false };
+function contact(id: number, uid: string, firstname: string, isFavorite = false): Contact {
+  return { ID: id, uid, firstname, lastname: '', archived: false, is_favorite: isFavorite };
 }
 
 // Two pages: page one has Alice + Bob, page two (loaded via "load more") has
@@ -641,4 +643,89 @@ test('search, filters and bulk actions are pinned above the scrolling list (T111
   // The contact cards are outside the sticky block — they are what scrolls.
   const alice = screen.getByLabelText('Select Alice');
   expect(closestSticky(alice)).not.toBe(sticky);
+});
+
+// --- Issue #173: favorites ------------------------------------------------
+
+test('renders a filled star for a favorite and an outline star otherwise', async () => {
+  vi.mocked(getContacts).mockResolvedValue({
+    contacts: [contact(1, 'uid-1', 'Alice', true), contact(2, 'uid-2', 'Bob', false)],
+    next_cursor: '',
+    limit: 10,
+  });
+  renderPage();
+
+  await screen.findByLabelText('Select Alice');
+  // The star buttons carry the per-contact aria-labels.
+  const aliceStar = screen.getByRole('button', { name: 'Unmark Alice as favorite' });
+  const bobStar = screen.getByRole('button', { name: 'Mark Bob as favorite' });
+  expect(aliceStar).toBeInTheDocument();
+  expect(bobStar).toBeInTheDocument();
+});
+
+test('clicking the star on a non-favorite POSTs to favorite and fills the star', async () => {
+  vi.mocked(getContacts).mockResolvedValue({
+    contacts: [contact(1, 'uid-1', 'Alice')],
+    next_cursor: '',
+    limit: 10,
+  });
+  vi.mocked(favoriteContact).mockResolvedValue({ ID: 1, uid: 'uid-1', firstname: 'Alice', lastname: '', archived: false, is_favorite: true });
+  renderPage();
+
+  await screen.findByLabelText('Select Alice');
+  const star = screen.getByRole('button', { name: 'Mark Alice as favorite' });
+  fireEvent.click(star);
+
+  expect(favoriteContact).toHaveBeenCalledWith(1);
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Unmark Alice as favorite' })).toBeInTheDocument());
+});
+
+test('clicking the star on a favorite POSTs to unfavorite and empties the star', async () => {
+  vi.mocked(getContacts).mockResolvedValue({
+    contacts: [contact(1, 'uid-1', 'Alice', true)],
+    next_cursor: '',
+    limit: 10,
+  });
+  vi.mocked(unfavoriteContact).mockResolvedValue({ ID: 1, uid: 'uid-1', firstname: 'Alice', lastname: '', archived: false, is_favorite: false });
+  renderPage();
+
+  await screen.findByLabelText('Select Alice');
+  const star = screen.getByRole('button', { name: 'Unmark Alice as favorite' });
+  fireEvent.click(star);
+
+  expect(unfavoriteContact).toHaveBeenCalledWith(1);
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Mark Alice as favorite' })).toBeInTheDocument());
+});
+
+test('clicking the star does not navigate to the contact detail page', async () => {
+  vi.mocked(getContacts).mockResolvedValue({
+    contacts: [contact(1, 'uid-1', 'Alice')],
+    next_cursor: '',
+    limit: 10,
+  });
+  vi.mocked(favoriteContact).mockResolvedValue({ ID: 1, uid: 'uid-1', firstname: 'Alice', lastname: '', archived: false, is_favorite: true });
+  renderPage();
+
+  await screen.findByLabelText('Select Alice');
+  fireEvent.click(screen.getByRole('button', { name: 'Mark Alice as favorite' }));
+
+  // The star click must stopPropagation: the row's card navigation must not fire.
+  expect(screen.queryByText('CONTACT DETAIL PAGE')).not.toBeInTheDocument();
+});
+
+test('toggling the favorites switch refetches with favorites: true', async () => {
+  vi.mocked(getContacts).mockResolvedValue({ contacts: [], next_cursor: '', limit: 10 });
+  renderPage();
+  await screen.findByText('Show favorites');
+
+  const favoritesSwitch = screen.getByLabelText('Show favorites');
+  expect(favoritesSwitch).not.toBeChecked();
+  fireEvent.click(favoritesSwitch);
+
+  await waitFor(() =>
+    expect(getContacts).toHaveBeenCalledWith(
+      expect.objectContaining({ favorites: true })
+    )
+  );
+  expect(favoritesSwitch).toBeChecked();
 });

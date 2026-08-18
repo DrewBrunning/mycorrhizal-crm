@@ -367,6 +367,15 @@ func GetContacts(c *gin.Context) {
 		}
 	}
 
+	// Issue #173: ?favorites=true narrows the list to the caller's favorite
+	// contacts. Composes with search/circle/archived/sort/cursor exactly like
+	// the other predicates (all ANDed Wheres). Not applied to the ?since=
+	// change feed — that path returns before this point (sync state must
+	// carry every row regardless of filters).
+	if c.Query("favorites") == "true" {
+		query = query.Where("is_favorite = ?", true)
+	}
+
 	// Apply search filter using parameterization
 	if searchTerm := c.Query("search"); searchTerm != "" {
 		query = applyContactSearch(query, userID, searchTerm)
@@ -1019,5 +1028,68 @@ func UnarchiveContact(c *gin.Context) {
 	}
 
 	contact.Archived = false
+	c.JSON(http.StatusOK, contact)
+}
+
+// FavoriteContact marks a contact as a favorite (issue #173). Uses `Update`,
+// not `UpdateColumn`, deliberately: `Update` fires BeforeSave/AfterSave,
+// which bumps the ETag and records an audit event, so a favorite flip
+// propagates through the T17 ?since= change feed and CardDAV sync — exactly
+// what ArchiveContact already relies on.
+func FavoriteContact(c *gin.Context) {
+	id := c.Param("id")
+	db := c.MustGet("db").(*gorm.DB)
+
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+
+	var contact models.Contact
+	if err := db.Where("user_id = ?", userID).First(&contact, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			apperrors.AbortWithError(c, apperrors.ErrNotFound("Contact").WithDetails("id", id))
+		} else {
+			apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve contact").WithError(err))
+		}
+		return
+	}
+
+	if err := db.Model(&contact).Update("is_favorite", true).Error; err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to favorite contact").WithError(err))
+		return
+	}
+
+	contact.IsFavorite = true
+	c.JSON(http.StatusOK, contact)
+}
+
+// UnfavoriteContact clears the favorite flag (issue #173). Same `Update`
+// (hooks firing) discipline as FavoriteContact.
+func UnfavoriteContact(c *gin.Context) {
+	id := c.Param("id")
+	db := c.MustGet("db").(*gorm.DB)
+
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+
+	var contact models.Contact
+	if err := db.Where("user_id = ?", userID).First(&contact, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			apperrors.AbortWithError(c, apperrors.ErrNotFound("Contact").WithDetails("id", id))
+		} else {
+			apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve contact").WithError(err))
+		}
+		return
+	}
+
+	if err := db.Model(&contact).Update("is_favorite", false).Error; err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to unfavorite contact").WithError(err))
+		return
+	}
+
+	contact.IsFavorite = false
 	c.JSON(http.StatusOK, contact)
 }
