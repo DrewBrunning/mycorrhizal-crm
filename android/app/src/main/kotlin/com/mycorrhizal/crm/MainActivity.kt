@@ -20,6 +20,7 @@ import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.SessionState
+import com.mycorrhizal.crm.feature.tracking.NotificationBuilder
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.theme.MycorrhizalColors
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
@@ -51,6 +52,14 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var authRepository: AuthRepository
 
+    // M5 §6.6 (issue #152): the most recent notification deep link to route the
+    // NavHost to. Notifications carry it as an extra on their content intent;
+    // onCreate/onNewIntent store it here and MycorrhizalApp consumes it (and
+    // calls onDeepLinkHandled to reset). A StateFlow so a deep link that lands
+    // while the main tree isn't composed yet (e.g. while still logged out) is
+    // still delivered once the NavHost exists.
+    private val pendingDeepLink = kotlinx.coroutines.flow.MutableStateFlow<android.net.Uri?>(null)
+
     // M25: the user's chosen UI language must reach the very first frame.
     // attachBaseContext runs before Hilt injection, so the locale comes from
     // the synchronous AppLocale cache (hydrated at startup, updated whenever
@@ -68,6 +77,8 @@ class MainActivity : ComponentActivity() {
         // M5 §5: handle a cold-start OIDC deep link before the first frame so
         // the session is already present when the app tree composes.
         handleOidcReturn(intent?.data)
+        // M5 §6.6: a notification tap's deep link arrives on the launch intent.
+        handleNotificationDeepLink(intent)
 
         // M25: the theme preference is a live local setting (system/light/dark),
         // so darkThemeAtLaunch follows it instead of the bare system config when
@@ -114,7 +125,11 @@ class MainActivity : ComponentActivity() {
                 else -> isSystemInDarkTheme()
             }
             MycorrhizalTheme(darkTheme = darkTheme) {
-                MycorrhizalApp(darkTheme = darkTheme)
+                MycorrhizalApp(
+                    darkTheme = darkTheme,
+                    deepLinks = pendingDeepLink,
+                    onDeepLinkHandled = { pendingDeepLink.value = null },
+                )
             }
         }
     }
@@ -124,6 +139,19 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleOidcReturn(intent.data)
+        handleNotificationDeepLink(intent)
+    }
+
+    /**
+     * M5 §6.6 (issue #152): a notification tap's content intent is the app's
+     * launch intent carrying [NotificationBuilder.EXTRA_DEEP_LINK] (a
+     * `mycorrhizal://…` URI). Forward it to the NavHost; see [deepLinkRoute].
+     */
+    private fun handleNotificationDeepLink(intent: Intent?) {
+        val link = intent?.getStringExtra(NotificationBuilder.EXTRA_DEEP_LINK)
+        if (!link.isNullOrBlank()) {
+            pendingDeepLink.value = Uri.parse(link)
+        }
     }
 
     /**
@@ -178,6 +206,19 @@ class MainActivity : ComponentActivity() {
             null -> Unit
         }
     }
+}
+
+/**
+ * Parses a notification deep link (`mycorrhizal://contacts/{id}`) into a NavHost
+ * route (`contacts/{id}`). Null when the URI is not a route the app knows — a
+ * malformed or foreign link should never drive navigation. Pure and internal so
+ * it is unit-testable without an Activity.
+ */
+internal fun deepLinkRoute(uri: Uri?): String? {
+    if (uri == null || uri.scheme != "mycorrhizal" || uri.host != "contacts") return null
+    val id = uri.path?.trimStart('/')?.toIntOrNull() ?: return null
+    if (id <= 0) return null
+    return "contacts/$id"
 }
 
 /**

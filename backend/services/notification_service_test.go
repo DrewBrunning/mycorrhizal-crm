@@ -7,11 +7,13 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -53,6 +55,7 @@ type fakeChannelServer struct {
 	mu       sync.Mutex
 	hits     []string
 	bodyLens []int
+	bodies   []string
 	statuses map[string]int
 }
 
@@ -64,6 +67,7 @@ func newFakeChannelServer(t *testing.T, statuses map[string]int) *fakeChannelSer
 		f.mu.Lock()
 		f.hits = append(f.hits, r.URL.Path)
 		f.bodyLens = append(f.bodyLens, len(body))
+		f.bodies = append(f.bodies, string(body))
 		status := http.StatusOK
 		for prefix, s := range statuses {
 			if strings.HasPrefix(r.URL.Path, prefix) {
@@ -84,6 +88,17 @@ func (f *fakeChannelServer) count() int {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return len(f.hits)
+}
+
+// lastBody returns the raw body of the most recently received request, or ""
+// if no request has landed yet.
+func (f *fakeChannelServer) lastBody() string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if len(f.bodies) == 0 {
+		return ""
+	}
+	return f.bodies[len(f.bodies)-1]
 }
 
 // lastBodyLen returns the byte length of the most recently received request
@@ -863,6 +878,33 @@ func TestLoadFCMServiceAccount(t *testing.T) {
 	assert.ErrorIs(t, err, ErrFCMInvalidServiceAccount)
 }
 
+// TestFcmReminderData pins the FCM `data` payload shape the Android client
+// keys on (issue #152): a canonical second-truncated UTC `due_at`, the reminder
+// id, and a contact deep link only when the reminder has a contact. The
+// canonical `due_at` matters because the client normalizes both this and the
+// polling worker's `remind_at` to epoch seconds to form one idempotence key.
+func TestFcmReminderData(t *testing.T) {
+	remindAt := time.Date(2026, 8, 18, 14, 14, 28, 638126406, time.FixedZone("EST", -5*60*60))
+
+	t.Run("with contact", func(t *testing.T) {
+		contactID := uint(7)
+		data := fcmReminderData(models.Reminder{Model: gorm.Model{ID: 42}, RemindAt: remindAt, ContactID: &contactID})
+		assert.Equal(t, "reminder", data["type"])
+		assert.Equal(t, "42", data["reminder_id"])
+		// Second-truncated UTC — nanoseconds and the local offset are gone.
+		assert.Equal(t, "2026-08-18T19:14:28Z", data["due_at"])
+		assert.Equal(t, "mycorrhizal://contacts/7", data["deep_link"])
+	})
+
+	t.Run("without contact", func(t *testing.T) {
+		data := fcmReminderData(models.Reminder{Model: gorm.Model{ID: 42}, RemindAt: remindAt})
+		assert.Equal(t, "42", data["reminder_id"])
+		assert.Equal(t, "2026-08-18T19:14:28Z", data["due_at"])
+		_, ok := data["deep_link"]
+		assert.False(t, ok, "a contact-less reminder must not carry a deep_link")
+	})
+}
+
 // TestSendFCMMessage_HappyPath delivers a test message through a fake
 // Google token + FCM endpoint, asserting the full request flow (token
 // exchange, then messages:send) and the 404-stale path.
@@ -888,7 +930,7 @@ func TestSendFCMMessage_HappyPath(t *testing.T) {
 	fcmSendEndpoint = fake.URL()
 	defer func() { fcmSendEndpoint = originalSendURL }()
 
-	stale, err := sendFCMMessage(config.Config{ReminderTime: "12:00"}, sa, "device-token", "Title", "Body")
+	stale, err := sendFCMMessage(config.Config{ReminderTime: "12:00"}, sa, "device-token", "Title", "Body", map[string]string{"type": "reminder"})
 	require.NoError(t, err)
 	assert.False(t, stale)
 	require.Equal(t, 1, fake.count())
@@ -912,7 +954,7 @@ func TestSendFCMMessage_StaleToken(t *testing.T) {
 	fcmSendEndpoint = fake.URL()
 	defer func() { fcmSendEndpoint = originalSendURL }()
 
-	stale, err := sendFCMMessage(config.Config{ReminderTime: "12:00"}, sa, "dead-token", "T", "B")
+	stale, err := sendFCMMessage(config.Config{ReminderTime: "12:00"}, sa, "dead-token", "T", "B", nil)
 	require.NoError(t, err)
 	assert.True(t, stale, "a 404 from FCM must be reported as stale")
 }
@@ -960,6 +1002,20 @@ func TestSendReminders_FCMDelivers(t *testing.T) {
 
 	require.Equal(t, 1, fake.count(), "the FCM endpoint must receive one messages:send")
 	assert.Equal(t, "/projects/my-project/messages:send", fake.hits[0])
+
+	// The `data` payload is what lets the Android client deep-link into the
+	// contact and dedupe against the polling worker (M5 §6.6/§6.8): assert the
+	// deep_link, reminder_id and due_at all survive the round trip.
+	var sent struct {
+		Message struct {
+			Data map[string]string `json:"data"`
+		} `json:"message"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(fake.lastBody()), &sent))
+	assert.Equal(t, "reminder", sent.Message.Data["type"])
+	assert.Equal(t, strconv.FormatUint(uint64(reminder.ID), 10), sent.Message.Data["reminder_id"])
+	assert.Equal(t, reminder.RemindAt.UTC().Truncate(time.Second).Format(time.RFC3339), sent.Message.Data["due_at"])
+	assert.Equal(t, fmt.Sprintf("mycorrhizal://contacts/%d", *reminder.ContactID), sent.Message.Data["deep_link"])
 
 	var deliveries []models.NotificationDelivery
 	require.NoError(t, db.Where("reminder_id = ?", reminder.ID).Find(&deliveries).Error)

@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -531,7 +532,7 @@ func (pushNotificationSender) Send(db *gorm.DB, cfg config.Config, user models.U
 		}
 		for _, r := range reminders {
 			body := notificationShortBody(r, contactMap)
-			stale, err := sendFCMMessage(cfg, fcmAccount, device.Token, title, body)
+			stale, err := sendFCMMessage(cfg, fcmAccount, device.Token, title, body, fcmReminderData(r))
 			if err != nil {
 				recordNotificationDelivery(db, r.ID, models.ChannelPush, false, err.Error())
 				if sendErr == nil {
@@ -613,25 +614,35 @@ func LoadFCMServiceAccount(path string) (*fcmServiceAccount, error) {
 // (404 NOT_FOUND) — the caller should drop the registration, mirroring
 // sendPushMessage's 404/410 handling for web push subscriptions.
 //
+// [data] is the FCM `data` payload, carried alongside the visible
+// `notification` block so the Android client can deep-link into the app and
+// dedupe against the WorkManager polling worker (M5 §6.6/§6.8 — the
+// reminder_id + due_at idempotence key). Empty/nil emits no `data` key (the
+// Settings "test push" path sends a bare notification).
+//
 // Auth: mints an RS256 JWT signed with the service account's private key and
 // exchanges it for a short-lived OAuth2 access token at Google's token
 // endpoint (github.com/golang-jwt/jwt/v4 — already a dependency). The access
 // token is minted fresh per call; reminder dispatch is a low-frequency daily
 // job, so caching adds complexity for no measurable win.
-func sendFCMMessage(cfg config.Config, sa *fcmServiceAccount, token, title, message string) (stale bool, err error) {
+func sendFCMMessage(cfg config.Config, sa *fcmServiceAccount, token, title, message string, data map[string]string) (stale bool, err error) {
 	accessToken, err := fcmAccessToken(cfg, sa)
 	if err != nil {
 		return false, err
 	}
 
-	payload, err := json.Marshal(map[string]interface{}{
-		"message": map[string]interface{}{
-			"token": token,
-			"notification": map[string]string{
-				"title": title,
-				"body":  message,
-			},
+	messagePayload := map[string]interface{}{
+		"token": token,
+		"notification": map[string]string{
+			"title": title,
+			"body":  message,
 		},
+	}
+	if len(data) > 0 {
+		messagePayload["data"] = data
+	}
+	payload, err := json.Marshal(map[string]interface{}{
+		"message": messagePayload,
 	})
 	if err != nil {
 		return false, err
@@ -662,6 +673,31 @@ func sendFCMMessage(cfg config.Config, sa *fcmServiceAccount, token, title, mess
 	}
 	bodyBytes, _ := io.ReadAll(resp.Body)
 	return false, fmt.Errorf("unexpected status %d from FCM: %s", resp.StatusCode, strings.TrimSpace(string(bodyBytes)))
+}
+
+// fcmReminderData builds the FCM `data` payload for a reminder push. The
+// Android client keys on it for two things (M5 §6.6/§6.8): `deep_link` routes
+// the notification tap into the contact's page, and the `reminder_id` +
+// `due_at` pair is the idempotence key that suppresses the double-notify when
+// the WorkManager polling worker posts the same reminder around the same time.
+// Kept on the reminder so a future APNS sender can reuse the same payload.
+func fcmReminderData(reminder models.Reminder) map[string]string {
+	data := map[string]string{
+		"type":        "reminder",
+		"reminder_id": strconv.FormatUint(uint64(reminder.ID), 10),
+		// Canonical UTC, truncated to the second. The Android client normalizes
+		// the polling worker's `remind_at` (Go's RFC3339Nano, which carries
+		// nanoseconds and the server's local offset) to epoch seconds when it
+		// derives the same idempotence key — so the two sides must agree on a
+		// second-granularity, offset-free instant, or the poll-boundary
+		// double-notify would survive (two different `due_at` strings → two
+		// different notification ids).
+		"due_at": reminder.RemindAt.UTC().Truncate(time.Second).Format(time.RFC3339),
+	}
+	if reminder.ContactID != nil {
+		data["deep_link"] = fmt.Sprintf("mycorrhizal://contacts/%d", *reminder.ContactID)
+	}
+	return data
 }
 
 // fcmAccessToken obtains a short-lived OAuth2 access token for the FCM API by
@@ -1031,7 +1067,7 @@ func TestNotificationChannel(db *gorm.DB, cfg config.Config, user models.User, c
 			} else {
 				for _, device := range devices {
 					attempted = true
-					stale, err := sendFCMMessage(cfg, fcmAccount, device.Token, title, message)
+					stale, err := sendFCMMessage(cfg, fcmAccount, device.Token, title, message, nil)
 					if err != nil {
 						if sendErr == nil {
 							sendErr = err

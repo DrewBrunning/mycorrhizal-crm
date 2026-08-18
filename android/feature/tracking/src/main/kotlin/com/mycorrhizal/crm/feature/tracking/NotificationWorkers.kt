@@ -15,6 +15,30 @@ object AlertNotificationIds {
     const val REMINDERS = 2001
     const val CADENCE = 2002
     const val BIRTHDAYS = 2003
+
+    /**
+     * M5 §6.8 (issue #152): the notification id for one reminder occurrence,
+     * derived from the (reminder_id, due_at) idempotence key. The FCM push path
+     * and the WorkManager polling worker both target the SAME id, so when both
+     * fire for the same reminder around the poll boundary the second `notify`
+     * replaces the first instead of duplicating it. Hashed into the
+     * `0x2D0000..0x2DFFFF` band — far from the static channel ids above.
+     *
+     * [dueAt] is normalized to epoch seconds before hashing because the two
+     * paths see the due time in different string forms: the FCM `data.due_at`
+     * is canonical UTC (no sub-seconds), while the polling worker's `remind_at`
+     * is Go's RFC3339Nano with nanoseconds and the server's local offset. Both
+     * must collapse to one key or the double-notify survives.
+     */
+    fun forReminder(reminderId: Int, dueAt: String?): Int {
+        val epoch = dueAt?.let { raw ->
+            runCatching { java.time.Instant.parse(raw).epochSecond }.getOrNull()
+        }
+        val key = "$reminderId:${epoch ?: dueAt.orEmpty()}"
+        return REMINDER_IDEMPTOTENCE_BASE or (key.hashCode() and 0xFFFF)
+    }
+
+    private const val REMINDER_IDEMPTOTENCE_BASE = 0x2D0000
 }
 
 /**
@@ -34,12 +58,21 @@ class ReminderNotificationWorker @AssistedInject constructor(
         if (!trackingSettings.notificationsEnabled()) return Result.success()
         val response = apiClient.listUpcomingReminders().getOrNull() ?: return Result.success()
         val fallbackTitle = applicationContext.getString(R.string.reminder_title_fallback)
-        response.reminders.take(MAX_NOTIFICATIONS).forEachIndexed { i, reminder ->
+        response.reminders.take(MAX_NOTIFICATIONS).forEach { reminder ->
             val text = reminder.message?.takeIf { it.isNotBlank() } ?: fallbackTitle
+            // Idempotence key (issue #152): the same (reminder_id, due_at) the
+            // FCM push uses, so both paths replace rather than duplicate the
+            // notification at the poll boundary.
+            val id = AlertNotificationIds.forReminder(reminder.id, reminder.remindAt)
             NotificationBuilder.notify(
                 applicationContext,
-                AlertNotificationIds.REMINDERS + i,
-                NotificationBuilder.reminder(applicationContext, fallbackTitle, text),
+                id,
+                NotificationBuilder.reminder(
+                    applicationContext,
+                    fallbackTitle,
+                    text,
+                    deepLink = reminder.contactId?.let { "mycorrhizal://contacts/$it" },
+                ),
             )
         }
         return Result.success()

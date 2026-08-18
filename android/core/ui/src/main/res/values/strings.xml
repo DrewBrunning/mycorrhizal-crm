@@ -387,7 +387,16 @@
     <string name="notification_someone_fallback">Someone</string>
     <string name="notification_contact_fallback">a contact</string>
     <string name="call_service_notification_text">Listening for calls</string>
-    <string name="quick_capture_pill_text">%1$s — log interaction</string>
+
+    <!-- M5 §6.5 (issue #151): the in-overlay quick-capture sheet -->
+    <string name="quick_capture_sheet_title">Log interaction</string>
+    <string name="quick_capture_resolving">Resolving contact…</string>
+    <string name="quick_capture_with_contact">With %1$s</string>
+    <string name="quick_capture_unknown">Unknown number</string>
+    <string name="quick_capture_title_label">Title</string>
+    <string name="quick_capture_type_label">Type</string>
+    <string name="quick_capture_note_label">Note</string>
+    <string name="quick_capture_title_required">Title is required</string>
 
     <!-- Activities -->
     <string name="activities_title">Activities</string>

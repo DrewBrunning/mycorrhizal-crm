@@ -383,7 +383,14 @@
     <string name="notification_someone_fallback">Qualcuno</string>
     <string name="notification_contact_fallback">un contatto</string>
     <string name="call_service_notification_text">In ascolto di chiamate</string>
-    <string name="quick_capture_pill_text">%1$s — registra interazione</string>
+    <string name="quick_capture_sheet_title">Registra interazione</string>
+    <string name="quick_capture_resolving">Ricerca contatto…</string>
+    <string name="quick_capture_with_contact">Con %1$s</string>
+    <string name="quick_capture_unknown">Numero sconosciuto</string>
+    <string name="quick_capture_title_label">Titolo</string>
+    <string name="quick_capture_type_label">Tipo</string>
+    <string name="quick_capture_note_label">Nota</string>
+    <string name="quick_capture_title_required">Il titolo è obbligatorio</string>
     <string name="settings_notifications">Mostra notifiche</string>
     <string name="settings_value_placeholder">—</string>
     <string name="settings_cancel">Annulla</string>
