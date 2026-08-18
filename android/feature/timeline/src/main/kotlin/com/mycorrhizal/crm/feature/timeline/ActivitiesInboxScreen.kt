@@ -52,7 +52,8 @@ import com.mycorrhizal.crm.ui.components.LoadingSkeleton
  */
 @Composable
 fun ActivitiesInboxScreen(
-    onMenuClick: () -> Unit,
+    // Issue #150: null hides the hamburger — there is no drawer at Expanded.
+    onMenuClick: (() -> Unit)? = {},
     onActivityClick: (Int) -> Unit,
     onContactClick: (Int) -> Unit,
     viewModel: ActivitiesInboxViewModel = hiltViewModel(),
@@ -77,7 +78,8 @@ fun ActivitiesInboxScreen(
 @Composable
 fun ActivitiesInboxScreenContent(
     uiState: ActivitiesInboxUiState,
-    onMenuClick: () -> Unit = {},
+    // Issue #150: see ActivitiesInboxScreen — null hides the hamburger.
+    onMenuClick: (() -> Unit)? = {},
     onActivityClick: (Int) -> Unit = {},
     onContactClick: (Int) -> Unit = {},
     onLoadMore: () -> Unit = {},
@@ -90,8 +92,10 @@ fun ActivitiesInboxScreenContent(
         topBar = {
             TopAppBar(
                 navigationIcon = {
-                    IconButton(onClick = onMenuClick) {
-                        Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
+                    onMenuClick?.let { onMenu ->
+                        IconButton(onClick = onMenu) {
+                            Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
+                        }
                     }
                 },
                 title = {

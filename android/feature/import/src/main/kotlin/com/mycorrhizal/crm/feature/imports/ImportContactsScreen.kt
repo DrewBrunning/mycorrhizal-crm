@@ -44,7 +44,8 @@ import com.mycorrhizal.crm.ui.R
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImportContactsScreen(
-    onMenuClick: () -> Unit,
+    // Issue #150: null hides the hamburger — there is no drawer at Expanded.
+    onMenuClick: (() -> Unit)? = {},
     onImported: () -> Unit = {},
     onImportVcf: () -> Unit = {},
     viewModel: ImportContactsViewModel = hiltViewModel(),
@@ -58,8 +59,10 @@ fun ImportContactsScreen(
         topBar = {
             TopAppBar(
                 navigationIcon = {
-                    IconButton(onClick = onMenuClick) {
-                        Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
+                    onMenuClick?.let { onMenu ->
+                        IconButton(onClick = onMenu) {
+                            Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
+                        }
                     }
                 },
                 title = {

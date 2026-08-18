@@ -65,7 +65,8 @@ import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 fun NetworkScreen(
     showMenu: Boolean = false,
     onBack: () -> Unit = {},
-    onMenuClick: () -> Unit = {},
+    // Issue #150: null hides the hamburger — there is no drawer at Expanded.
+    onMenuClick: (() -> Unit)? = {},
     onOpenContact: (Int) -> Unit = {},
     viewModel: NetworkViewModel = hiltViewModel(),
 ) {
@@ -95,7 +96,8 @@ fun NetworkScreenContent(
     uiState: NetworkUiState,
     showMenu: Boolean,
     onBack: () -> Unit,
-    onMenuClick: () -> Unit,
+    // Issue #150: see NetworkScreen — null hides the hamburger.
+    onMenuClick: (() -> Unit)?,
     onOpenContact: (Int) -> Unit,
     onDepthChange: (Int) -> Unit,
     onRelationInputChange: (String) -> Unit,
@@ -113,11 +115,22 @@ fun NetworkScreenContent(
         topBar = {
             TopAppBar(
                 navigationIcon = {
-                    IconButton(onClick = if (showMenu) onMenuClick else onBack) {
-                        Icon(
-                            imageVector = if (showMenu) Icons.Outlined.Menu else Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = stringResource(if (showMenu) R.string.cd_menu else R.string.cd_back),
-                        )
+                    if (showMenu) {
+                        onMenuClick?.let { onMenu ->
+                            IconButton(onClick = onMenu) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Menu,
+                                    contentDescription = stringResource(R.string.cd_menu),
+                                )
+                            }
+                        }
+                    } else {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                                contentDescription = stringResource(R.string.cd_back),
+                            )
+                        }
                     }
                 },
                 title = { Text(stringResource(R.string.nav_network), style = MaterialTheme.typography.titleLarge) },

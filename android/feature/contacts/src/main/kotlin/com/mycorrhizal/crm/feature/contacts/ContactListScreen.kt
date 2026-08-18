@@ -85,7 +85,10 @@ import com.mycorrhizal.crm.ui.R
 fun ContactListScreen(
     onContactClick: (Int) -> Unit,
     onCreateContact: () -> Unit = {},
-    onMenuClick: () -> Unit = {},
+    // Issue #150: nullable — null when there is no app-level drawer to open
+    // (the tablet two-pane's persistent list pane, where the NavigationRail
+    // replaces the drawer), which hides the hamburger.
+    onMenuClick: (() -> Unit)? = {},
     onImportContacts: () -> Unit = {},
     viewModel: ContactListViewModel = hiltViewModel(),
 ) {
@@ -149,7 +152,8 @@ fun ContactListScreenContent(
     onRunBulkAction: (String, String?, String?) -> Unit = { _, _, _ -> },
     onBulkResultShown: () -> Unit = {},
     onCreateContact: () -> Unit = {},
-    onMenuClick: () -> Unit = {},
+    // Issue #150: see ContactListScreen — null hides the hamburger (no drawer).
+    onMenuClick: (() -> Unit)? = {},
     onImportContacts: () -> Unit = {},
     onErrorShown: () -> Unit = {},
     onLoadMore: () -> Unit = {},
@@ -195,8 +199,10 @@ fun ContactListScreenContent(
         topBar = {
             TopAppBar(
                 navigationIcon = {
-                    IconButton(onClick = onMenuClick) {
-                        Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
+                    onMenuClick?.let { onMenu ->
+                        IconButton(onClick = onMenu) {
+                            Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
+                        }
                     }
                 },
                 title = {
