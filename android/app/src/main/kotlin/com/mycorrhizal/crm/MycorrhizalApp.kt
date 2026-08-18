@@ -289,6 +289,28 @@ private fun MainScaffold(
     // not stored: it only reacts to session transitions.
     hiltViewModel<DeviceRegistrationViewModel>()
 
+    // M5 §6.6 (issue #152): consume notification deep links as they arrive and
+    // drive the NavHost. The session-flow guard means a tap that lands while the
+    // auth tree is up is deferred until a session exists (the link is retained
+    // by the flow until it is consumed).
+    LaunchedEffect(deepLinks) {
+        deepLinks.filterNotNull().collect { uri ->
+            deepLinkRoute(uri)?.let { route ->
+                navController.navigate(route) {
+                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                    launchSingleTop = true
+                    restoreState = true
+                }
+            }
+            onDeepLinkHandled()
+        }
+    }
+
+    // M5 §5a (issue #152): registers/deletes this install's FCM device with the
+    // server as the session flips between logged-in and logged-out. Deliberately
+    // not stored: it only reacts to session transitions.
+    hiltViewModel<DeviceRegistrationViewModel>()
+
     // Default status bar for the always-green app-bar screens: brand green
     // (primary) background, icons following the theme. The contact detail
     // overrides this per its collapse state. When the drawer is open its
