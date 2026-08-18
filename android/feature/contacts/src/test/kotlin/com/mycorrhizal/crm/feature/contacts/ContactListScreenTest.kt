@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -44,6 +45,7 @@ class ContactListScreenTest {
         onToggleSelection: (Int) -> Unit = {},
         onToggleSelectAll: () -> Unit = {},
         onRunBulkAction: (String, String?, String?) -> Unit = { _, _, _ -> },
+        onMenuClick: (() -> Unit)? = {},
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -57,6 +59,7 @@ class ContactListScreenTest {
                     onToggleSelection = onToggleSelection,
                     onToggleSelectAll = onToggleSelectAll,
                     onRunBulkAction = onRunBulkAction,
+                    onMenuClick = onMenuClick,
                 )
             }
         }
@@ -367,5 +370,21 @@ class ContactListScreenTest {
         assertEquals("archive", ran?.first)
         assertEquals(null, ran?.second)
         assertEquals(null, ran?.third)
+    }
+
+    // --- Issue #150: nullable onMenuClick hides the hamburger -----------------
+
+    @Test
+    fun `shows the menu button when a drawer opener is provided`() {
+        setContent(ContactListUiState(isLoading = false, contacts = emptyList()), onMenuClick = {})
+
+        composeTestRule.onNodeWithContentDescription("Menu").assertIsDisplayed()
+    }
+
+    @Test
+    fun `hides the menu button when there is no drawer to open`() {
+        setContent(ContactListUiState(isLoading = false, contacts = emptyList()), onMenuClick = null)
+
+        composeTestRule.onNodeWithContentDescription("Menu").assertDoesNotExist()
     }
 }

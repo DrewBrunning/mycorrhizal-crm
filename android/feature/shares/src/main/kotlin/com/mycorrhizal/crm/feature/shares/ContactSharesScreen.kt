@@ -52,7 +52,8 @@ import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ContactSharesScreen(
-    onMenuClick: () -> Unit,
+    // Issue #150: null hides the hamburger — there is no drawer at Expanded.
+    onMenuClick: (() -> Unit)? = {},
     viewModel: ContactSharesViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -62,8 +63,10 @@ fun ContactSharesScreen(
         topBar = {
             TopAppBar(
                 navigationIcon = {
-                    IconButton(onClick = onMenuClick) {
-                        Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
+                    onMenuClick?.let { onMenu ->
+                        IconButton(onClick = onMenu) {
+                            Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
+                        }
                     }
                 },
                 title = {

@@ -50,7 +50,8 @@ import com.mycorrhizal.crm.ui.components.LoadingSkeleton
  */
 @Composable
 fun NotesInboxScreen(
-    onMenuClick: () -> Unit,
+    // Issue #150: null hides the hamburger — there is no drawer at Expanded.
+    onMenuClick: (() -> Unit)? = {},
     onNoteClick: (Int) -> Unit,
     viewModel: NotesInboxViewModel = hiltViewModel(),
 ) {
@@ -72,7 +73,8 @@ fun NotesInboxScreen(
 @Composable
 fun NotesInboxScreenContent(
     uiState: NotesInboxUiState,
-    onMenuClick: () -> Unit = {},
+    // Issue #150: see NotesInboxScreen — null hides the hamburger.
+    onMenuClick: (() -> Unit)? = {},
     onNoteClick: (Int) -> Unit = {},
     onLoadMore: () -> Unit = {},
     onErrorShown: () -> Unit = {},
@@ -84,8 +86,10 @@ fun NotesInboxScreenContent(
         topBar = {
             TopAppBar(
                 navigationIcon = {
-                    IconButton(onClick = onMenuClick) {
-                        Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
+                    onMenuClick?.let { onMenu ->
+                        IconButton(onClick = onMenu) {
+                            Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
+                        }
                     }
                 },
                 title = {

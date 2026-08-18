@@ -52,7 +52,8 @@ import com.mycorrhizal.crm.ui.R
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CirclesScreen(
-    onMenuClick: () -> Unit,
+    // Issue #150: null hides the hamburger — there is no drawer at Expanded.
+    onMenuClick: (() -> Unit)? = {},
     onOpenCircle: (String) -> Unit,
     viewModel: CirclesViewModel = hiltViewModel(),
 ) {
@@ -64,8 +65,10 @@ fun CirclesScreen(
         topBar = {
             TopAppBar(
                 navigationIcon = {
-                    IconButton(onClick = onMenuClick) {
-                        Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
+                    onMenuClick?.let { onMenu ->
+                        IconButton(onClick = onMenu) {
+                            Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
+                        }
                     }
                 },
                 title = {

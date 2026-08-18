@@ -86,6 +86,8 @@
     <string name="contacts_exit_select_mode">Auswahl beenden</string>
     <string name="contacts_selected_count">%1$d ausgewählt</string>
     <string name="contacts_select_all">Alle auswählen</string>
+    <!-- Issue #150: right-hand pane of the two-pane tablet contacts layout when no contact is selected -->
+    <string name="contacts_select_contact">Wähle einen Kontakt aus, um seine Details anzusehen</string>
 
     <!-- Contact list: cross-entity search (T87) -->
     <string name="contacts_search_results_header">%1$d Treffer in Notizen und Interaktionen</string>

@@ -86,7 +86,8 @@ import java.time.LocalDate
 @Composable
 fun DashboardScreen(
     onOpenContact: (Int) -> Unit,
-    onMenuClick: () -> Unit = {},
+    // Issue #150: null hides the hamburger — there is no drawer at Expanded.
+    onMenuClick: (() -> Unit)? = {},
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -106,8 +107,10 @@ fun DashboardScreen(
         topBar = {
             TopAppBar(
                 navigationIcon = {
-                    IconButton(onClick = onMenuClick) {
-                        Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
+                    onMenuClick?.let { onMenu ->
+                        IconButton(onClick = onMenu) {
+                            Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
+                        }
                     }
                 },
                 title = {
