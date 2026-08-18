@@ -194,6 +194,7 @@ const ActivitiesPage: React.FC = () => {
           <IconButton
             size="small"
             aria-describedby={infoPopoverId}
+            aria-label={t('common.info')}
             onClick={handleInfoClick}
           >
             <InfoOutlinedIcon fontSize="small" />
@@ -311,7 +312,7 @@ const ActivitiesPage: React.FC = () => {
                         className="edit-actions"
                         sx={{ opacity: 0, transition: 'opacity 0.2s', display: 'flex', gap: 1 }}
                       >
-                        <IconButton size="small" onClick={() => handleEditClick(activity)}>
+                        <IconButton size="small" onClick={() => handleEditClick(activity)} aria-label={t('contactDetail.editActivity')}>
                           <EditIcon fontSize="small" />
                         </IconButton>
                       </Box>

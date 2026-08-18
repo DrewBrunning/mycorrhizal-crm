@@ -219,11 +219,12 @@ export default function NetworkPage() {
         />
 
         <FormControl size="small" sx={{ minWidth: { xs: 0, sm: 150 }, width: isMobile ? '100%' : undefined }}>
-          <InputLabel>{t('network.filterByCircle')}</InputLabel>
+          <InputLabel id="network-circle-filter-label">{t('network.filterByCircle')}</InputLabel>
           <Select
             value={selectedCircle}
             onChange={handleCircleChange}
             label={t('network.filterByCircle')}
+            labelId="network-circle-filter-label"
           >
             <MenuItem value="">{t('network.allCircles')}</MenuItem>
             {circleNames.map(c => (

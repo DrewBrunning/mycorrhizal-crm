@@ -134,7 +134,10 @@ export default function LoginPage({ setToken }: LoginPageProps) {
                 <Button type="submit" variant="contained" color="primary" disabled={loading}>
                   {loading ? t('login.loggingIn') : t('login.loginButton')}
                 </Button>
-                <Button variant="text" color="secondary" onClick={backToCredentials} disabled={loading}>
+                {/* #187: these were color="secondary" (lichen, ~2.6:1 on the
+                    login card) — the audit's worst contrast failure. Primary
+                    (mycelium, 8.26:1) keeps a brand accent and passes AA. */}
+                <Button variant="text" color="primary" onClick={backToCredentials} disabled={loading}>
                   {t('login.backToCredentials')}
                 </Button>
               </Stack>
@@ -165,10 +168,10 @@ export default function LoginPage({ setToken }: LoginPageProps) {
                 <Button type="submit" variant="contained" color="primary" disabled={loading}>
                   {loading ? t('login.loggingIn') : t('login.loginButton')}
                 </Button>
-                <Button variant="text" color="secondary" onClick={() => setForgotOpen(true)}>
+                <Button variant="text" color="primary" onClick={() => setForgotOpen(true)}>
                   {t('login.forgotPassword')}
                 </Button>
-                <Button component={Link} to="/register" color="secondary" variant="text">
+                <Button component={Link} to="/register" color="primary" variant="text">
                   {t('login.noAccount')}
                 </Button>
                 {oidcConfig.enabled && (

@@ -265,6 +265,7 @@ export default function WebhooksSettings() {
                             onClick={() => handleTest(wh)}
                             disabled={testing[wh.id]}
                             title={t('settings.webhooks.test')}
+                            aria-label={t('settings.webhooks.test')}
                           >
                             <PlayArrowIcon fontSize="small" />
                           </IconButton>
@@ -272,6 +273,7 @@ export default function WebhooksSettings() {
                             size="small"
                             onClick={() => openEdit(wh)}
                             title={t('settings.webhooks.edit')}
+                            aria-label={t('settings.webhooks.edit')}
                           >
                             <EditIcon fontSize="small" />
                           </IconButton>
@@ -280,6 +282,7 @@ export default function WebhooksSettings() {
                             onClick={() => handleDeleteClick(wh)}
                             color="error"
                             title={t('settings.webhooks.delete')}
+                            aria-label={t('settings.webhooks.delete')}
                           >
                             <DeleteIcon fontSize="small" />
                           </IconButton>
@@ -455,6 +458,7 @@ export default function WebhooksSettings() {
                   }
                 }}
                 color={secretCopied ? 'success' : 'default'}
+                aria-label={secretCopied ? t('apiTokens.createdDialog.copied') : t('apiTokens.createdDialog.copy')}
               >
                 <ContentCopyIcon />
               </IconButton>

@@ -185,7 +185,7 @@ export default function ExternalLinkPanel({
                 </Typography>
               )}
               <Box sx={{ display: 'flex', gap: 0.5, mt: 1 }}>
-                <IconButton size="small" title={t('immich.panel.syncNow')} onClick={onSyncImmich} disabled={syncing}>
+                <IconButton size="small" title={t('immich.panel.syncNow')} aria-label={t('immich.panel.syncNow')} onClick={onSyncImmich} disabled={syncing}>
                   <SyncIcon fontSize="small" />
                 </IconButton>
                 <IconButton

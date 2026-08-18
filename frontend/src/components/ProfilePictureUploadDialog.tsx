@@ -266,6 +266,7 @@ export default function ProfilePictureUploadDialog({
                 accept="image/*"
                 onChange={handleFileSelect}
                 style={{ display: 'none' }}
+                aria-label={t('profilePicture.selectImage')}
               />
               <CloudUploadIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 1 }} />
               <Typography variant="h6" color="text.secondary">
@@ -384,6 +385,7 @@ export default function ProfilePictureUploadDialog({
                   accept="image/*"
                   onChange={handleFileSelect}
                   style={{ display: 'none' }}
+                  aria-label={t('profilePicture.changeImage')}
                 />
               </Button>
             </Box>

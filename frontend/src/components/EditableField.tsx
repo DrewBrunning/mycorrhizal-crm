@@ -1,4 +1,5 @@
 import { Box, Typography, TextField, IconButton, Autocomplete } from '@mui/material';
+import { useTranslation } from 'react-i18next';
 import SaveIcon from '@mui/icons-material/Save';
 import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
@@ -48,6 +49,7 @@ export default function EditableField({
   options,
   getOptionLabel
 }: EditableFieldProps) {
+  const { t } = useTranslation();
   const baseDisplayValue = formattedDisplayValue || value;
   const displayValue = baseDisplayValue ? (displaySuffix ? `${baseDisplayValue} ${displaySuffix}` : baseDisplayValue) : '-';
   const showError = isEditing && validationError;
@@ -87,6 +89,7 @@ export default function EditableField({
                 size="small"
                 color="primary"
                 onClick={() => onEditStart(field, value)}
+                aria-label={t('common.edit')}
                 sx={{ ml: 0.5, p: 0.25, opacity: 0, transition: 'opacity 0.2s' }}
               >
                 <EditIcon sx={{ fontSize: 18 }} />
@@ -128,10 +131,10 @@ export default function EditableField({
                     placeholder={placeholder}
                   />
                 )}
-                <IconButton size="small" color="primary" onClick={() => onEditSave(field)}>
+                <IconButton size="small" color="primary" onClick={() => onEditSave(field)} aria-label={t('common.save')}>
                   <SaveIcon fontSize="small" />
                 </IconButton>
-                <IconButton size="small" onClick={onEditCancel}>
+                <IconButton size="small" onClick={onEditCancel} aria-label={t('common.cancel')}>
                   <CloseIcon fontSize="small" />
                 </IconButton>
               </Box>

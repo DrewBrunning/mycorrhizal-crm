@@ -359,6 +359,7 @@ export default function ImportContactsDialog({
           type="file"
           accept=".csv,.vcf"
           style={{ display: 'none' }}
+          aria-label={t('contacts.import.upload.dragDrop')}
           onChange={handleFileInputChange}
         />
         <CloudUploadIcon sx={{ fontSize: 48, color: 'grey.500', mb: 2 }} />
@@ -711,7 +712,7 @@ export default function ImportContactsDialog({
       <DialogTitle>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           {t('contacts.import.title', 'Import Contacts')}
-          <IconButton onClick={handleClose} size="small">
+          <IconButton onClick={handleClose} size="small" aria-label={t('common.close')}>
             <CloseIcon />
           </IconButton>
         </Box>

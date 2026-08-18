@@ -287,6 +287,7 @@ export default function EditTimelineItemDialog({
           color="error"
           onClick={handleDelete}
           title={t('contactDetail.delete')}
+          aria-label={t('contactDetail.delete')}
         >
           <DeleteIcon />
         </IconButton>

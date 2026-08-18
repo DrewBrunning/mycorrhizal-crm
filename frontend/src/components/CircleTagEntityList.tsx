@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Paper,
   List,
@@ -55,6 +56,11 @@ export default function CircleTagEntityList({
   onRename,
   onDelete,
 }: CircleTagEntityListProps) {
+  // Generic action labels for the icon-only row buttons (save/cancel/edit/
+  // delete) come from `common.*` directly rather than the caller-supplied
+  // entity copy — they are entity-agnostic, and passing four more props per
+  // call site would outweigh the benefit.
+  const { t } = useTranslation();
   const [newName, setNewName] = useState('');
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -128,19 +134,19 @@ export default function CircleTagEntityList({
                   secondaryAction={
                     isEditing ? (
                       <Stack direction="row" spacing={0.5}>
-                        <IconButton size="small" color="primary" onClick={() => saveEdit(item.id)} disabled={isSaving}>
+                        <IconButton size="small" color="primary" onClick={() => saveEdit(item.id)} disabled={isSaving} aria-label={t('common.save')}>
                           {isSaving ? <CircularProgress size={16} /> : <SaveIcon fontSize="small" />}
                         </IconButton>
-                        <IconButton size="small" onClick={cancelEdit} disabled={isSaving}>
+                        <IconButton size="small" onClick={cancelEdit} disabled={isSaving} aria-label={t('common.cancel')}>
                           <CloseIcon fontSize="small" />
                         </IconButton>
                       </Stack>
                     ) : (
                       <Stack direction="row" spacing={0.5}>
-                        <IconButton size="small" onClick={() => startEdit(item)} disabled={isDeleting}>
+                        <IconButton size="small" onClick={() => startEdit(item)} disabled={isDeleting} aria-label={t('common.edit')}>
                           <EditIcon fontSize="small" />
                         </IconButton>
-                        <IconButton size="small" color="error" onClick={() => handleDeleteClick(item)} disabled={isDeleting}>
+                        <IconButton size="small" color="error" onClick={() => handleDeleteClick(item)} disabled={isDeleting} aria-label={t('common.delete')}>
                           {isDeleting ? <CircularProgress size={16} /> : <DeleteIcon fontSize="small" />}
                         </IconButton>
                       </Stack>
