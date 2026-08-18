@@ -3,6 +3,17 @@ plugins {
     id("mycorrhizal.android.hilt")
 }
 
+// M5 §5a (issue #152): the Google Services Gradle plugin is applied ONLY when
+// a real `google-services.json` exists in this module. That file is an external
+// resource (a per-deploy Firebase project — one is never committed), so without
+// it the app must still build: the Firebase SDK compiles fine and simply finds
+// no configured FirebaseApp at runtime, which flips the FCM path to the
+// polling-worker fallback (see feature:tracking's FcmAvailability). The plugin
+// must be applied before the `android {}` block, hence this top-of-file apply.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 // M5 §7: release signing via env/properties only — never committed. All four
 // variables are required together (a partial set fails fast rather than
 // producing an unsigned-with-null-passwords APK at package time); with none

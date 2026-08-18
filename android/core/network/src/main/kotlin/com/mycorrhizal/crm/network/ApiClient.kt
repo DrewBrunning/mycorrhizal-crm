@@ -67,6 +67,9 @@ import com.mycorrhizal.crm.model.network.ContactMergeCommitResponse
 import com.mycorrhizal.crm.model.network.ContactMergePreviewResponse
 import com.mycorrhizal.crm.model.network.ContactMergeRequest
 import com.mycorrhizal.crm.model.network.DashboardResponse
+import com.mycorrhizal.crm.model.network.DeviceRegistration
+import com.mycorrhizal.crm.model.network.DeviceRegistrationInput
+import com.mycorrhizal.crm.model.network.DeviceRegistrationsResponse
 import com.mycorrhizal.crm.model.network.Gift
 import com.mycorrhizal.crm.model.network.GiftInput
 import com.mycorrhizal.crm.model.network.GiftsPage
@@ -248,6 +251,26 @@ class ApiClient(
     suspend fun testNotificationChannel(channel: String): Result<NotificationTestResult> =
         executePost("$NOTIFICATIONS_CONFIG_PATH/test", NotificationTestChannelRequest(channel)) { _, body ->
             moshi.adapter(NotificationTestResult::class.java).fromJson(body)
+        }
+
+    // M5 §5a (issue #152): mobile push device registrations — the Android FCM
+    // client registers on login and deletes on logout. The backend endpoints
+    // (M2) pre-date this client; the gap was the missing Android surface.
+
+    /** POST /api/v1/notifications/devices — 201, the raw [DeviceRegistration] row. */
+    suspend fun registerDevice(input: DeviceRegistrationInput): Result<DeviceRegistration> =
+        executePost(NOTIFICATIONS_DEVICES_PATH, input) { _, body ->
+            moshi.adapter(DeviceRegistration::class.java).fromJson(body)
+        }
+
+    /** DELETE /api/v1/notifications/devices/:id — `{ message }`. */
+    suspend fun deleteDevice(id: Int): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$NOTIFICATIONS_DEVICES_PATH/$id")
+
+    /** GET /api/v1/notifications/devices — `{ devices: [...] }`, unwrapped here. */
+    suspend fun listDeviceRegistrations(): Result<List<DeviceRegistration>> =
+        executeGet("$PLACEHOLDER_ORIGIN$NOTIFICATIONS_DEVICES_PATH") { _, body ->
+            moshi.adapter(DeviceRegistrationsResponse::class.java).fromJson(body)?.devices
         }
 
     /** GET /api/v1/webhooks — `{ webhooks: [...] }`, unwrapped here. */
@@ -1419,6 +1442,7 @@ class ApiClient(
         private const val USERS_PATH = "$API_V1/users"
         private const val WEBHOOKS_PATH = "$API_V1/webhooks"
         private const val NOTIFICATIONS_CONFIG_PATH = "$API_V1/notifications/config"
+        private const val NOTIFICATIONS_DEVICES_PATH = "$API_V1/notifications/devices"
         private const val CONTACTS_PATH = "$API_V1/contacts"
         private const val SEARCH_PATH = "$API_V1/search"
         private const val FIELD_DEFINITIONS_PATH = "$API_V1/field-definitions"

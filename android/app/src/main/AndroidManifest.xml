@@ -91,6 +91,19 @@
             android:foregroundServiceType="phoneCall"
             android:exported="false" />
 
+        <!-- M5 §5a (issue #152): FCM push entry point. Registered in the manifest
+             unconditionally; with no google-services.json the Firebase runtime
+             never initializes and the service is simply never invoked, leaving
+             the WorkManager polling workers as the sole push path. -->
+        <service
+            android:name="com.mycorrhizal.crm.feature.tracking.MyFirebaseMessagingService"
+            android:exported="false"
+            tools:ignore="Instantiatable">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
         <!-- Phase 4 tracking receivers (§6.3). -->
         <receiver
             android:name="com.mycorrhizal.crm.feature.tracking.PhoneStateReceiver"

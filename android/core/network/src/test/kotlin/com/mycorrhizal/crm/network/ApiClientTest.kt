@@ -4,6 +4,7 @@ import com.mycorrhizal.crm.model.network.ActivityInput
 import com.mycorrhizal.crm.model.network.CRMEnvelope
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordInput
+import com.mycorrhizal.crm.model.network.DeviceRegistrationInput
 import com.mycorrhizal.crm.model.network.LoginResponse
 import com.mycorrhizal.crm.model.network.Name
 import com.mycorrhizal.crm.model.network.NoteInput
@@ -2163,6 +2164,67 @@ class ApiClientTest {
         assertTrue(result.isSuccess)
         assertTrue(!result.getOrThrow().ok)
         assertTrue(result.getOrThrow().error!!.contains("not configured"))
+    }
+
+    @Test
+    fun `register device posts token client and label and parses the 201 row`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(201).setBody(
+                """{"id":7,"created_at":"2026-08-18T10:00:00Z","updated_at":"2026-08-18T10:00:00Z","token":"fcm-token-abc","client":"fcm","device_label":"Pixel 8a"}""",
+            ),
+        )
+
+        val result = client.registerDevice(
+            DeviceRegistrationInput(token = "fcm-token-abc", client = "fcm", deviceLabel = "Pixel 8a"),
+        )
+
+        assertTrue(result.isSuccess)
+        val device = result.getOrThrow()
+        assertEquals(7, device.id)
+        assertEquals("fcm", device.client)
+        assertEquals("Pixel 8a", device.deviceLabel)
+
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/notifications/devices", request.path)
+        val body = request.body.readUtf8()
+        assertTrue(body.contains("\"token\":\"fcm-token-abc\""))
+        assertTrue(body.contains("\"client\":\"fcm\""))
+        assertTrue(body.contains("\"device_label\":\"Pixel 8a\""))
+    }
+
+    @Test
+    fun `delete device issues DELETE against the device id`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"message":"Device registration deleted"}"""))
+
+        val result = client.deleteDevice(7)
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("DELETE", request.method)
+        assertEquals("/api/v1/notifications/devices/7", request.path)
+    }
+
+    @Test
+    fun `list device registrations unwraps the devices array`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"devices":[
+                    {"id":1,"created_at":"2026-08-01T00:00:00Z","updated_at":"2026-08-01T00:00:00Z","token":"a","client":"fcm","device_label":"Pixel"},
+                    {"id":2,"created_at":"2026-08-02T00:00:00Z","updated_at":"2026-08-02T00:00:00Z","token":"b","client":"apns","device_label":"iPhone"}
+                ]}""",
+            ),
+        )
+
+        val result = client.listDeviceRegistrations()
+
+        assertTrue(result.isSuccess)
+        assertEquals(2, result.getOrThrow().size)
+        assertEquals("fcm", result.getOrThrow()[0].client)
+        assertEquals("iPhone", result.getOrThrow()[1].deviceLabel)
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/api/v1/notifications/devices", request.path)
     }
 
     @Test

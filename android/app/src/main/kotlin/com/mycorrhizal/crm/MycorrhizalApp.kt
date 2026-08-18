@@ -97,10 +97,12 @@ import com.mycorrhizal.crm.feature.timeline.NotesInboxScreen
 import com.mycorrhizal.crm.feature.timeline.NotesScreen
 import com.mycorrhizal.crm.feature.timeline.ReminderFormScreen
 import com.mycorrhizal.crm.feature.timeline.RemindersScreen
+import com.mycorrhizal.crm.feature.tracking.DeviceRegistrationViewModel
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.LocalDarkTheme
 import com.mycorrhizal.crm.ui.LocalDrawerOpen
 import com.mycorrhizal.crm.ui.LocalServerUrl
+import kotlinx.coroutines.flow.filterNotNull
 
 private data class DrawerDestination(
     val route: String,
@@ -146,6 +148,8 @@ private fun androidx.compose.ui.graphics.Color.toArgbCompat(): Int =
 fun MycorrhizalApp(
     darkTheme: Boolean,
     mainViewModel: MainViewModel = hiltViewModel(),
+    deepLinks: kotlinx.coroutines.flow.Flow<android.net.Uri?> = kotlinx.coroutines.flow.flowOf(null),
+    onDeepLinkHandled: () -> Unit = {},
 ) {
     val session by mainViewModel.session.collectAsStateWithLifecycle()
 
@@ -186,19 +190,51 @@ fun MycorrhizalApp(
         return
     }
 
-    MainScaffold(darkTheme = darkTheme, serverUrl = session.serverUrl.orEmpty())
+    MainScaffold(
+        darkTheme = darkTheme,
+        serverUrl = session.serverUrl.orEmpty(),
+        deepLinks = deepLinks,
+        onDeepLinkHandled = onDeepLinkHandled,
+    )
 }
 
 /** The M26 unauthenticated-tree router destinations. */
 private enum class AuthScreen { LOGIN, REGISTER, FORGOT_PASSWORD }
 
 @Composable
-private fun MainScaffold(darkTheme: Boolean, serverUrl: String) {
+private fun MainScaffold(
+    darkTheme: Boolean,
+    serverUrl: String,
+    deepLinks: kotlinx.coroutines.flow.Flow<android.net.Uri?> = kotlinx.coroutines.flow.flowOf(null),
+    onDeepLinkHandled: () -> Unit = {},
+) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+
+    // M5 §6.6 (issue #152): consume notification deep links as they arrive and
+    // drive the NavHost. The session-flow guard means a tap that lands while the
+    // auth tree is up is deferred until a session exists (the link is retained
+    // by the flow until it is consumed).
+    LaunchedEffect(deepLinks) {
+        deepLinks.filterNotNull().collect { uri ->
+            deepLinkRoute(uri)?.let { route ->
+                navController.navigate(route) {
+                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                    launchSingleTop = true
+                    restoreState = true
+                }
+            }
+            onDeepLinkHandled()
+        }
+    }
+
+    // M5 §5a (issue #152): registers/deletes this install's FCM device with the
+    // server as the session flips between logged-in and logged-out. Deliberately
+    // not stored: it only reacts to session transitions.
+    hiltViewModel<DeviceRegistrationViewModel>()
 
     // Default status bar for the always-green app-bar screens: brand green
     // (primary) background, icons following the theme. The contact detail
