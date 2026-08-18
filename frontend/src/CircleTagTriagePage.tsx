@@ -286,6 +286,7 @@ export default function CircleTagTriagePage() {
                             onChange={(e) => handleNameChange(index, e.target.value)}
                             fullWidth
                             variant="standard"
+                            inputProps={{ 'aria-label': t('triage.colCircleName') }}
                           />
                         </TableCell>
                         <TableCell>
@@ -296,6 +297,7 @@ export default function CircleTagTriagePage() {
                             <Select
                               value={item.classification}
                               onChange={(e) => handleClassificationChange(index, e.target.value as Classification)}
+                              inputProps={{ 'aria-label': t('triage.colClassification') }}
                             >
                               <MenuItem value="circle">{t('triage.classificationCircle')}</MenuItem>
                               <MenuItem value="tag">{t('triage.classificationTag')}</MenuItem>

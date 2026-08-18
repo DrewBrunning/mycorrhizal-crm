@@ -6,7 +6,8 @@
     "update": {
       "available": "Une nouvelle version de Mycorrhizal CRM est disponible.",
       "reload": "Recharger"
-    }
+    },
+    "submitSearch": "Envoyer la recherche"
   },
   "duplicates": {
     "reviewTitle": "Examiner les doublons",
@@ -786,7 +787,8 @@
     "copied": "Copié dans le presse-papiers",
     "copyFailed": "Impossible de copier dans le presse-papiers",
     "copyValue": "Copier {{label}}",
-    "close": "Fermer"
+    "close": "Fermer",
+    "info": "Plus d'informations"
   },
   "externalLinks": {
     "title": "Liens externes",

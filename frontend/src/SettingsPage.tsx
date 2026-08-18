@@ -598,6 +598,7 @@ export default function SettingsPage() {
                                 size="small"
                                 color="error"
                                 onClick={() => { setRevokingToken(token); setRevokeDialogOpen(true); }}
+                                aria-label={t('apiTokens.revokeDialog.title')}
                               >
                                 <BlockIcon fontSize="small" />
                               </IconButton>
@@ -685,7 +686,8 @@ export default function SettingsPage() {
               inputProps={{ style: { fontFamily: 'monospace', fontSize: '0.85rem' } }}
             />
             <Tooltip title={copied ? t('apiTokens.createdDialog.copied') : t('apiTokens.createdDialog.copy')}>
-              <IconButton onClick={handleCopy} color={copied ? 'success' : 'default'}>
+              <IconButton onClick={handleCopy} color={copied ? 'success' : 'default'}
+                aria-label={copied ? t('apiTokens.createdDialog.copied') : t('apiTokens.createdDialog.copy')}>
                 <ContentCopyIcon />
               </IconButton>
             </Tooltip>

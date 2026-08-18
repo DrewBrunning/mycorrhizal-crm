@@ -404,6 +404,7 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
                       <IconButton
                         size="small"
                         onClick={handleSearchSubmit}
+                        aria-label={t('app.submitSearch')}
                         sx={{ color: 'rgba(255, 255, 255, 0.7)', p: 0.5 }}
                       >
                         <SearchIcon />
@@ -418,6 +419,7 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
                           setSearchQuery('');
                           setSearchResults([]);
                         }}
+                        aria-label={t('contacts.searchClear')}
                         sx={{ color: 'rgba(255, 255, 255, 0.7)', p: 0.5 }}
                       >
                         <ClearIcon fontSize="small" />

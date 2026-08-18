@@ -6,7 +6,8 @@
     "update": {
       "available": "È disponibile una nuova versione di Mycorrhizal CRM.",
       "reload": "Ricarica"
-    }
+    },
+    "submitSearch": "Invia ricerca"
   },
   "duplicates": {
     "reviewTitle": "Controlla duplicati",
@@ -786,7 +787,8 @@
     "copied": "Copiato negli appunti",
     "copyFailed": "Impossibile copiare negli appunti",
     "copyValue": "Copia {{label}}",
-    "close": "Chiudi"
+    "close": "Chiudi",
+    "info": "Maggiori informazioni"
   },
   "externalLinks": {
     "title": "Collegamenti esterni",

@@ -51,8 +51,11 @@ export const lightTheme = createTheme({
       contrastText: "#30271F", // bark -- chanterelle is light in both modes, needs a dark label in both
     },
     error: {
-      main: "#AD5349", // russula
-      dark: "#9C443B", // russula hover
+      // #187/#195: russula was #AD5349 (oklch 0.55) — as *text* on the
+      // parchment cards it only cleared 4.16:1. Darkened to oklch 0.52
+      // (#A34A40): 4.74:1 as text on parchment, white labels on fills 5.82:1.
+      main: "#A34A40", // russula
+      dark: "#923B33", // russula hover
       contrastText: "#FFFFFF",
     },
     info: {
@@ -190,8 +193,13 @@ export const darkTheme = createTheme({
       contrastText: "#1E1A13", // bone
     },
     error: {
-      main: "#C4675D", // russula
-      dark: "#B3584E", // russula hover
+      // #187/#195: russula was #C4675D (oklch 0.62) — as *text* on the dark
+      // parchment cards it only cleared 3.90:1, and the filled-chip label
+      // (#1E1A13 on it) 4.49:1. Brightened to oklch 0.67 (#D5776B): 4.79:1 as
+      // text on dark surfaces, 5.51:1 for the dark label on fills — same
+      // "status colors are bright in dark mode" rule as the others.
+      main: "#D5776B", // russula
+      dark: "#C4675D", // russula hover
       contrastText: "#1E1A13", // bone
     },
     info: {

@@ -439,6 +439,7 @@ export default function NotificationSettings() {
                             color="error"
                             onClick={() => handleDeleteDevice(sub)}
                             title={t('notifications.settings.push.removeDevice')}
+                            aria-label={t('notifications.settings.push.removeDevice')}
                           >
                             <DeleteIcon fontSize="small" />
                           </IconButton>
@@ -491,6 +492,7 @@ export default function NotificationSettings() {
                             color="error"
                             onClick={() => handleDeleteMobileDevice(device)}
                             title={t('notifications.settings.push.removeDevice')}
+                            aria-label={t('notifications.settings.push.removeDevice')}
                           >
                             <DeleteIcon fontSize="small" />
                           </IconButton>

@@ -173,6 +173,7 @@ const NotesPage: React.FC = () => {
           <IconButton
             size="small"
             aria-describedby={infoPopoverId}
+            aria-label={t('common.info')}
             onClick={handleInfoClick}
           >
             <InfoOutlinedIcon fontSize="small" />
@@ -269,7 +270,7 @@ const NotesPage: React.FC = () => {
                         className="edit-actions"
                         sx={{ opacity: 0, transition: 'opacity 0.2s', display: 'flex', gap: 1 }}
                       >
-                        <IconButton size="small" onClick={() => handleEditClick(note)}>
+                        <IconButton size="small" onClick={() => handleEditClick(note)} aria-label={t('contactDetail.editNote')}>
                           <EditIcon fontSize="small" />
                         </IconButton>
                       </Box>

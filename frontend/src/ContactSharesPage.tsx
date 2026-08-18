@@ -72,13 +72,15 @@ export default function ContactSharesPage() {
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       {tab === 'incoming' && (
-        <List>
-          {incoming.length === 0 && !loading && (
-            <Typography variant="body2" color="text.secondary">
-              {t('contactShares.incoming.empty')}
-            </Typography>
-          )}
-          {incoming.map((share) => (
+        // T93/#192: keep the empty state OUT of the <List> — a <p> directly
+        // inside a <ul> is invalid HTML that the axe `list` rule flags.
+        incoming.length === 0 && !loading ? (
+          <Typography variant="body2" color="text.secondary">
+            {t('contactShares.incoming.empty')}
+          </Typography>
+        ) : (
+          <List>
+            {incoming.map((share) => (
             <ListItem
               key={share.id}
               divider
@@ -106,27 +108,29 @@ export default function ContactSharesPage() {
                 sx={{ mr: 2 }}
               />
             </ListItem>
-          ))}
-        </List>
+            ))}
+          </List>
+        )
       )}
 
       {tab === 'outgoing' && (
-        <List>
-          {outgoing.length === 0 && !loading && (
-            <Typography variant="body2" color="text.secondary">
-              {t('contactShares.outgoing.empty')}
-            </Typography>
-          )}
-          {outgoing.map((share) => (
-            <ListItem key={share.id} divider>
-              <ListItemText
-                primary={share.contact_display_name}
-                secondary={t('contactShares.outgoing.to', { username: usernames[String(share.to_user_id)] || share.to_user_id })}
-              />
-              <Chip size="small" label={t(`contactShares.status.${share.status}`)} color={statusColor(share.status)} />
-            </ListItem>
-          ))}
-        </List>
+        outgoing.length === 0 && !loading ? (
+          <Typography variant="body2" color="text.secondary">
+            {t('contactShares.outgoing.empty')}
+          </Typography>
+        ) : (
+          <List>
+            {outgoing.map((share) => (
+              <ListItem key={share.id} divider>
+                <ListItemText
+                  primary={share.contact_display_name}
+                  secondary={t('contactShares.outgoing.to', { username: usernames[String(share.to_user_id)] || share.to_user_id })}
+                />
+                <Chip size="small" label={t(`contactShares.status.${share.status}`)} color={statusColor(share.status)} />
+              </ListItem>
+            ))}
+          </List>
+        )
       )}
 
       {acceptingShare && (

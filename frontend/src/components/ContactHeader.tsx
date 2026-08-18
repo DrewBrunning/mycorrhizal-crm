@@ -179,6 +179,7 @@ export default function ContactHeader({
               className="camera-badge"
               size="small"
               onClick={onUploadProfilePicture}
+              aria-label={t('profilePicture.selectImage')}
               sx={{
                 position: 'absolute',
                 bottom: -4,
@@ -351,6 +352,7 @@ export default function ContactHeader({
                         size="small"
                         color="primary"
                         onClick={onStartEditProfile}
+                        aria-label={t('contactDetail.edit')}
                         sx={{
                           ml: 1,
                           opacity: 0,
@@ -496,6 +498,7 @@ export default function ContactHeader({
                         size="small"
                         color="primary"
                         onClick={onStartEditProfile}
+                        aria-label={t('contactDetail.edit')}
                         sx={{
                           ml: 1,
                           opacity: 0,
@@ -633,6 +636,7 @@ export default function ContactHeader({
                     header card, hundreds of px from the label and chips it
                     edits on a wide viewport. */}
                 <IconButton className="edit-icon" size="small" color="primary" onClick={() => setEditingCircles(!editingCircles)}
+                  aria-label={t('contactDetail.edit')}
                   sx={{ ml: 1, flexShrink: 0, opacity: 0, transition: 'opacity 0.2s' }}>
                   <EditIcon fontSize="small" />
                 </IconButton>
@@ -695,6 +699,7 @@ export default function ContactHeader({
                 </Typography>
                 {/* T89: see the circles pencil above. */}
                 <IconButton className="edit-icon" size="small" color="primary" onClick={() => setEditingTags(!editingTags)}
+                  aria-label={t('contactDetail.edit')}
                   sx={{ ml: 1, flexShrink: 0, opacity: 0, transition: 'opacity 0.2s' }}>
                   <EditIcon fontSize="small" />
                 </IconButton>

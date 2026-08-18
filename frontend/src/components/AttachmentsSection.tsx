@@ -87,7 +87,7 @@ export default function AttachmentsSection({ contactId }: AttachmentsSectionProp
         <Typography variant="body2" color="text.secondary">
           {t('attachments.description', 'Documents, scans, and files attached to this contact.')}
         </Typography>
-        <input ref={fileInputRef} type="file" style={{ display: 'none' }} onChange={handleFileChange} />
+        <input ref={fileInputRef} type="file" style={{ display: 'none' }} aria-label={t('attachments.upload')} onChange={handleFileChange} />
         <Button
           size="small"
           variant="contained"

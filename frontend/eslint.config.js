@@ -2,6 +2,7 @@ import tseslint from 'typescript-eslint';
 import reactHooks from 'eslint-plugin-react-hooks';
 import react from 'eslint-plugin-react';
 import security from 'eslint-plugin-security';
+import jsxA11y from 'eslint-plugin-jsx-a11y';
 
 export default tseslint.config(
   {
@@ -21,8 +22,37 @@ export default tseslint.config(
       'react-hooks': reactHooks,
       react,
       security,
+      'jsx-a11y': jsxA11y,
     },
     rules: {
+      // WCAG audit (#148) gate: jsx-a11y catches the authoring-time class of
+      // findings (unnamed icon buttons, unlabeled controls) the same way
+      // TypeScript catches types. Recommended config, minus the rules
+      // downgraded below — never disable the plugin outright.
+      ...jsxA11y.configs.recommended.rules,
+      // The recommended config only checks controls whose role is alert or
+      // dialog, and only raw DOM elements — neither of which covers MUI's
+      // <IconButton>/<Button> components, so it would NOT have caught the
+      // audit's unnamed AppBar buttons / dialog close / info-popover triggers.
+      // Extend includeRoles to button/link (their implicit roles) and list the
+      // MUI control components as controlComponents. `*Icon` must be listed
+      // too: mayHaveAccessibleLabel assumes any React-component child could be
+      // a label, so without it a bare <EditIcon/> child makes the rule treat
+      // the button as labeled. The 36 findings this surfaced were all genuine.
+      'jsx-a11y/control-has-associated-label': [
+        'error',
+        {
+          includeRoles: ['alert', 'dialog', 'button', 'link'],
+          controlComponents: ['IconButton', 'Button', '*Icon', '*IconButton'],
+        },
+      ],
+      // Deliberately `warn`, not `error`: all 20 existing hits are
+      // interaction-triggered focus (the first field of a just-opened dialog,
+      // or a just-activated inline edit), which is correct keyboard a11y —
+      // the WCAG concern is *page-load* autofocus, and none of these are
+      // that. Kept visible so new page-load autofocus is reviewed, matching
+      // the repo's pattern for exhaustive-deps / no-explicit-any.
+      'jsx-a11y/no-autofocus': 'warn',
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
       // Browser XSS / tabnabbing guards.

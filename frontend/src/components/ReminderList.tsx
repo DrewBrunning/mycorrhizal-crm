@@ -157,6 +157,7 @@ export default function ReminderList({
                       onClick={() => handleCompleteClick(reminder.ID)}
                       disabled={loading === reminder.ID}
                       color="success"
+                      aria-label={t('reminders.complete')}
                       sx={{
                         transition: 'transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out',
                         '&:hover': {
@@ -183,6 +184,7 @@ export default function ReminderList({
                         size="small"
                         onClick={() => onEdit(reminder)}
                         disabled={loading === reminder.ID}
+                        aria-label={t('common.edit')}
                       >
                         <EditIcon />
                       </IconButton>
@@ -194,6 +196,7 @@ export default function ReminderList({
                         onClick={() => handleDeleteClick(reminder.ID)}
                         disabled={loading === reminder.ID}
                         color="error"
+                        aria-label={t('common.delete')}
                       >
                         <DeleteIcon />
                       </IconButton>

@@ -229,6 +229,7 @@ function DashboardPage() {
             <IconButton
               size="small"
               onClick={(e) => setFavoritesInfoAnchor(e.currentTarget)}
+              aria-label={t('common.info')}
             >
               <InfoOutlinedIcon fontSize="small" />
             </IconButton>
@@ -312,6 +313,7 @@ function DashboardPage() {
             <IconButton
               size="small"
               onClick={(e) => setBirthdaysInfoAnchor(e.currentTarget)}
+              aria-label={t('common.info')}
             >
               <InfoOutlinedIcon fontSize="small" />
             </IconButton>
@@ -391,6 +393,7 @@ function DashboardPage() {
             <IconButton
               size="small"
               onClick={(e) => setRemindersInfoAnchor(e.currentTarget)}
+              aria-label={t('common.info')}
             >
               <InfoOutlinedIcon fontSize="small" />
             </IconButton>
@@ -482,6 +485,7 @@ function DashboardPage() {
                                 e.stopPropagation();
                                 handleSkipReminder(reminder.ID);
                               }}
+                              aria-label={t('reminders.skip')}
                               sx={{
                                 transition: 'transform 0.15s ease-in-out',
                                 '&:hover': {
@@ -500,6 +504,7 @@ function DashboardPage() {
                                 e.stopPropagation();
                                 handleCompleteReminder(reminder.ID);
                               }}
+                              aria-label={t('reminders.complete')}
                               sx={{
                                 transition: 'transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out',
                                 '&:hover': {
@@ -531,6 +536,7 @@ function DashboardPage() {
             <IconButton
               size="small"
               onClick={(e) => setStayInTouchInfoAnchor(e.currentTarget)}
+              aria-label={t('common.info')}
             >
               <InfoOutlinedIcon fontSize="small" />
             </IconButton>
