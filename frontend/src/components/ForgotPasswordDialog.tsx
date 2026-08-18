@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   DialogTitle,
@@ -30,6 +30,13 @@ export default function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDi
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  // #192: same fix as LoginPage.tsx -- move focus to the error and
+  // associate it with the fields instead of dropping focus to <body>. Both
+  // steps share this ref/effect since only one ever renders at a time.
+  const errorRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (error) errorRef.current?.focus();
+  }, [error]);
 
   useEffect(() => {
     if (open) {
@@ -127,13 +134,19 @@ export default function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDi
               {t('passwordReset.checkEmail', { email })}
             </Typography>
             {message && <Alert severity="info">{message}</Alert>}
-            {error && <Alert severity="error">{error}</Alert>}
+            {error && (
+              <Alert severity="error" id="forgot-password-error" ref={errorRef} tabIndex={-1}>
+                {error}
+              </Alert>
+            )}
             <TextField
               label={t('passwordReset.token')}
               value={token}
               onChange={event => setToken(event.target.value)}
               fullWidth
               required
+              error={Boolean(error)}
+              inputProps={{ 'aria-describedby': error ? 'forgot-password-error' : undefined }}
             />
             <TextField
               label={t('passwordReset.newPassword')}
@@ -142,6 +155,8 @@ export default function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDi
               onChange={event => setNewPassword(event.target.value)}
               fullWidth
               required
+              error={Boolean(error)}
+              inputProps={{ 'aria-describedby': error ? 'forgot-password-error' : undefined }}
             />
             <TextField
               label={t('passwordReset.confirmPassword')}
@@ -150,6 +165,8 @@ export default function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDi
               onChange={event => setConfirmPassword(event.target.value)}
               fullWidth
               required
+              error={Boolean(error)}
+              inputProps={{ 'aria-describedby': error ? 'forgot-password-error' : undefined }}
             />
             <Button type="submit" variant="contained" disabled={loading}>
               {loading ? t('passwordReset.confirming') : t('passwordReset.confirmButton')}
@@ -165,7 +182,11 @@ export default function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDi
           <Typography variant="body2" color="text.secondary">
             {t('passwordReset.description')}
           </Typography>
-          {error && <Alert severity="error">{error}</Alert>}
+          {error && (
+            <Alert severity="error" id="forgot-password-error" ref={errorRef} tabIndex={-1}>
+              {error}
+            </Alert>
+          )}
           <TextField
             label={t('passwordReset.email')}
             type="email"
@@ -173,6 +194,8 @@ export default function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDi
             onChange={event => setEmail(event.target.value)}
             fullWidth
             required
+            error={Boolean(error)}
+            inputProps={{ 'aria-describedby': error ? 'forgot-password-error' : undefined }}
           />
           <Button type="submit" variant="contained" disabled={loading}>
             {loading ? t('passwordReset.requesting') : t('passwordReset.requestButton')}

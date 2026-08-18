@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { API_BASE_URL } from './auth';
 import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
@@ -21,6 +21,12 @@ export default function RegisterPage() {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  // #192: same fix as LoginPage.tsx -- move focus to the error and
+  // associate it with the fields instead of dropping focus to <body>.
+  const errorRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (error) errorRef.current?.focus();
+  }, [error]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,6 +87,8 @@ export default function RegisterPage() {
               onChange={e => setUsername(e.target.value)}
               required
               fullWidth
+              error={Boolean(error)}
+              inputProps={{ 'aria-describedby': error ? 'register-error' : undefined }}
             />
             <TextField
               label={t('register.email')}
@@ -89,6 +97,8 @@ export default function RegisterPage() {
               onChange={e => setEmail(e.target.value)}
               required
               fullWidth
+              error={Boolean(error)}
+              inputProps={{ 'aria-describedby': error ? 'register-error' : undefined }}
             />
             <TextField
               label={t('register.password')}
@@ -97,8 +107,14 @@ export default function RegisterPage() {
               onChange={e => setPassword(e.target.value)}
               required
               fullWidth
+              error={Boolean(error)}
+              inputProps={{ 'aria-describedby': error ? 'register-error' : undefined }}
             />
-            {error && <Alert severity="error">{error}</Alert>}
+            {error && (
+              <Alert severity="error" id="register-error" ref={errorRef} tabIndex={-1}>
+                {error}
+              </Alert>
+            )}
             {success && <Alert severity="success">{success}</Alert>}
             <Button type="submit" variant="contained" color="primary" disabled={loading}>
               {loading ? t('register.registering') : t('register.registerButton')}

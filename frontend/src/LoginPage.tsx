@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { loginUser, login2FA, isAuthenticated, API_BASE_URL } from './auth';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
@@ -45,6 +45,14 @@ export default function LoginPage({ setToken }: LoginPageProps) {
   const [forgotOpen, setForgotOpen] = useState(false);
   const navigate = useNavigate();
   const oidcConfig = useOIDCConfig();
+  // #192: a failed login previously dropped keyboard focus to <body> --
+  // move it to the error itself so a keyboard user doesn't have to tab from
+  // the top of the document to retry. tabIndex=-1 makes the alert
+  // programmatically focusable without adding a new tab stop.
+  const errorRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (error) errorRef.current?.focus();
+  }, [error]);
 
   const finishLogin = async ({ language, date_format }: { language?: string; date_format?: string }) => {
     // Signal that user is now authenticated (token is in httpOnly cookie)
@@ -129,8 +137,14 @@ export default function LoginPage({ setToken }: LoginPageProps) {
                   required
                   fullWidth
                   autoFocus
+                  error={Boolean(error)}
+                  inputProps={{ 'aria-describedby': error ? 'login-error' : undefined }}
                 />
-                {error && <Alert severity="error">{error}</Alert>}
+                {error && (
+                  <Alert severity="error" id="login-error" ref={errorRef} tabIndex={-1}>
+                    {error}
+                  </Alert>
+                )}
                 <Button type="submit" variant="contained" color="primary" disabled={loading}>
                   {loading ? t('login.loggingIn') : t('login.loginButton')}
                 </Button>
@@ -155,6 +169,8 @@ export default function LoginPage({ setToken }: LoginPageProps) {
                   onChange={e => setIdentifier(e.target.value)}
                   required
                   fullWidth
+                  error={Boolean(error)}
+                  inputProps={{ 'aria-describedby': error ? 'login-error' : undefined }}
                 />
                 <TextField
                   label={t('login.password')}
@@ -163,8 +179,14 @@ export default function LoginPage({ setToken }: LoginPageProps) {
                   onChange={e => setPassword(e.target.value)}
                   required
                   fullWidth
+                  error={Boolean(error)}
+                  inputProps={{ 'aria-describedby': error ? 'login-error' : undefined }}
                 />
-                {error && <Alert severity="error">{error}</Alert>}
+                {error && (
+                  <Alert severity="error" id="login-error" ref={errorRef} tabIndex={-1}>
+                    {error}
+                  </Alert>
+                )}
                 <Button type="submit" variant="contained" color="primary" disabled={loading}>
                   {loading ? t('login.loggingIn') : t('login.loginButton')}
                 </Button>

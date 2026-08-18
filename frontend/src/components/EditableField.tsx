@@ -58,7 +58,10 @@ export default function EditableField({
     <Box
       sx={{
         position: 'relative',
-        '&:hover .edit-icon': {
+        // #188: same defect as ContactHeader.tsx's hover-reveal pencils --
+        // :focus-within reveals the icon once the button itself is focused,
+        // not just on mouse hover.
+        '&:hover .edit-icon, &:focus-within .edit-icon': {
           opacity: 1
         }
       }}
@@ -90,7 +93,8 @@ export default function EditableField({
                 color="primary"
                 onClick={() => onEditStart(field, value)}
                 aria-label={t('common.edit')}
-                sx={{ ml: 0.5, p: 0.25, opacity: 0, transition: 'opacity 0.2s' }}
+                // #188: the tight p:0.25 padding measured under 24x24 (2.5.8).
+                sx={{ ml: 0.5, p: 0.25, opacity: 0, transition: 'opacity 0.2s', minWidth: 24, minHeight: 24 }}
               >
                 <EditIcon sx={{ fontSize: 18 }} />
               </IconButton>
