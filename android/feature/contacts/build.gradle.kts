@@ -26,6 +26,8 @@ dependencies {
     implementation(libs.hilt.navigation.compose)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
+    // Issue #219/#220: uCrop — the profile-photo crop step (gallery + Immich).
+    implementation(libs.ucrop)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)

@@ -7,11 +7,17 @@ import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
+import com.mycorrhizal.crm.domain.repository.ExternalIdentityRepository
+import com.mycorrhizal.crm.domain.repository.ImmichRepository
 import com.mycorrhizal.crm.domain.repository.ReminderRepository
 import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
+import com.mycorrhizal.crm.model.network.ExternalIdentity
 import com.mycorrhizal.crm.model.network.FieldDefinition
+import com.mycorrhizal.crm.model.network.ImmichAssetSummary
+import com.mycorrhizal.crm.model.network.ImmichPerson
+import com.mycorrhizal.crm.model.network.ImmichPersonSummary
 import com.mycorrhizal.crm.model.network.ReminderCompletion
 import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.network.ApiClient
@@ -62,6 +68,28 @@ data class ContactDetailUiState(
      * silently leaves it empty; the timeline simply lacks completion rows.
      */
     val completions: List<ReminderCompletion> = emptyList(),
+    // Issue #220: the External Links panel (ExternalIdentity substrate). Loaded
+    // once the contact's VCardUID is known; failures silently leave the section
+    // empty (like the circle/tag editors) — never errors the screen. The Immich
+    // link renders as a rich row (thumbnail, person name, photo count) via
+    // [immichSummary]; other systems render generically.
+    val externalIdentities: List<ExternalIdentity> = emptyList(),
+    val immichSummary: ImmichPersonSummary? = null,
+    /**
+     * Whether the user's Immich connection is configured (has an API key).
+     * Gates the "Choose from Immich" photo entry point, mirroring web (the
+     * button only appears when Immich is configured). A fetch failure hides
+     * the entry point — a safe default.
+     */
+    val immichConfigured: Boolean = false,
+    /** True while an external-link mutation (delete/unlink) is in flight. */
+    val isExternalLinkMutating: Boolean = false,
+    // The Immich "choose from Immich" photo flow: people for the link step,
+    // recent assets for the browse step.
+    val immichPeople: List<ImmichPerson> = emptyList(),
+    val immichPeopleLoading: Boolean = false,
+    val immichAssets: List<ImmichAssetSummary> = emptyList(),
+    val immichAssetsLoading: Boolean = false,
 )
 
 sealed interface ContactDetailEvent {
@@ -89,6 +117,10 @@ class ContactDetailViewModel @Inject constructor(
     // stay in sync) and read the join-row derivations they expose.
     private val circleRepository: CircleRepository,
     private val tagRepository: TagRepository,
+    // Issue #220: the External Links panel (ExternalIdentity substrate) and the
+    // Immich "choose from Immich" profile-photo flow. Both are online-only.
+    private val externalIdentityRepository: ExternalIdentityRepository,
+    private val immichRepository: ImmichRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -126,6 +158,7 @@ class ContactDetailViewModel @Inject constructor(
                         it.copy(isLoading = false, contact = contact, deviceLookupKey = lookupKey)
                     }
                     loadCirclesAndTags(contact)
+                    loadExternalLinks(contact)
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
@@ -220,6 +253,156 @@ class ContactDetailViewModel @Inject constructor(
             tagRepository.list().foldApiError(
                 onSuccess = { tags -> _uiState.update { it.copy(allTags = tags) } },
                 onError = {},
+            )
+        }
+    }
+
+    // --- Issue #220: External Links panel (ExternalIdentity) + Immich ---
+
+    /**
+     * Loads the contact's ExternalIdentity links, the Immich connection gate,
+     * and the Immich link summary. Needs the VCardUID; a missing one is a
+     * no-op. Failures silently leave the sections empty — the panel is
+     * display-only and must never fail the screen.
+     */
+    private fun loadExternalLinks(contact: ContactRecordResponse) {
+        val uid = contact.uid
+        if (uid.isNullOrBlank()) return
+        viewModelScope.launch {
+            externalIdentityRepository.listForContact(uid).foldApiError(
+                onSuccess = { identities ->
+                    _uiState.update { it.copy(externalIdentities = identities) }
+                },
+                onError = {},
+            )
+        }
+        viewModelScope.launch {
+            immichRepository.isConfigured().foldApiError(
+                onSuccess = { configured -> _uiState.update { it.copy(immichConfigured = configured) } },
+                onError = {},
+            )
+        }
+        loadImmichSummary(uid)
+    }
+
+    private fun loadImmichSummary(uid: String) {
+        viewModelScope.launch {
+            immichRepository.getContactSummary(uid).foldApiError(
+                onSuccess = { summary -> _uiState.update { it.copy(immichSummary = summary) } },
+                onError = {},
+            )
+        }
+    }
+
+    /** Delete an ExternalIdentity link (or unlink Immich) — confirms first in the UI. */
+    fun deleteExternalIdentity(id: String) {
+        if (_uiState.value.isExternalLinkMutating) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isExternalLinkMutating = true, error = null) }
+            externalIdentityRepository.delete(id).foldApiError(
+                onSuccess = {
+                    _uiState.update { it.copy(isExternalLinkMutating = false) }
+                    _uiState.value.contact?.let { loadExternalLinks(it) }
+                },
+                onError = { error ->
+                    _uiState.update { it.copy(isExternalLinkMutating = false, error = error.displayMessage) }
+                },
+            )
+        }
+    }
+
+    /**
+     * Unlink a contact's Immich person via the dedicated endpoint (keeps its
+     * ExternalActivity history), then refresh the panel.
+     */
+    fun unlinkImmichPerson() {
+        val uid = _uiState.value.contact?.uid ?: return
+        if (_uiState.value.isExternalLinkMutating) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isExternalLinkMutating = true, error = null) }
+            immichRepository.unlinkPerson(uid).foldApiError(
+                onSuccess = {
+                    _uiState.update { it.copy(isExternalLinkMutating = false, immichSummary = null) }
+                    _uiState.value.contact?.let { loadExternalLinks(it) }
+                },
+                onError = { error ->
+                    _uiState.update { it.copy(isExternalLinkMutating = false, error = error.displayMessage) }
+                },
+            )
+        }
+    }
+
+    // --- Issue #219: the Immich "choose from Immich" profile-photo flow ---
+
+    /** Fetch the user's Immich people for the link step (called once when the picker opens). */
+    fun loadImmichPeople() {
+        if (_uiState.value.immichPeopleLoading) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(immichPeopleLoading = true, error = null) }
+            immichRepository.listPeople().foldApiError(
+                onSuccess = { people ->
+                    _uiState.update { it.copy(immichPeople = people, immichPeopleLoading = false) }
+                },
+                onError = { error ->
+                    _uiState.update { it.copy(immichPeopleLoading = false, error = error.displayMessage) }
+                },
+            )
+        }
+    }
+
+    /**
+     * Link an Immich person to this contact (writes the ExternalIdentity),
+     * then refresh the panel and load the person's recent photos for browsing.
+     */
+    fun linkImmichPerson(person: ImmichPerson) {
+        val contact = _uiState.value.contact
+        val uid = contact?.uid ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(error = null) }
+            immichRepository.linkPerson(uid, person).foldApiError(
+                onSuccess = {
+                    loadExternalLinks(contact)
+                    loadImmichAssets()
+                },
+                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } },
+            )
+        }
+    }
+
+    /** Fetch the linked person's recent photos for the browse step. */
+    fun loadImmichAssets() {
+        val uid = _uiState.value.contact?.uid ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(immichAssetsLoading = true, error = null) }
+            immichRepository.listContactAssets(uid).foldApiError(
+                onSuccess = { assets ->
+                    _uiState.update { it.copy(immichAssets = assets, immichAssetsLoading = false) }
+                },
+                onError = { error ->
+                    _uiState.update { it.copy(immichAssetsLoading = false, error = error.displayMessage) }
+                },
+            )
+        }
+    }
+
+    /**
+     * Fetch a chosen photo's bytes for cropping+upload. [assetId] null means
+     * the linked person's primary thumbnail; otherwise one of the assets from
+     * [loadImmichAssets]. Bytes are handed to [onBytes] (called on the main
+     * thread); failures surface via the screen's snackbar.
+     */
+    fun pickImmichAsset(assetId: String?, onBytes: (ByteArray) -> Unit) {
+        val uid = _uiState.value.contact?.uid ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(error = null) }
+            val result = if (assetId == null) {
+                immichRepository.getThumbnailBytes(uid)
+            } else {
+                immichRepository.getAssetImageBytes(uid, assetId)
+            }
+            result.foldApiError(
+                onSuccess = { bytes -> onBytes(bytes) },
+                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } },
             )
         }
     }
