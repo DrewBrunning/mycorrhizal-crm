@@ -16,6 +16,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -93,5 +94,36 @@ class QuickCaptureSheetTest {
 
         composeTestRule.onNodeWithText("Save")
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Saving"))
+    }
+
+    @Test
+    fun `focusing a field cancels the display timeout`() = runTest {
+        // #201 (WCAG 2.2.1): a TalkBack or switch-access user navigates the
+        // sheet by focusing fields, which may not involve typing for a long
+        // time — the very first focus into the form must cancel the overlay's
+        // auto-dismiss timer. The form state here carries no onFirstInteraction
+        // so only the sheet's focus path can have fired it.
+        var interactions = 0
+        val repo = mockk<ActivityRepository>(relaxed = true)
+        val scope = CoroutineScope(StandardTestDispatcher(testScheduler))
+        val state = QuickCaptureFormState(
+            activityRepository = repo,
+            scope = scope,
+            prefill = QuickCapturePrefillFactory.forCall(null, "2026-08-18T12:00:00Z"),
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                QuickCaptureSheet(
+                    state = state,
+                    onDismiss = {},
+                    onFirstInteraction = { interactions++ },
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Title").performClick()
+        composeTestRule.waitForIdle()
+
+        assertEquals(1, interactions)
     }
 }

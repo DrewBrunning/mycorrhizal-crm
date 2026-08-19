@@ -23,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.semantics
@@ -37,11 +38,20 @@ import com.mycorrhizal.crm.ui.R
  * straight to the server — an interaction is logged without leaving the call
  * screen. [resolving] is true while the caller's number is being matched to a
  * contact.
+ *
+ * [onFirstInteraction] is #201 (WCAG 2.2.1 Timing Adjustable): the overlay
+ * auto-dismisses on a timer, and once the user has engaged the form (typed in
+ * any field — which [QuickCaptureFormState] reports — or simply focused one,
+ * which a TalkBack/switch-access user does when swiping through) the timer
+ * must be cancelled. Detected on the content [Column] via [onFocusChanged] so
+ * every field and button inside counts; focus leaving the sheet never matters
+ * because the callback only removes the timeout and is idempotent.
  */
 @Composable
 fun QuickCaptureSheet(
     state: QuickCaptureFormState,
     onDismiss: () -> Unit,
+    onFirstInteraction: () -> Unit = {},
     resolving: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
@@ -70,7 +80,9 @@ fun QuickCaptureSheet(
         shape = MaterialTheme.shapes.extraLarge,
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .padding(16.dp)
+                .onFocusChanged { focus -> if (focus.hasFocus) onFirstInteraction() },
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Row(
