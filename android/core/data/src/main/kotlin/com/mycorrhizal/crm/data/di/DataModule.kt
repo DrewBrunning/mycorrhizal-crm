@@ -25,6 +25,8 @@ import com.mycorrhizal.crm.data.repository.AuthRepositoryImpl
 import com.mycorrhizal.crm.data.repository.CadencePolicyRepositoryImpl
 import com.mycorrhizal.crm.data.repository.CircleRepositoryImpl
 import com.mycorrhizal.crm.data.repository.CustomLinkActionRepositoryImpl
+import com.mycorrhizal.crm.data.repository.ExternalIdentityRepositoryImpl
+import com.mycorrhizal.crm.data.repository.ImmichRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ContactRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ContactShareRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ConversationAgendaRepositoryImpl
@@ -55,6 +57,8 @@ import com.mycorrhizal.crm.domain.repository.BulkOperationRepository
 import com.mycorrhizal.crm.domain.repository.CadencePolicyRepository
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.CustomLinkActionRepository
+import com.mycorrhizal.crm.domain.repository.ExternalIdentityRepository
+import com.mycorrhizal.crm.domain.repository.ImmichRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ContactShareRepository
 import com.mycorrhizal.crm.domain.repository.ConversationAgendaRepository
@@ -301,6 +305,14 @@ abstract class DataBindsModule {
     @Binds
     @Singleton
     abstract fun bindCustomLinkActionRepository(impl: CustomLinkActionRepositoryImpl): CustomLinkActionRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindExternalIdentityRepository(impl: ExternalIdentityRepositoryImpl): ExternalIdentityRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindImmichRepository(impl: ImmichRepositoryImpl): ImmichRepository
 
     @Binds
     @Singleton

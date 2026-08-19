@@ -154,6 +154,32 @@
     <string name="contact_tags_add">Aggiungi etichetta</string>
     <string name="contact_export_share_title">Esporta contatto</string>
     <string name="profile_picture_error_too_large">Foto troppo grande. Dimensione massima 10 MB.</string>
+    <!-- Issue #219: flusso foto profilo (scelta sorgente + ritaglio uCrop). -->
+    <string name="profile_picture_source_title">Cambia foto profilo</string>
+    <string name="profile_picture_source_gallery">Scegli dalla galleria</string>
+    <string name="profile_picture_source_immich">Scegli da Immich</string>
+    <string name="profile_picture_crop_failed">Impossibile ritagliare la foto. Riprova.</string>
+    <!-- Issue #220: pannello Link esterni (substrato ExternalIdentity). -->
+    <string name="external_links_title">Link esterni</string>
+    <string name="external_links_remove">Rimuovi link</string>
+    <string name="external_links_remove_title">Rimuovi link esterno</string>
+    <string name="external_links_remove_confirm">Rimuovere il link %1$s (%2$s)?</string>
+    <!-- Issue #219/#220: integrazione Immich (riga arricchita dei link esterni +
+         flusso foto profilo «Scegli da Immich»). -->
+    <string name="immich_linked_person">Persona Immich collegata</string>
+    <string name="immich_link_thumbnail_desc">Foto della persona Immich</string>
+    <string name="immich_photo_count">%1$d foto</string>
+    <string name="immich_unlink">Scollega</string>
+    <string name="immich_unlink_title">Scollega persona Immich</string>
+    <string name="immich_unlink_confirm">Scollegare questa persona Immich? La cronologia delle foto verrà conservata.</string>
+    <string name="immich_person_search_title">Collega una persona Immich</string>
+    <string name="immich_person_search_placeholder">Cerca per nome</string>
+    <string name="immich_person_search_no_matches">Nessuna persona corrispondente</string>
+    <string name="immich_person_search_unnamed">Persona senza nome</string>
+    <string name="immich_photo_picker_title">Scegli da Immich</string>
+    <string name="immich_photo_picker_no_photos">Nessuna foto recente</string>
+    <string name="immich_photo_picker_primary_desc">Foto principale</string>
+    <string name="immich_photo_picker_photo_desc">Foto</string>
     <string name="mobile_link_message">Messaggio</string>
     <string name="mobile_link_voice_call">Chiamata vocale</string>
     <string name="mobile_link_video_call">Videochiamata</string>

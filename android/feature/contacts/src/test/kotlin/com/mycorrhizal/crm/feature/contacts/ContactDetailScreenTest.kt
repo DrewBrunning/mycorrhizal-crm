@@ -21,8 +21,11 @@ import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.CRMEnvelope
 import com.mycorrhizal.crm.model.network.Email
+import com.mycorrhizal.crm.model.network.ExternalIdentity
+import com.mycorrhizal.crm.model.network.ExternalSystems
 import com.mycorrhizal.crm.model.network.FieldConstraints
 import com.mycorrhizal.crm.model.network.FieldDefinition
+import com.mycorrhizal.crm.model.network.ImmichPersonSummary
 import com.mycorrhizal.crm.model.network.Name
 import com.mycorrhizal.crm.model.network.OnlineService
 import com.mycorrhizal.crm.model.network.Phone
@@ -484,6 +487,64 @@ class ContactDetailScreenTest {
             .assert(SemanticsMatcher("has no click action") { node ->
                 !node.config.contains(SemanticsActions.OnClick)
             })
+    }
+
+    // --- Issue #220: External Links panel ---
+
+    @Test
+    fun `external links render as rows with a delete action`() {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        var deleted: String? = null
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    externalIdentities = listOf(
+                        ExternalIdentity(id = "i1", system = "paperless", externalId = "doc-1"),
+                    ),
+                    onDeleteExternalIdentity = { deleted = it.id },
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasText("External Links"))
+        composeTestRule.onNodeWithText("paperless").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Remove link").performClick()
+        assertEquals("i1", deleted)
+    }
+
+    @Test
+    fun `the immich link renders its person name and photo count`() {
+        val contact = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    externalIdentities = listOf(
+                        ExternalIdentity(id = "i1", entityId = "u5", system = ExternalSystems.IMMICH, externalId = "p1"),
+                    ),
+                    immichSummary = ImmichPersonSummary(personName = "Alice", photoCount = 7),
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasText("Alice"))
+        composeTestRule.onNodeWithText("Alice").assertIsDisplayed()
+        composeTestRule.onNodeWithText("7 photos").assertIsDisplayed()
+    }
+
+    @Test
+    fun `external links section is absent when there are no identities`() {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(contact = contact)
+            }
+        }
+
+        composeTestRule.onNodeWithText("External Links").assertDoesNotExist()
     }
 
     // --- M15: the share entry point lives in the header's action menu ---

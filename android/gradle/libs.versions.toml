@@ -16,6 +16,7 @@ room = "2.8.4"
 okhttp = "4.12.0"
 moshi = "1.15.1"
 coil = "3.0.4"
+ucrop = "2.2.9"
 kotlinxDatetime = "0.6.1"
 kotlinxCoroutines = "1.9.0"
 datastore = "1.1.1"
@@ -89,6 +90,9 @@ moshi-kotlin-codegen = { group = "com.squareup.moshi", name = "moshi-kotlin-code
 
 coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil" }
 coil-network-okhttp = { group = "io.coil-kt.coil3", name = "coil-network-okhttp", version.ref = "coil" }
+
+# Issue #219/#220: uCrop — the profile-photo crop step (Yalantis, JitPack-only).
+ucrop = { group = "com.github.yalantis", name = "uCrop", version.ref = "ucrop" }
 
 # M5 §5a (issue #152): Firebase Cloud Messaging. The google-services.json is an
 # external resource (per-deploy Firebase project), so the Google Services Gradle
