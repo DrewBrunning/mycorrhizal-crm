@@ -156,7 +156,11 @@ export default function ContactHeader({
           <Box
             sx={{
               position: 'relative',
-              '&:hover .camera-badge': {
+              // #188: :focus-within reveals the badge once the button itself
+              // is focused, not just on mouse hover -- opacity:0 alone stays
+              // in the tab order, so without this a keyboard user tabbed onto
+              // a control they could never see.
+              '&:hover .camera-badge, &:focus-within .camera-badge': {
                 opacity: 1
               }
             }}
@@ -186,8 +190,9 @@ export default function ContactHeader({
                 right: -4,
                 bgcolor: 'primary.main',
                 color: 'white',
-                width: 22,
-                height: 22,
+                // #188: was 22x22, under the 24x24 minimum (2.5.8).
+                width: 24,
+                height: 24,
                 opacity: 0,
                 transition: 'opacity 0.2s',
                 '&:hover': { bgcolor: 'primary.dark' }
@@ -316,7 +321,8 @@ export default function ContactHeader({
                   <Box
                     sx={{
                       position: 'relative',
-                      '&:hover .edit-icon': {
+                      // #188: see the camera-badge focus-within comment above.
+                      '&:hover .edit-icon, &:focus-within .edit-icon': {
                         opacity: 1
                       }
                     }}
@@ -358,6 +364,10 @@ export default function ContactHeader({
                           opacity: 0,
                           transition: 'opacity 0.2s',
                           flexShrink: 0,
+                          // #188: size="small" alone measured 22x22, under
+                          // the 24x24 minimum (2.5.8).
+                          minWidth: 24,
+                          minHeight: 24,
                         }}
                       >
                         <EditIcon fontSize="small" />
@@ -463,7 +473,8 @@ export default function ContactHeader({
                       justifyContent: 'space-between',
                       flexWrap: 'wrap',
                       gap: 0.5,
-                      '&:hover .edit-icon': {
+                      // #188: see the camera-badge focus-within comment above.
+                      '&:hover .edit-icon, &:focus-within .edit-icon': {
                         opacity: 1
                       }
                     }}
@@ -504,6 +515,9 @@ export default function ContactHeader({
                           opacity: 0,
                           transition: 'opacity 0.2s',
                           flexShrink: 0,
+                          // #188: see the compact-layout pencil above.
+                          minWidth: 24,
+                          minHeight: 24,
                         }}
                       >
                         <EditIcon fontSize="small" />
@@ -625,7 +639,8 @@ export default function ContactHeader({
             )}
 
             {/* Circles Section */}
-            <Box sx={{ mt: 1, '&:hover .edit-icon': { opacity: 1 } }}>
+            {/* #188: see the camera-badge focus-within comment above. */}
+            <Box sx={{ mt: 1, '&:hover .edit-icon, &:focus-within .edit-icon': { opacity: 1 } }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
                 <GroupIcon fontSize="small" color="action" />
                 <Typography variant="caption" color="text.secondary">
@@ -637,7 +652,7 @@ export default function ContactHeader({
                     edits on a wide viewport. */}
                 <IconButton className="edit-icon" size="small" color="primary" onClick={() => setEditingCircles(!editingCircles)}
                   aria-label={t('contactDetail.edit')}
-                  sx={{ ml: 1, flexShrink: 0, opacity: 0, transition: 'opacity 0.2s' }}>
+                  sx={{ ml: 1, flexShrink: 0, opacity: 0, transition: 'opacity 0.2s', minWidth: 24, minHeight: 24 }}>
                   <EditIcon fontSize="small" />
                 </IconButton>
               </Box>
@@ -691,7 +706,8 @@ export default function ContactHeader({
             </Box>
 
             {/* Tags Section */}
-            <Box sx={{ mt: 1.5, '&:hover .edit-icon': { opacity: 1 } }}>
+            {/* #188: see the circles section's focus-within comment above. */}
+            <Box sx={{ mt: 1.5, '&:hover .edit-icon, &:focus-within .edit-icon': { opacity: 1 } }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
                 <LocalOfferIcon fontSize="small" color="action" />
                 <Typography variant="caption" color="text.secondary">
@@ -700,7 +716,7 @@ export default function ContactHeader({
                 {/* T89: see the circles pencil above. */}
                 <IconButton className="edit-icon" size="small" color="primary" onClick={() => setEditingTags(!editingTags)}
                   aria-label={t('contactDetail.edit')}
-                  sx={{ ml: 1, flexShrink: 0, opacity: 0, transition: 'opacity 0.2s' }}>
+                  sx={{ ml: 1, flexShrink: 0, opacity: 0, transition: 'opacity 0.2s', minWidth: 24, minHeight: 24 }}>
                   <EditIcon fontSize="small" />
                 </IconButton>
               </Box>

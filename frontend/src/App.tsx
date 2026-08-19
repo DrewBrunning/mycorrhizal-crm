@@ -385,6 +385,10 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
                     '&:hover fieldset': {
                       borderColor: 'rgba(255, 255, 255, 0.5)',
                     },
+                    // #186: checked per the issue's own instruction --
+                    // rgba(255,255,255,0.7) on the mycelium AppBar (#3E543E)
+                    // computes to 5.04:1, clearing the 3:1 floor. Not short,
+                    // no change needed here.
                     '&.Mui-focused fieldset': {
                       borderColor: 'rgba(255, 255, 255, 0.7)',
                     },

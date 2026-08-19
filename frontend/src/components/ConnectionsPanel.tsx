@@ -112,7 +112,16 @@ export default function ConnectionsPanel({ contactUid }: ConnectionsPanelProps) 
         <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}>
           {chain.steps.map((step, idx) => (
             <Box key={step.contact_vcard_uid} sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
-              {idx > 0 && <ArrowForwardIcon sx={{ fontSize: 14, color: 'text.disabled' }} />}
+              {/* #187: both were text.disabled (2.62:1 on parchment) -- that
+                  token is MUI's lowest-contrast text and reads as "disabled/
+                  greyed out". The direction arrow and relation label are not
+                  disabled, they're the content that gives the chain its
+                  meaning, so they get text.secondary (6.35:1) instead. Swept
+                  the rest of the codebase's text.disabled uses too -- the
+                  other sites (ContactInformation.tsx, CustomFieldValueRow.tsx)
+                  render an empty-value placeholder ('-'), which is the
+                  token's actual intended use, so those are left alone. */}
+              {idx > 0 && <ArrowForwardIcon sx={{ fontSize: 14, color: 'text.secondary' }} />}
               <Link
                 component="button"
                 variant="body2"
@@ -122,7 +131,7 @@ export default function ConnectionsPanel({ contactUid }: ConnectionsPanelProps) 
               >
                 {step.contact_name}
               </Link>
-              <Typography variant="caption" color="text.disabled">
+              <Typography variant="caption" color="text.secondary">
                 ({t(`relationships.types.${step.relation}`, step.relation)})
               </Typography>
             </Box>
