@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { loginUser, login2FA, isAuthenticated, API_BASE_URL } from './auth';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
@@ -17,6 +17,7 @@ import {
 import ForgotPasswordDialog from './components/ForgotPasswordDialog';
 import BrandLogo from './components/BrandLogo';
 import { useOIDCConfig } from './hooks/useOIDCConfig';
+import { useErrorAlertFocus } from './hooks/useErrorAlertFocus';
 
 type LoginPageProps = {
   setToken?: (token: string | null) => void;
@@ -37,7 +38,10 @@ export default function LoginPage({ setToken }: LoginPageProps) {
   const [code, setCode] = useState('');
   // N8: "credentials" → password verified, waiting on the 2FA code.
   const [step, setStep] = useState<'credentials' | 'twoFactor'>('credentials');
-  const [error, setError] = useState(() => {
+  // #192: moves keyboard focus to the error Alert whenever a new one is
+  // reported (including an OIDC redirect error present on first load) --
+  // see useErrorAlertFocus for why a plain useState+useEffect isn't enough.
+  const { error, setError, errorRef } = useErrorAlertFocus(() => {
     const oidcError = searchParams.get('error');
     return oidcError && OIDC_ERROR_MAP[oidcError] ? t(OIDC_ERROR_MAP[oidcError]) : '';
   });
@@ -45,14 +49,6 @@ export default function LoginPage({ setToken }: LoginPageProps) {
   const [forgotOpen, setForgotOpen] = useState(false);
   const navigate = useNavigate();
   const oidcConfig = useOIDCConfig();
-  // #192: a failed login previously dropped keyboard focus to <body> --
-  // move it to the error itself so a keyboard user doesn't have to tab from
-  // the top of the document to retry. tabIndex=-1 makes the alert
-  // programmatically focusable without adding a new tab stop.
-  const errorRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (error) errorRef.current?.focus();
-  }, [error]);
 
   const finishLogin = async ({ language, date_format }: { language?: string; date_format?: string }) => {
     // Signal that user is now authenticated (token is in httpOnly cookie)

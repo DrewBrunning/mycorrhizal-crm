@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useRef, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   DialogTitle,
@@ -12,6 +12,7 @@ import {
 } from '@mui/material';
 import AppDialog from './AppDialog';
 import { requestPasswordReset, confirmPasswordReset } from '../api/auth';
+import { useErrorAlertFocus } from '../hooks/useErrorAlertFocus';
 
 type ForgotPasswordDialogProps = {
   open: boolean;
@@ -28,15 +29,11 @@ export default function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDi
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
   // #192: same fix as LoginPage.tsx -- move focus to the error and
   // associate it with the fields instead of dropping focus to <body>. Both
-  // steps share this ref/effect since only one ever renders at a time.
-  const errorRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (error) errorRef.current?.focus();
-  }, [error]);
+  // steps share this hook's ref/effect since only one ever renders at a time.
+  const { error, setError, errorRef } = useErrorAlertFocus();
+  const [message, setMessage] = useState('');
 
   useEffect(() => {
     if (open) {
@@ -49,7 +46,7 @@ export default function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDi
       setError('');
       setMessage('');
     }
-  }, [open]);
+  }, [open, setError]);
 
   const handleBackToRequest = () => {
     setStep('request');

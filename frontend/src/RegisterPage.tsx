@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { API_BASE_URL } from './auth';
 import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
@@ -11,22 +11,19 @@ import {
   Paper,
   Stack
 } from '@mui/material';
+import { useErrorAlertFocus } from './hooks/useErrorAlertFocus';
 
 export default function RegisterPage() {
   const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
-  const [error, setError] = useState('');
+  // #192: same fix as LoginPage.tsx -- move focus to the error and
+  // associate it with the fields instead of dropping focus to <body>.
+  const { error, setError, errorRef } = useErrorAlertFocus();
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  // #192: same fix as LoginPage.tsx -- move focus to the error and
-  // associate it with the fields instead of dropping focus to <body>.
-  const errorRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (error) errorRef.current?.focus();
-  }, [error]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

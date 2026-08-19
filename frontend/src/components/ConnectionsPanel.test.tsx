@@ -67,6 +67,26 @@ test('renders reachable chains with the relation path', async () => {
   expect(screen.getByText('(Spouse)')).toBeInTheDocument();
 });
 
+// Issue #187: the relation caption and the between-step arrow used to render
+// at text.disabled (2.62:1 on parchment, MUI's default rgba(0,0,0,0.38)) --
+// too low-contrast for content that gives the chain its meaning, not a
+// disabled/greyed-out affordance. No axe/e2e scan exercises this panel by
+// default (it needs a contact with a confirmed relationship edge, which the
+// e2e seed data doesn't have), so this is the only regression coverage for
+// the fix -- confirm both render at text.secondary (rgba(0,0,0,0.6) under
+// MUI's default palette, distinct from text.disabled) instead.
+test('renders the relation caption and chain arrow at text.secondary, not text.disabled', async () => {
+  mockGraph('/graph/connections?', chainsResponse);
+  renderPanel();
+
+  const relationLabel = await screen.findByText('(Spouse)');
+  expect(getComputedStyle(relationLabel).color).toBe('rgba(0, 0, 0, 0.6)');
+
+  const arrow = document.querySelector('[data-testid="ArrowForwardIcon"]');
+  expect(arrow).not.toBeNull();
+  expect(getComputedStyle(arrow as Element).color).toBe('rgba(0, 0, 0, 0.6)');
+});
+
 test('empty result shows the no-connections message', async () => {
   mockGraph('/graph/connections?', () => ({
     from_vcard_uid: 'john-uid',
