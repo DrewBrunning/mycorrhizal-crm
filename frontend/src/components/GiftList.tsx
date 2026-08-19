@@ -117,7 +117,7 @@ function GiftSection({
     // target "the Given row" precisely instead of matching a repeated button.
     <Box component="section" aria-label={title} sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
       {divider && <Divider />}
-      <Typography variant="subtitle2" color="text.secondary">
+      <Typography variant="subtitle2" component="h3" color="text.secondary">
         {title}
       </Typography>
       <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', flexWrap: 'wrap' }}>

@@ -1,6 +1,7 @@
 import { FormEvent, useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import BuildVersionCard from './components/BuildVersionCard';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
 import {
   Box,
   Card,
@@ -73,6 +74,7 @@ import TwoFactorSettings from './components/TwoFactorSettings';
 
 export default function SettingsPage() {
   const { t, i18n } = useTranslation();
+  useDocumentTitle(t('nav.profile'));
   const { preference: themePreference, setPreference: setThemePreference } = useThemePreference();
   const { dateFormat, setDateFormat } = useDateFormat();
   const { showSuccess, showError } = useSnackbar();
@@ -302,7 +304,7 @@ export default function SettingsPage() {
 
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 2, p: 2 }}>
-      <Typography variant="h5" gutterBottom sx={{ mb: 1.5 }}>
+      <Typography variant="h5" component="h1" gutterBottom sx={{ mb: 1.5 }}>
         {t('settings.title')}
       </Typography>
 
@@ -310,7 +312,7 @@ export default function SettingsPage() {
         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
             <LanguageIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }} />
-            <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+            <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 500 }}>
               {t('settings.language.title')}
             </Typography>
           </Box>
@@ -344,7 +346,7 @@ export default function SettingsPage() {
         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
             <CalendarMonthIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }} />
-            <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+            <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 500 }}>
               {t('settings.dateFormat.title')}
             </Typography>
           </Box>
@@ -382,7 +384,7 @@ export default function SettingsPage() {
         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
             <DarkModeIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }} />
-            <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+            <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 500 }}>
               {t('settings.theme.title')}
             </Typography>
           </Box>
@@ -414,7 +416,7 @@ export default function SettingsPage() {
         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
             <PersonIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }} />
-            <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+            <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 500 }}>
               {t('settings.selfContact.title')}
             </Typography>
           </Box>
@@ -457,7 +459,7 @@ export default function SettingsPage() {
         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
             <LockResetIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }} />
-            <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+            <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 500 }}>
               {t('settings.password.title')}
             </Typography>
           </Box>
@@ -527,7 +529,7 @@ export default function SettingsPage() {
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <KeyIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }} />
-              <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+              <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 500 }}>
                 {t('apiTokens.title')}
               </Typography>
             </Box>

@@ -19,6 +19,7 @@ import {
   Autocomplete,
   TextField,
 } from '@mui/material';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
 import NetworkGraph from './components/NetworkGraph';
 import NetworkLegend from './components/NetworkLegend';
 import EditTimelineItemDialog from './components/EditTimelineItemDialog';
@@ -30,6 +31,7 @@ import { Contact, getAllContacts } from './api/contacts';
 
 export default function NetworkPage() {
   const { t } = useTranslation();
+  useDocumentTitle(t('network.title'));
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -188,7 +190,7 @@ export default function NetworkPage() {
     // `100vh - chrome` clips the graph card (T32). On md+ the graph keeps the
     // fixed-height, no-page-scroll layout.
     <Box sx={{ height: { xs: 'auto', md: 'calc(100vh - 100px)' }, display: 'flex', flexDirection: 'column', mt: 2, p: 2, maxWidth: '100%' }}>
-      <Typography variant="h5" gutterBottom sx={{ mb: 2 }}>
+      <Typography variant="h5" component="h1" gutterBottom sx={{ mb: 2 }}>
         {t('network.title')}
       </Typography>
       {/* Controls */}

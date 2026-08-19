@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures';
-import { createTestContact, deleteTestContact, waitForLoading } from './fixtures';
+import { createTestContact, deleteTestContact, waitForLoading, selectedText } from './fixtures';
 import { API_BASE_URL } from './global-setup';
 
 // N5 bulk operations. Uses
@@ -28,13 +28,13 @@ test.describe('Bulk operations', () => {
 
       // Select all of page one (10 of the 11).
       await page.getByLabel(/^select all$/i).click();
-      await expect(page.getByText('10 selected')).toBeVisible();
+      await expect(selectedText(page, '10 selected')).toBeVisible();
 
       // Load page two and select-all again to cover the boundary.
       await page.getByRole('button', { name: /load more/i }).click();
       await waitForLoading(page);
       await page.getByLabel(/^select all$/i).click();
-      await expect(page.getByText('11 selected')).toBeVisible();
+      await expect(selectedText(page, '11 selected')).toBeVisible();
 
       // Bulk-add the tag to all 11.
       await page.getByLabel(/^tag…$/i).click();
@@ -42,7 +42,7 @@ test.describe('Bulk operations', () => {
       await page.getByRole('button', { name: /^add tag$/i }).click();
 
       // Success clears the selection banner (no failure alert to dismiss).
-      await expect(page.getByText(/\d+ selected/)).not.toBeVisible();
+      await expect(selectedText(page, /\d+ selected/)).not.toBeVisible();
 
       const tagCheck = await page.request.get(`${API_BASE_URL}/tags/${tag.id}`);
       expect(tagCheck.ok()).toBeTruthy();
@@ -55,11 +55,11 @@ test.describe('Bulk operations', () => {
       // Bulk delete: select all again, confirm the dialog names the count,
       // then accept it -- the most destructive bulk action in the app.
       await page.getByLabel(/^select all$/i).click();
-      await expect(page.getByText('10 selected')).toBeVisible();
+      await expect(selectedText(page, '10 selected')).toBeVisible();
       await page.getByRole('button', { name: /load more/i }).click();
       await waitForLoading(page);
       await page.getByLabel(/^select all$/i).click();
-      await expect(page.getByText('11 selected')).toBeVisible();
+      await expect(selectedText(page, '11 selected')).toBeVisible();
 
       // Playwright auto-dismisses native dialogs unless a page.on('dialog')
       // listener is registered before the action that triggers one -- a
@@ -72,10 +72,10 @@ test.describe('Bulk operations', () => {
         await dialog.accept();
       });
       await page.getByRole('button', { name: /^delete$/i }).click();
-      await expect(page.getByText(/\d+ selected/)).not.toBeVisible();
+      await expect(selectedText(page, /\d+ selected/)).not.toBeVisible();
       expect(dialogMessage).toContain('Delete 11 contacts?');
 
-      await expect(page.getByText(/\d+ selected/)).not.toBeVisible();
+      await expect(selectedText(page, /\d+ selected/)).not.toBeVisible();
 
       // Each contact must be gone. The delete commit and a follow-up GET can
       // race through SQLite's pooled connections (a WAL read snapshot), so

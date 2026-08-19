@@ -26,9 +26,11 @@ import ImportContactsDialog from './components/ImportContactsDialog';
 import RelationshipSuggestionsInbox from './components/RelationshipSuggestionsInbox';
 import ContactAddressSuggestions from './components/ContactAddressSuggestions';
 import { handleFetchError } from './utils/errorHandler';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
 
 export default function DataSettingsPage() {
   const { t } = useTranslation();
+  useDocumentTitle(t('nav.data'));
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState('');
   const [exportSuccess, setExportSuccess] = useState('');
@@ -146,7 +148,7 @@ export default function DataSettingsPage() {
 
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 2, p: 2 }}>
-      <Typography variant="h5" gutterBottom sx={{ mb: 1.5 }}>
+      <Typography variant="h5" component="h1" gutterBottom sx={{ mb: 1.5 }}>
         {t('settings.data.title')}
       </Typography>
 
@@ -160,7 +162,7 @@ export default function DataSettingsPage() {
         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
             <InsightsIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }} />
-            <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+            <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 500 }}>
               {t('settings.data.propose.title')}
             </Typography>
           </Box>
@@ -209,7 +211,7 @@ export default function DataSettingsPage() {
         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
             <UploadIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }} />
-            <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+            <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 500 }}>
               {t('settings.data.import.title')}
             </Typography>
           </Box>
@@ -237,7 +239,7 @@ export default function DataSettingsPage() {
         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
             <DownloadIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }} />
-            <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+            <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 500 }}>
               {t('settings.export.title')}
             </Typography>
           </Box>
@@ -266,7 +268,7 @@ export default function DataSettingsPage() {
         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
             <DownloadIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }} />
-            <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+            <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 500 }}>
               {t('settings.exportVcf.title')}
             </Typography>
           </Box>

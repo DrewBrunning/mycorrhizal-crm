@@ -27,6 +27,7 @@ import { getContactBriefing, ContactBriefing, BriefingRelationship } from './api
 import { useDateFormat } from './DateFormatProvider';
 import { handleFetchError } from './utils/errorHandler';
 import { useSnackbar } from './context/SnackbarContext';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
 
 // N2 prep view: the "person
 // briefing" — everything the user wants to remember in the five minutes
@@ -46,6 +47,8 @@ export default function PrepViewPage() {
   const [briefing, setBriefing] = useState<ContactBriefing | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useDocumentTitle(t('prep.title'));
 
   useEffect(() => {
     if (!id) return;
@@ -104,7 +107,7 @@ export default function PrepViewPage() {
             {(briefing.name || '?').charAt(0).toUpperCase()}
           </Avatar>
           <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-            <Typography variant="h5" sx={{ fontWeight: 500, overflowWrap: 'anywhere' }}>
+            <Typography variant="h5" component="h1" sx={{ fontWeight: 500, overflowWrap: 'anywhere' }}>
               {briefing.name || t('prep.unknownContact')}
             </Typography>
             <Typography variant="caption" color="text.secondary">
@@ -123,7 +126,7 @@ export default function PrepViewPage() {
           <CardContent sx={{ py: 1.5 }}>
             <Stack direction="row" alignItems="center" spacing={1}>
               <WarningIcon fontSize="small" color={briefing.cadence.health.overdue_by > 0 ? 'warning' : 'disabled'} />
-              <Typography variant="subtitle2">{t('prep.cadence.title')}</Typography>
+              <Typography variant="subtitle2" component="h2">{t('prep.cadence.title')}</Typography>
             </Stack>
             {briefing.cadence.health.has_qualifying_interaction ? (
               <Box sx={{ mt: 0.5 }}>
@@ -162,7 +165,7 @@ export default function PrepViewPage() {
           <CardContent sx={{ py: 1.5 }}>
             <Stack direction="row" alignItems="center" spacing={1}>
               <ChatIcon fontSize="small" color="action" />
-              <Typography variant="subtitle2">{t('prep.agenda.title')}</Typography>
+              <Typography variant="subtitle2" component="h2">{t('prep.agenda.title')}</Typography>
             </Stack>
             <Stack spacing={0.5} sx={{ mt: 0.5 }}>
               {briefing.open_agenda_items.map((item) => (
@@ -180,12 +183,13 @@ export default function PrepViewPage() {
         <CardContent sx={{ py: 1.5 }}>
           <Stack direction="row" alignItems="center" spacing={1}>
             <EventIcon fontSize="small" color="action" />
-            <Typography variant="subtitle2">{t('prep.lastInteraction.title')}</Typography>
+            <Typography variant="subtitle2" component="h2">{t('prep.lastInteraction.title')}</Typography>
           </Stack>
           {briefing.last_activity ? (
             <Box sx={{ mt: 0.5 }}>
-              {/* T98: activity titles are subtitle1 everywhere they appear. */}
-              <Typography variant="subtitle1" fontWeight={500}>
+              {/* T98: activity titles are subtitle1 everywhere they appear.
+                  #211: an item title, not a page heading. */}
+              <Typography variant="subtitle1" component="p" fontWeight={500}>
                 {briefing.last_activity.title}
                 {briefing.last_activity.type ? ` (${briefing.last_activity.type})` : ''}
               </Typography>
@@ -209,7 +213,7 @@ export default function PrepViewPage() {
               <Divider sx={{ my: 1 }} />
               <Stack direction="row" alignItems="center" spacing={1}>
                 <SvgIcon fontSize="small" color="action"><path d={mdiNoteMultipleOutline} /></SvgIcon>
-                <Typography variant="subtitle2">{t('prep.recentNotes.title')}</Typography>
+                <Typography variant="subtitle2" component="h2">{t('prep.recentNotes.title')}</Typography>
               </Stack>
               <Stack spacing={0.5} sx={{ mt: 0.5 }}>
                 {briefing.recent_notes.map((note) => (
@@ -229,7 +233,7 @@ export default function PrepViewPage() {
           <CardContent sx={{ py: 1.5 }}>
             <Stack direction="row" alignItems="center" spacing={1}>
               <FavoriteIcon fontSize="small" color="action" />
-              <Typography variant="subtitle2">{t('prep.relationships.title')}</Typography>
+              <Typography variant="subtitle2" component="h2">{t('prep.relationships.title')}</Typography>
             </Stack>
             <Stack spacing={0.5} sx={{ mt: 0.5 }}>
               {briefing.relationships.map((r) => (
@@ -256,7 +260,7 @@ export default function PrepViewPage() {
           <CardContent sx={{ py: 1.5 }}>
             <Stack direction="row" alignItems="center" spacing={1}>
               <EventIcon fontSize="small" color="action" />
-              <Typography variant="subtitle2">{t('prep.lifeEvents.title')}</Typography>
+              <Typography variant="subtitle2" component="h2">{t('prep.lifeEvents.title')}</Typography>
             </Stack>
             <Stack spacing={0.5} sx={{ mt: 0.5 }}>
               {briefing.life_events.map((event) => (
@@ -276,7 +280,7 @@ export default function PrepViewPage() {
           <CardContent sx={{ py: 1.5 }}>
             <Stack direction="row" alignItems="center" spacing={1}>
               <EventIcon fontSize="small" color="action" />
-              <Typography variant="subtitle2">{t('prep.reminders.title')}</Typography>
+              <Typography variant="subtitle2" component="h2">{t('prep.reminders.title')}</Typography>
             </Stack>
             <Stack spacing={0.5} sx={{ mt: 0.5 }}>
               {briefing.upcoming_reminders.map((reminder) => (
@@ -299,7 +303,7 @@ export default function PrepViewPage() {
           <CardContent sx={{ py: 1.5 }}>
             <Stack direction="row" alignItems="center" spacing={1}>
               <CakeIcon fontSize="small" color="action" />
-              <Typography variant="subtitle2">{t('prep.upcomingDates.title')}</Typography>
+              <Typography variant="subtitle2" component="h2">{t('prep.upcomingDates.title')}</Typography>
             </Stack>
             <Stack spacing={0.5} sx={{ mt: 0.5 }}>
               {briefing.upcoming_dates.map((d, i) => (

@@ -28,7 +28,7 @@ export default function OverdueCadenceList({ overdue, loading, error }: OverdueC
     <Box>
       <Box sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
         <WarningIcon color="warning" fontSize="small" />
-        <Typography variant="subtitle1" fontWeight={500}>
+        <Typography variant="subtitle1" component="h2" fontWeight={500}>
           {t('cadence.overdueTitle')}
         </Typography>
       </Box>

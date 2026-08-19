@@ -7,6 +7,15 @@ import itTranslations from './locales/it.json';
 import esTranslations from './locales/es.json';
 import frTranslations from './locales/fr.json';
 
+// #211: keep <html lang> in sync with the active i18next language so
+// assistive tech announces the page in the right language. `load:
+// 'languageOnly'` below means `resolvedLanguage` is a bare code (`de`, not
+// `de-DE`) -- already a valid BCP-47 tag, no further mapping needed.
+const syncHtmlLang = (lng: string) => {
+  document.documentElement.lang = lng;
+};
+i18n.on('languageChanged', syncHtmlLang);
+
 // Suppress i18next's promotional console message (hardcoded since v23)
 const noop = () => {};
 const origLog = console.log;
@@ -44,6 +53,7 @@ i18n
     }
   }).then(() => {
     console.log = origLog;
+    syncHtmlLang(i18n.resolvedLanguage || 'en');
   });
 
 export default i18n;

@@ -106,7 +106,7 @@ export default function NextcloudSettings() {
           <SvgIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }}>
             <path d={mdiCloudOutline} />
           </SvgIcon>
-          <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+          <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 500 }}>
             {t('nextcloud.settings.title')}
           </Typography>
         </Box>

@@ -220,7 +220,7 @@ export default function WebhooksSettings() {
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <WebhookIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }} />
-              <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+              <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 500 }}>
                 {t('settings.webhooks.title')}
               </Typography>
             </Box>

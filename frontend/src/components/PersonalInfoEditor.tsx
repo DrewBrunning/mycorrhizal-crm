@@ -46,7 +46,7 @@ export default function PersonalInfoEditor({ label, value, onChange }: PersonalI
 
   return (
     <Box>
-      <Typography variant="subtitle2" gutterBottom>
+      <Typography variant="subtitle2" component="p" gutterBottom>
         {label}
       </Typography>
       <Stack spacing={1}>

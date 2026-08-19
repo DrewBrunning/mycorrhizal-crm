@@ -27,7 +27,7 @@ export default function KeywordsEditor({ label, value, onChange }: KeywordsEdito
 
   return (
     <Box>
-      <Typography variant="subtitle2" gutterBottom>
+      <Typography variant="subtitle2" component="p" gutterBottom>
         {label}
       </Typography>
       <Box sx={{ display: 'flex', gap: 1, mb: 1, flexWrap: 'wrap' }}>

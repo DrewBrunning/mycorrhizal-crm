@@ -1,3 +1,39 @@
+// #211: the app-shell document-structure model. Every route inherits this;
+// re-derive it per page and it will drift, which is exactly how the 17
+// routes ended up with 17 different answers the first time. Do not
+// re-litigate these six rules per page -- apply them.
+//
+// 1. Document identity. Every route sets document.title via
+//    hooks/useDocumentTitle to "<page name> · Mycorrhizal CRM" (localised).
+//    <html lang> always tracks the active i18next language (i18n/config.ts).
+//
+// 2. Landmark map -- exactly one of each per rendered page:
+//      banner      the AppBar (implicit <header>, already correct)
+//      navigation  the drawer's <List>, wrapped in <nav aria-label>
+//      main        the content Box -- and the logged-out branch's Box too
+//
+// 3. Heading contract:
+//      h1            the page's own title -- exactly one per route
+//      h2            a section of that page
+//      h3            a subsection inside a section, only where one genuinely
+//                     exists
+//      not a heading  titles of items in a list or timeline (use
+//                     component="p"/"span" at the same variant -- do not
+//                     renumber them to h3)
+//    Visual size stays decoupled from level via `component`
+//    (`<Typography variant="h5" component="h1">`) -- theme.ts documents h5 as
+//    page-title-only, so this never collides with MuiDialogTitle (h6).
+//
+// 4. Location signalling. The active nav item carries aria-current="page"
+//    and a visual indicator measuring >=3:1 against the adjacent unselected
+//    background (a left border, not a background tint -- the old tint
+//    measured 1.19:1).
+//
+// 5. Bypass. A skip link, first in the tab order, targeting #main-content.
+//
+// 6. Announcement channel. One polite live region, owned by
+//    context/AnnouncerContext, reachable via useAnnouncer() by any component
+//    that needs to announce a status change.
 import { useState, useEffect, Suspense, useMemo } from 'react';
 import ContactsPage from './ContactsPage';
 import ContactDetailPage from './ContactDetailPage';
@@ -32,7 +68,6 @@ import {
   ListItemText,
   Box,
   Button,
-  CircularProgress,
   Menu,
   MenuItem,
   Divider,
@@ -45,6 +80,7 @@ import {
 } from '@mui/material';
 import { mdiGraphOutline, mdiNotebookOutline } from '@mdi/js';
 import BrandLogo from './components/BrandLogo';
+import RouteLoadingFallback from './components/RouteLoadingFallback';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
 import { getContacts, Contact } from './api/contacts';
@@ -203,35 +239,47 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
   const drawerContent = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Toolbar />
-      <List>
-        {mainNavItems.map((item) => (
-          <ListItem key={item.text} disablePadding>
-            <ListItemButton
-              component={Link}
-              to={item.path}
-              onClick={isMobile ? handleDrawerToggle : undefined}
-              selected={item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path)}
-              sx={{
-                '&.Mui-selected': {
-                  backgroundColor: 'action.selected',
-                },
-                '&.Mui-selected:hover': {
-                  backgroundColor: 'action.selected',
-                },
-              }}
-            >
-              <ListItemIcon>{item.icon}</ListItemIcon>
-              {/* T98: Garamond has a smaller x-height than IBM Plex Sans, so
-                  ListItemText's 1rem body1 default reads shrunken here rather
-                  than merely different. T63 set the family and no size. */}
-              <ListItemText
-                primary={item.text}
-                slotProps={{ primary: { sx: { fontFamily: '"EB Garamond", serif', fontSize: '1.0625rem' } } }}
-              />
-            </ListItemButton>
-          </ListItem>
-        ))}
-      </List>
+      <nav aria-label={t('nav.mainLabel')}>
+        <List>
+          {mainNavItems.map((item) => {
+            const isSelected = item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path);
+            return (
+              <ListItem key={item.text} disablePadding>
+                <ListItemButton
+                  component={Link}
+                  to={item.path}
+                  onClick={isMobile ? handleDrawerToggle : undefined}
+                  aria-current={isSelected ? 'page' : undefined}
+                  selected={isSelected}
+                  sx={{
+                    // #211: a left border, not a background tint -- the tint
+                    // measured 1.19:1, this measures 6.73:1 light / 6.88:1
+                    // dark (see the model comment block at the top of this
+                    // file).
+                    borderLeft: '3px solid transparent',
+                    '&.Mui-selected': {
+                      backgroundColor: 'action.selected',
+                      borderLeftColor: 'primary.main',
+                    },
+                    '&.Mui-selected:hover': {
+                      backgroundColor: 'action.selected',
+                    },
+                  }}
+                >
+                  <ListItemIcon>{item.icon}</ListItemIcon>
+                  {/* T98: Garamond has a smaller x-height than IBM Plex Sans, so
+                      ListItemText's 1rem body1 default reads shrunken here rather
+                      than merely different. T63 set the family and no size. */}
+                  <ListItemText
+                    primary={item.text}
+                    slotProps={{ primary: { sx: { fontFamily: '"EB Garamond", serif', fontSize: '1.0625rem' } } }}
+                  />
+                </ListItemButton>
+              </ListItem>
+            );
+          })}
+        </List>
+      </nav>
       <Box sx={{ mt: 'auto', py: 2, px: 2 }}>
         <BrandLogo height="auto" width="100%" />
       </Box>
@@ -240,7 +288,7 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
 
   if (!token) {
     return (
-      <Box sx={{ p: 2, width: '100%' }}>
+      <Box component="main" sx={{ p: 2, width: '100%' }}>
         <Routes>
           <Route path="/register" element={<RegisterPage />} />
           <Route path="*" element={<LoginPage setToken={setToken} />} />
@@ -251,9 +299,21 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
 
   return (
     <>
-      <AppBar 
-        position="fixed" 
-        sx={{ 
+      <Box
+        component="a"
+        href="#main-content"
+        sx={{
+          position: 'absolute', left: -9999, top: 0,
+          zIndex: (theme) => theme.zIndex.drawer + 2,
+          p: 2, bgcolor: 'background.paper', color: 'text.primary',
+          '&:focus': { left: 0 },
+        }}
+      >
+        {t('nav.skipToContent')}
+      </Box>
+      <AppBar
+        position="fixed"
+        sx={{
           zIndex: (theme) => theme.zIndex.drawer + 1
         }}
       >
@@ -485,10 +545,12 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
         {drawerContent}
       </Drawer>
 
-      <Box 
-        component="main" 
-        sx={{ 
-          flexGrow: 1, 
+      <Box
+        component="main"
+        id="main-content"
+        tabIndex={-1}
+        sx={{
+          flexGrow: 1,
           p: 2,
           // `min-width: auto` (the flex default) stops this item shrinking below
           // its content's intrinsic width, so a wide child (the contact
@@ -503,24 +565,24 @@ function AppContent({ token, setToken }: { token: string | null; setToken: (toke
         }}
       >
         <Routes>
-          <Route path="/contacts" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><ContactsPage /></Suspense>} />
-          <Route path="/contacts/:id" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><ContactDetailPage /></Suspense>} />
-          <Route path="/contacts/:id/prep" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><PrepViewPage /></Suspense>} />
-          <Route path="/notes" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><NotesPage /></Suspense>} />
-          <Route path="/activities" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><ActivitiesPage /></Suspense>} />
-          <Route path="/settings" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><SettingsPage /></Suspense>} />
-          <Route path="/settings/data" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><DataSettingsPage /></Suspense>} />
-          <Route path="/network" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><NetworkPage /></Suspense>} />
-          <Route path="/households" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><HouseholdsPage /></Suspense>} />
-          <Route path="/circles" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><CirclesTagsPage /></Suspense>} />
+          <Route path="/contacts" element={<Suspense fallback={<RouteLoadingFallback />}><ContactsPage /></Suspense>} />
+          <Route path="/contacts/:id" element={<Suspense fallback={<RouteLoadingFallback />}><ContactDetailPage /></Suspense>} />
+          <Route path="/contacts/:id/prep" element={<Suspense fallback={<RouteLoadingFallback />}><PrepViewPage /></Suspense>} />
+          <Route path="/notes" element={<Suspense fallback={<RouteLoadingFallback />}><NotesPage /></Suspense>} />
+          <Route path="/activities" element={<Suspense fallback={<RouteLoadingFallback />}><ActivitiesPage /></Suspense>} />
+          <Route path="/settings" element={<Suspense fallback={<RouteLoadingFallback />}><SettingsPage /></Suspense>} />
+          <Route path="/settings/data" element={<Suspense fallback={<RouteLoadingFallback />}><DataSettingsPage /></Suspense>} />
+          <Route path="/network" element={<Suspense fallback={<RouteLoadingFallback />}><NetworkPage /></Suspense>} />
+          <Route path="/households" element={<Suspense fallback={<RouteLoadingFallback />}><HouseholdsPage /></Suspense>} />
+          <Route path="/circles" element={<Suspense fallback={<RouteLoadingFallback />}><CirclesTagsPage /></Suspense>} />
           <Route path="/tags" element={<Navigate to="/circles?tab=tags" replace />} />
-          <Route path="/shares" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><ContactSharesPage /></Suspense>} />
+          <Route path="/shares" element={<Suspense fallback={<RouteLoadingFallback />}><ContactSharesPage /></Suspense>} />
           <Route path="/search" element={<SearchRedirect />} />
-          <Route path="/audit" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><AuditPage /></Suspense>} />
-          <Route path="/users" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><UsersPage /></Suspense>} />
+          <Route path="/audit" element={<Suspense fallback={<RouteLoadingFallback />}><AuditPage /></Suspense>} />
+          <Route path="/users" element={<Suspense fallback={<RouteLoadingFallback />}><UsersPage /></Suspense>} />
           <Route path="/api-tokens" element={<Navigate to="/settings" replace />} />
-          <Route path="/circle-tag-triage" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><CircleTagTriagePage /></Suspense>} />
-          <Route path="/" element={<Suspense fallback={<Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>}><DashboardPage /></Suspense>} />
+          <Route path="/circle-tag-triage" element={<Suspense fallback={<RouteLoadingFallback />}><CircleTagTriagePage /></Suspense>} />
+          <Route path="/" element={<Suspense fallback={<RouteLoadingFallback />}><DashboardPage /></Suspense>} />
           <Route path="/login" element={<Navigate to="/" replace />} />
           <Route path="/register" element={<Navigate to="/" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />

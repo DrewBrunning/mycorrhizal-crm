@@ -4,6 +4,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import i18n from './i18n/config';
 import { initializeDateFormatFromBackend } from './DateFormatProvider';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
 import {
   Box,
   TextField,
@@ -32,6 +33,7 @@ const OIDC_ERROR_MAP: Record<string, string> = {
 
 export default function LoginPage({ setToken }: LoginPageProps) {
   const { t } = useTranslation();
+  useDocumentTitle(t('login.title'));
   const [searchParams] = useSearchParams();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -119,7 +121,7 @@ export default function LoginPage({ setToken }: LoginPageProps) {
         </Box>
         {step === 'twoFactor' ? (
           <>
-            <Typography variant="h5" mb={1}>{t('login.twoFactorTitle')}</Typography>
+            <Typography variant="h5" component="h1" mb={1}>{t('login.twoFactorTitle')}</Typography>
             <Typography variant="body2" color="text.secondary" mb={2}>
               {t('login.twoFactorDescription')}
             </Typography>
@@ -155,7 +157,7 @@ export default function LoginPage({ setToken }: LoginPageProps) {
           </>
         ) : (
           <>
-            <Typography variant="h5" mb={2}>{t('login.title')}</Typography>
+            <Typography variant="h5" component="h1" mb={2}>{t('login.title')}</Typography>
             <form onSubmit={handleSubmit}>
               <Stack spacing={2}>
                 <TextField

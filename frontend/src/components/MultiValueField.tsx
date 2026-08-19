@@ -62,7 +62,7 @@ export default function MultiValueField({
 
   return (
     <Box>
-      <Typography variant="subtitle2" gutterBottom>
+      <Typography variant="subtitle2" component="p" gutterBottom>
         {label}
       </Typography>
       <Stack spacing={1}>

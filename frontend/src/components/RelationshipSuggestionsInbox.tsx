@@ -118,7 +118,7 @@ export default function RelationshipSuggestionsInbox({ loadKey }: RelationshipSu
   return (
     <Box sx={{ mt: 2 }}>
       <Divider sx={{ mb: 1.5 }} />
-      <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+      <Typography variant="subtitle2" component="h3" color="text.secondary" sx={{ mb: 1 }}>
         {t('relationships.suggestedRelationships')}
       </Typography>
       {error && <Alert severity="error" sx={{ mb: 1 }}>{error}</Alert>}

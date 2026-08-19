@@ -19,7 +19,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import { mdiDownloadOutline, mdiNoteMultipleOutline } from '@mdi/js';
 import { useTranslation } from 'react-i18next';
 import { ContactFieldKey, resolveEnabledFields } from '../contactFields';
-import { ContactRecordResponse, nameComponentValue } from '../api/contacts';
+import { ContactRecordResponse, nameComponentValue, getContactDisplayName } from '../api/contacts';
 import LanguageField from './LanguageField';
 import { Circle } from '../api/circles';
 import { Tag } from '../api/tags';
@@ -121,13 +121,9 @@ export default function ContactHeader({
   const compactActions = useMediaQuery(theme.breakpoints.down('md'));
   const isOn = (key: ContactFieldKey) => enabled.has(key);
 
-  const card = record.card || {};
-  const prefix = nameComponentValue(card.name?.components, 'title');
-  const firstname = nameComponentValue(card.name?.components, 'given') || '';
-  const middleName = nameComponentValue(card.name?.components, 'given2');
-  const lastname = nameComponentValue(card.name?.components, 'surname') || '';
-  const suffix = nameComponentValue(card.name?.components, 'generation');
-  const nickname = card.nicknames?.[0]?.name;
+  // #211: only the avatar-initial needs `firstname` on its own; the rest of
+  // the name-component assembly lives in the shared getContactDisplayName.
+  const firstname = nameComponentValue(record.card?.name?.components, 'given') || '';
   const kind = record.crm?.kind || '';
   const archived = record.archived;
 
@@ -137,17 +133,7 @@ export default function ContactHeader({
   const [newCircleName, setNewCircleName] = useState('');
   const [newTagName, setNewTagName] = useState('');
 
-  const displayName = [
-    prefix,
-    firstname,
-    nickname ? `"${nickname}"` : '',
-    middleName,
-    lastname,
-    suffix,
-  ]
-    .map((part) => part?.trim())
-    .filter(Boolean)
-    .join(' ');
+  const displayName = getContactDisplayName(record);
 
   return (
     <Card sx={{ mb: 1.5 }}>
@@ -328,7 +314,7 @@ export default function ContactHeader({
                     }}
                   >
                     <Box sx={{ display: 'flex', alignItems: 'center', pr: 5 }}>
-                      <Typography variant="h5" sx={{ fontWeight: 500, lineHeight: 1.2, overflowWrap: 'anywhere' }}>
+                      <Typography variant="h5" component="h1" sx={{ fontWeight: 500, lineHeight: 1.2, overflowWrap: 'anywhere' }}>
                         {displayName}
                       </Typography>
                       {isMe && (
@@ -480,7 +466,7 @@ export default function ContactHeader({
                     }}
                   >
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Typography variant="h5" sx={{ fontWeight: 500, lineHeight: 1.2, overflowWrap: 'anywhere' }}>
+                      <Typography variant="h5" component="h1" sx={{ fontWeight: 500, lineHeight: 1.2, overflowWrap: 'anywhere' }}>
                         {displayName}
                       </Typography>
                       {isMe && (

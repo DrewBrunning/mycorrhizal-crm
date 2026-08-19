@@ -39,7 +39,8 @@ export default function LifeEventList({
             <Box>
               <Box display="flex" alignItems="center" gap={1} mb={0.5}>
                 <CakeIcon fontSize="small" color="action" />
-                <Typography variant="subtitle2">
+                {/* #211: a per-item title in a list, not a page heading. */}
+                <Typography variant="subtitle2" component="p">
                   {t(`lifeEvent.types.${event.type}`, event.type)}
                 </Typography>
                 {event.category && (
