@@ -153,10 +153,11 @@ class Migration13To14Test {
         createV13Database()
 
         val db = Room.databaseBuilder(context, AppDatabase::class.java, dbFile.absolutePath)
-            // 13->15: MIGRATION_14_15 (M12's cached_cadence_policies table) is
-            // registered so the chain 13->14->15 reaches the current version —
+            // 13->16: MIGRATION_14_15 (M12's cached_cadence_policies table) and
+            // MIGRATION_15_16 (issue #212's cached_contacts.isFavorite column) are
+            // registered so the chain 13->14->15->16 reaches the current version —
             // this test's subject stays the 13->14 hop (outbox + FTS columns).
-            .addMigrations(MIGRATION_13_14, MIGRATION_14_15)
+            .addMigrations(MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16)
             .build()
 
         // The not-yet-synced outbox row survived — the whole reason this migration is

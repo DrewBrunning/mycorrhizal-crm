@@ -25,6 +25,10 @@ data class ContactSummary(
     @Json(name = "photo_thumbnail") val photoThumbnail: String? = null,
     val circles: List<String>? = null,
     val archived: Boolean = false,
+    // Issue #212: CRM-local favorite flag (web #173). The backend serializes
+    // it unconditionally (no omitempty — it defaults to false), mirroring the
+    // archived flag, so the star icon can always trust its presence.
+    @Json(name = "is_favorite") val isFavorite: Boolean = false,
     /** Change-feed tombstone marker (T17): true only via ?since=. */
     val deleted: Boolean = false,
     /** Device Contacts LOOKUP_KEY after a T57 import (§7.5.4); null otherwise. */

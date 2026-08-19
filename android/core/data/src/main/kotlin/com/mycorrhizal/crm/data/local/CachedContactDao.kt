@@ -88,6 +88,10 @@ interface CachedContactDao {
     @Query("UPDATE cached_contacts SET archived = :archived WHERE id = :id")
     suspend fun setArchived(id: Int, archived: Boolean)
 
+    /** Issue #212: flip a cached contact's favorite flag (favorite/unfavorite). */
+    @Query("UPDATE cached_contacts SET isFavorite = :isFavorite WHERE id = :id")
+    suspend fun setFavorite(id: Int, isFavorite: Boolean)
+
     /** Records the device LOOKUP_KEY after a T57 import (§7.5.4). */
     @Query("UPDATE cached_contacts SET deviceLookupKey = :lookupKey WHERE id = :id")
     suspend fun setDeviceLookupKey(id: Int, lookupKey: String?)

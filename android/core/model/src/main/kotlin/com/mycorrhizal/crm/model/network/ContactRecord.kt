@@ -21,6 +21,9 @@ data class ContactRecordResponse(
     val photo: String? = null,
     @Json(name = "photo_thumbnail") val photoThumbnail: String? = null,
     val archived: Boolean = false,
+    // Issue #212: CRM-local favorite flag (web #173), always on the wire —
+    // see ContactSummary.isFavorite.
+    @Json(name = "is_favorite") val isFavorite: Boolean = false,
     val notes: List<Note>? = null,
     val activities: List<Activity>? = null,
     val reminders: List<Reminder>? = null,

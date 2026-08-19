@@ -54,3 +54,20 @@ val MIGRATION_14_15: Migration = object : Migration(startVersion = 14, endVersio
         )
     }
 }
+
+/**
+ * Issue #212 (web #173): adds `isFavorite` to `cached_contacts` — the
+ * CRM-local favorite flag mirrors into the cache like `archived` so the star
+ * survives offline. A single `ALTER TABLE ADD COLUMN` (rows preserved).
+ *
+ * Hand-written rather than relying on `fallbackToDestructiveMigration` for
+ * the same reason as the two migrations above: the destructive path drops
+ * every table, `pending_interactions` (a real not-yet-synced outbox)
+ * included. The cache itself is rebuildable, but the outbox is not, so any
+ * version bump must keep this out of the destructive path.
+ */
+val MIGRATION_15_16: Migration = object : Migration(startVersion = 15, endVersion = 16) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("ALTER TABLE `cached_contacts` ADD COLUMN `isFavorite` INTEGER NOT NULL DEFAULT 0")
+    }
+}

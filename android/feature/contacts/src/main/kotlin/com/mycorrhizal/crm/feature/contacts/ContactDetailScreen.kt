@@ -32,6 +32,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Call
 import androidx.compose.material.icons.outlined.Close
@@ -44,6 +45,7 @@ import androidx.compose.material.icons.outlined.Message
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.outlined.Videocam
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.AlertDialog
@@ -118,6 +120,7 @@ import com.mycorrhizal.crm.model.network.fieldValueDisplay
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.model.util.DateFormat.display
 import com.mycorrhizal.crm.ui.LocalServerUrl
+import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.LocalDarkTheme
 import com.mycorrhizal.crm.ui.LocalDrawerOpen
@@ -584,6 +587,8 @@ fun ContactDetailScreen(
                     completions = state.completions,
                     onUndoCompletion = { id -> pendingUndoCompletionId = id },
                     onUploadProfilePicture = onUploadProfilePicture,
+                    // Issue #212: the header star toggle (web #173).
+                    onToggleFavorite = viewModel::toggleFavorite,
                     externalIdentities = state.externalIdentities,
                     immichSummary = state.immichSummary,
                     onDeleteExternalIdentity = { pendingExternalLinkDelete = it },
@@ -870,6 +875,9 @@ fun ContactDetailContent(
      * entry point (web's `ContactHeader`); null renders the avatar plain.
      */
     onUploadProfilePicture: (() -> Unit)? = null,
+    // Issue #212: the header star toggle (web #173) — optimistic in the
+    // ViewModel with a rollback on failure.
+    onToggleFavorite: () -> Unit = {},
     // Issue #220: the External Links panel (ExternalIdentity substrate). The
     // Immich link renders as a rich row (thumbnail, person name, photo count)
     // via [immichSummary]; other systems render generically.
@@ -911,14 +919,37 @@ fun ContactDetailContent(
                 )
                 // #208: the contact name is the de facto page heading but
                 // carried no heading semantics, so TalkBack's heading
-                // navigation skipped it.
-                Text(
-                    text = card?.displayName ?: stringResource(R.string.contact_title_fallback),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.semantics { heading() },
-                )
+                // navigation skipped it. The favorite star sits beside it
+                // (web's ContactHeader), kept out of the heading's semantics.
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = card?.displayName ?: stringResource(R.string.contact_title_fallback),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.semantics { heading() },
+                    )
+                    // Issue #212: the always-visible star toggle, mirroring web
+                    // ContactHeader — optimistic flip + rollback in the
+                    // ViewModel so the star never silently disagrees with the DB.
+                    AccessibleIconButton(onClick = onToggleFavorite) {
+                        Icon(
+                            imageVector = if (contact.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                            contentDescription = stringResource(
+                                if (contact.isFavorite) R.string.contacts_unfavorite_contact else R.string.contacts_favorite_contact,
+                                card?.displayName.orEmpty(),
+                            ),
+                            tint = if (contact.isFavorite) {
+                                MaterialTheme.colorScheme.tertiary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        )
+                    }
+                }
                 val nickname = card?.nicknames?.firstOrNull()?.name
                 val birthday = card?.anniversaries?.firstOrNull { it.kind == "birth" }?.date?.partial
                 if (nickname != null) {

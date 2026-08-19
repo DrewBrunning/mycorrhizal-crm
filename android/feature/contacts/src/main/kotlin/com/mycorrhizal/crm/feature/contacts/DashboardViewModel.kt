@@ -23,6 +23,10 @@ data class DashboardUiState(
     val upcomingReminders: List<DashboardReminder> = emptyList(),
     val randomContacts: List<DashboardRandomContact> = emptyList(),
     val overdueCadences: List<OverdueCadence> = emptyList(),
+    // Issue #212: the favorites quick-access block (web #173) — the user's
+    // favorite, non-archived contacts, name-ordered. Same wire shape as
+    // randomContacts, so the same model serves both.
+    val favorites: List<DashboardRandomContact> = emptyList(),
     val isLoading: Boolean = false,
     /** The dashboard-wide load failure; the screen replaces the widgets with an error + retry. */
     val error: String? = null,
@@ -41,11 +45,12 @@ data class DashboardUiState(
 
 /**
  * M10 — the M3 dashboard composite consumer. One
- * `GET /dashboard` call populates all four widgets (birthdays, upcoming
- * reminders, random "stay in touch" contacts, overdue cadences) — the
+ * `GET /dashboard` call populates the widgets (birthdays, upcoming
+ * reminders, random "stay in touch" contacts, overdue cadences, and — since
+ * issue #212 — the favorites quick-access block) — the
  * composite replaced the two legacy endpoints this ViewModel used to fan out
  * (`listUpcomingBirthdays` + `listUpcomingReminders`), and it aggregates the
- * two widgets that had no call at all.
+ * widgets that had no call at all.
  *
  * Complete/skip is optimistic: the reminder leaves the widget immediately and
  * is restored at its original position if the call fails (M10 test case 3).
@@ -86,6 +91,7 @@ class DashboardViewModel @Inject constructor(
                             upcomingReminders = dashboard.upcomingReminders,
                             randomContacts = dashboard.randomContacts,
                             overdueCadences = dashboard.overdue,
+                            favorites = dashboard.favorites,
                         )
                     }
                 },

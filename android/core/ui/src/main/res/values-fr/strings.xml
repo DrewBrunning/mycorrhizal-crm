@@ -10,6 +10,9 @@
     <string name="dashboard_reminders">Rappels à venir</string>
     <string name="dashboard_overdue_cadences">Relations en retard</string>
     <string name="dashboard_random_contacts">Restez en contact</string>
+    <!-- Issue #212: the favorites quick-access block (web #173). -->
+    <string name="dashboard_favorites">Favoris</string>
+    <string name="dashboard_no_favorites">Aucun favori</string>
     <string name="dashboard_no_birthdays">Aucun anniversaire à venir</string>
     <string name="dashboard_no_reminders">Aucun rappel à venir</string>
     <string name="dashboard_no_contacts">Aucun contact disponible</string>
@@ -86,6 +89,8 @@
     <string name="contacts_filter_circle">Cercle</string>
     <string name="contacts_all_circles">Tous les cercles</string>
     <string name="contacts_show_archived">Afficher les archivés</string>
+    <!-- Issue #212: the favorites-only lens, mirroring the archived switch (web #173). -->
+    <string name="contacts_show_favorites">Afficher les favoris</string>
     <string name="contacts_select_mode">Sélectionner des contacts</string>
     <string name="contacts_exit_select_mode">Quitter la sélection</string>
     <string name="contacts_selected_count">%1$d sélectionnés</string>
@@ -95,6 +100,10 @@
     <!-- Issue #210/#214: onClickLabel/onLongClickLabel for a contact row's combinedClickable -->
     <string name="contacts_open_contact">ouvrir le contact</string>
     <string name="contacts_row_select_action">sélectionner le contact</string>
+    <!-- Issue #212: the per-row / header star toggle's accessible labels
+         (web's contacts.favoriteContact / unfavoriteContact). -->
+    <string name="contacts_favorite_contact">Marquer %1$s comme favori</string>
+    <string name="contacts_unfavorite_contact">Retirer %1$s des favoris</string>
 
     <!-- Contact list: cross-entity search (T87) -->
     <string name="contacts_search_results_header">%1$d correspondances dans les notes et les activités</string>

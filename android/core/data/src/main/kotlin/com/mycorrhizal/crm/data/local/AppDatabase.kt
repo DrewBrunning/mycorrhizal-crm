@@ -38,7 +38,7 @@ import androidx.room.TypeConverters
         PendingInteraction::class,
         CustomLinkAction::class,
     ],
-    version = 15,
+    version = 16,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)

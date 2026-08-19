@@ -53,10 +53,14 @@ class DashboardViewModelTest {
                 contactName = "Bobby Smith",
             ),
         ),
+        // Issue #212: the favorites quick-access block (web #173).
+        favorites = listOf(
+            DashboardRandomContact(id = 9, firstname = "Zebra", lastname = "Smith", nickname = "Z"),
+        ),
     )
 
     @Test
-    fun `one getDashboard call populates all four widgets and the legacy endpoints are never called`() =
+    fun `one getDashboard call populates every widget and the legacy endpoints are never called`() =
         runTest(mainDispatcherRule.testDispatcher) {
             val (viewModel, apiClient, _) = newViewModel()
             coEvery { apiClient.getDashboard() } returns Result.success(fullDashboard())
@@ -69,6 +73,8 @@ class DashboardViewModelTest {
             assertEquals(1, state.upcomingReminders.size)
             assertEquals(1, state.randomContacts.size)
             assertEquals(1, state.overdueCadences.size)
+            assertEquals(1, state.favorites.size)
+            assertEquals("Zebra", state.favorites[0].firstname)
             // The M3 embedded contact name survives into the widget.
             assertEquals("Bobby Smith", state.upcomingReminders[0].contactName)
 
@@ -81,7 +87,7 @@ class DashboardViewModelTest {
         }
 
     @Test
-    fun `an empty composite renders four empty widgets without an error`() =
+    fun `an empty composite renders empty widgets without an error`() =
         runTest(mainDispatcherRule.testDispatcher) {
             val (viewModel, apiClient, _) = newViewModel()
             coEvery { apiClient.getDashboard() } returns Result.success(DashboardResponse())
@@ -95,6 +101,7 @@ class DashboardViewModelTest {
             assertTrue(state.upcomingReminders.isEmpty())
             assertTrue(state.randomContacts.isEmpty())
             assertTrue(state.overdueCadences.isEmpty())
+            assertTrue(state.favorites.isEmpty())
         }
 
     @Test

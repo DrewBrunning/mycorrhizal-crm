@@ -72,6 +72,24 @@ class ContactRepositoryImplTest {
     }
 
     @Test
+    fun `listContacts caches the favorite flag into Room`() = runTest {
+        // Issue #212: the star must survive the cache mirror (and thus the
+        // offline list) exactly as the server sent it.
+        coEvery { apiClient.listContacts(any(), any(), any(), any(), any(), any()) } returns Result.success(
+            com.mycorrhizal.crm.model.network.ContactsPage(
+                contacts = listOf(summary(1, "Alice").copy(isFavorite = true), summary(2, "Bob")),
+                nextCursor = "",
+            ),
+        )
+
+        repository.listContacts()
+
+        val cached = db.cachedContactDao().getAll().associateBy { it.id }
+        assertEquals(true, cached[1]?.isFavorite)
+        assertEquals(false, cached[2]?.isFavorite)
+    }
+
+    @Test
     fun `listContacts forwards the circle filter and archived toggle to the client`() = runTest {
         // M23: the list's filter dropdown + archived switch are only as good as the
         // repository's willingness to pass them through — this pins the data layer.
@@ -109,8 +127,91 @@ class ContactRepositoryImplTest {
                 search = null,
                 includeArchived = null,
                 circle = null,
+                favorites = null,
             )
         }
+    }
+
+    // --- Issue #212: the favorites filter + favorite/unfavorite (web #173) ---
+
+    @Test
+    fun `listContacts forwards the favorites filter to the client`() = runTest {
+        // MockK records the compiled default for trailing params, so the stub
+        // must name the favorites=true it wants matched — a 6-any() stub would
+        // only ever answer favorites=null calls.
+        coEvery { apiClient.listContacts(any(), any(), any(), any(), any(), any(), true) } returns Result.success(
+            com.mycorrhizal.crm.model.network.ContactsPage(contacts = emptyList(), nextCursor = ""),
+        )
+
+        repository.listContacts(favorites = true)
+
+        io.mockk.coVerify(exactly = 1) {
+            apiClient.listContacts(
+                cursor = null,
+                limit = 50,
+                search = null,
+                includeArchived = null,
+                circle = null,
+                favorites = true,
+            )
+        }
+    }
+
+    @Test
+    fun `listContacts leaves the favorites filter null by default`() = runTest {
+        // A plain list request must not send favorites (the backend treats
+        // absent as "all contacts", not favorites-only).
+        coEvery { apiClient.listContacts(any(), any(), any(), any(), any(), any()) } returns Result.success(
+            com.mycorrhizal.crm.model.network.ContactsPage(contacts = emptyList(), nextCursor = ""),
+        )
+
+        repository.listContacts()
+
+        io.mockk.coVerify(exactly = 1) {
+            apiClient.listContacts(
+                cursor = null,
+                limit = 50,
+                search = null,
+                includeArchived = null,
+                circle = null,
+                favorites = null,
+            )
+        }
+    }
+
+    @Test
+    fun `favoriteContact flips the cached favorite flag on success`() = runTest {
+        db.cachedContactDao().upsert(com.mycorrhizal.crm.data.local.CachedContact(id = 5, fn = "Dana White", isFavorite = false))
+        coEvery { apiClient.favoriteContact(5) } returns Result.success(Unit)
+
+        val result = repository.favoriteContact(5)
+
+        assertTrue(result.isSuccess)
+        assertEquals(true, db.cachedContactDao().getById(5)?.isFavorite)
+        io.mockk.coVerify(exactly = 1) { apiClient.favoriteContact(5) }
+    }
+
+    @Test
+    fun `unfavoriteContact flips the cached favorite flag back`() = runTest {
+        db.cachedContactDao().upsert(com.mycorrhizal.crm.data.local.CachedContact(id = 5, fn = "Dana White", isFavorite = true))
+        coEvery { apiClient.unfavoriteContact(5) } returns Result.success(Unit)
+
+        val result = repository.unfavoriteContact(5)
+
+        assertTrue(result.isSuccess)
+        assertEquals(false, db.cachedContactDao().getById(5)?.isFavorite)
+        io.mockk.coVerify(exactly = 1) { apiClient.unfavoriteContact(5) }
+    }
+
+    @Test
+    fun `favoriteContact failure leaves the cached flag unchanged`() = runTest {
+        db.cachedContactDao().upsert(com.mycorrhizal.crm.data.local.CachedContact(id = 5, fn = "Dana White", isFavorite = false))
+        coEvery { apiClient.favoriteContact(5) } returns Result.failure(ApiError.Server(500, "boom"))
+
+        val result = repository.favoriteContact(5)
+
+        assertTrue(result.isFailure)
+        assertEquals(false, db.cachedContactDao().getById(5)?.isFavorite)
     }
 
     @Test
