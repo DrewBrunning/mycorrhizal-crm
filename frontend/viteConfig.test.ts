@@ -34,4 +34,20 @@ describe('Vite configuration (T48)', () => {
     expect(names).toContain('vite:react-babel');
     expect(names).toContain('vite-plugin-pwa');
   });
+
+  test('splits vendor packages into coarse chunks via a manualChunks function', () => {
+    // Vite 8's Rolldown bundler dropped the Rollup object form of
+    // manualChunks (chunk name -> bare module list) and only accepts a
+    // function. The coarse vendor split exists to keep HTTP caching effective
+    // and to stay under Workbox's per-file precache limit, so a reversion to
+    // the object form -- which fails the production build -- is pinned here.
+    const manualChunks = viteConfig.build?.rollupOptions?.output?.manualChunks;
+    expect(typeof manualChunks).toBe('function');
+    const fn = manualChunks as (id: string) => string | undefined;
+    expect(fn('/app/node_modules/@mui/material/index.js')).toBe('mui-core');
+    expect(fn('/app/node_modules/react-dom/index.js')).toBe('react-vendor');
+    expect(fn('/app/node_modules/@mdi/js/index.js')).toBe('mdi');
+    expect(fn('/app/node_modules/not-a-vendor-pkg/index.js')).toBeUndefined();
+    expect(fn('/app/src/App.tsx')).toBeUndefined();
+  });
 });
