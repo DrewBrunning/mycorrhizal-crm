@@ -2,9 +2,7 @@ package com.mycorrhizal.crm.feature.timeline
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
-import androidx.compose.ui.test.hasAnyAncestor
-import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.isToggleable
+import androidx.compose.ui.test.assertIsToggleable
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -92,11 +90,14 @@ class ReminderFormScreenTest {
             ),
             onReoccurFromCompletionChange = { value = it },
         )
-        // The switch sits in the trailing slot of the "Reschedule from completion date"
-        // row; scope the toggleable node to that row so it can't grab the by-mail switch.
-        composeTestRule.onNode(
-            hasAnyAncestor(hasText("Reschedule from completion date")).and(isToggleable()),
-        ).performScrollTo().performClick()
+        // #199: Modifier.toggleable on the ListItem merges the "Reschedule from
+        // completion date" headline into the same node as the toggle state, so
+        // it's reachable directly by its label — no more scoping through an
+        // ancestor to disambiguate it from the by-mail switch.
+        composeTestRule.onNodeWithText("Reschedule from completion date")
+            .assertIsToggleable()
+            .performScrollTo()
+            .performClick()
         assertEquals(false, value)
     }
 

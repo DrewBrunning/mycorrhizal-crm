@@ -17,6 +17,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.mycorrhizal.crm.model.network.ImportAddedValue
 import com.mycorrhizal.crm.model.network.ImportMergeDiff
@@ -106,6 +109,7 @@ private fun ImportRowCard(
                     text = error,
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
                 )
             }
             duplicateMatch != null -> {
@@ -120,12 +124,14 @@ private fun ImportRowCard(
                     ),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
                 )
             }
             batchDuplicateOf != null -> Text(
                 text = stringResource(R.string.import_batch_duplicate_of, batchDuplicateOf + 1),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
             )
             else -> Text(
                 text = stringResource(R.string.import_new_contact),

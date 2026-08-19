@@ -19,8 +19,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.error
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.mycorrhizal.crm.ui.R
 
@@ -41,6 +47,17 @@ fun QuickCaptureSheet(
 ) {
     if (state.saved) {
         LaunchedEffect(Unit) { onDismiss() }
+    }
+
+    // #207: a failed save previously reported its reason as a loose Text
+    // below the note field — two controls away from the title field it was
+    // actually about, silent (no live region), and never moved focus. Moving
+    // focus to the title field on error is worth doing on its own merits: the
+    // overlay auto-dismisses after 30s (tracked separately, #201), so making
+    // the user hunt for the problem is expensive.
+    val titleFocusRequester = remember { FocusRequester() }
+    LaunchedEffect(state.error) {
+        if (state.error != null) titleFocusRequester.requestFocus()
     }
 
     Card(
@@ -85,13 +102,23 @@ fun QuickCaptureSheet(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
+            // #207: isError + supportingText give the field the platform's own
+            // error affordances (visual treatment, not colour alone), and
+            // semantics { error(...) } is what makes TalkBack say "invalid
+            // entry" with the reason — none of that came from the old loose
+            // Text below the note field.
             OutlinedTextField(
                 value = state.title,
                 onValueChange = state::onTitleChange,
                 label = { Text(stringResource(R.string.quick_capture_title_label)) },
                 singleLine = true,
                 enabled = !state.isSaving,
-                modifier = Modifier.fillMaxWidth(),
+                isError = state.error != null,
+                supportingText = state.error?.let { message -> { Text(message) } },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(titleFocusRequester)
+                    .semantics { state.error?.let { error(it) } },
             )
             OutlinedTextField(
                 value = state.type,
@@ -110,14 +137,7 @@ fun QuickCaptureSheet(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            state.error?.let {
-                Text(
-                    text = it,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-
+            val savingLabel = stringResource(R.string.a11y_state_saving)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -132,7 +152,9 @@ fun QuickCaptureSheet(
                 Button(
                     onClick = state::save,
                     enabled = !state.isSaving,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .semantics { if (state.isSaving) stateDescription = savingLabel },
                 ) {
                     if (state.isSaving) {
                         CircularProgressIndicator(

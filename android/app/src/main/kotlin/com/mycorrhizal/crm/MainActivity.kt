@@ -5,7 +5,6 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.net.Uri
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -59,6 +58,14 @@ class MainActivity : ComponentActivity() {
     // while the main tree isn't composed yet (e.g. while still logged out) is
     // still delivered once the NavHost exists.
     private val pendingDeepLink = kotlinx.coroutines.flow.MutableStateFlow<android.net.Uri?>(null)
+
+    // #203 (issue #203): the OIDC-return failure message used to be a Toast,
+    // which is announced inconsistently by TalkBack and can't be re-read.
+    // Both failure paths in handleOidcReturn end with the session logged out,
+    // so this is consumed by LoginScreen's existing SnackbarHostState — same
+    // StateFlow shape as pendingDeepLink above, for the same reason: a
+    // cold-start failure fires before setContent{} composes anything.
+    private val oidcError = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
 
     // M25: the user's chosen UI language must reach the very first frame.
     // attachBaseContext runs before Hilt injection, so the locale comes from
@@ -129,6 +136,8 @@ class MainActivity : ComponentActivity() {
                     darkTheme = darkTheme,
                     deepLinks = pendingDeepLink,
                     onDeepLinkHandled = { pendingDeepLink.value = null },
+                    oidcError = oidcError,
+                    onOidcErrorShown = { oidcError.value = null },
                 )
             }
         }
@@ -165,7 +174,7 @@ class MainActivity : ComponentActivity() {
     private fun handleOidcReturn(uri: Uri?) {
         when (val parsed = parseOidcReturn(uri)) {
             is OidcReturn.Failure -> {
-                Toast.makeText(this, getString(R.string.oidc_login_failed), Toast.LENGTH_LONG).show()
+                oidcError.value = getString(R.string.oidc_login_failed)
             }
             is OidcReturn.Success -> {
                 val result = parsed
@@ -198,7 +207,7 @@ class MainActivity : ComponentActivity() {
                         },
                         onFailure = {
                             sessionManager.clearSession()
-                            Toast.makeText(this@MainActivity, getString(R.string.oidc_login_failed), Toast.LENGTH_LONG).show()
+                            oidcError.value = getString(R.string.oidc_login_failed)
                         },
                     )
                 }

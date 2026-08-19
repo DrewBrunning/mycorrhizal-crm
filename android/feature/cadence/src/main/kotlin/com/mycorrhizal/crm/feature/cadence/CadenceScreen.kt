@@ -1,6 +1,5 @@
 package com.mycorrhizal.crm.feature.cadence
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -49,6 +49,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -344,7 +349,14 @@ fun CadenceDialog(
 
     AlertDialog(
         onDismissRequest = { if (!isMutating) onDismiss() },
-        title = { Text(stringResource(if (isEditing) R.string.cadence_edit_title else R.string.cadence_create_title)) },
+        // #208: an AlertDialog's title slot isn't marked as a heading by
+        // default, so TalkBack's heading navigation skips right over it.
+        title = {
+            Text(
+                stringResource(if (isEditing) R.string.cadence_edit_title else R.string.cadence_create_title),
+                modifier = Modifier.semantics { heading() },
+            )
+        },
         text = {
             Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -365,31 +377,42 @@ fun CadenceDialog(
                         text = stringResource(R.string.cadence_interval_required),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
                     )
                 }
-                Text(stringResource(R.string.cadence_qualifying_types), style = MaterialTheme.typography.titleSmall)
+                Text(
+                    stringResource(R.string.cadence_qualifying_types),
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.semantics { heading() },
+                )
                 Text(
                     text = stringResource(R.string.cadence_qualifying_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 CadenceQualifyingType.ALL.forEach { token ->
+                    // #199: a bare Checkbox has no text of its own, and the label
+                    // Text carried its own separate .clickable — TalkBack found two
+                    // adjacent focusable nodes (an unnamed checkbox, then a plain
+                    // clickable label with no role/state). Modifier.toggleable on
+                    // the row merges the label into the checkbox's accessible name.
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .toggleable(
+                                value = token in selected,
+                                onValueChange = { checked ->
+                                    selected = if (checked) selected + token else selected - token
+                                },
+                                role = Role.Checkbox,
+                            ),
                     ) {
                         Checkbox(
                             checked = token in selected,
-                            onCheckedChange = { checked ->
-                                selected = if (checked) selected + token else selected - token
-                            },
+                            onCheckedChange = null,
                         )
-                        Text(
-                            text = cadenceTypeLabel(token),
-                            modifier = Modifier.clickable {
-                                selected = if (token in selected) selected - token else selected + token
-                            },
-                        )
+                        Text(text = cadenceTypeLabel(token))
                     }
                 }
             }

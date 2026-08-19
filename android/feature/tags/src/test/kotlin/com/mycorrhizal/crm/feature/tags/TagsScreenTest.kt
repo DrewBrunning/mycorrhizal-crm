@@ -1,6 +1,10 @@
 package com.mycorrhizal.crm.feature.tags
 
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
 import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
@@ -54,5 +58,25 @@ class TagsScreenTest {
         setScreen(darkTheme = true)
 
         composeTestRule.assertAccessibleSemantics()
+    }
+
+    @Test
+    fun `the rename dialog title is a heading`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                TagNameDialog(
+                    title = "Rename tag",
+                    initial = "vip",
+                    confirmLabel = "Save",
+                    onConfirm = {},
+                    onDismiss = {},
+                )
+            }
+        }
+
+        // #208: AlertDialog title slots aren't marked as headings by default,
+        // so TalkBack's heading navigation skipped this dialog entirely.
+        composeTestRule.onNodeWithText("Rename tag")
+            .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
     }
 }

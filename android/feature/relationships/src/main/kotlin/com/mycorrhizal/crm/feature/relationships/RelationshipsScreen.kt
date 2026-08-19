@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
@@ -48,6 +50,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -386,27 +389,42 @@ fun RelationshipEdgeDialog(
                         )
                     }
                 } else {
-                    Column {
+                    // #199: bare RadioButtons have no text of their own, and the
+                    // label Text carried its own separate .clickable — TalkBack
+                    // found two adjacent focusable nodes per row (an unnamed
+                    // radio, then a plain clickable label with no role/state).
+                    // Modifier.selectable on each row merges the label into the
+                    // radio's accessible name; selectableGroup on the Column
+                    // groups them for correct radio-group navigation.
+                    Column(modifier = Modifier.selectableGroup()) {
                         Text(stringResource(R.string.relationships_entry_mode), style = MaterialTheme.typography.labelMedium)
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            RadioButton(
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.selectable(
                                 selected = entryMode == EntryMode.MANUAL,
                                 onClick = { entryMode = EntryMode.MANUAL },
-                            )
-                            Text(
-                                text = stringResource(R.string.relationships_enter_manually),
-                                modifier = Modifier.clickable { entryMode = EntryMode.MANUAL },
-                            )
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                role = Role.RadioButton,
+                            ),
+                        ) {
                             RadioButton(
+                                selected = entryMode == EntryMode.MANUAL,
+                                onClick = null,
+                            )
+                            Text(text = stringResource(R.string.relationships_enter_manually))
+                        }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.selectable(
                                 selected = entryMode == EntryMode.LINKED,
                                 onClick = { entryMode = EntryMode.LINKED },
+                                role = Role.RadioButton,
+                            ),
+                        ) {
+                            RadioButton(
+                                selected = entryMode == EntryMode.LINKED,
+                                onClick = null,
                             )
-                            Text(
-                                text = stringResource(R.string.relationships_link_to_contact),
-                                modifier = Modifier.clickable { entryMode = EntryMode.LINKED },
-                            )
+                            Text(text = stringResource(R.string.relationships_link_to_contact))
                         }
                     }
 

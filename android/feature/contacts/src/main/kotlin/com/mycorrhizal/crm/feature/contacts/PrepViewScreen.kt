@@ -41,6 +41,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -248,9 +250,12 @@ private fun PrepHeader(briefing: ContactBriefing) {
                 size = 56.dp,
             )
             Column(modifier = Modifier.weight(1f)) {
+                // #208: the contact name is the de facto page heading but
+                // carried no heading semantics.
                 Text(
                     text = briefing.name.ifBlank { stringResource(R.string.prep_unknown_contact) },
                     style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.semantics { heading() },
                 )
                 Text(
                     text = stringResource(R.string.prep_subtitle),

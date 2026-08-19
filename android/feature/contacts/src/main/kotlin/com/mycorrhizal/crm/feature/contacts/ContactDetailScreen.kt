@@ -77,6 +77,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -689,11 +691,15 @@ fun ContactDetailContent(
                     ),
                     size = 120.dp,
                 )
+                // #208: the contact name is the de facto page heading but
+                // carried no heading semantics, so TalkBack's heading
+                // navigation skipped it.
                 Text(
                     text = card?.displayName ?: stringResource(R.string.contact_title_fallback),
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center,
+                    modifier = Modifier.semantics { heading() },
                 )
                 val nickname = card?.nicknames?.firstOrNull()?.name
                 val birthday = card?.anniversaries?.firstOrNull { it.kind == "birth" }?.date?.partial
@@ -983,11 +989,16 @@ private fun SectionCard(title: String, content: @Composable () -> Unit) {
             // against the sans/mono field values below). labelLarge itself
             // stays global-sans (it's also the Button/NavigationDrawerItem
             // default) -- scoped here via .copy(fontFamily = ...) instead.
+            // #208: section titles carried no heading semantics, so
+            // TalkBack's heading navigation skipped every card on this
+            // screen. One fix here covers all SectionCard call sites.
             Text(
                 text = title,
                 style = MaterialTheme.typography.labelLarge.copy(fontFamily = MycorrhizalFonts.mono),
                 color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                modifier = Modifier
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .semantics { heading() },
             )
             content()
         }
@@ -997,11 +1008,14 @@ private fun SectionCard(title: String, content: @Composable () -> Unit) {
 @Composable
 private fun SectionTitle(text: String) {
     // T63 Android port: see SectionCard's matching comment above.
+    // #208: see SectionCard's matching comment above.
     Text(
         text = text,
         style = MaterialTheme.typography.labelLarge.copy(fontFamily = MycorrhizalFonts.mono),
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier = Modifier
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .semantics { heading() },
     )}
 
 @Composable
