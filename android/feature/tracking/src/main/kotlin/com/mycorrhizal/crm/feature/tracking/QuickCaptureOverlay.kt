@@ -2,8 +2,6 @@ package com.mycorrhizal.crm.feature.tracking
 
 import android.content.Context
 import android.graphics.PixelFormat
-import android.os.Handler
-import android.os.Looper
 import android.view.Gravity
 import android.view.WindowManager
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -31,7 +29,12 @@ import java.time.format.DateTimeFormatter
  * logged without leaving the call screen; the caller's number is matched to a
  * contact for the participant chip. The overlay requires the SYSTEM_ALERT_WINDOW
  * special permission; without it, nothing is shown (graceful degradation).
- * It dismisses itself after [DISPLAY_MS] or on tap of X/Cancel.
+ * It dismisses itself after the [QuickCaptureAutoDismiss] window — which
+ * exists so an ignored sheet does not sit on screen forever, and only applies
+ * while the sheet is untouched: the first focus or keystroke cancels it, so a
+ * user mid-form is never timed out (WCAG 2.2.1, #201). It also dismisses on
+ * tap of X/Cancel. Because the timer only fires with no interaction at all,
+ * nothing typed is ever silently dropped — there is nothing to drop.
  *
  * An instance (not a singleton `object`) so the view it retains is scoped to
  * its owner's lifetime rather than the process's — [CallDetectionService]
@@ -49,7 +52,7 @@ class QuickCaptureOverlay(
 ) {
 
     private var composeView: ComposeView? = null
-    private val handler = Handler(Looper.getMainLooper())
+    private val autoDismiss = QuickCaptureAutoDismiss(onDismiss = { dismiss() })
 
     fun show(context: Context, phoneNumber: String? = null) {
         dismiss()
@@ -62,6 +65,7 @@ class QuickCaptureOverlay(
                         contactRepository = contactRepository,
                         activityRepository = activityRepository,
                         onDismiss = { dismiss() },
+                        onFirstInteraction = autoDismiss::cancel,
                     )
                 }
             }
@@ -81,12 +85,11 @@ class QuickCaptureOverlay(
         }
         runCatching { windowManager.addView(sheet, params) }
             .onSuccess { composeView = sheet }
-        handler.removeCallbacksAndMessages(null)
-        handler.postDelayed({ dismiss() }, DISPLAY_MS)
+        autoDismiss.arm()
     }
 
     fun dismiss() {
-        handler.removeCallbacksAndMessages(null)
+        autoDismiss.cancel()
         composeView?.let { v ->
             runCatching {
                 (v.context.getSystemService(Context.WINDOW_SERVICE) as WindowManager).removeView(v)
@@ -98,7 +101,6 @@ class QuickCaptureOverlay(
     internal fun isShowingForTest(): Boolean = composeView != null
 
     private companion object {
-        const val DISPLAY_MS = 30_000L
         const val BOTTOM_OFFSET_DP = 120f
     }
 }
@@ -106,7 +108,8 @@ class QuickCaptureOverlay(
 /**
  * Resolves the caller's number to a contact (best-effort, offline Room match)
  * and hands a [QuickCaptureFormState] to the sheet. [resolving] keeps the chip
- * honest while the lookup is in flight.
+ * honest while the lookup is in flight. [onFirstInteraction] cancels the
+ * overlay's auto-dismiss timer the first time the user engages the form (#201).
  */
 @Composable
 private fun QuickCaptureSheetHost(
@@ -114,6 +117,7 @@ private fun QuickCaptureSheetHost(
     contactRepository: ContactRepository,
     activityRepository: ActivityRepository,
     onDismiss: () -> Unit,
+    onFirstInteraction: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -136,12 +140,14 @@ private fun QuickCaptureSheetHost(
                 nowIso = nowIsoString(),
             ),
             blankTitleMessage = context.getString(R.string.quick_capture_title_required),
+            onFirstInteraction = onFirstInteraction,
         )
     }
 
     QuickCaptureSheet(
         state = formState,
         onDismiss = onDismiss,
+        onFirstInteraction = onFirstInteraction,
         resolving = !resolved,
     )
 }

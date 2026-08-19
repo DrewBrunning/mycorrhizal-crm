@@ -123,4 +123,26 @@ class QuickCaptureFormStateTest {
         assertEquals("offline", state.error)
         assertFalse(state.isSaving)
     }
+
+    @Test
+    fun `the first edit invokes onFirstInteraction exactly once`() {
+        // #201 (WCAG 2.2.1): the overlay's auto-dismiss timer must be cancelled
+        // on the first engagement with the form — but only once, and not for a
+        // sheet nobody ever touched (which is exactly when the timer should
+        // still fire).
+        var calls = 0
+        val state = QuickCaptureFormState(
+            activityRepository = mockk<ActivityRepository>(relaxed = true),
+            scope = CoroutineScope(StandardTestDispatcher()),
+            prefill = QuickCapturePrefillFactory.forCall(jane, "2026-08-18T12:00:00Z"),
+            onFirstInteraction = { calls++ },
+        )
+
+        state.onTitleChange("Caught up")
+        state.onTypeChange("lunch")
+        state.onDescriptionChange("Talked about the move")
+        state.onTitleChange("Caught up again")
+
+        assertEquals(1, calls)
+    }
 }

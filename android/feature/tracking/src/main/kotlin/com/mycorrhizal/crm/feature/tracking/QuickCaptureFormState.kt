@@ -16,12 +16,21 @@ import kotlinx.coroutines.launch
  * unavailable). The sheet binds its fields to this; the Save button calls
  * [save], which writes the interaction straight to the server so it can be
  * logged without leaving the call screen.
+ *
+ * [onFirstInteraction] is #201 (WCAG 2.2.1 Timing Adjustable): the overlay
+ * auto-dismisses after [QuickCaptureAutoDismiss]'s window so an ignored sheet
+ * does not sit on screen forever, but once the user has engaged the form the
+ * limit must not keep ticking. The callback is invoked exactly once, on the
+ * first field edit, and lets the owner cancel that timer. The sheet
+ * additionally fires it on the first focus event, so a TalkBack or
+ * switch-access user who navigates to a field without typing also engages.
  */
 class QuickCaptureFormState(
     private val activityRepository: ActivityRepository,
     private val scope: CoroutineScope,
     val prefill: QuickCapturePrefill,
     private val blankTitleMessage: String = "Title is required",
+    private val onFirstInteraction: () -> Unit = {},
 ) {
     var title by mutableStateOf(prefill.title)
         private set
@@ -35,20 +44,30 @@ class QuickCaptureFormState(
         private set
     var error by mutableStateOf<String?>(null)
         private set
+    private var interactionNotified = false
 
     fun onTitleChange(value: String) {
         title = value
         error = null
+        notifyFirstInteraction()
     }
 
     fun onTypeChange(value: String) {
         type = value
         error = null
+        notifyFirstInteraction()
     }
 
     fun onDescriptionChange(value: String) {
         description = value
         error = null
+        notifyFirstInteraction()
+    }
+
+    private fun notifyFirstInteraction() {
+        if (interactionNotified) return
+        interactionNotified = true
+        onFirstInteraction()
     }
 
     fun save() {
