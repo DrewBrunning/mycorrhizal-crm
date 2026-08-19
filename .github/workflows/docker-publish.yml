@@ -66,6 +66,120 @@ jobs:
             ghcr.io/${{ github.repository }}-frontend:${{ env.RELEASE_TAG }}
             ```
 
+  # Builds the same signed release APK android-apk-build.yml's manual "release"
+  # variant produces, and attaches it to this tag's GitHub Release so Obtainium
+  # (which polls Releases for an APK asset) picks it up as an update. No `needs`
+  # on create-release, matching build-and-push below: release creation and asset
+  # upload are independent operations against the same tag, so ordering doesn't
+  # matter, and a signing problem here shouldn't block the Docker images.
+  #
+  # No `if: github.event_name == 'push'` gate (unlike create-release, which
+  # excludes workflow_dispatch to avoid re-generating notes) -- this job never
+  # touches the release body, so it's safe, and useful, to also run on the
+  # manual "recover a lost run" dispatch described above.
+  build-android-apk:
+    name: Build Android release APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    env:
+      # Same rationale as android-apk-build.yml: nothing in the repo sets this,
+      # and GitHub-hosted ubuntu runners install the SDK here.
+      ANDROID_HOME: /usr/local/lib/android/sdk
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # Same gate as android-apk-build.yml, run first so a broken tagged commit
+      # fails here instead of shipping a bad APK on the release.
+      - name: Unit + integration tests (incl. Robolectric)
+        working-directory: android
+        run: ./gradlew testDebugUnitTest
+
+      - name: Lint
+        working-directory: android
+        run: ./gradlew lintDebug
+
+      # Same as android-apk-build.yml's "Materialize release keystore" step --
+      # keep them in sync if either changes.
+      - name: Materialize release keystore
+        id: keystore
+        env:
+          SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          missing=""
+          for var in SIGNING_KEYSTORE_BASE64 SIGNING_STORE_PASSWORD SIGNING_KEY_ALIAS SIGNING_KEY_PASSWORD; do
+            if [ -z "${!var}" ]; then
+              missing="$missing $var"
+            fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Release build requested but signing secrets are incomplete. Missing:$missing"
+            echo "::error::All four signing secrets must be set (SIGNING_KEYSTORE_BASE64, SIGNING_STORE_PASSWORD, SIGNING_KEY_ALIAS, SIGNING_KEY_PASSWORD)."
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP"
+          printf '%s' "$SIGNING_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/keystore.jks"
+          echo "store_file=$RUNNER_TEMP/keystore.jks" >> "$GITHUB_OUTPUT"
+
+      # versionName strips the leading 'v', same idiom the scan job below uses
+      # for the Docker image tag. versionCode uses the workflow's own run
+      # number rather than parsing MAJOR.MINOR.PATCH out of the tag: this repo's
+      # tags aren't strict semver (e.g. v0.2.0-alpha-candidate), so two
+      # pre-release/final tags sharing a MAJOR.MINOR.PATCH would otherwise
+      # collide on the same versionCode. GITHUB_RUN_NUMBER only ever increases
+      # across runs of this workflow, so it's guaranteed strictly increasing
+      # release-over-release -- which is what Android requires to accept an APK
+      # as an upgrade over whatever's already installed. +1000 is headroom
+      # above 1, the static versionCode every non-release build (including a
+      # tester's manually sideloaded android-apk-build.yml APK) still carries.
+      - name: Compute release version
+        id: version
+        env:
+          RELEASE_TAG: ${{ env.RELEASE_TAG }}
+        run: |
+          {
+            echo "name=${RELEASE_TAG#v}"
+            echo "code=$((1000 + GITHUB_RUN_NUMBER))"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Assemble release APK
+        working-directory: android
+        env:
+          SIGNING_STORE_FILE: ${{ steps.keystore.outputs.store_file }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          ./gradlew assembleRelease \
+            -PMYCORRHIZAL_VERSION_NAME=${{ steps.version.outputs.name }} \
+            -PMYCORRHIZAL_VERSION_CODE=${{ steps.version.outputs.code }}
+
+      # No body/generate_release_notes here -- this only uploads the asset, and
+      # deliberately leaves whatever create-release wrote untouched regardless
+      # of which job happens to finish first.
+      - name: Attach APK to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          files: android/app/build/outputs/apk/release/*.apk
+
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
