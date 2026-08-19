@@ -3,6 +3,7 @@ package com.mycorrhizal.crm.feature.contacts
 import android.graphics.BitmapFactory
 import android.util.Base64
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -19,6 +20,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import coil3.compose.AsyncImage
 import com.mycorrhizal.crm.ui.LocalServerUrl
@@ -38,6 +40,12 @@ import com.mycorrhizal.crm.ui.LocalServerUrl
  * Handles both the list's flat `photoThumbnail` and the detail's
  * `card.media[].uri` (kind=photo), which the detail endpoint guarantees via
  * buildMedia.
+ *
+ * [onClick] makes the avatar a button — the profile-photo upload entry point
+ * on the detail screen (web's `ContactHeader` avatar), mirroring that
+ * placement. [onClickLabel] is the TalkBack action label for the click (read
+ * as "double tap to <label>"); use a lowercase verb phrase. When [onClick] is
+ * null the avatar is plain (the list rows).
  */
 @Composable
 fun ContactAvatar(
@@ -45,6 +53,8 @@ fun ContactAvatar(
     contentDescription: String?,
     size: Dp,
     modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    onClickLabel: String? = null,
 ) {
     val serverOrigin = LocalServerUrl.current
     val uri = photoUri?.trim()?.takeIf { it.isNotEmpty() }
@@ -53,8 +63,13 @@ fun ContactAvatar(
     val dataBitmap = remember(uri) {
         if (uri != null && uri.startsWith("data:")) decodeDataUri(uri) else null
     }
+    val sized = modifier.size(size)
     Box(
-        modifier = modifier.size(size),
+        modifier = if (onClick != null) {
+            sized.clickable(onClickLabel = onClickLabel, role = Role.Button, onClick = onClick)
+        } else {
+            sized
+        },
         contentAlignment = Alignment.Center,
     ) {
         val imageBitmap = dataBitmap
@@ -75,7 +90,7 @@ fun ContactAvatar(
                     modifier = Modifier.size(size).clip(CircleShape),
                 )
             }
-            else -> PersonFallback(size)
+            else -> PersonFallback(size, contentDescription)
         }
     }
 }
@@ -117,14 +132,14 @@ private fun decodeDataUri(uri: String): ImageBitmap? {
 }
 
 @Composable
-private fun PersonFallback(size: Dp) {
+private fun PersonFallback(size: Dp, contentDescription: String?) {
     Box(
         modifier = Modifier.size(size).clip(CircleShape),
         contentAlignment = Alignment.Center,
     ) {
         Image(
             painter = ColorPainter(MaterialTheme.colorScheme.surfaceVariant),
-            contentDescription = null,
+            contentDescription = contentDescription,
             modifier = Modifier.matchParentSize(),
         )
         Icon(
