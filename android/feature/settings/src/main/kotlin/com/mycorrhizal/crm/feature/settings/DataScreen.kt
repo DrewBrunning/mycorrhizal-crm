@@ -34,6 +34,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -112,10 +114,13 @@ fun DataScreen(
                     }
                 }
                 item(key = "rel-button") {
+                    val suggestingLabel = stringResource(R.string.a11y_state_saving)
                     Button(
                         onClick = viewModel::suggestRelationships,
                         enabled = !state.isSuggestingRelationships,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .semantics { if (state.isSuggestingRelationships) stateDescription = suggestingLabel },
                     ) {
                         if (state.isSuggestingRelationships) {
                             CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
@@ -142,10 +147,13 @@ fun DataScreen(
                     )
                 }
                 item(key = "addr-button") {
+                    val loadingLabel = stringResource(R.string.a11y_state_loading)
                     OutlinedButton(
                         onClick = viewModel::scanAddressSuggestions,
                         enabled = !state.suggestionsLoading,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .semantics { if (state.suggestionsLoading) stateDescription = loadingLabel },
                     ) {
                         if (state.suggestionsLoading) {
                             CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))

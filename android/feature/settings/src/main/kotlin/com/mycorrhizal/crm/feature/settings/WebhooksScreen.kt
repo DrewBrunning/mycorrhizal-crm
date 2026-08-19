@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -39,6 +40,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -159,7 +165,9 @@ fun WebhooksScreen(
                             text = state.error.orEmpty(),
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp, vertical = 4.dp)
+                                .semantics { liveRegion = LiveRegionMode.Assertive },
                         )
                     }
                 }
@@ -389,20 +397,28 @@ internal fun WebhookEditorDialog(
                         )
                     }
                 }
+                // #199: a bare Switch has no text/contentDescription of its own — the
+                // adjacent "Active" Text was a separate, unassociated node, so
+                // TalkBack announced the switch with no name at all. Modifier.toggleable
+                // on the row merges the label into the switch's accessible name.
                 Row(
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .toggleable(value = isActive, onValueChange = { isActive = it }, role = Role.Switch),
                     verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
                 ) {
                     Text(stringResource(R.string.settings_webhooks_active), style = MaterialTheme.typography.bodyLarge)
-                    Switch(checked = isActive, onCheckedChange = { isActive = it })
+                    Switch(checked = isActive, onCheckedChange = null)
                 }
             }
         },
         confirmButton = {
+            val savingLabel = stringResource(R.string.a11y_state_saving)
             TextButton(
                 onClick = { onConfirm(WebhookInput(name = name.trim(), url = url.trim(), events = events.toList(), isActive = isActive)) },
                 enabled = !isSaving && name.isNotBlank() && url.isNotBlank() && events.isNotEmpty(),
+                modifier = Modifier.semantics { if (isSaving) stateDescription = savingLabel },
             ) {
                 if (isSaving) CircularProgressIndicator(modifier = Modifier.padding(end = 4.dp), strokeWidth = 2.dp)
                 Text(stringResource(R.string.settings_save))

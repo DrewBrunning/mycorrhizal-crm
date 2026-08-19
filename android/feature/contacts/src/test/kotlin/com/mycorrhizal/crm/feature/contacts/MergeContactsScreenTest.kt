@@ -1,12 +1,16 @@
 package com.mycorrhizal.crm.feature.contacts
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.assertIsToggleable
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import com.mycorrhizal.crm.model.network.ContactMergeAssociationCounts
+import com.mycorrhizal.crm.model.network.ContactMergeFieldConflict
 import com.mycorrhizal.crm.model.network.ContactMergePreviewResponse
 import com.mycorrhizal.crm.model.network.ContactMergeResolution
 import com.mycorrhizal.crm.model.network.ContactSummary
@@ -30,6 +34,7 @@ class MergeContactsScreenTest {
     private fun setContent(
         uiState: MergeUiState,
         onPick: (ContactSummary) -> Unit = {},
+        onResolve: (String, String) -> Unit = { _, _ -> },
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -37,6 +42,7 @@ class MergeContactsScreenTest {
                     uiState = uiState,
                     onBack = {},
                     onPick = onPick,
+                    onResolve = onResolve,
                 )
             }
         }
@@ -150,5 +156,40 @@ class MergeContactsScreenTest {
         )
 
         composeTestRule.onNodeWithText("Nothing to move.").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `a conflict option is named by its value and toggles on tap`() {
+        var resolvedField: String? = null
+        var resolvedValue: String? = null
+        setContent(
+            MergeUiState(
+                keepId = 1,
+                mergeId = 2,
+                preview = ContactMergePreviewResponse(
+                    keepId = 1, mergeId = 2,
+                    resolution = ContactMergeResolution(
+                        conflicts = listOf(
+                            ContactMergeFieldConflict(
+                                field = "nickname",
+                                label = "Nickname",
+                                keeperValue = "Andy",
+                                loserValue = "Drew",
+                            ),
+                        ),
+                    ),
+                    associationCounts = ContactMergeAssociationCounts(),
+                ),
+            ),
+            onResolve = { field, value -> resolvedField = field; resolvedValue = value },
+        )
+
+        // #199: Modifier.toggleable on the row merges the option value into
+        // the checkbox's own accessible name -- previously an unnamed
+        // Checkbox sat in a row whose own .clickable carried no role/state at
+        // all, so TalkBack announced neither.
+        composeTestRule.onNodeWithText("Drew").performScrollTo().assertIsToggleable().assertIsOff().performClick()
+        assertEquals("nickname", resolvedField)
+        assertEquals("Drew", resolvedValue)
     }
 }

@@ -1,5 +1,8 @@
 package com.mycorrhizal.crm.feature.contacts
 
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -234,5 +237,15 @@ class PrepViewScreenTest {
 
         // The row is plain text; the tap must not fire navigation.
         assertEquals(false, clicked)
+    }
+
+    @Test
+    fun `the contact name is marked as a heading`() {
+        setContent(ContactBriefing(contactId = 7, uid = "u7", name = "Alice Wonder"))
+
+        // #208: the contact name is the de facto page heading but carried no
+        // heading semantics.
+        composeTestRule.onNodeWithText("Alice Wonder")
+            .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
     }
 }

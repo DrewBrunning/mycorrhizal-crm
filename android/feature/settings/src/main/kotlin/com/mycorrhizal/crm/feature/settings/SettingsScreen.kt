@@ -40,7 +40,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.foundation.text.KeyboardOptions
@@ -163,7 +168,13 @@ fun SettingsContent(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(stringResource(R.string.settings_session), style = MaterialTheme.typography.titleMedium)
+        // #208: section titles carried no heading semantics, so TalkBack's
+        // heading navigation found nothing on this (scrollable) screen.
+        Text(
+            stringResource(R.string.settings_session),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.semantics { heading() },
+        )
         val dash = stringResource(R.string.settings_value_placeholder)
         InfoRow(stringResource(R.string.settings_server), state.session.serverUrl ?: dash)
         InfoRow(stringResource(R.string.settings_username), state.session.username ?: dash)
@@ -175,7 +186,11 @@ fun SettingsContent(
         HorizontalDivider()
 
         // M25: appearance — language / date format / theme, editable.
-        Text(stringResource(R.string.settings_appearance), style = MaterialTheme.typography.titleMedium)
+        Text(
+            stringResource(R.string.settings_appearance),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.semantics { heading() },
+        )
         SettingDropdown(
             label = stringResource(R.string.settings_language),
             value = state.session.language.orEmpty(),
@@ -211,12 +226,17 @@ fun SettingsContent(
         HorizontalDivider()
 
         // M25: password change.
-        Text(stringResource(R.string.settings_password_title), style = MaterialTheme.typography.titleMedium)
+        Text(
+            stringResource(R.string.settings_password_title),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.semantics { heading() },
+        )
         state.passwordErrorRes?.let { res ->
             Text(
                 text = stringResource(res),
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
             )
         }
         state.passwordError?.let { error ->
@@ -224,6 +244,7 @@ fun SettingsContent(
                 text = error,
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
             )
         }
         OutlinedTextField(
@@ -253,6 +274,7 @@ fun SettingsContent(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             modifier = Modifier.fillMaxWidth(),
         )
+        val changingPasswordLabel = stringResource(R.string.a11y_state_saving)
         OutlinedButton(
             onClick = {
                 onChangePassword(currentPassword, newPassword, confirmPassword)
@@ -261,7 +283,9 @@ fun SettingsContent(
                 confirmPassword = ""
             },
             enabled = !state.isChangingPassword && newPassword.isNotBlank() && confirmPassword.isNotBlank(),
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics { if (state.isChangingPassword) stateDescription = changingPasswordLabel },
         ) {
             if (state.isChangingPassword) {
                 CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
@@ -274,12 +298,17 @@ fun SettingsContent(
         // T104: propose data from what the graph already implies — the trigger
         // for graph-inferred relationship suggestions plus the Data screen that
         // reviews them (and the address-suggestion scan).
-        Text(stringResource(R.string.settings_data), style = MaterialTheme.typography.titleMedium)
+        Text(
+            stringResource(R.string.settings_data),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.semantics { heading() },
+        )
         state.relationshipSuggestErrorRes?.let { res ->
             Text(
                 text = stringResource(res),
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
             )
         }
         state.suggestedRelationshipCount?.let { count ->
@@ -293,10 +322,13 @@ fun SettingsContent(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        val suggestingLabel = stringResource(R.string.a11y_state_saving)
         Button(
             onClick = onSuggestRelationships,
             enabled = !state.isSuggestingRelationships,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics { if (state.isSuggestingRelationships) stateDescription = suggestingLabel },
         ) {
             if (state.isSuggestingRelationships) {
                 CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
@@ -307,7 +339,11 @@ fun SettingsContent(
 
         HorizontalDivider()
 
-        Text(stringResource(R.string.settings_tracking), style = MaterialTheme.typography.titleMedium)
+        Text(
+            stringResource(R.string.settings_tracking),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.semantics { heading() },
+        )
         ToggleRow(
             label = stringResource(R.string.settings_call_tracking),
             checked = state.callTrackingEnabled,
@@ -338,10 +374,13 @@ fun SettingsContent(
             Text(stringResource(R.string.custom_links_title))
         }
 
+        val loggingOutLabel = stringResource(R.string.a11y_state_saving)
         Button(
             onClick = { confirmLogout = true },
             enabled = !state.isLoggingOut,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics { if (state.isLoggingOut) stateDescription = loggingOutLabel },
         ) {
             if (state.isLoggingOut) {
                 CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))

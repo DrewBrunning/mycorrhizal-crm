@@ -1,12 +1,12 @@
 package com.mycorrhizal.crm.feature.contacts
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -254,13 +255,26 @@ private fun ConflictRow(
         )
         val options = listOfNotNull(conflict.keeperValue, conflict.loserValue).distinct()
         options.forEach { option ->
+            // #199: a bare Checkbox has no text of its own, and the row's own
+            // .clickable carried no Role/state — TalkBack found an unnamed
+            // checkbox plus a plain clickable row with no toggle semantics at
+            // all. Modifier.toggleable merges the option text into the
+            // checkbox's accessible name and exposes the checked state.
+            // (This option is really single-choice-of-two per conflict, so
+            // Role.RadioButton might describe it more precisely than
+            // Role.Checkbox — kept as Checkbox here since that's the widget in
+            // use and this fix is scoped to naming, not widget semantics.)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onChoose(option) },
+                    .toggleable(
+                        value = chosen == option,
+                        onValueChange = { onChoose(option) },
+                        role = Role.Checkbox,
+                    ),
             ) {
-                Checkbox(checked = chosen == option, onCheckedChange = { onChoose(option) })
+                Checkbox(checked = chosen == option, onCheckedChange = null)
                 Text(option, modifier = Modifier.weight(1f))
             }
         }
