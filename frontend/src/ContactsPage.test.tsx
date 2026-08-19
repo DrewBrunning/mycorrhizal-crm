@@ -4,6 +4,7 @@ import { MemoryRouter, Routes, Route } from 'react-router';
 import './i18n/config';
 import ContactsPage from './ContactsPage';
 import { SnackbarProvider } from './context/SnackbarContext';
+import { AnnouncerProvider } from './context/AnnouncerContext';
 import { DateFormatProvider } from './DateFormatProvider';
 import { getContacts, Contact, favoriteContact, unfavoriteContact } from './api/contacts';
 import { listCircles } from './api/circles';
@@ -87,6 +88,15 @@ function contact(id: number, uid: string, firstname: string, isFavorite = false)
   return { ID: id, uid, firstname, lastname: '', archived: false, is_favorite: isFavorite };
 }
 
+// #211: AnnouncerProvider's live region echoes the same "N selected" text
+// (by design -- see the model comment block in App.tsx) once its 50ms
+// debounce fires, so a plain screen.getByText/queryByText collides with it
+// in any test that waits past that window. Scope to the visible bulk-action
+// bar's copy specifically.
+function selectedText(text: string) {
+  return screen.queryAllByText(text).find((el) => !el.closest('[aria-live]'));
+}
+
 // Two pages: page one has Alice + Bob, page two (loaded via "load more") has
 // Carol. Selection must survive the pagination boundary.
 function mockTwoPages() {
@@ -103,10 +113,12 @@ function renderPage() {
     <MemoryRouter initialEntries={['/contacts']}>
       <DateFormatProvider>
         <SnackbarProvider>
-          <Routes>
-            <Route path="/contacts" element={<ContactsPage />} />
-            <Route path="/contacts/:id" element={<div>CONTACT DETAIL PAGE</div>} />
-          </Routes>
+          <AnnouncerProvider>
+            <Routes>
+              <Route path="/contacts" element={<ContactsPage />} />
+              <Route path="/contacts/:id" element={<div>CONTACT DETAIL PAGE</div>} />
+            </Routes>
+          </AnnouncerProvider>
         </SnackbarProvider>
       </DateFormatProvider>
     </MemoryRouter>
@@ -123,18 +135,37 @@ test('selection survives pagination and selects across both pages', async () => 
 
   // Select Alice.
   fireEvent.click(aliceBox);
-  expect(screen.getByText('1 selected')).toBeInTheDocument();
+  expect(selectedText('1 selected')).toBeInTheDocument();
 
   // Load page two; the selection must survive the boundary.
   fireEvent.click(screen.getByText('Load more'));
   const carolBox = await screen.findByLabelText('Select Carol');
-  expect(screen.getByText('1 selected')).toBeInTheDocument();
+  expect(selectedText('1 selected')).toBeInTheDocument();
   expect(carolBox).not.toBeChecked();
   expect(aliceBox).toBeChecked();
 
   // Select Carol across the page boundary → 2 selected.
   fireEvent.click(carolBox);
-  expect(screen.getByText('2 selected')).toBeInTheDocument();
+  expect(selectedText('2 selected')).toBeInTheDocument();
+});
+
+// #211: the live region is the one channel assistive tech has for the
+// selection count -- the bulk-action bar appearing/disappearing is silent
+// otherwise. announce() debounces 50ms before the region's text changes.
+test('selecting a contact announces the count in the live region', async () => {
+  mockTwoPages();
+  renderPage();
+  const aliceBox = await screen.findByLabelText('Select Alice');
+
+  fireEvent.click(aliceBox);
+  await waitFor(() => {
+    expect(document.querySelector('[aria-live="polite"]')?.textContent).toBe('1 selected');
+  });
+
+  fireEvent.click(aliceBox);
+  await waitFor(() => {
+    expect(document.querySelector('[aria-live="polite"]')?.textContent).toBe('0 selected');
+  });
 });
 
 test('select-all selects every loaded contact and clear empties the selection', async () => {
@@ -143,17 +174,17 @@ test('select-all selects every loaded contact and clear empties the selection', 
   await screen.findByLabelText('Select Alice');
 
   fireEvent.click(screen.getByLabelText('Select all'));
-  expect(screen.getByText('2 selected')).toBeInTheDocument();
+  expect(selectedText('2 selected')).toBeInTheDocument();
 
   fireEvent.click(screen.getByText('Load more'));
   await screen.findByLabelText('Select Carol');
 
   // Select-all adds the newly loaded page too.
   fireEvent.click(screen.getByLabelText('Select all'));
-  expect(screen.getByText('3 selected')).toBeInTheDocument();
+  expect(selectedText('3 selected')).toBeInTheDocument();
 
   fireEvent.click(screen.getByText('Clear'));
-  expect(screen.queryByText('3 selected')).not.toBeInTheDocument();
+  expect(selectedText('3 selected')).toBeUndefined();
 });
 
 test('a bulk tag add sends the selected VCardUIDs and nothing else', async () => {
@@ -214,7 +245,7 @@ test("clicking a contact's checkbox selects it without navigating to its detail 
 
   fireEvent.click(aliceBox);
 
-  expect(screen.getByText('1 selected')).toBeInTheDocument();
+  expect(selectedText('1 selected')).toBeInTheDocument();
   expect(aliceBox).toBeChecked();
   expect(screen.queryByText('CONTACT DETAIL PAGE')).not.toBeInTheDocument();
 });
@@ -241,7 +272,7 @@ test('changing the circle filter clears an in-progress selection', async () => {
   renderPage();
   const aliceBox = await screen.findByLabelText('Select Alice');
   fireEvent.click(aliceBox);
-  expect(screen.getByText('1 selected')).toBeInTheDocument();
+  expect(selectedText('1 selected')).toBeInTheDocument();
 
   // The filter swaps the visible contacts out from under the selection —
   // a stale "N selected" would let a bulk action (including delete) run
@@ -249,7 +280,7 @@ test('changing the circle filter clears an in-progress selection', async () => {
   fireEvent.mouseDown(screen.getByLabelText('Filter by Circle'));
   fireEvent.click(await screen.findByRole('option', { name: 'Friends' }));
 
-  await waitFor(() => expect(screen.queryByText('1 selected')).not.toBeInTheDocument());
+  await waitFor(() => expect(selectedText('1 selected')).toBeUndefined());
 });
 
 test('typing a search term filters the list through the debounced URL param', async () => {
@@ -312,13 +343,13 @@ test('a search change clears an in-progress selection', async () => {
   await screen.findByLabelText('Select Alice');
 
   fireEvent.click(screen.getByLabelText('Select Alice'));
-  expect(screen.getByText('1 selected')).toBeInTheDocument();
+  expect(selectedText('1 selected')).toBeInTheDocument();
 
   fireEvent.change(screen.getByLabelText(/search contacts/i), {
     target: { value: 'bob' },
   });
 
-  await waitFor(() => expect(screen.queryByText('1 selected')).not.toBeInTheDocument());
+  await waitFor(() => expect(selectedText('1 selected')).toBeUndefined());
 });
 
 test('defaults to name (alphabetical) sort', async () => {
@@ -352,7 +383,7 @@ test('changing the sort does not clear an in-progress selection', async () => {
   await screen.findByLabelText('Select Alice');
 
   fireEvent.click(screen.getByLabelText('Select Alice'));
-  expect(screen.getByText('1 selected')).toBeInTheDocument();
+  expect(selectedText('1 selected')).toBeInTheDocument();
 
   fireEvent.mouseDown(screen.getByLabelText('Sort'));
   fireEvent.click(await screen.findByRole('option', { name: 'Recently edited (newest first)' }));
@@ -364,7 +395,7 @@ test('changing the sort does not clear an in-progress selection', async () => {
   );
   // Sorting reorders the list but not which contacts are visible — the
   // selection is still valid and must survive (T77 trap).
-  expect(screen.getByText('1 selected')).toBeInTheDocument();
+  expect(selectedText('1 selected')).toBeInTheDocument();
 });
 
 // --- T103 contact-info filter -----------------------------------------------
@@ -413,9 +444,11 @@ test('a has_contact_info=false URL is honoured on load', async () => {
     <MemoryRouter initialEntries={['/contacts?has_contact_info=false']}>
       <DateFormatProvider>
         <SnackbarProvider>
-          <Routes>
-            <Route path="/contacts" element={<ContactsPage />} />
-          </Routes>
+          <AnnouncerProvider>
+            <Routes>
+              <Route path="/contacts" element={<ContactsPage />} />
+            </Routes>
+          </AnnouncerProvider>
         </SnackbarProvider>
       </DateFormatProvider>
     </MemoryRouter>
@@ -464,11 +497,11 @@ test('toggling the contact-info filter clears an in-progress selection', async (
   await screen.findByLabelText('Select Alice');
 
   fireEvent.click(screen.getByLabelText('Select Alice'));
-  expect(screen.getByText('1 selected')).toBeInTheDocument();
+  expect(selectedText('1 selected')).toBeInTheDocument();
 
   fireEvent.click(screen.getByLabelText('Show all'));
 
-  await waitFor(() => expect(screen.queryByText('1 selected')).not.toBeInTheDocument());
+  await waitFor(() => expect(selectedText('1 selected')).toBeUndefined());
 });
 
 // --- T92 bulk merge ----------------------------------------------------------
@@ -513,7 +546,7 @@ test('selecting exactly two contacts and merging opens the pair-mode dialog, the
 
   fireEvent.click(screen.getByLabelText('Select Alice'));
   fireEvent.click(screen.getByLabelText('Select Bob'));
-  expect(screen.getByText('2 selected')).toBeInTheDocument();
+  expect(selectedText('2 selected')).toBeInTheDocument();
 
   // The bulk bar's Merge (only one matches — the dialog is not open yet).
   fireEvent.click(screen.getByRole('button', { name: 'Merge' }));
@@ -534,7 +567,7 @@ test('selecting exactly two contacts and merging opens the pair-mode dialog, the
   // Committed as Alice (the pair default keeper) swallowing Bob, then the
   // selection clears and the list refetches.
   await waitFor(() => expect(commitContactMerge).toHaveBeenCalledWith(1, 2, {}));
-  await waitFor(() => expect(screen.queryByText('2 selected')).not.toBeInTheDocument());
+  await waitFor(() => expect(selectedText('2 selected')).toBeUndefined());
   expect(getContacts).toHaveBeenCalledTimes(2);
   expect(within(dialog).queryByText('Keep Alice')).not.toBeInTheDocument();
 });
@@ -557,7 +590,7 @@ test('merging a pair selected across the pagination boundary resolves both rows 
   fireEvent.click(screen.getByText('Load more'));
   await screen.findByLabelText('Select Carol');
   fireEvent.click(screen.getByLabelText('Select Carol'));
-  expect(screen.getByText('2 selected')).toBeInTheDocument();
+  expect(selectedText('2 selected')).toBeInTheDocument();
 
   fireEvent.click(screen.getByRole('button', { name: 'Merge' }));
 
@@ -572,7 +605,7 @@ test('merging a pair selected across the pagination boundary resolves both rows 
   // Alice (page one) resolves as the pair default keeper, Carol (page two) as
   // the loser — the IDs come from the loaded rows, not a fresh lookup.
   await waitFor(() => expect(commitContactMerge).toHaveBeenCalledWith(1, 3, {}));
-  await waitFor(() => expect(screen.queryByText('2 selected')).not.toBeInTheDocument());
+  await waitFor(() => expect(selectedText('2 selected')).toBeUndefined());
 });
 
 // T77 deliberately keeps the selection across a sort change while the sort's
@@ -597,18 +630,18 @@ test('a merge whose selected rows left the loaded page alerts and clears the sta
   fireEvent.click(screen.getByText('Load more'));
   await screen.findByLabelText('Select Carol');
   fireEvent.click(screen.getByLabelText('Select Carol'));
-  expect(screen.getByText('2 selected')).toBeInTheDocument();
+  expect(selectedText('2 selected')).toBeInTheDocument();
 
   // The sort refetch replaces the loaded page with just Alice; the selection
   // survives it (T77), so Merge is enabled but Carol can't be resolved.
   fireEvent.mouseDown(screen.getByLabelText('Sort'));
   fireEvent.click(await screen.findByRole('option', { name: 'Recently edited (newest first)' }));
-  await waitFor(() => expect(screen.getByText('2 selected')).toBeInTheDocument());
+  await waitFor(() => expect(selectedText('2 selected')).toBeInTheDocument());
 
   fireEvent.click(screen.getByRole('button', { name: 'Merge' }));
 
   expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('no longer visible'));
-  await waitFor(() => expect(screen.queryByText('2 selected')).not.toBeInTheDocument());
+  await waitFor(() => expect(selectedText('2 selected')).toBeUndefined());
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   alertSpy.mockRestore();
 });

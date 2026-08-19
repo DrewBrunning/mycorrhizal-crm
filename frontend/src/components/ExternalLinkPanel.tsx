@@ -119,7 +119,7 @@ export default function ExternalLinkPanel({
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <SvgIcon color="action"><path d={mdiImageMultipleOutline} /></SvgIcon>
-              <Typography variant="subtitle2">{t('immich.panel.notLinkedTitle')}</Typography>
+              <Typography variant="subtitle2" component="h3">{t('immich.panel.notLinkedTitle')}</Typography>
             </Box>
             <Button
               size="small"
@@ -151,7 +151,7 @@ export default function ExternalLinkPanel({
             )}
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                <Typography variant="subtitle2" component="h3" sx={{ fontWeight: 600 }}>
                   {immichSummary?.person_name ||
                     (typeof immichIdentity.metadata?.person_name === 'string' ? immichIdentity.metadata.person_name : '') ||
                     t('immich.panel.linkedPerson')}
@@ -221,7 +221,7 @@ export default function ExternalLinkPanel({
       {otherIdentities.length > 0 && (
         <>
           <Divider />
-          <Typography variant="subtitle2" color="text.secondary">
+          <Typography variant="subtitle2" component="h3" color="text.secondary">
             {t('externalLinks.otherLinks')}
           </Typography>
           {loading ? (

@@ -210,7 +210,7 @@ export default function ConversationAgendaList({
       {discussedItems.length > 0 && (
         <>
           {openItems.length > 0 && <Divider />}
-          <Typography variant="subtitle2" color="text.secondary">
+          <Typography variant="subtitle2" component="h3" color="text.secondary">
             {t('conversationAgenda.discussedSection')}
           </Typography>
           {discussedItems.map((item) => renderItem(item, true))}

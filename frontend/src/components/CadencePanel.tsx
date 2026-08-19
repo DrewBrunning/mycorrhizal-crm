@@ -56,7 +56,8 @@ export default function CadencePanel({ policy, loading, onAdd, onEdit, onDelete 
       <Box display="flex" justifyContent="space-between" alignItems="flex-start">
         <Box>
           <Box display="flex" alignItems="center" gap={1} mb={1}>
-            <Typography variant="subtitle2">{t('cadence.interval')}</Typography>
+            {/* #211: a field label next to the Chip value, not a section heading. */}
+            <Typography variant="subtitle2" component="span">{t('cadence.interval')}</Typography>
             <Chip label={t('cadence.intervalValue', { days: policy.target_interval_days })} size="small" />
           </Box>
 

@@ -99,7 +99,8 @@ export default function RelationshipEdgeList({
                     {name}
                   </Link>
                 ) : (
-                  <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                  // #211: a per-item title in a list, not a page heading.
+                  <Typography variant="subtitle1" component="p" sx={{ fontWeight: 500 }}>
                     {name}
                   </Typography>
                 )}
@@ -145,7 +146,7 @@ export default function RelationshipEdgeList({
       {suggestedEdges.length > 0 && (
         <>
           {confirmedEdges.length > 0 && <Divider sx={{ my: 2 }} />}
-          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+          <Typography variant="subtitle2" component="h3" color="text.secondary" sx={{ mb: 1 }}>
             {t('relationships.suggestedRelationships')}
           </Typography>
           {suggestedEdges.map((edge) => {
@@ -164,7 +165,8 @@ export default function RelationshipEdgeList({
                         {name}
                       </Link>
                     ) : (
-                      <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                      // #211: a per-item title in a list, not a page heading.
+                      <Typography variant="subtitle1" component="p" sx={{ fontWeight: 500 }}>
                         {name}
                       </Typography>
                     )}

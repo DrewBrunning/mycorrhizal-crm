@@ -38,9 +38,11 @@ import { getUsers, createUser, updateUser, deleteUser, triggerReminders } from '
 import { isAdmin } from './auth';
 import { useSnackbar } from './context/SnackbarContext';
 import type { User, UserUpdateInput, UserCreateInput } from './types';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
 
 export default function UsersPage() {
   const { t } = useTranslation();
+  useDocumentTitle(t('nav.users'));
   const navigate = useNavigate();
   const { showSuccess, showError } = useSnackbar();
   // A wide six-column table cannot be read at 360-414px, so below `sm` the
@@ -266,7 +268,7 @@ export default function UsersPage() {
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 2, p: 2 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5, gap: 1, flexWrap: 'wrap' }}>
-        <Typography variant="h5">
+        <Typography variant="h5" component="h1">
           {t('users.title')}
         </Typography>
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
@@ -301,7 +303,8 @@ export default function UsersPage() {
               <Card key={user.id} sx={{ p: 1.5 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1 }}>
                   <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 600, overflowWrap: 'anywhere' }}>
+                    {/* #211: a per-item title in a list, not a page heading. */}
+                    <Typography variant="subtitle1" component="p" sx={{ fontWeight: 600, overflowWrap: 'anywhere' }}>
                       {user.username}
                     </Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>

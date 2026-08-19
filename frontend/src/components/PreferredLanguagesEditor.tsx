@@ -41,7 +41,7 @@ export default function PreferredLanguagesEditor({ label, value, onChange }: Pre
 
   return (
     <Box>
-      <Typography variant="subtitle2" gutterBottom>
+      <Typography variant="subtitle2" component="p" gutterBottom>
         {label}
       </Typography>
       <Stack spacing={1}>

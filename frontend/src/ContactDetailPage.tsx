@@ -9,6 +9,7 @@ import {
   getContactRecord,
   updateContactRecord,
   nameComponentValue,
+  getContactDisplayName,
   withAnniversary,
   getOrganizationFields,
   withOrganization,
@@ -26,6 +27,7 @@ import { getCurrentUser } from './api/admin';
 import { updateSelfContact } from './api/users';
 import { fetchAndCacheUserInfo, getCachedSelfContactVCardUID } from './auth';
 import { resolveEnabledFields, ContactFieldKey } from './contactFields';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { 
   getContactNotes, 
   Note 
@@ -193,7 +195,7 @@ function PanelCard({
     <Card sx={{ mb: 2, ...(fullWidth && { gridColumn: { lg: '1 / -1' } }) }}>
       <CardContent sx={{ py: 2 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1 }}>
-          <Typography variant="subtitle1" component="h3" sx={{ fontWeight: 600 }}>
+          <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 600 }}>
             {title}
           </Typography>
           {actions}
@@ -304,6 +306,7 @@ export default function ContactDetailPage() {
   // /users/me fetch below when it lands.
   const [selfContactUid, setSelfContactUid] = useState<string | null>(() => getCachedSelfContactVCardUID());
   const isMe = !!record && !!selfContactUid && record.uid === selfContactUid;
+  useDocumentTitle(record ? getContactDisplayName(record) : t('nav.contacts'));
   const firstname = record ? nameComponentValue(record.card?.name?.components, 'given') || '' : '';
   const lastname = record ? nameComponentValue(record.card?.name?.components, 'surname') || '' : '';
   const [profilePic, setProfilePic] = useState<string>('');
@@ -1496,7 +1499,7 @@ export default function ContactDetailPage() {
   if (!record) {
     return (
       <Box sx={{ maxWidth: 800, mx: 'auto', mt: 2, p: 2 }}>
-        <Typography variant="h6">{t('contactDetail.notFound')}</Typography>
+        <Typography variant="h6" component="h1">{t('contactDetail.notFound')}</Typography>
       </Box>
     );
   }

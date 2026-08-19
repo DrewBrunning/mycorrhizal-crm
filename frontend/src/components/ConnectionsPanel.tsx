@@ -189,7 +189,9 @@ export default function ConnectionsPanel({ contactUid }: ConnectionsPanelProps) 
           {connections.chains.length > 0 && (
             <>
               <Divider />
-              <Typography variant="subtitle2" color="text.secondary">
+              {/* #211: a count label, not a section title -- doesn't belong
+                  in the heading outline. */}
+              <Typography variant="subtitle2" component="p" color="text.secondary">
                 {t('connections.results', { count: connections.chains.length })}
               </Typography>
             </>

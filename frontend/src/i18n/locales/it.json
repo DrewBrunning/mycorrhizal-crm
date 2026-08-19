@@ -37,7 +37,9 @@
     "users": "Utenti",
     "data": "Dati",
     "shares": "Condivisioni",
-    "audit": "Registro di controllo"
+    "audit": "Registro di controllo",
+    "mainLabel": "Navigazione principale",
+    "skipToContent": "Vai al contenuto"
   },
   "household": {
     "title": "Nuclei familiari",
@@ -788,7 +790,10 @@
     "copyFailed": "Impossibile copiare negli appunti",
     "copyValue": "Copia {{label}}",
     "close": "Chiudi",
-    "info": "Maggiori informazioni"
+    "info": "Maggiori informazioni",
+    "resultsCount_one": "{{count}} risultato",
+    "resultsCount_other": "{{count}} risultati",
+    "loading": "Caricamento…"
   },
   "externalLinks": {
     "title": "Collegamenti esterni",

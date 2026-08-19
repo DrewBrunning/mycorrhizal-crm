@@ -105,7 +105,7 @@ export default function ImmichSettings() {
           <SvgIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }}>
             <path d={mdiImageMultipleOutline} />
           </SvgIcon>
-          <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+          <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 500 }}>
             {t('immich.settings.title')}
           </Typography>
         </Box>

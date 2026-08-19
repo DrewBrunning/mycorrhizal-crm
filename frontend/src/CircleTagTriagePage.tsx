@@ -26,6 +26,7 @@ import { getLegacyCircles, getContactsByLegacyCircle } from './api/contacts';
 import { createCircle, addCircleMember, Circle, listCircles } from './api/circles';
 import { createTag, addContactTag, Tag, listTags } from './api/tags';
 import { handleFetchError } from './utils/errorHandler';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
 
 type Classification = 'circle' | 'tag' | 'skip';
 
@@ -38,6 +39,7 @@ interface TriagedItem {
 
 export default function CircleTagTriagePage() {
   const { t } = useTranslation();
+  useDocumentTitle(t('triage.title'));
   const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -238,7 +240,7 @@ export default function CircleTagTriagePage() {
 
   return (
     <Box sx={{ maxWidth: 960, mx: 'auto', mt: 2, p: 2 }}>
-      <Typography variant="h5" gutterBottom>
+      <Typography variant="h5" component="h1" gutterBottom>
         {t('triage.title')}
       </Typography>
       <Typography variant="body2" color="text.secondary" paragraph>
@@ -326,11 +328,11 @@ export default function CircleTagTriagePage() {
       {/* Step 1: Preview */}
       {activeStep === 1 && (
         <Paper sx={{ p: 2 }}>
-          <Typography variant="h6" gutterBottom>{t('triage.previewTitle')}</Typography>
+          <Typography variant="h6" component="h2" gutterBottom>{t('triage.previewTitle')}</Typography>
 
           {circles.length > 0 && (
             <Box mb={2}>
-              <Typography variant="subtitle1">
+              <Typography variant="subtitle1" component="h3">
                 {t('triage.circlesToCreate', { count: circles.length })}
               </Typography>
               <Box display="flex" flexWrap="wrap" gap={0.5} mt={0.5}>
@@ -343,7 +345,7 @@ export default function CircleTagTriagePage() {
 
           {tags.length > 0 && (
             <Box mb={2}>
-              <Typography variant="subtitle1">
+              <Typography variant="subtitle1" component="h3">
                 {t('triage.tagsToCreate', { count: tags.length })}
               </Typography>
               <Box display="flex" flexWrap="wrap" gap={0.5} mt={0.5}>
@@ -356,7 +358,7 @@ export default function CircleTagTriagePage() {
 
           {skipped.length > 0 && (
             <Box mb={2}>
-              <Typography variant="subtitle1">
+              <Typography variant="subtitle1" component="h3">
                 {t('triage.skipped', { count: skipped.length })}
               </Typography>
               <Box display="flex" flexWrap="wrap" gap={0.5} mt={0.5}>
@@ -379,7 +381,7 @@ export default function CircleTagTriagePage() {
       {/* Step 2: Apply */}
       {activeStep === 2 && (
         <Paper sx={{ p: 2 }}>
-          <Typography variant="h6" gutterBottom>{t('triage.applyTitle')}</Typography>
+          <Typography variant="h6" component="h2" gutterBottom>{t('triage.applyTitle')}</Typography>
 
           {applying && (
             <Box mb={2}>

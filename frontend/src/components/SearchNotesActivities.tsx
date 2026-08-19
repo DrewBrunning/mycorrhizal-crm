@@ -82,7 +82,7 @@ export default function SearchNotesActivities({ query, result, onOpenContact }: 
             }}
           >
             <Box>
-              <Typography variant="subtitle2">
+              <Typography variant="subtitle2" component="h2">
                 {t('contacts.searchNotesHeader', { count: total })}
               </Typography>
               <Typography variant="caption" color="text.secondary">
@@ -95,7 +95,7 @@ export default function SearchNotesActivities({ query, result, onOpenContact }: 
             <CardContent sx={{ pt: 0, '&:last-child': { pb: 2 } }}>
               {notes.length > 0 && (
                 <>
-                  <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
+                  <Typography variant="subtitle2" component="h3" color="text.secondary" sx={{ mb: 0.5 }}>
                     {t('contacts.searchNotesGroup')}
                   </Typography>
                   <Stack spacing={1} sx={{ mb: 1.5 }}>
@@ -125,7 +125,7 @@ export default function SearchNotesActivities({ query, result, onOpenContact }: 
               )}
               {activities.length > 0 && (
                 <>
-                  <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
+                  <Typography variant="subtitle2" component="h3" color="text.secondary" sx={{ mb: 0.5 }}>
                     {t('contacts.searchActivitiesGroup')}
                   </Typography>
                   <Stack spacing={0.5}>

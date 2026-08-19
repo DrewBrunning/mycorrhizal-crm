@@ -4,6 +4,7 @@ import { Box, Typography, Button, Alert, LinearProgress, Stack, SvgIcon } from '
 import { mdiHomePlusOutline, mdiMapMarkerMultipleOutline } from '@mdi/js';
 import HouseholdDialog, { HouseholdFormData } from './components/HouseholdDialog';
 import HouseholdList from './components/HouseholdList';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
 import AddressHouseholdSuggestions from './components/AddressHouseholdSuggestions';
 import { useHouseholds } from './hooks/useHouseholds';
 import { useSnackbar } from './context/SnackbarContext';
@@ -21,6 +22,7 @@ import { handleFetchError } from './utils/errorHandler';
 
 export default function HouseholdsPage() {
   const { t } = useTranslation();
+  useDocumentTitle(t('nav.households'));
   const { showError, showSuccess, showInfo } = useSnackbar();
 
   const {
@@ -187,7 +189,7 @@ export default function HouseholdsPage() {
           mb: 1,
         }}
       >
-        <Typography variant="h5">{t('household.title')}</Typography>
+        <Typography variant="h5" component="h1">{t('household.title')}</Typography>
         <Stack direction="row" spacing={1}>
           <Button
             variant="outlined"

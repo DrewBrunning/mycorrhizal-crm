@@ -77,7 +77,7 @@ export default function AddressFields({ label, value, onChange }: AddressFieldsP
 
   return (
     <Box>
-      <Typography variant="subtitle2" gutterBottom>
+      <Typography variant="subtitle2" component="p" gutterBottom>
         {label}
       </Typography>
       <Stack spacing={1.5}>

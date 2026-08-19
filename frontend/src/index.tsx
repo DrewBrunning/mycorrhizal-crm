@@ -12,6 +12,7 @@ import './i18n/config';
 import { AppThemeProvider } from './AppThemeProvider';
 import { DateFormatProvider } from './DateFormatProvider';
 import { SnackbarProvider } from './context/SnackbarContext';
+import { AnnouncerProvider } from './context/AnnouncerContext';
 
 const logError = (error: Error, errorInfo: React.ErrorInfo) => {
   console.error('Application Error:', error);
@@ -28,14 +29,16 @@ root.render(
     <AppThemeProvider>
       <DateFormatProvider>
         <SnackbarProvider>
-          <ErrorBoundary
-            name="Application"
-            onError={logError}
-            showDetails={import.meta.env.DEV}
-          >
-            <App />
-            <ServiceWorkerUpdatePrompt />
-          </ErrorBoundary>
+          <AnnouncerProvider>
+            <ErrorBoundary
+              name="Application"
+              onError={logError}
+              showDetails={import.meta.env.DEV}
+            >
+              <App />
+              <ServiceWorkerUpdatePrompt />
+            </ErrorBoundary>
+          </AnnouncerProvider>
         </SnackbarProvider>
       </DateFormatProvider>
     </AppThemeProvider>

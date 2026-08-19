@@ -95,7 +95,7 @@ export default function SeafileSettings() {
           <SvgIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }}>
             <path d={mdiFolderMultipleOutline} />
           </SvgIcon>
-          <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+          <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 500 }}>
             {t('seafile.settings.title')}
           </Typography>
         </Box>

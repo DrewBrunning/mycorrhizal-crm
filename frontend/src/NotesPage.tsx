@@ -1,4 +1,4 @@
-import { useState, useMemo, MouseEvent } from 'react';
+import { useState, useMemo, useEffect, MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Box,
@@ -31,9 +31,13 @@ import AddNoteDialog from './components/AddNoteDialog';
 import EditTimelineItemDialog from './components/EditTimelineItemDialog';
 import { handleError } from './utils/errorHandler';
 import { useDateFormat } from './DateFormatProvider';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
+import { useAnnouncer } from './context/AnnouncerContext';
 
 const NotesPage: React.FC = () => {
   const { t, i18n } = useTranslation();
+  useDocumentTitle(t('nav.notes'));
+  const { announce } = useAnnouncer();
   const { formatDate, getDatePlaceholder } = useDateFormat();
   const [searchInput, setSearchInput] = useState('');
   const debouncedSearch = useDebouncedValue(searchInput, 400);
@@ -62,6 +66,11 @@ const NotesPage: React.FC = () => {
     refetch,
     loadMore,
   } = useNotes(undefined, notesParams);
+
+  // #211: result-count announcement, once per settled fetch.
+  useEffect(() => {
+    if (!loading) announce(t('common.resultsCount', { count: notes.length }));
+  }, [loading, notes.length, announce, t]);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [editValues, setEditValues] = useState<{ noteContent?: string; noteDate?: string; noteContactId?: number; noteContactName?: string }>({});
@@ -159,7 +168,7 @@ const NotesPage: React.FC = () => {
     <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 2, p: 2 }}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
         <Box display="flex" alignItems="center" gap={1}>
-          <Typography variant="h5">{t('notes.title')}</Typography>
+          <Typography variant="h5" component="h1">{t('notes.title')}</Typography>
           {/* Queue depth from the server's `total`, not notes.length -- the
               latter is the loaded page, so this under-counted anyone with
               more than one page of unfiled notes and then grew as they

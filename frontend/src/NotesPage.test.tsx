@@ -3,6 +3,7 @@ import { render, screen, cleanup, waitFor, fireEvent } from '@testing-library/re
 import './i18n/config';
 import NotesPage from './NotesPage';
 import { SnackbarProvider } from './context/SnackbarContext';
+import { AnnouncerProvider } from './context/AnnouncerContext';
 import { DateFormatProvider } from './DateFormatProvider';
 
 beforeEach(() => {
@@ -47,9 +48,11 @@ const twoUnfiledNotesResponse = () => ({
 function renderPage() {
   return render(
     <SnackbarProvider>
-      <DateFormatProvider>
-        <NotesPage />
-      </DateFormatProvider>
+      <AnnouncerProvider>
+        <DateFormatProvider>
+          <NotesPage />
+        </DateFormatProvider>
+      </AnnouncerProvider>
     </SnackbarProvider>
   );
 }

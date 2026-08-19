@@ -383,6 +383,32 @@ export function nameComponentValue(components: NameComponent[] | undefined, kind
   return components?.find((c) => c.kind === kind)?.value;
 }
 
+// #211: the one place a contact's full display name (title, given, nickname,
+// middle, surname, generation) gets assembled -- both ContactHeader's visible
+// h1 and ContactDetailPage's document.title call this, so they can't drift
+// apart the way two independent derivations eventually would.
+export function getContactDisplayName(record: Pick<ContactRecordResponse, 'card'>): string {
+  const card = record.card || {};
+  const prefix = nameComponentValue(card.name?.components, 'title');
+  const firstname = nameComponentValue(card.name?.components, 'given') || '';
+  const middleName = nameComponentValue(card.name?.components, 'given2');
+  const lastname = nameComponentValue(card.name?.components, 'surname') || '';
+  const suffix = nameComponentValue(card.name?.components, 'generation');
+  const nickname = card.nicknames?.[0]?.name;
+
+  return [
+    prefix,
+    firstname,
+    nickname ? `"${nickname}"` : '',
+    middleName,
+    lastname,
+    suffix,
+  ]
+    .map((part) => part?.trim())
+    .filter(Boolean)
+    .join(' ');
+}
+
 // formatAnniversaryDate turns a CardAnniversaryDate into the ISO YYYY-MM-DD
 // / year-less --MM-DD string convention used throughout this app for
 // birthday/anniversary fields (never a full RFC3339 timestamp for a

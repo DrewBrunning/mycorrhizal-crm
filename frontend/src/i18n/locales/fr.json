@@ -37,7 +37,9 @@
     "users": "Utilisateurs",
     "data": "Données",
     "shares": "Partages",
-    "audit": "Journal d'audit"
+    "audit": "Journal d'audit",
+    "mainLabel": "Navigation principale",
+    "skipToContent": "Passer au contenu"
   },
   "household": {
     "title": "Foyers",
@@ -788,7 +790,10 @@
     "copyFailed": "Impossible de copier dans le presse-papiers",
     "copyValue": "Copier {{label}}",
     "close": "Fermer",
-    "info": "Plus d'informations"
+    "info": "Plus d'informations",
+    "resultsCount_one": "{{count}} résultat",
+    "resultsCount_other": "{{count}} résultats",
+    "loading": "Chargement…"
   },
   "externalLinks": {
     "title": "Liens externes",
