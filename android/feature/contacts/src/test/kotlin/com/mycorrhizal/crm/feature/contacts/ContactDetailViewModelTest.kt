@@ -410,6 +410,59 @@ class ContactDetailViewModelTest {
         io.mockk.coVerify(exactly = 1) { contactRepository.getContact(5) }
     }
 
+    // --- Issue #212: favorite toggle (web #173) ---
+
+    @Test
+    fun `toggleFavorite flips the header star optimistically and calls the repository`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")), isFavorite = false)
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { contactRepository.favoriteContact(5) } returns Result.success(Unit)
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+        assertFalse(vm.uiState.value.contact?.isFavorite!!)
+
+        vm.toggleFavorite()
+        advanceUntilIdle()
+
+        assertTrue(vm.uiState.value.contact?.isFavorite!!)
+        io.mockk.coVerify(exactly = 1) { contactRepository.favoriteContact(5) }
+        assertEquals(null, vm.uiState.value.error)
+    }
+
+    @Test
+    fun `toggleFavorite on a favorite calls unfavorite and keeps the flip`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")), isFavorite = true)
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { contactRepository.unfavoriteContact(5) } returns Result.success(Unit)
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.contact?.isFavorite!!)
+
+        vm.toggleFavorite()
+        advanceUntilIdle()
+
+        assertFalse(vm.uiState.value.contact?.isFavorite!!)
+        io.mockk.coVerify(exactly = 1) { contactRepository.unfavoriteContact(5) }
+    }
+
+    @Test
+    fun `toggleFavorite rolls back on failure so the star can't disagree with the DB`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")), isFavorite = false)
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { contactRepository.favoriteContact(5) } returns Result.failure(ApiError.Server(500, "boom"))
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+
+        vm.toggleFavorite()
+        advanceUntilIdle()
+
+        assertFalse(vm.uiState.value.contact?.isFavorite!!)
+        assertEquals("Server error (500)", vm.uiState.value.error)
+    }
+
     @Test
     fun `exportVcf emits ExportReady with the raw bytes`() = runTest(mainDispatcherRule.testDispatcher) {
         val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))

@@ -25,11 +25,17 @@ data class DashboardResponse(
     @Json(name = "random_contacts") val randomContacts: List<DashboardRandomContact> = emptyList(),
     @Json(name = "upcoming_reminders") val upcomingReminders: List<DashboardReminder> = emptyList(),
     val overdue: List<OverdueCadence> = emptyList(),
+    // Issue #212: the favorites quick-access block (web #173) — a list of
+    // ContactResponse exactly like random_contacts, so it reuses
+    // [DashboardRandomContact] (PascalCase ID and all). Always `[]` on the
+    // wire, never absent.
+    val favorites: List<DashboardRandomContact> = emptyList(),
 )
 
 /**
- * One `random_contacts` entry. Deliberately NOT [ContactSummary]: the
- * dashboard composite serializes this block as `ContactResponse`, which
+ * One `random_contacts` — and, since issue #212, one `favorites` — entry.
+ * Deliberately NOT [ContactSummary]: the
+ * dashboard composite serializes these blocks as `ContactResponse`, which
  * embeds the raw `models.Contact` (gorm.Model identity keys serialize in
  * PascalCase — `ID`), while the contacts list endpoint returns the slim
  * `ContactSummaryDTO` with a lowercase `id`. Reusing [ContactSummary] here

@@ -130,6 +130,7 @@ object DataModule {
             .addMigrations(
                 com.mycorrhizal.crm.data.local.MIGRATION_13_14,
                 com.mycorrhizal.crm.data.local.MIGRATION_14_15,
+                com.mycorrhizal.crm.data.local.MIGRATION_15_16,
             )
             .fallbackToDestructiveMigration()
             .build()

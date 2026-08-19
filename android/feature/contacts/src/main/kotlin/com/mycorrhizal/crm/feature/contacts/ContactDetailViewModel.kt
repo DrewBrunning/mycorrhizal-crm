@@ -501,6 +501,36 @@ class ContactDetailViewModel @Inject constructor(
         }
     }
 
+    // --- Issue #212: favorite toggle (web #173) ---
+
+    /**
+     * Toggles the contact's favorite flag in the detail header, mirroring web
+     * `ContactDetailPage.handleToggleFavorite`: optimistic into state, with a
+     * rollback on failure so the star can never silently disagree with the
+     * database. The repository updates the Room mirror on success so the
+     * flag survives offline; the next full load reconciles from the server.
+     */
+    fun toggleFavorite() {
+        val contact = _uiState.value.contact ?: return
+        val wasFavorite = contact.isFavorite
+        viewModelScope.launch {
+            _uiState.update { it.copy(contact = contact.copy(isFavorite = !wasFavorite)) }
+            val result = if (wasFavorite) {
+                contactRepository.unfavoriteContact(contactId)
+            } else {
+                contactRepository.favoriteContact(contactId)
+            }
+            result.foldApiError(
+                onSuccess = {},
+                onError = { error ->
+                    _uiState.update {
+                        it.copy(contact = it.contact?.copy(isFavorite = wasFavorite), error = error.displayMessage)
+                    }
+                },
+            )
+        }
+    }
+
     // --- M24: inline circle/tag editors ---
 
     /** Add [circle]'s membership for this contact (needs the VCard UID; no-op without one). */

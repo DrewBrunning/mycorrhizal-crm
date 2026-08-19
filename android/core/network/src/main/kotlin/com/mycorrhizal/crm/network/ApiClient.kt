@@ -329,6 +329,9 @@ class ApiClient(
         // legacy free-text circle string from the old flat `contacts.circles`
         // JSON column (CircleTagTriagePage's contact collection).
         circleLegacy: String? = null,
+        // Issue #212: `?favorites=true` narrows to the caller's favorite
+        // contacts only — the wire contract web #173 shipped.
+        favorites: Boolean? = null,
         vcardUids: List<String>? = null,
     ): Result<ContactsPage> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$CONTACTS_PATH".toHttpUrl().newBuilder()
@@ -346,6 +349,7 @@ class ApiClient(
             includeArchived?.let { urlBuilder.addQueryParameter("include_archived", it.toString()) }
             circle?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("circle", it) }
             circleLegacy?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("circle_legacy", it) }
+            favorites?.let { urlBuilder.addQueryParameter("favorites", it.toString()) }
         }
         return executeGet(urlBuilder.build().toString()) { _, body ->
             moshi.adapter(ContactsPage::class.java).fromJson(body)
@@ -448,6 +452,19 @@ class ApiClient(
     /** POST /api/v1/contacts/{id}/unarchive — restores an archived contact. */
     suspend fun unarchiveContact(id: Int): Result<Unit> =
         executePostEmpty("$CONTACTS_PATH/$id/unarchive") { _, _ -> Unit }
+
+    // Issue #212 (web #173): the CRM-local favorite toggle. The endpoints
+    // return the updated flat models.Contact; the Android client only needs
+    // success/failure (the optimistic star flip is reconciled on error), so
+    // the body is discarded — the same shape as archive/unarchive above.
+
+    /** POST /api/v1/contacts/{id}/favorite — marks the contact as a favorite. */
+    suspend fun favoriteContact(id: Int): Result<Unit> =
+        executePostEmpty("$CONTACTS_PATH/$id/favorite") { _, _ -> Unit }
+
+    /** POST /api/v1/contacts/{id}/unfavorite — clears the favorite flag. */
+    suspend fun unfavoriteContact(id: Int): Result<Unit> =
+        executePostEmpty("$CONTACTS_PATH/$id/unfavorite") { _, _ -> Unit }
 
     /**
      * GET /api/v1/export/vcf?vcard_uid=… — exports a single contact as vCard

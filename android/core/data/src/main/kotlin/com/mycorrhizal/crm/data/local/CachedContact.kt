@@ -34,6 +34,8 @@ data class CachedContact(
     val photoThumbnail: String? = null,
     val circles: List<String>? = null,
     val archived: Boolean = false,
+    /** Issue #212: CRM-local favorite flag (web #173), mirroring [archived]. */
+    val isFavorite: Boolean = false,
     val deleted: Boolean = false,
     /** Device Contacts LOOKUP_KEY after a T57 import (§7.5.4); null otherwise. */
     val deviceLookupKey: String? = null,
