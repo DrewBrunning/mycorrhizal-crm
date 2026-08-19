@@ -88,6 +88,9 @@
     <string name="contacts_select_all">Seleziona tutto</string>
     <!-- Issue #150: right-hand pane of the two-pane tablet contacts layout when no contact is selected -->
     <string name="contacts_select_contact">Seleziona un contatto per visualizzarne i dettagli</string>
+    <!-- Issue #210/#214: onClickLabel/onLongClickLabel for a contact row's combinedClickable -->
+    <string name="contacts_open_contact">apri contatto</string>
+    <string name="contacts_row_select_action">seleziona contatto</string>
 
     <!-- Contact list: cross-entity search (T87) -->
     <string name="contacts_search_results_header">%1$d corrispondenze in note e attività</string>

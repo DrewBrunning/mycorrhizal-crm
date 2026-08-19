@@ -14,6 +14,7 @@ import androidx.compose.ui.test.performTextInput
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.GraphChain
 import com.mycorrhizal.crm.model.network.GraphChainStep
+import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -62,12 +63,14 @@ class NetworkScreenTest {
         onDepthChange: (Int) -> Unit = {},
         onRelationApply: () -> Unit = {},
         onCircleSelect: (String?) -> Unit = {},
+        showMenu: Boolean = false,
+        darkTheme: Boolean = false,
     ) {
         composeTestRule.setContent {
-            MycorrhizalTheme {
+            MycorrhizalTheme(darkTheme = darkTheme) {
                 NetworkScreenContent(
                     uiState = uiState,
-                    showMenu = false,
+                    showMenu = showMenu,
                     onBack = {},
                     onMenuClick = {},
                     onOpenContact = onOpenContact,
@@ -284,5 +287,27 @@ class NetworkScreenTest {
         }
 
         composeTestRule.onNodeWithText("Type to search for a contact.").assertIsDisplayed()
+    }
+
+    // --- Issue #214: Compose semantics a11y sweep (the axe-core analog) -----
+
+    private fun populatedState() = state(
+        chains = listOf(
+            chain(10, "t1", "Carol", depth = 1, steps = listOf(GraphChainStep(10, "t1", "Carol", "child_of"))),
+        ),
+    )
+
+    @Test
+    fun `network screen has no accessibility violations (light)`() {
+        setContent(populatedState(), showMenu = true, darkTheme = false)
+
+        composeTestRule.assertAccessibleSemantics()
+    }
+
+    @Test
+    fun `network screen has no accessibility violations (dark)`() {
+        setContent(populatedState(), showMenu = true, darkTheme = true)
+
+        composeTestRule.assertAccessibleSemantics()
     }
 }

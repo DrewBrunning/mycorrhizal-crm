@@ -13,7 +13,7 @@ import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -87,7 +87,7 @@ fun NotesInboxScreenContent(
             TopAppBar(
                 navigationIcon = {
                     onMenuClick?.let { onMenu ->
-                        IconButton(onClick = onMenu) {
+                        AccessibleIconButton(onClick = onMenu) {
                             Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
                         }
                     }

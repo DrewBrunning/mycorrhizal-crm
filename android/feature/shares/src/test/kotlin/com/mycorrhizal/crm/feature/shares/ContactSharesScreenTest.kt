@@ -12,6 +12,7 @@ import com.mycorrhizal.crm.model.network.ContactShareStatuses
 import com.mycorrhizal.crm.model.network.ContactSharesPage
 import com.mycorrhizal.crm.model.network.ImportPreviewResponse
 import com.mycorrhizal.crm.model.network.ImportRowPreview
+import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -42,9 +43,12 @@ class ContactSharesScreenTest {
         status = ContactShareStatuses.PENDING,
     )
 
-    private fun screen(viewModel: ContactSharesViewModel = ContactSharesViewModel(repository)) {
+    private fun screen(
+        viewModel: ContactSharesViewModel = ContactSharesViewModel(repository),
+        darkTheme: Boolean = false,
+    ) {
         composeTestRule.setContent {
-            MycorrhizalTheme {
+            MycorrhizalTheme(darkTheme = darkTheme) {
                 ContactSharesScreen(onMenuClick = {}, viewModel = viewModel)
             }
         }
@@ -122,5 +126,32 @@ class ContactSharesScreenTest {
 
         composeTestRule.onNodeWithText("Review shared contact").assertIsDisplayed()
         composeTestRule.onNodeWithText("Add as new contact").assertIsDisplayed()
+    }
+
+    // --- Issue #214: Compose semantics a11y sweep (the axe-core analog) -----
+
+    private fun setUpPopulatedShares() {
+        coEvery { repository.listIncoming(any(), any()) } returns Result.success(
+            ContactSharesPage(contactShares = listOf(incomingShare), usernames = mapOf("7" to "dana")),
+        )
+        coEvery { repository.listOutgoing(any(), any()) } returns Result.success(ContactSharesPage())
+    }
+
+    @Test
+    fun `contact shares has no accessibility violations (light)`() {
+        setUpPopulatedShares()
+
+        screen(darkTheme = false)
+
+        composeTestRule.assertAccessibleSemantics()
+    }
+
+    @Test
+    fun `contact shares has no accessibility violations (dark)`() {
+        setUpPopulatedShares()
+
+        screen(darkTheme = true)
+
+        composeTestRule.assertAccessibleSemantics()
     }
 }

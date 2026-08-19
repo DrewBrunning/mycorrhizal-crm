@@ -19,7 +19,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -65,7 +65,7 @@ fun TagsScreen(
             TopAppBar(
                 navigationIcon = {
                     onMenuClick?.let { onMenu ->
-                        IconButton(onClick = onMenu) {
+                        AccessibleIconButton(onClick = onMenu) {
                             Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
                         }
                     }
@@ -194,14 +194,14 @@ private fun TagListItem(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-        IconButton(onClick = { renaming = true }) {
+        AccessibleIconButton(onClick = { renaming = true }) {
             Icon(
                 Icons.Outlined.Edit,
                 contentDescription = stringResource(R.string.action_rename),
                 tint = MaterialTheme.colorScheme.primary,
             )
         }
-        IconButton(onClick = { deleting = true }) {
+        AccessibleIconButton(onClick = { deleting = true }) {
             Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.action_delete))
         }
         Icon(Icons.AutoMirrored.Outlined.ArrowForward, contentDescription = null)
