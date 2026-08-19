@@ -493,6 +493,32 @@ class ContactRepositoryImplTest {
         assertEquals(400, (error as ApiError.Client).code)
     }
 
+    // --- Issue #219: profile-photo upload ---
+
+    @Test
+    fun `uploadPhoto delegates to the api client with bytes and mime type`() = runTest {
+        val bytes = ByteArray(64) { it.toByte() }
+        coEvery { apiClient.uploadContactPhoto(5, bytes, "image/png") } returns Result.success(Unit)
+
+        val result = repository.uploadPhoto(5, bytes, "image/png")
+
+        assertTrue(result.isSuccess)
+        io.mockk.coVerify(exactly = 1) { apiClient.uploadContactPhoto(5, bytes, "image/png") }
+    }
+
+    @Test
+    fun `uploadPhoto propagates a backend failure`() = runTest {
+        val bytes = ByteArray(64) { it.toByte() }
+        coEvery { apiClient.uploadContactPhoto(5, bytes, "image/jpeg") } returns
+            Result.failure(ApiError.Client(400, "File too large. Maximum size is 10MB"))
+
+        val result = repository.uploadPhoto(5, bytes, "image/jpeg")
+
+        assertTrue(result.isFailure)
+        val error = result.exceptionOrNull() as ApiError
+        assertEquals(400, (error as ApiError.Client).code)
+    }
+
     // --- 167: contact-address suggestions ---
 
     @Test

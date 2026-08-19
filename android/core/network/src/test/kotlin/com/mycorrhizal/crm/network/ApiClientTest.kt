@@ -181,6 +181,47 @@ class ApiClientTest {
     }
 
     @Test
+    fun `upload contact photo posts a multipart body with the photo field`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"ID": 9, "firstname": "Carol", "photo": "x_photo.jpg", "photo_thumbnail": "data:image/jpeg;base64,abc"}"""),
+        )
+
+        val result = client.uploadContactPhoto(9, "fake-jpeg-bytes".toByteArray(), "image/jpeg")
+
+        assertTrue(result.isSuccess)
+
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/contacts/9/profile_picture", request.path)
+        assertTrue(
+            "Expected multipart/form-data, got ${request.getHeader("Content-Type")}",
+            request.getHeader("Content-Type").orEmpty().startsWith("multipart/form-data"),
+        )
+        val body = request.body.readUtf8()
+        assertTrue("multipart must use the `photo` form field", body.contains("""name="photo""""))
+        assertTrue("the image MIME type must ride along in the part", body.contains("image/jpeg"))
+        assertTrue("the photo bytes must be the part's content", body.contains("fake-jpeg-bytes"))
+    }
+
+    @Test
+    fun `upload contact photo maps the 10MB size rejection to a Client error`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(400)
+                .setBody("""{"error":{"code":"validation_failed","message":"File too large. Maximum size is 10MB"}}"""),
+        )
+
+        val result = client.uploadContactPhoto(9, ByteArray(1024), "image/jpeg")
+
+        assertTrue(result.isFailure)
+        val error = result.exceptionOrNull() as ApiError
+        assertTrue(error is ApiError.Client)
+        assertEquals(400, (error as ApiError.Client).code)
+    }
+
+    @Test
     fun `get contact parses the full record`() = runBlocking {
         server.enqueue(
             MockResponse()

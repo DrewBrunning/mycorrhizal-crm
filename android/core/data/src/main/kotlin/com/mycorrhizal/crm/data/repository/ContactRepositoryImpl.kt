@@ -153,6 +153,9 @@ class ContactRepositoryImpl @Inject constructor(
     override suspend fun exportContactVcf(vcardUid: String, version: Int?): Result<ByteArray> =
         apiClient.exportContactVcf(vcardUid, version)
 
+    override suspend fun uploadPhoto(id: Int, bytes: ByteArray, mimeType: String): Result<Unit> =
+        apiClient.uploadContactPhoto(id, bytes, mimeType)
+
     override fun observeContacts(): Flow<List<ContactSummary>> =
         flow {
             emit(dao.getAll().map { it.toSummary() })

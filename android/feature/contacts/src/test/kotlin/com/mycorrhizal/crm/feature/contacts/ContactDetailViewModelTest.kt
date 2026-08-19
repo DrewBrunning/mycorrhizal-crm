@@ -434,6 +434,47 @@ class ContactDetailViewModelTest {
         io.mockk.coVerify(exactly = 0) { contactRepository.exportContactVcf(any(), any()) }
     }
 
+    // --- Issue #219: profile-photo upload ---
+
+    @Test
+    fun `uploadPhoto uploads the bytes and reloads the contact on success`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+
+        val bytes = ByteArray(64) { it.toByte() }
+        coEvery { contactRepository.uploadPhoto(5, bytes, "image/jpeg") } returns Result.success(Unit)
+        vm.uploadPhoto(bytes, "image/jpeg")
+        advanceUntilIdle()
+
+        io.mockk.coVerify(exactly = 1) { contactRepository.uploadPhoto(5, bytes, "image/jpeg") }
+        // The contact is refetched so the new photoThumbnail/card.photoUri renders immediately.
+        io.mockk.coVerify(atLeast = 2) { contactRepository.getContact(5) }
+        assertFalse(vm.uiState.value.isMutating)
+        assertEquals(null, vm.uiState.value.error)
+    }
+
+    @Test
+    fun `uploadPhoto failure surfaces the error and does not reload`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+
+        val bytes = ByteArray(64) { it.toByte() }
+        coEvery { contactRepository.uploadPhoto(5, bytes, "image/jpeg") } returns
+            Result.failure(ApiError.Client(400, "File too large. Maximum size is 10MB"))
+        vm.uploadPhoto(bytes, "image/jpeg")
+        advanceUntilIdle()
+
+        assertEquals("File too large. Maximum size is 10MB", vm.uiState.value.error)
+        assertFalse(vm.uiState.value.isMutating)
+        io.mockk.coVerify(exactly = 1) { contactRepository.getContact(5) }
+    }
+
     // --- M24: inline circle/tag editors ---
 
     @Test

@@ -78,6 +78,10 @@
     <string name="contacts_empty">No contacts yet</string>
     <string name="contacts_new">New contact</string>
     <string name="contacts_photo_description">Photo of %1$s</string>
+    <!-- Issue #219: TalkBack action label for tapping the avatar on the detail
+         screen (the profile-photo upload entry point). Lowercase verb phrase
+         to read naturally as "double tap to <contacts_photo_change>". -->
+    <string name="contacts_photo_change">add or change photo</string>
     <!-- M23: list breadth — circle filter, archived toggle, inline bulk selection -->
     <string name="contacts_filter_circle">Circle</string>
     <string name="contacts_all_circles">All circles</string>
@@ -151,6 +155,9 @@
     <string name="contact_tags_empty">No tags yet</string>
     <string name="contact_tags_add">Add tag</string>
     <string name="contact_export_share_title">Export contact</string>
+    <!-- Issue #219: client-side pre-check for the profile-photo upload; the
+         wording mirrors the backend's AddPhotoToContact rejection. -->
+    <string name="profile_picture_error_too_large">Photo is too large. Maximum size is 10 MB.</string>
     <string name="mobile_link_message">Message</string>
     <string name="mobile_link_voice_call">Voice Call</string>
     <string name="mobile_link_video_call">Video Call</string>

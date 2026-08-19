@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm.feature.contacts
 
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
@@ -32,6 +33,7 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -448,6 +450,40 @@ class ContactDetailScreenTest {
         composeTestRule.onNodeWithText("Add circle").performClick()
         composeTestRule.onNodeWithText("family").performClick()
         assertEquals("family", added)
+    }
+
+    // --- Issue #219: tapping the avatar opens the profile-photo upload flow ---
+
+    @Test
+    fun `tapping the avatar invokes the profile-photo callback`() {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        var tapped = false
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    onUploadProfilePicture = { tapped = true },
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithContentDescription("Photo of Dana White").performClick()
+        assertTrue(tapped)
+    }
+
+    @Test
+    fun `avatar without a photo callback is not clickable`() {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(contact = contact)
+            }
+        }
+
+        composeTestRule.onNodeWithContentDescription("Photo of Dana White")
+            .assert(SemanticsMatcher("has no click action") { node ->
+                !node.config.contains(SemanticsActions.OnClick)
+            })
     }
 
     // --- M15: the share entry point lives in the header's action menu ---
