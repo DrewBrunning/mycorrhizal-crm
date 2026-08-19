@@ -4,6 +4,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -17,6 +19,7 @@ import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.SearchActivityHit
 import com.mycorrhizal.crm.model.network.SearchNoteHit
 import com.mycorrhizal.crm.model.network.SearchResult
+import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -46,9 +49,10 @@ class ContactListScreenTest {
         onToggleSelectAll: () -> Unit = {},
         onRunBulkAction: (String, String?, String?) -> Unit = { _, _, _ -> },
         onMenuClick: (() -> Unit)? = {},
+        darkTheme: Boolean = false,
     ) {
         composeTestRule.setContent {
-            MycorrhizalTheme {
+            MycorrhizalTheme(darkTheme = darkTheme) {
                 ContactListScreenContent(
                     uiState = uiState,
                     onContactClick = onContactClick,
@@ -334,6 +338,29 @@ class ContactListScreenTest {
     }
 
     @Test
+    fun `select mode announces the row's checked state, not just its label`() {
+        // The row's own checked/selected state must reach accessibility
+        // services (Role.Checkbox + ToggleableState), not just its Checkbox
+        // glyph — a decorative Checkbox (onCheckedChange = null) contributes
+        // no semantics of its own, so the row itself must carry it.
+        setContent(
+            ContactListUiState(
+                isLoading = false,
+                contacts = listOf(
+                    ContactSummary(id = 1, uid = "u1", fn = "Alice", firstname = "Alice"),
+                    ContactSummary(id = 2, uid = "u2", fn = "Bob", firstname = "Bob"),
+                ),
+                selected = setOf(1),
+            ),
+        )
+
+        composeTestRule.onNodeWithTag("enter-select-mode").performClick()
+
+        composeTestRule.onNodeWithText("Alice").assertIsOn()
+        composeTestRule.onNodeWithText("Bob").assertIsOff()
+    }
+
+    @Test
     fun `select all in select mode fires the callback`() {
         var selectAllCalls = 0
         setContent(
@@ -386,5 +413,40 @@ class ContactListScreenTest {
         setContent(ContactListUiState(isLoading = false, contacts = emptyList()), onMenuClick = null)
 
         composeTestRule.onNodeWithContentDescription("Menu").assertDoesNotExist()
+    }
+
+    // --- Issue #214: Compose semantics a11y sweep (the axe-core analog) -----
+
+    private fun populatedListState() = ContactListUiState(
+        isLoading = false,
+        contacts = listOf(
+            ContactSummary(id = 1, uid = "u1", fn = "Alice Johnson", firstname = "Alice", primaryEmail = "alice@example.com"),
+            ContactSummary(id = 2, uid = "u2", fn = "Bob Smith", firstname = "Bob", primaryPhone = "+15551230000"),
+        ),
+    )
+
+    @Test
+    fun `contact list has no accessibility violations (light)`() {
+        setContent(populatedListState(), darkTheme = false)
+
+        composeTestRule.assertAccessibleSemantics()
+    }
+
+    @Test
+    fun `contact list in multi-select mode has no accessibility violations`() {
+        // Multi-select mode is where the row's long-press action and the
+        // per-row Checkbox actually render — exercise it, not just the
+        // default list state.
+        setContent(populatedListState(), darkTheme = false)
+        composeTestRule.onNodeWithTag("enter-select-mode").performClick()
+
+        composeTestRule.assertAccessibleSemantics()
+    }
+
+    @Test
+    fun `contact list has no accessibility violations (dark)`() {
+        setContent(populatedListState(), darkTheme = true)
+
+        composeTestRule.assertAccessibleSemantics()
     }
 }

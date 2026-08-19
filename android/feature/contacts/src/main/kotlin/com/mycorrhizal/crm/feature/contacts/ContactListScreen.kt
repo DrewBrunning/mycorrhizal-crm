@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Checklist
@@ -36,7 +37,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
@@ -62,6 +63,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
@@ -200,7 +206,7 @@ fun ContactListScreenContent(
             TopAppBar(
                 navigationIcon = {
                     onMenuClick?.let { onMenu ->
-                        IconButton(onClick = onMenu) {
+                        AccessibleIconButton(onClick = onMenu) {
                             Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
                         }
                     }
@@ -223,7 +229,7 @@ fun ContactListScreenContent(
                         ) {
                             Text(stringResource(R.string.contacts_select_all), color = MaterialTheme.colorScheme.onPrimary)
                         }
-                        IconButton(
+                        AccessibleIconButton(
                             onClick = { selectMode = false },
                             modifier = Modifier.testTag("exit-select-mode"),
                         ) {
@@ -234,7 +240,7 @@ fun ContactListScreenContent(
                             )
                         }
                     } else {
-                        IconButton(
+                        AccessibleIconButton(
                             onClick = { selectMode = true },
                             modifier = Modifier.testTag("enter-select-mode"),
                         ) {
@@ -540,12 +546,24 @@ private fun ContactListFilterRow(
                 }
             }
         }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Switch(
-                checked = includeArchived,
-                onCheckedChange = onIncludeArchivedChange,
-                modifier = Modifier.testTag("archived-toggle"),
-            )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            // #214: a bare Switch has no text/contentDescription of its own — the
+            // adjacent "Show archived" Text was a separate, unassociated node, so
+            // TalkBack announced the switch with no name at all. Modifier.toggleable
+            // on the row merges the label into the switch's accessible name (the
+            // standard Material3 labeled-switch pattern) and gives the whole row a
+            // touch target wider than the switch's own 52x32dp default.
+            modifier = Modifier
+                .heightIn(min = 48.dp)
+                .toggleable(
+                    value = includeArchived,
+                    onValueChange = onIncludeArchivedChange,
+                    role = Role.Switch,
+                )
+                .testTag("archived-toggle"),
+        ) {
+            Switch(checked = includeArchived, onCheckedChange = null)
             Text(
                 text = stringResource(R.string.contacts_show_archived),
                 style = MaterialTheme.typography.bodySmall,
@@ -621,16 +639,55 @@ fun ContactListItem(
             .fillMaxWidth()
             .combinedClickable(
                 onClick = onClick,
+                // #214/#210: without onClickLabel/onLongClickLabel the long-press
+                // is invisible in the semantics tree (long-clickable=true with no
+                // description of what it does) — unreachable by TalkBack's
+                // actions menu and by switch access. onClickLabel replaces the
+                // generic "double-tap to activate" with something that says what
+                // tapping actually does — which, per the caller's onClick wiring
+                // (ContactListScreenContent), is "toggle selection" in select
+                // mode and "open the contact" otherwise; a single static label
+                // would announce the wrong action in one of the two modes.
+                onClickLabel = if (selectMode) {
+                    stringResource(R.string.contacts_row_select_action)
+                } else {
+                    stringResource(R.string.contacts_open_contact)
+                },
                 onLongClick = onLongClick,
+                onLongClickLabel = stringResource(R.string.contacts_row_select_action),
+            )
+            // #214: the row's own combinedClickable above carries no Role or
+            // checked state, and the Checkbox below is decorative
+            // (onCheckedChange = null) — without this, TalkBack lost the
+            // selected/unselected announcement entirely in select mode, not
+            // just its label. Only the checkbox's Role/state, not its click
+            // handling, needs to live on the row.
+            .then(
+                if (selectMode) {
+                    Modifier.semantics {
+                        role = Role.Checkbox
+                        toggleableState = ToggleableState(selected)
+                    }
+                } else {
+                    Modifier
+                },
             )
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         if (selectMode) {
+            // #214: a bare Checkbox has no text/contentDescription of its own,
+            // and (as an independently screen-reader-focusable nested
+            // clickable) it never picks up the row's merged name either — it
+            // would announce with no label. The row's own combinedClickable
+            // above already toggles selection on tap, so the checkbox here is
+            // purely a visual indicator; onCheckedChange = null makes that
+            // decorative status explicit instead of adding a second,
+            // unlabeled way to trigger the same action.
             Checkbox(
                 checked = selected,
-                onCheckedChange = { onClick() },
+                onCheckedChange = null,
             )
         }
         ContactAvatar(

@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.mycorrhizal.crm.model.network.Note
+import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -30,9 +31,10 @@ class NotesInboxScreenTest {
         uiState: NotesInboxUiState,
         onNoteClick: (Int) -> Unit = {},
         onLoadMore: () -> Unit = {},
+        darkTheme: Boolean = false,
     ) {
         composeTestRule.setContent {
-            MycorrhizalTheme {
+            MycorrhizalTheme(darkTheme = darkTheme) {
                 NotesInboxScreenContent(
                     uiState = uiState,
                     onNoteClick = onNoteClick,
@@ -99,5 +101,27 @@ class NotesInboxScreenTest {
     fun `shows a loading skeleton while loading`() {
         setContent(NotesInboxUiState(isLoading = true))
         composeTestRule.onNodeWithTag("notes-inbox-loading").assertIsDisplayed()
+    }
+
+    // --- Issue #214: Compose semantics a11y sweep (the axe-core analog) -----
+
+    private fun populatedState() = NotesInboxUiState(
+        isLoading = false,
+        notes = listOf(Note(id = 3, content = "Buy milk"), Note(id = 4, content = "Call mom")),
+        total = 2,
+    )
+
+    @Test
+    fun `notes inbox has no accessibility violations (light)`() {
+        setContent(populatedState(), darkTheme = false)
+
+        composeTestRule.assertAccessibleSemantics()
+    }
+
+    @Test
+    fun `notes inbox has no accessibility violations (dark)`() {
+        setContent(populatedState(), darkTheme = true)
+
+        composeTestRule.assertAccessibleSemantics()
     }
 }

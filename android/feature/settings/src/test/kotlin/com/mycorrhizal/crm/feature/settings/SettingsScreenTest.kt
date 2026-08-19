@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.settings
 
+import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -7,8 +8,17 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
+import com.mycorrhizal.crm.domain.repository.AuthRepository
+import com.mycorrhizal.crm.domain.repository.RelationshipEdgeRepository
 import com.mycorrhizal.crm.domain.repository.SessionState
+import com.mycorrhizal.crm.domain.repository.TrackingSettingsRepository
+import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
+import io.mockk.coEvery
+import io.mockk.every
+import io.mockk.mockk
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -228,5 +238,48 @@ class SettingsScreenTest {
 
         composeTestRule.onNodeWithText("Data suggestions").performScrollTo().performClick()
         assertTrue(data)
+    }
+
+    // --- Issue #214: Compose semantics a11y sweep (the axe-core analog) -----
+    //
+    // Mounts the real SettingsScreen (Scaffold + TopAppBar included) via a
+    // mocked-repository SettingsViewModel — the same construction
+    // SettingsViewModelTest uses — rather than SettingsContent above: the
+    // sweep needs the whole top-level screen, chrome included.
+
+    private fun setScreen(darkTheme: Boolean) {
+        val authRepository = mockk<AuthRepository>()
+        val trackingSettings = mockk<TrackingSettingsRepository>()
+        val appSettings = mockk<AppSettingsRepository>()
+        val relationshipEdgeRepository = mockk<RelationshipEdgeRepository>()
+        val appContext = mockk<Context>(relaxed = true)
+        coEvery { trackingSettings.callTrackingEnabled() } returns false
+        coEvery { trackingSettings.smsTrackingEnabled() } returns false
+        coEvery { trackingSettings.notificationsEnabled() } returns true
+        every { authRepository.observeSession() } returns MutableStateFlow(
+            SessionState(serverUrl = "https://crm.example.com", username = "alice", isAdmin = true, language = "en"),
+        )
+        coEvery { appSettings.themePreference() } returns flowOf(AppSettingsRepository.THEME_SYSTEM)
+        val viewModel = SettingsViewModel(authRepository, trackingSettings, appSettings, relationshipEdgeRepository, appContext)
+
+        composeTestRule.setContent {
+            MycorrhizalTheme(darkTheme = darkTheme) {
+                SettingsScreen(onLoggedOut = {}, viewModel = viewModel)
+            }
+        }
+    }
+
+    @Test
+    fun `settings screen has no accessibility violations (light)`() {
+        setScreen(darkTheme = false)
+
+        composeTestRule.assertAccessibleSemantics()
+    }
+
+    @Test
+    fun `settings screen has no accessibility violations (dark)`() {
+        setScreen(darkTheme = true)
+
+        composeTestRule.assertAccessibleSemantics()
     }
 }

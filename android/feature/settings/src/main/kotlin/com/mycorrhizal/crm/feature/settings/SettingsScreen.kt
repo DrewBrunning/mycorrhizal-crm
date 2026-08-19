@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
@@ -20,7 +21,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -39,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.foundation.text.KeyboardOptions
@@ -92,7 +94,7 @@ fun SettingsScreen(
             TopAppBar(
                 navigationIcon = {
                     onMenuClick?.let { onMenu ->
-                        IconButton(onClick = onMenu) {
+                        AccessibleIconButton(onClick = onMenu) {
                             Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
                         }
                     }
@@ -386,14 +388,20 @@ private fun ToggleRow(
     onCheckedChange: (Boolean) -> Unit,
 ) {
     Row(
+        // #214: a bare Switch has no text/contentDescription of its own — the
+        // adjacent label Text was a separate, unassociated node, so TalkBack
+        // announced the switch with no name at all. Modifier.toggleable on the
+        // row merges the label into the switch's accessible name (the standard
+        // Material3 labeled-switch pattern).
         modifier = Modifier
             .fillMaxWidth()
+            .toggleable(value = checked, onValueChange = onCheckedChange, role = Role.Switch)
             .padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
+        Switch(checked = checked, onCheckedChange = null)
     }
 }
 
