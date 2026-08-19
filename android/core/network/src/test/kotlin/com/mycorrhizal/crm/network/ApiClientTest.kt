@@ -222,6 +222,168 @@ class ApiClientTest {
     }
 
     @Test
+    fun `list external identities sends the contact filter and parses the page`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "external_identities": [
+                        {"id": "i1", "entity_id": "u5", "system": "paperless", "external_id": "doc-1", "sync_status": "synced"},
+                        {"id": "i2", "entity_id": "u5", "system": "immich", "external_id": "person-1", "url": "https://immich.example/person"}
+                      ],
+                      "total": 2,
+                      "next_cursor": "",
+                      "limit": 100
+                    }
+                    """.trimIndent(),
+                ),
+        )
+
+        val result = client.listExternalIdentities("u5")
+
+        assertTrue(result.isSuccess)
+        val page = result.getOrThrow()
+        assertEquals(2, page.externalIdentities.size)
+        assertEquals("paperless", page.externalIdentities[0].system)
+        assertEquals("person-1", page.externalIdentities[1].externalId)
+        assertEquals(2, page.total)
+
+        val request = server.takeRequest()
+        assertEquals("/api/v1/external-identities?contact_id=u5&limit=100", request.path)
+    }
+
+    @Test
+    fun `delete external identity sends a DELETE`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"message":"External identity deleted"}"""))
+
+        val result = client.deleteExternalIdentity("i1")
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("DELETE", request.method)
+        assertEquals("/api/v1/external-identities/i1", request.path)
+    }
+
+    @Test
+    fun `immich config parses has_api_key`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"base_url": "https://immich.example", "has_api_key": true, "sync_enabled": true}"""),
+        )
+
+        val result = client.getImmichConfig()
+
+        assertTrue(result.isSuccess)
+        assertEquals(true, result.getOrThrow().hasApiKey)
+        assertEquals("https://immich.example", result.getOrThrow().baseUrl)
+    }
+
+    @Test
+    fun `immich people are unwrapped from the response`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"people": [{"id": "p1", "name": "Alice"}, {"id": "p2", "name": ""}]}"""),
+        )
+
+        val result = client.listImmichPeople()
+
+        assertTrue(result.isSuccess)
+        assertEquals(2, result.getOrThrow().size)
+        assertEquals("Alice", result.getOrThrow()[0].name)
+
+        val request = server.takeRequest()
+        assertEquals("/api/v1/immich/people", request.path)
+    }
+
+    @Test
+    fun `link immich contact posts to the contact link path`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(201)
+                .setBody("""{"external_identity": {"id": "i1", "system": "immich"}}"""),
+        )
+
+        val result = client.linkImmichContact("u5", "p1", "Alice")
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/immich/contacts/u5/link", request.path)
+        val body = request.body.readUtf8()
+        assertTrue(body.contains("\"person_id\":\"p1\""))
+        assertTrue(body.contains("\"person_name\":\"Alice\""))
+    }
+
+    @Test
+    fun `immich contact summary unwraps the nullable summary`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {"summary": {"identity": {"id": "i1"}, "person_name": "Alice", "photo_count": 7}}
+                    """.trimIndent(),
+                ),
+        )
+
+        val result = client.getImmichContactSummary("u5")
+
+        assertTrue(result.isSuccess)
+        assertEquals("Alice", result.getOrThrow()?.personName)
+        assertEquals(7, result.getOrThrow()?.photoCount)
+    }
+
+    @Test
+    fun `immich contact summary is null when unlinked`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"summary": null}"""))
+
+        val result = client.getImmichContactSummary("u5")
+
+        assertTrue(result.isSuccess)
+        assertEquals(null, result.getOrThrow())
+    }
+
+    @Test
+    fun `immich contact assets are unwrapped from the response`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"assets": [{"id": "a1", "occurred_at": "2026-08-01T10:00:00Z"}]}"""),
+        )
+
+        val result = client.listImmichContactAssets("u5")
+
+        assertTrue(result.isSuccess)
+        assertEquals(1, result.getOrThrow().size)
+        assertEquals("a1", result.getOrThrow()[0].id)
+
+        val request = server.takeRequest()
+        assertEquals("/api/v1/immich/contacts/u5/assets", request.path)
+    }
+
+    @Test
+    fun `immich asset image returns the raw bytes`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "image/jpeg")
+                .setBody("fake-jpeg-image-bytes"),
+        )
+
+        val result = client.getImmichAssetImageBytes("u5", "a1")
+
+        assertTrue(result.isSuccess)
+        assertEquals("fake-jpeg-image-bytes", result.getOrThrow().toString(Charsets.UTF_8))
+
+        val request = server.takeRequest()
+        assertEquals("/api/v1/immich/contacts/u5/assets/a1/image", request.path)
+    }
+
+    @Test
     fun `get contact parses the full record`() = runBlocking {
         server.enqueue(
             MockResponse()

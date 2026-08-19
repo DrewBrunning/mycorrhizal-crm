@@ -158,6 +158,32 @@
     <!-- Issue #219: client-side pre-check for the profile-photo upload; the
          wording mirrors the backend's AddPhotoToContact rejection. -->
     <string name="profile_picture_error_too_large">Photo is too large. Maximum size is 10 MB.</string>
+    <!-- Issue #219: the profile-photo flow (source chooser + uCrop crop step). -->
+    <string name="profile_picture_source_title">Change profile photo</string>
+    <string name="profile_picture_source_gallery">Choose from gallery</string>
+    <string name="profile_picture_source_immich">Choose from Immich</string>
+    <string name="profile_picture_crop_failed">Could not crop the photo. Try again.</string>
+    <!-- Issue #220: the External Links panel (ExternalIdentity substrate). -->
+    <string name="external_links_title">External Links</string>
+    <string name="external_links_remove">Remove link</string>
+    <string name="external_links_remove_title">Remove external link</string>
+    <string name="external_links_remove_confirm">Remove the %1$s link (%2$s)?</string>
+    <!-- Issue #219/#220: the Immich integration (External Links rich row +
+         "choose from Immich" profile-photo flow). -->
+    <string name="immich_linked_person">Linked Immich person</string>
+    <string name="immich_link_thumbnail_desc">Immich person photo</string>
+    <string name="immich_photo_count">%1$d photos</string>
+    <string name="immich_unlink">Unlink</string>
+    <string name="immich_unlink_title">Unlink Immich person</string>
+    <string name="immich_unlink_confirm">Unlink this Immich person? Its photo history will be kept.</string>
+    <string name="immich_person_search_title">Link an Immich person</string>
+    <string name="immich_person_search_placeholder">Search by name</string>
+    <string name="immich_person_search_no_matches">No matching people</string>
+    <string name="immich_person_search_unnamed">Unnamed person</string>
+    <string name="immich_photo_picker_title">Choose from Immich</string>
+    <string name="immich_photo_picker_no_photos">No recent photos</string>
+    <string name="immich_photo_picker_primary_desc">Primary photo</string>
+    <string name="immich_photo_picker_photo_desc">Photo</string>
     <string name="mobile_link_message">Message</string>
     <string name="mobile_link_voice_call">Voice Call</string>
     <string name="mobile_link_video_call">Video Call</string>

@@ -70,6 +70,15 @@ import com.mycorrhizal.crm.model.network.DashboardResponse
 import com.mycorrhizal.crm.model.network.DeviceRegistration
 import com.mycorrhizal.crm.model.network.DeviceRegistrationInput
 import com.mycorrhizal.crm.model.network.DeviceRegistrationsResponse
+import com.mycorrhizal.crm.model.network.ExternalIdentitiesPage
+import com.mycorrhizal.crm.model.network.ImmichAssetsResponse
+import com.mycorrhizal.crm.model.network.ImmichAssetSummary
+import com.mycorrhizal.crm.model.network.ImmichConfigResponse
+import com.mycorrhizal.crm.model.network.ImmichLinkRequest
+import com.mycorrhizal.crm.model.network.ImmichPeopleResponse
+import com.mycorrhizal.crm.model.network.ImmichPerson
+import com.mycorrhizal.crm.model.network.ImmichPersonSummary
+import com.mycorrhizal.crm.model.network.ImmichSummaryResponse
 import com.mycorrhizal.crm.model.network.Gift
 import com.mycorrhizal.crm.model.network.GiftInput
 import com.mycorrhizal.crm.model.network.GiftsPage
@@ -965,6 +974,72 @@ class ApiClient(
     suspend fun applyContactAddressSuggestion(input: ApplyContactAddressSuggestionInput): Result<Unit> =
         executePost("$CONTACTS_PATH/address-suggestions/apply", input) { _, _ -> Unit }
 
+    // --- Issue #220: ExternalIdentity substrate (T14) + the Immich integration (T15/T16) ---
+    // All endpoints pre-date the Android client; the backend is platform-agnostic
+    // (external_identity_controller.go, immich_controller.go). The Android surface
+    // is a read-only External Links list + delete, plus the Immich "choose from
+    // Immich" profile-photo flow. Thumbnails/photos render via Coil against the
+    // proxied URLs (auth attached by the shared stack); picks are fetched as bytes.
+
+    /** GET /api/v1/external-identities?contact_id=… — cursor-paginated, full_resync. */
+    suspend fun listExternalIdentities(contactId: String, limit: Int = 100): Result<ExternalIdentitiesPage> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$EXTERNAL_IDENTITIES_PATH".toHttpUrl().newBuilder()
+        urlBuilder.addQueryParameter("contact_id", contactId)
+        urlBuilder.addQueryParameter("limit", limit.toString())
+        return executeGet(urlBuilder.build().toString()) { _, body ->
+            moshi.adapter(ExternalIdentitiesPage::class.java).fromJson(body)
+        }
+    }
+
+    /** DELETE /api/v1/external-identities/:id — hard delete (edge-shaped row). */
+    suspend fun deleteExternalIdentity(id: String): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$EXTERNAL_IDENTITIES_PATH/$id")
+
+    /** GET /api/v1/immich/config — `has_api_key` gates the Immich UI entry points. */
+    suspend fun getImmichConfig(): Result<ImmichConfigResponse> =
+        executeGet("$PLACEHOLDER_ORIGIN$IMMICH_PATH/config") { _, body ->
+            moshi.adapter(ImmichConfigResponse::class.java).fromJson(body)
+        }
+
+    /** GET /api/v1/immich/people — every person in the user's instance, unwrapped. */
+    suspend fun listImmichPeople(): Result<List<ImmichPerson>> =
+        executeGet("$PLACEHOLDER_ORIGIN$IMMICH_PATH/people") { _, body ->
+            moshi.adapter(ImmichPeopleResponse::class.java).fromJson(body)?.people
+        }
+
+    /** POST /api/v1/immich/contacts/:vcard_uid/link — links the person; 201. */
+    suspend fun linkImmichContact(vcardUid: String, personId: String, personName: String): Result<Unit> =
+        executePost("$IMMICH_PATH/contacts/$vcardUid/link", ImmichLinkRequest(personId, personName)) { _, _ -> Unit }
+
+    /** DELETE /api/v1/immich/contacts/:vcard_uid/link — unlinks; keeps enrichment history. */
+    suspend fun unlinkImmichContact(vcardUid: String): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$IMMICH_PATH/contacts/$vcardUid/link")
+
+    /** GET /api/v1/immich/contacts/:vcard_uid/summary — null when unlinked. */
+    suspend fun getImmichContactSummary(vcardUid: String): Result<ImmichPersonSummary?> {
+        // The mapper returns the non-null wrapper so `summary: null` is a
+        // success-with-null, not a parse failure (execute treats a null mapper
+        // result as "empty body").
+        val response = executeGet("$PLACEHOLDER_ORIGIN$IMMICH_PATH/contacts/$vcardUid/summary") { _, body ->
+            moshi.adapter(ImmichSummaryResponse::class.java).fromJson(body)
+        }
+        return response.map { it.summary }
+    }
+
+    /** GET /api/v1/immich/contacts/:vcard_uid/assets — recent photos (id + occurred_at). */
+    suspend fun listImmichContactAssets(vcardUid: String): Result<List<ImmichAssetSummary>> =
+        executeGet("$PLACEHOLDER_ORIGIN$IMMICH_PATH/contacts/$vcardUid/assets") { _, body ->
+            moshi.adapter(ImmichAssetsResponse::class.java).fromJson(body)?.assets
+        }
+
+    /** GET /api/v1/immich/contacts/:vcard_uid/thumbnail — the linked person's photo bytes. */
+    suspend fun getImmichThumbnailBytes(vcardUid: String): Result<ByteArray> =
+        executeGetBytes("$PLACEHOLDER_ORIGIN$IMMICH_PATH/contacts/$vcardUid/thumbnail")
+
+    /** GET /api/v1/immich/contacts/:vcard_uid/assets/:asset_id/image — one photo's bytes. */
+    suspend fun getImmichAssetImageBytes(vcardUid: String, assetId: String): Result<ByteArray> =
+        executeGetBytes("$PLACEHOLDER_ORIGIN$IMMICH_PATH/contacts/$vcardUid/assets/$assetId/image")
+
     // --- Life events ---
 
     suspend fun listLifeEvents(
@@ -1502,6 +1577,8 @@ class ApiClient(
         private const val CONTACT_SHARES_PATH = "$API_V1/contact-shares"
         private const val AUDIT_PATH = "$API_V1/audit"
         private const val GRAPH_CONNECTIONS_PATH = "$API_V1/graph/connections"
+        private const val EXTERNAL_IDENTITIES_PATH = "$API_V1/external-identities"
+        private const val IMMICH_PATH = "$API_V1/immich"
         private const val AUTH_COOKIE = "auth_token"    }
 }
 

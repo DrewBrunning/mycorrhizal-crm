@@ -16,6 +16,9 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // Issue #219/#220: uCrop (the profile-photo crop step) is published
+        // only on JitPack — the canonical `com.github.yalantis:ucrop` artifact.
+        maven("https://jitpack.io")
     }
 }
 

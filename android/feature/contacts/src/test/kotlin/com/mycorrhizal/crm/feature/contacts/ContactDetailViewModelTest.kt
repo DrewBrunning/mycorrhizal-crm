@@ -3,15 +3,19 @@ package com.mycorrhizal.crm.feature.contacts
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
+import com.mycorrhizal.crm.domain.repository.ExternalIdentityRepository
+import com.mycorrhizal.crm.domain.repository.ImmichRepository
 import com.mycorrhizal.crm.domain.repository.ReminderRepository
 import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactFieldValuesResponse
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
+import com.mycorrhizal.crm.model.network.ExternalIdentity
 import com.mycorrhizal.crm.model.network.FieldDefinition
 import com.mycorrhizal.crm.model.network.FieldDefinitionsResponse
 import com.mycorrhizal.crm.model.network.FieldValue
+import com.mycorrhizal.crm.model.network.ImmichPerson
 import com.mycorrhizal.crm.model.network.Name
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
@@ -42,6 +46,8 @@ class ContactDetailViewModelTest {
     private val apiClient = mockk<ApiClient>()
     private val circleRepository = mockk<CircleRepository>()
     private val tagRepository = mockk<TagRepository>()
+    private val externalIdentityRepository = mockk<ExternalIdentityRepository>()
+    private val immichRepository = mockk<ImmichRepository>()
 
     private fun viewModel(id: Int, dateFormat: String? = null): ContactDetailViewModel {
         coEvery { contactRepository.getDeviceLookupKey(any()) } returns null
@@ -50,6 +56,7 @@ class ContactDetailViewModelTest {
         coEvery { apiClient.listContactFieldValues(any()) } returns Result.success(ContactFieldValuesResponse())
         stubMemberships()
         stubCompletions()
+        stubExternalLinks()
         return ContactDetailViewModel(
             contactRepository,
             reminderRepository,
@@ -57,8 +64,17 @@ class ContactDetailViewModelTest {
             apiClient,
             circleRepository,
             tagRepository,
+            externalIdentityRepository,
+            immichRepository,
             SavedStateHandle(mapOf("contactId" to id)),
         )
+    }
+
+    /** Issue #220: default stubs for the External Links / Immich loads (run on every load()). */
+    private fun stubExternalLinks() {
+        coEvery { externalIdentityRepository.listForContact(any()) } returns Result.success(emptyList())
+        coEvery { immichRepository.isConfigured() } returns Result.success(false)
+        coEvery { immichRepository.getContactSummary(any()) } returns Result.success(null)
     }
 
     /** M24: default stubs for the inline circle/tag editor loads (run on every load()). */
@@ -107,6 +123,7 @@ class ContactDetailViewModelTest {
         coEvery { apiClient.listFieldDefinitions(any()) } returns Result.success(FieldDefinitionsResponse())
         coEvery { apiClient.listContactFieldValues(any()) } returns Result.success(ContactFieldValuesResponse())
         coEvery { reminderRepository.listCompletions(any()) } returns Result.success(emptyList())
+        stubExternalLinks()
 
         val vm = ContactDetailViewModel(
             contactRepository,
@@ -115,6 +132,8 @@ class ContactDetailViewModelTest {
             apiClient,
             circleRepository,
             tagRepository,
+            externalIdentityRepository,
+            immichRepository,
             SavedStateHandle(mapOf("contactId" to "9")),
         )
         advanceUntilIdle()
@@ -221,7 +240,9 @@ class ContactDetailViewModelTest {
         )
         coEvery { reminderRepository.listCompletions(any()) } returns Result.success(emptyList())
 
-        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, apiClient, circleRepository, tagRepository, SavedStateHandle(mapOf("contactId" to 5)))
+        stubExternalLinks()
+
+        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, apiClient, circleRepository, tagRepository, externalIdentityRepository, immichRepository, SavedStateHandle(mapOf("contactId" to 5)))
         advanceUntilIdle()
 
         val state = vm.uiState.value
@@ -240,7 +261,9 @@ class ContactDetailViewModelTest {
         coEvery { apiClient.listContactFieldValues(5) } returns Result.success(ContactFieldValuesResponse())
         coEvery { reminderRepository.listCompletions(any()) } returns Result.success(emptyList())
 
-        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, apiClient, circleRepository, tagRepository, SavedStateHandle(mapOf("contactId" to 5)))
+        stubExternalLinks()
+
+        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, apiClient, circleRepository, tagRepository, externalIdentityRepository, immichRepository, SavedStateHandle(mapOf("contactId" to 5)))
         advanceUntilIdle()
 
         val state = vm.uiState.value
@@ -261,7 +284,9 @@ class ContactDetailViewModelTest {
         coEvery { apiClient.listContactFieldValues(5) } returns Result.failure(ApiError.Network(java.io.IOException("offline")))
         coEvery { reminderRepository.listCompletions(any()) } returns Result.success(emptyList())
 
-        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, apiClient, circleRepository, tagRepository, SavedStateHandle(mapOf("contactId" to 5)))
+        stubExternalLinks()
+
+        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, apiClient, circleRepository, tagRepository, externalIdentityRepository, immichRepository, SavedStateHandle(mapOf("contactId" to 5)))
         advanceUntilIdle()
 
         val state = vm.uiState.value
@@ -288,7 +313,9 @@ class ContactDetailViewModelTest {
         )
         coEvery { reminderRepository.listCompletions(any()) } returns Result.success(emptyList())
 
-        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, apiClient, circleRepository, tagRepository, SavedStateHandle(mapOf("contactId" to 5)))
+        stubExternalLinks()
+
+        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, apiClient, circleRepository, tagRepository, externalIdentityRepository, immichRepository, SavedStateHandle(mapOf("contactId" to 5)))
         advanceUntilIdle()
 
         val state = vm.uiState.value
@@ -473,6 +500,180 @@ class ContactDetailViewModelTest {
         assertEquals("File too large. Maximum size is 10MB", vm.uiState.value.error)
         assertFalse(vm.uiState.value.isMutating)
         io.mockk.coVerify(exactly = 1) { contactRepository.getContact(5) }
+    }
+
+    // --- Issue #220: External Links panel + Immich ---
+
+    @Test
+    fun `external links and the immich summary load alongside the contact`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+        val vm = viewModel(5)
+        // Re-stub after the helper's defaults (mockk last-registered-wins).
+        coEvery { externalIdentityRepository.listForContact("u5") } returns Result.success(
+            listOf(ExternalIdentity(id = "i1", entityId = "u5", system = "paperless", externalId = "doc-1")),
+        )
+        coEvery { immichRepository.getContactSummary("u5") } returns Result.success(
+            com.mycorrhizal.crm.model.network.ImmichPersonSummary(personName = "Alice", photoCount = 42),
+        )
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertEquals(1, state.externalIdentities.size)
+        assertEquals("paperless", state.externalIdentities.first().system)
+        assertEquals("Alice", state.immichSummary?.personName)
+        assertEquals(42, state.immichSummary?.photoCount)
+    }
+
+    @Test
+    fun `a contact without a vcard uid never loads external links`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+
+        io.mockk.coVerify(exactly = 0) { externalIdentityRepository.listForContact(any()) }
+        io.mockk.coVerify(exactly = 0) { immichRepository.getContactSummary(any()) }
+    }
+
+    @Test
+    fun `immich configured flag reflects the user's connection`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+        val vm = viewModel(5)
+        coEvery { immichRepository.isConfigured() } returns Result.success(true)
+        advanceUntilIdle()
+
+        assertTrue(vm.uiState.value.immichConfigured)
+    }
+
+    @Test
+    fun `deleteExternalIdentity reloads the panel on success`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { externalIdentityRepository.delete("i1") } returns Result.success(Unit)
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+
+        vm.deleteExternalIdentity("i1")
+        advanceUntilIdle()
+
+        io.mockk.coVerify(exactly = 1) { externalIdentityRepository.delete("i1") }
+        // The panel is refetched after the delete.
+        io.mockk.coVerify(atLeast = 2) { externalIdentityRepository.listForContact("u5") }
+        assertFalse(vm.uiState.value.isExternalLinkMutating)
+        assertNull(vm.uiState.value.error)
+    }
+
+    @Test
+    fun `deleteExternalIdentity failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { externalIdentityRepository.delete("i1") } returns Result.failure(ApiError.Client(404, "External identity not found"))
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+
+        vm.deleteExternalIdentity("i1")
+        advanceUntilIdle()
+
+        assertEquals("Not found", vm.uiState.value.error)
+        assertFalse(vm.uiState.value.isExternalLinkMutating)
+    }
+
+    @Test
+    fun `unlinkImmichPerson clears the summary and reloads the panel`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { immichRepository.unlinkPerson("u5") } returns Result.success(Unit)
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+
+        vm.unlinkImmichPerson()
+        advanceUntilIdle()
+
+        io.mockk.coVerify(exactly = 1) { immichRepository.unlinkPerson("u5") }
+        assertNull(vm.uiState.value.immichSummary)
+        io.mockk.coVerify(atLeast = 2) { externalIdentityRepository.listForContact("u5") }
+    }
+
+    @Test
+    fun `loadImmichPeople populates the picker's person list`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+
+        coEvery { immichRepository.listPeople() } returns Result.success(
+            listOf(ImmichPerson(id = "p1", name = "Alice"), ImmichPerson(id = "p2", name = "Bob")),
+        )
+        vm.loadImmichPeople()
+        advanceUntilIdle()
+
+        assertEquals(2, vm.uiState.value.immichPeople.size)
+        assertEquals("Alice", vm.uiState.value.immichPeople.first().name)
+        assertFalse(vm.uiState.value.immichPeopleLoading)
+    }
+
+    @Test
+    fun `linkImmichPerson links and loads the person's assets`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+
+        coEvery { immichRepository.linkPerson("u5", any()) } returns Result.success(Unit)
+        coEvery { immichRepository.listContactAssets("u5") } returns Result.success(
+            listOf(com.mycorrhizal.crm.model.network.ImmichAssetSummary(id = "a1")),
+        )
+        vm.linkImmichPerson(ImmichPerson(id = "p1", name = "Alice"))
+        advanceUntilIdle()
+
+        io.mockk.coVerify(exactly = 1) { immichRepository.linkPerson("u5", any()) }
+        assertEquals(1, vm.uiState.value.immichAssets.size)
+        assertEquals("a1", vm.uiState.value.immichAssets.first().id)
+    }
+
+    @Test
+    fun `pickImmichAsset hands the fetched bytes to the callback`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+
+        val bytes = ByteArray(128) { it.toByte() }
+        coEvery { immichRepository.getAssetImageBytes("u5", "a1") } returns Result.success(bytes)
+        var handed: ByteArray? = null
+        vm.pickImmichAsset("a1") { handed = it }
+        advanceUntilIdle()
+
+        assertEquals(bytes.contentToString(), handed?.contentToString())
+        assertNull(vm.uiState.value.error)
+    }
+
+    @Test
+    fun `pickImmichAsset failure surfaces the error without a callback`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+
+        coEvery { immichRepository.getThumbnailBytes("u5") } returns Result.failure(ApiError.Server(503, "boom"))
+        var handed = false
+        vm.pickImmichAsset(null) { handed = true }
+        advanceUntilIdle()
+
+        assertFalse(handed)
+        assertTrue(vm.uiState.value.error != null)
     }
 
     // --- M24: inline circle/tag editors ---

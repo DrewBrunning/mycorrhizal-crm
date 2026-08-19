@@ -1,10 +1,12 @@
 package com.mycorrhizal.crm.feature.contacts
 
 import android.Manifest
+import android.app.Activity
 import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -26,6 +28,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
@@ -33,6 +36,7 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Call
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Map
@@ -94,12 +98,18 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil3.compose.AsyncImage
 import com.mycorrhizal.crm.model.network.Address
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.Email
+import com.mycorrhizal.crm.model.network.ExternalIdentity
+import com.mycorrhizal.crm.model.network.ExternalSystems
 import com.mycorrhizal.crm.model.network.FieldDefinition
+import com.mycorrhizal.crm.model.network.ImmichAssetSummary
+import com.mycorrhizal.crm.model.network.ImmichPerson
+import com.mycorrhizal.crm.model.network.ImmichPersonSummary
 import com.mycorrhizal.crm.model.network.OnlineService
 import com.mycorrhizal.crm.model.network.Phone
 import com.mycorrhizal.crm.model.network.ReminderCompletion
@@ -107,6 +117,7 @@ import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.model.network.fieldValueDisplay
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.model.util.DateFormat.display
+import com.mycorrhizal.crm.ui.LocalServerUrl
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.LocalDarkTheme
 import com.mycorrhizal.crm.ui.LocalDrawerOpen
@@ -116,6 +127,7 @@ import com.mycorrhizal.crm.ui.theme.MycorrhizalFonts
 import com.mycorrhizal.crm.feature.timeline.TimelineSection
 import com.mycorrhizal.crm.feature.timeline.toTimelineItems
 import com.mycorrhizal.crm.ui.R
+import com.yalantis.ucrop.UCrop
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -212,14 +224,43 @@ fun ContactDetailScreen(
     // ContactDetailPage confirms (`window.confirm`), so Android confirms too
     // (M17's delete-is-confirmed-first rule).
     var pendingUndoCompletionId by remember { mutableStateOf<Int?>(null) }
+    // Issue #220: external-link deletes and Immich unlinking confirm first
+    // (M17), matching web's `window.confirm` in ExternalLinkPanel.
+    var pendingExternalLinkDelete by remember { mutableStateOf<ExternalIdentity?>(null) }
+    var pendingImmichUnlink by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    // Issue #219: tapping either avatar opens the system photo picker
-    // (ActivityResultContracts.PickVisualMedia — no runtime permission needed
-    // on API 33+ or via the compat backport) and uploads the picked image
-    // as-is. This is an explicit MVP scope cut: web's crop/zoom step
-    // (react-easy-crop) is deliberately not ported — cropping is a follow-up.
+    // Issue #219/#220: tapping either avatar opens the profile-photo flow. The
+    // avatar is the entry point (web's ContactHeader): the gallery photo picker
+    // (ActivityResultContracts.PickVisualMedia — no runtime permission needed)
+    // when Immich isn't configured, else a source chooser (gallery / Immich).
+    // Both paths run the picked photo through uCrop (web's react-easy-crop
+    // equivalent), then upload the cropped image.
+    // uCrop activity result: the cropped output is uploaded directly.
+    val cropLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val data = result.data
+            val outputUri = data?.let { UCrop.getOutput(it) }
+            if (outputUri != null) {
+                scope.launch {
+                    val bytes = withContext(Dispatchers.IO) {
+                        context.contentResolver.openInputStream(outputUri)?.use { it.readBytes() }
+                    }
+                    if (bytes != null && bytes.isNotEmpty()) {
+                        viewModel.uploadPhoto(bytes, "image/jpeg")
+                    }
+                }
+            } else if (data != null && UCrop.getError(data) != null) {
+                scope.launch {
+                    snackbarHostState.showSnackbar(context.getString(R.string.profile_picture_crop_failed))
+                }
+            }
+        }
+    }
+    val launchCrop: (Uri) -> Unit = { sourceUri ->
+        cropLauncher.launch(ucropIntent(context, sourceUri))
+    }
     val photoPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia(),
     ) { uri ->
@@ -236,18 +277,20 @@ fun ContactDetailScreen(
             }
             val bytes = withContext(Dispatchers.IO) { readPhotoBytes(resolver, uri) }
             if (bytes.isEmpty()) return@launch
-            // Backstop for providers that report no size: never upload a file
-            // the server would reject with its own 400.
+            // Backstop for providers that report no size: never feed a file
+            // the server would reject with its own 400 into the crop step.
             if (bytes.size > ContactDetailViewModel.MAX_PHOTO_SIZE_BYTES) {
                 snackbarHostState.showSnackbar(context.getString(R.string.profile_picture_error_too_large))
                 return@launch
             }
-            val mimeType = resolver.getType(uri) ?: "image/jpeg"
-            viewModel.uploadPhoto(bytes, mimeType)
+            withContext(Dispatchers.IO) { writePhotoBytes(context, bytes) }?.let { launchCrop(Uri.fromFile(it)) }
         }
     }
+    var photoSourceChooserOpen by remember { mutableStateOf(false) }
+    var immichPickerOpen by remember { mutableStateOf(false) }
     val onUploadProfilePicture = {
-        photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+        if (state.immichConfigured) photoSourceChooserOpen = true
+        else photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
     }
 
     // M24: action failures (delete/archive/export/membership writes) set `state.error`, which
@@ -541,6 +584,10 @@ fun ContactDetailScreen(
                     completions = state.completions,
                     onUndoCompletion = { id -> pendingUndoCompletionId = id },
                     onUploadProfilePicture = onUploadProfilePicture,
+                    externalIdentities = state.externalIdentities,
+                    immichSummary = state.immichSummary,
+                    onDeleteExternalIdentity = { pendingExternalLinkDelete = it },
+                    onUnlinkImmich = { pendingImmichUnlink = true },
                 )
             }
         }
@@ -663,6 +710,119 @@ fun ContactDetailScreen(
             },
         )
     }
+
+    // Issue #219/#220: the profile-photo source chooser (gallery / Immich) —
+    // shown only when Immich is configured, mirroring web's upload dialog
+    // (the Immich entry point appears only when configured).
+    if (photoSourceChooserOpen) {
+        AlertDialog(
+            onDismissRequest = { photoSourceChooserOpen = false },
+            title = { Text(stringResource(R.string.profile_picture_source_title)) },
+            text = {
+                Column {
+                    TextButton(
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = {
+                            photoSourceChooserOpen = false
+                            photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        },
+                    ) {
+                        Text(stringResource(R.string.profile_picture_source_gallery))
+                    }
+                    TextButton(
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = {
+                            photoSourceChooserOpen = false
+                            immichPickerOpen = true
+                        },
+                    ) {
+                        Text(stringResource(R.string.profile_picture_source_immich))
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { photoSourceChooserOpen = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
+
+    // Issue #220: external-link delete / Immich unlink confirms (M17 —
+    // delete-is-confirmed-first, matching web's `window.confirm`).
+    pendingExternalLinkDelete?.let { identity ->
+        AlertDialog(
+            onDismissRequest = { pendingExternalLinkDelete = null },
+            title = { Text(stringResource(R.string.external_links_remove_title)) },
+            text = {
+                Text(stringResource(R.string.external_links_remove_confirm, identity.system.orEmpty(), identity.externalId))
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !state.isExternalLinkMutating,
+                    onClick = {
+                        pendingExternalLinkDelete = null
+                        viewModel.deleteExternalIdentity(identity.id)
+                    },
+                ) {
+                    Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingExternalLinkDelete = null }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
+    if (pendingImmichUnlink) {
+        AlertDialog(
+            onDismissRequest = { pendingImmichUnlink = false },
+            title = { Text(stringResource(R.string.immich_unlink_title)) },
+            text = { Text(stringResource(R.string.immich_unlink_confirm)) },
+            confirmButton = {
+                TextButton(
+                    enabled = !state.isExternalLinkMutating,
+                    onClick = {
+                        pendingImmichUnlink = false
+                        viewModel.unlinkImmichPerson()
+                    },
+                ) {
+                    Text(stringResource(R.string.immich_unlink), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingImmichUnlink = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
+
+    // Issue #219/#220: the "choose from Immich" profile-photo picker.
+    if (immichPickerOpen) {
+        val contactUid = state.contact?.uid.orEmpty()
+        ImmichPhotoPickerDialog(
+            contactUid = contactUid,
+            isLinked = state.immichSummary != null || state.externalIdentities.any { it.system == ExternalSystems.IMMICH },
+            people = state.immichPeople,
+            peopleLoading = state.immichPeopleLoading,
+            assets = state.immichAssets,
+            assetsLoading = state.immichAssetsLoading,
+            onLoadPeople = viewModel::loadImmichPeople,
+            onLinkPerson = viewModel::linkImmichPerson,
+            onLoadAssets = viewModel::loadImmichAssets,
+            onPick = { assetId ->
+                viewModel.pickImmichAsset(assetId) { bytes ->
+                    scope.launch {
+                        withContext(Dispatchers.IO) { writePhotoBytes(context, bytes) }?.let { launchCrop(Uri.fromFile(it)) }
+                    }
+                }
+            },
+            onDismiss = { immichPickerOpen = false },
+        )
+    }
 }
 
 @Composable
@@ -710,6 +870,13 @@ fun ContactDetailContent(
      * entry point (web's `ContactHeader`); null renders the avatar plain.
      */
     onUploadProfilePicture: (() -> Unit)? = null,
+    // Issue #220: the External Links panel (ExternalIdentity substrate). The
+    // Immich link renders as a rich row (thumbnail, person name, photo count)
+    // via [immichSummary]; other systems render generically.
+    externalIdentities: List<ExternalIdentity> = emptyList(),
+    immichSummary: ImmichPersonSummary? = null,
+    onDeleteExternalIdentity: (ExternalIdentity) -> Unit = {},
+    onUnlinkImmich: () -> Unit = {},
 ) {
     val card = contact.card
     LazyColumn(
@@ -888,6 +1055,29 @@ fun ContactDetailContent(
                         // (CustomFieldValueRow.tsx) — a punctuation glyph, not translated text.
                         val display = fieldValueDisplay(definition, value).ifBlank { "—" }
                         InfoRow("${definition.label.orEmpty()}: $display")
+                    }
+                }
+            }
+        }
+        if (externalIdentities.isNotEmpty()) {
+            item {
+                // Issue #220: the External Links panel (ExternalIdentity
+                // substrate). Rendered only when non-empty, matching every
+                // other conditional section on this screen. The Immich link is
+                // a rich row (thumbnail + person name + photo count); other
+                // systems render as system/external_id with open+delete.
+                SectionCard(stringResource(R.string.external_links_title)) {
+                    externalIdentities.forEach { identity ->
+                        if (identity.system == ExternalSystems.IMMICH) {
+                            ImmichLinkRow(
+                                identity = identity,
+                                summary = immichSummary,
+                                contactUid = contact.uid,
+                                onUnlink = onUnlinkImmich,
+                            )
+                        } else {
+                            GenericExternalLinkRow(identity, onDelete = { onDeleteExternalIdentity(identity) })
+                        }
                     }
                 }
             }
@@ -1513,3 +1703,140 @@ private fun queryPhotoSize(resolver: ContentResolver, uri: Uri): Long? {
 /** Reads the picked image's bytes off the main thread (post-size-probe). */
 private fun readPhotoBytes(resolver: ContentResolver, uri: Uri): ByteArray =
     resolver.openInputStream(uri)?.use { it.readBytes() } ?: ByteArray(0)
+
+/** Writes photo bytes to a cache temp file (the uCrop source), or null on IO failure. */
+private fun writePhotoBytes(context: Context, bytes: ByteArray): File? {
+    val dir = File(context.cacheDir, "photos").apply { mkdirs() }
+    return try {
+        File(dir, "photo_${System.currentTimeMillis()}.jpg").apply { writeBytes(bytes) }
+    } catch (_: Exception) {
+        null
+    }
+}
+
+/**
+ * Issue #219: the uCrop intent for the profile-photo crop step (web's
+ * react-easy-crop equivalent). Circular 1:1 crop with a 400px result — the
+ * backend's `processAndSavePhoto` caps stored photos at 400x400, so the crop
+ * output matches what the server would produce itself.
+ */
+private fun ucropIntent(context: Context, sourceUri: Uri): Intent {
+    val dir = File(context.cacheDir, "crops").apply { mkdirs() }
+    val dest = File(dir, "crop_${System.currentTimeMillis()}.jpg")
+    val options = UCrop.Options().apply {
+        setCircleDimmedLayer(true)
+        setCompressionFormat(Bitmap.CompressFormat.JPEG)
+        setCompressionQuality(90)
+    }
+    return UCrop.of(sourceUri, Uri.fromFile(dest))
+        .withAspectRatio(1f, 1f)
+        .withMaxResultSize(400, 400)
+        .withOptions(options)
+        .getIntent(context)
+}
+
+/**
+ * Issue #220: the Immich row of the External Links panel. The linked person's
+ * thumbnail (proxied through the backend, rendered via Coil's auth stack),
+ * person name, photo count, open-in-Immich, and an unlink action. Unlinking
+ * keeps the person's ExternalActivity history (web parity) — it is not the
+ * generic external-identity delete.
+ */
+@Composable
+private fun ImmichLinkRow(
+    identity: ExternalIdentity,
+    summary: ImmichPersonSummary?,
+    contactUid: String?,
+    onUnlink: () -> Unit,
+) {
+    val context = LocalContext.current
+    val serverOrigin = LocalServerUrl.current
+    val personName = summary?.personName
+        ?: (identity.metadata?.get("person_name") as? String)
+        ?: stringResource(R.string.immich_linked_person)
+    val safeUrl = identity.url?.takeIf { it.startsWith("http://") || it.startsWith("https://") }
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        if (contactUid != null) {
+            AsyncImage(
+                model = resolvePhotoUri("/api/v1/immich/contacts/$contactUid/thumbnail", serverOrigin),
+                contentDescription = stringResource(R.string.immich_link_thumbnail_desc),
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(8.dp)),
+            )
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(personName, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                stringResource(R.string.immich_photo_count, summary?.photoCount ?: 0),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (safeUrl != null) {
+            IconButton(onClick = { context.startActivity(FieldActions.browserIntent(safeUrl)) }) {
+                Icon(
+                    Icons.Outlined.OpenInNew,
+                    contentDescription = stringResource(R.string.cd_open_link),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+        IconButton(onClick = onUnlink) {
+            Icon(
+                Icons.Outlined.Delete,
+                contentDescription = stringResource(R.string.external_links_remove),
+                tint = MaterialTheme.colorScheme.error,
+            )
+        }
+    }
+}
+
+/**
+ * Issue #220: a generic ExternalIdentity row (any system except Immich):
+ * system + external_id, open-link when the URL is http(s) (an unsafe URL is
+ * shown as text, never as a launchable link — web's T41 render-time guard),
+ * and a delete action.
+ */
+@Composable
+private fun GenericExternalLinkRow(identity: ExternalIdentity, onDelete: () -> Unit) {
+    val context = LocalContext.current
+    val safeUrl = identity.url?.takeIf { it.startsWith("http://") || it.startsWith("https://") }
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(identity.system.orEmpty(), style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                identity.externalId,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (safeUrl != null) {
+            IconButton(onClick = { context.startActivity(FieldActions.browserIntent(safeUrl)) }) {
+                Icon(
+                    Icons.Outlined.OpenInNew,
+                    contentDescription = stringResource(R.string.cd_open_link),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+        IconButton(onClick = onDelete) {
+            Icon(
+                Icons.Outlined.Delete,
+                contentDescription = stringResource(R.string.external_links_remove),
+                tint = MaterialTheme.colorScheme.error,
+            )
+        }
+    }
+}
