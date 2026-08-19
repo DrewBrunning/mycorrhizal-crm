@@ -27,4 +27,6 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     testImplementation(libs.androidx.compose.ui.test.junit4)
+    // Issue #214: the shared Compose semantics a11y-sweep assertion helper.
+    testImplementation(project(":core:testing"))
 }

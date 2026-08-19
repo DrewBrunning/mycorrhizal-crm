@@ -1,6 +1,6 @@
 package com.mycorrhizal.crm.feature.imports
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,7 +17,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -33,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -60,7 +61,7 @@ fun ImportContactsScreen(
             TopAppBar(
                 navigationIcon = {
                     onMenuClick?.let { onMenu ->
-                        IconButton(onClick = onMenu) {
+                        AccessibleIconButton(onClick = onMenu) {
                             Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
                         }
                     }
@@ -174,12 +175,18 @@ private fun DeviceContactRow(
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
+        // #214: a bare Checkbox has no text/contentDescription of its own —
+        // it's independently screen-reader-focusable (nested clickable), so
+        // it never picks up the row's Text on merge, and announced with no
+        // name. Modifier.toggleable on the row merges the display name into
+        // the checkbox's accessible name (the standard Material3
+        // labeled-checkbox pattern); the inner Checkbox becomes decorative.
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onToggle)
+            .toggleable(value = checked, onValueChange = { onToggle() }, role = Role.Checkbox)
             .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
-        Checkbox(checked = checked, onCheckedChange = { onToggle() })
+        Checkbox(checked = checked, onCheckedChange = null)
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = candidate.device.displayName ?: stringResource(R.string.import_unnamed),

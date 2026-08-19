@@ -30,7 +30,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -108,7 +108,13 @@ fun DashboardScreen(
             TopAppBar(
                 navigationIcon = {
                     onMenuClick?.let { onMenu ->
-                        IconButton(onClick = onMenu) {
+                        // #214: Material3's default IconButton state-layer is
+                        // 40dp — the semantics node it exposes to accessibility
+                        // services is that 40dp box, below the 48dp minimum
+                        // (WCAG 2.5.8), even though minimumInteractiveComponentSize()
+                        // pads the pointer-input hit region. An explicit outer
+                        // size constrains the inner default down to 48dp.
+                        AccessibleIconButton(onClick = onMenu) {
                             Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
                         }
                     }
@@ -390,14 +396,14 @@ private fun ReminderRow(
                 }
             }
             Row {
-                IconButton(onClick = onSkip, enabled = !isCompleting) {
+                AccessibleIconButton(onClick = onSkip, enabled = !isCompleting) {
                     Icon(
                         Icons.Outlined.SkipNext,
                         contentDescription = stringResource(R.string.cd_skip_reminder),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                IconButton(onClick = onComplete, enabled = !isCompleting) {
+                AccessibleIconButton(onClick = onComplete, enabled = !isCompleting) {
                     Icon(
                         Icons.Outlined.CheckCircle,
                         contentDescription = stringResource(R.string.cd_complete_reminder),

@@ -10,15 +10,24 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
+import com.mycorrhizal.crm.domain.repository.AuthRepository
+import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.model.network.Birthday
 import com.mycorrhizal.crm.model.network.CadenceHealth
 import com.mycorrhizal.crm.model.network.CadencePolicy
 import com.mycorrhizal.crm.model.network.DashboardRandomContact
 import com.mycorrhizal.crm.model.network.DashboardReminder
+import com.mycorrhizal.crm.model.network.DashboardResponse
 import com.mycorrhizal.crm.model.network.OverdueCadence
 import com.mycorrhizal.crm.model.util.DateFormat
+import com.mycorrhizal.crm.network.ApiClient
+import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
+import io.mockk.coEvery
+import io.mockk.every
+import io.mockk.mockk
 import java.time.LocalDate
+import kotlinx.coroutines.flow.flowOf
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Rule
@@ -77,9 +86,10 @@ class DashboardScreenTest {
         dateFormat: String = DateFormat.EU,
         onOpenContact: (Int) -> Unit = {},
         onCompleteReminder: (id: Int, skip: Boolean) -> Unit = { _, _ -> },
+        darkTheme: Boolean = false,
     ) {
         composeTestRule.setContent {
-            MycorrhizalTheme {
+            MycorrhizalTheme(darkTheme = darkTheme) {
                 DashboardContent(
                     state = state,
                     dateFormat = dateFormat,
@@ -223,5 +233,51 @@ class DashboardScreenTest {
         composeTestRule.onNodeWithText("Cancel").performClick()
 
         assertFalse(completed)
+    }
+
+    // --- Issue #214: Compose semantics a11y sweep (the axe-core analog) -----
+    //
+    // Deliberately mounts the real DashboardScreen (Scaffold + TopAppBar +
+    // hamburger included) via a mocked-repository DashboardViewModel — the
+    // same construction DashboardViewModelTest uses — rather than
+    // DashboardContent above: the sweep needs the whole top-level screen,
+    // chrome included, and it's the chrome (the menu IconButton) that
+    // surfaced this ticket's touch-target finding.
+
+    private fun fullDashboard() = populatedState().let { state ->
+        DashboardResponse(
+            birthdays = state.birthdays,
+            randomContacts = state.randomContacts,
+            upcomingReminders = state.upcomingReminders,
+            overdue = state.overdueCadences,
+        )
+    }
+
+    private fun setScreenContent(darkTheme: Boolean) {
+        val apiClient = mockk<ApiClient>()
+        val authRepository = mockk<AuthRepository>()
+        every { authRepository.observeSession() } returns flowOf(SessionState())
+        coEvery { apiClient.getDashboard() } returns Result.success(fullDashboard())
+        val viewModel = DashboardViewModel(apiClient, authRepository)
+
+        composeTestRule.setContent {
+            MycorrhizalTheme(darkTheme = darkTheme) {
+                DashboardScreen(onOpenContact = {}, onMenuClick = {}, viewModel = viewModel)
+            }
+        }
+    }
+
+    @Test
+    fun `dashboard has no accessibility violations (light)`() {
+        setScreenContent(darkTheme = false)
+
+        composeTestRule.assertAccessibleSemantics()
+    }
+
+    @Test
+    fun `dashboard has no accessibility violations (dark)`() {
+        setScreenContent(darkTheme = true)
+
+        composeTestRule.assertAccessibleSemantics()
     }
 }

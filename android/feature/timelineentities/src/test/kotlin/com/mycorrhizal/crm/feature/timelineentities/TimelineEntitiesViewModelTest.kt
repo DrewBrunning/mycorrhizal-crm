@@ -264,14 +264,19 @@ class GiftsViewModelTest {
     private val repo = mockk<GiftRepository>()
     private val lifeEventRepo = mockk<LifeEventRepository>()
     private val activityRepo = mockk<ActivityRepository>()
+    private val preferenceRepo = mockk<PreferenceRepository>()
     private val contacts = mockk<ContactRepository>()
     private fun vm(): GiftsViewModel {
-        // load() always fetches the picker lists; stub them empty by default so
-        // tests that don't care about pickers don't trip on the missing answer.
+        // load() always fetches the picker lists and clothing sizes; stub them
+        // empty by default so tests that don't care don't trip on the missing answer.
         coEvery { lifeEventRepo.listForContact(UID) } returns Result.success(emptyList())
         coEvery { activityRepo.listForContact(5, any(), any(), any(), any(), any()) } returns
             Result.success(ContactActivitiesPage(activities = emptyList(), nextCursor = null))
-        return GiftsViewModel(repo, lifeEventRepo, activityRepo, contacts, SavedStateHandle(mapOf("contactId" to 5)))
+        coEvery { preferenceRepo.listForContact(UID) } returns Result.success(emptyList())
+        return GiftsViewModel(
+            repo, lifeEventRepo, activityRepo, preferenceRepo, contacts,
+            SavedStateHandle(mapOf("contactId" to 5)),
+        )
     }
 
     @Test fun `loads gifts, picker lists, and exposes url`() = runTest(mainDispatcherRule.testDispatcher) {
@@ -446,9 +451,44 @@ class GiftsViewModelTest {
 
     @Test fun `missing contact id surfaces an error`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { contacts.getContact(0) } returns Result.failure(ApiError.Client(404, "gone"))
-        val vm = GiftsViewModel(repo, lifeEventRepo, activityRepo, contacts, SavedStateHandle(mapOf("contactId" to 0)))
+        val vm = GiftsViewModel(
+            repo, lifeEventRepo, activityRepo, preferenceRepo, contacts,
+            SavedStateHandle(mapOf("contactId" to 0)),
+        )
         advanceUntilIdle()
         assertFalse(vm.uiState.value.isLoading)
+    }
+
+    // Clothing sizes: web's ClothingSizesPanel is surfaced in the Gifts tab
+    // ("where you check sizes before buying"), not Preferences.
+
+    @Test fun `clothing-size preferences are surfaced for the dedicated panel`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            stubContact(contacts)
+            coEvery { repo.listForContact(UID) } returns Result.success(emptyList())
+            val vm = vm()
+            // Stub AFTER vm() so its emptyList() default doesn't clobber this.
+            coEvery { preferenceRepo.listForContact(UID) } returns Result.success(
+                listOf(
+                    Preference(id = "p1", entityId = UID, category = "food", value = "spicy"),
+                    Preference(id = "c1", entityId = UID, category = "clothing_size", value = "M"),
+                ),
+            )
+            advanceUntilIdle()
+            // Only the clothing_size row is exposed here — plain preferences aren't.
+            assertEquals(listOf("M"), vm.clothingSizes.value.map { it.value })
+        }
+
+    @Test fun `createClothingSize posts a clothing_size preference`() = runTest(mainDispatcherRule.testDispatcher) {
+        stubContact(contacts)
+        coEvery { repo.listForContact(UID) } returns Result.success(emptyList())
+        coEvery { preferenceRepo.create(any()) } returns Result.success(Preference(id = "c1"))
+        val vm = vm(); advanceUntilIdle()
+
+        vm.createClothingSize("42")
+        advanceUntilIdle()
+
+        coVerify { preferenceRepo.create(match { it.category == "clothing_size" && it.value == "42" }) }
     }
 }
 
@@ -497,19 +537,20 @@ class PreferencesViewModelTest {
             )
         }
 
-    @Test fun `clothing-size preferences are surfaced for the dedicated panel`() =
+    @Test fun `clothing-size preferences are excluded from the grouped list`() =
         runTest(mainDispatcherRule.testDispatcher) {
             stubContact(contacts)
             coEvery { repo.listForContact(UID) } returns Result.success(
                 listOf(
                     Preference(id = "p1", entityId = UID, category = "food", value = "spicy"),
+                    // Surfaced on the Gifts screen instead (GiftsViewModelTest) — see
+                    // PREFERENCE_CLOTHING_SIZE's doc comment.
                     Preference(id = "c1", entityId = UID, category = "clothing_size", value = "M"),
                 ),
             )
             val vm = vm(); advanceUntilIdle()
-            // The panel's items are NOT part of the grouped list.
             assertEquals(1, vm.uiState.value.items.size)
-            assertEquals(listOf("M"), vm.clothingSizes.map { it.value })
+            assertEquals("food: spicy", vm.uiState.value.items[0].label)
         }
 
     @Test fun `create sends category, key, value and sensitivity`() = runTest(mainDispatcherRule.testDispatcher) {
@@ -571,18 +612,6 @@ class PreferencesViewModelTest {
                 )
             }
         }
-
-    @Test fun `createClothingSize posts a clothing_size preference`() = runTest(mainDispatcherRule.testDispatcher) {
-        stubContact(contacts)
-        coEvery { repo.listForContact(UID) } returns Result.success(emptyList())
-        coEvery { repo.create(any()) } returns Result.success(Preference(id = "c1"))
-        val vm = vm(); advanceUntilIdle()
-
-        vm.createClothingSize("42")
-        advanceUntilIdle()
-
-        coVerify { repo.create(match { it.category == "clothing_size" && it.value == "42" }) }
-    }
 
     @Test fun `findById returns the loaded entity by id`() = runTest(mainDispatcherRule.testDispatcher) {
         stubContact(contacts)
