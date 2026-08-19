@@ -16,6 +16,7 @@ import com.mycorrhizal.crm.model.network.AuditEntityTypes
 import com.mycorrhizal.crm.model.network.AuditEventsResponse
 import com.mycorrhizal.crm.model.network.AuditOperations
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -184,10 +185,11 @@ class AuditScreenTest {
     private fun setScreen(
         auditRepository: AuditRepository,
         contactRepository: ContactRepository,
+        darkTheme: Boolean = false,
     ) {
         val viewModel = AuditViewModel(auditRepository, contactRepository)
         composeTestRule.setContent {
-            MycorrhizalTheme {
+            MycorrhizalTheme(darkTheme = darkTheme) {
                 AuditScreen(onBack = {}, onOpenContact = {}, viewModel = viewModel)
             }
         }
@@ -232,5 +234,35 @@ class AuditScreenTest {
         // enabled from the *input* value, before the 350ms debounce applies.
         composeTestRule.onNodeWithTag("audit-entity-id").performTextInput("uid-9")
         composeTestRule.onNodeWithTag("audit-clear-filters").assertIsEnabled()
+    }
+
+    // --- Issue #214: Compose semantics a11y sweep (the axe-core analog) -----
+
+    private fun populatedAuditRepository(): Pair<AuditRepository, ContactRepository> {
+        val auditRepository = mockk<AuditRepository>()
+        val contactRepository = mockk<ContactRepository>()
+        coEvery { auditRepository.list(entityType = any(), entityId = any(), limit = any()) } returns
+            Result.success(AuditEventsResponse(auditEvents = listOf(contactUpdate(id = 1))))
+        coEvery { contactRepository.resolveByUid(any()) } returns
+            Result.success(mapOf("uid-1" to ContactSummary(id = 1, fn = "Alice")))
+        return auditRepository to contactRepository
+    }
+
+    @Test
+    fun `audit screen has no accessibility violations (light)`() {
+        val (auditRepository, contactRepository) = populatedAuditRepository()
+
+        setScreen(auditRepository, contactRepository, darkTheme = false)
+
+        composeTestRule.assertAccessibleSemantics()
+    }
+
+    @Test
+    fun `audit screen has no accessibility violations (dark)`() {
+        val (auditRepository, contactRepository) = populatedAuditRepository()
+
+        setScreen(auditRepository, contactRepository, darkTheme = true)
+
+        composeTestRule.assertAccessibleSemantics()
     }
 }

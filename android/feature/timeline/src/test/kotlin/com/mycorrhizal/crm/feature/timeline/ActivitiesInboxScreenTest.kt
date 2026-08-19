@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ContactFlat
+import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -31,9 +32,10 @@ class ActivitiesInboxScreenTest {
         onActivityClick: (Int) -> Unit = {},
         onContactClick: (Int) -> Unit = {},
         onLoadMore: () -> Unit = {},
+        darkTheme: Boolean = false,
     ) {
         composeTestRule.setContent {
-            MycorrhizalTheme {
+            MycorrhizalTheme(darkTheme = darkTheme) {
                 ActivitiesInboxScreenContent(
                     uiState = uiState,
                     onActivityClick = onActivityClick,
@@ -107,5 +109,28 @@ class ActivitiesInboxScreenTest {
     fun `shows a loading skeleton while loading`() {
         setContent(ActivitiesInboxUiState(isLoading = true))
         composeTestRule.onNodeWithTag("activities-inbox-loading").assertIsDisplayed()
+    }
+
+    // --- Issue #214: Compose semantics a11y sweep (the axe-core analog) -----
+
+    private fun populatedState() = ActivitiesInboxUiState(
+        isLoading = false,
+        activities = listOf(
+            Activity(id = 1, title = "Coffee with Dana", contacts = listOf(ContactFlat(id = 5, firstname = "Dana"))),
+        ),
+    )
+
+    @Test
+    fun `activities inbox has no accessibility violations (light)`() {
+        setContent(populatedState(), darkTheme = false)
+
+        composeTestRule.assertAccessibleSemantics()
+    }
+
+    @Test
+    fun `activities inbox has no accessibility violations (dark)`() {
+        setContent(populatedState(), darkTheme = true)
+
+        composeTestRule.assertAccessibleSemantics()
     }
 }

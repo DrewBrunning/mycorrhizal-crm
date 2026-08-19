@@ -28,7 +28,7 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
@@ -79,7 +79,7 @@ fun HouseholdsScreen(
             TopAppBar(
                 navigationIcon = {
                     onMenuClick?.let { onMenu ->
-                        IconButton(onClick = onMenu) {
+                        AccessibleIconButton(onClick = onMenu) {
                             Icon(Icons.Outlined.Menu, contentDescription = stringResource(R.string.cd_menu))
                         }
                     }
@@ -88,7 +88,7 @@ fun HouseholdsScreen(
                     Text(stringResource(R.string.households_title), style = MaterialTheme.typography.titleLarge)
                 },
                 actions = {
-                    IconButton(
+                    AccessibleIconButton(
                         onClick = { viewModel.scanAddressSuggestions() },
                         enabled = !state.suggestionsLoading,
                     ) {
@@ -326,14 +326,14 @@ private fun HouseholdListItem(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        IconButton(onClick = { editing = true }) {
+        AccessibleIconButton(onClick = { editing = true }) {
             Icon(
                 Icons.Outlined.Edit,
                 contentDescription = stringResource(R.string.action_rename),
                 tint = MaterialTheme.colorScheme.primary,
             )
         }
-        IconButton(onClick = { deleting = true }) {
+        AccessibleIconButton(onClick = { deleting = true }) {
             Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.action_delete))
         }
         Icon(Icons.AutoMirrored.Outlined.ArrowForward, contentDescription = null)
