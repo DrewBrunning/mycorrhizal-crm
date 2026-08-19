@@ -12,6 +12,7 @@ import {
 } from '@mui/material';
 import AppDialog from './AppDialog';
 import { requestPasswordReset, confirmPasswordReset } from '../api/auth';
+import { useErrorAlertFocus } from '../hooks/useErrorAlertFocus';
 
 type ForgotPasswordDialogProps = {
   open: boolean;
@@ -28,7 +29,10 @@ export default function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDi
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  // #192: same fix as LoginPage.tsx -- move focus to the error and
+  // associate it with the fields instead of dropping focus to <body>. Both
+  // steps share this hook's ref/effect since only one ever renders at a time.
+  const { error, setError, errorRef } = useErrorAlertFocus();
   const [message, setMessage] = useState('');
 
   useEffect(() => {
@@ -42,7 +46,7 @@ export default function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDi
       setError('');
       setMessage('');
     }
-  }, [open]);
+  }, [open, setError]);
 
   const handleBackToRequest = () => {
     setStep('request');
@@ -127,13 +131,19 @@ export default function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDi
               {t('passwordReset.checkEmail', { email })}
             </Typography>
             {message && <Alert severity="info">{message}</Alert>}
-            {error && <Alert severity="error">{error}</Alert>}
+            {error && (
+              <Alert severity="error" id="forgot-password-error" ref={errorRef} tabIndex={-1}>
+                {error}
+              </Alert>
+            )}
             <TextField
               label={t('passwordReset.token')}
               value={token}
               onChange={event => setToken(event.target.value)}
               fullWidth
               required
+              error={Boolean(error)}
+              inputProps={{ 'aria-describedby': error ? 'forgot-password-error' : undefined }}
             />
             <TextField
               label={t('passwordReset.newPassword')}
@@ -142,6 +152,8 @@ export default function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDi
               onChange={event => setNewPassword(event.target.value)}
               fullWidth
               required
+              error={Boolean(error)}
+              inputProps={{ 'aria-describedby': error ? 'forgot-password-error' : undefined }}
             />
             <TextField
               label={t('passwordReset.confirmPassword')}
@@ -150,6 +162,8 @@ export default function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDi
               onChange={event => setConfirmPassword(event.target.value)}
               fullWidth
               required
+              error={Boolean(error)}
+              inputProps={{ 'aria-describedby': error ? 'forgot-password-error' : undefined }}
             />
             <Button type="submit" variant="contained" disabled={loading}>
               {loading ? t('passwordReset.confirming') : t('passwordReset.confirmButton')}
@@ -165,7 +179,11 @@ export default function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDi
           <Typography variant="body2" color="text.secondary">
             {t('passwordReset.description')}
           </Typography>
-          {error && <Alert severity="error">{error}</Alert>}
+          {error && (
+            <Alert severity="error" id="forgot-password-error" ref={errorRef} tabIndex={-1}>
+              {error}
+            </Alert>
+          )}
           <TextField
             label={t('passwordReset.email')}
             type="email"
@@ -173,6 +191,8 @@ export default function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDi
             onChange={event => setEmail(event.target.value)}
             fullWidth
             required
+            error={Boolean(error)}
+            inputProps={{ 'aria-describedby': error ? 'forgot-password-error' : undefined }}
           />
           <Button type="submit" variant="contained" disabled={loading}>
             {loading ? t('passwordReset.requesting') : t('passwordReset.requestButton')}

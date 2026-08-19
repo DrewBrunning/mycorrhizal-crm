@@ -106,3 +106,46 @@ describe('LoginPage two-factor step', () => {
     expect(screen.queryByLabelText('Verification code *')).not.toBeInTheDocument();
   });
 });
+
+// Issue #192: a failed login used to drop keyboard focus to <body> with no
+// programmatic link between the error and the fields it concerns.
+describe('LoginPage failed-login focus and error association', () => {
+  test('moves focus to the error and associates it with both fields on a rejected credentials submit', async () => {
+    loginUserMock.mockRejectedValue(new Error('Invalid username or password'));
+    renderLogin();
+
+    const identifierInput = screen.getByLabelText(/username or email/i);
+    const passwordInput = screen.getByLabelText(/^password/i);
+
+    fireEvent.change(identifierInput, { target: { value: 'alice' } });
+    fireEvent.change(passwordInput, { target: { value: 'wrong' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Login' }));
+
+    await screen.findByText('Invalid username or password');
+    const alert = screen.getByRole('alert');
+    await waitFor(() => expect(document.activeElement).toBe(alert));
+
+    expect(identifierInput).toHaveAttribute('aria-describedby', alert.id);
+    expect(passwordInput).toHaveAttribute('aria-describedby', alert.id);
+    expect(identifierInput).toHaveAttribute('aria-invalid', 'true');
+    expect(passwordInput).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  test('moves focus to the error on a rejected 2FA code', async () => {
+    loginUserMock.mockResolvedValue({ two_factor_required: true });
+    login2FAMock.mockRejectedValue(new Error('Invalid code'));
+    renderLogin();
+
+    fireEvent.change(screen.getByLabelText(/username or email/i), { target: { value: 'alice' } });
+    fireEvent.change(screen.getByLabelText(/^password/i), { target: { value: 'secret123' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Login' }));
+
+    await waitFor(() => expect(screen.getByLabelText(/verification code/i)).toBeInTheDocument());
+    fireEvent.change(screen.getByLabelText(/verification code/i), { target: { value: '000000' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Login' }));
+
+    await screen.findByText('Invalid code. Please try again.');
+    const alert = screen.getByRole('alert');
+    await waitFor(() => expect(document.activeElement).toBe(alert));
+  });
+});

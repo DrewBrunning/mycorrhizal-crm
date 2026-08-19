@@ -96,6 +96,25 @@ export const lightTheme = createTheme({
   },
 
   components: {
+    // #186: MUI's default `.Mui-focusVisible` treatment is a flat 12% black
+    // tint, which measures ~1.3:1 against every surface in this palette --
+    // nowhere near the 3:1 floor for 1.4.11. A real outline on MuiButtonBase
+    // covers Button/IconButton/ListItemButton/Tab/MenuItem/Chip in one place
+    // since they all compose ButtonBase. Text inputs don't compose
+    // ButtonBase and keep their own focused-border indicator instead (see
+    // the AppBar search field note below) -- do not add `outline: 0`
+    // removal here, MuiInputBase-input's own focus styling is untouched.
+    MuiButtonBase: {
+      styleOverrides: {
+        root: {
+          "&.Mui-focusVisible": {
+            outline: "2px solid #3E543E", // mycelium -- 6.73:1 on parchment, 7.60:1 on bone
+            outlineOffset: "2px",
+          },
+        },
+      },
+    },
+
     MuiCard: {
       styleOverrides: {
         root: {
@@ -230,6 +249,20 @@ export const darkTheme = createTheme({
   },
 
   components: {
+    // #186: see lightTheme's matching MuiButtonBase comment -- both
+    // createTheme calls are independent, so this needs to be set in each
+    // block, same as the h5/overline duplication below.
+    MuiButtonBase: {
+      styleOverrides: {
+        root: {
+          "&.Mui-focusVisible": {
+            outline: "2px solid #9EB698", // mycelium (dark) -- 6.88:1 on parchment, 7.92:1 on bone
+            outlineOffset: "2px",
+          },
+        },
+      },
+    },
+
     MuiCard: {
       styleOverrides: {
         root: {
