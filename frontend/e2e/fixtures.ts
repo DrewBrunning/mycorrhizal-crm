@@ -272,6 +272,19 @@ export async function waitForLoading(page: Page): Promise<void> {
 }
 
 /**
+ * #211: BulkActionsBar's "N selected" copy is now echoed into the app's
+ * `aria-live="polite"` announcer region too (by design -- see the model
+ * comment block at the top of App.tsx), so a plain `page.getByText('N
+ * selected')` hits a Playwright strict-mode violation (two matches) the
+ * moment the live region's text has updated. The visible bar renders its
+ * copy as a `<p>`; the announcer region is a `<div aria-live="polite">` --
+ * scope to the former.
+ */
+export function selectedText(page: Page, text: string | RegExp): Locator {
+  return page.locator('p').filter({ hasText: text });
+}
+
+/**
  * Clicks a locator only once its on-screen position has held steady --
  * closes a click-time race `waitForLoading` structurally can't (see its own
  * doc comment): a section can still shift the page *during* a click's own

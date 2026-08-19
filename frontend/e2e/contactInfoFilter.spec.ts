@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures';
-import { waitForLoading, createTestContact, deleteTestContact } from './fixtures';
+import { waitForLoading, createTestContact, deleteTestContact, selectedText } from './fixtures';
 import { E2E_CONTACT_PREFIX } from './global-setup';
 
 /**
@@ -118,10 +118,10 @@ test.describe('Contacts contact-info filter (T103)', () => {
       // (delete/archive) against rows the user can no longer see is the trap
       // T103's ticket calls out explicitly.
       await page.getByLabel(new RegExp(`Select ${contactable.firstname}`)).click();
-      await expect(page.getByText('1 selected')).toBeVisible();
+      await expect(selectedText(page, '1 selected')).toBeVisible();
 
       await page.getByText('Show all', { exact: true }).click();
-      await expect(page.getByText(/\d+ selected/)).not.toBeVisible();
+      await expect(selectedText(page, /\d+ selected/)).not.toBeVisible();
     } finally {
       await deleteTestContact(request, contactable.ID);
     }
