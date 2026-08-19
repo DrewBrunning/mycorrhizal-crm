@@ -302,11 +302,22 @@ private fun LifeEventFormData.toInput(entityId: String): LifeEventInput =
 // Gifts
 // ---------------------------------------------------------------------------
 
+/**
+ * Category token for a clothing-size preference. A clothing size is stored
+ * as an ordinary `Preference` row (category = "clothing_size"), but web
+ * surfaces it in the Gifts tab ("where you check sizes before buying")
+ * rather than the preferences dialog — see [GiftsViewModel]'s clothing-size
+ * methods and [PreferencesViewModel.load]'s exclusion filter, which must
+ * stay in sync so a clothing size is never shown in both places.
+ */
+internal const val PREFERENCE_CLOTHING_SIZE = "clothing_size"
+
 @HiltViewModel
 class GiftsViewModel @Inject constructor(
     private val giftRepository: GiftRepository,
     private val lifeEventRepository: LifeEventRepository,
     private val activityRepository: ActivityRepository,
+    private val preferenceRepository: PreferenceRepository,
     contactRepository: ContactRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
@@ -322,6 +333,11 @@ class GiftsViewModel @Inject constructor(
     val lifeEvents: StateFlow<List<LifeEvent>> = _lifeEvents.asStateFlow()
     private val _activities = MutableStateFlow<List<Activity>>(emptyList())
     val activities: StateFlow<List<Activity>> = _activities.asStateFlow()
+
+    // Clothing-size preferences (category = PREFERENCE_CLOTHING_SIZE), for the
+    // dedicated panel above the gift list (web's ClothingSizesPanel equivalent).
+    private val _clothingSizes = MutableStateFlow<List<Preference>>(emptyList())
+    val clothingSizes: StateFlow<List<Preference>> = _clothingSizes.asStateFlow()
 
     init { load() }
 
@@ -346,6 +362,7 @@ class GiftsViewModel @Inject constructor(
                 },
             )
             loadPickers(uid)
+            loadClothingSizes(uid)
         }
     }
 
@@ -426,6 +443,68 @@ class GiftsViewModel @Inject constructor(
     }
 
     fun onErrorShown() { _uiState.update { it.copy(error = null, errorRes = null) } }
+
+    // --- Clothing sizes (web's ClothingSizesPanel equivalent, surfaced here not
+    // in Preferences — see PREFERENCE_CLOTHING_SIZE's doc comment) ---
+
+    private suspend fun loadClothingSizes(uid: String) {
+        preferenceRepository.listForContact(uid).onSuccess { items ->
+            _clothingSizes.value = items.filter { it.category == PREFERENCE_CLOTHING_SIZE }
+        }
+    }
+
+    fun createClothingSize(value: String) {
+        val uid = _uiState.value.entityId
+        if (uid.isBlank() || value.isBlank()) return
+        viewModelScope.launch {
+            preferenceRepository.create(
+                // source/confidence match PreferenceFormData.toInput's "user"-authored
+                // tagging, since this bypasses that form.
+                PreferenceInput(
+                    entityId = uid,
+                    category = PREFERENCE_CLOTHING_SIZE,
+                    value = value,
+                    source = "user",
+                    confidence = 1.0,
+                ),
+            ).foldApiError(
+                onSuccess = { viewModelScope.launch { loadClothingSizes(uid) } },
+                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
+            )
+        }
+    }
+
+    fun updateClothingSize(original: Preference, value: String) {
+        if (value.isBlank()) return
+        viewModelScope.launch {
+            preferenceRepository.update(
+                original.id,
+                PreferenceInput(
+                    entityId = original.entityId,
+                    category = original.category,
+                    key = original.key,
+                    value = value,
+                    source = original.source,
+                    confidence = original.confidence,
+                    lastConfirmed = original.lastConfirmed,
+                    sensitivity = original.sensitivity,
+                ),
+            ).foldApiError(
+                onSuccess = { viewModelScope.launch { loadClothingSizes(original.entityId) } },
+                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
+            )
+        }
+    }
+
+    fun deleteClothingSize(id: String) {
+        val uid = _uiState.value.entityId
+        viewModelScope.launch {
+            preferenceRepository.delete(id).foldApiError(
+                onSuccess = { viewModelScope.launch { loadClothingSizes(uid) } },
+                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
+            )
+        }
+    }
 }
 
 private fun GiftFormData.toInput(entityId: String): GiftInput =
@@ -507,10 +586,6 @@ class PreferencesViewModel @Inject constructor(
 
     fun findById(id: String): Preference? = loaded.find { it.id == id }
 
-    /** Clothing-size preferences (`category = "clothing_size"`), for the dedicated panel. */
-    val clothingSizes: List<Preference>
-        get() = loaded.filter { it.category == PREFERENCE_CLOTHING_SIZE }
-
     fun create(form: PreferenceFormData) {
         val uid = _uiState.value.entityId
         if (uid.isBlank() || form.category.isBlank() || form.value.isBlank()) return
@@ -543,39 +618,6 @@ class PreferencesViewModel @Inject constructor(
         }
     }
 
-    // --- Clothing sizes (M18: the ClothingSizesPanel equivalent) ---
-
-    fun createClothingSize(value: String) {
-        create(
-            PreferenceFormData(
-                category = PREFERENCE_CLOTHING_SIZE,
-                value = value,
-            ),
-        )
-    }
-
-    fun updateClothingSize(original: Preference, value: String) {
-        if (value.isBlank()) return
-        viewModelScope.launch {
-            preferenceRepository.update(
-                original.id,
-                PreferenceInput(
-                    entityId = original.entityId,
-                    category = original.category,
-                    key = original.key,
-                    value = value,
-                    source = original.source,
-                    confidence = original.confidence,
-                    lastConfirmed = original.lastConfirmed,
-                    sensitivity = original.sensitivity,
-                ),
-            ).foldApiError(
-                onSuccess = { load() },
-                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
-            )
-        }
-    }
-
     fun delete(id: String) {
         if (_uiState.value.deletingId != null) return
         viewModelScope.launch {
@@ -588,10 +630,6 @@ class PreferencesViewModel @Inject constructor(
     }
 
     fun onErrorShown() { _uiState.update { it.copy(error = null, errorRes = null) } }
-
-    private companion object {
-        const val PREFERENCE_CLOTHING_SIZE = "clothing_size"
-    }
 }
 
 private fun PreferenceFormData.toInput(entityId: String): PreferenceInput =

@@ -109,6 +109,12 @@ internal fun EntityListScaffold(
     sectionLabel: (@Composable (String) -> String)? = null,
     // M18: an optional per-row trailing action (e.g. gift mark-given, agenda discuss).
     extraAction: (@Composable (EntityItem) -> Unit)? = null,
+    // Optional in-layout content rendered above the list (e.g. gifts' clothing-sizes
+    // panel). Deliberately separate from [dialog]: dialog content (AlertDialog) draws
+    // in its own Popup/window and never affects layout, but this slot's content is a
+    // normal composable and must be laid out in-flow with the scaffold, not stacked
+    // as an overlapping sibling of it (that overlap was a real bug — review-pass fix).
+    header: (@Composable () -> Unit)? = null,
     dialog: @Composable () -> Unit,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -139,77 +145,80 @@ internal fun EntityListScaffold(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            when {
-                uiState.isLoading -> LoadingSkeleton()
-                uiState.items.isEmpty() && errorMessage == null ->
-                    EmptyState(message = stringResource(R.string.entities_empty))
-                uiState.items.isEmpty() && errorMessage != null -> {
-                    Text(
-                        text = errorMessage,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.align(Alignment.Center),
-                    )
-                }
-                else -> {
-                    val uriHandler = LocalUriHandler.current
-                    // M18: flatten section headers into the row stream so the
-                    // generic scaffold can render grouped lists (preferences,
-                    // agenda) without per-entity list implementations.
-                    val rows = sectionRows(uiState.items, sectionLabel != null)
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(rows, key = { it.key }) { row ->
-                            when (row) {
-                                is SectionRow.Header -> {
-                                    Text(
-                                        text = sectionLabel?.invoke(row.sectionKey).orEmpty(),
-                                        style = MaterialTheme.typography.titleSmall,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                    )
-                                }
-                                is SectionRow.Item -> {
-                                    val item = row.item
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clickable(onClick = { onItemClick(item.id) })
-                                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                    ) {
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(
-                                                text = item.label,
-                                                style = MaterialTheme.typography.bodyLarge,
-                                                maxLines = 2,
-                                                overflow = TextOverflow.Ellipsis,
-                                            )
-                                            if (!item.url.isNullOrBlank()) {
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            header?.invoke()
+            Box(modifier = Modifier.weight(1f)) {
+                when {
+                    uiState.isLoading -> LoadingSkeleton()
+                    uiState.items.isEmpty() && errorMessage == null ->
+                        EmptyState(message = stringResource(R.string.entities_empty))
+                    uiState.items.isEmpty() && errorMessage != null -> {
+                        Text(
+                            text = errorMessage,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.align(Alignment.Center),
+                        )
+                    }
+                    else -> {
+                        val uriHandler = LocalUriHandler.current
+                        // M18: flatten section headers into the row stream so the
+                        // generic scaffold can render grouped lists (preferences,
+                        // agenda) without per-entity list implementations.
+                        val rows = sectionRows(uiState.items, sectionLabel != null)
+                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                            items(rows, key = { it.key }) { row ->
+                                when (row) {
+                                    is SectionRow.Header -> {
+                                        Text(
+                                            text = sectionLabel?.invoke(row.sectionKey).orEmpty(),
+                                            style = MaterialTheme.typography.titleSmall,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                        )
+                                    }
+                                    is SectionRow.Item -> {
+                                        val item = row.item
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickable(onClick = { onItemClick(item.id) })
+                                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
                                                 Text(
-                                                    text = item.url,
-                                                    style = MaterialTheme.typography.bodyMedium,
-                                                    color = MaterialTheme.colorScheme.primary,
-                                                    maxLines = 1,
+                                                    text = item.label,
+                                                    style = MaterialTheme.typography.bodyLarge,
+                                                    maxLines = 2,
                                                     overflow = TextOverflow.Ellipsis,
                                                 )
+                                                if (!item.url.isNullOrBlank()) {
+                                                    Text(
+                                                        text = item.url,
+                                                        style = MaterialTheme.typography.bodyMedium,
+                                                        color = MaterialTheme.colorScheme.primary,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis,
+                                                    )
+                                                }
                                             }
-                                        }
-                                        if (!item.url.isNullOrBlank()) {
-                                            IconButton(onClick = { uriHandler.openUri(item.url) }) {
-                                                Icon(
-                                                    Icons.Outlined.OpenInNew,
-                                                    contentDescription = stringResource(R.string.cd_open_link),
-                                                    tint = MaterialTheme.colorScheme.primary,
-                                                )
+                                            if (!item.url.isNullOrBlank()) {
+                                                IconButton(onClick = { uriHandler.openUri(item.url) }) {
+                                                    Icon(
+                                                        Icons.Outlined.OpenInNew,
+                                                        contentDescription = stringResource(R.string.cd_open_link),
+                                                        tint = MaterialTheme.colorScheme.primary,
+                                                    )
+                                                }
                                             }
-                                        }
-                                        extraAction?.invoke(item)
-                                        IconButton(
-                                            onClick = { pendingDeleteId = item.id },
-                                            enabled = uiState.deletingId != item.id,
-                                        ) {
-                                            Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.action_delete))
+                                            extraAction?.invoke(item)
+                                            IconButton(
+                                                onClick = { pendingDeleteId = item.id },
+                                                enabled = uiState.deletingId != item.id,
+                                            ) {
+                                                Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.action_delete))
+                                            }
                                         }
                                     }
                                 }
@@ -855,8 +864,11 @@ fun GiftsScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val lifeEvents by viewModel.lifeEvents.collectAsStateWithLifecycle()
     val activities by viewModel.activities.collectAsStateWithLifecycle()
+    val clothingSizes by viewModel.clothingSizes.collectAsStateWithLifecycle()
     var showAdd by remember { mutableStateOf(false) }
     var editingItem by remember { mutableStateOf<Gift?>(null) }
+    var editingClothingItem by remember { mutableStateOf<Preference?>(null) }
+    var newClothingValue by remember { mutableStateOf("") }
 
     EntityListScaffold(
         title = stringResource(R.string.gifts_title),
@@ -877,6 +889,31 @@ fun GiftsScreen(
                         tint = MaterialTheme.colorScheme.primary,
                     )
                 }
+            }
+        },
+        // Clothing sizes panel (web's ClothingSizesPanel): "where you check sizes
+        // before buying" — surfaced here, not in Preferences. Rendered through the
+        // scaffold's in-layout `header` slot (not `dialog`) so it lays out above the
+        // gift list instead of overlapping it.
+        header = {
+            if (!state.isLoading) {
+                ClothingSizesPanel(
+                    items = clothingSizes,
+                    newValue = newClothingValue,
+                    editingId = editingClothingItem?.id,
+                    onNewValueChange = { newClothingValue = it },
+                    onAdd = { value ->
+                        viewModel.createClothingSize(value)
+                        newClothingValue = ""
+                    },
+                    onStartEdit = { item -> editingClothingItem = item },
+                    onEditConfirm = { item, value ->
+                        viewModel.updateClothingSize(item, value)
+                        editingClothingItem = null
+                    },
+                    onEditCancel = { editingClothingItem = null },
+                    onDelete = viewModel::deleteClothingSize,
+                )
             }
         },
     ) {
@@ -1038,9 +1075,6 @@ fun PreferencesScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showAdd by remember { mutableStateOf(false) }
     var editingItem by remember { mutableStateOf<Preference?>(null) }
-    var showClothingAdd by remember { mutableStateOf(false) }
-    var editingClothingItem by remember { mutableStateOf<Preference?>(null) }
-    var newClothingValue by remember { mutableStateOf("") }
 
     EntityListScaffold(
         title = stringResource(R.string.preferences_title),
@@ -1053,27 +1087,8 @@ fun PreferencesScreen(
         onBack = onBack,
         sectionLabel = { section -> stringResource(preferenceSectionLabelRes(section)) },
     ) {
-        // Clothing sizes panel (web's ClothingSizesPanel): a distinct,
-        // inline-editable surface above the grouped preferences.
-        if (!state.isLoading) {
-            ClothingSizesPanel(
-                items = viewModel.clothingSizes,
-                newValue = newClothingValue,
-                editingId = editingClothingItem?.id,
-                onNewValueChange = { newClothingValue = it },
-                onAdd = { value ->
-                    viewModel.createClothingSize(value)
-                    newClothingValue = ""
-                },
-                onStartEdit = { item -> editingClothingItem = item },
-                onEditConfirm = { item, value ->
-                    viewModel.updateClothingSize(item, value)
-                    editingClothingItem = null
-                },
-                onEditCancel = { editingClothingItem = null },
-                onDelete = viewModel::delete,
-            )
-        }
+        // Clothing sizes live in the Gifts screen now (web's ClothingSizesPanel is
+        // in its Gifts tab, "where you check sizes before buying") — see GiftsScreen.
         if (showAdd || editingItem != null) {
             PreferenceDialog(
                 initial = editingItem,
