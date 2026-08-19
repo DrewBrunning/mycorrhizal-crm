@@ -66,6 +66,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -190,6 +192,12 @@ fun MycorrhizalApp(
     mainViewModel: MainViewModel = hiltViewModel(),
     deepLinks: kotlinx.coroutines.flow.Flow<android.net.Uri?> = kotlinx.coroutines.flow.flowOf(null),
     onDeepLinkHandled: () -> Unit = {},
+    // #203: the OIDC-return failure Toast is replaced by LoginScreen's own
+    // SnackbarHostState — both failure paths in MainActivity.handleOidcReturn
+    // leave the session logged out, so this is only ever consumed by the
+    // unauthenticated branch below, never MainScaffold.
+    oidcError: kotlinx.coroutines.flow.Flow<String?> = kotlinx.coroutines.flow.flowOf(null),
+    onOidcErrorShown: () -> Unit = {},
 ) {
     val session by mainViewModel.session.collectAsStateWithLifecycle()
 
@@ -201,6 +209,7 @@ fun MycorrhizalApp(
         // the app (review-pass fix).
         var authScreen by rememberSaveable { mutableStateOf(AuthScreen.LOGIN) }
         val context = LocalContext.current
+        val oidcErrorState by oidcError.collectAsStateWithLifecycle(initialValue = null)
         BackHandler(enabled = authScreen != AuthScreen.LOGIN) {
             authScreen = AuthScreen.LOGIN
         }
@@ -218,6 +227,8 @@ fun MycorrhizalApp(
                 },
                 onRegisterClick = { authScreen = AuthScreen.REGISTER },
                 onForgotPasswordClick = { authScreen = AuthScreen.FORGOT_PASSWORD },
+                oidcError = oidcErrorState,
+                onOidcErrorShown = onOidcErrorShown,
             )
             AuthScreen.REGISTER -> RegisterScreen(
                 onRegistered = { /* auto-login flips isLoggedIn */ },
@@ -508,10 +519,13 @@ private fun DrawerContent(
     onDestinationClick: (String) -> Unit,
 ) {
     ModalDrawerSheet {
+        // #208: the drawer's sheet title carried no heading semantics.
         Text(
             text = stringResource(R.string.app_name),
             style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .padding(16.dp)
+                .semantics { heading() },
         )
         HorizontalDivider()
         primaryDestinations.forEach { item ->

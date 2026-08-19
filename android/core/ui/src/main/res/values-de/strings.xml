@@ -940,4 +940,9 @@
     <string name="audit_undo_success">Kontakt auf den vorherigen Stand zurückgesetzt</string>
     <string name="audit_undo_retention_gone">Dieses Ereignis liegt außerhalb des Aufbewahrungsfensters und kann nicht mehr rückgängig gemacht werden</string>
     <string name="audit_undo_partial_note">Details, die in diesem Eintrag nie erfasst wurden (Pronomen, persönliche Informationen, Adressdetails), bleiben unverändert.</string>
+
+    <!-- Android a11y (issues #199/#203): shared accessibility-only announcements -->
+    <string name="a11y_state_loading">Wird geladen</string>
+    <string name="a11y_state_saving">Wird gespeichert</string>
+    <string name="a11y_share_field_locked">Gesperrt, bis vertrauliche Felder aktiviert werden</string>
 </resources>

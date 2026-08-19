@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsToggleable
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -208,6 +209,10 @@ class LifeEventDialogTest {
         // Month+day present enables the reminder checkbox; then confirm.
         composeTestRule.onNodeWithText("Month").performScrollTo().performTextReplacement("6")
         composeTestRule.onNodeWithText("Day").performScrollTo().performTextReplacement("15")
+        // #199: Modifier.toggleable on the row merges "Remind me yearly" into
+        // the checkbox's own accessible name -- previously an unnamed
+        // Checkbox sat next to a plain, unassociated Text.
+        composeTestRule.onNodeWithText("Remind me yearly").performScrollTo().assertIsToggleable()
         composeTestRule.onNodeWithTag("life-event-remind").performScrollTo().performClick()
         composeTestRule.onNodeWithText("Create").performClick()
 

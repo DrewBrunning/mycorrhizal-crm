@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -41,6 +42,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -193,7 +197,16 @@ fun ReminderFormContent(
             }
         }
         if (state.recurrence != ReminderRecurrence.ONCE) {
+            // #199: a bare Switch in trailingContent has no text/contentDescription
+            // of its own; the headline/supporting Text sit in sibling slots
+            // TalkBack never merges into it. Modifier.toggleable on the ListItem
+            // itself merges all three into one accessible name.
             ListItem(
+                modifier = Modifier.toggleable(
+                    value = state.reoccurFromCompletion,
+                    onValueChange = onReoccurFromCompletionChange,
+                    role = Role.Switch,
+                ),
                 headlineContent = {
                     Text(stringResource(R.string.reminder_reoccur_from_completion), style = MaterialTheme.typography.bodyLarge)
                 },
@@ -201,20 +214,28 @@ fun ReminderFormContent(
                     Text(stringResource(R.string.reminder_reoccur_from_completion_hint), style = MaterialTheme.typography.bodySmall)
                 },
                 trailingContent = {
-                    Switch(checked = state.reoccurFromCompletion, onCheckedChange = onReoccurFromCompletionChange)
+                    Switch(checked = state.reoccurFromCompletion, onCheckedChange = null)
                 },
             )
         }
         ListItem(
+            modifier = Modifier.toggleable(
+                value = state.byMail,
+                onValueChange = onByMailChange,
+                role = Role.Switch,
+            ),
             headlineContent = { Text(stringResource(R.string.reminder_email), style = MaterialTheme.typography.bodyLarge) },
             trailingContent = {
-                Switch(checked = state.byMail, onCheckedChange = onByMailChange)
+                Switch(checked = state.byMail, onCheckedChange = null)
             },
         )
+        val savingLabel = stringResource(R.string.a11y_state_saving)
         Button(
             onClick = onSave,
             enabled = !state.isSaving,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics { if (state.isSaving) stateDescription = savingLabel },
         ) {
             if (state.isSaving) {
                 CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))

@@ -2,6 +2,8 @@ package com.mycorrhizal.crm.feature.settings
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.assertIsToggleable
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -149,7 +151,35 @@ class WebhooksScreenTest {
 
         composeTestRule.onNodeWithText("Edit").assertIsDisplayed()
         // The existing event chip is already selected and the active switch off —
-        // both reflected via their labels (the switch has no text; the chip does).
+        // both reflected via their labels.
         composeTestRule.onNodeWithText("Note Created").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `active switch is named by its label`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                WebhookEditorDialog(
+                    initial = null,
+                    isSaving = false,
+                    onConfirm = {},
+                    onDismiss = {},
+                )
+            }
+        }
+
+        // #199: Modifier.toggleable on the row merges "Active" into the
+        // switch's own accessible name and exposes its checked state --
+        // previously an unnamed Switch sat next to a plain, unassociated
+        // Text. (Not exercising performClick() here: this row sits below the
+        // dialog's own scrollable chip list, outside any scrollable
+        // container, which Robolectric's default test window doesn't give
+        // real layout bounds for -- a test-harness limit, not part of the
+        // fix. The toggle/click wiring is unchanged from before and is
+        // covered by NotificationChannelsScreenTest and WebhooksScreenTest's
+        // own editor-dialog save-flow test above.)
+        composeTestRule.onNodeWithText("Active")
+            .assertIsToggleable()
+            .assertIsOn()
     }
 }

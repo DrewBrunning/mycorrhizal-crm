@@ -1,7 +1,11 @@
 package com.mycorrhizal.crm.feature.cadence
 
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
+import androidx.compose.ui.test.assertIsToggleable
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -387,5 +391,32 @@ class CadenceScreenTest {
         composeTestRule.onNode(hasSetTextAction()).performTextReplacement("120")
         composeTestRule.onNodeWithText("Save").performClick()
         assertEquals(120, savedInterval)
+    }
+
+    @Test
+    fun `qualifying type checkbox is named by its label`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                CadenceDialog(policy = null, onConfirm = { _, _ -> }, onDismiss = {})
+            }
+        }
+        // #199: Modifier.toggleable on the row merges the type label into the
+        // checkbox's own accessible name -- previously an unnamed Checkbox
+        // sat next to a label Text with its own separate, unassociated
+        // .clickable duplicating the same toggle.
+        composeTestRule.onNodeWithText("Call").assertIsToggleable()
+    }
+
+    @Test
+    fun `qualifying types label is a heading`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                CadenceDialog(policy = null, onConfirm = { _, _ -> }, onDismiss = {})
+            }
+        }
+        // #208: section labels carried no heading semantics, so TalkBack's
+        // heading navigation found nothing inside this dialog.
+        composeTestRule.onNodeWithText("Qualifying interactions")
+            .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
     }
 }

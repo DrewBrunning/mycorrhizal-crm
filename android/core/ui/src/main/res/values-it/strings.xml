@@ -940,4 +940,9 @@
     <string name="audit_undo_success">Contatto ripristinato allo stato precedente</string>
     <string name="audit_undo_retention_gone">Questo evento è oltre la sua finestra di conservazione e non può più essere annullato</string>
     <string name="audit_undo_partial_note">I dettagli mai registrati in questa voce (pronomi, informazioni personali, dettagli dell\'indirizzo) vengono conservati invariati.</string>
+
+    <!-- Android a11y (issues #199/#203): shared accessibility-only announcements -->
+    <string name="a11y_state_loading">Caricamento</string>
+    <string name="a11y_state_saving">Salvataggio</string>
+    <string name="a11y_share_field_locked">Bloccato finché i campi sensibili non vengono attivati</string>
 </resources>
