@@ -294,6 +294,30 @@ class ContactDetailViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Upload a new profile photo (bytes read from the gallery picker, ≤
+     * [MAX_PHOTO_SIZE_BYTES] — the screen guards the size before reading, the
+     * server re-enforces it). On success the contact is reloaded so the new
+     * `photoThumbnail`/`card.photoUri` renders immediately (mirroring web's
+     * post-upload refresh); failures (size, demo-mode 403, network) surface
+     * through the existing snackbar path.
+     */
+    fun uploadPhoto(bytes: ByteArray, mimeType: String) {
+        if (contactId == 0 || _uiState.value.isMutating) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isMutating = true, error = null) }
+            contactRepository.uploadPhoto(contactId, bytes, mimeType).foldApiError(
+                onSuccess = {
+                    _uiState.update { it.copy(isMutating = false) }
+                    load()
+                },
+                onError = { error ->
+                    _uiState.update { it.copy(isMutating = false, error = error.displayMessage) }
+                },
+            )
+        }
+    }
+
     // --- M24: inline circle/tag editors ---
 
     /** Add [circle]'s membership for this contact (needs the VCard UID; no-op without one). */
@@ -361,5 +385,16 @@ class ContactDetailViewModel @Inject constructor(
 
     fun onEventShown() {
         _events.value = null
+    }
+
+    companion object {
+        /**
+         * The 10MB cap the backend's `AddPhotoToContact` enforces
+         * (`backend/controllers/photo_controller.go`). The screen probes the
+         * picked file's declared size against this BEFORE reading it into
+         * memory (reading a multi-GB video would OOM the app), and keeps the
+         * same bound as a post-read backstop for providers that report no size.
+         */
+        const val MAX_PHOTO_SIZE_BYTES = 10 * 1024 * 1024
     }
 }

@@ -47,16 +47,31 @@ export default defineConfig({
         // CRA (webpack) split vendor code out of the app bundle; Vite's default
         // single chunk is one ~4MB file, which both defeats HTTP caching and
         // blows past Workbox's 2MiB precache limit (vite-plugin-pwa fails the
-        // build on it). Restore a coarse vendor split.
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router'],
-          'mui-core': ['@mui/material', '@mui/lab', '@emotion/react', '@emotion/styled'],
-          'mui-icons': ['@mui/icons-material'],
-          'mdi': ['@mdi/react', '@mdi/js'],
-          'i18n-vendor': ['i18next', 'react-i18next', 'i18next-browser-languagedetector'],
-          'graph-vendor': ['react-force-graph-2d', 'd3-force'],
+        // build on it). Restore a coarse vendor split. Vite 8's Rolldown
+        // bundler only accepts a function here (the Rollup object form that
+        // mapped a chunk to bare module names was removed), so match resolved
+        // package names against the same groups.
+        manualChunks(id) {
+          if (!id.includes('/node_modules/')) return undefined;
+          const rest = id.slice(id.indexOf('/node_modules/') + '/node_modules/'.length);
+          const pkg = rest.startsWith('@')
+            ? rest.split('/').slice(0, 2).join('/')
+            : rest.split('/')[0];
+          for (const [chunk, packages] of VENDOR_CHUNKS) {
+            if (packages.includes(pkg)) return chunk;
+          }
+          return undefined;
         },
       },
     },
   },
 });
+
+const VENDOR_CHUNKS: ReadonlyArray<readonly [string, readonly string[]]> = [
+  ['react-vendor', ['react', 'react-dom', 'react-router']],
+  ['mui-core', ['@mui/material', '@mui/lab', '@emotion/react', '@emotion/styled']],
+  ['mui-icons', ['@mui/icons-material']],
+  ['mdi', ['@mdi/react', '@mdi/js']],
+  ['i18n-vendor', ['i18next', 'react-i18next', 'i18next-browser-languagedetector']],
+  ['graph-vendor', ['react-force-graph-2d', 'd3-force']],
+];

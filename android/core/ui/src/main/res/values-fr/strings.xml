@@ -78,6 +78,10 @@
     <string name="contacts_empty">Aucun contact pour le moment</string>
     <string name="contacts_new">Nouveau contact</string>
     <string name="contacts_photo_description">Photo de %1$s</string>
+    <!-- Issue #219: TalkBack action label for tapping the avatar on the detail
+         screen (the profile-photo upload entry point). Lowercase verb phrase
+         to read naturally as "double tap to <contacts_photo_change>". -->
+    <string name="contacts_photo_change">ajouter ou modifier la photo</string>
     <!-- M23 : étendue de la liste — filtre par cercle, bascule des archivés, sélection groupée intégrée -->
     <string name="contacts_filter_circle">Cercle</string>
     <string name="contacts_all_circles">Tous les cercles</string>
@@ -149,6 +153,7 @@
     <string name="contact_tags_empty">Aucune étiquette pour l\'instant</string>
     <string name="contact_tags_add">Ajouter une étiquette</string>
     <string name="contact_export_share_title">Exporter le contact</string>
+    <string name="profile_picture_error_too_large">Photo trop volumineuse. Taille maximale : 10 Mo.</string>
     <string name="mobile_link_message">Message</string>
     <string name="mobile_link_voice_call">Appel vocal</string>
     <string name="mobile_link_video_call">Appel vidéo</string>

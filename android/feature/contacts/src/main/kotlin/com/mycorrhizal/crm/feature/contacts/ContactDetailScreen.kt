@@ -1,10 +1,14 @@
 package com.mycorrhizal.crm.feature.contacts
 
 import android.Manifest
+import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -112,7 +116,9 @@ import com.mycorrhizal.crm.ui.theme.MycorrhizalFonts
 import com.mycorrhizal.crm.feature.timeline.TimelineSection
 import com.mycorrhizal.crm.feature.timeline.toTimelineItems
 import com.mycorrhizal.crm.ui.R
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 private fun androidx.compose.ui.graphics.Color.toArgbCompat(): Int =
@@ -208,6 +214,41 @@ fun ContactDetailScreen(
     var pendingUndoCompletionId by remember { mutableStateOf<Int?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    // Issue #219: tapping either avatar opens the system photo picker
+    // (ActivityResultContracts.PickVisualMedia — no runtime permission needed
+    // on API 33+ or via the compat backport) and uploads the picked image
+    // as-is. This is an explicit MVP scope cut: web's crop/zoom step
+    // (react-easy-crop) is deliberately not ported — cropping is a follow-up.
+    val photoPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia(),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val resolver = context.contentResolver
+            // Probe the provider's declared size BEFORE reading anything — a
+            // photo picker can offer a multi-GB video that would OOM the app
+            // before a post-read size check ever ran (mirrors VcfImportScreen).
+            val size = withContext(Dispatchers.IO) { queryPhotoSize(resolver, uri) }
+            if (size != null && size > ContactDetailViewModel.MAX_PHOTO_SIZE_BYTES) {
+                snackbarHostState.showSnackbar(context.getString(R.string.profile_picture_error_too_large))
+                return@launch
+            }
+            val bytes = withContext(Dispatchers.IO) { readPhotoBytes(resolver, uri) }
+            if (bytes.isEmpty()) return@launch
+            // Backstop for providers that report no size: never upload a file
+            // the server would reject with its own 400.
+            if (bytes.size > ContactDetailViewModel.MAX_PHOTO_SIZE_BYTES) {
+                snackbarHostState.showSnackbar(context.getString(R.string.profile_picture_error_too_large))
+                return@launch
+            }
+            val mimeType = resolver.getType(uri) ?: "image/jpeg"
+            viewModel.uploadPhoto(bytes, mimeType)
+        }
+    }
+    val onUploadProfilePicture = {
+        photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+    }
 
     // M24: action failures (delete/archive/export/membership writes) set `state.error`, which
     // the EmptyState branch already shows when there is no contact to render. For a loaded
@@ -335,6 +376,8 @@ fun ContactDetailScreen(
                                     card?.displayName.orEmpty(),
                                 ),
                                 size = 36.dp,
+                                onClick = onUploadProfilePicture,
+                                onClickLabel = stringResource(R.string.contacts_photo_change),
                             )
                             Text(
                                 text = card?.displayName ?: stringResource(R.string.contact_title_fallback),
@@ -497,6 +540,7 @@ fun ContactDetailScreen(
                     onCompleteReminder = viewModel::completeReminder,
                     completions = state.completions,
                     onUndoCompletion = { id -> pendingUndoCompletionId = id },
+                    onUploadProfilePicture = onUploadProfilePicture,
                 )
             }
         }
@@ -661,6 +705,11 @@ fun ContactDetailContent(
     onCompleteReminder: (Int) -> Unit = {},
     completions: List<ReminderCompletion> = emptyList(),
     onUndoCompletion: (Int) -> Unit = {},
+    /**
+     * Issue #219: opens the profile-photo upload flow. The large avatar is the
+     * entry point (web's `ContactHeader`); null renders the avatar plain.
+     */
+    onUploadProfilePicture: (() -> Unit)? = null,
 ) {
     val card = contact.card
     LazyColumn(
@@ -690,6 +739,8 @@ fun ContactDetailContent(
                         card?.displayName.orEmpty(),
                     ),
                     size = 120.dp,
+                    onClick = onUploadProfilePicture,
+                    onClickLabel = stringResource(R.string.contacts_photo_change),
                 )
                 // #208: the contact name is the de facto page heading but
                 // carried no heading semantics, so TalkBack's heading
@@ -1442,3 +1493,23 @@ private fun shareExportedVcf(
         // No activity can handle the share — nothing to do.
     }
 }
+
+/**
+ * Issue #219: the picked image's declared byte size, read only from the
+ * provider's cursor (never the file contents), so an oversized pick can be
+ * rejected without allocating it. null when the provider omits the column.
+ */
+private fun queryPhotoSize(resolver: ContentResolver, uri: Uri): Long? {
+    var size: Long? = null
+    resolver.query(uri, null, null, null, null)?.use { cursor ->
+        if (cursor.moveToFirst()) {
+            val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
+            if (sizeIndex >= 0 && !cursor.isNull(sizeIndex)) size = cursor.getLong(sizeIndex)
+        }
+    }
+    return size
+}
+
+/** Reads the picked image's bytes off the main thread (post-size-probe). */
+private fun readPhotoBytes(resolver: ContentResolver, uri: Uri): ByteArray =
+    resolver.openInputStream(uri)?.use { it.readBytes() } ?: ByteArray(0)

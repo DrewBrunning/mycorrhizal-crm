@@ -90,6 +90,16 @@ interface ContactRepository {
      */
     suspend fun exportContactVcf(vcardUid: String, version: Int? = null): Result<ByteArray>
 
+    /**
+     * Upload a profile photo — a multipart `POST /contacts/{id}/profile_picture`
+     * with form field `photo`, mirroring web's `uploadProfilePicture`. [bytes]
+     * must be ≤ 10MB (the backend rejects larger with a 400); [mimeType] is
+     * informational only (the server re-sniffs the format). The caller is
+     * expected to refetch the contact afterwards so the new
+     * `photoThumbnail`/`card.photoUri` shows immediately.
+     */
+    suspend fun uploadPhoto(id: Int, bytes: ByteArray, mimeType: String): Result<Unit>
+
     /** Cached contact list summaries as a reactive stream (list + offline). */
     fun observeContacts(): Flow<List<ContactSummary>>
 

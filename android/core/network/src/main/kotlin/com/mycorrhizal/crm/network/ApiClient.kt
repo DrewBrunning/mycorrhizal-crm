@@ -453,6 +453,30 @@ class ApiClient(
         return executeGetBytes(urlBuilder.build().toString())
     }
 
+    /**
+     * POST /api/v1/contacts/{id}/profile_picture — a multipart upload with
+     * form field `photo`, matching web's `uploadProfilePicture` and the
+     * backend's `AddPhotoToContact`. The backend re-sniffs the image format
+     * from the bytes (JPEG/PNG/HEIC), so [mimeType] is informational; the
+     * server enforces the 10MB cap itself (400 on excess). [fileName] is
+     * arbitrary (the server names the stored file itself) — "profile.jpg" is
+     * only a fallback for providers that need one. The 200 body is the updated
+     * flat Contact, which this caller ignores: the detail (including the fresh
+     * `card.photoUri`/`photoThumbnail`) is refetched by the ViewModel.
+     */
+    suspend fun uploadContactPhoto(
+        id: Int,
+        bytes: ByteArray,
+        mimeType: String = "image/jpeg",
+    ): Result<Unit> =
+        executeMultipartUpload(
+            path = "$CONTACTS_PATH/$id/profile_picture",
+            fieldName = "photo",
+            fileName = "profile.jpg",
+            mediaType = mimeType,
+            fileBytes = bytes,
+        ) { _, _ -> Unit }
+
     /** GET /api/v1/field-definitions (T84). */
     suspend fun listFieldDefinitions(limit: Int? = null): Result<FieldDefinitionsResponse> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$FIELD_DEFINITIONS_PATH".toHttpUrl().newBuilder()
@@ -1093,12 +1117,24 @@ class ApiClient(
     // --- Import (CSV / VCF / JSContact) ---
 
     suspend fun uploadCsvImport(fileBytes: ByteArray, fileName: String): Result<ImportUploadResponse> =
-        executeMultipartUpload("$CONTACTS_PATH/import/upload", fileBytes, fileName) { _, body ->
+        executeMultipartUpload(
+            "$CONTACTS_PATH/import/upload",
+            fieldName = "file",
+            fileName = fileName,
+            mediaType = "application/octet-stream",
+            fileBytes = fileBytes,
+        ) { _, body ->
             moshi.adapter(ImportUploadResponse::class.java).fromJson(body)
         }
 
     suspend fun uploadVcfImport(fileBytes: ByteArray, fileName: String): Result<ImportPreviewResponse> =
-        executeMultipartUpload("$CONTACTS_PATH/import/vcf/upload", fileBytes, fileName) { _, body ->
+        executeMultipartUpload(
+            "$CONTACTS_PATH/import/vcf/upload",
+            fieldName = "file",
+            fileName = fileName,
+            mediaType = "application/octet-stream",
+            fileBytes = fileBytes,
+        ) { _, body ->
             moshi.adapter(ImportPreviewResponse::class.java).fromJson(body)
         }
 
@@ -1322,13 +1358,15 @@ class ApiClient(
 
     private suspend fun <T> executeMultipartUpload(
         path: String,
-        fileBytes: ByteArray,
+        fieldName: String,
         fileName: String,
+        mediaType: String,
+        fileBytes: ByteArray,
         mapper: (okhttp3.Response, String) -> T?,
     ): Result<T> {
         val body = MultipartBody.Builder()
             .setType(MultipartBody.FORM)
-            .addFormDataPart("file", fileName, fileBytes.toRequestBody("application/octet-stream".toMediaType()))
+            .addFormDataPart(fieldName, fileName, fileBytes.toRequestBody(mediaType.toMediaType()))
             .build()
         val request = Request.Builder()
             .url("$PLACEHOLDER_ORIGIN$path".toHttpUrl())
