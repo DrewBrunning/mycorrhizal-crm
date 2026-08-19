@@ -459,8 +459,10 @@ class GiftsViewModelTest {
         assertFalse(vm.uiState.value.isLoading)
     }
 
-    // Clothing sizes: web's ClothingSizesPanel is surfaced in the Gifts tab
-    // ("where you check sizes before buying"), not Preferences.
+    // Clothing sizes + gift preferences: web's ClothingSizesPanel and its
+    // Gifts-tab jewelry/flowers/color/fragrance/cause/gift-avoid panel are
+    // surfaced in the Gifts tab ("check this right before buying"), not
+    // Preferences. Both are derived from one fetch (loadGiftsTabPreferences).
 
     @Test fun `clothing-size preferences are surfaced for the dedicated panel`() =
         runTest(mainDispatcherRule.testDispatcher) {
@@ -471,25 +473,99 @@ class GiftsViewModelTest {
             coEvery { preferenceRepo.listForContact(UID) } returns Result.success(
                 listOf(
                     Preference(id = "p1", entityId = UID, category = "food", value = "spicy"),
-                    Preference(id = "c1", entityId = UID, category = "clothing_size", value = "M"),
+                    Preference(id = "c1", entityId = UID, category = "clothing_size", key = "ring", value = "7"),
                 ),
             )
             advanceUntilIdle()
             // Only the clothing_size row is exposed here — plain preferences aren't.
-            assertEquals(listOf("M"), vm.clothingSizes.value.map { it.value })
+            assertEquals(listOf("7"), vm.clothingSizes.value.map { it.value })
+            assertEquals(listOf("ring"), vm.clothingSizes.value.map { it.key })
         }
 
-    @Test fun `createClothingSize posts a clothing_size preference`() = runTest(mainDispatcherRule.testDispatcher) {
+    @Test fun `gift-relevant preferences are surfaced for the dedicated panel`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            stubContact(contacts)
+            coEvery { repo.listForContact(UID) } returns Result.success(emptyList())
+            val vm = vm()
+            coEvery { preferenceRepo.listForContact(UID) } returns Result.success(
+                listOf(
+                    Preference(id = "p1", entityId = UID, category = "food", value = "spicy"),
+                    Preference(id = "p2", entityId = UID, category = "jewelry_metal", key = "favorite", value = "gold"),
+                    Preference(id = "p3", entityId = UID, category = "dislike", value = "candles"),
+                    Preference(id = "c1", entityId = UID, category = "clothing_size", value = "M"),
+                ),
+            )
+            advanceUntilIdle()
+            // Only the gift-shopping-relevant categories are exposed here —
+            // plain preferences and clothing sizes (own panel) aren't.
+            assertEquals(setOf("gold", "candles"), vm.giftPreferences.value.map { it.value }.toSet())
+        }
+
+    @Test fun `createClothingSize posts a clothing_size preference with the type as key`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            stubContact(contacts)
+            coEvery { repo.listForContact(UID) } returns Result.success(emptyList())
+            coEvery { preferenceRepo.create(any()) } returns Result.success(Preference(id = "c1"))
+            val vm = vm(); advanceUntilIdle()
+
+            vm.createClothingSize("Ring", "7")
+            advanceUntilIdle()
+
+            coVerify { preferenceRepo.create(match { it.category == "clothing_size" && it.key == "Ring" && it.value == "7" }) }
+        }
+
+    @Test fun `createClothingSize with a blank type sends no key`() = runTest(mainDispatcherRule.testDispatcher) {
         stubContact(contacts)
         coEvery { repo.listForContact(UID) } returns Result.success(emptyList())
         coEvery { preferenceRepo.create(any()) } returns Result.success(Preference(id = "c1"))
         val vm = vm(); advanceUntilIdle()
 
-        vm.createClothingSize("42")
+        vm.createClothingSize("", "42")
         advanceUntilIdle()
 
-        coVerify { preferenceRepo.create(match { it.category == "clothing_size" && it.value == "42" }) }
+        coVerify { preferenceRepo.create(match { it.category == "clothing_size" && it.key == null && it.value == "42" }) }
     }
+
+    @Test fun `createGiftPreference posts the form's category key value and notes`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            stubContact(contacts)
+            coEvery { repo.listForContact(UID) } returns Result.success(emptyList())
+            coEvery { preferenceRepo.create(any()) } returns Result.success(Preference(id = "p1"))
+            val vm = vm(); advanceUntilIdle()
+
+            vm.createGiftPreference(
+                PreferenceFormData(category = "jewelry_metal", key = "allergy", value = "Nickel", notes = "Rash"),
+            )
+            advanceUntilIdle()
+
+            coVerify {
+                preferenceRepo.create(
+                    match {
+                        it.entityId == UID && it.category == "jewelry_metal" && it.key == "allergy" &&
+                            it.value == "Nickel" && it.notes == "Rash"
+                    },
+                )
+            }
+        }
+
+    @Test fun `deleteGiftPreference removes the preference and reloads`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            stubContact(contacts)
+            coEvery { repo.listForContact(UID) } returns Result.success(emptyList())
+            val vm = vm()
+            // Stub AFTER vm() so its emptyList() default doesn't clobber this.
+            coEvery { preferenceRepo.listForContact(UID) } returns Result.success(
+                listOf(Preference(id = "p1", entityId = UID, category = "flowers", value = "Peonies")),
+            )
+            coEvery { preferenceRepo.delete("p1") } returns Result.success(Unit)
+            advanceUntilIdle()
+            assertEquals(1, vm.giftPreferences.value.size)
+
+            vm.deleteGiftPreference("p1")
+            advanceUntilIdle()
+
+            coVerify { preferenceRepo.delete("p1") }
+        }
 }
 
 class PreferencesViewModelTest {
@@ -503,15 +579,24 @@ class PreferencesViewModelTest {
         coEvery { repo.listForContact(UID) } returns Result.success(
             listOf(
                 Preference(id = "p1", entityId = UID, category = "food", key = "allergy", value = "peanuts"),
-                Preference(id = "p2", entityId = UID, category = "media", value = "Neon Genesis"),
+                Preference(id = "p2", entityId = UID, category = "media_movie", value = "Neon Genesis"),
                 Preference(id = "p3", entityId = UID, category = "hobby", value = "pottery"),
             ),
         )
         val vm = vm(); advanceUntilIdle()
         assertEquals(3, vm.uiState.value.items.size)
-        // M18: section grouping mirrors web's PreferenceList (food+drink / media / other).
-        assertEquals(listOf("food_drink", "media", "other"), vm.uiState.value.items.map { it.sectionKey })
+        // M18: section grouping mirrors web's PreferenceList (food+drink / media / hobby).
+        assertEquals(listOf("food_drink", "media", "hobby"), vm.uiState.value.items.map { it.sectionKey })
         assertEquals("food: allergy = peanuts", vm.uiState.value.items[0].label)
+    }
+
+    @Test fun `an unrecognized category falls to the other section`() = runTest(mainDispatcherRule.testDispatcher) {
+        stubContact(contacts)
+        coEvery { repo.listForContact(UID) } returns Result.success(
+            listOf(Preference(id = "p1", entityId = UID, category = "ancient_category", value = "legacy data")),
+        )
+        val vm = vm(); advanceUntilIdle()
+        assertEquals(listOf("other"), vm.uiState.value.items.map { it.sectionKey })
     }
 
     @Test fun `interleaved preferences are sorted into contiguous sections`() =
@@ -522,17 +607,17 @@ class PreferencesViewModelTest {
             // change-detecting headers can't repeat (review-pass fix).
             coEvery { repo.listForContact(UID) } returns Result.success(
                 listOf(
-                    Preference(id = "p1", entityId = UID, category = "media", value = "Movie"),
+                    Preference(id = "p1", entityId = UID, category = "media_movie", value = "Movie"),
                     Preference(id = "p2", entityId = UID, category = "food", value = "spicy"),
                     Preference(id = "p3", entityId = UID, category = "drink", value = "tea"),
                     Preference(id = "p4", entityId = UID, category = "hobby", value = "pottery"),
-                    Preference(id = "p5", entityId = UID, category = "media", value = "Album"),
+                    Preference(id = "p5", entityId = UID, category = "media_music_artist", value = "Album"),
                 ),
             )
             val vm = vm(); advanceUntilIdle()
-            // Each section appears exactly once, in order.
+            // Each section appears exactly once, in order (food_drink, media, hobby).
             assertEquals(
-                listOf("food_drink", "food_drink", "media", "media", "other"),
+                listOf("food_drink", "food_drink", "media", "media", "hobby"),
                 vm.uiState.value.items.map { it.sectionKey },
             )
         }
@@ -543,8 +628,7 @@ class PreferencesViewModelTest {
             coEvery { repo.listForContact(UID) } returns Result.success(
                 listOf(
                     Preference(id = "p1", entityId = UID, category = "food", value = "spicy"),
-                    // Surfaced on the Gifts screen instead (GiftsViewModelTest) — see
-                    // PREFERENCE_CLOTHING_SIZE's doc comment.
+                    // Surfaced on the Gifts screen instead (GiftsViewModelTest).
                     Preference(id = "c1", entityId = UID, category = "clothing_size", value = "M"),
                 ),
             )
@@ -553,7 +637,25 @@ class PreferencesViewModelTest {
             assertEquals("food: spicy", vm.uiState.value.items[0].label)
         }
 
-    @Test fun `create sends category, key, value and sensitivity`() = runTest(mainDispatcherRule.testDispatcher) {
+    @Test fun `gift-shopping-relevant preferences are excluded from the grouped list`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            stubContact(contacts)
+            coEvery { repo.listForContact(UID) } returns Result.success(
+                listOf(
+                    Preference(id = "p1", entityId = UID, category = "food", value = "spicy"),
+                    // Surfaced on the Gifts screen instead (GiftsViewModelTest) — see
+                    // PreferenceSection.GIFTS_TAB's doc comment.
+                    Preference(id = "p2", entityId = UID, category = "jewelry_metal", value = "gold"),
+                    Preference(id = "p3", entityId = UID, category = "flowers", value = "Peonies"),
+                    Preference(id = "p4", entityId = UID, category = "dislike", value = "candles"),
+                ),
+            )
+            val vm = vm(); advanceUntilIdle()
+            assertEquals(1, vm.uiState.value.items.size)
+            assertEquals("food: spicy", vm.uiState.value.items[0].label)
+        }
+
+    @Test fun `create sends category, key, value, notes and sensitivity`() = runTest(mainDispatcherRule.testDispatcher) {
         stubContact(contacts)
         coEvery { repo.listForContact(UID) } returns Result.success(emptyList())
         coEvery { repo.create(any()) } returns Result.success(Preference(id = "p1"))
@@ -564,6 +666,7 @@ class PreferencesViewModelTest {
                 category = "drink",
                 key = "favorite",
                 value = "matcha",
+                notes = "Iced only",
                 sensitivity = PreferenceSensitivities.PRIVATE,
             ),
         )
@@ -573,7 +676,7 @@ class PreferencesViewModelTest {
             repo.create(
                 match {
                     it.entityId == UID && it.category == "drink" && it.key == "favorite" &&
-                        it.value == "matcha" && it.sensitivity == "private"
+                        it.value == "matcha" && it.notes == "Iced only" && it.sensitivity == "private"
                 },
             )
         }
@@ -584,19 +687,20 @@ class PreferencesViewModelTest {
             stubContact(contacts)
             val original = Preference(
                 id = "p1", entityId = UID, category = "food", key = "allergy", value = "peanuts",
-                source = "manual", confidence = 0.5, sensitivity = "private",
+                notes = "Since childhood", source = "manual", confidence = 0.5, sensitivity = "private",
             )
             coEvery { repo.listForContact(UID) } returns Result.success(listOf(original))
             coEvery { repo.update("p1", any()) } returns Result.success(original)
             val vm = vm(); advanceUntilIdle()
 
-            // The user cleared the key and changed sensitivity back to normal.
+            // The user cleared the key and notes, and changed sensitivity back to normal.
             vm.update(
                 original,
                 PreferenceFormData(
                     category = "food",
                     key = null,
                     value = "tree nuts",
+                    notes = null,
                     sensitivity = PreferenceSensitivities.NORMAL,
                 ),
             )
@@ -606,7 +710,7 @@ class PreferencesViewModelTest {
                 repo.update(
                     "p1",
                     match {
-                        it.value == "tree nuts" && it.key == null && it.sensitivity == "normal" &&
+                        it.value == "tree nuts" && it.key == null && it.notes == null && it.sensitivity == "normal" &&
                             it.source == "manual" && it.confidence == 0.5
                     },
                 )
@@ -778,8 +882,16 @@ class GiftDateHelpersTest {
     @Test fun `preferenceSection groups food and drink together`() {
         assertEquals("food_drink", preferenceSection("food"))
         assertEquals("food_drink", preferenceSection("drink"))
-        assertEquals("media", preferenceSection("media"))
-        assertEquals("other", preferenceSection("hobby"))
+        assertEquals("media", preferenceSection("media_movie"))
+        assertEquals("media", preferenceSection("media_music_artist"))
+        assertEquals("hobby", preferenceSection("hobby"))
+        assertEquals("jewelry", preferenceSection("jewelry_metal"))
+        assertEquals("gift_preferences", preferenceSection("flowers"))
+        assertEquals("gift_avoid", preferenceSection("dislike"))
+        // Legacy plain "media" (superseded by media_movie/media_tv/...) and
+        // clothing_size (its own panel, not in PreferenceCategory.CONFIG at
+        // all) both fall to the catch-all.
+        assertEquals("other", preferenceSection("media"))
         assertEquals("other", preferenceSection("clothing_size"))
     }
 }

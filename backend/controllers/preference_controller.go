@@ -36,6 +36,7 @@ func CreatePreference(c *gin.Context) {
 		Category:      input.Category,
 		Key:           input.Key,
 		Value:         input.Value,
+		Notes:         input.Notes,
 		Source:        input.Source,
 		Confidence:    input.Confidence,
 		LastConfirmed: input.LastConfirmed,
@@ -206,6 +207,7 @@ func UpdatePreference(c *gin.Context) {
 	pref.Category = input.Category
 	pref.Key = input.Key
 	pref.Value = input.Value
+	pref.Notes = input.Notes
 	pref.Source = input.Source
 	pref.Confidence = input.Confidence
 	pref.LastConfirmed = input.LastConfirmed

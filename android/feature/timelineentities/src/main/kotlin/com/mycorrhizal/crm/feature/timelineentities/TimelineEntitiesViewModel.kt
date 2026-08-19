@@ -23,6 +23,8 @@ import com.mycorrhizal.crm.model.network.PartialDate
 import com.mycorrhizal.crm.model.network.Preference
 import com.mycorrhizal.crm.model.network.PreferenceInput
 import com.mycorrhizal.crm.model.network.PreferenceSensitivities
+import com.mycorrhizal.crm.model.registry.PreferenceCategory
+import com.mycorrhizal.crm.model.registry.PreferenceSection
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -96,6 +98,7 @@ data class PreferenceFormData(
     val category: String,
     val key: String? = null,
     val value: String,
+    val notes: String? = null,
     val sensitivity: String = PreferenceSensitivities.NORMAL,
 )
 
@@ -302,16 +305,6 @@ private fun LifeEventFormData.toInput(entityId: String): LifeEventInput =
 // Gifts
 // ---------------------------------------------------------------------------
 
-/**
- * Category token for a clothing-size preference. A clothing size is stored
- * as an ordinary `Preference` row (category = "clothing_size"), but web
- * surfaces it in the Gifts tab ("where you check sizes before buying")
- * rather than the preferences dialog — see [GiftsViewModel]'s clothing-size
- * methods and [PreferencesViewModel.load]'s exclusion filter, which must
- * stay in sync so a clothing size is never shown in both places.
- */
-internal const val PREFERENCE_CLOTHING_SIZE = "clothing_size"
-
 @HiltViewModel
 class GiftsViewModel @Inject constructor(
     private val giftRepository: GiftRepository,
@@ -334,10 +327,16 @@ class GiftsViewModel @Inject constructor(
     private val _activities = MutableStateFlow<List<Activity>>(emptyList())
     val activities: StateFlow<List<Activity>> = _activities.asStateFlow()
 
-    // Clothing-size preferences (category = PREFERENCE_CLOTHING_SIZE), for the
-    // dedicated panel above the gift list (web's ClothingSizesPanel equivalent).
+    // Clothing-size preferences (category = PreferenceCategory.CLOTHING_SIZE),
+    // for the dedicated panel above the gift list (web's ClothingSizesPanel
+    // equivalent). Gift preferences (jewelry/flowers/color/fragrance/cause/
+    // gift-avoid — web's GIFTS_TAB_SECTIONS) get their own panel alongside it.
+    // Both are derived from the same fetch (loadGiftsTabPreferences) rather
+    // than two separate network calls.
     private val _clothingSizes = MutableStateFlow<List<Preference>>(emptyList())
     val clothingSizes: StateFlow<List<Preference>> = _clothingSizes.asStateFlow()
+    private val _giftPreferences = MutableStateFlow<List<Preference>>(emptyList())
+    val giftPreferences: StateFlow<List<Preference>> = _giftPreferences.asStateFlow()
 
     init { load() }
 
@@ -362,7 +361,7 @@ class GiftsViewModel @Inject constructor(
                 },
             )
             loadPickers(uid)
-            loadClothingSizes(uid)
+            loadGiftsTabPreferences(uid)
         }
     }
 
@@ -444,16 +443,22 @@ class GiftsViewModel @Inject constructor(
 
     fun onErrorShown() { _uiState.update { it.copy(error = null, errorRes = null) } }
 
-    // --- Clothing sizes (web's ClothingSizesPanel equivalent, surfaced here not
-    // in Preferences — see PREFERENCE_CLOTHING_SIZE's doc comment) ---
+    // --- Clothing sizes + Gift Preferences (web's ClothingSizesPanel and its
+    // Gifts-tab jewelry/flowers/color/fragrance/cause/gift-avoid panel,
+    // surfaced here rather than PreferencesScreen — see PreferenceSection's
+    // GIFTS_TAB/OVERVIEW_TAB doc comment, which must stay in sync with
+    // PreferencesViewModel.load's exclusion filter so nothing shows twice). ---
 
-    private suspend fun loadClothingSizes(uid: String) {
+    private suspend fun loadGiftsTabPreferences(uid: String) {
         preferenceRepository.listForContact(uid).onSuccess { items ->
-            _clothingSizes.value = items.filter { it.category == PREFERENCE_CLOTHING_SIZE }
+            _clothingSizes.value = items.filter { it.category == PreferenceCategory.CLOTHING_SIZE }
+            _giftPreferences.value = items.filter { PreferenceCategory.isGiftsTabCategory(it.category) }
         }
     }
 
-    fun createClothingSize(value: String) {
+    /** `key` holds a free-solo clothing *type* (shirt, ring, ...), not a
+     * disposition — sizing is a fact, not a taste. Blank clears it. */
+    fun createClothingSize(key: String, value: String) {
         val uid = _uiState.value.entityId
         if (uid.isBlank() || value.isBlank()) return
         viewModelScope.launch {
@@ -462,19 +467,20 @@ class GiftsViewModel @Inject constructor(
                 // tagging, since this bypasses that form.
                 PreferenceInput(
                     entityId = uid,
-                    category = PREFERENCE_CLOTHING_SIZE,
+                    category = PreferenceCategory.CLOTHING_SIZE,
+                    key = key.trim().takeIf { it.isNotBlank() },
                     value = value,
                     source = "user",
                     confidence = 1.0,
                 ),
             ).foldApiError(
-                onSuccess = { viewModelScope.launch { loadClothingSizes(uid) } },
+                onSuccess = { viewModelScope.launch { loadGiftsTabPreferences(uid) } },
                 onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
             )
         }
     }
 
-    fun updateClothingSize(original: Preference, value: String) {
+    fun updateClothingSize(original: Preference, key: String, value: String) {
         if (value.isBlank()) return
         viewModelScope.launch {
             preferenceRepository.update(
@@ -482,15 +488,16 @@ class GiftsViewModel @Inject constructor(
                 PreferenceInput(
                     entityId = original.entityId,
                     category = original.category,
-                    key = original.key,
+                    key = key.trim().takeIf { it.isNotBlank() },
                     value = value,
+                    notes = original.notes,
                     source = original.source,
                     confidence = original.confidence,
                     lastConfirmed = original.lastConfirmed,
                     sensitivity = original.sensitivity,
                 ),
             ).foldApiError(
-                onSuccess = { viewModelScope.launch { loadClothingSizes(original.entityId) } },
+                onSuccess = { viewModelScope.launch { loadGiftsTabPreferences(original.entityId) } },
                 onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
             )
         }
@@ -500,7 +507,48 @@ class GiftsViewModel @Inject constructor(
         val uid = _uiState.value.entityId
         viewModelScope.launch {
             preferenceRepository.delete(id).foldApiError(
-                onSuccess = { viewModelScope.launch { loadClothingSizes(uid) } },
+                onSuccess = { viewModelScope.launch { loadGiftsTabPreferences(uid) } },
+                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
+            )
+        }
+    }
+
+    fun createGiftPreference(form: PreferenceFormData) {
+        val uid = _uiState.value.entityId
+        if (uid.isBlank() || form.category.isBlank() || form.value.isBlank()) return
+        viewModelScope.launch {
+            preferenceRepository.create(form.toInput(uid)).foldApiError(
+                onSuccess = { viewModelScope.launch { loadGiftsTabPreferences(uid) } },
+                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
+            )
+        }
+    }
+
+    // Full-overwrite PUT (preference_controller.go) -- source/confidence/
+    // lastConfirmed are never shown by the form, so they carry forward; see
+    // PreferencesViewModel.update's identical comment.
+    fun updateGiftPreference(original: Preference, form: PreferenceFormData) {
+        if (form.category.isBlank() || form.value.isBlank()) return
+        viewModelScope.launch {
+            preferenceRepository.update(
+                original.id,
+                form.toInput(original.entityId).copy(
+                    source = original.source,
+                    confidence = original.confidence,
+                    lastConfirmed = original.lastConfirmed,
+                ),
+            ).foldApiError(
+                onSuccess = { viewModelScope.launch { loadGiftsTabPreferences(original.entityId) } },
+                onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
+            )
+        }
+    }
+
+    fun deleteGiftPreference(id: String) {
+        val uid = _uiState.value.entityId
+        viewModelScope.launch {
+            preferenceRepository.delete(id).foldApiError(
+                onSuccess = { viewModelScope.launch { loadGiftsTabPreferences(uid) } },
                 onError = { e -> _uiState.update { it.copy(error = e.displayMessage) } },
             )
         }
@@ -559,20 +607,30 @@ class PreferencesViewModel @Inject constructor(
             preferenceRepository.listForContact(uid).foldApiError(
                 onSuccess = { items ->
                     loaded = items
-                    // M18: group by section (Food & Drink / Media / Other),
-                    // mirroring web's PreferenceList. The server returns items
-                    // in updated_at order, which is NOT grouped — sort into
-                    // contiguous sections so the scaffold's change-detecting
-                    // headers can't interleave/repeat (review-pass fix).
-                    // Clothing sizes are NOT part of the grouped list — they
-                    // render in the dedicated panel above it.
-                    val sectionOrder = mapOf("food_drink" to 0, "media" to 1, "other" to 2)
+                    // M18: group by section (Food & Drink / Media / Activities &
+                    // Hobbies / Other), mirroring web's PreferenceList. The server
+                    // returns items in updated_at order, which is NOT grouped —
+                    // sort into contiguous sections so the scaffold's change-
+                    // detecting headers can't interleave/repeat (review-pass fix).
+                    // Clothing sizes and the gift-shopping-relevant categories
+                    // (jewelry/flowers/color/fragrance/cause/gift-avoid) are NOT
+                    // part of the grouped list — they render in GiftsScreen's
+                    // panels instead (PreferenceSection.GIFTS_TAB).
+                    val sectionOrder = mapOf(
+                        PreferenceSection.FOOD_DRINK to 0,
+                        PreferenceSection.MEDIA to 1,
+                        PreferenceSection.HOBBY to 2,
+                        PreferenceSection.OTHER to 3,
+                    )
                     _uiState.update {
                         it.copy(
                             isLoading = false,
                             items = items
-                                .filter { it.category != PREFERENCE_CLOTHING_SIZE }
-                                .sortedBy { sectionOrder[preferenceSection(it.category)] ?: 2 }
+                                .filter {
+                                    it.category != PreferenceCategory.CLOTHING_SIZE &&
+                                        !PreferenceCategory.isGiftsTabCategory(it.category)
+                                }
+                                .sortedBy { sectionOrder[preferenceSection(it.category)] ?: 3 }
                                 .map { p -> EntityItem(p.id, preferenceLabel(p), sectionKey = preferenceSection(p.category)) },
                         )
                     }
@@ -638,17 +696,16 @@ private fun PreferenceFormData.toInput(entityId: String): PreferenceInput =
         category = category,
         key = key?.trim()?.takeIf { it.isNotBlank() },
         value = value,
+        notes = notes?.trim()?.takeIf { it.isNotBlank() },
         source = "user",
         confidence = 1.0,
         sensitivity = sensitivity,
     )
 
-/** Web's PreferenceList grouping: food/drink together, media alone, everything else Other. */
-fun preferenceSection(category: String): String = when (category) {
-    "food", "drink" -> "food_drink"
-    "media" -> "media"
-    else -> "other"
-}
+/** Web's PreferenceList grouping, delegating to the shared registry
+ * (PreferenceCategory.sectionOf) so the taxonomy lives in exactly one place;
+ * an unrecognized category falls to PreferenceSection.OTHER. */
+fun preferenceSection(category: String): String = PreferenceCategory.sectionOf(category) ?: PreferenceSection.OTHER
 
 // ---------------------------------------------------------------------------
 // Conversation agenda
@@ -806,7 +863,10 @@ private fun lifeEventLabel(e: LifeEvent): String {
 
 private fun giftLabel(g: Gift): String = g.occasion?.let { "$it — ${g.description}" } ?: g.description
 
-private fun preferenceLabel(p: Preference): String =
-    p.key?.let { "${p.category}: $it = ${p.value}" } ?: "${p.category}: ${p.value}"
+// internal (not private): also used by EntityListScreens.kt's GiftPreferencesPanel.
+internal fun preferenceLabel(p: Preference): String {
+    val base = p.key?.let { "${p.category}: $it = ${p.value}" } ?: "${p.category}: ${p.value}"
+    return p.notes?.takeIf { it.isNotBlank() }?.let { "$base\n$it" } ?: base
+}
 
 private fun agendaLabel(a: ConversationAgenda): String = a.content

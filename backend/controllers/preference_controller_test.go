@@ -40,7 +40,9 @@ func TestCreatePreference(t *testing.T) {
 	payload := models.PreferenceInput{
 		EntityID: contact.VCardUID,
 		Category: models.PreferenceCategoryFood,
-		Value:    "Vegetarian",
+		Key:      "dislike",
+		Value:    "Alcohol",
+		Notes:    "Doesn't drink alcohol",
 	}
 	jsonValue, _ := json.Marshal(payload)
 	req, _ := http.NewRequest("POST", "/preferences", bytes.NewBuffer(jsonValue))
@@ -58,6 +60,7 @@ func TestCreatePreference(t *testing.T) {
 	db.First(&pref)
 	assert.Equal(t, models.RelationshipSensitivityNormal, pref.Sensitivity, "omitted sensitivity must default to normal")
 	assert.Equal(t, models.PreferenceCategoryFood, pref.Category)
+	assert.Equal(t, "Doesn't drink alcohol", pref.Notes, "notes must persist on create")
 }
 
 func TestCreatePreferenceRejectsContactFromAnotherUser(t *testing.T) {
@@ -178,6 +181,7 @@ func TestUpdatePreference(t *testing.T) {
 		EntityID:    contact.VCardUID,
 		Category:    models.PreferenceCategoryFood,
 		Value:       "Vegan",
+		Notes:       "Also avoids honey",
 		Sensitivity: "private",
 	}
 	jsonValue, _ := json.Marshal(payload)
@@ -192,6 +196,7 @@ func TestUpdatePreference(t *testing.T) {
 	db.First(&reloaded, "id = ?", pref.ID)
 	assert.Equal(t, "Vegan", reloaded.Value)
 	assert.Equal(t, "private", reloaded.Sensitivity)
+	assert.Equal(t, "Also avoids honey", reloaded.Notes, "notes must persist on update")
 }
 
 func TestDeletePreference(t *testing.T) {

@@ -1,29 +1,33 @@
 import { useState } from 'react';
-import { Box, Typography, IconButton, Stack, Paper, TextField, InputAdornment } from '@mui/material';
+import { Box, Typography, IconButton, Stack, Paper, TextField, Autocomplete } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
-import StraightenIcon from '@mui/icons-material/Straighten';
 import { useTranslation } from 'react-i18next';
-import { Preference } from '../api/preferences';
+import { Preference, CLOTHING_TYPE_SUGGESTIONS } from '../api/preferences';
 
 interface ClothingSizesPanelProps {
   sizes: Preference[];
-  onAdd: (value: string) => Promise<void>;
-  onEdit: (preference: Preference, value: string) => Promise<void>;
+  onAdd: (key: string, value: string) => Promise<void>;
+  onEdit: (preference: Preference, key: string, value: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }
 
 // The contact's clothing sizes, managed from the Gifts tab (where you check
 // sizes before buying). Sizes are stored as `clothing_size` preferences — the
 // category lives in the preferences model but is surfaced here rather than in
-// the general preference dialog. Free-text values, edited inline.
+// the general preference dialog. `key` holds a free-solo clothing *type*
+// (shirt, ring, ...) rather than a disposition — sizing is a fact, not a
+// taste. Rows created before this type field existed have an empty `key` and
+// fall back to showing just the size.
 export default function ClothingSizesPanel({ sizes, onAdd, onEdit, onDelete }: ClothingSizesPanelProps) {
   const { t } = useTranslation();
+  const [newKey, setNewKey] = useState('');
   const [newValue, setNewValue] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editKey, setEditKey] = useState('');
   const [editValue, setEditValue] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -32,7 +36,8 @@ export default function ClothingSizesPanel({ sizes, onAdd, onEdit, onDelete }: C
     if (!v || busy) return;
     setBusy(true);
     try {
-      await onAdd(v);
+      await onAdd(newKey.trim(), v);
+      setNewKey('');
       setNewValue('');
     } finally {
       setBusy(false);
@@ -44,12 +49,14 @@ export default function ClothingSizesPanel({ sizes, onAdd, onEdit, onDelete }: C
     if (!v || busy) return;
     setBusy(true);
     try {
-      await onEdit(pref, v);
+      await onEdit(pref, editKey.trim(), v);
       setEditingId(null);
     } finally {
       setBusy(false);
     }
   };
+
+  const typeLabel = (key: string) => t(`preference.keys.${key}`, key);
 
   return (
     <Box>
@@ -61,6 +68,18 @@ export default function ClothingSizesPanel({ sizes, onAdd, onEdit, onDelete }: C
           <Paper key={size.id} variant="outlined" sx={{ p: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
             {editingId === size.id ? (
               <>
+                <Autocomplete
+                  freeSolo
+                  options={CLOTHING_TYPE_SUGGESTIONS}
+                  getOptionLabel={typeLabel}
+                  value={editKey || null}
+                  onChange={(_, v) => setEditKey(v || '')}
+                  onInputChange={(_, v) => setEditKey(v)}
+                  sx={{ width: 160 }}
+                  renderInput={(params) => (
+                    <TextField {...params} size="small" label={t('gifts.clothingType')} />
+                  )}
+                />
                 <TextField
                   size="small"
                   value={editValue}
@@ -84,12 +103,13 @@ export default function ClothingSizesPanel({ sizes, onAdd, onEdit, onDelete }: C
             ) : (
               <>
                 <Typography variant="body1" sx={{ flex: 1, overflowWrap: 'anywhere' }}>
-                  {size.value}
+                  {size.key ? `${typeLabel(size.key)}: ${size.value}` : size.value}
                 </Typography>
                 <IconButton
                   size="small"
                   onClick={() => {
                     setEditingId(size.id);
+                    setEditKey(size.key || '');
                     setEditValue(size.value);
                   }}
                   aria-label={t('common.edit')}
@@ -108,32 +128,40 @@ export default function ClothingSizesPanel({ sizes, onAdd, onEdit, onDelete }: C
             )}
           </Paper>
         ))}
-        <TextField
-          size="small"
-          value={newValue}
-          onChange={(e) => setNewValue(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              handleAdd();
-            }
-          }}
-          placeholder={t('gifts.clothingSizePlaceholder')}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <StraightenIcon fontSize="small" color="action" />
-              </InputAdornment>
-            ),
-            endAdornment: (
-              <InputAdornment position="end">
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Autocomplete
+            freeSolo
+            options={CLOTHING_TYPE_SUGGESTIONS}
+            getOptionLabel={typeLabel}
+            value={newKey || null}
+            onChange={(_, v) => setNewKey(v || '')}
+            onInputChange={(_, v) => setNewKey(v)}
+            sx={{ width: 160 }}
+            renderInput={(params) => (
+              <TextField {...params} size="small" label={t('gifts.clothingType')} />
+            )}
+          />
+          <TextField
+            size="small"
+            value={newValue}
+            onChange={(e) => setNewValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleAdd();
+              }
+            }}
+            placeholder={t('gifts.clothingSizePlaceholder')}
+            fullWidth
+            InputProps={{
+              endAdornment: (
                 <IconButton size="small" onClick={handleAdd} disabled={busy || !newValue.trim()} aria-label={t('gifts.add')}>
                   <AddIcon />
                 </IconButton>
-              </InputAdornment>
-            ),
-          }}
-        />
+              ),
+            }}
+          />
+        </Box>
       </Stack>
     </Box>
   );

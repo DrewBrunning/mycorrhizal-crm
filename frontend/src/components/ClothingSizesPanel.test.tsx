@@ -37,7 +37,17 @@ test('shows the existing sizes', () => {
   expect(screen.getByText('S/M')).toBeInTheDocument();
 });
 
-test('adds a size and reports it upward', async () => {
+test('shows the clothing type alongside the size when set', () => {
+  renderPanel({ sizes: [size({ key: 'ring', value: '7' })] });
+  expect(screen.getByText('Ring: 7')).toBeInTheDocument();
+});
+
+test('a legacy size with no type shows just the value', () => {
+  renderPanel({ sizes: [size()] });
+  expect(screen.getByText('M')).toBeInTheDocument();
+});
+
+test('adds a size with no type and reports it upward', async () => {
   const onAdd = vi.fn().mockResolvedValue(undefined);
   renderPanel({ onAdd });
 
@@ -45,8 +55,21 @@ test('adds a size and reports it upward', async () => {
   fireEvent.change(input, { target: { value: '42' } });
   fireEvent.click(screen.getByLabelText('Add'));
 
-  await vi.waitFor(() => expect(onAdd).toHaveBeenCalledWith('42'));
+  await vi.waitFor(() => expect(onAdd).toHaveBeenCalledWith('', '42'));
   await vi.waitFor(() => expect(input).toHaveValue(''));
+});
+
+test('adds a size with a type and reports it upward', async () => {
+  const onAdd = vi.fn().mockResolvedValue(undefined);
+  renderPanel({ onAdd });
+
+  const typeInput = screen.getByRole('combobox', { name: 'Type' });
+  fireEvent.change(typeInput, { target: { value: 'Ring' } });
+  const valueInput = screen.getByPlaceholderText('Add a size, e.g. M, 42, S/M…');
+  fireEvent.change(valueInput, { target: { value: '7' } });
+  fireEvent.click(screen.getByLabelText('Add'));
+
+  await vi.waitFor(() => expect(onAdd).toHaveBeenCalledWith('Ring', '7'));
 });
 
 test('edits a size inline and reports it upward', async () => {
@@ -58,7 +81,7 @@ test('edits a size inline and reports it upward', async () => {
   fireEvent.change(editInput, { target: { value: 'L' } });
   fireEvent.click(screen.getByLabelText('Save'));
 
-  await vi.waitFor(() => expect(onEdit).toHaveBeenCalledWith(size(), 'L'));
+  await vi.waitFor(() => expect(onEdit).toHaveBeenCalledWith(size(), '', 'L'));
 });
 
 test('deletes a size', () => {
