@@ -78,6 +78,10 @@
     <string name="contacts_empty">Noch keine Kontakte</string>
     <string name="contacts_new">Neuer Kontakt</string>
     <string name="contacts_photo_description">Foto von %1$s</string>
+    <!-- Issue #219: TalkBack action label for tapping the avatar on the detail
+         screen (the profile-photo upload entry point). Lowercase verb phrase
+         to read naturally as "double tap to <contacts_photo_change>". -->
+    <string name="contacts_photo_change">Foto hinzufügen oder ändern</string>
     <!-- M23: Listenbreite — Kreisfilter, Archiv-Umschalter, Inline-Stapelauswahl -->
     <string name="contacts_filter_circle">Kreis</string>
     <string name="contacts_all_circles">Alle Kreise</string>
@@ -149,6 +153,7 @@
     <string name="contact_tags_empty">Noch keine Tags</string>
     <string name="contact_tags_add">Tag hinzufügen</string>
     <string name="contact_export_share_title">Kontakt exportieren</string>
+    <string name="profile_picture_error_too_large">Foto zu groß. Maximale Größe ist 10 MB.</string>
     <string name="mobile_link_message">Nachricht</string>
     <string name="mobile_link_voice_call">Sprachanruf</string>
     <string name="mobile_link_video_call">Videoanruf</string>
