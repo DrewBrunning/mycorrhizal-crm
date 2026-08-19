@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures';
-import { createTestContact, deleteTestContact, waitForLoading, stableClick } from './fixtures';
+import { createTestContact, deleteTestContact, waitForLoading, stableClick, selectedText } from './fixtures';
 import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 
 /**
@@ -47,7 +47,7 @@ test.describe('Bulk merge from the contacts list', () => {
 
       // One selected: Merge is disabled with the constraint explained.
       await page.getByLabel(keeperLabel).click();
-      await expect(page.getByText('1 selected')).toBeVisible();
+      await expect(selectedText(page, '1 selected')).toBeVisible();
       await expect(bulkMergeButton).toBeDisabled();
       // force: the opened tooltip sits over the button, so Playwright's own
       // actionability check (nothing intercepts the pointer) can never pass —
@@ -57,16 +57,16 @@ test.describe('Bulk merge from the contacts list', () => {
 
       // Two selected: Merge enables.
       await page.getByLabel(loserLabel).click();
-      await expect(page.getByText('2 selected')).toBeVisible();
+      await expect(selectedText(page, '2 selected')).toBeVisible();
       await expect(bulkMergeButton).toBeEnabled();
 
       // Three selected: disabled again — merge is strictly pairwise.
       await page.getByLabel(thirdLabel).click();
-      await expect(page.getByText('3 selected')).toBeVisible();
+      await expect(selectedText(page, '3 selected')).toBeVisible();
       await expect(bulkMergeButton).toBeDisabled();
       // Back to the merge pair.
       await page.getByLabel(thirdLabel).click();
-      await expect(page.getByText('2 selected')).toBeVisible();
+      await expect(selectedText(page, '2 selected')).toBeVisible();
       await expect(bulkMergeButton).toBeEnabled();
 
       const mergeDialog = page.getByRole('dialog').filter({ hasText: 'Merge Contacts' });
@@ -101,7 +101,7 @@ test.describe('Bulk merge from the contacts list', () => {
       // parent refetch and clear the selection — so by the time it resolves
       // the loser is gone from the list and the selection banner is empty.
       await expect(mergeDialog).not.toBeVisible({ timeout: 10000 });
-      await expect(page.getByText(/\d+ selected/)).not.toBeVisible();
+      await expect(selectedText(page, /\d+ selected/)).not.toBeVisible();
       await expect(page.getByText(`${loserName} Scan`)).not.toBeVisible({ timeout: 10000 });
       await expect(page.getByText(`${keeperName} Scan`)).toBeVisible();
 

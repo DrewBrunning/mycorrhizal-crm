@@ -44,6 +44,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.autofill.AutofillType
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -442,10 +444,13 @@ fun ContactFormContent(
             onToggle = onTagToggle,
         )
 
+        val savingLabel = stringResource(R.string.a11y_state_saving)
         Button(
             onClick = onSave,
             enabled = !state.isSaving,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics { if (state.isSaving) stateDescription = savingLabel },
         ) {
             if (state.isSaving) {
                 CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))

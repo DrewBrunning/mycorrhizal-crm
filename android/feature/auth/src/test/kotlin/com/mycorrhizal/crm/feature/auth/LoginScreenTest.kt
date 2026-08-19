@@ -1,5 +1,9 @@
 package com.mycorrhizal.crm.feature.auth
 
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
@@ -111,5 +115,47 @@ class LoginScreenTest {
 
         assertEquals(true, registered)
         assertEquals(true, forgot)
+    }
+
+    // #203: the OIDC native-return failure (MainActivity) used to be a Toast
+    // -- it's now injected as `oidcError` and shown through this screen's own
+    // SnackbarHostState, same as the screen's own submit errors.
+    @Test
+    fun `an injected oidc error is shown via the snackbar`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                LoginScreenContent(
+                    uiState = LoginUiState(),
+                    onServerUrlChange = {},
+                    onModeChange = {},
+                    onSubmit = { _, _, _, _ -> },
+                    oidcError = "Single sign-on failed",
+                    onOidcErrorShown = {},
+                )
+            }
+        }
+
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Single sign-on failed").assertIsDisplayed()
+    }
+
+    @Test
+    fun `the snackbar host is an assertive live region`() {
+        setContent()
+
+        // Not exercising assertIsDisplayed() -- an empty SnackbarHost with no
+        // active message has zero visible size, which Compose UI testing
+        // treats as "not displayed" even though the node (and its live
+        // region) genuinely exists in the tree.
+        composeTestRule.onNode(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Assertive))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Assertive))
+    }
+
+    @Test
+    fun `the loading spinner announces itself while signing in`() {
+        setContent(uiState = LoginUiState(isLoading = true))
+
+        composeTestRule.onNode(SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription, listOf("Saving")))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription, listOf("Saving")))
     }
 }

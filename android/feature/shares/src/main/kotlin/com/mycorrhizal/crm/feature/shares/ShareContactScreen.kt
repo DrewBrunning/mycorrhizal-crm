@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -40,6 +41,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -128,16 +132,34 @@ fun ShareContactScreen(
                             text = stringResource(R.string.shares_fields_label),
                             style = MaterialTheme.typography.titleMedium,
                         )
+                        val lockedLabel = stringResource(R.string.a11y_share_field_locked)
                         ShareFieldSections.ALL.forEach { section ->
                             val checked = state.selectedSections.contains(section.token)
                             val locked = section.sensitive && !state.sensitiveRevealed
+                            // #199: a bare Checkbox has no text of its own — the
+                            // adjacent label Text was a separate, unassociated
+                            // node, so TalkBack announced the checkbox with no
+                            // name. Modifier.toggleable on the row merges the
+                            // label into the checkbox's accessible name. When
+                            // locked, `enabled = false` alone only announces
+                            // "disabled" with no reason — stateDescription names
+                            // the sensitivity lock instead of relying on the
+                            // (contentDescription = null) lock icon alone.
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .toggleable(
+                                        value = if (locked) false else checked,
+                                        onValueChange = { viewModel.toggleSection(section.token, it) },
+                                        enabled = !locked,
+                                        role = Role.Checkbox,
+                                    )
+                                    .semantics { if (locked) stateDescription = lockedLabel },
                             ) {
                                 Checkbox(
                                     checked = if (locked) false else checked,
-                                    onCheckedChange = { viewModel.toggleSection(section.token, it) },
+                                    onCheckedChange = null,
                                     enabled = !locked,
                                 )
                                 Text(

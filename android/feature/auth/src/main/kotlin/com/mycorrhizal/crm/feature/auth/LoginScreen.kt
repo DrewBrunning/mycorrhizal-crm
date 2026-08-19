@@ -31,6 +31,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -47,6 +51,11 @@ fun LoginScreen(
     // M26: links to the register and forgot-password flows.
     onRegisterClick: () -> Unit = {},
     onForgotPasswordClick: () -> Unit = {},
+    // #203: the OIDC native-return failure (MainActivity) has no ViewModel of
+    // its own to report through — it's a session-level event injected from
+    // outside, shown through this screen's existing SnackbarHostState.
+    oidcError: String? = null,
+    onOidcErrorShown: () -> Unit = {},
     viewModel: LoginViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -69,6 +78,8 @@ fun LoginScreen(
         onRegisterClick = onRegisterClick,
         onForgotPasswordClick = onForgotPasswordClick,
         onErrorShown = viewModel::onErrorShown,
+        oidcError = oidcError,
+        onOidcErrorShown = onOidcErrorShown,
     )
 }
 
@@ -87,6 +98,8 @@ fun LoginScreenContent(
     onRegisterClick: () -> Unit = {},
     onForgotPasswordClick: () -> Unit = {},
     onErrorShown: () -> Unit = {},
+    oidcError: String? = null,
+    onOidcErrorShown: () -> Unit = {},
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -96,7 +109,16 @@ fun LoginScreenContent(
     var apiToken by remember { mutableStateOf("") }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        // #203: Toast is announced inconsistently by TalkBack and can't be
+        // re-read — an assertive live region on the SnackbarHost makes sure
+        // both this screen's own errors and the injected oidcError below are
+        // actually spoken when they appear.
+        snackbarHost = {
+            SnackbarHost(
+                snackbarHostState,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
+            )
+        },
     ) { padding ->
         Column(
             modifier = Modifier
@@ -172,7 +194,13 @@ fun LoginScreenContent(
             }
 
             if (uiState.isLoading) {
-                CircularProgressIndicator()
+                // #203: no Button is present in this branch, so the
+                // stateDescription-on-a-Button pattern used elsewhere doesn't
+                // apply here — the spinner itself needs the name.
+                val savingLabel = stringResource(R.string.a11y_state_saving)
+                CircularProgressIndicator(
+                    modifier = Modifier.semantics { contentDescription = savingLabel },
+                )
             } else {
                 Button(
                     onClick = {
@@ -213,6 +241,15 @@ fun LoginScreenContent(
                 LaunchedEffect(message) {
                     snackbarHostState.showSnackbar(message)
                     onErrorShown()
+                }
+            }
+
+            // #203: the OIDC native-return failure, injected from MainActivity
+            // — was a Toast, now shares this screen's own SnackbarHostState.
+            oidcError?.let { message ->
+                LaunchedEffect(message) {
+                    snackbarHostState.showSnackbar(message)
+                    onOidcErrorShown()
                 }
             }
         }

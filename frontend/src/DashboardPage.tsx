@@ -33,9 +33,11 @@ import OverdueCadenceList from './components/OverdueCadenceList';
 import { ContactListSkeleton } from './components/LoadingSkeletons';
 import { handleFetchError, handleError } from './utils/errorHandler';
 import { useDateFormat } from './DateFormatProvider';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
 
 function DashboardPage() {
   const { t } = useTranslation();
+  useDocumentTitle(t('nav.dashboard'));
   const navigate = useNavigate();
   const { formatBirthday: formatBirthdayDate, formatDate } = useDateFormat();
   const [birthdays, setBirthdays] = useState<Birthday[]>([]);
@@ -166,7 +168,7 @@ function DashboardPage() {
   if (loading) {
     return (
       <Box sx={{ maxWidth: 1400, mx: 'auto', mt: 2, p: 2 }}>
-        <Typography variant="h5" gutterBottom>
+        <Typography variant="h5" component="h1" gutterBottom>
           {t('dashboard.title')}
         </Typography>
         <Box sx={{
@@ -201,7 +203,7 @@ function DashboardPage() {
 
   return (
     <Box sx={{ maxWidth: 1400, mx: 'auto', mt: 2, p: 2 }}>
-      <Typography variant="h5" gutterBottom sx={{ mb: 2 }}>
+      <Typography variant="h5" component="h1" gutterBottom sx={{ mb: 2 }}>
         {t('dashboard.title')}
       </Typography>
 
@@ -223,7 +225,7 @@ function DashboardPage() {
         <Box>
           <Box sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
             <StarIcon color="primary" fontSize="small" />
-            <Typography variant="subtitle1" fontWeight={500}>
+            <Typography variant="subtitle1" component="h2" fontWeight={500}>
               {t('dashboard.favorites')}
             </Typography>
             <IconButton
@@ -307,7 +309,7 @@ function DashboardPage() {
         <Box>
           <Box sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
             <CakeIcon color="primary" fontSize="small" />
-            <Typography variant="subtitle1" fontWeight={500}>
+            <Typography variant="subtitle1" component="h2" fontWeight={500}>
               {t('dashboard.upcomingBirthdays')}
             </Typography>
             <IconButton
@@ -387,7 +389,7 @@ function DashboardPage() {
         <Box>
           <Box sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
             <NotificationsIcon color="primary" fontSize="small" />
-            <Typography variant="subtitle1" fontWeight={500}>
+            <Typography variant="subtitle1" component="h2" fontWeight={500}>
               {t('dashboard.upcomingReminders')}
             </Typography>
             <IconButton
@@ -530,7 +532,7 @@ function DashboardPage() {
         <Box>
           <Box sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
             <ShuffleIcon color="primary" fontSize="small" />
-            <Typography variant="subtitle1" fontWeight={500}>
+            <Typography variant="subtitle1" component="h2" fontWeight={500}>
               {t('dashboard.randomContacts')}
             </Typography>
             <IconButton

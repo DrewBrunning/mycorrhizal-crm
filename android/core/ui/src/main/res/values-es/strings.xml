@@ -981,4 +981,9 @@
     <string name="audit_undo_success">Contacto restaurado a su estado anterior</string>
     <string name="audit_undo_retention_gone">Este evento está fuera de su ventana de retención y ya no se puede deshacer</string>
     <string name="audit_undo_partial_note">Los detalles que nunca se registraron en esta entrada (pronombres, información personal, detalles de dirección) se conservan sin cambios.</string>
+
+    <!-- Android a11y (issues #199/#203): shared accessibility-only announcements -->
+    <string name="a11y_state_loading">Cargando</string>
+    <string name="a11y_state_saving">Guardando</string>
+    <string name="a11y_share_field_locked">Bloqueado hasta que se activen los campos confidenciales</string>
 </resources>

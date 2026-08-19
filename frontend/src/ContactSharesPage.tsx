@@ -15,6 +15,7 @@ import {
 } from '@mui/material';
 import { useSnackbar } from './context/SnackbarContext';
 import { useContactShares } from './hooks/useContactShares';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
 import AcceptContactShareDialog from './components/AcceptContactShareDialog';
 import { ContactShare, ContactShareStatus } from './api/contactShares';
 
@@ -31,6 +32,7 @@ function statusColor(status: ContactShareStatus): 'success' | 'error' | 'warning
 
 export default function ContactSharesPage() {
   const { t } = useTranslation();
+  useDocumentTitle(t('nav.shares'));
   const { showError } = useSnackbar();
   const {
     incoming,
@@ -59,7 +61,7 @@ export default function ContactSharesPage() {
 
   return (
     <Box sx={{ maxWidth: 800, mx: 'auto', mt: 2, px: 2, pb: 2 }}>
-      <Typography variant="h5" gutterBottom>
+      <Typography variant="h5" component="h1" gutterBottom>
         {t('contactShares.title')}
       </Typography>
 

@@ -59,7 +59,7 @@ export default function SpeakToAsEditor({ value, onChange }: SpeakToAsEditorProp
 
   return (
     <Box>
-      <Typography variant="subtitle2" gutterBottom>
+      <Typography variant="subtitle2" component="p" gutterBottom>
         {t('contacts.speakToAs.pronouns')}
       </Typography>
       <Stack spacing={1} sx={{ mt: 0.5 }}>
@@ -105,7 +105,7 @@ export default function SpeakToAsEditor({ value, onChange }: SpeakToAsEditorProp
         </Box>
       </Stack>
 
-      <Typography variant="subtitle2" gutterBottom sx={{ mt: 2 }}>
+      <Typography variant="subtitle2" component="p" gutterBottom sx={{ mt: 2 }}>
         {t('contacts.speakToAs.grammaticalGender')}
       </Typography>
       <Stack spacing={1} sx={{ mt: 0.5 }}>

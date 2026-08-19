@@ -44,10 +44,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -505,12 +507,27 @@ internal fun LifeEventDialog(
                     }
                 }
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                // #199: a bare Checkbox has no text of its own — the adjacent
+                // "Remind" Text was a separate, unassociated node, so TalkBack
+                // announced the checkbox with no name. Modifier.toggleable on
+                // the row merges the label into the checkbox's accessible name;
+                // enabled/testTag move from the (now decorative) Checkbox to the
+                // row, since the row is the interactive element now.
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .toggleable(
+                            value = remind,
+                            onValueChange = { remind = it },
+                            enabled = canRemind,
+                            role = Role.Checkbox,
+                        )
+                        .testTag("life-event-remind"),
+                ) {
                     Checkbox(
                         checked = remind,
-                        onCheckedChange = { remind = it },
+                        onCheckedChange = null,
                         enabled = canRemind,
-                        modifier = Modifier.testTag("life-event-remind"),
                     )
                     Text(
                         text = stringResource(R.string.life_events_remind),

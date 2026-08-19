@@ -979,4 +979,9 @@
     <string name="audit_undo_success">Contact restored to its previous state</string>
     <string name="audit_undo_retention_gone">This event is past its retention window and can no longer be undone</string>
     <string name="audit_undo_partial_note">Details that were never captured in this record (pronouns, personal information, address details) are preserved unchanged.</string>
+
+    <!-- Android a11y (issues #199/#203): shared accessibility-only announcements -->
+    <string name="a11y_state_loading">Loading</string>
+    <string name="a11y_state_saving">Saving</string>
+    <string name="a11y_share_field_locked">Locked until sensitive fields are enabled</string>
 </resources>

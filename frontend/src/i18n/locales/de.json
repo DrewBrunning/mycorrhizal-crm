@@ -37,7 +37,9 @@
     "users": "Benutzer",
     "data": "Daten",
     "shares": "Freigaben",
-    "audit": "Audit-Protokoll"
+    "audit": "Audit-Protokoll",
+    "mainLabel": "Hauptnavigation",
+    "skipToContent": "Zum Inhalt springen"
   },
   "household": {
     "title": "Haushalte",
@@ -788,7 +790,10 @@
     "copyFailed": "Kopieren in die Zwischenablage fehlgeschlagen",
     "copyValue": "{{label}} kopieren",
     "close": "Schließen",
-    "info": "Weitere Informationen"
+    "info": "Weitere Informationen",
+    "resultsCount_one": "{{count}} Ergebnis",
+    "resultsCount_other": "{{count}} Ergebnisse",
+    "loading": "Wird geladen…"
   },
   "externalLinks": {
     "title": "Externe Verknüpfungen",

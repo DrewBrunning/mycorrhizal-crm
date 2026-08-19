@@ -1,6 +1,10 @@
 package com.mycorrhizal.crm.feature.settings
 
 import android.content.Context
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -281,5 +285,56 @@ class SettingsScreenTest {
         setScreen(darkTheme = true)
 
         composeTestRule.assertAccessibleSemantics()
+    }
+
+    @Test
+    fun `section titles are marked as headings`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                SettingsContent(
+                    state = SettingsUiState(session = SessionState()),
+                    onLogout = {},
+                )
+            }
+        }
+
+        // #208: section titles carried no heading semantics, so TalkBack's
+        // heading navigation found nothing on this (scrollable) screen.
+        composeTestRule.onNodeWithText("Session")
+            .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+        composeTestRule.onNodeWithText("Appearance")
+            .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+    }
+
+    @Test
+    fun `a password change error is announced as an assertive live region`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                SettingsContent(
+                    state = SettingsUiState(session = SessionState(), passwordError = "Current password is wrong"),
+                    onLogout = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Current password is wrong")
+            .performScrollTo()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Assertive))
+    }
+
+    @Test
+    fun `the change-password button announces saving while in flight`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                SettingsContent(
+                    state = SettingsUiState(session = SessionState(), isChangingPassword = true),
+                    onLogout = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Update password")
+            .performScrollTo()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Saving"))
     }
 }

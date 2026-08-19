@@ -12,9 +12,11 @@ import {
   Stack
 } from '@mui/material';
 import { useErrorAlertFocus } from './hooks/useErrorAlertFocus';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
 
 export default function RegisterPage() {
   const { t } = useTranslation();
+  useDocumentTitle(t('register.title'));
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
@@ -75,7 +77,7 @@ export default function RegisterPage() {
   return (
     <Box sx={{ maxWidth: 400, mx: 'auto', mt: 8 }}>
       <Paper sx={{ p: 4 }}>
-        <Typography variant="h5" mb={2}>{t('register.title')}</Typography>
+        <Typography variant="h5" component="h1" mb={2}>{t('register.title')}</Typography>
         <form onSubmit={handleSubmit}>
           <Stack spacing={2}>
             <TextField

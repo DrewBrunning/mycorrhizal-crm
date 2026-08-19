@@ -37,7 +37,9 @@
     "users": "Users",
     "data": "Data",
     "shares": "Shares",
-    "audit": "Audit log"
+    "audit": "Audit log",
+    "mainLabel": "Main navigation",
+    "skipToContent": "Skip to content"
   },
   "household": {
     "title": "Households",
@@ -815,7 +817,10 @@
     "copyFailed": "Couldn't copy to clipboard",
     "copyValue": "Copy {{label}}",
     "close": "Close",
-    "info": "More information"
+    "info": "More information",
+    "resultsCount_one": "{{count}} result",
+    "resultsCount_other": "{{count}} results",
+    "loading": "Loading…"
   },
   "externalLinks": {
     "title": "External Links",

@@ -37,7 +37,9 @@
     "users": "Usuarios",
     "data": "Datos",
     "shares": "Comparticiones",
-    "audit": "Registro de auditoría"
+    "audit": "Registro de auditoría",
+    "mainLabel": "Navegación principal",
+    "skipToContent": "Saltar al contenido"
   },
   "household": {
     "title": "Hogares",
@@ -788,7 +790,10 @@
     "copyFailed": "No se pudo copiar al portapapeles",
     "copyValue": "Copiar {{label}}",
     "close": "Cerrar",
-    "info": "Más información"
+    "info": "Más información",
+    "resultsCount_one": "{{count}} resultado",
+    "resultsCount_other": "{{count}} resultados",
+    "loading": "Cargando…"
   },
   "externalLinks": {
     "title": "Enlaces externos",

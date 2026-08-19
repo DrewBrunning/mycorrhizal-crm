@@ -66,7 +66,7 @@ export default function AddressHouseholdSuggestions({
   if (suggestions.length === 0) {
     return (
       <Box sx={{ mt: 3 }}>
-        <Typography variant="h6">{t('household.addressSuggestions')}</Typography>
+        <Typography variant="h6" component="h2">{t('household.addressSuggestions')}</Typography>
         <Typography variant="body2" color="text.secondary" paragraph>
           {t('household.addressSuggestionDescription')}
         </Typography>
@@ -93,7 +93,7 @@ export default function AddressHouseholdSuggestions({
 
   return (
     <Box sx={{ mt: 3 }}>
-      <Typography variant="h6">{t('household.addressSuggestions')}</Typography>
+      <Typography variant="h6" component="h2">{t('household.addressSuggestions')}</Typography>
       <Typography variant="body2" color="text.secondary" paragraph>
         {t('household.addressSuggestionDescription')}
       </Typography>

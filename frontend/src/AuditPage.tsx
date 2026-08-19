@@ -25,6 +25,7 @@ import {
 } from '@mui/material';
 import { SelectChangeEvent } from '@mui/material/Select';
 import UndoIcon from '@mui/icons-material/Undo';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
 import ClearIcon from '@mui/icons-material/Clear';
 import { useAudit } from './hooks/useAudit';
 import { useDebouncedValue } from './hooks/useDebounce';
@@ -48,6 +49,7 @@ const OPERATION_COLORS: Record<AuditEvent['operation'], 'success' | 'info' | 'er
 // delete event is 400 server-side, so the button is gated to match).
 export default function AuditPage() {
   const { t } = useTranslation();
+  useDocumentTitle(t('nav.audit'));
   const { showSuccess, showError } = useSnackbar();
 
   const {
@@ -113,7 +115,7 @@ export default function AuditPage() {
 
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 2, p: 2 }}>
-      <Typography variant="h5" gutterBottom sx={{ mb: 1.5 }}>
+      <Typography variant="h5" component="h1" gutterBottom sx={{ mb: 1.5 }}>
         {t('audit.title')}
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>

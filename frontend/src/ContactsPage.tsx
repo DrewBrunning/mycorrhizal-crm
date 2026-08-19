@@ -15,6 +15,8 @@ import BulkActionsBar from './components/BulkActionsBar';
 import SearchNotesActivities from './components/SearchNotesActivities';
 import ReviewDuplicatesDialog from './components/ReviewDuplicatesDialog';
 import MergeContactsDialog from './components/MergeContactsDialog';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
+import { useAnnouncer } from './context/AnnouncerContext';
 import {
   Box,
   Card,
@@ -45,6 +47,8 @@ import { ContactListSkeleton } from './components/LoadingSkeletons';
 
 export default function ContactsPage() {
   const { t } = useTranslation();
+  useDocumentTitle(t('nav.contacts'));
+  const { announce } = useAnnouncer();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   // The committed (debounced) search term — the URL's `?search=` param is the
@@ -132,6 +136,12 @@ export default function ContactsPage() {
   const [selectedUids, setSelectedUids] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
 
+  // #211: announce the selection count, including on clear (0 selected) --
+  // the bulk action bar otherwise appears/disappears silently.
+  useEffect(() => {
+    announce(t('bulk.selected', { count: selectedUids.size }));
+  }, [selectedUids, announce, t]);
+
   // Selection is meaningless once the visible set changes underneath it — a
   // filter/search/archived change swaps `contacts` for an unrelated page,
   // so a stale selection would let a bulk action (including delete) run
@@ -188,6 +198,13 @@ export default function ContactsPage() {
 
   // Use custom hook for fetching contacts
   const { contacts, nextCursor, hiddenCount, loading, refetch, loadMore, setContacts } = useContacts(contactParams);
+
+  // #211: result-count announcement, once per settled fetch (not per
+  // keystroke -- `loading` only flips false after the debounced search in
+  // useContacts' own fetch settles).
+  useEffect(() => {
+    if (!loading) announce(t('common.resultsCount', { count: contacts.length }));
+  }, [loading, contacts.length, announce, t]);
 
   // Derived flags for the merged search surfaces (T86).
   const searchActive = searchQuery.trim().length >= 2;
@@ -347,7 +364,7 @@ export default function ContactsPage() {
 
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 2, p: 2 }}>
-      <Typography variant="h5" gutterBottom sx={{ mb: 2 }}>
+      <Typography variant="h5" component="h1" gutterBottom sx={{ mb: 2 }}>
         {t('contacts.title')}
       </Typography>
       {/* T111: search, filters and bulk actions are pinned above the scrolling

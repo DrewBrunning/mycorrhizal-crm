@@ -1,5 +1,9 @@
 package com.mycorrhizal.crm.feature.timeline
 
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -101,6 +105,16 @@ class NotesInboxScreenTest {
     fun `shows a loading skeleton while loading`() {
         setContent(NotesInboxUiState(isLoading = true))
         composeTestRule.onNodeWithTag("notes-inbox-loading").assertIsDisplayed()
+    }
+
+    @Test
+    fun `the loading skeleton announces itself as a polite live region`() {
+        // #203: nothing announced the loading state to TalkBack -- the
+        // skeleton boxes carried no text, so the screen read as blank while
+        // loading.
+        setContent(NotesInboxUiState(isLoading = true))
+        composeTestRule.onNodeWithTag("notes-inbox-loading")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
     }
 
     // --- Issue #214: Compose semantics a11y sweep (the axe-core analog) -----

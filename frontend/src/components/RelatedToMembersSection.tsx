@@ -24,7 +24,7 @@ export default function RelatedToMembersSection({ card }: RelatedToMembersSectio
   return (
     <Box sx={{ mt: 2 }}>
       <Divider sx={{ my: 1 }} />
-      <Typography variant="subtitle2" gutterBottom>
+      <Typography variant="subtitle2" component="p" gutterBottom>
         {t('contacts.relatedToMembers.title')}
       </Typography>
       <Stack spacing={1}>

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 import { Box, Typography, Tabs, Tab, Alert, LinearProgress } from '@mui/material';
 import CircleTagEntityList from './components/CircleTagEntityList';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useCircles } from './hooks/useCircles';
 import { useTags } from './hooks/useTags';
 import { useSnackbar } from './context/SnackbarContext';
@@ -17,6 +18,7 @@ type TabKey = 'circles' | 'tags';
 
 export default function CirclesTagsPage() {
   const { t } = useTranslation();
+  useDocumentTitle(t('nav.circlesTags'));
   const { showError, showSuccess } = useSnackbar();
   const [searchParams, setSearchParams] = useSearchParams();
   const tab: TabKey = searchParams.get('tab') === 'tags' ? 'tags' : 'circles';
@@ -61,7 +63,7 @@ export default function CirclesTagsPage() {
 
   return (
     <Box sx={{ maxWidth: 720, mx: 'auto', mt: 2, p: 2 }}>
-      <Typography variant="h5" gutterBottom>
+      <Typography variant="h5" component="h1" gutterBottom>
         {t('circlesTags.title')}
       </Typography>
       <Typography variant="body2" color="text.secondary" paragraph>

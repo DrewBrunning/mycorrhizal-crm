@@ -1,6 +1,9 @@
 package com.mycorrhizal.crm.feature.contacts
 
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
@@ -475,5 +478,46 @@ class ContactDetailScreenTest {
         composeTestRule.onNodeWithText("Share contact").performClick()
 
         assertEquals("uid-5", sharedUid)
+    }
+
+    @Test
+    fun `a section caption is marked as a heading`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(
+                name = Name(full = "Dana White"),
+                phones = listOf(Phone(number = "+1-555-0100")),
+            ),
+        )
+        setContent(ContactDetailUiState(contact = contact))
+
+        // #208: section captions carried no heading semantics, so TalkBack's
+        // heading navigation found nothing on this screen. One fix in
+        // SectionCard covers every card's caption.
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasText("Phone"))
+        composeTestRule.onNodeWithText("Phone")
+            .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+    }
+
+    @Test
+    fun `the contact name is marked as a heading`() {
+        val contact = ContactRecordResponse(id = 5, uid = "uid-5", card = Card(name = Name(full = "Dana White")))
+        val viewModel = mockk<ContactDetailViewModel>(relaxed = true)
+        every { viewModel.uiState } returns MutableStateFlow(ContactDetailUiState(contact = contact))
+        every { viewModel.events } returns MutableStateFlow<ContactDetailEvent?>(null)
+
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailScreen(onBack = {}, onShareContact = {}, viewModel = viewModel)
+            }
+        }
+
+        // #208: the contact name is the de facto page heading but carried no
+        // heading semantics. Two "Dana White" nodes exist (the collapsed
+        // TopAppBar title, and the large centered name below it) -- only the
+        // latter is the one this fix marks.
+        composeTestRule.onNode(hasText("Dana White").and(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)))
+            .assertIsDisplayed()
     }
 }

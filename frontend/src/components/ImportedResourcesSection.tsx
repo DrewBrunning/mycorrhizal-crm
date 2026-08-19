@@ -53,7 +53,7 @@ export default function ImportedResourcesSection({ card }: ImportedResourcesSect
   return (
     <Box sx={{ mt: 2 }}>
       <Divider sx={{ my: 1 }} />
-      <Typography variant="subtitle2" gutterBottom>
+      <Typography variant="subtitle2" component="p" gutterBottom>
         {t('contacts.importedResources.title')}
       </Typography>
       <Stack spacing={1}>

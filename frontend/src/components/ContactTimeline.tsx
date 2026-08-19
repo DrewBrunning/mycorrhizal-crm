@@ -96,7 +96,7 @@ export default function ContactTimeline({ timelineItems, onEditItem, onDeleteCom
               </TimelineSeparator>
               <TimelineContent>
                 <Paper elevation={1} sx={{ p: 1.5 }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                  <Typography variant="subtitle1" component="p" sx={{ fontWeight: 500 }}>
                     {t(`lifeEvent.types.${event.type}`, event.type)}
                   </Typography>
                   {event.description && (
@@ -127,7 +127,7 @@ export default function ContactTimeline({ timelineItems, onEditItem, onDeleteCom
               </TimelineSeparator>
               <TimelineContent>
                 <Paper elevation={1} sx={{ p: 1.5 }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                  <Typography variant="subtitle1" component="p" sx={{ fontWeight: 500 }}>
                     {t(`timeline.gift.${gift.status}`, gift.status)}
                   </Typography>
                   <Typography variant="body2" sx={{ mt: 0.5, overflowWrap: 'anywhere' }}>
@@ -165,7 +165,7 @@ export default function ContactTimeline({ timelineItems, onEditItem, onDeleteCom
               </TimelineSeparator>
               <TimelineContent>
                 <Paper elevation={1} sx={{ p: 1.5 }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                  <Typography variant="subtitle1" component="p" sx={{ fontWeight: 500 }}>
                     {event.type === 'photo-appearance'
                       ? t('externalLinks.activity.photoAppearance')
                       : t('externalLinks.activity.unknown', { type: event.type })}
@@ -205,7 +205,7 @@ export default function ContactTimeline({ timelineItems, onEditItem, onDeleteCom
                   }
                 }}
               >
-                <Typography variant="subtitle1" sx={{ fontWeight: 500, overflowWrap: 'anywhere' }}>
+                <Typography variant="subtitle1" component="p" sx={{ fontWeight: 500, overflowWrap: 'anywhere' }}>
                   {item.type === 'note' ? t('contactDetail.note') :
                    item.type === 'activity' ? (item.data as Activity).title :
                    t('timeline.reminderCompleted')}

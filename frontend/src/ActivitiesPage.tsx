@@ -1,4 +1,4 @@
-import { useState, useMemo, MouseEvent } from 'react';
+import { useState, useMemo, useEffect, MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link as RouterLink } from 'react-router';
 import {
@@ -33,9 +33,13 @@ import AddActivityDialog from './components/AddActivityDialog';
 import EditTimelineItemDialog from './components/EditTimelineItemDialog';
 import { ListSkeleton } from './components/LoadingSkeletons';
 import { useDateFormat } from './DateFormatProvider';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
+import { useAnnouncer } from './context/AnnouncerContext';
 
 const ActivitiesPage: React.FC = () => {
   const { t, i18n } = useTranslation();
+  useDocumentTitle(t('nav.activities'));
+  const { announce } = useAnnouncer();
   const { formatDate, getDatePlaceholder } = useDateFormat();
 
   const [searchInput, setSearchInput] = useState('');
@@ -65,6 +69,11 @@ const ActivitiesPage: React.FC = () => {
     refetch,
     loadMore,
   } = useActivities(activityParams);
+
+  // #211: result-count announcement, once per settled fetch.
+  useEffect(() => {
+    if (!loading) announce(t('common.resultsCount', { count: activities.length }));
+  }, [loading, activities.length, announce, t]);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [editValues, setEditValues] = useState<{
@@ -190,7 +199,7 @@ const ActivitiesPage: React.FC = () => {
     <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 2, p: 2 }}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
         <Box display="flex" alignItems="center" gap={1}>
-          <Typography variant="h5">{t('activities.title')}</Typography>
+          <Typography variant="h5" component="h1">{t('activities.title')}</Typography>
           <IconButton
             size="small"
             aria-describedby={infoPopoverId}
@@ -291,8 +300,10 @@ const ActivitiesPage: React.FC = () => {
                           // the contact timeline. The color override is gone
                           // with body2 -- it only existed to undo body2's
                           // themed soil color (theme.ts).
+                          // #211: a per-item title in a list, not a page heading.
                           <Typography
                             variant="subtitle1"
+                            component="p"
                             fontWeight={600}
                             sx={{ wordBreak: 'break-word' }}
                           >

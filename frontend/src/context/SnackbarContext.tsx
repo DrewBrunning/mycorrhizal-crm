@@ -70,6 +70,10 @@ export function SnackbarProvider({ children }: SnackbarProviderProps) {
           onClose={handleClose}
           severity={snackbarMessage.severity}
           variant="filled"
+          // #211: MUI's Alert defaults to role="alert" (assertive) for every
+          // severity -- a routine "saved" toast shouldn't interrupt like an
+          // error does.
+          role={snackbarMessage.severity === 'error' ? 'alert' : 'status'}
           sx={{ width: '100%' }}
         >
           {snackbarMessage.message}

@@ -1,5 +1,8 @@
 package com.mycorrhizal.crm.feature.contacts
 
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
@@ -279,5 +282,19 @@ class DashboardScreenTest {
         setScreenContent(darkTheme = true)
 
         composeTestRule.assertAccessibleSemantics()
+    }
+
+    @Test
+    fun `section headers are marked as headings`() {
+        setContent(populatedState())
+
+        // #208: section titles carried no heading semantics, so TalkBack's
+        // heading navigation found nothing on the dashboard.
+        scrollTo("Upcoming birthdays")
+        composeTestRule.onNodeWithText("Upcoming birthdays")
+            .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+        scrollTo("Overdue Relationships")
+        composeTestRule.onNodeWithText("Overdue Relationships")
+            .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
     }
 }
