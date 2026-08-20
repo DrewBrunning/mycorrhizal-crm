@@ -154,7 +154,9 @@ private fun MemberRow(
         IconButton(onClick = onRemove, enabled = !removing) {
             Icon(
                 imageVector = Icons.Outlined.Remove,
-                contentDescription = stringResource(R.string.circles_remove_member),
+                // #205: the remove action carries the member's identifier so
+                // TalkBack doesn't read a bare "Remove member" on every row.
+                contentDescription = stringResource(R.string.circles_remove_member_named, member.memberVCardUid),
             )
         }
     }

@@ -90,7 +90,7 @@ class EntityListScaffoldTest {
             items = listOf(EntityItem(id = "e1", label = "Moved to Madison")),
             onDelete = { deletedId = it },
         )
-        composeTestRule.onNodeWithContentDescription("Delete").performClick()
+        composeTestRule.onNodeWithContentDescription("Delete Moved to Madison").performClick()
 
         composeTestRule.onNodeWithText("Delete item?").assertIsDisplayed()
         composeTestRule.onNodeWithText("Delete “Moved to Madison”? This cannot be undone.").assertIsDisplayed()
@@ -104,7 +104,7 @@ class EntityListScaffoldTest {
             items = listOf(EntityItem(id = "e1", label = "Moved to Madison")),
             onDelete = { deletedId = it },
         )
-        composeTestRule.onNodeWithContentDescription("Delete").performClick()
+        composeTestRule.onNodeWithContentDescription("Delete Moved to Madison").performClick()
         composeTestRule.onNodeWithText("Delete").performClick()
 
         assertEquals("e1", deletedId)

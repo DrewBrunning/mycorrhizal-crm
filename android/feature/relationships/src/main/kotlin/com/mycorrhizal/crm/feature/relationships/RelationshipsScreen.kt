@@ -315,14 +315,27 @@ private fun RelationshipEdgeRow(
                 label = { Text(stringResource(R.string.relationships_accept)) },
             )
             IconButton(onClick = { onReject?.invoke() }) {
-                Icon(Icons.Outlined.Close, contentDescription = stringResource(R.string.relationships_reject))
+                // #205: the row-action label carries the other party's name so
+                // TalkBack doesn't read a bare "Reject" on every row.
+                Icon(
+                    Icons.Outlined.Close,
+                    contentDescription = stringResource(R.string.relationships_reject_named, displayName),
+                )
             }
         } else {
             IconButton(onClick = { onEdit?.invoke() }) {
-                Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.relationships_edit))
+                // #205: the row-action labels carry the other party's name so
+                // TalkBack doesn't read a bare "Edit"/"Delete" on every row.
+                Icon(
+                    Icons.Outlined.Edit,
+                    contentDescription = stringResource(R.string.relationships_edit_named, displayName),
+                )
             }
             IconButton(onClick = { onDelete?.invoke() }) {
-                Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.action_delete))
+                Icon(
+                    Icons.Outlined.Delete,
+                    contentDescription = stringResource(R.string.relationships_delete_named, displayName),
+                )
             }
         }
     }

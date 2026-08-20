@@ -259,7 +259,12 @@ fun ActivityListItem(
             }
         }
         IconButton(onClick = onDelete, enabled = !isDeleting) {
-            Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.action_delete))
+            // #205: the row-action label carries the activity's title so TalkBack
+            // doesn't read a bare "Delete" on every row.
+            Icon(
+                Icons.Outlined.Delete,
+                contentDescription = stringResource(R.string.activities_delete_named, activity.title.orEmpty()),
+            )
         }
     }
 }

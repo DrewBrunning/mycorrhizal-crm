@@ -35,7 +35,11 @@ class ThemeTest {
         assertEquals(Color(0xFFFAF5EA), MycorrhizalColors.bone)      // surface
         assertEquals(Color(0xFF30271F), MycorrhizalColors.bark)      // onSurface
         assertEquals(Color(0xFFAD5349), MycorrhizalColors.russula)   // error
-        assertEquals(Color(0xFF0D844C), MycorrhizalColors.moss)      // tertiary/success
+        // #206: moss (#0D844C) and laccaria (#7B6B98) were darkened so they
+        // clear 4.5:1 as text on parchment -- a deliberate Android-side
+        // divergence from the web tokens (pinned by ThemeContrastTest).
+        assertEquals(Color(0xFF0A6E3F), MycorrhizalColors.moss)      // tertiary/success
+        assertEquals(Color(0xFF655681), MycorrhizalColors.laccaria)  // info
     }
 
     @Test
@@ -43,6 +47,11 @@ class ThemeTest {
         assertEquals(Color(0xFF9EB698), MycorrhizalColors.myceliumDark)
         assertEquals(Color(0xFF1E1A13), MycorrhizalColors.boneDark)
         assertEquals(Color(0xFFEAE4DA), MycorrhizalColors.barkDark)
+        // #206: mossDark (#349D62) and russulaDark (#C4675D) were lightened so
+        // they clear 4.5:1 on paperDark (dialogs) -- a deliberate Android-side
+        // divergence from the web tokens (pinned by ThemeContrastTest).
+        assertEquals(Color(0xFF4BB477), MycorrhizalColors.mossDark)
+        assertEquals(Color(0xFFDE857B), MycorrhizalColors.russulaDark)
     }
 
     // T99 dropped EB Garamond from Android, so titleLarge -- T63's one safe

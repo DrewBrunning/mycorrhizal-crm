@@ -8,6 +8,7 @@ import androidx.compose.ui.test.onNodeWithText
 import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
+import com.mycorrhizal.crm.testing.a11y.assertNoDuplicateContentDescriptions
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.mockk
@@ -51,6 +52,15 @@ class TagsScreenTest {
         setScreen(darkTheme = false)
 
         composeTestRule.assertAccessibleSemantics()
+    }
+
+    @Test
+    fun `row action labels are unique per row`() {
+        // #205: two seeded tags must not both announce a bare "Rename"/"Delete" —
+        // each row's actions carry the tag's name.
+        setScreen(darkTheme = false)
+
+        composeTestRule.assertNoDuplicateContentDescriptions()
     }
 
     @Test

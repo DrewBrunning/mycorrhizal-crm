@@ -157,7 +157,9 @@ private fun TaggedContactRow(
         IconButton(onClick = onRemove, enabled = !removing) {
             Icon(
                 imageVector = Icons.Outlined.Remove,
-                contentDescription = stringResource(R.string.tags_remove_contact),
+                // #205: the remove action carries the contact's identifier so
+                // TalkBack doesn't read a bare "Remove tag from contact" on every row.
+                contentDescription = stringResource(R.string.tags_remove_contact_named, tagging.contactVCardUid),
             )
         }
     }

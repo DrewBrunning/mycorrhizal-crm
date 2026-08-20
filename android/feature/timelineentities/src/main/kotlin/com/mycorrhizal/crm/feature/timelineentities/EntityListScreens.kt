@@ -222,7 +222,13 @@ internal fun EntityListScaffold(
                                                 onClick = { pendingDeleteId = item.id },
                                                 enabled = uiState.deletingId != item.id,
                                             ) {
-                                                Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.action_delete))
+                                                // #205: the row-action label carries
+                                                // the item's label so TalkBack doesn't
+                                                // read a bare "Delete" on every row.
+                                                Icon(
+                                                    Icons.Outlined.Delete,
+                                                    contentDescription = stringResource(R.string.entities_delete_named, item.label),
+                                                )
                                             }
                                         }
                                     }
@@ -1297,7 +1303,12 @@ private fun ClothingSizesPanel(
                     )
                     TextButton(onClick = { onStartEdit(item) }) { Text(stringResource(R.string.action_edit)) }
                     IconButton(onClick = { onDelete(item.id) }) {
-                        Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.action_delete))
+                        // #205: the row-action label carries the item's value so
+                        // TalkBack doesn't read a bare "Delete" on every row.
+                        Icon(
+                            Icons.Outlined.Delete,
+                            contentDescription = stringResource(R.string.entities_delete_named, item.value),
+                        )
                     }
                 }
             }

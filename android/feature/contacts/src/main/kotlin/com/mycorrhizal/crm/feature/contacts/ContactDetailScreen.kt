@@ -1821,7 +1821,9 @@ private fun ImmichLinkRow(
         IconButton(onClick = onUnlink) {
             Icon(
                 Icons.Outlined.Delete,
-                contentDescription = stringResource(R.string.external_links_remove),
+                // #205: the row action names the linked person so TalkBack
+                // doesn't read a bare "Remove link" on every row.
+                contentDescription = stringResource(R.string.external_links_remove_named, personName),
                 tint = MaterialTheme.colorScheme.error,
             )
         }
@@ -1865,7 +1867,9 @@ private fun GenericExternalLinkRow(identity: ExternalIdentity, onDelete: () -> U
         IconButton(onClick = onDelete) {
             Icon(
                 Icons.Outlined.Delete,
-                contentDescription = stringResource(R.string.external_links_remove),
+                // #205: the row action names the linked system so TalkBack
+                // doesn't read a bare "Remove link" on every row.
+                contentDescription = stringResource(R.string.external_links_remove_named, identity.system.orEmpty()),
                 tint = MaterialTheme.colorScheme.error,
             )
         }

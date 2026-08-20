@@ -55,7 +55,7 @@ import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
-import com.mycorrhizal.crm.ui.theme.MycorrhizalColors
+import com.mycorrhizal.crm.ui.theme.LocalWarningColors
 import com.mycorrhizal.crm.ui.R
 
 /**
@@ -205,7 +205,9 @@ fun ReminderListItem(
         border = if (overdue) {
             BorderStroke(
                 width = 2.dp,
-                color = MycorrhizalColors.chanterelle,
+                // #200: the light amber fails 3:1 as a border; the darkened
+                // non-text token (4.09:1 on the parchment card) replaces it.
+                color = LocalWarningColors.current.foreground,
             )
         } else {
             null
@@ -238,8 +240,10 @@ fun ReminderListItem(
                         ReminderBadge(
                             text = dateText,
                             leadingIcon = if (overdue) Icons.Outlined.Warning else null,
-                            containerColor = if (overdue) MycorrhizalColors.chanterelle else MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = if (overdue) androidx.compose.ui.graphics.Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                            // #200: white on the amber was 2.25:1; bark on the
+                            // amber container is 6.5:1 (theme-independent).
+                            containerColor = if (overdue) LocalWarningColors.current.container else MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (overdue) LocalWarningColors.current.onContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     if (overdue) {

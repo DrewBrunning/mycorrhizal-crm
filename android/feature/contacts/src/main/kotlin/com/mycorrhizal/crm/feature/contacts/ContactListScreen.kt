@@ -4,9 +4,12 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -43,6 +46,7 @@ import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -71,6 +75,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.Lifecycle
@@ -500,7 +505,7 @@ private enum class BulkPickerTarget { CIRCLE, TAG }
  * M23: the circle filter + archived toggle row above the list — the two list-breadth
  * controls web's ContactsPage filter row owns, missing on Android until now.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun ContactListFilterRow(
     circles: List<Circle>,
@@ -528,18 +533,42 @@ private fun ContactListFilterRow(
                 onExpandedChange = { expanded = it },
                 modifier = Modifier.weight(1f),
             ) {
-                OutlinedTextField(
-                    value = circleFilter ?: stringResource(R.string.contacts_all_circles),
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text(stringResource(R.string.contacts_filter_circle)) },
-                    singleLine = true,
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                // #209: a read-only OutlinedTextField hard-clips its single-line
+                // value at the field edge with no ellipsis (Compose 1.7 removed
+                // the TextField overflow control), so a long circle name rendered
+                // "Neighbou" mid-word at 200% font scale. The anchor is therefore
+                // built from OutlinedTextFieldDefaults.DecorationBox with the
+                // value drawn by a plain Text, which *does* support
+                // TextOverflow.Ellipsis — same Material chrome, ellipsising value.
+                val displayValue = circleFilter ?: stringResource(R.string.contacts_all_circles)
+                Box(
+                    // mergeDescendants folds the label + value into the anchor's
+                    // own node (the menuAnchor already marks it Role.DropdownList
+                    // with a click), so TalkBack announces one coherent control.
                     modifier = Modifier
                         .fillMaxWidth()
                         .menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                        .testTag("circle-filter"),
-                )
+                        .testTag("circle-filter")
+                        .semantics(mergeDescendants = true) {},
+                ) {
+                    OutlinedTextFieldDefaults.DecorationBox(
+                        value = displayValue,
+                        innerTextField = {
+                            Text(
+                                text = displayValue,
+                                style = MaterialTheme.typography.bodyLarge,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        },
+                        enabled = true,
+                        singleLine = true,
+                        visualTransformation = VisualTransformation.None,
+                        interactionSource = remember { MutableInteractionSource() },
+                        label = { Text(stringResource(R.string.contacts_filter_circle)) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    )
+                }
                 ExposedDropdownMenu(
                     expanded = expanded,
                     onDismissRequest = { expanded = false },
@@ -563,9 +592,12 @@ private fun ContactListFilterRow(
                 }
             }
         }
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
+        // #209: at 200% font scale the two labeled switches no longer fit side
+        // by side; FlowRow lets the favorites toggle drop to its own line (WCAG
+        // 1.4.10) instead of clipping off the row.
+        FlowRow(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
             modifier = Modifier.fillMaxWidth(),
         ) {
             // #214: see the archived-toggle comment below — the same

@@ -201,6 +201,37 @@ fun MycorrhizalApp(
 ) {
     val session by mainViewModel.session.collectAsStateWithLifecycle()
 
+    // Issue #202: the status-bar style is owned here, above the isLoggedIn
+    // branch, so the auth screens get it too. They have no green app bar — the
+    // bone surface runs straight up behind the status bar — but MainActivity's
+    // `enableEdgeToEdge` (which only runs in onCreate) leaves the launch-time
+    // green-app-bar style in place for them: white icons on cream, 1.09:1.
+    // One effect for both trees keeps the primary-vs-everything-else inversion
+    // rule in exactly one place (see the detailed note in MainScaffold's doc
+    // above -- the rule still applies as written there). The drawer state is
+    // hoisted here because this effect needs it; MainScaffold takes it as a
+    // parameter.
+    //
+    // The contact detail screen owns the bar while it is composed (per its
+    // collapse state); this effect's keys don't change on navigation, so it
+    // never re-runs over it -- the same guarantee MainScaffold's effect gave.
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val drawerOpen = drawerState.isOpen
+    val activity = LocalContext.current as android.app.Activity
+    val primaryArgb = MaterialTheme.colorScheme.primary.toArgbCompat()
+    val surfaceArgb = MaterialTheme.colorScheme.surface.toArgbCompat()
+    val surfaceContainerLowArgb = MaterialTheme.colorScheme.surfaceContainerLow.toArgbCompat()
+    LaunchedEffect(session.isLoggedIn, darkTheme, drawerOpen, primaryArgb, surfaceArgb, surfaceContainerLowArgb) {
+        val onPrimaryBar = session.isLoggedIn && !drawerOpen
+        activity.window.statusBarColor = when {
+            onPrimaryBar -> primaryArgb
+            session.isLoggedIn -> surfaceContainerLowArgb
+            else -> surfaceArgb
+        }
+        WindowCompat.getInsetsController(activity.window, activity.window.decorView)
+            .isAppearanceLightStatusBars = if (onPrimaryBar) darkTheme else !darkTheme
+    }
+
     if (!session.isLoggedIn) {
         // M26: the unauthenticated tree is a tiny router over the auth
         // screens — login, register, forgot-password — since they are not
@@ -243,6 +274,7 @@ fun MycorrhizalApp(
 
     MainScaffold(
         darkTheme = darkTheme,
+        drawerState = drawerState,
         serverUrl = session.serverUrl.orEmpty(),
         deepLinks = deepLinks,
         onDeepLinkHandled = onDeepLinkHandled,
@@ -255,6 +287,7 @@ private enum class AuthScreen { LOGIN, REGISTER, FORGOT_PASSWORD }
 @Composable
 private fun MainScaffold(
     darkTheme: Boolean,
+    drawerState: DrawerState,
     serverUrl: String,
     deepLinks: kotlinx.coroutines.flow.Flow<android.net.Uri?> = kotlinx.coroutines.flow.flowOf(null),
     onDeepLinkHandled: () -> Unit = {},
@@ -263,7 +296,6 @@ private fun MainScaffold(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
     val currentRoute = currentDestination?.route
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val activity = LocalContext.current as android.app.Activity
     // M25: the language setting needs the whole activity recreated so
@@ -322,6 +354,10 @@ private fun MainScaffold(
     // not stored: it only reacts to session transitions.
     hiltViewModel<DeviceRegistrationViewModel>()
 
+    // The status bar is owned by MycorrhizalApp (issue #202), not this
+    // scaffold, so the unauthenticated tree gets it too. Its documented
+    // behaviour is unchanged for this tree:
+    //
     // Default status bar for the always-green app-bar screens: brand green
     // (primary) background, icons following the theme. The contact detail
     // overrides this per its collapse state. When the drawer is open its
@@ -333,21 +369,8 @@ private fun MainScaffold(
     // palette that inverts between themes (mycelium is dark-toned in light
     // mode, myceliumDark is light-toned in dark mode -- deliberately, per
     // Theme.kt), so primary-role bars need `darkTheme` (inverted). Every
-    // other role here (surfaceContainerLow) follows the intuitive direction,
-    // so it needs `!darkTheme`.
-    val primaryArgb = MaterialTheme.colorScheme.primary.toArgbCompat()
-    val surfaceContainerLowArgb = MaterialTheme.colorScheme.surfaceContainerLow.toArgbCompat()
-    LaunchedEffect(drawerState.isOpen, darkTheme, primaryArgb, surfaceContainerLowArgb) {
-        if (drawerState.isOpen) {
-            activity.window.statusBarColor = surfaceContainerLowArgb
-            WindowCompat.getInsetsController(activity.window, activity.window.decorView)
-                .isAppearanceLightStatusBars = !darkTheme
-        } else {
-            activity.window.statusBarColor = primaryArgb
-            WindowCompat.getInsetsController(activity.window, activity.window.decorView)
-                .isAppearanceLightStatusBars = darkTheme
-        }
-    }
+    // other role here (surface/surfaceContainerLow) follows the intuitive
+    // direction, so it needs `!darkTheme`.
 
     // Issue #150: a destination tap navigates the same way from the rail and the
     // drawer. Closing the drawer is a no-op at Expanded (it never opens), so one
