@@ -11,6 +11,9 @@
     <string name="dashboard_reminders">Upcoming reminders</string>
     <string name="dashboard_overdue_cadences">Overdue Relationships</string>
     <string name="dashboard_random_contacts">Stay in Touch</string>
+    <!-- Issue #212: the favorites quick-access block (web #173). -->
+    <string name="dashboard_favorites">Favorites</string>
+    <string name="dashboard_no_favorites">No favorites yet</string>
     <string name="dashboard_no_birthdays">No upcoming birthdays</string>
     <string name="dashboard_no_reminders">No upcoming reminders</string>
     <string name="dashboard_no_contacts">No contacts available</string>
@@ -86,6 +89,8 @@
     <string name="contacts_filter_circle">Circle</string>
     <string name="contacts_all_circles">All circles</string>
     <string name="contacts_show_archived">Show archived</string>
+    <!-- Issue #212: the favorites-only lens, mirroring the archived switch (web #173). -->
+    <string name="contacts_show_favorites">Show favorites</string>
     <string name="contacts_select_mode">Select contacts</string>
     <string name="contacts_exit_select_mode">Exit selection</string>
     <string name="contacts_selected_count">%1$d selected</string>
@@ -97,6 +102,10 @@
          <contacts_row_select_action>". Lowercase verb phrases to read naturally in that sentence. -->
     <string name="contacts_open_contact">open contact</string>
     <string name="contacts_row_select_action">select contact</string>
+    <!-- Issue #212: the per-row / header star toggle's accessible labels
+         (web's contacts.favoriteContact / unfavoriteContact). -->
+    <string name="contacts_favorite_contact">Mark %1$s as favorite</string>
+    <string name="contacts_unfavorite_contact">Unmark %1$s as favorite</string>
 
     <!-- Contact list: cross-entity search (T87) -->
     <string name="contacts_search_results_header">%1$d matches in notes and activities</string>

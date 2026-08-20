@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -13,6 +14,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToIndex
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.ContactSummary
@@ -45,6 +47,8 @@ class ContactListScreenTest {
         onLoadMore: () -> Unit = {},
         onCircleFilterChange: (String?) -> Unit = {},
         onIncludeArchivedChange: (Boolean) -> Unit = {},
+        onIncludeFavoritesChange: (Boolean) -> Unit = {},
+        onToggleFavorite: (ContactSummary) -> Unit = {},
         onToggleSelection: (Int) -> Unit = {},
         onToggleSelectAll: () -> Unit = {},
         onRunBulkAction: (String, String?, String?) -> Unit = { _, _, _ -> },
@@ -60,6 +64,8 @@ class ContactListScreenTest {
                     onLoadMore = onLoadMore,
                     onCircleFilterChange = onCircleFilterChange,
                     onIncludeArchivedChange = onIncludeArchivedChange,
+                    onIncludeFavoritesChange = onIncludeFavoritesChange,
+                    onToggleFavorite = onToggleFavorite,
                     onToggleSelection = onToggleSelection,
                     onToggleSelectAll = onToggleSelectAll,
                     onRunBulkAction = onRunBulkAction,
@@ -157,6 +163,8 @@ class ContactListScreenTest {
             ),
         )
 
+        composeTestRule.onNodeWithTag("contact-list")
+            .performScrollToNode(hasText("2 matches in notes and activities"))
         composeTestRule.onNodeWithText("2 matches in notes and activities").assertIsDisplayed()
         // Collapsed by default: the note/activity content itself isn't shown yet.
         composeTestRule.onNodeWithText("called mom").assertDoesNotExist()
@@ -182,6 +190,8 @@ class ContactListScreenTest {
             onContactClick = { navigatedId = it },
         )
 
+        composeTestRule.onNodeWithTag("contact-list")
+            .performScrollToNode(hasText("1 matches in notes and activities"))
         composeTestRule.onNodeWithText("1 matches in notes and activities").performClick()
         composeTestRule.onNodeWithText("Dana White").performScrollTo().performClick()
 
@@ -200,6 +210,8 @@ class ContactListScreenTest {
             ),
         )
 
+        composeTestRule.onNodeWithTag("contact-list")
+            .performScrollToNode(hasText("1 matches in notes and activities"))
         composeTestRule.onNodeWithText("1 matches in notes and activities").performClick()
         composeTestRule.onNodeWithText("Unfiled").performScrollTo().assertIsDisplayed()
     }
@@ -213,6 +225,8 @@ class ContactListScreenTest {
                 searchResult = SearchResult(resolvedRelation = "parent_of"),
             ),
         )
+        composeTestRule.onNodeWithTag("contact-list")
+            .performScrollToNode(hasText("Matched relationship: parent_of"))
         composeTestRule.onNodeWithText("Matched relationship: parent_of")
             .performScrollTo()
             .assertIsDisplayed()
@@ -315,6 +329,58 @@ class ContactListScreenTest {
         composeTestRule.onNodeWithTag("archived-toggle").performClick()
 
         assertEquals(true, toggled)
+    }
+
+    // --- Issue #212: favorites filter + per-row star (web #173) --------------
+
+    @Test
+    fun `favorites toggle fires the callback`() {
+        var toggled: Boolean? = null
+        setContent(
+            ContactListUiState(isLoading = false, contacts = emptyList()),
+            onIncludeFavoritesChange = { toggled = it },
+        )
+
+        composeTestRule.onNodeWithTag("favorites-toggle").performClick()
+
+        assertEquals(true, toggled)
+    }
+
+    @Test
+    fun `the star is labeled for accessibility in both states`() {
+        setContent(
+            ContactListUiState(
+                isLoading = false,
+                contacts = listOf(
+                    ContactSummary(id = 1, fn = "Alice", firstname = "Alice", isFavorite = true),
+                    ContactSummary(id = 2, fn = "Bob", firstname = "Bob", isFavorite = false),
+                ),
+            ),
+        )
+
+        composeTestRule.onNodeWithContentDescription("Unmark Alice as favorite").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Mark Bob as favorite").assertIsDisplayed()
+    }
+
+    @Test
+    fun `tapping the star toggles the favorite without navigating to the detail page`() {
+        var toggledContactId: Int? = null
+        var navigatedId: Int? = null
+        setContent(
+            ContactListUiState(
+                isLoading = false,
+                contacts = listOf(ContactSummary(id = 1, fn = "Alice", firstname = "Alice")),
+            ),
+            onToggleFavorite = { toggledContactId = it.id },
+            onContactClick = { navigatedId = it },
+        )
+
+        composeTestRule.onNodeWithContentDescription("Mark Alice as favorite").performClick()
+
+        assertEquals(1, toggledContactId)
+        // The nested clickable consumes the tap — no row navigation (Compose's
+        // stopPropagation equivalent, mirroring web's e.stopPropagation()).
+        assertEquals(null, navigatedId)
     }
 
     // --- M23: inline bulk selection ------------------------------------------

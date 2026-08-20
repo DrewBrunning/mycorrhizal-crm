@@ -157,6 +157,58 @@ class ApiClientTest {
     }
 
     @Test
+    fun `list contacts sends the favorites filter on the query string`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"contacts":[],"next_cursor":""}"""),
+        )
+
+        client.listContacts(favorites = true)
+
+        val request = server.takeRequest()
+        assertEquals("/api/v1/contacts?favorites=true", request.path)
+    }
+
+    @Test
+    fun `list contacts omits the favorites filter by default`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"contacts":[],"next_cursor":""}"""),
+        )
+
+        client.listContacts()
+
+        val request = server.takeRequest()
+        assertEquals("/api/v1/contacts", request.path)
+    }
+
+    @Test
+    fun `list contacts parses is_favorite on summary rows`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """
+                {
+                  "contacts": [
+                    {"id": 1, "uid": "u1", "fn": "Alice Smith", "firstname": "Alice", "is_favorite": true},
+                    {"id": 2, "uid": "u2", "fn": "Bob Jones", "is_favorite": false},
+                    {"id": 3, "uid": "u3", "fn": "Carol"}
+                  ],
+                  "next_cursor": ""
+                }
+                """.trimIndent(),
+            ),
+        )
+
+        val result = client.listContacts()
+
+        assertTrue(result.isSuccess)
+        val page = result.getOrThrow()
+        assertTrue(page.contacts[0].isFavorite)
+        assertFalse(page.contacts[1].isFavorite)
+        // Issue #212: is_favorite is always on the wire server-side, but an
+        // absent key must still decode to the default false (never crash).
+        assertFalse(page.contacts[2].isFavorite)
+    }
+
+    @Test
     fun `list contacts omits a blank circle filter`() = runBlocking {
         server.enqueue(
             MockResponse().setResponseCode(200).setBody("""{"contacts":[],"next_cursor":""}"""),
@@ -1352,7 +1404,8 @@ class ApiClientTest {
                       "birthdays": [],
                       "random_contacts": [],
                       "upcoming_reminders": [],
-                      "overdue": []
+                      "overdue": [],
+                      "favorites": []
                     }
                     """.trimIndent(),
                 ),
@@ -1366,6 +1419,7 @@ class ApiClientTest {
         assertTrue(dashboard.randomContacts.isEmpty())
         assertTrue(dashboard.upcomingReminders.isEmpty())
         assertTrue(dashboard.overdue.isEmpty())
+        assertTrue(dashboard.favorites.isEmpty())
     }
 
     @Test
@@ -1384,6 +1438,39 @@ class ApiClientTest {
         assertTrue(dashboard.randomContacts.isEmpty())
         assertTrue(dashboard.upcomingReminders.isEmpty())
         assertTrue(dashboard.overdue.isEmpty())
+        assertTrue(dashboard.favorites.isEmpty())
+    }
+
+    @Test
+    fun `get dashboard parses the favorites block with PascalCase ID`() = runBlocking {
+        // Issue #212: the favorites block is a list of ContactResponse (gorm.Model),
+        // exactly like random_contacts — the id reads the wire's PascalCase `ID`.
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """
+                {
+                  "birthdays": [],
+                  "random_contacts": [],
+                  "upcoming_reminders": [],
+                  "overdue": [],
+                  "favorites": [
+                    {"ID": 9, "firstname": "Zebra", "lastname": "Smith", "nickname": "Z", "photo_thumbnail": "data:image/png;base64,abc"},
+                    {"ID": 2, "firstname": "Alice", "lastname": "Jones"}
+                  ]
+                }
+                """.trimIndent(),
+            ),
+        )
+
+        val result = client.getDashboard()
+
+        assertTrue(result.isSuccess)
+        val favorites = result.getOrThrow().favorites
+        assertEquals(2, favorites.size)
+        assertEquals(9, favorites[0].id)
+        assertEquals("Zebra", favorites[0].firstname)
+        assertEquals("Z", favorites[0].nickname)
+        assertEquals(2, favorites[1].id)
     }
 
     @Test
@@ -1791,6 +1878,54 @@ class ApiClientTest {
         val request = server.takeRequest()
         assertEquals("POST", request.method)
         assertEquals("/api/v1/contacts/5/unarchive", request.path)
+    }
+
+    // --- Issue #212: favorite/unfavorite (web #173) ---
+
+    @Test
+    fun `favorite contact posts to the favorite route`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"ID":5,"is_favorite":true,"firstname":"Dana","lastname":"White"}"""),
+        )
+
+        val result = client.favoriteContact(5)
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/contacts/5/favorite", request.path)
+    }
+
+    @Test
+    fun `unfavorite contact posts to the unfavorite route`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"ID":5,"is_favorite":false,"firstname":"Dana","lastname":"White"}"""),
+        )
+
+        val result = client.unfavoriteContact(5)
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/contacts/5/unfavorite", request.path)
+    }
+
+    @Test
+    fun `favorite contact failure maps to the backend error`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(404).setBody("""{"error":{"code":"not_found","message":"Contact not found"}}"""),
+        )
+
+        val result = client.favoriteContact(999)
+
+        assertTrue(result.isFailure)
+        val error = result.exceptionOrNull() as ApiError
+        assertTrue(error is ApiError.Client)
+        assertEquals(404, (error as ApiError.Client).code)
     }
 
     @Test

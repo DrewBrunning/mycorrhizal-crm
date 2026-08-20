@@ -23,6 +23,7 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.material.icons.outlined.SkipNext
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -73,13 +74,13 @@ import java.time.Instant
 import java.time.LocalDate
 
 /**
- * Dashboard (M10) — the four M3 composite widgets rendered from one
- * `GET /dashboard` call: overdue cadences, upcoming birthdays, upcoming
- * reminders (with complete/skip actions), and random "stay in touch"
- * contacts. Each widget is a section that shows its empty text when its
- * block is empty, mirroring web's per-column empty cards; the overdue
- * section is hidden entirely when clear (web comment: "an all-clear
- * dashboard stays clean").
+ * Dashboard (M10) — the M3 composite widgets rendered from one
+ * `GET /dashboard` call: the favorites quick-access block (issue #212),
+ * overdue cadences, upcoming birthdays, upcoming reminders (with
+ * complete/skip actions), and random "stay in touch" contacts. Each widget
+ * is a section that shows its empty text when its block is empty, mirroring
+ * web's per-column empty cards; the overdue section is hidden entirely when
+ * clear (web comment: "an all-clear dashboard stays clean").
  *
  * Every card is tappable through to the contact; reminder complete/skip is
  * optimistic (the row leaves the widget immediately and returns on failure).
@@ -151,7 +152,8 @@ fun DashboardScreen(
 
 /**
  * The dashboard's widget sections, extracted from [DashboardScreen] so the
- * four-widget rendering can be tested without Hilt. Pure render of a
+ * widget rendering (favorites block included — issue #212) can be tested
+ * without Hilt. Pure render of a
  * [DashboardUiState] plus callbacks — the ViewModel's state machine and the
  * wire parse are pinned in DashboardViewModelTest / ApiClientTest.
  */
@@ -169,6 +171,16 @@ internal fun DashboardContent(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        // Issue #212: the favorites quick-access block, placed first like web's
+        // Column 1. Empty state present, exactly like the other widgets.
+        item { DashboardSectionHeader(stringResource(R.string.dashboard_favorites), Icons.Outlined.Star) }
+        if (state.favorites.isEmpty()) {
+            item { DashboardEmptyRow(stringResource(R.string.dashboard_no_favorites)) }
+        } else {
+            items(state.favorites, key = { it.id }) { contact ->
+                FavoriteContactRow(contact, onClick = { onOpenContact(contact.id) })
+            }
+        }
         if (state.overdueCadences.isNotEmpty()) {
             item { DashboardSectionHeader(stringResource(R.string.dashboard_overdue_cadences), Icons.Outlined.Warning) }
             items(state.overdueCadences, key = { it.policy?.id ?: "contact-${it.contactId}" }) { cadence ->
@@ -262,8 +274,9 @@ private fun DashboardSectionHeader(text: String, icon: ImageVector) {
         Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
         // #208: section titles carried no heading semantics, so TalkBack's
         // heading navigation found nothing on the dashboard. One fix here
-        // covers all four section headers (birthdays, reminders, random
-        // contacts, and the conditional overdue-cadences header).
+        // covers every section header (favorites — issue #212 — birthdays,
+        // reminders, random contacts, and the conditional overdue-cadences
+        // header).
         Text(
             text,
             style = MaterialTheme.typography.titleMedium,
@@ -428,6 +441,23 @@ private fun ReminderRow(
 
 @Composable
 private fun RandomContactRow(contact: DashboardRandomContact, onClick: () -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            ContactAvatar(photoUri = contact.photoThumbnail, contentDescription = null, size = 40.dp)
+            Text(randomContactName(contact), style = MaterialTheme.typography.bodyLarge)
+        }
+    }
+}
+
+// Issue #212: the favorites quick-access row. Same wire shape and tap-to-open
+// behavior as RandomContactRow — web's dashboard favorites block is a plain
+// contact list; the only difference is the section it lives in.
+@Composable
+private fun FavoriteContactRow(contact: DashboardRandomContact, onClick: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(12.dp),

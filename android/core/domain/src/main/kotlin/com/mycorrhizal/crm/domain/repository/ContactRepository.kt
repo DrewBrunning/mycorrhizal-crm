@@ -27,7 +27,9 @@ interface ContactRepository {
      * whatever is cached locally so the UI degrades gracefully offline.
      * [circle] filters by circle NAME (the backend's `?circle=` matches
      * `circles.name`); [includeArchived] widens the row set to archived
-     * contacts when true.
+     * contacts when true; [favorites] narrows it to the caller's favorite
+     * contacts when true (issue #212, web #173 — composes with the other
+     * predicates).
      */
     suspend fun listContacts(
         cursor: String? = null,
@@ -36,6 +38,7 @@ interface ContactRepository {
         circle: String? = null,
         circleLegacy: String? = null,
         includeArchived: Boolean? = null,
+        favorites: Boolean? = null,
     ): Result<ContactsPage>
 
     /**
@@ -82,6 +85,17 @@ interface ContactRepository {
 
     /** Unarchive a contact; flips the cached `archived` flag back. */
     suspend fun unarchiveContact(id: Int): Result<Unit>
+
+    // Issue #212 (web #173): the CRM-local favorite toggle. Same shape as
+    // archive/unarchive — online-first, and on success the local Room mirror
+    // is updated so the star stays consistent offline. The flag is never
+    // exported or synced (it has no neutral-model home server-side).
+
+    /** Mark a contact as a favorite; flips the cached `isFavorite` flag. */
+    suspend fun favoriteContact(id: Int): Result<Unit>
+
+    /** Clear a contact's favorite flag; flips the cached `isFavorite` flag back. */
+    suspend fun unfavoriteContact(id: Int): Result<Unit>
 
     /**
      * Export a single contact as vCard 4.0 (or 3.0 when [version] == 3) — the raw file bytes

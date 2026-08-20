@@ -19,12 +19,14 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Menu
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
@@ -129,6 +131,8 @@ fun ContactListScreen(
         onContactClick = viewModel::onContactClick,
         onCircleFilterChange = viewModel::onCircleFilterChange,
         onIncludeArchivedChange = viewModel::onIncludeArchivedChange,
+        onIncludeFavoritesChange = viewModel::onIncludeFavoritesChange,
+        onToggleFavorite = viewModel::toggleFavorite,
         onToggleSelection = viewModel::toggleSelection,
         onToggleSelectAll = viewModel::toggleSelectAll,
         onRunBulkAction = viewModel::runBulkAction,
@@ -153,6 +157,9 @@ fun ContactListScreenContent(
     onContactClick: (Int) -> Unit,
     onCircleFilterChange: (String?) -> Unit = {},
     onIncludeArchivedChange: (Boolean) -> Unit = {},
+    // Issue #212: the favorites-only lens + per-row star toggle (web #173).
+    onIncludeFavoritesChange: (Boolean) -> Unit = {},
+    onToggleFavorite: (ContactSummary) -> Unit = {},
     onToggleSelection: (Int) -> Unit = {},
     onToggleSelectAll: () -> Unit = {},
     onRunBulkAction: (String, String?, String?) -> Unit = { _, _, _ -> },
@@ -305,8 +312,10 @@ fun ContactListScreenContent(
                 circles = uiState.circles,
                 circleFilter = uiState.circleFilter,
                 includeArchived = uiState.includeArchived,
+                includeFavorites = uiState.includeFavorites,
                 onCircleFilterChange = onCircleFilterChange,
                 onIncludeArchivedChange = onIncludeArchivedChange,
+                onIncludeFavoritesChange = onIncludeFavoritesChange,
             )
 
             // T87: the notes/activities section trails every state (loading/empty/error/
@@ -346,6 +355,7 @@ fun ContactListScreenContent(
                                 contact = contact,
                                 selected = contact.id in uiState.selected,
                                 selectMode = selectMode,
+                                onToggleFavorite = { onToggleFavorite(contact) },
                                 onClick = {
                                     if (selectMode) onToggleSelection(contact.id) else onContactClick(contact.id)
                                 },
@@ -496,78 +506,110 @@ private fun ContactListFilterRow(
     circles: List<Circle>,
     circleFilter: String?,
     includeArchived: Boolean,
+    includeFavorites: Boolean,
     onCircleFilterChange: (String?) -> Unit,
     onIncludeArchivedChange: (Boolean) -> Unit,
+    onIncludeFavoritesChange: (Boolean) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = it },
-            modifier = Modifier.weight(1f),
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth(),
         ) {
-            OutlinedTextField(
-                value = circleFilter ?: stringResource(R.string.contacts_all_circles),
-                onValueChange = {},
-                readOnly = true,
-                label = { Text(stringResource(R.string.contacts_filter_circle)) },
-                singleLine = true,
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                    .testTag("circle-filter"),
-            )
-            ExposedDropdownMenu(
+            ExposedDropdownMenuBox(
                 expanded = expanded,
-                onDismissRequest = { expanded = false },
+                onExpandedChange = { expanded = it },
+                modifier = Modifier.weight(1f),
             ) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.contacts_all_circles)) },
-                    onClick = {
-                        expanded = false
-                        onCircleFilterChange(null)
-                    },
+                OutlinedTextField(
+                    value = circleFilter ?: stringResource(R.string.contacts_all_circles),
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text(stringResource(R.string.contacts_filter_circle)) },
+                    singleLine = true,
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                        .testTag("circle-filter"),
                 )
-                circles.forEach { circle ->
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                ) {
                     DropdownMenuItem(
-                        text = { Text(circle.name) },
+                        text = { Text(stringResource(R.string.contacts_all_circles)) },
                         onClick = {
                             expanded = false
-                            onCircleFilterChange(circle.name)
+                            onCircleFilterChange(null)
                         },
                     )
+                    circles.forEach { circle ->
+                        DropdownMenuItem(
+                            text = { Text(circle.name) },
+                            onClick = {
+                                expanded = false
+                                onCircleFilterChange(circle.name)
+                            },
+                        )
+                    }
                 }
             }
         }
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            // #214: a bare Switch has no text/contentDescription of its own — the
-            // adjacent "Show archived" Text was a separate, unassociated node, so
-            // TalkBack announced the switch with no name at all. Modifier.toggleable
-            // on the row merges the label into the switch's accessible name (the
-            // standard Material3 labeled-switch pattern) and gives the whole row a
-            // touch target wider than the switch's own 52x32dp default.
-            modifier = Modifier
-                .heightIn(min = 48.dp)
-                .toggleable(
-                    value = includeArchived,
-                    onValueChange = onIncludeArchivedChange,
-                    role = Role.Switch,
-                )
-                .testTag("archived-toggle"),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.fillMaxWidth(),
         ) {
-            Switch(checked = includeArchived, onCheckedChange = null)
-            Text(
-                text = stringResource(R.string.contacts_show_archived),
-                style = MaterialTheme.typography.bodySmall,
-            )
+            // #214: see the archived-toggle comment below — the same
+            // labeled-switch pattern, applied to the favorites lens.
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                // #214: a bare Switch has no text/contentDescription of its own — the
+                // adjacent "Show archived" Text was a separate, unassociated node, so
+                // TalkBack announced the switch with no name at all. Modifier.toggleable
+                // on the row merges the label into the switch's accessible name (the
+                // standard Material3 labeled-switch pattern) and gives the whole row a
+                // touch target wider than the switch's own 52x32dp default.
+                modifier = Modifier
+                    .heightIn(min = 48.dp)
+                    .toggleable(
+                        value = includeArchived,
+                        onValueChange = onIncludeArchivedChange,
+                        role = Role.Switch,
+                    )
+                    .testTag("archived-toggle"),
+            ) {
+                Switch(checked = includeArchived, onCheckedChange = null)
+                Text(
+                    text = stringResource(R.string.contacts_show_archived),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .heightIn(min = 48.dp)
+                    .toggleable(
+                        value = includeFavorites,
+                        onValueChange = onIncludeFavoritesChange,
+                        role = Role.Switch,
+                    )
+                    .testTag("favorites-toggle"),
+            ) {
+                Switch(checked = includeFavorites, onCheckedChange = null)
+                Text(
+                    text = stringResource(R.string.contacts_show_favorites),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
         }
     }
 }
@@ -632,6 +674,11 @@ fun ContactListItem(
     modifier: Modifier = Modifier,
     selected: Boolean = false,
     selectMode: Boolean = false,
+    // Issue #212: the per-row favorite toggle (web #173). Tapping the star
+    // must never navigate into the detail page — the nested clickable's own
+    // handler consumes the tap before the row's combinedClickable sees it
+    // (Compose's stopPropagation equivalent).
+    onToggleFavorite: () -> Unit = {},
     onLongClick: () -> Unit = onClick,
 ) {
     Row(
@@ -713,6 +760,26 @@ fun ContactListItem(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+        }
+        // Issue #212: the always-visible star toggle. Filled when favorite,
+        // outlined otherwise; labeled with the contact's name so TalkBack
+        // announces who it acts on (web's aria-label does the same).
+        AccessibleIconButton(
+            onClick = onToggleFavorite,
+            modifier = Modifier.testTag("favorite-${contact.id}"),
+        ) {
+            Icon(
+                imageVector = if (contact.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                contentDescription = stringResource(
+                    if (contact.isFavorite) R.string.contacts_unfavorite_contact else R.string.contacts_favorite_contact,
+                    contact.displayName,
+                ),
+                tint = if (contact.isFavorite) {
+                    MaterialTheme.colorScheme.tertiary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+            )
         }
     }
 }

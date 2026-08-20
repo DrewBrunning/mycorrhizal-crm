@@ -61,6 +61,61 @@ class ContactDetailScreenTest {
         }
     }
 
+    // --- Issue #212: header star toggle (web #173) ---------------------------
+
+    @Test
+    fun `favorite header star renders a labeled toggle`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = ContactRecordResponse(
+                        id = 5,
+                        card = Card(name = Name(full = "Dana White")),
+                        isFavorite = true,
+                    ),
+                )
+            }
+        }
+        composeTestRule.onNodeWithContentDescription("Unmark Dana White as favorite").assertIsDisplayed()
+    }
+
+    @Test
+    fun `non-favorite header star renders a labeled toggle`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = ContactRecordResponse(
+                        id = 5,
+                        card = Card(name = Name(full = "Dana White")),
+                        isFavorite = false,
+                    ),
+                )
+            }
+        }
+        composeTestRule.onNodeWithContentDescription("Mark Dana White as favorite").assertIsDisplayed()
+    }
+
+    @Test
+    fun `tapping the header star fires the toggle callback`() {
+        var toggles = 0
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = ContactRecordResponse(
+                        id = 5,
+                        card = Card(name = Name(full = "Dana White")),
+                        isFavorite = false,
+                    ),
+                    onToggleFavorite = { toggles++ },
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithContentDescription("Mark Dana White as favorite").performClick()
+
+        assertEquals(1, toggles)
+    }
+
     @Test
     fun `renders the contact name and sections`() {
         val contact = ContactRecordResponse(
@@ -78,7 +133,7 @@ class ContactDetailScreenTest {
         // The body renders the overview info first (web order), then the
         // timeline, then the management entry rows — scroll the list to them.
         composeTestRule.onNodeWithTag("contact-detail-list")
-            .performScrollToNode(hasText("Activities"))
+            .performScrollToNode(hasText("Reminders"))
         composeTestRule.onNodeWithText("Activities").assertIsDisplayed()
         composeTestRule.onNodeWithText("Notes").assertIsDisplayed()
         composeTestRule.onNodeWithText("Reminders").assertIsDisplayed()
@@ -90,6 +145,8 @@ class ContactDetailScreenTest {
         setContent(ContactDetailUiState(contact = contact))
         // No nickname/birthday/name in the body for a nameless contact — the
         // list still renders (timeline + management entries).
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasText("Timeline"))
         composeTestRule.onNodeWithText("Timeline").assertIsDisplayed()
     }
 

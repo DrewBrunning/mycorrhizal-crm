@@ -55,6 +55,10 @@ data class ContactListUiState(
     /** The circle NAME the list is filtered by (the backend's `?circle=` matches names), or null for all. */
     val circleFilter: String? = null,
     val includeArchived: Boolean = false,
+    // Issue #212: the favorites-only lens, mirroring web's showFavorites
+    // switch next to the archived one. Both are transient list filters that
+    // narrow the same row set the list already queries.
+    val includeFavorites: Boolean = false,
     val tags: List<Tag> = emptyList(),
     /** Selected contact ids for inline bulk actions. Cleared whenever the visible set changes. */
     val selected: Set<Int> = emptySet(),
@@ -111,7 +115,7 @@ class ContactListViewModel @Inject constructor(
     }
 
     private fun hasActiveFilter(state: ContactListUiState): Boolean =
-        state.circleFilter != null || state.includeArchived || state.searchQuery.isNotBlank()
+        state.circleFilter != null || state.includeArchived || state.includeFavorites || state.searchQuery.isNotBlank()
 
     fun loadContacts() {
         val state = _uiState.value
@@ -124,6 +128,7 @@ class ContactListViewModel @Inject constructor(
                 search = _uiState.value.searchQuery.takeIf { it.isNotBlank() },
                 circle = _uiState.value.circleFilter,
                 includeArchived = _uiState.value.includeArchived.takeIf { it },
+                favorites = _uiState.value.includeFavorites.takeIf { it },
             )
             page.foldApiError(
                 onSuccess = { result ->
@@ -179,6 +184,7 @@ class ContactListViewModel @Inject constructor(
                 search = state.searchQuery.takeIf { it.isNotBlank() },
                 circle = state.circleFilter,
                 includeArchived = state.includeArchived.takeIf { it },
+                favorites = state.includeFavorites.takeIf { it },
             )
             page.foldApiError(
                 onSuccess = { result ->
@@ -239,6 +245,56 @@ class ContactListViewModel @Inject constructor(
         if (include == _uiState.value.includeArchived) return
         _uiState.update { it.copy(includeArchived = include, selected = emptySet()) }
         loadContacts()
+    }
+
+    /** Issue #212: the favorites-only lens, mirroring [onIncludeArchivedChange] — selection-clearing included. */
+    fun onIncludeFavoritesChange(include: Boolean) {
+        if (include == _uiState.value.includeFavorites) return
+        _uiState.update { it.copy(includeFavorites = include, selected = emptySet()) }
+        loadContacts()
+    }
+
+    // --- Issue #212: favorite toggle ----------------------------------------
+
+    /**
+     * Toggles a single row's favorite flag, mirroring web's
+     * ContactsPage.handleToggleFavorite. The optimistic flip keeps the star
+     * responsive; on failure it rolls back and surfaces the error so the icon
+     * can never silently disagree with the database. Under the
+     * favorites-only lens, unfavoriting removes the row from the view (it no
+     * longer matches the filter) rather than leaving an empty star behind.
+     */
+    fun toggleFavorite(contact: ContactSummary) {
+        val wasFavorite = contact.isFavorite
+        viewModelScope.launch {
+            _uiState.update { state ->
+                state.copy(contacts = state.contacts.map {
+                    if (it.id == contact.id) it.copy(isFavorite = !wasFavorite) else it
+                })
+            }
+            val result = if (wasFavorite) {
+                contactRepository.unfavoriteContact(contact.id)
+            } else {
+                contactRepository.favoriteContact(contact.id)
+            }
+            result.foldApiError(
+                onSuccess = {
+                    if (_uiState.value.includeFavorites && wasFavorite) {
+                        _uiState.update { state ->
+                            state.copy(contacts = state.contacts.filterNot { it.id == contact.id })
+                        }
+                    }
+                },
+                onError = { error ->
+                    _uiState.update { state ->
+                        state.copy(contacts = state.contacts.map {
+                            if (it.id == contact.id) it.copy(isFavorite = wasFavorite) else it
+                        }, error = error.displayMessage)
+                    }
+                    handleAuthError(error)
+                },
+            )
+        }
     }
 
     // --- M23: inline bulk selection ------------------------------------------

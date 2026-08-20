@@ -36,6 +36,7 @@ class ContactRepositoryImpl @Inject constructor(
         circle: String?,
         circleLegacy: String?,
         includeArchived: Boolean?,
+        favorites: Boolean?,
     ): Result<ContactsPage> {
         val result = apiClient.listContacts(
             cursor = cursor,
@@ -44,6 +45,7 @@ class ContactRepositoryImpl @Inject constructor(
             includeArchived = includeArchived,
             circle = circle,
             circleLegacy = circleLegacy,
+            favorites = favorites,
         )
         val page = result.getOrElse { error ->
             // Network failure: serve whatever is cached for this search term.
@@ -147,6 +149,22 @@ class ContactRepositoryImpl @Inject constructor(
     override suspend fun unarchiveContact(id: Int): Result<Unit> {
         val result = apiClient.unarchiveContact(id)
         if (result.isSuccess) dao.setArchived(id, false)
+        return result
+    }
+
+    // Issue #212 (web #173): favorite/unfavorite — online-first like
+    // archive/unarchive; on success the cached flag flips so the star stays
+    // consistent offline.
+
+    override suspend fun favoriteContact(id: Int): Result<Unit> {
+        val result = apiClient.favoriteContact(id)
+        if (result.isSuccess) dao.setFavorite(id, true)
+        return result
+    }
+
+    override suspend fun unfavoriteContact(id: Int): Result<Unit> {
+        val result = apiClient.unfavoriteContact(id)
+        if (result.isSuccess) dao.setFavorite(id, false)
         return result
     }
 
@@ -279,6 +297,7 @@ class ContactRepositoryImpl @Inject constructor(
         photoThumbnail = photoThumbnail,
         circles = circles,
         archived = archived,
+        isFavorite = isFavorite,
         deleted = deleted,
         deviceLookupKey = deviceLookupKey,
     )
@@ -297,6 +316,7 @@ class ContactRepositoryImpl @Inject constructor(
         photoThumbnail = photoThumbnail,
         circles = crm?.circles,
         archived = archived,
+        isFavorite = isFavorite,
         card = card,
         crm = crm,
     )
@@ -321,6 +341,7 @@ class ContactRepositoryImpl @Inject constructor(
         photoThumbnail = photoThumbnail,
         circles = circles,
         archived = archived,
+        isFavorite = isFavorite,
         deleted = deleted,
         deviceLookupKey = deviceLookupKey,
     )
@@ -334,6 +355,7 @@ class ContactRepositoryImpl @Inject constructor(
             crm = crm,
             photoThumbnail = photoThumbnail,
             archived = archived,
+            isFavorite = isFavorite,
         )
     }
 }

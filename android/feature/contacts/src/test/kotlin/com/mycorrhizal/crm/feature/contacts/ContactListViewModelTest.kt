@@ -382,6 +382,108 @@ class ContactListViewModelTest {
         coVerify { contactRepository.listContacts(cursor = null, limit = 50, search = null, includeArchived = true) }
     }
 
+    // --- Issue #212: favorites filter + star toggle (web #173) --------------
+
+    @Test
+    fun `favorites toggle is forwarded to the repository`() = runTest(mainDispatcherRule.testDispatcher) {
+        val (viewModel, contactRepository) = newViewModel()
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, favorites = true) } returns
+            Result.success(page(ContactSummary(id = 1, fn = "Alice", isFavorite = true)))
+
+        viewModel.onIncludeFavoritesChange(true)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertTrue(state.includeFavorites)
+        assertEquals(1, state.contacts.size)
+        coVerify { contactRepository.listContacts(cursor = null, limit = 50, search = null, favorites = true) }
+    }
+
+    @Test
+    fun `changing the favorites toggle clears the selection`() = runTest(mainDispatcherRule.testDispatcher) {
+        val (viewModel, contactRepository) = newViewModel()
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+            Result.success(page(ContactSummary(id = 1, uid = "u1", fn = "Alice")))
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, favorites = true) } returns
+            Result.success(page())
+
+        advanceUntilIdle()
+        viewModel.toggleSelection(1)
+        assertEquals(setOf(1), viewModel.uiState.value.selected)
+
+        viewModel.onIncludeFavoritesChange(true)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.selected.isEmpty())
+    }
+
+    @Test
+    fun `toggleFavorite flips the star optimistically and calls the repository`() = runTest(mainDispatcherRule.testDispatcher) {
+        val (viewModel, contactRepository) = newViewModel()
+        val alice = ContactSummary(id = 1, fn = "Alice", isFavorite = false)
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+            Result.success(page(alice))
+        coEvery { contactRepository.favoriteContact(1) } returns Result.success(Unit)
+
+        advanceUntilIdle()
+        viewModel.toggleFavorite(alice)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.contacts.first().isFavorite)
+        coVerify(exactly = 1) { contactRepository.favoriteContact(1) }
+    }
+
+    @Test
+    fun `toggleFavorite on a favorite calls unfavorite and keeps the flip`() = runTest(mainDispatcherRule.testDispatcher) {
+        val (viewModel, contactRepository) = newViewModel()
+        val alice = ContactSummary(id = 1, fn = "Alice", isFavorite = true)
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+            Result.success(page(alice))
+        coEvery { contactRepository.unfavoriteContact(1) } returns Result.success(Unit)
+
+        advanceUntilIdle()
+        viewModel.toggleFavorite(alice)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.contacts.first().isFavorite)
+        coVerify(exactly = 1) { contactRepository.unfavoriteContact(1) }
+    }
+
+    @Test
+    fun `toggleFavorite rolls back on failure so the star can't disagree with the DB`() = runTest(mainDispatcherRule.testDispatcher) {
+        val (viewModel, contactRepository) = newViewModel()
+        val alice = ContactSummary(id = 1, fn = "Alice", isFavorite = false)
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } returns
+            Result.success(page(alice))
+        coEvery { contactRepository.favoriteContact(1) } returns Result.failure(ApiError.Server(500, "boom"))
+
+        advanceUntilIdle()
+        viewModel.toggleFavorite(alice)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.contacts.first().isFavorite)
+        assertEquals("Server error (500)", viewModel.uiState.value.error)
+    }
+
+    @Test
+    fun `unfavoriting under the favorites filter removes the row`() = runTest(mainDispatcherRule.testDispatcher) {
+        val (viewModel, contactRepository) = newViewModel()
+        val alice = ContactSummary(id = 1, fn = "Alice", isFavorite = true)
+        coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null, favorites = true) } returns
+            Result.success(page(alice))
+        coEvery { contactRepository.unfavoriteContact(1) } returns Result.success(Unit)
+
+        viewModel.onIncludeFavoritesChange(true)
+        advanceUntilIdle()
+        assertEquals(1, viewModel.uiState.value.contacts.size)
+
+        viewModel.toggleFavorite(alice)
+        advanceUntilIdle()
+
+        // It no longer matches the favorites-only lens — an empty star would be stale UI.
+        assertTrue(viewModel.uiState.value.contacts.isEmpty())
+    }
+
     // --- M23: selection is cleared when the visible set changes (test case 3) ---
 
     @Test

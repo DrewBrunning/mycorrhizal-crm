@@ -59,6 +59,8 @@ class DashboardScreenTest {
     private val listTag = "dashboard-list"
 
     private fun populatedState() = DashboardUiState(
+        // Issue #212: the favorites quick-access block, rendered first.
+        favorites = listOf(DashboardRandomContact(id = 9, firstname = "Zebra", lastname = "Smith", nickname = "Z")),
         birthdays = listOf(
             Birthday(name = "Alice Wonder", birthday = "1990-12-25", contactId = 1L),
         ),
@@ -114,8 +116,12 @@ class DashboardScreenTest {
     }
 
     @Test
-    fun `a populated dashboard renders all four widgets`() {
+    fun `a populated dashboard renders all widget sections`() {
         setContent(populatedState())
+
+        // Favorites (issue #212): first section, nickname-preferred name.
+        composeTestRule.onNodeWithText("Favorites").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Z Smith").assertIsDisplayed()
 
         // Overdue cadences.
         scrollTo("Overdue Relationships")
@@ -146,6 +152,7 @@ class DashboardScreenTest {
     fun `empty widgets show their empty text and the overdue section stays hidden`() {
         setContent(DashboardUiState())
 
+        composeTestRule.onNodeWithText("No favorites yet").assertIsDisplayed()
         composeTestRule.onNodeWithText("No upcoming birthdays").assertIsDisplayed()
         composeTestRule.onNodeWithText("No upcoming reminders").assertIsDisplayed()
         composeTestRule.onNodeWithText("No contacts available").assertIsDisplayed()
@@ -162,6 +169,16 @@ class DashboardScreenTest {
         composeTestRule.onNodeWithText("Alice Wonder").performClick()
 
         assertEquals(1, opened)
+    }
+
+    @Test
+    fun `tapping a favorites card opens the contact`() {
+        var opened: Int? = null
+        setContent(populatedState(), onOpenContact = { opened = it })
+
+        composeTestRule.onNodeWithText("Z Smith").performClick()
+
+        assertEquals(9, opened)
     }
 
     @Test
@@ -253,6 +270,7 @@ class DashboardScreenTest {
             randomContacts = state.randomContacts,
             upcomingReminders = state.upcomingReminders,
             overdue = state.overdueCadences,
+            favorites = state.favorites,
         )
     }
 
