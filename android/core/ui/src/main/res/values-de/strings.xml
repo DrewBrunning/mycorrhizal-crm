@@ -889,6 +889,7 @@
     <string name="gifts_none">Keine</string>
     <string name="gifts_value_currency_required">Betrag und Währung müssen gemeinsam gesetzt sein</string>
     <string name="gifts_mark_given">Als verschenkt markieren</string>
+    <string name="gifts_shopping_notes_header">Kleidergrößen &amp; Geschenkpräferenzen (%1$d)</string>
     <string name="gifts_clothing_type">Art</string>
     <string name="gifts_preferences_heading">Geschenkvorlieben</string>
     <string name="preferences_key">Schlüssel</string>
@@ -1077,5 +1078,7 @@
     <!-- Android a11y (issues #199/#203): shared accessibility-only announcements -->
     <string name="a11y_state_loading">Wird geladen</string>
     <string name="a11y_state_saving">Wird gespeichert</string>
+    <string name="a11y_state_expanded">Erweitert</string>
+    <string name="a11y_state_collapsed">Eingeklappt</string>
     <string name="a11y_share_field_locked">Gesperrt, bis vertrauliche Felder aktiviert werden</string>
 </resources>

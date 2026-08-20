@@ -893,6 +893,7 @@
     <string name="gifts_none">None</string>
     <string name="gifts_value_currency_required">Amount and currency must be set together</string>
     <string name="gifts_mark_given">Mark given</string>
+    <string name="gifts_shopping_notes_header">Clothing sizes &amp; gift preferences (%1$d)</string>
     <string name="gifts_clothing_type">Type</string>
     <string name="gifts_preferences_heading">Gift Preferences</string>
     <string name="preferences_key">Key</string>
@@ -1079,5 +1080,7 @@
     <!-- Android a11y (issues #199/#203): shared accessibility-only announcements -->
     <string name="a11y_state_loading">Loading</string>
     <string name="a11y_state_saving">Saving</string>
+    <string name="a11y_state_expanded">Expanded</string>
+    <string name="a11y_state_collapsed">Collapsed</string>
     <string name="a11y_share_field_locked">Locked until sensitive fields are enabled</string>
 </resources>
