@@ -111,10 +111,12 @@ jobs:
           profile: pixel_6
           working-directory: ./android
           # Script lines run as individual sh -c commands, so no backslash
-          # line continuations — one command per line.
+          # line continuations — one command per line. :app-scoped: a bare
+          # `connectedDebugAndroidTest` would expand to every module, including
+          # libraries with no instrumented tests whose connected tasks fail.
           script: |
             adb reverse tcp:7300 tcp:7300
-            ./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300
+            ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300
 
       - name: Upload E2E results
         uses: actions/upload-artifact@v4
