@@ -5,6 +5,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -223,7 +225,7 @@ fun AuditScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 internal fun AuditFilterToolbar(
     entityType: String?,
@@ -236,13 +238,23 @@ internal fun AuditFilterToolbar(
     var menuExpanded by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Row(
+        // #204: a plain Row cannot fit both controls at 200% font scale, so the
+        // filter row is a FlowRow — the Clear button wraps to its own line when
+        // it stops fitting, per WCAG 1.4.10, instead of being squeezed to one
+        // glyph per line.
+        FlowRow(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             ExposedDropdownMenuBox(
                 expanded = menuExpanded,
                 onExpandedChange = { menuExpanded = it },
+                // #204: the weight must live on the actual row child. It used to
+                // sit on the OutlinedTextField *inside* this box, where RowScope
+                // doesn't apply — so the row had no weighted child, the menu box
+                // took its measured width, and the Clear button was left with the
+                // leftover sliver (one character per line).
+                modifier = Modifier.weight(1f),
             ) {
                 OutlinedTextField(
                     value = entityType?.let { entityTypeLabel(it) } ?: stringResource(R.string.audit_filters_entity_type_all),
@@ -253,7 +265,7 @@ internal fun AuditFilterToolbar(
                     modifier = Modifier
                         .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                         .testTag("audit-entity-type")
-                        .weight(1f),
+                        .fillMaxWidth(),
                 )
                 ExposedDropdownMenu(
                     expanded = menuExpanded,
@@ -280,7 +292,9 @@ internal fun AuditFilterToolbar(
             OutlinedButton(
                 onClick = onClearFilters,
                 enabled = hasFilters,
-                modifier = Modifier.testTag("audit-clear-filters"),
+                modifier = Modifier
+                    .testTag("audit-clear-filters")
+                    .align(Alignment.CenterVertically),
             ) {
                 Icon(Icons.Outlined.Clear, contentDescription = null)
                 Text(stringResource(R.string.audit_filters_clear), modifier = Modifier.padding(start = 4.dp))
