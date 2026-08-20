@@ -182,7 +182,9 @@
     "registerButton": "S'inscrire",
     "registering": "Inscription en cours...",
     "registrationFailed": "Échec de l'inscription",
-    "registrationSuccess": "Inscription réussie ! Vous pouvez maintenant vous connecter."
+    "registrationSuccess": "Inscription réussie ! Vous pouvez maintenant vous connecter.",
+    "registrationDisabled": "L'inscription est actuellement désactivée sur ce serveur. Contactez votre administrateur si vous avez besoin d'un compte.",
+    "backToLogin": "Retour à la connexion"
   },
   "contacts": {
     "title": "Contacts",

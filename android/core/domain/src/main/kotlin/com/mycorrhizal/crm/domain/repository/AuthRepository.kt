@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.domain.repository
 
+import com.mycorrhizal.crm.model.network.AuthConfig
 import com.mycorrhizal.crm.model.network.PasswordStrength
 import com.mycorrhizal.crm.model.network.UserProfile
 import kotlinx.coroutines.flow.Flow
@@ -26,6 +27,13 @@ interface AuthRepository {
     suspend fun loginWithApiToken(token: String): Result<Unit>
 
     // M26: account creation + password reset.
+
+    /**
+     * GET /auth/oidc/config — public. RegisterScreen calls this to show a
+     * "registration disabled" notice up front rather than only via the
+     * eventual 403 on submit.
+     */
+    suspend fun getAuthConfig(): Result<AuthConfig>
 
     /** POST /register — creates the account. Does NOT authenticate; call [login] after. */
     suspend fun register(username: String, email: String, password: String): Result<Unit>

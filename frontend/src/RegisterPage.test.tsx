@@ -1,9 +1,18 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
+import { describe, test, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import './i18n/config';
 import RegisterPage from './RegisterPage';
 import { AppThemeProvider } from './AppThemeProvider';
+import { useOIDCConfig } from './hooks/useOIDCConfig';
+
+vi.mock('./hooks/useOIDCConfig', () => ({ useOIDCConfig: vi.fn() }));
+
+const useOIDCConfigMock = vi.mocked(useOIDCConfig);
+
+beforeEach(() => {
+  useOIDCConfigMock.mockReturnValue({ enabled: false, provider_name: 'SSO', registration_disabled: false });
+});
 
 afterEach(() => {
   cleanup();
@@ -49,5 +58,24 @@ describe('RegisterPage failed-registration focus and error association', () => {
     expect(emailInput).toHaveAttribute('aria-describedby', alert.id);
     expect(passwordInput).toHaveAttribute('aria-describedby', alert.id);
     expect(usernameInput).toHaveAttribute('aria-invalid', 'true');
+  });
+});
+
+// DISABLE_REGISTRATION: someone can still land on /register directly (a
+// bookmark, a typed URL) even with LoginPage's link hidden — show that
+// plainly instead of a form that would always 403 on submit.
+describe('RegisterPage registration gate', () => {
+  test('shows the form by default', () => {
+    renderRegister();
+    expect(screen.getByRole('button', { name: /^register$/i })).toBeInTheDocument();
+  });
+
+  test('shows a disabled notice instead of the form when the server has registration disabled', () => {
+    useOIDCConfigMock.mockReturnValue({ enabled: false, provider_name: 'SSO', registration_disabled: true });
+    renderRegister();
+
+    expect(screen.queryByLabelText(/username/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/registration is currently disabled/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /back to login/i })).toBeInTheDocument();
   });
 });

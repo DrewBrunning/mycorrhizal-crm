@@ -40,6 +40,21 @@ data class UserProfile(
     @Json(name = "self_contact_vcard_uid") val selfContactVCardUid: String? = null,
 )
 
+/**
+ * GET /api/v1/auth/oidc/config — the one public, unauthenticated "what can a
+ * client do here" surface: whether OIDC is enabled (+ a provider name hint,
+ * unused by Android today — the SSO button is always shown), and whether
+ * DISABLE_REGISTRATION is set server-side. RegisterScreen fetches this to
+ * show a disabled notice up front instead of only finding out via the
+ * eventual 403 on submit (Android testing feedback).
+ */
+@JsonClass(generateAdapter = true)
+data class AuthConfig(
+    val enabled: Boolean = false,
+    @Json(name = "provider_name") val providerName: String? = null,
+    @Json(name = "registration_disabled") val registrationDisabled: Boolean = false,
+)
+
 // --- M26: account creation + password reset (all public, rate-limited) ---
 
 /** POST /register body — `language` optional (defaults server-side). */

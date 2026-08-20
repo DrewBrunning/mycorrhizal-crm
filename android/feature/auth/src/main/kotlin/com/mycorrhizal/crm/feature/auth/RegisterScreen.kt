@@ -100,76 +100,91 @@ fun RegisterScreenContent(
                 text = stringResource(R.string.register_title),
                 style = MaterialTheme.typography.titleLarge,
             )
-            Text(
-                text = stringResource(R.string.register_subtitle),
-                style = MaterialTheme.typography.bodyLarge,
-            )
 
-            OutlinedTextField(
-                value = uiState.serverUrl,
-                onValueChange = onServerUrlChange,
-                label = { Text(stringResource(R.string.login_server_url)) },
-                placeholder = { Text(stringResource(R.string.login_server_url_hint)) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-                modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedTextField(
-                value = username,
-                onValueChange = { username = it },
-                label = { Text(stringResource(R.string.register_username)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
-                label = { Text(stringResource(R.string.register_email)) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedTextField(
-                value = password,
-                onValueChange = { password = it; onPasswordChange(it) },
-                label = { Text(stringResource(R.string.login_mode_password)) },
-                singleLine = true,
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                modifier = Modifier.fillMaxWidth(),
-            )
-            // M26: the server's strength verdict, surfaced BEFORE submit.
-            val strength = uiState.passwordStrength
-            if (uiState.checkingStrength) {
+            // Android testing feedback: DISABLE_REGISTRATION was only ever
+            // enforced by the eventual 403 on submit — show that plainly
+            // instead of a form that would always fail, the same treatment
+            // web's RegisterPage gives it.
+            if (uiState.registrationDisabled) {
                 Text(
-                    text = stringResource(R.string.register_checking_strength),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    text = stringResource(R.string.register_disabled_notice),
+                    style = MaterialTheme.typography.bodyLarge,
                 )
-            } else if (uiState.passwordChecked && strength != null) {
-                Text(
-                    text = strength.feedback
-                        ?: stringResource(
-                            if (strength.isValid) R.string.register_password_strong else R.string.register_error_password_weak,
-                        ),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (strength.isValid) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
-                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
-                )
-            }
-
-            if (uiState.isLoading || uiState.checkingStrength) {
-                CircularProgressIndicator()
-            } else {
-                Button(
-                    onClick = { onSubmit(username, email, password) },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(stringResource(R.string.register_create))
+                TextButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.register_back_to_login))
                 }
-            }
-            TextButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.register_back_to_login))
+            } else {
+                Text(
+                    text = stringResource(R.string.register_subtitle),
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+
+                OutlinedTextField(
+                    value = uiState.serverUrl,
+                    onValueChange = onServerUrlChange,
+                    label = { Text(stringResource(R.string.login_server_url)) },
+                    placeholder = { Text(stringResource(R.string.login_server_url_hint)) },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = username,
+                    onValueChange = { username = it },
+                    label = { Text(stringResource(R.string.register_username)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text(stringResource(R.string.register_email)) },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it; onPasswordChange(it) },
+                    label = { Text(stringResource(R.string.login_mode_password)) },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                // M26: the server's strength verdict, surfaced BEFORE submit.
+                val strength = uiState.passwordStrength
+                if (uiState.checkingStrength) {
+                    Text(
+                        text = stringResource(R.string.register_checking_strength),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else if (uiState.passwordChecked && strength != null) {
+                    Text(
+                        text = strength.feedback
+                            ?: stringResource(
+                                if (strength.isValid) R.string.register_password_strong else R.string.register_error_password_weak,
+                            ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (strength.isValid) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
+                    )
+                }
+
+                if (uiState.isLoading || uiState.checkingStrength) {
+                    CircularProgressIndicator()
+                } else {
+                    Button(
+                        onClick = { onSubmit(username, email, password) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(stringResource(R.string.register_create))
+                    }
+                }
+                TextButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.register_back_to_login))
+                }
             }
 
             val errorMessage = uiState.errorRes?.let { stringResource(it) } ?: uiState.error

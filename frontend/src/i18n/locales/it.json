@@ -182,7 +182,9 @@
     "registerButton": "Registrati",
     "registering": "Registrazione in corso...",
     "registrationFailed": "Registrazione fallita",
-    "registrationSuccess": "Registrazione completata! Ora puoi accedere."
+    "registrationSuccess": "Registrazione completata! Ora puoi accedere.",
+    "registrationDisabled": "La registrazione è attualmente disabilitata su questo server. Contatta il tuo amministratore se hai bisogno di un account.",
+    "backToLogin": "Torna al login"
   },
   "contacts": {
     "title": "Contatti",

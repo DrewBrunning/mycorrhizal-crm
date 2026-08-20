@@ -3,6 +3,7 @@ package com.mycorrhizal.crm.data.repository
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.SessionState
+import com.mycorrhizal.crm.model.network.AuthConfig
 import com.mycorrhizal.crm.model.network.PasswordStrength
 import com.mycorrhizal.crm.model.network.UserProfile
 import com.mycorrhizal.crm.network.ApiClient
@@ -57,6 +58,14 @@ class AuthRepositoryImpl @Inject constructor(
         val profile = apiClient.currentUser().getOrElse { return Result.failure(it.toApiError()) }
         persistSession(token, profile)
         return Result.success(Unit)
+    }
+
+    override suspend fun getAuthConfig(): Result<AuthConfig> {
+        val result = apiClient.getAuthConfig()
+        return result.fold(
+            onSuccess = { Result.success(it) },
+            onFailure = { Result.failure(it.toApiError()) },
+        )
     }
 
     override suspend fun register(username: String, email: String, password: String): Result<Unit> {
