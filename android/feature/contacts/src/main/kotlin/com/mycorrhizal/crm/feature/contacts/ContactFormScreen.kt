@@ -1,5 +1,3 @@
-@file:OptIn(ExperimentalComposeUiApi::class)
-
 package com.mycorrhizal.crm.feature.contacts
 
 import androidx.compose.foundation.layout.Arrangement
@@ -42,8 +40,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.ExperimentalComposeUiApi
-import androidx.compose.ui.autofill.AutofillType
+import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
@@ -199,27 +196,27 @@ fun ContactFormContent(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         SectionLabel(stringResource(R.string.contact_name_section))
-        // T115: the name fields advertise their AutofillType so the Android
+        // T115: the name fields advertise their ContentType so the Android
         // Autofill service can offer a fill (Google/device address book).
         AutofillOutlinedTextField(
             value = state.prefix,
             onValueChange = onPrefixChange,
             label = stringResource(R.string.contact_prefix),
-            autofillType = AutofillType.PersonNamePrefix,
+            contentType = ContentType.PersonNamePrefix,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             AutofillOutlinedTextField(
                 value = state.givenName,
                 onValueChange = onGivenNameChange,
                 label = stringResource(R.string.contact_given_name),
-                autofillType = AutofillType.PersonFirstName,
+                contentType = ContentType.PersonFirstName,
                 modifier = Modifier.weight(1f),
             )
             AutofillOutlinedTextField(
                 value = state.surname,
                 onValueChange = onSurnameChange,
                 label = stringResource(R.string.contact_surname),
-                autofillType = AutofillType.PersonLastName,
+                contentType = ContentType.PersonLastName,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -227,13 +224,13 @@ fun ContactFormContent(
             value = state.middleName,
             onValueChange = onMiddleNameChange,
             label = stringResource(R.string.contact_middle_name),
-            autofillType = AutofillType.PersonMiddleName,
+            contentType = ContentType.PersonMiddleName,
         )
         AutofillOutlinedTextField(
             value = state.suffix,
             onValueChange = onSuffixChange,
             label = stringResource(R.string.contact_suffix),
-            autofillType = AutofillType.PersonNameSuffix,
+            contentType = ContentType.PersonNameSuffix,
         )
         OutlinedTextField(
             value = state.nickname,

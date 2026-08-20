@@ -206,6 +206,11 @@ fun ContactDetailScreen(
     // sheet). Consumed exactly once, then cleared via viewModel.onEventShown().
     val event by viewModel.events.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    // stringResource (not context.getString), so a Configuration change
+    // (locale) invalidates these instead of the launcher callbacks below
+    // capturing a stale string -- lint's LocalContextGetResourceValueCall.
+    val cropFailedMessage = stringResource(R.string.profile_picture_crop_failed)
+    val photoTooLargeMessage = stringResource(R.string.profile_picture_error_too_large)
     LaunchedEffect(event) {
         when (event) {
             is ContactDetailEvent.ContactDeleted -> {
@@ -256,7 +261,7 @@ fun ContactDetailScreen(
                 }
             } else if (data != null && UCrop.getError(data) != null) {
                 scope.launch {
-                    snackbarHostState.showSnackbar(context.getString(R.string.profile_picture_crop_failed))
+                    snackbarHostState.showSnackbar(cropFailedMessage)
                 }
             }
         }
@@ -275,7 +280,7 @@ fun ContactDetailScreen(
             // before a post-read size check ever ran (mirrors VcfImportScreen).
             val size = withContext(Dispatchers.IO) { queryPhotoSize(resolver, uri) }
             if (size != null && size > ContactDetailViewModel.MAX_PHOTO_SIZE_BYTES) {
-                snackbarHostState.showSnackbar(context.getString(R.string.profile_picture_error_too_large))
+                snackbarHostState.showSnackbar(photoTooLargeMessage)
                 return@launch
             }
             val bytes = withContext(Dispatchers.IO) { readPhotoBytes(resolver, uri) }
@@ -283,7 +288,7 @@ fun ContactDetailScreen(
             // Backstop for providers that report no size: never feed a file
             // the server would reject with its own 400 into the crop step.
             if (bytes.size > ContactDetailViewModel.MAX_PHOTO_SIZE_BYTES) {
-                snackbarHostState.showSnackbar(context.getString(R.string.profile_picture_error_too_large))
+                snackbarHostState.showSnackbar(photoTooLargeMessage)
                 return@launch
             }
             withContext(Dispatchers.IO) { writePhotoBytes(context, bytes) }?.let { launchCrop(Uri.fromFile(it)) }

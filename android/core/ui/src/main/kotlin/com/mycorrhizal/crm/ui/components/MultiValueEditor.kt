@@ -1,5 +1,3 @@
-@file:OptIn(ExperimentalComposeUiApi::class)
-
 package com.mycorrhizal.crm.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
@@ -29,9 +27,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.autofill.AutofillType
+import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -128,7 +125,7 @@ interface MultiValueSpec<T> {
      * with no standard hint (links, online services, titles, personal info).
      * Only Email/Phone set it.
      */
-    val autofillType: AutofillType? get() = null
+    val contentType: ContentType? get() = null
 }
 
 object EmailSpec : MultiValueSpec<Email> {
@@ -141,7 +138,7 @@ object EmailSpec : MultiValueSpec<Email> {
     override fun blank() = Email(address = "")
     override val typeOptions = CONTACT_TYPE_OPTIONS
     override val keyboardType = KeyboardType.Email
-    override val autofillType = AutofillType.EmailAddress
+    override val contentType = ContentType.EmailAddress
 }
 
 object PhoneSpec : MultiValueSpec<Phone> {
@@ -159,7 +156,7 @@ object PhoneSpec : MultiValueSpec<Phone> {
     override fun blank() = Phone(number = "", contexts = listOf("cell"))
     override val typeOptions = CONTACT_TYPE_OPTIONS
     override val keyboardType = KeyboardType.Phone
-    override val autofillType = AutofillType.PhoneNumber
+    override val contentType = ContentType.PhoneNumber
 }
 
 object OnlineServiceSpec : MultiValueSpec<OnlineService> {
@@ -326,15 +323,15 @@ private fun <T> MultiValueRow(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // T115: email/phone rows advertise their AutofillType so the
+            // T115: email/phone rows advertise their ContentType so the
             // Autofill service can offer a fill; other specs keep the plain
             // field (no standard hint exists for links/services/titles/info).
-            if (spec.autofillType != null) {
+            if (spec.contentType != null) {
                 AutofillOutlinedTextField(
                     value = spec.value(item),
                     onValueChange = onValueChange,
                     label = stringResource(R.string.contact_value_n, rowNumber),
-                    autofillType = spec.autofillType,
+                    contentType = spec.contentType,
                     keyboardOptions = KeyboardOptions(keyboardType = spec.keyboardType),
                     modifier = Modifier.weight(1f),
                 )
