@@ -8,8 +8,11 @@ import org.gradle.api.tasks.testing.Test
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.dependencies
+import org.gradle.kotlin.dsl.register
 import org.gradle.kotlin.dsl.withType
 import org.gradle.kotlin.dsl.getByType
+import org.gradle.testing.jacoco.plugins.JacocoPluginExtension
+import org.gradle.testing.jacoco.tasks.JacocoReport
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension
 import org.gradle.api.artifacts.VersionCatalogsExtension
@@ -57,6 +60,7 @@ internal fun Project.configureAndroidCommon(
 
     configureAccessibilityLint(extension.lint)
     configureAndroidTestCommon()
+    configureJacoco()
 }
 
 /**
@@ -112,6 +116,66 @@ internal fun Project.configureAndroidTestCommon() {
         }
         // Robolectric needs the Android resources to resolve themes/drawables.
         systemProperty("robolectric.enabledSdks", "35")
+    }
+}
+
+// Issue #251: visibility only, no threshold/gate — a separate ticket tracks
+// enforcing coverage. Applied to every module (app + library) via
+// configureAndroidCommon so `./gradlew jacocoTestReport` at the root reports
+// on all of them, the same way bare `./gradlew testDebugUnitTest` already
+// does today.
+private val JACOCO_EXCLUDES = listOf(
+    // AGP/resource-generated.
+    "**/R.class",
+    "**/R\$*.class",
+    "**/BuildConfig.*",
+    "**/Manifest*.*",
+    // Hilt/Dagger-generated.
+    "**/Hilt_*.class",
+    "**/*_Hilt*.class",
+    "**/*_Factory.class",
+    "**/*_MembersInjector.class",
+    "**/dagger/hilt/**",
+    "**/hilt_aggregated_deps/**",
+    // Moshi-generated.
+    "**/*JsonAdapter.class",
+    // Compose compiler-synthesized holders — not code anyone writes or reviews.
+    "**/ComposableSingletons\$*.class",
+    "**/*ComposableSingletons*.class",
+)
+
+/**
+ * Wires a `jacocoTestReport` task (XML + HTML) off `testDebugUnitTest`'s
+ * execution data in every android module.
+ */
+internal fun Project.configureJacoco() {
+    pluginManager.apply("jacoco")
+
+    extensions.configure<JacocoPluginExtension> {
+        toolVersion = "0.8.12"
+    }
+
+    tasks.register<JacocoReport>("jacocoTestReport") {
+        group = "verification"
+        description = "Generates a code coverage report from testDebugUnitTest."
+        dependsOn("testDebugUnitTest")
+
+        reports {
+            xml.required.set(true)
+            html.required.set(true)
+        }
+
+        val javaClasses = fileTree(layout.buildDirectory.dir("intermediates/javac/debug")) {
+            exclude(JACOCO_EXCLUDES)
+        }
+        val kotlinClasses = fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/debug")) {
+            exclude(JACOCO_EXCLUDES)
+        }
+        classDirectories.setFrom(files(javaClasses, kotlinClasses))
+        sourceDirectories.setFrom(files("src/main/java", "src/main/kotlin"))
+        executionData.setFrom(
+            fileTree(layout.buildDirectory.get()) { include("jacoco/testDebugUnitTest.exec") },
+        )
     }
 }
 

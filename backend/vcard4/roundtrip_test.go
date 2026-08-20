@@ -1,6 +1,7 @@
 package vcard4
 
 import (
+	"bytes"
 	"testing"
 
 	"mycorrhizal/contactmodel"
@@ -183,5 +184,61 @@ func TestRoundtrip_PropIDIdentity(t *testing.T) {
 	}
 	if !gotSynthesized {
 		t.Errorf("Emails = %+v, want b@example.com to have a non-empty synthesized ID recovered via PROP-ID", rec2.Card.Emails)
+	}
+}
+
+// goldenFixturesV4 is every docs/golden-fixtures/*.v4.vcf file (issue #255),
+// mirrored byte-for-byte into internal/rfctest/fixtures.
+var goldenFixturesV4 = []string{
+	"adr-expanded.v4.vcf",
+	"created.v4.vcf",
+	"derived-fn.v4.vcf",
+	"gramgender.v4.vcf",
+	"n-expanded.v4.vcf",
+	"note-author.v4.vcf",
+	"phonetic-n.v4.vcf",
+	"pronouns.v4.vcf",
+	"rfc6350-baseline.v4.vcf",
+	"socialprofile.v4.vcf",
+	"title-role.v4.vcf",
+}
+
+// TestRoundtripIdempotent_GoldenFixtures is a property, table-driven over
+// every RFC golden fixture (issue #255): once a card has been through one
+// Import->Export cycle, every PROP-ID that was missing on the way in has
+// been synthesized (deterministically, by index -- see idOrSynthetic; the
+// adapter package calls no time.Now/uuid.New/rand.* anything), so a second
+// Import->Export cycle must reproduce byte-identical output. This is the
+// generalized form of TestRoundtrip_PropIDIdentity above, applied to the
+// whole external test oracle rather than one hand-built record, and would
+// catch a future regression where export stops being a fixed point after
+// the first round trip (e.g. a property that re-imports into a different
+// shape, or an ID re-synthesized differently the second time).
+func TestRoundtripIdempotent_GoldenFixtures(t *testing.T) {
+	for _, name := range goldenFixturesV4 {
+		t.Run(name, func(t *testing.T) {
+			raw := rfctest.LoadFixture(name)
+
+			rec1, _, err := Adapter{}.Import(raw)
+			if err != nil {
+				t.Fatalf("Import (1st): %v", err)
+			}
+			out1, _, err := Adapter{}.Export(rec1)
+			if err != nil {
+				t.Fatalf("Export (1st): %v", err)
+			}
+			rec2, _, err := Adapter{}.Import(out1)
+			if err != nil {
+				t.Fatalf("Import (2nd): %v", err)
+			}
+			out2, _, err := Adapter{}.Export(rec2)
+			if err != nil {
+				t.Fatalf("Export (2nd): %v", err)
+			}
+
+			if !bytes.Equal(out1, out2) {
+				t.Errorf("export is not idempotent after the first round trip:\n--- out1 ---\n%s\n--- out2 ---\n%s", out1, out2)
+			}
+		})
 	}
 }
