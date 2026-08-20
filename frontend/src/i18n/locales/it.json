@@ -1334,7 +1334,14 @@
     "listView": "Rete in elenco",
     "connectionRelationship": "{{type}}: {{name}}",
     "connectionActivity": "Ha partecipato a {{title}}",
-    "connectionCircle": "Membro di {{circle}}"
+    "connectionCircle": "Membro di {{circle}}",
+    "zoomIn": "Aumenta zoom",
+    "zoomOut": "Riduci zoom",
+    "resetView": "Ripristina visualizzazione",
+    "panUp": "Sposta in alto",
+    "panDown": "Sposta in basso",
+    "panLeft": "Sposta a sinistra",
+    "panRight": "Sposta a destra"
   },
   "relationships": {
     "title": "Rapporti",

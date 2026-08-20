@@ -1,7 +1,14 @@
 import { useRef, useCallback, useMemo, useEffect, useState } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import { forceX, forceY } from 'd3-force';
-import { useTheme, Box, Typography, useMediaQuery } from '@mui/material';
+import { useTheme, Box, Typography, IconButton, useMediaQuery } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import RemoveIcon from '@mui/icons-material/Remove';
+import CenterFocusStrongIcon from '@mui/icons-material/CenterFocusStrong';
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
+import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 import { useTranslation } from 'react-i18next';
 import { GraphData, GraphNode, GraphEdge } from '../types/graph';
 import { computeFilteredGraphData } from '../utils/networkGraphData';
@@ -213,6 +220,38 @@ export default function NetworkGraph({
     }
   }, [graphData.nodes.length, isMobile]);
 
+  // Non-drag alternatives for pan/zoom (#190, WCAG 2.5.7 Dragging Movements).
+  // enableNodeDrag is left drag-only and deliberately has no button
+  // equivalent: it only repositions a node within the force simulation for
+  // the current session, nothing reads or persists node.x/node.y anywhere in
+  // this codebase (confirmed via grep across api/ and hooks/), so there is no
+  // state a keyboard/single-pointer user would be locked out of reaching.
+  const handleZoomIn = useCallback(() => {
+    const fg = graphRef.current;
+    if (!fg) return;
+    fg.zoom(fg.zoom() * 1.3, 250);
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    const fg = graphRef.current;
+    if (!fg) return;
+    fg.zoom(fg.zoom() / 1.3, 250);
+  }, []);
+
+  const handleResetView = useCallback(() => {
+    graphRef.current?.zoomToFit(400, isMobile ? 50 : 80);
+  }, [isMobile]);
+
+  const handlePan = useCallback((dx: number, dy: number) => {
+    const fg = graphRef.current;
+    if (!fg) return;
+    const { x, y } = fg.centerAt();
+    // Step scales inversely with zoom so a pan press moves roughly the same
+    // distance on screen regardless of how zoomed in the view currently is.
+    const step = 120 / fg.zoom();
+    fg.centerAt(x + dx * step, y + dy * step, 250);
+  }, []);
+
   const getEdgeTypeLabel = (type: string) => {
     if (type === 'relationship') return t('network.legend.relationships');
     if (type === 'activity') return t('network.legend.activities');
@@ -259,6 +298,8 @@ export default function NetworkGraph({
         onNodeHover={handleNodeHover}
         onLinkHover={handleLinkHover}
         cooldownTicks={100}
+        // Cosmetic-only, session-local repositioning -- see the handlePan/
+        // handleZoomIn comment above for why this has no button equivalent.
         enableNodeDrag={true}
         enableZoomInteraction={true}
         enablePanInteraction={true}
@@ -307,6 +348,90 @@ export default function NetworkGraph({
           ) : null}
         </Box>
       )}
+
+      {/* Non-drag pan/zoom controls (#190) -- every transform reachable by
+          drag or wheel is also reachable by a single click/keyboard press. */}
+      <Box
+        sx={{
+          position: 'absolute',
+          bottom: 8,
+          right: 8,
+          zIndex: 10,
+          bgcolor: 'background.paper',
+          borderRadius: 1,
+          boxShadow: 2,
+          p: 0.5,
+        }}
+      >
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gridTemplateRows: 'repeat(3, 1fr)',
+            width: 96,
+            height: 96,
+          }}
+        >
+          <IconButton
+            size="small"
+            aria-label={t('network.panUp')}
+            onClick={() => handlePan(0, -1)}
+            sx={{ gridColumn: 2, gridRow: 1, minWidth: 24, minHeight: 24 }}
+          >
+            <KeyboardArrowUpIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            size="small"
+            aria-label={t('network.panLeft')}
+            onClick={() => handlePan(-1, 0)}
+            sx={{ gridColumn: 1, gridRow: 2, minWidth: 24, minHeight: 24 }}
+          >
+            <KeyboardArrowLeftIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            size="small"
+            aria-label={t('network.resetView')}
+            onClick={handleResetView}
+            sx={{ gridColumn: 2, gridRow: 2, minWidth: 24, minHeight: 24 }}
+          >
+            <CenterFocusStrongIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            size="small"
+            aria-label={t('network.panRight')}
+            onClick={() => handlePan(1, 0)}
+            sx={{ gridColumn: 3, gridRow: 2, minWidth: 24, minHeight: 24 }}
+          >
+            <KeyboardArrowRightIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            size="small"
+            aria-label={t('network.panDown')}
+            onClick={() => handlePan(0, 1)}
+            sx={{ gridColumn: 2, gridRow: 3, minWidth: 24, minHeight: 24 }}
+          >
+            <KeyboardArrowDownIcon fontSize="small" />
+          </IconButton>
+        </Box>
+        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5, mt: 0.5 }}>
+          <IconButton
+            size="small"
+            aria-label={t('network.zoomIn')}
+            onClick={handleZoomIn}
+            sx={{ minWidth: 24, minHeight: 24 }}
+          >
+            <AddIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            size="small"
+            aria-label={t('network.zoomOut')}
+            onClick={handleZoomOut}
+            sx={{ minWidth: 24, minHeight: 24 }}
+          >
+            <RemoveIcon fontSize="small" />
+          </IconButton>
+        </Box>
+      </Box>
     </Box>
   );
 }

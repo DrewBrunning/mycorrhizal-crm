@@ -1334,7 +1334,14 @@
     "listView": "Vista de lista de la red",
     "connectionRelationship": "{{type}}: {{name}}",
     "connectionActivity": "Asistió a {{title}}",
-    "connectionCircle": "Miembro de {{circle}}"
+    "connectionCircle": "Miembro de {{circle}}",
+    "zoomIn": "Acercar",
+    "zoomOut": "Alejar",
+    "resetView": "Restablecer vista",
+    "panUp": "Desplazar hacia arriba",
+    "panDown": "Desplazar hacia abajo",
+    "panLeft": "Desplazar hacia la izquierda",
+    "panRight": "Desplazar hacia la derecha"
   },
   "relationships": {
     "title": "Relaciones",

@@ -1361,7 +1361,14 @@
     "listView": "Network list view",
     "connectionRelationship": "{{type}}: {{name}}",
     "connectionActivity": "Attended {{title}}",
-    "connectionCircle": "Member of {{circle}}"
+    "connectionCircle": "Member of {{circle}}",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "resetView": "Reset view",
+    "panUp": "Pan up",
+    "panDown": "Pan down",
+    "panLeft": "Pan left",
+    "panRight": "Pan right"
   },
   "relationships": {
     "title": "Relationships",
