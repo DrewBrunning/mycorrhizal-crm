@@ -51,7 +51,15 @@ jobs:
       contents: read
     name: Backend (Go)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Issue #251: -race + -covermode=atomic stack their per-access/per-block
+    # instrumentation on top of each other, and the services package alone
+    # re-runs the full real-schema migration set (database.InitDB) across
+    # dozens of tests — on GitHub's shared runners that combination pushed
+    # one package past `go test`'s default 10m internal timeout even though
+    # nothing was actually hung (PR #285 CI run 32417613740). 15 -> 30 here,
+    # plus an explicit -timeout below, to give it headroom without going
+    # unbounded.
+    timeout-minutes: 30
     needs: changes
     if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.workflows == 'true'
 
@@ -78,7 +86,9 @@ jobs:
 
       - name: Run tests with coverage
         working-directory: backend
-        run: go test -race ./... -coverprofile=coverage.out -covermode=atomic
+        # -timeout raised from the go test default (10m) — see the job's
+        # timeout-minutes comment above for why race+coverage need the room.
+        run: go test -race -timeout=20m ./... -coverprofile=coverage.out -covermode=atomic
 
       # Issue #251: visibility only, no threshold/gate — printed to the log
       # and uploaded below for anyone who wants the per-func breakdown.
