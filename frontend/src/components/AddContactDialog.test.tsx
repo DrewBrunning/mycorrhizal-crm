@@ -177,6 +177,18 @@ test('the first-name error clears once the user starts typing a value', async ()
   expect(screen.getByLabelText('First Name *')).toHaveAttribute('aria-invalid', 'false');
 });
 
+// #244: under 1.4.12 text-spacing overrides, the Circles section (the last
+// form section before DialogActions) can grow tall enough to collide with
+// the Cancel button. The scrollable DialogContent needs enough reserved
+// bottom padding to survive that worst case.
+test('the dialog content reserves extra bottom padding to survive text-spacing growth', () => {
+  renderDialog();
+
+  const content = document.querySelector('.MuiDialogContent-root');
+  expect(content).not.toBeNull();
+  expect(getComputedStyle(content as Element).paddingBottom).toBe('48px');
+});
+
 // T52: submitting with only name submits correctly in the simplified flow
 test('submits with just first name', async () => {
   const mocked = vi.mocked(createContactRecord).mockResolvedValue({

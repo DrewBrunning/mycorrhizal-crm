@@ -213,7 +213,15 @@ export default function AddContactDialog({
   return (
     <AppDialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
       <DialogTitle>{t('contacts.add.title')}</DialogTitle>
-      <DialogContent>
+      <DialogContent
+        // 1.4.12 Text Spacing: the Circles section is the last form section
+        // before the fixed DialogActions row, so under the SC's line-height/
+        // paragraph-margin overrides its "Or create new..." field can grow
+        // tall enough to collide with the Cancel button. Reserve extra
+        // bottom padding in this already-scrollable region to survive that
+        // worst case rather than restructuring the form.
+        sx={{ pb: 6 }}
+      >
         {error && (
           <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
             {error}
