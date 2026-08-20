@@ -67,6 +67,13 @@ jobs:
         working-directory: android
         run: ./gradlew testDebugUnitTest
 
+      # Issue #251: visibility only, no threshold/gate. Runs `jacocoTestReport`
+      # in every module (bare task name, same pattern as testDebugUnitTest
+      # above) off the exec data the step above just produced.
+      - name: Coverage report (Jacoco)
+        working-directory: android
+        run: ./gradlew jacocoTestReport
+
       - name: Lint
         working-directory: android
         run: ./gradlew lintDebug
@@ -74,6 +81,14 @@ jobs:
       - name: Assemble debug APK
         working-directory: android
         run: ./gradlew assembleDebug
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-coverage
+          path: android/**/build/reports/jacoco/jacocoTestReport/
+          retention-days: 7
 
   # Issue #238: instrumented E2E tests (app/src/androidTest) — the real app
   # driven against the real docker-compose.test.yml backend on an emulator.
