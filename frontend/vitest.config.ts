@@ -18,5 +18,14 @@ export default defineConfig({
         execArgv: ['--no-experimental-webstorage'],
       },
     },
+    // Issue #251: visibility only, no thresholds/gate — a separate ticket
+    // tracks enforcing coverage. `text` for the CI log, `html` for a
+    // browsable artifact, `lcov` for third-party tooling that wants it.
+    coverage: {
+      provider: 'v8',
+      include: ['src/**/*.{ts,tsx}'],
+      reporter: ['text', 'html', 'lcov'],
+      reportsDirectory: './coverage',
+    },
   },
 });
