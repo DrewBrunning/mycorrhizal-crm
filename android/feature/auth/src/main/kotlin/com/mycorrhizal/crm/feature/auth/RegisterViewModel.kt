@@ -38,6 +38,12 @@ data class RegisterUiState(
     val passwordStrength: PasswordStrength? = null,
     val passwordChecked: Boolean = false,
     val checkingStrength: Boolean = false,
+    // Android testing feedback: DISABLE_REGISTRATION was only ever enforced
+    // by the eventual 403 on submit — this flag lets RegisterScreen show a
+    // disabled notice up front instead. Best-effort: a failed fetch leaves
+    // this false (the form shows, exactly as before this existed) — the
+    // server's 403 is still the real enforcement either way.
+    val registrationDisabled: Boolean = false,
 )
 
 sealed interface RegisterEvent {
@@ -62,7 +68,24 @@ class RegisterViewModel @Inject constructor(
         // Pre-fill the server URL the login screen already captured (the
         // register flow is always reached from it).
         viewModelScope.launch {
-            _uiState.update { it.copy(serverUrl = sessionManager.serverUrl().orEmpty()) }
+            val serverUrl = sessionManager.serverUrl().orEmpty()
+            _uiState.update { it.copy(serverUrl = serverUrl) }
+            if (serverUrl.isNotBlank()) checkRegistrationAvailability()
+        }
+    }
+
+    /**
+     * Best-effort: checked once against the server URL captured at screen
+     * entry. A user who edits the server URL on this screen before
+     * submitting is not re-checked — the submit's own 403 is the backstop
+     * either way, so a stale check only ever costs an extra tap, never a
+     * silently-created account.
+     */
+    private fun checkRegistrationAvailability() {
+        viewModelScope.launch {
+            authRepository.getAuthConfig().onSuccess { config ->
+                _uiState.update { it.copy(registrationDisabled = config.registrationDisabled) }
+            }
         }
     }
 

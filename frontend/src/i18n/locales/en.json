@@ -182,7 +182,9 @@
     "registerButton": "Register",
     "registering": "Registering...",
     "registrationFailed": "Registration failed",
-    "registrationSuccess": "Registration successful! You can now log in."
+    "registrationSuccess": "Registration successful! You can now log in.",
+    "registrationDisabled": "Registration is currently disabled on this server. Contact your administrator if you need an account.",
+    "backToLogin": "Back to login"
   },
   "contacts": {
     "title": "Contacts",

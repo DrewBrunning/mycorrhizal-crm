@@ -16,6 +16,7 @@ import com.mycorrhizal.crm.model.network.AddCircleMemberResponse
 import com.mycorrhizal.crm.model.network.AddContactTagResponse
 import com.mycorrhizal.crm.model.network.AddHouseholdMemberResponse
 import com.mycorrhizal.crm.model.network.AuditEventsResponse
+import com.mycorrhizal.crm.model.network.AuthConfig
 import com.mycorrhizal.crm.model.network.AuditUndoResponse
 import com.mycorrhizal.crm.model.network.BackendError
 import com.mycorrhizal.crm.model.network.BirthdaysResponse
@@ -205,6 +206,16 @@ class ApiClient(
     suspend fun currentUser(): Result<UserProfile> =
         executeGet("$PLACEHOLDER_ORIGIN$ME_PATH") { _, body ->
             moshi.adapter(UserProfile::class.java).fromJson(body)
+        }
+
+    /**
+     * GET /api/v1/auth/oidc/config — public, unauthenticated. Fetched by
+     * RegisterScreen to show a "registration disabled" notice up front
+     * instead of only via the eventual 403 on submit.
+     */
+    suspend fun getAuthConfig(): Result<AuthConfig> =
+        executeGet("$PLACEHOLDER_ORIGIN$AUTH_CONFIG_PATH") { _, body ->
+            moshi.adapter(AuthConfig::class.java).fromJson(body)
         }
 
     // M26: account creation + password reset. All public and rate-limited
@@ -1718,6 +1729,7 @@ class ApiClient(
         const val PLACEHOLDER_ORIGIN = "http://mycorrhizal.invalid"
         private const val API_V1 = "/api/v1"
         private const val LOGIN_PATH = "$API_V1/login"
+        private const val AUTH_CONFIG_PATH = "$API_V1/auth/oidc/config"
         private const val ME_PATH = "$API_V1/users/me"
         private const val REGISTER_PATH = "$API_V1/register"
         private const val CHECK_PASSWORD_STRENGTH_PATH = "$API_V1/check-password-strength"

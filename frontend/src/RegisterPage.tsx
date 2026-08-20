@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { API_BASE_URL } from './auth';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import {
   Box,
@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 import { useErrorAlertFocus } from './hooks/useErrorAlertFocus';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
+import { useOIDCConfig } from './hooks/useOIDCConfig';
 
 export default function RegisterPage() {
   const { t } = useTranslation();
@@ -26,6 +27,7 @@ export default function RegisterPage() {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const oidcConfig = useOIDCConfig();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,6 +75,24 @@ export default function RegisterPage() {
       setLoading(false);
     }
   };
+
+  // Registration is disabled server-side (DISABLE_REGISTRATION): show that
+  // plainly instead of a form that would always 403 on submit — someone can
+  // still land here directly via a bookmarked/typed /register URL even
+  // though LoginPage now hides the link to it.
+  if (oidcConfig.registration_disabled) {
+    return (
+      <Box sx={{ maxWidth: 400, mx: 'auto', mt: 8 }}>
+        <Paper sx={{ p: 4 }}>
+          <Typography variant="h5" component="h1" mb={2}>{t('register.title')}</Typography>
+          <Alert severity="info">{t('register.registrationDisabled')}</Alert>
+          <Button component={Link} to="/login" color="primary" variant="text" sx={{ mt: 2 }}>
+            {t('register.backToLogin')}
+          </Button>
+        </Paper>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ maxWidth: 400, mx: 'auto', mt: 8 }}>

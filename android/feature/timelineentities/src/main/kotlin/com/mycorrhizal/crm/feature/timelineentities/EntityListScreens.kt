@@ -19,8 +19,11 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Done
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -926,34 +929,40 @@ fun GiftsScreen(
         // panel): "check this right before buying" — surfaced here, not in
         // Preferences. Rendered through the scaffold's in-layout `header`
         // slot (not `dialog`) so it lays out above the gift list instead of
-        // overlapping it.
+        // overlapping it. Wrapped in GiftShoppingNotesSection's collapsible
+        // card (Android testing feedback: a contact with several clothing
+        // sizes + jewelry/flowers/etc. rows was pushing the actual gift-idea
+        // list off-screen) — collapsed by default, tap to expand. Deliberately
+        // kept as two separate panels rather than merged into one
+        // PreferenceCategory-driven list: clothing sizes' fast inline
+        // edit-in-place add flow (several sizes entered in one sitting) would
+        // regress to a per-item modal if it went through the shared
+        // PreferenceDialog the way jewelry/flowers do.
         header = {
             if (!state.isLoading) {
-                ClothingSizesPanel(
-                    items = clothingSizes,
-                    newKey = newClothingKey,
-                    newValue = newClothingValue,
-                    editingId = editingClothingItem?.id,
-                    onNewKeyChange = { newClothingKey = it },
-                    onNewValueChange = { newClothingValue = it },
-                    onAdd = { key, value ->
+                GiftShoppingNotesSection(
+                    clothingSizes = clothingSizes,
+                    giftPreferences = giftPreferences,
+                    newClothingKey = newClothingKey,
+                    newClothingValue = newClothingValue,
+                    editingClothingItem = editingClothingItem,
+                    onNewClothingKeyChange = { newClothingKey = it },
+                    onNewClothingValueChange = { newClothingValue = it },
+                    onAddClothingSize = { key, value ->
                         viewModel.createClothingSize(key, value)
                         newClothingKey = ""
                         newClothingValue = ""
                     },
-                    onStartEdit = { item -> editingClothingItem = item },
-                    onEditConfirm = { item, key, value ->
+                    onStartEditClothingSize = { item -> editingClothingItem = item },
+                    onEditConfirmClothingSize = { item, key, value ->
                         viewModel.updateClothingSize(item, key, value)
                         editingClothingItem = null
                     },
-                    onEditCancel = { editingClothingItem = null },
-                    onDelete = viewModel::deleteClothingSize,
-                )
-                GiftPreferencesPanel(
-                    items = giftPreferences,
-                    onAdd = { showAddGiftPreference = true },
-                    onEdit = { item -> editingGiftPreference = item },
-                    onDelete = viewModel::deleteGiftPreference,
+                    onEditCancelClothingSize = { editingClothingItem = null },
+                    onDeleteClothingSize = viewModel::deleteClothingSize,
+                    onAddGiftPreference = { showAddGiftPreference = true },
+                    onEditGiftPreference = { item -> editingGiftPreference = item },
+                    onDeleteGiftPreference = viewModel::deleteGiftPreference,
                 )
             }
         },
@@ -1238,6 +1247,81 @@ private fun preferenceSectionLabelRes(section: String): Int = when (section) {
     PreferenceSection.GIFT_PREFERENCES -> R.string.preferences_section_gift_preferences
     PreferenceSection.GIFT_AVOID -> R.string.preferences_section_gift_avoid
     else -> R.string.preferences_section_other
+}
+
+/**
+ * GiftsScreen's "check this right before buying" section: clothing sizes
+ * plus gift preferences (jewelry/flowers/color/fragrance/cause/gift-avoid),
+ * collapsed behind one summary row by default so the two panels below don't
+ * crowd the gift-idea list out. Collapse idiom matches ContactListScreen's
+ * SearchNotesActivitiesSection. The header row itself never disappears (even
+ * with zero items) — it's the only way to reach either panel's "add" flow.
+ */
+@Composable
+private fun GiftShoppingNotesSection(
+    clothingSizes: List<Preference>,
+    giftPreferences: List<Preference>,
+    newClothingKey: String,
+    newClothingValue: String,
+    editingClothingItem: Preference?,
+    onNewClothingKeyChange: (String) -> Unit,
+    onNewClothingValueChange: (String) -> Unit,
+    onAddClothingSize: (String, String) -> Unit,
+    onStartEditClothingSize: (Preference) -> Unit,
+    onEditConfirmClothingSize: (Preference, String, String) -> Unit,
+    onEditCancelClothingSize: () -> Unit,
+    onDeleteClothingSize: (String) -> Unit,
+    onAddGiftPreference: () -> Unit,
+    onEditGiftPreference: (Preference) -> Unit,
+    onDeleteGiftPreference: (String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val total = clothingSizes.size + giftPreferences.size
+
+    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = !expanded }
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = stringResource(R.string.gifts_shopping_notes_header, total),
+                style = MaterialTheme.typography.titleSmall,
+            )
+            Icon(
+                imageVector = if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                contentDescription = stringResource(
+                    if (expanded) R.string.a11y_state_expanded else R.string.a11y_state_collapsed,
+                ),
+            )
+        }
+        if (expanded) {
+            Column(modifier = Modifier.padding(bottom = 8.dp)) {
+                ClothingSizesPanel(
+                    items = clothingSizes,
+                    newKey = newClothingKey,
+                    newValue = newClothingValue,
+                    editingId = editingClothingItem?.id,
+                    onNewKeyChange = onNewClothingKeyChange,
+                    onNewValueChange = onNewClothingValueChange,
+                    onAdd = onAddClothingSize,
+                    onStartEdit = onStartEditClothingSize,
+                    onEditConfirm = onEditConfirmClothingSize,
+                    onEditCancel = onEditCancelClothingSize,
+                    onDelete = onDeleteClothingSize,
+                )
+                GiftPreferencesPanel(
+                    items = giftPreferences,
+                    onAdd = onAddGiftPreference,
+                    onEdit = onEditGiftPreference,
+                    onDelete = onDeleteGiftPreference,
+                )
+            }
+        }
+    }
 }
 
 /** Web's ClothingSizesPanel equivalent — inline add/edit/delete of `clothing_size` preferences. */

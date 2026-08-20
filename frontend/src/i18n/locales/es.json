@@ -182,7 +182,9 @@
     "registerButton": "Registrarse",
     "registering": "Registrando...",
     "registrationFailed": "Error en el registro",
-    "registrationSuccess": "¡Registro completado! Ahora puedes iniciar sesión."
+    "registrationSuccess": "¡Registro completado! Ahora puedes iniciar sesión.",
+    "registrationDisabled": "El registro está actualmente desactivado en este servidor. Contacta con tu administrador si necesitas una cuenta.",
+    "backToLogin": "Volver al inicio de sesión"
   },
   "contacts": {
     "title": "Contactos",

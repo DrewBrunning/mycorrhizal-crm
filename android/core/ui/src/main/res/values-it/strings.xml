@@ -55,6 +55,7 @@
     <string name="register_email">E-mail</string>
     <string name="register_create">Crea account</string>
     <string name="register_back_to_login">Torna al login</string>
+    <string name="register_disabled_notice">La registrazione è attualmente disabilitata su questo server. Contatta il tuo amministratore se hai bisogno di un account.</string>
     <string name="register_checking_strength">Controllo della robustezza della password…</string>
     <string name="register_password_strong">La password sembra buona</string>
     <string name="register_error_username_required">Il nome utente è obbligatorio</string>
@@ -889,6 +890,7 @@
     <string name="gifts_none">Nessuno</string>
     <string name="gifts_value_currency_required">Importo e valuta devono essere impostati insieme</string>
     <string name="gifts_mark_given">Segna come regalato</string>
+    <string name="gifts_shopping_notes_header">Taglie di abbigliamento e preferenze regalo (%1$d)</string>
     <string name="gifts_clothing_type">Tipo</string>
     <string name="gifts_preferences_heading">Preferenze regalo</string>
     <string name="preferences_key">Chiave</string>
@@ -1077,5 +1079,7 @@
     <!-- Android a11y (issues #199/#203): shared accessibility-only announcements -->
     <string name="a11y_state_loading">Caricamento</string>
     <string name="a11y_state_saving">Salvataggio</string>
+    <string name="a11y_state_expanded">Espanso</string>
+    <string name="a11y_state_collapsed">Compresso</string>
     <string name="a11y_share_field_locked">Bloccato finché i campi sensibili non vengono attivati</string>
 </resources>

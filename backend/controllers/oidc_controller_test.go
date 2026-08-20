@@ -39,6 +39,22 @@ func TestOIDCConfigHandler_Disabled(t *testing.T) {
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
 	assert.Equal(t, false, body["enabled"])
 	assert.NotContains(t, body, "provider_name")
+	assert.Equal(t, false, body["registration_disabled"])
+}
+
+func TestOIDCConfigHandler_RegistrationDisabled(t *testing.T) {
+	cfg := &config.Config{RegistrationDisabled: true}
+	_, router := setupRouter()
+	router.GET("/config", OIDCConfigHandler(cfg))
+
+	req, _ := http.NewRequest("GET", "/config", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	assert.Equal(t, true, body["registration_disabled"])
 }
 
 func TestOIDCConfigHandler_Enabled(t *testing.T) {
