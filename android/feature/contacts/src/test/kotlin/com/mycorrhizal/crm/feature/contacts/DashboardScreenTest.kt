@@ -149,6 +149,24 @@ class DashboardScreenTest {
     }
 
     @Test
+    fun `a favorite that also shows up in random contacts does not crash on a duplicate lazy key`() {
+        // All five widget sections share one LazyColumn (DashboardContent),
+        // so a key must be unique across sections, not just within one. A
+        // contact can legitimately be both favorited and drawn into the
+        // random "stay in touch" pick -- if both sections key by the raw
+        // contact id, Compose throws "Key \"9\" was already used" the moment
+        // that happens, which crashed the app on login in practice.
+        val state = populatedState().copy(
+            favorites = listOf(DashboardRandomContact(id = 9, firstname = "Zebra", lastname = "Smith", nickname = "Z")),
+            randomContacts = listOf(DashboardRandomContact(id = 9, firstname = "Zebra", lastname = "Smith", nickname = "Z")),
+        )
+
+        setContent(state)
+
+        composeTestRule.onNodeWithText("Z Smith").assertIsDisplayed()
+    }
+
+    @Test
     fun `empty widgets show their empty text and the overdue section stays hidden`() {
         setContent(DashboardUiState())
 

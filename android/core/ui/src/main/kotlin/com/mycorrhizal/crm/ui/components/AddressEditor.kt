@@ -1,5 +1,3 @@
-@file:OptIn(ExperimentalComposeUiApi::class)
-
 package com.mycorrhizal.crm.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
@@ -21,9 +19,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.autofill.AutofillType
+import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.mycorrhizal.crm.model.network.Address
@@ -170,14 +167,14 @@ private fun AddressRow(
                 Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.contact_remove))
             }
         }
-        // T115: the standard address parts advertise their AutofillType so the
+        // T115: the standard address parts advertise their ContentType so the
         // Autofill service can fill street/city/region/postal/country from the
         // device address book.
         AutofillOutlinedTextField(
             value = draft.street,
             onValueChange = { onDraftChange(draft.copy(street = it)) },
             label = stringResource(R.string.contact_address_street),
-            autofillType = AutofillType.AddressStreet,
+            contentType = ContentType.AddressStreet,
         )
         if (showAdditional) {
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -213,14 +210,14 @@ private fun AddressRow(
                 value = draft.city,
                 onValueChange = { onDraftChange(draft.copy(city = it)) },
                 label = stringResource(R.string.contact_address_city),
-                autofillType = AutofillType.AddressLocality,
+                contentType = ContentType.AddressLocality,
                 modifier = Modifier.weight(1f),
             )
             AutofillOutlinedTextField(
                 value = draft.region,
                 onValueChange = { onDraftChange(draft.copy(region = it)) },
                 label = stringResource(R.string.contact_address_region),
-                autofillType = AutofillType.AddressRegion,
+                contentType = ContentType.AddressRegion,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -229,14 +226,14 @@ private fun AddressRow(
                 value = draft.postal,
                 onValueChange = { onDraftChange(draft.copy(postal = it)) },
                 label = stringResource(R.string.contact_address_postal),
-                autofillType = AutofillType.PostalCode,
+                contentType = ContentType.PostalCode,
                 modifier = Modifier.weight(1f),
             )
             AutofillOutlinedTextField(
                 value = draft.country,
                 onValueChange = { onDraftChange(draft.copy(country = it)) },
                 label = stringResource(R.string.contact_address_country),
-                autofillType = AutofillType.AddressCountry,
+                contentType = ContentType.AddressCountry,
                 modifier = Modifier.weight(1f),
             )
         }

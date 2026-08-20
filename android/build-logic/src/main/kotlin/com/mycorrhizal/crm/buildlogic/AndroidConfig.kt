@@ -25,9 +25,16 @@ import org.gradle.api.artifacts.VersionCatalogsExtension
  * function mutates through the getter objects so it works on either.
  */
 internal object AndroidConfig {
-    const val COMPILE_SDK = 35
+    // Bumped 35 -> 37 alongside the composeBom update: 2026.08.00's
+    // compose-ui/foundation/runtime artifacts require compileSdk 37+.
+    // Robolectric unit tests are unaffected -- they pin their own simulated
+    // SDK independently (configureAndroidTestCommon's enabledSdks below, and
+    // each test class's own `@Config(sdk = [35])`), so this only changes what
+    // platform APIs the real app compiles/targets against, not what SDK the
+    // test JVM emulates.
+    const val COMPILE_SDK = 37
     const val MIN_SDK = 26
-    const val TARGET_SDK = 35
+    const val TARGET_SDK = 37
 }
 
 /** Applies the Android/JVM/test baseline to any android module. */

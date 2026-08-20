@@ -31,6 +31,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.autofill.ContentType
+import androidx.compose.ui.platform.LocalAutofillManager
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
@@ -43,6 +45,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.AutofillOutlinedTextField
 
 @Composable
 fun LoginScreen(
@@ -59,11 +62,22 @@ fun LoginScreen(
     viewModel: LoginViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val autofillManager = LocalAutofillManager.current
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
-                LoginEvent.LoggedIn -> onLoggedIn()
+                LoginEvent.LoggedIn -> {
+                    // Nothing tagged ContentType.NewUsername/NewPassword here
+                    // (this is sign-in, not account creation — see
+                    // RegisterScreen for that), so there's no "new credential"
+                    // capture step. commit() is still what tells the platform
+                    // the just-submitted Username/Password fields were used
+                    // successfully, which is what triggers the "save to
+                    // password manager" prompt for a first-time login.
+                    autofillManager?.commit()
+                    onLoggedIn()
+                }
                 LoginEvent.ServerUrlUpdated -> Unit
             }
         }
@@ -167,20 +181,21 @@ fun LoginScreenContent(
             }
 
             if (uiState.mode == LoginMode.PASSWORD) {
-                OutlinedTextField(
+                // The field accepts either a username or an email, so offer
+                // both content types — a password manager matches whichever
+                // it has saved for this site.
+                AutofillOutlinedTextField(
                     value = identifier,
                     onValueChange = { identifier = it },
-                    label = { Text(stringResource(R.string.login_username_or_email)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    label = stringResource(R.string.login_username_or_email),
+                    contentType = ContentType.Username + ContentType.EmailAddress,
                 )
-                OutlinedTextField(
+                AutofillOutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
-                    label = { Text(stringResource(R.string.login_mode_password)) },
-                    singleLine = true,
+                    label = stringResource(R.string.login_mode_password),
+                    contentType = ContentType.Password,
                     visualTransformation = PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth(),
                 )
             } else {
                 OutlinedTextField(

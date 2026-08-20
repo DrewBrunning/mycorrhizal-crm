@@ -13,7 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import com.mycorrhizal.crm.domain.repository.ActivityRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.model.network.ContactSummary
@@ -120,7 +120,6 @@ private fun QuickCaptureSheetHost(
     onFirstInteraction: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
     var contact by remember(phoneNumber) { mutableStateOf<ContactSummary?>(null) }
     var resolved by remember(phoneNumber) { mutableStateOf(phoneNumber.isNullOrBlank()) }
 
@@ -131,7 +130,11 @@ private fun QuickCaptureSheetHost(
         resolved = true
     }
 
-    val formState = remember(contact, resolved) {
+    // stringResource (not LocalContext.current.getString) so a Configuration
+    // change (locale) invalidates this instead of leaving a stale string
+    // baked into the remembered FormState -- lint's LocalContextGetResourceValueCall.
+    val blankTitleMessage = stringResource(R.string.quick_capture_title_required)
+    val formState = remember(contact, resolved, blankTitleMessage) {
         QuickCaptureFormState(
             activityRepository = activityRepository,
             scope = scope,
@@ -139,7 +142,7 @@ private fun QuickCaptureSheetHost(
                 contact = contact,
                 nowIso = nowIsoString(),
             ),
-            blankTitleMessage = context.getString(R.string.quick_capture_title_required),
+            blankTitleMessage = blankTitleMessage,
             onFirstInteraction = onFirstInteraction,
         )
     }

@@ -3,10 +3,10 @@ package com.mycorrhizal.crm.feature.contacts
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.ExperimentalComposeUiApi
-import androidx.compose.ui.autofill.AutofillTree
-import androidx.compose.ui.autofill.AutofillType
-import androidx.compose.ui.platform.LocalAutofillTree
+import androidx.compose.ui.autofill.ContentType
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
@@ -22,9 +22,7 @@ import com.mycorrhizal.crm.ui.components.MultiValueEditor
 import com.mycorrhizal.crm.ui.components.PhoneSpec
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -143,57 +141,52 @@ class MultiValueEditorTest {
     }
 
     // --- T115: Android autofill hints --------------------------------------
-    // The contact form's fields (via AutofillOutlinedTextField) must advertise
-    // their AutofillType and route a framework fill into the field's own state
-    // (the same onValueChange a keystroke uses), so a fill goes through the
-    // normal save/validation path.
+    // The contact form's fields (via AutofillOutlinedTextField) advertise a
+    // semantics ContentType so the platform Autofill framework can offer a
+    // fill. This is Compose's stable (since UI 1.8.0) semantics-based
+    // Autofill API -- it replaced the old experimental AutofillNode/
+    // LocalAutofillTree API these tests used to drive directly (registering
+    // a node, then manually invoking its onFill to simulate a framework
+    // fill). The new API has no public equivalent hook: delivery happens
+    // through the platform's real AutofillManager/View#autofill() plumbing,
+    // which isn't something a Robolectric unit test can trigger. What's left
+    // to pin here is the wiring this component controls: the right
+    // ContentType lands in the field's semantics, or none does when the spec
+    // has no standard hint. `onValueChange` itself is already covered by the
+    // plain typing tests above (e.g. "typing a value copies the entry...").
 
-    @OptIn(ExperimentalComposeUiApi::class)
     @Test
-    fun `autofill field registers its type and routes a fill to the value`() {
+    fun `autofill field advertises its content type`() {
         var text by mutableStateOf("")
-        var tree: AutofillTree? = null
         composeTestRule.setContent {
             MycorrhizalTheme {
-                tree = LocalAutofillTree.current
                 AutofillOutlinedTextField(
                     value = text,
                     onValueChange = { text = it },
                     label = "Given name",
-                    autofillType = AutofillType.PersonFirstName,
+                    contentType = ContentType.PersonFirstName,
                 )
             }
         }
-        composeTestRule.waitForIdle()
 
-        val registered = tree?.children?.values?.singleOrNull()
-        assertNotNull("field must register exactly one AutofillNode", registered)
-        assertEquals(listOf(AutofillType.PersonFirstName), registered!!.autofillTypes)
-
-        // Simulate the framework filling the field.
-        registered.onFill?.invoke("Jordan")
-        assertEquals("Jordan", text)
+        composeTestRule.onNodeWithText("Given name")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.ContentType, ContentType.PersonFirstName))
     }
 
-    @OptIn(ExperimentalComposeUiApi::class)
     @Test
-    fun `autofill field without a type registers without hints`() {
-        var tree: AutofillTree? = null
+    fun `autofill field without a type carries no content type semantics`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                tree = LocalAutofillTree.current
                 AutofillOutlinedTextField(
                     value = "",
                     onValueChange = {},
                     label = "No hint",
-                    autofillType = null,
+                    contentType = null,
                 )
             }
         }
-        composeTestRule.waitForIdle()
 
-        val registered = tree?.children?.values?.singleOrNull()
-        assertNotNull(registered)
-        assertTrue("no-type node carries an empty hint list", registered!!.autofillTypes.isEmpty())
+        composeTestRule.onNodeWithText("No hint")
+            .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.ContentType))
     }
 }
