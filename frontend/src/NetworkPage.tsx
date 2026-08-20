@@ -22,10 +22,12 @@ import {
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import NetworkGraph from './components/NetworkGraph';
 import NetworkLegend from './components/NetworkLegend';
+import NetworkListView from './components/NetworkListView';
 import EditTimelineItemDialog from './components/EditTimelineItemDialog';
 import { useGraph } from './hooks/useGraph';
 import { useCircles } from './hooks/useCircles';
 import { GraphNode } from './types/graph';
+import { computeFilteredGraphData } from './utils/networkGraphData';
 import { Activity, getActivity, updateActivity, deleteActivity } from './api/activities';
 import { Contact, getAllContacts } from './api/contacts';
 
@@ -95,6 +97,22 @@ export default function NetworkPage() {
     if (!data) return [];
     return data.nodes.filter(n => n.type === 'contact').sort((a, b) => a.label.localeCompare(b.label));
   }, [data]);
+
+  // The same filtered node/edge set NetworkGraph draws to canvas -- computed
+  // here too (rather than read back from the graph) so the accessible list
+  // view (#189) renders from the identical pure function and inputs, and can
+  // never disagree with what the canvas shows.
+  const filteredGraphData = useMemo(() => {
+    if (!data) return { nodes: [], links: [] };
+    return computeFilteredGraphData(data, {
+      selectedCircle: selectedCircle || undefined,
+      showRelationships,
+      showActivities,
+      showCircles,
+      centeredNodeId: centeredNodeId ?? undefined,
+      circleNamesByUid,
+    });
+  }, [data, selectedCircle, showRelationships, showActivities, showCircles, centeredNodeId, circleNamesByUid]);
 
   // Handle node click - navigate to contact detail
   const handleNodeClick = (node: GraphNode) => {
@@ -187,9 +205,12 @@ export default function NetworkPage() {
   return (
     // On phone widths the column of controls is taller than the viewport, so
     // the page itself must be allowed to grow and scroll — pinning it to
-    // `100vh - chrome` clips the graph card (T32). On md+ the graph keeps the
-    // fixed-height, no-page-scroll layout.
-    <Box sx={{ height: { xs: 'auto', md: 'calc(100vh - 100px)' }, display: 'flex', flexDirection: 'column', mt: 2, p: 2, maxWidth: '100%' }}>
+    // `100vh - chrome` clips the graph card (T32). On md+ the graph card
+    // still targets that height via minHeight (not height), so it keeps
+    // filling the viewport as before, but the container is no longer capped
+    // there -- the always-in-DOM list view (#189) that follows the graph
+    // needs the page free to grow and scroll past that point too.
+    <Box sx={{ minHeight: { xs: 'auto', md: 'calc(100vh - 100px)' }, display: 'flex', flexDirection: 'column', mt: 2, p: 2, maxWidth: '100%' }}>
       <Typography variant="h5" component="h1" gutterBottom sx={{ mb: 2 }}>
         {t('network.title')}
       </Typography>
@@ -297,6 +318,13 @@ export default function NetworkPage() {
           circleNamesByUid={circleNamesByUid}
         />
       </Card>
+
+      <NetworkListView
+        nodes={filteredGraphData.nodes}
+        links={filteredGraphData.links}
+        onContactClick={handleNodeClick}
+      />
+
       {editingActivity && (
         <EditTimelineItemDialog
           open

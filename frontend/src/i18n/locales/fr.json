@@ -1329,7 +1329,19 @@
       "circleEdge": "Appartenance à un cercle"
     },
     "filterByContact": "Centrer sur le contact",
-    "showCircles": "Cercles"
+    "showCircles": "Cercles",
+    "graphSummary": "Diagramme du réseau : {{contacts}} contacts, {{activities}} activités, {{circles}} cercles, {{connections}} connexions. La même information est disponible dans la vue en liste ci-dessous.",
+    "listView": "Réseau en liste",
+    "connectionRelationship": "{{type}} : {{name}}",
+    "connectionActivity": "A participé à {{title}}",
+    "connectionCircle": "Membre de {{circle}}",
+    "zoomIn": "Zoomer",
+    "zoomOut": "Dézoomer",
+    "resetView": "Réinitialiser la vue",
+    "panUp": "Déplacer vers le haut",
+    "panDown": "Déplacer vers le bas",
+    "panLeft": "Déplacer vers la gauche",
+    "panRight": "Déplacer vers la droite"
   },
   "relationships": {
     "title": "Relations",

@@ -1,9 +1,17 @@
 import { useRef, useCallback, useMemo, useEffect, useState } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import { forceX, forceY } from 'd3-force';
-import { useTheme, Box, Typography, useMediaQuery } from '@mui/material';
+import { useTheme, Box, Typography, IconButton, useMediaQuery } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import RemoveIcon from '@mui/icons-material/Remove';
+import CenterFocusStrongIcon from '@mui/icons-material/CenterFocusStrong';
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
+import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 import { useTranslation } from 'react-i18next';
 import { GraphData, GraphNode, GraphEdge } from '../types/graph';
+import { computeFilteredGraphData } from '../utils/networkGraphData';
 
 interface NetworkGraphProps {
   data: GraphData;
@@ -49,6 +57,10 @@ export default function NetworkGraph({
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  // #194: under reduced motion, settle the force simulation instantly and
+  // skip the initial zoom-to-fit animation instead of running them
+  // regardless of the OS setting (WCAG 2.3.3, AAA).
+  const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
 
   // Colors from theme
   const relationshipColor = theme.palette.primary.main;
@@ -82,124 +94,14 @@ export default function NetworkGraph({
     };
   }, []);
 
-  // Filter and transform data for the graph, including synthetic circle nodes/edges
-  const graphData: ForceGraphData = useMemo(() => {
-    let filteredNodes = data.nodes;
-
-    // Filter by circle if selected
-    if (selectedCircle) {
-      const contactsInCircle = new Set(
-        data.nodes
-          .filter(n => {
-            if (n.type !== 'contact' || !circleNamesByUid) return false;
-            const contactId = n.id.replace('c-', '');
-            return (circleNamesByUid.get(contactId) || []).includes(selectedCircle);
-          })
-          .map(n => n.id)
-      );
-
-      // Include contacts in circle and activities that have at least 2 contacts in the circle
-      filteredNodes = data.nodes.filter(n => {
-        if (n.type === 'contact') {
-          return contactsInCircle.has(n.id);
-        }
-        // For activities, check if they connect contacts in this circle
-        const activityEdges = data.edges.filter(
-          e => e.type === 'activity' &&
-          (typeof e.source === 'string' ? e.source : e.source.id) === n.id
-        );
-        const connectedContacts = activityEdges.filter(e => {
-          const targetId = typeof e.target === 'string' ? e.target : e.target.id;
-          return contactsInCircle.has(targetId);
-        });
-        return connectedContacts.length >= 2;
-      });
-    }
-
-    // Hide activity nodes when the activities toggle is off
-    if (!showActivities) {
-      filteredNodes = filteredNodes.filter(n => n.type !== 'activity');
-    }
-
-    const nodeIds = new Set(filteredNodes.map(n => n.id));
-
-    // Filter edges based on visibility toggles and filtered nodes
-    let filteredEdges = data.edges.filter(e => {
-      const sourceId = typeof e.source === 'string' ? e.source : e.source.id;
-      const targetId = typeof e.target === 'string' ? e.target : e.target.id;
-
-      if (!nodeIds.has(sourceId) || !nodeIds.has(targetId)) return false;
-      if (e.type === 'relationship' && !showRelationships) return false;
-      return true;
-    });
-
-    // Synthesize circle nodes and edges from contact circle memberships
-    if (showCircles && circleNamesByUid) {
-      const visibleContacts = filteredNodes.filter(n => n.type === 'contact');
-
-      // Count contacts per circle
-      const circleContactMap = new Map<string, string[]>();
-      visibleContacts.forEach(contact => {
-        const contactId = contact.id.replace('c-', '');
-        const names = circleNamesByUid.get(contactId) || [];
-        names.forEach(circleName => {
-          const existing = circleContactMap.get(circleName) ?? [];
-          existing.push(contact.id);
-          circleContactMap.set(circleName, existing);
-        });
-      });
-
-      const circleNodes: GraphNode[] = [];
-      const circleEdges: GraphEdge[] = [];
-
-      circleContactMap.forEach((contactIds, circleName) => {
-        if (contactIds.length < 2) return; // only show circles that connect people
-
-        const circleNodeId = `circle-${circleName}`;
-        circleNodes.push({
-          id: circleNodeId,
-          type: 'circle',
-          label: circleName,
-        });
-
-        contactIds.forEach(contactId => {
-          circleEdges.push({
-            id: `ce-${contactId}-${circleName}`,
-            type: 'circle',
-            source: contactId,
-            target: circleNodeId,
-            label: circleName,
-          });
-        });
-      });
-
-      filteredNodes = [...filteredNodes, ...circleNodes];
-      filteredEdges = [...filteredEdges, ...circleEdges];
-    }
-
-    if (centeredNodeId) {
-      const directNeighbors = new Set<string>([centeredNodeId]);
-
-      filteredEdges.forEach(e => {
-        const srcId = typeof e.source === 'string' ? e.source : e.source.id;
-        const tgtId = typeof e.target === 'string' ? e.target : e.target.id;
-        if (srcId === centeredNodeId) directNeighbors.add(tgtId);
-        if (tgtId === centeredNodeId) directNeighbors.add(srcId);
-      });
-
-      filteredNodes = filteredNodes.filter(n => directNeighbors.has(n.id));
-      filteredEdges = filteredEdges.filter(e => {
-        const srcId = typeof e.source === 'string' ? e.source : e.source.id;
-        const tgtId = typeof e.target === 'string' ? e.target : e.target.id;
-        return directNeighbors.has(srcId) && directNeighbors.has(tgtId);
-      });
-    }
-
-    return {
-      nodes: filteredNodes,
-      links: filteredEdges,
-    };
-  }, [data, selectedCircle, showRelationships, showActivities, showCircles, centeredNodeId]);
+  // Filter and transform data for the graph, including synthetic circle
+  // nodes/edges. Delegates to the shared computeFilteredGraphData so
+  // NetworkPage's accessible list view (T189) filters identically -- same
+  // pure function, same inputs, so the two can never disagree.
+  const graphData: ForceGraphData = useMemo(
+    () => computeFilteredGraphData(data, { selectedCircle, showRelationships, showActivities, showCircles, centeredNodeId, circleNamesByUid }),
+    [data, selectedCircle, showRelationships, showActivities, showCircles, centeredNodeId, circleNamesByUid]
+  );
 
   // Center and zoom to selected node when centeredNodeId changes
   useEffect(() => {
@@ -317,10 +219,42 @@ export default function NetworkGraph({
   useEffect(() => {
     if (graphRef.current && graphData.nodes.length > 0) {
       setTimeout(() => {
-        graphRef.current?.zoomToFit(400, isMobile ? 50 : 80);
+        graphRef.current?.zoomToFit(prefersReducedMotion ? 0 : 400, isMobile ? 50 : 80);
       }, 500);
     }
-  }, [graphData.nodes.length, isMobile]);
+  }, [graphData.nodes.length, isMobile, prefersReducedMotion]);
+
+  // Non-drag alternatives for pan/zoom (#190, WCAG 2.5.7 Dragging Movements).
+  // enableNodeDrag is left drag-only and deliberately has no button
+  // equivalent: it only repositions a node within the force simulation for
+  // the current session, nothing reads or persists node.x/node.y anywhere in
+  // this codebase (confirmed via grep across api/ and hooks/), so there is no
+  // state a keyboard/single-pointer user would be locked out of reaching.
+  const handleZoomIn = useCallback(() => {
+    const fg = graphRef.current;
+    if (!fg) return;
+    fg.zoom(fg.zoom() * 1.3, 250);
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    const fg = graphRef.current;
+    if (!fg) return;
+    fg.zoom(fg.zoom() / 1.3, 250);
+  }, []);
+
+  const handleResetView = useCallback(() => {
+    graphRef.current?.zoomToFit(400, isMobile ? 50 : 80);
+  }, [isMobile]);
+
+  const handlePan = useCallback((dx: number, dy: number) => {
+    const fg = graphRef.current;
+    if (!fg) return;
+    const { x, y } = fg.centerAt();
+    // Step scales inversely with zoom so a pan press moves roughly the same
+    // distance on screen regardless of how zoomed in the view currently is.
+    const step = 120 / fg.zoom();
+    fg.centerAt(x + dx * step, y + dy * step, 250);
+  }, []);
 
   const getEdgeTypeLabel = (type: string) => {
     if (type === 'relationship') return t('network.legend.relationships');
@@ -328,36 +262,61 @@ export default function NetworkGraph({
     return t('network.legend.circleEdge');
   };
 
+  // The canvas paints straight to pixels with no DOM text content -- role="img"
+  // plus a localised, data-driven aria-label makes it a text alternative
+  // (1.1.1) instead of leaving it invisible to assistive tech. The full data
+  // is also available, always in the DOM, in NetworkPage's list view below
+  // the graph, so the tooltip and canvas interactions stay pointer-only by
+  // design (see #189) -- do not add tabindex here.
+  //
+  // Scoped to a Box that wraps ONLY the canvas, not the pan/zoom controls
+  // (#190): the WAI-ARIA spec explicitly says a role="img" element's
+  // descendants aren't guaranteed to be exposed to assistive tech ("authors
+  // SHOULD NOT expect user agents to expose descendants"), so real
+  // interactive controls must stay siblings of the img-role node, never
+  // nested inside it, or a screen reader user could lose the buttons this
+  // ticket exists to add.
+  const graphSummary = t('network.graphSummary', {
+    contacts: graphData.nodes.filter(n => n.type === 'contact').length,
+    activities: graphData.nodes.filter(n => n.type === 'activity').length,
+    circles: graphData.nodes.filter(n => n.type === 'circle').length,
+    connections: graphData.links.length,
+  });
+
   return (
     <Box ref={containerRef} sx={{ width: '100%', height: '100%', position: 'relative' }}>
-      <ForceGraph2D
-        ref={graphRef}
-        width={dimensions.width}
-        height={dimensions.height}
-        graphData={graphData}
-        nodeCanvasObject={nodeCanvasObject}
-        nodePointerAreaPaint={(node: GraphNode, color, ctx) => {
-          const size = getNodeSize(node.type);
-          ctx.beginPath();
-          ctx.arc(node.x || 0, node.y || 0, size + 4, 0, 2 * Math.PI);
-          ctx.fillStyle = color;
-          ctx.fill();
-        }}
-        linkColor={linkColor}
-        linkWidth={2}
-        linkDirectionalArrowLength={0}
-        onNodeClick={handleNodeClick}
-        onNodeHover={handleNodeHover}
-        onLinkHover={handleLinkHover}
-        cooldownTicks={100}
-        enableNodeDrag={true}
-        enableZoomInteraction={true}
-        enablePanInteraction={true}
-        backgroundColor={bgColor}
-        nodeId="id"
-        linkSource="source"
-        linkTarget="target"
-      />
+      <Box role="img" aria-label={graphSummary}>
+        <ForceGraph2D
+          ref={graphRef}
+          width={dimensions.width}
+          height={dimensions.height}
+          graphData={graphData}
+          nodeCanvasObject={nodeCanvasObject}
+          nodePointerAreaPaint={(node: GraphNode, color, ctx) => {
+            const size = getNodeSize(node.type);
+            ctx.beginPath();
+            ctx.arc(node.x || 0, node.y || 0, size + 4, 0, 2 * Math.PI);
+            ctx.fillStyle = color;
+            ctx.fill();
+          }}
+          linkColor={linkColor}
+          linkWidth={2}
+          linkDirectionalArrowLength={0}
+          onNodeClick={handleNodeClick}
+          onNodeHover={handleNodeHover}
+          onLinkHover={handleLinkHover}
+          cooldownTicks={prefersReducedMotion ? 0 : 100}
+          // Cosmetic-only, session-local repositioning -- see the handlePan/
+          // handleZoomIn comment above for why this has no button equivalent.
+          enableNodeDrag={true}
+          enableZoomInteraction={true}
+          enablePanInteraction={true}
+          backgroundColor={bgColor}
+          nodeId="id"
+          linkSource="source"
+          linkTarget="target"
+        />
+      </Box>
 
       {/* Node / edge tooltip */}
       {(hoveredNode || hoveredEdge) && (
@@ -398,6 +357,90 @@ export default function NetworkGraph({
           ) : null}
         </Box>
       )}
+
+      {/* Non-drag pan/zoom controls (#190) -- every transform reachable by
+          drag or wheel is also reachable by a single click/keyboard press. */}
+      <Box
+        sx={{
+          position: 'absolute',
+          bottom: 8,
+          right: 8,
+          zIndex: 10,
+          bgcolor: 'background.paper',
+          borderRadius: 1,
+          boxShadow: 2,
+          p: 0.5,
+        }}
+      >
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gridTemplateRows: 'repeat(3, 1fr)',
+            width: 96,
+            height: 96,
+          }}
+        >
+          <IconButton
+            size="small"
+            aria-label={t('network.panUp')}
+            onClick={() => handlePan(0, -1)}
+            sx={{ gridColumn: 2, gridRow: 1, minWidth: 24, minHeight: 24 }}
+          >
+            <KeyboardArrowUpIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            size="small"
+            aria-label={t('network.panLeft')}
+            onClick={() => handlePan(-1, 0)}
+            sx={{ gridColumn: 1, gridRow: 2, minWidth: 24, minHeight: 24 }}
+          >
+            <KeyboardArrowLeftIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            size="small"
+            aria-label={t('network.resetView')}
+            onClick={handleResetView}
+            sx={{ gridColumn: 2, gridRow: 2, minWidth: 24, minHeight: 24 }}
+          >
+            <CenterFocusStrongIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            size="small"
+            aria-label={t('network.panRight')}
+            onClick={() => handlePan(1, 0)}
+            sx={{ gridColumn: 3, gridRow: 2, minWidth: 24, minHeight: 24 }}
+          >
+            <KeyboardArrowRightIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            size="small"
+            aria-label={t('network.panDown')}
+            onClick={() => handlePan(0, 1)}
+            sx={{ gridColumn: 2, gridRow: 3, minWidth: 24, minHeight: 24 }}
+          >
+            <KeyboardArrowDownIcon fontSize="small" />
+          </IconButton>
+        </Box>
+        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5, mt: 0.5 }}>
+          <IconButton
+            size="small"
+            aria-label={t('network.zoomIn')}
+            onClick={handleZoomIn}
+            sx={{ minWidth: 24, minHeight: 24 }}
+          >
+            <AddIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            size="small"
+            aria-label={t('network.zoomOut')}
+            onClick={handleZoomOut}
+            sx={{ minWidth: 24, minHeight: 24 }}
+          >
+            <RemoveIcon fontSize="small" />
+          </IconButton>
+        </Box>
+      </Box>
     </Box>
   );
 }
