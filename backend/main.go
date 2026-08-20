@@ -1,3 +1,4 @@
+// CI path-gating verification (issue #264) — throwaway backend-only change.
 package main
 
 import (
