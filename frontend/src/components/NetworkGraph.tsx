@@ -268,6 +268,14 @@ export default function NetworkGraph({
   // is also available, always in the DOM, in NetworkPage's list view below
   // the graph, so the tooltip and canvas interactions stay pointer-only by
   // design (see #189) -- do not add tabindex here.
+  //
+  // Scoped to a Box that wraps ONLY the canvas, not the pan/zoom controls
+  // (#190): the WAI-ARIA spec explicitly says a role="img" element's
+  // descendants aren't guaranteed to be exposed to assistive tech ("authors
+  // SHOULD NOT expect user agents to expose descendants"), so real
+  // interactive controls must stay siblings of the img-role node, never
+  // nested inside it, or a screen reader user could lose the buttons this
+  // ticket exists to add.
   const graphSummary = t('network.graphSummary', {
     contacts: graphData.nodes.filter(n => n.type === 'contact').length,
     activities: graphData.nodes.filter(n => n.type === 'activity').length,
@@ -276,42 +284,39 @@ export default function NetworkGraph({
   });
 
   return (
-    <Box
-      ref={containerRef}
-      role="img"
-      aria-label={graphSummary}
-      sx={{ width: '100%', height: '100%', position: 'relative' }}
-    >
-      <ForceGraph2D
-        ref={graphRef}
-        width={dimensions.width}
-        height={dimensions.height}
-        graphData={graphData}
-        nodeCanvasObject={nodeCanvasObject}
-        nodePointerAreaPaint={(node: GraphNode, color, ctx) => {
-          const size = getNodeSize(node.type);
-          ctx.beginPath();
-          ctx.arc(node.x || 0, node.y || 0, size + 4, 0, 2 * Math.PI);
-          ctx.fillStyle = color;
-          ctx.fill();
-        }}
-        linkColor={linkColor}
-        linkWidth={2}
-        linkDirectionalArrowLength={0}
-        onNodeClick={handleNodeClick}
-        onNodeHover={handleNodeHover}
-        onLinkHover={handleLinkHover}
-        cooldownTicks={prefersReducedMotion ? 0 : 100}
-        // Cosmetic-only, session-local repositioning -- see the handlePan/
-        // handleZoomIn comment above for why this has no button equivalent.
-        enableNodeDrag={true}
-        enableZoomInteraction={true}
-        enablePanInteraction={true}
-        backgroundColor={bgColor}
-        nodeId="id"
-        linkSource="source"
-        linkTarget="target"
-      />
+    <Box ref={containerRef} sx={{ width: '100%', height: '100%', position: 'relative' }}>
+      <Box role="img" aria-label={graphSummary}>
+        <ForceGraph2D
+          ref={graphRef}
+          width={dimensions.width}
+          height={dimensions.height}
+          graphData={graphData}
+          nodeCanvasObject={nodeCanvasObject}
+          nodePointerAreaPaint={(node: GraphNode, color, ctx) => {
+            const size = getNodeSize(node.type);
+            ctx.beginPath();
+            ctx.arc(node.x || 0, node.y || 0, size + 4, 0, 2 * Math.PI);
+            ctx.fillStyle = color;
+            ctx.fill();
+          }}
+          linkColor={linkColor}
+          linkWidth={2}
+          linkDirectionalArrowLength={0}
+          onNodeClick={handleNodeClick}
+          onNodeHover={handleNodeHover}
+          onLinkHover={handleLinkHover}
+          cooldownTicks={prefersReducedMotion ? 0 : 100}
+          // Cosmetic-only, session-local repositioning -- see the handlePan/
+          // handleZoomIn comment above for why this has no button equivalent.
+          enableNodeDrag={true}
+          enableZoomInteraction={true}
+          enablePanInteraction={true}
+          backgroundColor={bgColor}
+          nodeId="id"
+          linkSource="source"
+          linkTarget="target"
+        />
+      </Box>
 
       {/* Node / edge tooltip */}
       {(hoveredNode || hoveredEdge) && (
