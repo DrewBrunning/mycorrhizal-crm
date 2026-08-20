@@ -78,7 +78,7 @@ jobs:
 
       - name: Run tests
         working-directory: backend
-        run: go test ./...
+        run: go test -race ./...
 
       - name: Vulnerability scan (govulncheck)
         working-directory: backend
