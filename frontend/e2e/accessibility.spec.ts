@@ -1,6 +1,13 @@
-import { test, expect, LOGGED_OUT, createTestContact, deleteTestContact } from './fixtures';
+import {
+  test,
+  expect,
+  LOGGED_OUT,
+  createTestContact,
+  deleteTestContact,
+  assertNoBlockingA11yViolations,
+  SKIP_A11Y_SCAN,
+} from './fixtures';
 import { waitForLoading } from './fixtures';
-import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
 import { request as apiRequest } from '@playwright/test';
 import { API_BASE_URL } from './global-setup';
@@ -16,6 +23,12 @@ import { API_BASE_URL } from './global-setup';
  * Only `critical` and `serious` impact block. The audit also found `moderate`
  * findings (`region`, `page-has-heading-one`, `heading-order`, #211); tighten
  * the filter to include them once those fixes land.
+ *
+ * Every test below already ends with an explicit, targeted
+ * `assertNoBlockingA11yViolations` call (scoped to a route, theme, or dialog
+ * subtree) -- fixtures.ts's automatic per-test scan (issue #259) would just
+ * re-scan the exact same final page state a second time for zero added
+ * coverage, so this whole file opts out of it.
  */
 
 // ---------------------------------------------------------------------------
@@ -51,30 +64,12 @@ const LOGGED_OUT_ROUTES: Array<[string, string]> = [
 const THEMES = ['light', 'dark'] as const;
 type Theme = (typeof THEMES)[number];
 
-const BLOCKING_IMPACTS = ['critical', 'serious'];
-
-// axe-core tags that map to the WCAG 2.0/2.1/2.2 A+AA levels the audit ran.
-const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
-
-async function assertNoBlockingViolations(page: Page, context?: string): Promise<void> {
-  const builder = new AxeBuilder({ page }).withTags(WCAG_TAGS);
-  if (context) {
-    // Scan only the dialog, not the page it sits over — the audit's first
-    // pass missed dialogs entirely because it only scanned page loads.
-    builder.include(context);
-  }
-  const results = await builder.analyze();
-  const blocking = results.violations.filter(
-    (v) => BLOCKING_IMPACTS.includes(v.impact ?? '')
-  );
-  const detail = blocking.map((v) => ({
-    id: v.id,
-    impact: v.impact,
-    nodes: v.nodes.length,
-    firstTarget: v.nodes[0]?.target,
-  }));
-  expect(blocking, JSON.stringify(detail, null, 2)).toEqual([]);
-}
+// assertNoBlockingViolations here is just fixtures.ts's shared
+// assertNoBlockingA11yViolations under its old local name — scanning only
+// the dialog (not the page it sits over) when `context` is passed is
+// implemented there now, shared with the automatic per-test scan so the two
+// can never define "blocking" differently.
+const assertNoBlockingViolations = assertNoBlockingA11yViolations;
 
 async function gotoWithTheme(page: Page, route: string, theme: Theme): Promise<void> {
   await page.addInitScript((t) => localStorage.setItem('themePreference', t), theme);
@@ -137,7 +132,7 @@ test.afterAll(async () => {
   }
 });
 
-test.describe('accessibility route scans', () => {
+test.describe('accessibility route scans', { annotation: { type: SKIP_A11Y_SCAN, description: 'already scans explicitly per route/theme' } }, () => {
   test.describe('authenticated routes', () => {
     for (const theme of THEMES) {
       for (const [name, route] of AUTH_ROUTES) {
@@ -163,7 +158,7 @@ test.describe('accessibility route scans', () => {
   });
 });
 
-test.describe('accessibility dialog scans', () => {
+test.describe('accessibility dialog scans', { annotation: { type: SKIP_A11Y_SCAN, description: 'already scans explicitly per dialog/theme' } }, () => {
   // The audit's first pass only scanned page loads and missed every dialog.
   // Scan the dialog element itself (not the page behind it), in both themes —
   // color-contrast findings are theme-dependent, so a light-only pass could

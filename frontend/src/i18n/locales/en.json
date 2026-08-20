@@ -1005,7 +1005,9 @@
     "urlPlaceholder": "Paste image URL...",
     "fetch": "Fetch",
     "urlFetchError": "Failed to fetch image from URL",
-    "chooseFromImmich": "Choose from Immich"
+    "chooseFromImmich": "Choose from Immich",
+    "altText": "{{name}}'s profile photo",
+    "altTextGeneric": "Profile photo"
   },
   "settings": {
     "title": "Settings",

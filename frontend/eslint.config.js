@@ -78,4 +78,16 @@ export default tseslint.config(
       'security/detect-non-literal-regexp': 'off',
     },
   },
+  {
+    // fixtures.ts's `page` fixture override (issue #259's automatic a11y
+    // scan) has a `(fixtures, use, testInfo) => {...}` signature per
+    // Playwright's own fixture convention. eslint-plugin-react-hooks
+    // pattern-matches any function param literally named `use` as a React
+    // Hook call and misfires rules-of-hooks on it — this file has no JSX and
+    // no actual React hooks, so the rule has nothing real to protect here.
+    files: ['e2e/fixtures.ts'],
+    rules: {
+      'react-hooks/rules-of-hooks': 'off',
+    },
+  },
 );

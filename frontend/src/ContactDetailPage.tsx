@@ -250,6 +250,11 @@ function ContactJumpNav({ ariaLabel, sections }: { ariaLabel: string; sections: 
           onChange={handleSelectChange}
           sx={{ '& .MuiSelect-select': { py: 0.75 } }}
           renderValue={() => ariaLabel}
+          // The `nav`'s aria-label above names the landmark, not this
+          // control -- axe's aria-input-field-name rule (issue #259) checks
+          // the combobox itself, which MUI otherwise renders with no
+          // accessible name of its own.
+          inputProps={{ 'aria-label': ariaLabel }}
         >
           {sections.map((s) => (
             <MenuItem key={s.id} value={s.id}>
