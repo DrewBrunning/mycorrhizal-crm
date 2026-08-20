@@ -61,6 +61,13 @@ class ContactDetailScreenTest {
         }
     }
 
+    /**
+     * Scrolls the lazy list until a node matching [text] is composed (off-screen items aren't),
+     * returning that scroll's node so callers can chain e.g. `.assertIsDisplayed()`.
+     */
+    private fun scrollTo(text: String) =
+        composeTestRule.onNodeWithTag("contact-detail-list").performScrollToNode(hasText(text))
+
     // --- Issue #212: header star toggle (web #173) ---------------------------
 
     @Test
@@ -371,12 +378,8 @@ class ContactDetailScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithTag("contact-detail-list")
-            .performScrollToNode(hasText("Coffee order: Latte"))
-            .assertIsDisplayed()
-        composeTestRule.onNodeWithTag("contact-detail-list")
-            .performScrollToNode(hasText("Favorite number: 7"))
-            .assertIsDisplayed()
+        scrollTo("Coffee order: Latte").assertIsDisplayed()
+        scrollTo("Favorite number: 7").assertIsDisplayed()
     }
 
     @Test
@@ -438,12 +441,8 @@ class ContactDetailScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithTag("contact-detail-list")
-            .performScrollToNode(hasText("VIP: true"))
-            .assertIsDisplayed()
-        composeTestRule.onNodeWithTag("contact-detail-list")
-            .performScrollToNode(hasText("Milk options: oat; almond"))
-            .assertIsDisplayed()
+        scrollTo("VIP: true").assertIsDisplayed()
+        scrollTo("Milk options: oat; almond").assertIsDisplayed()
     }
 
     // --- M24: inline circle/tag editors ---
@@ -568,8 +567,7 @@ class ContactDetailScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithTag("contact-detail-list")
-            .performScrollToNode(hasText("paperless"))
+        scrollTo("paperless")
         composeTestRule.onNodeWithText("paperless").assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription("Remove link paperless").performClick()
         assertEquals("i1", deleted)
@@ -590,12 +588,9 @@ class ContactDetailScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithTag("contact-detail-list")
-            .performScrollToNode(hasText("Alice"))
+        scrollTo("Alice")
         composeTestRule.onNodeWithText("Alice").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("contact-detail-list")
-            .performScrollToNode(hasText("7 photos"))
-            .assertIsDisplayed()
+        scrollTo("7 photos").assertIsDisplayed()
     }
 
     @Test
@@ -621,12 +616,9 @@ class ContactDetailScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithTag("contact-detail-list")
-            .performScrollToNode(hasText("External Links"))
+        scrollTo("External Links")
         composeTestRule.onNodeWithText("External Links").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("contact-detail-list")
-            .performScrollToNode(hasText("Add Paperless link"))
-            .assertIsDisplayed()
+        scrollTo("Add Paperless link").assertIsDisplayed()
     }
 
     @Test
@@ -638,9 +630,7 @@ class ContactDetailScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithTag("contact-detail-list")
-            .performScrollToNode(hasText("Add Paperless link"))
-            .assertIsDisplayed()
+        scrollTo("Add Paperless link").assertIsDisplayed()
         composeTestRule.onNodeWithText("Add Seafile link").assertDoesNotExist()
         composeTestRule.onNodeWithText("Add Nextcloud link").assertDoesNotExist()
     }
@@ -659,8 +649,7 @@ class ContactDetailScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithTag("contact-detail-list")
-            .performScrollToNode(hasText("Add Seafile link"))
+        scrollTo("Add Seafile link")
         composeTestRule.onNodeWithText("Add Seafile link").performClick()
         assertTrue(tapped)
     }

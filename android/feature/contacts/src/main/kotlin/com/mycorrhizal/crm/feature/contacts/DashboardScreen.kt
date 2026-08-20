@@ -178,19 +178,21 @@ internal fun DashboardContent(
         // be unique across the whole list, not just within its own section --
         // a plain entity id collides the moment the same contact legitimately
         // shows up in two sections (e.g. a favorite that's also drawn into
-        // "stay in touch"). Prefixing each section's key with a section tag
-        // fixed a real crash: "Key '<id>' was already used" on login.
+        // "stay in touch"). dashboardKey() namespaces every section's key by a
+        // section tag so a 6th section can't reintroduce this the way the
+        // first five did: it fixed a real crash, "Key '<id>' was already
+        // used", on login.
         item { DashboardSectionHeader(stringResource(R.string.dashboard_favorites), Icons.Outlined.Star) }
         if (state.favorites.isEmpty()) {
             item { DashboardEmptyRow(stringResource(R.string.dashboard_no_favorites)) }
         } else {
-            items(state.favorites, key = { "favorite-${it.id}" }) { contact ->
+            items(state.favorites, key = { dashboardKey("favorite", it.id) }) { contact ->
                 FavoriteContactRow(contact, onClick = { onOpenContact(contact.id) })
             }
         }
         if (state.overdueCadences.isNotEmpty()) {
             item { DashboardSectionHeader(stringResource(R.string.dashboard_overdue_cadences), Icons.Outlined.Warning) }
-            items(state.overdueCadences, key = { "cadence-${it.policy?.id ?: "contact-${it.contactId}"}" }) { cadence ->
+            items(state.overdueCadences, key = { dashboardKey("cadence", it.sourceId) }) { cadence ->
                 OverdueRow(cadence, dateFormat, onClick = {
                     if (cadence.contactId > 0) onOpenContact(cadence.contactId.toInt())
                 })
@@ -200,7 +202,7 @@ internal fun DashboardContent(
         if (state.birthdays.isEmpty()) {
             item { DashboardEmptyRow(stringResource(R.string.dashboard_no_birthdays)) }
         } else {
-            items(state.birthdays, key = { "birthday-${it.contactId}" }) { birthday ->
+            items(state.birthdays, key = { dashboardKey("birthday", it.contactId) }) { birthday ->
                 BirthdayRow(birthday, dateFormat, onClick = {
                     if (birthday.contactId > 0) onOpenContact(birthday.contactId.toInt())
                 })
@@ -210,7 +212,7 @@ internal fun DashboardContent(
         if (state.upcomingReminders.isEmpty()) {
             item { DashboardEmptyRow(stringResource(R.string.dashboard_no_reminders)) }
         } else {
-            items(state.upcomingReminders, key = { "reminder-${it.id}" }) { reminder ->
+            items(state.upcomingReminders, key = { dashboardKey("reminder", it.id) }) { reminder ->
                 ReminderRow(
                     reminder = reminder,
                     dateFormat = dateFormat,
@@ -225,7 +227,7 @@ internal fun DashboardContent(
         if (state.randomContacts.isEmpty()) {
             item { DashboardEmptyRow(stringResource(R.string.dashboard_no_contacts)) }
         } else {
-            items(state.randomContacts, key = { "random-${it.id}" }) { contact ->
+            items(state.randomContacts, key = { dashboardKey("random", it.id) }) { contact ->
                 RandomContactRow(contact, onClick = { onOpenContact(contact.id) })
             }
         }
@@ -254,6 +256,22 @@ internal fun DashboardContent(
         )
     }
 }
+
+/**
+ * Every DashboardContent section shares one LazyColumn, so a bare entity id
+ * is not a safe key on its own -- the same contact can legitimately appear in
+ * two sections at once (e.g. favorited *and* drawn into "stay in touch"),
+ * and a LazyColumn key must be unique across the whole list, not just within
+ * its own items() block. Routing every section's key through this one
+ * function (rather than each section hand-rolling its own "$section-$id"
+ * literal) means a section added later can't reintroduce the crash this was
+ * built to fix just by forgetting to prefix it.
+ */
+private fun dashboardKey(section: String, id: Any): String = "$section-$id"
+
+/** [OverdueCadence] has no id of its own when [OverdueCadence.policy] is null -- falls back to the contact. */
+private val OverdueCadence.sourceId: String
+    get() = policy?.id ?: "contact-$contactId"
 
 /** Full-screen load failure with retry — replaces the widgets, never shows alongside them. */
 @Composable

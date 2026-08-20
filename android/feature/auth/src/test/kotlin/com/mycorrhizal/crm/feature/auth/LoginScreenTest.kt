@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.auth
 
+import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -84,6 +85,31 @@ class LoginScreenTest {
         composeTestRule.onNodeWithText("Sign in").performScrollTo().performClick()
 
         assertEquals(listOf("https://crm.example.com", "alice", "secret", ""), captured)
+    }
+
+    // Password managers/Autofill match a field by its semantics ContentType,
+    // not its label text -- a typo here (e.g. NewPassword instead of
+    // Password, which tells the OS this is account *creation*) would compile
+    // and pass every other test in this file, since none of them touch
+    // semantics. This is what actually makes autofill work on this screen.
+    //
+    // The identifier field's ContentType is a *combined* one
+    // (Username + EmailAddress) -- verified empirically that
+    // androidx.compose.ui.autofill.ContentType's `+` result has no
+    // equals()/hashCode() override, so two separately-constructed combined
+    // values (this test's vs. LoginScreenContent's) are never
+    // SemanticsMatcher.expectValue-equal even when built from the identical
+    // expression. keyIsDefined is the strongest assertion actually available
+    // for a combined ContentType; the single, non-combined Password field
+    // doesn't have that limitation, so it gets the exact-value assertion.
+    @Test
+    fun `the identifier and password fields advertise their content type`() {
+        setContent()
+
+        composeTestRule.onNodeWithText("Username or email").performScrollTo()
+            .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.ContentType))
+        composeTestRule.onNode(hasText("Password") and hasSetTextAction()).performScrollTo()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.ContentType, ContentType.Password))
     }
 
     @Test

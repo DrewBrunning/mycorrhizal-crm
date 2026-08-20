@@ -46,12 +46,12 @@ fun AutofillOutlinedTextField(
         visualTransformation = visualTransformation,
         modifier = modifier
             .fillMaxWidth()
-            .let { base ->
+            .then(
                 if (contentType != null) {
-                    base.semantics { this.contentType = contentType }
+                    Modifier.semantics { this.contentType = contentType }
                 } else {
-                    base
-                }
-            },
+                    Modifier
+                },
+            ),
     )
 }
