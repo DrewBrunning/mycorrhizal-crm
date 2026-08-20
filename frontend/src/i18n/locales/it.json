@@ -251,6 +251,7 @@
       "create": "Crea",
       "addCircle": "Aggiungi",
       "requiredFields": "Nome e cognome sono obbligatori",
+      "firstNameRequired": "Il nome è obbligatorio",
       "error": "Impossibile creare il contatto. Riprova.",
       "success": "Contatto creato con successo!",
       "createBirthdayReminder": "Crea promemoria compleanno",

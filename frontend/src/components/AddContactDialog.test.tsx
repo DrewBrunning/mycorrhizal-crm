@@ -150,6 +150,60 @@ test('defaults the card language to the UI language when not touched', async () 
   expect(mocked.mock.calls[0][0].card.language).toBe((i18n.language || 'en').split('-')[0]);
 });
 
+// #242: the required-field error must reach assistive tech via a live region,
+// and the invalid field itself must carry aria-invalid/aria-describedby.
+test('an empty first name on submit is announced via role=alert and wires aria-invalid on the field', async () => {
+  renderDialog();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+
+  const alert = await screen.findByRole('alert');
+  expect(alert).toHaveTextContent('First name and last name are required');
+
+  const firstNameField = screen.getByLabelText('First Name *');
+  expect(firstNameField).toHaveAttribute('aria-invalid', 'true');
+  expect(firstNameField).toHaveAccessibleDescription('First name is required');
+});
+
+// The alert's dismiss button must carry a localized accessible name -- MUI
+// Alert's default "Close" is hardcoded English regardless of app language,
+// so this only fails if closeText is wired to a real translation.
+test('the error alert dismiss button is localized, not MUI\'s default English "Close"', async () => {
+  await i18n.changeLanguage('de');
+  try {
+    renderDialog();
+    fireEvent.click(screen.getByRole('button', { name: 'Erstellen' }));
+    await screen.findByRole('alert');
+    expect(screen.getByRole('button', { name: 'Schließen' })).toBeInTheDocument();
+  } finally {
+    await i18n.changeLanguage('en');
+  }
+});
+
+test('the first-name error clears once the user starts typing a value', async () => {
+  renderDialog();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+  await screen.findByRole('alert');
+  expect(screen.getByLabelText('First Name *')).toHaveAttribute('aria-invalid', 'true');
+
+  fireEvent.change(screen.getByLabelText('First Name *'), { target: { value: 'Ada' } });
+
+  expect(screen.getByLabelText('First Name *')).toHaveAttribute('aria-invalid', 'false');
+});
+
+// #244: under 1.4.12 text-spacing overrides, the Circles section (the last
+// form section before DialogActions) can grow tall enough to collide with
+// the Cancel button. The scrollable DialogContent needs enough reserved
+// bottom padding to survive that worst case.
+test('the dialog content reserves extra bottom padding to survive text-spacing growth', () => {
+  renderDialog();
+
+  const content = document.querySelector('.MuiDialogContent-root');
+  expect(content).not.toBeNull();
+  expect(getComputedStyle(content as Element).paddingBottom).toBe('48px');
+});
+
 // T52: submitting with only name submits correctly in the simplified flow
 test('submits with just first name', async () => {
   const mocked = vi.mocked(createContactRecord).mockResolvedValue({

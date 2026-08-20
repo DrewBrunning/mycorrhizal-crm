@@ -251,6 +251,7 @@
       "create": "Crear",
       "addCircle": "Agregar",
       "requiredFields": "El nombre y el apellido son obligatorios",
+      "firstNameRequired": "El nombre es obligatorio",
       "error": "Error al crear el contacto. Inténtalo de nuevo.",
       "success": "¡Contacto creado exitosamente!",
       "createBirthdayReminder": "Crear recordatorio de cumpleaños",

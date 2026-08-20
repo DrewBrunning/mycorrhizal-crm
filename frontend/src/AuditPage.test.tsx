@@ -109,6 +109,19 @@ test('resolves a contact uid to a link to the contact detail page', async () => 
   expect(link.getAttribute('href')).toBe('/contacts/5');
 });
 
+// #243: the contact link is the sole content of its <td> (not inline prose),
+// so it needs its own 24px target rather than relying on body2's 18px line-height.
+test('the resolved-contact link meets the 24px minimum target size', async () => {
+  auditGetMock.mockResolvedValue({
+    audit_events: [ev({ id: 3, entity_type: 'contact', operation: 'update' })],
+    total: 1,
+  });
+  renderPage();
+
+  const link = await screen.findByRole('link', { name: 'Alice Johnson' });
+  expect(getComputedStyle(link).minHeight).toBe('24px');
+});
+
 test('a contact uid that no longer resolves renders as plain text, not a broken link', async () => {
   contactsByUidMock.mockResolvedValue(new Map());
   auditGetMock.mockResolvedValue({

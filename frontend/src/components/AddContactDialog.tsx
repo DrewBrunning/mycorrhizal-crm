@@ -12,6 +12,7 @@ import {
   Typography,
   Stack,
   Divider,
+  Alert,
 } from '@mui/material';
 import AppDialog from './AppDialog';
 import MultiValueField from './MultiValueField';
@@ -87,6 +88,12 @@ export default function AddContactDialog({
   const [newTag, setNewTag] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  // Set once a submit has been attempted with an invalid first name, so the
+  // TextField's error/helperText (and thus its aria-invalid/aria-describedby)
+  // only appear after the user has actually tried to submit -- not while
+  // they're still filling the form out for the first time.
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const firstNameInvalid = submitAttempted && !formData.firstname.trim();
 
   const handleChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [field]: event.target.value });
@@ -119,6 +126,7 @@ export default function AddContactDialog({
   const handleSubmit = async () => {
     if (!formData.firstname.trim()) {
       setError(t('contacts.add.requiredFields'));
+      setSubmitAttempted(true);
       return;
     }
 
@@ -198,17 +206,26 @@ export default function AddContactDialog({
     setSelectedTags([]);
     setNewTag('');
     setError('');
+    setSubmitAttempted(false);
     onClose();
   };
 
   return (
     <AppDialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
       <DialogTitle>{t('contacts.add.title')}</DialogTitle>
-      <DialogContent>
+      <DialogContent
+        // 1.4.12 Text Spacing: the Circles section is the last form section
+        // before the fixed DialogActions row, so under the SC's line-height/
+        // paragraph-margin overrides its "Or create new..." field can grow
+        // tall enough to collide with the Cancel button. Reserve extra
+        // bottom padding in this already-scrollable region to survive that
+        // worst case rather than restructuring the form.
+        sx={{ pb: 6 }}
+      >
         {error && (
-          <Typography color="error" sx={{ mb: 2 }}>
+          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')} closeText={t('common.close')}>
             {error}
-          </Typography>
+          </Alert>
         )}
         <Stack spacing={2} sx={{ mt: 1 }}>
           <SectionHeading label={t('contactDetail.section.name')} />
@@ -222,6 +239,8 @@ export default function AddContactDialog({
               value={formData.firstname}
               onChange={handleChange('firstname')}
               required
+              error={firstNameInvalid}
+              helperText={firstNameInvalid ? t('contacts.add.firstNameRequired') : undefined}
             />
             {isOn('middle_name') && (
               <TextField label={t('contacts.middleName')} fullWidth value={formData.middle_name} onChange={handleChange('middle_name')} />

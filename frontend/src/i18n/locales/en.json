@@ -251,6 +251,7 @@
       "create": "Create",
       "addCircle": "Add",
       "requiredFields": "First name and last name are required",
+      "firstNameRequired": "First name is required",
       "error": "Failed to create contact. Please try again.",
       "success": "Contact created successfully!",
       "createBirthdayReminder": "Create birthday reminder",

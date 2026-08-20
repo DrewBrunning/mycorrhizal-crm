@@ -315,7 +315,16 @@ function EntityIdCell({ event, contact }: { event: AuditEvent; contact?: { ID: n
         variant="body2"
         component={RouterLink}
         to={`/contacts/${contact.ID}`}
-        sx={{ textDecoration: 'none', color: 'primary.main' }}
+        sx={{
+          textDecoration: 'none',
+          color: 'primary.main',
+          // 2.5.8 Target Size (Minimum): this link is the sole content of its
+          // <td>, not inline prose, so it needs its own 24px target -- body2's
+          // line-height alone renders an 18px-tall clickable area.
+          display: 'inline-flex',
+          alignItems: 'center',
+          minHeight: 24,
+        }}
       >
         {contact.name || t('audit.contactUnnamed')}
       </Typography>
