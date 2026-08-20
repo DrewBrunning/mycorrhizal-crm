@@ -66,6 +66,19 @@
   - The seed backend data is persistent — `docker compose -f docker-compose.test.yml down -v` resets it between runs if you want a clean slate.
   - CI runs this on every push/PR to main via the `android-e2e` job in [.github/workflows/android-tests.yml](.github/workflows/android-tests.yml).
 
+**CI: path-gated checks (issue #264)**
+- Every suite is **path-gated**: a PR runs only the suites relevant to the files it changes. The mapping from paths to checks lives in one place, [.github/filters.yaml](.github/filters.yaml) — change it there, not per-workflow. Each gated workflow has a `Detect Changes` job (`dorny/paths-filter`) whose boolean outputs the suite jobs `if:` on.
+  - `backend/**` → Go fmt/vet/test, govulncheck, gosec, CodeQL(go), backend image build.
+  - `frontend/**` → vitest, tsc, eslint, Playwright e2e, CodeQL(js/ts), frontend image build.
+  - `android/**` → Android unit/lint/assemble, instrumented e2e, CodeQL(java).
+  - `backend/openapi.yaml` → backend + frontend + Android (the API contract).
+  - `Dockerfile`, `docker-compose*.yml`, `docker/**` (nginx.conf etc.) → the e2e suites, which build and run the deployed artifact.
+  - `.github/**` → everything (a workflow change can affect any check; this includes `filters.yaml` itself).
+  - `docs/**` → nothing here; the docs deploy job is already path-filtered to `docs/**`.
+- **Why a skipped job is safe to require.** A job skipped by its `if:` conditional reports **Success** (GitHub's current behavior) and satisfies a required status check — unlike a whole workflow skipped by `on: paths:`, which leaves its checks pending and blocks merges. So we gate at the job level, never at the workflow `paths:` level, and every suite check below can be marked required without unrelated pre-existing failures blocking a PR.
+- **Required checks on `main`:** `Backend (Go)`, `Frontend (Vitest)`, `Run E2E Tests`, `Android (Gradle)`, `Android E2E (emulator)`. `enforce_admins` is on, so the checks apply to admins too. Set from Settings → Branches (or the REST API, e.g. `gh api`).
+- **Verifying the mapping** after touching `filters.yaml`: open small PRs that touch only one area (`android/`, `backend/`, `docs/`, `backend/openapi.yaml`) and confirm each runs exactly the intended suites and reports the rest as skipped.
+
 **Data & Integrations**
 - SQLite lives at `SQLITE_DB_PATH` (default mycorrhizal.db); migrations in [backend/database/migrations](backend/database/migrations) are embedded into the binary and auto-run on startup.
 - JWT expiry, HTTP timeouts, trusted proxies, and Resend email settings are declared in [backend/config/config.go](backend/config/config.go) and loaded based on environment variables; use Config.Validate to catch misconfigurations.

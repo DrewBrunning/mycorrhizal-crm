@@ -7,6 +7,40 @@ on:
     branches: [main]
 
 jobs:
+  # Issue #264: path-gated checks — see unit-tests.yml for the pattern.
+  changes:
+    permissions:
+      contents: read
+      pull-requests: read
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      openapi: ${{ steps.filter.outputs.openapi }}
+      infra: ${{ steps.filter.outputs.infra }}
+      workflows: ${{ steps.filter.outputs.workflows }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed areas
+        uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: .github/filters.yaml
+
+      # Boolean outputs only, so this is safe to interpolate (see unit-tests.yml).
+      - name: Report gating decision
+        run: |
+          echo "backend=${{ steps.filter.outputs.backend }}"
+          echo "frontend=${{ steps.filter.outputs.frontend }}"
+          echo "openapi=${{ steps.filter.outputs.openapi }}"
+          echo "infra=${{ steps.filter.outputs.infra }}"
+          echo "workflows=${{ steps.filter.outputs.workflows }}"
+
   e2e:
     permissions:
       contents: read
@@ -14,6 +48,12 @@ jobs:
     name: Run E2E Tests
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    needs: changes
+    # The web Playwright suite exercises the frontend and the deployed
+    # artifact (all-in-one image + compose + nginx), and the openapi contract
+    # the frontend consumes. Pure backend/** changes are covered by the Go
+    # checks in unit-tests.yml and don't re-run the full e2e stack.
+    if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'
 
     steps:
       - name: Checkout repository

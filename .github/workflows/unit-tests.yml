@@ -7,12 +7,53 @@ on:
     branches: [main]
 
 jobs:
+  # Issue #264: path-gated checks. This job always runs and computes which
+  # areas the PR/push touches (shared filters in .github/filters.yaml); the
+  # suite jobs below run only when their area is affected. A suite job that
+  # is skipped by its `if` conditional reports "Success", so every check here
+  # can be made required in branch protection without unrelated areas
+  # blocking a PR.
+  changes:
+    permissions:
+      contents: read
+      pull-requests: read
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      openapi: ${{ steps.filter.outputs.openapi }}
+      workflows: ${{ steps.filter.outputs.workflows }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Change detection on push needs the previous commit on main.
+          fetch-depth: 0
+
+      - name: Detect changed areas
+        uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: .github/filters.yaml
+
+      # Boolean outputs only, so this is safe to interpolate (the *_files
+      # outputs are the attacker-influenced ones on PRs, and we don't use them).
+      - name: Report gating decision
+        run: |
+          echo "backend=${{ steps.filter.outputs.backend }}"
+          echo "frontend=${{ steps.filter.outputs.frontend }}"
+          echo "openapi=${{ steps.filter.outputs.openapi }}"
+          echo "workflows=${{ steps.filter.outputs.workflows }}"
+
   backend:
     permissions:
       contents: read
     name: Backend (Go)
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.workflows == 'true'
 
     steps:
       - name: Checkout repository
@@ -56,6 +97,8 @@ jobs:
     name: Frontend (Vitest)
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.workflows == 'true'
 
     steps:
       - name: Checkout repository
