@@ -1,4 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Deliberately no values-night override (T106 tried one, reverted here
+         on Android testing feedback): mipmap-anydpi/ic_launcher.xml and
+         ic_launcher_round.xml are the home-screen launcher icon, and most
+         launchers rasterize/cache an adaptive icon once (at install or
+         update) rather than re-composing it on a later system theme change
+         — so the icon's look ended up pinned to whatever theme was active
+         when the app was installed, not the current theme. One fixed light
+         background avoids that. The splash screen is unaffected: its
+         windowSplashScreenBackground (values/themes.xml and
+         values-night/themes.xml) hardcodes its own literal color and never
+         referenced this resource, so it still switches with the system
+         theme correctly. -->
     <color name="ic_launcher_background">#FAF5EA</color>
 </resources>
