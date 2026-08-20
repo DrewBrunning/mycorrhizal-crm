@@ -1698,6 +1698,18 @@
     "noOverdue": "Nichts überfällig. Alles im Zeitplan.",
     "unknownContact": "Unbekannter Kontakt"
   },
+  "reachOut": {
+    "title": "Gründe, sich zu melden",
+    "empty": "Derzeit keine Vorschläge, um Kontakt aufzunehmen.",
+    "changedFromTo": "{{old}} → {{new}}",
+    "changedTo": "Jetzt: {{new}}",
+    "dismiss": "Verwerfen",
+    "kind": {
+      "organization": "Neuer Arbeitgeber",
+      "title": "Neue Berufsbezeichnung",
+      "address": "Umgezogen"
+    }
+  },
   "conversationAgenda": {
     "title": "Gesprächsagenda",
     "placeholder": "Beim nächsten Mal ansprechen…",

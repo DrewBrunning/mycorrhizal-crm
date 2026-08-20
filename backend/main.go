@@ -145,6 +145,15 @@ func main() {
 		services.ProcessOverdueCadences(db, *cfg)
 	})
 
+	// Detect event-driven reach-out suggestions daily (issue #177). Job-lock
+	// guarded so a multi-instance deploy does not double-fire.
+	s.Every(24).Hours().Do(func() {
+		services.DetectReachOutSuggestions(db, *cfg)
+	})
+	go safeGo("reach-out-detection-initial-run", func() {
+		services.DetectReachOutSuggestions(db, *cfg)
+	})
+
 	// Sync Immich enrichment regularly (T16). Job-lock guarded so a
 	// multi-instance deploy does not double-sync.
 	immichSyncTask := func() {

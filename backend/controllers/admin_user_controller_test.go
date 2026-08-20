@@ -66,6 +66,11 @@ func TestDeleteUser_CleansUpAllOwnedRows(t *testing.T) {
 	require.NoError(t, db.Create(&models.LinkFieldType{UserID: target.ID, Name: "Custom", Protocol: "https://example.com/{value}", Category: models.LinkFieldTypeCategoryOther}).Error)
 	require.NoError(t, db.Create(&models.ConversationAgenda{UserID: target.ID, EntityID: contact.VCardUID, Content: "Ask about something"}).Error)
 	require.NoError(t, db.Create(&models.Gift{UserID: target.ID, EntityID: contact.VCardUID, Description: "A gift idea"}).Error)
+	require.NoError(t, db.Create(&models.ReachOutSuggestion{
+		UserID: target.ID, ContactVCardUID: contact.VCardUID, Kind: models.ReachOutKindOrganization,
+		OldValue: "OldCo", NewValue: "NewCo", AuditEventID: 1, Status: models.ReachOutStatusPending,
+	}).Error)
+	require.NoError(t, db.Create(&models.ReachOutCursor{UserID: target.ID, LastAuditEventID: 1}).Error)
 
 	require.NoError(t, db.Create(&models.CardDAVSync{UserID: target.ID, SyncToken: "tok", LastModified: time.Now()}).Error)
 	require.NoError(t, db.Create(&models.ApiToken{UserID: target.ID, Name: "token", TokenHash: "hash"}).Error)
@@ -128,6 +133,8 @@ func TestDeleteUser_CleansUpAllOwnedRows(t *testing.T) {
 	assertGone("LifeEvent", &models.LifeEvent{}, "user_id = ?", target.ID)
 	assertGone("ConversationAgenda", &models.ConversationAgenda{}, "user_id = ?", target.ID)
 	assertGone("Gift", &models.Gift{}, "user_id = ?", target.ID)
+	assertGone("ReachOutSuggestion", &models.ReachOutSuggestion{}, "user_id = ?", target.ID)
+	assertGone("ReachOutCursor", &models.ReachOutCursor{}, "user_id = ?", target.ID)
 	assertGone("CardDAVSync", &models.CardDAVSync{}, "user_id = ?", target.ID)
 	assertGone("ApiToken", &models.ApiToken{}, "user_id = ?", target.ID)
 	assertGone("ReminderCompletion", &models.ReminderCompletion{}, "user_id = ?", target.ID)

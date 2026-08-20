@@ -994,6 +994,11 @@ func TestDeleteContact_CleansUpReferencingRows(t *testing.T) {
 	require.NoError(t, db.Create(&models.ExternalIdentity{UserID: user.ID, EntityID: contact.VCardUID, System: "immich", ExternalID: "p-1"}).Error)
 	require.NoError(t, db.Create(&models.ExternalActivity{UserID: user.ID, EntityID: contact.VCardUID, SourceSystem: "immich", ExternalID: "a-1", Type: "photo-appearance", OccurredAt: time.Now()}).Error)
 
+	require.NoError(t, db.Create(&models.ReachOutSuggestion{
+		UserID: user.ID, ContactVCardUID: contact.VCardUID, Kind: models.ReachOutKindOrganization,
+		OldValue: "OldCo", NewValue: "NewCo", AuditEventID: 1, Status: models.ReachOutStatusPending,
+	}).Error)
+
 	router.DELETE("/contacts/:id", DeleteContact)
 
 	req, _ := http.NewRequest("DELETE", "/contacts/"+strconv.Itoa(int(contact.ID)), nil)
@@ -1020,6 +1025,7 @@ func TestDeleteContact_CleansUpReferencingRows(t *testing.T) {
 	assertCount("ExternalActivity", &models.ExternalActivity{}, 0, "user_id = ?", user.ID)
 	assertCount("ContactSyncLink", &models.ContactSyncLink{}, 0, "user_id = ?", user.ID)
 	assertCount("ReminderCompletion", &models.ReminderCompletion{}, 0, "user_id = ?", user.ID)
+	assertCount("ReachOutSuggestion", &models.ReachOutSuggestion{}, 0, "user_id = ?", user.ID)
 
 	// The shared containers themselves must survive
 	assertCount("Household", &models.Household{}, 1, "id = ?", household.ID)

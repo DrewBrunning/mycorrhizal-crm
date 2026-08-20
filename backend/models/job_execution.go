@@ -44,4 +44,8 @@ const (
 	// JobNameAuditPurge is the job name for the periodic removal of expired
 	// audit events past their retention window (T18).
 	JobNameAuditPurge = "audit_purge"
+
+	// JobNameReachOutDetection is the job name for the daily event-driven
+	// reach-out-suggestion detection job (issue #177).
+	JobNameReachOutDetection = "reach_out_detection"
 )

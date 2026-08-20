@@ -175,6 +175,14 @@ func DeleteReminder(c *gin.Context) {
 		return
 	}
 
+	// Issue #177: a reminder deleted directly (rather than completed/skipped
+	// via CompleteReminder) still needs its linked ReachOutSuggestion
+	// dismissed — otherwise the suggestion stays pending forever with a
+	// reminder_id pointing at a now-nonexistent row.
+	if err := services.DismissReachOutSuggestionByReminderID(db, userID, reminder.ID); err != nil {
+		logger.FromContext(c).Error().Err(err).Uint("reminder_id", reminder.ID).Msg("Failed to dismiss reach-out suggestion for reminder")
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "Reminder deleted"})
 }
 
@@ -323,6 +331,14 @@ func CompleteReminder(c *gin.Context) {
 			return
 		}
 
+		// Issue #177: dismiss the linked ReachOutSuggestion only now that the
+		// reminder itself is confirmed deleted — firing this before the
+		// delete/save could succeed would dismiss a suggestion for a
+		// completion that then failed and left the reminder untouched.
+		if err := services.DismissReachOutSuggestionByReminderID(db, userID, reminder.ID); err != nil {
+			logger.FromContext(c).Error().Err(err).Uint("reminder_id", reminder.ID).Msg("Failed to dismiss reach-out suggestion for reminder")
+		}
+
 		logger.FromContext(c).Info().Uint("reminder_id", reminder.ID).Str("action", action).Msg("Deleted 'once' reminder")
 		c.JSON(http.StatusOK, gin.H{"message": "Reminder " + action + " and deleted"})
 		return
@@ -332,6 +348,12 @@ func CompleteReminder(c *gin.Context) {
 	if err := db.Save(&reminder).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to update reminder").WithError(err))
 		return
+	}
+
+	// Issue #177: same ordering rule as the "once" branch above — only
+	// dismiss once the save actually succeeded.
+	if err := services.DismissReachOutSuggestionByReminderID(db, userID, reminder.ID); err != nil {
+		logger.FromContext(c).Error().Err(err).Uint("reminder_id", reminder.ID).Msg("Failed to dismiss reach-out suggestion for reminder")
 	}
 
 	// N9: a rescheduled occurrence is a fresh reminder — clear the previous
