@@ -1,6 +1,7 @@
 package jscontact
 
 import (
+	"bytes"
 	"testing"
 
 	"mycorrhizal/internal/rfctest"
@@ -111,4 +112,47 @@ func TestRoundTrip_MultiConceptCard(t *testing.T) {
 	rfctest.AssertJSONPointer(t, out, "/keywords/vip", true)
 	rfctest.AssertJSONPointer(t, out, "/vCardProps/0/name", "x-custom")
 	rfctest.AssertJSONPointer(t, out, "/x-unknown-vendor-prop", "verbatim")
+}
+
+// goldenFixturesJSContact is every docs/golden-fixtures/*.jscontact.json
+// file (issue #255), mirrored byte-for-byte into internal/rfctest/fixtures.
+var goldenFixturesJSContact = []string{
+	"johndoe.jscontact.json",
+	"title-role.jscontact.json",
+}
+
+// TestRoundtripIdempotent_GoldenFixtures is the vcard4 property of the same
+// name, applied here: once a card has been through one Import->Export
+// cycle, a second cycle must reproduce byte-identical output (Go's
+// encoding/json sorts map keys deterministically, and this package's
+// Import/Export call no time.Now/uuid.New/rand.* anything, so this is a
+// safe, non-flaky property). See vcard4/roundtrip_test.go's copy of this
+// test for the full rationale.
+func TestRoundtripIdempotent_GoldenFixtures(t *testing.T) {
+	for _, name := range goldenFixturesJSContact {
+		t.Run(name, func(t *testing.T) {
+			raw := rfctest.LoadFixture(name)
+
+			rec1, _, err := Adapter{}.Import(raw)
+			if err != nil {
+				t.Fatalf("Import (1st): %v", err)
+			}
+			out1, _, err := Adapter{}.Export(rec1)
+			if err != nil {
+				t.Fatalf("Export (1st): %v", err)
+			}
+			rec2, _, err := Adapter{}.Import(out1)
+			if err != nil {
+				t.Fatalf("Import (2nd): %v", err)
+			}
+			out2, _, err := Adapter{}.Export(rec2)
+			if err != nil {
+				t.Fatalf("Export (2nd): %v", err)
+			}
+
+			if !bytes.Equal(out1, out2) {
+				t.Errorf("export is not idempotent after the first round trip:\n--- out1 ---\n%s\n--- out2 ---\n%s", out1, out2)
+			}
+		})
+	}
 }
