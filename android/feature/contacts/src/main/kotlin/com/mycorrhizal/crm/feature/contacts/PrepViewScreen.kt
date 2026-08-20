@@ -54,7 +54,6 @@ import com.mycorrhizal.crm.model.network.PartialDate
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.model.util.DateFormat.display
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
-import com.mycorrhizal.crm.ui.theme.MycorrhizalColors
 import com.mycorrhizal.crm.ui.theme.MycorrhizalFonts
 import com.mycorrhizal.crm.ui.R
 
@@ -277,10 +276,11 @@ private fun CadenceBlock(health: com.mycorrhizal.crm.model.network.BriefingCaden
             Text(
                 text = stringResource(R.string.prep_cadence_overdue, health.overdueBy),
                 style = MaterialTheme.typography.bodyLarge,
-                // Web parity: overdue renders in the warning (chantarelle)
-                // color, not the error color — being overdue is a nudge, not
-                // a failure.
-                color = MycorrhizalColors.chanterelle,
+                // #200: amber text on the cream page was 2.07:1 — illegible. The
+                // warning semantics ride the Icons.Outlined.Warning icon on the
+                // contact header; the words themselves use the page's own
+                // onSurface (web parity kept the amber as the *accent* only).
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(vertical = 2.dp),
             )
         } else {
