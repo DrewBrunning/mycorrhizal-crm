@@ -1,6 +1,7 @@
 package vcard3
 
 import (
+	"bytes"
 	"testing"
 
 	"mycorrhizal/contactmodel"
@@ -139,5 +140,44 @@ func TestRoundtrip_NeutralExportImport(t *testing.T) {
 	}
 	if len(got.Card.Addresses) != 1 {
 		t.Fatalf("Addresses = %+v, want 1 entry", got.Card.Addresses)
+	}
+}
+
+// goldenFixturesV3 is every docs/golden-fixtures/*.v3.vcf file (issue #255),
+// mirrored byte-for-byte into internal/rfctest/fixtures.
+var goldenFixturesV3 = []string{
+	"rfc2426-baseline.v3.vcf",
+}
+
+// TestRoundtripIdempotent_GoldenFixtures is the vcard4 property of the same
+// name, applied here: once a card has been through one Import->Export
+// cycle, a second cycle must reproduce byte-identical output. See
+// vcard4/roundtrip_test.go's copy of this test for the full rationale.
+func TestRoundtripIdempotent_GoldenFixtures(t *testing.T) {
+	for _, name := range goldenFixturesV3 {
+		t.Run(name, func(t *testing.T) {
+			raw := rfctest.LoadFixture(name)
+
+			rec1, _, err := Adapter{}.Import(raw)
+			if err != nil {
+				t.Fatalf("Import (1st): %v", err)
+			}
+			out1, _, err := Adapter{}.Export(rec1)
+			if err != nil {
+				t.Fatalf("Export (1st): %v", err)
+			}
+			rec2, _, err := Adapter{}.Import(out1)
+			if err != nil {
+				t.Fatalf("Import (2nd): %v", err)
+			}
+			out2, _, err := Adapter{}.Export(rec2)
+			if err != nil {
+				t.Fatalf("Export (2nd): %v", err)
+			}
+
+			if !bytes.Equal(out1, out2) {
+				t.Errorf("export is not idempotent after the first round trip:\n--- out1 ---\n%s\n--- out2 ---\n%s", out1, out2)
+			}
+		})
 	}
 }
