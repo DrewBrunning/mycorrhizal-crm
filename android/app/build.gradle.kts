@@ -34,6 +34,13 @@ val releaseSigningConfigured = listOf(signingStoreFile, signingStorePassword, si
 android {
     namespace = "com.mycorrhizal.crm"
 
+    defaultConfig {
+        // Issue #238: instrumented end-to-end tests (app/src/androidTest) drive
+        // the real app against the docker-compose.test.yml backend on an
+        // emulator/device via `./gradlew connectedDebugAndroidTest`.
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
     signingConfigs {
         if (releaseSigningConfigured) {
             create("release") {
@@ -84,6 +91,9 @@ dependencies {
     implementation(libs.coil.network.okhttp)
 
     implementation(platform(libs.androidx.compose.bom))
+    // Issue #238: version alignment for Gradle 9's consistent resolution — see
+    // the androidx-concurrent-futures catalog entry.
+    implementation(libs.androidx.concurrent.futures)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material3.window.size)
@@ -105,4 +115,21 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     testImplementation(libs.androidx.compose.ui.test.junit4)
+
+    // Issue #238: instrumented E2E tests (app/src/androidTest) — Compose UI
+    // test + the AndroidJUnitRunner against the real docker-compose.test.yml
+    // backend. The app's own implementation deps (Hilt, OkHttp, Moshi, ...) are
+    // already on the androidTest runtime classpath, so the seeding helper can
+    // reuse them for its API calls.
+    androidTestImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.test.core)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    // Explicit override of compose ui-test's transitive espresso 3.5.0: the
+    // compose Android test environment syncs through Espresso.onIdle() on
+    // device, and espresso < 3.7.0 uses InputManager.getInstance(), which was
+    // removed on API 36+ (fails on the API 37 CI emulator).
+    androidTestImplementation(libs.androidx.test.espresso.core)
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    androidTestImplementation(libs.androidx.compose.ui.test.manifest)
 }

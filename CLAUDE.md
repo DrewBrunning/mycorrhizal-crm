@@ -44,6 +44,15 @@ cd backend && go build ./... && go vet ./... && gofmt -l . && go test ./...
 cd frontend && npx tsc --noEmit && npx vitest run
 ```
 
+Android instrumented E2E (issue #238): the suite in `android/app/src/androidTest` drives the real app
+against the real `docker-compose.test.yml` backend on an emulator/device — login → list → detail →
+edit, favorites (issue #212), archive/delete + audit undo. Emulator: `cd android && ./gradlew
+:app:connectedDebugAndroidTest`. Physical device (Pixel 8a): `adb reverse tcp:7300 tcp:7300` first,
+then the same with `-Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300`.
+Full runbook in `README-developer.md`. CI runs it via the `android-e2e` job in `android-tests.yml`.
+This replaces the old "on-device verification on the Pixel 8a" *manual* gate — those flows now have
+an automated harness, so an Android ticket with an E2E gate should point here.
+
 Migrations: the server runs every pending migration on startup (`database.InitDB`, from an embedded FS),
 so `make migrate-up` is only needed to migrate a database without booting the app. Migration files are
 **hand-written SQL up/down pairs** in `backend/database/migrations/` — this project does **not** use GORM
