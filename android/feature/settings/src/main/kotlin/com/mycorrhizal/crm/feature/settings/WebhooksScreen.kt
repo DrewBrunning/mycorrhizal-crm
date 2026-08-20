@@ -290,10 +290,18 @@ internal fun WebhookRow(
                 }
             }
             IconButton(onClick = onEdit) {
-                Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.settings_webhooks_edit))
+                // #205: the row-action label carries the webhook name so TalkBack
+                // doesn't read a bare "Edit" on every row.
+                Icon(
+                    Icons.Outlined.Edit,
+                    contentDescription = stringResource(R.string.settings_webhooks_edit_named, webhook.name),
+                )
             }
             IconButton(onClick = onDelete) {
-                Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.settings_webhooks_delete))
+                Icon(
+                    Icons.Outlined.Delete,
+                    contentDescription = stringResource(R.string.settings_webhooks_delete_named, webhook.name),
+                )
             }
         }
         TextButton(

@@ -204,12 +204,17 @@ private fun TagListItem(
         AccessibleIconButton(onClick = { renaming = true }) {
             Icon(
                 Icons.Outlined.Edit,
-                contentDescription = stringResource(R.string.action_rename),
+                // #205: a bare "Rename" repeated on every row makes TalkBack read
+                // "Rename" once per tag with no way to tell which row each acts on.
+                contentDescription = stringResource(R.string.tags_rename_named, tag.name),
                 tint = MaterialTheme.colorScheme.primary,
             )
         }
         AccessibleIconButton(onClick = { deleting = true }) {
-            Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.action_delete))
+            Icon(
+                Icons.Outlined.Delete,
+                contentDescription = stringResource(R.string.tags_delete_named, tag.name),
+            )
         }
         Icon(Icons.AutoMirrored.Outlined.ArrowForward, contentDescription = null)
     }

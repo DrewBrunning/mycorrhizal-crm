@@ -333,6 +333,7 @@
     <string name="custom_links_label">Libellé</string>
     <string name="custom_links_mime">MIMETYPE</string>
     <string name="custom_links_template">URI d\'intention ({handle})</string>
+    <string name="custom_links_delete_named">Supprimer %1$s</string>
 
     <!-- Settings: appearance (M25) -->
     <string name="settings_appearance">Apparence</string>
@@ -363,7 +364,9 @@
     <string name="settings_webhooks_description">Recevez des notifications HTTP POST lorsque des événements se produisent dans votre CRM.</string>
     <string name="settings_webhooks_add">Ajouter un webhook</string>
     <string name="settings_webhooks_edit">Modifier</string>
+    <string name="settings_webhooks_edit_named">Modifier %1$s</string>
     <string name="settings_webhooks_delete">Supprimer</string>
+    <string name="settings_webhooks_delete_named">Supprimer %1$s</string>
     <string name="settings_webhooks_delete_title">Supprimer le webhook</string>
     <string name="settings_webhooks_delete_body">Supprimer "%1$s" ? Cela arrêtera toutes les futures livraisons.</string>
     <string name="settings_webhooks_test">Tester</string>
@@ -553,11 +556,14 @@
     <string name="circles_title">Cercles</string>
     <string name="circles_new">Nouveau cercle</string>
     <string name="circles_rename">Renommer le cercle</string>
+    <string name="circles_rename_named">Renommer %1$s</string>
     <string name="circles_name">Nom</string>
     <string name="circles_delete_title">Supprimer le cercle ?</string>
     <string name="circles_delete_confirm">Supprimer « %1$s » ? Cela retire le cercle et ses adhésions.</string>
+    <string name="circles_delete_named">Supprimer %1$s</string>
     <string name="circles_add_member">Ajouter un membre</string>
     <string name="circles_remove_member">Retirer un membre</string>
+    <string name="circles_remove_member_named">Retirer le membre %1$s</string>
     <string name="circles_member_vcard_uid">UID VCard du contact</string>
     <string name="circles_empty">Aucun cercle pour le moment</string>
     <string name="circles_members_empty">Aucun membre pour le moment</string>
@@ -592,11 +598,14 @@
     <string name="tags_title">Étiquettes</string>
     <string name="tags_new">Nouvelle étiquette</string>
     <string name="tags_rename">Renommer l\'étiquette</string>
+    <string name="tags_rename_named">Renommer %1$s</string>
     <string name="tags_name">Nom</string>
     <string name="tags_delete_title">Supprimer l\'étiquette ?</string>
     <string name="tags_delete_confirm">Supprimer « %1$s » ? Cela retire l\'étiquette et ses étiquetages de contact.</string>
+    <string name="tags_delete_named">Supprimer %1$s</string>
     <string name="tags_add_contact">Étiqueter le contact</string>
     <string name="tags_remove_contact">Retirer l\'étiquette du contact</string>
+    <string name="tags_remove_contact_named">Retirer l\'étiquette du contact %1$s</string>
     <string name="tags_contact_vcard_uid">UID VCard du contact</string>
     <string name="tags_empty">Aucune étiquette pour le moment</string>
     <string name="tags_contacts_empty">Aucun contact étiqueté</string>
@@ -607,12 +616,15 @@
     <string name="households_title">Foyers</string>
     <string name="households_new">Nouveau foyer</string>
     <string name="households_edit">Modifier le foyer</string>
+    <string name="households_rename_named">Renommer %1$s</string>
     <string name="households_name">Nom</string>
     <string name="households_type">Type</string>
     <string name="households_delete_title">Supprimer le foyer ?</string>
     <string name="households_delete_confirm">Supprimer « %1$s » ? Cela retire le foyer et ses adhésions.</string>
+    <string name="households_delete_named">Supprimer %1$s</string>
     <string name="households_add_member">Ajouter un membre</string>
     <string name="households_remove_member">Retirer un membre</string>
+    <string name="households_remove_member_named">Retirer le membre %1$s</string>
     <string name="households_member_search">Rechercher des contacts</string>
     <string name="households_type_to_search">Saisissez pour rechercher</string>
     <string name="households_no_contacts_found">Aucun contact trouvé</string>
