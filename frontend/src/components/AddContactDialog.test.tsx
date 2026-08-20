@@ -150,6 +150,33 @@ test('defaults the card language to the UI language when not touched', async () 
   expect(mocked.mock.calls[0][0].card.language).toBe((i18n.language || 'en').split('-')[0]);
 });
 
+// #242: the required-field error must reach assistive tech via a live region,
+// and the invalid field itself must carry aria-invalid/aria-describedby.
+test('an empty first name on submit is announced via role=alert and wires aria-invalid on the field', async () => {
+  renderDialog();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+
+  const alert = await screen.findByRole('alert');
+  expect(alert).toHaveTextContent('First name and last name are required');
+
+  const firstNameField = screen.getByLabelText('First Name *');
+  expect(firstNameField).toHaveAttribute('aria-invalid', 'true');
+  expect(firstNameField).toHaveAccessibleDescription('First name is required');
+});
+
+test('the first-name error clears once the user starts typing a value', async () => {
+  renderDialog();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+  await screen.findByRole('alert');
+  expect(screen.getByLabelText('First Name *')).toHaveAttribute('aria-invalid', 'true');
+
+  fireEvent.change(screen.getByLabelText('First Name *'), { target: { value: 'Ada' } });
+
+  expect(screen.getByLabelText('First Name *')).toHaveAttribute('aria-invalid', 'false');
+});
+
 // T52: submitting with only name submits correctly in the simplified flow
 test('submits with just first name', async () => {
   const mocked = vi.mocked(createContactRecord).mockResolvedValue({

@@ -249,6 +249,7 @@
       "create": "Créer",
       "addCircle": "Ajouter",
       "requiredFields": "Le prénom et le nom sont requis",
+      "firstNameRequired": "Le prénom est requis",
       "error": "Échec de la création du contact. Veuillez réessayer.",
       "success": "Contact créé avec succès !",
       "createBirthdayReminder": "Créer un rappel d'anniversaire",
