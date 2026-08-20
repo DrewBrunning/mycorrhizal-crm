@@ -1,0 +1,42 @@
+# Single source of truth for CI path gating (issue #264).
+#
+# Every gated workflow loads this file via dorny/paths-filter, so the
+# path -> check mapping lives in exactly one place. Each filter is a named
+# output on a workflow's "Detect Changes" job; suite jobs run only when one
+# of the filters they depend on matches.
+#
+# Mapping (see issue #264 for the rationale):
+#   backend   -> Go fmt/vet/test, govulncheck, gosec, CodeQL(go),
+#                backend Docker image build
+#   frontend  -> vitest, tsc, eslint, Playwright e2e, CodeQL(js/ts),
+#                frontend Docker image build
+#   android   -> Android unit/lint/assemble, instrumented e2e, CodeQL(java)
+#   openapi   -> the API contract: backend + frontend + Android re-test
+#                (backend/** already matches it; frontend/android need it
+#                explicitly because the contract lives outside those trees)
+#   infra     -> the deployed artifact (all-in-one image + compose + nginx):
+#                the e2e suites, since they build and run that artifact
+#   workflows -> any change under .github/ (including this file) re-runs
+#                everything, because a workflow change can affect any check
+#
+# docs/** intentionally maps to nothing here: docs changes trigger only the
+# docs job (docs.yml), which is already path-filtered to docs/**.
+backend:
+  - 'backend/**'
+
+frontend:
+  - 'frontend/**'
+
+android:
+  - 'android/**'
+
+openapi:
+  - 'backend/openapi.yaml'
+
+infra:
+  - 'Dockerfile'
+  - 'docker-compose*.yml'
+  - 'docker/**'
+
+workflows:
+  - '.github/**'
