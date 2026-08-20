@@ -57,6 +57,10 @@ export default function NetworkGraph({
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  // #194: under reduced motion, settle the force simulation instantly and
+  // skip the initial zoom-to-fit animation instead of running them
+  // regardless of the OS setting (WCAG 2.3.3, AAA).
+  const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
 
   // Colors from theme
   const relationshipColor = theme.palette.primary.main;
@@ -215,10 +219,10 @@ export default function NetworkGraph({
   useEffect(() => {
     if (graphRef.current && graphData.nodes.length > 0) {
       setTimeout(() => {
-        graphRef.current?.zoomToFit(400, isMobile ? 50 : 80);
+        graphRef.current?.zoomToFit(prefersReducedMotion ? 0 : 400, isMobile ? 50 : 80);
       }, 500);
     }
-  }, [graphData.nodes.length, isMobile]);
+  }, [graphData.nodes.length, isMobile, prefersReducedMotion]);
 
   // Non-drag alternatives for pan/zoom (#190, WCAG 2.5.7 Dragging Movements).
   // enableNodeDrag is left drag-only and deliberately has no button
@@ -297,7 +301,7 @@ export default function NetworkGraph({
         onNodeClick={handleNodeClick}
         onNodeHover={handleNodeHover}
         onLinkHover={handleLinkHover}
-        cooldownTicks={100}
+        cooldownTicks={prefersReducedMotion ? 0 : 100}
         // Cosmetic-only, session-local repositioning -- see the handlePan/
         // handleZoomIn comment above for why this has no button equivalent.
         enableNodeDrag={true}

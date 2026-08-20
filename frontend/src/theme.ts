@@ -168,6 +168,26 @@ export const lightTheme = createTheme({
         },
       },
     },
+
+    // #194: honour prefers-reduced-motion (WCAG 2.3.3, AAA) globally, rather
+    // than restructuring lightTheme/darkTheme into functions of the
+    // preference -- this CSS override catches every MUI transition (dialogs,
+    // drawers, menus, ripples, collapse) plus the plain-CSS opacity
+    // transitions in ContactHeader.tsx for free. Duplicated in darkTheme
+    // below since the two createTheme calls are independent (see the h5/
+    // overline/MuiButtonBase comments in this file for the same pattern).
+    MuiCssBaseline: {
+      styleOverrides: `
+        @media (prefers-reduced-motion: reduce) {
+          *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+          }
+        }
+      `,
+    },
   },
 });
 
@@ -340,6 +360,22 @@ export const darkTheme = createTheme({
           backgroundColor: "#393226", // paper
         },
       },
+    },
+
+    // #194: see lightTheme's matching MuiCssBaseline comment -- both
+    // createTheme calls are independent, so this needs to be set in each
+    // block, same as the h5/overline/MuiButtonBase duplication above.
+    MuiCssBaseline: {
+      styleOverrides: `
+        @media (prefers-reduced-motion: reduce) {
+          *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+          }
+        }
+      `,
     },
   },
 });
