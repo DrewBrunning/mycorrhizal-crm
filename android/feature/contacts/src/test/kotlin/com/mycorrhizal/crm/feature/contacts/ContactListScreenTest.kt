@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -315,6 +316,31 @@ class ContactListScreenTest {
             ),
         )
 
+        composeTestRule.onNodeWithText("All circles").assertIsDisplayed()
+    }
+
+    @Test
+    fun `circle filter anchor announces label and full value as one control`() {
+        // #209: a long selected circle name is visually ellipsised by the anchor
+        // (Compose text fields cannot ellipsize their values), so the full name
+        // must still be in the semantics — TalkBack reads the whole value, and
+        // the label + value are merged into one node so it doesn't read as two
+        // unrelated texts.
+        setContent(
+            ContactListUiState(
+                isLoading = false,
+                contacts = emptyList(),
+                circles = listOf(Circle(id = "c-1", name = "Neighbourhood Watch Committee")),
+                circleFilter = "Neighbourhood Watch Committee",
+            ),
+        )
+
+        composeTestRule.onNodeWithTag("circle-filter")
+            .assertTextContains("Circle", substring = true)
+            .assertTextContains("Neighbourhood Watch Committee", substring = true)
+
+        // The anchor still opens the menu on tap.
+        composeTestRule.onNodeWithTag("circle-filter").performClick()
         composeTestRule.onNodeWithText("All circles").assertIsDisplayed()
     }
 
