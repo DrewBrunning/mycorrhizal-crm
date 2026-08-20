@@ -67,6 +67,9 @@ import com.mycorrhizal.crm.model.network.Preference
 import com.mycorrhizal.crm.model.network.PreferenceSensitivities
 import com.mycorrhizal.crm.model.registry.LifeEventCategory
 import com.mycorrhizal.crm.model.registry.LifeEventTypes
+import com.mycorrhizal.crm.model.registry.PreferenceCategory
+import com.mycorrhizal.crm.model.registry.PreferenceCategoryConfig
+import com.mycorrhizal.crm.model.registry.PreferenceSection
 import com.mycorrhizal.crm.model.util.Validators
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
@@ -888,10 +891,14 @@ fun GiftsScreen(
     val lifeEvents by viewModel.lifeEvents.collectAsStateWithLifecycle()
     val activities by viewModel.activities.collectAsStateWithLifecycle()
     val clothingSizes by viewModel.clothingSizes.collectAsStateWithLifecycle()
+    val giftPreferences by viewModel.giftPreferences.collectAsStateWithLifecycle()
     var showAdd by remember { mutableStateOf(false) }
     var editingItem by remember { mutableStateOf<Gift?>(null) }
     var editingClothingItem by remember { mutableStateOf<Preference?>(null) }
+    var newClothingKey by remember { mutableStateOf("") }
     var newClothingValue by remember { mutableStateOf("") }
+    var showAddGiftPreference by remember { mutableStateOf(false) }
+    var editingGiftPreference by remember { mutableStateOf<Preference?>(null) }
 
     EntityListScaffold(
         title = stringResource(R.string.gifts_title),
@@ -914,28 +921,39 @@ fun GiftsScreen(
                 }
             }
         },
-        // Clothing sizes panel (web's ClothingSizesPanel): "where you check sizes
-        // before buying" — surfaced here, not in Preferences. Rendered through the
-        // scaffold's in-layout `header` slot (not `dialog`) so it lays out above the
-        // gift list instead of overlapping it.
+        // Clothing sizes + gift preferences panels (web's ClothingSizesPanel
+        // and its Gifts-tab jewelry/flowers/color/fragrance/cause/gift-avoid
+        // panel): "check this right before buying" — surfaced here, not in
+        // Preferences. Rendered through the scaffold's in-layout `header`
+        // slot (not `dialog`) so it lays out above the gift list instead of
+        // overlapping it.
         header = {
             if (!state.isLoading) {
                 ClothingSizesPanel(
                     items = clothingSizes,
+                    newKey = newClothingKey,
                     newValue = newClothingValue,
                     editingId = editingClothingItem?.id,
+                    onNewKeyChange = { newClothingKey = it },
                     onNewValueChange = { newClothingValue = it },
-                    onAdd = { value ->
-                        viewModel.createClothingSize(value)
+                    onAdd = { key, value ->
+                        viewModel.createClothingSize(key, value)
+                        newClothingKey = ""
                         newClothingValue = ""
                     },
                     onStartEdit = { item -> editingClothingItem = item },
-                    onEditConfirm = { item, value ->
-                        viewModel.updateClothingSize(item, value)
+                    onEditConfirm = { item, key, value ->
+                        viewModel.updateClothingSize(item, key, value)
                         editingClothingItem = null
                     },
                     onEditCancel = { editingClothingItem = null },
                     onDelete = viewModel::deleteClothingSize,
+                )
+                GiftPreferencesPanel(
+                    items = giftPreferences,
+                    onAdd = { showAddGiftPreference = true },
+                    onEdit = { item -> editingGiftPreference = item },
+                    onDelete = viewModel::deleteGiftPreference,
                 )
             }
         },
@@ -954,6 +972,19 @@ fun GiftsScreen(
                 onDismiss = { showAdd = false; editingItem = null },
             )
         }
+        if (showAddGiftPreference || editingGiftPreference != null) {
+            PreferenceDialog(
+                initial = editingGiftPreference,
+                sections = PreferenceSection.GIFTS_TAB,
+                onConfirm = { form ->
+                    editingGiftPreference?.let { viewModel.updateGiftPreference(it, form) }
+                        ?: viewModel.createGiftPreference(form)
+                    showAddGiftPreference = false
+                    editingGiftPreference = null
+                },
+                onDismiss = { showAddGiftPreference = false; editingGiftPreference = null },
+            )
+        }
     }
 }
 
@@ -964,13 +995,23 @@ fun GiftsScreen(
 @Composable
 internal fun PreferenceDialog(
     initial: Preference?,
+    // Restricts the category dropdown (and the default selected category) to
+    // these sections — e.g. the Gifts tab's dialog only offers
+    // jewelry/giftPreferences/giftAvoid, so a shopping-focused "Add
+    // Preference" can't accidentally create a food preference that then
+    // hides in the Overview tab's list instead (web's PreferenceDialog
+    // `sections` prop). Defaults to every section.
+    sections: Set<String> = PreferenceSection.OVERVIEW_TAB + PreferenceSection.GIFTS_TAB,
     onConfirm: (PreferenceFormData) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val availableCategories = remember(sections) { PreferenceCategory.CONFIG.filter { it.section in sections } }
+    val defaultCategory = availableCategories.firstOrNull()?.category ?: PreferenceCategory.FOOD
     val isEditing = initial != null
-    var category by remember(initial) { mutableStateOf(initial?.category?.takeIf { it in PREFERENCE_DIALOG_CATEGORIES } ?: PREFERENCE_DIALOG_CATEGORIES.first()) }
+    var category by remember(initial) { mutableStateOf(initial?.category ?: defaultCategory) }
     var key by remember(initial) { mutableStateOf(initial?.key ?: "") }
     var value by remember(initial) { mutableStateOf(initial?.value ?: "") }
+    var notes by remember(initial) { mutableStateOf(initial?.notes ?: "") }
     var sensitivity by remember(initial) { mutableStateOf(initial?.sensitivity ?: PreferenceSensitivities.NORMAL) }
 
     AlertDialog(
@@ -981,13 +1022,13 @@ internal fun PreferenceDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.verticalScroll(rememberScrollState()),
             ) {
-                CategoryField(category = category, onCategoryChange = { category = it })
+                CategoryField(category = category, categories = availableCategories, onCategoryChange = { category = it })
                 OutlinedTextField(
                     value = key, onValueChange = { key = it },
                     label = { Text(stringResource(R.string.preferences_key)) }, singleLine = true,
                 )
                 if (key.isBlank()) {
-                    PREFERENCE_DEFAULT_KEYS[category].orEmpty().forEach { suggestion ->
+                    PreferenceCategory.keySuggestionsFor(category).forEach { suggestion ->
                         TextButton(onClick = { key = suggestion }, modifier = Modifier.fillMaxWidth()) {
                             Text(stringResource(preferenceKeyLabelRes(suggestion)))
                         }
@@ -996,6 +1037,10 @@ internal fun PreferenceDialog(
                 OutlinedTextField(
                     value = value, onValueChange = { value = it },
                     label = { Text(stringResource(R.string.preferences_value)) }, singleLine = true,
+                )
+                OutlinedTextField(
+                    value = notes, onValueChange = { notes = it },
+                    label = { Text(stringResource(R.string.preferences_notes)) },
                 )
                 SensitivityField(sensitivity = sensitivity, onSensitivityChange = { sensitivity = it })
             }
@@ -1008,6 +1053,7 @@ internal fun PreferenceDialog(
                             category = category,
                             key = key,
                             value = value,
+                            notes = notes,
                             sensitivity = sensitivity,
                         ),
                     )
@@ -1022,19 +1068,37 @@ internal fun PreferenceDialog(
 }
 
 @Composable
-private fun CategoryField(category: String, onCategoryChange: (String) -> Unit) {
+private fun CategoryField(
+    category: String,
+    categories: List<PreferenceCategoryConfig>,
+    onCategoryChange: (String) -> Unit,
+) {
     var menu by remember { mutableStateOf(false) }
     Box {
         OutlinedButton(onClick = { menu = true }, modifier = Modifier.fillMaxWidth().testTag("preference-category")) {
             Text(stringResource(preferenceCategoryLabelRes(category)))
         }
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-            PREFERENCE_DIALOG_CATEGORIES.forEach { token ->
+            // Grouped by section (Food & Drink, Media, Jewelry & Style, ...),
+            // mirroring web's ListSubheader-grouped select. `categories` is
+            // already contiguous by section — PreferenceCategory.CONFIG is
+            // declared in section order and filtering preserves that.
+            var lastSection: String? = null
+            categories.forEach { cfg ->
+                if (cfg.section != lastSection) {
+                    lastSection = cfg.section
+                    Text(
+                        text = stringResource(preferenceSectionLabelRes(cfg.section)),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    )
+                }
                 DropdownMenuItem(
-                    text = { Text(stringResource(preferenceCategoryLabelRes(token))) },
+                    text = { Text(stringResource(preferenceCategoryLabelRes(cfg.category))) },
                     onClick = {
                         menu = false
-                        onCategoryChange(token)
+                        onCategoryChange(cfg.category)
                     },
                 )
             }
@@ -1068,6 +1132,27 @@ private fun preferenceCategoryLabelRes(category: String): Int = when (category) 
     "food" -> R.string.preferences_category_food
     "drink" -> R.string.preferences_category_drink
     "media" -> R.string.preferences_category_media
+    "media_movie" -> R.string.preferences_category_media_movie
+    "media_tv" -> R.string.preferences_category_media_tv
+    "media_game" -> R.string.preferences_category_media_game
+    "media_podcast" -> R.string.preferences_category_media_podcast
+    "media_music_artist" -> R.string.preferences_category_media_music_artist
+    "media_music_album" -> R.string.preferences_category_media_music_album
+    "media_music_genre" -> R.string.preferences_category_media_music_genre
+    "media_music_song" -> R.string.preferences_category_media_music_song
+    "media_book_author" -> R.string.preferences_category_media_book_author
+    "media_book_series" -> R.string.preferences_category_media_book_series
+    "media_book_title" -> R.string.preferences_category_media_book_title
+    "jewelry_metal" -> R.string.preferences_category_jewelry_metal
+    "jewelry_stone" -> R.string.preferences_category_jewelry_stone
+    "jewelry_style" -> R.string.preferences_category_jewelry_style
+    "jewelry_type" -> R.string.preferences_category_jewelry_type
+    "flowers" -> R.string.preferences_category_flowers
+    "color" -> R.string.preferences_category_color
+    "hobby" -> R.string.preferences_category_hobby
+    "fragrance" -> R.string.preferences_category_fragrance
+    "cause" -> R.string.preferences_category_cause
+    "dislike" -> R.string.preferences_category_dislike
     else -> R.string.preferences_category
 }
 
@@ -1081,11 +1166,24 @@ private fun preferenceSensitivityLabelRes(sensitivity: String): Int = when (sens
 @androidx.annotation.StringRes
 private fun preferenceKeyLabelRes(key: String): Int = when (key) {
     "favorite" -> R.string.preferences_key_favorite
+    "like" -> R.string.preferences_key_like
     "dislike" -> R.string.preferences_key_dislike
     "allergy" -> R.string.preferences_key_allergy
     "show" -> R.string.preferences_key_show
     "movie" -> R.string.preferences_key_movie
     "music" -> R.string.preferences_key_music
+    "shirt" -> R.string.preferences_key_shirt
+    "pants" -> R.string.preferences_key_pants
+    "dress" -> R.string.preferences_key_dress
+    "skirt" -> R.string.preferences_key_skirt
+    "undergarments" -> R.string.preferences_key_undergarments
+    "outerwear" -> R.string.preferences_key_outerwear
+    "shoe" -> R.string.preferences_key_shoe
+    "hat" -> R.string.preferences_key_hat
+    "glove" -> R.string.preferences_key_glove
+    "belt" -> R.string.preferences_key_belt
+    "ring" -> R.string.preferences_key_ring
+    "socks" -> R.string.preferences_key_socks
     else -> R.string.preferences_key
 }
 
@@ -1110,11 +1208,15 @@ fun PreferencesScreen(
         onBack = onBack,
         sectionLabel = { section -> stringResource(preferenceSectionLabelRes(section)) },
     ) {
-        // Clothing sizes live in the Gifts screen now (web's ClothingSizesPanel is
-        // in its Gifts tab, "where you check sizes before buying") — see GiftsScreen.
+        // Clothing sizes and the gift-shopping-relevant categories (jewelry/
+        // flowers/color/fragrance/cause/gift-avoid) live in the Gifts screen
+        // now (web's Gifts tab, "check this right before buying") — see
+        // GiftsScreen. This dialog is scoped to Overview's own sections so it
+        // can't create a category that would then only show up there instead.
         if (showAdd || editingItem != null) {
             PreferenceDialog(
                 initial = editingItem,
+                sections = PreferenceSection.OVERVIEW_TAB,
                 onConfirm = { form ->
                     editingItem?.let { viewModel.update(it, form) }
                         ?: viewModel.create(form)
@@ -1129,8 +1231,12 @@ fun PreferencesScreen(
 
 @androidx.annotation.StringRes
 private fun preferenceSectionLabelRes(section: String): Int = when (section) {
-    "food_drink" -> R.string.preferences_section_food_drink
-    "media" -> R.string.preferences_section_media
+    PreferenceSection.FOOD_DRINK -> R.string.preferences_section_food_drink
+    PreferenceSection.MEDIA -> R.string.preferences_section_media
+    PreferenceSection.HOBBY -> R.string.preferences_section_hobby
+    PreferenceSection.JEWELRY -> R.string.preferences_section_jewelry
+    PreferenceSection.GIFT_PREFERENCES -> R.string.preferences_section_gift_preferences
+    PreferenceSection.GIFT_AVOID -> R.string.preferences_section_gift_avoid
     else -> R.string.preferences_section_other
 }
 
@@ -1138,12 +1244,14 @@ private fun preferenceSectionLabelRes(section: String): Int = when (section) {
 @Composable
 private fun ClothingSizesPanel(
     items: List<Preference>,
+    newKey: String,
     newValue: String,
     editingId: String?,
+    onNewKeyChange: (String) -> Unit,
     onNewValueChange: (String) -> Unit,
-    onAdd: (String) -> Unit,
+    onAdd: (String, String) -> Unit,
     onStartEdit: (Preference) -> Unit,
-    onEditConfirm: (Preference, String) -> Unit,
+    onEditConfirm: (Preference, String, String) -> Unit,
     onEditCancel: () -> Unit,
     onDelete: (String) -> Unit,
 ) {
@@ -1162,23 +1270,34 @@ private fun ClothingSizesPanel(
             )
         }
         items.forEach { item ->
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-            ) {
-                if (item.id == editingId) {
-                    var editValue by remember(item.id) { mutableStateOf(item.value) }
+            if (item.id == editingId) {
+                var editKey by remember(item.id) { mutableStateOf(item.key ?: "") }
+                var editValue by remember(item.id) { mutableStateOf(item.value) }
+                Column(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
                     OutlinedTextField(
-                        value = editValue, onValueChange = { editValue = it },
+                        value = editKey, onValueChange = { editKey = it },
+                        label = { Text(stringResource(R.string.gifts_clothing_type)) },
                         singleLine = true,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                     )
-                    TextButton(onClick = { onEditConfirm(item, editValue) }) { Text(stringResource(R.string.action_save)) }
-                    TextButton(onClick = onEditCancel) { Text(stringResource(R.string.action_cancel)) }
-                } else {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = editValue, onValueChange = { editValue = it },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                        )
+                        TextButton(onClick = { onEditConfirm(item, editKey, editValue) }) { Text(stringResource(R.string.action_save)) }
+                        TextButton(onClick = onEditCancel) { Text(stringResource(R.string.action_cancel)) }
+                    }
+                }
+            } else {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                ) {
                     Text(
-                        text = item.value,
+                        text = item.key?.let { "${stringResource(preferenceKeyLabelRes(it))}: ${item.value}" } ?: item.value,
                         style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier.weight(1f),
                     )
@@ -1194,6 +1313,21 @@ private fun ClothingSizesPanel(
                 }
             }
         }
+        OutlinedTextField(
+            value = newKey, onValueChange = onNewKeyChange,
+            label = { Text(stringResource(R.string.gifts_clothing_type)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (newKey.isBlank()) {
+            Row(modifier = Modifier.fillMaxWidth()) {
+                PreferenceCategory.CLOTHING_TYPE_SUGGESTIONS.take(4).forEach { suggestion ->
+                    TextButton(onClick = { onNewKeyChange(suggestion) }) {
+                        Text(stringResource(preferenceKeyLabelRes(suggestion)))
+                    }
+                }
+            }
+        }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
                 value = newValue, onValueChange = onNewValueChange,
@@ -1201,8 +1335,71 @@ private fun ClothingSizesPanel(
                 singleLine = true,
                 modifier = Modifier.weight(1f),
             )
-            TextButton(onClick = { onAdd(newValue) }, enabled = newValue.isNotBlank()) {
+            TextButton(onClick = { onAdd(newKey, newValue) }, enabled = newValue.isNotBlank()) {
                 Text(stringResource(R.string.preferences_clothing_add))
+            }
+        }
+    }
+}
+
+/**
+ * Web's Gifts-tab jewelry/flowers/color/fragrance/cause/gift-avoid panel —
+ * shopping-relevant preferences grouped by section, each row tappable to
+ * edit. Adding/editing goes through the shared PreferenceDialog, scoped to
+ * PreferenceSection.GIFTS_TAB so it can't create a food/media/hobby
+ * preference that would then only show up in PreferencesScreen instead.
+ */
+@Composable
+private fun GiftPreferencesPanel(
+    items: List<Preference>,
+    onAdd: () -> Unit,
+    onEdit: (Preference) -> Unit,
+    onDelete: (String) -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(
+                text = stringResource(R.string.gifts_preferences_heading),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            TextButton(onClick = onAdd) { Text(stringResource(R.string.preferences_new)) }
+        }
+        if (items.isEmpty()) {
+            Text(
+                text = stringResource(R.string.entities_empty),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = 4.dp),
+            )
+        }
+        PreferenceSection.GIFTS_TAB_ORDERED.forEach { section ->
+            val sectionItems = items.filter { PreferenceCategory.sectionOf(it.category) == section }
+            if (sectionItems.isNotEmpty()) {
+                Text(
+                    text = stringResource(preferenceSectionLabelRes(section)),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+                sectionItems.forEach { item ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth().clickable { onEdit(item) }.padding(vertical = 4.dp),
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = preferenceLabel(item), style = MaterialTheme.typography.bodyLarge)
+                        }
+                        IconButton(onClick = { onDelete(item.id) }) {
+                            Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.action_delete))
+                        }
+                    }
+                }
             }
         }
     }
@@ -1379,13 +1576,3 @@ internal fun MarkDiscussedDialog(
         },
     )
 }
-
-// The preference category/key suggestion lists mirror web's PreferenceDialog
-// (PREFERENCE_CATEGORIES = food/drink/media; clothing_size is deliberately not
-// offered here — it lives in the ClothingSizesPanel).
-private val PREFERENCE_DIALOG_CATEGORIES = listOf("food", "drink", "media")
-private val PREFERENCE_DEFAULT_KEYS: Map<String, List<String>> = mapOf(
-    "food" to listOf("favorite", "dislike", "allergy"),
-    "drink" to listOf("favorite", "dislike", "allergy"),
-    "media" to listOf("show", "movie", "music"),
-)

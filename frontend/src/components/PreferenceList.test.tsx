@@ -24,7 +24,7 @@ test('renders preferences grouped into Food & Drink and Media sections', () => {
     <PreferenceList
       preferences={[
         preference(),
-        preference({ id: 'p2', category: 'media', key: 'show', value: 'Severance' }),
+        preference({ id: 'p2', category: 'media_tv', key: 'favorite', value: 'Severance' }),
       ]}
       onEdit={vi.fn()}
       onDelete={vi.fn()}
@@ -35,7 +35,28 @@ test('renders preferences grouped into Food & Drink and Media sections', () => {
   expect(screen.getByText('Severance')).toBeInTheDocument();
   expect(screen.getByText('Food & Drink Preferences')).toBeInTheDocument();
   expect(screen.getByText('Media Preferences')).toBeInTheDocument();
-  expect(screen.getByText('Show')).toBeInTheDocument();
+  expect(screen.getByText('Favorite')).toBeInTheDocument();
+});
+
+test('jewelry and gift-preference categories land in their own sections', () => {
+  render(
+    <PreferenceList
+      preferences={[
+        preference({ id: 'p1', category: 'jewelry_metal', key: 'allergy', value: 'Nickel' }),
+        preference({ id: 'p2', category: 'flowers', key: 'favorite', value: 'Peonies' }),
+        preference({ id: 'p3', category: 'dislike', value: 'Candles' }),
+      ]}
+      onEdit={vi.fn()}
+      onDelete={vi.fn()}
+    />
+  );
+
+  expect(screen.getByText('Jewelry & Style')).toBeInTheDocument();
+  expect(screen.getByText('Nickel')).toBeInTheDocument();
+  expect(screen.getByText('Gift Preferences')).toBeInTheDocument();
+  expect(screen.getByText('Peonies')).toBeInTheDocument();
+  expect(screen.getByText('Gift Avoid')).toBeInTheDocument();
+  expect(screen.getByText('Candles')).toBeInTheDocument();
 });
 
 test('an unrecognized category falls through to the Other section', () => {
@@ -53,6 +74,19 @@ test('an unrecognized category falls through to the Other section', () => {
   expect(screen.getByText('Legacy data')).toBeInTheDocument();
   expect(screen.queryByText('Food & Drink Preferences')).not.toBeInTheDocument();
   expect(screen.queryByText('Media Preferences')).not.toBeInTheDocument();
+});
+
+test('shows notes when present', () => {
+  render(
+    <PreferenceList
+      preferences={[preference({ key: 'dislike', value: 'Alcohol', notes: "Doesn't drink alcohol" })]}
+      onEdit={vi.fn()}
+      onDelete={vi.fn()}
+    />
+  );
+
+  expect(screen.getByText('Alcohol')).toBeInTheDocument();
+  expect(screen.getByText("Doesn't drink alcohol")).toBeInTheDocument();
 });
 
 test('shows the sensitivity chip only for non-normal preferences', () => {

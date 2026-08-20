@@ -19,6 +19,7 @@ import com.mycorrhizal.crm.model.network.Gift
 import com.mycorrhizal.crm.model.network.GiftStatuses
 import com.mycorrhizal.crm.model.network.LifeEvent
 import com.mycorrhizal.crm.model.network.Preference
+import com.mycorrhizal.crm.model.registry.PreferenceSection
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -424,12 +425,14 @@ class PreferenceDialogTest {
 
     private fun setContent(
         initial: Preference? = null,
+        sections: Set<String> = PreferenceSection.OVERVIEW_TAB + PreferenceSection.GIFTS_TAB,
         onConfirm: (PreferenceFormData) -> Unit = {},
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 PreferenceDialog(
                     initial = initial,
+                    sections = sections,
                     onConfirm = onConfirm,
                     onDismiss = {},
                 )
@@ -442,16 +445,52 @@ class PreferenceDialogTest {
         var confirmed: PreferenceFormData? = null
         setContent(onConfirm = { confirmed = it })
 
-        // media suggests show/movie/music.
+        // TV show (media_tv) suggests favorite/like/dislike -- the medium
+        // lives in the category now, key is disposition.
         composeTestRule.onNodeWithTag("preference-category").performClick()
-        composeTestRule.onNodeWithText("Media").performClick()
-        composeTestRule.onNodeWithText("Show").performClick()
+        composeTestRule.onNodeWithText("TV show").performClick()
+        composeTestRule.onNodeWithText("Dislike").performClick()
         composeTestRule.onNodeWithText("Value").performTextReplacement("Severance")
         composeTestRule.onNodeWithText("Create").performClick()
 
-        assertEquals("media", confirmed?.category)
-        assertEquals("show", confirmed?.key)
+        assertEquals("media_tv", confirmed?.category)
+        assertEquals("dislike", confirmed?.key)
         assertEquals("Severance", confirmed?.value)
+    }
+
+    @Test
+    fun `category options are grouped by section`() {
+        setContent()
+
+        composeTestRule.onNodeWithTag("preference-category").performClick()
+        composeTestRule.onNodeWithText("Food & Drink").assertIsDisplayed()
+        // Further down the (scrollable) popup — scroll each into view first.
+        composeTestRule.onNodeWithText("Jewelry & Style").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Jewelry — metal").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Flowers").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `sections scopes the category dropdown and the default category`() {
+        // The Gifts-tab dialog must not offer food/media/hobby -- creating
+        // one there would then only show up in PreferencesScreen instead.
+        setContent(sections = PreferenceSection.GIFTS_TAB)
+
+        composeTestRule.onNodeWithTag("preference-category").assertIsDisplayed()
+        // Default category is the first Gifts-tab category, not "food".
+        composeTestRule.onNodeWithText("Jewelry — metal").assertIsDisplayed()
+    }
+
+    @Test
+    fun `notes is optional and round-trips into the confirmed form`() {
+        var confirmed: PreferenceFormData? = null
+        setContent(onConfirm = { confirmed = it })
+
+        composeTestRule.onNodeWithText("Value").performTextReplacement("spicy")
+        composeTestRule.onNodeWithText("Notes").performScrollTo().performTextReplacement("Doesn't drink alcohol")
+        composeTestRule.onNodeWithText("Create").performClick()
+
+        assertEquals("Doesn't drink alcohol", confirmed?.notes)
     }
 
     @Test
@@ -468,7 +507,7 @@ class PreferenceDialogTest {
     }
 
     @Test
-    fun `edit mode pre-fills category value and sensitivity`() {
+    fun `edit mode pre-fills category value notes and sensitivity`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 PreferenceDialog(
@@ -478,6 +517,7 @@ class PreferenceDialogTest {
                         category = "drink",
                         key = "favorite",
                         value = "matcha",
+                        notes = "Iced only",
                         sensitivity = "private",
                     ),
                     onConfirm = {},
@@ -489,6 +529,7 @@ class PreferenceDialogTest {
         composeTestRule.onNodeWithText("Drink").assertIsDisplayed()
         composeTestRule.onNodeWithText("favorite").assertIsDisplayed()
         composeTestRule.onNodeWithText("matcha").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Iced only").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Private").performScrollTo().assertIsDisplayed()
     }
 }

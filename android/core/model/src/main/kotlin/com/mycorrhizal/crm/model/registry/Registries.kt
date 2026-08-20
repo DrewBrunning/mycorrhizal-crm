@@ -63,13 +63,124 @@ object LifeEventTypes {
     fun forCategory(category: String): List<String> = BY_CATEGORY[category].orEmpty()
 }
 
+/**
+ * The section a preference category belongs to — which also decides which
+ * screen it surfaces on. Mirrors frontend/src/api/preferences.ts's
+ * PreferenceSection: foodDrink/media/hobby are "get to know them" facts
+ * (PreferencesScreen); jewelry/giftPreferences/giftAvoid are "check this
+ * right before buying" facts (GiftsScreen, alongside clothing sizes).
+ */
+object PreferenceSection {
+    const val FOOD_DRINK = "food_drink"
+    const val MEDIA = "media"
+    const val HOBBY = "hobby"
+    const val JEWELRY = "jewelry"
+    const val GIFT_PREFERENCES = "gift_preferences"
+    const val GIFT_AVOID = "gift_avoid"
+    // Catch-all for a category not in PreferenceCategory.CONFIG (legacy data,
+    // or a future addition this build doesn't know about yet) — matches
+    // web's PreferenceList "Other" bucket, so no data ever hides.
+    const val OTHER = "other"
+
+    /** Sections shown on GiftsScreen, alongside clothing sizes. */
+    val GIFTS_TAB: Set<String> = setOf(JEWELRY, GIFT_PREFERENCES, GIFT_AVOID)
+    val GIFTS_TAB_ORDERED: List<String> = listOf(JEWELRY, GIFT_PREFERENCES, GIFT_AVOID)
+
+    /** Sections shown on PreferencesScreen. Every real (non-OTHER) section
+     * must appear in exactly one of GIFTS_TAB/OVERVIEW_TAB. */
+    val OVERVIEW_TAB: Set<String> = setOf(FOOD_DRINK, MEDIA, HOBBY)
+    val OVERVIEW_TAB_ORDERED: List<String> = listOf(FOOD_DRINK, MEDIA, HOBBY)
+}
+
+enum class PreferenceKeyMode { DISPOSITION, FREE_SOLO }
+
+data class PreferenceCategoryConfig(
+    val category: String,
+    val section: String,
+    val keyMode: PreferenceKeyMode,
+    val keySuggestions: List<String>,
+)
+
+/**
+ * Android mirror of frontend/src/api/preferences.ts's PREFERENCE_CATEGORY_CONFIG
+ * (see that file's doc comment for the full rationale, condensed here): a
+ * domain that needs both a "what kind of thing" axis and a "how do they feel
+ * about it" axis (media, jewelry) pushes the kind into the category (cheap to
+ * extend, same convention CLOTHING_SIZE already used) and reserves `key`
+ * uniformly for disposition (favorite/like/dislike/allergy, a suggestion list
+ * per category, still free text). `dislike` is the one exception: a general,
+ * non-domain-specific gift-avoidance note (e.g. "no candles"), so it has no
+ * disposition of its own — FREE_SOLO with no suggestions.
+ *
+ * CLOTHING_SIZE stays outside CONFIG (its key is a free-solo clothing *type*
+ * like "shirt"/"ring", not a disposition — sizing is a fact, not a taste).
+ */
 object PreferenceCategory {
     const val FOOD = "food"
     const val DRINK = "drink"
-    const val MEDIA = "media"
     const val CLOTHING_SIZE = "clothing_size"
 
-    val ALL = listOf(FOOD, DRINK, MEDIA, CLOTHING_SIZE)
+    // Legacy/deprecated — superseded by the media_* categories below. Not in
+    // CONFIG (not offered in the dialog); a stray row (pre-backfill, or a
+    // migration rollback) falls to PreferenceSection.OTHER, matching web.
+    const val MEDIA_LEGACY = "media"
+
+    private val DISPOSITION = listOf("favorite", "like", "dislike")
+    private val DISPOSITION_WITH_ALLERGY = listOf("favorite", "like", "dislike", "allergy")
+
+    val CONFIG: List<PreferenceCategoryConfig> = listOf(
+        // Food & Drink — presented as one merged section, kept as two
+        // categories so food-vs-drink stays separately filterable/exportable.
+        PreferenceCategoryConfig(FOOD, PreferenceSection.FOOD_DRINK, PreferenceKeyMode.DISPOSITION, listOf("favorite", "dislike", "allergy")),
+        PreferenceCategoryConfig(DRINK, PreferenceSection.FOOD_DRINK, PreferenceKeyMode.DISPOSITION, listOf("favorite", "dislike", "allergy")),
+
+        // Media — medium (and, for music/books, facet) lives in the category.
+        PreferenceCategoryConfig("media_movie", PreferenceSection.MEDIA, PreferenceKeyMode.DISPOSITION, DISPOSITION),
+        PreferenceCategoryConfig("media_tv", PreferenceSection.MEDIA, PreferenceKeyMode.DISPOSITION, DISPOSITION),
+        PreferenceCategoryConfig("media_game", PreferenceSection.MEDIA, PreferenceKeyMode.DISPOSITION, DISPOSITION),
+        PreferenceCategoryConfig("media_podcast", PreferenceSection.MEDIA, PreferenceKeyMode.DISPOSITION, DISPOSITION),
+        PreferenceCategoryConfig("media_music_artist", PreferenceSection.MEDIA, PreferenceKeyMode.DISPOSITION, DISPOSITION),
+        PreferenceCategoryConfig("media_music_album", PreferenceSection.MEDIA, PreferenceKeyMode.DISPOSITION, DISPOSITION),
+        PreferenceCategoryConfig("media_music_genre", PreferenceSection.MEDIA, PreferenceKeyMode.DISPOSITION, DISPOSITION),
+        PreferenceCategoryConfig("media_music_song", PreferenceSection.MEDIA, PreferenceKeyMode.DISPOSITION, DISPOSITION),
+        PreferenceCategoryConfig("media_book_author", PreferenceSection.MEDIA, PreferenceKeyMode.DISPOSITION, DISPOSITION),
+        PreferenceCategoryConfig("media_book_series", PreferenceSection.MEDIA, PreferenceKeyMode.DISPOSITION, DISPOSITION),
+        PreferenceCategoryConfig("media_book_title", PreferenceSection.MEDIA, PreferenceKeyMode.DISPOSITION, DISPOSITION),
+
+        // Activities & Hobbies — a "get to know them" fact, stays with Preferences.
+        PreferenceCategoryConfig("hobby", PreferenceSection.HOBBY, PreferenceKeyMode.DISPOSITION, DISPOSITION),
+
+        // Jewelry & Style — aspect (metal/stone/style/type) lives in the category.
+        PreferenceCategoryConfig("jewelry_metal", PreferenceSection.JEWELRY, PreferenceKeyMode.DISPOSITION, DISPOSITION_WITH_ALLERGY),
+        PreferenceCategoryConfig("jewelry_stone", PreferenceSection.JEWELRY, PreferenceKeyMode.DISPOSITION, DISPOSITION),
+        PreferenceCategoryConfig("jewelry_style", PreferenceSection.JEWELRY, PreferenceKeyMode.DISPOSITION, DISPOSITION),
+        PreferenceCategoryConfig("jewelry_type", PreferenceSection.JEWELRY, PreferenceKeyMode.DISPOSITION, DISPOSITION),
+
+        // Gift Preferences — single-facet "tastes", each its own category chip.
+        PreferenceCategoryConfig("flowers", PreferenceSection.GIFT_PREFERENCES, PreferenceKeyMode.DISPOSITION, DISPOSITION_WITH_ALLERGY),
+        PreferenceCategoryConfig("color", PreferenceSection.GIFT_PREFERENCES, PreferenceKeyMode.DISPOSITION, DISPOSITION),
+        PreferenceCategoryConfig("fragrance", PreferenceSection.GIFT_PREFERENCES, PreferenceKeyMode.DISPOSITION, DISPOSITION_WITH_ALLERGY),
+        PreferenceCategoryConfig("cause", PreferenceSection.GIFT_PREFERENCES, PreferenceKeyMode.DISPOSITION, listOf("favorite", "like")),
+
+        // Gift Avoid — general, non-domain-specific avoidance notes.
+        PreferenceCategoryConfig("dislike", PreferenceSection.GIFT_AVOID, PreferenceKeyMode.FREE_SOLO, emptyList()),
+    )
+
+    val ALL: List<String> = CONFIG.map { it.category }
+
+    private val BY_CATEGORY: Map<String, PreferenceCategoryConfig> = CONFIG.associateBy { it.category }
+
+    fun sectionOf(category: String): String? = BY_CATEGORY[category]?.section
+    fun keySuggestionsFor(category: String): List<String> = BY_CATEGORY[category]?.keySuggestions.orEmpty()
+    fun keyModeFor(category: String): PreferenceKeyMode = BY_CATEGORY[category]?.keyMode ?: PreferenceKeyMode.DISPOSITION
+    fun isGiftsTabCategory(category: String): Boolean = sectionOf(category) in PreferenceSection.GIFTS_TAB
+
+    /** Free-solo clothing-type suggestions for CLOTHING_SIZE's key field — a
+     * fact (which garment), not a disposition. */
+    val CLOTHING_TYPE_SUGGESTIONS: List<String> = listOf(
+        "shirt", "pants", "dress", "skirt", "undergarments", "outerwear",
+        "shoe", "hat", "glove", "belt", "ring", "socks",
+    )
 }
 
 object Sensitivity {

@@ -1,8 +1,39 @@
 import { describe, test, expect, vi, afterEach } from 'vitest';
-import { getPreferences, createPreference } from './preferences';
+import {
+  getPreferences,
+  createPreference,
+  PREFERENCE_CATEGORY_CONFIG,
+  GIFTS_TAB_SECTIONS,
+  OVERVIEW_TAB_SECTIONS,
+  isGiftsTabCategory,
+} from './preferences';
 
 afterEach(() => {
   vi.unstubAllGlobals();
+});
+
+describe('tab section taxonomy', () => {
+  test('every section used by a category is claimed by exactly one of GIFTS_TAB_SECTIONS/OVERVIEW_TAB_SECTIONS', () => {
+    const usedSections = new Set(PREFERENCE_CATEGORY_CONFIG.map((c) => c.section));
+    for (const section of usedSections) {
+      const inGifts = GIFTS_TAB_SECTIONS.includes(section);
+      const inOverview = OVERVIEW_TAB_SECTIONS.includes(section);
+      expect(
+        inGifts !== inOverview,
+        `section "${section}" must appear in exactly one of GIFTS_TAB_SECTIONS/OVERVIEW_TAB_SECTIONS (got gifts=${inGifts}, overview=${inOverview})`
+      ).toBe(true);
+    }
+  });
+
+  test('isGiftsTabCategory matches the section split for every configured category', () => {
+    for (const { category, section } of PREFERENCE_CATEGORY_CONFIG) {
+      expect(isGiftsTabCategory(category)).toBe(GIFTS_TAB_SECTIONS.includes(section));
+    }
+  });
+
+  test('an unrecognized category is not treated as a Gifts-tab category', () => {
+    expect(isGiftsTabCategory('some_future_category')).toBe(false);
+  });
 });
 
 describe('getPreferences', () => {

@@ -7,16 +7,17 @@ import {
   Button,
   Box,
   MenuItem,
+  ListSubheader,
   Typography,
   Autocomplete,
 } from '@mui/material';
 import AppDialog from './AppDialog';
 import { useTranslation } from 'react-i18next';
 import {
-  PREFERENCE_CATEGORIES,
+  PREFERENCE_CATEGORY_CONFIG,
   PREFERENCE_DEFAULT_KEYS,
+  PreferenceSection,
   Preference,
-  PreferenceCategory,
   PreferenceInput,
   PreferenceSensitivity,
 } from '../api/preferences';
@@ -25,14 +26,27 @@ export interface PreferenceFormData {
   category: string;
   key?: string;
   value: string;
+  notes?: string;
   sensitivity: PreferenceSensitivity;
 }
+
+// Category options grouped by section (Food & Drink, Media, Activities &
+// Hobbies, Jewelry & Style, Gift Preferences, Gift Avoid) for the dialog's
+// ListSubheader-grouped select — same order PREFERENCE_CATEGORY_CONFIG
+// declares them in.
+const SECTION_ORDER: PreferenceSection[] = ['foodDrink', 'media', 'hobby', 'jewelry', 'giftPreferences', 'giftAvoid'];
 
 interface PreferenceDialogProps {
   open: boolean;
   onClose: () => void;
   onSave: (data: PreferenceFormData) => Promise<void>;
   preference?: Preference | null;
+  // Restricts the category dropdown (and the default selected category) to
+  // these sections — e.g. the Gifts tab's dialog only offers
+  // jewelry/giftPreferences/giftAvoid, so a shopping-focused "Add Preference"
+  // can't accidentally create a food preference that then hides in the
+  // Overview tab's list instead. Defaults to every section.
+  sections?: PreferenceSection[];
 }
 
 export default function PreferenceDialog({
@@ -40,25 +54,32 @@ export default function PreferenceDialog({
   onClose,
   onSave,
   preference,
+  sections = SECTION_ORDER,
 }: PreferenceDialogProps) {
   const { t } = useTranslation();
   const isEditing = !!preference;
 
-  const [category, setCategory] = useState('food');
+  const availableCategories = PREFERENCE_CATEGORY_CONFIG.filter((c) => sections.includes(c.section));
+  const defaultCategory = availableCategories[0]?.category ?? 'food';
+
+  const [category, setCategory] = useState(defaultCategory);
   const [key, setKey] = useState('');
   const [value, setValue] = useState('');
+  const [notes, setNotes] = useState('');
   const [sensitivity, setSensitivity] = useState<PreferenceSensitivity>('normal');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (open) {
-      setCategory(preference?.category || 'food');
+      setCategory(preference?.category || defaultCategory);
       setKey(preference?.key || '');
       setValue(preference?.value || '');
+      setNotes(preference?.notes || '');
       setSensitivity(preference?.sensitivity || 'normal');
       setError('');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, preference]);
 
   const handleSave = async () => {
@@ -72,6 +93,7 @@ export default function PreferenceDialog({
         category,
         key: key.trim() || undefined,
         value: value.trim(),
+        notes: notes.trim() || undefined,
         sensitivity,
       };
       await onSave(data);
@@ -98,11 +120,18 @@ export default function PreferenceDialog({
             fullWidth
             required
           >
-            {PREFERENCE_CATEGORIES.map((token) => (
-              <MenuItem key={token} value={token}>
-                {t(`preference.categories.${token}`, token)}
-              </MenuItem>
-            ))}
+            {sections.flatMap((section) => {
+              const categories = availableCategories.filter((c) => c.section === section);
+              if (categories.length === 0) return [];
+              return [
+                <ListSubheader key={`header-${section}`}>{t(`preference.sections.${section}`)}</ListSubheader>,
+                ...categories.map((c) => (
+                  <MenuItem key={c.category} value={c.category}>
+                    {t(`preference.categories.${c.category}`, c.category)}
+                  </MenuItem>
+                )),
+              ];
+            })}
           </TextField>
           <TextField
             label={t('preference.value')}
@@ -113,7 +142,7 @@ export default function PreferenceDialog({
           />
           <Autocomplete
             freeSolo
-            options={PREFERENCE_DEFAULT_KEYS[category as PreferenceCategory] ?? []}
+            options={PREFERENCE_DEFAULT_KEYS[category] ?? []}
             getOptionLabel={(opt) => t(`preference.keys.${opt}`, opt)}
             value={key || null}
             onChange={(_, v) => setKey(v || '')}
@@ -125,6 +154,15 @@ export default function PreferenceDialog({
                 helperText={t('preference.keyHint')}
               />
             )}
+          />
+          <TextField
+            label={t('preference.notes')}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            helperText={t('preference.notesHint')}
+            fullWidth
+            multiline
+            minRows={2}
           />
           <TextField
             select
@@ -165,6 +203,7 @@ export function toPreferenceInput(entityId: string, data: PreferenceFormData): P
     category: data.category,
     key: data.key,
     value: data.value,
+    notes: data.notes,
     source: 'user',
     confidence: 1.0,
     sensitivity: data.sensitivity,

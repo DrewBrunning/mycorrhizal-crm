@@ -211,6 +211,7 @@ type PreferenceInput struct {
 	Category      string     `json:"category" validate:"required,max=100"`
 	Key           string     `json:"key,omitempty" validate:"omitempty,max=100"`
 	Value         string     `json:"value" validate:"required,max=1000"`
+	Notes         string     `json:"notes,omitempty" validate:"omitempty,max=2000"`
 	Source        string     `json:"source,omitempty" validate:"omitempty,oneof=conversation_note user ai-suggested external"`
 	Confidence    *float64   `json:"confidence,omitempty"`
 	LastConfirmed *time.Time `json:"last_confirmed,omitempty"`

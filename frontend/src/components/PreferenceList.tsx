@@ -1,8 +1,9 @@
+import { Fragment } from 'react';
 import { Box, Typography, IconButton, Stack, Paper, Chip } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { useTranslation } from 'react-i18next';
-import { Preference } from '../api/preferences';
+import { Preference, PreferenceSection, PREFERENCE_CATEGORY_CONFIG } from '../api/preferences';
 
 interface PreferenceListProps {
   preferences: Preference[];
@@ -10,12 +11,14 @@ interface PreferenceListProps {
   onDelete: (id: string) => void;
 }
 
-// The Preferences tab is split into the two display groups the dialog offers:
-// "Food & Drink Preferences" (categories food + drink) and "Media
-// Preferences" (category media). Anything else (legacy categories, free-typed
-// ones) falls through to an "Other" section so no data ever hides.
-const FOOD_DRINK_CATEGORIES = ['food', 'drink'];
-const MEDIA_CATEGORY = 'media';
+// Sections mirror the dialog's category groups (PREFERENCE_CATEGORY_CONFIG),
+// so a category's section membership is defined in exactly one place.
+// Anything not in the config (legacy categories, free-typed ones) falls
+// through to "Other" so no data ever hides.
+const CATEGORY_TO_SECTION: Record<string, PreferenceSection> = Object.fromEntries(
+  PREFERENCE_CATEGORY_CONFIG.map((c) => [c.category, c.section]),
+);
+const SECTION_ORDER: PreferenceSection[] = ['foodDrink', 'media', 'hobby', 'jewelry', 'giftPreferences', 'giftAvoid'];
 
 export default function PreferenceList({ preferences, onEdit, onDelete }: PreferenceListProps) {
   const { t } = useTranslation();
@@ -28,9 +31,15 @@ export default function PreferenceList({ preferences, onEdit, onDelete }: Prefer
     );
   }
 
-  const foodDrink = preferences.filter((p) => FOOD_DRINK_CATEGORIES.includes(p.category));
-  const media = preferences.filter((p) => p.category === MEDIA_CATEGORY);
-  const other = preferences.filter((p) => !FOOD_DRINK_CATEGORIES.includes(p.category) && p.category !== MEDIA_CATEGORY);
+  const bySection: Record<PreferenceSection, Preference[]> = {
+    foodDrink: [], media: [], hobby: [], jewelry: [], giftPreferences: [], giftAvoid: [],
+  };
+  const other: Preference[] = [];
+  for (const p of preferences) {
+    const section = CATEGORY_TO_SECTION[p.category];
+    if (section) bySection[section].push(p);
+    else other.push(p);
+  }
 
   const renderItem = (pref: Preference) => (
     <Paper
@@ -63,6 +72,11 @@ export default function PreferenceList({ preferences, onEdit, onDelete }: Prefer
             )}
           </Box>
           <Typography variant="body1" sx={{ overflowWrap: 'anywhere' }}>{pref.value}</Typography>
+          {pref.notes && (
+            <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere', mt: 0.25 }}>
+              {pref.notes}
+            </Typography>
+          )}
         </Box>
         <Box
           className="preference-actions"
@@ -100,8 +114,9 @@ export default function PreferenceList({ preferences, onEdit, onDelete }: Prefer
 
   return (
     <Stack spacing={2.5}>
-      {renderSection(t('preference.sections.foodDrink'), foodDrink)}
-      {renderSection(t('preference.sections.media'), media)}
+      {SECTION_ORDER.map((section) => (
+        <Fragment key={section}>{renderSection(t(`preference.sections.${section}`), bySection[section])}</Fragment>
+      ))}
       {renderSection(t('preference.sections.other'), other)}
     </Stack>
   );

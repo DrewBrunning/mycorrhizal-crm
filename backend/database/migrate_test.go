@@ -316,6 +316,135 @@ func TestMigrationsAddGiftURLAndNotes(t *testing.T) {
 	assert.Equal(t, "The espresso machine", description, "a rollback must not destroy the gift")
 }
 
+// TestMigrationsAddPreferenceNotes covers 000029's additive preferences.notes
+// column, following TestMigrationsAddGiftURLAndNotes' exact template: a
+// preference that predates the migration must survive it unchanged, with the
+// new column simply null rather than backfilled.
+func TestMigrationsAddPreferenceNotes(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "preference-notes.db")
+	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
+	require.NoError(t, err)
+	defer sqlDB.Close()
+
+	m, err := newMigrator(sqlDB)
+	require.NoError(t, err)
+	// Everything up to but NOT including 000029, so the preference below
+	// genuinely predates the notes column.
+	require.NoError(t, m.Steps(28))
+
+	_, err = sqlDB.Exec(
+		"INSERT INTO users (created_at, updated_at, username, password, email) VALUES (datetime('now'), datetime('now'), 'pref-notes', 'x', 'pref-notes@example.com')")
+	require.NoError(t, err)
+	var userID int64
+	require.NoError(t, sqlDB.QueryRow("SELECT id FROM users WHERE username = 'pref-notes'").Scan(&userID))
+
+	_, err = sqlDB.Exec(`
+		INSERT INTO preferences (id, created_at, updated_at, user_id, entity_id, category, key, value, sensitivity)
+		VALUES ('pref-notes-1', datetime('now'), datetime('now'), ?, 'vcard-pref-notes', 'food', 'dislike', 'Alcohol', 'normal')`,
+		userID)
+	require.NoError(t, err)
+
+	// Apply exactly 000029 — Steps(1), not m.Up(), so the MigrateDown below
+	// still rolls back this migration once another one lands after it.
+	require.NoError(t, m.Steps(1))
+
+	var colCount int64
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM pragma_table_info('preferences') WHERE name = 'notes'",
+	).Scan(&colCount))
+	assert.Equal(t, int64(1), colCount, "preferences.notes must be added by the migration")
+
+	var value string
+	var notes sql.NullString
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT value, notes FROM preferences WHERE id = 'pref-notes-1'",
+	).Scan(&value, &notes))
+	assert.Equal(t, "Alcohol", value, "an additive migration must not disturb existing preference data")
+	assert.False(t, notes.Valid, "an existing row's new notes column must be null, not an empty-string backfill")
+
+	// Writing the new column works against the real migrated schema.
+	_, err = sqlDB.Exec(
+		"UPDATE preferences SET notes = ? WHERE id = 'pref-notes-1'",
+		"Doesn't drink alcohol")
+	require.NoError(t, err)
+
+	// Down drops the column; the row itself and its original data survive.
+	require.NoError(t, MigrateDown(dbPath))
+
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM pragma_table_info('preferences') WHERE name = 'notes'",
+	).Scan(&colCount))
+	assert.Equal(t, int64(0), colCount, "the down migration must remove the notes column")
+
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT value FROM preferences WHERE id = 'pref-notes-1'",
+	).Scan(&value))
+	assert.Equal(t, "Alcohol", value, "a rollback must not destroy the preference")
+}
+
+// TestMigrationsBackfillMediaPreferences covers 000030's backfill of the
+// legacy category='media' scheme (key=show/movie/music, no disposition) into
+// the new medium-specific categories with key='favorite'. Also covers the
+// catch-all branch for a row with an unrecognized key, and the down
+// migration's reversal of the three deterministic branches.
+func TestMigrationsBackfillMediaPreferences(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "preference-media-backfill.db")
+	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
+	require.NoError(t, err)
+	defer sqlDB.Close()
+
+	m, err := newMigrator(sqlDB)
+	require.NoError(t, err)
+	// Everything up to but NOT including 000030, so these preferences
+	// genuinely predate the backfill.
+	require.NoError(t, m.Steps(29))
+
+	_, err = sqlDB.Exec(
+		"INSERT INTO users (created_at, updated_at, username, password, email) VALUES (datetime('now'), datetime('now'), 'media-backfill', 'x', 'media-backfill@example.com')")
+	require.NoError(t, err)
+	var userID int64
+	require.NoError(t, sqlDB.QueryRow("SELECT id FROM users WHERE username = 'media-backfill'").Scan(&userID))
+
+	insertLegacyMedia := func(id, key string) {
+		_, err := sqlDB.Exec(`
+			INSERT INTO preferences (id, created_at, updated_at, user_id, entity_id, category, key, value, sensitivity)
+			VALUES (?, datetime('now'), datetime('now'), ?, 'vcard-media-backfill', 'media', ?, 'The Bear', 'normal')`,
+			id, userID, key)
+		require.NoError(t, err)
+	}
+	insertLegacyMedia("media-show", "show")
+	insertLegacyMedia("media-movie", "movie")
+	insertLegacyMedia("media-music", "music")
+	insertLegacyMedia("media-unrecognized", "podcast") // never written by the old UI, but never enum-enforced either
+
+	// Apply exactly 000030.
+	require.NoError(t, m.Steps(1))
+
+	assertCategoryKey := func(id, wantCategory, wantKey string) {
+		var category, key string
+		require.NoError(t, sqlDB.QueryRow(
+			"SELECT category, key FROM preferences WHERE id = ?", id,
+		).Scan(&category, &key))
+		assert.Equal(t, wantCategory, category, "id=%s category after backfill", id)
+		assert.Equal(t, wantKey, key, "id=%s key after backfill", id)
+	}
+	assertCategoryKey("media-show", "media_tv", "favorite")
+	assertCategoryKey("media-movie", "media_movie", "favorite")
+	assertCategoryKey("media-music", "media_music_artist", "favorite")
+	assertCategoryKey("media-unrecognized", "media_movie", "favorite")
+
+	// Down reverses the three deterministic branches.
+	require.NoError(t, MigrateDown(dbPath))
+
+	assertCategoryKey("media-show", "media", "show")
+	assertCategoryKey("media-movie", "media", "movie")
+	assertCategoryKey("media-music", "media", "music")
+	// The catch-all-branch row is documented as not perfectly reversible —
+	// it comes back as media/movie alongside the genuine movie row, not its
+	// original podcast key.
+	assertCategoryKey("media-unrecognized", "media", "movie")
+}
+
 // TestSquashedSchemaHasNoLegacyFoodPreference verifies the squashed baseline
 // (T22) excludes the legacy contacts.food_preference column — it was retired
 // by T20a and removed from the baseline during the migration squash.

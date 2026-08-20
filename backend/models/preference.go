@@ -14,14 +14,68 @@ import (
 // LifeEvent.Type/HouseholdMember.Role: the suggestion engine (and future AI
 // layer) must degrade gracefully on a category this switch doesn't know,
 // not reject it.
+//
+// Domains that need both a "what kind of thing" axis and a "how do they feel
+// about it" axis (media, jewelry) push the kind into Category and reserve Key
+// uniformly for disposition (favorite/like/dislike/allergy) — the same
+// convention PreferenceCategoryClothingSize already used for putting "shirt"
+// vs. "ring" in Category-adjacent structure. See the T-ticket-less redesign
+// discussion: overloading Key to mean medium type (as the old
+// PreferenceCategoryMedia did, key=show/movie/music) left no room for
+// disposition, so every stored row was implicitly a "like".
 const (
 	PreferenceCategoryFood         = "food"
 	PreferenceCategoryDrink        = "drink"
 	PreferenceCategoryClothingSize = "clothing_size"
-	PreferenceCategoryHobby        = "hobby"
-	PreferenceCategoryGift         = "gift"
-	PreferenceCategoryDislike      = "dislike"
-	PreferenceCategoryMedia        = "media"
+
+	// PreferenceCategoryHobby covers activities/interests (hiking, chess, ...).
+	// Key is a disposition (favorite/like/dislike).
+	PreferenceCategoryHobby = "hobby"
+
+	PreferenceCategoryGift = "gift"
+
+	// PreferenceCategoryDislike is repurposed as a general, non-domain-specific
+	// gift-avoidance note (e.g. "no candles", with Notes carrying "migraines").
+	// A dislike within a specific domain (e.g. disliking a particular food)
+	// lives as key=dislike within that domain's own category instead — this
+	// category is only for avoidances that don't fit a domain.
+	PreferenceCategoryDislike = "dislike"
+
+	// PreferenceCategoryMedia is legacy/deprecated, superseded by the
+	// medium-specific media_* categories below. Kept only because
+	// migration 000030's down.sql writes it back on rollback; no code path
+	// should create new rows with this category.
+	PreferenceCategoryMedia = "media"
+
+	// Media categories: medium (and, for music/books, facet) lives in
+	// Category; Key is disposition (favorite/like/dislike).
+	PreferenceCategoryMediaMovie   = "media_movie"
+	PreferenceCategoryMediaTV      = "media_tv"
+	PreferenceCategoryMediaGame    = "media_game"
+	PreferenceCategoryMediaPodcast = "media_podcast"
+
+	PreferenceCategoryMediaMusicArtist = "media_music_artist"
+	PreferenceCategoryMediaMusicAlbum  = "media_music_album"
+	PreferenceCategoryMediaMusicGenre  = "media_music_genre"
+	PreferenceCategoryMediaMusicSong   = "media_music_song"
+
+	PreferenceCategoryMediaBookAuthor = "media_book_author"
+	PreferenceCategoryMediaBookSeries = "media_book_series"
+	PreferenceCategoryMediaBookTitle  = "media_book_title"
+
+	// Jewelry categories: aspect (metal/stone/style/type) lives in Category;
+	// Key is disposition (favorite/like/dislike, plus allergy for metal).
+	PreferenceCategoryJewelryMetal = "jewelry_metal"
+	PreferenceCategoryJewelryStone = "jewelry_stone"
+	PreferenceCategoryJewelryStyle = "jewelry_style"
+	PreferenceCategoryJewelryType  = "jewelry_type"
+
+	// Flowers/fragrance support the full favorite/like/dislike/allergy set,
+	// same as food/drink. Color/hobby/cause don't carry an allergy sense.
+	PreferenceCategoryFlowers   = "flowers"
+	PreferenceCategoryFragrance = "fragrance"
+	PreferenceCategoryColor     = "color"
+	PreferenceCategoryCause     = "cause"
 )
 
 // Source values stored on Preference.Source — provenance, own
@@ -64,6 +118,11 @@ type Preference struct {
 	Category string `gorm:"not null" json:"category" validate:"required,max=100"`
 	Key      string `json:"key,omitempty" validate:"omitempty,max=100"`
 	Value    string `gorm:"not null" json:"value" validate:"required,max=1000"`
+
+	// Notes is free-text context beyond what Value already holds — e.g.
+	// value="Alcohol", notes="Doesn't drink alcohol" instead of cramming both
+	// into Value. Mirrors Gift.Notes (gift.go).
+	Notes string `json:"notes,omitempty" validate:"omitempty,max=2000"`
 
 	// Source is provenance. Confidence/
 	// LastConfirmed implement "preferences go stale; track when last

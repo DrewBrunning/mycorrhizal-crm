@@ -114,7 +114,13 @@ import ConversationAgendaDialog, { ConversationAgendaFormData } from './componen
 import MarkDiscussedDialog from './components/MarkDiscussedDialog';
 import GiftDialog, { GiftFormData } from './components/GiftDialog';
 import { CadencePolicy, CadencePolicyInput } from './api/cadencePolicies';
-import { Preference, PREFERENCE_CLOTHING_SIZE } from './api/preferences';
+import {
+  Preference,
+  PREFERENCE_CLOTHING_SIZE,
+  GIFTS_TAB_SECTIONS,
+  OVERVIEW_TAB_SECTIONS,
+  isGiftsTabCategory,
+} from './api/preferences';
 import { LifeEventFormData } from './components/LifeEventDialog';
 import { getOtherPartyId, RelationshipEdgeInput } from './api/relationshipEdges';
 import { suggestContactAddresses } from './api/dataSuggestions';
@@ -842,23 +848,54 @@ export default function ContactDetailPage() {
     await handleDeletePreference(id);
   };
 
+  // Gift-shopping-relevant preferences (jewelry/flowers/color/fragrance/
+  // cause/gift-avoid) get their own dialog instance in the Gifts tab,
+  // scoped via `sections` so this dialog can't create a food/media/hobby
+  // preference that would then only show up in the Overview tab instead.
+  const [giftPreferenceDialogOpen, setGiftPreferenceDialogOpen] = useState(false);
+  const [editingGiftPreference, setEditingGiftPreference] = useState<Preference | null>(null);
+
+  const handleAddGiftPreference = () => {
+    setEditingGiftPreference(null);
+    setGiftPreferenceDialogOpen(true);
+  };
+
+  const handleEditGiftPreference = (pref: Preference) => {
+    setEditingGiftPreference(pref);
+    setGiftPreferenceDialogOpen(true);
+  };
+
+  const handleSaveGiftPreferenceSubmit = async (data: PreferenceFormData) => {
+    if (!record?.uid) return;
+    await handleSavePreference(editingGiftPreference, toPreferenceInput(record.uid, data));
+  };
+
+  const handleGiftPreferenceDelete = async (id: string) => {
+    if (!window.confirm(t('preference.deleteMessage'))) return;
+    await handleDeletePreference(id);
+  };
+
   // Clothing sizes are clothing_size preferences surfaced in the Gifts tab
   // (where you check sizes before buying) rather than the preference dialog.
-  const handleAddClothingSize = async (value: string) => {
+  // `key` holds a free-solo clothing type (shirt, ring, ...), not a
+  // disposition — sizing is a fact, not a taste.
+  const handleAddClothingSize = async (key: string, value: string) => {
     if (!record?.uid) return;
     await handleSavePreference(null, toPreferenceInput(record.uid, {
       category: PREFERENCE_CLOTHING_SIZE,
+      key: key || undefined,
       value,
       sensitivity: 'normal',
     }));
   };
 
-  const handleEditClothingSize = async (pref: Preference, value: string) => {
+  const handleEditClothingSize = async (pref: Preference, key: string, value: string) => {
     if (!record?.uid) return;
     await handleSavePreference(pref, toPreferenceInput(record.uid, {
       category: pref.category,
-      key: pref.key,
+      key: key || undefined,
       value,
+      notes: pref.notes,
       sensitivity: pref.sensitivity,
     }));
   };
@@ -1626,10 +1663,13 @@ export default function ContactDetailPage() {
           }
         >
           <PreferenceList
-            // clothing_size preferences get their own dedicated editor in the
-            // Gifts tab (ClothingSizesPanel below) -- showing them here too
-            // duplicated every size as a second, redundant "Other" row.
-            preferences={preferences.filter((p) => p.category !== PREFERENCE_CLOTHING_SIZE)}
+            // clothing_size and the gift-shopping-relevant categories
+            // (jewelry/flowers/color/fragrance/cause/gift-avoid) get their
+            // own dedicated home in the Gifts tab below -- showing them here
+            // too would duplicate every one as a second, redundant row.
+            preferences={preferences.filter(
+              (p) => p.category !== PREFERENCE_CLOTHING_SIZE && !isGiftsTabCategory(p.category)
+            )}
             onEdit={handleEditPreference}
             onDelete={handlePreferenceDelete}
           />
@@ -1781,7 +1821,28 @@ export default function ContactDetailPage() {
             onEdit={handleEditClothingSize}
             onDelete={handleDeleteClothingSize}
           />
-          {preferences.some((p) => p.category === PREFERENCE_CLOTHING_SIZE) && <Divider sx={{ my: 1.5 }} />}
+          <Divider sx={{ my: 1.5 }} />
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+            <Typography variant="subtitle2">{t('gifts.preferencesHeading')}</Typography>
+            <Button
+              startIcon={<AddIcon />}
+              onClick={handleAddGiftPreference}
+              variant="outlined"
+              size="small"
+            >
+              {t('preference.add')}
+            </Button>
+          </Box>
+          {/* Jewelry & Style, Flowers/Color/Fragrance/Charitable Cause, and
+              general Gift Avoid notes -- shopping-relevant preferences,
+              surfaced here rather than the Overview tab's Preferences panel
+              (see PREFERENCE_CATEGORY_CONFIG's GIFTS_TAB_SECTIONS). */}
+          <PreferenceList
+            preferences={preferences.filter((p) => isGiftsTabCategory(p.category))}
+            onEdit={handleEditGiftPreference}
+            onDelete={handleGiftPreferenceDelete}
+          />
+          <Divider sx={{ my: 1.5 }} />
           <GiftList
             items={gifts}
             lifeEvents={lifeEvents}
@@ -1939,6 +2000,18 @@ export default function ContactDetailPage() {
         }}
         onSave={handleSavePreferenceSubmit}
         preference={editingPreference}
+        sections={OVERVIEW_TAB_SECTIONS}
+      />
+
+      <PreferenceDialog
+        open={giftPreferenceDialogOpen}
+        onClose={() => {
+          setGiftPreferenceDialogOpen(false);
+          setEditingGiftPreference(null);
+        }}
+        onSave={handleSaveGiftPreferenceSubmit}
+        preference={editingGiftPreference}
+        sections={GIFTS_TAB_SECTIONS}
       />
 
       <CadenceDialog
