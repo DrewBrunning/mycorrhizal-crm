@@ -17,7 +17,14 @@
     </base-config>
 
     <domain-config cleartextTrafficPermitted="true">
+        <!-- Android emulator: the host machine's loopback. -->
         <domain includeSubdomains="false">10.0.2.2</domain>
+        <!-- Physical device: `adb reverse tcp:7300 tcp:7300` tunnels the
+             host's loopback onto the device's own 127.0.0.1, so the same
+             cleartext-to-loopback rule covers the Pixel 8a on-device runbook
+             (issue #238). -->
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
     </domain-config>
 
     <debug-overrides>

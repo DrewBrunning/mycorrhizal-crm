@@ -44,6 +44,28 @@
 - Stop and clean up: `docker compose -f docker-compose.test.yml down -v`
 - Tests run automatically in CI on push/PR to main via [.github/workflows/e2e-tests.yml](.github/workflows/e2e-tests.yml).
 
+**Android E2E (instrumented, issue #238)**
+- The instrumented suite in [android/app/src/androidTest](android/app/src/androidTest) drives the *real* app (MainActivity + Hilt graph) against the *real* `docker-compose.test.yml` backend, on an emulator or a physical device — the Android counterpart to the web Playwright suite. It covers login → list → detail → edit → list refresh, the favorites flow (issue #212), and archive/delete + the audit-undo round-trip.
+- Start the test stack: `docker compose -f docker-compose.test.yml up -d --build`
+- **Emulator (one command):**
+  ```bash
+  cd android
+  ./gradlew :app:connectedDebugAndroidTest
+  ```
+  The suite defaults to `http://10.0.2.2:7300` (the emulator's host-loopback alias), which the debug build's cleartext allowlist permits.
+- **Physical device (Pixel 8a):** the device cannot reach `10.0.2.2`, so tunnel the host backend onto the device's own loopback and point the suite at it:
+  ```bash
+  adb reverse tcp:7300 tcp:7300
+  cd android
+  ./gradlew :app:connectedDebugAndroidTest \
+    -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300
+  ```
+  This is exactly what the CI job does. Any `serverUrl` instrumentation arg overrides the default.
+- Notes:
+  - The suite registers its own seed account (`e2euser`) and creates/cleans up its own `E2E *` contacts; it never touches user data. It needs registration enabled, which `docker-compose.test.yml` already sets.
+  - The seed backend data is persistent — `docker compose -f docker-compose.test.yml down -v` resets it between runs if you want a clean slate.
+  - CI runs this on every push/PR to main via the `android-e2e` job in [.github/workflows/android-tests.yml](.github/workflows/android-tests.yml).
+
 **Data & Integrations**
 - SQLite lives at `SQLITE_DB_PATH` (default mycorrhizal.db); migrations in [backend/database/migrations](backend/database/migrations) are embedded into the binary and auto-run on startup.
 - JWT expiry, HTTP timeouts, trusted proxies, and Resend email settings are declared in [backend/config/config.go](backend/config/config.go) and loaded based on environment variables; use Config.Validate to catch misconfigurations.
