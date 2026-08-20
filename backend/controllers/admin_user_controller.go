@@ -651,6 +651,15 @@ func DeleteUser(c *gin.Context) {
 			return err
 		}
 
+		// Delete reach-out suggestions and the detection watermark (issue
+		// #177 — hard delete, system-generated/cursor-shaped)
+		if err := tx.Where("user_id = ?", userID).Delete(&models.ReachOutSuggestion{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("user_id = ?", userID).Delete(&models.ReachOutCursor{}).Error; err != nil {
+			return err
+		}
+
 		// Delete the user's Immich connection config (T15/T16)
 		if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.ImmichConfig{}).Error; err != nil {
 			return err

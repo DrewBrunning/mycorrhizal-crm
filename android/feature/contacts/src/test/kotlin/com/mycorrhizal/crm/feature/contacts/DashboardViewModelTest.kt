@@ -8,7 +8,9 @@ import com.mycorrhizal.crm.model.network.CadencePolicy
 import com.mycorrhizal.crm.model.network.DashboardRandomContact
 import com.mycorrhizal.crm.model.network.DashboardReminder
 import com.mycorrhizal.crm.model.network.DashboardResponse
+import com.mycorrhizal.crm.model.network.MessageResponse
 import com.mycorrhizal.crm.model.network.OverdueCadence
+import com.mycorrhizal.crm.model.network.ReachOutSuggestion
 import com.mycorrhizal.crm.model.network.ReminderCompleteResponse
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
@@ -57,6 +59,13 @@ class DashboardViewModelTest {
         favorites = listOf(
             DashboardRandomContact(id = 9, firstname = "Zebra", lastname = "Smith", nickname = "Z"),
         ),
+        // Issue #177: pending event-driven reach-out suggestions.
+        reachOutSuggestions = listOf(
+            ReachOutSuggestion(
+                id = "s1", kind = "organization", oldValue = "OldCo", newValue = "NewCo",
+                contactId = 3L, contactName = "Bobby Smith",
+            ),
+        ),
     )
 
     @Test
@@ -74,6 +83,7 @@ class DashboardViewModelTest {
             assertEquals(1, state.randomContacts.size)
             assertEquals(1, state.overdueCadences.size)
             assertEquals(1, state.favorites.size)
+            assertEquals(1, state.reachOutSuggestions.size)
             assertEquals("Zebra", state.favorites[0].firstname)
             // The M3 embedded contact name survives into the widget.
             assertEquals("Bobby Smith", state.upcomingReminders[0].contactName)
@@ -102,6 +112,7 @@ class DashboardViewModelTest {
             assertTrue(state.randomContacts.isEmpty())
             assertTrue(state.overdueCadences.isEmpty())
             assertTrue(state.favorites.isEmpty())
+            assertTrue(state.reachOutSuggestions.isEmpty())
         }
 
     @Test
@@ -208,6 +219,62 @@ class DashboardViewModelTest {
             coVerify(exactly = 1) { apiClient.completeReminder(7, true) }
             assertTrue(viewModel.uiState.value.upcomingReminders.isEmpty())
             assertNull(viewModel.uiState.value.completingId)
+        }
+
+    @Test
+    fun `dismissing a suggestion removes it from the widget before the call resolves`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val (viewModel, apiClient, _) = newViewModel()
+            coEvery { apiClient.getDashboard() } returns Result.success(
+                DashboardResponse(
+                    reachOutSuggestions = listOf(
+                        ReachOutSuggestion(id = "s1", kind = "organization", newValue = "NewCo", contactName = "Bobby Smith"),
+                        ReachOutSuggestion(id = "s2", kind = "title", newValue = "CTO", contactName = "Alice"),
+                    ),
+                ),
+            )
+            coEvery { apiClient.dismissReachOutSuggestion("s1") } coAnswers {
+                // The optimistic removal must have already happened by the
+                // time the API call executes.
+                assertTrue(viewModel.uiState.value.reachOutSuggestions.none { it.id == "s1" })
+                Result.success(MessageResponse(message = "Suggestion dismissed"))
+            }
+            advanceUntilIdle()
+
+            viewModel.dismissReachOutSuggestion("s1")
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { apiClient.dismissReachOutSuggestion("s1") }
+            assertEquals(listOf("s2"), viewModel.uiState.value.reachOutSuggestions.map { it.id })
+            assertNull(viewModel.uiState.value.dismissingSuggestionId)
+        }
+
+    @Test
+    fun `a failed dismiss restores the suggestion at its original position`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val (viewModel, apiClient, _) = newViewModel()
+            coEvery { apiClient.getDashboard() } returns Result.success(
+                DashboardResponse(
+                    reachOutSuggestions = listOf(
+                        ReachOutSuggestion(id = "s1", kind = "organization", newValue = "NewCo", contactName = "Bobby Smith"),
+                        ReachOutSuggestion(id = "s2", kind = "title", newValue = "CTO", contactName = "Alice"),
+                        ReachOutSuggestion(id = "s3", kind = "address", newValue = "Elsewhere", contactName = "Carol"),
+                    ),
+                ),
+            )
+            coEvery { apiClient.dismissReachOutSuggestion("s2") } returns
+                Result.failure(ApiError.Server(500, "boom"))
+            advanceUntilIdle()
+
+            viewModel.dismissReachOutSuggestion("s2")
+            advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            // Restored to its original middle position, not merely re-appended.
+            assertEquals(listOf("s1", "s2", "s3"), state.reachOutSuggestions.map { it.id })
+            assertEquals("Server error (500)", state.actionError)
+            assertNull(state.error)
+            assertNull(state.dismissingSuggestionId)
         }
 
     @Test

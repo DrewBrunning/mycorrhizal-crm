@@ -748,6 +748,13 @@ func deleteContactAssociations(tx *gorm.DB, contact models.Contact, userID uint)
 		return err
 	}
 
+	// Delete this contact's pending reach-out suggestions (issue #177 —
+	// system-generated, hard delete; the companion reminder was already
+	// removed above by the contact_id-scoped Reminder delete).
+	if err := tx.Where("contact_vcard_uid = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.ReachOutSuggestion{}).Error; err != nil {
+		return err
+	}
+
 	// Delete this contact's conversation agenda items (user-authored content,
 	// soft delete — T21)
 	if err := tx.Where("entity_id = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.ConversationAgenda{}).Error; err != nil {

@@ -319,6 +319,10 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.PUT("/cadence-policies/:id", middleware.ValidateJSONMiddleware(&models.CadencePolicyInput{}), controllers.UpdateCadencePolicy)
 			protected.DELETE("/cadence-policies/:id", controllers.DeleteCadencePolicy)
 
+			// ReachOutSuggestion routes (issue #177 — event-driven reach-out triggers).
+			protected.GET("/reach-out-suggestions", controllers.ListReachOutSuggestions)
+			protected.POST("/reach-out-suggestions/:id/dismiss", controllers.DismissReachOutSuggestion)
+
 			// Reminder routes
 			protected.GET("/reminders", controllers.GetAllReminders)
 			protected.GET("/reminders/upcoming", controllers.GetUpcomingReminders)

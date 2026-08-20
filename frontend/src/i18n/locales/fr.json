@@ -1698,6 +1698,18 @@
     "noOverdue": "Rien en retard. Vous êtes à jour.",
     "unknownContact": "Contact inconnu"
   },
+  "reachOut": {
+    "title": "Raisons de reprendre contact",
+    "empty": "Aucune suggestion de reprise de contact pour le moment.",
+    "changedFromTo": "{{old}} → {{new}}",
+    "changedTo": "Maintenant : {{new}}",
+    "dismiss": "Ignorer",
+    "kind": {
+      "organization": "Nouvel employeur",
+      "title": "Nouveau poste",
+      "address": "A déménagé"
+    }
+  },
   "conversationAgenda": {
     "title": "Agenda de conversation",
     "placeholder": "À évoquer la prochaine fois…",

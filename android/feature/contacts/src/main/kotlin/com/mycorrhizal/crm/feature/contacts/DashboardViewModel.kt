@@ -7,6 +7,7 @@ import com.mycorrhizal.crm.model.network.Birthday
 import com.mycorrhizal.crm.model.network.DashboardRandomContact
 import com.mycorrhizal.crm.model.network.DashboardReminder
 import com.mycorrhizal.crm.model.network.OverdueCadence
+import com.mycorrhizal.crm.model.network.ReachOutSuggestion
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -27,6 +28,8 @@ data class DashboardUiState(
     // favorite, non-archived contacts, name-ordered. Same wire shape as
     // randomContacts, so the same model serves both.
     val favorites: List<DashboardRandomContact> = emptyList(),
+    // Issue #177: pending event-driven reach-out suggestions.
+    val reachOutSuggestions: List<ReachOutSuggestion> = emptyList(),
     val isLoading: Boolean = false,
     /** The dashboard-wide load failure; the screen replaces the widgets with an error + retry. */
     val error: String? = null,
@@ -39,6 +42,8 @@ data class DashboardUiState(
     val actionError: String? = null,
     /** The reminder currently being completed/skipped; guards against double-taps. */
     val completingId: Int? = null,
+    /** The reach-out suggestion currently being dismissed; guards against double-taps. */
+    val dismissingSuggestionId: String? = null,
     /** The signed-in user's `date_format` preference; falls back to "eu" when absent. */
     val dateFormat: String? = null,
 )
@@ -92,6 +97,7 @@ class DashboardViewModel @Inject constructor(
                             randomContacts = dashboard.randomContacts,
                             overdueCadences = dashboard.overdue,
                             favorites = dashboard.favorites,
+                            reachOutSuggestions = dashboard.reachOutSuggestions,
                         )
                     }
                 },
@@ -128,6 +134,39 @@ class DashboardViewModel @Inject constructor(
                             val restored = state.upcomingReminders.toMutableList()
                             restored.add(index.coerceIn(0, restored.size), removed)
                             state.copy(completingId = null, actionError = error.displayMessage, upcomingReminders = restored)
+                        }
+                    }
+                },
+            )
+        }
+    }
+
+    /**
+     * Dismisses a reach-out suggestion from the dashboard widget (issue
+     * #177). Optimistically removes it and restores it at its original
+     * position if the call fails — mirrors [completeReminder]'s contract.
+     */
+    fun dismissReachOutSuggestion(id: String) {
+        if (_uiState.value.dismissingSuggestionId != null) return
+        viewModelScope.launch {
+            val index = _uiState.value.reachOutSuggestions.indexOfFirst { it.id == id }
+            val removed = _uiState.value.reachOutSuggestions.getOrNull(index)
+            _uiState.update { state ->
+                state.copy(
+                    dismissingSuggestionId = id,
+                    reachOutSuggestions = state.reachOutSuggestions.filterNot { it.id == id },
+                )
+            }
+            apiClient.dismissReachOutSuggestion(id).foldApiError(
+                onSuccess = { _uiState.update { it.copy(dismissingSuggestionId = null) } },
+                onError = { error ->
+                    _uiState.update { state ->
+                        if (removed == null) {
+                            state.copy(dismissingSuggestionId = null, actionError = error.displayMessage)
+                        } else {
+                            val restored = state.reachOutSuggestions.toMutableList()
+                            restored.add(index.coerceIn(0, restored.size), removed)
+                            state.copy(dismissingSuggestionId = null, actionError = error.displayMessage, reachOutSuggestions = restored)
                         }
                     }
                 },

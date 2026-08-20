@@ -37,7 +37,7 @@ const skipReminderMock = vi.mocked(skipReminder);
 const listCirclesMock = vi.mocked(listCircles);
 
 function emptyDashboard(): DashboardResponse {
-  return { birthdays: [], random_contacts: [], upcoming_reminders: [], overdue: [], favorites: [] };
+  return { birthdays: [], random_contacts: [], upcoming_reminders: [], overdue: [], favorites: [], reach_out_suggestions: [] };
 }
 
 beforeEach(() => {
@@ -71,6 +71,7 @@ test('fetches the dashboard composite once and renders all four blocks', async (
       { ID: 9, message: 'Call Nicky', by_mail: false, remind_at: '2026-08-12T00:00:00Z', recurrence: 'once', reoccur_from_completion: true, completed: false, email_sent: false, contact_id: 3, contact_name: 'Nicky Name' },
     ],
     overdue: [],
+    reach_out_suggestions: [],
   });
 
   renderPage();

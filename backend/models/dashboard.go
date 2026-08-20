@@ -46,4 +46,8 @@ type DashboardResponse struct {
 	// sorted by name — a quick-access block alongside the "stay in touch"
 	// nudge. Same no-omitempty discipline as every other block.
 	Favorites []ContactResponse `json:"favorites"`
+	// ReachOutSuggestions (issue #177): pending event-driven reach-out
+	// suggestions (org/title/address change detected). Same no-omitempty
+	// discipline as every other block.
+	ReachOutSuggestions []ReachOutSuggestionResponse `json:"reach_out_suggestions"`
 }

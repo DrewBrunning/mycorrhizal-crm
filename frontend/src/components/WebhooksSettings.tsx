@@ -58,6 +58,8 @@ const SUPPORTED_EVENTS = [
   'activity.deleted',
   'reminder.triggered',
   'birthday.occurred',
+  // Issue #177: event-driven reach-out suggestions (org/title/address change).
+  'reach_out_suggested',
 ];
 
 interface WebhookFormState {

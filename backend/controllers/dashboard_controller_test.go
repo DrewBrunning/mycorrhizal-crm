@@ -31,7 +31,7 @@ func TestGetDashboard_EmptyBlocksSerializeAsArrays(t *testing.T) {
 	var raw map[string]json.RawMessage
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &raw))
 
-	for _, key := range []string{"birthdays", "random_contacts", "upcoming_reminders", "overdue", "favorites"} {
+	for _, key := range []string{"birthdays", "random_contacts", "upcoming_reminders", "overdue", "favorites", "reach_out_suggestions"} {
 		block, present := raw[key]
 		require.Truef(t, present, "block %q must be present in the response even when empty", key)
 		assert.JSONEqf(t, "[]", string(block), "block %q must serialize as an empty array, not null", key)

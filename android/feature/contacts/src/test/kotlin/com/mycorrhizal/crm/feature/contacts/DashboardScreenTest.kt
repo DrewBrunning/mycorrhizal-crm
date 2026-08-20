@@ -22,6 +22,7 @@ import com.mycorrhizal.crm.model.network.DashboardRandomContact
 import com.mycorrhizal.crm.model.network.DashboardReminder
 import com.mycorrhizal.crm.model.network.DashboardResponse
 import com.mycorrhizal.crm.model.network.OverdueCadence
+import com.mycorrhizal.crm.model.network.ReachOutSuggestion
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
@@ -84,6 +85,13 @@ class DashboardScreenTest {
                 contactName = "Carol Davis",
             ),
         ),
+        // Issue #177: pending event-driven reach-out suggestions.
+        reachOutSuggestions = listOf(
+            ReachOutSuggestion(
+                id = "s1", kind = "organization", oldValue = "OldCo", newValue = "NewCo",
+                contactId = 5L, contactName = "Dana Prince",
+            ),
+        ),
     )
 
     private fun setContent(
@@ -91,6 +99,7 @@ class DashboardScreenTest {
         dateFormat: String = DateFormat.EU,
         onOpenContact: (Int) -> Unit = {},
         onCompleteReminder: (id: Int, skip: Boolean) -> Unit = { _, _ -> },
+        onDismissReachOutSuggestion: (id: String) -> Unit = {},
         darkTheme: Boolean = false,
     ) {
         composeTestRule.setContent {
@@ -100,6 +109,7 @@ class DashboardScreenTest {
                     dateFormat = dateFormat,
                     onOpenContact = onOpenContact,
                     onCompleteReminder = onCompleteReminder,
+                    onDismissReachOutSuggestion = onDismissReachOutSuggestion,
                 )
             }
         }
@@ -127,6 +137,13 @@ class DashboardScreenTest {
         scrollTo("Overdue Relationships")
         composeTestRule.onNodeWithText("Carol Davis").assertIsDisplayed()
         composeTestRule.onNodeWithText("3 days overdue").assertIsDisplayed()
+
+        // Reach-out suggestions (issue #177).
+        scrollTo("Reasons to Reach Out")
+        composeTestRule.onNodeWithText("Dana Prince").assertIsDisplayed()
+        composeTestRule.onNodeWithText("OldCo → NewCo").assertIsDisplayed()
+        composeTestRule.onNodeWithText("New employer").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Dismiss suggestion").assertIsDisplayed()
 
         // Birthdays: age rendered from the full date, in the eu date format.
         scrollTo("Alice Wonder")
@@ -176,6 +193,8 @@ class DashboardScreenTest {
         composeTestRule.onNodeWithText("No contacts available").assertIsDisplayed()
         // Web parity: an all-clear dashboard hides the overdue section entirely.
         composeTestRule.onNodeWithText("Overdue Relationships").assertDoesNotExist()
+        // Same treatment for reach-out suggestions (issue #177).
+        composeTestRule.onNodeWithText("Reasons to Reach Out").assertDoesNotExist()
     }
 
     @Test
@@ -208,6 +227,30 @@ class DashboardScreenTest {
         composeTestRule.onNodeWithText("Carol Davis").performClick()
 
         assertEquals(3, opened)
+    }
+
+    @Test
+    fun `tapping a reach-out suggestion card opens the contact`() {
+        var opened: Int? = null
+        setContent(populatedState(), onOpenContact = { opened = it })
+
+        scrollTo("Reasons to Reach Out")
+        composeTestRule.onNodeWithText("Dana Prince").performClick()
+
+        assertEquals(5, opened)
+    }
+
+    @Test
+    fun `dismissing a reach-out suggestion calls the callback and does not navigate`() {
+        var opened: Int? = null
+        var dismissed: String? = null
+        setContent(populatedState(), onOpenContact = { opened = it }, onDismissReachOutSuggestion = { dismissed = it })
+
+        scrollToContentDescription("Dismiss suggestion")
+        composeTestRule.onNodeWithContentDescription("Dismiss suggestion").performClick()
+
+        assertEquals("s1", dismissed)
+        assertEquals(null, opened)
     }
 
     @Test
@@ -331,6 +374,9 @@ class DashboardScreenTest {
             .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
         scrollTo("Overdue Relationships")
         composeTestRule.onNodeWithText("Overdue Relationships")
+            .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+        scrollTo("Reasons to Reach Out")
+        composeTestRule.onNodeWithText("Reasons to Reach Out")
             .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
     }
 }

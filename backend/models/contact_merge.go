@@ -80,11 +80,12 @@ type ContactMergeAssociationCounts struct {
 	// silently destroyed on every merge -- now all re-pointed (or, for
 	// CadencePolicies, adopted/resolved as a conflict). See
 	// services.RepointContactAssociations.
-	Attachments        int64 `json:"attachments"`
-	Preferences        int64 `json:"preferences"`
-	ExternalIdentities int64 `json:"external_identities"`
-	ExternalActivities int64 `json:"external_activities"`
-	CadencePolicies    int64 `json:"cadence_policies"` // 0 or 1 -- at most one per contact
+	Attachments         int64 `json:"attachments"`
+	Preferences         int64 `json:"preferences"`
+	ExternalIdentities  int64 `json:"external_identities"`
+	ExternalActivities  int64 `json:"external_activities"`
+	CadencePolicies     int64 `json:"cadence_policies"`      // 0 or 1 -- at most one per contact
+	ReachOutSuggestions int64 `json:"reach_out_suggestions"` // issue #177
 }
 
 // ContactMergeRequest is the DTO for both merge endpoints. KeepID survives;

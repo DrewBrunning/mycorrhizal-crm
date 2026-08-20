@@ -9,6 +9,8 @@
     <string name="dashboard_birthdays">Próximos cumpleaños</string>
     <string name="dashboard_reminders">Próximos recordatorios</string>
     <string name="dashboard_overdue_cadences">Relaciones vencidas</string>
+    <!-- Issue #177: event-driven reach-out suggestions. -->
+    <string name="dashboard_reach_out">Motivos para contactar</string>
     <string name="dashboard_random_contacts">Mantente en Contacto</string>
     <!-- Issue #212: the favorites quick-access block (web #173). -->
     <string name="dashboard_favorites">Favoritos</string>
@@ -823,6 +825,13 @@
     <string name="cadence_on_track">Al día</string>
     <string name="cadence_overdue_by">%1$d días de retraso</string>
     <string name="cadence_next_due">Próximo vencimiento: %1$s</string>
+    <!-- Issue #177: event-driven reach-out suggestions. -->
+    <string name="reach_out_kind_organization">Nuevo empleador</string>
+    <string name="reach_out_kind_title">Nuevo puesto</string>
+    <string name="reach_out_kind_address">Se mudó</string>
+    <string name="reach_out_changed_from_to">%1$s → %2$s</string>
+    <string name="reach_out_changed_to">Ahora: %1$s</string>
+    <string name="cd_dismiss_reach_out_suggestion">Descartar sugerencia</string>
     <string name="cadence_last_interaction">Última interacción: %1$s</string>
     <string name="cadence_confirm_delete">¿Eliminar esta cadencia?</string>
     <string name="cadence_delete_title">Eliminar cadencia</string>

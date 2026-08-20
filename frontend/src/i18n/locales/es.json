@@ -1698,6 +1698,18 @@
     "noOverdue": "Nada vencido. Todo al día.",
     "unknownContact": "Contacto desconocido"
   },
+  "reachOut": {
+    "title": "Motivos para contactar",
+    "empty": "No hay sugerencias para contactar en este momento.",
+    "changedFromTo": "{{old}} → {{new}}",
+    "changedTo": "Ahora: {{new}}",
+    "dismiss": "Descartar",
+    "kind": {
+      "organization": "Nuevo empleador",
+      "title": "Nuevo puesto",
+      "address": "Se mudó"
+    }
+  },
   "conversationAgenda": {
     "title": "Agenda de conversación",
     "placeholder": "Cosas que sacar la próxima vez…",

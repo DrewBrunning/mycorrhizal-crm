@@ -437,6 +437,16 @@ class ApiClient(
         }
 
     /**
+     * POST /api/v1/reach-out-suggestions/{id}/dismiss — dismisses a pending
+     * event-driven reach-out suggestion (issue #177) so it stops appearing on
+     * the dashboard. Idempotent server-side; no body.
+     */
+    suspend fun dismissReachOutSuggestion(id: String): Result<MessageResponse> =
+        executePostEmpty("$REACH_OUT_SUGGESTIONS_PATH/$id/dismiss") { _, body ->
+            moshi.adapter(MessageResponse::class.java).fromJson(body)
+        }
+
+    /**
      * GET /api/v1/search — cross-entity FTS across notes and activities (T87: folded into the
      * contact list rather than a dedicated search screen). `q`'s two-character gate is the
      * backend's own; callers should apply it too rather than firing a request destined to
@@ -1756,6 +1766,7 @@ class ApiClient(
         private const val CONVERSATION_AGENDA_PATH = "$API_V1/conversation-agenda"
         private const val CADENCE_POLICIES_PATH = "$API_V1/cadence-policies"
         private const val DASHBOARD_PATH = "$API_V1/dashboard"
+        private const val REACH_OUT_SUGGESTIONS_PATH = "$API_V1/reach-out-suggestions"
         private const val EXPORT_VCF_PATH = "$API_V1/export/vcf"
         private const val CONTACT_SHARES_PATH = "$API_V1/contact-shares"
         private const val AUDIT_PATH = "$API_V1/audit"

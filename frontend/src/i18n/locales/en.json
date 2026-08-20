@@ -1698,6 +1698,18 @@
     "noOverdue": "Nothing overdue. You're all caught up.",
     "unknownContact": "Unknown contact"
   },
+  "reachOut": {
+    "title": "Reasons to Reach Out",
+    "empty": "No reach-out suggestions right now.",
+    "changedFromTo": "{{old}} → {{new}}",
+    "changedTo": "Now: {{new}}",
+    "dismiss": "Dismiss",
+    "kind": {
+      "organization": "New employer",
+      "title": "New job title",
+      "address": "Moved"
+    }
+  },
   "conversationAgenda": {
     "title": "Conversation Agenda",
     "placeholder": "Things to bring up next time…",

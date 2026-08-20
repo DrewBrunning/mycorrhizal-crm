@@ -4857,6 +4857,67 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/OverdueCadence"
+  /reach-out-suggestions:
+    get:
+      summary: List pending reach-out suggestions
+      operationId: listReachOutSuggestions
+      description: >
+        Every pending event-driven reach-out suggestion for the user
+        (issue #177) — an organization/title/address change detected by
+        diffing audit-event snapshots — newest first, joined with the
+        contact's numeric ID/display name/photo thumbnail.
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: The pending suggestion list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  suggestions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ReachOutSuggestion"
+  /reach-out-suggestions/{id}/dismiss:
+    post:
+      summary: Dismiss a reach-out suggestion
+      operationId: dismissReachOutSuggestion
+      description: >
+        Marks a reach-out suggestion dismissed so it stops appearing on the
+        dashboard. Idempotent — dismissing an already-dismissed suggestion is
+        still a 200, not an error.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: No such suggestion, or it belongs to another user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: The suggestion was dismissed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
   /cadence-policies:
     get:
       summary: List cadence policies
@@ -8252,6 +8313,10 @@ components:
         overdue:
           type: array
           items: { $ref: "#/components/schemas/OverdueCadence" }
+        reach_out_suggestions:
+          type: array
+          description: "Issue #177: pending event-driven reach-out suggestions."
+          items: { $ref: "#/components/schemas/ReachOutSuggestion" }
     DashboardReminder:
       description: >
         A Reminder enriched with its contact's display name (nickname-
@@ -8717,6 +8782,7 @@ components:
         external_identities: { type: integer }
         external_activities: { type: integer }
         cadence_policies: { type: integer, description: "0 or 1 -- at most one per contact." }
+        reach_out_suggestions: { type: integer, description: "Issue #177." }
 
     # --- Notes / Activities / Reminders (gorm.Model PascalCase identity) ---
     Note:
@@ -9657,6 +9723,32 @@ components:
           $ref: "#/components/schemas/CadencePolicy"
         health:
           $ref: "#/components/schemas/CadenceHealth"
+        contact_id:
+          type: integer
+          description: The contact's numeric ID (the /contacts/<id> URL component).
+        contact_name: { type: string }
+        photo_thumbnail: { type: string }
+
+    ReachOutSuggestion:
+      type: object
+      description: >
+        A pending event-driven "reach out" suggestion (issue #177): a
+        meaningful organization/title/address change detected on a contact,
+        joined with its contact's display identity. Companion to the
+        time-based cadence.overdue trigger.
+      properties:
+        id: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        contact_vcard_uid: { type: string, format: uuid }
+        kind: { type: string, enum: [organization, title, address] }
+        old_value: { type: string }
+        new_value: { type: string }
+        audit_event_id: { type: integer }
+        reminder_id:
+          type: integer
+          description: The companion one-off Reminder's ID, if it was created successfully.
+        status: { type: string, enum: [pending, dismissed] }
         contact_id:
           type: integer
           description: The contact's numeric ID (the /contacts/<id> URL component).

@@ -5,6 +5,7 @@ import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './cl
 import { Birthday, Contact } from './contacts';
 import { Reminder } from './reminders';
 import { OverdueCadence } from './cadencePolicies';
+import { ReachOutSuggestion } from './reachOutSuggestions';
 
 // A Reminder enriched with its contact's display name (nickname-preferred,
 // falling back to firstname+lastname) so the dashboard never needs a second
@@ -19,6 +20,8 @@ export interface DashboardResponse {
   upcoming_reminders: DashboardReminder[];
   overdue: OverdueCadence[];
   favorites: Contact[];
+  // Issue #177: pending event-driven reach-out suggestions.
+  reach_out_suggestions: ReachOutSuggestion[];
 }
 
 export async function getDashboard(): Promise<DashboardResponse> {

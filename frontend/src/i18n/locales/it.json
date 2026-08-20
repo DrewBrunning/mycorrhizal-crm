@@ -1698,6 +1698,18 @@
     "noOverdue": "Nessun ritardo. Tutto in ordine.",
     "unknownContact": "Contatto sconosciuto"
   },
+  "reachOut": {
+    "title": "Motivi per farsi sentire",
+    "empty": "Al momento nessun suggerimento per farsi sentire.",
+    "changedFromTo": "{{old}} → {{new}}",
+    "changedTo": "Ora: {{new}}",
+    "dismiss": "Ignora",
+    "kind": {
+      "organization": "Nuovo datore di lavoro",
+      "title": "Nuovo titolo professionale",
+      "address": "Si è trasferito"
+    }
+  },
   "conversationAgenda": {
     "title": "Agenda di conversazione",
     "placeholder": "Cose da tirare fuori la prossima volta…",

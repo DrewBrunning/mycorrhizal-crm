@@ -347,6 +347,7 @@ func ComputeContactMergeAssociationCounts(db *gorm.DB, userID uint, loserID uint
 		{&c.ExternalIdentities, db.Model(&models.ExternalIdentity{}).Where("entity_id = ? AND user_id = ?", loserVCardUID, userID)},
 		{&c.ExternalActivities, db.Model(&models.ExternalActivity{}).Where("entity_id = ? AND user_id = ?", loserVCardUID, userID)},
 		{&c.CadencePolicies, db.Model(&models.CadencePolicy{}).Where("entity_id = ? AND user_id = ?", loserVCardUID, userID)},
+		{&c.ReachOutSuggestions, db.Model(&models.ReachOutSuggestion{}).Where("contact_vcard_uid = ? AND user_id = ?", loserVCardUID, userID)},
 	}
 	for _, s := range steps {
 		if err := s.q.Count(s.dst).Error; err != nil {
@@ -467,6 +468,27 @@ func RepointContactAssociations(
 	}
 	if err := tx.Model(&models.Preference{}).Where("entity_id = ? AND user_id = ?", loser.VCardUID, userID).
 		Update("entity_id", keeper.VCardUID).Error; err != nil {
+		return 0, err
+	}
+
+	// reach_out_suggestions (issue #177): no unique constraint, but a plain
+	// repoint could leave two pending suggestions of the same kind on the
+	// keeper if both contacts already had one (e.g. both flagged an
+	// "organization" change) -- creation-time dedup (pendingSuggestionExists)
+	// never sees this cross-contact case, so dedupe here too, same
+	// dedupe-then-repoint shape as household_members/circle_members/
+	// contact_tags above: drop the loser's pending row where the keeper
+	// already has a pending suggestion of the same kind, then repoint the
+	// rest.
+	if err := tx.Exec(
+		"DELETE FROM reach_out_suggestions WHERE contact_vcard_uid = ? AND user_id = ? AND status = ? AND kind IN "+
+			"(SELECT kind FROM reach_out_suggestions WHERE contact_vcard_uid = ? AND user_id = ? AND status = ?)",
+		loser.VCardUID, userID, models.ReachOutStatusPending, keeper.VCardUID, userID, models.ReachOutStatusPending,
+	).Error; err != nil {
+		return 0, err
+	}
+	if err := tx.Model(&models.ReachOutSuggestion{}).Where("contact_vcard_uid = ? AND user_id = ?", loser.VCardUID, userID).
+		Update("contact_vcard_uid", keeper.VCardUID).Error; err != nil {
 		return 0, err
 	}
 

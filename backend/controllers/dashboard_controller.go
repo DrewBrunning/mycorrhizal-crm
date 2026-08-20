@@ -65,12 +65,19 @@ func GetDashboard(c *gin.Context) {
 		return
 	}
 
+	reachOutSuggestions, err := services.ListReachOutSuggestions(db, userID)
+	if err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to load reach-out suggestions").WithError(err))
+		return
+	}
+
 	resp := models.DashboardResponse{
-		Birthdays:         birthdays,
-		RandomContacts:    randomContacts,
-		UpcomingReminders: dashboardReminders,
-		Overdue:           toDashboardOverdueCadences(overdue),
-		Favorites:         favoriteContacts,
+		Birthdays:           birthdays,
+		RandomContacts:      randomContacts,
+		UpcomingReminders:   dashboardReminders,
+		Overdue:             toDashboardOverdueCadences(overdue),
+		Favorites:           favoriteContacts,
+		ReachOutSuggestions: reachOutSuggestions,
 	}
 	normalizeDashboardSlices(&resp)
 
@@ -215,5 +222,8 @@ func normalizeDashboardSlices(resp *models.DashboardResponse) {
 	}
 	if resp.Favorites == nil {
 		resp.Favorites = []models.ContactResponse{}
+	}
+	if resp.ReachOutSuggestions == nil {
+		resp.ReachOutSuggestions = []models.ReachOutSuggestionResponse{}
 	}
 }

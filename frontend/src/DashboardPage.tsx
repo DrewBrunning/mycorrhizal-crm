@@ -29,7 +29,9 @@ import { useCircles } from './hooks/useCircles';
 import { getUpcomingReminders, completeReminder, skipReminder } from './api/reminders';
 import { OverdueCadence } from './api/cadencePolicies';
 import { getDashboard, DashboardReminder } from './api/dashboard';
+import { ReachOutSuggestion, dismissReachOutSuggestion } from './api/reachOutSuggestions';
 import OverdueCadenceList from './components/OverdueCadenceList';
+import ReachOutSuggestionsList from './components/ReachOutSuggestionsList';
 import { ContactListSkeleton } from './components/LoadingSkeletons';
 import { handleFetchError, handleError } from './utils/errorHandler';
 import { useDateFormat } from './DateFormatProvider';
@@ -46,6 +48,7 @@ function DashboardPage() {
   const [favoriteContacts, setFavoriteContacts] = useState<Contact[]>([]);
   const [upcomingReminders, setUpcomingReminders] = useState<DashboardReminder[]>([]);
   const [overdueCadences, setOverdueCadences] = useState<OverdueCadence[]>([]);
+  const [reachOutSuggestions, setReachOutSuggestions] = useState<ReachOutSuggestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [birthdaysInfoAnchor, setBirthdaysInfoAnchor] = useState<HTMLElement | null>(null);
@@ -71,6 +74,7 @@ function DashboardPage() {
       setFavoriteContacts(dashboard.favorites);
       setUpcomingReminders(dashboard.upcoming_reminders);
       setOverdueCadences(dashboard.overdue);
+      setReachOutSuggestions(dashboard.reach_out_suggestions);
     } catch (err) {
       const message = handleFetchError(err, 'loading dashboard data');
       setError(message);
@@ -116,6 +120,15 @@ function DashboardPage() {
       setUpcomingReminders(prev => attachKnownContactNames(prev, reminders));
     } catch (err) {
       handleError(err, { operation: 'skipping reminder' });
+    }
+  };
+
+  const handleDismissReachOutSuggestion = async (id: string) => {
+    try {
+      await dismissReachOutSuggestion(id);
+      setReachOutSuggestions(prev => prev.filter(s => s.id !== id));
+    } catch (err) {
+      handleError(err, { operation: 'dismissing reach-out suggestion' });
     }
   };
 
@@ -213,6 +226,21 @@ function DashboardPage() {
       {overdueCadences.length > 0 && (
         <Box sx={{ mb: 3 }}>
           <OverdueCadenceList overdue={overdueCadences} loading={loading} error={null} />
+        </Box>
+      )}
+
+      {/* Event-driven reach-out suggestions (issue #177) — an org/title/
+          address change detected on a contact. Only rendered when there is
+          something to show, same "all-clear dashboard stays clean" rule as
+          OverdueCadenceList above. */}
+      {reachOutSuggestions.length > 0 && (
+        <Box sx={{ mb: 3 }}>
+          <ReachOutSuggestionsList
+            suggestions={reachOutSuggestions}
+            loading={loading}
+            error={null}
+            onDismiss={handleDismissReachOutSuggestion}
+          />
         </Box>
       )}
 
