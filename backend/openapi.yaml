@@ -1,3 +1,4 @@
+# CI path-gating verification (issue #264) — throwaway openapi-only change.
 openapi: 3.0.3
 info:
   title: Mycorrhizal CRM API
