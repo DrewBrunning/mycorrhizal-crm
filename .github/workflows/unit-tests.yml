@@ -78,7 +78,7 @@ jobs:
 
       - name: Run tests with coverage
         working-directory: backend
-        run: go test ./... -coverprofile=coverage.out -covermode=atomic
+        run: go test -race ./... -coverprofile=coverage.out -covermode=atomic
 
       # Issue #251: visibility only, no threshold/gate — printed to the log
       # and uploaded below for anyone who wants the per-func breakdown.
