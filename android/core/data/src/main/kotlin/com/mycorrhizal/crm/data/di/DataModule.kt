@@ -27,6 +27,9 @@ import com.mycorrhizal.crm.data.repository.CircleRepositoryImpl
 import com.mycorrhizal.crm.data.repository.CustomLinkActionRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ExternalIdentityRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ImmichRepositoryImpl
+import com.mycorrhizal.crm.data.repository.NextcloudRepositoryImpl
+import com.mycorrhizal.crm.data.repository.PaperlessRepositoryImpl
+import com.mycorrhizal.crm.data.repository.SeafileRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ContactRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ContactShareRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ConversationAgendaRepositoryImpl
@@ -59,6 +62,9 @@ import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.CustomLinkActionRepository
 import com.mycorrhizal.crm.domain.repository.ExternalIdentityRepository
 import com.mycorrhizal.crm.domain.repository.ImmichRepository
+import com.mycorrhizal.crm.domain.repository.NextcloudRepository
+import com.mycorrhizal.crm.domain.repository.PaperlessRepository
+import com.mycorrhizal.crm.domain.repository.SeafileRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ContactShareRepository
 import com.mycorrhizal.crm.domain.repository.ConversationAgendaRepository
@@ -314,6 +320,18 @@ abstract class DataBindsModule {
     @Binds
     @Singleton
     abstract fun bindImmichRepository(impl: ImmichRepositoryImpl): ImmichRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindPaperlessRepository(impl: PaperlessRepositoryImpl): PaperlessRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindSeafileRepository(impl: SeafileRepositoryImpl): SeafileRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindNextcloudRepository(impl: NextcloudRepositoryImpl): NextcloudRepository
 
     @Binds
     @Singleton

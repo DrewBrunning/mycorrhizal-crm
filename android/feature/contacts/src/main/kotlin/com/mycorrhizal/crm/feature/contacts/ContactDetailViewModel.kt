@@ -9,7 +9,10 @@ import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ExternalIdentityRepository
 import com.mycorrhizal.crm.domain.repository.ImmichRepository
+import com.mycorrhizal.crm.domain.repository.NextcloudRepository
+import com.mycorrhizal.crm.domain.repository.PaperlessRepository
 import com.mycorrhizal.crm.domain.repository.ReminderRepository
+import com.mycorrhizal.crm.domain.repository.SeafileRepository
 import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
@@ -18,8 +21,13 @@ import com.mycorrhizal.crm.model.network.FieldDefinition
 import com.mycorrhizal.crm.model.network.ImmichAssetSummary
 import com.mycorrhizal.crm.model.network.ImmichPerson
 import com.mycorrhizal.crm.model.network.ImmichPersonSummary
+import com.mycorrhizal.crm.model.network.PaperlessDocument
 import com.mycorrhizal.crm.model.network.ReminderCompletion
+import com.mycorrhizal.crm.model.network.SeafileItem
+import com.mycorrhizal.crm.model.network.SeafileLibrary
+import com.mycorrhizal.crm.model.network.SeafileLinkRequest
 import com.mycorrhizal.crm.model.network.Tag
+import com.mycorrhizal.crm.model.network.WebDAVItem
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
@@ -90,6 +98,26 @@ data class ContactDetailUiState(
     val immichPeopleLoading: Boolean = false,
     val immichAssets: List<ImmichAssetSummary> = emptyList(),
     val immichAssetsLoading: Boolean = false,
+    // Issue #236: whether each file/document integration is configured (has a
+    // stored token) — gates the "Add link" entry points in the External Links
+    // panel, same safe-default-on-failure treatment as [immichConfigured].
+    val paperlessConfigured: Boolean = false,
+    val seafileConfigured: Boolean = false,
+    val nextcloudConfigured: Boolean = false,
+    // Paperless document picker: a client-side-filtered full list, like web's.
+    val paperlessDocuments: List<PaperlessDocument> = emptyList(),
+    val paperlessDocumentsLoading: Boolean = false,
+    // Seafile picker: two-level nav (library list, then a directory browse
+    // within one). `seafileBrowseRepoId == null` means the library list.
+    val seafileLibraries: List<SeafileLibrary> = emptyList(),
+    val seafileBrowseRepoId: String? = null,
+    val seafileBrowsePath: String = "/",
+    val seafileBrowseItems: List<SeafileItem> = emptyList(),
+    val seafileBrowseLoading: Boolean = false,
+    // Nextcloud picker: single-level directory browse.
+    val nextcloudBrowsePath: String = "/",
+    val nextcloudBrowseItems: List<WebDAVItem> = emptyList(),
+    val nextcloudBrowseLoading: Boolean = false,
 )
 
 sealed interface ContactDetailEvent {
@@ -121,6 +149,10 @@ class ContactDetailViewModel @Inject constructor(
     // Immich "choose from Immich" profile-photo flow. Both are online-only.
     private val externalIdentityRepository: ExternalIdentityRepository,
     private val immichRepository: ImmichRepository,
+    // Issue #236: the Paperless/Seafile/Nextcloud create/link pickers.
+    private val paperlessRepository: PaperlessRepository,
+    private val seafileRepository: SeafileRepository,
+    private val nextcloudRepository: NextcloudRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -282,6 +314,24 @@ class ContactDetailViewModel @Inject constructor(
                 onError = {},
             )
         }
+        viewModelScope.launch {
+            paperlessRepository.isConfigured().foldApiError(
+                onSuccess = { configured -> _uiState.update { it.copy(paperlessConfigured = configured) } },
+                onError = {},
+            )
+        }
+        viewModelScope.launch {
+            seafileRepository.isConfigured().foldApiError(
+                onSuccess = { configured -> _uiState.update { it.copy(seafileConfigured = configured) } },
+                onError = {},
+            )
+        }
+        viewModelScope.launch {
+            nextcloudRepository.isConfigured().foldApiError(
+                onSuccess = { configured -> _uiState.update { it.copy(nextcloudConfigured = configured) } },
+                onError = {},
+            )
+        }
         loadImmichSummary(uid)
     }
 
@@ -402,6 +452,143 @@ class ContactDetailViewModel @Inject constructor(
             }
             result.foldApiError(
                 onSuccess = { bytes -> onBytes(bytes) },
+                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } },
+            )
+        }
+    }
+
+    // --- Issue #236: Paperless/Seafile/Nextcloud create/link pickers ---
+    //
+    // Each dialog's open/close visibility is local Compose state in
+    // ContactDetailScreen (mirroring immichPickerOpen); this ViewModel only
+    // owns the data (lists, loading flags, browse position). Tapping an item
+    // fires the link call and the screen closes its dialog immediately —
+    // success refreshes the panel, failure surfaces via `state.error`, the
+    // same fire-and-refresh shape as `linkImmichPerson`/`deleteExternalIdentity`.
+
+    /** Fetch the full Paperless document list once (client-side filter happens in the dialog). */
+    fun loadPaperlessDocuments() {
+        if (_uiState.value.paperlessDocumentsLoading) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(paperlessDocumentsLoading = true, error = null) }
+            paperlessRepository.searchDocuments().foldApiError(
+                onSuccess = { documents ->
+                    _uiState.update { it.copy(paperlessDocuments = documents, paperlessDocumentsLoading = false) }
+                },
+                onError = { error ->
+                    _uiState.update { it.copy(paperlessDocumentsLoading = false, error = error.displayMessage) }
+                },
+            )
+        }
+    }
+
+    /** Link a Paperless document to this contact, then refresh the External Links panel. */
+    fun linkPaperlessDocument(document: PaperlessDocument) {
+        val contact = _uiState.value.contact ?: return
+        val uid = contact.uid ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(error = null) }
+            paperlessRepository.linkDocument(uid, document.id.toString()).foldApiError(
+                onSuccess = { loadExternalLinks(contact) },
+                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } },
+            )
+        }
+    }
+
+    /** Fetch the user's Seafile libraries for the picker's top level. */
+    fun loadSeafileLibraries() {
+        if (_uiState.value.seafileBrowseLoading) return
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(seafileBrowseLoading = true, error = null, seafileBrowseRepoId = null, seafileBrowsePath = "/")
+            }
+            seafileRepository.listLibraries().foldApiError(
+                onSuccess = { libraries ->
+                    _uiState.update { it.copy(seafileLibraries = libraries, seafileBrowseLoading = false) }
+                },
+                onError = { error ->
+                    _uiState.update { it.copy(seafileBrowseLoading = false, error = error.displayMessage) }
+                },
+            )
+        }
+    }
+
+    /** Enter a Seafile library or subdirectory (path defaults to the library root). */
+    fun enterSeafileDir(repoId: String, path: String = "/") {
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(seafileBrowseLoading = true, error = null, seafileBrowseRepoId = repoId, seafileBrowsePath = path)
+            }
+            seafileRepository.listDir(repoId, path).foldApiError(
+                onSuccess = { items ->
+                    _uiState.update { it.copy(seafileBrowseItems = items, seafileBrowseLoading = false) }
+                },
+                onError = { error ->
+                    _uiState.update { it.copy(seafileBrowseLoading = false, error = error.displayMessage) }
+                },
+            )
+        }
+    }
+
+    /** Step up one Seafile directory level, or back out to the library list from a root. */
+    fun backSeafileDir() {
+        val repoId = _uiState.value.seafileBrowseRepoId ?: return
+        val parent = parentDirPath(_uiState.value.seafileBrowsePath)
+        if (parent == null) {
+            loadSeafileLibraries()
+        } else {
+            enterSeafileDir(repoId, parent)
+        }
+    }
+
+    /** Link a Seafile file to this contact, then refresh the External Links panel. */
+    fun linkSeafileItem(item: SeafileItem) {
+        val contact = _uiState.value.contact ?: return
+        val uid = contact.uid ?: return
+        val repoId = _uiState.value.seafileBrowseRepoId ?: return
+        val path = joinDirPath(_uiState.value.seafileBrowsePath, item.name)
+        viewModelScope.launch {
+            _uiState.update { it.copy(error = null) }
+            seafileRepository.linkItem(
+                uid,
+                SeafileLinkRequest(
+                    repoId = repoId,
+                    path = path,
+                    name = item.name,
+                    type = item.type,
+                    size = item.size.takeIf { it > 0 },
+                    mtime = item.mtime.takeIf { it > 0 },
+                ),
+            ).foldApiError(
+                onSuccess = { loadExternalLinks(contact) },
+                onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } },
+            )
+        }
+    }
+
+    /** Browse a Nextcloud directory (path defaults to the dav root). */
+    fun loadNextcloudDir(path: String = "/") {
+        viewModelScope.launch {
+            _uiState.update { it.copy(nextcloudBrowseLoading = true, error = null, nextcloudBrowsePath = path) }
+            nextcloudRepository.listDir(path).foldApiError(
+                onSuccess = { items ->
+                    _uiState.update { it.copy(nextcloudBrowseItems = items, nextcloudBrowseLoading = false) }
+                },
+                onError = { error ->
+                    _uiState.update { it.copy(nextcloudBrowseLoading = false, error = error.displayMessage) }
+                },
+            )
+        }
+    }
+
+    /** Link a Nextcloud file to this contact, then refresh the External Links panel. */
+    fun linkNextcloudItem(item: WebDAVItem) {
+        val contact = _uiState.value.contact ?: return
+        val uid = contact.uid ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(error = null) }
+            nextcloudRepository.linkItem(uid, item).foldApiError(
+                onSuccess = { loadExternalLinks(contact) },
                 onError = { error -> _uiState.update { it.copy(error = error.displayMessage) } },
             )
         }

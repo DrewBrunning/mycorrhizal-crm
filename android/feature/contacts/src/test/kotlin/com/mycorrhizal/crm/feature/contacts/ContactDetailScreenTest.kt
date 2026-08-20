@@ -604,6 +604,59 @@ class ContactDetailScreenTest {
         composeTestRule.onNodeWithText("External Links").assertDoesNotExist()
     }
 
+    // --- Issue #236: "Add link" entry points ---
+
+    @Test
+    fun `external links section appears for a configured system with no links yet`() {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(contact = contact, paperlessConfigured = true)
+            }
+        }
+
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasText("External Links"))
+        composeTestRule.onNodeWithText("External Links").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Add Paperless link").assertIsDisplayed()
+    }
+
+    @Test
+    fun `add link buttons are gated per system`() {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(contact = contact, paperlessConfigured = true, seafileConfigured = false, nextcloudConfigured = false)
+            }
+        }
+
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasText("External Links"))
+        composeTestRule.onNodeWithText("Add Paperless link").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Add Seafile link").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Add Nextcloud link").assertDoesNotExist()
+    }
+
+    @Test
+    fun `tapping an add link button invokes its callback`() {
+        val contact = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        var tapped = false
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    seafileConfigured = true,
+                    onAddSeafileLink = { tapped = true },
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasText("External Links"))
+        composeTestRule.onNodeWithText("Add Seafile link").performClick()
+        assertTrue(tapped)
+    }
+
     // --- M15: the share entry point lives in the header's action menu ---
 
     @Test

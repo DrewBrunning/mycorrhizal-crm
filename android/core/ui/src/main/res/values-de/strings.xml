@@ -174,6 +174,20 @@
     <string name="external_links_remove_named">Link %1$s entfernen</string>
     <string name="external_links_remove_title">Externen Link entfernen</string>
     <string name="external_links_remove_confirm">%1$s-Link (%2$s) entfernen?</string>
+    <!-- Issue #236: "Link hinzufügen"-Einstiege (Bereich Externe Links) +
+         Paperless-/Seafile-/Nextcloud-Auswahldialoge zum Verknüpfen. -->
+    <string name="external_links_add_paperless">Paperless-Link hinzufügen</string>
+    <string name="external_links_add_seafile">Seafile-Link hinzufügen</string>
+    <string name="external_links_add_nextcloud">Nextcloud-Link hinzufügen</string>
+    <string name="paperless_picker_title">Paperless-Dokument verknüpfen</string>
+    <string name="paperless_picker_search_placeholder">Dokumente durchsuchen</string>
+    <string name="paperless_picker_no_matches">Keine passenden Dokumente</string>
+    <string name="paperless_picker_untitled">Unbenanntes Dokument</string>
+    <string name="seafile_picker_title">Seafile-Datei verknüpfen</string>
+    <string name="seafile_picker_no_libraries">Keine Bibliotheken gefunden</string>
+    <string name="seafile_picker_empty_folder">Dieser Ordner ist leer</string>
+    <string name="nextcloud_picker_title">Nextcloud-Datei verknüpfen</string>
+    <string name="nextcloud_picker_empty_folder">Dieser Ordner ist leer</string>
     <!-- Issue #219/#220: Immich-Integration (Reichzeilige External-Links-Zeile +
          Profilfoto-Flow „Aus Immich wählen"). -->
     <string name="immich_linked_person">Verknüpfte Immich-Person</string>
@@ -594,6 +608,7 @@
     <string name="action_delete">Löschen</string>
     <string name="action_cancel">Abbrechen</string>
     <string name="action_add">Hinzufügen</string>
+    <string name="action_back">Zurück</string>
     <string name="action_rename">Umbenennen</string>
     <string name="action_retry">Erneut versuchen</string>
 

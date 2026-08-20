@@ -178,6 +178,20 @@
     <string name="external_links_remove_named">Remove link %1$s</string>
     <string name="external_links_remove_title">Remove external link</string>
     <string name="external_links_remove_confirm">Remove the %1$s link (%2$s)?</string>
+    <!-- Issue #236: "Add link" entry points (External Links panel) + the
+         Paperless/Seafile/Nextcloud create/link pickers. -->
+    <string name="external_links_add_paperless">Add Paperless link</string>
+    <string name="external_links_add_seafile">Add Seafile link</string>
+    <string name="external_links_add_nextcloud">Add Nextcloud link</string>
+    <string name="paperless_picker_title">Link a Paperless document</string>
+    <string name="paperless_picker_search_placeholder">Search documents</string>
+    <string name="paperless_picker_no_matches">No matching documents</string>
+    <string name="paperless_picker_untitled">Untitled document</string>
+    <string name="seafile_picker_title">Link a Seafile file</string>
+    <string name="seafile_picker_no_libraries">No libraries found</string>
+    <string name="seafile_picker_empty_folder">This folder is empty</string>
+    <string name="nextcloud_picker_title">Link a Nextcloud file</string>
+    <string name="nextcloud_picker_empty_folder">This folder is empty</string>
     <!-- Issue #219/#220: the Immich integration (External Links rich row +
          "choose from Immich" profile-photo flow). -->
     <string name="immich_linked_person">Linked Immich person</string>
@@ -601,6 +615,7 @@
     <string name="action_delete">Delete</string>
     <string name="action_cancel">Cancel</string>
     <string name="action_add">Add</string>
+    <string name="action_back">Back</string>
     <string name="action_rename">Rename</string>
     <string name="action_retry">Retry</string>
 
