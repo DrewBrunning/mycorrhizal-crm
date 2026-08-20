@@ -10,6 +10,8 @@
     <string name="dashboard_birthdays">Upcoming birthdays</string>
     <string name="dashboard_reminders">Upcoming reminders</string>
     <string name="dashboard_overdue_cadences">Overdue Relationships</string>
+    <!-- Issue #177: event-driven reach-out suggestions. -->
+    <string name="dashboard_reach_out">Reasons to Reach Out</string>
     <string name="dashboard_random_contacts">Stay in Touch</string>
     <!-- Issue #212: the favorites quick-access block (web #173). -->
     <string name="dashboard_favorites">Favorites</string>
@@ -829,6 +831,13 @@
     <string name="cadence_on_track">On track</string>
     <string name="cadence_overdue_by">%1$d days overdue</string>
     <string name="cadence_next_due">Next due: %1$s</string>
+    <!-- Issue #177: event-driven reach-out suggestions. -->
+    <string name="reach_out_kind_organization">New employer</string>
+    <string name="reach_out_kind_title">New job title</string>
+    <string name="reach_out_kind_address">Moved</string>
+    <string name="reach_out_changed_from_to">%1$s → %2$s</string>
+    <string name="reach_out_changed_to">Now: %1$s</string>
+    <string name="cd_dismiss_reach_out_suggestion">Dismiss suggestion</string>
     <string name="cadence_last_interaction">Last interaction: %1$s</string>
     <string name="cadence_confirm_delete">Remove this cadence policy?</string>
     <string name="cadence_delete_title">Delete cadence</string>

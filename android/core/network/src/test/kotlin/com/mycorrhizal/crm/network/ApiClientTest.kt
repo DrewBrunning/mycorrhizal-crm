@@ -1584,6 +1584,9 @@ class ApiClientTest {
                       ],
                       "overdue": [
                         {"policy": {"id": "cadence-1", "entity_id": "u3", "target_interval_days": 30}, "health": {"has_qualifying_interaction": true, "next_due": "2026-08-01T00:00:00Z", "overdue_by": 13}, "contact_id": 3, "contact_name": "Bobby Smith", "photo_thumbnail": "data:image/png;base64,ghi"}
+                      ],
+                      "reach_out_suggestions": [
+                        {"id": "s1", "contact_vcard_uid": "u3", "kind": "organization", "old_value": "OldCo", "new_value": "NewCo", "audit_event_id": 42, "reminder_id": 9, "status": "pending", "contact_id": 3, "contact_name": "Bobby Smith", "photo_thumbnail": "data:image/png;base64,jkl"}
                       ]
                     }
                     """.trimIndent(),
@@ -1616,6 +1619,14 @@ class ApiClientTest {
         assertEquals(1, dashboard.overdue.size)
         assertEquals("cadence-1", dashboard.overdue[0].policy?.id)
         assertEquals(13, dashboard.overdue[0].health?.overdueBy)
+        // Issue #177: reach-out suggestions.
+        assertEquals(1, dashboard.reachOutSuggestions.size)
+        assertEquals("s1", dashboard.reachOutSuggestions[0].id)
+        assertEquals("organization", dashboard.reachOutSuggestions[0].kind)
+        assertEquals("OldCo", dashboard.reachOutSuggestions[0].oldValue)
+        assertEquals("NewCo", dashboard.reachOutSuggestions[0].newValue)
+        assertEquals(3L, dashboard.reachOutSuggestions[0].contactId)
+        assertEquals("Bobby Smith", dashboard.reachOutSuggestions[0].contactName)
 
         val request = server.takeRequest()
         assertEquals("GET", request.method)
@@ -1634,7 +1645,8 @@ class ApiClientTest {
                       "random_contacts": [],
                       "upcoming_reminders": [],
                       "overdue": [],
-                      "favorites": []
+                      "favorites": [],
+                      "reach_out_suggestions": []
                     }
                     """.trimIndent(),
                 ),
@@ -1649,6 +1661,7 @@ class ApiClientTest {
         assertTrue(dashboard.upcomingReminders.isEmpty())
         assertTrue(dashboard.overdue.isEmpty())
         assertTrue(dashboard.favorites.isEmpty())
+        assertTrue(dashboard.reachOutSuggestions.isEmpty())
     }
 
     @Test
@@ -1668,6 +1681,25 @@ class ApiClientTest {
         assertTrue(dashboard.upcomingReminders.isEmpty())
         assertTrue(dashboard.overdue.isEmpty())
         assertTrue(dashboard.favorites.isEmpty())
+        assertTrue(dashboard.reachOutSuggestions.isEmpty())
+    }
+
+    @Test
+    fun `dismiss reach-out suggestion posts to the suggestion-specific endpoint`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"message": "Suggestion dismissed"}"""),
+        )
+
+        val result = client.dismissReachOutSuggestion("suggestion-1")
+
+        assertTrue(result.isSuccess)
+        assertEquals("Suggestion dismissed", result.getOrThrow().message)
+
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/reach-out-suggestions/suggestion-1/dismiss", request.path)
     }
 
     @Test

@@ -30,6 +30,9 @@ data class DashboardResponse(
     // [DashboardRandomContact] (PascalCase ID and all). Always `[]` on the
     // wire, never absent.
     val favorites: List<DashboardRandomContact> = emptyList(),
+    // Issue #177: pending event-driven reach-out suggestions. Same
+    // no-omitempty/always-`[]` discipline as every other block.
+    @Json(name = "reach_out_suggestions") val reachOutSuggestions: List<ReachOutSuggestion> = emptyList(),
 )
 
 /**

@@ -15,9 +15,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Badge
+import androidx.compose.material.icons.outlined.Business
 import androidx.compose.material.icons.outlined.Cake
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Repeat
@@ -64,6 +68,8 @@ import com.mycorrhizal.crm.model.network.DashboardRandomContact
 import com.mycorrhizal.crm.model.network.DashboardReminder
 import com.mycorrhizal.crm.model.network.OverdueCadence
 import com.mycorrhizal.crm.model.network.PartialDate
+import com.mycorrhizal.crm.model.network.ReachOutKind
+import com.mycorrhizal.crm.model.network.ReachOutSuggestion
 import com.mycorrhizal.crm.model.network.ReminderRecurrence
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.model.util.DateFormat.display
@@ -144,6 +150,7 @@ fun DashboardScreen(
                     dateFormat = state.dateFormat ?: DateFormat.EU,
                     onOpenContact = onOpenContact,
                     onCompleteReminder = viewModel::completeReminder,
+                    onDismissReachOutSuggestion = viewModel::dismissReachOutSuggestion,
                 )
             }
         }
@@ -163,6 +170,7 @@ internal fun DashboardContent(
     dateFormat: String,
     onOpenContact: (Int) -> Unit,
     onCompleteReminder: (id: Int, skip: Boolean) -> Unit,
+    onDismissReachOutSuggestion: (id: String) -> Unit = {},
 ) {
     var pendingSkip by remember { mutableStateOf<DashboardReminder?>(null) }
 
@@ -196,6 +204,20 @@ internal fun DashboardContent(
                 OverdueRow(cadence, dateFormat, onClick = {
                     if (cadence.contactId > 0) onOpenContact(cadence.contactId.toInt())
                 })
+            }
+        }
+        // Issue #177: event-driven reach-out suggestions — the change-driven
+        // counterpart to overdue cadences above. Same "hidden entirely when
+        // clear" treatment (web's OverdueCadenceList/ReachOutSuggestionsList
+        // both skip rendering an empty-state card for this section).
+        if (state.reachOutSuggestions.isNotEmpty()) {
+            item { DashboardSectionHeader(stringResource(R.string.dashboard_reach_out), Icons.Outlined.Business) }
+            items(state.reachOutSuggestions, key = { dashboardKey("reach-out", it.id) }) { suggestion ->
+                ReachOutRow(
+                    suggestion = suggestion,
+                    onClick = { if (suggestion.contactId > 0) onOpenContact(suggestion.contactId.toInt()) },
+                    onDismiss = { onDismissReachOutSuggestion(suggestion.id) },
+                )
             }
         }
         item { DashboardSectionHeader(stringResource(R.string.dashboard_birthdays), Icons.Outlined.Cake) }
@@ -354,6 +376,63 @@ private fun OverdueRow(cadence: OverdueCadence, dateFormat: String, onClick: () 
                 containerColor = LocalWarningColors.current.container,
                 contentColor = LocalWarningColors.current.onContainer,
             )
+        }
+    }
+}
+
+// Issue #177: the reach-out-suggestion row. Mirrors OverdueRow's tappable
+// avatar+name card, plus a dismiss action since these are propose-then-
+// approve suggestions, not facts (unlike the overdue-cadence trigger).
+@Composable
+private fun ReachOutRow(suggestion: ReachOutSuggestion, onClick: () -> Unit, onDismiss: () -> Unit) {
+    val name = suggestion.contactName.ifBlank { stringResource(R.string.dashboard_unknown_contact) }
+    val kindIcon = when (suggestion.kind) {
+        ReachOutKind.TITLE -> Icons.Outlined.Badge
+        ReachOutKind.ADDRESS -> Icons.Outlined.Home
+        else -> Icons.Outlined.Business
+    }
+    val kindLabel = when (suggestion.kind) {
+        ReachOutKind.ORGANIZATION -> stringResource(R.string.reach_out_kind_organization)
+        ReachOutKind.TITLE -> stringResource(R.string.reach_out_kind_title)
+        ReachOutKind.ADDRESS -> stringResource(R.string.reach_out_kind_address)
+        else -> suggestion.kind
+    }
+    val changeText = if (suggestion.oldValue.isNotBlank()) {
+        stringResource(R.string.reach_out_changed_from_to, suggestion.oldValue, suggestion.newValue)
+    } else {
+        stringResource(R.string.reach_out_changed_to, suggestion.newValue)
+    }
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            ContactAvatar(photoUri = suggestion.photoThumbnail, contentDescription = null, size = 40.dp)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(name, style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    text = changeText,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            DashboardChip(
+                text = kindLabel,
+                leadingIcon = kindIcon,
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+            AccessibleIconButton(onClick = onDismiss) {
+                Icon(
+                    Icons.Outlined.Close,
+                    contentDescription = stringResource(R.string.cd_dismiss_reach_out_suggestion),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
