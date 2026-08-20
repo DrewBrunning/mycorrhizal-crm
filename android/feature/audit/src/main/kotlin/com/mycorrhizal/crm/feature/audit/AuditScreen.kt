@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.audit
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -441,16 +442,20 @@ private fun OperationBadge(operation: String) {
         AuditOperations.DELETE -> stringResource(R.string.audit_operations_delete) to MaterialTheme.colorScheme.error
         else -> operation to MaterialTheme.colorScheme.onSurfaceVariant
     }
+    // #206: the 11sp label was drawn directly in the accent colour — moss at
+    // 3.87:1 on parchment was the least legible text in the app, and every
+    // accent fell below 4.5:1 on the card ground in one theme or the other.
+    // The accent is now only the 18% container tint plus the 1dp non-text
+    // border (3:1 bar); the label itself is onSurface (11.9:1 light, 9.6:1
+    // dark), and the operation is already named in words so nothing is
+    // colour-only.
     Text(
         text = label,
         style = MaterialTheme.typography.labelSmall,
-        color = color,
+        color = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier
-            .border(
-                width = 1.dp,
-                color = color,
-                shape = MaterialTheme.shapes.small,
-            )
+            .background(color.copy(alpha = 0.18f), MaterialTheme.shapes.small)
+            .border(1.dp, color, MaterialTheme.shapes.small)
             .padding(horizontal = 6.dp, vertical = 2.dp),
     )
 }

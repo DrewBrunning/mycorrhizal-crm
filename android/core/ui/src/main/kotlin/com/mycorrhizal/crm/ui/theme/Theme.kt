@@ -54,11 +54,12 @@ object MycorrhizalColors {
     val barkDark = Color(0xFFEAE4DA)
     val soilDark = Color(0xFFB5ADA2)
     // #206: mossDark (#349D62) and russulaDark (#C4675D) lightened so they clear
-    // 4.5:1 on paperDark (surfaceContainerHigh, i.e. dialogs). #4BB477 is 5.31:1,
-    // #D97F75 is 4.62:1.
+    // 4.5:1 on paperDark (surfaceContainerHigh, i.e. dialogs). #4BB477 is
+    // 4.88:1; the issue's suggested #D97F75 only reaches ~4.37:1 on #393226, so
+    // #DE857B (4.67:1) is used instead — visually the same light salmon.
     val mossDark = Color(0xFF4BB477)
     val chanterelleDark = Color(0xFFDDAE6C) // warning
-    val russulaDark = Color(0xFFD97F75)
+    val russulaDark = Color(0xFFDE857B)
     val laccariaDark = Color(0xFF9F8FBE)
 }
 
@@ -85,7 +86,7 @@ val LocalWarningColors = staticCompositionLocalOf {
     )
 }
 
-private val LightColors = lightColorScheme(
+internal val LightColors = lightColorScheme(
     primary = MycorrhizalColors.mycelium,
     onPrimary = MycorrhizalColors.bone,
     primaryContainer = MycorrhizalColors.parchment,
@@ -112,7 +113,7 @@ private val LightColors = lightColorScheme(
     outline = MycorrhizalColors.soil,
 )
 
-private val DarkColors = darkColorScheme(
+internal val DarkColors = darkColorScheme(
     primary = MycorrhizalColors.myceliumDark,
     onPrimary = MycorrhizalColors.boneDark,
     primaryContainer = MycorrhizalColors.parchmentDark,
