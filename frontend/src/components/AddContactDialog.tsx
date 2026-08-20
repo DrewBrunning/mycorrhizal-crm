@@ -223,7 +223,7 @@ export default function AddContactDialog({
         sx={{ pb: 6 }}
       >
         {error && (
-          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
+          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')} closeText={t('common.close')}>
             {error}
           </Alert>
         )}

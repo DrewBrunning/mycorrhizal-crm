@@ -165,6 +165,21 @@ test('an empty first name on submit is announced via role=alert and wires aria-i
   expect(firstNameField).toHaveAccessibleDescription('First name is required');
 });
 
+// The alert's dismiss button must carry a localized accessible name -- MUI
+// Alert's default "Close" is hardcoded English regardless of app language,
+// so this only fails if closeText is wired to a real translation.
+test('the error alert dismiss button is localized, not MUI\'s default English "Close"', async () => {
+  await i18n.changeLanguage('de');
+  try {
+    renderDialog();
+    fireEvent.click(screen.getByRole('button', { name: 'Erstellen' }));
+    await screen.findByRole('alert');
+    expect(screen.getByRole('button', { name: 'Schließen' })).toBeInTheDocument();
+  } finally {
+    await i18n.changeLanguage('en');
+  }
+});
+
 test('the first-name error clears once the user starts typing a value', async () => {
   renderDialog();
 
