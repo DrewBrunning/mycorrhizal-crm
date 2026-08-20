@@ -7,6 +7,8 @@ import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
@@ -30,10 +32,18 @@ object MycorrhizalColors {
     val lichen = Color(0xFF97A390)        // secondary
     val bark = Color(0xFF30271F)          // onSurface / onBackground
     val soil = Color(0xFF595148)          // onSurfaceVariant
-    val moss = Color(0xFF0D844C)          // tertiary / success
-    val chanterelle = Color(0xFFD3A563)   // warning
+    // #206: moss (#0D844C) and laccaria (#7B6B98) darkened so they clear
+    // 4.5:1 as text on parchment, the app's standard card ground. #0A6E3F is
+    // 4.94:1 on parchment; #655681 is 5.24:1. Both stay recognisably the
+    // same hue (a deliberate Android-side divergence from the web tokens).
+    val moss = Color(0xFF0A6E3F)          // tertiary / success
+    val chanterelle = Color(0xFFD3A563)   // warning container (filled chip background)
+    // #200: the 3:1 non-text warning pair (borders, icon tints) on bone/parchment.
+    // 4.62:1 on bone, 4.09:1 on parchment — the light chanterelle is only safe as
+    // a background (see LocalWarningColors).
+    val chanterelleForeground = Color(0xFFA9762B)
     val russula = Color(0xFFAD5349)       // error
-    val laccaria = Color(0xFF7B6B98)      // info
+    val laccaria = Color(0xFF655681)      // info
 
     // Dark
     val boneDark = Color(0xFF1E1A13)
@@ -43,13 +53,40 @@ object MycorrhizalColors {
     val lichenDark = Color(0xFF9BAA94)
     val barkDark = Color(0xFFEAE4DA)
     val soilDark = Color(0xFFB5ADA2)
-    val mossDark = Color(0xFF349D62)
-    val chanterelleDark = Color(0xFFDDAE6C)
-    val russulaDark = Color(0xFFC4675D)
+    // #206: mossDark (#349D62) and russulaDark (#C4675D) lightened so they clear
+    // 4.5:1 on paperDark (surfaceContainerHigh, i.e. dialogs). #4BB477 is
+    // 4.88:1; the issue's suggested #D97F75 only reaches ~4.37:1 on #393226, so
+    // #DE857B (4.67:1) is used instead — visually the same light salmon.
+    val mossDark = Color(0xFF4BB477)
+    val chanterelleDark = Color(0xFFDDAE6C) // warning
+    val russulaDark = Color(0xFFDE857B)
     val laccariaDark = Color(0xFF9F8FBE)
 }
 
-private val LightColors = lightColorScheme(
+/**
+ * Issue #200: Material 3 has no `warning` slot, so the app's warning/overdue
+ * amber is resolved per theme through this local instead of call sites reading
+ * [MycorrhizalColors] directly (which left `chanterelleDark` dead code and the
+ * light token on dark surfaces). `container`/`onContainer` are the filled
+ * overdue chip (light amber with dark `bark` content — 6.5:1); `foreground` is
+ * the non-text pair (borders, icon tints) that clears 3:1 on the card surfaces.
+ */
+data class WarningColors(
+    val container: Color,
+    val onContainer: Color,
+    val foreground: Color,
+)
+
+/** Defaults to the light pair so previews that skip [MycorrhizalTheme] still resolve. */
+val LocalWarningColors = staticCompositionLocalOf {
+    WarningColors(
+        container = MycorrhizalColors.chanterelle,
+        onContainer = MycorrhizalColors.bark,
+        foreground = MycorrhizalColors.chanterelleForeground,
+    )
+}
+
+internal val LightColors = lightColorScheme(
     primary = MycorrhizalColors.mycelium,
     onPrimary = MycorrhizalColors.bone,
     primaryContainer = MycorrhizalColors.parchment,
@@ -76,7 +113,7 @@ private val LightColors = lightColorScheme(
     outline = MycorrhizalColors.soil,
 )
 
-private val DarkColors = darkColorScheme(
+internal val DarkColors = darkColorScheme(
     primary = MycorrhizalColors.myceliumDark,
     onPrimary = MycorrhizalColors.boneDark,
     primaryContainer = MycorrhizalColors.parchmentDark,
@@ -202,10 +239,27 @@ fun MycorrhizalTheme(
     darkTheme: Boolean = false,
     content: @Composable () -> Unit,
 ) {
-    MaterialTheme(
-        colorScheme = if (darkTheme) DarkColors else LightColors,
-        shapes = MycorrhizalShapes,
-        typography = MycorrhizalTypography,
-        content = content,
-    )
+    // #200: the warning role has no M3 slot, so it is resolved here per theme
+    // (dark mode was previously borrowing the light chanterelle everywhere).
+    val warningColors = if (darkTheme) {
+        WarningColors(
+            container = MycorrhizalColors.chanterelleDark,
+            onContainer = MycorrhizalColors.bark,
+            foreground = MycorrhizalColors.chanterelleDark,
+        )
+    } else {
+        WarningColors(
+            container = MycorrhizalColors.chanterelle,
+            onContainer = MycorrhizalColors.bark,
+            foreground = MycorrhizalColors.chanterelleForeground,
+        )
+    }
+    CompositionLocalProvider(LocalWarningColors provides warningColors) {
+        MaterialTheme(
+            colorScheme = if (darkTheme) DarkColors else LightColors,
+            shapes = MycorrhizalShapes,
+            typography = MycorrhizalTypography,
+            content = content,
+        )
+    }
 }

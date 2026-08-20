@@ -5,6 +5,7 @@ import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.HouseholdRepository
 import com.mycorrhizal.crm.model.network.Household
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
+import com.mycorrhizal.crm.testing.a11y.assertNoDuplicateContentDescriptions
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.mockk
@@ -49,6 +50,15 @@ class HouseholdsScreenTest {
         setScreen(darkTheme = false)
 
         composeTestRule.assertAccessibleSemantics()
+    }
+
+    @Test
+    fun `row action labels are unique per row`() {
+        // #205: two seeded households must not both announce a bare
+        // "Rename"/"Delete" — each row's actions carry the household's name.
+        setScreen(darkTheme = false)
+
+        composeTestRule.assertNoDuplicateContentDescriptions()
     }
 
     @Test

@@ -286,14 +286,27 @@ internal fun WebhookRow(
                 if (testing) {
                     CircularProgressIndicator(modifier = Modifier.padding(4.dp), strokeWidth = 2.dp)
                 } else {
-                    Icon(Icons.Outlined.PlayArrow, contentDescription = stringResource(R.string.settings_webhooks_test))
+                    // #205: the row-action label carries the webhook name so
+                    // TalkBack doesn't read a bare "Test" on every row.
+                    Icon(
+                        Icons.Outlined.PlayArrow,
+                        contentDescription = stringResource(R.string.settings_webhooks_test_named, webhook.name),
+                    )
                 }
             }
             IconButton(onClick = onEdit) {
-                Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.settings_webhooks_edit))
+                // #205: the row-action label carries the webhook name so TalkBack
+                // doesn't read a bare "Edit" on every row.
+                Icon(
+                    Icons.Outlined.Edit,
+                    contentDescription = stringResource(R.string.settings_webhooks_edit_named, webhook.name),
+                )
             }
             IconButton(onClick = onDelete) {
-                Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.settings_webhooks_delete))
+                Icon(
+                    Icons.Outlined.Delete,
+                    contentDescription = stringResource(R.string.settings_webhooks_delete_named, webhook.name),
+                )
             }
         }
         TextButton(

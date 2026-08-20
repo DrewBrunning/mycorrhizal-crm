@@ -69,7 +69,7 @@ import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.model.util.DateFormat.display
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
-import com.mycorrhizal.crm.ui.theme.MycorrhizalColors
+import com.mycorrhizal.crm.ui.theme.LocalWarningColors
 import java.time.Instant
 import java.time.LocalDate
 
@@ -304,7 +304,7 @@ private fun OverdueRow(cadence: OverdueCadence, dateFormat: String, onClick: () 
     val nextDue = DateFormat.formatTimestamp(cadence.health?.nextDue, dateFormat)
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        border = BorderStroke(1.dp, MycorrhizalColors.chanterelle),
+        border = BorderStroke(1.dp, LocalWarningColors.current.foreground),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(12.dp),
@@ -322,11 +322,12 @@ private fun OverdueRow(cadence: OverdueCadence, dateFormat: String, onClick: () 
                     )
                 }
             }
+            // #200: white-on-amber was 2.25:1; bark on the amber container is 6.5:1.
             DashboardChip(
                 text = stringResource(R.string.cadence_overdue_by, cadence.health?.overdueBy ?: 0),
                 leadingIcon = Icons.Outlined.Warning,
-                containerColor = MycorrhizalColors.chanterelle,
-                contentColor = Color.White,
+                containerColor = LocalWarningColors.current.container,
+                contentColor = LocalWarningColors.current.onContainer,
             )
         }
     }
@@ -370,7 +371,7 @@ private fun ReminderRow(
     val dateText = DateFormat.formatTimestamp(reminder.remindAt, dateFormat)
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        border = if (overdue) BorderStroke(1.dp, MycorrhizalColors.chanterelle) else null,
+        border = if (overdue) BorderStroke(1.dp, LocalWarningColors.current.foreground) else null,
     ) {
         Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.Top) {
             Column(modifier = Modifier.weight(1f)) {
@@ -394,8 +395,8 @@ private fun ReminderRow(
                         DashboardChip(
                             text = dateText,
                             leadingIcon = if (overdue) Icons.Outlined.Warning else null,
-                            containerColor = if (overdue) MycorrhizalColors.chanterelle else MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = if (overdue) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                            containerColor = if (overdue) LocalWarningColors.current.container else MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (overdue) LocalWarningColors.current.onContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     val recurrence = reminder.recurrence

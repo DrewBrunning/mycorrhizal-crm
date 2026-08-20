@@ -198,12 +198,17 @@ private fun CircleListItem(
         AccessibleIconButton(onClick = { renaming = true }) {
             Icon(
                 Icons.Outlined.Edit,
-                contentDescription = stringResource(R.string.action_rename),
+                // #205: the row-action label carries the circle name so TalkBack
+                // doesn't read a bare "Rename" on every row.
+                contentDescription = stringResource(R.string.circles_rename_named, circle.name),
                 tint = MaterialTheme.colorScheme.primary,
             )
         }
         AccessibleIconButton(onClick = { deleting = true }) {
-            Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.action_delete))
+            Icon(
+                Icons.Outlined.Delete,
+                contentDescription = stringResource(R.string.circles_delete_named, circle.name),
+            )
         }
         Icon(Icons.AutoMirrored.Outlined.ArrowForward, contentDescription = null)
     }

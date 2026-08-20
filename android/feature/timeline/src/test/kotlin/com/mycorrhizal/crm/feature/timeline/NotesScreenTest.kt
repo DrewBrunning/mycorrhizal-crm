@@ -130,7 +130,7 @@ class NotesScreenTest {
             NotesUiState(contactId = 5, notes = listOf(Note(id = 3, content = "Loves climbing"))),
             onDelete = { deletedId = it },
         )
-        composeTestRule.onNodeWithContentDescription("Delete").performClick()
+        composeTestRule.onNodeWithContentDescription("Delete Loves climbing").performClick()
 
         composeTestRule.onNodeWithText("Delete note?").assertIsDisplayed()
         // The confirmation is up; the repository call has NOT happened.
@@ -144,7 +144,7 @@ class NotesScreenTest {
             NotesUiState(contactId = 5, notes = listOf(Note(id = 3, content = "Loves climbing"))),
             onDelete = { deletedId = it },
         )
-        composeTestRule.onNodeWithContentDescription("Delete").performClick()
+        composeTestRule.onNodeWithContentDescription("Delete Loves climbing").performClick()
         composeTestRule.onNodeWithText("Cancel").performClick()
 
         assertNull(deletedId)
@@ -158,7 +158,7 @@ class NotesScreenTest {
             NotesUiState(contactId = 5, notes = listOf(Note(id = 3, content = "Loves climbing"))),
             onDelete = { deletedId = it },
         )
-        composeTestRule.onNodeWithContentDescription("Delete").performClick()
+        composeTestRule.onNodeWithContentDescription("Delete Loves climbing").performClick()
         // The dialog's confirm TextButton ("Delete") is the only exact-match
         // text node once the dialog is up — the row affordance is an icon.
         composeTestRule.onNodeWithText("Delete").performClick()

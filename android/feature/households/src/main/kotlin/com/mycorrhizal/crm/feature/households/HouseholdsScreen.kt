@@ -329,12 +329,17 @@ private fun HouseholdListItem(
         AccessibleIconButton(onClick = { editing = true }) {
             Icon(
                 Icons.Outlined.Edit,
-                contentDescription = stringResource(R.string.action_rename),
+                // #205: the row-action label carries the household name so TalkBack
+                // doesn't read a bare "Rename" on every row.
+                contentDescription = stringResource(R.string.households_rename_named, household.name),
                 tint = MaterialTheme.colorScheme.primary,
             )
         }
         AccessibleIconButton(onClick = { deleting = true }) {
-            Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.action_delete))
+            Icon(
+                Icons.Outlined.Delete,
+                contentDescription = stringResource(R.string.households_delete_named, household.name),
+            )
         }
         Icon(Icons.AutoMirrored.Outlined.ArrowForward, contentDescription = null)
     }

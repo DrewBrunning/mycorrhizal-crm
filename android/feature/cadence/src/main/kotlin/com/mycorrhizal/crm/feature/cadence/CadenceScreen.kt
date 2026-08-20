@@ -66,7 +66,7 @@ import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
-import com.mycorrhizal.crm.ui.theme.MycorrhizalColors
+import com.mycorrhizal.crm.ui.theme.LocalWarningColors
 
 /**
  * Per-contact cadence/relationship-health surface (M12, mirroring web's
@@ -248,14 +248,14 @@ fun CadencePanelContent(
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 when {
                     isOverdue -> {
-                        Icon(Icons.Outlined.Warning, contentDescription = null, tint = MycorrhizalColors.chanterelle)
+                        // #200: amber text on parchment was 1.83:1 — illegible.
+                        // The warning semantics ride the icon (tinted with the
+                        // 3:1 non-text amber); the words use onSurface.
+                        Icon(Icons.Outlined.Warning, contentDescription = null, tint = LocalWarningColors.current.foreground)
                         Text(
                             text = stringResource(R.string.cadence_overdue_by, health!!.overdueBy),
                             style = MaterialTheme.typography.bodyMedium,
-                            // Web parity: overdue renders in the warning (chantarelle)
-                            // color, not the error color — being overdue is a nudge,
-                            // not a failure (matches M11's prep view cadence card).
-                            color = MycorrhizalColors.chanterelle,
+                            color = MaterialTheme.colorScheme.onSurface,
                         )
                     }
                     hasInteraction -> {

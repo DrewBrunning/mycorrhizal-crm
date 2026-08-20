@@ -99,7 +99,16 @@ fun CustomLinkActionsScreen(
                             )
                         }
                         IconButton(onClick = { viewModel.delete(action) }) {
-                            Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.action_delete))
+                            Icon(
+                                Icons.Outlined.Delete,
+                                // #205: the row-action label carries the action's
+                                // label so TalkBack doesn't read a bare "Delete" on
+                                // every row.
+                                contentDescription = stringResource(
+                                    R.string.custom_links_delete_named,
+                                    "${action.protocol} — ${action.label}",
+                                ),
+                            )
                         }
                     }
                 }

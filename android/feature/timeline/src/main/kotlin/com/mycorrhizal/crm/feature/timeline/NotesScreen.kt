@@ -271,7 +271,12 @@ fun NoteListItem(
         },
         trailingContent = {
             IconButton(onClick = onDelete, enabled = !isDeleting) {
-                Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.action_delete))
+                // #205: the row-action label carries the note's content so
+                // TalkBack doesn't read a bare "Delete" on every row.
+                Icon(
+                    Icons.Outlined.Delete,
+                    contentDescription = stringResource(R.string.notes_delete_named, note.content.orEmpty()),
+                )
             }
         },
         modifier = modifier

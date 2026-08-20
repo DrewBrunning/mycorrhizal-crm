@@ -171,6 +171,7 @@
     <!-- Issue #220: pannello Link esterni (substrato ExternalIdentity). -->
     <string name="external_links_title">Link esterni</string>
     <string name="external_links_remove">Rimuovi link</string>
+    <string name="external_links_remove_named">Rimuovi link %1$s</string>
     <string name="external_links_remove_title">Rimuovi link esterno</string>
     <string name="external_links_remove_confirm">Rimuovere il link %1$s (%2$s)?</string>
     <!-- Issue #219/#220: integrazione Immich (riga arricchita dei link esterni +
@@ -333,6 +334,7 @@
     <string name="custom_links_label">Etichetta</string>
     <string name="custom_links_mime">MIMETYPE</string>
     <string name="custom_links_template">URI intent ({handle})</string>
+    <string name="custom_links_delete_named">Elimina %1$s</string>
 
     <!-- Settings: appearance (M25) -->
     <string name="settings_appearance">Aspetto</string>
@@ -363,10 +365,13 @@
     <string name="settings_webhooks_description">Ricevi notifiche HTTP POST quando si verificano eventi nel tuo CRM.</string>
     <string name="settings_webhooks_add">Aggiungi Webhook</string>
     <string name="settings_webhooks_edit">Modifica</string>
+    <string name="settings_webhooks_edit_named">Modifica %1$s</string>
     <string name="settings_webhooks_delete">Elimina</string>
+    <string name="settings_webhooks_delete_named">Elimina %1$s</string>
     <string name="settings_webhooks_delete_title">Elimina Webhook</string>
     <string name="settings_webhooks_delete_body">Eliminare "%1$s"? Tutte le consegne future verranno interrotte.</string>
     <string name="settings_webhooks_test">Testa</string>
+    <string name="settings_webhooks_test_named">Testa %1$s</string>
     <string name="settings_webhooks_active">Attivo</string>
     <string name="settings_webhooks_inactive">Inattivo</string>
     <string name="settings_webhooks_events">Eventi</string>
@@ -446,6 +451,7 @@
     <string name="activities_search">Cerca attività</string>
     <string name="activities_no_results">Nessuna attività corrisponde ai filtri</string>
     <string name="activities_delete_title">Eliminare l\'attività?</string>
+    <string name="activities_delete_named">Elimina %1$s</string>
     <string name="activities_delete_confirm">Eliminare questa attività? \"%1$s\"</string>
     <string name="activity_new">Nuova attività</string>
     <string name="activity_edit">Modifica attività</string>
@@ -471,6 +477,7 @@
     <string name="notes_search">Cerca note</string>
     <string name="notes_no_results">Nessuna nota corrisponde ai filtri</string>
     <string name="notes_delete_title">Eliminare la nota?</string>
+    <string name="notes_delete_named">Elimina %1$s</string>
     <string name="notes_delete_confirm">Eliminare questa nota? \"%1$s\"</string>
     <string name="notes_inbox_total">%1$d non archiviate</string>
     <string name="action_load_more">Carica altri</string>
@@ -553,11 +560,14 @@
     <string name="circles_title">Cerchi</string>
     <string name="circles_new">Nuovo cerchio</string>
     <string name="circles_rename">Rinomina cerchio</string>
+    <string name="circles_rename_named">Rinomina %1$s</string>
     <string name="circles_name">Nome</string>
     <string name="circles_delete_title">Eliminare il cerchio?</string>
     <string name="circles_delete_confirm">Eliminare «%1$s»? Questo rimuove il cerchio e le sue appartenenze.</string>
+    <string name="circles_delete_named">Elimina %1$s</string>
     <string name="circles_add_member">Aggiungi membro</string>
     <string name="circles_remove_member">Rimuovi membro</string>
+    <string name="circles_remove_member_named">Rimuovi il membro %1$s</string>
     <string name="circles_member_vcard_uid">UID VCard del contatto</string>
     <string name="circles_empty">Ancora nessun cerchio</string>
     <string name="circles_members_empty">Ancora nessun membro</string>
@@ -592,11 +602,14 @@
     <string name="tags_title">Etichette</string>
     <string name="tags_new">Nuova etichetta</string>
     <string name="tags_rename">Rinomina etichetta</string>
+    <string name="tags_rename_named">Rinomina %1$s</string>
     <string name="tags_name">Nome</string>
     <string name="tags_delete_title">Eliminare l\'etichetta?</string>
     <string name="tags_delete_confirm">Eliminare «%1$s»? Questo rimuove l\'etichetta e le sue etichettature di contatto.</string>
+    <string name="tags_delete_named">Elimina %1$s</string>
     <string name="tags_add_contact">Etichetta contatto</string>
     <string name="tags_remove_contact">Rimuovi etichetta dal contatto</string>
+    <string name="tags_remove_contact_named">Rimuovi l\'etichetta dal contatto %1$s</string>
     <string name="tags_contact_vcard_uid">UID VCard del contatto</string>
     <string name="tags_empty">Ancora nessuna etichetta</string>
     <string name="tags_contacts_empty">Nessun contatto etichettato</string>
@@ -607,12 +620,15 @@
     <string name="households_title">Famiglie</string>
     <string name="households_new">Nuova famiglia</string>
     <string name="households_edit">Modifica famiglia</string>
+    <string name="households_rename_named">Rinomina %1$s</string>
     <string name="households_name">Nome</string>
     <string name="households_type">Tipo</string>
     <string name="households_delete_title">Eliminare la famiglia?</string>
     <string name="households_delete_confirm">Eliminare «%1$s»? Questo rimuove la famiglia e le sue appartenenze.</string>
+    <string name="households_delete_named">Elimina %1$s</string>
     <string name="households_add_member">Aggiungi membro</string>
     <string name="households_remove_member">Rimuovi membro</string>
+    <string name="households_remove_member_named">Rimuovi il membro %1$s</string>
     <string name="households_member_search">Cerca contatti</string>
     <string name="households_type_to_search">Digita per cercare</string>
     <string name="households_no_contacts_found">Nessun contatto trovato</string>
@@ -667,11 +683,14 @@
     <string name="relationships_sensitivity_secret">Segreta</string>
     <string name="relationships_edit_title">Modifica relazione</string>
     <string name="relationships_edit">Modifica relazione</string>
+    <string name="relationships_edit_named">Modifica %1$s</string>
     <string name="relationships_other_party_readonly_hint">L\'altra persona non può essere modificata qui — elimina e ricrea la relazione per collegarla a un altro contatto.</string>
     <string name="relationships_unknown_contact">Contatto sconosciuto</string>
     <string name="relationships_suggested_section">Suggerite</string>
     <string name="relationships_reject">Rifiuta</string>
+    <string name="relationships_reject_named">Rifiuta %1$s</string>
     <string name="relationships_delete_title">Eliminare la relazione?</string>
+    <string name="relationships_delete_named">Elimina %1$s</string>
     <string name="relationships_delete_confirm">Eliminare la relazione con %1$s?</string>
     <string name="relationships_reject_title">Rifiutare il suggerimento?</string>
     <string name="relationships_reject_confirm">Rifiutare la relazione suggerita con %1$s?</string>
@@ -782,6 +801,7 @@
     <string name="entities_empty">Niente ancora qui</string>
     <string name="entities_error_no_vcard_uid">Il contatto non ha un UID VCard</string>
     <string name="entities_delete_title">Eliminare l\'elemento?</string>
+    <string name="entities_delete_named">Elimina %1$s</string>
     <string name="entities_delete_confirm">Eliminare «%1$s»? Questa azione non può essere annullata.</string>
     <string name="life_events_title">Eventi di vita</string>
     <string name="life_events_new">Nuovo evento</string>

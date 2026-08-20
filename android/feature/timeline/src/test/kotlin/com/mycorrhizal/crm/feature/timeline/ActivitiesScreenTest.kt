@@ -153,7 +153,7 @@ class ActivitiesScreenTest {
             ActivitiesUiState(contactId = 5, activities = listOf(Activity(id = 7, title = "Lunch"))),
             onDelete = { deletedId = it },
         )
-        composeTestRule.onNodeWithContentDescription("Delete").performClick()
+        composeTestRule.onNodeWithContentDescription("Delete Lunch").performClick()
 
         composeTestRule.onNodeWithText("Delete activity?").assertIsDisplayed()
         assertNull(deletedId)
@@ -166,7 +166,7 @@ class ActivitiesScreenTest {
             ActivitiesUiState(contactId = 5, activities = listOf(Activity(id = 7, title = "Lunch"))),
             onDelete = { deletedId = it },
         )
-        composeTestRule.onNodeWithContentDescription("Delete").performClick()
+        composeTestRule.onNodeWithContentDescription("Delete Lunch").performClick()
         composeTestRule.onNodeWithText("Cancel").performClick()
 
         assertNull(deletedId)
@@ -180,7 +180,7 @@ class ActivitiesScreenTest {
             ActivitiesUiState(contactId = 5, activities = listOf(Activity(id = 7, title = "Lunch"))),
             onDelete = { deletedId = it },
         )
-        composeTestRule.onNodeWithContentDescription("Delete").performClick()
+        composeTestRule.onNodeWithContentDescription("Delete Lunch").performClick()
         composeTestRule.onNodeWithText("Delete").performClick()
 
         assertEquals(7, deletedId)
