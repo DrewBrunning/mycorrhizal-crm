@@ -191,9 +191,11 @@ export default function LoginPage({ setToken }: LoginPageProps) {
                 <Button variant="text" color="primary" onClick={() => setForgotOpen(true)}>
                   {t('login.forgotPassword')}
                 </Button>
-                <Button component={Link} to="/register" color="primary" variant="text">
-                  {t('login.noAccount')}
-                </Button>
+                {!oidcConfig.registration_disabled && (
+                  <Button component={Link} to="/register" color="primary" variant="text">
+                    {t('login.noAccount')}
+                  </Button>
+                )}
                 {oidcConfig.enabled && (
                   <>
                     <Divider>{t('login.orSeparator')}</Divider>

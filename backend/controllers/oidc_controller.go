@@ -41,10 +41,20 @@ func oidcErrorRedirect(c *gin.Context, android bool, code string) {
 	c.Redirect(http.StatusFound, target)
 }
 
-// returns whether OIDC is enabled and a provider name hint.
+// OIDCConfigHandler is the one public, unauthenticated "what can a client do
+// on this deployment" endpoint: whether OIDC is enabled (+ a provider name
+// hint), and whether self-registration is disabled (DISABLE_REGISTRATION).
+// Both web's LoginPage/RegisterPage and Android's login/register screens
+// call it to decide what to show *before* a POST to /login or /register
+// would fail — previously registration_disabled was enforced only inside
+// RegisterUser's 403, so the register form/link stayed visible (and usable
+// right up to submit) even with registration turned off server-side.
 func OIDCConfigHandler(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		resp := gin.H{"enabled": cfg.OIDC.Enabled}
+		resp := gin.H{
+			"enabled":               cfg.OIDC.Enabled,
+			"registration_disabled": cfg.RegistrationDisabled,
+		}
 		if cfg.OIDC.Enabled {
 			resp["provider_name"] = services.ProviderName(cfg.OIDC.ProviderURL)
 		}

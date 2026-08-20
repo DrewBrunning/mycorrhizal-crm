@@ -182,7 +182,9 @@
     "registerButton": "Registrieren",
     "registering": "Registrierung läuft...",
     "registrationFailed": "Registrierung fehlgeschlagen",
-    "registrationSuccess": "Registrierung erfolgreich! Sie können sich jetzt anmelden."
+    "registrationSuccess": "Registrierung erfolgreich! Sie können sich jetzt anmelden.",
+    "registrationDisabled": "Die Registrierung ist auf diesem Server derzeit deaktiviert. Wenden Sie sich an Ihren Administrator, wenn Sie ein Konto benötigen.",
+    "backToLogin": "Zurück zur Anmeldung"
   },
   "contacts": {
     "title": "Kontakte",

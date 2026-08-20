@@ -2,6 +2,7 @@ package com.mycorrhizal.crm.feature.auth
 
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.domain.repository.AuthRepository
+import com.mycorrhizal.crm.model.network.AuthConfig
 import com.mycorrhizal.crm.model.network.PasswordStrength
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
@@ -31,6 +32,13 @@ class RegisterViewModelTest {
     private fun viewModel(): RegisterViewModel {
         coEvery { sessionManager.serverUrl() } returns "https://crm.example.com"
         coEvery { sessionManager.setServerUrl(any()) } just runs
+        // Registration-availability check fired from init — defaults to
+        // enabled so the existing submit-flow tests below don't each need
+        // to stub it. A test that wants the disabled case must re-stub
+        // AFTER calling viewModel() (before advanceUntilIdle()) so its
+        // coEvery is the one still in effect when init's launch actually
+        // runs — see "registration disabled" below.
+        coEvery { authRepository.getAuthConfig() } returns Result.success(AuthConfig(registrationDisabled = false))
         return RegisterViewModel(authRepository, sessionManager)
     }
 
@@ -169,5 +177,49 @@ class RegisterViewModelTest {
 
             assertEquals(com.mycorrhizal.crm.ui.R.string.login_error_valid_server_url, vm.uiState.value.errorRes)
             coVerify(exactly = 0) { authRepository.register(any(), any(), any()) }
+        }
+
+    // Android testing feedback: DISABLE_REGISTRATION was only ever enforced
+    // by the eventual 403 on submit — RegisterScreen now checks up front.
+
+    @Test
+    fun `registration disabled on the server is reflected in ui state on load`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = viewModel()
+            coEvery { authRepository.getAuthConfig() } returns Result.success(AuthConfig(registrationDisabled = true))
+            advanceUntilIdle()
+
+            assertTrue(vm.uiState.value.registrationDisabled)
+        }
+
+    @Test
+    fun `registration enabled on the server leaves ui state unset`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = viewModel()
+            advanceUntilIdle()
+
+            assertFalse(vm.uiState.value.registrationDisabled)
+        }
+
+    @Test
+    fun `a failed availability check leaves the form usable`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = viewModel()
+            coEvery { authRepository.getAuthConfig() } returns Result.failure(ApiError.Client(500, "boom"))
+            advanceUntilIdle()
+
+            assertFalse(vm.uiState.value.registrationDisabled)
+        }
+
+    @Test
+    fun `no server url yet does not fire an availability check`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { sessionManager.serverUrl() } returns null
+            coEvery { sessionManager.setServerUrl(any()) } just runs
+            val vm = RegisterViewModel(authRepository, sessionManager)
+            advanceUntilIdle()
+
+            assertFalse(vm.uiState.value.registrationDisabled)
+            coVerify(exactly = 0) { authRepository.getAuthConfig() }
         }
 }

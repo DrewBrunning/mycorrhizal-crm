@@ -55,6 +55,7 @@
     <string name="register_email">E-Mail</string>
     <string name="register_create">Konto erstellen</string>
     <string name="register_back_to_login">Zurück zur Anmeldung</string>
+    <string name="register_disabled_notice">Die Registrierung ist auf diesem Server derzeit deaktiviert. Wenden Sie sich an Ihren Administrator, wenn Sie ein Konto benötigen.</string>
     <string name="register_checking_strength">Passwortstärke wird geprüft…</string>
     <string name="register_password_strong">Passwort sieht gut aus</string>
     <string name="register_error_username_required">Benutzername ist erforderlich</string>

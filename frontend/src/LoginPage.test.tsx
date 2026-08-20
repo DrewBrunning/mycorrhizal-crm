@@ -1,23 +1,27 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
+import { describe, test, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import './i18n/config';
 import LoginPage from './LoginPage';
 import { AppThemeProvider } from './AppThemeProvider';
 import { loginUser, login2FA, isAuthenticated } from './auth';
+import { useOIDCConfig } from './hooks/useOIDCConfig';
 
 vi.mock('./auth', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./auth')>();
   return { ...actual, loginUser: vi.fn(), login2FA: vi.fn(), isAuthenticated: vi.fn() };
 });
 
-vi.mock('./hooks/useOIDCConfig', () => ({
-  useOIDCConfig: () => ({ enabled: false, provider_name: 'SSO' }),
-}));
+vi.mock('./hooks/useOIDCConfig', () => ({ useOIDCConfig: vi.fn() }));
 
 const loginUserMock = vi.mocked(loginUser);
 const login2FAMock = vi.mocked(login2FA);
 const isAuthenticatedMock = vi.mocked(isAuthenticated);
+const useOIDCConfigMock = vi.mocked(useOIDCConfig);
+
+beforeEach(() => {
+  useOIDCConfigMock.mockReturnValue({ enabled: false, provider_name: 'SSO', registration_disabled: false });
+});
 
 afterEach(() => {
   cleanup();
@@ -147,5 +151,20 @@ describe('LoginPage failed-login focus and error association', () => {
     await screen.findByText('Invalid code. Please try again.');
     const alert = screen.getByRole('alert');
     await waitFor(() => expect(document.activeElement).toBe(alert));
+  });
+});
+
+// DISABLE_REGISTRATION: the register link stayed visible even when the
+// server rejects new accounts — only the eventual 403 on submit told you.
+describe('LoginPage registration gate', () => {
+  test('shows the register link by default', () => {
+    renderLogin();
+    expect(screen.getByRole('link', { name: /don't have an account/i })).toBeInTheDocument();
+  });
+
+  test('hides the register link when the server has registration disabled', () => {
+    useOIDCConfigMock.mockReturnValue({ enabled: false, provider_name: 'SSO', registration_disabled: true });
+    renderLogin();
+    expect(screen.queryByRole('link', { name: /don't have an account/i })).not.toBeInTheDocument();
   });
 });

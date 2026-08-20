@@ -55,6 +55,7 @@
     <string name="register_email">Email</string>
     <string name="register_create">Create account</string>
     <string name="register_back_to_login">Back to sign in</string>
+    <string name="register_disabled_notice">Registration is currently disabled on this server. Contact your administrator if you need an account.</string>
     <string name="register_checking_strength">Checking password strength…</string>
     <string name="register_password_strong">Password looks good</string>
     <string name="register_error_username_required">Username is required</string>
