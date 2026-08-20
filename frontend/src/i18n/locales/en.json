@@ -1356,7 +1356,12 @@
       "circleEdge": "Circle Membership"
     },
     "filterByContact": "Center on Contact",
-    "showCircles": "Circles"
+    "showCircles": "Circles",
+    "graphSummary": "Network diagram: {{contacts}} contacts, {{activities}} activities, {{circles}} circles, {{connections}} connections. The same information is available in the list view below.",
+    "listView": "Network list view",
+    "connectionRelationship": "{{type}}: {{name}}",
+    "connectionActivity": "Attended {{title}}",
+    "connectionCircle": "Member of {{circle}}"
   },
   "relationships": {
     "title": "Relationships",

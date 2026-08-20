@@ -4,6 +4,7 @@ import { forceX, forceY } from 'd3-force';
 import { useTheme, Box, Typography, useMediaQuery } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { GraphData, GraphNode, GraphEdge } from '../types/graph';
+import { computeFilteredGraphData } from '../utils/networkGraphData';
 
 interface NetworkGraphProps {
   data: GraphData;
@@ -82,124 +83,14 @@ export default function NetworkGraph({
     };
   }, []);
 
-  // Filter and transform data for the graph, including synthetic circle nodes/edges
-  const graphData: ForceGraphData = useMemo(() => {
-    let filteredNodes = data.nodes;
-
-    // Filter by circle if selected
-    if (selectedCircle) {
-      const contactsInCircle = new Set(
-        data.nodes
-          .filter(n => {
-            if (n.type !== 'contact' || !circleNamesByUid) return false;
-            const contactId = n.id.replace('c-', '');
-            return (circleNamesByUid.get(contactId) || []).includes(selectedCircle);
-          })
-          .map(n => n.id)
-      );
-
-      // Include contacts in circle and activities that have at least 2 contacts in the circle
-      filteredNodes = data.nodes.filter(n => {
-        if (n.type === 'contact') {
-          return contactsInCircle.has(n.id);
-        }
-        // For activities, check if they connect contacts in this circle
-        const activityEdges = data.edges.filter(
-          e => e.type === 'activity' &&
-          (typeof e.source === 'string' ? e.source : e.source.id) === n.id
-        );
-        const connectedContacts = activityEdges.filter(e => {
-          const targetId = typeof e.target === 'string' ? e.target : e.target.id;
-          return contactsInCircle.has(targetId);
-        });
-        return connectedContacts.length >= 2;
-      });
-    }
-
-    // Hide activity nodes when the activities toggle is off
-    if (!showActivities) {
-      filteredNodes = filteredNodes.filter(n => n.type !== 'activity');
-    }
-
-    const nodeIds = new Set(filteredNodes.map(n => n.id));
-
-    // Filter edges based on visibility toggles and filtered nodes
-    let filteredEdges = data.edges.filter(e => {
-      const sourceId = typeof e.source === 'string' ? e.source : e.source.id;
-      const targetId = typeof e.target === 'string' ? e.target : e.target.id;
-
-      if (!nodeIds.has(sourceId) || !nodeIds.has(targetId)) return false;
-      if (e.type === 'relationship' && !showRelationships) return false;
-      return true;
-    });
-
-    // Synthesize circle nodes and edges from contact circle memberships
-    if (showCircles && circleNamesByUid) {
-      const visibleContacts = filteredNodes.filter(n => n.type === 'contact');
-
-      // Count contacts per circle
-      const circleContactMap = new Map<string, string[]>();
-      visibleContacts.forEach(contact => {
-        const contactId = contact.id.replace('c-', '');
-        const names = circleNamesByUid.get(contactId) || [];
-        names.forEach(circleName => {
-          const existing = circleContactMap.get(circleName) ?? [];
-          existing.push(contact.id);
-          circleContactMap.set(circleName, existing);
-        });
-      });
-
-      const circleNodes: GraphNode[] = [];
-      const circleEdges: GraphEdge[] = [];
-
-      circleContactMap.forEach((contactIds, circleName) => {
-        if (contactIds.length < 2) return; // only show circles that connect people
-
-        const circleNodeId = `circle-${circleName}`;
-        circleNodes.push({
-          id: circleNodeId,
-          type: 'circle',
-          label: circleName,
-        });
-
-        contactIds.forEach(contactId => {
-          circleEdges.push({
-            id: `ce-${contactId}-${circleName}`,
-            type: 'circle',
-            source: contactId,
-            target: circleNodeId,
-            label: circleName,
-          });
-        });
-      });
-
-      filteredNodes = [...filteredNodes, ...circleNodes];
-      filteredEdges = [...filteredEdges, ...circleEdges];
-    }
-
-    if (centeredNodeId) {
-      const directNeighbors = new Set<string>([centeredNodeId]);
-
-      filteredEdges.forEach(e => {
-        const srcId = typeof e.source === 'string' ? e.source : e.source.id;
-        const tgtId = typeof e.target === 'string' ? e.target : e.target.id;
-        if (srcId === centeredNodeId) directNeighbors.add(tgtId);
-        if (tgtId === centeredNodeId) directNeighbors.add(srcId);
-      });
-
-      filteredNodes = filteredNodes.filter(n => directNeighbors.has(n.id));
-      filteredEdges = filteredEdges.filter(e => {
-        const srcId = typeof e.source === 'string' ? e.source : e.source.id;
-        const tgtId = typeof e.target === 'string' ? e.target : e.target.id;
-        return directNeighbors.has(srcId) && directNeighbors.has(tgtId);
-      });
-    }
-
-    return {
-      nodes: filteredNodes,
-      links: filteredEdges,
-    };
-  }, [data, selectedCircle, showRelationships, showActivities, showCircles, centeredNodeId]);
+  // Filter and transform data for the graph, including synthetic circle
+  // nodes/edges. Delegates to the shared computeFilteredGraphData so
+  // NetworkPage's accessible list view (T189) filters identically -- same
+  // pure function, same inputs, so the two can never disagree.
+  const graphData: ForceGraphData = useMemo(
+    () => computeFilteredGraphData(data, { selectedCircle, showRelationships, showActivities, showCircles, centeredNodeId, circleNamesByUid }),
+    [data, selectedCircle, showRelationships, showActivities, showCircles, centeredNodeId, circleNamesByUid]
+  );
 
   // Center and zoom to selected node when centeredNodeId changes
   useEffect(() => {
@@ -328,8 +219,26 @@ export default function NetworkGraph({
     return t('network.legend.circleEdge');
   };
 
+  // The canvas paints straight to pixels with no DOM text content -- role="img"
+  // plus a localised, data-driven aria-label makes it a text alternative
+  // (1.1.1) instead of leaving it invisible to assistive tech. The full data
+  // is also available, always in the DOM, in NetworkPage's list view below
+  // the graph, so the tooltip and canvas interactions stay pointer-only by
+  // design (see #189) -- do not add tabindex here.
+  const graphSummary = t('network.graphSummary', {
+    contacts: graphData.nodes.filter(n => n.type === 'contact').length,
+    activities: graphData.nodes.filter(n => n.type === 'activity').length,
+    circles: graphData.nodes.filter(n => n.type === 'circle').length,
+    connections: graphData.links.length,
+  });
+
   return (
-    <Box ref={containerRef} sx={{ width: '100%', height: '100%', position: 'relative' }}>
+    <Box
+      ref={containerRef}
+      role="img"
+      aria-label={graphSummary}
+      sx={{ width: '100%', height: '100%', position: 'relative' }}
+    >
       <ForceGraph2D
         ref={graphRef}
         width={dimensions.width}
