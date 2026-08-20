@@ -30,6 +30,7 @@ func TestContactMerge_RealMigratedSchema(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "contact-merge-real.db")
 	db, err := database.InitDB(dbPath)
 	require.NoError(t, err)
+	closeTestDBAtTeardown(t, db)
 
 	user := models.User{Username: "mergetester", Password: "password123!A", Email: "merge@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -413,6 +414,7 @@ func TestContactMerge_SharedCircleAndTag_Deduped(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "contact-merge-shared-membership.db")
 	db, err := database.InitDB(dbPath)
 	require.NoError(t, err)
+	closeTestDBAtTeardown(t, db)
 
 	user := models.User{Username: "dedupetester", Password: "password123!A", Email: "dedupe@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -522,6 +524,7 @@ func TestContactMerge_CadencePolicyConflict(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "contact-merge-cadence-conflict.db")
 	db, err := database.InitDB(dbPath)
 	require.NoError(t, err)
+	closeTestDBAtTeardown(t, db)
 
 	user := models.User{Username: "cadencetester", Password: "password123!A", Email: "cadence@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -657,6 +660,7 @@ func TestContactMerge_ExternalIdentityAndActivityPlainRepoint(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "contact-merge-external-repoint.db")
 	db, err := database.InitDB(dbPath)
 	require.NoError(t, err)
+	closeTestDBAtTeardown(t, db)
 
 	user := models.User{Username: "externalrepointtester", Password: "password123!A", Email: "extrepoint@example.com"}
 	require.NoError(t, db.Create(&user).Error)
@@ -707,6 +711,7 @@ func TestContactMerge_PhotoAdoptionAndDiscard(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "contact-merge-photo.db")
 	db, err := database.InitDB(dbPath)
 	require.NoError(t, err)
+	closeTestDBAtTeardown(t, db)
 	photoDir := t.TempDir()
 
 	user := models.User{Username: "phototester", Password: "password123!A", Email: "photo@example.com"}

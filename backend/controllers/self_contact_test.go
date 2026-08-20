@@ -47,6 +47,7 @@ func selfContactTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	db, err := database.InitDB(filepath.Join(t.TempDir(), "self-contact.db"))
 	require.NoError(t, err)
+	closeTestDBAtTeardown(t, db)
 	return db
 }
 
