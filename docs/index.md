@@ -3,6 +3,7 @@ title: Home
 nav_order: 1
 ---
 
+<!-- CI path-gating verification (issue #264) — throwaway docs-only change. -->
 # Mycorrhizal CRM Documentation
 
 Mycorrhizal CRM is a self-hosted personal contact relationship management system for managing contacts, relationships, activities, notes and reminders.
