@@ -103,7 +103,22 @@ export default function TimelineExplorerDialog({
               >
                 {TIMELINE_TYPES.map((tt) => (
                   <MenuItem key={tt} value={tt}>
-                    <Checkbox checked={types.includes(tt)} size="small" />
+                    {/* The MenuItem itself is `role="option"` and already
+                        carries aria-selected -- that's the accessible
+                        selection state. A second, separately-focusable
+                        <input type="checkbox"> inside it is both a nested
+                        interactive control (axe nested-interactive) and, on
+                        its own, an unlabeled form field (axe label) -- issue
+                        #259. Removing it from the tab order and the a11y
+                        tree via tabIndex={-1}/aria-hidden leaves it as the
+                        purely visual checkmark it was always meant to be. */}
+                    <Checkbox
+                      checked={types.includes(tt)}
+                      size="small"
+                      tabIndex={-1}
+                      disableRipple
+                      inputProps={{ 'aria-hidden': true }}
+                    />
                     <ListItemText primary={t(`timeline.types.${tt}`)} />
                   </MenuItem>
                 ))}

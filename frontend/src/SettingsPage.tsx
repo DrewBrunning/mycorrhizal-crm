@@ -546,7 +546,20 @@ export default function SettingsPage() {
           {tokensLoading && <CircularProgress />}
           {tokensError && <Alert severity="error">{tokensError}</Alert>}
           {!tokensLoading && !tokensError && (
-            <TableContainer component={Paper} variant="outlined">
+            /* At narrow (mobile) widths the table overflows and this
+               container becomes horizontally scrollable via MUI's own
+               overflow-x: auto -- tabIndex + role/aria-label make that
+               scrollable region reachable and named for keyboard/screen
+               reader users (axe's scrollable-region-focusable, WCAG
+               2.1.1/2.1.3; caught by the mobileLayout.spec.ts automatic a11y
+               scan, issue #259). */
+            <TableContainer
+              component={Paper}
+              variant="outlined"
+              tabIndex={0}
+              role="region"
+              aria-label={t('apiTokens.title')}
+            >
               <Table>
                 <TableHead>
                   <TableRow>
