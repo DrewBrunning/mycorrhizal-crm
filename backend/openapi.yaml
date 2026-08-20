@@ -8033,7 +8033,7 @@ components:
       properties:
         username: { type: string, minLength: 1, maxLength: 50 }
         email: { type: string, format: email }
-        password: { type: string, minLength: 8 }
+        password: { type: string, minLength: 8, example: "correct-horse-battery-staple-9" }
         language: { type: string, enum: [en, de, it, es, fr] }
     LoginInput:
       type: object
@@ -8085,13 +8085,13 @@ components:
       required: [token, password]
       properties:
         token: { type: string, minLength: 16 }
-        password: { type: string, minLength: 8 }
+        password: { type: string, minLength: 8, example: "correct-horse-battery-staple-9" }
     ChangePasswordInput:
       type: object
       required: [current_password, new_password]
       properties:
         current_password: { type: string }
-        new_password: { type: string, minLength: 8 }
+        new_password: { type: string, minLength: 8, example: "correct-horse-battery-staple-9" }
     UpdateLanguageInput:
       type: object
       required: [language]
@@ -8178,7 +8178,7 @@ components:
       properties:
         username: { type: string, minLength: 1, maxLength: 50 }
         email: { type: string, format: email }
-        password: { type: string, minLength: 8 }
+        password: { type: string, minLength: 8, example: "correct-horse-battery-staple-9" }
         is_admin: { type: boolean }
     AdminUserCreateInput:
       type: object
@@ -8187,7 +8187,7 @@ components:
       properties:
         username: { type: string, minLength: 1, maxLength: 50 }
         email: { type: string, format: email }
-        password: { type: string, minLength: 8 }
+        password: { type: string, minLength: 8, example: "correct-horse-battery-staple-9" }
         is_admin: { type: boolean, default: false }
 
     # --- Contacts ---
@@ -9173,7 +9173,7 @@ components:
         target_id: { type: string, format: uuid }
         target_thin:
           $ref: "#/components/schemas/ThinContactInput"
-        type: { type: string }
+        type: { type: string, description: "A registered relationship type (models/relationship_type_registry.go).", example: "friend_of" }
         sensitivity: { type: string, enum: [normal, private, secret] }
         metadata:
           type: object
@@ -9184,7 +9184,7 @@ components:
       properties:
         name: { type: string, minLength: 1, maxLength: 100 }
         gender: { type: string, enum: [male, female, other, prefer_not_to_say] }
-        birthday: { type: string, description: "ISO YYYY-MM-DD or year-less --MM-DD." }
+        birthday: { type: string, description: "ISO YYYY-MM-DD or year-less --MM-DD.", example: "1990-05-15" }
 
     # --- External identity / activity substrate (T14) ---
     ExternalIdentity:
@@ -9216,7 +9216,7 @@ components:
         entity_id: { type: string, format: uuid }
         system: { type: string }
         external_id: { type: string }
-        url: { type: string }
+        url: { type: string, example: "https://example.com/item" }
         metadata:
           type: object
           additionalProperties: true
@@ -9274,7 +9274,7 @@ components:
       type: object
       required: [base_url]
       properties:
-        base_url: { type: string }
+        base_url: { type: string, example: "https://immich.example.com" }
         api_key: { type: string, description: "Write-only: empty on update keeps the stored key; required on first connect." }
         sync_enabled: { type: boolean }
     ImmichConnectionTestResult:
@@ -9324,7 +9324,7 @@ components:
       type: object
       required: [base_url]
       properties:
-        base_url: { type: string }
+        base_url: { type: string, example: "https://paperless.example.com" }
         api_token: { type: string, description: "Write-only: empty on update keeps the stored token; required on first connect." }
     PaperlessConnectionTestResult:
       type: object
@@ -9358,7 +9358,7 @@ components:
       type: object
       required: [base_url]
       properties:
-        base_url: { type: string }
+        base_url: { type: string, example: "https://seafile.example.com" }
         api_token: { type: string, description: "Write-only: empty on update keeps the stored token; required on first connect." }
     SeafileConnectionTestResult:
       type: object
@@ -9400,7 +9400,7 @@ components:
       type: object
       required: [base_url, username]
       properties:
-        base_url: { type: string }
+        base_url: { type: string, example: "https://cloud.example.com" }
         username: { type: string }
         app_password: { type: string, description: "Write-only: empty on update keeps the stored password; required on first connect. Only an app password is accepted — never the account password." }
     WebDAVConnectionTestResult:
@@ -9548,7 +9548,7 @@ components:
       properties:
         entity_id: { type: string, format: uuid }
         content: { type: string, minLength: 1, maxLength: 2000 }
-        reference_url: { type: string, maxLength: 2000 }
+        reference_url: { type: string, maxLength: 2000, example: "https://example.com/article" }
     ConversationAgendaDiscussInput:
       type: object
       properties:
@@ -9616,7 +9616,7 @@ components:
         status: { type: string, enum: [idea, purchased, given, received] }
         occasion: { type: string, maxLength: 200 }
         description: { type: string, minLength: 1, maxLength: 2000 }
-        url: { type: string, maxLength: 2000, description: "Safe-scheme URL only; unsafe schemes are a 400." }
+        url: { type: string, maxLength: 2000, description: "Safe-scheme URL only; unsafe schemes are a 400.", example: "https://example.com/wishlist-item" }
         notes: { type: string, maxLength: 2000 }
         date: { type: string, format: date-time, nullable: true }
         value_cents: { type: integer }
@@ -9636,6 +9636,7 @@ components:
         category: { type: string, maxLength: 100 }
         key: { type: string, maxLength: 100 }
         value: { type: string, maxLength: 1000 }
+        notes: { type: string, maxLength: 2000 }
         source: { type: string, enum: [conversation_note, user, ai-suggested, external] }
         confidence: { type: number, nullable: true }
         last_confirmed: { type: string, format: date-time, nullable: true }
@@ -9652,6 +9653,7 @@ components:
         category: { type: string, maxLength: 100 }
         key: { type: string, maxLength: 100 }
         value: { type: string, maxLength: 1000 }
+        notes: { type: string, maxLength: 2000 }
         source: { type: string, enum: [conversation_note, user, ai-suggested, external] }
         confidence: { type: number, nullable: true }
         last_confirmed: { type: string, format: date-time, nullable: true }
@@ -9768,7 +9770,7 @@ components:
         type: { type: string, enum: [string, text, number, boolean, date, datetime, uri, email, phone, enum] }
         constraints:
           $ref: "#/components/schemas/FieldConstraints"
-        projection: { type: string, description: "internal-only, or vcard:X-<NAME>." }
+        projection: { type: string, description: "internal-only, or vcard:X-<NAME>.", pattern: "^(internal-only|vcard:X-[A-Za-z0-9-]+)$", example: "internal-only" }
         sensitivity: { type: string, enum: [normal, private, secret] }
     FieldDefinitionInput:
       type: object
@@ -9780,7 +9782,7 @@ components:
         type: { type: string, enum: [string, text, number, boolean, date, datetime, uri, email, phone, enum] }
         constraints:
           $ref: "#/components/schemas/FieldConstraints"
-        projection: { type: string }
+        projection: { type: string, pattern: "^(internal-only|vcard:X-[A-Za-z0-9-]+)$", example: "internal-only" }
         sensitivity: { type: string, enum: [normal, private, secret] }
     FieldConstraints:
       type: object
