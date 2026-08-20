@@ -291,6 +291,12 @@ fun ContactDetailScreen(
     }
     var photoSourceChooserOpen by remember { mutableStateOf(false) }
     var immichPickerOpen by remember { mutableStateOf(false) }
+    // Issue #236: the Paperless/Seafile/Nextcloud create/link pickers — open/close is
+    // local UI state, exactly like immichPickerOpen; the data behind each dialog lives
+    // in the ViewModel.
+    var paperlessPickerOpen by remember { mutableStateOf(false) }
+    var seafilePickerOpen by remember { mutableStateOf(false) }
+    var nextcloudPickerOpen by remember { mutableStateOf(false) }
     val onUploadProfilePicture = {
         if (state.immichConfigured) photoSourceChooserOpen = true
         else photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
@@ -593,6 +599,22 @@ fun ContactDetailScreen(
                     immichSummary = state.immichSummary,
                     onDeleteExternalIdentity = { pendingExternalLinkDelete = it },
                     onUnlinkImmich = { pendingImmichUnlink = true },
+                    // Issue #236: the "Add link" entry points, gated per system.
+                    paperlessConfigured = state.paperlessConfigured,
+                    seafileConfigured = state.seafileConfigured,
+                    nextcloudConfigured = state.nextcloudConfigured,
+                    onAddPaperlessLink = {
+                        paperlessPickerOpen = true
+                        viewModel.loadPaperlessDocuments()
+                    },
+                    onAddSeafileLink = {
+                        seafilePickerOpen = true
+                        viewModel.loadSeafileLibraries()
+                    },
+                    onAddNextcloudLink = {
+                        nextcloudPickerOpen = true
+                        viewModel.loadNextcloudDir()
+                    },
                 )
             }
         }
@@ -828,6 +850,52 @@ fun ContactDetailScreen(
             onDismiss = { immichPickerOpen = false },
         )
     }
+
+    // Issue #236: the Paperless/Seafile/Nextcloud create/link pickers. Tapping an item
+    // closes the dialog immediately and fires the link call — success refreshes the
+    // panel, failure surfaces via the screen's existing error snackbar (see the
+    // ViewModel's doc comment on this section).
+    if (paperlessPickerOpen) {
+        PaperlessDocumentPickerDialog(
+            documents = state.paperlessDocuments,
+            loading = state.paperlessDocumentsLoading,
+            onSelect = { document ->
+                paperlessPickerOpen = false
+                viewModel.linkPaperlessDocument(document)
+            },
+            onDismiss = { paperlessPickerOpen = false },
+        )
+    }
+    if (seafilePickerOpen) {
+        SeafileFilePickerDialog(
+            libraries = state.seafileLibraries,
+            browseRepoId = state.seafileBrowseRepoId,
+            browsePath = state.seafileBrowsePath,
+            browseItems = state.seafileBrowseItems,
+            loading = state.seafileBrowseLoading,
+            onEnterLibrary = { repoId -> viewModel.enterSeafileDir(repoId) },
+            onEnterDir = { path -> viewModel.enterSeafileDir(state.seafileBrowseRepoId.orEmpty(), path) },
+            onBack = viewModel::backSeafileDir,
+            onSelect = { item ->
+                seafilePickerOpen = false
+                viewModel.linkSeafileItem(item)
+            },
+            onDismiss = { seafilePickerOpen = false },
+        )
+    }
+    if (nextcloudPickerOpen) {
+        NextcloudFilePickerDialog(
+            browsePath = state.nextcloudBrowsePath,
+            browseItems = state.nextcloudBrowseItems,
+            loading = state.nextcloudBrowseLoading,
+            onEnterDir = viewModel::loadNextcloudDir,
+            onSelect = { item ->
+                nextcloudPickerOpen = false
+                viewModel.linkNextcloudItem(item)
+            },
+            onDismiss = { nextcloudPickerOpen = false },
+        )
+    }
 }
 
 @Composable
@@ -885,6 +953,14 @@ fun ContactDetailContent(
     immichSummary: ImmichPersonSummary? = null,
     onDeleteExternalIdentity: (ExternalIdentity) -> Unit = {},
     onUnlinkImmich: () -> Unit = {},
+    // Issue #236: whether each file/document integration is configured — gates
+    // its "Add link" row below, mirroring web's FileLinksPanel.
+    paperlessConfigured: Boolean = false,
+    seafileConfigured: Boolean = false,
+    nextcloudConfigured: Boolean = false,
+    onAddPaperlessLink: () -> Unit = {},
+    onAddSeafileLink: () -> Unit = {},
+    onAddNextcloudLink: () -> Unit = {},
 ) {
     val card = contact.card
     LazyColumn(
@@ -1090,13 +1166,16 @@ fun ContactDetailContent(
                 }
             }
         }
-        if (externalIdentities.isNotEmpty()) {
+        if (externalIdentities.isNotEmpty() || paperlessConfigured || seafileConfigured || nextcloudConfigured) {
             item {
                 // Issue #220: the External Links panel (ExternalIdentity
-                // substrate). Rendered only when non-empty, matching every
-                // other conditional section on this screen. The Immich link is
-                // a rich row (thumbnail + person name + photo count); other
-                // systems render as system/external_id with open+delete.
+                // substrate). Rendered when there's a link to show OR a
+                // configured system to add one for (issue #236 widened the
+                // guard so the "Add link" rows are reachable before any link
+                // exists — mirrors web's FileLinksPanel `configured.<system>`
+                // gate). The Immich link is a rich row (thumbnail + person
+                // name + photo count); other systems render as
+                // system/external_id with open+delete.
                 SectionCard(stringResource(R.string.external_links_title)) {
                     externalIdentities.forEach { identity ->
                         if (identity.system == ExternalSystems.IMMICH) {
@@ -1109,6 +1188,15 @@ fun ContactDetailContent(
                         } else {
                             GenericExternalLinkRow(identity, onDelete = { onDeleteExternalIdentity(identity) })
                         }
+                    }
+                    if (paperlessConfigured) {
+                        AddExternalLinkRow(stringResource(R.string.external_links_add_paperless), onAddPaperlessLink)
+                    }
+                    if (seafileConfigured) {
+                        AddExternalLinkRow(stringResource(R.string.external_links_add_seafile), onAddSeafileLink)
+                    }
+                    if (nextcloudConfigured) {
+                        AddExternalLinkRow(stringResource(R.string.external_links_add_nextcloud), onAddNextcloudLink)
                     }
                 }
             }
@@ -1873,5 +1961,22 @@ private fun GenericExternalLinkRow(identity: ExternalIdentity, onDelete: () -> U
                 tint = MaterialTheme.colorScheme.error,
             )
         }
+    }
+}
+
+/**
+ * Issue #236: one "Add <system> link" row in the External Links panel, shown
+ * only when that system is configured (mirrors web's FileLinksPanel gate).
+ */
+@Composable
+private fun AddExternalLinkRow(label: String, onClick: () -> Unit) {
+    TextButton(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp),
+    ) {
+        Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+        Text(label)
     }
 }

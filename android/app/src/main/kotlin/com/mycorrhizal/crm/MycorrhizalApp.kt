@@ -106,6 +106,7 @@ import com.mycorrhizal.crm.feature.network.NetworkScreen
 import com.mycorrhizal.crm.feature.relationships.RelationshipsScreen
 import com.mycorrhizal.crm.feature.settings.CustomLinkActionsScreen
 import com.mycorrhizal.crm.feature.settings.DataScreen
+import com.mycorrhizal.crm.feature.settings.ImmichSettingsScreen
 import com.mycorrhizal.crm.feature.settings.NotificationChannelsScreen
 import com.mycorrhizal.crm.feature.settings.SettingsScreen
 import com.mycorrhizal.crm.feature.settings.WebhooksScreen
@@ -1006,6 +1007,7 @@ private fun AppNavGraph(
                 onCustomLinks = { navController.navigate("custom-links") },
                 onWebhooks = { navController.navigate("webhooks") },
                 onNotificationChannels = { navController.navigate("notification-channels") },
+                onImmichSettings = { navController.navigate("immich-settings") },
                 // M26: the one-time legacy circle/tag cleanup tool.
                 onCircleTagTriage = { navController.navigate("circle-tag-triage") },
                 // T104 + address suggestions: the Data review surface.
@@ -1040,6 +1042,12 @@ private fun AppNavGraph(
         }
         composable("notification-channels") {
             NotificationChannelsScreen(
+                onBack = { navController.popBackStack() },
+            )
+        }
+        // Issue #236: the Immich connection-config settings screen.
+        composable("immich-settings") {
+            ImmichSettingsScreen(
                 onBack = { navController.popBackStack() },
             )
         }

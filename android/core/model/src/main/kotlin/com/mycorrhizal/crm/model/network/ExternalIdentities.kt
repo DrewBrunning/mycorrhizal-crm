@@ -80,6 +80,22 @@ data class ImmichConfigResponse(
     @Json(name = "last_sync_error") val lastSyncError: String? = null,
 )
 
+/** PUT /immich/config body — an empty [apiKey] keeps the stored key unchanged (issue #236). */
+@JsonClass(generateAdapter = true)
+data class ImmichConfigInput(
+    @Json(name = "base_url") val baseUrl: String,
+    @Json(name = "api_key") val apiKey: String = "",
+    @Json(name = "sync_enabled") val syncEnabled: Boolean? = null,
+)
+
+/** POST /immich/test-connection — 200 even when [ok] is false (issue #236). */
+@JsonClass(generateAdapter = true)
+data class ImmichConnectionTestResult(
+    val ok: Boolean = false,
+    val stage: String? = null,
+    val message: String? = null,
+)
+
 /** POST /immich/contacts/:uid/link body. */
 @JsonClass(generateAdapter = true)
 data class ImmichLinkRequest(

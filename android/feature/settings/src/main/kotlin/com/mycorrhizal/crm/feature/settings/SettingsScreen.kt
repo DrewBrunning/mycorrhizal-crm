@@ -64,6 +64,8 @@ fun SettingsScreen(
     onCustomLinks: () -> Unit = {},
     onWebhooks: () -> Unit = {},
     onNotificationChannels: () -> Unit = {},
+    // Issue #236: the Immich connection-config settings screen.
+    onImmichSettings: () -> Unit = {},
     onCircleTagTriage: () -> Unit = {},
     // T104 + data suggestions: the Data review surface and its trigger.
     onData: () -> Unit = {},
@@ -121,6 +123,7 @@ fun SettingsScreen(
             onCustomLinks = onCustomLinks,
             onWebhooks = onWebhooks,
             onNotificationChannels = onNotificationChannels,
+            onImmichSettings = onImmichSettings,
             onCircleTagTriage = onCircleTagTriage,
             onData = onData,
             onSuggestRelationships = viewModel::suggestRelationships,
@@ -143,6 +146,7 @@ fun SettingsContent(
     onCustomLinks: () -> Unit = {},
     onWebhooks: () -> Unit = {},
     onNotificationChannels: () -> Unit = {},
+    onImmichSettings: () -> Unit = {},
     onCircleTagTriage: () -> Unit = {},
     onData: () -> Unit = {},
     onSuggestRelationships: () -> Unit = {},
@@ -363,6 +367,8 @@ fun SettingsContent(
         // M25: channels surfaces.
         NavigationRow(stringResource(R.string.settings_webhooks_title), onClick = onWebhooks)
         NavigationRow(stringResource(R.string.settings_notifications_title), onClick = onNotificationChannels)
+        // Issue #236: the Immich connection-config settings screen.
+        NavigationRow(stringResource(R.string.settings_immich_title), onClick = onImmichSettings)
 
         // M26: one-time legacy circle/tag cleanup.
         NavigationRow(stringResource(R.string.settings_circle_tag_triage), onClick = onCircleTagTriage)

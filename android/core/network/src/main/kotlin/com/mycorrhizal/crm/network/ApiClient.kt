@@ -73,12 +73,34 @@ import com.mycorrhizal.crm.model.network.DeviceRegistrationsResponse
 import com.mycorrhizal.crm.model.network.ExternalIdentitiesPage
 import com.mycorrhizal.crm.model.network.ImmichAssetsResponse
 import com.mycorrhizal.crm.model.network.ImmichAssetSummary
+import com.mycorrhizal.crm.model.network.ImmichConfigInput
 import com.mycorrhizal.crm.model.network.ImmichConfigResponse
+import com.mycorrhizal.crm.model.network.ImmichConnectionTestResult
 import com.mycorrhizal.crm.model.network.ImmichLinkRequest
 import com.mycorrhizal.crm.model.network.ImmichPeopleResponse
 import com.mycorrhizal.crm.model.network.ImmichPerson
 import com.mycorrhizal.crm.model.network.ImmichPersonSummary
 import com.mycorrhizal.crm.model.network.ImmichSummaryResponse
+import com.mycorrhizal.crm.model.network.NextcloudConfigInput
+import com.mycorrhizal.crm.model.network.NextcloudConfigResponse
+import com.mycorrhizal.crm.model.network.NextcloudConnectionTestResult
+import com.mycorrhizal.crm.model.network.NextcloudItemsResponse
+import com.mycorrhizal.crm.model.network.NextcloudLinkRequest
+import com.mycorrhizal.crm.model.network.PaperlessConfigInput
+import com.mycorrhizal.crm.model.network.PaperlessConfigResponse
+import com.mycorrhizal.crm.model.network.PaperlessConnectionTestResult
+import com.mycorrhizal.crm.model.network.PaperlessDocument
+import com.mycorrhizal.crm.model.network.PaperlessDocumentsResponse
+import com.mycorrhizal.crm.model.network.PaperlessLinkRequest
+import com.mycorrhizal.crm.model.network.SeafileConfigInput
+import com.mycorrhizal.crm.model.network.SeafileConfigResponse
+import com.mycorrhizal.crm.model.network.SeafileConnectionTestResult
+import com.mycorrhizal.crm.model.network.SeafileItem
+import com.mycorrhizal.crm.model.network.SeafileItemsResponse
+import com.mycorrhizal.crm.model.network.SeafileLibrariesResponse
+import com.mycorrhizal.crm.model.network.SeafileLibrary
+import com.mycorrhizal.crm.model.network.SeafileLinkRequest
+import com.mycorrhizal.crm.model.network.WebDAVItem
 import com.mycorrhizal.crm.model.network.Gift
 import com.mycorrhizal.crm.model.network.GiftInput
 import com.mycorrhizal.crm.model.network.GiftsPage
@@ -1057,6 +1079,138 @@ class ApiClient(
     suspend fun getImmichAssetImageBytes(vcardUid: String, assetId: String): Result<ByteArray> =
         executeGetBytes("$PLACEHOLDER_ORIGIN$IMMICH_PATH/contacts/$vcardUid/assets/$assetId/image")
 
+    // --- Issue #236: Immich config CRUD + test-connection, and the Paperless/Seafile/
+    // Nextcloud create/link surfaces. See FileLinkIntegrations.kt's doc comment for why
+    // these three write the ExternalIdentity row server-side via their own /link endpoint
+    // rather than the generic POST /external-identities.
+
+    /** PUT /api/v1/immich/config — full config echo; the API key is never returned. */
+    suspend fun saveImmichConfig(input: ImmichConfigInput): Result<ImmichConfigResponse> =
+        executePut("$PLACEHOLDER_ORIGIN$IMMICH_PATH/config", input) { _, body ->
+            moshi.adapter(ImmichConfigResponse::class.java).fromJson(body)
+        }
+
+    /** DELETE /api/v1/immich/config. */
+    suspend fun deleteImmichConfig(): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$IMMICH_PATH/config")
+
+    /** POST /api/v1/immich/test-connection — diagnosed failures are HTTP 200 `{ok:false}`. */
+    suspend fun testImmichConnection(): Result<ImmichConnectionTestResult> =
+        executePostEmpty("$IMMICH_PATH/test-connection") { _, body ->
+            moshi.adapter(ImmichConnectionTestResult::class.java).fromJson(body)
+        }
+
+    /** GET /api/v1/paperless/config — `has_api_token` gates the Paperless UI entry points. */
+    suspend fun getPaperlessConfig(): Result<PaperlessConfigResponse> =
+        executeGet("$PLACEHOLDER_ORIGIN$PAPERLESS_PATH/config") { _, body ->
+            moshi.adapter(PaperlessConfigResponse::class.java).fromJson(body)
+        }
+
+    /** PUT /api/v1/paperless/config — full config echo; the token is never returned. */
+    suspend fun savePaperlessConfig(input: PaperlessConfigInput): Result<PaperlessConfigResponse> =
+        executePut("$PLACEHOLDER_ORIGIN$PAPERLESS_PATH/config", input) { _, body ->
+            moshi.adapter(PaperlessConfigResponse::class.java).fromJson(body)
+        }
+
+    /** DELETE /api/v1/paperless/config. */
+    suspend fun deletePaperlessConfig(): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$PAPERLESS_PATH/config")
+
+    /** POST /api/v1/paperless/test-connection — diagnosed failures are HTTP 200 `{ok:false}`. */
+    suspend fun testPaperlessConnection(): Result<PaperlessConnectionTestResult> =
+        executePostEmpty("$PAPERLESS_PATH/test-connection") { _, body ->
+            moshi.adapter(PaperlessConnectionTestResult::class.java).fromJson(body)
+        }
+
+    /** GET /api/v1/paperless/documents?query=… — full list when [query] is null; unwrapped. */
+    suspend fun searchPaperlessDocuments(query: String? = null): Result<List<PaperlessDocument>> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$PAPERLESS_PATH/documents".toHttpUrl().newBuilder()
+        if (!query.isNullOrBlank()) urlBuilder.addQueryParameter("query", query)
+        return executeGet(urlBuilder.build().toString()) { _, body ->
+            moshi.adapter(PaperlessDocumentsResponse::class.java).fromJson(body)?.documents
+        }
+    }
+
+    /** POST /api/v1/paperless/contacts/:vcard_uid/link — 201; writes the ExternalIdentity server-side. */
+    suspend fun linkPaperlessContact(vcardUid: String, documentId: String): Result<Unit> =
+        executePost("$PAPERLESS_PATH/contacts/$vcardUid/link", PaperlessLinkRequest(documentId)) { _, _ -> Unit }
+
+    /** GET /api/v1/seafile/config — `has_api_token` gates the Seafile UI entry points. */
+    suspend fun getSeafileConfig(): Result<SeafileConfigResponse> =
+        executeGet("$PLACEHOLDER_ORIGIN$SEAFILE_PATH/config") { _, body ->
+            moshi.adapter(SeafileConfigResponse::class.java).fromJson(body)
+        }
+
+    /** PUT /api/v1/seafile/config — full config echo; the token is never returned. */
+    suspend fun saveSeafileConfig(input: SeafileConfigInput): Result<SeafileConfigResponse> =
+        executePut("$PLACEHOLDER_ORIGIN$SEAFILE_PATH/config", input) { _, body ->
+            moshi.adapter(SeafileConfigResponse::class.java).fromJson(body)
+        }
+
+    /** DELETE /api/v1/seafile/config. */
+    suspend fun deleteSeafileConfig(): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$SEAFILE_PATH/config")
+
+    /** POST /api/v1/seafile/test-connection — diagnosed failures are HTTP 200 `{ok:false}`. */
+    suspend fun testSeafileConnection(): Result<SeafileConnectionTestResult> =
+        executePostEmpty("$SEAFILE_PATH/test-connection") { _, body ->
+            moshi.adapter(SeafileConnectionTestResult::class.java).fromJson(body)
+        }
+
+    /** GET /api/v1/seafile/libraries — unwrapped. */
+    suspend fun listSeafileLibraries(): Result<List<SeafileLibrary>> =
+        executeGet("$PLACEHOLDER_ORIGIN$SEAFILE_PATH/libraries") { _, body ->
+            moshi.adapter(SeafileLibrariesResponse::class.java).fromJson(body)?.libraries
+        }
+
+    /** GET /api/v1/seafile/libraries/:repo_id/dir?path=… — unwrapped. */
+    suspend fun listSeafileDir(repoId: String, path: String): Result<List<SeafileItem>> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$SEAFILE_PATH/libraries/$repoId/dir".toHttpUrl().newBuilder()
+        urlBuilder.addQueryParameter("path", path)
+        return executeGet(urlBuilder.build().toString()) { _, body ->
+            moshi.adapter(SeafileItemsResponse::class.java).fromJson(body)?.items
+        }
+    }
+
+    /** POST /api/v1/seafile/contacts/:vcard_uid/link — 201; writes the ExternalIdentity server-side. */
+    suspend fun linkSeafileContact(vcardUid: String, request: SeafileLinkRequest): Result<Unit> =
+        executePost("$SEAFILE_PATH/contacts/$vcardUid/link", request) { _, _ -> Unit }
+
+    /** GET /api/v1/nextcloud/config — `has_app_password` gates the Nextcloud UI entry points. */
+    suspend fun getNextcloudConfig(): Result<NextcloudConfigResponse> =
+        executeGet("$PLACEHOLDER_ORIGIN$NEXTCLOUD_PATH/config") { _, body ->
+            moshi.adapter(NextcloudConfigResponse::class.java).fromJson(body)
+        }
+
+    /** PUT /api/v1/nextcloud/config — full config echo; the app password is never returned. */
+    suspend fun saveNextcloudConfig(input: NextcloudConfigInput): Result<NextcloudConfigResponse> =
+        executePut("$PLACEHOLDER_ORIGIN$NEXTCLOUD_PATH/config", input) { _, body ->
+            moshi.adapter(NextcloudConfigResponse::class.java).fromJson(body)
+        }
+
+    /** DELETE /api/v1/nextcloud/config. */
+    suspend fun deleteNextcloudConfig(): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$NEXTCLOUD_PATH/config")
+
+    /** POST /api/v1/nextcloud/test-connection — diagnosed failures are HTTP 200 `{ok:false}`. */
+    suspend fun testNextcloudConnection(): Result<NextcloudConnectionTestResult> =
+        executePostEmpty("$NEXTCLOUD_PATH/test-connection") { _, body ->
+            moshi.adapter(NextcloudConnectionTestResult::class.java).fromJson(body)
+        }
+
+    /** GET /api/v1/nextcloud/dir?path=… — defaults to the dav root; unwrapped. */
+    suspend fun listNextcloudDir(path: String = "/"): Result<List<WebDAVItem>> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$NEXTCLOUD_PATH/dir".toHttpUrl().newBuilder()
+        urlBuilder.addQueryParameter("path", path)
+        return executeGet(urlBuilder.build().toString()) { _, body ->
+            moshi.adapter(NextcloudItemsResponse::class.java).fromJson(body)?.items
+        }
+    }
+
+    /** POST /api/v1/nextcloud/contacts/:vcard_uid/link — 201; writes the ExternalIdentity server-side. */
+    suspend fun linkNextcloudContact(vcardUid: String, request: NextcloudLinkRequest): Result<Unit> =
+        executePost("$NEXTCLOUD_PATH/contacts/$vcardUid/link", request) { _, _ -> Unit }
+
     // --- Life events ---
 
     suspend fun listLifeEvents(
@@ -1596,6 +1750,9 @@ class ApiClient(
         private const val GRAPH_CONNECTIONS_PATH = "$API_V1/graph/connections"
         private const val EXTERNAL_IDENTITIES_PATH = "$API_V1/external-identities"
         private const val IMMICH_PATH = "$API_V1/immich"
+        private const val PAPERLESS_PATH = "$API_V1/paperless"
+        private const val SEAFILE_PATH = "$API_V1/seafile"
+        private const val NEXTCLOUD_PATH = "$API_V1/nextcloud"
         private const val AUTH_COOKIE = "auth_token"    }
 }
 

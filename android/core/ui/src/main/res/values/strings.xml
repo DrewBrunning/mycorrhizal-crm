@@ -178,6 +178,20 @@
     <string name="external_links_remove_named">Remove link %1$s</string>
     <string name="external_links_remove_title">Remove external link</string>
     <string name="external_links_remove_confirm">Remove the %1$s link (%2$s)?</string>
+    <!-- Issue #236: "Add link" entry points (External Links panel) + the
+         Paperless/Seafile/Nextcloud create/link pickers. -->
+    <string name="external_links_add_paperless">Add Paperless link</string>
+    <string name="external_links_add_seafile">Add Seafile link</string>
+    <string name="external_links_add_nextcloud">Add Nextcloud link</string>
+    <string name="paperless_picker_title">Link a Paperless document</string>
+    <string name="paperless_picker_search_placeholder">Search documents</string>
+    <string name="paperless_picker_no_matches">No matching documents</string>
+    <string name="paperless_picker_untitled">Untitled document</string>
+    <string name="seafile_picker_title">Link a Seafile file</string>
+    <string name="seafile_picker_no_libraries">No libraries found</string>
+    <string name="seafile_picker_empty_folder">This folder is empty</string>
+    <string name="nextcloud_picker_title">Link a Nextcloud file</string>
+    <string name="nextcloud_picker_empty_folder">This folder is empty</string>
     <!-- Issue #219/#220: the Immich integration (External Links rich row +
          "choose from Immich" profile-photo flow). -->
     <string name="immich_linked_person">Linked Immich person</string>
@@ -424,6 +438,25 @@
     <string name="settings_notifications_test_failed">Test failed: %1$s</string>
     <string name="settings_notifications_save">Save notification settings</string>
 
+    <!-- Settings: Immich connection config (issue #236) — the person-link and
+         profile-photo flows (#219/#220) already exist; this is the missing
+         configuration surface those flows depend on. -->
+    <string name="settings_immich_title">Immich</string>
+    <string name="immich_settings_description">Connect Immich to link photos and people to your contacts.</string>
+    <string name="immich_settings_base_url">Immich server URL</string>
+    <string name="immich_settings_api_key">API key</string>
+    <string name="immich_settings_api_key_hint_existing">A key is already stored. Leave the field empty to keep it.</string>
+    <string name="immich_settings_api_key_hint_new">Create an API key in your Immich account settings.</string>
+    <string name="immich_settings_sync_enabled">Sync automatically</string>
+    <string name="immich_settings_test">Test connection</string>
+    <string name="immich_settings_testing">Testing…</string>
+    <string name="immich_settings_test_success">Connection test succeeded</string>
+    <string name="immich_settings_test_failed">Test failed: %1$s</string>
+    <string name="immich_settings_last_sync_error">Last sync failed</string>
+    <string name="immich_settings_remove">Remove connection</string>
+    <string name="immich_settings_remove_title">Remove Immich connection</string>
+    <string name="immich_settings_remove_confirm">Remove the Immich connection? Linked photos will no longer be shown.</string>
+
     <string name="settings_save">Save</string>
     <string name="settings_ok">OK</string>
 
@@ -601,6 +634,7 @@
     <string name="action_delete">Delete</string>
     <string name="action_cancel">Cancel</string>
     <string name="action_add">Add</string>
+    <string name="action_back">Back</string>
     <string name="action_rename">Rename</string>
     <string name="action_retry">Retry</string>
 

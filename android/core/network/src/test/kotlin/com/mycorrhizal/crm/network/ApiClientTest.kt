@@ -435,6 +435,235 @@ class ApiClientTest {
         assertEquals("/api/v1/immich/contacts/u5/assets/a1/image", request.path)
     }
 
+    // --- Issue #236: Immich config CRUD + test-connection ---
+
+    @Test
+    fun `save immich config puts to the config path`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"base_url": "https://immich.example", "has_api_key": true, "sync_enabled": true}"""),
+        )
+
+        val result = client.saveImmichConfig(
+            com.mycorrhizal.crm.model.network.ImmichConfigInput(baseUrl = "https://immich.example", apiKey = "secret"),
+        )
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("PUT", request.method)
+        assertEquals("/api/v1/immich/config", request.path)
+        assertTrue(request.body.readUtf8().contains("\"api_key\":\"secret\""))
+    }
+
+    @Test
+    fun `delete immich config deletes the config path`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"message": "Immich config deleted"}"""))
+
+        val result = client.deleteImmichConfig()
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("DELETE", request.method)
+        assertEquals("/api/v1/immich/config", request.path)
+    }
+
+    @Test
+    fun `test immich connection reports a diagnosed failure as a success`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"ok": false, "stage": "auth", "message": "invalid API key"}"""),
+        )
+
+        val result = client.testImmichConnection()
+
+        assertTrue(result.isSuccess)
+        assertFalse(result.getOrThrow().ok)
+        assertEquals("invalid API key", result.getOrThrow().message)
+    }
+
+    // --- Issue #236: Paperless create/link surface ---
+
+    @Test
+    fun `paperless config parses has_api_token`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"base_url": "https://paperless.example", "has_api_token": true}"""),
+        )
+
+        val result = client.getPaperlessConfig()
+
+        assertTrue(result.isSuccess)
+        assertTrue(result.getOrThrow().hasApiToken)
+    }
+
+    @Test
+    fun `search paperless documents omits the query param when null`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"documents": [{"id": 1, "title": "Lease"}]}"""),
+        )
+
+        val result = client.searchPaperlessDocuments()
+
+        assertTrue(result.isSuccess)
+        assertEquals(1, result.getOrThrow().size)
+        assertEquals("Lease", result.getOrThrow()[0].title)
+        val request = server.takeRequest()
+        assertEquals("/api/v1/paperless/documents", request.path)
+    }
+
+    @Test
+    fun `search paperless documents includes the query param when present`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"documents": []}"""))
+
+        client.searchPaperlessDocuments("lease")
+
+        val request = server.takeRequest()
+        assertEquals("/api/v1/paperless/documents?query=lease", request.path)
+    }
+
+    @Test
+    fun `link paperless contact posts the document id`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(201)
+                .setBody("""{"external_identity": {"id": "i1", "system": "paperless"}}"""),
+        )
+
+        val result = client.linkPaperlessContact("u5", "42")
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/paperless/contacts/u5/link", request.path)
+        assertTrue(request.body.readUtf8().contains("\"document_id\":\"42\""))
+    }
+
+    // --- Issue #236: Seafile create/link surface ---
+
+    @Test
+    fun `seafile libraries are unwrapped from the response`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"libraries": [{"id": "r1", "name": "My Library", "type": "library"}]}"""),
+        )
+
+        val result = client.listSeafileLibraries()
+
+        assertTrue(result.isSuccess)
+        assertEquals(1, result.getOrThrow().size)
+        assertEquals("My Library", result.getOrThrow()[0].name)
+    }
+
+    @Test
+    fun `seafile dir listing sends repo id and path`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"items": [{"id": "f1", "name": "doc.pdf", "type": "file", "size": 1024}]}"""),
+        )
+
+        val result = client.listSeafileDir("r1", "/docs")
+
+        assertTrue(result.isSuccess)
+        assertEquals(1, result.getOrThrow().size)
+        assertEquals(1024L, result.getOrThrow()[0].size)
+        val request = server.takeRequest()
+        assertEquals("/api/v1/seafile/libraries/r1/dir?path=%2Fdocs", request.path)
+    }
+
+    @Test
+    fun `link seafile contact posts the item shape`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(201)
+                .setBody("""{"external_identity": {"id": "i1", "system": "seafile"}}"""),
+        )
+
+        val result = client.linkSeafileContact(
+            "u5",
+            com.mycorrhizal.crm.model.network.SeafileLinkRequest(
+                repoId = "r1",
+                path = "/docs/doc.pdf",
+                name = "doc.pdf",
+                type = "file",
+                size = 1024,
+            ),
+        )
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/seafile/contacts/u5/link", request.path)
+        val body = request.body.readUtf8()
+        assertTrue(body.contains("\"repo_id\":\"r1\""))
+        assertTrue(body.contains("\"path\":\"/docs/doc.pdf\""))
+    }
+
+    // --- Issue #236: Nextcloud create/link surface ---
+
+    @Test
+    fun `nextcloud config parses username and has_app_password`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"base_url": "https://nc.example", "username": "drew", "has_app_password": true}"""),
+        )
+
+        val result = client.getNextcloudConfig()
+
+        assertTrue(result.isSuccess)
+        assertEquals("drew", result.getOrThrow().username)
+        assertTrue(result.getOrThrow().hasAppPassword)
+    }
+
+    @Test
+    fun `nextcloud dir listing defaults to the dav root`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"items": [{"name": "Photos", "path": "/Photos", "type": "dir"}]}"""),
+        )
+
+        val result = client.listNextcloudDir()
+
+        assertTrue(result.isSuccess)
+        assertEquals(1, result.getOrThrow().size)
+        assertEquals("Photos", result.getOrThrow()[0].name)
+        val request = server.takeRequest()
+        assertEquals("/api/v1/nextcloud/dir?path=%2F", request.path)
+    }
+
+    @Test
+    fun `link nextcloud contact posts the item shape`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(201)
+                .setBody("""{"external_identity": {"id": "i1", "system": "nextcloud"}}"""),
+        )
+
+        val result = client.linkNextcloudContact(
+            "u5",
+            com.mycorrhizal.crm.model.network.NextcloudLinkRequest(
+                path = "/Photos/img.jpg",
+                name = "img.jpg",
+                type = "file",
+                size = 2048,
+            ),
+        )
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/nextcloud/contacts/u5/link", request.path)
+        assertTrue(request.body.readUtf8().contains("\"path\":\"/Photos/img.jpg\""))
+    }
+
     @Test
     fun `get contact parses the full record`() = runBlocking {
         server.enqueue(

@@ -174,6 +174,20 @@
     <string name="external_links_remove_named">Rimuovi link %1$s</string>
     <string name="external_links_remove_title">Rimuovi link esterno</string>
     <string name="external_links_remove_confirm">Rimuovere il link %1$s (%2$s)?</string>
+    <!-- Issue #236: punti di accesso "Aggiungi link" (pannello Link esterni) +
+         i selettori Paperless/Seafile/Nextcloud. -->
+    <string name="external_links_add_paperless">Aggiungi link Paperless</string>
+    <string name="external_links_add_seafile">Aggiungi link Seafile</string>
+    <string name="external_links_add_nextcloud">Aggiungi link Nextcloud</string>
+    <string name="paperless_picker_title">Collega un documento Paperless</string>
+    <string name="paperless_picker_search_placeholder">Cerca documenti</string>
+    <string name="paperless_picker_no_matches">Nessun documento corrispondente</string>
+    <string name="paperless_picker_untitled">Documento senza titolo</string>
+    <string name="seafile_picker_title">Collega un file Seafile</string>
+    <string name="seafile_picker_no_libraries">Nessuna libreria trovata</string>
+    <string name="seafile_picker_empty_folder">Questa cartella è vuota</string>
+    <string name="nextcloud_picker_title">Collega un file Nextcloud</string>
+    <string name="nextcloud_picker_empty_folder">Questa cartella è vuota</string>
     <!-- Issue #219/#220: integrazione Immich (riga arricchita dei link esterni +
          flusso foto profilo «Scegli da Immich»). -->
     <string name="immich_linked_person">Persona Immich collegata</string>
@@ -416,6 +430,23 @@
     <string name="settings_notifications_test_failed">Test fallito: %1$s</string>
     <string name="settings_notifications_save">Salva impostazioni notifiche</string>
 
+    <!-- Impostazioni: configurazione della connessione Immich (issue #236). -->
+    <string name="settings_immich_title">Immich</string>
+    <string name="immich_settings_description">Collega Immich per associare foto e persone ai tuoi contatti.</string>
+    <string name="immich_settings_base_url">URL del server Immich</string>
+    <string name="immich_settings_api_key">Chiave API</string>
+    <string name="immich_settings_api_key_hint_existing">È già memorizzata una chiave. Lascia il campo vuoto per mantenerla.</string>
+    <string name="immich_settings_api_key_hint_new">Crea una chiave API nelle impostazioni del tuo account Immich.</string>
+    <string name="immich_settings_sync_enabled">Sincronizza automaticamente</string>
+    <string name="immich_settings_test">Verifica connessione</string>
+    <string name="immich_settings_testing">Verifica in corso…</string>
+    <string name="immich_settings_test_success">Test di connessione riuscito</string>
+    <string name="immich_settings_test_failed">Test non riuscito: %1$s</string>
+    <string name="immich_settings_last_sync_error">L\'ultima sincronizzazione non è riuscita</string>
+    <string name="immich_settings_remove">Rimuovi connessione</string>
+    <string name="immich_settings_remove_title">Rimuovi la connessione Immich</string>
+    <string name="immich_settings_remove_confirm">Rimuovere la connessione Immich? Le foto collegate non verranno più mostrate.</string>
+
     <string name="settings_save">Salva</string>
     <string name="settings_ok">OK</string>
 
@@ -594,6 +625,7 @@
     <string name="action_delete">Elimina</string>
     <string name="action_cancel">Annulla</string>
     <string name="action_add">Aggiungi</string>
+    <string name="action_back">Indietro</string>
     <string name="action_rename">Rinomina</string>
     <string name="action_retry">Riprova</string>
 

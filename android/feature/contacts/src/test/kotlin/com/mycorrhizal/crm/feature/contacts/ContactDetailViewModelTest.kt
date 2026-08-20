@@ -5,7 +5,10 @@ import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ExternalIdentityRepository
 import com.mycorrhizal.crm.domain.repository.ImmichRepository
+import com.mycorrhizal.crm.domain.repository.NextcloudRepository
+import com.mycorrhizal.crm.domain.repository.PaperlessRepository
 import com.mycorrhizal.crm.domain.repository.ReminderRepository
+import com.mycorrhizal.crm.domain.repository.SeafileRepository
 import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.model.network.Card
@@ -17,6 +20,11 @@ import com.mycorrhizal.crm.model.network.FieldDefinitionsResponse
 import com.mycorrhizal.crm.model.network.FieldValue
 import com.mycorrhizal.crm.model.network.ImmichPerson
 import com.mycorrhizal.crm.model.network.Name
+import com.mycorrhizal.crm.model.network.PaperlessDocument
+import com.mycorrhizal.crm.model.network.SeafileItem
+import com.mycorrhizal.crm.model.network.SeafileLibrary
+import com.mycorrhizal.crm.model.network.SeafileLinkRequest
+import com.mycorrhizal.crm.model.network.WebDAVItem
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
@@ -48,6 +56,9 @@ class ContactDetailViewModelTest {
     private val tagRepository = mockk<TagRepository>()
     private val externalIdentityRepository = mockk<ExternalIdentityRepository>()
     private val immichRepository = mockk<ImmichRepository>()
+    private val paperlessRepository = mockk<PaperlessRepository>()
+    private val seafileRepository = mockk<SeafileRepository>()
+    private val nextcloudRepository = mockk<NextcloudRepository>()
 
     private fun viewModel(id: Int, dateFormat: String? = null): ContactDetailViewModel {
         coEvery { contactRepository.getDeviceLookupKey(any()) } returns null
@@ -66,15 +77,25 @@ class ContactDetailViewModelTest {
             tagRepository,
             externalIdentityRepository,
             immichRepository,
+            paperlessRepository,
+            seafileRepository,
+            nextcloudRepository,
             SavedStateHandle(mapOf("contactId" to id)),
         )
     }
 
-    /** Issue #220: default stubs for the External Links / Immich loads (run on every load()). */
+    /**
+     * Issue #220/#236: default stubs for the External Links panel's loads
+     * (run on every load()) — Immich plus the three file-system
+     * "configured" gates.
+     */
     private fun stubExternalLinks() {
         coEvery { externalIdentityRepository.listForContact(any()) } returns Result.success(emptyList())
         coEvery { immichRepository.isConfigured() } returns Result.success(false)
         coEvery { immichRepository.getContactSummary(any()) } returns Result.success(null)
+        coEvery { paperlessRepository.isConfigured() } returns Result.success(false)
+        coEvery { seafileRepository.isConfigured() } returns Result.success(false)
+        coEvery { nextcloudRepository.isConfigured() } returns Result.success(false)
     }
 
     /** M24: default stubs for the inline circle/tag editor loads (run on every load()). */
@@ -134,6 +155,9 @@ class ContactDetailViewModelTest {
             tagRepository,
             externalIdentityRepository,
             immichRepository,
+            paperlessRepository,
+            seafileRepository,
+            nextcloudRepository,
             SavedStateHandle(mapOf("contactId" to "9")),
         )
         advanceUntilIdle()
@@ -242,7 +266,7 @@ class ContactDetailViewModelTest {
 
         stubExternalLinks()
 
-        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, apiClient, circleRepository, tagRepository, externalIdentityRepository, immichRepository, SavedStateHandle(mapOf("contactId" to 5)))
+        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, apiClient, circleRepository, tagRepository, externalIdentityRepository, immichRepository, paperlessRepository, seafileRepository, nextcloudRepository, SavedStateHandle(mapOf("contactId" to 5)))
         advanceUntilIdle()
 
         val state = vm.uiState.value
@@ -263,7 +287,7 @@ class ContactDetailViewModelTest {
 
         stubExternalLinks()
 
-        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, apiClient, circleRepository, tagRepository, externalIdentityRepository, immichRepository, SavedStateHandle(mapOf("contactId" to 5)))
+        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, apiClient, circleRepository, tagRepository, externalIdentityRepository, immichRepository, paperlessRepository, seafileRepository, nextcloudRepository, SavedStateHandle(mapOf("contactId" to 5)))
         advanceUntilIdle()
 
         val state = vm.uiState.value
@@ -286,7 +310,7 @@ class ContactDetailViewModelTest {
 
         stubExternalLinks()
 
-        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, apiClient, circleRepository, tagRepository, externalIdentityRepository, immichRepository, SavedStateHandle(mapOf("contactId" to 5)))
+        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, apiClient, circleRepository, tagRepository, externalIdentityRepository, immichRepository, paperlessRepository, seafileRepository, nextcloudRepository, SavedStateHandle(mapOf("contactId" to 5)))
         advanceUntilIdle()
 
         val state = vm.uiState.value
@@ -315,7 +339,7 @@ class ContactDetailViewModelTest {
 
         stubExternalLinks()
 
-        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, apiClient, circleRepository, tagRepository, externalIdentityRepository, immichRepository, SavedStateHandle(mapOf("contactId" to 5)))
+        val vm = ContactDetailViewModel(contactRepository, reminderRepository, authRepository, apiClient, circleRepository, tagRepository, externalIdentityRepository, immichRepository, paperlessRepository, seafileRepository, nextcloudRepository, SavedStateHandle(mapOf("contactId" to 5)))
         advanceUntilIdle()
 
         val state = vm.uiState.value
@@ -869,5 +893,179 @@ class ContactDetailViewModelTest {
         advanceUntilIdle()
 
         assertEquals("Not found", vm.uiState.value.error)
+    }
+
+    // --- Issue #236: Paperless/Seafile/Nextcloud create/link pickers ---
+
+    @Test
+    fun `loadExternalLinks populates the three configured gates`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+        // viewModel() applies its default (all-false) stubExternalLinks() stubs during
+        // construction; override them afterward, then let init's launched coroutines run.
+        val vm = viewModel(5)
+        coEvery { paperlessRepository.isConfigured() } returns Result.success(true)
+        coEvery { seafileRepository.isConfigured() } returns Result.success(true)
+        coEvery { nextcloudRepository.isConfigured() } returns Result.success(false)
+        advanceUntilIdle()
+
+        assertTrue(vm.uiState.value.paperlessConfigured)
+        assertTrue(vm.uiState.value.seafileConfigured)
+        assertFalse(vm.uiState.value.nextcloudConfigured)
+    }
+
+    @Test
+    fun `loadPaperlessDocuments populates the picker's document list`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+
+        coEvery { paperlessRepository.searchDocuments(null) } returns Result.success(
+            listOf(PaperlessDocument(id = 1, title = "Lease")),
+        )
+        vm.loadPaperlessDocuments()
+        advanceUntilIdle()
+
+        assertEquals(1, vm.uiState.value.paperlessDocuments.size)
+        assertEquals("Lease", vm.uiState.value.paperlessDocuments.first().title)
+        assertFalse(vm.uiState.value.paperlessDocumentsLoading)
+    }
+
+    @Test
+    fun `linkPaperlessDocument links then reloads the panel`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+
+        coEvery { paperlessRepository.linkDocument("u5", "1") } returns Result.success(Unit)
+        vm.linkPaperlessDocument(PaperlessDocument(id = 1, title = "Lease"))
+        advanceUntilIdle()
+
+        io.mockk.coVerify(exactly = 1) { paperlessRepository.linkDocument("u5", "1") }
+        io.mockk.coVerify(atLeast = 2) { externalIdentityRepository.listForContact("u5") }
+    }
+
+    @Test
+    fun `linkPaperlessDocument failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+
+        coEvery { paperlessRepository.linkDocument("u5", "1") } returns Result.failure(
+            ApiError.Client(409, "Already linked"),
+        )
+        vm.linkPaperlessDocument(PaperlessDocument(id = 1, title = "Lease"))
+        advanceUntilIdle()
+
+        assertEquals("Already linked", vm.uiState.value.error)
+    }
+
+    @Test
+    fun `loadSeafileLibraries populates the picker's top level`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+
+        coEvery { seafileRepository.listLibraries() } returns Result.success(
+            listOf(SeafileLibrary(id = "r1", name = "Docs")),
+        )
+        vm.loadSeafileLibraries()
+        advanceUntilIdle()
+
+        assertEquals(1, vm.uiState.value.seafileLibraries.size)
+        assertNull(vm.uiState.value.seafileBrowseRepoId)
+    }
+
+    @Test
+    fun `enterSeafileDir then backSeafileDir returns to the library list`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+
+        coEvery { seafileRepository.listLibraries() } returns Result.success(
+            listOf(SeafileLibrary(id = "r1", name = "Docs")),
+        )
+        coEvery { seafileRepository.listDir("r1", "/") } returns Result.success(
+            listOf(SeafileItem(id = "f1", name = "doc.pdf", type = "file")),
+        )
+        vm.enterSeafileDir("r1")
+        advanceUntilIdle()
+
+        assertEquals("r1", vm.uiState.value.seafileBrowseRepoId)
+        assertEquals(1, vm.uiState.value.seafileBrowseItems.size)
+
+        vm.backSeafileDir()
+        advanceUntilIdle()
+
+        assertNull(vm.uiState.value.seafileBrowseRepoId)
+        io.mockk.coVerify(exactly = 1) { seafileRepository.listLibraries() }
+    }
+
+    @Test
+    fun `linkSeafileItem joins the browse path and reloads the panel`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+
+        coEvery { seafileRepository.listDir("r1", "/") } returns Result.success(emptyList())
+        vm.enterSeafileDir("r1")
+        advanceUntilIdle()
+
+        val expectedRequest = SeafileLinkRequest(repoId = "r1", path = "/doc.pdf", name = "doc.pdf", type = "file", size = 1024)
+        coEvery { seafileRepository.linkItem("u5", expectedRequest) } returns Result.success(Unit)
+        vm.linkSeafileItem(SeafileItem(id = "f1", name = "doc.pdf", type = "file", size = 1024))
+        advanceUntilIdle()
+
+        io.mockk.coVerify(exactly = 1) { seafileRepository.linkItem("u5", expectedRequest) }
+        io.mockk.coVerify(atLeast = 2) { externalIdentityRepository.listForContact("u5") }
+    }
+
+    @Test
+    fun `loadNextcloudDir populates the browse list at the given path`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+
+        coEvery { nextcloudRepository.listDir("/Photos") } returns Result.success(
+            listOf(WebDAVItem(name = "img.jpg", path = "/Photos/img.jpg", type = "file")),
+        )
+        vm.loadNextcloudDir("/Photos")
+        advanceUntilIdle()
+
+        assertEquals("/Photos", vm.uiState.value.nextcloudBrowsePath)
+        assertEquals(1, vm.uiState.value.nextcloudBrowseItems.size)
+        assertFalse(vm.uiState.value.nextcloudBrowseLoading)
+    }
+
+    @Test
+    fun `linkNextcloudItem links then reloads the panel`() = runTest(mainDispatcherRule.testDispatcher) {
+        val record = ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+        val vm = viewModel(5)
+        advanceUntilIdle()
+
+        val item = WebDAVItem(name = "img.jpg", path = "/Photos/img.jpg", type = "file", size = 2048)
+        coEvery { nextcloudRepository.linkItem("u5", item) } returns Result.success(Unit)
+        vm.linkNextcloudItem(item)
+        advanceUntilIdle()
+
+        io.mockk.coVerify(exactly = 1) { nextcloudRepository.linkItem("u5", item) }
+        io.mockk.coVerify(atLeast = 2) { externalIdentityRepository.listForContact("u5") }
     }
 }
