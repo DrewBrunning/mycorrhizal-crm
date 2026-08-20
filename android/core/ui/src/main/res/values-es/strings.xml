@@ -430,6 +430,23 @@
     <string name="settings_notifications_test_failed">Prueba fallida: %1$s</string>
     <string name="settings_notifications_save">Guardar ajustes de notificación</string>
 
+    <!-- Ajustes: configuración de la conexión con Immich (incidencia #236). -->
+    <string name="settings_immich_title">Immich</string>
+    <string name="immich_settings_description">Conecta Immich para vincular fotos y personas a tus contactos.</string>
+    <string name="immich_settings_base_url">URL del servidor Immich</string>
+    <string name="immich_settings_api_key">Clave de API</string>
+    <string name="immich_settings_api_key_hint_existing">Ya hay una clave guardada. Deja el campo vacío para conservarla.</string>
+    <string name="immich_settings_api_key_hint_new">Crea una clave de API en los ajustes de tu cuenta de Immich.</string>
+    <string name="immich_settings_sync_enabled">Sincronizar automáticamente</string>
+    <string name="immich_settings_test">Probar conexión</string>
+    <string name="immich_settings_testing">Probando…</string>
+    <string name="immich_settings_test_success">La prueba de conexión se realizó correctamente</string>
+    <string name="immich_settings_test_failed">Prueba fallida: %1$s</string>
+    <string name="immich_settings_last_sync_error">La última sincronización falló</string>
+    <string name="immich_settings_remove">Quitar conexión</string>
+    <string name="immich_settings_remove_title">Quitar la conexión con Immich</string>
+    <string name="immich_settings_remove_confirm">¿Quitar la conexión con Immich? Las fotos vinculadas dejarán de mostrarse.</string>
+
     <string name="settings_save">Guardar</string>
     <string name="settings_ok">Aceptar</string>
 

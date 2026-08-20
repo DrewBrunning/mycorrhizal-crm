@@ -438,6 +438,25 @@
     <string name="settings_notifications_test_failed">Test failed: %1$s</string>
     <string name="settings_notifications_save">Save notification settings</string>
 
+    <!-- Settings: Immich connection config (issue #236) — the person-link and
+         profile-photo flows (#219/#220) already exist; this is the missing
+         configuration surface those flows depend on. -->
+    <string name="settings_immich_title">Immich</string>
+    <string name="immich_settings_description">Connect Immich to link photos and people to your contacts.</string>
+    <string name="immich_settings_base_url">Immich server URL</string>
+    <string name="immich_settings_api_key">API key</string>
+    <string name="immich_settings_api_key_hint_existing">A key is already stored. Leave the field empty to keep it.</string>
+    <string name="immich_settings_api_key_hint_new">Create an API key in your Immich account settings.</string>
+    <string name="immich_settings_sync_enabled">Sync automatically</string>
+    <string name="immich_settings_test">Test connection</string>
+    <string name="immich_settings_testing">Testing…</string>
+    <string name="immich_settings_test_success">Connection test succeeded</string>
+    <string name="immich_settings_test_failed">Test failed: %1$s</string>
+    <string name="immich_settings_last_sync_error">Last sync failed</string>
+    <string name="immich_settings_remove">Remove connection</string>
+    <string name="immich_settings_remove_title">Remove Immich connection</string>
+    <string name="immich_settings_remove_confirm">Remove the Immich connection? Linked photos will no longer be shown.</string>
+
     <string name="settings_save">Save</string>
     <string name="settings_ok">OK</string>
 

@@ -430,6 +430,23 @@
     <string name="settings_notifications_test_failed">Test fehlgeschlagen: %1$s</string>
     <string name="settings_notifications_save">Benachrichtigungseinstellungen speichern</string>
 
+    <!-- Einstellungen: Immich-Verbindungskonfiguration (Issue #236). -->
+    <string name="settings_immich_title">Immich</string>
+    <string name="immich_settings_description">Verbinde Immich, um Fotos und Personen mit deinen Kontakten zu verknüpfen.</string>
+    <string name="immich_settings_base_url">Immich-Server-URL</string>
+    <string name="immich_settings_api_key">API-Schlüssel</string>
+    <string name="immich_settings_api_key_hint_existing">Es ist bereits ein Schlüssel gespeichert. Lasse das Feld leer, um ihn zu behalten.</string>
+    <string name="immich_settings_api_key_hint_new">Erstelle einen API-Schlüssel in deinen Immich-Kontoeinstellungen.</string>
+    <string name="immich_settings_sync_enabled">Automatisch synchronisieren</string>
+    <string name="immich_settings_test">Verbindung testen</string>
+    <string name="immich_settings_testing">Wird getestet…</string>
+    <string name="immich_settings_test_success">Verbindungstest erfolgreich</string>
+    <string name="immich_settings_test_failed">Test fehlgeschlagen: %1$s</string>
+    <string name="immich_settings_last_sync_error">Letzte Synchronisierung fehlgeschlagen</string>
+    <string name="immich_settings_remove">Verbindung entfernen</string>
+    <string name="immich_settings_remove_title">Immich-Verbindung entfernen</string>
+    <string name="immich_settings_remove_confirm">Immich-Verbindung entfernen? Verknüpfte Fotos werden nicht mehr angezeigt.</string>
+
     <string name="settings_save">Speichern</string>
     <string name="settings_ok">OK</string>
 

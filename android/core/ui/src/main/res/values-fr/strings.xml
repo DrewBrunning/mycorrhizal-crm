@@ -430,6 +430,23 @@
     <string name="settings_notifications_test_failed">Échec du test : %1$s</string>
     <string name="settings_notifications_save">Enregistrer les paramètres de notification</string>
 
+    <!-- Paramètres : configuration de la connexion Immich (issue #236). -->
+    <string name="settings_immich_title">Immich</string>
+    <string name="immich_settings_description">Connectez Immich pour lier des photos et des personnes à vos contacts.</string>
+    <string name="immich_settings_base_url">URL du serveur Immich</string>
+    <string name="immich_settings_api_key">Clé API</string>
+    <string name="immich_settings_api_key_hint_existing">Une clé est déjà enregistrée. Laissez le champ vide pour la conserver.</string>
+    <string name="immich_settings_api_key_hint_new">Créez une clé API dans les paramètres de votre compte Immich.</string>
+    <string name="immich_settings_sync_enabled">Synchroniser automatiquement</string>
+    <string name="immich_settings_test">Tester la connexion</string>
+    <string name="immich_settings_testing">Test en cours…</string>
+    <string name="immich_settings_test_success">Test de connexion réussi</string>
+    <string name="immich_settings_test_failed">Échec du test : %1$s</string>
+    <string name="immich_settings_last_sync_error">La dernière synchronisation a échoué</string>
+    <string name="immich_settings_remove">Supprimer la connexion</string>
+    <string name="immich_settings_remove_title">Supprimer la connexion Immich</string>
+    <string name="immich_settings_remove_confirm">Supprimer la connexion Immich ? Les photos liées ne seront plus affichées.</string>
+
     <string name="settings_save">Enregistrer</string>
     <string name="settings_ok">OK</string>
 
