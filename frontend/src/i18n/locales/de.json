@@ -978,7 +978,9 @@
     "urlPlaceholder": "Bild-URL einfügen...",
     "fetch": "Abrufen",
     "urlFetchError": "Bild konnte nicht von URL abgerufen werden",
-    "chooseFromImmich": "Von Immich auswählen"
+    "chooseFromImmich": "Von Immich auswählen",
+    "altText": "Profilbild von {{name}}",
+    "altTextGeneric": "Profilbild"
   },
   "settings": {
     "title": "Einstellungen",

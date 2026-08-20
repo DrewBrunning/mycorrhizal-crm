@@ -978,7 +978,9 @@
     "urlPlaceholder": "Collez l'URL de l'image...",
     "fetch": "Récupérer",
     "urlFetchError": "Échec de la récupération de l'image depuis l'URL",
-    "chooseFromImmich": "Choisir depuis Immich"
+    "chooseFromImmich": "Choisir depuis Immich",
+    "altText": "Photo de profil de {{name}}",
+    "altTextGeneric": "Photo de profil"
   },
   "settings": {
     "title": "Paramètres",

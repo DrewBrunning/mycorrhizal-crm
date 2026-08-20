@@ -978,7 +978,9 @@
     "urlPlaceholder": "Incolla URL immagine...",
     "fetch": "Recupera",
     "urlFetchError": "Impossibile recuperare l'immagine dall'URL",
-    "chooseFromImmich": "Scegli da Immich"
+    "chooseFromImmich": "Scegli da Immich",
+    "altText": "Foto profilo di {{name}}",
+    "altTextGeneric": "Foto profilo"
   },
   "settings": {
     "title": "Impostazioni",

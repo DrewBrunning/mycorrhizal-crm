@@ -978,7 +978,9 @@
     "urlPlaceholder": "Pegar URL de imagen...",
     "fetch": "Obtener",
     "urlFetchError": "Error al obtener la imagen desde la URL",
-    "chooseFromImmich": "Elegir desde Immich"
+    "chooseFromImmich": "Elegir desde Immich",
+    "altText": "Foto de perfil de {{name}}",
+    "altTextGeneric": "Foto de perfil"
   },
   "settings": {
     "title": "Configuración",

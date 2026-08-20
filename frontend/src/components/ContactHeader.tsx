@@ -153,6 +153,13 @@ export default function ContactHeader({
           >
             <Avatar
               src={profilePic || undefined}
+              // MUI renders `src` as a plain <img> with no alt attribute at
+              // all unless one is passed -- axe's image-alt rule (critical;
+              // issue #259) flags that. The fallback-initial <Avatar>
+              // children only render once the <img> itself fails to load, so
+              // this alt text is what's actually announced while the photo
+              // is showing.
+              alt={firstname ? t('profilePicture.altText', { name: firstname }) : t('profilePicture.altTextGeneric')}
               sx={{
                 width: 90,
                 height: 90,

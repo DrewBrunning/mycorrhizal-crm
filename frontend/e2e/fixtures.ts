@@ -1,4 +1,5 @@
-import { Page, Locator, APIRequestContext, expect } from '@playwright/test';
+import { test as base, expect, Page, Locator, APIRequestContext } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -6,10 +7,111 @@ import * as crypto from 'crypto';
 import { TEST_USER, API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 import { toContactRecordInput } from '../src/api/contacts';
 
-export { test } from '@playwright/test';
 export { expect } from '@playwright/test';
 
 export const LOGGED_OUT = { cookies: [], origins: [] };
+
+// ---------------------------------------------------------------------------
+// Automatic accessibility gate (issue #259). accessibility.spec.ts (#195)
+// scans a curated inventory of routes/themes/dialogs on its own schedule;
+// this closes the gap *between* audits by scanning whatever page every other
+// spec happens to be left on after each test, so a new critical/serious
+// violation is caught the day the feature that introduced it lands, not at
+// the next dedicated audit sweep.
+//
+// Implemented by overriding the built-in `page` fixture (the documented
+// Playwright pattern for wrapping a fixture) rather than a separate
+// `auto: true` fixture that itself depends on `page` -- that would force
+// Playwright to spin up a browser page for every test in the file,
+// including the many API-only specs that destructure `{ request }` and
+// never touch `page` at all (contactSort.spec.ts, search.spec.ts,
+// timelineEndpoint.spec.ts, ...). Overriding `page` instead means this
+// teardown only ever runs for tests that actually requested a page.
+// ---------------------------------------------------------------------------
+
+/** Blocking impact levels -- shared with accessibility.spec.ts so the two never drift. */
+export const BLOCKING_A11Y_IMPACTS = ['critical', 'serious'];
+
+/** axe-core tags mapping to the WCAG 2.0/2.1/2.2 A+AA levels the #148 audit ran. */
+export const WCAG_A11Y_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
+
+/**
+ * Annotation `type` a spec uses to opt a `test`/`test.describe` block out of
+ * the automatic per-test scan below, for flows that intentionally render a
+ * transient state (mid-animation toast, a deliberately-broken form left
+ * showing a validation error, ...) where scanning whatever the page happens
+ * to be doing right as the test body returns would be a false positive.
+ * Scope the annotation to the smallest block that actually needs it rather
+ * than disabling a whole file.
+ *
+ * Usage:
+ *   test.describe('flow with a transient state', {
+ *     annotation: { type: SKIP_A11Y_SCAN, description: 'why' },
+ *   }, () => { ... });
+ */
+export const SKIP_A11Y_SCAN = 'skip-a11y-scan';
+
+/**
+ * Runs axe-core against `page` (or, scoped via `context` -- a CSS selector,
+ * typically `[role="dialog"]` -- against just that subtree) and fails on any
+ * `critical`/`serious` violation. Shared by the automatic per-test check
+ * below and accessibility.spec.ts's own dedicated route/theme/dialog scans,
+ * so the two can never drift out of sync on what counts as blocking.
+ */
+export async function assertNoBlockingA11yViolations(page: Page, context?: string): Promise<void> {
+  const builder = new AxeBuilder({ page }).withTags(WCAG_A11Y_TAGS);
+  if (context) {
+    builder.include(context);
+  }
+  const results = await builder.analyze();
+  const blocking = results.violations.filter((v) => BLOCKING_A11Y_IMPACTS.includes(v.impact ?? ''));
+  const detail = blocking.map((v) => ({
+    id: v.id,
+    impact: v.impact,
+    nodes: v.nodes.length,
+    firstTarget: v.nodes[0]?.target,
+  }));
+  expect(blocking, JSON.stringify(detail, null, 2)).toEqual([]);
+}
+
+export const test = base.extend<{ page: Page }>({
+  page: async ({ page }, use, testInfo) => {
+    await use(page);
+
+    // Don't pile a second, unrelated-looking a11y failure onto a test that
+    // already failed for its own reason.
+    if (testInfo.status !== testInfo.expectedStatus) return;
+
+    if (testInfo.annotations.some((a) => a.type === SKIP_A11Y_SCAN)) return;
+
+    // API-only tests (viteBuild.spec.ts's page.request.get() calls, ...)
+    // request `page` but never navigate it -- scanning about:blank is pure
+    // overhead, and a page torn down mid-test errors out of AxeBuilder.
+    const url = page.isClosed() ? '' : page.url();
+    if (!url || url === 'about:blank' || url.startsWith('chrome-error://')) return;
+
+    // A test that ends right after opening a Menu/Snackbar/Dialog (a
+    // perfectly normal place to stop -- the assertion it cared about is
+    // already satisfied) can still leave MUI's Grow/Fade/Slide transition
+    // mid-flight, which axe's color-contrast check samples honestly: the
+    // *animating* opacity, not the settled one. document.getAnimations()
+    // covers CSS transitions as well as script-driven ones, so this waits
+    // out whatever's actually still running (capped, so a genuinely
+    // long-running/looping animation can't hang the scan) rather than
+    // guessing a fixed delay. Pinned by contactDetailLayout.spec.ts's mobile
+    // overflow-menu case, which raced this before the wait existed.
+    await page
+      .evaluate(() =>
+        Promise.race([
+          Promise.all(document.getAnimations().map((a) => a.finished.catch(() => {}))),
+          new Promise((resolve) => setTimeout(resolve, 500)),
+        ])
+      )
+      .catch(() => {});
+
+    await assertNoBlockingA11yViolations(page);
+  },
+});
 
 // ---------------------------------------------------------------------------
 // Uniqueness helpers — `Date.now()` alone is 1ms-resolution and nothing else,
