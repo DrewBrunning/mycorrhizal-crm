@@ -286,7 +286,12 @@ internal fun WebhookRow(
                 if (testing) {
                     CircularProgressIndicator(modifier = Modifier.padding(4.dp), strokeWidth = 2.dp)
                 } else {
-                    Icon(Icons.Outlined.PlayArrow, contentDescription = stringResource(R.string.settings_webhooks_test))
+                    // #205: the row-action label carries the webhook name so
+                    // TalkBack doesn't read a bare "Test" on every row.
+                    Icon(
+                        Icons.Outlined.PlayArrow,
+                        contentDescription = stringResource(R.string.settings_webhooks_test_named, webhook.name),
+                    )
                 }
             }
             IconButton(onClick = onEdit) {

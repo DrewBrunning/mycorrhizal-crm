@@ -567,7 +567,7 @@ class ContactDetailScreenTest {
         composeTestRule.onNodeWithTag("contact-detail-list")
             .performScrollToNode(hasText("External Links"))
         composeTestRule.onNodeWithText("paperless").assertIsDisplayed()
-        composeTestRule.onNodeWithContentDescription("Remove link").performClick()
+        composeTestRule.onNodeWithContentDescription("Remove link paperless").performClick()
         assertEquals("i1", deleted)
     }
 

@@ -61,6 +61,46 @@ fun ComposeTestRule.assertAccessibleSemantics() {
     assertAccessibleSemantics(onRoot().fetchSemanticsNode())
 }
 
+/**
+ * Issue #205: the Android Accessibility Test Framework's
+ * `DuplicateSpeakableTextCheck` — no two focusable nodes on screen may share
+ * the same contentDescription. A bare "Rename"/"Delete" on every row of a list
+ * makes TalkBack announce "Rename, button" N times with nothing to say which
+ * row each belongs to. Screens with per-row icon actions assert this with two
+ * or more rows seeded.
+ */
+fun ComposeTestRule.assertNoDuplicateContentDescriptions() {
+    assertNoDuplicateContentDescriptions(onRoot().fetchSemanticsNode())
+}
+
+fun assertNoDuplicateContentDescriptions(root: SemanticsNode) {
+    val seen = mutableMapOf<String, SemanticsNode>()
+    val violations = mutableListOf<String>()
+
+    fun walk(node: SemanticsNode) {
+        if (isInteractive(node)) {
+            node.config.getOrNull(SemanticsProperties.ContentDescription)
+                ?.filter { it.isNotBlank() }
+                ?.forEach { cd ->
+                    val prior = seen.putIfAbsent(cd, node)
+                    if (prior != null && prior !== node) {
+                        violations += "contentDescription \"$cd\" on ${describe(node)} " +
+                            "duplicates ${describe(prior)}"
+                    }
+                }
+        }
+        node.children.forEach { walk(it) }
+    }
+    walk(root)
+
+    if (violations.isNotEmpty()) {
+        throw AssertionError(
+            "Found ${violations.size} duplicate contentDescription(s):\n" +
+                violations.joinToString("\n") { "  - $it" },
+        )
+    }
+}
+
 /** Material guidance / WCAG 2.5.8 Target Size (Minimum). */
 private val MIN_TOUCH_TARGET = 48.dp
 

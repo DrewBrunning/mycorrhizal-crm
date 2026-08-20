@@ -175,6 +175,7 @@
     <!-- Issue #220: the External Links panel (ExternalIdentity substrate). -->
     <string name="external_links_title">External Links</string>
     <string name="external_links_remove">Remove link</string>
+    <string name="external_links_remove_named">Remove link %1$s</string>
     <string name="external_links_remove_title">Remove external link</string>
     <string name="external_links_remove_confirm">Remove the %1$s link (%2$s)?</string>
     <!-- Issue #219/#220: the Immich integration (External Links rich row +
@@ -378,6 +379,7 @@
     <string name="settings_webhooks_delete_title">Delete Webhook</string>
     <string name="settings_webhooks_delete_body">Delete "%1$s"? This will stop all future deliveries.</string>
     <string name="settings_webhooks_test">Test</string>
+    <string name="settings_webhooks_test_named">Test %1$s</string>
     <string name="settings_webhooks_active">Active</string>
     <string name="settings_webhooks_inactive">Inactive</string>
     <string name="settings_webhooks_events">Events</string>
@@ -457,6 +459,7 @@
     <string name="activities_no_results">No activities match your filters</string>
     <string name="activities_delete_title">Delete activity?</string>
     <string name="activities_delete_confirm">Delete this activity? \"%1$s\"</string>
+    <string name="activities_delete_named">Delete %1$s</string>
     <string name="activity_new">New activity</string>
     <string name="activity_edit">Edit activity</string>
     <string name="activity_title">Title</string>
@@ -483,6 +486,7 @@
     <string name="notes_no_results">No notes match your filters</string>
     <string name="notes_delete_title">Delete note?</string>
     <string name="notes_delete_confirm">Delete this note? \"%1$s\"</string>
+    <string name="notes_delete_named">Delete %1$s</string>
     <string name="notes_inbox_total">%1$d unfiled</string>
     <string name="action_load_more">Load more</string>
     <string name="note_new">New note</string>
@@ -683,12 +687,15 @@
     <string name="relationships_sensitivity_secret">Secret</string>
     <string name="relationships_edit_title">Edit relationship</string>
     <string name="relationships_edit">Edit relationship</string>
+    <string name="relationships_edit_named">Edit %1$s</string>
     <string name="relationships_other_party_readonly_hint">The other party can\'t be changed here — delete and recreate the relationship to link a different contact.</string>
     <string name="relationships_unknown_contact">Unknown contact</string>
     <string name="relationships_suggested_section">Suggested</string>
     <string name="relationships_reject">Reject</string>
+    <string name="relationships_reject_named">Reject %1$s</string>
     <string name="relationships_delete_title">Delete relationship?</string>
     <string name="relationships_delete_confirm">Delete the relationship with %1$s?</string>
+    <string name="relationships_delete_named">Delete %1$s</string>
     <string name="relationships_reject_title">Reject suggestion?</string>
     <string name="relationships_reject_confirm">Reject the suggested relationship with %1$s?</string>
 
@@ -798,6 +805,7 @@
     <string name="entities_error_no_vcard_uid">Contact has no VCard UID</string>
     <string name="entities_delete_title">Delete item?</string>
     <string name="entities_delete_confirm">Delete “%1$s”? This cannot be undone.</string>
+    <string name="entities_delete_named">Delete %1$s</string>
     <string name="life_events_title">Life events</string>
     <string name="life_events_new">New life event</string>
     <string name="life_events_edit">Edit life event</string>

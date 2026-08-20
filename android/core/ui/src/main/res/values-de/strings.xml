@@ -171,6 +171,7 @@
     <!-- Issue #220: Bereich Externe Links (ExternalIdentity-Substrat). -->
     <string name="external_links_title">Externe Links</string>
     <string name="external_links_remove">Link entfernen</string>
+    <string name="external_links_remove_named">Link %1$s entfernen</string>
     <string name="external_links_remove_title">Externen Link entfernen</string>
     <string name="external_links_remove_confirm">%1$s-Link (%2$s) entfernen?</string>
     <!-- Issue #219/#220: Immich-Integration (Reichzeilige External-Links-Zeile +
@@ -370,6 +371,7 @@
     <string name="settings_webhooks_delete_title">Webhook löschen</string>
     <string name="settings_webhooks_delete_body">"%1$s" löschen? Alle zukünftigen Zustellungen werden gestoppt.</string>
     <string name="settings_webhooks_test">Testen</string>
+    <string name="settings_webhooks_test_named">%1$s testen</string>
     <string name="settings_webhooks_active">Aktiv</string>
     <string name="settings_webhooks_inactive">Inaktiv</string>
     <string name="settings_webhooks_events">Ereignisse</string>
@@ -449,6 +451,7 @@
     <string name="activities_search">Aktivitäten durchsuchen</string>
     <string name="activities_no_results">Keine Aktivitäten entsprechen deinen Filtern</string>
     <string name="activities_delete_title">Aktivität löschen?</string>
+    <string name="activities_delete_named">%1$s löschen</string>
     <string name="activities_delete_confirm">Diese Aktivität löschen? \"%1$s\"</string>
     <string name="activity_new">Neue Aktivität</string>
     <string name="activity_edit">Aktivität bearbeiten</string>
@@ -474,6 +477,7 @@
     <string name="notes_search">Notizen durchsuchen</string>
     <string name="notes_no_results">Keine Notizen entsprechen deinen Filtern</string>
     <string name="notes_delete_title">Notiz löschen?</string>
+    <string name="notes_delete_named">%1$s löschen</string>
     <string name="notes_delete_confirm">Diese Notiz löschen? \"%1$s\"</string>
     <string name="notes_inbox_total">%1$d nicht zugeordnet</string>
     <string name="action_load_more">Mehr laden</string>
@@ -679,11 +683,14 @@
     <string name="relationships_sensitivity_secret">Geheim</string>
     <string name="relationships_edit_title">Beziehung bearbeiten</string>
     <string name="relationships_edit">Beziehung bearbeiten</string>
+    <string name="relationships_edit_named">%1$s bearbeiten</string>
     <string name="relationships_other_party_readonly_hint">Die andere Person kann hier nicht geändert werden — lösche die Beziehung und lege sie neu an, um einen anderen Kontakt zu verknüpfen.</string>
     <string name="relationships_unknown_contact">Unbekannter Kontakt</string>
     <string name="relationships_suggested_section">Vorgeschlagen</string>
     <string name="relationships_reject">Ablehnen</string>
+    <string name="relationships_reject_named">%1$s ablehnen</string>
     <string name="relationships_delete_title">Beziehung löschen?</string>
+    <string name="relationships_delete_named">%1$s löschen</string>
     <string name="relationships_delete_confirm">Die Beziehung mit %1$s löschen?</string>
     <string name="relationships_reject_title">Vorschlag ablehnen?</string>
     <string name="relationships_reject_confirm">Die vorgeschlagene Beziehung mit %1$s ablehnen?</string>
@@ -794,6 +801,7 @@
     <string name="entities_empty">Noch nichts hier</string>
     <string name="entities_error_no_vcard_uid">Kontakt hat keine VCard-UID</string>
     <string name="entities_delete_title">Eintrag löschen?</string>
+    <string name="entities_delete_named">%1$s löschen</string>
     <string name="entities_delete_confirm">„%1$s“ löschen? Dies kann nicht rückgängig gemacht werden.</string>
     <string name="life_events_title">Lebensereignisse</string>
     <string name="life_events_new">Neues Lebensereignis</string>

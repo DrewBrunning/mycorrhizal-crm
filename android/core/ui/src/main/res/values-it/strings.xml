@@ -171,6 +171,7 @@
     <!-- Issue #220: pannello Link esterni (substrato ExternalIdentity). -->
     <string name="external_links_title">Link esterni</string>
     <string name="external_links_remove">Rimuovi link</string>
+    <string name="external_links_remove_named">Rimuovi link %1$s</string>
     <string name="external_links_remove_title">Rimuovi link esterno</string>
     <string name="external_links_remove_confirm">Rimuovere il link %1$s (%2$s)?</string>
     <!-- Issue #219/#220: integrazione Immich (riga arricchita dei link esterni +
@@ -370,6 +371,7 @@
     <string name="settings_webhooks_delete_title">Elimina Webhook</string>
     <string name="settings_webhooks_delete_body">Eliminare "%1$s"? Tutte le consegne future verranno interrotte.</string>
     <string name="settings_webhooks_test">Testa</string>
+    <string name="settings_webhooks_test_named">Testa %1$s</string>
     <string name="settings_webhooks_active">Attivo</string>
     <string name="settings_webhooks_inactive">Inattivo</string>
     <string name="settings_webhooks_events">Eventi</string>
@@ -449,6 +451,7 @@
     <string name="activities_search">Cerca attività</string>
     <string name="activities_no_results">Nessuna attività corrisponde ai filtri</string>
     <string name="activities_delete_title">Eliminare l\'attività?</string>
+    <string name="activities_delete_named">Elimina %1$s</string>
     <string name="activities_delete_confirm">Eliminare questa attività? \"%1$s\"</string>
     <string name="activity_new">Nuova attività</string>
     <string name="activity_edit">Modifica attività</string>
@@ -474,6 +477,7 @@
     <string name="notes_search">Cerca note</string>
     <string name="notes_no_results">Nessuna nota corrisponde ai filtri</string>
     <string name="notes_delete_title">Eliminare la nota?</string>
+    <string name="notes_delete_named">Elimina %1$s</string>
     <string name="notes_delete_confirm">Eliminare questa nota? \"%1$s\"</string>
     <string name="notes_inbox_total">%1$d non archiviate</string>
     <string name="action_load_more">Carica altri</string>
@@ -679,11 +683,14 @@
     <string name="relationships_sensitivity_secret">Segreta</string>
     <string name="relationships_edit_title">Modifica relazione</string>
     <string name="relationships_edit">Modifica relazione</string>
+    <string name="relationships_edit_named">Modifica %1$s</string>
     <string name="relationships_other_party_readonly_hint">L\'altra persona non può essere modificata qui — elimina e ricrea la relazione per collegarla a un altro contatto.</string>
     <string name="relationships_unknown_contact">Contatto sconosciuto</string>
     <string name="relationships_suggested_section">Suggerite</string>
     <string name="relationships_reject">Rifiuta</string>
+    <string name="relationships_reject_named">Rifiuta %1$s</string>
     <string name="relationships_delete_title">Eliminare la relazione?</string>
+    <string name="relationships_delete_named">Elimina %1$s</string>
     <string name="relationships_delete_confirm">Eliminare la relazione con %1$s?</string>
     <string name="relationships_reject_title">Rifiutare il suggerimento?</string>
     <string name="relationships_reject_confirm">Rifiutare la relazione suggerita con %1$s?</string>
@@ -794,6 +801,7 @@
     <string name="entities_empty">Niente ancora qui</string>
     <string name="entities_error_no_vcard_uid">Il contatto non ha un UID VCard</string>
     <string name="entities_delete_title">Eliminare l\'elemento?</string>
+    <string name="entities_delete_named">Elimina %1$s</string>
     <string name="entities_delete_confirm">Eliminare «%1$s»? Questa azione non può essere annullata.</string>
     <string name="life_events_title">Eventi di vita</string>
     <string name="life_events_new">Nuovo evento</string>

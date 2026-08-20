@@ -171,6 +171,7 @@
     <!-- Issue #220: panel de enlaces externos (sustrato ExternalIdentity). -->
     <string name="external_links_title">Enlaces externos</string>
     <string name="external_links_remove">Quitar enlace</string>
+    <string name="external_links_remove_named">Quitar enlace %1$s</string>
     <string name="external_links_remove_title">Quitar enlace externo</string>
     <string name="external_links_remove_confirm">¿Quitar el enlace de %1$s (%2$s)?</string>
     <!-- Issue #219/#220: integración con Immich (fila enriquecida de enlaces
@@ -370,6 +371,7 @@
     <string name="settings_webhooks_delete_title">Eliminar Webhook</string>
     <string name="settings_webhooks_delete_body">¿Eliminar "%1$s"? Se detendrán todas las entregas futuras.</string>
     <string name="settings_webhooks_test">Probar</string>
+    <string name="settings_webhooks_test_named">Probar %1$s</string>
     <string name="settings_webhooks_active">Activo</string>
     <string name="settings_webhooks_inactive">Inactivo</string>
     <string name="settings_webhooks_events">Eventos</string>
@@ -449,6 +451,7 @@
     <string name="activities_search">Buscar actividades</string>
     <string name="activities_no_results">Ninguna actividad coincide con tus filtros</string>
     <string name="activities_delete_title">¿Eliminar actividad?</string>
+    <string name="activities_delete_named">Eliminar %1$s</string>
     <string name="activities_delete_confirm">¿Eliminar esta actividad? \"%1$s\"</string>
     <string name="activity_new">Nueva actividad</string>
     <string name="activity_edit">Editar actividad</string>
@@ -474,6 +477,7 @@
     <string name="notes_search">Buscar notas</string>
     <string name="notes_no_results">Ninguna nota coincide con tus filtros</string>
     <string name="notes_delete_title">¿Eliminar nota?</string>
+    <string name="notes_delete_named">Eliminar %1$s</string>
     <string name="notes_delete_confirm">¿Eliminar esta nota? \"%1$s\"</string>
     <string name="notes_inbox_total">%1$d sin asignar</string>
     <string name="action_load_more">Cargar más</string>
@@ -679,11 +683,14 @@
     <string name="relationships_sensitivity_secret">Secreto</string>
     <string name="relationships_edit_title">Editar relación</string>
     <string name="relationships_edit">Editar relación</string>
+    <string name="relationships_edit_named">Editar %1$s</string>
     <string name="relationships_other_party_readonly_hint">La otra persona no se puede cambiar aquí — elimina y vuelve a crear la relación para vincularla a otro contacto.</string>
     <string name="relationships_unknown_contact">Contacto desconocido</string>
     <string name="relationships_suggested_section">Sugeridas</string>
     <string name="relationships_reject">Rechazar</string>
+    <string name="relationships_reject_named">Rechazar %1$s</string>
     <string name="relationships_delete_title">¿Eliminar relación?</string>
+    <string name="relationships_delete_named">Eliminar %1$s</string>
     <string name="relationships_delete_confirm">¿Eliminar la relación con %1$s?</string>
     <string name="relationships_reject_title">¿Rechazar sugerencia?</string>
     <string name="relationships_reject_confirm">¿Rechazar la relación sugerida con %1$s?</string>
@@ -794,6 +801,7 @@
     <string name="entities_empty">Nada por aquí todavía</string>
     <string name="entities_error_no_vcard_uid">El contacto no tiene UID de VCard</string>
     <string name="entities_delete_title">¿Eliminar elemento?</string>
+    <string name="entities_delete_named">Eliminar %1$s</string>
     <string name="entities_delete_confirm">¿Eliminar «%1$s»? Esto no se puede deshacer.</string>
     <string name="life_events_title">Acontecimientos vitales</string>
     <string name="life_events_new">Nuevo acontecimiento</string>

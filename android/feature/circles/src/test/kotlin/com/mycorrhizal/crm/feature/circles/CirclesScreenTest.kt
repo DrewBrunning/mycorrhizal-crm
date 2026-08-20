@@ -4,6 +4,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
+import com.mycorrhizal.crm.testing.a11y.assertNoDuplicateContentDescriptions
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.mockk
@@ -47,6 +48,15 @@ class CirclesScreenTest {
         setScreen(darkTheme = false)
 
         composeTestRule.assertAccessibleSemantics()
+    }
+
+    @Test
+    fun `row action labels are unique per row`() {
+        // #205: two seeded circles must not both announce a bare
+        // "Rename"/"Delete" — each row's actions carry the circle's name.
+        setScreen(darkTheme = false)
+
+        composeTestRule.assertNoDuplicateContentDescriptions()
     }
 
     @Test
