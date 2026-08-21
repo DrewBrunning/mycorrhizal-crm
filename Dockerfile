@@ -49,6 +49,13 @@ FROM --platform=$BUILDPLATFORM node:26-alpine AS frontend-builder
 
 WORKDIR /app
 
+# Node no longer bundles Corepack (and therefore the `yarn` shim) as of v26 --
+# confirmed empirically: present on node:25-alpine, gone on node:26-alpine.
+# Install yarn explicitly so a future Node bump doesn't silently break this
+# build the way #297 (node:22-alpine -> node:26-alpine) did (exit 127, "yarn:
+# not found").
+RUN npm install -g yarn
+
 # Copy package files first for better caching
 COPY frontend/package.json frontend/yarn.lock* frontend/package-lock.json* ./
 
