@@ -90,6 +90,16 @@ jobs:
         # timeout-minutes comment above for why race+coverage need the room.
         run: go test -race -timeout=20m ./... -coverprofile=coverage.out -covermode=atomic
 
+      - name: Run benchmarks (issue #261)
+        working-directory: backend
+        # Issue #261: exercise every benchmark body once. The regression gate
+        # is the query-count assertions shipped alongside them (the
+        # *_QueryCountIsBounded tests fail deterministically when a hot path
+        # gains an N+1 or the reach-out job goes superlinear) — NOT wall-clock
+        # time, which varies across CI hardware. -benchtime=1x keeps this
+        # cheap while still compiling and executing the benchmark paths.
+        run: go test -run '^$' -bench . -benchtime=1x ./...
+
       # Issue #251: visibility only, no threshold/gate — printed to the log
       # and uploaded below for anyone who wants the per-func breakdown.
       - name: Coverage summary
