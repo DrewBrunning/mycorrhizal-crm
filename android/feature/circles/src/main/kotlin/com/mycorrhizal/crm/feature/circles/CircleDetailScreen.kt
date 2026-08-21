@@ -84,7 +84,7 @@ fun CircleDetailScreen(
                 },
                 actions = {
                     IconButton(
-                        onClick = { context.startActivity(FieldActions.groupSmsIntent(textablePhones)) },
+                        onClick = { context.startActivity(FieldActions.groupSmsIntent(textablePhones, context)) },
                         enabled = textablePhones.size >= 2,
                     ) {
                         Icon(

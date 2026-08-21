@@ -69,12 +69,13 @@ RUN wget -q https://registry.npmjs.org/yarn/-/yarn-1.22.22.tgz -O /tmp/yarn.tgz 
     rm /tmp/yarn.tgz
 
 # Copy package files first for better caching
-COPY frontend/package.json frontend/yarn.lock* frontend/package-lock.json* ./
+COPY frontend/package.json frontend/yarn.lock ./
 
-# Install dependencies
-RUN if [ -f yarn.lock ]; then yarn install --frozen-lockfile; \
-    elif [ -f package-lock.json ]; then npm ci; \
-    else npm install; fi
+# Install dependencies. The repo is yarn-only (yarn.lock is committed, no
+# package-lock.json), so this is always the frozen-lockfile path. The previous
+# `npm ci` / `npm install` fallbacks were dead code, and OSSF Scorecard flagged
+# the `npm install` branch as an unpinned npm command.
+RUN yarn install --frozen-lockfile
 
 # Copy frontend source code
 COPY frontend/ .
