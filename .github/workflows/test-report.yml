@@ -13,10 +13,27 @@ name: Test Report
 # land on the contributor's changes.
 #
 # Each suite job uploads its JUnit XML (+ flake reports) as a named artifact;
-# this workflow downloads whatever exists and creates one check run per suite.
-# The suite jobs themselves remain the required checks (issue #264) — these
-# report runs are informational, so `fail-on-error` (default true) failing here
-# on a test failure does not gate merge.
+# each report step below fetches its own artifact directly (dorny/test-
+# reporter's `artifact:` input, not a separate download step) and creates one
+# check run per suite. The suite jobs themselves remain the required checks
+# (issue #264) — these report runs are informational, so `fail-on-error`
+# (default true) failing here on a test failure does not gate merge.
+#
+# Deliberately no `actions/checkout` here. This workflow runs with an
+# elevated `checks: write` token even for fork PRs (that's the whole reason
+# it's split out via `workflow_run`), and checking out an untrusted PR head
+# SHA in that context is the "pwn request" antipattern GitHub's Scorecard
+# flags under Dangerous-Workflow — see
+# https://securitylab.github.com/research/github-actions-preventing-pwn-requests/.
+# dorny/test-reporter's `artifact:` input avoids needing a checkout at all:
+# it downloads the artifact itself via the Checks/Actions API (octokit) and
+# resolves annotation file paths from the API's tracked-file listing at the
+# triggering SHA, rather than shelling out to `git ls-files` against a local
+# checkout. (An earlier version of this workflow paired manual
+# dawidd6/action-download-artifact steps with dorny's `path:` input, which
+# for annotations falls back to `git ls-files` and fails outright with no
+# checkout present — fixed by switching to `artifact:` instead of adding a
+# checkout.)
 
 on:
   workflow_run:
@@ -24,9 +41,9 @@ on:
     types: [completed]
 
 permissions:
-  # Least-privilege at the workflow level; the write grants this job needs
+  # Least-privilege at the workflow level; the write grant this job needs
   # (checks: write for dorny/test-reporter's Check Runs, actions: read to
-  # download the test-result artifacts) are scoped on the job instead, so the
+  # download the test-result artifacts) is scoped on the job instead, so the
   # default token is read-only everywhere else.
   contents: read
 
@@ -39,46 +56,18 @@ jobs:
       actions: read
       checks: write
     steps:
-      - name: Download backend JUnit results
-        uses: dawidd6/action-download-artifact@07ab29fd4a977ae4d2b275087cf67563dfdf0295 # v9
-        with:
-          # A path-gated suite job (issue #264) that didn't run uploads no
-          # artifact — `warn` keeps the download step green so the other
-          # reports still get created.
-          run_id: ${{ github.event.workflow_run.id }}
-          name: backend-junit-results
-          path: results/backend
-          if_no_artifact_found: warn
-
-      - name: Download frontend JUnit results
-        uses: dawidd6/action-download-artifact@07ab29fd4a977ae4d2b275087cf67563dfdf0295 # v9
-        with:
-          run_id: ${{ github.event.workflow_run.id }}
-          name: frontend-junit-results
-          path: results/frontend
-          if_no_artifact_found: warn
-
-      - name: Download Android unit test results
-        uses: dawidd6/action-download-artifact@07ab29fd4a977ae4d2b275087cf67563dfdf0295 # v9
-        with:
-          run_id: ${{ github.event.workflow_run.id }}
-          name: android-unit-test-results
-          path: results/android
-          if_no_artifact_found: warn
-
-      - name: Download Android instrumented E2E results
-        uses: dawidd6/action-download-artifact@07ab29fd4a977ae4d2b275087cf67563dfdf0295 # v9
-        with:
-          run_id: ${{ github.event.workflow_run.id }}
-          name: android-e2e-results
-          path: results/android-e2e
-          if_no_artifact_found: warn
-
       # Each step creates its own check run (`name`). `use-actions-summary:
       # false` makes dorny create a Check Run with annotations (its default
-      # true writes only a job summary, which annotations cannot attach to the
-      # diff). `fail-on-empty: false` keeps a report step green when its suite
-      # was path-gated out.
+      # true writes only a job summary, which annotations cannot attach to
+      # the diff). `fail-on-empty: false` keeps a report step green when its
+      # suite was path-gated out (issue #264) and uploaded no artifact —
+      # dorny's own artifact lookup warns and no-ops rather than failing the
+      # step.
+      #
+      # `path:` is matched against paths *inside* the artifact zip, not the
+      # local filesystem — actions/upload-artifact strips each artifact's
+      # longest common ancestor directory, so these are relative to that,
+      # not to the repo root.
       #
       # Note: the gradle test-retry plugin and gotestsum retain a failed
       # attempt in the JUnit XML even when the test passed on retry, so a
@@ -90,8 +79,9 @@ jobs:
         uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3
         if: always()
         with:
+          artifact: backend-junit-results
           name: Backend Test Report
-          path: results/backend/**/junit.xml
+          path: junit.xml
           reporter: java-junit
           use-actions-summary: false
           fail-on-empty: false
@@ -100,8 +90,9 @@ jobs:
         uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3
         if: always()
         with:
+          artifact: frontend-junit-results
           name: Frontend Test Report
-          path: results/frontend/**/junit.xml
+          path: junit.xml
           reporter: jest-junit
           use-actions-summary: false
           fail-on-empty: false
@@ -110,8 +101,9 @@ jobs:
         uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3
         if: always()
         with:
+          artifact: android-unit-test-results
           name: Android Unit Test Report
-          path: results/android/**/TEST-*.xml
+          path: '**/TEST-*.xml'
           reporter: java-junit
           use-actions-summary: false
           fail-on-empty: false
@@ -123,8 +115,9 @@ jobs:
         uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3
         if: always()
         with:
+          artifact: android-e2e-results
           name: Android E2E Test Report
-          path: results/android-e2e/**/androidTest-results/**/*.xml
+          path: '**/androidTest-results/**/*.xml'
           reporter: java-junit
           use-actions-summary: false
           fail-on-empty: false
