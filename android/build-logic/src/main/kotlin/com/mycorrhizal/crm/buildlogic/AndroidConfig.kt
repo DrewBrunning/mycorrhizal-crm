@@ -12,7 +12,14 @@ import org.gradle.kotlin.dsl.register
 import org.gradle.kotlin.dsl.withType
 import org.gradle.kotlin.dsl.getByType
 import org.gradle.testing.jacoco.plugins.JacocoPluginExtension
+import org.gradle.testing.jacoco.plugins.JacocoTaskExtension
 import org.gradle.testing.jacoco.tasks.JacocoReport
+import org.gradle.api.file.FileVisitor
+import org.gradle.api.file.FileVisitDetails
+import org.gradle.api.artifacts.ProjectDependency
+import org.jacoco.core.instr.Instrumenter
+import org.jacoco.core.runtime.OfflineInstrumentationAccessGenerator
+import java.io.File
 import org.gradle.testretry.TestRetryTaskExtension
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension
@@ -135,6 +142,8 @@ internal fun Project.configureAndroidTestCommon() {
     }
 }
 
+private const val JACOCO_TOOL_VERSION = "0.8.12"
+
 // Issue #251: visibility only, no threshold/gate — a separate ticket tracks
 // enforcing coverage. Applied to every module (app + library) via
 // configureAndroidCommon so `./gradlew jacocoTestReport` at the root reports
@@ -159,11 +168,8 @@ private val JACOCO_EXCLUDES = listOf(
     "**/ComposableSingletons\$*.class",
     "**/*ComposableSingletons*.class",
     // Room-generated (KSP) DAO/database implementations — like the Hilt/Moshi
-    // entries above, not code anyone writes or reviews. JaCoco also can't see
-    // execution of these regardless: Robolectric's sandboxed classloader
-    // reloads classes separately from the one JaCoco's agent instruments, so
-    // they showed 0% even under real, passing tests (issue #320) — excluding
-    // them turns a permanently-wrong number into an honest one.
+    // entries above, generated code nobody hand-writes or reviews, so it's out
+    // of scope regardless of whether a test happens to exercise it.
     "**/*_Impl.class",
     "**/*_Impl\$*.class",
 )
@@ -171,12 +177,74 @@ private val JACOCO_EXCLUDES = listOf(
 /**
  * Wires a `jacocoTestReport` task (XML + HTML) off `testDebugUnitTest`'s
  * execution data in every android module.
+ *
+ * Robolectric's sandboxed classloader loads classes separately from the one
+ * JaCoco's on-the-fly agent instruments, so any code exercised only through
+ * `RobolectricTestRunner` (every Compose screen, every Room-backed repository)
+ * reports 0% despite passing tests. We instrument the compiled classes
+ * *offline* (JaCoco `Instrumenter` + `OfflineInstrumentationAccessGenerator`)
+ * and prepend the instrumented classes to the unit-test classpath, so
+ * Robolectric's sandbox loads the already-instrumented bytes. The on-the-fly
+ * agent is disabled and the offline runtime (`org.jacoco.agent:runtime`)
+ * records to the same exec file the report already reads.
  */
 internal fun Project.configureJacoco() {
     pluginManager.apply("jacoco")
 
     extensions.configure<JacocoPluginExtension> {
-        toolVersion = "0.8.12"
+        toolVersion = JACOCO_TOOL_VERSION
+    }
+
+    val instrumentedDir = layout.buildDirectory.dir("jacoco/instrumented")
+    val instrumentTask = tasks.register("jacocoInstrumentDebug") {
+        group = "verification"
+        description = "Offline-instruments debug classes for Robolectric coverage."
+        val javaClasses = fileTree(layout.buildDirectory.dir("intermediates/javac/debug"))
+        val kotlinClasses = fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/debug"))
+        dependsOn(tasks.matching { it.name in setOf("compileDebugKotlin", "compileDebugJavaWithJavac") })
+        inputs.files(javaClasses, kotlinClasses)
+        outputs.dir(instrumentedDir)
+        doLast {
+            val dest = instrumentedDir.get().asFile
+            val instrumenter = Instrumenter(OfflineInstrumentationAccessGenerator())
+            val classTree = (javaClasses + kotlinClasses).matching {
+                exclude(JACOCO_EXCLUDES)
+            }
+            classTree.visit(object : FileVisitor {
+                override fun visitDir(dirDetails: FileVisitDetails) {}
+                override fun visitFile(fileDetails: FileVisitDetails) {
+                    if (fileDetails.name.endsWith(".class")) {
+                        val target = File(dest, fileDetails.relativePath.pathString)
+                        target.parentFile.mkdirs()
+                        target.writeBytes(
+                            instrumenter.instrument(
+                                fileDetails.file.readBytes(),
+                                fileDetails.relativePath.pathString,
+                            ),
+                        )
+                    }
+                }
+            })
+        }
+    }
+
+    // Offline instrumentation replaces the on-the-fly agent: disable the agent
+    // (otherwise plain-JVM classes would be instrumented twice) and point the
+    // offline runtime at the same exec file the report reads.
+    tasks.withType<Test>().matching { it.name == "testDebugUnitTest" }.configureEach {
+        dependsOn(instrumentTask)
+        extensions.configure<JacocoTaskExtension> {
+            isEnabled = false
+        }
+        classpath = files(instrumentedDir) + classpath
+        systemProperty(
+            "jacoco-agent.destfile",
+            layout.buildDirectory.file("jacoco/testDebugUnitTest.exec").get().asFile.absolutePath,
+        )
+    }
+
+    dependencies {
+        "testImplementation"("org.jacoco:org.jacoco.agent:$JACOCO_TOOL_VERSION:runtime")
     }
 
     tasks.register<JacocoReport>("jacocoTestReport") {
@@ -200,6 +268,96 @@ internal fun Project.configureJacoco() {
         executionData.setFrom(
             fileTree(layout.buildDirectory.get()) { include("jacoco/testDebugUnitTest.exec") },
         )
+    }
+
+    configureCrossModuleCoverage()
+}
+
+/**
+ * Wires offline coverage across module boundaries.
+ *
+ * A module's own `jacocoInstrumentDebug` task only instruments *its* classes,
+ * but its Robolectric tests also load the classes of its project dependencies
+ * (e.g. `feature:contacts` exercises `core:ui`'s editors and `core:model`'s
+ * DTOs). Those dependency classes are loaded un-instrumented, so the coverage
+ * is recorded nowhere and `core:ui`/`core:model`/`core:domain` report ~0%
+ * despite being exercised by real, passing feature tests.
+ *
+ * Fix, applied once (guarded by a root extra property) after every project has
+ * evaluated:
+ *  - prepend every transitive project dependency's instrumented dir to each
+ *    module's `testDebugUnitTest` classpath, and
+ *  - merge the exec data of every module that (transitively) depends on a
+ *    module into that module's `jacocoTestReport`, so the coverage is
+ *    attributed to the module that owns the code rather than the module whose
+ *    test happened to run it.
+ *
+ * Reports stay source-scoped (each module's report maps only its own
+ * `src/main`), so merging a module's exec into a dependent's report cannot
+ * double-count lines — a line is only ever reported by the module that owns it.
+ * The only cost is that a single-module `:x:jacocoTestReport` now also runs the
+ * tests of every module that depends on `x`.
+ *
+ * Note: this relies on `gradle.projectsEvaluated` + cross-project task wiring,
+ * which is not compatible with Gradle's configuration cache / project
+ * isolation. That's acceptable today — this build runs with both disabled —
+ * but would need a different mechanism (e.g. an artifact transform) if either
+ * is ever turned on.
+ */
+private fun Project.configureCrossModuleCoverage() {
+    val marker = "mycorrhizal.jacoco.crossModuleWired"
+    if (rootProject.extensions.extraProperties.has(marker)) return
+    rootProject.extensions.extraProperties.set(marker, true)
+
+    gradle.projectsEvaluated {
+        val modules = rootProject.subprojects
+            .filter { it.tasks.findByName("jacocoInstrumentDebug") != null }
+
+        fun Project.transitiveProjectDeps(): Set<Project> {
+            val result = linkedSetOf<Project>()
+            val queue = ArrayDeque<Project>().apply { add(this@transitiveProjectDeps) }
+            while (queue.isNotEmpty()) {
+                val p = queue.removeFirst()
+                p.configurations.flatMap { it.allDependencies }
+                    .filterIsInstance<ProjectDependency>()
+                    .map { rootProject.project(it.path) }
+                    .forEach { dep -> if (result.add(dep)) queue.add(dep) }
+            }
+            result.remove(this@transitiveProjectDeps)
+            return result
+        }
+
+        val forward = modules.associateWith { it.transitiveProjectDeps() }
+        val reverse = modules.associateWith { mod ->
+            modules.filter { mod in forward.getValue(it) }.toSet()
+        }
+
+        modules.forEach { mod ->
+            val testTask = mod.tasks.findByName("testDebugUnitTest") as? Test
+            if (testTask != null) {
+                val deps = forward.getValue(mod)
+                val depDirs = deps.map { it.layout.buildDirectory.dir("jacoco/instrumented").get().asFile }
+                testTask.classpath = mod.files(depDirs) + testTask.classpath
+                deps.forEach { dep ->
+                    dep.tasks.findByName("jacocoInstrumentDebug")?.let { testTask.dependsOn(it) }
+                }
+            }
+
+            val report = mod.tasks.findByName("jacocoTestReport") as? JacocoReport
+            if (report != null) {
+                val contributors = reverse.getValue(mod) + mod
+                report.executionData.setFrom(
+                    contributors.map { c ->
+                        c.fileTree(c.layout.buildDirectory.get().asFile) {
+                            include("jacoco/testDebugUnitTest.exec")
+                        }
+                    },
+                )
+                contributors.forEach { c ->
+                    c.tasks.findByName("testDebugUnitTest")?.let { report.dependsOn(it) }
+                }
+            }
+        }
     }
 }
 

@@ -29,4 +29,7 @@ dependencies {
     // in CI so a flake doesn't fail the required check). On the convention
     // plugin classpath so AndroidConfig can apply it to every module.
     implementation(libs.gradle.test.retry.plugin)
+    // JaCoCo offline instrumentation (Robolectric sandbox coverage): the core
+    // Instrumenter runs inside the convention plugin's custom instrument task.
+    implementation("org.jacoco:org.jacoco.core:0.8.12")
 }
