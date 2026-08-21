@@ -13,6 +13,7 @@ import org.gradle.kotlin.dsl.withType
 import org.gradle.kotlin.dsl.getByType
 import org.gradle.testing.jacoco.plugins.JacocoPluginExtension
 import org.gradle.testing.jacoco.tasks.JacocoReport
+import org.gradle.testretry.TestRetryTaskExtension
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension
 import org.gradle.api.artifacts.VersionCatalogsExtension
@@ -109,7 +110,22 @@ internal fun Project.configureAndroidTestCommon() {
         "testImplementation"(libs("turbine"))
         "testImplementation"(libs("kotlinx.coroutines.test"))
     }
+    // Issue #268: retry failed tests once on CI so a flaky test doesn't fail
+    // the required check. `failOnPassedAfterRetry` stays false (the plugin
+    // default): a test that fails once then passes on retry keeps the task
+    // green, and the flake is surfaced by the CI "Detect flaky unit tests"
+    // step (Gradle retains the failed attempt in the test-results XML even
+    // when the retry passed). Off locally (no CI env var) so dev iteration
+    // isn't slowed by re-runs.
+    pluginManager.apply("org.gradle.test-retry")
+    val isCi = providers.environmentVariable("CI").isPresent
     tasks.withType<Test>().configureEach {
+        extensions.configure<TestRetryTaskExtension> {
+            if (isCi) {
+                maxRetries.set(1)
+                maxFailures.set(20)
+            }
+        }
         testLogging {
             events("passed", "failed", "skipped")
             exceptionFormat = TestExceptionFormat.FULL

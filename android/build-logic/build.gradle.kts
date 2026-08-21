@@ -25,4 +25,8 @@ dependencies {
     implementation("org.jetbrains.kotlin.plugin.compose:org.jetbrains.kotlin.plugin.compose.gradle.plugin:2.3.10")
     implementation("com.google.devtools.ksp:com.google.devtools.ksp.gradle.plugin:2.3.11")
     implementation("com.google.dagger:hilt-android-gradle-plugin:2.60.1")
+    // Issue #268: org.gradle.test-retry (retries failed Robolectric unit tests
+    // in CI so a flake doesn't fail the required check). On the convention
+    // plugin classpath so AndroidConfig can apply it to every module.
+    implementation(libs.gradle.test.retry.plugin)
 }

@@ -69,7 +69,7 @@ RUN if [ -f yarn.lock ]; then yarn build; else npm run build; fi
 # =============================================================================
 # Stage 3: Runtime - nginx + Go backend under supervisord
 # =============================================================================
-FROM alpine:3.20
+FROM alpine:3.24
 
 # Runtime dependencies. shadow provides usermod/groupmod for PUID/PGID remap.
 # No sqlite package needed - the backend uses a pure-Go SQLite driver.
