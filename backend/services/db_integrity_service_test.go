@@ -135,12 +135,21 @@ func TestCheckDBIntegrityScheduledFiresWebhookOnCorruption(t *testing.T) {
 	cfg := config.Config{DBIntegrityCheckEnabled: true, DBIntegrityCheckIntervalHours: 24}
 	require.NotPanics(t, func() { CheckDBIntegrityScheduled(raw, cfg) })
 
-	require.Eventually(t, func() bool {
-		return atomic.LoadInt32(&hits) >= 1
-	}, 3*time.Second, 10*time.Millisecond, "corruption must trigger a db.integrity_check_failed webhook")
-
+	// deliverWebhook runs in its own goroutine (see TriggerWebhooks) and only
+	// writes the WebhookDelivery row *after* the HTTP round-trip completes, so
+	// polling on `hits` alone (set the instant the request arrives, before the
+	// response is even sent) races that write. Poll for the row itself instead.
 	var deliveries []models.WebhookDelivery
-	require.NoError(t, raw.Find(&deliveries).Error)
+	require.Eventually(t, func() bool {
+		if atomic.LoadInt32(&hits) < 1 {
+			return false
+		}
+		if err := raw.Find(&deliveries).Error; err != nil {
+			return false
+		}
+		return len(deliveries) >= 1
+	}, 3*time.Second, 10*time.Millisecond, "corruption must trigger a db.integrity_check_failed webhook and persist a delivery")
+
 	require.Len(t, deliveries, 1)
 	assert.Equal(t, EventDBIntegrityCheckFailed, deliveries[0].EventType)
 
