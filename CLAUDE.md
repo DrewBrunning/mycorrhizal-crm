@@ -246,4 +246,5 @@ only, no `os/exec`, templates from an embedded FS, `user_id` scoping everywhere,
 allowlists on updates (no mass assignment), CSV values neutralized against formula injection, SSRF guards
 enforced in the transport dialer. Go toolchain is pinned; don't float it.
 
-Known and accepted: no 2FA yet (GitHub issue #158).
+TOTP 2FA shipped 2026-08-17 (issue #158, PR #179) — recovery codes, rate-limited, doesn't
+touch CardDAV/API-token or OIDC auth. Not a gap anymore.
