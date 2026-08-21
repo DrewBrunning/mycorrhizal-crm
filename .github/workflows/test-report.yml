@@ -39,6 +39,19 @@ jobs:
       actions: read
       checks: write
     steps:
+      # dorny/test-reporter shells out to `git ls-files` to resolve annotation
+      # paths; without a checkout here the runner's workspace has no .git at
+      # all and every report step fails with "not a git repository" (exit
+      # 128) before it gets anywhere near the downloaded JUnit XML. Checked
+      # out read-only at the triggering workflow's head SHA — this job never
+      # executes anything from the checkout, only lets git list its paths, so
+      # running it against a fork PR's commit is safe despite the elevated
+      # `checks: write` token this workflow carries.
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
       - name: Download backend JUnit results
         uses: dawidd6/action-download-artifact@07ab29fd4a977ae4d2b275087cf67563dfdf0295 # v9
         with:
