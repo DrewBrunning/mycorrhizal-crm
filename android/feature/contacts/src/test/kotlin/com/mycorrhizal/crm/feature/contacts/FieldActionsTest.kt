@@ -2,6 +2,9 @@ package com.mycorrhizal.crm.feature.contacts
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ActivityInfo
+import android.content.pm.ApplicationInfo
+import android.content.pm.ResolveInfo
 import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
@@ -10,6 +13,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
@@ -42,7 +46,8 @@ class FieldActionsTest {
 
     @Test
     fun `group sms intent joins numbers with semicolons`() {
-        val intent = FieldActions.groupSmsIntent(listOf("+1-555-0100", "+1-555-0101", "+1-555-0102"))
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val intent = FieldActions.groupSmsIntent(listOf("+1-555-0100", "+1-555-0101", "+1-555-0102"), context)
         assertEquals(Intent.ACTION_SENDTO, intent.action)
         assertEquals("smsto", intent.data?.scheme)
         assertEquals("+1-555-0100;+1-555-0101;+1-555-0102", intent.data?.schemeSpecificPart)
@@ -50,8 +55,28 @@ class FieldActionsTest {
 
     @Test
     fun `group sms intent with a single number matches smsIntent's scheme-specific part`() {
-        val intent = FieldActions.groupSmsIntent(listOf("+1-555-0100"))
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val intent = FieldActions.groupSmsIntent(listOf("+1-555-0100"), context)
         assertEquals("+1-555-0100", intent.data?.schemeSpecificPart)
+    }
+
+    @Test
+    fun `group sms intent pins to the resolved messaging activity`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val smsActivity = ActivityInfo().apply {
+            packageName = "com.android.messaging"
+            name = "com.android.messaging.ui.ComposeSmsActivity"
+            applicationInfo = ApplicationInfo().apply {
+                packageName = "com.android.messaging"
+            }
+        }
+        val resolveInfo = ResolveInfo().apply { activityInfo = smsActivity }
+        val probe = Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:+1-555-0100"))
+        Shadows.shadowOf(context.packageManager).addResolveInfoForIntent(probe, resolveInfo)
+
+        val intent = FieldActions.groupSmsIntent(listOf("+1-555-0100"), context)
+        assertEquals("com.android.messaging", intent.component?.packageName)
+        assertEquals("com.android.messaging.ui.ComposeSmsActivity", intent.component?.className)
     }
 
     @Test

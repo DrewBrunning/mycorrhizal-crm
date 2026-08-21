@@ -2,6 +2,7 @@ package com.mycorrhizal.crm.feature.contacts
 
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -41,10 +42,18 @@ object FieldActions {
      * (Google Messages, Samsung Messages) opens this as a single group
      * compose screen. [numbers] should already be trimmed/de-duplicated by
      * the caller — this does not filter blanks or re-trim.
+     *
+     * The intent is pinned to the specific activity the system resolves for
+     * `smsto:`, so the recipients' phone numbers are delivered only to that
+     * one app rather than to any application that registers an implicit
+     * `smsto:` handler (CWE-927).
      */
-    fun groupSmsIntent(numbers: List<String>): Intent =
+    fun groupSmsIntent(numbers: List<String>, context: Context): Intent =
         Intent(Intent.ACTION_SENDTO).apply {
             data = Uri.parse("smsto:${numbers.joinToString(";")}")
+            resolveActivityInfo(context.packageManager, 0)?.let { resolved ->
+                setComponent(ComponentName(resolved.packageName, resolved.name))
+            }
         }
 
     /** `ACTION_SENDTO mailto:` — opens the mail app with [address] pre-filled. */
