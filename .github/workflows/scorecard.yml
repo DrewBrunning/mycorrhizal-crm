@@ -37,8 +37,15 @@ jobs:
         with:
           persist-credentials: false
 
+      # Pinned to an exact release rather than floating on a major like the
+      # other actions in this file: ossf/scorecard-action, like
+      # aquasecurity/trivy-action (see docker-publish.yml), does not publish
+      # a floating major tag -- only exact vX.Y.Z releases -- so "v2" 404s.
+      # Same deliberate exception, same fix: exact pin, bumped via the
+      # github-actions Dependabot ecosystem added in #269 instead of drifting
+      # unnoticed.
       - name: Run analysis
-        uses: ossf/scorecard-action@v2
+        uses: ossf/scorecard-action@v2.4.4
         with:
           results_file: results.sarif
           results_format: sarif
