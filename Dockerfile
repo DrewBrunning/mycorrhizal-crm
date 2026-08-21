@@ -45,9 +45,16 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
 # repo prefers an explicit, reproducible pin over a floating tag (see the Go
 # toolchain note in CLAUDE.md). frontend/Dockerfile didn't need this change:
 # lts-alpine already resolves past the floor (Node 24 as of 2026-08).
-FROM --platform=$BUILDPLATFORM node:22-alpine AS frontend-builder
+FROM --platform=$BUILDPLATFORM node:26-alpine AS frontend-builder
 
 WORKDIR /app
+
+# Node no longer bundles Corepack (and therefore the `yarn` shim) as of v26 --
+# confirmed empirically: present on node:25-alpine, gone on node:26-alpine.
+# Install yarn explicitly so a future Node bump doesn't silently break this
+# build the way #297 (node:22-alpine -> node:26-alpine) did (exit 127, "yarn:
+# not found").
+RUN npm install -g yarn
 
 # Copy package files first for better caching
 COPY frontend/package.json frontend/yarn.lock* frontend/package-lock.json* ./
