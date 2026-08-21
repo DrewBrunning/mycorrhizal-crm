@@ -90,6 +90,18 @@ jobs:
         # timeout-minutes comment above for why race+coverage need the room.
         run: go test -race -timeout=20m ./... -coverprofile=coverage.out -covermode=atomic
 
+      # Issue #294: durable coverage tracking + per-PR diff comment on top of
+      # the artifact above. Informational only (see codecov.yml) — a failed
+      # upload (app not installed yet, Codecov outage) must not fail the
+      # build, hence fail_ci_if_error: false.
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5.5.5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: backend/coverage.out
+          flags: backend
+          fail_ci_if_error: false
+
       - name: Run benchmarks (issue #261)
         working-directory: backend
         # Issue #261: exercise every benchmark body once. The regression gate
@@ -123,7 +135,7 @@ jobs:
 
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: backend-coverage
           path: |
@@ -162,6 +174,16 @@ jobs:
         env:
           CI: true
 
+      # Issue #294: see the backend job's identical step for why
+      # fail_ci_if_error is false.
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5.5.5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: frontend/coverage/lcov.info
+          flags: frontend
+          fail_ci_if_error: false
+
       - name: Type check
         working-directory: frontend
         run: npx tsc --noEmit
@@ -173,7 +195,7 @@ jobs:
       # Issue #251: visibility only, no threshold/gate.
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: frontend-coverage
           path: frontend/coverage/
