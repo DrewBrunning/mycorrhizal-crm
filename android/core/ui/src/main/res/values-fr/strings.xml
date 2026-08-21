@@ -606,6 +606,8 @@
     <string name="circles_empty">Aucun cercle pour le moment</string>
     <string name="circles_members_empty">Aucun membre pour le moment</string>
     <string name="circles_error_missing_id">Identifiant de cercle manquant</string>
+    <!-- Issue #218: group SMS to every circle member with a phone number. -->
+    <string name="circles_text_everyone">Écrire à tous</string>
 
     <!-- Circle & tag triage (M26) -->
     <string name="settings_circle_tag_triage">Tri des cercles et étiquettes</string>
@@ -679,6 +681,8 @@
     <string name="households_members_empty">Aucun membre pour le moment</string>
     <string name="households_error_missing_id">Identifiant de foyer manquant</string>
     <string name="households_suggest_relationships">Suggérer des relations</string>
+    <!-- Issue #218: group SMS to every household member with a phone number. -->
+    <string name="households_text_everyone">Écrire à tous</string>
     <string name="households_suggestions_generated">%1$d nouvelles relations suggérées générées. Examinez-les sur les pages de contact des membres.</string>
     <string name="households_no_new_suggestions">Aucune nouvelle suggestion — les relations existantes couvrent déjà ce foyer.</string>
     <string name="households_suggest_addresses">Suggérer des foyers depuis une adresse partagée</string>
