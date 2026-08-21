@@ -11,7 +11,17 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Status-Beta-purple" alt="Status: Beta">
-  <a href="https://securityscorecards.dev/viewer/?uri=github.com/DrewBrunning/mycorrhizal-crm"><img src="https://api.securityscorecards.dev/projects/github.com/DrewBrunning/mycorrhizal-crm/badge" alt="OpenSSF Scorecard"></a>
+  <!-- Not the native shields.io "ossf-scorecard" badge type: that service (see
+       badges/shields services/ossf-scorecard/ossf-scorecard.service.js) is hardcoded to
+       api.securityscorecards.dev, the domain OpenSSF is migrating off of. scorecard.yml
+       publishes to the current domain, api.scorecard.dev -- which the old domain 404s on
+       for any repo (like this one) whose results only ever landed on the new backend, so
+       that badge type renders "invalid repo path" despite the score being real and current.
+       This is shields' generic dynamic-JSON badge pointed straight at api.scorecard.dev,
+       bypassing their stale ossf-scorecard lookup. Trade-off: no automatic red-to-green
+       color scale (that's baked into the ossf-scorecard badge type, not available here) --
+       left as a static color rather than one that goes stale as the score changes. -->
+  <a href="https://scorecard.dev/viewer/?uri=github.com/DrewBrunning/mycorrhizal-crm"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.scorecard.dev%2Fprojects%2Fgithub.com%2FDrewBrunning%2Fmycorrhizal-crm&query=%24.score&label=openssf%20scorecard&suffix=%2F10" alt="OpenSSF Scorecard"></a>
   <a href="https://codecov.io/gh/DrewBrunning/mycorrhizal-crm"><img src="https://codecov.io/gh/DrewBrunning/mycorrhizal-crm/graph/badge.svg" alt="Coverage"></a>
 </p>
 
