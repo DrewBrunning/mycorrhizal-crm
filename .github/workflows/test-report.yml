@@ -1,0 +1,124 @@
+name: Test Report
+
+# Issue #268: surfaces the JUnit XML emitted by the Go, vitest, and Android
+# suites as GitHub Check Runs with code annotations on the PR.
+#
+# This runs as a *separate* workflow triggered by `workflow_run` instead of
+# running dorny/test-reporter inside the test workflows. dorny/test-reporter
+# needs `checks: write`, which `pull_request` workflows cannot get for fork
+# PRs (the GITHUB_TOKEN is read-only there); `workflow_run` runs in the
+# context of the default branch with write access even when the triggering
+# workflow came from a fork. dorny/test-reporter v3 resolves the PR head SHA
+# from the workflow_run payload (see its getCheckRunContext), so annotations
+# land on the contributor's changes.
+#
+# Each suite job uploads its JUnit XML (+ flake reports) as a named artifact;
+# this workflow downloads whatever exists and creates one check run per suite.
+# The suite jobs themselves remain the required checks (issue #264) — these
+# report runs are informational, so `fail-on-error` (default true) failing here
+# on a test failure does not gate merge.
+
+on:
+  workflow_run:
+    workflows: [Unit Tests, Android Tests]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+  checks: write
+
+jobs:
+  report:
+    name: Test Report
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download backend JUnit results
+        uses: dawidd6/action-download-artifact@v9
+        with:
+          # A path-gated suite job (issue #264) that didn't run uploads no
+          # artifact — `warn` keeps the download step green so the other
+          # reports still get created.
+          run_id: ${{ github.event.workflow_run.id }}
+          name: backend-junit-results
+          path: results/backend
+          if_no_artifact_found: warn
+
+      - name: Download frontend JUnit results
+        uses: dawidd6/action-download-artifact@v9
+        with:
+          run_id: ${{ github.event.workflow_run.id }}
+          name: frontend-junit-results
+          path: results/frontend
+          if_no_artifact_found: warn
+
+      - name: Download Android unit test results
+        uses: dawidd6/action-download-artifact@v9
+        with:
+          run_id: ${{ github.event.workflow_run.id }}
+          name: android-unit-test-results
+          path: results/android
+          if_no_artifact_found: warn
+
+      - name: Download Android instrumented E2E results
+        uses: dawidd6/action-download-artifact@v9
+        with:
+          run_id: ${{ github.event.workflow_run.id }}
+          name: android-e2e-results
+          path: results/android-e2e
+          if_no_artifact_found: warn
+
+      # Each step creates its own check run (`name`). `use-actions-summary:
+      # false` makes dorny create a Check Run with annotations (its default
+      # true writes only a job summary, which annotations cannot attach to the
+      # diff). `fail-on-empty: false` keeps a report step green when its suite
+      # was path-gated out.
+      #
+      # Note: the gradle test-retry plugin and gotestsum retain a failed
+      # attempt in the JUnit XML even when the test passed on retry, so a
+      # flaky test shows up as a failure in these reports while the required
+      # check is green — exactly the flake-vs-regression distinction issue
+      # #268 is after. The suite jobs also print/upload their own flake
+      # reports for triage.
+      - name: Backend test report
+        uses: dorny/test-reporter@v3
+        if: always()
+        with:
+          name: Backend Test Report
+          path: results/backend/**/junit.xml
+          reporter: java-junit
+          use-actions-summary: false
+          fail-on-empty: false
+
+      - name: Frontend test report
+        uses: dorny/test-reporter@v3
+        if: always()
+        with:
+          name: Frontend Test Report
+          path: results/frontend/**/junit.xml
+          reporter: jest-junit
+          use-actions-summary: false
+          fail-on-empty: false
+
+      - name: Android unit test report
+        uses: dorny/test-reporter@v3
+        if: always()
+        with:
+          name: Android Unit Test Report
+          path: results/android/**/TEST-*.xml
+          reporter: java-junit
+          use-actions-summary: false
+          fail-on-empty: false
+
+      # Scoped to the final connected-run XMLs: a retried attempt's failing
+      # XML is preserved under app/build/flaky-attempt-*/ (uploaded with this
+      # artifact for triage) and would otherwise double-count as failures.
+      - name: Android instrumented E2E report
+        uses: dorny/test-reporter@v3
+        if: always()
+        with:
+          name: Android E2E Test Report
+          path: results/android-e2e/**/androidTest-results/**/*.xml
+          reporter: java-junit
+          use-actions-summary: false
+          fail-on-empty: false

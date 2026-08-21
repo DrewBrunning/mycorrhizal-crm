@@ -67,6 +67,25 @@ jobs:
         working-directory: android
         run: ./gradlew testDebugUnitTest
 
+      # Issue #268: the test-retry plugin (configured in build-logic) reruns a
+      # failed Robolectric test once in CI. Gradle retains the failed attempt
+      # in the test-results XML even when the retry passed, so when the task
+      # SUCCEEDED any remaining <failure>/<error> in the XML marks a test that
+      # only passed on retry — i.e. a flake. That's the signal: the required
+      # check stays green, but the flake is called out here (and in the check
+      # run from test-report.yml, where dorny/test-reporter will also show it).
+      - name: Detect flaky unit tests (failed once, passed on retry)
+        if: success()
+        working-directory: android
+        run: |
+          flaky=$(grep -rlE '<failure|<error' --include='TEST-*.xml' . | grep '/build/test-results/' || true)
+          if [ -n "$flaky" ]; then
+            echo "::warning::Flaky tests detected (passed only on retry):"
+            echo "$flaky"
+          else
+            echo "No flaky tests this run."
+          fi
+
       # Issue #251: visibility only, no threshold/gate. Runs `jacocoTestReport`
       # in every module (bare task name, same pattern as testDebugUnitTest
       # above) off the exec data the step above just produced.
@@ -88,6 +107,19 @@ jobs:
         with:
           name: android-coverage
           path: android/**/build/reports/jacoco/jacocoTestReport/
+          retention-days: 7
+
+      # Issue #268: JUnit XML from the Robolectric unit tests, consumed by
+      # test-report.yml (dorny/test-reporter). `if: always()` keeps the report
+      # available even when the test step failed.
+      - name: Upload unit test results (JUnit)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-unit-test-results
+          path: |
+            android/**/build/test-results/testDebugUnitTest/TEST-*.xml
+            android/**/build/reports/tests/
           retention-days: 7
 
   # Issue #238: instrumented E2E tests (app/src/androidTest) — the real app
@@ -159,6 +191,13 @@ jobs:
       # adb reverse tunnels the device's 127.0.0.1:7300 to the host's loopback
       # — the exact path the Pixel 8a runbook uses — so the suite is immune to
       # emulator NAT quirks (10.0.2.2 varies by image/API level).
+      #
+      # Issue #268: the connected suite is retried once on failure (the
+      # org.gradle.test-retry plugin only covers JVM `Test` tasks, not AGP's
+      # connected tasks, so this is the "equivalent" for instrumented E2E).
+      # When a retry is triggered the failing attempt's JUnit XML is preserved
+      # under app/build/flaky-attempt-*/ (uploaded below) — if the retry then
+      # passes, those files are the flake signal to triage.
       - name: Run instrumented E2E tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -167,13 +206,29 @@ jobs:
           arch: x86_64
           profile: pixel_6
           working-directory: ./android
-          # Script lines run as individual sh -c commands, so no backslash
-          # line continuations — one command per line. :app-scoped: a bare
-          # `connectedDebugAndroidTest` would expand to every module, including
-          # libraries with no instrumented tests whose connected tasks fail.
+          # Script lines run as individual sh -c commands (parseScript splits on
+          # newlines), so the retry loop below is a single line — no backslash
+          # line continuations. :app-scoped: a bare `connectedDebugAndroidTest`
+          # would expand to every module, including libraries with no
+          # instrumented tests whose connected tasks fail.
           script: |
             adb reverse tcp:7300 tcp:7300
-            ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300
+            max_attempts=2; attempt=1; while true; do if ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300; then exit 0; fi; if [ "$attempt" -ge "$max_attempts" ]; then echo "connectedDebugAndroidTest failed after $max_attempts attempts" >&2; exit 1; fi; echo "connectedDebugAndroidTest failed on attempt $attempt/$max_attempts; preserving failing results and retrying"; mkdir -p "app/build/flaky-attempt-$attempt"; cp app/build/outputs/androidTest-results/connected/*.xml "app/build/flaky-attempt-$attempt/" 2>/dev/null || true; attempt=$((attempt + 1)); done
+
+      # Issue #268: if the suite passed but only after a retry, the preserved
+      # flaky-attempt-* XMLs are the flake signal (the final connected run
+      # overwrote the failing attempt). Printed here for the log and uploaded
+      # with the results artifact for triage.
+      - name: Report instrumented flakes (passed only on retry)
+        if: success()
+        working-directory: android
+        run: |
+          if ls app/build/flaky-attempt-*/ >/dev/null 2>&1; then
+            echo "::warning::Instrumented suite passed only after retry. Preserved failing attempt(s):"
+            ls -d app/build/flaky-attempt-*/
+          else
+            echo "No instrumented retries this run."
+          fi
 
       - name: Upload E2E results
         uses: actions/upload-artifact@v4
@@ -183,6 +238,7 @@ jobs:
           path: |
             android/app/build/reports/androidTests/
             android/app/build/outputs/androidTest-results/
+            android/app/build/flaky-attempt-*/
           retention-days: 7
 
       - name: Show container logs on failure
