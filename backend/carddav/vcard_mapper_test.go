@@ -254,3 +254,27 @@ func TestApplePseudoLabelImport(t *testing.T) {
 		t.Errorf("apple pseudo-label not normalized to cell: %+v", got.Phones)
 	}
 }
+
+func TestMapGenderFromVCard(t *testing.T) {
+	cases := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{name: "male uppercase", in: "M", want: "male"},
+		{name: "male lowercase", in: "m", want: "male"},
+		{name: "female", in: "F", want: "female"},
+		{name: "other", in: "O", want: "other"},
+		{name: "none", in: "N", want: "prefer_not_to_say"},
+		{name: "unknown", in: "U", want: "prefer_not_to_say"},
+		{name: "empty", in: "", want: ""},
+		{name: "unrecognized token", in: "X", want: ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := mapGenderFromVCard(tc.in); got != tc.want {
+				t.Errorf("mapGenderFromVCard(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+		})
+	}
+}
