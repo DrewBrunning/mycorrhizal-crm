@@ -86,6 +86,13 @@ jobs:
     timeout-minutes: 45
     permissions:
       contents: write
+      # id-token: write + attestations: write let
+      # actions/attest-build-provenance mint a short-lived Sigstore
+      # certificate from GitHub's OIDC issuer and persist the resulting
+      # attestation against this repository (see the "Attest the release APK"
+      # step below). No key material to generate or store.
+      id-token: write
+      attestations: write
     env:
       # Same rationale as android-apk-build.yml: nothing in the repo sets this,
       # and GitHub-hosted ubuntu runners install the SDK here.
@@ -186,15 +193,36 @@ jobs:
           tag_name: ${{ env.RELEASE_TAG }}
           files: android/app/build/outputs/apk/release/*.apk
 
+      # SLSA build provenance for the APK, as a GitHub-native attestation.
+      # GitHub digest-matches the attested subject against the release asset
+      # uploaded just above, which is what puts the "Verified" provenance badge
+      # on the Release page and what OSSF Scorecard's Signed-Releases check
+      # actually looks for -- that check inspects GitHub release assets, so
+      # cosign-signing the Docker images (which live in the registry, not the
+      # release) never touched it. Verifiable downstream with
+      # `gh attestation verify <apk> -R DrewBrunning/mycorrhizal-crm`.
+      #
+      # Deliberately after the upload: the release-asset association happens
+      # when the attestation is created, by matching the subject digest against
+      # assets that exist at that moment.
+      - name: Attest the release APK (build provenance)
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: android/app/build/outputs/apk/release/*.apk
+
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-      # id-token: write is what lets cosign request a short-lived OIDC
-      # identity token from GitHub's Sigstore-federated issuer for keyless
-      # signing below -- no key material to generate, rotate, or store.
+      # id-token: write is what lets cosign and actions/attest-build-provenance
+      # request a short-lived OIDC identity token from GitHub's
+      # Sigstore-federated issuer for keyless signing / attestation below -- no
+      # key material to generate, rotate, or store.
       id-token: write
+      # Persists the SLSA attestation against this repository (see the
+      # "Attest the published image" step below).
+      attestations: write
 
     strategy:
       matrix:
@@ -317,6 +345,29 @@ jobs:
           SUFFIX: ${{ matrix.suffix }}
         run: |
           cosign sign --yes "ghcr.io/${GITHUB_REPOSITORY,,}${SUFFIX}@${DIGEST}"
+
+      # The lowercase reference again, shared by the attest step below (GitHub
+      # Actions expressions have no lower() function, so it's done in bash the
+      # same way the cosign line above does it).
+      - name: Compute lowercase image reference
+        env:
+          SUFFIX: ${{ matrix.suffix }}
+        run: echo "IMAGE_REF=ghcr.io/${GITHUB_REPOSITORY,,}${SUFFIX}" >> "$GITHUB_ENV"
+
+      # GH-native SLSA build provenance, in addition to the buildkit provenance
+      # (`provenance: true` on the build above) and the cosign signature just
+      # created. The layers have different verifiers and consumers: buildkit
+      # provenance is pulled from the registry with cosign, this one is checked
+      # with `gh attestation verify oci://ghcr.io/...` and surfaces in GitHub's
+      # UI. Signs the digest (`steps.build.outputs.digest`), not a tag, for the
+      # same mutability reason as the cosign line. Stored in the GH attestations
+      # API only -- the images already carry provenance referrers in the
+      # registry from the build, so nothing extra is pushed there.
+      - name: Attest the published image (build provenance)
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ env.IMAGE_REF }}
+          subject-digest: ${{ steps.build.outputs.digest }}
 
   scan:
     runs-on: ubuntu-latest
