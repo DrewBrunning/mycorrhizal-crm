@@ -111,6 +111,37 @@ func TestCheckDBIntegrityDetectsCorruption(t *testing.T) {
 	assert.NotEmpty(t, detail, "must report what integrity_check found")
 }
 
+// TestCheckDBIntegrityErrorsOnClosedConnection distinguishes "the
+// integrity_check query itself failed" (a real Go error, e.g. a lost
+// connection) from "the query ran and found corruption" (TestCheckDBIntegrityDetectsCorruption).
+// CheckDBIntegrityScheduled fires a differently-shaped webhook payload for
+// each ("error" vs. "detail"), so the two must stay distinguishable.
+func TestCheckDBIntegrityErrorsOnClosedConnection(t *testing.T) {
+	db, _ := seededLiveDB(t, "integrity-closed.db")
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	require.NoError(t, sqlDB.Close())
+
+	ok, detail, err := checkDBIntegrity(db)
+	require.Error(t, err, "a failed integrity_check query itself (not corruption found) must surface as an error")
+	assert.False(t, ok)
+	assert.Empty(t, detail)
+}
+
+// TestDBIntegrityCheckMinIntervalClampsToMargin pins the same guard
+// restoreDrillMinInterval has: a configured interval at or below the margin
+// must floor at the margin rather than going zero/negative, which would
+// otherwise let the job re-run on every cron tick.
+func TestDBIntegrityCheckMinIntervalClampsToMargin(t *testing.T) {
+	got := dbIntegrityCheckMinInterval(config.Config{DBIntegrityCheckIntervalHours: 0})
+	assert.Equal(t, dbIntegrityCheckMinIntervalMargin, got)
+}
+
+func TestDBIntegrityCheckMinIntervalAboveMargin(t *testing.T) {
+	got := dbIntegrityCheckMinInterval(config.Config{DBIntegrityCheckIntervalHours: 24})
+	assert.Equal(t, 24*time.Hour-dbIntegrityCheckMinIntervalMargin, got)
+}
+
 func TestCheckDBIntegrityScheduledFiresWebhookOnCorruption(t *testing.T) {
 	db, path := seededLiveDB(t, "corrupt-scheduled.db")
 	user := models.User{}
