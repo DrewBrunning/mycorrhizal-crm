@@ -24,17 +24,23 @@ on:
     types: [completed]
 
 permissions:
+  # Least-privilege at the workflow level; the write grants this job needs
+  # (checks: write for dorny/test-reporter's Check Runs, actions: read to
+  # download the test-result artifacts) are scoped on the job instead, so the
+  # default token is read-only everywhere else.
   contents: read
-  actions: read
-  checks: write
 
 jobs:
   report:
     name: Test Report
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      checks: write
     steps:
       - name: Download backend JUnit results
-        uses: dawidd6/action-download-artifact@v9
+        uses: dawidd6/action-download-artifact@07ab29fd4a977ae4d2b275087cf67563dfdf0295 # v9
         with:
           # A path-gated suite job (issue #264) that didn't run uploads no
           # artifact — `warn` keeps the download step green so the other
@@ -45,7 +51,7 @@ jobs:
           if_no_artifact_found: warn
 
       - name: Download frontend JUnit results
-        uses: dawidd6/action-download-artifact@v9
+        uses: dawidd6/action-download-artifact@07ab29fd4a977ae4d2b275087cf67563dfdf0295 # v9
         with:
           run_id: ${{ github.event.workflow_run.id }}
           name: frontend-junit-results
@@ -53,7 +59,7 @@ jobs:
           if_no_artifact_found: warn
 
       - name: Download Android unit test results
-        uses: dawidd6/action-download-artifact@v9
+        uses: dawidd6/action-download-artifact@07ab29fd4a977ae4d2b275087cf67563dfdf0295 # v9
         with:
           run_id: ${{ github.event.workflow_run.id }}
           name: android-unit-test-results
@@ -61,7 +67,7 @@ jobs:
           if_no_artifact_found: warn
 
       - name: Download Android instrumented E2E results
-        uses: dawidd6/action-download-artifact@v9
+        uses: dawidd6/action-download-artifact@07ab29fd4a977ae4d2b275087cf67563dfdf0295 # v9
         with:
           run_id: ${{ github.event.workflow_run.id }}
           name: android-e2e-results
@@ -81,7 +87,7 @@ jobs:
       # #268 is after. The suite jobs also print/upload their own flake
       # reports for triage.
       - name: Backend test report
-        uses: dorny/test-reporter@v3
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3
         if: always()
         with:
           name: Backend Test Report
@@ -91,7 +97,7 @@ jobs:
           fail-on-empty: false
 
       - name: Frontend test report
-        uses: dorny/test-reporter@v3
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3
         if: always()
         with:
           name: Frontend Test Report
@@ -101,7 +107,7 @@ jobs:
           fail-on-empty: false
 
       - name: Android unit test report
-        uses: dorny/test-reporter@v3
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3
         if: always()
         with:
           name: Android Unit Test Report
@@ -114,7 +120,7 @@ jobs:
       # XML is preserved under app/build/flaky-attempt-*/ (uploaded with this
       # artifact for triage) and would otherwise double-count as failures.
       - name: Android instrumented E2E report
-        uses: dorny/test-reporter@v3
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3
         if: always()
         with:
           name: Android E2E Test Report
