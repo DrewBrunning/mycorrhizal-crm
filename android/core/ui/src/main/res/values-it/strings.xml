@@ -606,6 +606,8 @@
     <string name="circles_empty">Ancora nessun cerchio</string>
     <string name="circles_members_empty">Ancora nessun membro</string>
     <string name="circles_error_missing_id">ID cerchio mancante</string>
+    <!-- Issue #218: group SMS to every circle member with a phone number. -->
+    <string name="circles_text_everyone">Scrivi a tutti</string>
 
     <!-- Circle & tag triage (M26) -->
     <string name="settings_circle_tag_triage">Classificazione cerchi ed etichette</string>
@@ -679,6 +681,8 @@
     <string name="households_members_empty">Ancora nessun membro</string>
     <string name="households_error_missing_id">ID famiglia mancante</string>
     <string name="households_suggest_relationships">Suggerisci relazioni</string>
+    <!-- Issue #218: group SMS to every household member with a phone number. -->
+    <string name="households_text_everyone">Scrivi a tutti</string>
     <string name="households_suggestions_generated">Generate %1$d nuove relazioni suggerite. Rivedile nelle pagine di contatto dei membri.</string>
     <string name="households_no_new_suggestions">Nessun nuovo suggerimento — le relazioni esistenti coprono già questo nucleo.</string>
     <string name="households_suggest_addresses">Suggerisci nuclei da un indirizzo condiviso</string>

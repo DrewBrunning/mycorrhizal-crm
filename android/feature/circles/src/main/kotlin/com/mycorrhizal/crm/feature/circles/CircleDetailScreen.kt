@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Message
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,11 +32,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.mycorrhizal.crm.feature.contacts.FieldActions
 import com.mycorrhizal.crm.model.network.CircleMember
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
@@ -52,6 +55,18 @@ fun CircleDetailScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var showAddDialog by remember { mutableStateOf(false) }
     val errorMessage = state.errorRes?.let { stringResource(it) } ?: state.error
+    val context = LocalContext.current
+
+    // Issue #218: numbers for the "text everyone" group SMS. Members with no
+    // phone number are silently skipped. Deduplicated in case two members
+    // share a number.
+    val textablePhones = remember(state.members, state.contactsByUid) {
+        state.members
+            .mapNotNull { member -> state.contactsByUid[member.memberVCardUid]?.primaryPhone }
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .distinct()
+    }
 
     Scaffold(
         topBar = {
@@ -66,6 +81,17 @@ fun CircleDetailScreen(
                         text = state.circle?.name ?: stringResource(R.string.circles_title),
                         style = MaterialTheme.typography.titleLarge,
                     )
+                },
+                actions = {
+                    IconButton(
+                        onClick = { context.startActivity(FieldActions.groupSmsIntent(textablePhones)) },
+                        enabled = textablePhones.size >= 2,
+                    ) {
+                        Icon(
+                            Icons.Outlined.Message,
+                            contentDescription = stringResource(R.string.circles_text_everyone),
+                        )
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
