@@ -4147,13 +4147,12 @@ react-dom@^19.2.8:
   dependencies:
     scheduler "^0.27.0"
 
-react-easy-crop@^5.5.5:
-  version "5.5.7"
-  resolved "https://registry.npmjs.org/react-easy-crop/-/react-easy-crop-5.5.7.tgz"
-  integrity sha512-kYo4NtMeXFQB7h1U+h5yhUkE46WQbQdq7if54uDlbMdZHdRgNehfvaFrXnFw5NR1PNoUOJIfTwLnWmEx/MaZnA==
+react-easy-crop@^6.2.3:
+  version "6.2.3"
+  resolved "https://registry.yarnpkg.com/react-easy-crop/-/react-easy-crop-6.2.3.tgz#5b5fb04bab2b15fc51c502611184d05f278296d0"
+  integrity sha512-ebimG3OGlzizjxEZ77Cj9CVLcg5vDZ6QVz8ud1rx4WmsCDWHIROEhgMi0GpJ/jKAuwHrH0M+QZUK4hyvxbYhOA==
   dependencies:
     normalize-wheel "^1.0.1"
-    tslib "^2.0.1"
 
 react-force-graph-2d@^1.29.0:
   version "1.29.1"
@@ -4803,11 +4802,6 @@ ts-api-utils@^2.5.0:
   version "2.5.0"
   resolved "https://registry.yarnpkg.com/ts-api-utils/-/ts-api-utils-2.5.0.tgz#4acd4a155e22734990a5ed1fe9e97f113bcb37c1"
   integrity sha512-OJ/ibxhPlqrMM0UiNHJ/0CKQkoKF243/AEmplt3qpRgkW8VG7IfOS41h7V8TjITqdByHzrjcS/2si+y4lIh8NA==
-
-tslib@^2.0.1:
-  version "2.8.1"
-  resolved "https://registry.npmjs.org/tslib/-/tslib-2.8.1.tgz"
-  integrity sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==
 
 type-check@^0.4.0, type-check@~0.4.0:
   version "0.4.0"
