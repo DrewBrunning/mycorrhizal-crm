@@ -90,6 +90,18 @@ jobs:
         # timeout-minutes comment above for why race+coverage need the room.
         run: go test -race -timeout=20m ./... -coverprofile=coverage.out -covermode=atomic
 
+      # Issue #294: durable coverage tracking + per-PR diff comment on top of
+      # the artifact above. Informational only (see codecov.yml) — a failed
+      # upload (app not installed yet, Codecov outage) must not fail the
+      # build, hence fail_ci_if_error: false.
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: backend/coverage.out
+          flags: backend
+          fail_ci_if_error: false
+
       - name: Run benchmarks (issue #261)
         working-directory: backend
         # Issue #261: exercise every benchmark body once. The regression gate
@@ -161,6 +173,16 @@ jobs:
         run: yarn test:coverage
         env:
           CI: true
+
+      # Issue #294: see the backend job's identical step for why
+      # fail_ci_if_error is false.
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: frontend/coverage/lcov.info
+          flags: frontend
+          fail_ci_if_error: false
 
       - name: Type check
         working-directory: frontend
