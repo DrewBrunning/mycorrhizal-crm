@@ -40,7 +40,7 @@ Mycorrhizal CRM is a self-hosted contact relationship management solution. It is
 
 Mycorrhizal builds heavily upon the solid foundation of Meerkat, adding modern protocol support, deeper structural relationships, and lifestyle tracking utilities.
 
-Everything in this section is **built and working today**. Things that are planned but not yet implemented are listed separately under [On the roadmap](#on-the-roadmap) — nothing below is aspirational.
+Everything in this section is **built and working today** — nothing below is aspirational. (Planned-but-not-built work lives in [GitHub Issues](https://github.com/DrewBrunning/mycorrhizal-crm/issues), not here.)
 
 ### Modern Data Formats & Syncing
 - **Expanded Protocol Support:** In addition to vCard 3.0 and CardDAV/CalDAV, Mycorrhizal adds full support for **vCard 4.0** and **JSContact**.
@@ -63,9 +63,10 @@ Everything in this section is **built and working today**. Things that are plann
 - **Bulk Operations:** Apply circle, tag and delete operations across many contacts at once.
 - **One-Time Cross-User Sharing:** Share specific contacts with other users on the same instance, including granular selection of which fields are shared. *(Note: This is a one-time point-in-time copy/share to the target user rather than an ongoing real-time sync).*
 - **Files & Documents:** Upload and associate documents and files with a contact
-- **Full Backup & Restore:** `make backup` produces a consistent online SQLite snapshot (safe while the server runs), with a documented restore procedure covering the database, photos and attachments together. See [Deployment → Backups](https://drewbrunning.github.io/mycorrhizal-crm/deployment.html#backups).
+- **Full Backup & Restore:** `make backup` produces a consistent online SQLite snapshot (safe while the server runs), with a documented restore procedure covering the database, photos and attachments together. A scheduled integrity check and a periodic restore drill (actually restoring the latest backup into a scratch database and comparing row counts) run automatically to catch a corrupt or non-restorable backup before you'd ever need it. See [Deployment → Backups](https://drewbrunning.github.io/mycorrhizal-crm/deployment.html#backups).
 
 ### Staying In Touch
+- **Favorites:** Star key contacts for a dedicated filter and a dashboard shortlist.
 - **Cadence & Relationship Health:** Set how often you intend to be in touch with someone and see who has gone quiet. Cadence resets on a real interaction, not on ticking off a task.
 - **Prep View:** A per-person briefing pulling together recent history, open agenda items and life events before you see or call someone.
 - **Conversation Agenda:** Keep a running list of things to raise next time you talk to a given person.
@@ -79,15 +80,11 @@ Everything in this section is **built and working today**. Things that are plann
 - **External Links:** Deep-link a contact into other systems you run, with a configurable link-type registry (`tel:`, `sms:`, WhatsApp, and anything else you define).
 - **Audit Trail:** A per-record history of what changed and when.
 
+### Account Security
+- **Two-Factor Authentication:** TOTP (RFC 6238) as a second factor on interactive login, with single-use recovery codes for when you lose the device. SSO via OIDC remains available as an alternative; CardDAV/API-token auth is unaffected either way.
+
 ### Native Apps
-- **Android app:** A Kotlin/Jetpack Compose client in `android/` — login (including OIDC SSO), contact list + detail with offline cache, dashboard and prep view, call/SMS tracking with a quick-capture overlay, device-contacts and VCF import, circles, tags, households, relationships and the network graph, the timeline (life events, gifts, preferences, agenda), reminders, cadence, contact sharing, audit trail, and per-user settings (profile, notification channels, webhooks, link actions).
-
-### On the roadmap
-
-Not built yet. Listed so the feature set above can be read as a description of what exists rather than of what is intended:
-
-- **Two-Factor Authentication:** TOTP as a second factor on login. SSO via OIDC is available today as an alternative.
-- **Android app (follow-ups):** Tablet two-pane layout, FCM push notifications, and a formal accessibility pass.
+- **Android app:** A Kotlin/Jetpack Compose client in `android/` — login (including OIDC SSO), contact list + detail with offline cache and favorites, a tablet two-pane layout (NavigationRail + list/detail), dashboard and prep view, call/SMS tracking with a quick-capture overlay, device-contacts and VCF import, circles, tags, households, relationships and the network graph, the timeline (life events, gifts, preferences, agenda), reminders, cadence, contact sharing, audit trail, FCM push notifications, and per-user settings (profile, notification channels, webhooks, link actions).
 
 ---
 
