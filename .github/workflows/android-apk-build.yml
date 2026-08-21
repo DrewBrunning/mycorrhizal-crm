@@ -27,6 +27,9 @@ env:
   # the repo does. If the runner image ever moves it, this is the knob.
   ANDROID_HOME: /usr/local/lib/android/sdk
 
+permissions:
+  contents: read
+
 jobs:
   build-apk:
     permissions:
@@ -46,6 +49,9 @@ jobs:
           # resolves under a shallow clone.
           ref: ${{ inputs.ref }}
           fetch-depth: 0
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@ed408507eac070d1f99cc633dbcf757c94c7933a # v4.4.3
 
       - name: Set up JDK
         uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
