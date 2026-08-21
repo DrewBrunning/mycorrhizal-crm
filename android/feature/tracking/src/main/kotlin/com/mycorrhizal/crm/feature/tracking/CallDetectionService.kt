@@ -37,25 +37,34 @@ class CallDetectionService : Service() {
 
     // Owned by this service instance (not a static/singleton holder) so the
     // View it retains while shown is scoped to the service's lifetime;
-    // dismiss()'d and dropped in onDestroy.
-    private var quickCaptureOverlay: QuickCaptureOverlay? = null
+    // dismiss()'d and dropped in onDestroy. internal (not private) so
+    // CallDetectionServiceTest can assert the granted/denied permission
+    // branches actually differ, not just that neither throws.
+    internal var quickCaptureOverlay: QuickCaptureOverlay? = null
 
     private val phoneStateListener = object : PhoneStateListener() {
-        override fun onCallStateChanged(state: Int, phoneNumber: String?) {
-            if (state == TelephonyManager.CALL_STATE_IDLE) {
-                val hasOverlayPermission = ContextCompat.checkSelfPermission(
-                    this@CallDetectionService,
-                    android.Manifest.permission.SYSTEM_ALERT_WINDOW,
-                ) == PackageManager.PERMISSION_GRANTED
-                if (hasOverlayPermission) {
-                    (quickCaptureOverlay ?: QuickCaptureOverlay(
-                        contactRepository = contactRepository,
-                        activityRepository = activityRepository,
-                    ).also { quickCaptureOverlay = it })
-                        .show(this@CallDetectionService, phoneNumber)
-                }
-                resetSelfStop()
+        override fun onCallStateChanged(state: Int, phoneNumber: String?) =
+            handleCallStateChanged(state, phoneNumber)
+    }
+
+    // Extracted from phoneStateListener (issue #320 Phase C) so the call-idle
+    // -> show-overlay decision is directly testable -- Robolectric has no
+    // shadow for simulating a real TelephonyManager/PhoneStateListener
+    // callback, so this was otherwise only reachable via reflection.
+    internal fun handleCallStateChanged(state: Int, phoneNumber: String?) {
+        if (state == TelephonyManager.CALL_STATE_IDLE) {
+            val hasOverlayPermission = ContextCompat.checkSelfPermission(
+                this@CallDetectionService,
+                android.Manifest.permission.SYSTEM_ALERT_WINDOW,
+            ) == PackageManager.PERMISSION_GRANTED
+            if (hasOverlayPermission) {
+                (quickCaptureOverlay ?: QuickCaptureOverlay(
+                    contactRepository = contactRepository,
+                    activityRepository = activityRepository,
+                ).also { quickCaptureOverlay = it })
+                    .show(this@CallDetectionService, phoneNumber)
             }
+            resetSelfStop()
         }
     }
 
