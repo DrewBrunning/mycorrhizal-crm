@@ -1,7 +1,12 @@
 # Build stage
-FROM --platform=$BUILDPLATFORM node:22-alpine AS builder
+FROM --platform=$BUILDPLATFORM node:26-alpine AS builder
 
 WORKDIR /app
+
+# node:26-alpine no longer bundles Corepack/Yarn (Corepack was dropped from the
+# default Node.js distribution), so the classic Yarn CLI has to be installed
+# explicitly to honor yarn.lock (lockfile v1).
+RUN npm install -g yarn
 
 # Copy package files first for better caching
 COPY package.json yarn.lock* package-lock.json* ./

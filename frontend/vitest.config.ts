@@ -18,6 +18,19 @@ export default defineConfig({
         execArgv: ['--no-experimental-webstorage'],
       },
     },
+    // Issue #268: CI-only retry so a flaky component test is retried once
+    // instead of failing the required check. The github-actions reporter
+    // writes anything that only passed on retry to the job summary ("Flaky
+    // Tests"), and the junit reporter emits junit.xml for the
+    // dorny/test-reporter check run (test-report.yml).
+    retry: process.env.CI ? 1 : 0,
+    reporters: process.env.CI
+      ? [
+          'default',
+          ['junit', { outputFile: './junit.xml' }],
+          'github-actions',
+        ]
+      : 'default',
     // Issue #251: visibility only, no thresholds/gate — a separate ticket
     // tracks enforcing coverage. `text` for the CI log, `html` for a
     // browsable artifact, `lcov` for third-party tooling that wants it.

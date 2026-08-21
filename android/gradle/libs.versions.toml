@@ -31,6 +31,11 @@ androidxTest = "1.6.1"
 androidxTestExtJunit = "1.2.1"
 mockwebserver = "4.12.0"
 espresso = "3.7.0"
+# Issue #268: retry failed JVM/Robolectric tests in CI so a flake doesn't
+# fail the required check; flaky tests are surfaced by the CI step that
+# scans the test-results XML (a test that passed only on retry still leaves
+# its failure in the XML even though the task succeeded).
+gradleTestRetry = "1.6.5"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -130,3 +135,7 @@ androidx-test-espresso-core = { group = "androidx.test.espresso", name = "espres
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
 turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
+# Issue #268: the org.gradle.test-retry plugin marker — resolved from the
+# Gradle Plugin Portal (build-logic/settings.gradle.kts) so the convention
+# plugin can apply it by id to every module's Test tasks.
+gradle-test-retry-plugin = { group = "org.gradle.test-retry", name = "org.gradle.test-retry.gradle.plugin", version.ref = "gradleTestRetry" }
