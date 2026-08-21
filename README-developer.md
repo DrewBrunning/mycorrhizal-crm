@@ -104,3 +104,4 @@
 - Push the tag to GitHub: `git push origin v1.5.3`
 - This triggers a GitHub Actions workflow that automatically builds and publishes Docker images to GHCR
 - Users can then deploy the new version by setting `IMAGE_TAG=v1.5.3` (or by just using `:latest`) in their `.env` and running `docker compose up -d`
+- Each published image now carries an SBOM and SLSA provenance attestation, and is keylessly signed with `cosign` via the workflow's GitHub Actions OIDC identity — verify with `cosign verify ghcr.io/drewbrunning/mycorrhizal-crm@<digest> --certificate-identity-regexp 'https://github.com/DrewBrunning/mycorrhizal-crm/.*' --certificate-oidc-issuer https://token.actions.githubusercontent.com`
