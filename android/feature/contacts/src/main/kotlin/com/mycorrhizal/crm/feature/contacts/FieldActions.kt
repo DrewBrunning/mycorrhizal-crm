@@ -34,6 +34,19 @@ object FieldActions {
             data = Uri.parse("smsto:${phoneNumber.trim()}")
         }
 
+    /**
+     * `ACTION_SENDTO smsto:` — opens the SMS app with all of [numbers]
+     * pre-filled as recipients (issue #218), joined with `;` per Android's
+     * multi-recipient `smsto:` convention. Every mainstream SMS/RCS app
+     * (Google Messages, Samsung Messages) opens this as a single group
+     * compose screen. [numbers] should already be trimmed/de-duplicated by
+     * the caller — this does not filter blanks or re-trim.
+     */
+    fun groupSmsIntent(numbers: List<String>): Intent =
+        Intent(Intent.ACTION_SENDTO).apply {
+            data = Uri.parse("smsto:${numbers.joinToString(";")}")
+        }
+
     /** `ACTION_SENDTO mailto:` — opens the mail app with [address] pre-filled. */
     fun emailIntent(address: String): Intent =
         Intent(Intent.ACTION_SENDTO).apply {

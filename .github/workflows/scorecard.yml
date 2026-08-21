@@ -11,6 +11,13 @@ name: OpenSSF Scorecard
 # pull_request trigger gives a PR-time signal on branch-protection-adjacent
 # changes (e.g. workflow permission scoping) before they merge.
 #
+# push to main is what actually publishes the public score: ossf/scorecard-action
+# will not publish on a pull_request run at all (no id-token/OIDC permission is
+# granted in that context, and the action explicitly refuses to publish outside
+# push/schedule -- see https://github.com/ossf/scorecard/discussions/3999). Without
+# this trigger the badge shows "invalid repo path" until the first Saturday cron
+# fires, since api.securityscorecards.dev has never received a submission.
+#
 # Every action below is pinned to a full-length commit SHA (trailing comment
 # carries the human-readable version) rather than the "float on major" style
 # used elsewhere in this repo -- Scorecard's own Pinned-Dependencies check
@@ -21,6 +28,8 @@ name: OpenSSF Scorecard
 # Dependabot (github-actions ecosystem, added in #269) updates both the SHA
 # and the version comment together on a bump.
 on:
+  push:
+    branches: [main]
   schedule:
     - cron: '30 1 * * 6' # Saturday 01:30 UTC
   pull_request:

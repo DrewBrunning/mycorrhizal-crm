@@ -613,6 +613,8 @@
     <string name="circles_empty">No circles yet</string>
     <string name="circles_members_empty">No members yet</string>
     <string name="circles_error_missing_id">Missing circle id</string>
+    <!-- Issue #218: group SMS to every circle member with a phone number. -->
+    <string name="circles_text_everyone">Text everyone</string>
 
     <!-- Circle & tag triage (M26) -->
     <string name="settings_circle_tag_triage">Circle &amp; tag triage</string>
@@ -686,6 +688,8 @@
     <string name="households_members_empty">No members yet</string>
     <string name="households_error_missing_id">Missing household id</string>
     <string name="households_suggest_relationships">Suggest relationships</string>
+    <!-- Issue #218: group SMS to every household member with a phone number. -->
+    <string name="households_text_everyone">Text everyone</string>
     <string name="households_suggestions_generated">Generated %1$d new suggested relationship(s). Review them on the members\' contact pages.</string>
     <string name="households_no_new_suggestions">No new suggestions — the existing relationships already cover this household.</string>
     <string name="households_suggest_addresses">Suggest households from shared address</string>

@@ -8,7 +8,7 @@
 # =============================================================================
 # Stage 1: Build Go backend (cross-compiled, CGO disabled - pure-Go SQLite)
 # =============================================================================
-FROM --platform=$BUILDPLATFORM golang:1.26.6-alpine AS backend-builder
+FROM --platform=$BUILDPLATFORM golang:1.26.6-alpine@sha256:3889b425f035be855a72fb4755265311293b6d414521f0a519d819df32222d83 AS backend-builder
 
 ARG TARGETOS
 ARG TARGETARCH
@@ -45,7 +45,7 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
 # repo prefers an explicit, reproducible pin over a floating tag (see the Go
 # toolchain note in CLAUDE.md). frontend/Dockerfile didn't need this change:
 # lts-alpine already resolves past the floor (Node 24 as of 2026-08).
-FROM --platform=$BUILDPLATFORM node:26-alpine AS frontend-builder
+FROM --platform=$BUILDPLATFORM node:26-alpine@sha256:aadf416b2cdce311a8811ba3f0608a61b77dbf997500e2eafe781b51f6a0b019 AS frontend-builder
 
 WORKDIR /app
 
@@ -76,7 +76,7 @@ RUN if [ -f yarn.lock ]; then yarn build; else npm run build; fi
 # =============================================================================
 # Stage 3: Runtime - nginx + Go backend under supervisord
 # =============================================================================
-FROM alpine:3.24
+FROM alpine:3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
 
 # Runtime dependencies. shadow provides usermod/groupmod for PUID/PGID remap.
 # No sqlite package needed - the backend uses a pure-Go SQLite driver.

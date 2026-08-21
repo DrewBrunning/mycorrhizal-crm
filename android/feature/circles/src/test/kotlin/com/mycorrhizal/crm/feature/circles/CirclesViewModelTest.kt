@@ -1,9 +1,12 @@
 package com.mycorrhizal.crm.feature.circles
 
 import androidx.lifecycle.SavedStateHandle
+import com.mycorrhizal.crm.domain.repository.CircleDetail
 import com.mycorrhizal.crm.domain.repository.CircleRepository
+import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.CircleMember
+import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
 import io.mockk.coEvery
@@ -15,6 +18,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
@@ -126,14 +130,21 @@ class CircleDetailViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val circleRepository = mockk<CircleRepository>()
+    private val contactRepository = mockk<ContactRepository>()
+
+    @Before
+    fun setUp() {
+        // Name/phone resolution is best-effort; tests that don't care get an empty map.
+        coEvery { contactRepository.resolveByUid(any()) } returns Result.success(emptyMap())
+    }
 
     private fun viewModel(id: String = "c1"): CircleDetailViewModel =
-        CircleDetailViewModel(circleRepository, SavedStateHandle(mapOf("circleId" to id)))
+        CircleDetailViewModel(circleRepository, contactRepository, SavedStateHandle(mapOf("circleId" to id)))
 
     @Test
     fun `loads circle and members on init`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { circleRepository.getWithMembers("c1") } returns Result.success(
-            com.mycorrhizal.crm.domain.repository.CircleDetail(
+            CircleDetail(
                 circle = Circle(id = "c1", name = "Friends"),
                 members = listOf(CircleMember(id = 1, circleId = "c1", memberVCardUid = "uid-1")),
             ),
@@ -150,15 +161,37 @@ class CircleDetailViewModelTest {
     }
 
     @Test
-    fun `addMember appends to the members list`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `load resolves member names and phones via contact resolution`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { circleRepository.getWithMembers("c1") } returns Result.success(
-            com.mycorrhizal.crm.domain.repository.CircleDetail(
+            CircleDetail(
+                circle = Circle(id = "c1", name = "Friends"),
+                members = listOf(CircleMember(id = 1, circleId = "c1", memberVCardUid = "uid-1")),
+            ),
+        )
+        coEvery { contactRepository.resolveByUid(listOf("uid-1")) } returns Result.success(
+            mapOf("uid-1" to ContactSummary(id = 7, uid = "uid-1", firstname = "Alice", primaryPhone = "+1-555-0100")),
+        )
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        assertEquals("Alice", vm.uiState.value.contactsByUid["uid-1"]?.firstname)
+        assertEquals("+1-555-0100", vm.uiState.value.contactsByUid["uid-1"]?.primaryPhone)
+    }
+
+    @Test
+    fun `addMember appends to the members list and resolves its name`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { circleRepository.getWithMembers("c1") } returns Result.success(
+            CircleDetail(
                 circle = Circle(id = "c1", name = "Friends"),
                 members = emptyList(),
             ),
         )
         coEvery { circleRepository.addMember("c1", "uid-2") } returns Result.success(
             CircleMember(id = 2, circleId = "c1", memberVCardUid = "uid-2"),
+        )
+        coEvery { contactRepository.resolveByUid(listOf("uid-2")) } returns Result.success(
+            mapOf("uid-2" to ContactSummary(id = 8, uid = "uid-2", firstname = "Bob", primaryPhone = "+1-555-0101")),
         )
 
         val vm = viewModel()
@@ -168,12 +201,13 @@ class CircleDetailViewModelTest {
         advanceUntilIdle()
 
         assertEquals(listOf("uid-2"), vm.uiState.value.members.map { it.memberVCardUid })
+        assertEquals("Bob", vm.uiState.value.contactsByUid["uid-2"]?.firstname)
     }
 
     @Test
     fun `removeMember drops the member`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { circleRepository.getWithMembers("c1") } returns Result.success(
-            com.mycorrhizal.crm.domain.repository.CircleDetail(
+            CircleDetail(
                 circle = Circle(id = "c1", name = "Friends"),
                 members = listOf(
                     CircleMember(id = 1, circleId = "c1", memberVCardUid = "uid-1"),

@@ -5,8 +5,10 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.CircleRepository
+import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.CircleMember
+import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -21,6 +23,8 @@ data class CircleDetailUiState(
     val circleId: String = "",
     val circle: Circle? = null,
     val members: List<CircleMember> = emptyList(),
+    /** Member VCardUID -> resolved summary (issue #218: carries primaryPhone for group SMS). */
+    val contactsByUid: Map<String, ContactSummary> = emptyMap(),
     val isLoading: Boolean = false,
     val removingUid: String? = null,
     val error: String? = null,
@@ -30,6 +34,7 @@ data class CircleDetailUiState(
 @HiltViewModel
 class CircleDetailViewModel @Inject constructor(
     private val circleRepository: CircleRepository,
+    private val contactRepository: ContactRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -57,11 +62,28 @@ class CircleDetailViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(isLoading = false, circle = detail.circle, members = detail.members)
                     }
+                    resolveMemberNames(detail.members)
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.displayMessage) }
                 },
             )
+        }
+    }
+
+    /**
+     * Best-effort name/phone resolution for member VCardUIDs (mirrors
+     * HouseholdDetailViewModel.resolveMemberNames — issue #218 needs the
+     * resolved ContactSummary.primaryPhone for the "text everyone" action). A
+     * failure here is NOT surfaced as the screen's primary error.
+     */
+    private fun resolveMemberNames(members: List<CircleMember>) {
+        val uids = members.map { it.memberVCardUid }.filter { it.isNotBlank() }.distinct()
+        if (uids.isEmpty()) return
+        viewModelScope.launch {
+            contactRepository.resolveByUid(uids).onSuccess { resolved ->
+                _uiState.update { it.copy(contactsByUid = it.contactsByUid + resolved) }
+            }
         }
     }
 
@@ -72,6 +94,7 @@ class CircleDetailViewModel @Inject constructor(
             circleRepository.addMember(circleId, uid).foldApiError(
                 onSuccess = { member ->
                     _uiState.update { it.copy(members = it.members + member) }
+                    resolveMemberNames(listOf(member))
                 },
                 onError = { error ->
                     _uiState.update { it.copy(error = error.displayMessage) }

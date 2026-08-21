@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
 
@@ -91,6 +92,43 @@ func TestCreateWebhook(t *testing.T) {
 	var count int64
 	db.Model(&models.Webhook{}).Where("user_id = ?", user.ID).Count(&count)
 	assert.Equal(t, int64(1), count)
+}
+
+// TestCreateWebhookInactive is the regression test for a bug found while
+// writing webhook broadcast tests: Webhook.IsActive is tagged
+// `gorm:"default:true"`, and GORM's Create() treats a Go zero-value field
+// (false) with a `default:` tag as "unset", silently falling back to the SQL
+// default of true. A user unchecking the "active" toggle on the create form
+// therefore got an immediately-active webhook against their explicit choice.
+func TestCreateWebhookInactive(t *testing.T) {
+	db, _ := setupRouter()
+	var user models.User
+	db.First(&user)
+
+	router := routerForUser(db, user.ID)
+	router.POST("/webhooks", withValidated(func() any { return &models.WebhookInput{} }), CreateWebhook)
+
+	input := models.WebhookInput{
+		Name:     "Dormant Hook",
+		URL:      "https://example.com/hook",
+		Events:   []string{"contact.created"},
+		IsActive: false,
+	}
+	body, _ := json.Marshal(input)
+
+	req, _ := http.NewRequest("POST", "/webhooks", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusCreated, w.Code)
+	var resp models.WebhookCreateResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.False(t, resp.IsActive, "response should report the webhook as inactive")
+
+	var persisted models.Webhook
+	require.NoError(t, db.First(&persisted, resp.ID).Error)
+	assert.False(t, persisted.IsActive, "webhook must be persisted as inactive, not silently reset to the SQL default")
 }
 
 func TestCreateWebhookLimit(t *testing.T) {

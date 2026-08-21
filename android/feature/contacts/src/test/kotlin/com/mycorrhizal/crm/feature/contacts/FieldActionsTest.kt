@@ -41,6 +41,20 @@ class FieldActionsTest {
     }
 
     @Test
+    fun `group sms intent joins numbers with semicolons`() {
+        val intent = FieldActions.groupSmsIntent(listOf("+1-555-0100", "+1-555-0101", "+1-555-0102"))
+        assertEquals(Intent.ACTION_SENDTO, intent.action)
+        assertEquals("smsto", intent.data?.scheme)
+        assertEquals("+1-555-0100;+1-555-0101;+1-555-0102", intent.data?.schemeSpecificPart)
+    }
+
+    @Test
+    fun `group sms intent with a single number matches smsIntent's scheme-specific part`() {
+        val intent = FieldActions.groupSmsIntent(listOf("+1-555-0100"))
+        assertEquals("+1-555-0100", intent.data?.schemeSpecificPart)
+    }
+
+    @Test
     fun `email intent uses ACTION_SENDTO with mailto scheme`() {
         val intent = FieldActions.emailIntent("dana@example.com")
         assertEquals(Intent.ACTION_SENDTO, intent.action)
