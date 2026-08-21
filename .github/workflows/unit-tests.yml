@@ -95,7 +95,7 @@ jobs:
       # upload (app not installed yet, Codecov outage) must not fail the
       # build, hence fail_ci_if_error: false.
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5.5.5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: backend/coverage.out
@@ -177,7 +177,7 @@ jobs:
       # Issue #294: see the backend job's identical step for why
       # fail_ci_if_error is false.
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5.5.5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: frontend/coverage/lcov.info
