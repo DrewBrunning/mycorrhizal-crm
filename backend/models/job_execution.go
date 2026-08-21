@@ -48,4 +48,12 @@ const (
 	// JobNameReachOutDetection is the job name for the daily event-driven
 	// reach-out-suggestion detection job (issue #177).
 	JobNameReachOutDetection = "reach_out_detection"
+
+	// JobNameDBIntegrityCheck is the job name for the scheduled live-DB
+	// PRAGMA integrity_check job (issue #273).
+	JobNameDBIntegrityCheck = "db_integrity_check"
+
+	// JobNameRestoreDrill is the job name for the scheduled backup-restore
+	// drill job (issue #275).
+	JobNameRestoreDrill = "restore_drill"
 )
