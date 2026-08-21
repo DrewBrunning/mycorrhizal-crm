@@ -134,6 +134,20 @@ jobs:
         # cheap while still compiling and executing the benchmark paths.
         run: go test -run '^$' -bench . -benchtime=1x ./...
 
+      # Issue #265: a short, time-boxed native Go fuzz run per target,
+      # seeded from the golden fixtures (docs/golden-fixtures — the RFC
+      # oracle). go test -fuzz only accepts one target (a regexp matching
+      # exactly one Fuzz function) per invocation, hence two steps. A found
+      # crash writes a regression file under vcard4/testdata/fuzz/ and fails
+      # the step; -fuzztime is deliberately short (a few seconds each) to
+      # keep CI cost low — see FuzzImportVCard4/FuzzExportVCard4's own doc
+      # comments for the longer local run this is not a substitute for.
+      - name: Run vCard4 fuzz targets (issue #265)
+        working-directory: backend
+        run: |
+          go test ./vcard4/ -run '^$' -fuzz='^FuzzImportVCard4$' -fuzztime=15s
+          go test ./vcard4/ -run '^$' -fuzz='^FuzzExportVCard4$' -fuzztime=15s
+
       # Issue #251: visibility only, no threshold/gate — printed to the log
       # and uploaded below for anyone who wants the per-func breakdown.
       - name: Coverage summary

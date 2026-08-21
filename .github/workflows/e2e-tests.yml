@@ -131,6 +131,18 @@ jobs:
           path: frontend/test-results/
           retention-days: 7
 
+      # Issue #262: a short concurrent-write smoke test against the actual
+      # deployed artifact (nginx + backend under supervisord), not just the
+      # in-process pin (database/concurrent_write_test.go). Runs after
+      # Playwright rather than alongside it so the two don't share (and
+      # confuse) the same rate-limit bucket/log stream. Uses the same
+      # running instance already up for Playwright above.
+      - name: Run concurrency/load smoke test
+        working-directory: backend
+        run: go run ./cmd/loadsmoke
+        env:
+          LOADSMOKE_BASE_URL: http://localhost:7300
+
       - name: Show container logs on failure
         if: failure()
         run: |

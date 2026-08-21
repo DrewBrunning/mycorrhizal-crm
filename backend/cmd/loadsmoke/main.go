@@ -1,0 +1,342 @@
+// Command loadsmoke fires parallel contact create/update/delete requests at
+// a running instance for a short fixed duration and fails if any response
+// shows either of the two live bug classes CLAUDE.md backend trap #9 and
+// docker-compose.test.yml's own comments document:
+//
+//   - SQLITE_BUSY / "database is locked" under concurrent writes (fixed via
+//     _txlock=immediate, pinned in-process by
+//     database/concurrent_write_test.go — but never exercised against the
+//     actual deployed artifact: nginx + backend under supervisord, the
+//     all-in-one image).
+//   - The production rate limit producing spurious 429s under sustained
+//     load (the reason docker-compose.test.yml raises
+//     API_RATE_LIMIT_INTERVAL_MS/API_RATE_LIMIT_BURST in the first place).
+//
+// It exists so a regression that reintroduces either — someone removing
+// _txlock=immediate, or a new write path that upgrades a deferred
+// transaction, or a lowered test rate limit — fails CI instead of shipping
+// unnoticed (issue #262). Run via `go run ./cmd/loadsmoke` against the
+// docker-compose.test.yml backend (see .github/workflows/e2e-tests.yml,
+// which already brings that instance up for the Playwright suite — this
+// reuses it rather than standing up a second workflow).
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"net/http/cookiejar"
+	"os"
+	"strconv"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+)
+
+type loadConfig struct {
+	baseURL     string
+	workers     int
+	duration    time.Duration
+	minRequests int64
+}
+
+// defaultLoadConfig mirrors cmd/backup's env-var-with-defaults style.
+var defaultLoadConfig = loadConfig{
+	baseURL:     "http://localhost:7300",
+	workers:     20,
+	duration:    10 * time.Second,
+	minRequests: 50,
+}
+
+// loadConfigFromEnv reads LOADSMOKE_* overrides via getenv (injected so this
+// is testable without mutating real process env). An invalid override falls
+// back to the default rather than failing the run — this tool's job is to
+// generate load and check responses, not to be a second config-validation
+// surface.
+func loadConfigFromEnv(getenv func(string) string) loadConfig {
+	cfg := defaultLoadConfig
+	if v := getenv("LOADSMOKE_BASE_URL"); v != "" {
+		cfg.baseURL = strings.TrimRight(v, "/")
+	}
+	if v := getenv("LOADSMOKE_WORKERS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			cfg.workers = n
+		}
+	}
+	if v := getenv("LOADSMOKE_DURATION"); v != "" {
+		if d, err := time.ParseDuration(v); err == nil && d > 0 {
+			cfg.duration = d
+		}
+	}
+	if v := getenv("LOADSMOKE_MIN_REQUESTS"); v != "" {
+		if n, err := strconv.ParseInt(v, 10, 64); err == nil && n > 0 {
+			cfg.minRequests = n
+		}
+	}
+	return cfg
+}
+
+func main() {
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run() error {
+	cfg := loadConfigFromEnv(os.Getenv)
+
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		return fmt.Errorf("create cookie jar: %w", err)
+	}
+	client := &http.Client{Jar: jar, Timeout: 10 * time.Second}
+
+	username := fmt.Sprintf("loadsmoke-%d", time.Now().UnixNano())
+	if err := registerAndLogin(client, cfg.baseURL, username); err != nil {
+		return fmt.Errorf("register/login test user: %w", err)
+	}
+
+	fmt.Printf("loadsmoke: %d workers for %s against %s\n", cfg.workers, cfg.duration, cfg.baseURL)
+	result := runLoad(client, cfg.baseURL, cfg.workers, cfg.duration)
+	fmt.Printf("loadsmoke: %d requests, %d busy, %d rate-limited, %d other errors\n",
+		result.total, result.busy, result.rateLimited, result.other)
+
+	if result.total < cfg.minRequests {
+		return fmt.Errorf("only %d requests completed in %s — load generation itself may be broken (want >= %d)", result.total, cfg.duration, cfg.minRequests)
+	}
+	if result.busy > 0 {
+		return fmt.Errorf("%d/%d requests returned SQLITE_BUSY/\"database is locked\" under concurrent writes — samples:\n%s",
+			result.busy, result.total, strings.Join(result.busySamples, "\n"))
+	}
+	if result.rateLimited > 0 {
+		return fmt.Errorf("%d/%d requests were rate-limited (429) against the raised test limit — samples:\n%s",
+			result.rateLimited, result.total, strings.Join(result.rateLimitedSamples, "\n"))
+	}
+	return nil
+}
+
+// registerAndLogin creates a throwaway user and authenticates as them. The
+// client's cookie jar then carries auth_token for every subsequent request,
+// including the concurrent ones runLoad fires — http.Client and its Jar are
+// documented safe for concurrent use, so this one authenticated session is
+// shared across all worker goroutines rather than one per worker (mirroring
+// the trap #9 scenario: one user's browser firing overlapping writes).
+func registerAndLogin(client *http.Client, baseURL, username string) error {
+	registerBody := map[string]string{
+		"username": username,
+		"email":    username + "@example.com",
+		"password": "CorrectHorseBattery9!",
+	}
+	if _, body, status, err := doJSON(client, http.MethodPost, baseURL+"/api/v1/register", registerBody); err != nil {
+		return err
+	} else if status != http.StatusCreated {
+		return fmt.Errorf("register: status %d: %s", status, body)
+	}
+
+	loginBody := map[string]string{
+		"identifier": username,
+		"password":   "CorrectHorseBattery9!",
+	}
+	if _, body, status, err := doJSON(client, http.MethodPost, baseURL+"/api/v1/login", loginBody); err != nil {
+		return err
+	} else if status != http.StatusOK {
+		return fmt.Errorf("login: status %d: %s", status, body)
+	}
+	return nil
+}
+
+const maxSamples = 5
+
+// tally aggregates runLoad's outcome across every worker goroutine. All
+// counters are atomic; the sample slices are mutex-protected and capped at
+// maxSamples so a total failure doesn't produce an unreadable error message.
+type tally struct {
+	total, busy, rateLimited, other int64
+
+	mu                 sync.Mutex
+	busySamples        []string
+	rateLimitedSamples []string
+}
+
+func (t *tally) record(method, url string, status int, body []byte, err error) {
+	atomic.AddInt64(&t.total, 1)
+	if err != nil {
+		atomic.AddInt64(&t.other, 1)
+		return
+	}
+	switch classify(status, body) {
+	case classifyBusy:
+		atomic.AddInt64(&t.busy, 1)
+		t.addSample(&t.busySamples, method, url, status, body)
+	case classifyRateLimited:
+		atomic.AddInt64(&t.rateLimited, 1)
+		t.addSample(&t.rateLimitedSamples, method, url, status, body)
+	case classifyOther:
+		atomic.AddInt64(&t.other, 1)
+	}
+}
+
+func (t *tally) addSample(samples *[]string, method, url string, status int, body []byte) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if len(*samples) < maxSamples {
+		*samples = append(*samples, fmt.Sprintf("%s %s -> %d: %s", method, url, status, truncate(body, 200)))
+	}
+}
+
+func (t *tally) snapshot() loadResult {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return loadResult{
+		total:              atomic.LoadInt64(&t.total),
+		busy:               atomic.LoadInt64(&t.busy),
+		rateLimited:        atomic.LoadInt64(&t.rateLimited),
+		other:              atomic.LoadInt64(&t.other),
+		busySamples:        append([]string(nil), t.busySamples...),
+		rateLimitedSamples: append([]string(nil), t.rateLimitedSamples...),
+	}
+}
+
+// loadResult is the final, read-only outcome of one runLoad call.
+type loadResult struct {
+	total, busy, rateLimited, other int64
+	busySamples, rateLimitedSamples []string
+}
+
+// runLoad hammers POST/PUT/DELETE /api/v1/contacts with `workers` concurrent
+// goroutines for `duration`, each looping create-update-delete on its own
+// contact (never touching another worker's row, so any lock contention
+// observed is purely from concurrent writers on the same table/database, not
+// two workers racing the same row).
+func runLoad(client *http.Client, baseURL string, workers int, duration time.Duration) loadResult {
+	t := &tally{}
+	deadline := time.Now().Add(duration)
+
+	var wg sync.WaitGroup
+	for w := 0; w < workers; w++ {
+		wg.Add(1)
+		go func(worker int) {
+			defer wg.Done()
+			for i := 0; time.Now().Before(deadline); i++ {
+				loadIteration(client, baseURL, worker, i, t)
+			}
+		}(w)
+	}
+	wg.Wait()
+
+	return t.snapshot()
+}
+
+// loadIteration runs one create-update-delete cycle against baseURL,
+// recording each of the three responses into t.
+func loadIteration(client *http.Client, baseURL string, worker, iter int, t *tally) {
+	name := fmt.Sprintf("Loadsmoke-%d-%d", worker, iter)
+	createBody := map[string]interface{}{
+		"card": map[string]interface{}{
+			"name": map[string]interface{}{
+				"components": []map[string]string{
+					{"kind": "given", "value": name},
+					{"kind": "surname", "value": "Test"},
+				},
+			},
+		},
+		"crm": map[string]interface{}{},
+	}
+
+	createURL := baseURL + "/api/v1/contacts"
+	_, body, status, err := doJSON(client, http.MethodPost, createURL, createBody)
+	t.record(http.MethodPost, createURL, status, body, err)
+	if err != nil || status != http.StatusCreated {
+		return
+	}
+
+	var created struct {
+		Contact struct {
+			ID float64 `json:"id"`
+		} `json:"contact"`
+	}
+	if jsonErr := json.Unmarshal(body, &created); jsonErr != nil || created.Contact.ID == 0 {
+		return
+	}
+
+	itemURL := fmt.Sprintf("%s/api/v1/contacts/%.0f", baseURL, created.Contact.ID)
+	_, body, status, err = doJSON(client, http.MethodPut, itemURL, createBody)
+	t.record(http.MethodPut, itemURL, status, body, err)
+
+	_, body, status, err = doJSON(client, http.MethodDelete, itemURL, nil)
+	t.record(http.MethodDelete, itemURL, status, body, err)
+}
+
+func truncate(b []byte, n int) string {
+	s := string(b)
+	if len(s) > n {
+		return s[:n] + "..."
+	}
+	return s
+}
+
+type classification int
+
+const (
+	classifyOK classification = iota
+	classifyBusy
+	classifyRateLimited
+	classifyOther
+)
+
+// classify maps one HTTP response to the outcome runLoad cares about. A 2xx
+// is always ok; a 500 mentioning either sentinel string trap #9 documents is
+// "busy"; a 429 is "rate limited"; anything else unexpected (a validation
+// error, a transient 404, etc.) is "other" — logged toward the total but not
+// itself a failure, since this tool's job is to catch the two specific
+// documented regressions, not to be a general-purpose API fuzzer.
+func classify(status int, body []byte) classification {
+	if status >= 200 && status < 300 {
+		return classifyOK
+	}
+	if status == http.StatusTooManyRequests {
+		return classifyRateLimited
+	}
+	if status == http.StatusInternalServerError &&
+		(bytes.Contains(body, []byte("database is locked")) || bytes.Contains(body, []byte("SQLITE_BUSY"))) {
+		return classifyBusy
+	}
+	return classifyOther
+}
+
+// doJSON marshals body (nil for no body) as JSON, issues the request, and
+// returns the parsed status/response body. The response body is read fully
+// and returned rather than left on the reader, since classify() needs to
+// inspect it and Go's http.Client requires the body be drained either way to
+// let the connection be reused.
+func doJSON(client *http.Client, method, url string, body interface{}) (*http.Response, []byte, int, error) {
+	var reader io.Reader
+	if body != nil {
+		b, err := json.Marshal(body)
+		if err != nil {
+			return nil, nil, 0, fmt.Errorf("marshal request body: %w", err)
+		}
+		reader = bytes.NewReader(b)
+	}
+	req, err := http.NewRequest(method, url, reader)
+	if err != nil {
+		return nil, nil, 0, fmt.Errorf("build request: %w", err)
+	}
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, nil, 0, fmt.Errorf("%s %s: %w", method, url, err)
+	}
+	defer resp.Body.Close()
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return resp, nil, resp.StatusCode, fmt.Errorf("read response body: %w", err)
+	}
+	return resp, respBody, resp.StatusCode, nil
+}
