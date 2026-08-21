@@ -1,0 +1,74 @@
+name: OpenSSF Scorecard
+
+# Turns the supply-chain hygiene this repo already invests in (pinned Go
+# toolchain, non-root container images, secret scanning, CodeQL, Trivy,
+# dependency review) into a measurable, trending score, and automatically
+# surfaces the gaps that would otherwise be found one-by-one by hand
+# (unpinned actions, token-permission scoping, signed releases, branch
+# protection, a missing SECURITY.md).
+#
+# Weekly cron keeps the public score current even with no activity; the
+# pull_request trigger gives a PR-time signal on branch-protection-adjacent
+# changes (e.g. workflow permission scoping) before they merge.
+#
+# Every action below is pinned to a full-length commit SHA (trailing comment
+# carries the human-readable version) rather than the "float on major" style
+# used elsewhere in this repo -- Scorecard's own Pinned-Dependencies check
+# flagged every line in this brand-new file, and it would be a little on the
+# nose to launch the Scorecard workflow itself unpinned. The rest of the
+# repo's actions are not SHA-pinned yet; that's a separate, larger cleanup,
+# not something to do piecemeal as a side effect of an unrelated diff.
+# Dependabot (github-actions ecosystem, added in #269) updates both the SHA
+# and the version comment together on a bump.
+on:
+  schedule:
+    - cron: '30 1 * * 6' # Saturday 01:30 UTC
+  pull_request:
+    branches: [main]
+
+permissions: read-all
+
+jobs:
+  analysis:
+    name: Scorecard analysis
+    runs-on: ubuntu-latest
+    permissions:
+      # Required to upload SARIF to the Security tab.
+      security-events: write
+      # Required to publish results and populate the badge via Sigstore's
+      # public-good instance -- only meaningful on a public repo (this one).
+      id-token: write
+      contents: read
+      actions: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      # ossf/scorecard-action, like aquasecurity/trivy-action (see
+      # docker-publish.yml), doesn't publish a floating major tag at all --
+      # only exact vX.Y.Z releases -- so a bare "v2" 404s regardless of the
+      # SHA-pinning above.
+      - name: Run analysis
+        uses: ossf/scorecard-action@2d1146689b8cda280b9bc96326124645441f03bc # v2.4.4
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          # Publish to api.securityscorecards.dev so the README badge reflects
+          # a real, current score. Only publishes for public repos; harmless
+          # no-op otherwise.
+          publish_results: true
+
+      - name: Upload SARIF as a build artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: SARIF file
+          path: results.sarif
+          retention-days: 7
+
+      - name: Upload results to the Security tab
+        uses: github/codeql-action/upload-sarif@42947a340483f03ba47bb1a039b2c519aab3df85 # v3.37.8
+        with:
+          sarif_file: results.sarif

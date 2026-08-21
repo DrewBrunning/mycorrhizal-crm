@@ -185,6 +185,10 @@ jobs:
     permissions:
       contents: read
       packages: write
+      # id-token: write is what lets cosign request a short-lived OIDC
+      # identity token from GitHub's Sigstore-federated issuer for keyless
+      # signing below -- no key material to generate, rotate, or store.
+      id-token: write
 
     strategy:
       matrix:
@@ -249,8 +253,16 @@ jobs:
             type=semver,pattern={{major}}.{{minor}},value=${{ env.RELEASE_TAG }}
             type=raw,value=${{ steps.stamp.outputs.sha7 }}
 
+      # SHA-pinned (trailing comment carries the version) because Scorecard's
+      # Pinned-Dependencies check flagged this line and the cosign-installer
+      # one below -- both touched by this PR. Other actions in this job
+      # (setup-buildx-action, login-action, metadata-action) predate this PR
+      # and are still on floating major tags; that's a separate, larger
+      # cleanup, not something to do piecemeal here. Dependabot's
+      # github-actions ecosystem (#269) updates the SHA + comment together.
       - name: Build and push
-        uses: docker/build-push-action@v5
+        id: build
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.file }}
@@ -270,6 +282,35 @@ jobs:
             APP_BUILD_DATE=${{ steps.stamp.outputs.date }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # SBOM + SLSA provenance attestations, pushed alongside the image
+          # as referrers. Trivy scans more accurately with an SBOM present,
+          # and provenance lets a user verify which commit actually produced
+          # the digest they pulled.
+          provenance: true
+          sbom: true
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3.9.1
+
+      # Keyless signing via cosign's ambient GitHub Actions OIDC detection --
+      # no --certificate-identity/--certificate-oidc-issuer flags here, those
+      # are `cosign verify` options; `cosign sign` auto-requests a Fulcio
+      # cert using the id-token: write permission granted above. No key
+      # material to generate or store.
+      #
+      # Signs the digest, not a tag: tags are mutable, the digest isn't, and
+      # `steps.build.outputs.digest` is exactly what was just pushed. Reuses
+      # the docker/login-action session above for registry auth.
+      #
+      # Lowercased the same way the scan job below resolves its image
+      # reference: github.repository preserves account case (DrewBrunning),
+      # but GHCR references must be lowercase.
+      - name: Sign the published image (keyless)
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+          SUFFIX: ${{ matrix.suffix }}
+        run: |
+          cosign sign --yes "ghcr.io/${GITHUB_REPOSITORY,,}${SUFFIX}@${DIGEST}"
 
   scan:
     runs-on: ubuntu-latest
@@ -299,6 +340,13 @@ jobs:
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
         run: echo "IMAGE_REF=ghcr.io/${GITHUB_REPOSITORY,,}:${RELEASE_TAG#v}" >> "$GITHUB_ENV"
 
+      # Pinned to an exact patch rather than floating on a major like the
+      # other actions in this file: trivy-action is still pre-1.0 (0.x), so
+      # there is no stable major tag to float on -- every release can be
+      # breaking. This is the one deliberate exception to the "float on
+      # major" policy above; #269 added trivy-action to the github-actions
+      # Dependabot ecosystem, so bumps still arrive as PRs instead of
+      # drifting unnoticed.
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@0.35.0
         with:
