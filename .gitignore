@@ -23,6 +23,13 @@ static/photos/
 # Build artifacts
 backend/mycorrhizal
 backend/main
+# `go build ./...` (or plain `go build .`) run from inside a cmd/<tool>/
+# directory writes a same-named binary there — caught once for loadsmoke
+# (issue #262), added generally so the next cmd/ tool doesn't repeat it.
+backend/cmd/*/backup
+backend/cmd/*/migrate
+backend/cmd/*/backfill-search-index
+backend/cmd/*/loadsmoke
 
 # Go specific
 *.test
