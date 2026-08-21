@@ -12,6 +12,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   # Issue #264: path-gated checks — see unit-tests.yml for the pattern.
   # The matrix here is split into two explicit jobs because `matrix` context

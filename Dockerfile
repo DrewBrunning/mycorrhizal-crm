@@ -54,7 +54,7 @@ WORKDIR /app
 # Install yarn explicitly so a future Node bump doesn't silently break this
 # build the way #297 (node:22-alpine -> node:26-alpine) did (exit 127, "yarn:
 # not found").
-RUN npm install -g yarn
+RUN npm install -g yarn@1.22.22
 
 # Copy package files first for better caching
 COPY frontend/package.json frontend/yarn.lock* frontend/package-lock.json* ./

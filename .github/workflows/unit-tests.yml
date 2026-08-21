@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   # Issue #264: path-gated checks. This job always runs and computes which
   # areas the PR/push touches (shared filters in .github/filters.yaml); the

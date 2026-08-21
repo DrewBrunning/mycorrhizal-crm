@@ -65,6 +65,12 @@ jobs:
         with:
           results_file: results.sarif
           results_format: sarif
+          # Fine-grained PAT (Administration: read-only on this repo only) so
+          # Branch-Protection can actually be scored -- the default
+          # GITHUB_TOKEN can't read classic branch protection rules on a
+          # public repo. See docs/authentication/fine-grained-auth-token.md
+          # in ossf/scorecard-action.
+          repo_token: ${{ secrets.SCORECARD_TOKEN }}
           # Publish to api.securityscorecards.dev so the README badge reflects
           # a real, current score. Only publishes for public repos; harmless
           # no-op otherwise.

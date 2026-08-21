@@ -9,6 +9,9 @@ on:
     # Weekly, so new query packs get a chance to run against the latest code.
     - cron: '37 4 * * 1'
 
+permissions:
+  contents: read
+
 jobs:
   # Issue #264: path-gated checks — see unit-tests.yml for the pattern.
   # Scheduled runs must always analyze every language (there is no diff to
@@ -112,6 +115,9 @@ jobs:
           languages: java-kotlin
           build-mode: manual
           queries: security-extended
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@ed408507eac070d1f99cc633dbcf757c94c7933a # v4.4.3
 
       # The Android app (android/) is Kotlin/Java, which CodeQL cannot extract in
       # 'none' mode — the compiler has to actually run so the build tracer can see it.
