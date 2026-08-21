@@ -1,0 +1,322 @@
+{
+  "contact": {
+    "id": 11,
+    "uid": "458bc9ba-b9a7-4853-a3f8-d9cd907bbc9f",
+    "etag": "e-11-1787270921",
+    "gender": "",
+    "card": {
+      "name": {
+        "components": [
+          {
+            "kind": "given",
+            "value": "Fixture"
+          },
+          {
+            "kind": "surname",
+            "value": "Primary"
+          }
+        ]
+      },
+      "nicknames": [
+        {
+          "name": "Fix"
+        }
+      ],
+      "emails": [
+        {
+          "address": "fixture.primary@example.com",
+          "contexts": [
+            "home"
+          ]
+        }
+      ],
+      "phones": [
+        {
+          "number": "+1 555-0100",
+          "contexts": [
+            "mobile"
+          ]
+        }
+      ],
+      "addresses": [
+        {
+          "components": [
+            {
+              "kind": "name",
+              "value": "1 Fixture Way"
+            },
+            {
+              "kind": "locality",
+              "value": "Fixtureville"
+            },
+            {
+              "kind": "region",
+              "value": "CA"
+            },
+            {
+              "kind": "postcode",
+              "value": "94000"
+            },
+            {
+              "kind": "country",
+              "value": "US"
+            }
+          ],
+          "contexts": [
+            "home"
+          ]
+        }
+      ],
+      "anniversaries": [
+        {
+          "kind": "birth",
+          "date": {
+            "partial": {
+              "year": 1990,
+              "month": 6,
+              "day": 15
+            }
+          }
+        }
+      ],
+      "keywords": [
+        "contract-fixture-1787270922026"
+      ],
+      "relatedTo": [
+        {
+          "target": "urn:uuid:0836c948-4c37-4ac8-bb27-358936e6b67c",
+          "relations": [
+            "friend"
+          ]
+        }
+      ]
+    },
+    "crm": {},
+    "passthrough": {},
+    "photo": "",
+    "archived": false,
+    "is_favorite": false
+  },
+  "user": {
+    "enabled_contact_fields": null
+  },
+  "notes": [
+    {
+      "ID": 2,
+      "CreatedAt": "2026-08-21T00:08:42.008793832Z",
+      "UpdatedAt": "2026-08-21T00:08:42.008793832Z",
+      "DeletedAt": null,
+      "content": "Contract fixture note",
+      "date": "2026-08-21T00:08:42.007Z",
+      "contact_id": 11,
+      "contact": {
+        "ID": 0,
+        "CreatedAt": "0001-01-01T00:00:00Z",
+        "UpdatedAt": "0001-01-01T00:00:00Z",
+        "DeletedAt": null,
+        "firstname": "",
+        "lastname": "",
+        "nickname": "",
+        "gender": "",
+        "email": "",
+        "phone": "",
+        "birthday": "",
+        "photo": "",
+        "address": "",
+        "how_we_met": "",
+        "work_information": "",
+        "contact_information": "",
+        "circles": null,
+        "emails": null,
+        "phones": null,
+        "addresses": null,
+        "urls": null,
+        "impps": null,
+        "prefix": "",
+        "middle_name": "",
+        "suffix": "",
+        "organization": "",
+        "department": "",
+        "job_title": "",
+        "role": "",
+        "anniversary": "",
+        "archived": false,
+        "is_favorite": false
+      }
+    }
+  ],
+  "activities": [
+    {
+      "ID": 2,
+      "CreatedAt": "2026-08-21T00:08:42.011863714Z",
+      "UpdatedAt": "2026-08-21T00:08:42.012741036Z",
+      "DeletedAt": null,
+      "uuid": "56c3cf8a-2c2e-4e9d-a5c4-fa0081de1d32",
+      "title": "Fixture activity",
+      "description": "",
+      "location": "",
+      "date": "2026-08-21T00:08:42.007Z",
+      "contacts": [
+        {
+          "ID": 11,
+          "CreatedAt": "0001-01-01T00:00:00Z",
+          "UpdatedAt": "0001-01-01T00:00:00Z",
+          "DeletedAt": null,
+          "firstname": "Fixture",
+          "lastname": "Primary",
+          "nickname": "",
+          "gender": "",
+          "email": "",
+          "phone": "",
+          "birthday": "",
+          "photo": "",
+          "address": "",
+          "how_we_met": "",
+          "work_information": "",
+          "contact_information": "",
+          "circles": null,
+          "emails": null,
+          "phones": null,
+          "addresses": null,
+          "urls": null,
+          "impps": null,
+          "prefix": "",
+          "middle_name": "",
+          "suffix": "",
+          "organization": "",
+          "department": "",
+          "job_title": "",
+          "role": "",
+          "anniversary": "",
+          "archived": false,
+          "is_favorite": false
+        }
+      ]
+    }
+  ],
+  "completions": [],
+  "reminders": [
+    {
+      "ID": 2,
+      "CreatedAt": "2026-08-21T00:08:42.019910366Z",
+      "UpdatedAt": "2026-08-21T00:08:42.019910366Z",
+      "DeletedAt": null,
+      "message": "Fixture reminder",
+      "by_mail": false,
+      "remind_at": "2026-08-22T00:00:00Z",
+      "recurrence": "once",
+      "reoccur_from_completion": false,
+      "completed": false,
+      "email_sent": false,
+      "last_sent": null,
+      "contact_id": 11,
+      "contact": {
+        "ID": 0,
+        "CreatedAt": "0001-01-01T00:00:00Z",
+        "UpdatedAt": "0001-01-01T00:00:00Z",
+        "DeletedAt": null,
+        "firstname": "",
+        "lastname": "",
+        "nickname": "",
+        "gender": "",
+        "email": "",
+        "phone": "",
+        "birthday": "",
+        "photo": "",
+        "address": "",
+        "how_we_met": "",
+        "work_information": "",
+        "contact_information": "",
+        "circles": null,
+        "emails": null,
+        "phones": null,
+        "addresses": null,
+        "urls": null,
+        "impps": null,
+        "prefix": "",
+        "middle_name": "",
+        "suffix": "",
+        "organization": "",
+        "department": "",
+        "job_title": "",
+        "role": "",
+        "anniversary": "",
+        "archived": false,
+        "is_favorite": false
+      }
+    }
+  ],
+  "relationship_edges": [
+    {
+      "edge": {
+        "id": "4535c2cb-34a1-4471-a195-ad18f7957a49",
+        "created_at": "2026-08-21T00:08:42.04978252Z",
+        "updated_at": "2026-08-21T00:08:42.04978252Z",
+        "source_id": "458bc9ba-b9a7-4853-a3f8-d9cd907bbc9f",
+        "target_id": "0836c948-4c37-4ac8-bb27-358936e6b67c",
+        "type": "friend_of",
+        "directional": false,
+        "source": "user-confirmed",
+        "confidence": 1,
+        "status": "confirmed",
+        "sensitivity": "normal"
+      },
+      "other_party_contact_id": 12,
+      "other_party_name": "Fixture Other",
+      "other_party_uid": "0836c948-4c37-4ac8-bb27-358936e6b67c",
+      "display_token": "friend_of"
+    }
+  ],
+  "life_events": [
+    {
+      "id": "c06177b1-e498-43c7-9821-7a6669411a04",
+      "created_at": "2026-08-21T00:08:42.022654122Z",
+      "updated_at": "2026-08-21T00:08:42.022654122Z",
+      "entity_id": "458bc9ba-b9a7-4853-a3f8-d9cd907bbc9f",
+      "type": "graduated",
+      "category": "work_education",
+      "description": "Fixture life event",
+      "related_entity_names": {}
+    }
+  ],
+  "agenda": [],
+  "gifts": [
+    {
+      "id": "360a5cc2-ed2c-4bf0-b735-8c57e5df234a",
+      "created_at": "2026-08-21T00:08:42.025353585Z",
+      "updated_at": "2026-08-21T00:08:42.025353585Z",
+      "entity_id": "458bc9ba-b9a7-4853-a3f8-d9cd907bbc9f",
+      "status": "idea",
+      "description": "Fixture gift idea",
+      "date": "2026-08-21T00:08:42.007Z"
+    }
+  ],
+  "field_values": [
+    {
+      "id": 2,
+      "created_at": "2026-08-21T00:08:42.047333763Z",
+      "updated_at": "2026-08-21T00:08:42.047333763Z",
+      "field_definition_id": "73d1d0f1-620f-4c45-ab09-6e821ddbaf60",
+      "entity_id": "458bc9ba-b9a7-4853-a3f8-d9cd907bbc9f",
+      "value": "fixture value"
+    }
+  ],
+  "external_identities": [],
+  "external_activities": [],
+  "circles": [
+    {
+      "id": "e7d59493-5f47-4fff-88e0-7d1ba44604df",
+      "created_at": "2026-08-21T00:08:42.039421421Z",
+      "updated_at": "2026-08-21T00:08:42.039421421Z",
+      "name": "contract-fixture-circle-1787270922036"
+    }
+  ],
+  "tags": [
+    {
+      "id": "99814236-a948-4083-b6a9-d9ae4deb335d",
+      "created_at": "2026-08-21T00:08:42.029358737Z",
+      "updated_at": "2026-08-21T00:08:42.029358737Z",
+      "name": "contract-fixture-1787270922026"
+    }
+  ]
+}
