@@ -54,7 +54,19 @@ WORKDIR /app
 # Install yarn explicitly so a future Node bump doesn't silently break this
 # build the way #297 (node:22-alpine -> node:26-alpine) did (exit 127, "yarn:
 # not found").
-RUN npm install -g yarn@1.22.22
+#
+# A plain `npm install -g yarn@<version>` is a semver pin, not a hash pin --
+# OSSF Scorecard's Pinned-Dependencies check only credits `npm ci` or a
+# git+https URL pinned to a 40-char commit SHA, and yarnpkg/yarn's git tags
+# don't include the built lib/ directory (it's produced by `gulp build`,
+# gitignored, only shipped in the published npm tarball), so a git-SHA
+# install doesn't actually work. Download the exact release tarball instead
+# and verify it against its published sha512 (cross-checked against the
+# registry's `dist.integrity` for yarn@1.22.22) before installing.
+RUN wget -q https://registry.npmjs.org/yarn/-/yarn-1.22.22.tgz -O /tmp/yarn.tgz && \
+    echo "a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e  /tmp/yarn.tgz" | sha512sum -c - && \
+    npm install -g /tmp/yarn.tgz && \
+    rm /tmp/yarn.tgz
 
 # Copy package files first for better caching
 COPY frontend/package.json frontend/yarn.lock* frontend/package-lock.json* ./
