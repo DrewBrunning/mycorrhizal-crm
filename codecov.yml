@@ -1,0 +1,50 @@
+# Codecov config — issue #294. Visibility/tracking only: every status check
+# below is `informational: true` on purpose. The hard gate is a separate,
+# deliberately deferred decision (issue #267) — do not flip these to
+# non-informational without reading that issue first.
+codecov:
+  require_ci_to_pass: false
+
+coverage:
+  status:
+    project:
+      default:
+        informational: true
+    patch:
+      default:
+        informational: true
+
+# CI is path-gated (dorny/paths-filter — see unit-tests.yml / android-tests.yml
+# "Detect Changes"), so a PR touching only one area never uploads the other
+# flags. Without carryforward, Codecov would treat that PR's single flag as
+# the whole repo's coverage, which is wrong and makes the diff comment
+# misleading. carryforward: true reuses each flag's last known coverage on
+# commits/PRs that don't touch that area.
+flags:
+  backend:
+    paths:
+      - backend/
+    carryforward: true
+  frontend:
+    paths:
+      - frontend/src/
+    carryforward: true
+  android:
+    paths:
+      - android/
+    carryforward: true
+
+comment:
+  layout: "reach, diff, flags, files"
+  behavior: default
+  require_changes: false
+
+ignore:
+  # Hand-written SQL migrations (no .go source lives here today, but this
+  # guards against a future embed.go/helper landing in the same directory).
+  - "backend/database/migrations/**"
+  # No codegen exists yet anywhere in the repo (checked when this file was
+  # written); this is a placeholder for whenever one shows up, per CLAUDE.md's
+  # "frontend enum/registry lists are hardcoded mirrors" note — nothing here
+  # is actually generated today.
+  - "frontend/src/generated/**"

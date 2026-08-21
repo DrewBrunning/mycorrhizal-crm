@@ -8,6 +8,7 @@
   <a href="https://golang.org"><img src="https://img.shields.io/badge/Backend-Go-00ADD8?logo=go" alt="Backend: Go"></a>
   <a href="https://reactjs.org"><img src="https://img.shields.io/badge/Frontend-React-61DAFB?logo=react" alt="Frontend: React"></a>
   <a href="https://kotlinlang.org/"><img src="https://img.shields.io/badge/Android-Kotlin-B125EA?logo=kotlin" alt="Android: Kotlin"></a>
+  <a href="https://codecov.io/gh/DrewBrunning/mycorrhizal-crm"><img src="https://codecov.io/gh/DrewBrunning/mycorrhizal-crm/graph/badge.svg" alt="Coverage"></a>
 </p>
 
 # Mycorrhizal CRM
