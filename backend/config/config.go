@@ -74,15 +74,19 @@ type Config struct {
 	// people share one egress IP (a household behind NAT, or a reverse proxy
 	// without correct X-Forwarded-For) shares a single bucket between them.
 	// Defaults preserve the previous hardcoded behaviour exactly.
-	APIRateLimitInterval      time.Duration // Sustained refill interval, one token per interval
-	APIRateLimitBurst         int           // Bucket size, i.e. the largest instantaneous burst allowed
-	ImmichSyncIntervalHours   int           // Interval in hours for the scheduled Immich enrichment sync (T16)
-	ImmichBlockPrivateURLs    bool          // Block Immich fetches to private/loopback addresses (useful for cloud deployments)
-	PaperlessBlockPrivateURLs bool          // Block Paperless-ngx fetches to private/loopback addresses (useful for cloud deployments)
-	SeafileBlockPrivateURLs   bool          // Block Seafile fetches to private/loopback addresses (useful for cloud deployments)
-	WebDAVBlockPrivateURLs    bool          // Block Nextcloud/ownCloud WebDAV fetches to private/loopback addresses (useful for cloud deployments)
-	FCMServiceAccountFile     string        // Path to the Firebase service-account JSON for FCM mobile push delivery (M2)
-	OIDC                      OIDCConfig
+	APIRateLimitInterval          time.Duration // Sustained refill interval, one token per interval
+	APIRateLimitBurst             int           // Bucket size, i.e. the largest instantaneous burst allowed
+	ImmichSyncIntervalHours       int           // Interval in hours for the scheduled Immich enrichment sync (T16)
+	ImmichBlockPrivateURLs        bool          // Block Immich fetches to private/loopback addresses (useful for cloud deployments)
+	PaperlessBlockPrivateURLs     bool          // Block Paperless-ngx fetches to private/loopback addresses (useful for cloud deployments)
+	SeafileBlockPrivateURLs       bool          // Block Seafile fetches to private/loopback addresses (useful for cloud deployments)
+	WebDAVBlockPrivateURLs        bool          // Block Nextcloud/ownCloud WebDAV fetches to private/loopback addresses (useful for cloud deployments)
+	FCMServiceAccountFile         string        // Path to the Firebase service-account JSON for FCM mobile push delivery (M2)
+	DBIntegrityCheckEnabled       bool          // Enable the scheduled live-DB PRAGMA integrity_check job (issue #273)
+	DBIntegrityCheckIntervalHours int           // Interval in hours for the scheduled DB integrity check
+	DBRestoreDrillEnabled         bool          // Enable the scheduled backup-restore drill job (issue #275)
+	DBRestoreDrillIntervalHours   int           // Interval in hours for the scheduled restore drill (default weekly)
+	OIDC                          OIDCConfig
 }
 
 // LoadConfig reads environment variables (with sensible defaults) into a
@@ -102,46 +106,50 @@ func LoadConfig() *Config {
 	idleTimeout := getIntEnv("HTTP_IDLE_TIMEOUT", 60)
 
 	cfg := &Config{
-		DBPath:                    getEnv("SQLITE_DB_PATH", "mycorrhizal.db"),
-		ReminderTime:              getEnv("REMINDER_TIME", "06:00"),
-		ReminderTimezone:          getEnv("REMINDER_TIMEZONE", "UTC"),
-		FrontendURL:               getEnv("FRONTEND_URL", "*"),
-		Port:                      getEnv("PORT", "8080"),
-		ResendAPIKey:              getEnv("RESEND_API_KEY", ""),
-		ResendFromEmail:           getEnv("RESEND_FROM_EMAIL", ""),
-		SMTPHost:                  getEnv("SMTP_HOST", ""),
-		SMTPPort:                  getIntEnv("SMTP_PORT", 587),
-		SMTPUsername:              getEnv("SMTP_USERNAME", ""),
-		SMTPPassword:              getEnv("SMTP_PASSWORD", ""),
-		SMTPFromEmail:             getEnv("SMTP_FROM_EMAIL", ""),
-		SMTPUseTLS:                getBoolEnv("SMTP_USE_TLS", false),
-		JWTSecretKey:              getEnv("JWT_SECRET_KEY", ""),
-		JWTExpiryHours:            jwtExpiryHours,
-		TrustedProxies:            getProxies(getEnv("TRUSTED_PROXIES", "")),
-		ReadTimeout:               readTimeout,
-		WriteTimeout:              writeTimeout,
-		IdleTimeout:               idleTimeout,
-		ProfilePhotoDir:           getEnv("PROFILE_PHOTO_DIR", ""),
-		AttachmentsDir:            getEnv("ATTACHMENTS_DIR", filepath.Join(filepath.Dir(getEnv("PROFILE_PHOTO_DIR", "")), "attachments")),
-		CardDAVEnabled:            getBoolEnv("CARDDAV_ENABLED", false),
-		CalDAVEnabled:             getBoolEnv("CALDAV_ENABLED", false),
-		CalDAVTwoWayEnabled:       getBoolEnv("CALDAV_TWO_WAY_ENABLED", false),
-		CookieSecure:              getBoolEnv("COOKIE_SECURE", false),
-		CookieDomain:              getEnv("COOKIE_DOMAIN", ""),
-		RegistrationDisabled:      getBoolEnv("DISABLE_REGISTRATION", false),
-		WebhookBlockPrivateURLs:   getBoolEnv("WEBHOOK_BLOCK_PRIVATE_URLS", false),
-		CalDAVSyncIntervalHours:   getIntEnv("CALDAV_SYNC_INTERVAL_HOURS", 6),
-		CalDAVBlockPrivateURLs:    getBoolEnv("CALDAV_BLOCK_PRIVATE_URLS", false),
-		DeleteRetentionDays:       getIntEnv("DELETED_RETENTION_DAYS", 30),
-		AuditRetentionDays:        getIntEnv("AUDIT_RETENTION_DAYS", 90),
-		APIRateLimitInterval:      time.Duration(getIntEnv("API_RATE_LIMIT_INTERVAL_MS", 600)) * time.Millisecond,
-		APIRateLimitBurst:         getIntEnv("API_RATE_LIMIT_BURST", 1000),
-		ImmichSyncIntervalHours:   getIntEnv("IMMICH_SYNC_INTERVAL_HOURS", 6),
-		ImmichBlockPrivateURLs:    getBoolEnv("IMMICH_BLOCK_PRIVATE_URLS", false),
-		PaperlessBlockPrivateURLs: getBoolEnv("PAPERLESS_BLOCK_PRIVATE_URLS", false),
-		SeafileBlockPrivateURLs:   getBoolEnv("SEAFILE_BLOCK_PRIVATE_URLS", false),
-		WebDAVBlockPrivateURLs:    getBoolEnv("WEBDAV_BLOCK_PRIVATE_URLS", false),
-		FCMServiceAccountFile:     getEnv("FCM_SERVICE_ACCOUNT_FILE", ""),
+		DBPath:                        getEnv("SQLITE_DB_PATH", "mycorrhizal.db"),
+		ReminderTime:                  getEnv("REMINDER_TIME", "06:00"),
+		ReminderTimezone:              getEnv("REMINDER_TIMEZONE", "UTC"),
+		FrontendURL:                   getEnv("FRONTEND_URL", "*"),
+		Port:                          getEnv("PORT", "8080"),
+		ResendAPIKey:                  getEnv("RESEND_API_KEY", ""),
+		ResendFromEmail:               getEnv("RESEND_FROM_EMAIL", ""),
+		SMTPHost:                      getEnv("SMTP_HOST", ""),
+		SMTPPort:                      getIntEnv("SMTP_PORT", 587),
+		SMTPUsername:                  getEnv("SMTP_USERNAME", ""),
+		SMTPPassword:                  getEnv("SMTP_PASSWORD", ""),
+		SMTPFromEmail:                 getEnv("SMTP_FROM_EMAIL", ""),
+		SMTPUseTLS:                    getBoolEnv("SMTP_USE_TLS", false),
+		JWTSecretKey:                  getEnv("JWT_SECRET_KEY", ""),
+		JWTExpiryHours:                jwtExpiryHours,
+		TrustedProxies:                getProxies(getEnv("TRUSTED_PROXIES", "")),
+		ReadTimeout:                   readTimeout,
+		WriteTimeout:                  writeTimeout,
+		IdleTimeout:                   idleTimeout,
+		ProfilePhotoDir:               getEnv("PROFILE_PHOTO_DIR", ""),
+		AttachmentsDir:                getEnv("ATTACHMENTS_DIR", filepath.Join(filepath.Dir(getEnv("PROFILE_PHOTO_DIR", "")), "attachments")),
+		CardDAVEnabled:                getBoolEnv("CARDDAV_ENABLED", false),
+		CalDAVEnabled:                 getBoolEnv("CALDAV_ENABLED", false),
+		CalDAVTwoWayEnabled:           getBoolEnv("CALDAV_TWO_WAY_ENABLED", false),
+		CookieSecure:                  getBoolEnv("COOKIE_SECURE", false),
+		CookieDomain:                  getEnv("COOKIE_DOMAIN", ""),
+		RegistrationDisabled:          getBoolEnv("DISABLE_REGISTRATION", false),
+		WebhookBlockPrivateURLs:       getBoolEnv("WEBHOOK_BLOCK_PRIVATE_URLS", false),
+		CalDAVSyncIntervalHours:       getIntEnv("CALDAV_SYNC_INTERVAL_HOURS", 6),
+		CalDAVBlockPrivateURLs:        getBoolEnv("CALDAV_BLOCK_PRIVATE_URLS", false),
+		DeleteRetentionDays:           getIntEnv("DELETED_RETENTION_DAYS", 30),
+		AuditRetentionDays:            getIntEnv("AUDIT_RETENTION_DAYS", 90),
+		APIRateLimitInterval:          time.Duration(getIntEnv("API_RATE_LIMIT_INTERVAL_MS", 600)) * time.Millisecond,
+		APIRateLimitBurst:             getIntEnv("API_RATE_LIMIT_BURST", 1000),
+		ImmichSyncIntervalHours:       getIntEnv("IMMICH_SYNC_INTERVAL_HOURS", 6),
+		ImmichBlockPrivateURLs:        getBoolEnv("IMMICH_BLOCK_PRIVATE_URLS", false),
+		PaperlessBlockPrivateURLs:     getBoolEnv("PAPERLESS_BLOCK_PRIVATE_URLS", false),
+		SeafileBlockPrivateURLs:       getBoolEnv("SEAFILE_BLOCK_PRIVATE_URLS", false),
+		WebDAVBlockPrivateURLs:        getBoolEnv("WEBDAV_BLOCK_PRIVATE_URLS", false),
+		FCMServiceAccountFile:         getEnv("FCM_SERVICE_ACCOUNT_FILE", ""),
+		DBIntegrityCheckEnabled:       getBoolEnv("DB_INTEGRITY_CHECK_ENABLED", true),
+		DBIntegrityCheckIntervalHours: getIntEnv("DB_INTEGRITY_CHECK_INTERVAL_HOURS", 24),
+		DBRestoreDrillEnabled:         getBoolEnv("DB_RESTORE_DRILL_ENABLED", true),
+		DBRestoreDrillIntervalHours:   getIntEnv("DB_RESTORE_DRILL_INTERVAL_HOURS", 168),
 	}
 
 	if cfg.CalDAVSyncIntervalHours < 1 {
@@ -152,6 +160,16 @@ func LoadConfig() *Config {
 	if cfg.ImmichSyncIntervalHours < 1 {
 		log.Println("WARN: IMMICH_SYNC_INTERVAL_HOURS must be at least 1, using 1")
 		cfg.ImmichSyncIntervalHours = 1
+	}
+
+	if cfg.DBIntegrityCheckIntervalHours < 1 {
+		log.Println("WARN: DB_INTEGRITY_CHECK_INTERVAL_HOURS must be at least 1, using 1")
+		cfg.DBIntegrityCheckIntervalHours = 1
+	}
+
+	if cfg.DBRestoreDrillIntervalHours < 1 {
+		log.Println("WARN: DB_RESTORE_DRILL_INTERVAL_HOURS must be at least 1, using 1")
+		cfg.DBRestoreDrillIntervalHours = 1
 	}
 
 	// An email channel is enabled only when it is fully configured

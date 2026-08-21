@@ -190,6 +190,23 @@ backup does not change which key the server uses. If you rotated `JWT_SECRET_KEY
 restore, any session tokens issued under the old key are unrecognized, so users simply have to log
 in again. That is harmless.
 
+### Automated integrity & restore checks
+
+Two scheduled background jobs automate the two checks above so a silent failure is caught rather
+than discovered during a real disaster:
+
+- **Live DB integrity check** (issue #273) — runs `PRAGMA integrity_check` against the live
+  database on a schedule (`DB_INTEGRITY_CHECK_ENABLED`, default on; `DB_INTEGRITY_CHECK_INTERVAL_HOURS`,
+  default `24`).
+- **Restore drill** (issue #275) — takes a fresh backup snapshot, restores it into a scratch
+  database, and compares every table's row count against the live database
+  (`DB_RESTORE_DRILL_ENABLED`, default on; `DB_RESTORE_DRILL_INTERVAL_HOURS`, default `168`, i.e.
+  weekly).
+
+Either job logs and fires a webhook (`db.integrity_check_failed` / `db.restore_drill_failed`, see
+Settings → Webhooks) on failure, so "test restores regularly" above is now something the app does
+for you rather than a manual chore.
+
 ### Security notes
 
 - The backup file contains **all** user data at its full sensitivity (including `private`/`secret`

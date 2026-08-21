@@ -162,6 +162,24 @@ func main() {
 	s.Every(cfg.ImmichSyncIntervalHours).Hours().Do(immichSyncTask)
 	go safeGo("immich-sync-initial-run", immichSyncTask)
 
+	// Check the live database for corruption on a schedule (issue #273).
+	// Job-lock guarded, config-gated (DB_INTEGRITY_CHECK_ENABLED).
+	s.Every(cfg.DBIntegrityCheckIntervalHours).Hours().Do(func() {
+		services.CheckDBIntegrityScheduled(db, *cfg)
+	})
+	go safeGo("db-integrity-check-initial-run", func() {
+		services.CheckDBIntegrityScheduled(db, *cfg)
+	})
+
+	// Periodically prove a backup actually restores (issue #275). Job-lock
+	// guarded, config-gated (DB_RESTORE_DRILL_ENABLED).
+	s.Every(cfg.DBRestoreDrillIntervalHours).Hours().Do(func() {
+		services.RunRestoreDrillScheduled(db, *cfg)
+	})
+	go safeGo("restore-drill-initial-run", func() {
+		services.RunRestoreDrillScheduled(db, *cfg)
+	})
+
 	go s.StartBlocking()
 
 	r := gin.Default()

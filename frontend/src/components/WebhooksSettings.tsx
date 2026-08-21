@@ -60,6 +60,9 @@ const SUPPORTED_EVENTS = [
   'birthday.occurred',
   // Issue #177: event-driven reach-out suggestions (org/title/address change).
   'reach_out_suggested',
+  // Issue #273/#275: scheduled DB integrity check / restore drill failures.
+  'db.integrity_check_failed',
+  'db.restore_drill_failed',
 ];
 
 interface WebhookFormState {

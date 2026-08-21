@@ -260,3 +260,25 @@ func TestLoadConfig_DeleteRetentionDays(t *testing.T) {
 	cfg := LoadConfig()
 	assert.Equal(t, 14, cfg.DeleteRetentionDays)
 }
+
+func TestLoadConfig_DBIntegrityCheckIntervalHoursClampedToMinimumOne(t *testing.T) {
+	t.Setenv("JWT_SECRET_KEY", "test-secret-key-that-is-long-enough-32")
+	t.Setenv("PROFILE_PHOTO_DIR", "/tmp/photos")
+	t.Setenv("SQLITE_DB_PATH", "/tmp/test.db")
+	t.Setenv("FRONTEND_URL", "http://localhost:5173")
+	t.Setenv("DB_INTEGRITY_CHECK_INTERVAL_HOURS", "0")
+
+	cfg := LoadConfig()
+	assert.Equal(t, 1, cfg.DBIntegrityCheckIntervalHours, "an interval below 1 must be clamped, not left non-positive")
+}
+
+func TestLoadConfig_DBRestoreDrillIntervalHoursClampedToMinimumOne(t *testing.T) {
+	t.Setenv("JWT_SECRET_KEY", "test-secret-key-that-is-long-enough-32")
+	t.Setenv("PROFILE_PHOTO_DIR", "/tmp/photos")
+	t.Setenv("SQLITE_DB_PATH", "/tmp/test.db")
+	t.Setenv("FRONTEND_URL", "http://localhost:5173")
+	t.Setenv("DB_RESTORE_DRILL_INTERVAL_HOURS", "-5")
+
+	cfg := LoadConfig()
+	assert.Equal(t, 1, cfg.DBRestoreDrillIntervalHours, "a negative interval must be clamped, not left negative")
+}

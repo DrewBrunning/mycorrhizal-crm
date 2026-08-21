@@ -33,6 +33,13 @@ services:
       # production limit.
       - API_RATE_LIMIT_INTERVAL_MS=1
       - API_RATE_LIMIT_BURST=100000
+      # The restore drill (issue #275) does a full VACUUM INTO copy + reopen
+      # + migrate of the whole database on every container boot — unneeded
+      # I/O on a throwaway e2e database every CI run, and the mechanism is
+      # already covered deterministically by the real-DB Go tests. The
+      # integrity check (issue #273) is a cheap PRAGMA against the live
+      # connection and stays enabled.
+      - DB_RESTORE_DRILL_ENABLED=false
     volumes:
       - test-data:/app/data
       - test-photos:/app/static/photos
