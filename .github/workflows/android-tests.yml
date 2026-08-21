@@ -74,6 +74,16 @@ jobs:
         working-directory: android
         run: ./gradlew jacocoTestReport
 
+      # Issue #294: see unit-tests.yml's backend job for why
+      # fail_ci_if_error is false — informational only, see codecov.yml.
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: android/**/build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml
+          flags: android
+          fail_ci_if_error: false
+
       - name: Lint
         working-directory: android
         run: ./gradlew lintDebug
@@ -84,7 +94,7 @@ jobs:
 
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android-coverage
           path: android/**/build/reports/jacoco/jacocoTestReport/
@@ -176,7 +186,7 @@ jobs:
             ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300
 
       - name: Upload E2E results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: android-e2e-results
