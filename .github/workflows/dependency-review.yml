@@ -17,4 +17,4 @@ jobs:
       # dependency-confusion / typosquatting attacks. Requires the Dependency
       # graph + Dependency submission to be enabled on the repo.
       - name: Dependency Review
-        uses: actions/dependency-review-action@v4
+        uses: actions/dependency-review-action@v5

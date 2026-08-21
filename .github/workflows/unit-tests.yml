@@ -84,18 +84,40 @@ jobs:
           fi
           go vet ./...
 
-      - name: Run tests with coverage
+      # Issue #268: run tests through gotestsum so (a) a failed test is
+      # retried once (`--rerun-fails=1`) instead of flaking the required
+      # check, (b) a JUnit XML report is produced for the dorny/test-reporter
+      # check run (test-report.yml), and (c) tests that only passed on retry
+      # are written to rerun-fails.txt so the flake is surfaced, not hidden.
+      # -timeout raised from the go test default (10m) — see the job's
+      # timeout-minutes comment above for why race+coverage need the room.
+      - name: Run tests with coverage (retry-on-failure)
         working-directory: backend
-        # -timeout raised from the go test default (10m) — see the job's
-        # timeout-minutes comment above for why race+coverage need the room.
-        run: go test -race -timeout=20m ./... -coverprofile=coverage.out -covermode=atomic
+        run: go run gotest.tools/gotestsum@v1.13.0 --rerun-fails=1 --rerun-fails-max-failures=20 --rerun-fails-report=rerun-fails.txt --junitfile=junit.xml --packages="./..." -- -race -timeout=20m -coverprofile=coverage.out -covermode=atomic
+
+      # Issue #268: the flake signal for Go. gotestsum's rerun report lists
+      # every test that failed once and then passed on retry, with counts.
+      # Visibility only — a flaky test that passed on retry does not fail the
+      # job (the "rerun" exists precisely to keep the gate green), but it IS
+      # called out here and uploaded as an artifact for triage.
+      - name: Report flaky tests (failed once, passed on retry)
+        if: always()
+        working-directory: backend
+        run: |
+          if [ -s rerun-fails.txt ]; then
+            echo "::group::Flaky tests (passed only on retry)"
+            cat rerun-fails.txt
+            echo "::endgroup::"
+          else
+            echo "No tests required a rerun."
+          fi
 
       # Issue #294: durable coverage tracking + per-PR diff comment on top of
       # the artifact above. Informational only (see codecov.yml) — a failed
       # upload (app not installed yet, Codecov outage) must not fail the
       # build, hence fail_ci_if_error: false.
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5.5.5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: backend/coverage.out
@@ -135,12 +157,24 @@ jobs:
 
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: backend-coverage
           path: |
             backend/coverage.out
             backend/coverage.html
+          retention-days: 7
+
+      # Issue #268: JUnit XML + flake report consumed by test-report.yml
+      # (dorny/test-reporter) and by anyone triaging flakes.
+      - name: Upload test results (JUnit + flake report)
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: backend-junit-results
+          path: |
+            backend/junit.xml
+            backend/rerun-fails.txt
           retention-days: 7
 
   frontend:
@@ -177,7 +211,7 @@ jobs:
       # Issue #294: see the backend job's identical step for why
       # fail_ci_if_error is false.
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5.5.5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: frontend/coverage/lcov.info
@@ -195,8 +229,19 @@ jobs:
       # Issue #251: visibility only, no threshold/gate.
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: frontend-coverage
           path: frontend/coverage/
+          retention-days: 7
+
+      # Issue #268: JUnit XML (written by vitest's junit reporter) consumed by
+      # test-report.yml (dorny/test-reporter). Flaky vitest tests are surfaced
+      # separately by the github-actions reporter's job summary.
+      - name: Upload test results (JUnit)
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: frontend-junit-results
+          path: frontend/junit.xml
           retention-days: 7

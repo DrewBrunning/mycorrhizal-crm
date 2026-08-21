@@ -7,6 +7,9 @@
 
 # testing
 /coverage
+# Issue #268: JUnit XML emitted by vitest's junit reporter in CI (uploaded as
+# an artifact, never committed)
+/junit.xml
 
 # production
 /build
