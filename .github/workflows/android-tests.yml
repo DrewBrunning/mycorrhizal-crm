@@ -46,7 +46,11 @@ jobs:
       contents: read
     name: Android (Gradle)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # The job runs the full Robolectric suite + jacoco + lint + assembleDebug;
+    # typical time is ~26-30m, and a slightly slow runner has hit the 30m cap
+    # (cancelled mid-assemble). 40m keeps the bound meaningful while giving the
+    # variance headroom so a flaky timeout doesn't fail the required check.
+    timeout-minutes: 40
     needs: changes
     if: needs.changes.outputs.android == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.workflows == 'true'
 
