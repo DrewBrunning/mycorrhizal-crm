@@ -19,6 +19,18 @@ if (typeof window !== 'undefined') {
       const { signal: _, ...rest } = init;
       init = rest;
     }
+    // Every real call site fetches relative paths (e.g. `/api/v1/contacts`)
+    // and relies on the browser resolving them against the current origin.
+    // Vitest's jsdom environment wires `window.fetch` straight to Node's
+    // native undici fetch (jsdom itself has never implemented fetch) instead
+    // of a browser-style fetch that consults the document's URL, so a
+    // relative input throws `TypeError: Failed to parse URL` before the
+    // request is even sent — silently short-circuiting every data-loading
+    // component test into its catch branch. Resolve against window.location
+    // ourselves to restore normal relative-fetch behavior in tests.
+    if (typeof input === 'string' && input.startsWith('/')) {
+      input = new URL(input, window.location.href).toString();
+    }
     return jsdomFetch(input, init);
   };
 }
