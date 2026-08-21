@@ -17,8 +17,10 @@ import com.mycorrhizal.crm.testing.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -128,6 +130,38 @@ class ContactListViewModelTest {
         // Exactly one page-2 fetch appends Bob; the second call bailed on isLoadingMore.
         assertEquals(2, viewModel.uiState.value.contacts.size)
     }
+
+    @Test
+    fun `a search arriving while the initial load is still in flight is not dropped`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // Regression test for the Android E2E flake in ArchiveDeleteAuditTest: the initial
+            // (unfiltered) load — fired by init/ON_RESUME — was still in flight when the
+            // debounced search's own loadContacts() call landed. loadContacts() used to guard
+            // reentrancy with `if (state.isLoading) return`, which silently dropped the search's
+            // call and left the screen showing whatever the stale unfiltered load produced,
+            // with nothing left to ever retry the search. loadContacts() must instead cancel the
+            // in-flight call and let the newer one win, the same way onSearchQueryChange already
+            // does for searchJob.
+            val (viewModel, contactRepository, _) = newViewModel()
+            coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = null) } coAnswers {
+                delay(1_000) // still in flight when the search below arrives
+                Result.success(page(ContactSummary(id = 1, fn = "Stale")))
+            }
+            coEvery { contactRepository.listContacts(cursor = null, limit = 50, search = "ali") } returns
+                Result.success(page(ContactSummary(id = 2, fn = "Alicia")))
+
+            // Let the ViewModel's init-time loadContacts() start and suspend mid-flight.
+            runCurrent()
+
+            // A search lands before that first load resolves.
+            viewModel.onSearchQueryChange("ali")
+            advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertEquals("ali", state.searchQuery)
+            assertEquals(1, state.contacts.size)
+            assertEquals("Alicia", state.contacts[0].fn)
+        }
 
     @Test
     fun `search query is forwarded to the repository`() = runTest(mainDispatcherRule.testDispatcher) {
