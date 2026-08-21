@@ -250,7 +250,7 @@ jobs:
             type=raw,value=${{ steps.stamp.outputs.sha7 }}
 
       - name: Build and push
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.file }}
@@ -299,6 +299,13 @@ jobs:
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
         run: echo "IMAGE_REF=ghcr.io/${GITHUB_REPOSITORY,,}:${RELEASE_TAG#v}" >> "$GITHUB_ENV"
 
+      # Pinned to an exact patch rather than floating on a major like the
+      # other actions in this file: trivy-action is still pre-1.0 (0.x), so
+      # there is no stable major tag to float on -- every release can be
+      # breaking. This is the one deliberate exception to the "float on
+      # major" policy above; #269 added trivy-action to the github-actions
+      # Dependabot ecosystem, so bumps still arrive as PRs instead of
+      # drifting unnoticed.
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@0.35.0
         with:

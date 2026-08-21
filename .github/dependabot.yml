@@ -4,6 +4,9 @@ updates:
     directory: "/backend"
     schedule:
       interval: "weekly"
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
   - package-ecosystem: "npm"
     directory: "/frontend"
     schedule:
@@ -17,5 +20,28 @@ updates:
       interval: "weekly"
   - package-ecosystem: "gradle"
     directory: "/android"
+    schedule:
+      interval: "weekly"
+  # GitHub Actions used across .github/workflows/*.yml -- previously
+  # unmonitored, which is how docker/build-push-action drifted to @v5 in
+  # docker-publish.yml while every other workflow moved to @v6.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+  # Docker base images, one entry per directory holding a Dockerfile.
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "docker"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "docker"
+    directory: "/frontend"
     schedule:
       interval: "weekly"
