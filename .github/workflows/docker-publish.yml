@@ -253,9 +253,16 @@ jobs:
             type=semver,pattern={{major}}.{{minor}},value=${{ env.RELEASE_TAG }}
             type=raw,value=${{ steps.stamp.outputs.sha7 }}
 
+      # SHA-pinned (trailing comment carries the version) because Scorecard's
+      # Pinned-Dependencies check flagged this line and the cosign-installer
+      # one below -- both touched by this PR. Other actions in this job
+      # (setup-buildx-action, login-action, metadata-action) predate this PR
+      # and are still on floating major tags; that's a separate, larger
+      # cleanup, not something to do piecemeal here. Dependabot's
+      # github-actions ecosystem (#269) updates the SHA + comment together.
       - name: Build and push
         id: build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.file }}
@@ -283,7 +290,7 @@ jobs:
           sbom: true
 
       - name: Install cosign
-        uses: sigstore/cosign-installer@v3
+        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3.9.1
 
       # Keyless signing via cosign's ambient GitHub Actions OIDC detection --
       # no --certificate-identity/--certificate-oidc-issuer flags here, those
