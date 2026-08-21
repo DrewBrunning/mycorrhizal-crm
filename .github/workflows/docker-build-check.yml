@@ -26,6 +26,7 @@ jobs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
       openapi: ${{ steps.filter.outputs.openapi }}
+      infra: ${{ steps.filter.outputs.infra }}
       workflows: ${{ steps.filter.outputs.workflows }}
     steps:
       - name: Checkout repository
@@ -38,6 +39,56 @@ jobs:
         id: filter
         with:
           filters: .github/filters.yaml
+
+  # Keeps the shipped container's Go version in lockstep with the toolchain
+  # CI actually tests against. backend/go.mod pins `toolchain go1.26.6`, and
+  # the Dockerfiles hardcode `golang:1.26.6-alpine` independently -- when
+  # Dependabot bumps the gomod toolchain it does not touch the Dockerfile
+  # FROM line, so the two can drift silently and ship a container built with
+  # an older Go than CI tested. The Go toolchain here is pinned deliberately
+  # (see /CLAUDE.md); this enforces the pin in the one place it can still
+  # drift out from under it. Pure text parsing, no Docker needed, so it runs
+  # fast and independently of the two build jobs below.
+  toolchain-consistency:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Assert Dockerfiles match backend/go.mod's pinned toolchain
+        run: |
+          set -euo pipefail
+          toolchain_version=$(grep -oP '^toolchain go\K[0-9.]+' backend/go.mod)
+          if [ -z "$toolchain_version" ]; then
+            echo "::error file=backend/go.mod::No 'toolchain' directive found to check against."
+            exit 1
+          fi
+
+          fail=0
+          for f in Dockerfile backend/Dockerfile; do
+            versions=$(grep -oP 'FROM[^\n]*\bgolang:\K[0-9.]+(?=-alpine)' "$f" || true)
+            if [ -z "$versions" ]; then
+              echo "::error file=$f::No 'golang:<version>-alpine' base image found."
+              fail=1
+              continue
+            fi
+            while IFS= read -r v; do
+              if [ "$v" != "$toolchain_version" ]; then
+                echo "::error file=$f::golang base image is $v but backend/go.mod pins toolchain go$toolchain_version"
+                fail=1
+              fi
+            done <<< "$versions"
+          done
+
+          if [ "$fail" -ne 0 ]; then
+            exit 1
+          fi
+          echo "OK: Dockerfile golang images match backend/go.mod toolchain go$toolchain_version"
 
   build-backend:
     runs-on: ubuntu-latest

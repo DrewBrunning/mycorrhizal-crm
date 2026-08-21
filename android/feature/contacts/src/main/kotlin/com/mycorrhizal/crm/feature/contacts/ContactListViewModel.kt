@@ -117,10 +117,31 @@ class ContactListViewModel @Inject constructor(
     private fun hasActiveFilter(state: ContactListUiState): Boolean =
         state.circleFilter != null || state.includeArchived || state.includeFavorites || state.searchQuery.isNotBlank()
 
+    private var loadJob: Job? = null
+
+    /**
+     * Cancel-and-restart, not a reentrancy guard that drops the new call: this method has
+     * several independent triggers that can legitimately land close together (ViewModel init,
+     * ContactListScreen's ON_RESUME hook, a filter toggle, and the debounced search below), and
+     * an in-flight fetch from an earlier trigger being superseded by a newer one (e.g. a search
+     * query arriving) is the common case, not a bug to swallow.
+     *
+     * A prior `if (state.isLoading) return` guard here silently dropped the newer call whenever
+     * it landed while an older one was still in flight, leaving the list showing whatever the
+     * older (now stale) request's filters produced — with nothing left to ever retry the newer
+     * one. That is the root cause behind the intermittent Android E2E flake in
+     * ArchiveDeleteAuditTest: `searchFor()` right after `navigateViaDrawer("Contacts")` can race
+     * the screen's own initial/ON_RESUME load, and on a slow CI emulator the debounced search's
+     * `loadContacts()` call would occasionally lose that race and get dropped, leaving the
+     * unfiltered (and possibly not-containing-the-new-contact) page on screen instead — the
+     * same `waitForText` that flaked, always polling for a state that no code was ever going to
+     * produce. Cancelling the older job and always running the latest request (the same
+     * last-write-wins idiom [onSearchQueryChange] already uses for `searchJob`) means the UI
+     * always converges to the most recently requested filters instead of silently stalling.
+     */
     fun loadContacts() {
-        val state = _uiState.value
-        if (state.isLoading) return
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null, contacts = emptyList()) }
             val page = contactRepository.listContacts(
                 cursor = null,
