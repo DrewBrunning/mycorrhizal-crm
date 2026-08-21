@@ -1,0 +1,154 @@
+package com.mycorrhizal.crm.data.repository
+
+import com.mycorrhizal.crm.model.network.NotificationConfig
+import com.mycorrhizal.crm.model.network.NotificationConfigInput
+import com.mycorrhizal.crm.model.network.NotificationTestResult
+import com.mycorrhizal.crm.model.network.Webhook
+import com.mycorrhizal.crm.model.network.WebhookCreateResponse
+import com.mycorrhizal.crm.model.network.WebhookDelivery
+import com.mycorrhizal.crm.model.network.WebhookInput
+import com.mycorrhizal.crm.network.ApiClient
+import com.mycorrhizal.crm.network.ApiError
+import io.mockk.coEvery
+import io.mockk.mockk
+import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class WebhookRepositoryImplTest {
+
+    private val apiClient = mockk<ApiClient>()
+    private val repository = WebhookRepositoryImpl(apiClient)
+
+    @Test
+    fun `list returns the webhooks on success`() = runTest {
+        coEvery { apiClient.listWebhooks() } returns Result.success(
+            listOf(Webhook(id = 1, name = "Hook 1")),
+        )
+
+        val result = repository.list()
+
+        assertTrue(result.isSuccess)
+        assertEquals(listOf("Hook 1"), result.getOrThrow().map { it.name })
+    }
+
+    @Test
+    fun `list failure is normalized through mapError`() = runTest {
+        coEvery { apiClient.listWebhooks() } returns Result.failure(ApiError.Server(500, "boom"))
+
+        val result = repository.list()
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is ApiError)
+    }
+
+    @Test
+    fun `create forwards the input and returns the created webhook`() = runTest {
+        val input = WebhookInput(name = "Hook", url = "https://example.com", events = listOf("contact.created"), isActive = true)
+        coEvery { apiClient.createWebhook(input) } returns Result.success(
+            WebhookCreateResponse(id = 1, name = "Hook", secret = "s3cr3t"),
+        )
+
+        val result = repository.create(input)
+
+        assertTrue(result.isSuccess)
+        assertEquals("s3cr3t", result.getOrThrow().secret)
+    }
+
+    @Test
+    fun `update forwards id and input`() = runTest {
+        val input = WebhookInput(name = "Renamed", url = "https://example.com", events = emptyList(), isActive = false)
+        coEvery { apiClient.updateWebhook(1, input) } returns Result.success(Webhook(id = 1, name = "Renamed"))
+
+        val result = repository.update(1, input)
+
+        assertTrue(result.isSuccess)
+        assertEquals("Renamed", result.getOrThrow().name)
+    }
+
+    @Test
+    fun `delete delegates to the api client`() = runTest {
+        coEvery { apiClient.deleteWebhook(1) } returns Result.success(Unit)
+
+        val result = repository.delete(1)
+
+        assertTrue(result.isSuccess)
+    }
+
+    @Test
+    fun `test triggers a delivery attempt`() = runTest {
+        coEvery { apiClient.testWebhook(1) } returns Result.success(
+            WebhookDelivery(id = 9, webhookId = 1, eventType = "test"),
+        )
+
+        val result = repository.test(1)
+
+        assertTrue(result.isSuccess)
+        assertEquals(9, result.getOrThrow().id)
+    }
+
+    @Test
+    fun `deliveries returns the delivery history`() = runTest {
+        coEvery { apiClient.getWebhookDeliveries(1) } returns Result.success(
+            listOf(WebhookDelivery(id = 1, webhookId = 1, eventType = "contact.created")),
+        )
+
+        val result = repository.deliveries(1)
+
+        assertTrue(result.isSuccess)
+        assertEquals(1, result.getOrThrow().size)
+    }
+}
+
+class NotificationSettingsRepositoryImplTest {
+
+    private val apiClient = mockk<ApiClient>()
+    private val repository = NotificationSettingsRepositoryImpl(apiClient)
+
+    @Test
+    fun `config returns the current settings`() = runTest {
+        coEvery { apiClient.getNotificationConfig() } returns Result.success(
+            NotificationConfig(ntfyUrl = "https://ntfy.sh", notifyNtfy = true),
+        )
+
+        val result = repository.config()
+
+        assertTrue(result.isSuccess)
+        assertTrue(result.getOrThrow().notifyNtfy)
+    }
+
+    @Test
+    fun `save forwards the input`() = runTest {
+        val input = NotificationConfigInput(ntfyUrl = "https://ntfy.sh", notifyNtfy = true)
+        coEvery { apiClient.saveNotificationConfig(input) } returns Result.success(
+            NotificationConfig(ntfyUrl = "https://ntfy.sh", notifyNtfy = true),
+        )
+
+        val result = repository.save(input)
+
+        assertTrue(result.isSuccess)
+    }
+
+    @Test
+    fun `test surfaces a failed channel test`() = runTest {
+        coEvery { apiClient.testNotificationChannel("ntfy") } returns Result.success(
+            NotificationTestResult(ok = false, error = "unauthorized"),
+        )
+
+        val result = repository.test("ntfy")
+
+        assertTrue(result.isSuccess)
+        assertEquals("unauthorized", result.getOrThrow().error)
+    }
+
+    @Test
+    fun `test failure is normalized through mapError`() = runTest {
+        coEvery { apiClient.testNotificationChannel("gotify") } returns Result.failure(ApiError.Client(401, "unauthorized"))
+
+        val result = repository.test("gotify")
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is ApiError)
+    }
+}

@@ -158,6 +158,14 @@ private val JACOCO_EXCLUDES = listOf(
     // Compose compiler-synthesized holders — not code anyone writes or reviews.
     "**/ComposableSingletons\$*.class",
     "**/*ComposableSingletons*.class",
+    // Room-generated (KSP) DAO/database implementations — like the Hilt/Moshi
+    // entries above, not code anyone writes or reviews. JaCoco also can't see
+    // execution of these regardless: Robolectric's sandboxed classloader
+    // reloads classes separately from the one JaCoco's agent instruments, so
+    // they showed 0% even under real, passing tests (issue #320) — excluding
+    // them turns a permanently-wrong number into an honest one.
+    "**/*_Impl.class",
+    "**/*_Impl\$*.class",
 )
 
 /**
