@@ -28,6 +28,10 @@ backend/main
 *.test
 *.out
 vendor/
+# Issue #268: gotestsum's JUnit XML + rerun-fails flake report, emitted in CI
+# (uploaded as artifacts, never committed)
+backend/junit.xml
+backend/rerun-fails.txt
 
 # Frontend build
 frontend/build/
