@@ -185,6 +185,10 @@ jobs:
     permissions:
       contents: read
       packages: write
+      # id-token: write is what lets cosign request a short-lived OIDC
+      # identity token from GitHub's Sigstore-federated issuer for keyless
+      # signing below -- no key material to generate, rotate, or store.
+      id-token: write
 
     strategy:
       matrix:
@@ -250,6 +254,7 @@ jobs:
             type=raw,value=${{ steps.stamp.outputs.sha7 }}
 
       - name: Build and push
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.context }}
@@ -270,6 +275,35 @@ jobs:
             APP_BUILD_DATE=${{ steps.stamp.outputs.date }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # SBOM + SLSA provenance attestations, pushed alongside the image
+          # as referrers. Trivy scans more accurately with an SBOM present,
+          # and provenance lets a user verify which commit actually produced
+          # the digest they pulled.
+          provenance: true
+          sbom: true
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      # Keyless signing via cosign's ambient GitHub Actions OIDC detection --
+      # no --certificate-identity/--certificate-oidc-issuer flags here, those
+      # are `cosign verify` options; `cosign sign` auto-requests a Fulcio
+      # cert using the id-token: write permission granted above. No key
+      # material to generate or store.
+      #
+      # Signs the digest, not a tag: tags are mutable, the digest isn't, and
+      # `steps.build.outputs.digest` is exactly what was just pushed. Reuses
+      # the docker/login-action session above for registry auth.
+      #
+      # Lowercased the same way the scan job below resolves its image
+      # reference: github.repository preserves account case (DrewBrunning),
+      # but GHCR references must be lowercase.
+      - name: Sign the published image (keyless)
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+          SUFFIX: ${{ matrix.suffix }}
+        run: |
+          cosign sign --yes "ghcr.io/${GITHUB_REPOSITORY,,}${SUFFIX}@${DIGEST}"
 
   scan:
     runs-on: ubuntu-latest
