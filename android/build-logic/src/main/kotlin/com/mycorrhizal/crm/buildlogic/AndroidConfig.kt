@@ -358,6 +358,51 @@ private fun Project.configureCrossModuleCoverage() {
                 }
             }
         }
+
+        // Issue #342: a single aggregated report for Codecov. The per-module
+        // `jacocoTestReport` tasks each emit their own XML, and feeding all of
+        // them to Codecov made it mis-merge the cross-module exec data — every
+        // `feature/*` module reported 0% on the dashboard while the local
+        // reports showed ~70%. A single report built from the same exec data
+        // (all modules' classes + sources + merged exec) sidesteps Codecov's
+        // multi-report merge entirely. Kept separate from the per-module tasks
+        // so local HTML browsing per module still works.
+        rootProject.pluginManager.apply("jacoco")
+        rootProject.tasks.register<JacocoReport>("jacocoTestReportAggregated") {
+            group = "verification"
+            description = "Merges every module's offline-instrumented exec data into one JaCoCo XML/HTML report."
+            dependsOn(modules.mapNotNull { it.tasks.findByName("testDebugUnitTest") })
+
+            reports {
+                xml.required.set(true)
+                html.required.set(true)
+            }
+
+            classDirectories.setFrom(
+                modules.flatMap { mod ->
+                    listOf(
+                        mod.fileTree(mod.layout.buildDirectory.dir("intermediates/javac/debug")) {
+                            exclude(JACOCO_EXCLUDES)
+                        },
+                        mod.fileTree(mod.layout.buildDirectory.dir("tmp/kotlin-classes/debug")) {
+                            exclude(JACOCO_EXCLUDES)
+                        },
+                    )
+                },
+            )
+            sourceDirectories.setFrom(
+                modules.flatMap { mod ->
+                    listOf(mod.fileTree("src/main/java"), mod.fileTree("src/main/kotlin"))
+                },
+            )
+            executionData.setFrom(
+                modules.map { mod ->
+                    mod.fileTree(mod.layout.buildDirectory.get()) {
+                        include("jacoco/testDebugUnitTest.exec")
+                    }
+                },
+            )
+        }
     }
 }
 

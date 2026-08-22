@@ -96,12 +96,14 @@ jobs:
             echo "No flaky tests this run."
           fi
 
-      # Issue #251: visibility only, no threshold/gate. Runs `jacocoTestReport`
-      # in every module (bare task name, same pattern as testDebugUnitTest
-      # above) off the exec data the step above just produced.
-      - name: Coverage report (Jacoco)
+      # Issue #251: visibility only, no threshold/gate. Runs the *aggregated*
+      # report (issue #342) — a single JaCoCo XML built from every module's
+      # exec data, rather than the per-module `jacocoTestReport` tasks. Codecov
+      # mis-merged the 22 per-module XMLs and reported most `feature/*` modules
+      # at 0% despite the local reports showing ~70%.
+      - name: Coverage report (JaCoCo, aggregated)
         working-directory: android
-        run: ./gradlew jacocoTestReport
+        run: ./gradlew jacocoTestReportAggregated
 
       # Issue #294: see unit-tests.yml's backend job for why
       # fail_ci_if_error is false — informational only, see codecov.yml.
@@ -109,7 +111,7 @@ jobs:
         uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5.5.5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: android/**/build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml
+          files: android/build/reports/jacoco/jacocoTestReportAggregated/jacocoTestReportAggregated.xml
           flags: android
           fail_ci_if_error: false
 
@@ -126,7 +128,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: android-coverage
-          path: android/**/build/reports/jacoco/jacocoTestReport/
+          path: android/build/reports/jacoco/jacocoTestReportAggregated/
           retention-days: 7
 
       # Issue #268: JUnit XML from the Robolectric unit tests, consumed by
