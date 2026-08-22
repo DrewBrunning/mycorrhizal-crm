@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
 
@@ -24,6 +25,16 @@ func setupAuthTestRouter() (*gorm.DB, *gin.Engine) {
 	if err != nil {
 		panic("failed to open test db")
 	}
+	// Pin the pool to a single connection: AuthMiddleware's TouchAPIToken
+	// fires a goroutine that writes last_used_at, and a second pooled
+	// connection would open a *separate* empty :memory: DB (the SQLite
+	// :memory: gotcha) — the write and any concurrent read would hit
+	// "no such table" intermittently. Same fix as the services job-lock tests.
+	sqlDB, err := db.DB()
+	if err != nil {
+		panic("failed to get underlying sql db")
+	}
+	sqlDB.SetMaxOpenConns(1)
 	db.AutoMigrate(&models.User{}, &models.ApiToken{})
 
 	user := models.User{Username: "authtest", Email: "authtest@example.com", Password: "password"}
@@ -136,12 +147,15 @@ func TestAuthMiddleware_ApiToken_UpdatesLastUsedAt(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	// The update runs in a goroutine — give it a moment to complete
-	time.Sleep(50 * time.Millisecond)
-
+	// The update runs in a fire-and-forget goroutine (TouchAPIToken), so poll
+	// until the write lands instead of sleeping a fixed interval — the old
+	// time.Sleep(50ms) flaked when the goroutine hadn't been scheduled yet.
 	var updated models.ApiToken
-	db.First(&updated, token.ID)
-	assert.NotNil(t, updated.LastUsedAt)
+	require.Eventually(t, func() bool {
+		db.First(&updated, token.ID)
+		return updated.LastUsedAt != nil
+	}, 5*time.Second, 10*time.Millisecond, "the async last_used_at update must land")
+
 	assert.WithinDuration(t, time.Now(), *updated.LastUsedAt, 5*time.Second)
 }
 
