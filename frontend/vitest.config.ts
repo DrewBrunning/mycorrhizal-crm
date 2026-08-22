@@ -24,6 +24,12 @@ export default defineConfig({
     // Tests"), and the junit reporter emits junit.xml for the
     // dorny/test-reporter check run (test-report.yml).
     retry: process.env.CI ? 1 : 0,
+    // Vitest's default 5s test timeout is too tight for MUI dialog tests
+    // under v8 coverage instrumentation on loaded CI runners (see the
+    // 13-click deselection test in ExportFieldPickerDialog.test.tsx, which
+    // overrides this per-test). 10s absorbs normal CI variance while still
+    // catching genuine hangs reasonably fast.
+    testTimeout: 10000,
     reporters: process.env.CI
       ? [
           'default',
