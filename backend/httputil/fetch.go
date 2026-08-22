@@ -57,14 +57,15 @@ func validateURLForSSRF(rawURL string) (*url.URL, error) {
 	return parsedURL, nil
 }
 
+// maxImageSize caps the size of fetched images (10MB).
+const maxImageSize = 10 * 1024 * 1024
+
 // FetchImageFromURL fetches an image from a URL with SSRF protection.
 // Returns the image data, content type, and any error.
 // The URL is sanitized to remove whitespace (handles Google VCF format).
 func FetchImageFromURL(imageURL string) ([]byte, string, error) {
 	// Clean URL - remove spaces and newlines (Google VCF format may have these)
-	cleanURL := strings.ReplaceAll(imageURL, " ", "")
-	cleanURL = strings.ReplaceAll(cleanURL, "\n", "")
-	cleanURL = strings.ReplaceAll(cleanURL, "\r", "")
+	cleanURL := sanitizeURL(imageURL)
 
 	// Validate the URL format and scheme
 	parsedURL, err := validateURLForSSRF(cleanURL)
@@ -72,6 +73,25 @@ func FetchImageFromURL(imageURL string) ([]byte, string, error) {
 		return nil, "", err
 	}
 
+	return fetchImageWithClient(parsedURL.String(), buildImageClient())
+}
+
+// sanitizeURL removes whitespace characters that a line-folded URL (Google VCF
+// format) may carry.
+func sanitizeURL(rawURL string) string {
+	cleanURL := strings.ReplaceAll(rawURL, " ", "")
+	cleanURL = strings.ReplaceAll(cleanURL, "\n", "")
+	cleanURL = strings.ReplaceAll(cleanURL, "\r", "")
+	return cleanURL
+}
+
+// buildImageClient constructs the SSRF-guarded HTTP client used for image
+// fetches. Every connection — including ones opened for redirect targets —
+// goes through SafeDialContext, which re-resolves the host and pins a public
+// address at dial time, so DNS rebinding between validation and connection
+// cannot redirect the fetch inward. Redirect targets are also re-validated
+// against the same SSRF rules and capped at 3 hops.
+func buildImageClient() *http.Client {
 	// Validate IP addresses at connection time, pinning the resolved address,
 	// so DNS rebinding between validation and dial cannot redirect us inward.
 	safeDialContext := SafeDialContext(
@@ -79,8 +99,7 @@ func FetchImageFromURL(imageURL string) ([]byte, string, error) {
 		errors.New("access to internal IP addresses is not allowed"),
 	)
 
-	// Create HTTP client with custom transport that validates IPs at connection time
-	client := &http.Client{
+	return &http.Client{
 		Timeout: 15 * time.Second,
 		Transport: &http.Transport{
 			DialContext: safeDialContext,
@@ -97,9 +116,16 @@ func FetchImageFromURL(imageURL string) ([]byte, string, error) {
 			return nil
 		},
 	}
+}
 
+// fetchImageWithClient performs the actual GET and validates the response
+// contract (status code, content type, size limit). The SSRF checks live in
+// the caller (URL validation) and the client's dialer/redirect policy; this
+// function is deliberately free of network-safety logic so it can be exercised
+// directly against a loopback test server.
+func fetchImageWithClient(rawURL string, client *http.Client) ([]byte, string, error) {
 	// Fetch the image using the validated URL
-	req, err := http.NewRequest("GET", parsedURL.String(), nil)
+	req, err := http.NewRequest("GET", rawURL, nil)
 	if err != nil {
 		return nil, "", err
 	}
@@ -123,15 +149,13 @@ func FetchImageFromURL(imageURL string) ([]byte, string, error) {
 		return nil, "", errors.New("URL does not point to an image")
 	}
 
-	// Limit response size (10MB)
-	const maxSize = 10 * 1024 * 1024
-	limitedReader := io.LimitReader(resp.Body, maxSize+1)
+	limitedReader := io.LimitReader(resp.Body, maxImageSize+1)
 	body, err := io.ReadAll(limitedReader)
 	if err != nil {
 		return nil, "", err
 	}
 
-	if len(body) > maxSize {
+	if len(body) > maxImageSize {
 		return nil, "", errors.New("image is too large, maximum size is 10MB")
 	}
 
