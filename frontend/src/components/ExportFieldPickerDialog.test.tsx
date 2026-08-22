@@ -145,6 +145,10 @@ test('the chosen format flows through to the export call', async () => {
   expect(onExport.mock.calls[0][0]).toBe('jscontact');
 });
 
+// This test deselects every one of the 13 ordinary sections through the UI,
+// so it fires 13 act-wrapped clicks that each re-render the whole MUI dialog.
+// Under v8 coverage instrumentation on a loaded CI runner that routinely
+// exceeds vitest's default 5s test timeout, so give it explicit headroom.
 test('export button is disabled when no sections are selected', () => {
   renderDialog();
 
@@ -155,7 +159,7 @@ test('export button is disabled when no sections are selected', () => {
     fireEvent.click(checkbox(labelFor(s.token)));
   }
   expect(screen.getByRole('button', { name: 'Export' })).toBeDisabled();
-});
+}, 20000);
 
 function labelFor(token: string): string {
   const labels: Record<string, string> = {
