@@ -177,15 +177,15 @@ jobs:
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
 
       # Issue #358: golangci-lint (config: backend/.golangci.yml) is the
-      # complementary fast analyzer to CodeQL. It bundles gosec (the old
-      # standalone step below) plus the correctness layer (errcheck, govet,
-      # ineffassign, staticcheck, unused) and the two HTTP layers that map to
-      # real classes in this repo's outbound integrations (CardDAV/CalDAV,
-      # webpush, Resend): bodyclose (unclosed response bodies) and noctx
-      # (requests without an explicit context). Run via `go run ...@version`
+      # complementary fast analyzer to CodeQL, replacing the old standalone
+      # gosec step. Enables the security-focused set (gosec + bodyclose +
+      # govet); the standard correctness layer and noctx are deliberately
+      # deferred there — see the config's comments for the rationale (the
+      # repo documents best-effort unhandled errors as accepted, and the
+      # HTTP/DB layers don't thread contexts yet). Run via `go run ...@version`
       # rather than the golangci-lint-action so the binary comes from the Go
       # module proxy like every other Go tool here, not a raw release download.
-      - name: Lint (golangci-lint gosec + bodyclose + noctx)
+      - name: Lint (golangci-lint gosec + bodyclose)
         working-directory: backend
         run: go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run ./...
 
