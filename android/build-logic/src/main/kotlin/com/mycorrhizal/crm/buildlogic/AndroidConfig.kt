@@ -241,6 +241,14 @@ internal fun Project.configureJacoco() {
             "jacoco-agent.destfile",
             layout.buildDirectory.file("jacoco/testDebugUnitTest.exec").get().asFile.absolutePath,
         )
+        // Issue #342/#357: the exec file is written by the forked test JVM's
+        // offline JaCoCo runtime as a side effect, not by a task action, so it
+        // was invisible to the build cache. A module whose tests were served
+        // FROM-CACHE had its JUnit results restored but no exec file, so the
+        // aggregated report merged only the re-run modules' data and Codecov
+        // collapsed to ~5%. Declaring it as an (optional) output makes a
+        // FROM-CACHE restore bring the exec file back too.
+        outputs.file(layout.buildDirectory.file("jacoco/testDebugUnitTest.exec")).optional()
     }
 
     dependencies {
