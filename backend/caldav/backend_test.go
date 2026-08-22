@@ -133,11 +133,14 @@ func TestETagChangesOnlyWhenTheObjectChanges(t *testing.T) {
 	assert.Equal(t, firstETag, second.ETag, "ETag must be stable across an unrelated write")
 
 	// Editing the activity must change its ETag. The ETag derives from
-	// UpdatedAt at second granularity, so the edit must land in a later
-	// second than the create.
-	time.Sleep(1100 * time.Millisecond)
-	activity.Title = "After"
-	require.NoError(t, db.Save(&activity).Error)
+	// UpdatedAt at second granularity, so set updated_at explicitly to a
+	// later second instead of time.Sleep-ing across a second boundary — the
+	// canonical pattern in models/activity_test.go. This also removes the
+	// wall-clock dependency that made the test slow and timing-sensitive.
+	require.NoError(t, db.Model(&activity).Updates(map[string]any{
+		"title":      "After",
+		"updated_at": time.Now().Add(10 * time.Second),
+	}).Error)
 	third, err := b.GetCalendarObject(ctx, "/caldav/calendars/"+user.Username+"/interactions/interaction-"+activity.UUID+".ics", nil)
 	require.NoError(t, err)
 	assert.NotEqual(t, firstETag, third.ETag, "editing the activity must rotate its ETag")
