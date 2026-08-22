@@ -118,6 +118,7 @@ import com.mycorrhizal.crm.feature.timelineentities.LifeEventsScreen
 import com.mycorrhizal.crm.feature.timelineentities.PreferencesScreen
 import com.mycorrhizal.crm.feature.tags.TagDetailScreen
 import com.mycorrhizal.crm.feature.tags.TagsScreen
+import com.mycorrhizal.crm.feature.users.UsersScreen
 import kotlinx.coroutines.launch
 import com.mycorrhizal.crm.feature.timeline.ActivitiesInboxScreen
 import com.mycorrhizal.crm.feature.timeline.ActivitiesScreen
@@ -1012,7 +1013,16 @@ private fun AppNavGraph(
                 onCircleTagTriage = { navController.navigate("circle-tag-triage") },
                 // T104 + address suggestions: the Data review surface.
                 onData = { navController.navigate("data") },
+                // Issue #348: admin user management.
+                onManageUsers = { navController.navigate("admin/users") },
                 onLocaleChanged = onLocaleChanged,
+            )
+        }
+        // Issue #348: admin user management, reached from Settings (gated on
+        // SessionState.isAdmin there). The route lives outside the drawer set.
+        composable("admin/users") {
+            UsersScreen(
+                onBack = { navController.popBackStack() },
             )
         }
         // T104 + address suggestions: the "propose data" review screen.

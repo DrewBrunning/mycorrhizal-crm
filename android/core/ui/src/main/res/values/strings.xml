@@ -632,6 +632,23 @@
     <string name="triage_done_partial">%1$d item(s) could not be created and %2$d member add(s) failed. Run triage again to retry.</string>
     <string name="action_done">Done</string>
 
+    <!-- Admin user management (issue #348) -->
+    <string name="users_title">User management</string>
+    <string name="users_empty">No users yet. Create the first account to share this instance.</string>
+    <string name="users_add">Add user</string>
+    <string name="users_edit">Edit user</string>
+    <string name="users_username">Username</string>
+    <string name="users_email">Email</string>
+    <string name="users_password">Password</string>
+    <string name="users_password_hint">Leave blank to keep the current password.</string>
+    <string name="users_is_admin">Admin</string>
+    <string name="users_role_admin">Admin</string>
+    <string name="users_role_user">User</string>
+    <string name="users_edit_named">Edit %1$s</string>
+    <string name="users_delete_named">Delete %1$s</string>
+    <string name="users_delete_title">Delete user?</string>
+    <string name="users_delete_body">Delete “%1$s”? This permanently removes the account and all of its data.</string>
+
     <!-- Shared actions -->
     <string name="action_create">Create</string>
     <string name="action_save">Save</string>

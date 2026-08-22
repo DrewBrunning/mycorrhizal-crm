@@ -624,6 +624,23 @@
     <string name="triage_done_message">%1$d Kreis(e) und %2$d Tag(s) erstellt.</string>
     <string name="triage_done_partial">%1$d Punkt(e) konnten nicht erstellt und %2$d Mitglieder-Zuweisung(en) schlugen fehl. Führe die Bereinigung erneut aus, um es zu wiederholen.</string>
     <string name="action_done">Fertig</string>
+
+    <!-- Admin user management (issue #348) -->
+    <string name="users_title">Benutzerverwaltung</string>
+    <string name="users_empty">Noch keine Benutzer. Erstelle den ersten Account, um diese Instanz zu teilen.</string>
+    <string name="users_add">Benutzer hinzufügen</string>
+    <string name="users_edit">Benutzer bearbeiten</string>
+    <string name="users_username">Benutzername</string>
+    <string name="users_email">E-Mail</string>
+    <string name="users_password">Passwort</string>
+    <string name="users_password_hint">Leer lassen, um das aktuelle Passwort beizubehalten.</string>
+    <string name="users_is_admin">Administrator</string>
+    <string name="users_role_admin">Administrator</string>
+    <string name="users_role_user">Benutzer</string>
+    <string name="users_edit_named">%1$s bearbeiten</string>
+    <string name="users_delete_named">%1$s löschen</string>
+    <string name="users_delete_title">Benutzer löschen?</string>
+    <string name="users_delete_body">„%1$s“ löschen? Dies entfernt den Account und alle zugehörigen Daten dauerhaft.</string>
     <string name="action_create">Erstellen</string>
     <string name="action_save">Speichern</string>
     <string name="action_edit">Bearbeiten</string>

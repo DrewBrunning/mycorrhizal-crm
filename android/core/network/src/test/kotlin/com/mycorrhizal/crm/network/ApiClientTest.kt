@@ -3690,4 +3690,162 @@ class ApiClientTest {
         val request = server.takeRequest()
         assertEquals("/api/v1/contacts?limit=500&circle_legacy=Ski%20club", request.path)
     }
+
+    // --- Admin user management (issue #348) ---
+
+    @Test
+    fun `listUsers sends the page and limit query params and parses the page`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """
+                {"users": [
+                   {"id": 1, "username": "alice", "email": "alice@example.com",
+                    "language": "en", "date_format": "eu", "is_admin": true,
+                    "created_at": "2026-08-01T00:00:00Z", "updated_at": "2026-08-01T00:00:00Z"}
+                 ], "total": 1, "page": 1, "limit": 100, "total_pages": 1}
+                """.trimIndent(),
+            ),
+        )
+
+        val result = client.listUsers(page = 1, limit = 100)
+
+        assertTrue(result.isSuccess)
+        val page = result.getOrThrow()
+        assertEquals(1, page.total)
+        assertEquals("alice", page.users[0].username)
+        assertTrue(page.users[0].isAdmin)
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/api/v1/admin/users?page=1&limit=100", request.path)
+    }
+
+    @Test
+    fun `createUser posts the input to the admin route and parses the user`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(201).setBody(
+                """{"id": 3, "username": "bob", "email": "bob@example.com",
+                    "language": "en", "date_format": "eu", "is_admin": false,
+                    "created_at": "2026-08-02T00:00:00Z", "updated_at": "2026-08-02T00:00:00Z"}""",
+            ),
+        )
+
+        val result = client.createUser(
+            com.mycorrhizal.crm.model.network.AdminUserCreateInput(
+                username = "bob",
+                email = "bob@example.com",
+                password = "password123",
+                isAdmin = false,
+            ),
+        )
+
+        assertTrue(result.isSuccess)
+        assertEquals(3, result.getOrThrow().id)
+        assertEquals("bob", result.getOrThrow().username)
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/admin/users", request.path)
+        val body = request.body.readUtf8()
+        assertTrue(body.contains("\"username\":\"bob\""))
+        assertTrue(body.contains("\"password\":\"password123\""))
+        assertTrue(body.contains("\"is_admin\":false"))
+    }
+
+    @Test
+    fun `getUser parses a single user`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"id": 3, "username": "bob", "email": "bob@example.com",
+                    "language": "de", "date_format": "eu", "is_admin": true,
+                    "created_at": "2026-08-02T00:00:00Z", "updated_at": "2026-08-02T00:00:00Z"}""",
+            ),
+        )
+
+        val result = client.getUser(3)
+
+        assertTrue(result.isSuccess)
+        assertEquals(3, result.getOrThrow().id)
+        assertTrue(result.getOrThrow().isAdmin)
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/api/v1/admin/users/3", request.path)
+    }
+
+    @Test
+    fun `updateUser sends a PATCH and only includes the provided fields`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"id": 3, "username": "bob2", "email": "bob@example.com",
+                    "language": "en", "date_format": "eu", "is_admin": true,
+                    "created_at": "2026-08-02T00:00:00Z", "updated_at": "2026-08-03T00:00:00Z"}""",
+            ),
+        )
+
+        val result = client.updateUser(
+            3,
+            com.mycorrhizal.crm.model.network.AdminUserUpdateInput(
+                username = "bob2",
+                isAdmin = true,
+            ),
+        )
+
+        assertTrue(result.isSuccess)
+        assertEquals("bob2", result.getOrThrow().username)
+        val request = server.takeRequest()
+        assertEquals("PATCH", request.method)
+        assertEquals("/api/v1/admin/users/3", request.path)
+        val body = request.body.readUtf8()
+        assertTrue(body.contains("\"username\":\"bob2\""))
+        assertTrue(body.contains("\"is_admin\":true"))
+        // Null fields are omitted — the password is not part of this edit.
+        assertFalse(body.contains("password"))
+    }
+
+    @Test
+    fun `updateUser sends is_admin false when explicitly set`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"id": 3, "username": "bob", "email": "bob@example.com",
+                    "language": "en", "date_format": "eu", "is_admin": false,
+                    "created_at": "2026-08-02T00:00:00Z", "updated_at": "2026-08-03T00:00:00Z"}""",
+            ),
+        )
+
+        val result = client.updateUser(
+            3,
+            com.mycorrhizal.crm.model.network.AdminUserUpdateInput(isAdmin = false),
+        )
+
+        assertTrue(result.isSuccess)
+        assertFalse(result.getOrThrow().isAdmin)
+        val request = server.takeRequest()
+        assertTrue(request.body.readUtf8().contains("\"is_admin\":false"))
+    }
+
+    @Test
+    fun `deleteUser sends a DELETE to the admin route`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"message": "User deleted successfully"}"""))
+
+        val result = client.deleteUser(3)
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("DELETE", request.method)
+        assertEquals("/api/v1/admin/users/3", request.path)
+    }
+
+    @Test
+    fun `deleteUser surfaces a server-side guard as a client error`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(403).setBody(
+                """{"error":{"code":"forbidden","message":"Cannot delete the last admin"}}""",
+            ),
+        )
+
+        val result = client.deleteUser(1)
+
+        assertTrue(result.isFailure)
+        val error = result.exceptionOrNull() as ApiError
+        assertTrue(error is ApiError.Client)
+        assertEquals(403, (error as ApiError.Client).code)
+    }
 }

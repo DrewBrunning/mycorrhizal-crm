@@ -624,6 +624,23 @@
     <string name="triage_done_message">Creati %1$d cerchi e %2$d etichette.</string>
     <string name="triage_done_partial">%1$d elemento(i) non creati e %2$d assegnazione(i) di membro fallite. Esegui di nuovo la classificazione per riprovare.</string>
     <string name="action_done">Fatto</string>
+
+    <!-- Admin user management (issue #348) -->
+    <string name="users_title">Gestione utenti</string>
+    <string name="users_empty">Nessun utente per ora. Crea il primo account per condividere questa istanza.</string>
+    <string name="users_add">Aggiungi utente</string>
+    <string name="users_edit">Modifica utente</string>
+    <string name="users_username">Nome utente</string>
+    <string name="users_email">E-mail</string>
+    <string name="users_password">Password</string>
+    <string name="users_password_hint">Lascia vuoto per mantenere la password attuale.</string>
+    <string name="users_is_admin">Amministratore</string>
+    <string name="users_role_admin">Amministratore</string>
+    <string name="users_role_user">Utente</string>
+    <string name="users_edit_named">Modifica %1$s</string>
+    <string name="users_delete_named">Elimina %1$s</string>
+    <string name="users_delete_title">Eliminare l\'utente?</string>
+    <string name="users_delete_body">Eliminare « %1$s »? Questo rimuove definitivamente l\'account e tutti i suoi dati.</string>
     <string name="action_create">Crea</string>
     <string name="action_save">Salva</string>
     <string name="action_edit">Modifica</string>
