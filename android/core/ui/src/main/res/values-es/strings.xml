@@ -624,6 +624,23 @@
     <string name="triage_done_message">Se crearon %1$d círculo(s) y %2$d etiqueta(s).</string>
     <string name="triage_done_partial">No se pudieron crear %1$d elemento(s) y %2$d asignación(es) de miembro fallaron. Vuelve a ejecutar la clasificación para reintentar.</string>
     <string name="action_done">Hecho</string>
+
+    <!-- Admin user management (issue #348) -->
+    <string name="users_title">Gestión de usuarios</string>
+    <string name="users_empty">Aún no hay usuarios. Crea la primera cuenta para compartir esta instancia.</string>
+    <string name="users_add">Añadir usuario</string>
+    <string name="users_edit">Editar usuario</string>
+    <string name="users_username">Nombre de usuario</string>
+    <string name="users_email">Correo electrónico</string>
+    <string name="users_password">Contraseña</string>
+    <string name="users_password_hint">Déjalo vacío para mantener la contraseña actual.</string>
+    <string name="users_is_admin">Administrador</string>
+    <string name="users_role_admin">Administrador</string>
+    <string name="users_role_user">Usuario</string>
+    <string name="users_edit_named">Editar %1$s</string>
+    <string name="users_delete_named">Eliminar %1$s</string>
+    <string name="users_delete_title">¿Eliminar usuario?</string>
+    <string name="users_delete_body">¿Eliminar a “%1$s”? Esto elimina permanentemente la cuenta y todos sus datos.</string>
     <string name="action_create">Crear</string>
     <string name="action_save">Guardar</string>
     <string name="action_edit">Editar</string>

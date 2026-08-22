@@ -84,6 +84,7 @@ dependencies {
     implementation(project(":feature:shares"))
     implementation(project(":feature:audit"))
     implementation(project(":feature:network"))
+    implementation(project(":feature:users"))
 
     // M5 §3.1: Coil's image loader is wired to the authenticated OkHttp stack
     // in MycorrhizalApplication so profile photos load with the bearer JWT.

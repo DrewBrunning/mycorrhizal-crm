@@ -12,6 +12,10 @@ import com.mycorrhizal.crm.model.network.SuggestRelationshipsResponse
 import com.mycorrhizal.crm.model.network.ActivitiesPage
 import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.ActivityInput
+import com.mycorrhizal.crm.model.network.AdminUser
+import com.mycorrhizal.crm.model.network.AdminUserCreateInput
+import com.mycorrhizal.crm.model.network.AdminUserUpdateInput
+import com.mycorrhizal.crm.model.network.AdminUsersListResponse
 import com.mycorrhizal.crm.model.network.AddCircleMemberResponse
 import com.mycorrhizal.crm.model.network.AddContactTagResponse
 import com.mycorrhizal.crm.model.network.AddHouseholdMemberResponse
@@ -1498,6 +1502,42 @@ class ApiClient(
             moshi.adapter(UserDirectoryResponse::class.java).fromJson(body)?.users
         }
 
+    // --- Admin user management (issue #348) — the five admin-group routes in
+    // backend/routes/routes.go; the caller must be an admin or every one of
+    // these 403s server-side.
+
+    /** GET /api/v1/admin/users?page=&limit= — paginated, id-ASC user list. */
+    suspend fun listUsers(page: Int = 1, limit: Int = 100): Result<AdminUsersListResponse> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$ADMIN_USERS_PATH".toHttpUrl().newBuilder()
+        urlBuilder.addQueryParameter("page", page.toString())
+        urlBuilder.addQueryParameter("limit", limit.toString())
+        return executeGet(urlBuilder.build().toString()) { _, body ->
+            moshi.adapter(AdminUsersListResponse::class.java).fromJson(body)
+        }
+    }
+
+    /** POST /api/v1/admin/users — 201 with the bare AdminUser. */
+    suspend fun createUser(input: AdminUserCreateInput): Result<AdminUser> =
+        executePost(ADMIN_USERS_PATH, input) { _, body ->
+            moshi.adapter(AdminUser::class.java).fromJson(body)
+        }
+
+    /** GET /api/v1/admin/users/{id} — a single user. */
+    suspend fun getUser(id: Int): Result<AdminUser> =
+        executeGet("$PLACEHOLDER_ORIGIN$ADMIN_USERS_PATH/$id") { _, body ->
+            moshi.adapter(AdminUser::class.java).fromJson(body)
+        }
+
+    /** PATCH /api/v1/admin/users/{id} — the bare updated AdminUser. */
+    suspend fun updateUser(id: Int, input: AdminUserUpdateInput): Result<AdminUser> =
+        executePatch("$PLACEHOLDER_ORIGIN$ADMIN_USERS_PATH/$id", input) { _, body ->
+            moshi.adapter(AdminUser::class.java).fromJson(body)
+        }
+
+    /** DELETE /api/v1/admin/users/{id} — removes the account and all its data (hard, T26). */
+    suspend fun deleteUser(id: Int): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$ADMIN_USERS_PATH/$id")
+
     // --- Audit trail (M16, mirroring web's AuditPage over T18/T60's backend) ---
 
     /**
@@ -1746,6 +1786,7 @@ class ApiClient(
         private const val PASSWORD_RESET_REQUEST_PATH = "$API_V1/password-reset/request"
         private const val PASSWORD_RESET_CONFIRM_PATH = "$API_V1/password-reset/confirm"
         private const val USERS_PATH = "$API_V1/users"
+        private const val ADMIN_USERS_PATH = "$API_V1/admin/users"
         private const val WEBHOOKS_PATH = "$API_V1/webhooks"
         private const val NOTIFICATIONS_CONFIG_PATH = "$API_V1/notifications/config"
         private const val NOTIFICATIONS_DEVICES_PATH = "$API_V1/notifications/devices"

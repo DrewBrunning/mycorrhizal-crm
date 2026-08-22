@@ -69,6 +69,8 @@ fun SettingsScreen(
     onCircleTagTriage: () -> Unit = {},
     // T104 + data suggestions: the Data review surface and its trigger.
     onData: () -> Unit = {},
+    // Issue #348: admin user management.
+    onManageUsers: () -> Unit = {},
     onLocaleChanged: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
@@ -126,6 +128,7 @@ fun SettingsScreen(
             onImmichSettings = onImmichSettings,
             onCircleTagTriage = onCircleTagTriage,
             onData = onData,
+            onManageUsers = onManageUsers,
             onSuggestRelationships = viewModel::suggestRelationships,
             onLanguageChange = viewModel::updateLanguage,
             onDateFormatChange = viewModel::updateDateFormat,
@@ -149,6 +152,7 @@ fun SettingsContent(
     onImmichSettings: () -> Unit = {},
     onCircleTagTriage: () -> Unit = {},
     onData: () -> Unit = {},
+    onManageUsers: () -> Unit = {},
     onSuggestRelationships: () -> Unit = {},
     onLanguageChange: (String) -> Unit = {},
     onDateFormatChange: (String) -> Unit = {},
@@ -340,6 +344,13 @@ fun SettingsContent(
             Text(stringResource(R.string.settings_suggest_relationships))
         }
         NavigationRow(stringResource(R.string.settings_data_review), onClick = onData)
+
+        // Issue #348: admin-only user management, reachable only when the
+        // session is an admin (the backend also 403s every admin route for
+        // non-admins, so this gate is a navigation affordance, not a guard).
+        if (state.session.isAdmin) {
+            NavigationRow(stringResource(R.string.users_title), onClick = onManageUsers)
+        }
 
         HorizontalDivider()
 
