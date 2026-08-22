@@ -16,9 +16,10 @@ WORKDIR /app
 # and verify it against its published sha512 (cross-checked against the
 # registry's `dist.integrity` for yarn@1.22.22) before installing.
 RUN wget -q https://registry.npmjs.org/yarn/-/yarn-1.22.22.tgz -O /tmp/yarn.tgz && \
-    echo "a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e  /tmp/yarn.tgz" | sha512sum -c - && \
+    printf '%s  /tmp/yarn.tgz\n' "a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e" > /tmp/yarn.sha512 && \
+    sha512sum -c /tmp/yarn.sha512 && \
     npm install -g /tmp/yarn.tgz && \
-    rm /tmp/yarn.tgz
+    rm /tmp/yarn.tgz /tmp/yarn.sha512
 
 # Copy package files first for better caching
 COPY package.json yarn.lock ./

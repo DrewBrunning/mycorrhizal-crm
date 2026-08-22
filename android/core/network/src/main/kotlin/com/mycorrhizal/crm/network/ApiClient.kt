@@ -1701,6 +1701,11 @@ class ApiClient(
      * than a decoded string (a VCF export is a file, not JSON). Non-2xx still
      * parses the JSON error body via the normal path.
      */
+    // detekt(TooGenericExceptionCaught): a request boundary must map every
+    // failure to Result; IOException (network), Moshi (serialization) and any
+    // other runtime error all funnel through toApiError(). Narrowing the catch
+    // would drop failure modes.
+    @Suppress("TooGenericExceptionCaught")
     private suspend fun executeGetBytes(url: String): Result<ByteArray> =
         withContext(Dispatchers.IO) {
             try {
@@ -1724,6 +1729,9 @@ class ApiClient(
             }
         }
 
+    // detekt(TooGenericExceptionCaught): same request-boundary rationale as
+    // executeGetBytes — every failure funnels through toApiError().
+    @Suppress("TooGenericExceptionCaught")
     private suspend fun <T> execute(
         request: Request,
         mapper: (okhttp3.Response, String) -> T?,

@@ -40,7 +40,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # The ref input, not the dispatch branch: github.ref on a manual run
           # points at whichever branch the workflow was launched from, which is
@@ -49,6 +49,10 @@ jobs:
           # resolves under a shallow clone.
           ref: ${{ inputs.ref }}
           fetch-depth: 0
+          # zizmor (issue #358): don't persist the GITHUB_TOKEN into the
+          # checkout — nothing here pushes, and a persisted credential could
+          # leak into a published artifact (the ArtiPACKED finding class).
+          persist-credentials: false
 
       - name: Validate Gradle wrapper
         uses: gradle/actions/wrapper-validation@ed408507eac070d1f99cc633dbcf757c94c7933a # v4.4.3

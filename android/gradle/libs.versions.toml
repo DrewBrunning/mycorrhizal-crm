@@ -36,6 +36,10 @@ espresso = "3.7.0"
 # scans the test-results XML (a test that passed only on retry still leaves
 # its failure in the XML even though the task succeeded).
 gradleTestRetry = "1.6.5"
+# Issue #358: detekt is the Kotlin smell/correctness analyzer complementing
+# CodeQL (taint) + mobsfscan (manifest/intent/secret rules) for the Android
+# app. Applied to every module via the build-logic convention plugins.
+detekt = "1.23.8"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -47,6 +51,7 @@ kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", versi
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
+detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 
 [libraries]
 # Compose BOM

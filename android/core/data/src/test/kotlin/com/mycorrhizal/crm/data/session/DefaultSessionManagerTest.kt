@@ -99,7 +99,9 @@ class DefaultSessionManagerTest {
         tokenStorage.stored = "stored-jwt"
 
         var hydrated = false
-        val awaiting = async { manager.awaitHydrated(); hydrated = true }
+        // The async job's only observable effect is `hydrated` flipping to
+        // true once awaitHydrated returns; the Deferred itself is never read.
+        async { manager.awaitHydrated(); hydrated = true }
 
         // Not yet hydrated: init hasn't run, await is still suspended.
         advanceUntilIdle()

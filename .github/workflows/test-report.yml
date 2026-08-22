@@ -36,6 +36,13 @@ name: Test Report
 # checkout.)
 
 on:
+  # zizmor: ignore[dangerous-triggers] workflow_run is the entire point of this
+  # workflow — it reports on the JUnit artifacts of the two test workflows,
+  # which only exist after they complete. It runs no PR-controlled code: it
+  # only consumes the triggering run's uploaded test artifacts and reads the
+  # API for tracked-file paths (contents: read only). This is the
+  # documented-safe use of workflow_run (no GITHUB_ENV flow, no PR code
+  # execution).
   workflow_run:
     workflows: [Unit Tests, Android Tests]
     types: [completed]

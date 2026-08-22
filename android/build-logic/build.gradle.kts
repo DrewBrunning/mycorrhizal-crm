@@ -25,6 +25,10 @@ dependencies {
     implementation("org.jetbrains.kotlin.plugin.compose:org.jetbrains.kotlin.plugin.compose.gradle.plugin:2.3.10")
     implementation("com.google.devtools.ksp:com.google.devtools.ksp.gradle.plugin:2.3.11")
     implementation("com.google.dagger:hilt-android-gradle-plugin:2.60.1")
+    // Issue #358: detekt applied to every module from the convention plugins
+    // (see MycorrhizalAndroid{Application,Library}Plugin); version kept in
+    // sync with the catalog [versions].detekt / [plugins].detekt alias.
+    implementation("io.gitlab.arturbosch.detekt:io.gitlab.arturbosch.detekt.gradle.plugin:1.23.8")
     // Issue #268: org.gradle.test-retry (retries failed Robolectric unit tests
     // in CI so a flake doesn't fail the required check). On the convention
     // plugin classpath so AndroidConfig can apply it to every module.

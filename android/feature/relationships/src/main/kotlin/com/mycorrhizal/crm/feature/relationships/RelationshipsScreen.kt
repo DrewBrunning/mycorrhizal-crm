@@ -342,7 +342,7 @@ private fun RelationshipEdgeRow(
 }
 
 /** Human label for an edge's effective type token. */
-fun relationshipLabel(type: String, edge: RelationshipEdge, viewedUid: String): String {
+fun relationshipLabel(@Suppress("UnusedParameter") type: String, edge: RelationshipEdge, viewedUid: String): String {
     return effectiveType(edge, viewedUid).replace('_', ' ')
 }
 

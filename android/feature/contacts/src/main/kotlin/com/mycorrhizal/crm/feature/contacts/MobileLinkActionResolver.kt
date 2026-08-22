@@ -38,7 +38,9 @@ class MobileLinkActionResolver(
 
     suspend fun resolveAvailableActions(
         linkType: MobileLinkType,
-        handle: String,
+        // Part of the call contract (the contact's handle for this link type);
+        // currently unused by the mime-type filter, kept for API stability.
+        @Suppress("UnusedParameter") handle: String,
     ): List<MobileLinkAction> {
         val allMimeTypes = linkType.actions.flatMap { it.mimeTypes }.distinct()
         if (allMimeTypes.isEmpty()) return emptyList()

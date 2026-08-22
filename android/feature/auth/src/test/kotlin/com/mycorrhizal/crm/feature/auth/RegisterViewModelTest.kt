@@ -45,11 +45,6 @@ class RegisterViewModelTest {
     private fun weakStrength() = PasswordStrength(isValid = false, score = 1, feedback = "Password is too short")
     private fun strongStrength() = PasswordStrength(isValid = true, score = 4, feedback = "Password is very strong")
 
-    /** Types a password and lets the debounced strength check resolve. */
-    private fun RegisterViewModel.typeStrongPassword() {
-        onPasswordChange("hunter2hunter2")
-    }
-
     @Test
     fun `a known-weak password blocks submit without calling register`() =
         runTest(mainDispatcherRule.testDispatcher) {
