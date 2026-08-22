@@ -30,8 +30,9 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
 # Runtime stage
 FROM alpine:3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
 
-# Install runtime dependencies
-RUN apk add --no-cache ca-certificates tzdata shadow su-exec libc6-compat
+# Install runtime dependencies (versions pinned per hadolint DL3018 against
+# the alpine:3.24 index)
+RUN apk add --no-cache ca-certificates=20260611-r0 tzdata=2026c-r0 shadow=4.18.0-r1 su-exec=0.3-r0 libc6-compat=1.1.0-r4
 
 WORKDIR /app
 

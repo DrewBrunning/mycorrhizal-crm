@@ -19,7 +19,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
-class MergeContactsViewModelTest {
+class MergeAndBulkViewModelTest {
 
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()

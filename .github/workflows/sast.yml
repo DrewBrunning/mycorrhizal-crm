@@ -1,0 +1,124 @@
+name: SAST (mobsfscan + hadolint)
+
+# Issue #358: the complementary security analyzers that don't fit the
+# language test workflows.
+#   mobsfscan — Android manifest / intent / secret / weak-crypto scanning,
+#               the complement to CodeQL's Java/Kotlin taint analysis.
+#   hadolint  — Dockerfile anti-pattern linting (unpinned base images/pkgs,
+#               shell-form CMD/ENTRYPOINT, missing pipefail).
+# Both are path-gated on their area (issue #264 pattern); the scheduled run
+# re-scans everything so new rules are exercised even with no activity.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '9 3 * * 1' # Monday 03:09 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    permissions:
+      contents: read
+      pull-requests: read
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      android: ${{ steps.filter.outputs.android }}
+      infra: ${{ steps.filter.outputs.infra }}
+      workflows: ${{ steps.filter.outputs.workflows }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # Change detection on push needs the previous commit on main.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Detect changed areas
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: .github/filters.yaml
+
+      - name: Report gating decision
+        run: |
+          echo "android=$ANDROID_CHANGED"
+          echo "infra=$INFRA_CHANGED"
+          echo "workflows=$WORKFLOWS_CHANGED"
+        env:
+          # Boolean outputs only (the *_files outputs are the
+          # attacker-influenced ones on PRs); passed as env vars so zizmor's
+          # template-injection audit has nothing to flag in this workflow.
+          ANDROID_CHANGED: ${{ steps.filter.outputs.android }}
+          INFRA_CHANGED: ${{ steps.filter.outputs.infra }}
+          WORKFLOWS_CHANGED: ${{ steps.filter.outputs.workflows }}
+
+  mobsfscan:
+    name: Android scan (mobsfscan)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      # security-events: write — upload the SARIF to the Security tab.
+      contents: read
+      security-events: write
+    needs: changes
+    if: github.event_name == 'schedule' || needs.changes.outputs.android == 'true' || needs.changes.outputs.workflows == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Run mobsfscan -> SARIF
+        working-directory: android
+        # uvx installs the pinned mobsfscan (and its pinned semgrep) into an
+        # ephemeral env; both versions pinned against PyPI like the Go tools
+        # are pinned against the module proxy. Config: android/.mobsf — build/
+        # is ignored and the deliberate findings (singleTask for the OIDC deep
+        # link, debug-only loopback cleartext, sensitivity enum literal
+        # "secret", Room migration DDL) are suppressed with justification.
+        # Exits non-zero on ERROR findings, which is the gate; the SARIF file
+        # is still written and uploaded by the next step.
+        run: uvx --from 'mobsfscan==1.0.0' --with 'semgrep==1.172.0' mobsfscan --type android --sarif --output results.sarif .
+
+      - name: Upload SARIF to code scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@42947a340483f03ba47bb1a039b2c519aab3df85 # v3.37.8
+        with:
+          sarif_file: android/results.sarif
+          category: mobsfscan
+
+  hadolint:
+    name: Lint Dockerfiles (hadolint ${{ matrix.dockerfile }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    needs: changes
+    if: github.event_name == 'schedule' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'
+    strategy:
+      matrix:
+        dockerfile:
+          - Dockerfile
+          - backend/Dockerfile
+          - frontend/Dockerfile
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      # hadolint-action v3.4.0 bundles hadolint v2.15.0. The Dockerfiles are
+      # kept clean (pinned apk/base versions, JSON-form CMD/ENTRYPOINT,
+      # pipefree sha512 verification) so this check gates regressions.
+      - name: Lint Dockerfile
+        uses: hadolint/hadolint-action@2a66e89f53d0771bb131a7fa31f3136336094aa6 # v3.4.0
+        with:
+          dockerfile: ${{ matrix.dockerfile }}

@@ -4,6 +4,11 @@ updates:
     directory: "/backend"
     schedule:
       interval: "weekly"
+    # 7-day cooldown (zizmor dependabot-cooldown, issue #358): a fresh release
+    # that turns out to be a pulled-compromise gets a week to be taken down
+    # before Dependabot offers it.
+    cooldown:
+      default-days: 7
     groups:
       minor-and-patch:
         update-types: ["minor", "patch"]
@@ -11,6 +16,8 @@ updates:
     directory: "/frontend"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
     groups:
       minor-and-patch:
         update-types: ["minor", "patch"]
@@ -18,10 +25,14 @@ updates:
     directory: "/docs"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
   - package-ecosystem: "gradle"
     directory: "/android"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
   # GitHub Actions used across .github/workflows/*.yml -- previously
   # unmonitored, which is how docker/build-push-action drifted to @v5 in
   # docker-publish.yml while every other workflow moved to @v6.
@@ -29,6 +40,8 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
     groups:
       minor-and-patch:
         update-types: ["minor", "patch"]
@@ -37,11 +50,17 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
   - package-ecosystem: "docker"
     directory: "/backend"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
   - package-ecosystem: "docker"
     directory: "/frontend"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7

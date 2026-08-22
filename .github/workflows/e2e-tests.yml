@@ -28,6 +28,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Detect changed areas
         uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
@@ -36,13 +37,21 @@ jobs:
           filters: .github/filters.yaml
 
       # Boolean outputs only, so this is safe to interpolate (see unit-tests.yml).
+      # Passed as env vars rather than inline ${{ }} so zizmor's
+      # template-injection audit has nothing to flag.
       - name: Report gating decision
         run: |
-          echo "backend=${{ steps.filter.outputs.backend }}"
-          echo "frontend=${{ steps.filter.outputs.frontend }}"
-          echo "openapi=${{ steps.filter.outputs.openapi }}"
-          echo "infra=${{ steps.filter.outputs.infra }}"
-          echo "workflows=${{ steps.filter.outputs.workflows }}"
+          echo "backend=$BACKEND_CHANGED"
+          echo "frontend=$FRONTEND_CHANGED"
+          echo "openapi=$OPENAPI_CHANGED"
+          echo "infra=$INFRA_CHANGED"
+          echo "workflows=$WORKFLOWS_CHANGED"
+        env:
+          BACKEND_CHANGED: ${{ steps.filter.outputs.backend }}
+          FRONTEND_CHANGED: ${{ steps.filter.outputs.frontend }}
+          OPENAPI_CHANGED: ${{ steps.filter.outputs.openapi }}
+          INFRA_CHANGED: ${{ steps.filter.outputs.infra }}
+          WORKFLOWS_CHANGED: ${{ steps.filter.outputs.workflows }}
 
   e2e:
     permissions:
@@ -61,6 +70,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0

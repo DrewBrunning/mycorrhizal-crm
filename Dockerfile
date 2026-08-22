@@ -64,9 +64,10 @@ WORKDIR /app
 # and verify it against its published sha512 (cross-checked against the
 # registry's `dist.integrity` for yarn@1.22.22) before installing.
 RUN wget -q https://registry.npmjs.org/yarn/-/yarn-1.22.22.tgz -O /tmp/yarn.tgz && \
-    echo "a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e  /tmp/yarn.tgz" | sha512sum -c - && \
+    printf '%s  /tmp/yarn.tgz\n' "a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e" > /tmp/yarn.sha512 && \
+    sha512sum -c /tmp/yarn.sha512 && \
     npm install -g /tmp/yarn.tgz && \
-    rm /tmp/yarn.tgz
+    rm /tmp/yarn.tgz /tmp/yarn.sha512
 
 # Copy package files first for better caching
 COPY frontend/package.json frontend/yarn.lock ./
@@ -93,13 +94,14 @@ FROM alpine:3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec4
 
 # Runtime dependencies. shadow provides usermod/groupmod for PUID/PGID remap.
 # No sqlite package needed - the backend uses a pure-Go SQLite driver.
+# Versions pinned (hadolint DL3018) against the alpine:3.24 index.
 RUN apk add --no-cache \
-    ca-certificates \
-    tzdata \
-    nginx \
-    supervisor \
-    shadow \
-    libc6-compat
+    ca-certificates=20260611-r0 \
+    tzdata=2026c-r0 \
+    nginx=1.30.4-r1 \
+    supervisor=4.3.0-r1 \
+    shadow=4.18.0-r1 \
+    libc6-compat=1.1.0-r4
 
 WORKDIR /app
 
@@ -135,9 +137,11 @@ ENV GIN_MODE=release
 # nginx listens on 8080 (no root needed to bind)
 EXPOSE 8080
 
-# Health check hits nginx, which proxies /health to the backend
+# Health check hits nginx, which proxies /health to the backend. JSON-array
+# form (hadolint DL3025): wget --spider already exits non-zero on failure, so
+# the shell form's `|| exit 1` was redundant.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:8080/health || exit 1
+    CMD ["wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8080/health"]
 
 # Entrypoint remaps PUID/PGID + chowns data dirs, then launches supervisord
 ENTRYPOINT ["/app/entrypoint.sh"]
