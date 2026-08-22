@@ -154,85 +154,98 @@ internal fun EntityListScaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            header?.invoke()
-            Box(modifier = Modifier.weight(1f)) {
+            // #347: the header (GiftsScreen's clothing-sizes + gift-preferences
+            // shopping-notes panel) lives inside the LazyColumn as a leading
+            // item so it scrolls with the list — a tall expanded panel can no
+            // longer push rows below the fold of a non-scrollable layout. Same
+            // class of fix as ContactListScreen's SearchNotesActivitiesSection,
+            // which is also a LazyColumn item rather than a fixed sibling above
+            // it. Every state (loading/empty/error/populated) is an item too,
+            // so the header stays reachable regardless of list contents.
+            val uriHandler = LocalUriHandler.current
+            LazyColumn(modifier = Modifier.fillMaxSize().testTag("entity-list")) {
+                if (header != null) {
+                    item(key = "scaffold-header") { header() }
+                }
                 when {
-                    uiState.isLoading -> LoadingSkeleton()
-                    uiState.items.isEmpty() && errorMessage == null ->
+                    uiState.isLoading -> item {
+                        LoadingSkeleton()
+                    }
+                    uiState.items.isEmpty() && errorMessage == null -> item {
                         EmptyState(message = stringResource(R.string.entities_empty))
-                    uiState.items.isEmpty() && errorMessage != null -> {
-                        Text(
-                            text = errorMessage,
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.align(Alignment.Center),
-                        )
+                    }
+                    uiState.items.isEmpty() && errorMessage != null -> item {
+                        Box(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
+                            Text(
+                                text = errorMessage,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.align(Alignment.Center),
+                            )
+                        }
                     }
                     else -> {
-                        val uriHandler = LocalUriHandler.current
                         // M18: flatten section headers into the row stream so the
                         // generic scaffold can render grouped lists (preferences,
                         // agenda) without per-entity list implementations.
                         val rows = sectionRows(uiState.items, sectionLabel != null)
-                        LazyColumn(modifier = Modifier.fillMaxSize()) {
-                            items(rows, key = { it.key }) { row ->
-                                when (row) {
-                                    is SectionRow.Header -> {
-                                        Text(
-                                            text = sectionLabel?.invoke(row.sectionKey).orEmpty(),
-                                            style = MaterialTheme.typography.titleSmall,
-                                            color = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                        )
-                                    }
-                                    is SectionRow.Item -> {
-                                        val item = row.item
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .clickable(onClick = { onItemClick(item.id) })
-                                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                        ) {
-                                            Column(modifier = Modifier.weight(1f)) {
+                        items(rows, key = { it.key }) { row ->
+                            when (row) {
+                                is SectionRow.Header -> {
+                                    Text(
+                                        text = sectionLabel?.invoke(row.sectionKey).orEmpty(),
+                                        style = MaterialTheme.typography.titleSmall,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                    )
+                                }
+                                is SectionRow.Item -> {
+                                    val item = row.item
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable(onClick = { onItemClick(item.id) })
+                                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = item.label,
+                                                style = MaterialTheme.typography.bodyLarge,
+                                                maxLines = 2,
+                                                overflow = TextOverflow.Ellipsis,
+                                            )
+                                            if (!item.url.isNullOrBlank()) {
                                                 Text(
-                                                    text = item.label,
-                                                    style = MaterialTheme.typography.bodyLarge,
-                                                    maxLines = 2,
+                                                    text = item.url,
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                    maxLines = 1,
                                                     overflow = TextOverflow.Ellipsis,
                                                 )
-                                                if (!item.url.isNullOrBlank()) {
-                                                    Text(
-                                                        text = item.url,
-                                                        style = MaterialTheme.typography.bodyMedium,
-                                                        color = MaterialTheme.colorScheme.primary,
-                                                        maxLines = 1,
-                                                        overflow = TextOverflow.Ellipsis,
-                                                    )
-                                                }
                                             }
-                                            if (!item.url.isNullOrBlank()) {
-                                                IconButton(onClick = { uriHandler.openUri(item.url) }) {
-                                                    Icon(
-                                                        Icons.Outlined.OpenInNew,
-                                                        contentDescription = stringResource(R.string.cd_open_link),
-                                                        tint = MaterialTheme.colorScheme.primary,
-                                                    )
-                                                }
-                                            }
-                                            extraAction?.invoke(item)
-                                            IconButton(
-                                                onClick = { pendingDeleteId = item.id },
-                                                enabled = uiState.deletingId != item.id,
-                                            ) {
-                                                // #205: the row-action label carries
-                                                // the item's label so TalkBack doesn't
-                                                // read a bare "Delete" on every row.
+                                        }
+                                        if (!item.url.isNullOrBlank()) {
+                                            IconButton(onClick = { uriHandler.openUri(item.url) }) {
                                                 Icon(
-                                                    Icons.Outlined.Delete,
-                                                    contentDescription = stringResource(R.string.entities_delete_named, item.label),
+                                                    Icons.Outlined.OpenInNew,
+                                                    contentDescription = stringResource(R.string.cd_open_link),
+                                                    tint = MaterialTheme.colorScheme.primary,
                                                 )
                                             }
+                                        }
+                                        extraAction?.invoke(item)
+                                        IconButton(
+                                            onClick = { pendingDeleteId = item.id },
+                                            enabled = uiState.deletingId != item.id,
+                                        ) {
+                                            // #205: the row-action label carries
+                                            // the item's label so TalkBack doesn't
+                                            // read a bare "Delete" on every row.
+                                            Icon(
+                                                Icons.Outlined.Delete,
+                                                contentDescription = stringResource(R.string.entities_delete_named, item.label),
+                                            )
                                         }
                                     }
                                 }

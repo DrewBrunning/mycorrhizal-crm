@@ -1,18 +1,23 @@
 package com.mycorrhizal.crm.feature.timelineentities
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsToggleable
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
 import com.mycorrhizal.crm.model.network.ConversationAgenda
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.Gift
@@ -143,6 +148,50 @@ class EntityListScaffoldTest {
         composeTestRule.onNodeWithText("Open item").assertIsDisplayed()
         composeTestRule.onNodeWithText("Done item").assertIsDisplayed()
         assertEquals(2, extraActionCount)
+    }
+
+    @Test
+    fun `a tall header scrolls with the list instead of clipping rows below the fold`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                EntityListScaffold(
+                    title = "Gifts",
+                    addLabel = "New gift",
+                    uiState = EntityListUiState(
+                        items = listOf(
+                            EntityItem(id = "g1", label = "First gift"),
+                            EntityItem(id = "g2", label = "Second gift"),
+                            EntityItem(id = "g3", label = "Third gift"),
+                        ),
+                    ),
+                    onAdd = {},
+                    onItemClick = {},
+                    onDelete = {},
+                    onErrorShown = {},
+                    onBack = {},
+                    // #347: GiftsScreen's shopping-notes header is a tall
+                    // expanded panel — it must scroll with the list, or gift
+                    // rows below the fold are unreachable. Before the fix the
+                    // header sat in a fixed Column above the list, so a tall
+                    // panel consumed the whole screen and clipped the list.
+                    header = {
+                        Column {
+                            (1..30).forEach { i -> Text("Shopping note row $i") }
+                        }
+                    },
+                    dialog = {},
+                )
+            }
+        }
+
+        // Swipe until the gift row below the tall panel comes into view. Under
+        // the old layout the panel was a fixed, non-scrollable sibling above
+        // the list, so this row was permanently unreachable.
+        composeTestRule.waitUntil(timeoutMillis = 10_000) {
+            composeTestRule.onNodeWithTag("entity-list").performTouchInput { swipeUp() }
+            composeTestRule.onAllNodesWithText("Third gift").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithText("Third gift").assertIsDisplayed()
     }
 }
 
