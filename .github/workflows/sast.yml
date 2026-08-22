@@ -75,6 +75,10 @@ jobs:
         with:
           persist-credentials: false
 
+      # uvx (mobsfscan is a Python package) is not preinstalled on runners.
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+
       - name: Run mobsfscan -> SARIF
         working-directory: android
         # uvx installs the pinned mobsfscan (and its pinned semgrep) into an
@@ -89,7 +93,7 @@ jobs:
 
       - name: Upload SARIF to code scanning
         if: always()
-        uses: github/codeql-action/upload-sarif@42947a340483f03ba47bb1a039b2c519aab3df85 # v3.37.8
+        uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
         with:
           sarif_file: android/results.sarif
           category: mobsfscan
