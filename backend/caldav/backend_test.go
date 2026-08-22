@@ -201,6 +201,70 @@ func TestCalendarDiscoveryPaths(t *testing.T) {
 
 func intPtr(i int) *int { return &i }
 
+// TestGetCalendarObject covers the read path of incremental calendar sync
+// (ETag/ModTime/404 semantics) in a table: the resolved-object success cases
+// for each entity type plus every not-found branch.
+func TestGetCalendarObject(t *testing.T) {
+	b, ctx, user := newTestBackend(t)
+	db := b.getDB(ctx)
+
+	activity := models.Activity{UserID: user.ID, Title: "Lunch", Date: time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)}
+	require.NoError(t, db.Create(&activity).Error)
+
+	le := models.LifeEvent{
+		UserID:   user.ID,
+		EntityID: "00000000-0000-4000-8000-000000000002",
+		Type:     "birthday",
+		Date:     &contactmodel.PartialDate{Year: intPtr(1990), Month: intPtr(6), Day: intPtr(15)},
+	}
+	require.NoError(t, db.Create(&le).Error)
+
+	yearOnly := models.LifeEvent{
+		UserID:   user.ID,
+		EntityID: "00000000-0000-4000-8000-000000000003",
+		Type:     "moved",
+		Date:     &contactmodel.PartialDate{Year: intPtr(2020)},
+	}
+	require.NoError(t, db.Create(&yearOnly).Error)
+
+	tests := []struct {
+		name     string
+		path     string
+		wantErr  string // substring expected in the error; empty means success
+		wantUID  string // expected object UID on success
+		wantETag string // expected ETag on success
+		wantMod  time.Time
+	}{
+		{name: "activity resolves", path: "/caldav/calendars/" + user.Username + "/interactions/interaction-" + activity.UUID + ".ics",
+			wantUID: "interaction-" + activity.UUID, wantETag: activity.ETag, wantMod: activity.UpdatedAt},
+		{name: "life event resolves", path: "/caldav/calendars/" + user.Username + "/interactions/life-event-" + le.ID + ".ics",
+			wantUID: "life-event-" + le.ID, wantETag: le.ETag, wantMod: le.UpdatedAt},
+		{name: "year-only life event is not found", path: "/caldav/calendars/" + user.Username + "/interactions/life-event-" + yearOnly.ID + ".ics", wantErr: "event not found"},
+		{name: "unknown activity uid is not found", path: "/caldav/calendars/" + user.Username + "/interactions/interaction-does-not-exist.ics", wantErr: "event not found"},
+		{name: "unknown life event is not found", path: "/caldav/calendars/" + user.Username + "/interactions/life-event-does-not-exist.ics", wantErr: "event not found"},
+		{name: "unrecognized prefix is not found", path: "/caldav/calendars/" + user.Username + "/interactions/something-else.ics", wantErr: "event not found"},
+		{name: "path without uid is invalid", path: "/caldav/calendars/" + user.Username + "/interactions/", wantErr: "invalid path"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			obj, err := b.GetCalendarObject(ctx, tt.path, nil)
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.Nil(t, obj)
+				assert.Contains(t, err.Error(), tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			require.NotNil(t, obj)
+			assert.Equal(t, tt.wantUID, uidFromPath(obj.Path))
+			assert.Equal(t, tt.wantETag, obj.ETag, "the served ETag must be the source row's own ETag (incremental sync key)")
+			assert.True(t, obj.ModTime.Equal(tt.wantMod), "ModTime must be the source row's UpdatedAt")
+			require.NotNil(t, obj.Data)
+		})
+	}
+}
+
 // uidFromPath extracts the last path segment (the resource UID, without the
 // .ics extension).
 func uidFromPath(p string) string {

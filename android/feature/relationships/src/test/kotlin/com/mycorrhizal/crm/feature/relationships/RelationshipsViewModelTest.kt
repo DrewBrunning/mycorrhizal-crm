@@ -360,6 +360,229 @@ class RelationshipsViewModelTest {
         assertEquals(listOf("e2"), vm.uiState.value.edges.map { it.id })
         coVerify { edgeRepository.delete("e1") }
     }
+
+    // --- load edge cases ---
+
+    @Test
+    fun `load sets the no-vcard-uid error when the contact fetch fails`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { contactRepository.getContact(5) } returns Result.failure(ApiError.Client(404, "gone"))
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        assertFalse(vm.uiState.value.isLoading)
+        assertEquals(R.string.relationships_error_no_vcard_uid, vm.uiState.value.errorRes)
+        assertNull(vm.uiState.value.error)
+    }
+
+    @Test
+    fun `load sets the no-vcard-uid error when the contact card has no uid`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { contactRepository.getContact(5) } returns Result.success(
+            ContactRecordResponse(id = 5, card = Card(uid = null, name = Name(full = "No Uid"))),
+        )
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        assertEquals(R.string.relationships_error_no_vcard_uid, vm.uiState.value.errorRes)
+        assertEquals("", vm.uiState.value.contactVCardUid)
+    }
+
+    // --- create guards and failures ---
+
+    @Test
+    fun `create is a no-op when both uid and name are blank`() = runTest(mainDispatcherRule.testDispatcher) {
+        stubContact()
+        coEvery { edgeRepository.listForContact(viewedUid, null, null) } returns Result.success(emptyList())
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.create(RelationshipEdgeTypes.FRIEND_OF, "   ", "  ")
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { edgeRepository.create(any()) }
+        assertEquals(0, vm.uiState.value.edges.size)
+    }
+
+    @Test
+    fun `create is a no-op when the viewed contact uid has not loaded`() = runTest(mainDispatcherRule.testDispatcher) {
+        // The contact lookup fails, so contactVCardUid is never populated —
+        // creating must not send an edge to an empty target.
+        coEvery { contactRepository.getContact(5) } returns Result.failure(ApiError.Client(404, "gone"))
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.create(RelationshipEdgeTypes.FRIEND_OF, otherUid, "Pat")
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { edgeRepository.create(any()) }
+    }
+
+    @Test
+    fun `create failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
+        stubContact()
+        coEvery { edgeRepository.listForContact(viewedUid, null, null) } returns Result.success(emptyList())
+        coEvery { edgeRepository.create(any()) } returns Result.failure(ApiError.Client(500, "boom"))
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.create(RelationshipEdgeTypes.FRIEND_OF, otherUid, "")
+        advanceUntilIdle()
+
+        assertEquals("boom", vm.uiState.value.error)
+        assertEquals(0, vm.uiState.value.edges.size)
+    }
+
+    // --- update guards and failures ---
+
+    @Test
+    fun `update is a no-op for an unknown edge id`() = runTest(mainDispatcherRule.testDispatcher) {
+        stubContact()
+        coEvery { edgeRepository.listForContact(viewedUid, null, null) } returns Result.success(emptyList())
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.update("no-such-edge", RelationshipEdgeTypes.FRIEND_OF, RelationshipEdgeSensitivities.NORMAL)
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { edgeRepository.update(any(), any()) }
+    }
+
+    @Test
+    fun `update failure surfaces the error and resets the updating flag`() = runTest(mainDispatcherRule.testDispatcher) {
+        stubContact()
+        val edge = RelationshipEdge(id = "e1", sourceId = otherUid, targetId = viewedUid, type = RelationshipEdgeTypes.FRIEND_OF)
+        coEvery { edgeRepository.listForContact(viewedUid, null, null) } returns Result.success(listOf(edge))
+        coEvery { edgeRepository.update("e1", any()) } returns Result.failure(ApiError.Client(500, "boom"))
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.update("e1", RelationshipEdgeTypes.FRIEND_OF, RelationshipEdgeSensitivities.NORMAL)
+        advanceUntilIdle()
+
+        assertEquals("boom", vm.uiState.value.error)
+        assertNull(vm.uiState.value.updatingId)
+        assertEquals(RelationshipEdgeTypes.FRIEND_OF, vm.uiState.value.edges[0].type)
+    }
+
+    // --- accept/delete failures ---
+
+    @Test
+    fun `accept failure surfaces the error and keeps the edge suggested`() = runTest(mainDispatcherRule.testDispatcher) {
+        stubContact()
+        val suggested = RelationshipEdge(
+            id = "e1", sourceId = otherUid, targetId = viewedUid,
+            type = RelationshipEdgeTypes.PARENT_OF, status = RelationshipEdgeStatuses.SUGGESTED,
+        )
+        coEvery { edgeRepository.listForContact(viewedUid, null, null) } returns Result.success(listOf(suggested))
+        coEvery { edgeRepository.accept("e1") } returns Result.failure(ApiError.Client(500, "boom"))
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.accept("e1")
+        advanceUntilIdle()
+
+        assertEquals("boom", vm.uiState.value.error)
+        assertNull(vm.uiState.value.acceptingId)
+        assertEquals(RelationshipEdgeStatuses.SUGGESTED, vm.uiState.value.edges[0].status)
+    }
+
+    @Test
+    fun `delete failure surfaces the error and keeps the edge`() = runTest(mainDispatcherRule.testDispatcher) {
+        stubContact()
+        coEvery { edgeRepository.listForContact(viewedUid, null, null) } returns Result.success(
+            listOf(RelationshipEdge(id = "e1", sourceId = otherUid, targetId = viewedUid, type = RelationshipEdgeTypes.FRIEND_OF)),
+        )
+        coEvery { edgeRepository.delete("e1") } returns Result.failure(ApiError.Client(500, "boom"))
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.delete("e1")
+        advanceUntilIdle()
+
+        assertEquals("boom", vm.uiState.value.error)
+        assertNull(vm.uiState.value.deletingId)
+        assertEquals(1, vm.uiState.value.edges.size)
+    }
+
+    // --- search edge cases ---
+
+    @Test
+    fun `blank search clears results without querying`() = runTest(mainDispatcherRule.testDispatcher) {
+        stubContact()
+        coEvery { edgeRepository.listForContact(viewedUid, null, null) } returns Result.success(emptyList())
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.searchContacts("   ")
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { contactRepository.listContacts(any(), any(), any()) }
+        assertTrue(vm.uiState.value.contactSearchResults.isEmpty())
+        assertFalse(vm.uiState.value.contactSearchLoading)
+    }
+
+    @Test
+    fun `search failure clears loading without surfacing an error`() = runTest(mainDispatcherRule.testDispatcher) {
+        stubContact()
+        coEvery { edgeRepository.listForContact(viewedUid, null, null) } returns Result.success(emptyList())
+        coEvery { contactRepository.listContacts(any(), any(), any()) } returns Result.failure(
+            ApiError.Network(java.io.IOException("offline")),
+        )
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.searchContacts("al")
+        advanceUntilIdle()
+
+        assertFalse(vm.uiState.value.contactSearchLoading)
+        assertTrue(vm.uiState.value.contactSearchResults.isEmpty())
+        assertNull(vm.uiState.value.error)
+    }
+
+    @Test
+    fun `clearContactSearch resets the search state`() = runTest(mainDispatcherRule.testDispatcher) {
+        stubContact()
+        coEvery { edgeRepository.listForContact(viewedUid, null, null) } returns Result.success(emptyList())
+        coEvery { contactRepository.listContacts(any(), any(), any()) } returns Result.success(
+            ContactsPage(contacts = listOf(ContactSummary(id = 9, uid = otherUid, fn = "Pat")), nextCursor = "", limit = 25, sync = null),
+        )
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.searchContacts("pa")
+        advanceUntilIdle()
+        assertEquals(1, vm.uiState.value.contactSearchResults.size)
+
+        vm.clearContactSearch()
+        assertEquals("", vm.uiState.value.contactSearchQuery)
+        assertTrue(vm.uiState.value.contactSearchResults.isEmpty())
+    }
+
+    // --- misc state helpers ---
+
+    @Test
+    fun `onErrorShown clears the error`() = runTest(mainDispatcherRule.testDispatcher) {
+        stubContact()
+        coEvery { edgeRepository.listForContact(viewedUid, null, null) } returns Result.failure(ApiError.Client(500, "boom"))
+
+        val vm = viewModel()
+        advanceUntilIdle()
+        assertEquals("boom", vm.uiState.value.error)
+
+        vm.onErrorShown()
+        assertNull(vm.uiState.value.error)
+    }
 }
 
 class RelationshipEdgeSemanticsTest {
@@ -405,5 +628,19 @@ class RelationshipEdgeSemanticsTest {
     @Test
     fun `toBackendType degrades an unknown token to related_to`() {
         assertEquals(RelationshipEdgeTypes.RELATED_TO, toBackendType("future_token", viewedIsSource = true))
+    }
+
+    // --- otherPartyId (which endpoint is "the other party") ---
+
+    @Test
+    fun `otherPartyId returns the target when the viewed contact is the source`() {
+        val edge = RelationshipEdge(id = "e", sourceId = "viewed", targetId = "other", type = RelationshipEdgeTypes.RELATED_TO)
+        assertEquals("other", otherPartyId(edge, "viewed"))
+    }
+
+    @Test
+    fun `otherPartyId returns the source when the viewed contact is the target`() {
+        val edge = RelationshipEdge(id = "e", sourceId = "other", targetId = "viewed", type = RelationshipEdgeTypes.RELATED_TO)
+        assertEquals("other", otherPartyId(edge, "viewed"))
     }
 }

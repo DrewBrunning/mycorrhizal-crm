@@ -2,8 +2,10 @@ package config
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // validConfig returns a Config that passes Validate() with no errors, so
@@ -281,4 +283,165 @@ func TestLoadConfig_DBRestoreDrillIntervalHoursClampedToMinimumOne(t *testing.T)
 
 	cfg := LoadConfig()
 	assert.Equal(t, 1, cfg.DBRestoreDrillIntervalHours, "a negative interval must be clamped, not left negative")
+}
+
+func TestValidateOrPanic_ValidConfigDoesNotPanic(t *testing.T) {
+	assert.NotPanics(t, func() { validConfig().ValidateOrPanic() })
+}
+
+func TestValidateOrPanic_InvalidConfigPanics(t *testing.T) {
+	cfg := validConfig()
+	cfg.JWTSecretKey = ""
+
+	assert.Panics(t, func() { cfg.ValidateOrPanic() })
+}
+
+func TestEmailEnabled(t *testing.T) {
+	tests := []struct {
+		name   string
+		cfg    *Config
+		expect bool
+	}{
+		{name: "neither channel", cfg: &Config{UseResend: false, UseSMTP: false}, expect: false},
+		{name: "resend only", cfg: &Config{UseResend: true, UseSMTP: false}, expect: true},
+		{name: "smtp only", cfg: &Config{UseResend: false, UseSMTP: true}, expect: true},
+		{name: "both channels", cfg: &Config{UseResend: true, UseSMTP: true}, expect: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expect, tt.cfg.EmailEnabled())
+		})
+	}
+}
+
+func TestGetReminderLocation(t *testing.T) {
+	tests := []struct {
+		name       string
+		timezone   string
+		expectName string
+	}{
+		{name: "valid IANA timezone", timezone: "Europe/Berlin", expectName: "Europe/Berlin"},
+		{name: "UTC", timezone: "UTC", expectName: "UTC"},
+		{name: "invalid timezone falls back to UTC", timezone: "NotAReal/Zone", expectName: "UTC"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := &Config{ReminderTimezone: tt.timezone}
+			assert.Equal(t, tt.expectName, cfg.GetReminderLocation().String())
+		})
+	}
+}
+
+func TestGetReminderLocation_ReturnsLoadableLocation(t *testing.T) {
+	cfg := &Config{ReminderTimezone: "America/New_York"}
+	loc := cfg.GetReminderLocation()
+	// The returned *time.Location must be usable for real conversions, not a
+	// stale/unresolved placeholder.
+	_, offset := time.Date(2026, 1, 15, 12, 0, 0, 0, loc).Zone()
+	assert.Equal(t, -18000, offset, "America/New_York must resolve to UTC-5 in winter")
+}
+
+func TestGetBoolEnv(t *testing.T) {
+	tests := []struct {
+		name     string
+		value    string
+		fallback bool
+		expect   bool
+	}{
+		{name: "true parses", value: "true", fallback: false, expect: true},
+		{name: "1 parses", value: "1", fallback: false, expect: true},
+		{name: "false parses", value: "false", fallback: true, expect: false},
+		{name: "0 parses", value: "0", fallback: true, expect: false},
+		{name: "invalid value uses fallback", value: "banana", fallback: true, expect: true},
+		{name: "empty value uses fallback", value: "", fallback: false, expect: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("TEST_BOOL_ENV", tt.value)
+			assert.Equal(t, tt.expect, getBoolEnv("TEST_BOOL_ENV", tt.fallback))
+		})
+	}
+}
+
+func TestGetBoolEnv_UnsetUsesFallback(t *testing.T) {
+	t.Setenv("TEST_BOOL_ENV_UNSET", "")
+	// An unset variable must take the fallback even when the fallback is true.
+	assert.Equal(t, true, getBoolEnv("SURELY_NOT_SET_ANYWHERE_12345", true))
+}
+
+func TestGetProxies(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []string
+	}{
+		{name: "empty returns nil", input: "", expected: nil},
+		{name: "single proxy", input: "10.0.0.1", expected: []string{"10.0.0.1"}},
+		{name: "comma-separated with whitespace trimmed", input: " 10.0.0.1 , 10.0.0.2 ", expected: []string{"10.0.0.1", "10.0.0.2"}},
+		{name: "CIDR entries", input: "10.0.0.0/8,192.168.0.0/16", expected: []string{"10.0.0.0/8", "192.168.0.0/16"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, getProxies(tt.input))
+		})
+	}
+}
+
+func TestValidate_TrustedProxies(t *testing.T) {
+	cfg := validConfig()
+	cfg.TrustedProxies = []string{"10.0.0.1", "192.168.0.0/16", "not-an-ip-or-cidr"}
+	errs := cfg.Validate()
+
+	assert.True(t, hasFieldError(errs, "TRUSTED_PROXIES"), "an invalid proxy string must be rejected, got: %v", errs)
+}
+
+func TestValidate_AttachmentsDirRelativeRejected(t *testing.T) {
+	cfg := validConfig()
+	cfg.AttachmentsDir = "relative/path"
+	errs := cfg.Validate()
+
+	assert.True(t, hasFieldError(errs, "ATTACHMENTS_DIR"), "a relative ATTACHMENTS_DIR must be rejected, got: %v", errs)
+}
+
+func TestValidate_FCMServiceAccountFileMissing(t *testing.T) {
+	cfg := validConfig()
+	cfg.FCMServiceAccountFile = "/nonexistent/fcm-sa.json"
+	errs := cfg.Validate()
+
+	assert.True(t, hasFieldError(errs, "FCM_SERVICE_ACCOUNT_FILE"), "a missing FCM service-account file must be rejected, got: %v", errs)
+}
+
+func TestValidate_UseSMTPEnforcesRequiredFields(t *testing.T) {
+	cfg := validConfig()
+	cfg.UseSMTP = true
+	cfg.SMTPHost = ""
+	cfg.SMTPFromEmail = ""
+
+	errs := cfg.Validate()
+	assert.True(t, hasFieldError(errs, "SMTP_HOST"))
+	assert.True(t, hasFieldError(errs, "SMTP_FROM_EMAIL"))
+}
+
+func TestLoadConfig_InvalidJWTExpiryFallsBackToDefault(t *testing.T) {
+	t.Setenv("JWT_SECRET_KEY", "test-secret-key-that-is-long-enough-32")
+	t.Setenv("PROFILE_PHOTO_DIR", "/tmp/photos")
+	t.Setenv("SQLITE_DB_PATH", "/tmp/test.db")
+	t.Setenv("FRONTEND_URL", "http://localhost:5173")
+	t.Setenv("JWT_EXPIRY_HOURS", "not-a-number")
+
+	cfg := LoadConfig()
+	require.NotNil(t, cfg)
+	assert.Equal(t, 96, cfg.JWTExpiryHours, "an unparsable JWT_EXPIRY_HOURS must fall back to the default")
+}
+
+func TestLoadConfig_InvalidIntEnvFallsBack(t *testing.T) {
+	t.Setenv("JWT_SECRET_KEY", "test-secret-key-that-is-long-enough-32")
+	t.Setenv("PROFILE_PHOTO_DIR", "/tmp/photos")
+	t.Setenv("SQLITE_DB_PATH", "/tmp/test.db")
+	t.Setenv("FRONTEND_URL", "http://localhost:5173")
+	t.Setenv("HTTP_READ_TIMEOUT", "bogus")
+
+	cfg := LoadConfig()
+	require.NotNil(t, cfg)
+	assert.Equal(t, 15, cfg.ReadTimeout, "an unparsable HTTP_READ_TIMEOUT must fall back to the default")
 }

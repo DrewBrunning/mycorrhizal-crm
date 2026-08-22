@@ -279,6 +279,124 @@ class HouseholdsViewModelTest {
         assertEquals(2, vm.uiState.value.contactsByUid.size)
         assertEquals("Alice", vm.uiState.value.contactsByUid["u1"]?.firstname)
     }
+
+    // --- create/rename/delete failure paths ---
+
+    @Test
+    fun `create failure surfaces the error and resets isSaving`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { householdRepository.list(any(), any()) } returns Result.success(emptyList())
+        coEvery { householdRepository.create("Home", HouseholdTypes.FAMILY_UNIT) } returns Result.failure(
+            ApiError.Client(409, "duplicate"),
+        )
+
+        val vm = HouseholdsViewModel(householdRepository, contactRepository)
+        advanceUntilIdle()
+
+        var done = false
+        vm.create("Home", HouseholdTypes.FAMILY_UNIT) { done = true }
+        advanceUntilIdle()
+
+        assertEquals("duplicate", vm.uiState.value.error)
+        assertFalse(vm.uiState.value.isSaving)
+        assertFalse("onDone must not fire when the create fails", done)
+        assertTrue(vm.uiState.value.households.isEmpty())
+    }
+
+    @Test
+    fun `rename is a no-op for a blank name`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { householdRepository.list(any(), any()) } returns Result.success(
+            listOf(Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT)),
+        )
+
+        val vm = HouseholdsViewModel(householdRepository, contactRepository)
+        advanceUntilIdle()
+
+        vm.rename("h1", "   ", HouseholdTypes.FAMILY_UNIT)
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { householdRepository.update(any(), any(), any()) }
+        assertEquals("Home", vm.uiState.value.households[0].name)
+    }
+
+    @Test
+    fun `rename failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { householdRepository.list(any(), any()) } returns Result.success(
+            listOf(Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT)),
+        )
+        coEvery { householdRepository.update("h1", "New", HouseholdTypes.FAMILY_UNIT) } returns Result.failure(
+            ApiError.Client(500, "boom"),
+        )
+
+        val vm = HouseholdsViewModel(householdRepository, contactRepository)
+        advanceUntilIdle()
+
+        vm.rename("h1", "New", HouseholdTypes.FAMILY_UNIT)
+        advanceUntilIdle()
+
+        assertEquals("boom", vm.uiState.value.error)
+        assertEquals("Home", vm.uiState.value.households[0].name)
+    }
+
+    @Test
+    fun `delete failure surfaces the error and keeps the household`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { householdRepository.list(any(), any()) } returns Result.success(
+            listOf(Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT)),
+        )
+        coEvery { householdRepository.delete("h1") } returns Result.failure(ApiError.Client(500, "boom"))
+
+        val vm = HouseholdsViewModel(householdRepository, contactRepository)
+        advanceUntilIdle()
+
+        vm.delete("h1")
+        advanceUntilIdle()
+
+        assertEquals("boom", vm.uiState.value.error)
+        assertNull(vm.uiState.value.deletingId)
+        assertEquals(1, vm.uiState.value.households.size)
+    }
+
+    // --- dismiss failure + state helpers ---
+
+    @Test
+    fun `dismiss failure surfaces the error and keeps the suggestion`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { householdRepository.list(any(), any()) } returns Result.success(emptyList())
+        coEvery { householdRepository.suggestAddressHouseholds() } returns Result.success(listOf(suggestion))
+        coEvery { householdRepository.dismissAddressSuggestion(any()) } returns Result.failure(
+            ApiError.Client(500, "boom"),
+        )
+
+        val vm = HouseholdsViewModel(householdRepository, contactRepository)
+        advanceUntilIdle()
+        vm.scanAddressSuggestions()
+        advanceUntilIdle()
+
+        vm.dismissSuggestion(suggestion)
+        advanceUntilIdle()
+
+        assertEquals("boom", vm.uiState.value.error)
+        assertNull(vm.uiState.value.pendingSuggestionKey)
+        assertEquals(1, vm.uiState.value.addressSuggestions.size)
+    }
+
+    @Test
+    fun `onErrorShown and onInfoShown clear their respective state`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { householdRepository.list(any(), any()) } returns Result.success(emptyList())
+        coEvery { householdRepository.suggestAddressHouseholds() } returns Result.success(listOf(suggestion))
+        coEvery { householdRepository.dismissAddressSuggestion(any()) } returns Result.success(Unit)
+
+        val vm = HouseholdsViewModel(householdRepository, contactRepository)
+        advanceUntilIdle()
+        vm.scanAddressSuggestions()
+        advanceUntilIdle()
+
+        vm.dismissSuggestion(suggestion)
+        advanceUntilIdle()
+        assertEquals(R.string.households_suggestion_dismissed, vm.uiState.value.infoRes)
+
+        vm.onInfoShown()
+        assertNull(vm.uiState.value.infoRes)
+        assertNull(vm.uiState.value.infoCount)
+    }
 }
 
 class HouseholdDetailViewModelTest {
@@ -590,5 +708,175 @@ class HouseholdDetailViewModelTest {
         assertFalse(vm.uiState.value.memberSearchLoading)
         assertTrue(vm.uiState.value.memberSearchResults.isEmpty())
         assertNull(vm.uiState.value.error)
+    }
+
+    // --- load edge cases ---
+
+    @Test
+    fun `missing household id sets the missing-id error`() = runTest(mainDispatcherRule.testDispatcher) {
+        val vm = viewModel(id = "")
+        advanceUntilIdle()
+
+        assertFalse(vm.uiState.value.isLoading)
+        assertEquals(R.string.households_error_missing_id, vm.uiState.value.errorRes)
+        coVerify(exactly = 0) { householdRepository.getWithMembers(any()) }
+    }
+
+    @Test
+    fun `load failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { householdRepository.getWithMembers("h1") } returns Result.failure(ApiError.Client(500, "boom"))
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        assertFalse(vm.uiState.value.isLoading)
+        assertEquals("boom", vm.uiState.value.error)
+    }
+
+    // --- add/remove failure paths ---
+
+    @Test
+    fun `addMember is a no-op for a blank uid`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { householdRepository.getWithMembers("h1") } returns Result.success(
+            HouseholdDetail(
+                household = Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT),
+                members = emptyList(),
+            ),
+        )
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.addMember("   ")
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { householdRepository.addMember(any(), any(), any()) }
+    }
+
+    @Test
+    fun `addMember failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { householdRepository.getWithMembers("h1") } returns Result.success(
+            HouseholdDetail(
+                household = Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT),
+                members = emptyList(),
+            ),
+        )
+        coEvery { householdRepository.addMember("h1", "uid-2", null) } returns Result.failure(
+            ApiError.Client(409, "already a member"),
+        )
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.addMember("uid-2")
+        advanceUntilIdle()
+
+        assertEquals("already a member", vm.uiState.value.error)
+        assertTrue(vm.uiState.value.members.isEmpty())
+    }
+
+    @Test
+    fun `removeMember failure surfaces the error and keeps the member`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { householdRepository.getWithMembers("h1") } returns Result.success(
+            HouseholdDetail(
+                household = Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT),
+                members = listOf(HouseholdMember(id = 1, householdId = "h1", memberVCardUid = "uid-1")),
+            ),
+        )
+        coEvery { householdRepository.removeMember("h1", "uid-1") } returns Result.failure(ApiError.Client(500, "boom"))
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.removeMember("uid-1")
+        advanceUntilIdle()
+
+        assertEquals("boom", vm.uiState.value.error)
+        assertNull(vm.uiState.value.removingUid)
+        assertEquals(1, vm.uiState.value.members.size)
+    }
+
+    // --- suggestRelationships failure + state helpers ---
+
+    @Test
+    fun `suggestRelationships failure surfaces the error and resets the flag`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { householdRepository.getWithMembers("h1") } returns Result.success(
+            HouseholdDetail(
+                household = Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT),
+                members = listOf(
+                    HouseholdMember(id = 1, householdId = "h1", memberVCardUid = "uid-1"),
+                    HouseholdMember(id = 2, householdId = "h1", memberVCardUid = "uid-2"),
+                ),
+            ),
+        )
+        coEvery { householdRepository.suggestRelationships("h1") } returns Result.failure(
+            ApiError.Client(500, "boom"),
+        )
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.suggestRelationships()
+        advanceUntilIdle()
+
+        assertEquals("boom", vm.uiState.value.error)
+        assertFalse(vm.uiState.value.isSuggestingRelationships)
+        assertNull(vm.uiState.value.infoRes)
+    }
+
+    @Test
+    fun `onErrorShown and onInfoShown clear their respective state`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { householdRepository.getWithMembers("h1") } returns Result.success(
+            HouseholdDetail(
+                household = Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT),
+                members = listOf(
+                    HouseholdMember(id = 1, householdId = "h1", memberVCardUid = "uid-1"),
+                    HouseholdMember(id = 2, householdId = "h1", memberVCardUid = "uid-2"),
+                ),
+            ),
+        )
+        coEvery { householdRepository.suggestRelationships("h1") } returns Result.success(
+            listOf(RelationshipEdge(id = "e1", sourceId = "uid-1", targetId = "uid-2", type = "spouse_of", status = "suggested")),
+        )
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.suggestRelationships()
+        advanceUntilIdle()
+        assertEquals(R.string.households_suggestions_generated, vm.uiState.value.infoRes)
+
+        vm.onInfoShown()
+        assertNull(vm.uiState.value.infoRes)
+        assertNull(vm.uiState.value.infoCount)
+    }
+
+    @Test
+    fun `clearContactSearch resets the search state`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { householdRepository.getWithMembers("h1") } returns Result.success(
+            HouseholdDetail(
+                household = Household(id = "h1", name = "Home", type = HouseholdTypes.FAMILY_UNIT),
+                members = emptyList(),
+            ),
+        )
+        coEvery { contactRepository.listContacts(any(), any(), any()) } returns Result.success(
+            ContactsPage(
+                contacts = listOf(ContactSummary(id = 2, uid = "uid-2", firstname = "Bob")),
+                nextCursor = null,
+                limit = 25,
+                sync = null,
+            ),
+        )
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.searchContacts("bo")
+        advanceUntilIdle()
+        assertEquals(1, vm.uiState.value.memberSearchResults.size)
+
+        vm.clearContactSearch()
+        assertEquals("", vm.uiState.value.memberSearchQuery)
+        assertTrue(vm.uiState.value.memberSearchResults.isEmpty())
     }
 }
