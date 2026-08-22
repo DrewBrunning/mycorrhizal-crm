@@ -336,8 +336,17 @@ private fun Project.configureCrossModuleCoverage() {
             val testTask = mod.tasks.findByName("testDebugUnitTest") as? Test
             if (testTask != null) {
                 val deps = forward.getValue(mod)
+                // The module's OWN instrumented classes must be prepended HERE
+                // (projectsEvaluated), not in configureJacoco: AGP finalizes the
+                // test task's classpath after the convention plugin applies, so
+                // the `classpath = files(instrumentedDir) + classpath` made
+                // during plugin apply is silently overwritten and the module's
+                // own classes run un-instrumented — 0% self coverage while its
+                // dependencies (prepended below) still record. Own classes go
+                // first so they win over any non-instrumented copy.
+                val ownInstrumented = mod.layout.buildDirectory.dir("jacoco/instrumented").get().asFile
                 val depDirs = deps.map { it.layout.buildDirectory.dir("jacoco/instrumented").get().asFile }
-                testTask.classpath = mod.files(depDirs) + testTask.classpath
+                testTask.classpath = mod.files(listOf(ownInstrumented) + depDirs) + testTask.classpath
                 deps.forEach { dep ->
                     dep.tasks.findByName("jacocoInstrumentDebug")?.let { testTask.dependsOn(it) }
                 }
