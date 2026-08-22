@@ -1,0 +1,53 @@
+---
+# mobsfscan configuration (issue #358 — SAST stack expansion).
+# mobsfscan is the complementary fast analyzer to CodeQL for the Android app:
+# it audits AndroidManifest.xml, network security configs, and Kotlin/Java for
+# the classes CodeQL's taint analysis does not cover (exported components,
+# cleartext traffic, hardcoded secrets, weak crypto, task hijacking).
+
+ignore-paths:
+  - build
+  - "**/build/**"
+
+ignore-rules:
+  # singleTask is a documented, deliberate choice — see the OIDC callback
+  # intent-filter comment in app/src/main/AndroidManifest.xml: the deep link
+  # must be delivered to the running activity via onNewIntent rather than
+  # stacking a second instance. StrandHogg additionally requires a malicious
+  # second app and a matching task affinity; the exported activity here is the
+  # standard single-activity launcher pattern.
+  - android_task_hijacking1
+  - android_task_hijacking2
+  # Absence-type INFO rules that don't apply to a personal CRM: no certificate
+  # pinning (the backend does not pin either; transport is standard TLS),
+  # no root/SafetyNet/screenshot/tapjacking hardening. These would be
+  # informational at best and are not decisions this app makes.
+  - android_certificate_pinning
+  - android_certificate_transparency
+  - android_ssl_pinning
+  - android_root_detection
+  - android_safetynet
+  - android_safetynet_api
+  - android_prevent_screenshot
+  - android_detect_tapjacking
+  - android_tapjacking
+  # Debug-build-only cleartext to the emulator loopback (10.0.2.2/127.0.0.1)
+  # so adb-driven local-backend testing works; documented in
+  # app/src/debug/res/xml/network_security_config.xml and never shipped (the
+  # production config forbids cleartext unconditionally). Filtered here at INFO
+  # so it doesn't add noise while remaining visible in the source comment.
+  - android_manifest_domain_config_cleartext
+  # False positive: the rule regex-fires on the sensitivity-level enum value
+  # `const val SECRET = "secret"` (RelationshipEdgeSensitivities, the
+  # normal|private|secret taxonomy shared with the backend). These are domain
+  # values, not hardcoded credentials.
+  - android_kotlin_hardcoded
+  # False positive: all matches are static DDL strings in the Room migration
+  # path (core/data/.../Migrations.kt and Migration13To14Test.kt) — CREATE
+  # TABLE / ALTER TABLE / VIRTUAL TABLE with no user-controlled input. Room
+  # migrations legitimately use execSQL; there is no injection surface.
+  - android_kotlin_sql_raw_query
+
+severity-filter:
+  - WARNING
+  - ERROR

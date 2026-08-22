@@ -69,6 +69,38 @@ internal fun Project.configureAndroidCommon(
     configureAccessibilityLint(extension.lint)
     configureAndroidTestCommon()
     configureJacoco()
+    configureDetekt()
+}
+
+/**
+ * Issue #358: detekt is the Kotlin correctness/smell analyzer complementing
+ * CodeQL (taint) + mobsfscan (manifest/intent/secret) for the Android app.
+ * Applied to every module so `./gradlew detekt` at the root covers them all,
+ * the same way `configureAndroidTestCommon`/`configureJacoco` are shared.
+ *
+ * `buildUponDefaultConfig` keeps the curated default rule set and layers only
+ * this repo's tweaks from config/detekt/detekt.yml on top.
+ */
+internal fun Project.configureDetekt() {
+    pluginManager.apply("io.gitlab.arturbosch.detekt")
+    extensions.configure<io.gitlab.arturbosch.detekt.extensions.DetektExtension>("detekt") {
+        config.setFrom(rootProject.file("config/detekt/detekt.yml"))
+        buildUponDefaultConfig = true
+        parallel = true
+    }
+    // detekt's embedded Kotlin compiler derives --jvm-target from the toolchain
+    // running the build (e.g. JDK 25 -> target 25), but its CLI only accepts
+    // up to 22 and fails. The compile targets 17 (see configureAndroidCommon);
+    // pin detekt to the same value so it parses the same bytecode target.
+    //
+    // Note: detekt 1.23.x also reads the daemon JVM's java.version to build its
+    // compiler environment and rejects JDK > 22 outright ("IllegalArgumentException:
+    // 25.0.3"), so `./gradlew detekt` must run on a JDK <= 22. CI satisfies this
+    // with setup-java 17 (see android-tests.yml); a local dev machine on a newer
+    // default JDK needs to point the Android build at JDK 17/21.
+    tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
+        jvmTarget = "17"
+    }
 }
 
 /**

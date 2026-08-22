@@ -131,7 +131,7 @@ func registerAndLogin(client *http.Client, baseURL, username string) error {
 		"email":    username + "@example.com",
 		"password": "CorrectHorseBattery9!",
 	}
-	if _, body, status, err := doJSON(client, http.MethodPost, baseURL+"/api/v1/register", registerBody); err != nil {
+	if body, status, err := doJSON(client, http.MethodPost, baseURL+"/api/v1/register", registerBody); err != nil {
 		return err
 	} else if status != http.StatusCreated {
 		return fmt.Errorf("register: status %d: %s", status, body)
@@ -141,7 +141,7 @@ func registerAndLogin(client *http.Client, baseURL, username string) error {
 		"identifier": username,
 		"password":   "CorrectHorseBattery9!",
 	}
-	if _, body, status, err := doJSON(client, http.MethodPost, baseURL+"/api/v1/login", loginBody); err != nil {
+	if body, status, err := doJSON(client, http.MethodPost, baseURL+"/api/v1/login", loginBody); err != nil {
 		return err
 	} else if status != http.StatusOK {
 		return fmt.Errorf("login: status %d: %s", status, body)
@@ -248,7 +248,7 @@ func loadIteration(client *http.Client, baseURL string, worker, iter int, t *tal
 	}
 
 	createURL := baseURL + "/api/v1/contacts"
-	_, body, status, err := doJSON(client, http.MethodPost, createURL, createBody)
+	body, status, err := doJSON(client, http.MethodPost, createURL, createBody)
 	t.record(http.MethodPost, createURL, status, body, err)
 	if err != nil || status != http.StatusCreated {
 		return
@@ -264,10 +264,10 @@ func loadIteration(client *http.Client, baseURL string, worker, iter int, t *tal
 	}
 
 	itemURL := fmt.Sprintf("%s/api/v1/contacts/%.0f", baseURL, created.Contact.ID)
-	_, body, status, err = doJSON(client, http.MethodPut, itemURL, createBody)
+	body, status, err = doJSON(client, http.MethodPut, itemURL, createBody)
 	t.record(http.MethodPut, itemURL, status, body, err)
 
-	_, body, status, err = doJSON(client, http.MethodDelete, itemURL, nil)
+	body, status, err = doJSON(client, http.MethodDelete, itemURL, nil)
 	t.record(http.MethodDelete, itemURL, status, body, err)
 }
 
@@ -310,33 +310,34 @@ func classify(status int, body []byte) classification {
 
 // doJSON marshals body (nil for no body) as JSON, issues the request, and
 // returns the parsed status/response body. The response body is read fully
-// and returned rather than left on the reader, since classify() needs to
-// inspect it and Go's http.Client requires the body be drained either way to
-// let the connection be reused.
-func doJSON(client *http.Client, method, url string, body interface{}) (*http.Response, []byte, int, error) {
+// and closed inside here (the *http.Response is deliberately not returned:
+// no caller uses it, and returning it made bodyclose flag every call site for
+// a body that is in fact drained and closed). Go's http.Client requires the
+// body be drained either way to let the connection be reused.
+func doJSON(client *http.Client, method, url string, body interface{}) ([]byte, int, error) {
 	var reader io.Reader
 	if body != nil {
 		b, err := json.Marshal(body)
 		if err != nil {
-			return nil, nil, 0, fmt.Errorf("marshal request body: %w", err)
+			return nil, 0, fmt.Errorf("marshal request body: %w", err)
 		}
 		reader = bytes.NewReader(b)
 	}
 	req, err := http.NewRequest(method, url, reader)
 	if err != nil {
-		return nil, nil, 0, fmt.Errorf("build request: %w", err)
+		return nil, 0, fmt.Errorf("build request: %w", err)
 	}
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, nil, 0, fmt.Errorf("%s %s: %w", method, url, err)
+		return nil, 0, fmt.Errorf("%s %s: %w", method, url, err)
 	}
 	defer resp.Body.Close()
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return resp, nil, resp.StatusCode, fmt.Errorf("read response body: %w", err)
+		return nil, resp.StatusCode, fmt.Errorf("read response body: %w", err)
 	}
-	return resp, respBody, resp.StatusCode, nil
+	return respBody, resp.StatusCode, nil
 }
