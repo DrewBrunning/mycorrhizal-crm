@@ -28,6 +28,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Detect changed areas
         uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
@@ -36,13 +37,21 @@ jobs:
           filters: .github/filters.yaml
 
       # Boolean outputs only, so this is safe to interpolate (see unit-tests.yml).
+      # Passed as env vars rather than inline ${{ }} so zizmor's
+      # template-injection audit has nothing to flag.
       - name: Report gating decision
         run: |
-          echo "android=${{ steps.filter.outputs.android }}"
-          echo "backend=${{ steps.filter.outputs.backend }}"
-          echo "openapi=${{ steps.filter.outputs.openapi }}"
-          echo "infra=${{ steps.filter.outputs.infra }}"
-          echo "workflows=${{ steps.filter.outputs.workflows }}"
+          echo "android=$ANDROID_CHANGED"
+          echo "backend=$BACKEND_CHANGED"
+          echo "openapi=$OPENAPI_CHANGED"
+          echo "infra=$INFRA_CHANGED"
+          echo "workflows=$WORKFLOWS_CHANGED"
+        env:
+          ANDROID_CHANGED: ${{ steps.filter.outputs.android }}
+          BACKEND_CHANGED: ${{ steps.filter.outputs.backend }}
+          OPENAPI_CHANGED: ${{ steps.filter.outputs.openapi }}
+          INFRA_CHANGED: ${{ steps.filter.outputs.infra }}
+          WORKFLOWS_CHANGED: ${{ steps.filter.outputs.workflows }}
 
   test:
     permissions:
@@ -60,6 +69,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Validate Gradle wrapper
         uses: gradle/actions/wrapper-validation@ed408507eac070d1f99cc633dbcf757c94c7933a # v4.4.3
@@ -119,6 +130,19 @@ jobs:
         working-directory: android
         run: ./gradlew lintDebug
 
+      # Issue #358: detekt is the Kotlin correctness/smell analyzer (dead
+      # code, over-broad exception handling, declaration/file mismatches) that
+      # complements CodeQL + mobsfscan + Android Lint for the app. Applied to
+      # every module by the build-logic convention plugins with the shared
+      # config at android/config/detekt/detekt.yml (the style rules the repo
+      # doesn't enforce are disabled there, so this gates regressions of the
+      # high-signal set rather than a style baseline). Requires the JDK 17
+      # from setup-java above: detekt 1.23.x's JVM-version parser can't handle
+      # JDK 25, and the convention plugin pins its --jvm-target to 17 anyway.
+      - name: detekt
+        working-directory: android
+        run: ./gradlew detekt
+
       - name: Assemble debug APK
         working-directory: android
         run: ./gradlew assembleDebug
@@ -165,6 +189,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Validate Gradle wrapper
         uses: gradle/actions/wrapper-validation@ed408507eac070d1f99cc633dbcf757c94c7933a # v4.4.3

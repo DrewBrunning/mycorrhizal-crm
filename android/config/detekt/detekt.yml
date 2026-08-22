@@ -1,0 +1,54 @@
+# detekt configuration (issue #358 — SAST stack expansion).
+# buildUponDefaultConfig is set in the convention plugin, so this file layers
+# only this repo's deviations on top of detekt's curated default rule set.
+#
+# This repo has no ktlint/detekt style enforcement today, so the style-shaped
+# rules below are turned off rather than baselined: wiring detekt in as a
+# security/correctness gate should not require (or silently permit via a
+# baseline) a ~1000-issue style refactor. What stays active is the high-signal
+# set — dead code, over-broad exception handling, file/declaration mismatches,
+# trailing newlines — which is the actual complement to CodeQL/mobsfscan/Android
+# Lint.
+
+naming:
+  # Compose composables are capitalized by convention (@Composable fun InfoRow),
+  # which this rule (unaware of @Composable) flags as violations.
+  FunctionNaming:
+    active: false
+
+complexity:
+  # ViewModels/Repositories legitimately expose many functions.
+  TooManyFunctions:
+    active: false
+  # Compose dialog/screen signatures legitimately take many params; splitting
+  # them would add indirection without changing behavior.
+  LongParameterList:
+    active: false
+  LongMethod:
+    active: false
+  # Validators and permission flows are naturally branchy.
+  CyclomaticComplexMethod:
+    active: false
+  LargeClass:
+    active: false
+  NestedBlockDepth:
+    active: false
+  ComplexCondition:
+    active: false
+
+style:
+  # The repo doesn't enforce line length (ktlint/editorconfig are not set up).
+  MaxLineLength:
+    active: false
+  # Literals are used deliberately throughout (API keys, colors, offsets).
+  MagicNumber:
+    active: false
+  # Guard clauses are preferred over early-return-free rewrites.
+  ReturnCount:
+    active: false
+  ExplicitItLambdaParameter:
+    active: false
+  MayBeConst:
+    active: false
+  LoopWithTooManyJumpStatements:
+    active: false
