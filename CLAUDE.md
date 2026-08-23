@@ -248,3 +248,12 @@ enforced in the transport dialer. Go toolchain is pinned; don't float it.
 
 TOTP 2FA shipped 2026-08-17 (issue #158, PR #179) — recovery codes, rate-limited, doesn't
 touch CardDAV/API-token or OIDC auth. Not a gap anymore.
+
+**The security checklist is `docs/security/asvs-l2.md`** — OWASP ASVS 4.0.3 L2 (V1–V14) plus the
+API Security Top 10 (2023), each control mapped to `file:line` or a test with a
+`satisfied`/`partial`/`not-applicable` status. It is the review anchor: a security-sensitive PR
+**updates the row(s) it touches** (status + citation) in the same commit; if the change can't
+point at a row, it doesn't know what it is changing. N/A rows are written-down decisions (single
+process, self-hosted) — they flip to real statuses if the architecture changes. Two documented
+positions live there: NIST 800-63B password hashing (bcrypt cost 10, why not Argon2id yet) and
+cryptographic agility (direct bcrypt/JWT calls, deliberate pre-1.0).
