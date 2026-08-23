@@ -1,0 +1,8 @@
+# Mycorrhizal CRM - vulnerability disclosure (RFC 9116)
+# Full policy: https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/SECURITY.md
+
+Contact: https://github.com/DrewBrunning/mycorrhizal-crm/security/advisories/new
+Expires: 2027-08-22T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://raw.githubusercontent.com/DrewBrunning/mycorrhizal-crm/main/frontend/public/.well-known/security.txt
+Policy: https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/SECURITY.md
