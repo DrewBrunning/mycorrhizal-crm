@@ -117,3 +117,38 @@ func TestErrNotFound_WithDetails(t *testing.T) {
 		t.Error("ErrNotFound should support Details chaining")
 	}
 }
+
+func TestGetAppError(t *testing.T) {
+	t.Run("nil error returns nil", func(t *testing.T) {
+		if got := GetAppError(nil); got != nil {
+			t.Fatalf("GetAppError(nil) = %v, want nil", got)
+		}
+	})
+
+	t.Run("AppError passes through unchanged", func(t *testing.T) {
+		appErr := ErrNotFound("Contact")
+		if got := GetAppError(appErr); got != appErr {
+			t.Fatalf("GetAppError(AppError) = %v, want the same pointer %v", got, appErr)
+		}
+	})
+
+	t.Run("raw error wraps as generic internal", func(t *testing.T) {
+		raw := errors.New("sql: database is locked (5) (SQLITE_BUSY)")
+		got := GetAppError(raw)
+		if got == nil {
+			t.Fatal("GetAppError(raw) returned nil")
+		}
+		if got.Code != ErrCodeInternal {
+			t.Errorf("Code = %q, want %q", got.Code, ErrCodeInternal)
+		}
+		if got.HTTPStatus != http.StatusInternalServerError {
+			t.Errorf("HTTPStatus = %d, want %d", got.HTTPStatus, http.StatusInternalServerError)
+		}
+		if got.Message != "An unexpected error occurred" {
+			t.Errorf("Message = %q, want generic text", got.Message)
+		}
+		if !errors.Is(got, raw) {
+			t.Error("GetAppError should wrap the underlying error via Unwrap")
+		}
+	})
+}

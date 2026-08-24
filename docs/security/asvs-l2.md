@@ -281,9 +281,9 @@ L3-only, out of scope: none in this chapter (5.4 is L2).
 | 7.3.1 | Log injection prevented | satisfied | User-controlled values are control-character-escaped and length-capped before logging (`backend/logger/sanitize.go`), applied to request path/query/UA/error (`backend/middleware/logging.go`), request-path context (`backend/logger/logger.go:104-108`), and user-content diagnostics in the message position (`carddav/backend.go:352,445`, `export_controller.go:657,726`, `contact_share_controller.go:87`, `photo_controller.go:338,350`) — the console writer prints the message verbatim, so raw newlines there were a real line-injection vector; tests: `logger/sanitize_test.go`, `middleware/logging_test.go` |
 | 7.3.3 | Logs protected | not-applicable | stdout → operator's docker log driver |
 | 7.3.4 | Time synchronization, UTC | not-applicable | Operator/OS concern; timestamps are UTC (`zerolog Timestamp()`) |
-| 7.4.1 | Generic error + referenceable ID | satisfied | Envelope `{error:{code,message,details}, request_id, timestamp}` (`backend/errors/middleware.go:13-24,67-86`); internal errors are generic text |
+| 7.4.1 | Generic error + referenceable ID | satisfied | Envelope `{error:{code,message,details}, request_id, timestamp}` (`backend/errors/middleware.go:13-24,67-86`); internal errors are generic text, with no panic value / stack / type names in the body (pinned by `errors/middleware_test.go`, `errors/fail_secure_realdb_test.go`) |
 | 7.4.2 | Exception handling across codebase | satisfied | Typed `AppError` + `AbortWithError` (`errors/errors.go`, `errors/middleware.go:111-113`); `.Error` checked on every write (trap 4, `CLAUDE.md`) |
-| 7.4.3 | Last-resort handler | satisfied | Panic-recovery middleware → generic 500, stack logged server-side only (`errors/middleware.go:27-46`); `safeGo` for goroutines (`main.go:30-43`) |
+| 7.4.3 | Last-resort handler | satisfied | Panic-recovery middleware → generic 500, stack + panic value logged server-side only, never in the response body (`errors/middleware.go:27-44`); `safeGo` for goroutines (`main.go:30-43`); forced DB failure → typed code, no raw driver error (pinned by `errors/fail_secure_realdb_test.go`) |
 
 ## V8 — Data Protection
 
