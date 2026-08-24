@@ -92,7 +92,7 @@ L3-only, out of scope: 1.11.3.
 | 1.1.5 | High-level architecture + remote services analyzed | satisfied | `docs/deployment.md`, `docs/adrs/`, `docs/data-model.md`; remote-service clients (CardDAV/WebDAV, Immich, Seafile, Resend/SMTP) each have their own guarded client (`backend/services/immich_client.go`, `seafile_client.go`, `contact_sync_service.go`, `mailer.go`) |
 | 1.1.6 | Centralized, reusable security controls | satisfied | Single auth middleware `backend/middleware/auth.go`; single validation middleware `backend/middleware/validation.go`; single rate-limiter `backend/middleware/rate_limiter.go`; single SSRF dialer `backend/httputil/safedial.go`; single error envelope `backend/errors/` |
 | 1.1.7 | Secure coding checklist available | satisfied | `CLAUDE.md` (Backend/Frontend traps + Security posture) is the standing checklist all work is expected to read |
-| 1.2.1 | Low-privilege OS accounts | satisfied | Non-root `appuser` in `backend/Dockerfile` + `docker/entrypoint.sh:4-5` (PUID/PGID configurable, default 1001) |
+| 1.2.1 | Low-privilege OS accounts | satisfied | Non-root `appuser` in `backend/Dockerfile` + `docker/entrypoint.sh:4-5` (PUID/PGID configurable, default 1001); CIS-enforced in CI — `docker/cis-hardening.sh` (4.1 non-root, 4.8 setuid/setgid stripped) via `.github/workflows/container-hardening.yml` |
 | 1.2.2 | Component-to-component comms authenticated | not-applicable | Single process; nginx→app is loopback (`docker/nginx.conf:7,25`); no microservices, so no mTLS surface |
 | 1.2.3 | Single vetted auth mechanism | satisfied | One JWT HS256 verifier for all API routes (`backend/middleware/auth.go:66-98`, wired `routes/routes.go:52-55`); CardDAV Basic auth reuses the same password/API-token validation (`backend/carddav/auth.go:24-114`) |
 | 1.2.4 | Consistent auth strength across pathways | satisfied | Every protected route shares `middleware.AuthMiddleware`; CardDAV/CalDAV Basic path enforces the same password policy + account lockout (`backend/carddav/auth.go:37-48`); OIDC is the only other pathway and lands on the same JWT cookie (`backend/controllers/oidc_controller.go:229-233`) |
@@ -121,7 +121,7 @@ L3-only, out of scope: 1.11.3.
 | 1.14.2 | Binary signatures / verified endpoints | satisfied | cosign-signed images + SLSA provenance (`docker-publish.yml:339-367`) |
 | 1.14.3 | Build pipeline warns on outdated components | satisfied | govulncheck (`unit-tests.yml:175-177`), Trivy (`docker-publish.yml:428-445`), CodeQL (`codeql.yml`), zizmor (`zizmor.yml`), Dependabot + Dependency Review (`dependency-review.yml`) |
 | 1.14.4 | Automated build + verify | satisfied | CI builds, unit + Playwright e2e + Android instrumented e2e (`.github/workflows/unit-tests.yml`, `e2e-tests.yml`, `android-tests.yml`) |
-| 1.14.5 | Sandboxing/containerization | satisfied | Single non-root container (`backend/Dockerfile`), `docker/nginx.conf` limits exposure |
+| 1.14.5 | Sandboxing/containerization | satisfied | Single non-root container (`backend/Dockerfile`), `docker/nginx.conf` limits exposure; CIS hardening baseline gated in CI (`docker/cis-hardening.sh`, `.github/workflows/container-hardening.yml`) |
 | 1.14.6 | No deprecated client tech | satisfied | React/TS only; no Flash/ActiveX/Silverlight/Java applets |
 
 ## V2 — Authentication

@@ -1,0 +1,19 @@
+# Accepted exceptions to the CIS container-hardening baseline (issue #362).
+#
+# Read by docker/cis-hardening.sh. Format: one `<id> <status>` per line,
+# followed by a justification. A non-PASS result (FAIL or WARN) is a hard
+# failure unless a line here accepts that exact <id> + <status> pair; accepted
+# results are still logged as `[ACCEPT]` so they stay visible. This is the
+# same "ignore-list with justification" shape as android/.mobsf.
+#
+# Scope note: the check runs against the all-in-one image (the shipped
+# artifact). The split backend/frontend images follow the same conventions but
+# are not scanned here; see .github/workflows/container-hardening.yml.
+
+# 4.1 — no USER instruction. The container runs as root at PID 1 so
+# docker/entrypoint.sh can remap PUID/PGID (usermod/groupmod need root), then
+# supervisord drops the backend to appuser (1001) via `user=appuser`
+# (docker/supervisord.conf:20). nginx also starts as root to bind 8080 and drop
+# workers. An *explicit* `USER root`/`USER 0` is not accepted — that remains a
+# FAIL (4.1 FAIL), so re-adding it regresses the check.
+4.1 WARN
