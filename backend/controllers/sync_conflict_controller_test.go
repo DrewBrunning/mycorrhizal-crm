@@ -160,3 +160,65 @@ func TestDismissContactSyncConflict_UnknownIDIs404(t *testing.T) {
 	router.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
+
+// TestContactSyncConflicts_Unauthenticated covers currentUserID's early-return
+// branch: without a userID in context every handler 401s before touching the
+// DB.
+func TestContactSyncConflicts_Unauthenticated(t *testing.T) {
+	db, err := database.InitDB(filepath.Join(t.TempDir(), "sync-conflict-noauth.db"))
+	require.NoError(t, err)
+
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.Default()
+	router.Use(func(c *gin.Context) {
+		c.Set("db", db)
+		c.Next()
+	})
+	router.GET("/contact-sync-conflicts", ListContactSyncConflicts)
+	router.POST("/contact-sync-conflicts/:id/restore", RestoreContactSyncConflict)
+	router.POST("/contact-sync-conflicts/:id/dismiss", DismissContactSyncConflict)
+
+	for _, tc := range []struct {
+		method, path string
+	}{
+		{"GET", "/contact-sync-conflicts"},
+		{"POST", "/contact-sync-conflicts/x/restore"},
+		{"POST", "/contact-sync-conflicts/x/dismiss"},
+	} {
+		req, _ := http.NewRequest(tc.method, tc.path, nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+	}
+}
+
+// TestSyncConflictEndpoints_DBError exercises the AbortWithError branches by
+// closing the underlying *sql.DB out from under gorm before the request
+// (mirrors contact_subscription_controller_test.go's TestListContactSubscriptions_DBError).
+func TestSyncConflictEndpoints_DBError(t *testing.T) {
+	db, router, user := setupSyncConflictRouter(t)
+	contact := models.Contact{UserID: user.ID, Firstname: "Grace"}
+	require.NoError(t, db.Create(&contact).Error)
+	sub := models.ContactSubscription{UserID: user.ID, Name: "Work", URL: "https://example.com/dav/"}
+	require.NoError(t, db.Create(&sub).Error)
+	conflict := seedControllerConflict(t, db, user.ID, contact, sub, models.SyncConflictFieldPhone, "A", "B")
+
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	require.NoError(t, sqlDB.Close())
+
+	req, _ := http.NewRequest("GET", "/contact-sync-conflicts", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+
+	req2, _ := http.NewRequest("POST", "/contact-sync-conflicts/"+conflict.ID+"/restore", nil)
+	w2 := httptest.NewRecorder()
+	router.ServeHTTP(w2, req2)
+	assert.Equal(t, http.StatusInternalServerError, w2.Code)
+
+	req3, _ := http.NewRequest("POST", "/contact-sync-conflicts/"+conflict.ID+"/dismiss", nil)
+	w3 := httptest.NewRecorder()
+	router.ServeHTTP(w3, req3)
+	assert.Equal(t, http.StatusInternalServerError, w3.Code)
+}

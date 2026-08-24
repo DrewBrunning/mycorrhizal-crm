@@ -390,3 +390,213 @@ func TestDismissContactSyncConflict_IdempotentAndScoped(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, apperrors.ErrCodeNotFound, appErr.Code)
 }
+
+// TestRestoreContactSyncConflict_RestoresEveryField exercises the full
+// restore switch, scalar and array fields alike — the inverse of the snapshot
+// encoding, so a value a sync overwrote can be written back verbatim.
+func TestRestoreContactSyncConflict_RestoresEveryField(t *testing.T) {
+	db := setupContactSyncTestDB(t)
+	cfg := contactSyncTestConfig()
+	user := createContactSyncTestUser(t, db)
+	sub := newContactTestSubscription(t, db, cfg, user.ID, "https://example.com/addressbooks/test/", "", "")
+
+	contact := models.Contact{UserID: user.ID, Firstname: "Initial"}
+	require.NoError(t, db.Create(&contact).Error)
+
+	cases := []struct {
+		field, local string
+	}{
+		{models.SyncConflictFieldFirstname, "Ada"},
+		{models.SyncConflictFieldLastname, "Lovelace"},
+		{models.SyncConflictFieldMiddlename, "Augusta"},
+		{models.SyncConflictFieldPrefix, "Dr."},
+		{models.SyncConflictFieldSuffix, "PhD"},
+		{models.SyncConflictFieldNickname, "Ace"},
+		{models.SyncConflictFieldOrganization, "Analytical Engines"},
+		{models.SyncConflictFieldDepartment, "Research"},
+		{models.SyncConflictFieldJobTitle, "Analyst"},
+		{models.SyncConflictFieldRole, "Lead"},
+		{models.SyncConflictFieldBirthday, "1815-12-10"},
+		{models.SyncConflictFieldAnniversary, "1835-07-08"},
+		{models.SyncConflictFieldHowWeMet, "At the museum"},
+		{models.SyncConflictFieldWorkInformation, "Writes code"},
+		{models.SyncConflictFieldContactInformation, "Reach via assistant"},
+		{models.SyncConflictFieldEmail, `[{"type":"work","value":"ada@example.com"}]`},
+		{models.SyncConflictFieldPhone, `[{"type":"","value":"555-0100"}]`},
+		{models.SyncConflictFieldAddress, `[{"street":"St James Sq","city":"London"}]`},
+		{models.SyncConflictFieldURL, `[{"type":"","value":"https://example.com"}]`},
+		{models.SyncConflictFieldIMPP, `[{"type":"telegram","value":"@ada"}]`},
+		{models.SyncConflictFieldCircles, `["close_friends"]`},
+	}
+	for _, tc := range cases {
+		conflict := seedSyncConflict(t, db, user.ID, contact.ID, sub.ID, tc.field, tc.local, "Remote")
+		require.NoError(t, RestoreContactSyncConflict(db, user.ID, conflict.ID), "restore %s", tc.field)
+	}
+
+	var reloaded models.Contact
+	require.NoError(t, db.First(&reloaded, contact.ID).Error)
+
+	assert.Equal(t, "Ada", reloaded.Firstname)
+	assert.Equal(t, "Lovelace", reloaded.Lastname)
+	assert.Equal(t, "Augusta", reloaded.MiddleName)
+	assert.Equal(t, "Dr.", reloaded.Prefix)
+	assert.Equal(t, "PhD", reloaded.Suffix)
+	assert.Equal(t, "Ace", reloaded.Nickname)
+	assert.Equal(t, "Analytical Engines", reloaded.Organization)
+	assert.Equal(t, "Research", reloaded.Department)
+	assert.Equal(t, "Analyst", reloaded.JobTitle)
+	assert.Equal(t, "Lead", reloaded.Role)
+	assert.Equal(t, "1815-12-10", reloaded.Birthday)
+	assert.Equal(t, "1835-07-08", reloaded.Anniversary)
+	assert.Equal(t, "At the museum", reloaded.HowWeMet)
+	assert.Equal(t, "Writes code", reloaded.WorkInformation)
+	assert.Equal(t, "Reach via assistant", reloaded.ContactInformation)
+	require.Len(t, reloaded.Emails, 1)
+	assert.Equal(t, "ada@example.com", reloaded.Emails[0].Value)
+	require.Len(t, reloaded.Phones, 1)
+	assert.Equal(t, "555-0100", reloaded.Phones[0].Value)
+	require.Len(t, reloaded.Addresses, 1)
+	assert.Equal(t, "St James Sq", reloaded.Addresses[0].Street)
+	require.Len(t, reloaded.URLs, 1)
+	assert.Equal(t, "https://example.com", reloaded.URLs[0].Value)
+	require.Len(t, reloaded.IMPPs, 1)
+	assert.Equal(t, "@ada", reloaded.IMPPs[0].Value)
+	assert.Equal(t, []string{"close_friends"}, reloaded.Circles)
+}
+
+// TestRestoreContactSyncConflict_ContactMissingIs404 covers a conflict whose
+// contact was deleted after the conflict was recorded: nothing to restore.
+func TestRestoreContactSyncConflict_ContactMissingIs404(t *testing.T) {
+	db := setupContactSyncTestDB(t)
+	cfg := contactSyncTestConfig()
+	user := createContactSyncTestUser(t, db)
+	sub := newContactTestSubscription(t, db, cfg, user.ID, "https://example.com/addressbooks/test/", "", "")
+
+	conflict := seedSyncConflict(t, db, user.ID, 99999, sub.ID, models.SyncConflictFieldPhone, "A", "B")
+
+	err := RestoreContactSyncConflict(db, user.ID, conflict.ID)
+	require.Error(t, err)
+	appErr, ok := err.(*apperrors.AppError)
+	require.True(t, ok)
+	assert.Equal(t, apperrors.ErrCodeNotFound, appErr.Code)
+}
+
+// TestRestoreContactSyncConflict_UnknownFieldFails covers the restore switch's
+// default branch: a field token we don't know how to write back.
+func TestRestoreContactSyncConflict_UnknownFieldFails(t *testing.T) {
+	db := setupContactSyncTestDB(t)
+	cfg := contactSyncTestConfig()
+	user := createContactSyncTestUser(t, db)
+	sub := newContactTestSubscription(t, db, cfg, user.ID, "https://example.com/addressbooks/test/", "", "")
+
+	contact := models.Contact{UserID: user.ID, Firstname: "Carol"}
+	require.NoError(t, db.Create(&contact).Error)
+	conflict := seedSyncConflict(t, db, user.ID, contact.ID, sub.ID, "not_a_real_field", "A", "B")
+
+	err := RestoreContactSyncConflict(db, user.ID, conflict.ID)
+	require.Error(t, err)
+
+	var reloaded models.Contact
+	require.NoError(t, db.First(&reloaded, contact.ID).Error)
+	assert.Equal(t, "Carol", reloaded.Firstname, "an unknown field must not half-restore the contact")
+}
+
+// TestRecordSyncConflicts_NoBaselineAndCorruptBaseline covers the two
+// defensive paths: a missing baseline is a silent no-op (pre-migration links),
+// and a corrupt baseline is skipped with a warning rather than failing the
+// sync.
+func TestRecordSyncConflicts_NoBaselineAndCorruptBaseline(t *testing.T) {
+	db := setupContactSyncTestDB(t)
+	cfg := contactSyncTestConfig()
+	user := createContactSyncTestUser(t, db)
+	sub := newContactTestSubscription(t, db, cfg, user.ID, "https://example.com/addressbooks/test/", "", "")
+
+	contact := models.Contact{UserID: user.ID, Firstname: "Carol"}
+	require.NoError(t, db.Create(&contact).Error)
+
+	local := map[string]string{models.SyncConflictFieldPhone: `[{"value":"555-0100"}]`}
+	remote := map[string]string{models.SyncConflictFieldPhone: "[]"}
+
+	// No baseline: nothing to diff against, no conflicts, no error.
+	require.NoError(t, recordSyncConflicts(db, sub, &contact, models.ContactSyncLink{SyncedValues: ""}, local, remote))
+	var count int64
+	require.NoError(t, db.Model(&models.ContactSyncConflict{}).Where("user_id = ?", user.ID).Count(&count).Error)
+	assert.Zero(t, count)
+
+	// Corrupt baseline: skipped with a warning, sync still succeeds.
+	require.NoError(t, recordSyncConflicts(db, sub, &contact, models.ContactSyncLink{SyncedValues: "{not-json"}, local, remote))
+	require.NoError(t, db.Model(&models.ContactSyncConflict{}).Where("user_id = ?", user.ID).Count(&count).Error)
+	assert.Zero(t, count)
+}
+
+// TestSyncConflictSnapshotJSON_RoundTrip covers the snapshot encode/decode
+// helpers directly.
+func TestSyncConflictSnapshotJSON_RoundTrip(t *testing.T) {
+	snap := map[string]string{
+		models.SyncConflictFieldPhone:    `[{"type":"","value":"555-0100"}]`,
+		models.SyncConflictFieldNickname: "Ace",
+	}
+	raw := syncConflictSnapshotJSON(snap)
+	assert.NotEmpty(t, raw)
+
+	parsed, err := parseSyncConflictSnapshot(raw)
+	require.NoError(t, err)
+	assert.Equal(t, snap, parsed)
+}
+
+// TestRestoreContactSyncConflict_InvalidArrayJSON covers the array-field
+// unmarshal error branches: a corrupted stored value must fail the restore
+// without touching the contact.
+func TestRestoreContactSyncConflict_InvalidArrayJSON(t *testing.T) {
+	db := setupContactSyncTestDB(t)
+	cfg := contactSyncTestConfig()
+	user := createContactSyncTestUser(t, db)
+	sub := newContactTestSubscription(t, db, cfg, user.ID, "https://example.com/addressbooks/test/", "", "")
+
+	for _, field := range []string{
+		models.SyncConflictFieldEmail,
+		models.SyncConflictFieldPhone,
+		models.SyncConflictFieldAddress,
+		models.SyncConflictFieldURL,
+		models.SyncConflictFieldIMPP,
+		models.SyncConflictFieldCircles,
+	} {
+		contact := models.Contact{UserID: user.ID, Firstname: "Carol"}
+		require.NoError(t, db.Create(&contact).Error)
+		conflict := seedSyncConflict(t, db, user.ID, contact.ID, sub.ID, field, "{not-json", "[]")
+
+		err := RestoreContactSyncConflict(db, user.ID, conflict.ID)
+		require.Error(t, err, "restore of %s with invalid JSON must fail", field)
+
+		var reloaded models.Contact
+		require.NoError(t, db.First(&reloaded, contact.ID).Error)
+		assert.Equal(t, "Carol", reloaded.Firstname, "a failed restore must leave the contact untouched")
+	}
+}
+
+// TestSyncConflictServices_DBError exercises the error branches of the list /
+// restore / dismiss service functions by closing the underlying *sql.DB out
+// from under gorm (mirrors the controller-level DB-error tests).
+func TestSyncConflictServices_DBError(t *testing.T) {
+	db := setupContactSyncTestDB(t)
+	cfg := contactSyncTestConfig()
+	user := createContactSyncTestUser(t, db)
+	sub := newContactTestSubscription(t, db, cfg, user.ID, "https://example.com/addressbooks/test/", "", "")
+
+	contact := models.Contact{UserID: user.ID, Firstname: "Carol"}
+	require.NoError(t, db.Create(&contact).Error)
+	conflict := seedSyncConflict(t, db, user.ID, contact.ID, sub.ID, models.SyncConflictFieldPhone, "A", "B")
+
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	require.NoError(t, sqlDB.Close())
+
+	_, err = ListContactSyncConflicts(db, user.ID)
+	require.Error(t, err)
+
+	err = RestoreContactSyncConflict(db, user.ID, conflict.ID)
+	require.Error(t, err)
+
+	err = DismissContactSyncConflict(db, user.ID, conflict.ID)
+	require.Error(t, err)
+}
