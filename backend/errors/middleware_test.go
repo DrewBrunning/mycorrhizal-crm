@@ -132,9 +132,93 @@ func TestErrorHandlerMiddleware_RecoversPanicAsInternal(t *testing.T) {
 	detail := decodeErrorDetail(t, decodeErrorEnvelope(t, rec))
 	assert.Equal(t, ErrCodeInternal, detail["code"])
 	assert.Equal(t, "An unexpected error occurred", detail["message"])
-	details, ok := detail["details"].(map[string]interface{})
-	require.True(t, ok, "panic details should be present")
-	assert.Equal(t, "boom", details["panic"])
+
+	// Fail-secure: the panic value, the stack trace, and any Go type/struct
+	// internals must never leak into the response body.
+	assert.NotContains(t, rec.Body.String(), "boom")
+	assert.NotContains(t, detail, "details", "panic path must not expose a details object")
+	assert.NotContains(t, rec.Body.String(), "goroutine")
+	assert.NotContains(t, rec.Body.String(), "runtime/")
+	assert.NotContains(t, rec.Body.String(), "Panic recovered")
+}
+
+// TestErrorHandlerMiddleware_PanicDoesNotLeakStructOrTypeNames pins the
+// "don't leak" bar for a panic whose value is a rich Go object: a pointer to a
+// struct with identifying fields, a `%v` type name, and a wrapped error string.
+// None of that may appear in the generic 500 body.
+func TestErrorHandlerMiddleware_PanicDoesNotLeakStructOrTypeNames(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Use(ErrorHandlerMiddleware())
+	router.GET("/panic", func(c *gin.Context) {
+		type internalSecret struct {
+			APIKey string
+			DSN    string
+		}
+		panic(&internalSecret{APIKey: "sk_live_12345", DSN: "postgres://user:pass@db/secret"})
+	})
+
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/panic", nil))
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	body := rec.Body.String()
+	assert.NotContains(t, body, "internalSecret", "Go type name must not leak")
+	assert.NotContains(t, body, "sk_live_12345", "struct field values must not leak")
+	assert.NotContains(t, body, "postgres://user:pass@db/secret", "struct field values must not leak")
+	assert.NotContains(t, body, "goroutine")
+	assert.NotContains(t, body, "runtime/")
+	detail := decodeErrorDetail(t, decodeErrorEnvelope(t, rec))
+	assert.Equal(t, ErrCodeInternal, detail["code"])
+	assert.NotContains(t, detail, "details")
+}
+
+// TestErrorHandlerMiddleware_ReleaseMode_NoInternalDetail pins that in release
+// mode the error envelope carries no internal detail — no panic value, no
+// stack trace, and no underlying error string — for both a recovered panic and
+// a raw (non-AppError) error wrapped by GetAppError.
+func TestErrorHandlerMiddleware_ReleaseMode_NoInternalDetail(t *testing.T) {
+	gin.SetMode(gin.ReleaseMode)
+	defer gin.SetMode(gin.TestMode)
+
+	t.Run("panic", func(t *testing.T) {
+		router := gin.New()
+		router.Use(ErrorHandlerMiddleware())
+		router.GET("/panic", func(c *gin.Context) {
+			panic("sensitive internal value")
+		})
+
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/panic", nil))
+
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+		body := rec.Body.String()
+		assert.NotContains(t, body, "sensitive internal value")
+		assert.NotContains(t, body, "goroutine")
+		assert.NotContains(t, body, "runtime/")
+		detail := decodeErrorDetail(t, decodeErrorEnvelope(t, rec))
+		assert.Equal(t, ErrCodeInternal, detail["code"])
+		assert.NotContains(t, detail, "details")
+	})
+
+	t.Run("raw error wrapped as internal", func(t *testing.T) {
+		router := gin.New()
+		router.Use(ErrorHandlerMiddleware())
+		router.GET("/err", func(c *gin.Context) {
+			c.Error(errors.New("sql: database is locked (SQLITE_BUSY)"))
+		})
+
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/err", nil))
+
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+		body := rec.Body.String()
+		assert.NotContains(t, body, "SQLITE_BUSY", "raw driver error must not leak")
+		assert.NotContains(t, body, "sql: database is locked")
+		detail := decodeErrorDetail(t, decodeErrorEnvelope(t, rec))
+		assert.Equal(t, ErrCodeInternal, detail["code"])
+		assert.NotContains(t, detail, "details")
+	})
 }
 
 func TestErrorHandlerMiddleware_RespondsToAppErrorInContext(t *testing.T) {

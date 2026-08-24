@@ -28,7 +28,10 @@ func ErrorHandlerMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
 			if err := recover(); err != nil {
-				// Log the panic with stack trace
+				// Log the panic with the stack trace server-side only. The
+				// panic value may carry sensitive data, struct internals, or
+				// Go type names, so it must never reach the response body
+				// (fail-secure, ASVS 7.4.3). The client gets a generic 500.
 				stackTrace := string(debug.Stack())
 
 				log := logger.FromContext(c)
@@ -37,11 +40,7 @@ func ErrorHandlerMiddleware() gin.HandlerFunc {
 					Str("stack_trace", stackTrace).
 					Msg("Panic recovered")
 
-				// Create internal error response
-				appErr := ErrInternal("An unexpected error occurred")
-				appErr.WithDetails("panic", fmt.Sprintf("%v", err))
-
-				RespondWithError(c, appErr)
+				RespondWithError(c, ErrInternal("An unexpected error occurred"))
 			}
 		}()
 
