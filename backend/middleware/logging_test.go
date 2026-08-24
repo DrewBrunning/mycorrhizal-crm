@@ -121,6 +121,35 @@ func TestLoggingMiddlewareSingleLinePerRequest(t *testing.T) {
 	}
 }
 
+func TestLoggingMiddlewareRedactsSensitiveQueryValues(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	for _, console := range []bool{false, true} {
+		mode := "json"
+		if console {
+			mode = "console"
+		}
+		t.Run(mode, func(t *testing.T) {
+			buf := &bytes.Buffer{}
+			captureLogger(t, buf, console)
+
+			router := gin.New()
+			router.Use(LoggingMiddleware())
+			router.GET("/*any", func(c *gin.Context) { c.Status(http.StatusOK) })
+
+			req := httptest.NewRequest(http.MethodGet, "/?code=TOP-SECRET&state=ok", nil)
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			require.Equal(t, http.StatusOK, w.Code)
+			out := buf.String()
+			require.NotContains(t, out, "TOP-SECRET", "OIDC authorization code must not reach the log")
+			require.Contains(t, out, "code=[REDACTED]", "sensitive value must be redacted")
+			require.Contains(t, out, "state=ok", "non-sensitive query params must be preserved")
+		})
+	}
+}
+
 // requireControlFree asserts the log output contains no control characters
 // other than the single trailing newline that terminates the log record.
 func requireControlFree(t *testing.T, out string) {

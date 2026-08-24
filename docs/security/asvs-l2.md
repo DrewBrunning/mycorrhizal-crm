@@ -273,7 +273,7 @@ L3-only, out of scope: none in this chapter (5.4 is L2).
 | ID | Requirement (abbrev.) | Status | Evidence |
 |---|---|---|---|
 | 7.1.1 | No credentials/payment in logs | satisfied | Logger context has `request_id`, `user_id`, `method`, `path`, `ip` — no body, no Authorization header, no cookies (`backend/logger/logger.go:86-111`); passwords never logged |
-| 7.1.2 | No other sensitive data in logs | partial | Raw query string is logged (`backend/middleware/logging.go:66-68`) — safe today (tokens are header/cookie-based) but a URL with a secret would land in logs. Gap: strip query strings. |
+| 7.1.2 | No other sensitive data in logs | satisfied | Sensitive query values are redacted before the query string is logged — `RedactQueryValues` scrubs `code`/`token`/`access_token`/`key`/`secret`/`password`/`signature` (case-insensitive, after percent-decoding the key) to `[REDACTED]` (`backend/logger/redact.go`), applied in the request log's `query` field (`backend/middleware/logging.go:18`). Tests: `logger/redact_test.go`, `middleware/logging_test.go`. |
 | 7.1.3 | Security events logged | partial | Request log records 401/403/429s; audit hooks record all data mutations (`backend/models/audit.go`). Gap: no distinct auth-success/failure event type, no deserialization events. |
 | 7.1.4 | Log event timeline detail | satisfied | `request_id`, `user_id`, IP, UA, method, path, status, duration (`backend/logger/logger.go:86-111`) |
 | 7.2.1 | Authentication decisions logged | satisfied | Login/2FA/register attempts (success and failure) are request-logged with IP, method, path, status (`backend/middleware/logging.go`); lockout events surface as 429s (`rate_limiter.go`); 2FA challenge issuance/consumption is audit-visible via the 2FA controller flow |
