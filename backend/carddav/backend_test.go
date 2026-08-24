@@ -1,7 +1,9 @@
 package carddav
 
 import (
+	"bytes"
 	"context"
+	"mycorrhizal/logger"
 	"mycorrhizal/models"
 	"strings"
 	"testing"
@@ -9,8 +11,25 @@ import (
 	"github.com/emersion/go-vcard"
 	webdavcarddav "github.com/emersion/go-webdav/carddav"
 	"github.com/glebarez/sqlite"
+	"github.com/rs/zerolog"
+	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
+
+// captureLogger swaps the global logger for one writing into buf at debug
+// level, restoring both afterwards — used to observe what PutAddressObject's
+// diagnostic loops actually emit.
+func captureLogger(t *testing.T, buf *bytes.Buffer) {
+	t.Helper()
+	oldLogger := logger.Logger
+	oldLevel := zerolog.GlobalLevel()
+	logger.Logger = zerolog.New(buf)
+	zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	t.Cleanup(func() {
+		logger.Logger = oldLogger
+		zerolog.SetGlobalLevel(oldLevel)
+	})
+}
 
 // newTestBackend builds an in-memory-SQLite-backed Backend for CardDAV
 // integration tests, mirroring the setup pattern used by
@@ -402,4 +421,46 @@ func TestPutAddressObject_MalformedCardRejected(t *testing.T) {
 	if count != 0 {
 		t.Errorf("expected no Contact row to be created for a malformed PUT, got %d", count)
 	}
+}
+
+// TestPutAddressObject_DiagnosticPaths exercises the two message-position
+// diagnostic loops in backend.go — PutAddressObject's import loop
+// ("CardDAV PUT: " + d.Message) and contactToAddressObject's export loop
+// ("CardDAV export: " + d.Message). Both are the real log-forgery vectors
+// logger.SanitizeLogField was introduced to close (the console writer prints
+// the message verbatim), so each loop must actually run. A single vCard 4.0
+// PUT carrying FN;DERIVED=TRUE triggers both: the vcard4 adapter deliberately
+// refuses to import a DERIVED name as authoritative (emitting an import
+// diagnostic and leaving the record nameless), and the export back to vCard
+// that PutAddressObject performs on the return path then hits the
+// "no Name.Full" export diagnostic. Asserting on the captured log lines is
+// what proves the loops execute (not merely that the code path compiles).
+func TestPutAddressObject_DiagnosticPaths(t *testing.T) {
+	backend, db := newTestBackend(t)
+	buf := &bytes.Buffer{}
+	captureLogger(t, buf)
+	ctx := ContextWithUser(context.Background(), 1, "tester", db, backend.photoDir, "")
+
+	const uid = "diagnostic-path-uid"
+	urlPath := "/carddav/addressbooks/tester/contacts/" + uid + ".vcf"
+
+	raw := "BEGIN:VCARD\r\n" +
+		"VERSION:4.0\r\n" +
+		"UID:" + uid + "\r\n" +
+		"FN;DERIVED=TRUE:Jane Roe\r\n" +
+		"END:VCARD\r\n"
+
+	obj, err := backend.PutAddressObject(ctx, urlPath, mustParseVCard(t, raw), nil)
+	if err != nil {
+		t.Fatalf("PutAddressObject returned error: %v", err)
+	}
+	if obj == nil {
+		t.Fatal("PutAddressObject returned a nil AddressObject")
+	}
+
+	out := buf.String()
+	require.Contains(t, out, "vCard FN was DERIVED=TRUE; not imported as authoritative Name.Full",
+		"the import diagnostic loop must have logged the DERIVED drop")
+	require.Contains(t, out, "no Name.Full and no components to derive FN from",
+		"the export diagnostic loop must have logged the nameless contact")
 }
