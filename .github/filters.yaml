@@ -21,6 +21,21 @@
 #
 # docs/** intentionally maps to nothing here: docs changes trigger only the
 # docs job (docs.yml), which is already path-filtered to docs/**.
+#
+# License-compliance gates (issue #361). These are narrower than the area
+# filters above: they only fire when the dependency *manifest* changes, so a
+# source-only edit doesn't pay for dependency resolution + a license scan.
+# Gradle is deliberately absent — trivy can only enumerate Gradle licenses
+# from a `gradle.lockfile` (dependency locking), which this repo doesn't emit
+# yet; see license-compliance.yml.
+go-manifests:
+  - 'backend/go.mod'
+  - 'backend/go.sum'
+
+npm-manifests:
+  - 'frontend/package.json'
+  - 'frontend/yarn.lock'
+
 backend:
   - 'backend/**'
 
