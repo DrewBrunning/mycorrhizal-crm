@@ -1,0 +1,222 @@
+name: Schemathesis API fuzzing
+
+# Issue #369: property-based, spec-derived API fuzzing. Schemathesis derives
+# request cases from backend/openapi.yaml and attacks the *running* app (the
+# all-in-one image, via docker-compose.test.yml — never a real DB) to catch
+# 500s on malformed/edge input and auth-protected operations that return data
+# without auth. It is the automated evidence for the API1/BOLA and API3/BOPLA
+# rows in docs/security/asvs-l2.md, and complements the weekly ZAP DAST sweep
+# (zap-dast.yml, issue #368) as a per-PR, path-gated check.
+#
+# Two Schemathesis passes run against one booted app:
+#   - anonymous (no auth): the ignored_auth check fails when a protected
+#     operation returns 2xx without credentials;
+#   - authenticated (a minted full-scope API token): the not_a_server_error
+#     check fails when a spec-valid-but-odd body 500s.
+# The BOLA/IDOR cross-account sweep (backend/cmd/bolacheck) runs separately —
+# Schemathesis has no second identity to vary resource IDs across accounts, so
+# that check is the deterministic complement. backend/cmd/schemagate then
+# applies the ignore-list (schemathesis/schemathesis.ignore) to the two NDJSON
+# reports and fails on unaccepted 5xx/auth findings.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  # Issue #264: path-gated checks — see unit-tests.yml for the pattern.
+  changes:
+    permissions:
+      contents: read
+      pull-requests: read
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      openapi: ${{ steps.filter.outputs.openapi }}
+      infra: ${{ steps.filter.outputs.infra }}
+      workflows: ${{ steps.filter.outputs.workflows }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Detect changed areas
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: .github/filters.yaml
+
+      # Boolean outputs only, so this is safe to interpolate (see unit-tests.yml).
+      - name: Report gating decision
+        run: |
+          echo "backend=$BACKEND_CHANGED"
+          echo "openapi=$OPENAPI_CHANGED"
+          echo "infra=$INFRA_CHANGED"
+          echo "workflows=$WORKFLOWS_CHANGED"
+        env:
+          BACKEND_CHANGED: ${{ steps.filter.outputs.backend }}
+          OPENAPI_CHANGED: ${{ steps.filter.outputs.openapi }}
+          INFRA_CHANGED: ${{ steps.filter.outputs.infra }}
+          WORKFLOWS_CHANGED: ${{ steps.filter.outputs.workflows }}
+
+  schemathesis:
+    permissions:
+      contents: read
+    name: Run Schemathesis fuzzing + BOLA sweep
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: changes
+    # Fires when the API contract, the handlers, or the deployed artifact
+    # change. The openapi.yaml lives outside backend/, so openapi is listed
+    # explicitly; infra covers the compose/image the scan boots.
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # bolacheck and schemagate are Go commands in the backend module; built
+      # and run directly on the runner (not in the app image).
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      # Build the same all-in-one image e2e-tests.yml builds (the shipped
+      # artifact), so Schemathesis attacks what actually ships.
+      - name: Build all-in-one image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          push: false
+          load: true
+          tags: mycorrhizal-crm-test:latest
+          cache-from: type=gha,scope=combined
+          cache-to: type=gha,scope=combined,mode=max
+
+      - name: Start the app (throwaway test DB)
+        run: |
+          docker compose -f docker-compose.test.yml up -d
+          echo "Waiting for the app to be ready..."
+          timeout 120 bash -c 'until curl -s http://localhost:7300/health > /dev/null 2>&1; do sleep 2; done'
+          echo "App is ready"
+
+      # The BOLA/IDOR cross-account sweep: two throwaway users, one creates a
+      # resource of each tracked entity, the other attempts GET/PUT/DELETE on
+      # every one — a 2xx is a missing user_id scope, a 5xx is a crash.
+      - name: Run BOLA/IDOR cross-account sweep
+        working-directory: backend
+        run: go run ./cmd/bolacheck
+        env:
+          BOLACHECK_BASE_URL: http://localhost:7300
+
+      # Mint a full-scope API token for the authenticated Schemathesis pass.
+      # The token is written to the environment for the next steps (never
+      # logged). The anonymous pass runs without it.
+      - name: Bootstrap authenticated session (register + login + API token)
+        run: |
+          set -euo pipefail
+          BASE="http://localhost:7300/api/v1"
+          USER="sch_$(date +%s)"
+          PASS='SchPassword123!'
+
+          curl -sS -c /tmp/cookies.txt -o /dev/null \
+            -H 'Content-Type: application/json' \
+            -d "{\"username\":\"${USER}\",\"email\":\"${USER}@example.com\",\"password\":\"${PASS}\"}" \
+            "${BASE}/register"
+
+          curl -sS -b /tmp/cookies.txt -c /tmp/cookies.txt -o /dev/null \
+            -H 'Content-Type: application/json' \
+            -d "{\"identifier\":\"${USER}\",\"password\":\"${PASS}\"}" \
+            "${BASE}/login"
+
+          TOKEN="$(curl -sS -b /tmp/cookies.txt \
+            -H 'Content-Type: application/json' \
+            -d '{"name":"schemathesis","scope":"full"}' \
+            "${BASE}/api-tokens" | python3 -c 'import sys, json; print(json.load(sys.stdin)["token"])')"
+
+          test -n "${TOKEN}"
+          echo "SCH_TOKEN=${TOKEN}" >> "$GITHUB_ENV"
+          echo "Authenticated session ready (token minted, not shown)."
+
+      # The report dir must exist and be writable by the container (which runs
+      # as root via --user 0; the dir itself is runner-owned, hence 777).
+      - name: Prepare report directory
+        run: mkdir -p schemathesis/report && chmod 777 schemathesis/report
+
+      # Anonymous pass: no auth header. Catches protected operations that
+      # return data without credentials (ignored_auth) and 5xx on public /
+      # negative-input routes. --workers 4 (not auto) keeps a single-process
+      # Go server from dropping connections under a concurrent burst.
+      - name: Run Schemathesis (anonymous)
+        run: |
+          docker run --rm --network host --user 0 \
+            -v "$PWD/backend/openapi.yaml:/schema/openapi.yaml:ro" \
+            -v "$PWD/schemathesis/report:/report" \
+            ghcr.io/schemathesis/schemathesis@sha256:15aaf6cb003bfd47f27ec7cc98ad491208dd98868eadb0fcfb9329ff62d86266 \
+            run /schema/openapi.yaml \
+            --url http://localhost:7300 \
+            --checks all \
+            --report ndjson --report-dir /report --report-ndjson-path /report/anon.ndjson \
+            --max-examples 3 --seed 1 --generation-deterministic \
+            --suppress-health-check all \
+            --workers 4
+
+      # Authenticated pass: catches 500s on spec-valid-but-odd input to
+      # protected operations.
+      - name: Run Schemathesis (authenticated)
+        env:
+          SCH_TOKEN: ${{ env.SCH_TOKEN }}
+        run: |
+          docker run --rm --network host --user 0 \
+            -v "$PWD/backend/openapi.yaml:/schema/openapi.yaml:ro" \
+            -v "$PWD/schemathesis/report:/report" \
+            ghcr.io/schemathesis/schemathesis@sha256:15aaf6cb003bfd47f27ec7cc98ad491208dd98868eadb0fcfb9329ff62d86266 \
+            run /schema/openapi.yaml \
+            --url http://localhost:7300 \
+            -H "Authorization: Bearer ${SCH_TOKEN}" \
+            --checks all \
+            --report ndjson --report-dir /report --report-ndjson-path /report/auth.ndjson \
+            --max-examples 3 --seed 1 --generation-deterministic \
+            --suppress-health-check all \
+            --workers 4
+
+      # The gate: apply schemathesis/schemathesis.ignore, fail on unaccepted
+      # 5xx (not_a_server_error) and auth (ignored_auth) findings.
+      - name: Gate on findings (schemagate)
+        working-directory: backend
+        run: go run ./cmd/schemagate
+        env:
+          SCHEMAGATE_REPORT: ../schemathesis/report/anon.ndjson,../schemathesis/report/auth.ndjson
+          SCHEMAGATE_IGNORE: ../schemathesis/schemathesis.ignore
+
+      - name: Upload Schemathesis reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: schemathesis-reports
+          path: schemathesis/report/
+          retention-days: 7
+
+      - name: Show app logs on failure
+        if: failure()
+        run: |
+          echo "=== Mycorrhizal logs ==="
+          docker compose -f docker-compose.test.yml logs mycorrhizal
+
+      - name: Stop services
+        if: always()
+        run: docker compose -f docker-compose.test.yml down -v

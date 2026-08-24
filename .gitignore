@@ -30,6 +30,8 @@ backend/cmd/*/backup
 backend/cmd/*/migrate
 backend/cmd/*/backfill-search-index
 backend/cmd/*/loadsmoke
+backend/cmd/*/bolacheck
+backend/cmd/*/schemagate
 
 # Go specific
 *.test
@@ -39,6 +41,10 @@ vendor/
 # (uploaded as artifacts, never committed)
 backend/junit.xml
 backend/rerun-fails.txt
+
+# Issue #369: Schemathesis NDJSON reports, emitted in CI (uploaded as
+# artifacts; the ignore-list schemathesis/schemathesis.ignore is tracked)
+schemathesis/report/
 
 # Frontend build
 frontend/build/

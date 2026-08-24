@@ -1,0 +1,28 @@
+# Schemathesis fuzz-gate ignore-list (issue #369).
+#
+# The Schemathesis workflow (schemathesis.yml) derives request cases from
+# backend/openapi.yaml and gates on two failure classes — 5xx responses
+# (`not_a_server_error`) and auth-protected operations that return data without
+# auth (`ignored_auth`) — enforced by backend/cmd/schemagate, in the same
+# "ignore-list with justification" shape as zap/dast.ignore and
+# docker/cis-hardening.ignore. Conformance noise (undocumented status codes,
+# content-type/schema drift, unsupported methods) is reported but never gated;
+# it does not belong here.
+#
+# Format: one rule per line,
+#
+#   <kind> <operation-regex>   # justification
+#
+# where <kind> is one of `server_error` (a 5xx), `auth` (an ignored-auth
+# finding), or `*` (both), and <operation-regex> is a Go regexp matched against
+# the Schemathesis operation label (`METHOD /path`, e.g. `POST /contacts`). A
+# `#` begins a comment; a trailing comment on a rule is its justification and
+# is logged on every [ACCEPT].
+#
+# Every entry must carry a justification — an accepted finding is a written-down
+# decision, not a silenced one. Re-run the gate locally before adding an entry:
+# the finding must be reproducible, understood, and genuinely out of the gate's
+# scope (e.g. a multipart upload handler that cannot accept a fuzzed body).
+#
+# No entries yet: as of this writing, both the anonymous and authenticated
+# fuzz runs complete with zero 5xx and zero ignored-auth findings.
