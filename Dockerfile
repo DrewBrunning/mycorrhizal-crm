@@ -95,13 +95,23 @@ FROM alpine:3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec4
 # Runtime dependencies. shadow provides usermod/groupmod for PUID/PGID remap.
 # No sqlite package needed - the backend uses a pure-Go SQLite driver.
 # Versions pinned (hadolint DL3018) against the alpine:3.24 index.
+#
+# The trailing `find ... chmod a-s` strips setuid/setgid bits (CIS 4.8,
+# enforced by docker/cis-hardening.sh). `shadow` is installed only for
+# usermod/groupmod (the PUID/PGID remap in docker/entrypoint.sh), but it drags
+# in setuid-root helpers — passwd, chsh, chfn, chage, expiry, gpasswd, and
+# setgid unix_chkpwd — that this image never calls. They are
+# privilege-escalation surface for no benefit, so disarm them in place with the
+# CIS-recommended remediation rather than hand-listing the seven names (which
+# would silently miss any setuid binary a future apk bump adds).
 RUN apk add --no-cache \
     ca-certificates=20260611-r0 \
     tzdata=2026c-r0 \
     nginx=1.30.4-r1 \
     supervisor=4.3.0-r1 \
     shadow=4.18.0-r1 \
-    libc6-compat=1.1.0-r4
+    libc6-compat=1.1.0-r4 \
+    && find / -xdev -type f \( -perm -4000 -o -perm -2000 \) -exec chmod a-s {} +
 
 WORKDIR /app
 
