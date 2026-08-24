@@ -30,7 +30,6 @@ package main
 
 import (
 	"fmt"
-	"html"
 	"log"
 	"net/http"
 	"os"
@@ -92,7 +91,12 @@ func reflectedHandler(w http.ResponseWriter, r *http.Request) {
 		q = "hello"
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprintf(w, "<html><body><h1>Reflected</h1><p>%s</p></body></html>", html.EscapeString(q))
+	// Intentional: raw (unescaped) interpolation of user input — the planted
+	// vulnerability. Do not "fix" this; it is the whole point of the canary
+	// (ZAP must detect it for the DAST self-test). Suppressed so CodeQL stops
+	// flagging the deliberate sink.
+	// lgtm[go/reflected-xss]
+	fmt.Fprintf(w, "<html><body><h1>Reflected</h1><p>%s</p></body></html>", q)
 }
 
 // idorHandler returns a secret for whatever object id is in the path, with no
