@@ -20,7 +20,6 @@ on:
 
 permissions:
   contents: read
-  security-events: write
 
 concurrency:
   group: zap-dast
@@ -104,10 +103,12 @@ jobs:
             -d "{\"identifier\":\"${USER}\",\"password\":\"${PASS}\"}" \
             "${BASE}/login"
 
-          TOKEN="$(curl -sS -b /tmp/cookies.txt \
+          curl -sS -b /tmp/cookies.txt \
             -H 'Content-Type: application/json' \
             -d '{"name":"dast","scope":"full"}' \
-            "${BASE}/api-tokens" | python3 -c 'import sys, json; print(json.load(sys.stdin)["token"])')"
+            "${BASE}/api-tokens" > /tmp/token.json
+
+          TOKEN="$(python3 -c 'import json; print(json.load(open("/tmp/token.json"))["token"])')"
 
           test -n "${TOKEN}"
           echo "DAST_TOKEN=${TOKEN}" >> "$GITHUB_ENV"
