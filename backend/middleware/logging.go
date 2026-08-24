@@ -13,9 +13,11 @@ func LoggingMiddleware() gin.HandlerFunc {
 		// Start timer
 		start := time.Now()
 		// Path and query are user-controlled; sanitize control characters so a
-		// crafted request cannot inject forged lines into the log stream.
+		// crafted request cannot inject forged lines into the log stream, and
+		// redact sensitive query values (e.g. the OIDC authorization code) so
+		// credentials never land in the logs.
 		path := logger.SanitizeLogField(c.Request.URL.Path)
-		query := logger.SanitizeLogField(c.Request.URL.RawQuery)
+		query := logger.SanitizeLogField(logger.RedactQueryValues(c.Request.URL.RawQuery))
 
 		// Process request
 		c.Next()
