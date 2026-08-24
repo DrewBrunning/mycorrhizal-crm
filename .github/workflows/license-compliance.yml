@@ -1,0 +1,198 @@
+name: License Compliance
+
+# Issue #361: the CVEs of a dependency are scanned (govulncheck, Trivy), but
+# its *license* never is. For an MIT-licensed project that is a silent
+# contamination risk: a GPL/AGPL transitive dependency in the Go or npm tree
+# would make the whole repo copyleft without anyone noticing, and
+# THIRD_PARTY_SOURCES.md is hand-maintained and drifts.
+#
+# This workflow scans the two dependency trees that ship in the published
+# Docker images — backend (Go, go.mod/go.sum) and frontend (npm, yarn.lock) —
+# with Trivy's license scanner, and hard-fails when a forbidden/copyleft
+# license (GPL/AGPL/LGPL — trivy's "restricted" bucket) appears. Everything
+# else (MIT/Apache/BSD/MPL/UNKNOWN) is emitted to the log and attached as a
+# JSON report so license questions are answerable without reading the whole
+# tree.
+#
+# Trivy's license detection is file-based: for Go it reads LICENSE files from
+# the module cache, and for npm it reads node_modules' package.json/license
+# files. Both therefore need dependencies *resolved* first (go mod download /
+# yarn install), not just the lockfiles. That is why this is path-gated on the
+# narrow `go-manifests`/`npm-manifests` filters rather than the wider
+# backend/frontend areas — resolution is expensive and only worth it when the
+# dependency set actually changed (issue #264 pattern).
+#
+# Android/Gradle is deliberately not covered yet: Trivy can only enumerate
+# Gradle licenses from a `gradle.lockfile` (dependency locking), which this
+# repo doesn't emit. When `gradle.lockfile` lands, add a `gradle-manifests`
+# filter and a third job that builds to populate the Gradle cache before
+# scanning. Until then the gate is Go + npm only.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '15 4 * * 1' # Monday 04:15 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    permissions:
+      contents: read
+      pull-requests: read
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      go-manifests: ${{ steps.filter.outputs['go-manifests'] }}
+      npm-manifests: ${{ steps.filter.outputs['npm-manifests'] }}
+      workflows: ${{ steps.filter.outputs.workflows }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Change detection on push needs the previous commit on main.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Detect changed areas
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: .github/filters.yaml
+
+      - name: Report gating decision
+        run: |
+          echo "go-manifests=$GO_MANIFESTS_CHANGED"
+          echo "npm-manifests=$NPM_MANIFESTS_CHANGED"
+          echo "workflows=$WORKFLOWS_CHANGED"
+        env:
+          # Boolean outputs only (the *_files outputs are the
+          # attacker-influenced ones on PRs); passed as env vars so zizmor's
+          # template-injection audit has nothing to flag in this workflow.
+          GO_MANIFESTS_CHANGED: ${{ steps.filter.outputs['go-manifests'] }}
+          NPM_MANIFESTS_CHANGED: ${{ steps.filter.outputs['npm-manifests'] }}
+          WORKFLOWS_CHANGED: ${{ steps.filter.outputs.workflows }}
+
+  backend-license:
+    name: Backend (Go) license scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    needs: changes
+    if: github.event_name == 'schedule' || needs.changes.outputs['go-manifests'] == 'true' || needs.changes.outputs.workflows == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      # Trivy reads LICENSE files from $GOPATH/pkg/mod, so the modules must be
+      # extracted there — `go mod download` does that for every module in
+      # go.mod (direct and indirect). Without it every dependency reports an
+      # UNKNOWN license and the copyleft gate is useless.
+      - name: Download Go modules (populate license source)
+        working-directory: backend
+        run: go mod download
+
+      # Full inventory, no severity filter and no exit-code gate: this is the
+      # report that answers "what license is X under?" for every detected
+      # dependency, including UNKNOWN ones worth a human look.
+      - name: Scan licenses (report)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: ./backend
+          scanners: license
+          format: json
+          output: backend-license-report.json
+
+      # The gate: trivy maps license classifications to severity (forbidden ->
+      # CRITICAL, restricted/copyleft -> HIGH, reciprocal -> MEDIUM, permissive
+      # -> LOW). Failing on CRITICAL,HIGH is the deliberate "no GPL/AGPL/LGPL
+      # in an MIT repo" line; MPL/EPL (MEDIUM) and permissive licenses still
+      # pass but are visible in the report above. exit-code: 1 makes the step
+      # (and job) fail when a forbidden/copyleft license is found.
+      - name: Gate on copyleft licenses (CRITICAL, HIGH)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: ./backend
+          scanners: license
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+
+      - name: Upload license report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: backend-license-report
+          path: backend-license-report.json
+          retention-days: 30
+
+  frontend-license:
+    name: Frontend (npm) license scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    needs: changes
+    if: github.event_name == 'schedule' || needs.changes.outputs['npm-manifests'] == 'true' || needs.changes.outputs.workflows == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: 'yarn'
+          cache-dependency-path: frontend/yarn.lock
+
+      # Trivy reads license fields + LICENSE files from node_modules, so the
+      # tree must be materialized first. Dev dependencies are intentionally
+      # not in scope of the gate (trivy excludes them by default) — they don't
+      # ship in the image.
+      - name: Install dependencies
+        working-directory: frontend
+        run: yarn install --frozen-lockfile
+
+      - name: Scan licenses (report)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: ./frontend
+          scanners: license
+          format: json
+          output: frontend-license-report.json
+
+      - name: Gate on copyleft licenses (CRITICAL, HIGH)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: ./frontend
+          scanners: license
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+
+      - name: Upload license report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: frontend-license-report
+          path: frontend-license-report.json
+          retention-days: 30

@@ -2,6 +2,12 @@
 
 This project incorporates content, assets, and libraries from the following third-party open-source projects:
 
+> **Note:** this file documents bundled *content* (icons, fonts) that does not
+> come from a package manifest. The Go and npm dependency trees are licensed
+> automatically in CI (`.github/workflows/license-compliance.yml`), which gates
+> on copyleft (GPL/AGPL/LGPL) licenses — that scan, not this file, is the
+> authoritative record of dependency licenses.
+
 ---
 
 ## 1. Material Design Icons (MDI)

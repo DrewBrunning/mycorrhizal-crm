@@ -394,7 +394,7 @@ L3-only, out of scope: 14.1.5.
 | 14.1.2 | Compiler hardening flags | not-applicable | Go is memory-safe; `go vet` + gosec in CI (`unit-tests.yml`) |
 | 14.1.3 | Server hardened per framework guidance | satisfied | Non-root container (`Dockerfile`, `entrypoint.sh`), security headers (`security_headers.go`), `GIN_MODE=release` documented for production (`.env.example:21,102`) |
 | 14.1.4 | Redeployable from documented runbook | satisfied | `docker-compose` + `docs/deployment.md`; migrations run on boot (`database.InitDB`) |
-| 14.2.1 | Dependencies current (checker in build) | satisfied | govulncheck (`unit-tests.yml:175-177`), Trivy (`docker-publish.yml:428-445`), Dependabot, Dependency Review |
+| 14.2.1 | Dependencies current (checker in build) | satisfied | govulncheck (`unit-tests.yml:175-177`), Trivy (`docker-publish.yml:428-445`), Trivy license scan (`license-compliance.yml`, issue #361), Dependabot, Dependency Review |
 | 14.2.2 | Unneeded features removed | satisfied | No debug endpoints; release-mode config guards (`config.go:359-364`); no sample data |
 | 14.2.3 | SRI for CDN assets | not-applicable | All assets self-hosted; no CDN |
 | 14.2.4 | Third-party from trusted repos | satisfied | Pinned actions by SHA (zizmor), lockfiles (`go.sum`, `yarn.lock`), pinned Go toolchain |
