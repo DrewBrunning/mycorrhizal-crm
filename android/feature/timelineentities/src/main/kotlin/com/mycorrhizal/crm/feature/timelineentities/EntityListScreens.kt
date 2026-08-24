@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -19,6 +20,7 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Done
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.OpenInNew
@@ -37,6 +39,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -117,6 +120,12 @@ internal fun EntityListScaffold(
     sectionLabel: (@Composable (String) -> String)? = null,
     // M18: an optional per-row trailing action (e.g. gift mark-given, agenda discuss).
     extraAction: (@Composable (EntityItem) -> Unit)? = null,
+    // #386: an optional replacement for the default row body (label + url). The
+    // trailing actions (extraAction, delete-with-confirm) are still rendered by
+    // the scaffold, so a caller can supply a rich row (e.g. preferences'
+    // category/key/value/notes/sensitivity) without losing the shared delete
+    // flow. The composable is invoked inside the row's main content box.
+    rowContent: (@Composable (EntityItem) -> Unit)? = null,
     // Optional in-layout content rendered above the list (e.g. gifts' clothing-sizes
     // panel). Deliberately separate from [dialog]: dialog content (AlertDialog) draws
     // in its own Popup/window and never affects layout, but this slot's content is a
@@ -208,21 +217,27 @@ internal fun EntityListScaffold(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                                     ) {
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(
-                                                text = item.label,
-                                                style = MaterialTheme.typography.bodyLarge,
-                                                maxLines = 2,
-                                                overflow = TextOverflow.Ellipsis,
-                                            )
-                                            if (!item.url.isNullOrBlank()) {
+                                        if (rowContent != null) {
+                                            Box(modifier = Modifier.weight(1f)) {
+                                                rowContent(item)
+                                            }
+                                        } else {
+                                            Column(modifier = Modifier.weight(1f)) {
                                                 Text(
-                                                    text = item.url,
-                                                    style = MaterialTheme.typography.bodyMedium,
-                                                    color = MaterialTheme.colorScheme.primary,
-                                                    maxLines = 1,
+                                                    text = item.label,
+                                                    style = MaterialTheme.typography.bodyLarge,
+                                                    maxLines = 2,
                                                     overflow = TextOverflow.Ellipsis,
                                                 )
+                                                if (!item.url.isNullOrBlank()) {
+                                                    Text(
+                                                        text = item.url,
+                                                        style = MaterialTheme.typography.bodyMedium,
+                                                        color = MaterialTheme.colorScheme.primary,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis,
+                                                    )
+                                                }
                                             }
                                         }
                                         if (!item.url.isNullOrBlank()) {
@@ -1229,6 +1244,23 @@ fun PreferencesScreen(
         onErrorShown = viewModel::onErrorShown,
         onBack = onBack,
         sectionLabel = { section -> stringResource(preferenceSectionLabelRes(section)) },
+        // #386: rich preference rows (category + key + value + notes +
+        // sensitivity) instead of the scaffold's flat label, matching web's
+        // PreferenceList. Row lookup goes through findById — the same list
+        // `uiState.items` was derived from, so it never misses.
+        rowContent = { item ->
+            viewModel.findById(item.id)?.let { PreferenceRow(it) }
+        },
+        // #386: explicit edit affordance next to the scaffold's delete, so the
+        // edit path isn't only the row tap.
+        extraAction = { item ->
+            IconButton(onClick = { viewModel.findById(item.id)?.let { editingItem = it } }) {
+                Icon(
+                    Icons.Outlined.Edit,
+                    contentDescription = stringResource(R.string.action_edit),
+                )
+            }
+        },
     ) {
         // Clothing sizes and the gift-shopping-relevant categories (jewelry/
         // flowers/color/fragrance/cause/gift-avoid) live in the Gifts screen
@@ -1260,6 +1292,72 @@ private fun preferenceSectionLabelRes(section: String): Int = when (section) {
     PreferenceSection.GIFT_PREFERENCES -> R.string.preferences_section_gift_preferences
     PreferenceSection.GIFT_AVOID -> R.string.preferences_section_gift_avoid
     else -> R.string.preferences_section_other
+}
+
+/**
+ * #386: a single preferences-list row, mirroring web's PreferenceList item —
+ * localized category + key labels on a first line, the value on the second,
+ * and a secondary notes line when present. A non-normal sensitivity renders a
+ * small badge (normal renders nothing, matching web's conditional chip).
+ * Rendered through EntityListScaffold's [rowContent] slot so the shared
+ * section headers and delete-confirm flow stay in the scaffold. `internal`
+ * (not `private`) so PreferencesRowTest can drive it directly.
+ */
+@Composable
+internal fun PreferenceRow(preference: Preference) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = stringResource(preferenceCategoryLabelRes(preference.category)),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            preference.key?.takeIf { it.isNotBlank() }?.let { key ->
+                Text(
+                    text = stringResource(preferenceKeyLabelRes(key)),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (preference.sensitivity != PreferenceSensitivities.NORMAL) {
+                SensitivityBadge(preference.sensitivity)
+            }
+        }
+        Text(
+            text = preference.value,
+            style = MaterialTheme.typography.bodyLarge,
+        )
+        preference.notes?.takeIf { it.isNotBlank() }?.let { notes ->
+            Text(
+                text = notes,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/** Small sensitivity pill (web's `height: 18` Chip) — only rendered for non-normal. */
+@Composable
+private fun SensitivityBadge(sensitivity: String) {
+    val containerColor = when (sensitivity) {
+        PreferenceSensitivities.SECRET -> MaterialTheme.colorScheme.errorContainer
+        PreferenceSensitivities.PRIVATE -> MaterialTheme.colorScheme.tertiaryContainer
+        else -> MaterialTheme.colorScheme.surfaceVariant
+    }
+    Surface(
+        color = containerColor,
+        shape = RoundedCornerShape(4.dp),
+    ) {
+        Text(
+            text = stringResource(preferenceSensitivityLabelRes(sensitivity)),
+            style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+        )
+    }
 }
 
 /**
