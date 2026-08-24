@@ -258,6 +258,8 @@ var noBodyMutatingRoutes = map[string]bool{
 	"POST /admin/trigger-purge":                   true,
 	"POST /admin/search/rebuild":                  true,
 	"POST /reach-out-suggestions/{id}/dismiss":    true,
+	"POST /contact-sync-conflicts/{id}/restore":   true,
+	"POST /contact-sync-conflicts/{id}/dismiss":   true,
 }
 
 // boundJSONFields returns the top-level JSON field names t would bind via

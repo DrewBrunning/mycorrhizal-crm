@@ -1712,6 +1712,37 @@
       "address": "Se mudó"
     }
   },
+  "syncConflicts": {
+    "title": "Conflictos de sincronización",
+    "empty": "No hay conflictos de sincronización ahora mismo.",
+    "overwritten": "{{field}}: {{local}} → {{remote}}",
+    "restore": "Restaurar valor local",
+    "restoreConfirm": "¿Restaurar tu valor local? El valor sincronizado se sobrescribirá.",
+    "dismiss": "Descartar",
+    "field": {
+      "firstname": "Nombre",
+      "lastname": "Apellido",
+      "middlename": "Segundo nombre",
+      "prefix": "Prefijo",
+      "suffix": "Sufijo",
+      "nickname": "Apodo",
+      "organization": "Organización",
+      "department": "Departamento",
+      "job_title": "Cargo",
+      "role": "Rol",
+      "email": "Correo electrónico",
+      "phone": "Teléfono",
+      "address": "Dirección",
+      "url": "URL",
+      "impp": "Mensajería",
+      "birthday": "Cumpleaños",
+      "anniversary": "Aniversario",
+      "circles": "Círculos",
+      "how_we_met": "Cómo nos conocimos",
+      "work_information": "Información laboral",
+      "contact_information": "Información de contacto"
+    }
+  },
   "conversationAgenda": {
     "title": "Agenda de conversación",
     "placeholder": "Cosas que sacar la próxima vez…",

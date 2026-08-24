@@ -660,6 +660,12 @@ func DeleteUser(c *gin.Context) {
 			return err
 		}
 
+		// Delete CardDAV sync conflicts (issue #395 — hard delete,
+		// system-generated; nothing left to review once the account is gone)
+		if err := tx.Where("user_id = ?", userID).Delete(&models.ContactSyncConflict{}).Error; err != nil {
+			return err
+		}
+
 		// Delete the user's Immich connection config (T15/T16)
 		if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.ImmichConfig{}).Error; err != nil {
 			return err

@@ -4918,6 +4918,109 @@ paths:
                 type: object
                 properties:
                   message: { type: string }
+  /contact-sync-conflicts:
+    get:
+      summary: List pending CardDAV sync conflicts
+      operationId: listContactSyncConflicts
+      description: >
+        Every pending sync conflict for the user (issue #395) — a CardDAV
+        remote change overwrote a local edit, and this notice names the
+        field, the overwritten local value, and the remote value that
+        replaced it — newest first, joined with the contact's display
+        identity and the subscription's name.
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: The pending conflict list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sync_conflicts:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ContactSyncConflict"
+  /contact-sync-conflicts/{id}/restore:
+    post:
+      summary: Restore a sync conflict's overwritten local value
+      operationId: restoreContactSyncConflict
+      description: >
+        Re-applies a conflict's LocalValue onto its contact (through the
+        normal contact-save path, so the Card merge and audit trail run on
+        it), then marks the conflict dismissed. A conflict that is already
+        dismissed is a 409 — the local value is only offered back once.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: No such conflict, or it belongs to another user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: The conflict is already dismissed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: The local value was restored.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+  /contact-sync-conflicts/{id}/dismiss:
+    post:
+      summary: Dismiss a sync conflict without restoring
+      operationId: dismissContactSyncConflict
+      description: >
+        Acknowledges a sync conflict and accepts the remote value, so it
+        stops appearing on the dashboard. Idempotent — dismissing an
+        already-dismissed conflict is still a 200, not an error.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: No such conflict, or it belongs to another user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: The conflict was dismissed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
   /cadence-policies:
     get:
       summary: List cadence policies
@@ -9756,6 +9859,33 @@ components:
           description: The contact's numeric ID (the /contacts/<id> URL component).
         contact_name: { type: string }
         photo_thumbnail: { type: string }
+
+    ContactSyncConflict:
+      type: object
+      description: >
+        A recorded CardDAV sync conflict (issue #395): a remote vCard change
+        overwrote a local edit by the sync's documented full-replace policy,
+        and this notice is the only record of what was lost. LocalValue is
+        the pre-sync value the user had (offered back by restore); RemoteValue
+        is the synced value that replaced it. Array fields (email/phone/
+        address/url/impp/circles) carry their JSON array. Scoped to the
+        owning user; values are the user's own synced contact data.
+      properties:
+        id: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        subscription_id: { type: integer }
+        contact_id: { type: integer }
+        field:
+          type: string
+          description: The flat contact field the local edit touched.
+        local_value: { type: string }
+        remote_value: { type: string }
+        status: { type: string, enum: [pending, dismissed] }
+        contact_vcard_uid: { type: string, format: uuid }
+        contact_name: { type: string }
+        photo_thumbnail: { type: string }
+        subscription_name: { type: string }
 
     # --- Custom fields ---
     FieldDefinition:

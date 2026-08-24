@@ -7,6 +7,7 @@ import { DateFormatProvider } from './DateFormatProvider';
 import { getDashboard, DashboardResponse } from './api/dashboard';
 import { getUpcomingReminders, completeReminder, skipReminder } from './api/reminders';
 import { listCircles } from './api/circles';
+import { restoreContactSyncConflict, dismissContactSyncConflict } from './api/contactSyncConflicts';
 
 // M3: the page
 // now fetches one GET /dashboard composite instead of fanning out to four
@@ -29,15 +30,21 @@ vi.mock('./api/circles', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api/circles')>();
   return { ...actual, listCircles: vi.fn() };
 });
+vi.mock('./api/contactSyncConflicts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./api/contactSyncConflicts')>();
+  return { ...actual, restoreContactSyncConflict: vi.fn(), dismissContactSyncConflict: vi.fn() };
+});
 
 const getDashboardMock = vi.mocked(getDashboard);
 const getUpcomingRemindersMock = vi.mocked(getUpcomingReminders);
 const completeReminderMock = vi.mocked(completeReminder);
 const skipReminderMock = vi.mocked(skipReminder);
 const listCirclesMock = vi.mocked(listCircles);
+const restoreSyncConflictMock = vi.mocked(restoreContactSyncConflict);
+const dismissSyncConflictMock = vi.mocked(dismissContactSyncConflict);
 
 function emptyDashboard(): DashboardResponse {
-  return { birthdays: [], random_contacts: [], upcoming_reminders: [], overdue: [], favorites: [], reach_out_suggestions: [] };
+  return { birthdays: [], random_contacts: [], upcoming_reminders: [], overdue: [], favorites: [], reach_out_suggestions: [], contact_sync_conflicts: [] };
 }
 
 beforeEach(() => {
@@ -46,6 +53,8 @@ beforeEach(() => {
   completeReminderMock.mockReset();
   skipReminderMock.mockReset();
   listCirclesMock.mockReset();
+  restoreSyncConflictMock.mockReset();
+  dismissSyncConflictMock.mockReset();
   listCirclesMock.mockResolvedValue({ circles: [], total: 0, next_cursor: '', limit: 200, members: [] });
 });
 
@@ -72,6 +81,7 @@ test('fetches the dashboard composite once and renders all four blocks', async (
     ],
     overdue: [],
     reach_out_suggestions: [],
+    contact_sync_conflicts: [],
   });
 
   renderPage();
@@ -120,4 +130,70 @@ test('completing a reminder refetches via the plain upcoming-reminders endpoint 
   // The refetched reminder carries no contact_name from the plain endpoint;
   // the page must carry the previously-known name forward.
   await waitFor(() => expect(screen.getByText('Nicky Name')).toBeInTheDocument());
+});
+
+test('renders a CardDAV sync conflict and can restore or dismiss it (issue #395)', async () => {
+  getDashboardMock.mockResolvedValue({
+    ...emptyDashboard(),
+    contact_sync_conflicts: [
+      {
+        id: 'conflict-1',
+        created_at: '2026-08-24T00:00:00Z',
+        updated_at: '2026-08-24T00:00:00Z',
+        subscription_id: 5,
+        contact_id: 42,
+        field: 'phone',
+        local_value: '[{"type":"work","value":"555-0100"}]',
+        remote_value: '[]',
+        status: 'pending',
+        contact_vcard_uid: 'uid-42',
+        contact_name: 'Grace Hopper',
+        subscription_name: 'Work address book',
+      },
+    ],
+  });
+  restoreSyncConflictMock.mockResolvedValue();
+  dismissSyncConflictMock.mockResolvedValue();
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+  renderPage();
+
+  await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument());
+  // The conflict notice names the field and offers the local value back
+  // (the caption renders "Phone: 555-0100 → —").
+  expect(screen.getByText(/Phone: 555-0100/)).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Restore local value' }));
+  await waitFor(() => expect(restoreSyncConflictMock).toHaveBeenCalledWith('conflict-1'));
+  await waitFor(() => expect(screen.queryByText('Grace Hopper')).not.toBeInTheDocument());
+});
+
+test('dismissing a sync conflict removes the notice', async () => {
+  getDashboardMock.mockResolvedValue({
+    ...emptyDashboard(),
+    contact_sync_conflicts: [
+      {
+        id: 'conflict-2',
+        created_at: '2026-08-24T00:00:00Z',
+        updated_at: '2026-08-24T00:00:00Z',
+        subscription_id: 5,
+        contact_id: 43,
+        field: 'job_title',
+        local_value: 'Local Title',
+        remote_value: 'Remote Title',
+        status: 'pending',
+        contact_vcard_uid: 'uid-43',
+        contact_name: 'Ada Lovelace',
+        subscription_name: 'Work address book',
+      },
+    ],
+  });
+  dismissSyncConflictMock.mockResolvedValue();
+
+  renderPage();
+
+  await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument());
+  fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+  await waitFor(() => expect(dismissSyncConflictMock).toHaveBeenCalledWith('conflict-2'));
+  await waitFor(() => expect(screen.queryByText('Ada Lovelace')).not.toBeInTheDocument());
 });

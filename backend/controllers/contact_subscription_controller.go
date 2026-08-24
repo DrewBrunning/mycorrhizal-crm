@@ -156,9 +156,14 @@ func DeleteContactSubscription(c *gin.Context) {
 	}
 
 	// Synced contacts stay (they are real, user-owned Contact rows per
-	// decision); only the subscription and its sync links go.
+	// decision); only the subscription, its sync links, and its pending sync
+	// conflicts go.
 	if err := db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("subscription_id = ?", subscription.ID).Delete(&models.ContactSyncLink{}).Error; err != nil {
+			return err
+		}
+		// Issue #395: nothing left to review for a removed subscription.
+		if err := tx.Where("subscription_id = ?", subscription.ID).Delete(&models.ContactSyncConflict{}).Error; err != nil {
 			return err
 		}
 		return tx.Delete(&subscription).Error

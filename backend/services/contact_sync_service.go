@@ -389,6 +389,7 @@ func reconcileContactSync(db *gorm.DB, sub *models.ContactSubscription, updated 
 			case errors.Is(linkErr, gorm.ErrRecordNotFound):
 				contact := models.Contact{UserID: sub.UserID}
 				models.ApplyRecordToContact(&contact, record, photoDir)
+				syncedValues := syncConflictSnapshotJSON(syncConflictFieldSnapshot(&contact))
 				if err := tx.Create(&contact).Error; err != nil {
 					return err
 				}
@@ -399,6 +400,7 @@ func reconcileContactSync(db *gorm.DB, sub *models.ContactSubscription, updated 
 					ContactID:      contact.ID,
 					ETag:           obj.ETag,
 					ContentHash:    hash,
+					SyncedValues:   syncedValues,
 				}).Error; err != nil {
 					return err
 				}
@@ -438,12 +440,23 @@ func reconcileContactSync(db *gorm.DB, sub *models.ContactSubscription, updated 
 				// no model tracks per-field modified-since-sync
 				// state, so a real merge isn't a small fix; pinned down by
 				// TestReconcileContactSyncOverwritesLocalEditsOnRemoteChange.
+				// Issue #395 makes the discard user-visible instead of silent:
+				// the pre-sync (local) and post-apply (remote) field
+				// snapshots are diffed against the link's last-synced
+				// baseline and every overwritten local edit is recorded as a
+				// ContactSyncConflict the UI can surface and restore.
+				localSnapshot := syncConflictFieldSnapshot(&contact)
 				models.ApplyRecordToContact(&contact, record, photoDir)
+				remoteSnapshot := syncConflictFieldSnapshot(&contact)
+				if err := recordSyncConflicts(tx, sub, &contact, link, localSnapshot, remoteSnapshot); err != nil {
+					return err
+				}
 				if err := tx.Save(&contact).Error; err != nil {
 					return err
 				}
 				link.ETag = obj.ETag
 				link.ContentHash = hash
+				link.SyncedValues = syncConflictSnapshotJSON(remoteSnapshot)
 				if err := tx.Save(&link).Error; err != nil {
 					return err
 				}
