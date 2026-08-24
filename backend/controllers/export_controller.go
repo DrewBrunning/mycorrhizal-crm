@@ -654,7 +654,7 @@ func ExportContactsAsVCF(c *gin.Context, photoDir string) {
 			continue
 		}
 		for _, d := range diags {
-			log.Debug().Str("severity", d.Severity).Str("concept", d.Concept).Uint("contact_id", contact.ID).Msg(d.Message)
+			log.Debug().Str("severity", d.Severity).Str("concept", d.Concept).Uint("contact_id", contact.ID).Msg(logger.SanitizeLogField(d.Message))
 		}
 		buf.Write(data)
 	}
@@ -723,7 +723,7 @@ func ExportContactsAsJSContact(c *gin.Context) {
 			continue
 		}
 		for _, d := range diags {
-			log.Debug().Str("severity", d.Severity).Str("concept", d.Concept).Uint("contact_id", contact.ID).Msg(d.Message)
+			log.Debug().Str("severity", d.Severity).Str("concept", d.Concept).Uint("contact_id", contact.ID).Msg(logger.SanitizeLogField(d.Message))
 		}
 		cards = append(cards, json.RawMessage(data))
 	}

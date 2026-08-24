@@ -12,8 +12,10 @@ func LoggingMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Start timer
 		start := time.Now()
-		path := c.Request.URL.Path
-		query := c.Request.URL.RawQuery
+		// Path and query are user-controlled; sanitize control characters so a
+		// crafted request cannot inject forged lines into the log stream.
+		path := logger.SanitizeLogField(c.Request.URL.Path)
+		query := logger.SanitizeLogField(c.Request.URL.RawQuery)
 
 		// Process request
 		c.Next()
@@ -53,7 +55,7 @@ func LoggingMiddleware() gin.HandlerFunc {
 			Int("status", statusCode).
 			Dur("duration", duration).
 			Str("ip", c.ClientIP()).
-			Str("user_agent", c.Request.UserAgent())
+			Str("user_agent", logger.SanitizeLogField(c.Request.UserAgent()))
 
 		if requestIDStr != "" {
 			logEntry = logEntry.Str("request_id", requestIDStr)
@@ -67,9 +69,10 @@ func LoggingMiddleware() gin.HandlerFunc {
 			logEntry = logEntry.Str("query", query)
 		}
 
-		// Add error message if present
+		// Add error message if present. Errors can echo user-controlled values
+		// (validation failures, parse errors), so sanitize before logging.
 		if len(c.Errors) > 0 {
-			logEntry = logEntry.Str("error", c.Errors.String())
+			logEntry = logEntry.Str("error", logger.SanitizeLogField(c.Errors.String()))
 		}
 
 		// Log the request

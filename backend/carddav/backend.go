@@ -349,7 +349,7 @@ func (b *Backend) PutAddressObject(ctx context.Context, urlPath string, card vca
 		return nil, webdav.NewHTTPError(http.StatusBadRequest, fmt.Errorf("carddav: failed to parse vCard: %w", err))
 	}
 	for _, d := range diags {
-		logger.Debug().Str("severity", d.Severity).Str("concept", d.Concept).Msg("CardDAV PUT: " + d.Message)
+		logger.Debug().Str("severity", d.Severity).Str("concept", d.Concept).Msg("CardDAV PUT: " + logger.SanitizeLogField(d.Message))
 	}
 
 	// ApplyRecordToContact populates the flat legacy fields (for every other
@@ -442,7 +442,7 @@ func (b *Backend) contactToAddressObject(ctx context.Context, contact *models.Co
 		logger.Warn().Err(err).Str("vcard_uid", contact.VCardUID).Str("version", version).Msg("CardDAV: failed to export contact as vCard")
 	} else {
 		for _, d := range diags {
-			logger.Debug().Str("severity", d.Severity).Str("concept", d.Concept).Msg("CardDAV export: " + d.Message)
+			logger.Debug().Str("severity", d.Severity).Str("concept", d.Concept).Msg("CardDAV export: " + logger.SanitizeLogField(d.Message))
 		}
 		decoded, decodeErr := vcard.NewDecoder(bytes.NewReader(data)).Decode()
 		if decodeErr != nil {

@@ -335,7 +335,7 @@ func ProxyImage(c *gin.Context) {
 	// Use the shared SSRF-protected fetch function
 	body, contentType, err := httputil.FetchImageFromURL(imageURL)
 	if err != nil {
-		logger.FromContext(c).Warn().Err(err).Str("url", imageURL).Msg("Failed to fetch image from URL")
+		logger.FromContext(c).Warn().Err(err).Str("url", logger.SanitizeLogField(imageURL)).Msg("Failed to fetch image from URL")
 		apperrors.AbortWithError(c, apperrors.ErrExternal("image proxy", "Failed to fetch image").WithError(err))
 		return
 	}
@@ -347,7 +347,7 @@ func ProxyImage(c *gin.Context) {
 	// data with no script capability, so they're safe to pass through unchanged.
 	lowerContentType := strings.ToLower(contentType)
 	if strings.HasPrefix(lowerContentType, "image/svg") {
-		logger.FromContext(c).Warn().Str("url", imageURL).Str("content_type", contentType).Msg("Rejected SVG image from proxy (XSS risk)")
+		logger.FromContext(c).Warn().Str("url", logger.SanitizeLogField(imageURL)).Str("content_type", contentType).Msg("Rejected SVG image from proxy (XSS risk)")
 		apperrors.AbortWithError(c, apperrors.ErrValidation("SVG images are not supported by the image proxy"))
 		return
 	}

@@ -100,10 +100,11 @@ func FromContext(c *gin.Context) *zerolog.Logger {
 		}
 	}
 
-	// Add request info
+	// Add request info. The path is user-controlled and must be sanitized so
+	// a crafted path cannot inject forged lines into the log stream.
 	l = l.With().
 		Str("method", c.Request.Method).
-		Str("path", c.Request.URL.Path).
+		Str("path", SanitizeLogField(c.Request.URL.Path)).
 		Str("ip", c.ClientIP()).
 		Logger()
 

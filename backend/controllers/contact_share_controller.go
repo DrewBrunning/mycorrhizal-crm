@@ -84,7 +84,7 @@ func CreateContactShare(c *gin.Context) {
 		return
 	}
 	for _, d := range diags {
-		log.Debug().Str("severity", d.Severity).Str("concept", d.Concept).Uint("contact_id", contact.ID).Msg(d.Message)
+		log.Debug().Str("severity", d.Severity).Str("concept", d.Concept).Uint("contact_id", contact.ID).Msg(logger.SanitizeLogField(d.Message))
 	}
 
 	payload, marshalErr := json.Marshal([]json.RawMessage{json.RawMessage(data)})
