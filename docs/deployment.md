@@ -38,7 +38,7 @@ Set these variables in `.env` when running over HTTPS:
 | `FRONTEND_URL` | Exact origin, e.g. `https://mycorrhizal.example.com` (never `*`) |
 | `COOKIE_SECURE` | `true` |
 | `COOKIE_DOMAIN` | Your domain |
-| `JWT_SECRET_KEY` | Generate with `openssl rand -base64 32` |
+| `JWT_SECRET_KEY` | Generate with `openssl rand -base64 32`; the server refuses to start with the `.env.example` placeholder or a weak secret |
 
 
 ## Single Sign-On (OIDC)
