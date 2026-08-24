@@ -22,6 +22,12 @@ import (
 // context, without having to special-case every response type.
 const contentSecurityPolicy = "default-src 'none'; frame-ancestors 'none'"
 
+// permissionsPolicy gates browser feature permissions this product never uses
+// and opts out of FLoC interest cohorts. It applies to every response; the SPA
+// served by nginx repeats the same policy for the frontend (see
+// docker/nginx.conf, which must be kept in step).
+const permissionsPolicy = "camera=(), microphone=(), geolocation=(), interest-cohort=()"
+
 //	Sets common HTTP security headers on all responses.
 //
 // enableHSTS should only be true when the server is reached via HTTPS
@@ -33,6 +39,7 @@ func SecurityHeadersMiddleware(enableHSTS bool) gin.HandlerFunc {
 		c.Header("X-Content-Type-Options", "nosniff")
 		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
 		c.Header("Content-Security-Policy", contentSecurityPolicy)
+		c.Header("Permissions-Policy", permissionsPolicy)
 		if enableHSTS {
 			c.Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
 		}

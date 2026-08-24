@@ -125,6 +125,11 @@ COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY docker/entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
+# docker/nginx.conf includes /etc/nginx/hsts.conf in every add_header block; it
+# is (re)written by docker/entrypoint.sh at startup based on COOKIE_SECURE, but
+# it must exist here too so the shipped nginx config is valid standalone.
+RUN : > /etc/nginx/hsts.conf
+
 # Default environment
 # PORT is the backend's internal bind port - nginx listens on 8080 (below) and
 # proxies to it, so it must not collide with nginx's own port.
