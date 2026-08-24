@@ -1712,6 +1712,37 @@
       "address": "Moved"
     }
   },
+  "syncConflicts": {
+    "title": "Sync Conflicts",
+    "empty": "No sync conflicts right now.",
+    "overwritten": "{{field}}: {{local}} → {{remote}}",
+    "restore": "Restore local value",
+    "restoreConfirm": "Restore your local value? The synced value will be overwritten.",
+    "dismiss": "Dismiss",
+    "field": {
+      "firstname": "First name",
+      "lastname": "Last name",
+      "middlename": "Middle name",
+      "prefix": "Prefix",
+      "suffix": "Suffix",
+      "nickname": "Nickname",
+      "organization": "Organization",
+      "department": "Department",
+      "job_title": "Job title",
+      "role": "Role",
+      "email": "Email",
+      "phone": "Phone",
+      "address": "Address",
+      "url": "URL",
+      "impp": "Messaging",
+      "birthday": "Birthday",
+      "anniversary": "Anniversary",
+      "circles": "Circles",
+      "how_we_met": "How we met",
+      "work_information": "Work information",
+      "contact_information": "Contact information"
+    }
+  },
   "conversationAgenda": {
     "title": "Conversation Agenda",
     "placeholder": "Things to bring up next time…",

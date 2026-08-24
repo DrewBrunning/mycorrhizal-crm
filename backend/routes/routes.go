@@ -405,6 +405,13 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.DELETE("/contact-subscriptions/:id", controllers.DeleteContactSubscription)
 			protected.POST("/contact-subscriptions/:id/sync", controllers.SyncContactSubscription)
 
+			// CardDAV sync conflict routes (issue #395): a sync overwrote a
+			// local edit; the user can review the conflict, restore the local
+			// value, or dismiss it.
+			protected.GET("/contact-sync-conflicts", controllers.ListContactSyncConflicts)
+			protected.POST("/contact-sync-conflicts/:id/restore", controllers.RestoreContactSyncConflict)
+			protected.POST("/contact-sync-conflicts/:id/dismiss", controllers.DismissContactSyncConflict)
+
 			// ExternalIdentity routes (T14 — T14): the generic integration
 			// substrate's link/enrichment CRUD. System-agnostic — no
 			// integration-specific route lives here.

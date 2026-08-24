@@ -31,6 +31,21 @@ func TestExternalLinkSubstrate_RealMigratedSchema(t *testing.T) {
 	db, err := database.InitDB(dbPath)
 	require.NoError(t, err)
 
+	// This test fires Contact create/delete audit events through the global
+	// fire-and-forget audit recorder (database.InitDB registers it), which
+	// write to this same WAL-mode database asynchronously. Without draining
+	// them before t.TempDir()'s cleanup, a still-in-flight audit insert can
+	// recreate the -wal sidecar mid-RemoveAll and fail the test with
+	// "directory not empty" — a pre-existing latent flake. Flush the recorder
+	// and close the pool (in t.Cleanup, which runs before the temp-dir
+	// cleanup) so no writer is left when the directory is removed.
+	t.Cleanup(func() {
+		models.AuditFlush()
+		if sqlDB, sqlErr := db.DB(); sqlErr == nil {
+			_ = sqlDB.Close()
+		}
+	})
+
 	user := models.User{Username: "ext-realdb", Password: "password123!A", Email: "ext-realdb@example.com"}
 	require.NoError(t, db.Create(&user).Error)
 	contact := models.Contact{UserID: user.ID, Firstname: "Alice"}

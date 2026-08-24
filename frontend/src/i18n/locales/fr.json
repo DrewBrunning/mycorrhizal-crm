@@ -1712,6 +1712,37 @@
       "address": "A déménagé"
     }
   },
+  "syncConflicts": {
+    "title": "Conflits de synchronisation",
+    "empty": "Aucun conflit de synchronisation pour le moment.",
+    "overwritten": "{{field}} : {{local}} → {{remote}}",
+    "restore": "Restaurer la valeur locale",
+    "restoreConfirm": "Restaurer votre valeur locale ? La valeur synchronisée sera écrasée.",
+    "dismiss": "Ignorer",
+    "field": {
+      "firstname": "Prénom",
+      "lastname": "Nom de famille",
+      "middlename": "Deuxième prénom",
+      "prefix": "Préfixe",
+      "suffix": "Suffixe",
+      "nickname": "Surnom",
+      "organization": "Organisation",
+      "department": "Service",
+      "job_title": "Poste",
+      "role": "Rôle",
+      "email": "E-mail",
+      "phone": "Téléphone",
+      "address": "Adresse",
+      "url": "URL",
+      "impp": "Messagerie",
+      "birthday": "Anniversaire",
+      "anniversary": "Anniversaire de mariage",
+      "circles": "Cercles",
+      "how_we_met": "Comment nous nous sommes rencontrés",
+      "work_information": "Informations professionnelles",
+      "contact_information": "Coordonnées"
+    }
+  },
   "conversationAgenda": {
     "title": "Agenda de conversation",
     "placeholder": "À évoquer la prochaine fois…",

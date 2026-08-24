@@ -30,8 +30,10 @@ import { getUpcomingReminders, completeReminder, skipReminder } from './api/remi
 import { OverdueCadence } from './api/cadencePolicies';
 import { getDashboard, DashboardReminder } from './api/dashboard';
 import { ReachOutSuggestion, dismissReachOutSuggestion } from './api/reachOutSuggestions';
+import { ContactSyncConflict, restoreContactSyncConflict, dismissContactSyncConflict } from './api/contactSyncConflicts';
 import OverdueCadenceList from './components/OverdueCadenceList';
 import ReachOutSuggestionsList from './components/ReachOutSuggestionsList';
+import SyncConflictList from './components/SyncConflictList';
 import { ContactListSkeleton } from './components/LoadingSkeletons';
 import { handleFetchError, handleError } from './utils/errorHandler';
 import { useDateFormat } from './DateFormatProvider';
@@ -49,6 +51,7 @@ function DashboardPage() {
   const [upcomingReminders, setUpcomingReminders] = useState<DashboardReminder[]>([]);
   const [overdueCadences, setOverdueCadences] = useState<OverdueCadence[]>([]);
   const [reachOutSuggestions, setReachOutSuggestions] = useState<ReachOutSuggestion[]>([]);
+  const [syncConflicts, setSyncConflicts] = useState<ContactSyncConflict[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [birthdaysInfoAnchor, setBirthdaysInfoAnchor] = useState<HTMLElement | null>(null);
@@ -75,6 +78,7 @@ function DashboardPage() {
       setUpcomingReminders(dashboard.upcoming_reminders);
       setOverdueCadences(dashboard.overdue);
       setReachOutSuggestions(dashboard.reach_out_suggestions);
+      setSyncConflicts(dashboard.contact_sync_conflicts);
     } catch (err) {
       const message = handleFetchError(err, 'loading dashboard data');
       setError(message);
@@ -129,6 +133,29 @@ function DashboardPage() {
       setReachOutSuggestions(prev => prev.filter(s => s.id !== id));
     } catch (err) {
       handleError(err, { operation: 'dismissing reach-out suggestion' });
+    }
+  };
+
+  // Issue #395: a CardDAV sync overwrote a local edit. Restore re-applies the
+  // local value; dismiss acknowledges the remote one. Both remove the notice.
+  const handleRestoreSyncConflict = async (conflict: ContactSyncConflict) => {
+    if (!window.confirm(t('syncConflicts.restoreConfirm'))) {
+      return;
+    }
+    try {
+      await restoreContactSyncConflict(conflict.id);
+      setSyncConflicts(prev => prev.filter(c => c.id !== conflict.id));
+    } catch (err) {
+      handleError(err, { operation: 'restoring sync conflict' });
+    }
+  };
+
+  const handleDismissSyncConflict = async (id: string) => {
+    try {
+      await dismissContactSyncConflict(id);
+      setSyncConflicts(prev => prev.filter(c => c.id !== id));
+    } catch (err) {
+      handleError(err, { operation: 'dismissing sync conflict' });
     }
   };
 
@@ -240,6 +267,22 @@ function DashboardPage() {
             loading={loading}
             error={null}
             onDismiss={handleDismissReachOutSuggestion}
+          />
+        </Box>
+      )}
+
+      {/* CardDAV sync conflicts (issue #395) — a remote change overwrote a
+          local edit; the user can restore the local value or accept the
+          remote one. Only rendered when there is something to show, same
+          "all-clear dashboard stays clean" rule as the blocks above. */}
+      {syncConflicts.length > 0 && (
+        <Box sx={{ mb: 3 }}>
+          <SyncConflictList
+            conflicts={syncConflicts}
+            loading={loading}
+            error={null}
+            onRestore={handleRestoreSyncConflict}
+            onDismiss={handleDismissSyncConflict}
           />
         </Box>
       )}

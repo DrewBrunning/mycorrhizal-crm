@@ -37,6 +37,7 @@ func setupContactSyncTestDB(t *testing.T) *gorm.DB {
 	require.NoError(t, db.AutoMigrate(
 		&models.User{}, &models.Contact{},
 		&models.ContactSubscription{}, &models.ContactSyncLink{},
+		&models.ContactSyncConflict{},
 	))
 	return db
 }

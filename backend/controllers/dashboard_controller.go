@@ -71,13 +71,20 @@ func GetDashboard(c *gin.Context) {
 		return
 	}
 
+	syncConflicts, err := services.ListContactSyncConflicts(db, userID)
+	if err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to load sync conflicts").WithError(err))
+		return
+	}
+
 	resp := models.DashboardResponse{
-		Birthdays:           birthdays,
-		RandomContacts:      randomContacts,
-		UpcomingReminders:   dashboardReminders,
-		Overdue:             toDashboardOverdueCadences(overdue),
-		Favorites:           favoriteContacts,
-		ReachOutSuggestions: reachOutSuggestions,
+		Birthdays:            birthdays,
+		RandomContacts:       randomContacts,
+		UpcomingReminders:    dashboardReminders,
+		Overdue:              toDashboardOverdueCadences(overdue),
+		Favorites:            favoriteContacts,
+		ReachOutSuggestions:  reachOutSuggestions,
+		ContactSyncConflicts: syncConflicts,
 	}
 	normalizeDashboardSlices(&resp)
 
@@ -225,5 +232,8 @@ func normalizeDashboardSlices(resp *models.DashboardResponse) {
 	}
 	if resp.ReachOutSuggestions == nil {
 		resp.ReachOutSuggestions = []models.ReachOutSuggestionResponse{}
+	}
+	if resp.ContactSyncConflicts == nil {
+		resp.ContactSyncConflicts = []models.ContactSyncConflictResponse{}
 	}
 }

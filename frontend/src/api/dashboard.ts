@@ -6,6 +6,7 @@ import { Birthday, Contact } from './contacts';
 import { Reminder } from './reminders';
 import { OverdueCadence } from './cadencePolicies';
 import { ReachOutSuggestion } from './reachOutSuggestions';
+import { ContactSyncConflict } from './contactSyncConflicts';
 
 // A Reminder enriched with its contact's display name (nickname-preferred,
 // falling back to firstname+lastname) so the dashboard never needs a second
@@ -22,6 +23,8 @@ export interface DashboardResponse {
   favorites: Contact[];
   // Issue #177: pending event-driven reach-out suggestions.
   reach_out_suggestions: ReachOutSuggestion[];
+  // Issue #395: pending CardDAV sync conflicts (overwritten local edits).
+  contact_sync_conflicts: ContactSyncConflict[];
 }
 
 export async function getDashboard(): Promise<DashboardResponse> {

@@ -43,6 +43,13 @@ type ContactSubscription struct {
 // server the way iCalendar events do, so the CardDAV resource path (Href)
 // is the key instead. ContentHash tracks the imported vCard bytes to detect
 // upstream changes, same idea as CalendarEventLink.ContentHash.
+//
+// SyncedValues (issue #395) is the per-field "last synced value" snapshot
+// the conflict detector compares the live contact against to distinguish a
+// local edit (current value != last synced value) from a plain remote
+// change, so only real overwritten local edits surface as conflicts. JSON
+// text (services.syncConflictFieldSnapshot's encoding); empty until the
+// first sync after migration 000032 writes a baseline.
 type ContactSyncLink struct {
 	ID             uint      `gorm:"primarykey" json:"id"`
 	CreatedAt      time.Time `json:"created_at"`
@@ -53,4 +60,7 @@ type ContactSyncLink struct {
 	ContactID      uint      `gorm:"not null;index" json:"contact_id"`
 	ETag           string    `gorm:"column:etag" json:"-"`
 	ContentHash    string    `gorm:"not null" json:"-"`
+	// SyncedValues is the flat-field snapshot the last sync wrote (see the
+	// type doc). Kept off the wire: internal bookkeeping, not user-facing.
+	SyncedValues string `gorm:"column:synced_values;type:text;not null;default:''" json:"-"`
 }

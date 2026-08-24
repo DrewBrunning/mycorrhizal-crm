@@ -779,6 +779,13 @@ func deleteContactAssociations(tx *gorm.DB, contact models.Contact, userID uint)
 		return err
 	}
 
+	// Delete this contact's CardDAV sync conflicts (issue #395 —
+	// system-generated, hard delete; nothing left to review once the contact
+	// is gone).
+	if err := tx.Where("contact_id = ? AND user_id = ?", contact.ID, userID).Delete(&models.ContactSyncConflict{}).Error; err != nil {
+		return err
+	}
+
 	// Delete this contact's external integration links and enrichment events
 	// (T14 — both are keyed by Contact.VCardUID and hard-delete)
 	if err := tx.Where("entity_id = ? AND user_id = ?", contact.VCardUID, userID).Delete(&models.ExternalIdentity{}).Error; err != nil {

@@ -31,7 +31,7 @@ func TestGetDashboard_EmptyBlocksSerializeAsArrays(t *testing.T) {
 	var raw map[string]json.RawMessage
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &raw))
 
-	for _, key := range []string{"birthdays", "random_contacts", "upcoming_reminders", "overdue", "favorites", "reach_out_suggestions"} {
+	for _, key := range []string{"birthdays", "random_contacts", "upcoming_reminders", "overdue", "favorites", "reach_out_suggestions", "contact_sync_conflicts"} {
 		block, present := raw[key]
 		require.Truef(t, present, "block %q must be present in the response even when empty", key)
 		assert.JSONEqf(t, "[]", string(block), "block %q must serialize as an empty array, not null", key)
@@ -91,6 +91,39 @@ func TestGetDashboard_PopulatedComposesAllBlocks(t *testing.T) {
 	require.Len(t, resp.Overdue, 1)
 	assert.Equal(t, contact.VCardUID, resp.Overdue[0].Policy.EntityID)
 	assert.Equal(t, contact.ID, resp.Overdue[0].ContactID)
+}
+
+// TestGetDashboard_SyncConflictsBlock seeds a pending CardDAV sync conflict
+// (issue #395) and asserts the composite surfaces it, enriched with the
+// contact's name.
+func TestGetDashboard_SyncConflictsBlock(t *testing.T) {
+	db, router := setupRouter()
+	router.GET("/dashboard", GetDashboard)
+
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+
+	contact := models.Contact{UserID: user.ID, Firstname: "Ada", Lastname: "Lovelace"}
+	require.NoError(t, db.Create(&contact).Error)
+	sub := models.ContactSubscription{UserID: user.ID, Name: "Work", URL: "https://example.com/dav/"}
+	require.NoError(t, db.Create(&sub).Error)
+	require.NoError(t, db.Create(&models.ContactSyncConflict{
+		UserID: user.ID, SubscriptionID: sub.ID, ContactID: contact.ID,
+		Field: models.SyncConflictFieldPhone, LocalValue: `[{"value":"555-0100"}]`, RemoteValue: "[]",
+		Status: models.SyncConflictStatusPending,
+	}).Error)
+
+	req, _ := http.NewRequest("GET", "/dashboard", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var resp models.DashboardResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	require.Len(t, resp.ContactSyncConflicts, 1)
+	assert.Equal(t, contact.ID, resp.ContactSyncConflicts[0].ContactID)
+	assert.Equal(t, "Ada Lovelace", resp.ContactSyncConflicts[0].ContactName)
+	assert.Equal(t, models.SyncConflictFieldPhone, resp.ContactSyncConflicts[0].Field)
 }
 
 // TestGetDashboard_ScopedToUser confirms every block is scoped by the

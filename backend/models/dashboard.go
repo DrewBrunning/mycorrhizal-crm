@@ -50,4 +50,8 @@ type DashboardResponse struct {
 	// suggestions (org/title/address change detected). Same no-omitempty
 	// discipline as every other block.
 	ReachOutSuggestions []ReachOutSuggestionResponse `json:"reach_out_suggestions"`
+	// ContactSyncConflicts (issue #395): pending CardDAV sync conflicts — a
+	// remote change overwrote a local edit and the notice is the only record
+	// of it. Same no-omitempty discipline as every other block.
+	ContactSyncConflicts []ContactSyncConflictResponse `json:"contact_sync_conflicts"`
 }
