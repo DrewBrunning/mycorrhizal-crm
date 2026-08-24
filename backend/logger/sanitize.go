@@ -48,7 +48,8 @@ func SanitizeLogField(s string) string {
 			case r == '\t':
 				b.WriteString(`\t`)
 			case isLogControl(r):
-				b.WriteString(escapeLogByte(byte(r)))
+				// isLogControl guarantees r < 0xa0, so the mask cannot lose bits.
+				b.WriteString(escapeLogByte(byte(r & 0xff)))
 			default:
 				// Preserve valid UTF-8 (including continuation bytes that fall
 				// in the C1 range, which are not control characters here).

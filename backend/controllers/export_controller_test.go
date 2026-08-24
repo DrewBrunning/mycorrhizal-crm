@@ -1,9 +1,11 @@
 package controllers
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"mycorrhizal/config"
+	"mycorrhizal/logger"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
@@ -14,6 +16,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -516,6 +519,43 @@ func TestExportContactsAsVCF_Empty(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Header().Get("Content-Type"), "text/vcard")
 	assert.NotContains(t, w.Body.String(), "BEGIN:VCARD")
+}
+
+// TestExportContactsAsVCF_DiagnosticSanitization exercises the per-contact
+// diagnostic loop in ExportContactsAsVCF (export_controller.go) — the
+// message-position log-forgery vector logger.SanitizeLogField was introduced
+// to close. A contact with no name at all makes the vcard4 exporter emit its
+// "no Name.Full..." warn diagnostic rather than failing, so the loop runs and
+// the sanitized message line is produced. Capturing the global logger and
+// asserting the diagnostic appears is what proves the loop executes.
+func TestExportContactsAsVCF_DiagnosticSanitization(t *testing.T) {
+	buf := &bytes.Buffer{}
+	oldLogger := logger.Logger
+	oldLevel := zerolog.GlobalLevel()
+	logger.Logger = zerolog.New(buf)
+	zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	t.Cleanup(func() {
+		logger.Logger = oldLogger
+		zerolog.SetGlobalLevel(oldLevel)
+	})
+
+	db, router := setupRouter()
+	registerVCFRoute(router, "")
+
+	var user models.User
+	db.First(&user)
+	db.Create(&models.Contact{UserID: user.ID})
+
+	req, _ := http.NewRequest("GET", "/export/vcf", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	// The nameless contact still exports (as an empty FN) rather than
+	// failing the whole export.
+	assert.Contains(t, w.Body.String(), "BEGIN:VCARD")
+	assert.Contains(t, buf.String(), "no Name.Full and no components to derive FN from",
+		"the per-contact diagnostic loop must have logged the nameless contact")
 }
 
 // TestExportContactsAsVCF_PhotoBridging is a regression test for the exact
