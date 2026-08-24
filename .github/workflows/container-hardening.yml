@@ -1,0 +1,104 @@
+name: Container Hardening (CIS)
+
+# Issue #362: the runtime images already do the load-bearing hardening (non-root
+# appuser via PUID/PGID remap, pinned bases, HEALTHCHECK, no secrets in layers),
+# but nothing in CI checks the CIS Docker Benchmark controls that keep it that
+# way. A future regression — re-adding `USER root`, a setuid binary dragged in
+# by an apk bump, a `privileged: true` in compose — would go unnoticed.
+#
+# This workflow builds the shipped all-in-one image and runs
+# docker/cis-hardening.sh against it: a short, deterministic CIS-aligned
+# baseline (4.1 non-root, 4.6 HEALTHCHECK, 4.8 setuid/setgid removed, 5.3 no
+# privileged/cap_add, plus appuser-owned writable dirs). Non-PASS results fail
+# unless accepted in docker/cis-hardening.ignore, the same ignore-list-with-
+# justification shape as android/.mobsf.
+#
+# docker-bench-security is deliberately not used: its image checks are
+# host/daemon-oriented and need --privileged + host mounts, and its 4.8 check is
+# a NOTE no-op that never scans the filesystem. See docker/cis-hardening.sh.
+#
+# Path-gated on `infra` (Dockerfile, docker-compose*.yml, docker/**) and
+# `workflows` (issue #264 pattern); the scheduled run re-scans everything so
+# new rules are exercised even with no activity.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '30 4 * * 1' # Monday 04:30 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    permissions:
+      contents: read
+      pull-requests: read
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      infra: ${{ steps.filter.outputs.infra }}
+      workflows: ${{ steps.filter.outputs.workflows }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Change detection on push needs the previous commit on main.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Detect changed areas
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: .github/filters.yaml
+
+      - name: Report gating decision
+        run: |
+          echo "infra=$INFRA_CHANGED"
+          echo "workflows=$WORKFLOWS_CHANGED"
+        env:
+          # Boolean outputs only (the *_files outputs are the
+          # attacker-influenced ones on PRs); passed as env vars so zizmor's
+          # template-injection audit has nothing to flag in this workflow.
+          INFRA_CHANGED: ${{ steps.filter.outputs.infra }}
+          WORKFLOWS_CHANGED: ${{ steps.filter.outputs.workflows }}
+
+  hardening:
+    name: CIS container hardening scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    needs: changes
+    if: github.event_name == 'schedule' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      # Build the same all-in-one image e2e-tests.yml builds (context ., root
+      # Dockerfile) so the scan inspects the actual shipped artifact. `load:
+      # true` puts it in the local daemon where docker/cis-hardening.sh can
+      # `docker inspect` / `docker create` it; the gha cache scope is shared
+      # with e2e-tests.yml.
+      - name: Build all-in-one image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          push: false
+          load: true
+          tags: mycorrhizal-crm-test:latest
+          cache-from: type=gha,scope=combined
+          cache-to: type=gha,scope=combined,mode=max
+
+      - name: Run CIS hardening scan
+        run: docker/cis-hardening.sh mycorrhizal-crm-test:latest docker/cis-hardening.ignore
