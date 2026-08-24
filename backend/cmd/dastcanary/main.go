@@ -34,6 +34,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 )
 
 const (
@@ -48,7 +49,11 @@ const (
 func main() {
 	addr := addrFromEnv(os.Getenv)
 
-	srv := &http.Server{Addr: addr, Handler: newMux()}
+	srv := &http.Server{
+		Addr:              addr,
+		Handler:           newMux(),
+		ReadHeaderTimeout: 5 * time.Second,
+	}
 	log.Printf("dastcanary listening on %s (vulnerable-by-design, DAST-only)", addr)
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("dastcanary: %v", err)
@@ -96,7 +101,7 @@ func reflectedHandler(w http.ResponseWriter, r *http.Request) {
 	// (ZAP must detect it for the DAST self-test). Suppressed so CodeQL stops
 	// flagging the deliberate sink.
 	// lgtm[go/reflected-xss]
-	fmt.Fprintf(w, "<html><body><h1>Reflected</h1><p>%s</p></body></html>", q)
+	fmt.Fprintf(w, "<html><body><h1>Reflected</h1><p>%s</p></body></html>", q) // #nosec G705 -- intentional reflected XSS, DAST canary
 }
 
 // idorHandler returns a secret for whatever object id is in the path, with no
@@ -107,5 +112,5 @@ func idorHandler(w http.ResponseWriter, r *http.Request) {
 		id = "missing"
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	fmt.Fprintf(w, `{"object":"user","id":%q,"secret":%q}`, id, canaryIDPrefix+id)
+	fmt.Fprintf(w, `{"object":"user","id":%q,"secret":%q}`, id, canaryIDPrefix+id) // #nosec G705 -- JSON response (quoted), not HTML; gosec taint false positive
 }

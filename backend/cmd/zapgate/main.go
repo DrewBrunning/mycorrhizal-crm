@@ -221,7 +221,7 @@ func matchIgnore(rules []ignoreRule, alert zapAlert) (ignoreRule, bool) {
 }
 
 func readReport(path string) (*zapReport, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) // #nosec G304 -- path is an operator-supplied report path, not request input
 	if err != nil {
 		return nil, err
 	}
@@ -239,7 +239,7 @@ func readReport(path string) (*zapReport, error) {
 // `*`. A `#` begins a comment, on its own line or trailing a rule; trailing
 // comments on a rule line are captured as the justification shown on [ACCEPT].
 func readIgnoreList(path string) ([]ignoreRule, error) {
-	f, err := os.Open(path)
+	f, err := os.Open(path) // #nosec G304 -- path is an operator-supplied ignore-list path, not request input
 	if err != nil {
 		return nil, err
 	}
