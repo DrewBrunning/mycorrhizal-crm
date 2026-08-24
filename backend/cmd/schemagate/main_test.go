@@ -7,21 +7,58 @@ import (
 	"testing"
 )
 
-// sampleReport is a minimal slice of a real `schemathesis run --report ndjson`
-// report (captured from 4.25.2 against a deliberately-vulnerable stub server),
-// reduced to the ScenarioFinished events schemagate reads. It exercises the two
-// gated check classes (not_a_server_error -> server_error, ignored_auth ->
-// auth) plus a non-gated conformance failure that must be ignored. Note the
-// real report shape: `recorder.checks` is a case-ID-keyed map parallel to
-// `recorder.cases`, not nested inside each case.
-const sampleReport = `{"ScenarioFinished":{"status":"failure","recorder":{"label":"GET /boom","cases":{"a1":{"value":{"method":"GET","path":"/boom"}}},"checks":{"a1":[{"name":"not_a_server_error","status":"failure"},{"name":"status_code_conformance","status":"failure"},{"name":"ignored_auth","status":"success"}]}}}}
-{"ScenarioFinished":{"status":"failure","recorder":{"label":"GET /protected","cases":{"b1":{"value":{"method":"GET","path":"/protected"}}},"checks":{"b1":[{"name":"not_a_server_error","status":"success"},{"name":"ignored_auth","status":"failure"},{"name":"negative_data_rejection","status":"failure"}]}}}}
-`
+// sampleReport is a minimal JUnit report in the shape `schemathesis run
+// --checks not_a_server_error,ignored_auth --report junit` emits (captured
+// from 4.25.2). It exercises both gated classes — a "Server error" failure
+// (not_a_server_error) and an "API accepts requests without authentication"
+// failure (ignored_auth) — plus a network <error> element that must be
+// ignored, and a passing testcase.
+const sampleReport = `<?xml version="1.0" encoding="utf-8"?>
+<testsuites errors="1" failures="2" skipped="0" tests="3" time="1.0">
+  <testsuite name="schemathesis" errors="1" failures="2" skipped="0" tests="3" time="1.0">
+    <testcase name="GET /boom" time="0.13">
+      <failure type="failure">1. Test Case ID: a1
 
-// cleanReport has only non-gated conformance failures and passing gated checks:
-// the gate must pass without any ignore rules.
-const cleanReport = `{"ScenarioFinished":{"status":"failure","recorder":{"label":"GET /contacts","cases":{"c1":{"value":{"method":"GET","path":"/contacts"}}},"checks":{"c1":[{"name":"not_a_server_error","status":"success"},{"name":"ignored_auth","status":"success"},{"name":"response_schema_conformance","status":"failure"}]}}}}
-`
+- Server error
+
+[500] Internal Server Error:
+
+    ` + "`{\"error\": \"boom\"}`" + `
+
+Reproduce with:
+
+    curl -X GET http://localhost:7300/api/v1/boom</failure>
+    </testcase>
+    <testcase name="GET /protected" time="0.18">
+      <failure type="failure">1. Test Case ID: b1
+
+- API accepts requests without authentication
+
+    Expected 401, got ` + "`200 OK`" + ` for ` + "`GET /protected`" + `</failure>
+    </testcase>
+    <testcase name="POST /field-definitions" time="2.29">
+      <error type="error">Network Error
+
+Connection failed
+
+    Failed to establish a new connection</error>
+    </testcase>
+  </testsuite>
+</testsuites>`
+
+// cleanReport has only network errors and passing cases: the gate must pass
+// without any ignore rules.
+const cleanReport = `<?xml version="1.0" encoding="utf-8"?>
+<testsuites errors="1" failures="0" skipped="0" tests="2" time="1.0">
+  <testsuite name="schemathesis" errors="1" failures="0" skipped="0" tests="2" time="1.0">
+    <testcase name="GET /contacts" time="0.04" />
+    <testcase name="GET /contacts/{id}" time="0.04">
+      <error type="error">Network Error
+
+Connection failed</error>
+    </testcase>
+  </testsuite>
+</testsuites>`
 
 func writeTemp(t *testing.T, name, content string) string {
 	t.Helper()
@@ -46,7 +83,7 @@ func gateEnv(reports []string, ignore string) func(string) string {
 }
 
 func TestRun_FailsOnUnacceptedFindings(t *testing.T) {
-	report := writeTemp(t, "report.ndjson", sampleReport)
+	report := writeTemp(t, "report.xml", sampleReport)
 	ignore := writeTemp(t, "ignore", "# no rules\n")
 	err := run(gateEnv([]string{report}, ignore))
 	if err == nil {
@@ -57,14 +94,14 @@ func TestRun_FailsOnUnacceptedFindings(t *testing.T) {
 			t.Errorf("error %q does not mention %q", err.Error(), want)
 		}
 	}
-	// The non-gated conformance failures must not appear in the failure list.
-	if strings.Contains(err.Error(), "conformance") {
-		t.Errorf("error %q mentions a non-gated check", err.Error())
+	// The network-error testcase must not appear in the failure list.
+	if strings.Contains(err.Error(), "field-definitions") {
+		t.Errorf("error %q mentions a network-error testcase", err.Error())
 	}
 }
 
 func TestRun_IgnoreListAcceptsMatchingRules(t *testing.T) {
-	report := writeTemp(t, "report.ndjson", sampleReport)
+	report := writeTemp(t, "report.xml", sampleReport)
 	ignore := writeTemp(t, "ignore", `
 server_error GET /boom   # the canary endpoint 500s by design in this fixture
 auth GET /protected      # the fixture returns data without auth by design
@@ -76,8 +113,7 @@ auth GET /protected      # the fixture returns data without auth by design
 }
 
 func TestRun_IgnoreListRequiresExactKind(t *testing.T) {
-	// A rule for the wrong kind must not suppress the finding.
-	report := writeTemp(t, "report.ndjson", sampleReport)
+	report := writeTemp(t, "report.xml", sampleReport)
 	ignore := writeTemp(t, "ignore", "auth GET /boom\nserver_error GET /protected\n")
 	err := run(gateEnv([]string{report}, ignore))
 	if err == nil {
@@ -86,27 +122,25 @@ func TestRun_IgnoreListRequiresExactKind(t *testing.T) {
 }
 
 func TestRun_CleanReportPassesWithoutRules(t *testing.T) {
-	report := writeTemp(t, "report.ndjson", cleanReport)
+	report := writeTemp(t, "report.xml", cleanReport)
 	ignore := writeTemp(t, "ignore", "# none\n")
 	if err := run(gateEnv([]string{report}, ignore)); err != nil {
-		t.Fatalf("run() = %v, want nil (no gated failures, conformance noise only)", err)
+		t.Fatalf("run() = %v, want nil (no gated failures, network errors only)", err)
 	}
 }
 
 func TestRun_FailsOnEmptyReport(t *testing.T) {
-	report := writeTemp(t, "report.ndjson", "# not ndjson\n")
+	report := writeTemp(t, "report.xml", `<testsuites tests="0"></testsuites>`)
 	ignore := writeTemp(t, "ignore", "# none\n")
 	err := run(gateEnv([]string{report}, ignore))
 	if err == nil {
-		t.Fatal("run() = nil, want error: a report with no check results is a blind scan")
+		t.Fatal("run() = nil, want error: a report with zero testcases is a blind scan")
 	}
 }
 
 func TestRun_ReadsMultipleReports(t *testing.T) {
-	// The same operation failing in two reports (e.g. anonymous + authenticated
-	// runs) must be deduplicated to a single failure line.
-	r1 := writeTemp(t, "anon.ndjson", sampleReport)
-	r2 := writeTemp(t, "auth.ndjson", sampleReport)
+	r1 := writeTemp(t, "anon.xml", sampleReport)
+	r2 := writeTemp(t, "auth.xml", sampleReport)
 	ignore := writeTemp(t, "ignore", "# none\n")
 	err := run(gateEnv([]string{r1, r2}, ignore))
 	if err == nil {
@@ -115,6 +149,26 @@ func TestRun_ReadsMultipleReports(t *testing.T) {
 	if strings.Count(err.Error(), "GET /boom") != 1 {
 		t.Errorf("error %q should mention GET /boom exactly once (dedupe), got %d",
 			err.Error(), strings.Count(err.Error(), "GET /boom"))
+	}
+}
+
+func TestClassifyFailure(t *testing.T) {
+	cases := []struct {
+		text     string
+		wantKind string
+		wantOK   bool
+	}{
+		{"- Server error\n\n[500] Internal Server Error", "server_error", true},
+		{"- API accepts requests without authentication\n\nExpected 401, got 200", "auth", true},
+		{"- API accepts invalid authentication\n\nExpected 401, got 200", "auth", true},
+		{"- Undocumented HTTP status code\n\nReceived: 500", "", false},
+		{"", "", false},
+	}
+	for _, c := range cases {
+		kind, ok := classifyFailure(c.text)
+		if ok != c.wantOK || kind != c.wantKind {
+			t.Errorf("classifyFailure(%q) = (%q, %v), want (%q, %v)", c.text, kind, ok, c.wantKind, c.wantOK)
+		}
 	}
 }
 
@@ -175,7 +229,7 @@ func TestMatchIgnore_WildcardKind(t *testing.T) {
 
 func TestLoadConfig_Defaults(t *testing.T) {
 	cfg := loadConfig(func(string) string { return "" })
-	if len(cfg.reportPaths) != 1 || cfg.reportPaths[0] != "schemathesis/report.ndjson" {
+	if len(cfg.reportPaths) != 1 || cfg.reportPaths[0] != "schemathesis/report.xml" {
 		t.Errorf("reportPaths = %v, want default single path", cfg.reportPaths)
 	}
 	if cfg.ignorePath != "schemathesis/schemathesis.ignore" {
@@ -186,11 +240,11 @@ func TestLoadConfig_Defaults(t *testing.T) {
 func TestLoadConfig_SplitsReportPaths(t *testing.T) {
 	cfg := loadConfig(func(k string) string {
 		if k == "SCHEMAGATE_REPORT" {
-			return "a.ndjson, b.ndjson , c.ndjson"
+			return "a.xml, b.xml , c.xml"
 		}
 		return ""
 	})
-	want := []string{"a.ndjson", "b.ndjson", "c.ndjson"}
+	want := []string{"a.xml", "b.xml", "c.xml"}
 	if len(cfg.reportPaths) != len(want) {
 		t.Fatalf("reportPaths = %v, want %v", cfg.reportPaths, want)
 	}

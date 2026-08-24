@@ -42,7 +42,7 @@ vendor/
 backend/junit.xml
 backend/rerun-fails.txt
 
-# Issue #369: Schemathesis NDJSON reports, emitted in CI (uploaded as
+# Issue #369: Schemathesis JUnit reports, emitted in CI (uploaded as
 # artifacts; the ignore-list schemathesis/schemathesis.ignore is tracked)
 schemathesis/report/
 

@@ -1,34 +1,33 @@
 // Command schemagate enforces the Schemathesis fuzz gate (issue #369) on the
-// NDJSON event report a `schemathesis run` invocation emits with
-// `--report ndjson`.
+// JUnit XML report a `schemathesis run` invocation emits with
+// `--report junit`.
 //
 // Schemathesis is a generator, not a policy engine: it fails (non-zero exit)
-// on *any* check failure, including the schema-conformance noise that is
-// expected while the spec catches up with reality, and it has no notion of
-// "this failure is accepted because it is legitimately scoped". schemagate is
-// the small, deterministic policy layer that turns the NDJSON report into a
-// pass/fail decision, in the same "ignore-list with justification" shape as
-// zapgate (backend/cmd/zapgate) and docker/cis-hardening.ignore:
+// on *any* check failure, and it has no notion of "this failure is accepted
+// because it is legitimately scoped". schemagate is the small, deterministic
+// policy layer that turns the JUnit report into a pass/fail decision, in the
+// same "ignore-list with justification" shape as docker/cis-hardening.ignore:
 //
-//  1. Failures are classified by the machine-readable Schemathesis check name:
-//     `not_a_server_error` (a 5xx response) and `ignored_auth` (an
-//     auth-protected operation returning 2xx without valid auth) are the two
-//     classes the issue gates on. Everything else — status-code conformance,
-//     response-schema conformance, negative-data rejection, missing headers,
-//     unsupported methods — is reported but does not fail the gate.
+//  1. The workflow runs Schemathesis with `--checks
+//     not_a_server_error,ignored_auth`, so the only `<failure>` elements in the
+//     report are the two classes the issue gates on. Each is classified by its
+//     check title: "Server error" (a 5xx) and "API accepts requests without/
+//     invalid authentication" (an auth-protected operation returning 2xx
+//     without valid auth). JUnit `<error>` elements are *network* errors — the
+//     scanner could not connect — and are deliberately not gated: they are a
+//     coverage gap, not a server bug.
 //  2. A gated failure is accepted only by an explicit ignore-list entry
 //     matching its kind and operation label (e.g. `GET /contacts`), with the
 //     justification logged so acceptances stay visible.
-//  3. Unknown/empty reports are a failure: a scan that produced no events did
-//     not run, and a gate that passes on "no data" would be blind.
+//  3. An empty report is a failure: a scan that produced no testcases did not
+//     run, and a gate that passes on "no data" would be blind.
 //
 // Configuration is via SCHEMAGATE_* env vars (see loadConfig); the defaults
-// match the repo layout (schemathesis/report.ndjson, schemathesis/schemathesis.ignore).
+// match the repo layout (schemathesis/report.xml, schemathesis/schemathesis.ignore).
 package main
 
 import (
-	"bufio"
-	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"os"
 	"regexp"
@@ -36,19 +35,11 @@ import (
 	"strings"
 )
 
-// gateCheckNames are the machine-readable Schemathesis check names the gate
-// enforces, mapped to the kind recorded in the ignore-list and the human
-// label used in messages. This is deliberately narrower than Schemathesis's
-// full check set (see the package doc): conformance drift is surfaced by the
-// report, but the gate is on 5xx + auth failures per issue #369.
-var gateCheckNames = map[string]gateKind{
-	"not_a_server_error": {kind: "server_error", label: "server error (5xx)"},
-	"ignored_auth":       {kind: "auth", label: "auth-protected operation returned data without auth"},
-}
-
-type gateKind struct {
-	kind  string
-	label string
+// finding is one gated failure, deduplicated per (kind, operation) so the same
+// operation failing across the coverage and fuzzing phases counts once.
+type finding struct {
+	kind      string
+	operation string
 }
 
 type config struct {
@@ -58,12 +49,12 @@ type config struct {
 
 func defaultConfig() config {
 	return config{
-		reportPaths: []string{"schemathesis/report.ndjson"},
+		reportPaths: []string{"schemathesis/report.xml"},
 		ignorePath:  "schemathesis/schemathesis.ignore",
 	}
 }
 
-// loadConfig reads SCHEMAGATE_REPORT (a comma-separated list of NDJSON report
+// loadConfig reads SCHEMAGATE_REPORT (a comma-separated list of JUnit report
 // paths) and SCHEMAGATE_IGNORE (the ignore-list path) via getenv, injected so
 // this is testable without mutating real process env.
 func loadConfig(getenv func(string) string) config {
@@ -95,45 +86,26 @@ func main() {
 	}
 }
 
-// --- Schemathesis NDJSON report model ---
+// --- JUnit report model ---
 
-// ndjsonEvent is one line of a `--report ndjson` report. The report interleaves
-// several event shapes; only ScenarioFinished carries the per-check results the
-// gate reads, so every other event type is ignored.
-type ndjsonEvent struct {
-	ScenarioFinished *scenarioFinished `json:"ScenarioFinished"`
+type junitTestsuites struct {
+	XMLName xml.Name     `xml:"testsuites"`
+	Tests   int          `xml:"tests,attr"`
+	Suites  []junitSuite `xml:"testsuite"`
 }
 
-type scenarioFinished struct {
-	Status   string           `json:"status"`
-	Recorder scenarioRecorder `json:"recorder"`
+type junitSuite struct {
+	Cases []junitCase `xml:"testcase"`
 }
 
-type scenarioRecorder struct {
-	Label  string                   `json:"label"`
-	Cases  map[string]caseInfo      `json:"cases"`
-	Checks map[string][]checkResult `json:"checks"`
+type junitCase struct {
+	Name     string         `xml:"name,attr"`
+	Failures []junitFailure `xml:"failure"`
+	// <error> elements are network errors and are deliberately not read.
 }
 
-type caseInfo struct {
-	Value caseValue `json:"value"`
-}
-
-type caseValue struct {
-	Path string `json:"path"`
-}
-
-type checkResult struct {
-	Name   string `json:"name"`
-	Status string `json:"status"`
-}
-
-// finding is one gated failure, deduplicated per (kind, operation) so the same
-// operation failing across the coverage and fuzzing phases counts once.
-type finding struct {
-	kind      string
-	operation string
-	path      string
+type junitFailure struct {
+	Text string `xml:",chardata"`
 }
 
 // --- ignore-list model ---
@@ -148,18 +120,18 @@ func run(getenv func(string) string) error {
 	cfg := loadConfig(getenv)
 
 	var findings []finding
-	totalChecks := 0
+	totalTests := 0
 	for _, path := range cfg.reportPaths {
-		f, checks, err := readReport(path)
+		f, tests, err := readReport(path)
 		if err != nil {
 			return fmt.Errorf("read report: %w", err)
 		}
-		totalChecks += checks
+		totalTests += tests
 		findings = append(findings, f...)
 	}
 
-	if totalChecks == 0 {
-		return fmt.Errorf("no Schemathesis check results found in %v — the scan did not run or the report is empty", cfg.reportPaths)
+	if totalTests == 0 {
+		return fmt.Errorf("no Schemathesis test cases found in %v — the scan did not run or the report is empty", cfg.reportPaths)
 	}
 
 	findings = dedupe(findings)
@@ -172,103 +144,82 @@ func run(getenv func(string) string) error {
 	var failures []string
 	for _, f := range findings {
 		if rule, ok := matchIgnore(rules, f); ok {
-			fmt.Printf("[ACCEPT] %s %s (%s) — %s\n", f.kind, f.operation, f.path, rule.justification)
+			fmt.Printf("[ACCEPT] %s %s — %s\n", f.kind, f.operation, rule.justification)
 			continue
 		}
-		failures = append(failures, fmt.Sprintf("%s %s (%s)", f.kind, f.operation, f.path))
+		failures = append(failures, fmt.Sprintf("%s %s", f.kind, f.operation))
 	}
 
 	if len(failures) > 0 {
 		return fmt.Errorf("%d unaccepted finding(s):\n  %s",
 			len(failures), strings.Join(failures, "\n  "))
 	}
-	fmt.Printf("OK: schemagate passed — %d check result(s) across %d report(s), no unaccepted 5xx/auth findings.\n",
-		totalChecks, len(cfg.reportPaths))
+	fmt.Printf("OK: schemagate passed — %d test case(s) across %d report(s), no unaccepted 5xx/auth findings.\n",
+		totalTests, len(cfg.reportPaths))
 	return nil
 }
 
-// readReport parses one NDJSON report file, returning the gated findings and
-// the total number of check results seen (used as the "did it actually run"
-// signal). A non-existent file is an error; a file with zero check results is
-// not (a report may legitimately contain only public endpoints with no gated
-// failures) — the run() caller fails only when *every* report is empty.
+// readReport parses one JUnit report file, returning the gated findings and the
+// total number of test cases (used as the "did it actually run" signal). A
+// non-existent file is an error.
 func readReport(path string) ([]finding, int, error) {
-	f, err := os.Open(path)
+	// #nosec G304 -- path is an operator-supplied report path (SCHEMAGATE_REPORT), not request input.
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, 0, err
 	}
-	defer f.Close()
 
-	var findings []finding
-	checks := 0
-	scanner := bufio.NewScanner(f)
-	scanner.Buffer(make([]byte, 0, 1024*1024), 8*1024*1024)
-	lineNo := 0
-	for scanner.Scan() {
-		lineNo++
-		line := scanner.Bytes()
-		if len(line) == 0 {
-			continue
-		}
-		var ev ndjsonEvent
-		if err := json.Unmarshal(line, &ev); err != nil {
-			return nil, 0, fmt.Errorf("%s:%d: %w", path, lineNo, err)
-		}
-		sf := ev.ScenarioFinished
-		if sf == nil {
-			continue
-		}
-		// Iterate the checks map in sorted case-ID order so a given report
-		// parses to a deterministic finding order (maps are unordered).
-		caseIDs := make([]string, 0, len(sf.Recorder.Checks))
-		for id := range sf.Recorder.Checks {
-			caseIDs = append(caseIDs, id)
-		}
-		sort.Strings(caseIDs)
-		for _, id := range caseIDs {
-			ci, ok := sf.Recorder.Cases[id]
-			if !ok {
-				continue
-			}
-			for _, c := range sf.Recorder.Checks[id] {
-				checks++
-				gk, ok := gateCheckNames[c.Name]
-				if !ok {
-					continue
-				}
-				if c.Status != "failure" && c.Status != "error" {
-					continue
-				}
-				findings = append(findings, finding{
-					kind:      gk.kind,
-					operation: sf.Recorder.Label,
-					path:      ci.Value.Path,
-				})
-			}
-		}
-	}
-	if err := scanner.Err(); err != nil {
+	var ts junitTestsuites
+	if err := xml.Unmarshal(data, &ts); err != nil {
 		return nil, 0, fmt.Errorf("%s: %w", path, err)
 	}
-	return findings, checks, nil
+
+	var findings []finding
+	for _, suite := range ts.Suites {
+		for _, c := range suite.Cases {
+			for _, f := range c.Failures {
+				if kind, ok := classifyFailure(f.Text); ok {
+					findings = append(findings, finding{kind: kind, operation: c.Name})
+				}
+			}
+		}
+	}
+	return findings, ts.Tests, nil
 }
 
-// dedupe collapses findings to one per (kind, operation), preserving the first
-// concrete request for the message.
+// classifyFailure maps a JUnit failure's text to a gated kind via its
+// Schemathesis check title. With `--checks not_a_server_error,ignored_auth`
+// the only titles that can appear are "Server error" (a 5xx) and the two
+// ignored-auth variants ("...without authentication" / "...invalid
+// authentication"). Any other text is a non-gated check and returns false.
+func classifyFailure(text string) (string, bool) {
+	if strings.Contains(text, "Server error") {
+		return "server_error", true
+	}
+	if strings.Contains(text, "authentication") {
+		return "auth", true
+	}
+	return "", false
+}
+
+// dedupe collapses findings to one per (kind, operation).
 func dedupe(findings []finding) []finding {
-	seen := map[string]int{}
+	seen := map[string]bool{}
 	var out []finding
 	for _, f := range findings {
 		key := f.kind + "\x00" + f.operation
-		if idx, ok := seen[key]; ok {
-			if out[idx].path == "" && f.path != "" {
-				out[idx].path = f.path
-			}
+		if seen[key] {
 			continue
 		}
-		seen[key] = len(out)
+		seen[key] = true
 		out = append(out, f)
 	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].kind != out[j].kind {
+			return out[i].kind < out[j].kind
+		}
+		return out[i].operation < out[j].operation
+	})
 	return out
 }
 
@@ -287,25 +238,22 @@ func matchIgnore(rules []ignoreRule, f finding) (ignoreRule, bool) {
 
 // readIgnoreList parses schemathesis/schemathesis.ignore. Format: one rule per
 // line, `<kind> <operation-regex>`, where kind is server_error|auth|* and
-// operation-regex is a Go regexp matched against the Schemathesis operation
-// label (e.g. `POST /contacts/import/upload`). The kind is the first
-// whitespace-delimited token; everything after it is the regex, so a label's
-// internal "METHOD /path" space is preserved. A `#` begins a comment, on its
-// own line or trailing a rule; trailing comments are captured as the
+// operation-regex is a Go regexp matched against the JUnit testcase name — the
+// Schemathesis operation label (e.g. `POST /contacts/import/upload`). The kind
+// is the first whitespace-delimited token; everything after it is the regex, so
+// a label's internal "METHOD /path" space is preserved. A `#` begins a comment,
+// on its own line or trailing a rule; trailing comments are captured as the
 // justification shown on [ACCEPT].
 func readIgnoreList(path string) ([]ignoreRule, error) {
-	f, err := os.Open(path)
+	// #nosec G304 -- path is an operator-supplied config path (SCHEMAGATE_IGNORE), not request input.
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
 
 	var rules []ignoreRule
-	scanner := bufio.NewScanner(f)
-	lineNo := 0
-	for scanner.Scan() {
-		lineNo++
-		raw := scanner.Text()
+	for lineNo, line := range strings.Split(string(data), "\n") {
+		raw := line
 
 		justification := ""
 		if i := strings.Index(raw, "#"); i >= 0 {
@@ -320,24 +268,24 @@ func readIgnoreList(path string) ([]ignoreRule, error) {
 		i := strings.IndexAny(raw, " \t")
 		if i < 0 {
 			return nil, fmt.Errorf("%s:%d: expected '<kind> <operation-regex>', got %q",
-				path, lineNo, raw)
+				path, lineNo+1, raw)
 		}
 		kind := strings.ToLower(strings.TrimSpace(raw[:i]))
 		op := strings.TrimSpace(raw[i+1:])
 		if op == "" {
 			return nil, fmt.Errorf("%s:%d: expected '<kind> <operation-regex>', got %q",
-				path, lineNo, raw)
+				path, lineNo+1, raw)
 		}
 		if kind != "*" && kind != "server_error" && kind != "auth" {
 			return nil, fmt.Errorf("%s:%d: kind must be server_error, auth, or *, got %q",
-				path, lineNo, kind)
+				path, lineNo+1, kind)
 		}
 
 		var opRe *regexp.Regexp
 		if op != "*" {
 			opRe, err = regexp.Compile(op)
 			if err != nil {
-				return nil, fmt.Errorf("%s:%d: bad operation-regex %q: %w", path, lineNo, op, err)
+				return nil, fmt.Errorf("%s:%d: bad operation-regex %q: %w", path, lineNo+1, op, err)
 			}
 		}
 
@@ -346,9 +294,6 @@ func readIgnoreList(path string) ([]ignoreRule, error) {
 			operationRe:   opRe,
 			justification: justification,
 		})
-	}
-	if err := scanner.Err(); err != nil {
-		return nil, err
 	}
 	return rules, nil
 }

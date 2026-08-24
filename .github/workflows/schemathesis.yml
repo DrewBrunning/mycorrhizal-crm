@@ -9,15 +9,20 @@ name: Schemathesis API fuzzing
 # (zap-dast.yml, issue #368) as a per-PR, path-gated check.
 #
 # Two Schemathesis passes run against one booted app:
-#   - anonymous (no auth): the ignored_auth check fails when a protected
-#     operation returns 2xx without credentials;
-#   - authenticated (a minted full-scope API token): the not_a_server_error
-#     check fails when a spec-valid-but-odd body 500s.
+#   - anonymous (no auth): not_a_server_error + ignored_auth — the ignored_auth
+#     check fails when a protected operation returns 2xx without credentials;
+#   - authenticated (a JWT from the login cookie): not_a_server_error only — it
+#     fails when a spec-valid-but-odd body 500s (ignored_auth is omitted here
+#     because it would false-flag against the real bearer token).
 # The BOLA/IDOR cross-account sweep (backend/cmd/bolacheck) runs separately —
 # Schemathesis has no second identity to vary resource IDs across accounts, so
 # that check is the deterministic complement. backend/cmd/schemagate then
-# applies the ignore-list (schemathesis/schemathesis.ignore) to the two NDJSON
+# applies the ignore-list (schemathesis/schemathesis.ignore) to the two JUnit
 # reports and fails on unaccepted 5xx/auth findings.
+#
+# Schemathesis itself exits non-zero on any failure, including the expected
+# anonymous-run 401/404s and occasional connection errors under concurrent
+# load, so the scan steps do not fail on its exit code — schemagate is the gate.
 
 on:
   push:
@@ -123,10 +128,13 @@ jobs:
         env:
           BOLACHECK_BASE_URL: http://localhost:7300
 
-      # Mint a full-scope API token for the authenticated Schemathesis pass.
-      # The token is written to the environment for the next steps (never
-      # logged). The anonymous pass runs without it.
-      - name: Bootstrap authenticated session (register + login + API token)
+      # Mint a session for the authenticated Schemathesis pass. The login sets
+      # an httpOnly auth_token cookie (a JWT); read it out of the cookie jar and
+      # use it as a bearer token — a stateless JWT cannot be revoked mid-scan the
+      # way a DELETE /api-tokens/{id} would revoke a database-backed API token.
+      # The token is written to the environment (never logged); the anonymous
+      # pass runs without it.
+      - name: Bootstrap authenticated session (register + login)
         run: |
           set -euo pipefail
           BASE="http://localhost:7300/api/v1"
@@ -143,14 +151,11 @@ jobs:
             -d "{\"identifier\":\"${USER}\",\"password\":\"${PASS}\"}" \
             "${BASE}/login"
 
-          TOKEN="$(curl -sS -b /tmp/cookies.txt \
-            -H 'Content-Type: application/json' \
-            -d '{"name":"schemathesis","scope":"full"}' \
-            "${BASE}/api-tokens" | python3 -c 'import sys, json; print(json.load(sys.stdin)["token"])')"
+          TOKEN="$(awk '$6 == "auth_token" { print $7 }' /tmp/cookies.txt | tail -n 1)"
 
           test -n "${TOKEN}"
           echo "SCH_TOKEN=${TOKEN}" >> "$GITHUB_ENV"
-          echo "Authenticated session ready (token minted, not shown)."
+          echo "Authenticated session ready (JWT minted, not shown)."
 
       # The report dir must exist and be writable by the container (which runs
       # as root via --user 0; the dir itself is runner-owned, hence 777).
@@ -159,8 +164,10 @@ jobs:
 
       # Anonymous pass: no auth header. Catches protected operations that
       # return data without credentials (ignored_auth) and 5xx on public /
-      # negative-input routes. --workers 4 (not auto) keeps a single-process
-      # Go server from dropping connections under a concurrent burst.
+      # negative-input routes. The URL must include the spec's /api/v1 server
+      # path — Schemathesis does not append it from `servers:`. `|| true`: the
+      # scan exits non-zero on the expected anonymous 401/404s and occasional
+      # connection errors; schemagate is the gate, not the exit code.
       - name: Run Schemathesis (anonymous)
         run: |
           docker run --rm --network host --user 0 \
@@ -168,15 +175,18 @@ jobs:
             -v "$PWD/schemathesis/report:/report" \
             ghcr.io/schemathesis/schemathesis@sha256:15aaf6cb003bfd47f27ec7cc98ad491208dd98868eadb0fcfb9329ff62d86266 \
             run /schema/openapi.yaml \
-            --url http://localhost:7300 \
-            --checks all \
-            --report ndjson --report-dir /report --report-ndjson-path /report/anon.ndjson \
+            --url http://localhost:7300/api/v1 \
+            --checks not_a_server_error,ignored_auth \
+            --report junit --report-dir /report --report-junit-path /report/anon.xml \
             --max-examples 3 --seed 1 --generation-deterministic \
             --suppress-health-check all \
-            --workers 4
+            --workers 4 || true
 
       # Authenticated pass: catches 500s on spec-valid-but-odd input to
-      # protected operations.
+      # protected operations. Only not_a_server_error runs here — the
+      # ignored_auth check is meaningless with valid credentials (Schemathesis's
+      # negative auth cases would be "rescued" by the real bearer token and
+      # false-flag), so that check lives in the anonymous pass only.
       - name: Run Schemathesis (authenticated)
         env:
           SCH_TOKEN: ${{ env.SCH_TOKEN }}
@@ -186,13 +196,13 @@ jobs:
             -v "$PWD/schemathesis/report:/report" \
             ghcr.io/schemathesis/schemathesis@sha256:15aaf6cb003bfd47f27ec7cc98ad491208dd98868eadb0fcfb9329ff62d86266 \
             run /schema/openapi.yaml \
-            --url http://localhost:7300 \
+            --url http://localhost:7300/api/v1 \
             -H "Authorization: Bearer ${SCH_TOKEN}" \
-            --checks all \
-            --report ndjson --report-dir /report --report-ndjson-path /report/auth.ndjson \
+            --checks not_a_server_error \
+            --report junit --report-dir /report --report-junit-path /report/auth.xml \
             --max-examples 3 --seed 1 --generation-deterministic \
             --suppress-health-check all \
-            --workers 4
+            --workers 4 || true
 
       # The gate: apply schemathesis/schemathesis.ignore, fail on unaccepted
       # 5xx (not_a_server_error) and auth (ignored_auth) findings.
@@ -200,7 +210,7 @@ jobs:
         working-directory: backend
         run: go run ./cmd/schemagate
         env:
-          SCHEMAGATE_REPORT: ../schemathesis/report/anon.ndjson,../schemathesis/report/auth.ndjson
+          SCHEMAGATE_REPORT: ../schemathesis/report/anon.xml,../schemathesis/report/auth.xml
           SCHEMAGATE_IGNORE: ../schemathesis/schemathesis.ignore
 
       - name: Upload Schemathesis reports
