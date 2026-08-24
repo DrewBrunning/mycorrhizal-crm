@@ -164,6 +164,135 @@ func TestValidate_JWTSecretKey(t *testing.T) {
 	assert.True(t, hasFieldError(errs, "JWT_SECRET_KEY"), "empty JWT secret should error")
 }
 
+func TestValidate_JWTSecretKey_RejectsKnownPlaceholder(t *testing.T) {
+	// The exact value that ships in .env.example — long enough to clear the
+	// length floor, but a published constant. This is the issue #393 core:
+	// shipping the repo's own placeholder unchanged must fail boot.
+	cfg := validConfig()
+	cfg.JWTSecretKey = "your-very-long-very-secret-jwt-key-change-this-in-production"
+	errs := cfg.Validate()
+	assert.True(t, hasFieldError(errs, "JWT_SECRET_KEY"), "the .env.example placeholder secret must be rejected, got: %v", errs)
+}
+
+func TestValidate_JWTSecretKey_RejectsPlaceholderVariants(t *testing.T) {
+	// Copy-paste placeholders aren't always byte-identical: an operator may
+	// re-case, pad, or use a different-but-equally-published template. All of
+	// these must fail with the placeholder error, not slip past the length
+	// floor.
+	tests := []struct {
+		name   string
+		secret string
+	}{
+		{name: "env.example placeholder", secret: "your-very-long-very-secret-jwt-key-change-this-in-production"},
+		{name: "uppercase re-casing of placeholder", secret: "YOUR-VERY-LONG-VERY-SECRET-JWT-KEY-CHANGE-THIS-IN-PRODUCTION"},
+		{name: "whitespace-padded placeholder", secret: "  your-very-long-very-secret-jwt-key-change-this-in-production  "},
+		{name: "change-me marker", secret: "super-secret-change-me-now-please-32char"},
+		{name: "change_me marker", secret: "supersecretchange_menowplease-32char-xx"},
+		{name: "changeme marker", secret: "this-changeme-is-not-a-real-secret-32ch"},
+		{name: "your-secret marker", secret: "this-is-your-secret-key-do-not-use-32"},
+		{name: "replace-me marker", secret: "please-replace-me-with-a-real-secret-32"},
+		{name: "placeholder marker", secret: "a-long-placeholder-secret-key-32-chars"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := validConfig()
+			cfg.JWTSecretKey = tt.secret
+			errs := cfg.Validate()
+			assert.True(t, hasFieldError(errs, "JWT_SECRET_KEY"), "placeholder secret %q must be rejected, got: %v", tt.secret, errs)
+		})
+	}
+}
+
+func TestValidate_JWTSecretKey_RejectsLowEntropy(t *testing.T) {
+	// Secrets long enough to clear the length floor but with trivial
+	// entropy — a repeated character, a two-character alternation — are as
+	// forgeable as a short one and must fail too. (A repeated *word* like
+	// "secretsecret…" scores higher on Shannon entropy and is not covered;
+	// see jwtSecretEntropyBits' doc comment.)
+	tests := []struct {
+		name   string
+		secret string
+	}{
+		{name: "repeated character", secret: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+		{name: "repeated digit", secret: "77777777777777777777777777777777"},
+		{name: "two-character alternation", secret: "abababababababababababababababababab"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := validConfig()
+			cfg.JWTSecretKey = tt.secret
+			errs := cfg.Validate()
+			assert.True(t, hasFieldError(errs, "JWT_SECRET_KEY"), "low-entropy secret %q must be rejected, got: %v", tt.secret, errs)
+		})
+	}
+}
+
+func TestValidate_JWTSecretKey_AcceptsStrongSecret(t *testing.T) {
+	// A genuinely random-looking secret — the kind `openssl rand -base64 32`
+	// produces — must pass all three gates.
+	tests := []struct {
+		name   string
+		secret string
+	}{
+		{name: "base64-style random", secret: "Xk9zP2mNq4vL8rT1cV6bY3uE5wR0aJ7fS"},
+		{name: "random alphanumeric with mixed case", secret: "kF9qZ2xV7cN5bM1jH8sD4lP0tR6wE3yA"},
+		{name: "random words passphrase", secret: "harbor granite ravine lantern corset velvet!22"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := validConfig()
+			cfg.JWTSecretKey = tt.secret
+			errs := cfg.Validate()
+			assert.False(t, hasFieldError(errs, "JWT_SECRET_KEY"), "strong secret %q must be accepted, got: %v", tt.secret, errs)
+		})
+	}
+}
+
+func TestIsKnownPlaceholderJWTSecret(t *testing.T) {
+	tests := []struct {
+		name   string
+		secret string
+		expect bool
+	}{
+		{name: "exact env.example placeholder", secret: "your-very-long-very-secret-jwt-key-change-this-in-production", expect: true},
+		{name: "uppercase placeholder", secret: "YOUR-VERY-LONG-VERY-SECRET-JWT-KEY-CHANGE-THIS-IN-PRODUCTION", expect: true},
+		{name: "padded placeholder", secret: "  your-very-long-very-secret-jwt-key-change-this-in-production  ", expect: true},
+		{name: "change-this-in-production marker", secret: "anything-change-this-in-production-suffix", expect: true},
+		{name: "changeme marker", secret: "semi-changeme-anywhere-32-characters", expect: true},
+		{name: "your-secret marker", secret: "your-secret-is-not-real-32-characters", expect: true},
+		{name: "placeholder marker", secret: "some-placeholder-secret-32-characters", expect: true},
+		{name: "random-looking secret", secret: "Xk9zP2mNq4vL8rT1cV6bY3uE5wR0aJ7fS", expect: false},
+		{name: "legit secret containing the word secret", secret: "twilight-secret-garden-passphrase-42!", expect: false},
+		{name: "dev-only secret", secret: "dev-secret-key-for-local-testing-only-not-for-prod", expect: false},
+		{name: "e2e test secret", secret: "test-secret-key-for-e2e-testing-minimum-32-chars", expect: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expect, isKnownPlaceholderJWTSecret(tt.secret))
+		})
+	}
+}
+
+func TestJWTSecretEntropyBits(t *testing.T) {
+	tests := []struct {
+		name   string
+		secret string
+		min    float64
+		max    float64
+	}{
+		{name: "repeated character is ~0", secret: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", min: 0, max: 0.001},
+		{name: "random-looking secret scores high", secret: "Xk9zP2mNq4vL8rT1cV6bY3uE5wR0aJ7fS", min: minJWTSecretEntropyBits, max: 1e9},
+		{name: "passphrase scores high", secret: "harbor granite ravine lantern corset velvet!22", min: minJWTSecretEntropyBits, max: 1e9},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			bits := jwtSecretEntropyBits(tt.secret)
+			assert.GreaterOrEqual(t, bits, tt.min, "entropy must be at least %f", tt.min)
+			assert.LessOrEqual(t, bits, tt.max, "entropy must be at most %f", tt.max)
+		})
+	}
+}
+
 func TestValidate_SQLiteDBPath(t *testing.T) {
 	cfg := validConfig()
 	cfg.DBPath = ""

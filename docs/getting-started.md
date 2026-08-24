@@ -20,7 +20,7 @@ After adjusting the environment variables as needed you can run:
 
 | Variable | Description |
 |---|---|
-| `JWT_SECRET_KEY` | Random string used for JWT signing (minimum 32 characters) |
+| `JWT_SECRET_KEY` | Random string used for JWT signing (minimum 32 bytes; the server refuses to start with a placeholder or weak secret — generate with `openssl rand -base64 32`) |
 | `FRONTEND_URL` | Used for CORS headers. Wildcard (`*`) is allowed but not recommended for production use |
 | `RESEND_API_KEY` | API key for [Resend](https://resend.com), used to send e-mail notifications. The generous free tier is more than enough for any personal setup |
 | `RESEND_FROM_EMAIL` | Sender e-mail address for Resend, needs to be configured in Resend |

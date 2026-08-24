@@ -7,6 +7,7 @@ package config
 import (
 	"fmt"
 	"log"
+	"math"
 	"net"
 	"os"
 	"path/filepath"
@@ -251,6 +252,88 @@ func getScopesEnv(scopes string) []string {
 	return scopeList
 }
 
+// knownPlaceholderJWTSecrets are the exact secret values that ship as
+// copy-paste defaults in this repo's .env.example files (the value has never
+// changed since the fork). They are published constants by definition, so
+// even though they clear the length floor, booting with one must fail —
+// anyone who can read the repo can sign tokens with it.
+var knownPlaceholderJWTSecrets = []string{
+	"your-very-long-very-secret-jwt-key-change-this-in-production",
+}
+
+// placeholderJWTSecretMarkers are unambiguous fragments that indicate a
+// template/example secret rather than a real one. Matched case-insensitively
+// as substrings so a padded or re-cased copy of a placeholder is still
+// caught. Kept deliberately narrow: a false positive here is a legitimate
+// deployment refusing to boot, so only markers that no real random secret or
+// passphrase would contain belong on this list.
+var placeholderJWTSecretMarkers = []string{
+	"change-this-in-production",
+	"changeme",
+	"change-me",
+	"change_me",
+	"your-secret",
+	"yoursecret",
+	"replace-me",
+	"replaceme",
+	"replace_me",
+	"placeholder",
+}
+
+// isKnownPlaceholderJWTSecret reports whether a JWT secret is a published
+// placeholder value, matched exactly or by an unambiguous marker. Case- and
+// whitespace-insensitive, since an operator copying .env.example verbatim is
+// exactly the failure mode this guard exists for.
+func isKnownPlaceholderJWTSecret(secret string) bool {
+	lower := strings.ToLower(strings.TrimSpace(secret))
+	for _, p := range knownPlaceholderJWTSecrets {
+		if lower == p {
+			return true
+		}
+	}
+	for _, m := range placeholderJWTSecretMarkers {
+		if strings.Contains(lower, m) {
+			return true
+		}
+	}
+	return false
+}
+
+// minJWTSecretEntropyBits is the lowest total Shannon entropy (in bits) a
+// JWT secret may carry. It sits far below what any random 32-byte secret
+// produces (base64: ~190 bits; random alphanumeric: ~150 bits), so the only
+// secrets it rejects are degenerate values that clear the length floor but
+// are still trivially guessable — a repeated character, a near-uniform
+// two-character alternation, a single digit. A passphrase of random words
+// clears it comfortably. It is a deliberate heuristic backstop, not a
+// predictability guarantee: a string that is long, high-cardinality and
+// *structured* (a word repeated, the alphabet in order) still scores high,
+// which is why the placeholder markers above exist and why the primary floor
+// stays the ≥32-byte length requirement.
+const minJWTSecretEntropyBits = 40.0
+
+// jwtSecretEntropyBits estimates the total Shannon entropy of a secret in
+// bits. It iterates over runes so a non-ASCII passphrase is scored by its
+// actual character diversity, not penalized for UTF-8 byte length. The metric
+// is a cheap backstop for degenerate secrets only — see minJWTSecretEntropyBits.
+func jwtSecretEntropyBits(secret string) float64 {
+	counts := make(map[rune]int)
+	var total int
+	for _, r := range secret {
+		counts[r]++
+		total++
+	}
+	if total == 0 {
+		return 0
+	}
+	var bits float64
+	for _, n := range counts {
+		p := float64(n) / float64(total)
+		bits -= p * math.Log2(p)
+	}
+	return bits * float64(total)
+}
+
 // ValidationError represents a configuration validation error
 type ValidationError struct {
 	Field   string
@@ -265,7 +348,14 @@ func (e ValidationError) Error() string {
 func (c *Config) Validate() []ValidationError {
 	var errors []ValidationError
 
-	// Validate JWT Secret Key - critical for security
+	// Validate JWT Secret Key - critical for security. The checks are ordered
+	// from most-certain to most-heuristic so a broken secret surfaces the
+	// first specific reason, not a vague later one: empty, then too short,
+	// then a known published placeholder, then too little entropy. All three
+	// gates exist because every one of them makes every token forgeable: an
+	// empty/short secret is brute-forceable, and a long-but-published or
+	// long-but-predictable secret is forgeable by anyone who has read the
+	// repo or the operator's shell history.
 	if c.JWTSecretKey == "" {
 		errors = append(errors, ValidationError{
 			Field:   "JWT_SECRET_KEY",
@@ -274,7 +364,17 @@ func (c *Config) Validate() []ValidationError {
 	} else if len(c.JWTSecretKey) < 32 {
 		errors = append(errors, ValidationError{
 			Field:   "JWT_SECRET_KEY",
-			Message: fmt.Sprintf("JWT secret key is too short (%d characters). Must be at least 32 characters for security.", len(c.JWTSecretKey)),
+			Message: fmt.Sprintf("JWT secret key is too short (%d bytes). Must be at least 32 bytes for security.", len(c.JWTSecretKey)),
+		})
+	} else if isKnownPlaceholderJWTSecret(c.JWTSecretKey) {
+		errors = append(errors, ValidationError{
+			Field:   "JWT_SECRET_KEY",
+			Message: "JWT secret key is a known placeholder value (it ships as the default in .env.example). Every token signed with it is forgeable by anyone who has read the repo. Generate a fresh secret, e.g. `openssl rand -base64 32`.",
+		})
+	} else if jwtSecretEntropyBits(c.JWTSecretKey) < minJWTSecretEntropyBits {
+		errors = append(errors, ValidationError{
+			Field:   "JWT_SECRET_KEY",
+			Message: fmt.Sprintf("JWT secret key has too little entropy (est. %.0f bits). A long but predictable secret is as forgeable as a short one; generate a random secret, e.g. `openssl rand -base64 32`.", jwtSecretEntropyBits(c.JWTSecretKey)),
 		})
 	}
 

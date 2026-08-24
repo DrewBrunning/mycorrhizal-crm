@@ -61,7 +61,7 @@ a swap-able algorithm interface. This is a **conscious pre-1.0 decision**, not a
 
 - Swapping either algorithm today is a code change plus a credential-rotation event, and the
   rotation machinery already exists: JWT keys rotate via `TokenVersion` + the JWT secret
-  validation in `config/config.go:269-279` (all sessions die on bump), and bcrypt hashes can
+  validation in `config/config.go:351-379` (all sessions die on bump), and bcrypt hashes can
   migrate via the P1 rehash-on-login path.
 - ASVS 6.2.4 (algorithms swappable) is therefore marked **partial** below, with this position as
   the cited reason.
@@ -72,7 +72,10 @@ a swap-able algorithm interface. This is a **conscious pre-1.0 decision**, not a
 Related at-rest note: the TOTP secret and integration credentials are AES-256-GCM encrypted with a
 key HKDF-derived from `JWT_SECRET_KEY` (`backend/services/credential_crypto.go:22-29`). Rotating
 `JWT_SECRET_KEY` therefore invalidates those stored secrets (documented at `credential_crypto.go:20-21`);
-the ≥ 32-char secret enforcement (`config/config.go:269-279`) is what keeps that key strong.
+the ≥ 32-byte length plus placeholder/entropy rejection at boot (`config/config.go:351-379`) is what
+keeps that key strong. TOTP/recovery secrets are generated at runtime from `crypto/rand` (no
+env-configurable default to guard), and the credential key is derived from `JWT_SECRET_KEY`, so the
+JWT checks cover every security-critical secret that can be configured (issue #393).
 
 ---
 
@@ -100,9 +103,9 @@ L3-only, out of scope: 1.11.3.
 | 1.5.2 | No serialization with untrusted clients | satisfied | Wire format is JSON DTOs only (`encoding/json`); no gob/pickle/object serialization anywhere |
 | 1.5.3 | Input validation on trusted layer | satisfied | `ValidateJSONMiddleware` runs server-side on every input route (`backend/middleware/validation.go:332-368`); client-side validation is UX only |
 | 1.5.4 | Output encoding near the interpreter | satisfied | React auto-escapes all rendering (no `dangerouslySetInnerHTML` in `frontend/src`); CSV formula injection neutralized at the export boundary (`backend/controllers/export_controller.go:41-57`) |
-| 1.6.1 | Cryptographic key management policy | partial | No formal key-lifecycle document; JWT secret ≥ 32 chars enforced at boot (`backend/config/config.go:269-279`); TOTP/integration secrets AES-256-GCM at rest (`backend/services/credential_crypto.go`). Gap: rotation runbook is P2-referenced but not a doc. |
+| 1.6.1 | Cryptographic key management policy | partial | No formal key-lifecycle document; JWT secret validated at boot — ≥ 32 bytes, no known placeholder, minimum entropy (`backend/config/config.go:351-379`); TOTP/integration secrets AES-256-GCM at rest (`backend/services/credential_crypto.go`). Gap: rotation runbook is P2-referenced but not a doc. |
 | 1.6.2 | Key vault / API-based key access | not-applicable | Self-hosted single process; secrets come from environment (`backend/.env.example`); see P2 (crypto agility position) |
-| 1.6.3 | Keys replaceable, re-encrypt path defined | partial | JWT rotation is clean (`TokenVersion`, `config/config.go:269-279`); re-encrypting TOTP/integration secrets after key rotation is not automated (`credential_crypto.go:20-21` documents the coupling) |
+| 1.6.3 | Keys replaceable, re-encrypt path defined | partial | JWT rotation is clean (`TokenVersion`, `config/config.go:351-379`); re-encrypting TOTP/integration secrets after key rotation is not automated (`credential_crypto.go:20-21` documents the coupling) |
 | 1.6.4 | Client-side secrets treated as insecure | satisfied | Session token is an httpOnly cookie, never JS-readable (`frontend/src/auth.ts:127-134`); no secrets in `localStorage` |
 | 1.7.1 | Common logging format | satisfied | zerolog JSON everywhere (`backend/logger/logger.go:26-63`) |
 | 1.7.2 | Logs shipped to remote system | not-applicable | Self-hosted; logs go to stdout → operator's docker log driver |
@@ -180,7 +183,7 @@ L3-only, out of scope: 3.6.1, 3.6.2.
 |---|---|---|---|
 | 3.1.1 | No session tokens in URLs | satisfied | Tokens live in httpOnly cookie / `Authorization` header only (`backend/middleware/auth.go:23-43`); OIDC state/nonce in cookies (`oidc_controller.go:80-83`) |
 | 3.2.1 | New token on authentication | satisfied | Fresh HS256 JWT minted at login and at 2FA completion (`backend/services/user_service.go:32-61`, `two_factor_controller.go:393-410`) |
-| 3.2.2 | ≥ 64 bits entropy | satisfied | Token is a signed assertion; the signing secret is ≥ 32 bytes (256 bits) enforced at boot (`config/config.go:269-279`) |
+| 3.2.2 | ≥ 64 bits entropy | satisfied | Token is a signed assertion; the signing secret is ≥ 32 bytes (256 bits) enforced at boot, and placeholder/low-entropy secrets are rejected (`config/config.go:351-379`) |
 | 3.2.3 | Tokens in secure browser storage | satisfied | httpOnly cookie (`user_controller.go:205-214`); never `localStorage`/`sessionStorage` (`frontend/src/auth.ts:127-134`) |
 | 3.2.4 | Approved crypto for tokens | satisfied | HS256 (HMAC-SHA-256), explicit `SigningMethodHMAC` check (`middleware/auth.go:66-98`) |
 | 3.3.1 | Logout/expiry invalidate session | satisfied | Logout clears cookies (`user_controller.go:232-236`); JWT expiry 96 h default (`config/config.go:96-101`); `token_version` revocation (`middleware/auth.go:141-154`); test `middleware/auth_lifecycle_test.go:59-84` |
@@ -262,7 +265,7 @@ L3-only, out of scope: none in this chapter (5.4 is L2).
 | 6.3.1 | CSPRNG for secrets | satisfied | `crypto/rand` for API tokens (`api_token_controller.go:65-70`), reset tokens (`password_reset_service.go:22-25`), recovery codes (`twofactor.go:103-122`), GCM nonces |
 | 6.3.2 | UUID v4 via CSPRNG | satisfied | `google/uuid` v4 in `BeforeCreate` (e.g. `models/circle.go:31`, `models/contact.go:415`) |
 | 6.3.3 | Entropy under load | out-of-scope | L3 |
-| 6.4.1 | Secrets-management solution | partial | Env-var secrets with boot-time validation (`config/config.go:269-279`); no vault (self-hosted; see P2). |
+| 6.4.1 | Secrets-management solution | partial | Env-var secrets with boot-time validation — length, placeholder, and entropy checks on `JWT_SECRET_KEY` (`config/config.go:351-379`); no vault (self-hosted; see P2). |
 | 6.4.2 | Key material isolated from app | not-applicable | Single process; the secret must live in the process env by design (self-hosted; see P2) |
 
 ## V7 — Error Handling and Logging
