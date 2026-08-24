@@ -406,13 +406,19 @@ L3-only, out of scope: 14.1.5.
 | 14.4.2 | `Content-Disposition: attachment` on API responses | partial | Set on file downloads (`attachment_controller.go:212-238`); JSON API responses don't carry it. Gap: mostly cosmetic for a JSON SPA but requested by ASVS. |
 | 14.4.3 | CSP header | satisfied | API: `default-src 'none'; frame-ancestors 'none'` (`security_headers.go:23`); SPA: strict CSP in nginx (`docker/nginx.conf:21`) |
 | 14.4.4 | `X-Content-Type-Options: nosniff` | satisfied | `security_headers.go:33`, `docker/nginx.conf:19` |
-| 14.4.5 | HSTS on all responses | satisfied | `max-age=31536000; includeSubDomains` when HTTPS configured (`security_headers.go:36-38`); boot refuses the insecure combo (`config.go:375-380`) |
+| 14.4.5 | HSTS on all responses | satisfied | `max-age=31536000; includeSubDomains` when HTTPS configured — API (`security_headers.go:36-38`) and nginx edge (`docker/nginx.conf` + `docker/entrypoint.sh`, gated on `COOKIE_SECURE`); boot refuses the insecure combo (`config.go:375-380`) |
 | 14.4.6 | Referrer-Policy | satisfied | `strict-origin-when-cross-origin` (`security_headers.go:34`) |
 | 14.4.7 | Not frameable | satisfied | `X-Frame-Options: DENY` + `frame-ancestors 'none'` (`security_headers.go:32`, `security_headers_test.go:12-48`) |
 | 14.5.1 | Only methods in use accepted | satisfied | Route table defines the set; others 404 (`routes/routes.go`) |
 | 14.5.2 | Origin not used for authz | satisfied | Auth is cookie/header-based; CORS is origin-based *only for cross-origin policy*, never for decisions |
 | 14.5.3 | CORS strict allow-list, no "null" | satisfied | `AllowOrigins = [FrontendURL]`; `"*"` refused in release (`main.go:191-209`, `config.go:359-364`) |
 | 14.5.4 | Proxy-supplied headers authenticated | satisfied | No proxy headers are trusted for auth; `X-Forwarded-*` used only for logging/ClientIP via validated trusted proxies (`config.go:410-427`, `main.go:231-233`) |
+
+`Permissions-Policy` is not an ASVS 4.0.3 L2 control, but it is set on every
+response (`camera=(), microphone=(), geolocation=(), interest-cohort=()` — API
+`security_headers.go`, SPA `docker/nginx.conf` + `frontend/nginx.conf`). It
+closes the last remaining gap in the "Network, Headers" hardening checklist
+(issue #364).
 
 ---
 

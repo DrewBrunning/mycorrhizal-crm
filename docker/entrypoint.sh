@@ -40,4 +40,18 @@ if [ "$NEEDS_CHOWN" = "1" ]; then
     fi
 fi
 
+# Render the nginx-edge HSTS header (issue #364). nginx.conf includes
+# /etc/nginx/hsts.conf in every add_header block, so this file must always
+# exist; it is empty unless HSTS is enabled. HSTS is gated on the same
+# COOKIE_SECURE signal the backend uses (backend/main.go -> SecurityHeadersMiddleware)
+# so the two never disagree about whether TLS sits in front. The default
+# docker-compose deployment is plain HTTP (7300:8080), where a blanket HSTS
+# would make browsers refuse the app for the max-age duration.
+: > /etc/nginx/hsts.conf
+case "${COOKIE_SECURE:-false}" in
+    1|t|T|true|TRUE|True)
+        echo 'add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;' > /etc/nginx/hsts.conf
+        ;;
+esac
+
 exec "$@"
