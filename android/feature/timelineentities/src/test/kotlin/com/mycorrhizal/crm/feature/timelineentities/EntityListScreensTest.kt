@@ -24,6 +24,7 @@ import com.mycorrhizal.crm.model.network.Gift
 import com.mycorrhizal.crm.model.network.GiftStatuses
 import com.mycorrhizal.crm.model.network.LifeEvent
 import com.mycorrhizal.crm.model.network.Preference
+import com.mycorrhizal.crm.model.network.PreferenceSensitivities
 import com.mycorrhizal.crm.model.registry.PreferenceSection
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
@@ -148,6 +149,43 @@ class EntityListScaffoldTest {
         composeTestRule.onNodeWithText("Open item").assertIsDisplayed()
         composeTestRule.onNodeWithText("Done item").assertIsDisplayed()
         assertEquals(2, extraActionCount)
+    }
+
+    // #386: a screen can replace the flat label with a rich row via the
+    // rowContent slot while the scaffold keeps the delete-confirm flow.
+    @Test
+    fun `rowContent replaces the label and delete-confirm still works`() {
+        var deletedId: String? = null
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                EntityListScaffold(
+                    title = "Preferences",
+                    addLabel = "New preference",
+                    uiState = EntityListUiState(
+                        items = listOf(EntityItem(id = "p1", label = "food: Peanuts", sectionKey = "food_drink")),
+                    ),
+                    onAdd = {},
+                    onItemClick = {},
+                    onDelete = { deletedId = it },
+                    onErrorShown = {},
+                    onBack = {},
+                    rowContent = { item ->
+                        Text("Rich row ${item.id}")
+                    },
+                    dialog = {},
+                )
+            }
+        }
+
+        // The rich content renders; the flat label does not.
+        composeTestRule.onNodeWithText("Rich row p1").assertIsDisplayed()
+        composeTestRule.onNodeWithText("food: Peanuts").assertDoesNotExist()
+
+        // The scaffold's delete-confirm still works on the custom row.
+        composeTestRule.onNodeWithContentDescription("Delete food: Peanuts").performClick()
+        composeTestRule.onNodeWithText("Delete item?").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Delete").performClick()
+        assertEquals("p1", deletedId)
     }
 
     @Test
@@ -580,6 +618,85 @@ class PreferenceDialogTest {
         composeTestRule.onNodeWithText("matcha").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Iced only").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Private").performScrollTo().assertIsDisplayed()
+    }
+}
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+class PreferencesRowTest {
+    @get:Rule
+    val composeTestRule = createComposeRule()
+
+    private fun setContent(preference: Preference) {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                PreferenceRow(preference)
+            }
+        }
+    }
+
+    // #386: the list must not silently drop notes or sensitivity — the old
+    // flat-label row showed only "category: key = value".
+    @Test
+    fun `row renders localized category key value and notes`() {
+        setContent(
+            Preference(
+                id = "p1",
+                entityId = "uid",
+                category = "media_tv",
+                key = "favorite",
+                value = "Severance",
+                notes = "Season 1 only",
+            ),
+        )
+        composeTestRule.onNodeWithText("TV show").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Favorite").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Severance").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Season 1 only").assertIsDisplayed()
+    }
+
+    @Test
+    fun `non-normal sensitivity renders a badge and normal renders none`() {
+        setContent(
+            Preference(
+                id = "p1",
+                entityId = "uid",
+                category = "food",
+                value = "Peanuts",
+                sensitivity = PreferenceSensitivities.SECRET,
+            ),
+        )
+        composeTestRule.onNodeWithText("Secret").assertIsDisplayed()
+    }
+
+    @Test
+    fun `normal sensitivity shows no badge`() {
+        setContent(
+            Preference(
+                id = "p1",
+                entityId = "uid",
+                category = "food",
+                value = "Vegetarian",
+                sensitivity = PreferenceSensitivities.NORMAL,
+            ),
+        )
+        composeTestRule.onNodeWithText("Normal").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Secret").assertDoesNotExist()
+    }
+
+    @Test
+    fun `keyless row omits the key label`() {
+        setContent(
+            Preference(
+                id = "p1",
+                entityId = "uid",
+                category = "food",
+                value = "Vegetarian",
+            ),
+        )
+        composeTestRule.onNodeWithText("Vegetarian").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Favorite").assertDoesNotExist()
     }
 }
 
