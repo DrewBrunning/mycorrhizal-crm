@@ -85,7 +85,7 @@ L3-only, out of scope: 1.11.3.
 
 | ID | Requirement (abbrev.) | Status | Evidence |
 |---|---|---|---|
-| 1.1.1 | Secure SDLC | satisfied | Issues-first backlog, one branch per concern, CI gates — `CLAUDE.md` (Workflow), `.github/workflows/` |
+| 1.1.1 | Secure SDLC | satisfied | Issues-first backlog, one branch per concern, CI gates — `CLAUDE.md` (Workflow), `.github/workflows/`. Static (SAST/SCA) and dynamic (DAST) testing: OWASP ZAP weekly sweep (`zap/zap-dast.yaml`, `.github/workflows/zap-dast.yml`, gate `backend/cmd/zapgate` + canary `backend/cmd/dastcanary`) |
 | 1.1.2 | Threat modeling per design change | partial | No formal per-sprint threat model; threat analysis lives in ADRs (`docs/adrs/`) and the 14-finding security review that all findings were patched (see Security posture, `CLAUDE.md`). Gap: no standing threat-model step. |
 | 1.1.3 | User stories carry security constraints | satisfied | Issues carry explicit acceptance/security criteria, e.g. the "verified by" gates in this repo's security tickets (see e.g. T75/T26 records in `CLAUDE.md`). |
 | 1.1.4 | Trust boundaries documented | satisfied | `docs/deployment.md:17` (TLS at external reverse proxy, nginx→app loopback); Cookie/`COOKIE_SECURE` boundary in `.env.example:110-122`; CORS boundary `backend/main.go:191-209` |
@@ -447,6 +447,9 @@ closes the last remaining gap in the "Network, Headers" hardening checklist
   absence gets recorded; the V7.2.2 row is where a new access-denied path gets noted.
 - **New dependencies:** update V14.2.1/14.2.4 if the CI scanner set changes; the SBOM row if
   image attestation changes.
+- **New ZAP findings:** accepted DAST findings are recorded in `zap/dast.ignore` (ignore-list with
+  justification, same shape as `android/.mobsf`); the canary self-test (`backend/cmd/dastcanary`)
+  must stay vulnerable-by-design or the DAST gate goes blind.
 - **N/A rows are decisions:** if a control starts to apply (say, a second process or a managed
   database appears), its row must flip from `not-applicable` to a real status.
 - **grep-ability check:** no row is `satisfied` without a `file:line` or test-name citation; a

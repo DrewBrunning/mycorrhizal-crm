@@ -1,0 +1,37 @@
+# Accepted DAST (OWASP ZAP) findings — issue #368.
+#
+# Read by backend/cmd/zapgate. Format: one rule per line,
+# `<rule> <risk> <url-regex>`, where:
+#   - rule is a ZAP pluginid (e.g. 40045) or alertRef (e.g. 10055-6, a specific
+#     sub-finding under one plugin) — an exact match — or `*`
+#   - risk is `high`, `medium`, or `*` (case-insensitive)
+#   - url-regex is a Go regexp matched against the finding's URL, or `*`
+# A `#` comment on the rule line is captured as the justification and logged on
+# every [ACCEPT]. This is the same "ignore-list with justification" shape as
+# android/.mobsf and docker/cis-hardening.ignore: a High/Medium finding on the
+# app is a hard failure unless a line here accepts it, and every acceptance
+# must carry a reason that survives review.
+#
+# The canary (dastcanary, localhost:7301) is deliberately vulnerable and its
+# findings are expected — those never need an entry here; zapgate treats them
+# as the self-test signal, not app findings.
+
+# Spring4Shell (40045) is a Java/Spring RCE; the backend is Go/Gin and the
+# image contains no Java/Spring at all. ZAP's 40045 false-positives on the 400
+# returned by /check-password-strength when a payload merely echoes a class
+# name into the error path. No Spring => no Spring4Shell.
+40045 high .*check-password-strength.*  # false positive: Go/Gin app, no Spring in the image
+
+# The SPA CSP is a deliberate, documented posture (docker/nginx.conf:21 and
+# frontend/nginx.conf). style-src 'unsafe-inline' is required by MUI's
+# CSS-in-JS (inline <style> tags); the XSS-relevant directive, script-src,
+# stays 'self' with no unsafe-inline. Only the nginx-served SPA HTML carries
+# this CSP — the JSON API emits default-src 'none'
+# (backend/middleware/security_headers.go), which does not trip this rule.
+10055-6 medium .*  # MUI CSS-in-JS requires style-src 'unsafe-inline'; script-src stays 'self'
+
+# form-action is left unset: the SPA makes no HTML <form> submissions (every
+# write is a same-origin fetch/XHR), so an unrestricted form-action has no
+# reachable sink. Candidate for `form-action 'none'` in a future CSP hardening
+# pass — deliberately not part of this (DAST-infrastructure) ticket.
+10055-13 medium .*  # SPA makes no HTML <form> submissions; form-action has no sink
