@@ -13,6 +13,7 @@ import (
 	"mycorrhizal/httputil"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
+	"mycorrhizal/photostore"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -232,6 +233,14 @@ func processAndSavePhoto(file *multipart.FileHeader, uploadDir string) (string, 
 	}
 
 	// Rewind the file reader
+	src.Seek(0, 0)
+
+	// Reject a decompression bomb (huge declared dimensions, tiny wire size)
+	// before Decode allocates its full raster — see
+	// photostore.CheckImageDimensions.
+	if err := photostore.CheckImageDimensions(src); err != nil {
+		return "", "", err
+	}
 	src.Seek(0, 0)
 
 	// Decode the image (handle JPEG, PNG, and HEIC)

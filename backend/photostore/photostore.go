@@ -18,9 +18,11 @@ package photostore
 import (
 	"bytes"
 	"encoding/base64"
+	"fmt"
 	"image"
 	"image/jpeg"
 	"image/png"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -34,6 +36,41 @@ import (
 	"github.com/nfnt/resize"
 )
 
+// maxImagePixels caps the decoded pixel count (width*height) of an image
+// before Decode allocates its full in-memory raster. A compressed-byte-size
+// cap alone does not stop a decompression bomb: a highly compressible image
+// (e.g. a large solid-color PNG) can be a few KB on the wire yet declare
+// dimensions that decode to gigabytes of pixel data — none of Go's
+// image/jpeg, image/png, or the heic decoder impose a dimension limit of
+// their own. Every caller of this package downsizes to <=400x400 for
+// storage anyway, so 100MP comfortably covers real photos (including
+// panoramas) while refusing bomb-scale dimensions.
+const maxImagePixels = 100_000_000
+
+// CheckImageDimensions reads r's declared width/height via the standard
+// image.DecodeConfig dispatch (jpeg/png self-register on package import;
+// the heic package registers itself in its own init — see
+// github.com/gen2brain/heic's init()) and rejects anything whose pixel
+// count exceeds maxImagePixels *before* a caller's full Decode allocates
+// memory for it. DecodeConfig only reads the header (e.g. a PNG's IHDR
+// chunk), so this is cheap even on the common, legitimate case.
+//
+// A DecodeConfig failure is not reported here — an unrecognized or
+// malformed header doesn't necessarily mean the caller's real Decode will
+// also fail, and this check's only job is refusing an oversized image, not
+// validating the format. r must support being read again (e.g. re-Seek to
+// 0, or pass a fresh bytes.Reader) since this consumes some of it.
+func CheckImageDimensions(r io.Reader) error {
+	cfg, _, err := image.DecodeConfig(r)
+	if err != nil {
+		return nil
+	}
+	if int64(cfg.Width)*int64(cfg.Height) > maxImagePixels {
+		return fmt.Errorf("image dimensions too large: %dx%d exceeds the %d pixel limit", cfg.Width, cfg.Height, maxImagePixels)
+	}
+	return nil
+}
+
 // SaveContactPhoto saves photo data to disk and generates a thumbnail.
 // Returns the photo filename (relative to photoDir) and a base64 data-URL
 // thumbnail suitable for storing directly on Contact.PhotoThumbnail.
@@ -45,6 +82,10 @@ func SaveContactPhoto(photoData []byte, mediaType string, photoDir string) (stri
 	// Detect content type if not provided
 	if mediaType == "" {
 		mediaType = http.DetectContentType(photoData)
+	}
+
+	if err := CheckImageDimensions(bytes.NewReader(photoData)); err != nil {
+		return "", "", err
 	}
 
 	// Decode the image

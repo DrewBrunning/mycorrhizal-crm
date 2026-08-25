@@ -13,6 +13,7 @@ import (
 
 	"mycorrhizal/config"
 	"mycorrhizal/database"
+	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 
 	"github.com/gin-gonic/gin"
@@ -22,7 +23,10 @@ import (
 )
 
 // setupAttachmentRouter builds a real-schema router over a temp attachments
-// directory.
+// directory. It wires the real DefaultBodySizeLimitMiddleware (issue #375:
+// hostile-input E2E must exercise the actual request pipeline, not call
+// controller functions directly bypassing the limits main.go puts in front
+// of them) exactly as main.go does, ahead of the route handlers.
 func setupAttachmentRouter(t *testing.T) (*gorm.DB, *gin.Engine, models.User, string) {
 	t.Helper()
 	db, err := database.InitDB(filepath.Join(t.TempDir(), "attachments-test.db"))
@@ -35,6 +39,8 @@ func setupAttachmentRouter(t *testing.T) (*gorm.DB, *gin.Engine, models.User, st
 
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
+	router.MaxMultipartMemory = 10 << 20
+	router.Use(middleware.DefaultBodySizeLimitMiddleware())
 	router.Use(func(c *gin.Context) {
 		c.Set("db", db)
 		c.Set("userID", user.ID)
@@ -195,6 +201,55 @@ func TestAttachmentRejectsSVGAndHTML(t *testing.T) {
 	var count int64
 	require.NoError(t, db.Model(&models.Attachment{}).Count(&count).Error)
 	assert.Zero(t, count, "rejected uploads must not leave records")
+}
+
+// TestAttachmentPolyglotMislabeledContentSniffed is issue #375's E2E case:
+// TestAttachmentRejectsSVGAndHTML above proves SVG/HTML is rejected when
+// honestly labeled. This proves the rejection is driven by sniffing the
+// actual bytes (http.DetectContentType + hasMarkupSignature), not by
+// trusting the filename or the client-declared multipart Content-Type — an
+// attacker controls both of those, so a defense that trusted either would be
+// trivially bypassed by relabeling an SVG/HTML payload as an image.
+func TestAttachmentPolyglotMislabeledContentSniffed(t *testing.T) {
+	db, router, user, dir := setupAttachmentRouter(t)
+	contact := models.Contact{UserID: user.ID, Firstname: "Ada"}
+	require.NoError(t, db.Create(&contact).Error)
+
+	// SVG content, labeled as an ordinary PNG image (extension + declared
+	// Content-Type both lie). Must still be rejected.
+	svg := []byte(`<svg xmlns="http://www.w3.org/2000/svg"><script>alert(document.cookie)</script></svg>`)
+	rec := uploadFile(t, router, itoa2(contact.ID), "vacation-photo.png", "image/png", svg)
+	assert.Equal(t, http.StatusBadRequest, rec.Code, "SVG mislabeled as PNG must still be rejected")
+
+	// HTML content, labeled as a PDF. Must still be rejected.
+	html := []byte(`<!doctype html><html><body><script>alert(document.cookie)</script></body></html>`)
+	rec = uploadFile(t, router, itoa2(contact.ID), "invoice.pdf", "application/pdf", html)
+	assert.Equal(t, http.StatusBadRequest, rec.Code, "HTML mislabeled as PDF must still be rejected")
+
+	var count int64
+	require.NoError(t, db.Model(&models.Attachment{}).Count(&count).Error)
+	assert.Zero(t, count, "rejected mislabeled uploads must not leave records")
+
+	// The converse also holds: a genuine image mislabeled with the WRONG
+	// extension/content-type is still accepted (sniffing isn't fooled the
+	// other direction either) and, once stored, downloads with the sniffed
+	// (correct) type plus nosniff — the header a browser actually obeys.
+	png := realTinyPNG(t)
+	rec = uploadFile(t, router, itoa2(contact.ID), "notes.txt", "text/plain", png)
+	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
+	att := decodeAttachment(t, rec)
+	att = reloadAttachment(t, db, att.ID)
+	assert.Equal(t, "image/png", att.ContentType, "content type is sniffed from bytes, not trusted from the mislabeled extension")
+
+	dl := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/attachments/"+itoa2(att.ID)+"/download", nil)
+	router.ServeHTTP(dl, req)
+	require.Equal(t, http.StatusOK, dl.Code)
+	assert.Equal(t, "nosniff", dl.Header().Get("X-Content-Type-Options"))
+	assert.Contains(t, dl.Header().Get("Content-Disposition"), "inline", "png is on the inline allow-list")
+
+	_, err := os.Stat(filepath.Join(dir, att.StoredName))
+	require.NoError(t, err)
 }
 
 func TestDeleteContactRemovesAttachmentFiles(t *testing.T) {
