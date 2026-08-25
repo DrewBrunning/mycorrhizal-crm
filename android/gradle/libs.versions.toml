@@ -36,6 +36,10 @@ espresso = "3.7.0"
 # scans the test-results XML (a test that passed only on retry still leaves
 # its failure in the XML even though the task succeeded).
 gradleTestRetry = "1.6.5"
+# Issue #385: SQLCipher whole-DB encryption of the Room mirror
+# (mycorrhizal-cache.db). Ships x86_64 + arm64-v8a .so ABIs so Robolectric
+# (JVM) unit tests exercise the same native path as devices.
+sqlcipher = "4.18.0"
 # Issue #358: detekt is the Kotlin smell/correctness analyzer complementing
 # CodeQL (taint) + mobsfscan (manifest/intent/secret rules) for the Android
 # app. Applied to every module via the build-logic convention plugins.
@@ -89,6 +93,9 @@ room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 room-testing = { group = "androidx.room", name = "room-testing", version.ref = "room" }
+
+# Issue #385: SQLCipher for Android (Room integration via SupportOpenHelperFactory).
+sqlcipher-android = { group = "net.zetetic", name = "sqlcipher-android", version.ref = "sqlcipher" }
 
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 okhttp-logging = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" }

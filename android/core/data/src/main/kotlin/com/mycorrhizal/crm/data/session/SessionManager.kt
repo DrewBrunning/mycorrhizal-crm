@@ -27,6 +27,21 @@ interface SessionPrefsStorage {
 }
 
 /**
+ * Issue #385: wipes locally-cached user data (the Room mirror, cached images)
+ * when a session ends. Runs inside [SessionManager.clearSession] so logout and
+ * account-removal (invalid-token) paths both purge offline PII from the device.
+ * Default no-op keeps `DefaultSessionManager` a plain JVM object for tests.
+ */
+interface SessionDataCleaner {
+    suspend fun clear()
+}
+
+/** [SessionDataCleaner] that does nothing — the unit-test default. */
+object NoopSessionDataCleaner : SessionDataCleaner {
+    override suspend fun clear() = Unit
+}
+
+/**
  * Central session holder. Implements [TokenProvider] and [BaseUrlProvider]
  * from an in-memory cache so the synchronous OkHttp interceptors never touch
  * disk. The cache is hydrated at startup (see AppSessionManager).

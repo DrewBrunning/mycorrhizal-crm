@@ -10,7 +10,7 @@ here; if it cannot point at a row, it does not know what it is changing.
 |---|---|
 | **Standards pinned** | OWASP MASVS 1.5.0, chapters V2–V7 (the `MSTG-*` control IDs). MASVS 2.0 renamed these one-to-one to `MASVS-*` (V2–V7); the L1 rows below are the same either way. |
 | **Level** | **MASVS-L1** (rows marked `x` in the L1 column). L2- and R-only rows are listed per chapter as out of scope. |
-| **Last full pass** | 2026-08-24 (audit of `android/` + the Android CI jobs) |
+| **Last full pass** | 2026-08-25 (issue #385: Room-mirror encryption + logout purge) |
 | **Scope** | The Android client (`android/`): Kotlin + Jetpack Compose, Hilt, OkHttp, Room, DataStore, `androidx.security:crypto`. The server it talks to is covered by `asvs-l2.md`; MSTG-AUTH rows therefore cite the *client-side* contract and point at the backend for enforcement. |
 
 ## Status legend
@@ -61,18 +61,23 @@ design: the exported `MainActivity` uses `launchMode="singleTask"` specifically 
 link is delivered via `onNewIntent` rather than stacking a second instance
 (`app/src/main/AndroidManifest.xml:57`, comment at `:66-68`).
 
-### P4 — The Room cache is not encrypted at rest
+### P4 — Room cache encryption carve-outs (resolved 2026-08-25, issue #385)
 
-The Room database (`mycorrhizal-cache.db`, `core/data/.../DataModule.kt:126-144`) is **not**
-SQLCipher-encrypted. This is the single substantive `partial` in STORAGE-1. Rationale: it is a
-read-through cache mirroring server data for offline viewing (`AppDatabase.kt` doc comment), not the
-source of truth — the database can be rebuilt from the server at any time
-(`fallbackToDestructiveMigration`, `DataModule.kt:143`). The one exception is the
-`pending_interactions` outbox (queued call/SMS tracking), which is genuinely sensitive metadata and
-not rebuildable; it is documented below (STORAGE-1) as the reason the row is `partial` rather than
-`satisfied`. Mitigating context: the file is inside the app sandbox, backups are disabled
-(STORAGE-8), and the sensitive contacts themselves live server-side. Adopting SQLCipher or moving
-the outbox to an encrypted store is the pre-1.0 follow-up.
+The Room mirror (`mycorrhizal-cache.db`) is now SQLCipher-encrypted whole-DB — AES-256-CBC pages
+with per-page IVs + HMAC-SHA512 integrity, keyed by a random 32-byte passphrase stored in
+`EncryptedSharedPreferences` behind a Keystore `MasterKey` (`RoomPassphraseStore.kt`). A one-time
+bootstrap re-encrypts a pre-existing plaintext DB in place via `sqlcipher_export`
+(`RoomCacheEncryption.kt`), preserving every object including the FTS4 mirror and the
+non-rebuildable `pending_interactions` outbox; the plaintext file is overwritten before deletion.
+The DB, its WAL/shm sidecars, and the Coil/photo cache are purged on logout/account-removal
+(`LocalDataCleaner.kt`).
+
+Deliberate test carve-out: the Robolectric JVM unit tests run the migration/DAO logic against the
+plain framework SQLite factory because SQLCipher's `libsqlcipher.so` is an Android-native binary
+that cannot load on the JVM. The encrypted factory — same migration chain plus the transition and
+FTS search under encryption — is verified by instrumented tests
+(`app/src/androidTest/.../storage/RoomCacheEncryptionTest.kt`) and implicitly by every E2E boot of
+the real app, which opens the encrypted DB through `DataModule`.
 
 ### P5 — `.mobsf` false positives (not positions, recorded for the record)
 
@@ -92,8 +97,8 @@ every domain, `app/src/main/AndroidManifest.xml:38-39`, `res/xml/data_extraction
 
 | ID | Requirement (abbrev.) | Status | Evidence |
 |---|---|---|---|
-| STORAGE-1 | Sensitive data in system credential storage | partial | The JWT is stored in `EncryptedSharedPreferences` with a Keystore `MasterKey` (AES256_GCM) — `core/data/.../EncryptedTokenStorage.kt:14-25`, DI binding `SessionStorageModule.kt:20-21`. **Gap:** the Room cache holds cached contact PII + the `pending_interactions` call/SMS outbox unencrypted (P4). |
-| STORAGE-2 | No sensitive data outside app container / credential storage | satisfied | All persistence is inside the sandbox (EncryptedSharedPreferences, DataStore, Room). No external/shared storage for app data; the only `content://` surface is the FileProvider cache for user-initiated vCard sharing (`app/src/main/AndroidManifest.xml:78-86`). |
+| STORAGE-1 | Sensitive data in system credential storage | satisfied | The JWT is stored in `EncryptedSharedPreferences` with a Keystore `MasterKey` (AES256_GCM) — `core/data/.../EncryptedTokenStorage.kt:14-25`, DI binding `SessionStorageModule.kt:20-21`. The Room mirror is SQLCipher whole-DB encrypted — random 32-byte passphrase in `EncryptedSharedPreferences` + Keystore `MasterKey` (`RoomPassphraseStore.kt`), `SupportOpenHelperFactory` wired in `DataModule.kt:153`, plaintext→encrypted transition at `RoomCacheEncryption.kt` (P4). |
+| STORAGE-2 | No sensitive data outside app container / credential storage | satisfied | All persistence is inside the sandbox (EncryptedSharedPreferences, DataStore, SQLCipher-encrypted Room). No external/shared storage for app data; the only `content://` surface is the FileProvider cache for user-initiated vCard sharing (`app/src/main/AndroidManifest.xml:78-86`). Offline PII is purged on logout/account-removal: the Room tables are cleared and the photo/attachment cache directory deleted (`LocalDataCleaner.kt`, invoked from `DefaultSessionManager.clearSession()`). |
 | STORAGE-3 | No sensitive data written to logs | satisfied | The JWT is never logged (`EncryptedTokenStorage.kt:10` comment); OkHttp debug logging is `Level.BASIC` (request line only, no headers/body) and debug-only (`core/network/.../NetworkFactory.kt:35-41`). |
 | STORAGE-4 | No sharing with third parties unless necessary | satisfied | No telemetry/analytics/third-party SDKs; Firebase is applied only when a real `google-services.json` exists and is otherwise inert (`app/build.gradle.kts:13-15`, `AndroidManifest.xml:98-105`). vCard export is a user-initiated system share sheet (`AndroidManifest.xml:76-86`). |
 | STORAGE-5 | Keyboard cache disabled on sensitive inputs | partial | Register / forgot-password / settings / users secret fields use `KeyboardType.Password` (the Android signal that disables IME personalized learning) alongside `PasswordVisualTransformation` — `feature/auth/.../RegisterScreen.kt:151-152`, `ForgotPasswordScreen.kt:147-148,156-157`, `feature/settings/.../SettingsScreen.kt:263-264`. **Gap:** the login screen's password field (`feature/auth/.../LoginScreen.kt:193-199`) masks via `PasswordVisualTransformation` + autofill `ContentType.Password` but keeps default keyboard options — no `KeyboardType.Password` on the one field where a password is typed most often. |
@@ -108,11 +113,11 @@ No L2-only rows in this chapter (CRYPTO-1…6 are all L1).
 | ID | Requirement (abbrev.) | Status | Evidence |
 |---|---|---|---|
 | CRYPTO-1 | No hardcoded keys as sole encryption | satisfied | No symmetric keys in source; the Keystore `MasterKey` (AES256_GCM) is hardware-backed (`EncryptedTokenStorage.kt:15-17`). mobsfscan's `android_kotlin_hardcoded` fires only on the `SECRET` enum value (P5). |
-| CRYPTO-2 | Proven cryptographic implementations | satisfied | `androidx.security:crypto` (`EncryptedSharedPreferences`, `MasterKey`) — the platform-recommended library, no hand-rolled crypto (`EncryptedTokenStorage.kt:5-6`). |
-| CRYPTO-3 | Appropriate primitives, best-practice parameters | satisfied | Master key `AES256_GCM`; pref keys `AES256_SIV`; pref values `AES256_GCM` (`EncryptedTokenStorage.kt:16,22-23`) — AES-256 with authenticated (GCM) and key-wrapping (SIV) modes, the library's recommended pairing. |
-| CRYPTO-4 | No deprecated algorithms | satisfied | No MD5/SHA1/DES/ECB/Blowfish anywhere in `android/`; only AES-256-GCM/SIV via the platform library. |
-| CRYPTO-5 | No key reuse across purposes | satisfied | A single purpose (session token at rest) uses the single Keystore master key; all other persisted state (DataStore prefs, Room cache) is non-secret. No key is reused across different secrets. |
-| CRYPTO-6 | Secure random number generator | satisfied | No custom RNG; the Keystore master key and `androidx.security.crypto` generate keys/nonces internally with the platform CSPRNG. |
+| CRYPTO-2 | Proven cryptographic implementations | satisfied | `androidx.security:crypto` (`EncryptedSharedPreferences`, `MasterKey`) for the session token and Room passphrase, and SQLCipher (`net.zetetic:sqlcipher-android`) for the Room mirror — both platform-standard, no hand-rolled crypto (`EncryptedTokenStorage.kt:5-6`, `RoomPassphraseStore.kt`, `DataModule.kt`). |
+| CRYPTO-3 | Appropriate primitives, best-practice parameters | satisfied | Master key `AES256_GCM`; pref keys `AES256_SIV`; pref values `AES256_GCM` (`EncryptedTokenStorage.kt:16,22-23`). SQLCipher uses AES-256-CBC pages with per-page random IVs + HMAC-SHA512 page integrity, keyed via PBKDF2-HMAC-SHA512 (256k iterations) from a random 32-byte passphrase — the library's standard parameters. |
+| CRYPTO-4 | No deprecated algorithms | satisfied | No MD5/SHA1/DES/ECB/Blowfish anywhere in `android/`; only AES-256 (GCM/SIV/CBC) + HMAC-SHA512 via the platform library and SQLCipher. |
+| CRYPTO-5 | No key reuse across purposes | satisfied | The single Keystore master key wraps *distinct* keys per purpose: the session-token key and the Room-mirror passphrase are separately generated (`EncryptedTokenStorage.kt`, `RoomPassphraseStore.kt`); the DB passphrase never encrypts anything but the SQLCipher database. No key is reused across different secrets. |
+| CRYPTO-6 | Secure random number generator | satisfied | No custom RNG; the Keystore master key, `androidx.security.crypto`, and `SecureRandom` (Room passphrase, `RoomPassphraseStore.kt`) all draw from the platform CSPRNG; SQLCipher generates its per-page IVs and DB salt internally. |
 
 ## V4 — Authentication and Session Management (MSTG-AUTH)
 

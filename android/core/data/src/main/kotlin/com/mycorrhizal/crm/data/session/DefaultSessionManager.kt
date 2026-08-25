@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.map
 class DefaultSessionManager(
     private val tokenStorage: TokenStorage,
     private val prefsStorage: SessionPrefsStorage,
+    private val localDataCleaner: SessionDataCleaner = NoopSessionDataCleaner,
 ) : SessionManager {
 
     private var cachedToken: String? = null
@@ -77,6 +78,9 @@ class DefaultSessionManager(
         cachedServerUrl = null
         tokenStorage.clear()
         prefsStorage.clear()
+        // Issue #385: purge the offline PII mirror + image cache on logout /
+        // account removal so a dropped session leaves no contact data on disk.
+        localDataCleaner.clear()
         sessionState.value = SessionState()
     }
 

@@ -22,6 +22,13 @@ import org.robolectric.annotation.GraphicsMode
  * (the pre-T76 schema, captured from a clean checkout's generated Room code), migrates it with
  * the real database builder, and asserts both halves of the ticket: no data loss, and the new
  * phone index actually works.
+ *
+ * Issue #385 (SQLCipher): this test deliberately runs against the **plain** framework SQLite
+ * factory, not production's encrypted `SupportOpenHelperFactory`. SQLCipher's `libsqlcipher.so`
+ * is an Android-native binary (links Bionic) and cannot be loaded in the JVM/Robolectric, so the
+ * migration *SQL* semantics are what this test pins; the encrypted-factory equivalent — the same
+ * migration chain plus the plaintext→encrypted transition and FTS search under encryption — is
+ * covered by the instrumented `RoomCacheEncryptionTest` (`app/src/androidTest`).
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
