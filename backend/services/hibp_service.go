@@ -51,6 +51,10 @@ func SetHIBPAPIBaseURLForTest(url string) (restore func()) {
 // treat a non-nil err the same as "not breached, HIBP unavailable" and
 // proceed; this function has already logged the reason.
 func CheckPasswordBreached(ctx context.Context, password string) (breached bool, err error) {
+	// codeql[go/weak-sensitive-data-hashing] -- SHA-1 here is HIBP's own
+	// k-anonymity wire format (only a 5-char prefix of this ever leaves the
+	// process, see the doc comment above), not this app's password-storage
+	// hashing -- that's bcrypt, see docs/security/asvs-l2.md's P1.
 	sum := sha1.Sum([]byte(password)) //nolint:gosec // see import comment
 	hexSum := strings.ToUpper(fmt.Sprintf("%x", sum))
 	prefix, suffix := hexSum[:5], hexSum[5:]
