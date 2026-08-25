@@ -28,12 +28,13 @@
 //     (vulnerable) behavior.
 //
 // Because these are deliberate, the static analyzers that would flag them are
-// handled rather than "fixed": the reflected sink and the IDOR JSON body carry
-// `#nosec G705` (gosec), and the CodeQL go/reflected-xss alert is dismissed in
-// the Security tab with reason "used in tests" — CodeQL's `lgtm` inline
-// suppression cannot target a column-specific path-problem alert, so there is
-// no inline form for it. Do not "fix" these sinks — escaping them defeats the
-// canary and the DAST gate goes blind.
+// suppressed with a justification rather than "fixed": the reflected sink and
+// the IDOR JSON body carry `#nosec G705` (gosec), and the reflected sink
+// carries a `// codeql[go/reflected-xss]` comment. CodeQL's alert-suppression
+// query tags that result in the SARIF, and the advanced-security/dismiss-alerts
+// action (wired into .github/workflows/codeql.yml) dismisses it — re-opening
+// it if the comment is ever removed. Do not "fix" these sinks — escaping them
+// defeats the canary and the DAST gate goes blind.
 package main
 
 import (
@@ -106,9 +107,11 @@ func reflectedHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	// Intentional: raw (unescaped) interpolation of user input — the planted
 	// vulnerability. Do not "fix" this; it is the whole point of the canary
-	// (ZAP must detect it for the DAST self-test). The go/reflected-xss alert
-	// is dismissed in the Security tab (see the package doc) and gosec is
-	// silenced below, so the deliberate sink does not trip the static gates.
+	// (ZAP must detect it for the DAST self-test). gosec is silenced below and
+	// the codeql[go/reflected-xss] comment below is the CodeQL suppression the
+	// dismiss-alerts action reads, so the deliberate sink does not trip the
+	// static gates.
+	// codeql[go/reflected-xss]
 	fmt.Fprintf(w, "<html><body><h1>Reflected</h1><p>%s</p></body></html>", q) // #nosec G705 -- intentional reflected XSS, DAST canary
 }
 

@@ -64,11 +64,31 @@ jobs:
           languages: go
           build-mode: autobuild
           queries: security-extended
+          # Run the alert-suppression query alongside security-extended so that
+          # `// codeql[<id>]` comments (e.g. the deliberate dastcanary sink,
+          # backend/cmd/dastcanary) are tagged in the SARIF for the
+          # dismiss-alerts step below (issue #368).
+          packs: codeql/go-queries:AlertSuppression.ql
 
       - name: Perform CodeQL Analysis
+        id: analyze
         uses: github/codeql-action/analyze@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
         with:
           category: '/language:go'
+          output: sarif-results
+
+      # Dismiss alerts the SARIF marks as suppressed (via `// codeql[...]`
+      # comments), so deliberate findings like the dastcanary XSS are recorded
+      # and auto-re-opened if the comment is removed. Runs on the default
+      # branch only — dismissal is a global property (dismiss-alerts README).
+      - name: Dismiss suppressed alerts
+        if: github.ref == 'refs/heads/main'
+        uses: advanced-security/dismiss-alerts@a18f986bdb40edba0dd7a74382c15d4a3d50a1c8 # v2.0.3
+        with:
+          sarif-id: ${{ steps.analyze.outputs.sarif-id }}
+          sarif-file: sarif-results
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
 
   analyze-javascript-typescript:
     name: Analyze (javascript-typescript)
