@@ -5735,6 +5735,27 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /api-tokens/revoke-all:
+    post:
+      summary: Revoke every standing API token for the current user
+      operationId: revokeAllApiTokens
+      description: |
+        Issue #413: self-service complement to an admin password reset and the
+        recovery-path password reset, both of which already bulk-revoke a
+        user's API tokens. Lets a user end every token at once (e.g. a lost
+        device) without knowing which one leaked. Already-revoked tokens are
+        left untouched and not recounted.
+      responses:
+        "200":
+          description: Tokens revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  revoked:
+                    type: integer
+                    description: How many previously-active tokens were revoked.
   /api-tokens/{id}:
     delete:
       summary: Revoke an API token
@@ -5760,6 +5781,45 @@ paths:
                 $ref: "#/components/schemas/Error"
         "404":
           description: Token not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api-tokens/{id}/rotate:
+    post:
+      summary: Revoke a token and reissue a new one with the same name and scope
+      operationId: rotateApiToken
+      description: |
+        Issue #413: revoke + reissue in one round trip, for callers that want
+        continuity (a script keeps running under a fresh credential) instead
+        of the create-then-revoke two-step. The new plaintext token is shown
+        exactly once, like createApiToken's.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "201":
+          description: Old token revoked; new token created (raw response, not wrapped).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiTokenCreateResponse"
+        "400":
+          description: Non-integer id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Token not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Token is already revoked; nothing to rotate.
           content:
             application/json:
               schema:

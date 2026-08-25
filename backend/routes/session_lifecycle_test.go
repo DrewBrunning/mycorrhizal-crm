@@ -24,6 +24,9 @@ package routes
 // Non-TokenVersion revocation paths covered:
 //
 //   - RevokeApiToken          (api_token_controller.go) — revoked token 401s
+//   - RevokeAllApiTokens      (api_token_controller.go) — issue #413, revokes every standing token at once
+//   - RotateApiToken          (api_token_controller.go) — issue #413, old token dead, new one live immediately
+//   - UpdateUser (admin)      (admin_user_controller.go) — issue #413, admin password reset also revokes API tokens
 //   - soft-deleted user       — AuthMiddleware's user lookup misses the row
 //   - RegenerateRecoveryCodes — old recovery codes stop validating
 //
@@ -302,6 +305,38 @@ func TestSessionLifecycle_AdminPasswordResetRevokesPriorSessions(t *testing.T) {
 	assert.Equal(t, http.StatusOK, probe(t, router, mintToken(t, cfg, reloadUser(t, db, target.ID))))
 }
 
+// Issue #413: an admin password reset is the operator-side response to a
+// suspected account takeover, so it must end standing API tokens the same
+// way the self-service recovery-path reset already does (#411) --
+// TokenVersion alone only kills JWT sessions, leaving a leaked API token
+// fully live otherwise.
+func TestSessionLifecycle_AdminPasswordResetRevokesAPITokens(t *testing.T) {
+	db, router, cfg := lifecycleEnv(t)
+	admin := seedUser(t, db, lifecycleUsername(t)+"-admin", lifecyclePassword, true)
+	target := seedUser(t, db, lifecycleUsername(t)+"-target", lifecyclePassword, false)
+
+	adminToken := mintToken(t, cfg, admin)
+	targetToken := mintToken(t, cfg, target)
+
+	w := doJSON(t, router, http.MethodPost, "/api/v1/api-tokens", targetToken, map[string]string{"name": "target-script"})
+	require.Equal(t, http.StatusCreated, w.Code, "create api-token: %s", w.Body.String())
+	var created struct {
+		Token string `json:"token"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &created))
+	require.NotEmpty(t, created.Token)
+
+	// The API token is live before the admin resets the account's password.
+	assert.Equal(t, http.StatusOK, probe(t, router, created.Token))
+
+	w = doJSON(t, router, http.MethodPatch, "/api/v1/admin/users/"+strconv.FormatUint(uint64(target.ID), 10), adminToken, map[string]string{
+		"password": lifecyclePassword3,
+	})
+	require.Equal(t, http.StatusOK, w.Code, "admin password reset: %s", w.Body.String())
+
+	assert.Equal(t, http.StatusUnauthorized, probe(t, router, created.Token))
+}
+
 func TestSessionLifecycle_RevokedAPITokenIsRejectedImmediately(t *testing.T) {
 	db, router, cfg := lifecycleEnv(t)
 	user := seedUser(t, db, lifecycleUsername(t), lifecyclePassword, false)
@@ -325,6 +360,74 @@ func TestSessionLifecycle_RevokedAPITokenIsRejectedImmediately(t *testing.T) {
 
 	// Revoked token is rejected immediately; the session is unaffected.
 	assert.Equal(t, http.StatusUnauthorized, probe(t, router, created.Token))
+	assert.Equal(t, http.StatusOK, probe(t, router, session))
+}
+
+// Issue #413: self-service revoke-all -- a user who suspects a token leaked
+// can end every standing token at once without knowing which one leaked.
+func TestSessionLifecycle_RevokeAllAPITokensRejectsImmediately(t *testing.T) {
+	db, router, cfg := lifecycleEnv(t)
+	user := seedUser(t, db, lifecycleUsername(t), lifecyclePassword, false)
+
+	session := mintToken(t, cfg, user)
+
+	w := doJSON(t, router, http.MethodPost, "/api/v1/api-tokens", session, map[string]string{"name": "one"})
+	require.Equal(t, http.StatusCreated, w.Code, "create api-token 1: %s", w.Body.String())
+	var first struct {
+		Token string `json:"token"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &first))
+
+	w = doJSON(t, router, http.MethodPost, "/api/v1/api-tokens", session, map[string]string{"name": "two"})
+	require.Equal(t, http.StatusCreated, w.Code, "create api-token 2: %s", w.Body.String())
+	var second struct {
+		Token string `json:"token"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &second))
+
+	assert.Equal(t, http.StatusOK, probe(t, router, first.Token))
+	assert.Equal(t, http.StatusOK, probe(t, router, second.Token))
+
+	w = doJSON(t, router, http.MethodPost, "/api/v1/api-tokens/revoke-all", session, nil)
+	require.Equal(t, http.StatusOK, w.Code, "revoke-all: %s", w.Body.String())
+
+	// Both tokens rejected immediately; the JWT session is unaffected
+	// (revoke-all only touches API tokens, not TokenVersion).
+	assert.Equal(t, http.StatusUnauthorized, probe(t, router, first.Token))
+	assert.Equal(t, http.StatusUnauthorized, probe(t, router, second.Token))
+	assert.Equal(t, http.StatusOK, probe(t, router, session))
+}
+
+// Issue #413: rotating a token kills the old credential and hands back a new
+// one that works immediately, in one round trip.
+func TestSessionLifecycle_RotatedAPITokenReplacesOldOne(t *testing.T) {
+	db, router, cfg := lifecycleEnv(t)
+	user := seedUser(t, db, lifecycleUsername(t), lifecyclePassword, false)
+
+	session := mintToken(t, cfg, user)
+
+	w := doJSON(t, router, http.MethodPost, "/api/v1/api-tokens", session, map[string]string{"name": "rotate-me"})
+	require.Equal(t, http.StatusCreated, w.Code, "create api-token: %s", w.Body.String())
+	var created struct {
+		ID    uint   `json:"id"`
+		Token string `json:"token"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &created))
+
+	assert.Equal(t, http.StatusOK, probe(t, router, created.Token))
+
+	w = doJSON(t, router, http.MethodPost, "/api/v1/api-tokens/"+strconv.FormatUint(uint64(created.ID), 10)+"/rotate", session, nil)
+	require.Equal(t, http.StatusCreated, w.Code, "rotate: %s", w.Body.String())
+	var rotated struct {
+		Token string `json:"token"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &rotated))
+	require.NotEmpty(t, rotated.Token)
+	require.NotEqual(t, created.Token, rotated.Token)
+
+	// Old token dead, new token live immediately, session unaffected.
+	assert.Equal(t, http.StatusUnauthorized, probe(t, router, created.Token))
+	assert.Equal(t, http.StatusOK, probe(t, router, rotated.Token))
 	assert.Equal(t, http.StatusOK, probe(t, router, session))
 }
 

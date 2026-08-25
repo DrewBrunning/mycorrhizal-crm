@@ -455,9 +455,11 @@ func buildTable(s seeded) map[string]authzRow {
 		"GET /api/v1/search":            {class: classProtected},
 
 		// --- api tokens -----------------------------------------------------
-		"GET /api/v1/api-tokens":        {class: classProtected},
-		"POST /api/v1/api-tokens":       {class: classProtected},
-		"DELETE /api/v1/api-tokens/:id": {class: classItem, probe: "/api/v1/api-tokens/" + fabricatedNum},
+		"GET /api/v1/api-tokens":             {class: classProtected},
+		"POST /api/v1/api-tokens":            {class: classProtected},
+		"POST /api/v1/api-tokens/revoke-all": {class: classProtected},
+		"DELETE /api/v1/api-tokens/:id":      {class: classItem, probe: "/api/v1/api-tokens/" + fabricatedNum},
+		"POST /api/v1/api-tokens/:id/rotate": {class: classItem, probe: "/api/v1/api-tokens/" + fabricatedNum + "/rotate"},
 
 		// --- webhooks -------------------------------------------------------
 		"GET /api/v1/webhooks":                {class: classProtected},

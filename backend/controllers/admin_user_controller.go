@@ -433,6 +433,19 @@ func UpdateUser(c *gin.Context) {
 		return
 	}
 
+	// Issue #413: an admin password reset is the operator-side response to a
+	// suspected account takeover, so it must end standing API tokens the
+	// same way the self-service recovery-path reset already does (#411) --
+	// TokenVersion above only covers JWTs, which carry no version of their
+	// own. Shares services.RevokeAllAPITokens with that call site.
+	if input.Password != nil {
+		if _, err := services.RevokeAllAPITokens(db, user.ID); err != nil {
+			// The password change already succeeded; a failure here would be
+			// misleading to report as an update failure. Logged so it isn't silent.
+			log.Error().Err(err).Uint("user_id", user.ID).Msg("Failed to revoke API tokens after admin password reset")
+		}
+	}
+
 	// T18 audit: admin user edit, with the security-relevant deltas spelled
 	// out (issue #381). The acting admin is the actor.
 	models.RecordAuditEvent(models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpUpdate, currentUserID)
