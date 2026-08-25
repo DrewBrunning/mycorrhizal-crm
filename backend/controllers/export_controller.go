@@ -748,3 +748,100 @@ func ExportContactsAsJSContact(c *gin.Context) {
 		Int("contacts", len(contacts)).
 		Msg("JSContact export completed successfully")
 }
+
+// ExportAuditLog exports the caller's own audit trail as CSV (issue #416).
+// Unlike ListAuditEvents (audit_controller.go), which caps at 500 rows for
+// an interactive list view, this has no row cap -- consistent with
+// ExportData's "full personal-data backup" precedent above. Large-export
+// bounding across every export endpoint (including this one) is explicitly
+// deferred to the resource-exhaustion ticket (#415), per #416's own text.
+//
+// BeforeSnapshot is deliberately NOT included by default. It is already
+// redacted for credentials (models.AuditEvent's auditDenyList), but --
+// unlike the vCard/JSContact exports -- it is not filtered by contact-field
+// sensitivity: a snapshot can carry the full historical value of a field
+// the rest of the export system treats as private/secret and gates behind
+// include_sensitive. Rather than building a new per-field sensitivity
+// filter over historical JSON snapshots (a separate, larger effort), this
+// mirrors the existing include_sensitive opt-in convention with a
+// distinctly-named ?include_snapshots=true: the whole column is either
+// present or absent, never partially filtered. A user opting in should
+// understand the column may contain historical private/secret field values
+// even though it can never contain a raw credential.
+func ExportAuditLog(c *gin.Context) {
+	db := c.MustGet("db").(*gorm.DB)
+	log := logger.FromContext(c)
+
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+
+	includeSnapshots := false
+	switch c.Query("include_snapshots") {
+	case "true", "1":
+		includeSnapshots = true
+	}
+
+	var events []models.AuditEvent
+	if err := db.Where("user_id = ?", userID).
+		Order("created_at ASC").
+		Find(&events).Error; err != nil {
+		log.Error().Err(err).Msg("Failed to fetch audit events for export")
+		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to fetch audit events"))
+		return
+	}
+
+	var buf bytes.Buffer
+	writer := csv.NewWriter(&buf)
+
+	headers := []string{"ID", "Entity Type", "Entity ID", "Operation", "Hash", "Previous Hash", "Created At"}
+	if includeSnapshots {
+		headers = append(headers, "Before Snapshot")
+	}
+	if err := writer.Write(headers); err != nil {
+		log.Error().Err(err).Msg("Failed to write audit export headers")
+		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to generate export"))
+		return
+	}
+
+	for _, event := range events {
+		record := []string{
+			fmt.Sprintf("%d", event.ID),
+			event.EntityType,
+			event.EntityID,
+			event.Operation,
+			event.Hash,
+			event.PrevHash,
+			event.CreatedAt.Format(time.RFC3339),
+		}
+		if includeSnapshots {
+			record = append(record, event.BeforeSnapshot)
+		}
+		if err := writer.Write(csvSafeRecord(record)); err != nil {
+			log.Error().Err(err).Msg("Failed to write audit export record")
+			apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to generate export"))
+			return
+		}
+	}
+	writer.Flush()
+	if err := writer.Error(); err != nil {
+		log.Error().Err(err).Msg("CSV writer error")
+		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to generate export"))
+		return
+	}
+
+	filename := fmt.Sprintf("mycorrhizal-audit-log-%s.csv", time.Now().Format("2006-01-02"))
+
+	c.Header("Content-Description", "File Transfer")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
+	c.Header("Content-Type", "text/csv; charset=utf-8")
+	c.Header("Content-Length", fmt.Sprintf("%d", buf.Len()))
+
+	c.Data(http.StatusOK, "text/csv; charset=utf-8", buf.Bytes())
+
+	log.Info().
+		Int("events", len(events)).
+		Bool("include_snapshots", includeSnapshots).
+		Msg("Audit log export completed successfully")
+}

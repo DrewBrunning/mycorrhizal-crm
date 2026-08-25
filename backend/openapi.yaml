@@ -6101,6 +6101,39 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /audit/export:
+    get:
+      summary: Export the caller's own audit trail as CSV
+      operationId: exportAuditLog
+      description: >
+        Issue #416. Unbounded CSV export of every audit event for the
+        caller, oldest first — unlike GET /audit, which caps at 500 rows for
+        an interactive list. BeforeSnapshot is omitted by default: it is
+        redacted for credentials but not filtered by contact-field
+        sensitivity the way the vCard/JSContact exports are, so it is gated
+        behind its own explicit opt-in rather than reusing include_sensitive.
+      parameters:
+        - name: include_snapshots
+          in: query
+          description: >
+            When true, adds a "Before Snapshot" column with each event's
+            redacted (credential-free) before-state JSON, which may still
+            contain historical private/secret contact-field values. Defaults
+            to false.
+          schema: { type: boolean, default: false }
+      responses:
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: A CSV file.
+          content:
+            text/csv:
+              schema: { type: string, format: binary }
+
   /notifications/config:
     get:
       summary: Get the user's notification channel setup
