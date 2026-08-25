@@ -16,6 +16,11 @@
       "intro": "Wir haben eine Anfrage zum Zurücksetzen Ihres Mycorrhizal CRM Passworts erhalten.",
       "instruction": "Verwenden Sie diesen Token, um das Zurücksetzen innerhalb von 60 Minuten abzuschließen:",
       "ignore": "Falls Sie dieses Zurücksetzen nicht angefordert haben, können Sie diese E-Mail ignorieren."
+    },
+    "passwordChanged": {
+      "subject": "Ihr Mycorrhizal CRM Passwort wurde geändert",
+      "intro": "Ihr Mycorrhizal CRM Passwort wurde soeben geändert.",
+      "warning": "Wenn Sie diese Änderung vorgenommen haben, können Sie diese E-Mail ignorieren. Falls nicht, könnte Ihr Konto kompromittiert sein -- setzen Sie Ihr Passwort sofort erneut zurück. Alle angemeldeten Sitzungen und API-Token wurden vorsorglich bereits widerrufen."
     }
   },
   "calendar": {

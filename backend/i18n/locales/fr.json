@@ -16,6 +16,11 @@
       "intro": "Nous avons reçu une demande de réinitialisation de votre mot de passe Mycorrhizal CRM.",
       "instruction": "Utilisez ce jeton pour finaliser la réinitialisation dans les 60 minutes :",
       "ignore": "Si vous n'avez pas demandé cette réinitialisation, vous pouvez ignorer cet e-mail."
+    },
+    "passwordChanged": {
+      "subject": "Votre mot de passe Mycorrhizal CRM a été modifié",
+      "intro": "Votre mot de passe Mycorrhizal CRM vient d'être modifié.",
+      "warning": "Si vous êtes à l'origine de ce changement, vous pouvez ignorer cet e-mail. Sinon, votre compte est peut-être compromis -- réinitialisez votre mot de passe immédiatement. Par précaution, toutes les sessions actives et tous les jetons API ont déjà été révoqués."
     }
   },
   "calendar": {

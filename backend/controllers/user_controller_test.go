@@ -558,6 +558,306 @@ func TestConfirmPasswordReset_HIBPCheckEnabled_RejectsBreachedPassword(t *testin
 	assert.NotNil(t, updated.PasswordResetTokenHash, "reset token must survive a rejected breach check, not be consumed")
 }
 
+// TestRequestPasswordReset_UnknownEmail_SameResponseAsKnown pins issue #411's
+// account-enumeration-resistance requirement: /password-reset/request must
+// return the identical status and body regardless of whether the email
+// belongs to a real account.
+func TestRequestPasswordReset_UnknownEmail_SameResponseAsKnown(t *testing.T) {
+	cfg := &config.Config{}
+	db, router := setupRouter()
+
+	hashed, _ := services.HashPassword(strongPassword)
+	db.Create(&models.User{
+		Username: "knownuser",
+		Email:    "known@example.com",
+		Password: hashed,
+	})
+
+	router.POST("/password-reset/request", func(c *gin.Context) {
+		c.Set("validated", &models.PasswordResetRequestInput{Email: c.Query("email")})
+		RequestPasswordReset(c, cfg)
+	})
+
+	doRequest := func(email string) (int, string) {
+		req, _ := http.NewRequest("POST", "/password-reset/request?email="+email, nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		return w.Code, w.Body.String()
+	}
+
+	knownStatus, knownBody := doRequest("known@example.com")
+	unknownStatus, unknownBody := doRequest("nobody-here@example.com")
+
+	assert.Equal(t, http.StatusOK, knownStatus)
+	assert.Equal(t, knownStatus, unknownStatus, "known/unknown email must not be distinguishable by status code")
+	assert.Equal(t, knownBody, unknownBody, "known/unknown email must not be distinguishable by response body")
+}
+
+// TestConfirmPasswordReset_RejectsSecondUse pins the single-use invariant: a
+// reset token is consumed on first confirm, so replaying it must fail and
+// must not touch the password set by the first confirm.
+func TestConfirmPasswordReset_RejectsSecondUse(t *testing.T) {
+	db, router := setupRouter()
+
+	initialPassword, _ := services.HashPassword(strongPassword)
+	token, tokenHash, _ := services.GeneratePasswordResetToken()
+	expires := services.PasswordResetExpiry()
+	requested := time.Now()
+
+	user := models.User{
+		Username:                 "reusetoken",
+		Email:                    "reusetoken@example.com",
+		Password:                 initialPassword,
+		PasswordResetTokenHash:   &tokenHash,
+		PasswordResetExpiresAt:   &expires,
+		PasswordResetRequestedAt: &requested,
+	}
+	db.Create(&user)
+
+	var confirmPassword string
+	router.POST("/password-reset/confirm", func(c *gin.Context) {
+		c.Set("validated", &models.PasswordResetConfirmInput{Token: token, Password: confirmPassword})
+		ConfirmPasswordReset(c, &config.Config{})
+	})
+
+	// First use succeeds.
+	confirmPassword = strongPasswordAlt
+	req, _ := http.NewRequest("POST", "/password-reset/confirm", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	// Replaying the same token must fail.
+	confirmPassword = strongPasswordAnother
+	req, _ = http.NewRequest("POST", "/password-reset/confirm", nil)
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+
+	var updated models.User
+	db.Where("email = ?", "reusetoken@example.com").First(&updated)
+	assert.NoError(t, bcrypt.CompareHashAndPassword([]byte(updated.Password), []byte(strongPasswordAlt)),
+		"password must still be what the first (legitimate) use set")
+	assert.Error(t, bcrypt.CompareHashAndPassword([]byte(updated.Password), []byte(strongPasswordAnother)),
+		"the replayed token's password must never have taken effect")
+}
+
+// TestConfirmPasswordReset_RejectsExpiredToken pins the TTL invariant: a
+// token past its expiry is rejected and cleared, not honored.
+func TestConfirmPasswordReset_RejectsExpiredToken(t *testing.T) {
+	db, router := setupRouter()
+
+	initialPassword, _ := services.HashPassword(strongPassword)
+	token, tokenHash, _ := services.GeneratePasswordResetToken()
+	expired := time.Now().Add(-time.Minute)
+	requested := time.Now().Add(-2 * time.Hour)
+
+	user := models.User{
+		Username:                 "expiredtoken",
+		Email:                    "expiredtoken@example.com",
+		Password:                 initialPassword,
+		PasswordResetTokenHash:   &tokenHash,
+		PasswordResetExpiresAt:   &expired,
+		PasswordResetRequestedAt: &requested,
+	}
+	db.Create(&user)
+
+	router.POST("/password-reset/confirm", func(c *gin.Context) {
+		c.Set("validated", &models.PasswordResetConfirmInput{Token: token, Password: strongPasswordAlt})
+		ConfirmPasswordReset(c, &config.Config{})
+	})
+
+	req, _ := http.NewRequest("POST", "/password-reset/confirm", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var updated models.User
+	db.Where("email = ?", "expiredtoken@example.com").First(&updated)
+	assert.Nil(t, updated.PasswordResetTokenHash, "expired token must be cleared, not left around for a later guess")
+	assert.NoError(t, bcrypt.CompareHashAndPassword([]byte(updated.Password), []byte(strongPassword)),
+		"password must be unchanged")
+}
+
+// TestConfirmPasswordReset_BumpsTokenVersion pins session invalidation: a
+// successful reset must bump TokenVersion, which is what makes every
+// previously-issued JWT stop validating (middleware/auth_lifecycle_test.go
+// covers the middleware side of that contract).
+func TestConfirmPasswordReset_BumpsTokenVersion(t *testing.T) {
+	db, router := setupRouter()
+
+	initialPassword, _ := services.HashPassword(strongPassword)
+	token, tokenHash, _ := services.GeneratePasswordResetToken()
+	expires := services.PasswordResetExpiry()
+	requested := time.Now()
+
+	user := models.User{
+		Username:                 "versionbump",
+		Email:                    "versionbump@example.com",
+		Password:                 initialPassword,
+		PasswordResetTokenHash:   &tokenHash,
+		PasswordResetExpiresAt:   &expires,
+		PasswordResetRequestedAt: &requested,
+		TokenVersion:             3,
+	}
+	db.Create(&user)
+
+	router.POST("/password-reset/confirm", func(c *gin.Context) {
+		c.Set("validated", &models.PasswordResetConfirmInput{Token: token, Password: strongPasswordAlt})
+		ConfirmPasswordReset(c, &config.Config{})
+	})
+
+	req, _ := http.NewRequest("POST", "/password-reset/confirm", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var updated models.User
+	db.Where("email = ?", "versionbump@example.com").First(&updated)
+	assert.EqualValues(t, 4, updated.TokenVersion, "reset must bump TokenVersion to invalidate outstanding JWTs")
+}
+
+// TestConfirmPasswordReset_RevokesExistingAPITokens pins issue #411's
+// credential-invalidation requirement: a reset is the recovery path for a
+// suspected compromise, so standing API tokens (which carry no TokenVersion
+// of their own) must be revoked too, not just JWTs.
+func TestConfirmPasswordReset_RevokesExistingAPITokens(t *testing.T) {
+	db, router := setupRouter()
+
+	initialPassword, _ := services.HashPassword(strongPassword)
+	token, tokenHash, _ := services.GeneratePasswordResetToken()
+	expires := services.PasswordResetExpiry()
+	requested := time.Now()
+
+	user := models.User{
+		Username:                 "revoketokens",
+		Email:                    "revoketokens@example.com",
+		Password:                 initialPassword,
+		PasswordResetTokenHash:   &tokenHash,
+		PasswordResetExpiresAt:   &expires,
+		PasswordResetRequestedAt: &requested,
+	}
+	db.Create(&user)
+
+	live := models.ApiToken{UserID: user.ID, Name: "live", TokenHash: "livehash"}
+	require.NoError(t, db.Create(&live).Error)
+	already := models.ApiToken{UserID: user.ID, Name: "already-revoked", TokenHash: "revokedhash"}
+	require.NoError(t, db.Create(&already).Error)
+	priorRevoke := time.Now().Add(-24 * time.Hour)
+	require.NoError(t, db.Model(&already).Update("revoked_at", priorRevoke).Error)
+
+	router.POST("/password-reset/confirm", func(c *gin.Context) {
+		c.Set("validated", &models.PasswordResetConfirmInput{Token: token, Password: strongPasswordAlt})
+		ConfirmPasswordReset(c, &config.Config{})
+	})
+
+	req, _ := http.NewRequest("POST", "/password-reset/confirm", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var updatedLive models.ApiToken
+	require.NoError(t, db.First(&updatedLive, live.ID).Error)
+	assert.NotNil(t, updatedLive.RevokedAt, "a live API token must be revoked by a password reset")
+
+	var updatedAlready models.ApiToken
+	require.NoError(t, db.First(&updatedAlready, already.ID).Error)
+	require.NotNil(t, updatedAlready.RevokedAt)
+	assert.WithinDuration(t, priorRevoke, *updatedAlready.RevokedAt, time.Second,
+		"an already-revoked token's original revocation time must not be overwritten")
+}
+
+// TestConfirmPasswordReset_DoesNotDisableTOTP pins the MFA-interaction
+// invariant: a password reset (an email-based recovery flow) must not turn
+// off an enrolled second factor -- doing so would let compromised email
+// access alone strip 2FA protection from the account.
+func TestConfirmPasswordReset_DoesNotDisableTOTP(t *testing.T) {
+	db, router := setupRouter()
+
+	initialPassword, _ := services.HashPassword(strongPassword)
+	token, tokenHash, _ := services.GeneratePasswordResetToken()
+	expires := services.PasswordResetExpiry()
+	requested := time.Now()
+	secret := "encrypted-totp-secret-placeholder"
+	confirmedAt := time.Now().Add(-24 * time.Hour)
+
+	user := models.User{
+		Username:                 "totpsurvives",
+		Email:                    "totpsurvives@example.com",
+		Password:                 initialPassword,
+		PasswordResetTokenHash:   &tokenHash,
+		PasswordResetExpiresAt:   &expires,
+		PasswordResetRequestedAt: &requested,
+		TOTPEnabled:              true,
+		TOTPSecretEncrypted:      &secret,
+		TOTPConfirmedAt:          &confirmedAt,
+	}
+	db.Create(&user)
+
+	router.POST("/password-reset/confirm", func(c *gin.Context) {
+		c.Set("validated", &models.PasswordResetConfirmInput{Token: token, Password: strongPasswordAlt})
+		ConfirmPasswordReset(c, &config.Config{})
+	})
+
+	req, _ := http.NewRequest("POST", "/password-reset/confirm", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var updated models.User
+	db.Where("email = ?", "totpsurvives@example.com").First(&updated)
+	assert.True(t, updated.TOTPEnabled, "2FA must remain enabled across a password reset")
+	if assert.NotNil(t, updated.TOTPSecretEncrypted) {
+		assert.Equal(t, secret, *updated.TOTPSecretEncrypted)
+	}
+}
+
+// TestChangePassword_ClearsPendingPasswordResetToken pins the invalidation
+// invariant from the other direction: an unrelated password change (the
+// authenticated, "I know my current password" path) must invalidate any
+// reset token still outstanding for the account, so a stale token an
+// attacker requested earlier can't later be used to reset the password the
+// legitimate owner just changed.
+func TestChangePassword_ClearsPendingPasswordResetToken(t *testing.T) {
+	db, router := setupRouter()
+
+	hashed, _ := services.HashPassword(strongPassword)
+	_, tokenHash, _ := services.GeneratePasswordResetToken()
+	expires := services.PasswordResetExpiry()
+	requested := time.Now()
+
+	user := models.User{
+		Username:                 "pendingreset",
+		Email:                    "pendingreset@example.com",
+		Password:                 hashed,
+		PasswordResetTokenHash:   &tokenHash,
+		PasswordResetExpiresAt:   &expires,
+		PasswordResetRequestedAt: &requested,
+	}
+	db.Create(&user)
+
+	router.POST("/change-password", func(c *gin.Context) {
+		c.Set("username", "pendingreset")
+		c.Set("validated", &models.ChangePasswordInput{
+			CurrentPassword: strongPassword,
+			NewPassword:     strongPasswordAnother,
+		})
+		ChangePassword(c, &config.Config{})
+	})
+
+	req, _ := http.NewRequest("POST", "/change-password", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var updated models.User
+	db.Where("email = ?", "pendingreset@example.com").First(&updated)
+	assert.Nil(t, updated.PasswordResetTokenHash, "a self-service password change must invalidate any pending reset token")
+	assert.Nil(t, updated.PasswordResetExpiresAt)
+	assert.Nil(t, updated.PasswordResetRequestedAt)
+}
+
 // TestEnabledContactFieldsNullVsEmpty verifies the GET/PATCH endpoints preserve the
 // distinction between "never configured" (null -> client applies defaults) and
 // "configured empty" ([] -> no extended fields), and that the scoped column write

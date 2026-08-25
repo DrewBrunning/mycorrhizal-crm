@@ -14,8 +14,9 @@ import (
 
 // Audit operation tokens stored on AuditEvent.Operation. The first three are
 // entity CRUD; the rest are the auth/admin lifecycle vocabulary added by issue
-// #381 (ASVS V7.3). The set is pinned by migration 000034's CHECK constraint —
-// a token added here without a migration is a silent INSERT failure.
+// #381 (ASVS V7.3), plus password_reset_requested added by issue #411. The
+// set is pinned by migration 000034/000035's CHECK constraint — a token
+// added here without a migration is a silent INSERT failure.
 const (
 	AuditOpCreate         = "create"
 	AuditOpUpdate         = "update"
@@ -25,11 +26,17 @@ const (
 	AuditOpRegister       = "register"
 	AuditOpPasswordChange = "password_change"
 	AuditOpPasswordReset  = "password_reset"
-	AuditOpTOTPEnable     = "totp_enable"
-	AuditOpTOTPDisable    = "totp_disable"
-	AuditOpRecoveryRegen  = "recovery_regenerate"
-	AuditOpRevoke         = "revoke"
-	AuditOpRoleChange     = "role_change"
+	// AuditOpPasswordResetRequested fires when a reset is requested for a
+	// known account (issue #411) -- distinct from AuditOpPasswordReset, which
+	// fires only once the token is actually confirmed. Never recorded for an
+	// unknown email: RequestPasswordReset returns before this point, so the
+	// audit trail itself can't be used to enumerate accounts.
+	AuditOpPasswordResetRequested = "password_reset_requested"
+	AuditOpTOTPEnable             = "totp_enable"
+	AuditOpTOTPDisable            = "totp_disable"
+	AuditOpRecoveryRegen          = "recovery_regenerate"
+	AuditOpRevoke                 = "revoke"
+	AuditOpRoleChange             = "role_change"
 )
 
 // AuditEntityType tokens stored on AuditEvent.EntityType. The first group are
