@@ -160,7 +160,7 @@ L3-only, out of scope: 2.2.4, 2.2.5, 2.2.6, 2.2.7.
 | 2.5.5 | Notify on factor change | partial | Audited (`backend/models/audit.go`) but not proactively notified; same gap as 2.2.3 |
 | 2.5.6 | Secure recovery mechanism | satisfied | crypto/rand token, hash-only storage, 1 h TTL, endpoints rate-limited (`routes/routes.go:46-49`); tests `services/password_reset_service_test.go` |
 | 2.5.7 | Identity proofing on factor loss | not-applicable | Enrollment has no identity proofing (self-hosted); recovery codes fill the loss path |
-| 2.6.1 | Lookup secrets single use | satisfied | Recovery codes deleted in the same `WHERE` that consumes them (`backend/services/twofactor.go:171-175`); test `two_factor_controller_test.go:250` |
+| 2.6.1 | Lookup secrets single use | satisfied | Recovery codes deleted in the same `WHERE` that consumes them (`backend/services/twofactor.go:171-175`); test `two_factor_controller_test.go:250`; regeneration invalidates the superseded set (`routes/session_lifecycle_test.go`) |
 | 2.6.2 | Lookup-secret entropy ≥ 112 bits or salted+hashed | partial | Recovery codes are 15 chars from a 32-symbol alphabet = 75 bits, stored SHA-256 hashed **without** a per-code salt (`twofactor.go:38,88-148`). Gap vs the letter; see 2.6.3 for why it's still safe. |
 | 2.6.3 | Resistant to offline attack | satisfied | 75-bit random codes (≈3.8×10²²) + SHA-256; API tokens are 256-bit (`controllers/api_token_controller.go:65-70`) |
 | 2.7.1–2.7.6 | Out-of-band verifier | not-applicable | No SMS/email/push OOB authenticator exists; the 2FA step is in-band TOTP (see V2.8) |
@@ -169,7 +169,7 @@ L3-only, out of scope: 2.2.4, 2.2.5, 2.2.6, 2.2.7.
 | 2.8.3 | Approved algorithms for OTP | satisfied | RFC 6238 TOTP (HMAC-SHA1), `pquerna/otp` (`twofactor.go:55-83`) |
 | 2.8.4 | TOTP single use within validity | partial | No one-time-use rejection inside the 30 s window (standard TOTP behavior); brute force is rate-limited (`two_factor_controller.go:346-356,377-387`) |
 | 2.8.5 | Reused TOTP logged + notified | partial | Reuse is not tracked/notified; failed-code attempts are rate-limited and logged as 429s. Gap: reuse detection. |
-| 2.8.6 | TOTP revocable, immediate effect | satisfied | Disable 2FA requires a live code, then clears secret + bumps `token_version` (kills all sessions) (`two_factor_controller.go:196-256,231`) |
+| 2.8.6 | TOTP revocable, immediate effect | satisfied | Disable 2FA requires a live code, then clears secret + bumps `token_version` (kills all sessions) (`two_factor_controller.go:196-256,231`); E2E `routes/session_lifecycle_test.go` |
 | 2.8.7 | Biometrics only as secondary factor | not-applicable | No biometric authenticators |
 | 2.9.1–2.9.3 | Cryptographic verifiers (smart cards/FIDO) | not-applicable | No FIDO/smart-card authenticators; see 2.3.2 |
 | 2.10.1–2.10.3 | Service authentication | not-applicable | No intra-service accounts; single process |
@@ -186,16 +186,16 @@ L3-only, out of scope: 3.6.1, 3.6.2.
 | 3.2.2 | ≥ 64 bits entropy | satisfied | Token is a signed assertion; the signing secret is ≥ 32 bytes (256 bits) enforced at boot, and placeholder/low-entropy secrets are rejected (`config/config.go:351-379`) |
 | 3.2.3 | Tokens in secure browser storage | satisfied | httpOnly cookie (`user_controller.go:205-214`); never `localStorage`/`sessionStorage` (`frontend/src/auth.ts:127-134`) |
 | 3.2.4 | Approved crypto for tokens | satisfied | HS256 (HMAC-SHA-256), explicit `SigningMethodHMAC` check (`middleware/auth.go:66-98`) |
-| 3.3.1 | Logout/expiry invalidate session | satisfied | Logout clears cookies (`user_controller.go:232-236`); JWT expiry 96 h default (`config/config.go:96-101`); `token_version` revocation (`middleware/auth.go:141-154`); test `middleware/auth_lifecycle_test.go:59-84` |
+| 3.3.1 | Logout/expiry invalidate session | satisfied | Logout clears cookies (`user_controller.go:232-236`); JWT expiry 96 h default (`config/config.go:96-101`); `token_version` revocation (`middleware/auth.go:141-154`); test `middleware/auth_lifecycle_test.go:59-84`, E2E `routes/session_lifecycle_test.go` |
 | 3.3.2 | Re-authentication after idle | partial | Absolute 96 h expiry but **no idle timeout** (`config/config.go:96-101`). Gap vs L2's 12 h/30 min idle guidance; documented as the chosen trade-off for a personal CRM |
-| 3.3.3 | Terminate other sessions after password change | satisfied | `TokenVersion++` on change/reset kills all other sessions; caller's own cookie is re-issued (`user_controller.go:701,422-428,709-734`) |
+| 3.3.3 | Terminate other sessions after password change | satisfied | `TokenVersion++` on change/reset kills all other sessions; caller's own cookie is re-issued (`user_controller.go:701,422-428,709-734`); E2E: change/reset/admin-reset each kill a pre-change JWT (`routes/session_lifecycle_test.go`) |
 | 3.3.4 | View and log out all sessions | partial | Stateless JWTs — no per-device session list; "log out everything" is achievable via password change (3.3.3) or admin reset (`admin_user_controller.go:394-409`). Gap: no session inventory UI. |
 | 3.4.1 | Cookie `Secure` attribute | satisfied | `Secure = cfg.CookieSecure`, and boot refuses `FRONTEND_URL=https` + `COOKIE_SECURE=false` (`user_controller.go:205-214`, `config/config.go:375-380`) |
 | 3.4.2 | Cookie `HttpOnly` | satisfied | `user_controller.go:205-214` |
 | 3.4.3 | Cookie `SameSite` | satisfied | `SameSite=Lax` (`user_controller.go:205-214`) |
 | 3.4.4 | `__Host-` prefix | partial | No `__Host-` prefix; the cookie is host-only with `Path=/` and no Domain, and `COOKIE_SECURE` may be off in plain-HTTP LAN setups (`.env.example:110-122`). Gap: prefix impossible while dev/HTTP setups exist. |
 | 3.4.5 | Precise cookie path | satisfied | Single app at `/`; no sibling apps on the domain (`Path=/`) |
-| 3.5.1 | Revocable OAuth tokens | not-applicable | No OAuth token issuance (OIDC is RP-only); scoped API tokens are revocable (`api_token_controller.go:111-138`) |
+| 3.5.1 | Revocable OAuth tokens | not-applicable | No OAuth token issuance (OIDC is RP-only); scoped API tokens are revocable (`api_token_controller.go:111-138`), E2E `routes/session_lifecycle_test.go` |
 | 3.5.2 | Session tokens over static API keys | partial | Sessions are JWTs; long-lived API tokens exist **by design** for CardDAV/scripting — scoped (`full`/`carddav`), hashed at rest, default 90-day expiry, revocable (`api_token_controller.go:51-109`, `models/dtos.go:493-509`) |
 | 3.5.3 | Stateless tokens signed + tamper-proof | satisfied | HS256 with explicit algorithm pinning (`middleware/auth.go:66-98`); `purpose:"2fa"` challenge tokens structurally can't be sessions (`:109-118`); test `auth_lifecycle_test.go:88` |
 | 3.7.1 | Full login required for sensitive ops | satisfied | 2FA challenges can't authenticate (`auth.go:109-118`); password change requires the current password (`user_controller.go:674`); 2FA disable requires a live code (`two_factor_controller.go:196-256`) |
