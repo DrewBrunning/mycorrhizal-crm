@@ -2,9 +2,11 @@
 import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 
 /**
- * Helper function to download a file from an API response
+ * Helper function to download a file from an API response. Exported so
+ * other export-shaped API modules (e.g. api/audit.ts's exportAuditLog) can
+ * reuse the same download mechanics instead of duplicating them.
  */
-async function downloadFileFromResponse(response: Response, defaultFilename: string): Promise<void> {
+export async function downloadFileFromResponse(response: Response, defaultFilename: string): Promise<void> {
   // Get the filename from Content-Disposition header or use default
   const contentDisposition = response.headers.get('Content-Disposition');
   let filename = defaultFilename;

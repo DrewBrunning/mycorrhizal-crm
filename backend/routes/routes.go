@@ -131,13 +131,20 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.POST("/contacts/:id/favorite", controllers.FavoriteContact)
 			protected.POST("/contacts/:id/unfavorite", controllers.UnfavoriteContact)
 
-			// Contact import routes (CSV)
-			protected.POST("/contacts/import/upload", controllers.UploadCSVForImport)
+			// Contact import routes (CSV). The upload route carries its own
+			// BodySizeLimitMiddleware(services.MaxCSVSize) — DefaultBodySizeLimitMiddleware
+			// (main.go, engine-wide) exempts this exact path (see
+			// middleware.largeBodyRoutePaths) precisely so this one can apply
+			// instead. Issue #416: without this, the 10MB global default
+			// silently won regardless of MaxCSVSize, and no CSV import could
+			// ever exceed 10MB despite the handler's own 20MB check.
+			protected.POST("/contacts/import/upload", middleware.BodySizeLimitMiddleware(services.MaxCSVSize), controllers.UploadCSVForImport)
 			protected.POST("/contacts/import/preview", middleware.ValidateJSONMiddleware(&models.ImportPreviewRequest{}), controllers.PreviewImport)
 			protected.POST("/contacts/import/confirm", middleware.ValidateJSONMiddleware(&models.ImportConfirmRequest{}), controllers.ConfirmImport)
 
-			// Contact import routes (VCF)
-			protected.POST("/contacts/import/vcf/upload", func(c *gin.Context) {
+			// Contact import routes (VCF). Same body-size-limit override as
+			// the CSV route above, sized to services.MaxVCFSize instead.
+			protected.POST("/contacts/import/vcf/upload", middleware.BodySizeLimitMiddleware(services.MaxVCFSize), func(c *gin.Context) {
 				controllers.UploadVCFForImport(c, cfg)
 			})
 			protected.POST("/contacts/import/vcf/confirm", middleware.ValidateJSONMiddleware(&models.ImportConfirmRequest{}), func(c *gin.Context) {
@@ -148,7 +155,9 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// Confirmation deliberately reuses /contacts/import/vcf/confirm
 			// (see UploadJSContactForImport's doc comment): the session it
 			// creates is format-agnostic once parsed into []VCFContactData.
-			protected.POST("/contacts/import/jscontact/upload", controllers.UploadJSContactForImport)
+			// Same body-size-limit override as VCF (UploadJSContactForImport
+			// checks against the same services.MaxVCFSize constant).
+			protected.POST("/contacts/import/jscontact/upload", middleware.BodySizeLimitMiddleware(services.MaxVCFSize), controllers.UploadJSContactForImport)
 
 			// Contact import routes (records) — T96's Android device-contacts
 			// path: a batch of neutral Card/CRM records run through the same
@@ -377,6 +386,9 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// Audit trail routes (T18 — T18). Read-only log surface + update-only undo.
 			protected.GET("/audit", controllers.ListAuditEvents)
 			protected.POST("/audit/:id/undo", controllers.UndoAuditEvent)
+			// Issue #416: unbounded CSV export of the caller's own audit
+			// trail, alongside the /export/* routes above.
+			protected.GET("/audit/export", controllers.ExportAuditLog)
 
 			// Notification routes (N9 — N9). Per-user channel config, the
 			// per-user channel toggles, per-channel test notification, and Web

@@ -547,6 +547,82 @@ func ContactToPreviewMap(contact *models.Contact) map[string]interface{} {
 	return preview
 }
 
+// sanitizedContactTextFields lists the free-text Contact fields hostile
+// import input can reach (issue #416). Emails/Phones/Birthday/Anniversary
+// are deliberately excluded: each already has its own format validator in
+// ValidateImportedContact, which will reject a value corrupted by control
+// characters or invalid UTF-8 on its own.
+func sanitizedContactTextFields(contact *models.Contact) []*string {
+	return []*string{
+		&contact.Firstname,
+		&contact.Lastname,
+		&contact.Nickname,
+		&contact.Gender,
+		&contact.Address,
+		&contact.HowWeMet,
+		&contact.WorkInformation,
+		&contact.ContactInformation,
+	}
+}
+
+// sanitizeImportedText fixes the two byte-level hostilities a vCard/CSV/
+// JSContact field can carry that cost nothing to fix: invalid UTF-8 (no
+// legitimate vCard property is invalid UTF-8 -- it's either a decoding bug
+// upstream or a deliberately hostile byte sequence) and C0/C1 control
+// characters other than tab/LF/CR (real contact data doesn't contain a NUL
+// byte or an ESC). Reports whether it changed anything, so the caller can
+// attach a diagnostic without guessing.
+//
+// Deliberately NOT here: length truncation or HTML/script stripping. Both
+// would silently narrow real user content -- this repo's production-data
+// rule ("breaking data needs a reason", CLAUDE.md) and ADR-0002's
+// "preserve, don't reject" policy both argue against it, and the frontend
+// renders every free-text field via plain JSX interpolation (no
+// dangerouslySetInnerHTML, no markdown rendering anywhere in frontend/src),
+// so HTML/script in a field is inert on render -- there is no risk here to
+// spend real user data closing.
+func sanitizeImportedText(s string) (string, bool) {
+	cleaned := strings.ToValidUTF8(s, "�")
+	var b strings.Builder
+	changed := cleaned != s
+	b.Grow(len(cleaned))
+	for _, r := range cleaned {
+		if r == '\t' || r == '\n' || r == '\r' {
+			b.WriteRune(r)
+			continue
+		}
+		// C0 (0x00-0x1F) and C1 (0x7F-0x9F) control characters.
+		if (r >= 0x00 && r <= 0x1F) || (r >= 0x7F && r <= 0x9F) {
+			changed = true
+			continue
+		}
+		b.WriteRune(r)
+	}
+	if !changed {
+		return s, false
+	}
+	return b.String(), true
+}
+
+// SanitizeImportedContact applies sanitizeImportedText to every free-text
+// field an import path can populate, mutating contact in place, and returns
+// one short diagnostic note per field actually changed (nil when nothing
+// changed). Called from BuildImportRowPreview -- the single choke point
+// shared by CSV, VCF, JSContact, and the Android "records" import paths --
+// before ValidateImportedContact runs, so format validators never have to
+// deal with control characters or invalid UTF-8 in the first place.
+func SanitizeImportedContact(contact *models.Contact) []string {
+	var notes []string
+	fieldNames := []string{"firstname", "lastname", "nickname", "gender", "address", "how_we_met", "work_information", "contact_information"}
+	for i, field := range sanitizedContactTextFields(contact) {
+		if cleaned, changed := sanitizeImportedText(*field); changed {
+			*field = cleaned
+			notes = append(notes, fmt.Sprintf("Removed invalid characters from %s", fieldNames[i]))
+		}
+	}
+	return notes
+}
+
 // ValidateImportedContact validates a contact built from either CSV or VCF and returns
 // human-readable errors. Used by both import preview paths.
 func ValidateImportedContact(contact *models.Contact) []string {
@@ -1326,6 +1402,11 @@ func BuildImportRowPreview(
 	diags []string,
 	stats *ImportStats,
 ) models.ImportRowPreview {
+	// Issue #416: fix up invalid UTF-8/control characters before the
+	// preview is built or validated, so both reflect the cleaned value and
+	// the format validators below never have to reason about hostile bytes.
+	diags = append(diags, SanitizeImportedContact(contact)...)
+
 	preview := models.ImportRowPreview{
 		RowIndex:         rowIdx,
 		ParsedContact:    ContactToPreviewMap(contact),

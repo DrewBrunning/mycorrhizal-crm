@@ -473,6 +473,11 @@ func buildTable(s seeded) map[string]authzRow {
 		// --- audit ----------------------------------------------------------
 		"GET /api/v1/audit":           {class: classProtected},
 		"POST /api/v1/audit/:id/undo": {class: classItem, probe: "/api/v1/audit/" + fabricatedNum + "/undo"},
+		// Issue #416: CSV export of the caller's own audit trail, scoped by
+		// user_id exactly like GET /audit above -- classProtected, not
+		// classItem, since there is no :id in the path for persona 3 to
+		// probe against another user's resource.
+		"GET /api/v1/audit/export": {class: classProtected},
 
 		// --- notifications --------------------------------------------------
 		"GET /api/v1/notifications/config":                    {class: classProtected},
