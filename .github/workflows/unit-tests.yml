@@ -148,19 +148,31 @@ jobs:
         # cheap while still compiling and executing the benchmark paths.
         run: go test -run '^$' -bench . -benchtime=1x ./...
 
-      # Issue #265: a short, time-boxed native Go fuzz run per target,
-      # seeded from the golden fixtures (docs/golden-fixtures — the RFC
-      # oracle). go test -fuzz only accepts one target (a regexp matching
-      # exactly one Fuzz function) per invocation, hence two steps. A found
-      # crash writes a regression file under vcard4/testdata/fuzz/ and fails
-      # the step; -fuzztime is deliberately short (a few seconds each) to
-      # keep CI cost low — see FuzzImportVCard4/FuzzExportVCard4's own doc
-      # comments for the longer local run this is not a substitute for.
-      - name: Run vCard4 fuzz targets (issue #265)
+      # Issue #265 (extended by #376 to the other hostile-input parsers): a
+      # short, time-boxed native Go fuzz run per target, seeded from the
+      # golden fixtures (docs/golden-fixtures — the RFC oracle) or, for the
+      # CalDAV/CSV targets, inline fixtures mirroring their existing
+      # httptest-based tests. go test -fuzz only accepts one target (a
+      # regexp matching exactly one Fuzz function) per invocation, hence one
+      # step per target. A found crash writes a regression file under
+      # <pkg>/testdata/fuzz/ and fails the step — that's not hypothetical:
+      # FuzzExtractICalEvents found a real go-ical decoder panic on its
+      # first-ever run (fixed by calendar_sync_service.go's
+      # decodeCalendarSafely, see that function's doc comment). -fuzztime is
+      # deliberately short (a few seconds each) to keep CI cost low — see
+      # each Fuzz function's own doc comment for the longer local run this
+      # is not a substitute for.
+      - name: Run fuzz targets (issues #265, #376)
         working-directory: backend
         run: |
           go test ./vcard4/ -run '^$' -fuzz='^FuzzImportVCard4$' -fuzztime=15s
           go test ./vcard4/ -run '^$' -fuzz='^FuzzExportVCard4$' -fuzztime=15s
+          go test ./vcard3/ -run '^$' -fuzz='^FuzzImportVCard3$' -fuzztime=15s
+          go test ./vcard3/ -run '^$' -fuzz='^FuzzExportVCard3$' -fuzztime=15s
+          go test ./jscontact/ -run '^$' -fuzz='^FuzzImportJSContact$' -fuzztime=15s
+          go test ./jscontact/ -run '^$' -fuzz='^FuzzExportJSContact$' -fuzztime=15s
+          go test ./services/ -run '^$' -fuzz='^FuzzExtractICalEvents$' -fuzztime=15s
+          go test ./services/ -run '^$' -fuzz='^FuzzParseCSV$' -fuzztime=15s
 
       # Issue #251: visibility only, no threshold/gate — printed to the log
       # and uploaded below for anyone who wants the per-func breakdown.
