@@ -883,6 +883,96 @@ func TestExportContactsAsVCF_IncludeSensitiveOptIn(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "RELATED", "include_sensitive=true must project the secret edge")
 }
 
+// TestExportContactsAsVCF_SecretCustomField_ExcludedByDefault_IncludedWithOptIn
+// is issue #416's pinning test for the custom-field half of field-sensitivity
+// filtering. models/contact_record.go's projectCustomFields already applies
+// the same `sensitivity = 'normal'` query-level filter as
+// projectRelationshipEdges (which TestExportContactsAsVCF_IncludeSensitiveOptIn
+// above pins for RelationshipEdge) -- this is the missing equivalent for a
+// secret-sensitivity FieldDefinition/FieldValue, modeled directly on that
+// test. Only a definition with a "vcard:X-..." Projection ever reaches an
+// export at all (default "internal-only" definitions never do).
+func TestExportContactsAsVCF_SecretCustomField_ExcludedByDefault_IncludedWithOptIn(t *testing.T) {
+	db, router := setupRouter()
+	registerVCFRoute(router, "")
+
+	var user models.User
+	db.First(&user)
+	alice := models.Contact{UserID: user.ID, Firstname: "Alice", Lastname: "Anderson"}
+	require.NoError(t, db.Create(&alice).Error)
+
+	def := models.FieldDefinition{
+		UserID:      user.ID,
+		Label:       "Secret Field",
+		Key:         "secret_field",
+		Target:      "contact",
+		Type:        "string",
+		Projection:  "vcard:X-SECRET-FIELD",
+		Sensitivity: models.RelationshipSensitivitySecret,
+	}
+	require.NoError(t, db.Create(&def).Error)
+	require.NoError(t, db.Create(&models.FieldValue{
+		FieldDefinitionID: def.ID,
+		UserID:            user.ID,
+		EntityID:          alice.VCardUID,
+		Value:             json.RawMessage(`"top secret value"`),
+	}).Error)
+
+	// Default (even with custom_fields selected): the secret field stays out.
+	req, _ := http.NewRequest("GET", "/export/vcf?sections=custom_fields", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.NotContains(t, w.Body.String(), "X-SECRET-FIELD", "checking a section is not enough to export a secret custom field")
+
+	// Explicit opt-in: the field projects.
+	req, _ = http.NewRequest("GET", "/export/vcf?sections=custom_fields&include_sensitive=true", nil)
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "X-SECRET-FIELD", "include_sensitive=true must project the secret custom field")
+}
+
+// The JSContact equivalent of the VCF test above.
+func TestExportContactsAsJSContact_SecretCustomField_ExcludedByDefault_IncludedWithOptIn(t *testing.T) {
+	db, router := setupRouter()
+	registerJSContactRoute(router, "")
+
+	var user models.User
+	db.First(&user)
+	alice := models.Contact{UserID: user.ID, Firstname: "Alice", Lastname: "Anderson"}
+	require.NoError(t, db.Create(&alice).Error)
+
+	def := models.FieldDefinition{
+		UserID:      user.ID,
+		Label:       "Secret Field",
+		Key:         "secret_field",
+		Target:      "contact",
+		Type:        "string",
+		Projection:  "vcard:X-SECRET-FIELD",
+		Sensitivity: models.RelationshipSensitivitySecret,
+	}
+	require.NoError(t, db.Create(&def).Error)
+	require.NoError(t, db.Create(&models.FieldValue{
+		FieldDefinitionID: def.ID,
+		UserID:            user.ID,
+		EntityID:          alice.VCardUID,
+		Value:             json.RawMessage(`"top secret value"`),
+	}).Error)
+
+	req, _ := http.NewRequest("GET", "/export/jscontact?sections=custom_fields", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.NotContains(t, w.Body.String(), "X-SECRET-FIELD")
+
+	req, _ = http.NewRequest("GET", "/export/jscontact?sections=custom_fields&include_sensitive=true", nil)
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "X-SECRET-FIELD")
+}
+
 // The same picker applies to the JSContact export handler.
 func TestExportContactsAsJSContact_SectionsFilter(t *testing.T) {
 	db, router := setupRouter()
