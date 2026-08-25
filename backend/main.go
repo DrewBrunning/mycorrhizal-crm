@@ -115,6 +115,14 @@ func main() {
 	// fire-and-forget audit writes (never the hook's transaction).
 	models.RegisterAuditDB(db)
 
+	// T18 audit hash chain (issue #381): backfill hash/prev_hash for any rows
+	// written before migration 000033 and re-link after any purge. Idempotent
+	// and write-free once the chain is consistent; failing closed on error
+	// keeps the tamper-evidence property from silently degrading.
+	if err := models.RecomputeAuditChain(db); err != nil {
+		logger.Fatal().Err(err).Msg("Failed to backfill the audit hash chain")
+	}
+
 	logger.Info().Msg("Initializing i18n translations...")
 	if err := i18n.Init(); err != nil {
 		logger.Fatal().Err(err).Msg("Failed to initialize i18n")

@@ -17,7 +17,11 @@ export type AuditEntityType =
   | 'circle'
   | 'tag'
   | 'household'
-  | 'reminder';
+  | 'reminder'
+  // Auth/admin lifecycle entities (issue #381).
+  | 'user'
+  | 'auth'
+  | 'api_token';
 
 export const AUDIT_ENTITY_TYPES: AuditEntityType[] = [
   'contact',
@@ -29,10 +33,27 @@ export const AUDIT_ENTITY_TYPES: AuditEntityType[] = [
   'tag',
   'household',
   'reminder',
+  'user',
+  'auth',
+  'api_token',
 ];
 
-// Mirrors models/audit.go's AuditOp* tokens.
-export type AuditOperation = 'create' | 'update' | 'delete';
+// Mirrors models/audit.go's AuditOp* tokens (issue #381 widened the set from
+// entity CRUD to include the auth/admin lifecycle vocabulary).
+export type AuditOperation =
+  | 'create'
+  | 'update'
+  | 'delete'
+  | 'login'
+  | 'login_failed'
+  | 'register'
+  | 'password_change'
+  | 'password_reset'
+  | 'totp_enable'
+  | 'totp_disable'
+  | 'recovery_regenerate'
+  | 'revoke'
+  | 'role_change';
 
 export interface AuditEvent {
   id: number;
@@ -44,6 +65,10 @@ export interface AuditEvent {
   // Opaque infrastructure -- the backend strips credential fields at recording
   // time, and the UI must never render it as user-facing content.
   before_snapshot?: string;
+  // SHA-256 hash-chain link (issue #381): each row commits
+  // hash(prev_hash || content) so the audit log is tamper-evident.
+  hash?: string;
+  prev_hash?: string;
 }
 
 export interface AuditEventsResponse {

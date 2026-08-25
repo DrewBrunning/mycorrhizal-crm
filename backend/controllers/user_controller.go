@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"os"
@@ -75,6 +76,9 @@ func RegisterUser(cfg *config.Config) gin.HandlerFunc {
 			apperrors.AbortWithError(context, apperrors.ErrAlreadyExists("User").WithDetails("email", user.Email))
 			return
 		}
+
+		// T18 audit: account creation is an auth lifecycle event (issue #381).
+		models.RecordAuditEvent(models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpRegister, user.ID)
 
 		// Create the user's default self-contact.
 		if err := services.EnsureSelfContact(db, &user); err != nil {
@@ -158,6 +162,11 @@ func LoginUser(context *gin.Context, cfg *config.Config) {
 
 	// Compare the hashed password
 	if err := bcrypt.CompareHashAndPassword([]byte(foundUser.Password), []byte(input.Password)); err != nil {
+		// T18 audit: failed authentication for a known account (issue #381).
+		// Unknown-identifier failures are intentionally not audited — the
+		// account id is unknown and the design deliberately cannot
+		// distinguish them (anti-enumeration); they stay in the request log.
+		models.RecordAuditEvent(models.AuditEntityAuth, foundUser.Username, models.AuditOpLoginFailed, foundUser.ID)
 		// Record failed attempt for password mismatch
 		isLocked, lockoutSecs := accountLimiter.RecordFailedAttempt(identifier)
 		if isLocked {
@@ -207,6 +216,12 @@ func LoginUser(context *gin.Context, cfg *config.Config) {
 		apperrors.AbortWithError(context, apperrors.ErrInternal("Could not generate token").WithError(err))
 		return
 	}
+
+	// T18 audit: successful password authentication (issue #381) — only after
+	// the session token is actually minted. For 2FA accounts the session is
+	// not minted until Complete2FALogin succeeds, which records the same
+	// event, so "login" here always means a real session was issued.
+	models.RecordAuditEvent(models.AuditEntityAuth, foundUser.Username, models.AuditOpLogin, foundUser.ID)
 
 	// Set httpOnly cookie with the JWT token
 	maxAge := cfg.JWTExpiryHours * 3600 // Convert hours to seconds
@@ -448,6 +463,9 @@ func ConfirmPasswordReset(context *gin.Context, cfg *config.Config) {
 		apperrors.AbortWithError(context, apperrors.ErrDatabase("update user").WithError(err))
 		return
 	}
+
+	// T18 audit: password changed via the recovery path (issue #381).
+	models.RecordAuditEvent(models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpPasswordReset, user.ID)
 
 	context.JSON(http.StatusOK, gin.H{"message": "Password reset successful"})
 }
@@ -729,6 +747,9 @@ func ChangePassword(context *gin.Context, cfg *config.Config) {
 		apperrors.AbortWithError(context, apperrors.ErrDatabase("update user").WithError(err))
 		return
 	}
+
+	// T18 audit: self-service password change (issue #381).
+	models.RecordAuditEvent(models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpPasswordChange, user.ID)
 
 	// The bump above also invalidated the caller's own token. Re-issue it so
 	// changing your password signs out your *other* sessions rather than

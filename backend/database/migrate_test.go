@@ -1320,3 +1320,90 @@ func TestAttachmentsMigration(t *testing.T) {
 	require.NoError(t, sqlDB.QueryRow("SELECT COUNT(*) FROM users WHERE username = 'n7'").Scan(&userCount))
 	assert.EqualValues(t, 1, userCount, "a rollback must not destroy the pre-existing user")
 }
+
+// TestAuditHashChainMigration pins migration 000033's shape (issue #381): it
+// adds hash/prev_hash, preserves pre-existing audit rows and their ids (the
+// rebuild must be lossless — reach_out_suggestions.audit_event_id references
+// them loosely), widens the operation CHECK to the auth/admin vocabulary, keeps
+// the immutability trigger in force, and rolls back to the 000016 shape.
+func TestAuditHashChainMigration(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "t381-migration.db")
+	sqlDB, err := sql.Open("sqlite", openDSN(dbPath))
+	require.NoError(t, err)
+	defer sqlDB.Close()
+
+	m, err := newMigrator(sqlDB)
+	require.NoError(t, err)
+	require.NoError(t, m.Steps(32))
+
+	_, err = sqlDB.Exec("INSERT INTO users (created_at, updated_at, username, password, email) VALUES (datetime('now'), datetime('now'), 't381', 'x', 't381@example.com')")
+	require.NoError(t, err)
+
+	// A pre-existing audit row (the 000016 shape has no hash/prev_hash columns).
+	_, err = sqlDB.Exec(`
+		INSERT INTO audit_events (created_at, updated_at, entity_type, entity_id, operation, user_id, before_snapshot)
+		VALUES (datetime('now'), datetime('now'), 'contact', 'vcard-1', 'update', 1, '{"a":1}')`)
+	require.NoError(t, err)
+	var legacyID int64
+	require.NoError(t, sqlDB.QueryRow("SELECT id FROM audit_events WHERE entity_id = 'vcard-1'").Scan(&legacyID))
+	require.EqualValues(t, 1, legacyID, "the test's insert must be the first row")
+
+	require.NoError(t, m.Steps(1)) // 000033
+
+	// The columns exist and carry the default (backfill is a Go step).
+	var n int64
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM pragma_table_info('audit_events') WHERE name = 'hash'").Scan(&n))
+	assert.EqualValues(t, 1, n, "000033 must add the hash column")
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM pragma_table_info('audit_events') WHERE name = 'prev_hash'").Scan(&n))
+	assert.EqualValues(t, 1, n, "000033 must add the prev_hash column")
+
+	// The pre-existing row survives with its id and content intact.
+	var survivedID int64
+	var survivedOp string
+	var survivedHash string
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT id, operation, hash FROM audit_events WHERE entity_id = 'vcard-1'").Scan(&survivedID, &survivedOp, &survivedHash))
+	assert.EqualValues(t, legacyID, survivedID, "the rebuild must preserve row ids")
+	assert.Equal(t, "update", survivedOp)
+	assert.Equal(t, "", survivedHash, "backfill is a Go step, not part of the migration")
+
+	// The widened CHECK accepts auth lifecycle tokens and still rejects garbage.
+	_, err = sqlDB.Exec(`
+		INSERT INTO audit_events (created_at, updated_at, entity_type, entity_id, operation, user_id)
+		VALUES (datetime('now'), datetime('now'), 'auth', 'alice', 'login', 1)`)
+	require.NoError(t, err, "the widened CHECK must accept auth lifecycle operations")
+	_, err = sqlDB.Exec(`
+		INSERT INTO audit_events (created_at, updated_at, entity_type, entity_id, operation, user_id)
+		VALUES (datetime('now'), datetime('now'), 'auth', 'alice', 'bogus', 1)`)
+	assert.Error(t, err, "an operation outside the vocabulary must be rejected")
+
+	// The immutability trigger survives the rebuild.
+	_, err = sqlDB.Exec(`UPDATE audit_events SET operation = 'delete' WHERE entity_id = 'vcard-1'`)
+	assert.Error(t, err, "the immutability trigger must survive the rebuild")
+
+	// The AUTOINCREMENT sequence continues after the preserved max id.
+	var nextID int64
+	require.NoError(t, sqlDB.QueryRow(`
+		INSERT INTO audit_events (created_at, updated_at, entity_type, entity_id, operation, user_id)
+		VALUES (datetime('now'), datetime('now'), 'contact', 'vcard-2', 'create', 1)
+		RETURNING id`).Scan(&nextID))
+	assert.Greater(t, nextID, legacyID, "new rows must keep allocating ids after the preserved ones")
+
+	// Down: back to the 000016 shape — chain columns gone, CRUD rows kept.
+	require.NoError(t, MigrateDown(dbPath))
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM pragma_table_info('audit_events') WHERE name = 'hash'").Scan(&n))
+	assert.Zero(t, n, "the down migration must drop the hash column")
+	var crudCount int64
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM audit_events WHERE operation = 'create'").Scan(&crudCount))
+	assert.EqualValues(t, 1, crudCount, "CRUD rows must survive a rollback")
+	var loginCount int64
+	require.NoError(t, sqlDB.QueryRow(
+		"SELECT COUNT(*) FROM audit_events WHERE operation = 'login'").Scan(&loginCount))
+	assert.Zero(t, loginCount, "auth lifecycle rows are dropped on rollback (the restored CHECK cannot represent them)")
+	_, err = sqlDB.Exec(`UPDATE audit_events SET operation = 'delete' WHERE entity_id = 'vcard-1'`)
+	assert.Error(t, err, "the immutability trigger must be restored by the down migration")
+}

@@ -46,3 +46,52 @@ func TestPurgeExpiredAuditEvents(t *testing.T) {
 	require.NoError(t, db.Find(&all).Error)
 	assert.Len(t, all, 2, "a non-positive retention must disable purging, not delete everything")
 }
+
+// TestPurgeExpiredAuditEvents_RelinksHashChain pins issue #381's purge
+// contract: the retention job is the sanctioned DELETE that breaks the
+// tamper-evident hash chain at its head, so after purging the survivors must
+// verify as a clean chain again (RecomputeAuditChain re-links them).
+func TestPurgeExpiredAuditEvents_RelinksHashChain(t *testing.T) {
+	db, err := database.InitDB(filepath.Join(t.TempDir(), "audit-purge-chain.db"))
+	require.NoError(t, err)
+	models.RegisterAuditDB(db)
+	t.Cleanup(func() {
+		models.AuditFlush()
+		models.RegisterAuditDB(nil)
+	})
+
+	user := models.User{Username: "auditpurgechain", Password: "password123!A", Email: "auditpurgechain@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	// Build a chain from directly-inserted rows with controlled ages (the
+	// recorder writes "now", which makes the retention window hard to pin).
+	// The immutability trigger rejects UPDATE, so age via the insert, not a
+	// backdate.
+	events := []models.AuditEvent{
+		{EntityType: models.AuditEntityAuth, EntityID: "alice", Operation: models.AuditOpLogin, UserID: user.ID, CreatedAt: time.Now().AddDate(0, 0, -40).UTC()},
+		{EntityType: models.AuditEntityAuth, EntityID: "alice", Operation: models.AuditOpLogin, UserID: user.ID, CreatedAt: time.Now().AddDate(0, 0, -40).UTC()},
+		{EntityType: models.AuditEntityAuth, EntityID: "alice", Operation: models.AuditOpLogin, UserID: user.ID, CreatedAt: time.Now().UTC()},
+		{EntityType: models.AuditEntityAuth, EntityID: "alice", Operation: models.AuditOpLogin, UserID: user.ID, CreatedAt: time.Now().UTC()},
+	}
+	for _, e := range events {
+		require.NoError(t, db.Create(&e).Error)
+	}
+	require.NoError(t, models.RecomputeAuditChain(db))
+	gaps, err := models.VerifyAuditChain(db)
+	require.NoError(t, err)
+	assert.Empty(t, gaps, "the seeded chain must verify clean before the purge")
+
+	PurgeExpiredAuditEvents(db, config.Config{AuditRetentionDays: 30})
+
+	var remaining []models.AuditEvent
+	require.NoError(t, db.Find(&remaining).Error)
+	require.Len(t, remaining, 2, "the two aged-out head rows must be purged")
+
+	gaps, err = models.VerifyAuditChain(db)
+	require.NoError(t, err)
+	assert.Empty(t, gaps, "the purge must re-link the survivors into a clean hash chain")
+
+	var head models.AuditEvent
+	require.NoError(t, db.Order("id asc").First(&head).Error)
+	assert.Empty(t, head.PrevHash, "the new head must restart the chain from genesis")
+}
