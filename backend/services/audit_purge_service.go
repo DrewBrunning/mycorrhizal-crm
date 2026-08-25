@@ -20,6 +20,9 @@ const auditPurgeMinInterval = 23 * time.Hour
 // file growth on a single-file database). This is the ONLY sanctioned delete
 // path for the append-only audit table: the model has no delete receiver
 // method, and the 000016 UPDATE trigger blocks every other mutation.
+//
+// The delete breaks the tamper-evident hash chain at its head (issue #381), so
+// after any deletion the survivors are re-linked via models.RecomputeAuditChain.
 func PurgeExpiredAuditEvents(db *gorm.DB, cfg config.Config) {
 	if cfg.AuditRetentionDays <= 0 {
 		// Misconfigured to 0/negative: treat as disabled rather than
@@ -35,6 +38,9 @@ func PurgeExpiredAuditEvents(db *gorm.DB, cfg config.Config) {
 	}
 	if result.RowsAffected > 0 {
 		logger.Info().Int64("rows", result.RowsAffected).Time("cutoff", cutoff).Msg("Purged expired audit events")
+		if err := models.RecomputeAuditChain(db); err != nil {
+			logger.Error().Err(err).Msg("audit purge: failed to re-link the audit hash chain after purge")
+		}
 	}
 }
 

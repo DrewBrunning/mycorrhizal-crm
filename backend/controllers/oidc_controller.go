@@ -8,6 +8,7 @@ import (
 
 	"mycorrhizal/config"
 	"mycorrhizal/logger"
+	"mycorrhizal/models"
 	"mycorrhizal/services"
 
 	"github.com/gin-gonic/gin"
@@ -212,6 +213,9 @@ func OIDCCallbackHandler(provider *services.OIDCProvider, cfg *config.Config) gi
 			oidcErrorRedirect(c, android, "oidc_error")
 			return
 		}
+
+		// T18 audit: authentication via the identity provider (issue #381).
+		models.RecordAuditEvent(models.AuditEntityAuth, user.Username, models.AuditOpLogin, user.ID)
 
 		if android {
 			// M6: deliver the token to the app's own intent filter via the

@@ -1,4 +1,4 @@
-.PHONY: migrate-up migrate-down migrate-create migrate-status migrate-force migrate-version backfill-at-rest rotate-at-rest-key backup help
+.PHONY: migrate-up migrate-down migrate-create migrate-status migrate-force migrate-version backfill-at-rest rotate-at-rest-key audit-backfill audit-verify backup help
 
 # Database path. The migration CLI reads SQLITE_DB_PATH (the same variable the
 # server reads), so every target below EXPORTS this rather than just echoing
@@ -64,6 +64,13 @@ migrate-force: ## Force set migration version (usage: make migrate-force VERSION
 migrate-version: ## Show available migration files
 	@echo "Available migration files:"
 	@ls -1 $(MIGRATIONS_DIR)/*.sql 2>/dev/null || echo "No migration files found"
+
+audit-backfill: ## Complete the tamper-evident audit hash chain (issue #381) for rows that predate migration 000034. The server does this on startup; this is for `make migrate-up`-only workflows.
+	@echo "Backfilling the audit hash chain on $(DB_PATH)..."
+	@go run cmd/audit-backfill/main.go
+
+audit-verify: ## Verify the tamper-evident audit hash chain (issue #381); reports the first gap and exits non-zero on tampering.
+	@go run cmd/audit-verify/main.go
 
 backup: ## Create a consistent online snapshot of the SQLite database (VACUUM INTO; safe while the server runs)
 	@echo "Backing up $(DB_PATH)..."

@@ -115,5 +115,9 @@ test('AUDIT_ENTITY_TYPES mirrors the backend enum exactly', () => {
     'tag',
     'household',
     'reminder',
+    // Auth/admin lifecycle entities (issue #381).
+    'user',
+    'auth',
+    'api_token',
   ]);
 });

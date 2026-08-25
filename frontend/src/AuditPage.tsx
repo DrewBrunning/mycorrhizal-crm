@@ -40,6 +40,18 @@ const OPERATION_COLORS: Record<AuditEvent['operation'], 'success' | 'info' | 'er
   create: 'success',
   update: 'info',
   delete: 'error',
+  // Auth/admin lifecycle events (issue #381) — failures are errors, the rest
+  // are informational.
+  login: 'info',
+  login_failed: 'error',
+  register: 'success',
+  password_change: 'info',
+  password_reset: 'info',
+  totp_enable: 'info',
+  totp_disable: 'info',
+  recovery_regenerate: 'info',
+  revoke: 'error',
+  role_change: 'info',
 };
 
 // T60: the read-only audit

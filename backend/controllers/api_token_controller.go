@@ -94,6 +94,9 @@ func CreateApiToken(c *gin.Context) {
 		return
 	}
 
+	// T18 audit: API-token issuance (issue #381).
+	models.RecordAuditEvent(models.AuditEntityAPIToken, fmt.Sprintf("%d", token.ID), models.AuditOpCreate, userID)
+
 	c.JSON(http.StatusCreated, models.ApiTokenCreateResponse{
 		ApiTokenResponse: models.ApiTokenResponse{
 			ID:         token.ID,
@@ -133,6 +136,9 @@ func RevokeApiToken(c *gin.Context) {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("update"))
 		return
 	}
+
+	// T18 audit: API-token revocation (issue #381).
+	models.RecordAuditEvent(models.AuditEntityAPIToken, fmt.Sprintf("%d", token.ID), models.AuditOpRevoke, userID)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Token revoked successfully"})
 }

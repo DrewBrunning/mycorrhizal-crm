@@ -1985,7 +1985,17 @@
     "operations": {
       "create": "Creato",
       "update": "Aggiornato",
-      "delete": "Eliminato"
+      "delete": "Eliminato",
+      "login": "Accesso effettuato",
+      "login_failed": "Accesso non riuscito",
+      "register": "Registrato",
+      "password_change": "Password modificata",
+      "password_reset": "Password reimpostata",
+      "totp_enable": "2FA attivata",
+      "totp_disable": "2FA disattivata",
+      "recovery_regenerate": "Codici di recupero rigenerati",
+      "revoke": "Revocato",
+      "role_change": "Ruolo modificato"
     },
     "entityTypes": {
       "contact": "Contatto",
@@ -1996,7 +2006,10 @@
       "circle": "Cerchia",
       "tag": "Etichetta",
       "household": "Famiglia",
-      "reminder": "Promemoria"
+      "reminder": "Promemoria",
+      "user": "Utente",
+      "auth": "Autenticazione",
+      "api_token": "Token API"
     },
     "empty": "Nessun evento di controllo corrisponde ai tuoi filtri.",
     "emptyNoFilters": "Ancora nessun evento di controllo. Le modifiche apportate ai tuoi contatti e ad altre registrazioni appariranno qui.",

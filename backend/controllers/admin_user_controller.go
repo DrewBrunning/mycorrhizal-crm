@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"strconv"
@@ -274,6 +275,11 @@ func CreateUser(c *gin.Context) {
 	log := logger.FromContext(c)
 	db := c.MustGet("db").(*gorm.DB)
 
+	actingAdminID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+
 	input, appErr := middleware.GetValidated[models.AdminUserCreateInput](c)
 	if appErr != nil {
 		apperrors.AbortWithError(c, appErr)
@@ -317,6 +323,10 @@ func CreateUser(c *gin.Context) {
 		log.Error().Err(err).Uint("user_id", user.ID).
 			Msg("Failed to create self contact for admin-created user")
 	}
+
+	// T18 audit: admin created an account (issue #381). The acting admin is
+	// the actor; the new account is the subject.
+	models.RecordAuditEvent(models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpCreate, actingAdminID)
 
 	c.JSON(http.StatusCreated, models.AdminUserResponse{
 		ID:         user.ID,
@@ -363,6 +373,8 @@ func UpdateUser(c *gin.Context) {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("get user").WithError(err))
 		return
 	}
+	// Pre-mutation snapshot so the audit trail can name what actually changed.
+	wasAdmin := user.IsAdmin
 
 	// Prevent admin from removing their own admin status
 	if input.IsAdmin != nil && !*input.IsAdmin && user.ID == currentUserID {
@@ -419,6 +431,16 @@ func UpdateUser(c *gin.Context) {
 		}
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("update user").WithError(err))
 		return
+	}
+
+	// T18 audit: admin user edit, with the security-relevant deltas spelled
+	// out (issue #381). The acting admin is the actor.
+	models.RecordAuditEvent(models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpUpdate, currentUserID)
+	if input.IsAdmin != nil && *input.IsAdmin != wasAdmin {
+		models.RecordAuditEvent(models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpRoleChange, currentUserID)
+	}
+	if input.Password != nil {
+		models.RecordAuditEvent(models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpPasswordReset, currentUserID)
 	}
 
 	c.JSON(http.StatusOK, models.AdminUserResponse{
@@ -742,6 +764,11 @@ func DeleteUser(c *gin.Context) {
 	// (file deletion can't be rolled back). Uses the admin's own context for
 	// the config; the deleted user's files are addressed by stored name.
 	deleteUserAttachmentFiles(c, userAttachmentNames)
+
+	// T18 audit: admin deleted an account (issue #381). Recorded after the
+	// transaction so the event itself (UserID = acting admin) survives the
+	// target's hard-delete cascade.
+	models.RecordAuditEvent(models.AuditEntityUser, fmt.Sprintf("%d", id), models.AuditOpDelete, currentUserID)
 
 	c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully"})
 }
