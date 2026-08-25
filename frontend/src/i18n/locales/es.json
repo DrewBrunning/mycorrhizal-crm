@@ -1985,7 +1985,17 @@
     "operations": {
       "create": "Creado",
       "update": "Actualizado",
-      "delete": "Eliminado"
+      "delete": "Eliminado",
+      "login": "Sesión iniciada",
+      "login_failed": "Inicio de sesión fallido",
+      "register": "Registrado",
+      "password_change": "Contraseña cambiada",
+      "password_reset": "Contraseña restablecida",
+      "totp_enable": "2FA activado",
+      "totp_disable": "2FA desactivado",
+      "recovery_regenerate": "Códigos de recuperación regenerados",
+      "revoke": "Revocado",
+      "role_change": "Rol cambiado"
     },
     "entityTypes": {
       "contact": "Contacto",
@@ -1996,7 +2006,10 @@
       "circle": "Círculo",
       "tag": "Etiqueta",
       "household": "Hogar",
-      "reminder": "Recordatorio"
+      "reminder": "Recordatorio",
+      "user": "Usuario",
+      "auth": "Autenticación",
+      "api_token": "Token de API"
     },
     "empty": "Ningún evento de auditoría coincide con tus filtros.",
     "emptyNoFilters": "Aún no hay eventos de auditoría. Los cambios que hagas en tus contactos y otros registros aparecerán aquí.",
