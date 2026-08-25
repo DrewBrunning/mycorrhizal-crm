@@ -65,7 +65,10 @@ func CreateReminder(c *gin.Context) {
 }
 
 func GetReminder(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := requirePathUintID(c, "id")
+	if !ok {
+		return
+	}
 	var reminder models.Reminder
 	db := c.MustGet("db").(*gorm.DB)
 
@@ -87,7 +90,10 @@ func GetReminder(c *gin.Context) {
 }
 
 func UpdateReminder(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := requirePathUintID(c, "id")
+	if !ok {
+		return
+	}
 	var reminder models.Reminder
 	db := c.MustGet("db").(*gorm.DB)
 
@@ -147,7 +153,10 @@ func UpdateReminder(c *gin.Context) {
 }
 
 func DeleteReminder(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := requirePathUintID(c, "id")
+	if !ok {
+		return
+	}
 	db := c.MustGet("db").(*gorm.DB)
 
 	userID, ok := currentUserID(c)
@@ -187,7 +196,10 @@ func DeleteReminder(c *gin.Context) {
 }
 
 func GetRemindersForContact(c *gin.Context) {
-	contactID := c.Param("id")
+	contactID, ok := requirePathUintID(c, "id")
+	if !ok {
+		return
+	}
 
 	db := c.MustGet("db").(*gorm.DB)
 
@@ -258,7 +270,10 @@ func GetUpcomingReminders(c *gin.Context) {
 // CompleteReminder marks a reminder as completed
 // Use ?skip=true to skip without recording in timeline (for recurring reminders, reschedules to next occurrence)
 func CompleteReminder(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := requirePathUintID(c, "id")
+	if !ok {
+		return
+	}
 	db := c.MustGet("db").(*gorm.DB)
 	skip := c.Query("skip") == "true"
 
@@ -376,7 +391,10 @@ func CompleteReminder(c *gin.Context) {
 
 // GetCompletionsForContact returns all reminder completions for a specific contact
 func GetCompletionsForContact(c *gin.Context) {
-	contactID := c.Param("id")
+	contactID, ok := requirePathUintID(c, "id")
+	if !ok {
+		return
+	}
 	db := c.MustGet("db").(*gorm.DB)
 
 	userID, ok := currentUserID(c)
@@ -410,7 +428,10 @@ func GetCompletionsForContact(c *gin.Context) {
 
 // DeleteCompletion deletes a reminder completion record
 func DeleteCompletion(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := requirePathUintID(c, "id")
+	if !ok {
+		return
+	}
 	db := c.MustGet("db").(*gorm.DB)
 
 	userID, ok := currentUserID(c)

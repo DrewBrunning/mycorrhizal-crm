@@ -468,7 +468,7 @@ func TestCalendarSyncError_AllSentinelsMapped(t *testing.T) {
 		{"PrivateAddress", services.ErrCalendarPrivateAddress, http.StatusServiceUnavailable},
 		{"TooLarge", services.ErrCalendarTooLarge, http.StatusServiceUnavailable},
 		{"InvalidData", services.ErrCalendarInvalidData, http.StatusServiceUnavailable},
-		{"Unreachable", services.ErrCalendarUnreachable, http.StatusServiceUnavailable},
+		{"Unreachable", services.ErrCalendarUnreachable, http.StatusBadRequest},
 		{"UnknownError_FallsBackToOperationFailed", fmt.Errorf("some other failure"), http.StatusUnprocessableEntity},
 	}
 	for _, tc := range cases {

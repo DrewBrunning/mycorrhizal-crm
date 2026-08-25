@@ -116,6 +116,38 @@ func TestSaveSeafileConfig_CreateWithoutTokenIsRejected(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
+// TestListSeafileLibraries_NoConfigIs400 and TestListSeafileDir_NoConfigIs400
+// cover issue #524: no Seafile connection configured is the caller's own
+// setup, not a server malfunction, so it must be a 400 — Schemathesis's
+// not_a_server_error check flags any 5xx here.
+func TestListSeafileLibraries_NoConfigIs400(t *testing.T) {
+	db := seedSeafileControllerDB(t)
+	router := seafileTestRouter(t, db)
+
+	w := seafileDoJSON(t, router, "GET", "/seafile/libraries", nil)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestListSeafileDir_NoConfigIs400(t *testing.T) {
+	db := seedSeafileControllerDB(t)
+	router := seafileTestRouter(t, db)
+
+	w := seafileDoJSON(t, router, "GET", "/seafile/libraries/some-repo/dir", nil)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+// TestTestSeafileConnection_NoConfigIs400 covers issue #524: no Seafile
+// connection configured is the caller's own setup, not a server malfunction,
+// so it must be a 400 — Schemathesis's not_a_server_error check flags any 5xx
+// here.
+func TestTestSeafileConnection_NoConfigIs400(t *testing.T) {
+	db := seedSeafileControllerDB(t)
+	router := seafileTestRouter(t, db)
+
+	w := seafileDoJSON(t, router, "POST", "/seafile/test-connection", nil)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
 func TestTestSeafileConnection_SuccessAndFailure(t *testing.T) {
 	db := seedSeafileControllerDB(t)
 	router := seafileTestRouter(t, db)

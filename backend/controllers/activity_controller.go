@@ -74,7 +74,10 @@ func CreateActivity(c *gin.Context) {
 }
 
 func GetActivity(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := requirePathUintID(c, "id")
+	if !ok {
+		return
+	}
 	var activity models.Activity
 	db := c.MustGet("db").(*gorm.DB)
 
@@ -240,7 +243,10 @@ func GetActivities(c *gin.Context) {
 }
 
 func UpdateActivity(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := requirePathUintID(c, "id")
+	if !ok {
+		return
+	}
 	db := c.MustGet("db").(*gorm.DB)
 
 	userID, ok := currentUserID(c)
@@ -316,7 +322,10 @@ func UpdateActivity(c *gin.Context) {
 }
 
 func DeleteActivity(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := requirePathUintID(c, "id")
+	if !ok {
+		return
+	}
 	db := c.MustGet("db").(*gorm.DB)
 
 	userID, ok := currentUserID(c)
@@ -346,7 +355,10 @@ func DeleteActivity(c *gin.Context) {
 
 func GetActivitiesForContact(c *gin.Context) {
 	// Get contact ID from the request URL
-	contactID := c.Param("id")
+	contactID, ok := requirePathUintID(c, "id")
+	if !ok {
+		return
+	}
 
 	// Get the database instance from the context
 	db := c.MustGet("db").(*gorm.DB)

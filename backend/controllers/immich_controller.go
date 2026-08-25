@@ -16,15 +16,18 @@ import (
 )
 
 // abortImmichServiceError maps a services-level Immich sentinel error to the
-// right HTTP status: an unreachable instance or expired key is a 503
-// (external service error) with a stable message; a missing/not-found person
-// is a 404; a real (non-2xx) response from Immich that isn't one of those is
-// its own distinct 503 (T42 — must not read as "the instance is down" when
-// Immich just answered); everything else is the same 503 fallback.
+// right HTTP status: a missing/never-configured connection or an
+// invalid/expired key is a 400 (issue #524 — the caller's own credentials or
+// setup, not a server malfunction, so Schemathesis's not_a_server_error check
+// correctly refuses to accept a 5xx here); a missing/not-found person is a
+// 404; a real (non-2xx) response from Immich that isn't one of those is its
+// own distinct 503 (T42 — must not read as "the instance is down" when
+// Immich just answered); everything else is the same 503 fallback (Immich
+// genuinely unreachable — that IS a server-side/upstream failure).
 func abortImmichServiceError(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, services.ErrImmichUnauthorized):
-		apperrors.AbortWithError(c, apperrors.ErrExternal("Immich", "Immich API key is invalid, expired, or not configured").WithError(err))
+		apperrors.AbortWithError(c, apperrors.ErrValidation("Immich API key is invalid, expired, or not configured").WithError(err))
 	case errors.Is(err, services.ErrImmichNotFound):
 		apperrors.AbortWithError(c, apperrors.ErrNotFound("Immich person").WithError(err))
 	case errors.Is(err, services.ErrImmichInvalidURL):

@@ -129,6 +129,29 @@ func TestSaveWebDAVConfig_CreateWithoutPasswordIsRejected(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
+// TestListWebDAVDir_NoConfigIs400 covers issue #524: no Nextcloud connection
+// configured is the caller's own setup, not a server malfunction, so it must
+// be a 400 — Schemathesis's not_a_server_error check flags any 5xx here.
+func TestListWebDAVDir_NoConfigIs400(t *testing.T) {
+	db := seedWebDAVControllerDB(t)
+	router := webdavTestRouter(t, db)
+
+	w := webdavDoJSON(t, router, "GET", "/nextcloud/dir", nil)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+// TestTestWebDAVConnection_NoConfigIs400 covers issue #524: no Nextcloud
+// connection configured is the caller's own setup, not a server malfunction,
+// so it must be a 400 — Schemathesis's not_a_server_error check flags any 5xx
+// here.
+func TestTestWebDAVConnection_NoConfigIs400(t *testing.T) {
+	db := seedWebDAVControllerDB(t)
+	router := webdavTestRouter(t, db)
+
+	w := webdavDoJSON(t, router, "POST", "/nextcloud/test-connection", nil)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
 func TestTestWebDAVConnection_SuccessAndFailure(t *testing.T) {
 	db := seedWebDAVControllerDB(t)
 	router := webdavTestRouter(t, db)

@@ -156,7 +156,13 @@ func AddPhotoToContact(c *gin.Context, cfg *config.Config) {
 		}
 		photoPath, thumbnailPath, err := processAndSavePhoto(file, cfg.ProfilePhotoDir)
 		if err != nil {
-			apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to process photo").WithError(err))
+			// issue #524: an empty/corrupt/unsupported-format upload is the
+			// caller's own bad input, not a server malfunction — 400, not 500.
+			// The underlying error (which can include a server-side file
+			// path on an os.MkdirAll/os.Create failure) goes through
+			// WithError only — never interpolated into the message, per the
+			// fail-secure no-detail-leak posture (CLAUDE.md).
+			apperrors.AbortWithError(c, apperrors.ErrValidation("Failed to process photo — check the file is a valid JPEG, PNG, or HEIC image").WithError(err))
 			return
 		}
 		oldPhoto := contact.Photo
@@ -336,7 +342,10 @@ func ProxyImage(c *gin.Context) {
 	body, contentType, err := httputil.FetchImageFromURL(imageURL)
 	if err != nil {
 		logger.FromContext(c).Warn().Err(err).Str("url", logger.SanitizeLogField(imageURL)).Msg("Failed to fetch image from URL")
-		apperrors.AbortWithError(c, apperrors.ErrExternal("image proxy", "Failed to fetch image").WithError(err))
+		// issue #524: the caller-supplied url is what's unreachable/invalid —
+		// the caller's own input, not a server malfunction — so this is a
+		// 400, not a 503.
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("url", "Failed to fetch image from URL").WithError(err))
 		return
 	}
 

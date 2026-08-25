@@ -27,6 +27,26 @@ type PaginationParams struct {
 	Offset int
 }
 
+// requirePathUintID validates that a numeric-PK path parameter (:id,
+// :repo_id, ...) is a well-formed non-negative integer before it reaches a
+// GORM lookup. Handlers pass c.Param(...) straight into db.First(&x, id); a
+// non-integer or out-of-range value (Schemathesis fuzzes things like
+// "null,null", huge integers, and negative numbers) makes the SQLite driver
+// return a non-ErrRecordNotFound error, which the existing
+// ErrRecordNotFound-vs-else branch turns into a 500 instead of the correct
+// 400 (issue #524). On a malformed value this aborts the request with 400
+// and returns ok=false; callers must check ok and return immediately. On
+// success it returns the raw path value unchanged, so existing
+// `db.First(&x, id)` call sites keep working exactly as before.
+func requirePathUintID(c *gin.Context, param string) (string, bool) {
+	raw := c.Param(param)
+	if _, err := strconv.ParseUint(raw, 10, 64); err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput(param, "must be a positive integer").WithDetails(param, raw))
+		return "", false
+	}
+	return raw, true
+}
+
 func currentUserID(c *gin.Context) (uint, bool) {
 	value, exists := c.Get("userID")
 	if !exists {
