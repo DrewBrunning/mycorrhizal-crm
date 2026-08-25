@@ -66,6 +66,34 @@
   - The seed backend data is persistent — `docker compose -f docker-compose.test.yml down -v` resets it between runs if you want a clean slate.
   - CI runs this on every push/PR to main via the `android-e2e` job in [.github/workflows/android-tests.yml](.github/workflows/android-tests.yml).
 
+**DAST (OWASP ZAP, issue #368)**
+- Dynamic application security testing: boots the real all-in-one image (`docker-compose.test.yml`), then runs OWASP ZAP against it — an authenticated API scan seeded from [backend/openapi.yaml](backend/openapi.yaml) (via a minted `full`-scope API token handed to ZAP as a bearer header) plus an active scan of the SPA and the CardDAV/CalDAV discovery surface.
+- The scan definition lives in [zap/zap-dast.yaml](zap/zap-dast.yaml); the pass/fail policy lives in [backend/cmd/zapgate](backend/cmd/zapgate) plus the ignore-list [zap/dast.ignore](zap/dast.ignore) (same "ignore-list with justification" shape as `android/.mobsf` and `docker/cis-hardening.ignore`).
+- A deliberately-vulnerable **canary** server ([backend/cmd/dastcanary](backend/cmd/dastcanary)) runs alongside the app on `:7301`; its planted reflected-XSS must appear in the ZAP report or the gate fails as "blind". It never ships and is never part of the app.
+- CI runs it on a weekly schedule (not per-PR — DAST is slow/flaky) via [.github/workflows/zap-dast.yml](.github/workflows/zap-dast.yml), and uploads SARIF to the Security tab. To run it locally:
+  ```bash
+  docker compose -f docker-compose.test.yml up -d --build
+  # canary
+  (cd backend && go build -o /tmp/dastcanary ./cmd/dastcanary && DAST_CANARY_ADDR=:7301 /tmp/dastcanary &)
+  # authenticated session -> bearer token (throwaway user; fresh test DB only)
+  BASE=http://localhost:7300/api/v1; U="dast_$RANDOM"; P='DastPassword123!'
+  curl -s -c /tmp/c.txt -H 'Content-Type: application/json' -d "{\"username\":\"$U\",\"email\":\"$U@example.com\",\"password\":\"$P\"}" $BASE/register >/dev/null
+  curl -s -b /tmp/c.txt -c /tmp/c.txt -H 'Content-Type: application/json' -d "{\"identifier\":\"$U\",\"password\":\"$P\"}" $BASE/login >/dev/null
+  TOKEN=$(curl -s -b /tmp/c.txt -H 'Content-Type: application/json' -d '{"name":"dast","scope":"full"}' $BASE/api-tokens | python3 -c 'import sys,json; print(json.load(sys.stdin)["token"])')
+  # scan (Linux: --network host; on Docker Desktop use host.docker.internal instead)
+  docker run --rm --network host \
+    -e ZAP_AUTH_HEADER=Authorization -e "ZAP_AUTH_HEADER_VALUE=Bearer $TOKEN" -e ZAP_AUTH_HEADER_SITE=localhost:7300 \
+    -v "$PWD/zap:/zap/wrk:rw" -v "$PWD/backend/openapi.yaml:/zap/openapi.yaml:ro" \
+    ghcr.io/zaproxy/zaproxy:stable zap.sh -Xmx3g -cmd -autorun /zap/wrk/zap-dast.yaml
+  # gate (policy: ignore-list + canary self-test)
+  (cd backend && ZAPGATE_REPORT=../zap/report.json ZAPGATE_IGNORE=../zap/dast.ignore go run ./cmd/zapgate)
+  docker compose -f docker-compose.test.yml down -v
+  ```
+- Notes:
+  - The scan is scoped to the throwaway test DB and must never point at real data.
+  - The SPA serves unauthenticated static HTML; auth is enforced at the API layer, which the openapi-seeded scan exercises. ZAP's `ZAP_AUTH_HEADER_*` env vars are used because the app's login only sets an httpOnly cookie (no token in the body), which ZAP's JSON-auth method can't extract.
+  - CardDAV/CalDAV use Basic auth + WebDAV verbs, which ZAP doesn't spider/fuzz well; the plan seeds the discovery surface by hand. Deep WebDAV fuzzing is issue #512.
+
 **CI: path-gated checks (issue #264)**
 - Every suite is **path-gated**: a PR runs only the suites relevant to the files it changes. The mapping from paths to checks lives in one place, [.github/filters.yaml](.github/filters.yaml) — change it there, not per-workflow. Each gated workflow has a `Detect Changes` job (`dorny/paths-filter`) whose boolean outputs the suite jobs `if:` on.
   - `backend/**` → Go fmt/vet/test, govulncheck, gosec, CodeQL(go), backend image build.
