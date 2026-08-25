@@ -19,7 +19,8 @@
 -- immutability trigger is dropped and re-created around the rebuild; the Go
 -- chain backfill (models.RecomputeAuditChain, run at startup) drops and
 -- re-creates it the same way, because before_snapshot may be encrypted at
--- rest (migration 000033 on the #380 branch) and SQL cannot decrypt to hash.
+-- rest (migration 000033_at_rest_encryption, issue #380) and SQL cannot
+-- decrypt to hash.
 -- Until that backfill runs, rows carry hash='' and the verifier reports them
 -- as "chain backfill pending".
 

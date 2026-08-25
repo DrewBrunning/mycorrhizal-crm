@@ -84,7 +84,7 @@ func AuditChainHash(prevHash string, e *AuditEvent) string {
 // RecomputeAuditChain rewrites hash/prev_hash for every audit row, in id
 // order, so the chain is complete and consistent. It is used for:
 //
-//   - the one-time backfill after migration 000033 (rows carry hash=” until
+//   - the one-time backfill after migration 000034 (rows carry hash=” until
 //     this runs — the server does it at startup, cmd/audit-backfill does it for
 //     migrate-up-only workflows);
 //   - re-linking after the retention purge, whose sanctioned DELETE of old rows
@@ -93,7 +93,7 @@ func AuditChainHash(prevHash string, e *AuditEvent) string {
 // Idempotent and write-free when the chain is already consistent (a fresh boot
 // touches nothing). Because the immutability trigger blocks UPDATE, it drops
 // and re-creates that trigger around its writes, inside a single transaction —
-// exactly the pattern migration 000033 itself uses. It takes the recorder's
+// exactly the pattern migration 000034 itself uses. It takes the recorder's
 // chainMu so it can never interleave with a live append.
 //
 // NOTE: this is a maintenance operation, not a verifier. It recalculates
@@ -157,7 +157,7 @@ func RecomputeAuditChain(db *gorm.DB) error {
 // when the chain is intact. It is read-only and never repairs anything. A gap
 // message distinguishes:
 //
-//   - "backfill pending": a row still carries hash=” (migration 000033 applied
+//   - "backfill pending": a row still carries hash=” (migration 000034 applied
 //     but RecomputeAuditChain has not run yet);
 //   - "prev_hash mismatch": the row's stored PrevHash differs from the
 //     predecessor's recomputed hash — a row was deleted, inserted, or had its

@@ -90,8 +90,8 @@ type ContactSyncConflict struct {
 	Field string `gorm:"not null" json:"field" validate:"required"`
 
 	// LocalValue/RemoteValue are the overwritten and overwriting values.
-	LocalValue  string `gorm:"column:local_value;not null;default:''" json:"local_value"`
-	RemoteValue string `gorm:"column:remote_value;not null;default:''" json:"remote_value"`
+	LocalValue  string `gorm:"column:local_value;not null;default:'';serializer:encrypted" json:"local_value"`
+	RemoteValue string `gorm:"column:remote_value;not null;default:'';serializer:encrypted" json:"remote_value"`
 
 	// Status ∈ pending|dismissed (the SyncConflictStatus* constants above).
 	Status string `gorm:"not null;default:pending;index" json:"status" validate:"required,oneof=pending dismissed"`

@@ -14,7 +14,7 @@ import (
 
 // Audit operation tokens stored on AuditEvent.Operation. The first three are
 // entity CRUD; the rest are the auth/admin lifecycle vocabulary added by issue
-// #381 (ASVS V7.3). The set is pinned by migration 000033's CHECK constraint —
+// #381 (ASVS V7.3). The set is pinned by migration 000034's CHECK constraint —
 // a token added here without a migration is a silent INSERT failure.
 const (
 	AuditOpCreate         = "create"
@@ -73,13 +73,16 @@ type AuditEvent struct {
 	UserID     uint   `gorm:"not null;index" json:"-"`
 	// BeforeSnapshot is redacted JSON (auditDenyList applied). Empty for
 	// create events.
-	BeforeSnapshot string `gorm:"column:before_snapshot;type:text" json:"before_snapshot,omitempty"`
+	BeforeSnapshot string `gorm:"column:before_snapshot;type:text;serializer:encrypted" json:"before_snapshot,omitempty"`
 	// Hash is the SHA-256 of (prev_hash || canonical event content); PrevHash
 	// is the Hash of the preceding row ("" for the head of the chain). Together
 	// they make the log tamper-evident (issue #381): VerifyAuditChain
 	// recomputes the chain and flags any insert/delete/reorder/edit. Both are
 	// maintained by the recorder at insert and by RecomputeAuditChain (startup
-	// backfill + retention purge re-link).
+	// backfill + retention purge re-link). The hash is computed over the
+	// logical (decrypted) BeforeSnapshot value — GORM's serializer decrypts it
+	// transparently on read, so the chain stays valid whether or not at-rest
+	// encryption (issue #380) is armed.
 	Hash     string `gorm:"not null;default:''" json:"hash"`
 	PrevHash string `gorm:"not null;default:''" json:"prev_hash"`
 }

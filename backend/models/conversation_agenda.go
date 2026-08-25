@@ -40,7 +40,7 @@ type ConversationAgenda struct {
 	// to whatever the item is about — a web page, so it is `httpurl`-validated
 	// (T41) to reject anything but http/https. No due date anywhere in this
 	// model.
-	Content      string `gorm:"not null" json:"content" validate:"required,min=1,max=2000"`
+	Content      string `gorm:"not null;serializer:encrypted" json:"content" validate:"required,min=1,max=2000"`
 	ReferenceURL string `json:"reference_url,omitempty" validate:"omitempty,httpurl,max=2000"`
 
 	// DiscussedAt is the "resolved/discussed flag with the date it was

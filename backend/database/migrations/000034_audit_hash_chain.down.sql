@@ -1,4 +1,4 @@
--- Reverses 000033: drops the hash-chain columns and narrows the operation
+-- Reverses 000034: drops the hash-chain columns and narrows the operation
 -- CHECK back to entity CRUD (the 000016 shape). Destructive by construction:
 -- the chain columns are dropped (hashes are unrecoverable) and any
 -- auth/admin lifecycle rows (login, password change, 2FA toggles, token

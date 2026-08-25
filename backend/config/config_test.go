@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/base64"
 	"testing"
 	"time"
 
@@ -573,4 +574,58 @@ func TestLoadConfig_InvalidIntEnvFallsBack(t *testing.T) {
 	cfg := LoadConfig()
 	require.NotNil(t, cfg)
 	assert.Equal(t, 15, cfg.ReadTimeout, "an unparsable HTTP_READ_TIMEOUT must fall back to the default")
+}
+
+// At-rest encryption master key validation (issue #380).
+
+func TestLoadConfig_DataEncryptionKeyEnv(t *testing.T) {
+	t.Setenv("DATA_ENCRYPTION_KEY", base64.StdEncoding.EncodeToString(make([]byte, 32)))
+	cfg := LoadConfig()
+	require.NotNil(t, cfg)
+	assert.Equal(t, base64.StdEncoding.EncodeToString(make([]byte, 32)), cfg.DataEncryptionKey)
+	assert.Empty(t, cfg.DataEncryptionKeyFile)
+}
+
+func TestValidate_DataEncryptionKey_ValidBase64Passes(t *testing.T) {
+	cfg := validConfig()
+	cfg.DataEncryptionKey = base64.StdEncoding.EncodeToString(make([]byte, 32))
+	assert.Empty(t, cfg.Validate(), "a well-formed 32-byte base64 key must validate")
+}
+
+func TestValidate_DataEncryptionKey_InvalidBase64Fails(t *testing.T) {
+	cfg := validConfig()
+	cfg.DataEncryptionKey = "this-is-not-base64!!!"
+	errs := cfg.Validate()
+	assert.True(t, hasFieldError(errs, "DATA_ENCRYPTION_KEY"), "a non-base64 key must error")
+}
+
+func TestValidate_DataEncryptionKey_WrongLengthFails(t *testing.T) {
+	cfg := validConfig()
+	cfg.DataEncryptionKey = base64.StdEncoding.EncodeToString(make([]byte, 16))
+	errs := cfg.Validate()
+	assert.True(t, hasFieldError(errs, "DATA_ENCRYPTION_KEY"), "a key that is not 32 bytes must error")
+}
+
+func TestValidate_DataEncryptionKeyFile_MissingFails(t *testing.T) {
+	cfg := validConfig()
+	cfg.DataEncryptionKeyFile = "/nonexistent/at-rest-key"
+	errs := cfg.Validate()
+	assert.True(t, hasFieldError(errs, "DATA_ENCRYPTION_KEY_FILE"), "a nonexistent key file must error")
+}
+
+func TestValidate_DataEncryptionKey_AndFileConflict(t *testing.T) {
+	cfg := validConfig()
+	cfg.DataEncryptionKey = base64.StdEncoding.EncodeToString(make([]byte, 32))
+	cfg.DataEncryptionKeyFile = "/tmp/somewhere"
+	errs := cfg.Validate()
+	assert.True(t, hasFieldError(errs, "DATA_ENCRYPTION_KEY"), "setting both key and key file must error")
+}
+
+func TestLoadConfig_DataEncryptionKeyFileEnv(t *testing.T) {
+	t.Setenv("DATA_ENCRYPTION_KEY", "")
+	t.Setenv("DATA_ENCRYPTION_KEY_FILE", "/etc/mycorrhizal/at-rest.key")
+	cfg := LoadConfig()
+	require.NotNil(t, cfg)
+	assert.Empty(t, cfg.DataEncryptionKey)
+	assert.Equal(t, "/etc/mycorrhizal/at-rest.key", cfg.DataEncryptionKeyFile)
 }

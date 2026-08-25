@@ -157,13 +157,13 @@ func TestAuditChain_DetectsInsertion(t *testing.T) {
 	assert.Contains(t, gaps[0].Message, "hash mismatch")
 }
 
-// TestAuditChain_BackfillLegacyRows covers pre-000033 rows: events written
+// TestAuditChain_BackfillLegacyRows covers pre-000034 rows: events written
 // directly (no hash) are backfilled by RecomputeAuditChain, the chain becomes
 // valid, and the immutability trigger is left in force.
 func TestAuditChain_BackfillLegacyRows(t *testing.T) {
 	db, user := newChainTestDB(t)
 
-	// Rows written the way pre-000033 code wrote them: direct Create, no hash.
+	// Rows written the way pre-000034 code wrote them: direct Create, no hash.
 	legacy := []AuditEvent{
 		{EntityType: AuditEntityContact, EntityID: "a", Operation: AuditOpCreate, UserID: user.ID, BeforeSnapshot: "{}"},
 		{EntityType: AuditEntityContact, EntityID: "a", Operation: AuditOpUpdate, UserID: user.ID, BeforeSnapshot: `{"x":1}`},

@@ -137,7 +137,7 @@ type LifeEvent struct {
 	// Household.Address.
 	Date *contactmodel.PartialDate `gorm:"type:text;serializer:json" json:"date,omitempty"`
 
-	Description string `json:"description,omitempty" validate:"max=2000"`
+	Description string `gorm:"serializer:encrypted" json:"description,omitempty" validate:"max=2000"`
 
 	Source string `json:"source,omitempty" validate:"omitempty,oneof=user imported ai-suggested"`
 

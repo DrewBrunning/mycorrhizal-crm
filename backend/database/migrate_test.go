@@ -1321,7 +1321,7 @@ func TestAttachmentsMigration(t *testing.T) {
 	assert.EqualValues(t, 1, userCount, "a rollback must not destroy the pre-existing user")
 }
 
-// TestAuditHashChainMigration pins migration 000033's shape (issue #381): it
+// TestAuditHashChainMigration pins migration 000034's shape (issue #381): it
 // adds hash/prev_hash, preserves pre-existing audit rows and their ids (the
 // rebuild must be lossless — reach_out_suggestions.audit_event_id references
 // them loosely), widens the operation CHECK to the auth/admin vocabulary, keeps
@@ -1334,7 +1334,9 @@ func TestAuditHashChainMigration(t *testing.T) {
 
 	m, err := newMigrator(sqlDB)
 	require.NoError(t, err)
-	require.NoError(t, m.Steps(32))
+	// 33 steps: migrations 000001-000032 plus 000033_at_rest_encryption
+	// (issue #380), landing right before the hash-chain migration.
+	require.NoError(t, m.Steps(33))
 
 	_, err = sqlDB.Exec("INSERT INTO users (created_at, updated_at, username, password, email) VALUES (datetime('now'), datetime('now'), 't381', 'x', 't381@example.com')")
 	require.NoError(t, err)
@@ -1348,16 +1350,16 @@ func TestAuditHashChainMigration(t *testing.T) {
 	require.NoError(t, sqlDB.QueryRow("SELECT id FROM audit_events WHERE entity_id = 'vcard-1'").Scan(&legacyID))
 	require.EqualValues(t, 1, legacyID, "the test's insert must be the first row")
 
-	require.NoError(t, m.Steps(1)) // 000033
+	require.NoError(t, m.Steps(1)) // 000034
 
 	// The columns exist and carry the default (backfill is a Go step).
 	var n int64
 	require.NoError(t, sqlDB.QueryRow(
 		"SELECT COUNT(*) FROM pragma_table_info('audit_events') WHERE name = 'hash'").Scan(&n))
-	assert.EqualValues(t, 1, n, "000033 must add the hash column")
+	assert.EqualValues(t, 1, n, "000034 must add the hash column")
 	require.NoError(t, sqlDB.QueryRow(
 		"SELECT COUNT(*) FROM pragma_table_info('audit_events') WHERE name = 'prev_hash'").Scan(&n))
-	assert.EqualValues(t, 1, n, "000033 must add the prev_hash column")
+	assert.EqualValues(t, 1, n, "000034 must add the prev_hash column")
 
 	// The pre-existing row survives with its id and content intact.
 	var survivedID int64

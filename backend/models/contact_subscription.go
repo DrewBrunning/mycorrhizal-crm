@@ -62,5 +62,5 @@ type ContactSyncLink struct {
 	ContentHash    string    `gorm:"not null" json:"-"`
 	// SyncedValues is the flat-field snapshot the last sync wrote (see the
 	// type doc). Kept off the wire: internal bookkeeping, not user-facing.
-	SyncedValues string `gorm:"column:synced_values;type:text;not null;default:''" json:"-"`
+	SyncedValues string `gorm:"column:synced_values;type:text;not null;default:'';serializer:encrypted" json:"-"`
 }

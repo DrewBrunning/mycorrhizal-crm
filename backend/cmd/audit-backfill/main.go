@@ -1,5 +1,5 @@
 // Command audit-backfill completes the tamper-evident audit hash chain
-// (issue #381, ASVS V7.3) for rows that predate migration 000033. The server
+// (issue #381, ASVS V7.3) for rows that predate migration 000034. The server
 // does this automatically on every startup; this CLI exists for the
 // `make migrate-up`-only workflow (migrating a database without booting the
 // app) and for an operator who wants to confirm the chain is complete on
