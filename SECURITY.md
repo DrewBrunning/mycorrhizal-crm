@@ -49,3 +49,13 @@ For context, this repo already runs: CodeQL static analysis, Trivy
 container scanning, GitHub secret scanning, and dependency review on every
 pull request, and pins its Go toolchain and container base images. See
 [README-developer.md](README-developer.md) for the full CI posture.
+
+## Security Documentation
+
+- [`docs/security/threat-model.md`](docs/security/threat-model.md) — assets, trust boundaries, threat
+  actors, and the written record of every deliberate security trade-off this project has made (e.g.
+  why data-at-rest encryption has a plaintext-search exception, why the Android app targets MASVS-L1).
+- [`docs/security/asvs-l2.md`](docs/security/asvs-l2.md) — OWASP ASVS 4.0.3 (L2) + API Security Top 10
+  control checklist for the backend, frontend, and deployment.
+- [`docs/security/masvs-l1.md`](docs/security/masvs-l1.md) — OWASP MASVS 1.5.0 (L1) control checklist
+  for the Android client.
