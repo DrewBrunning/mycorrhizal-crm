@@ -426,9 +426,9 @@ closes the last remaining gap in the "Network, Headers" hardening checklist
 
 | # | Risk | Status | Evidence |
 |---|---|---|---|
-| **API1** | Broken Object Level Authorization (BOLA/IDOR) | satisfied | Every handler AND-scopes by `user_id`/`VCardUID` (`circle_controller.go:49`); 404-masking hides existence (`contact_share_controller.go:212-233`); cross-user tests per entity (V4.2.1, incl. `sync_conflict_controller_test.go:109`) |
+| **API1** | Broken Object Level Authorization (BOLA/IDOR) | satisfied | Every handler AND-scopes by `user_id`/`VCardUID` (`circle_controller.go:49`); 404-masking hides existence (`contact_share_controller.go:212-233`); cross-user tests per entity (V4.2.1, incl. `sync_conflict_controller_test.go:109`); automated cross-account sweep (`backend/cmd/bolacheck`, `schemathesis.yml`) |
 | **API2** | Broken Authentication | satisfied | bcrypt cost 10 + explicit 72-byte cap (P1); dummy bcrypt compare on unknown users (`carddav/auth.go:16-19,56-57`); per-account exponential lockout (`rate_limiter.go:12-22,68-110`); TOTP 2FA (V2.8); `TokenVersion` revocation (`auth.go:141-154`) |
-| **API3** | Broken Object Property Level Authorization (BOPLA) | satisfied | DTO allowlists; `IsAdmin`/status/provenance/confidence client-unsets (`models/dtos.go:294-300,339-354`); field-by-field update copies (`life_event_controller.go:346-353`) |
+| **API3** | Broken Object Property Level Authorization (BOPLA) | satisfied | DTO allowlists; `IsAdmin`/status/provenance/confidence client-unsets (`models/dtos.go:294-300,339-354`); field-by-field update copies (`life_event_controller.go:346-353`); spec-derived request fuzzing (`schemathesis.yml`, `backend/cmd/schemagate`) |
 | **API4** | Unrestricted Resource Consumption | satisfied | Body limits 10 MB/1 MB (`body_limit.go:11-40`), `MaxMultipartMemory` (`main.go:188`), per-IP API limiter (`rate_limiter.go:249`), timeouts (`HTTP_READ/WRITE_TIMEOUT`, `.env.example`) |
 | **API5** | Broken Function Level Authorization | satisfied | Admin routes gated by `AdminMiddleware` (`middleware/admin.go`); `is_admin` never in JWT (`services/user_service.go:43`); CardDAV-scope tokens blocked from API (`auth.go:54-58`) |
 | **API6** | Unrestricted Access to Sensitive Business Flows | satisfied | Rate limits on auth/business endpoints (`routes/routes.go:27-49,53`); sensitivity filtering in exports/sync/graph (V1.8.2); account lockout on login and 2FA (`two_factor_controller.go:346-356`) |
@@ -447,6 +447,9 @@ closes the last remaining gap in the "Network, Headers" hardening checklist
   absence gets recorded; the V7.2.2 row is where a new access-denied path gets noted.
 - **New dependencies:** update V14.2.1/14.2.4 if the CI scanner set changes; the SBOM row if
   image attestation changes.
+- **New Schemathesis findings:** accepted 5xx/auth findings are recorded in
+  `schemathesis/schemathesis.ignore` (ignore-list with justification); a finding that can't be
+  justified there is a real bug, not a config gap.
 - **N/A rows are decisions:** if a control starts to apply (say, a second process or a managed
   database appears), its row must flip from `not-applicable` to a real status.
 - **grep-ability check:** no row is `satisfied` without a `file:line` or test-name citation; a

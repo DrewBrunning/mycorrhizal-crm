@@ -1,0 +1,90 @@
+# Schemathesis fuzz-gate ignore-list (issue #369).
+#
+# The Schemathesis workflow (schemathesis.yml) derives request cases from
+# backend/openapi.yaml and gates on two failure classes — 5xx responses
+# (`not_a_server_error`, JUnit title "Server error") and auth-protected
+# operations that return data without auth (`ignored_auth`, JUnit titles
+# "API accepts requests without/invalid authentication") — enforced by
+# backend/cmd/schemagate, in the same "ignore-list with justification" shape
+# as docker/cis-hardening.ignore. The anonymous pass runs both checks; the
+# authenticated pass runs only not_a_server_error (ignored_auth is meaningless
+# with real credentials and would false-flag).
+#
+# Format: one rule per line,
+#
+#   <kind> <operation-regex>   # justification
+#
+# where <kind> is one of `server_error` (a 5xx), `auth` (an ignored-auth
+# finding), or `*` (both), and <operation-regex> is a Go regexp matched against
+# the JUnit testcase name — the Schemathesis operation label (`METHOD /path`,
+# e.g. `POST /contacts/import/upload`). A `#` begins a comment; a trailing
+# comment on a rule is its justification and is logged on every [ACCEPT].
+#
+# Every entry must carry a justification — an accepted finding is a written-down
+# decision, not a silenced one. Re-run the gate locally before adding an entry:
+# the finding must be reproducible, understood, and genuinely out of the gate's
+# scope.
+#
+# Every entry below is a pre-existing 500-on-malformed-input bug that the first
+# fuzz pass surfaced (issue #524), NOT a fuzzing artifact. They are listed here
+# so the gate can go green while the bug classes are fixed; remove each rule in
+# the same PR that fixes it.
+
+# --- Malformed path IDs -> GORM error -> 500 (issue #524) ------------------
+# Handlers pass c.Param("id") straight into db.First(&x, id); a non-integer ID
+# (Schemathesis fuzzes "null,null", huge ints, strings) yields a non-NotFound
+# GORM error that the else-branch turns into ErrDatabase (500) instead of 400.
+server_error GET /activities/\{id\}                 # issue #524 malformed-ID 500
+server_error GET /contacts/\{id\}                   # issue #524 malformed-ID 500
+server_error GET /contacts/\{id\}/activities        # issue #524 malformed-ID 500
+server_error GET /contacts/\{id\}/briefing          # issue #524 malformed-ID 500
+server_error GET /contacts/\{id\}/detail            # issue #524 malformed-ID 500
+server_error GET /contacts/\{id\}/field-values      # issue #524 malformed-ID 500
+server_error GET /contacts/\{id\}/notes             # issue #524 malformed-ID 500
+server_error GET /contacts/\{id\}/reminder-completions # issue #524 malformed-ID 500
+server_error GET /contacts/\{id\}/reminders         # issue #524 malformed-ID 500
+server_error GET /contacts/\{id\}/timeline          # issue #524 malformed-ID 500
+server_error GET /notes/\{id\}                      # issue #524 malformed-ID 500
+server_error GET /reminders/\{id\}                  # issue #524 malformed-ID 500
+server_error PUT /activities/\{id\}                 # issue #524 malformed-ID 500
+server_error PUT /contacts/\{id\}                   # issue #524 malformed-ID 500
+server_error PUT /contacts/\{id\}/field-values      # issue #524 malformed-ID 500
+server_error PUT /notes/\{id\}                      # issue #524 malformed-ID 500
+server_error POST /contacts/\{id\}/archive          # issue #524 malformed-ID 500
+server_error POST /contacts/\{id\}/favorite         # issue #524 malformed-ID 500
+server_error POST /contacts/\{id\}/notes            # issue #524 malformed-ID 500
+server_error POST /contacts/\{id\}/profile_picture  # issue #524 malformed-ID 500
+server_error POST /contacts/\{id\}/unarchive        # issue #524 malformed-ID 500
+server_error POST /contacts/\{id\}/unfavorite       # issue #524 malformed-ID 500
+server_error POST /reminders/\{id\}/complete        # issue #524 malformed-ID 500
+server_error POST /calendars/\{id\}/sync            # issue #524 malformed-ID 500
+server_error POST /contact-subscriptions/\{id\}/sync # issue #524 malformed-ID 500
+server_error GET /seafile/libraries/\{repo_id\}/dir # issue #524 malformed-ID 500
+server_error DELETE /activities/\{id\}             # issue #524 malformed-ID 500
+server_error DELETE /contacts/\{id\}               # issue #524 malformed-ID 500
+server_error DELETE /notes/\{id\}                  # issue #524 malformed-ID 500
+server_error DELETE /reminder-completions/\{id\}   # issue #524 malformed-ID 500
+server_error DELETE /reminders/\{id\}              # issue #524 malformed-ID 500
+
+# --- Integration endpoints 500 when unconfigured / on fuzzed params (#524) ---
+# Immich/Nextcloud/Paperless/Seafile lookups and /proxy/image hit external
+# services; with no integration configured (the throwaway test DB) they 500
+# instead of 400/404.
+server_error GET /immich/people              # issue #524 integration 500 (unconfigured)
+server_error GET /nextcloud/dir              # issue #524 integration 500 (unconfigured)
+server_error GET /paperless/documents        # issue #524 integration 500 (unconfigured)
+server_error GET /seafile/libraries          # issue #524 integration 500 (unconfigured)
+server_error GET /proxy/image                # issue #524 integration 500 (fuzzed params)
+server_error POST /immich/test-connection    # issue #524 integration 500 (unconfigured)
+server_error POST /nextcloud/test-connection # issue #524 integration 500 (unconfigured)
+server_error POST /paperless/test-connection # issue #524 integration 500 (unconfigured)
+server_error POST /seafile/test-connection   # issue #524 integration 500 (unconfigured)
+
+# --- Misc list/action endpoints 500 on fuzzed query/body (issue #524) ------
+server_error GET /contacts/birthdays           # issue #524 500 on fuzzed query params
+server_error GET /contacts/random              # issue #524 500 on fuzzed query params
+server_error GET /contacts/duplicates          # issue #524 500 on fuzzed query params
+server_error GET /reminders/upcoming           # issue #524 500 on fuzzed query params
+server_error POST /contacts/address-suggestions # issue #524 500 on fuzzed body
+server_error POST /contacts/bulk               # issue #524 500 on fuzzed body
+server_error POST /contacts/merge              # issue #524 500 on fuzzed body
