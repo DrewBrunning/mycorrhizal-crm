@@ -60,6 +60,11 @@ server_error POST /reminders/\{id\}/complete        # issue #524 malformed-ID 50
 server_error POST /calendars/\{id\}/sync            # issue #524 malformed-ID 500
 server_error POST /contact-subscriptions/\{id\}/sync # issue #524 malformed-ID 500
 server_error GET /seafile/libraries/\{repo_id\}/dir # issue #524 malformed-ID 500
+server_error DELETE /activities/\{id\}             # issue #524 malformed-ID 500
+server_error DELETE /contacts/\{id\}               # issue #524 malformed-ID 500
+server_error DELETE /notes/\{id\}                  # issue #524 malformed-ID 500
+server_error DELETE /reminder-completions/\{id\}   # issue #524 malformed-ID 500
+server_error DELETE /reminders/\{id\}              # issue #524 malformed-ID 500
 
 # --- Integration endpoints 500 when unconfigured / on fuzzed params (#524) ---
 # Immich/Nextcloud/Paperless/Seafile lookups and /proxy/image hit external
