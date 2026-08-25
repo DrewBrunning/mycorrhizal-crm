@@ -30,10 +30,10 @@
 // Because these are deliberate, the static analyzers that would flag them are
 // suppressed inline with a justification rather than "fixed": the reflected
 // sink and the IDOR JSON body carry `#nosec G705` (gosec), and the whole
-// package is excluded from CodeQL via paths-ignore in
-// .github/workflows/codeql.yml (CodeQL's `lgtm` comment cannot suppress a
-// column-specific path-problem alert). Do not "fix" these sinks — escaping
-// them defeats the canary and the DAST gate goes blind.
+// package is excluded from CodeQL via `.github/codeql-config.yml` (CodeQL's
+// `lgtm` comment cannot suppress a column-specific path-problem alert). Do
+// not "fix" these sinks — escaping them defeats the canary and the DAST gate
+// goes blind.
 package main
 
 import (
@@ -107,8 +107,8 @@ func reflectedHandler(w http.ResponseWriter, r *http.Request) {
 	// Intentional: raw (unescaped) interpolation of user input — the planted
 	// vulnerability. Do not "fix" this; it is the whole point of the canary
 	// (ZAP must detect it for the DAST self-test). The package is excluded
-	// from CodeQL (see .github/workflows/codeql.yml) and gosec is silenced
-	// below, so the deliberate sink does not trip the static gates.
+	// from CodeQL (.github/codeql-config.yml) and gosec is silenced below, so
+	// the deliberate sink does not trip the static gates.
 	fmt.Fprintf(w, "<html><body><h1>Reflected</h1><p>%s</p></body></html>", q) // #nosec G705 -- intentional reflected XSS, DAST canary
 }
 
