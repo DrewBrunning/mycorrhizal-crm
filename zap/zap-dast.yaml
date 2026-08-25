@@ -1,0 +1,130 @@
+# OWASP ZAP DAST automation plan (issue #368).
+#
+# This is the scan definition for the weekly/nightly DAST workflow
+# (.github/workflows/zap-dast.yml) and the local runbook in README-developer.md.
+# It runs inside the official ZAP container:
+#
+#   docker run --rm --network host \
+#     -v "$PWD/zap:/zap/wrk:rw" \
+#     -v "$PWD/backend/openapi.yaml:/zap/openapi.yaml:ro" \
+#     ghcr.io/zaproxy/zaproxy:stable zap.sh -Xmx3g -cmd -autorun /zap/wrk/zap-dast.yaml
+#
+# Design notes:
+#
+#   - Authentication is not configured in this plan. The app's login sets an
+#     httpOnly auth_token cookie (never a token in the response body), which
+#     ZAP's JSON-authentication method cannot extract. Instead the workflow
+#     bootstraps a throwaway user, logs in, mints a full-scope API token, and
+#     passes it to ZAP via the documented ZAP_AUTH_HEADER[_VALUE|_SITE]
+#     environment variables (the ZAP-recommended automation pattern). The
+#     bearer token is accepted on every REST route, so the authenticated API
+#     surface — the real attack surface behind the SPA — is exercised.
+#   - The SPA itself serves unauthenticated static HTML from nginx; auth is
+#     enforced at the API layer, which the openapi-seeded scan covers. The
+#     spider + a couple of requestor seeds put the SPA HTML routes in the tree
+#     so passive rules still run over them.
+#   - CardDAV/CalDAV are Basic-auth + WebDAV verbs, which ZAP's HTTP-centric
+#     spider cannot crawl and its default rules largely do not fuzz. They are
+#     seeded by hand (well-known + a PROPFIND) so the discovery surface is at
+#     least exercised; deep WebDAV/Basic-auth fuzzing is a separate concern
+#     (issue #512, hostile-input E2E on the live CardDAV/CalDAV sync path).
+#   - The "canary" context points at dastcanary, the deliberately-vulnerable
+#     sibling server. Its planted reflected-XSS must appear in the report or
+#     the zapgate self-test fails the run (see backend/cmd/zapgate).
+#
+# Two reports are emitted: traditional-json (parsed by zapgate to enforce the
+# ignore-list + self-test) and sarif-json (uploaded to the Security tab).
+
+env:
+  contexts:
+    - name: app
+      urls:
+        - http://localhost:7300
+    - name: canary
+      urls:
+        - http://localhost:7301
+  parameters:
+    progressToStdout: true
+
+jobs:
+  # Seed the JSON API from the OpenAPI contract (the drift-tested source of
+  # truth in backend/openapi.yaml). The spec's server is the relative path
+  # /api/v1, so targetUrl supplies scheme + authority.
+  - type: openapi
+    parameters:
+      apiFile: /zap/openapi.yaml
+      targetUrl: http://localhost:7300/api/v1
+      context: app
+
+  # Hand-seeded requests: the canary endpoints (the planted vulns), the SPA
+  # HTML routes (JS app, nothing for the traditional spider to follow), and
+  # the CardDAV/CalDAV discovery surface (WebDAV verbs the spider never sends).
+  - type: requestor
+    parameters: {}
+    requests:
+      - url: http://localhost:7301/reflected?q=hello
+        name: canary reflected XSS
+      - url: http://localhost:7301/idor/1
+        name: canary IDOR
+      - url: http://localhost:7301/idor/2
+        name: canary IDOR
+      - url: http://localhost:7300/
+        name: SPA shell
+      - url: http://localhost:7300/login
+        name: SPA login
+      - url: http://localhost:7300/.well-known/carddav
+        name: CardDAV discovery
+      - url: http://localhost:7300/carddav/
+        name: CardDAV principal (PROPFIND)
+        method: PROPFIND
+        headers:
+          - "Content-Type: application/xml"
+        data: >-
+          <?xml version="1.0" encoding="utf-8"?>
+          <d:propfind xmlns:d="DAV:">
+            <d:prop>
+              <d:current-user-principal />
+            </d:prop>
+          </d:propfind>
+
+  - type: spider
+    parameters:
+      context: app
+      url: http://localhost:7300
+
+  - type: spider
+    parameters:
+      context: canary
+      url: http://localhost:7301
+
+  - type: activeScan
+    parameters:
+      context: app
+      policy: Default Policy
+
+  - type: activeScan
+    parameters:
+      context: canary
+      policy: Default Policy
+
+  - type: passiveScan-wait
+
+  - type: report
+    parameters:
+      template: traditional-json
+      reportDir: /zap/wrk
+      reportFile: report.json
+      reportTitle: Mycorrhizal CRM DAST
+      reportDescription: OWASP ZAP DAST scan (issue #368)
+    risks: [high, medium, low, info]
+    confidences: [high, medium, low, falsepositive]
+
+  - type: report
+    parameters:
+      template: sarif-json
+      reportDir: /zap/wrk
+      reportFile: dast.sarif.json
+      reportTitle: Mycorrhizal CRM DAST
+      reportDescription: OWASP ZAP DAST scan (issue #368)
+    risks: [high, medium, low, info]
+    confidences: [high, medium, low, falsepositive]

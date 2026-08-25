@@ -1,0 +1,173 @@
+name: DAST (OWASP ZAP)
+
+# Issue #368: everything in CI so far is static (SAST/SCA/supply-chain); nothing
+# attacks the *running* application. This workflow is the dynamic complement:
+# it boots the real all-in-one image (docker-compose.test.yml), runs OWASP ZAP
+# against it — an authenticated API scan seeded from backend/openapi.yaml plus
+# an active scan of the SPA and the CardDAV/CalDAV discovery surface — and
+# gates on High/Medium findings via backend/cmd/zapgate's ignore-list-with-
+# justification (zap/dast.ignore), uploading SARIF to the Security tab.
+#
+# Scheduled (weekly) + manual dispatch only — deliberately NOT on push/PR:
+# DAST is slow and flaky (the issue calls this out), so it is a periodic
+# regression sweep, not a per-PR gate. The scan runs against a throwaway
+# test database only; it must never point at real data.
+
+on:
+  schedule:
+    - cron: '0 4 * * 0' # Sunday 04:00 UTC (weekly)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zap-dast
+  cancel-in-progress: false
+
+jobs:
+  dast:
+    name: Run DAST (OWASP ZAP)
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The canary + gate are Go commands in the backend module; built and run
+      # directly on the runner (not in the app image).
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      # Build the same all-in-one image e2e-tests.yml builds (the shipped
+      # artifact), so ZAP attacks what actually ships.
+      - name: Build all-in-one image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          push: false
+          load: true
+          tags: mycorrhizal-crm-test:latest
+          cache-from: type=gha,scope=combined
+          cache-to: type=gha,scope=combined,mode=max
+
+      - name: Start the app (throwaway test DB)
+        run: |
+          docker compose -f docker-compose.test.yml up -d
+          echo "Waiting for the app to be ready..."
+          timeout 120 bash -c 'until curl -s http://localhost:7300/health > /dev/null 2>&1; do sleep 2; done'
+          echo "App is ready"
+
+      # dastcanary is the deliberately-vulnerable sibling server whose planted
+      # reflected-XSS proves the scan is actually detecting (see backend/cmd/
+      # dastcanary). It runs on the host at :7301, reachable by ZAP via
+      # --network host.
+      - name: Build and start the DAST canary
+        working-directory: backend
+        run: |
+          go build -o dastcanary ./cmd/dastcanary
+          nohup ./dastcanary > /tmp/dastcanary.log 2>&1 </dev/null &
+          echo "Waiting for the canary to be ready..."
+          timeout 30 bash -c 'until curl -s http://localhost:7301/health > /dev/null 2>&1; do sleep 1; done'
+          echo "Canary is ready"
+
+      # The app's login only sets an httpOnly cookie, so ZAP cannot drive it
+      # with its JSON-authentication method. Instead: register a throwaway
+      # user, log in, mint a full-scope API token, and hand the bearer token to
+      # ZAP via the documented ZAP_AUTH_HEADER[_VALUE|_SITE] env vars. The
+      # token is written to the environment for the next step (never logged).
+      - name: Bootstrap authenticated session (register + login + API token)
+        run: |
+          set -euo pipefail
+          BASE="http://localhost:7300/api/v1"
+          USER="dast_$(date +%s)"
+          PASS='DastPassword123!'
+
+          curl -sS -c /tmp/cookies.txt -o /dev/null \
+            -H 'Content-Type: application/json' \
+            -d "{\"username\":\"${USER}\",\"email\":\"${USER}@example.com\",\"password\":\"${PASS}\"}" \
+            "${BASE}/register"
+
+          curl -sS -b /tmp/cookies.txt -c /tmp/cookies.txt -o /dev/null \
+            -H 'Content-Type: application/json' \
+            -d "{\"identifier\":\"${USER}\",\"password\":\"${PASS}\"}" \
+            "${BASE}/login"
+
+          curl -sS -b /tmp/cookies.txt \
+            -H 'Content-Type: application/json' \
+            -d '{"name":"dast","scope":"full"}' \
+            "${BASE}/api-tokens" > /tmp/token.json
+
+          TOKEN="$(python3 -c 'import json; print(json.load(open("/tmp/token.json"))["token"])')"
+
+          test -n "${TOKEN}"
+          echo "DAST_TOKEN=${TOKEN}" >> "$GITHUB_ENV"
+          echo "Authenticated session ready (token minted, not shown)."
+
+      # ZAP runs headless via its automation framework (zap/zap-dast.yaml).
+      # --network host lets the container reach both the app (:7300, exposed by
+      # compose) and the canary (:7301, a host process). The plan writes two
+      # reports into ./zap: report.json (for the gate) and dast.sarif.json
+      # (for the Security tab). -Xmx3g caps the JVM heap so the active scan
+      # fits the runner (zap.sh otherwise sizes 1/4 of host memory, which is
+      # both more than the scan needs and more than a standard runner has).
+      - name: Run ZAP scan
+        env:
+          ZAP_AUTH_HEADER: Authorization
+          ZAP_AUTH_HEADER_VALUE: "Bearer ${{ env.DAST_TOKEN }}"
+          ZAP_AUTH_HEADER_SITE: localhost:7300
+        run: |
+          docker run --rm --network host \
+            -e ZAP_AUTH_HEADER \
+            -e ZAP_AUTH_HEADER_VALUE \
+            -e ZAP_AUTH_HEADER_SITE \
+            -v "$PWD/zap:/zap/wrk:rw" \
+            -v "$PWD/backend/openapi.yaml:/zap/openapi.yaml:ro" \
+            ghcr.io/zaproxy/zaproxy@sha256:781a2bdaea47324e7bab583e2263f21d257b0aee61ed51521a5be45f5f5081ef \
+            zap.sh -Xmx3g -cmd -autorun /zap/wrk/zap-dast.yaml
+
+      # The gate: apply zap/dast.ignore, fail on unaccepted High/Medium app
+      # findings, and assert the canary self-test (planted XSS) was seen.
+      - name: Gate on findings (zapgate)
+        working-directory: backend
+        run: go run ./cmd/zapgate
+        env:
+          ZAPGATE_REPORT: ../zap/report.json
+          ZAPGATE_IGNORE: ../zap/dast.ignore
+
+      - name: Upload SARIF to code scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
+        with:
+          sarif_file: zap/dast.sarif.json
+          category: zap-dast
+
+      - name: Upload ZAP JSON report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: zap-dast-report
+          path: zap/report.json
+          retention-days: 30
+
+      - name: Show app logs on failure
+        if: failure()
+        run: |
+          echo "=== Mycorrhizal logs ==="
+          docker compose -f docker-compose.test.yml logs mycorrhizal
+
+      - name: Stop services
+        if: always()
+        run: |
+          pkill -f dastcanary || true
+          docker compose -f docker-compose.test.yml down -v
