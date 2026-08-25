@@ -1,4 +1,4 @@
-name: SAST (mobsfscan + hadolint)
+name: SAST (mobsfscan + hadolint + semgrep)
 
 # Issue #358: the complementary security analyzers that don't fit the
 # language test workflows.
@@ -6,8 +6,15 @@ name: SAST (mobsfscan + hadolint)
 #               the complement to CodeQL's Java/Kotlin taint analysis.
 #   hadolint  — Dockerfile anti-pattern linting (unpinned base images/pkgs,
 #               shell-form CMD/ENTRYPOINT, missing pipefail).
-# Both are path-gated on their area (issue #264 pattern); the scheduled run
-# re-scans everything so new rules are exercised even with no activity.
+#   semgrep   — issue #370: custom rules (backend/.semgrep/mycorrhizal-traps.yaml)
+#               encoding the CLAUDE.md backend "traps" list — domain-specific
+#               bug classes (RecordFromContact bypassing the T75 merge, direct
+#               Contact.CRM field mutation, unchecked Save/Updates errors,
+#               auth material read from the query string) that generic
+#               scanners can't see because they're conventions of this
+#               codebase, not generic vulnerability patterns.
+# All three are path-gated on their area (issue #264 pattern); the scheduled
+# run re-scans everything so new rules are exercised even with no activity.
 
 on:
   push:
@@ -29,6 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       android: ${{ steps.filter.outputs.android }}
+      backend: ${{ steps.filter.outputs.backend }}
       infra: ${{ steps.filter.outputs.infra }}
       workflows: ${{ steps.filter.outputs.workflows }}
     steps:
@@ -48,6 +56,7 @@ jobs:
       - name: Report gating decision
         run: |
           echo "android=$ANDROID_CHANGED"
+          echo "backend=$BACKEND_CHANGED"
           echo "infra=$INFRA_CHANGED"
           echo "workflows=$WORKFLOWS_CHANGED"
         env:
@@ -55,6 +64,7 @@ jobs:
           # attacker-influenced ones on PRs); passed as env vars so zizmor's
           # template-injection audit has nothing to flag in this workflow.
           ANDROID_CHANGED: ${{ steps.filter.outputs.android }}
+          BACKEND_CHANGED: ${{ steps.filter.outputs.backend }}
           INFRA_CHANGED: ${{ steps.filter.outputs.infra }}
           WORKFLOWS_CHANGED: ${{ steps.filter.outputs.workflows }}
 
@@ -126,3 +136,43 @@ jobs:
         uses: hadolint/hadolint-action@2a66e89f53d0771bb131a7fa31f3136336094aa6 # v3.4.0
         with:
           dockerfile: ${{ matrix.dockerfile }}
+
+  semgrep:
+    name: CLAUDE.md trap rules (semgrep)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      # security-events: write — upload the SARIF to the Security tab, same
+      # as mobsfscan above.
+      contents: read
+      security-events: write
+    needs: changes
+    if: github.event_name == 'schedule' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+
+      # Issue #370: custom rules encoding the CLAUDE.md backend "traps" list
+      # (config + hand-verification fixtures: backend/.semgrep/). Pinned to
+      # the same semgrep version mobsfscan already pulls in above, so the
+      # toolchain has exactly one semgrep version across both jobs. Scoped to
+      # backend/ — the rules are Go-specific; .semgrep/tests/ (the
+      # deliberately-broken hand-verification fixtures) is a dot-directory
+      # and excluded from every real scan by semgrep's own default ignores,
+      # so it never reaches this gate.
+      - name: Run semgrep -> SARIF
+        working-directory: backend
+        run: uvx --from 'semgrep==1.172.0' semgrep --config .semgrep/mycorrhizal-traps.yaml --sarif --output results.sarif --error .
+
+      - name: Upload SARIF to code scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
+        with:
+          sarif_file: backend/results.sarif
+          category: semgrep

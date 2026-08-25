@@ -150,7 +150,12 @@ func OIDCCallbackHandler(provider *services.OIDCProvider, cfg *config.Config) gi
 			return
 		}
 
-		code := c.Query("code")
+		// OAuth2/OIDC authorization code callback (RFC 6749 4.1.2): the IdP
+		// redirects here with ?code=... by spec, so this can't move to the
+		// body/header. The code is single-use and short-lived, and is
+		// immediately exchanged for tokens server-side below rather than
+		// stored or logged.
+		code := c.Query("code") // nosemgrep: mycorrhizal-query-string-auth-material
 		if code == "" {
 			log.Warn().Msg("OIDC callback: missing code")
 			oidcErrorRedirect(c, android, "oidc_error")

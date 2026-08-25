@@ -85,7 +85,7 @@ L3-only, out of scope: 1.11.3.
 
 | ID | Requirement (abbrev.) | Status | Evidence |
 |---|---|---|---|
-| 1.1.1 | Secure SDLC | satisfied | Issues-first backlog, one branch per concern, CI gates — `CLAUDE.md` (Workflow), `.github/workflows/`. Static (SAST/SCA) and dynamic (DAST) testing: OWASP ZAP weekly sweep (`zap/zap-dast.yaml`, `.github/workflows/zap-dast.yml`, gate `backend/cmd/zapgate` + canary `backend/cmd/dastcanary`) |
+| 1.1.1 | Secure SDLC | satisfied | Issues-first backlog, one branch per concern, CI gates — `CLAUDE.md` (Workflow), `.github/workflows/`. Static (SAST/SCA) and dynamic (DAST) testing: OWASP ZAP weekly sweep (`zap/zap-dast.yaml`, `.github/workflows/zap-dast.yml`, gate `backend/cmd/zapgate` + canary `backend/cmd/dastcanary`); custom semgrep rules for this codebase's own documented bug-class conventions (`backend/.semgrep/mycorrhizal-traps.yaml`, `.github/workflows/sast.yml`'s `semgrep` job, issue #370) alongside generic CodeQL/gosec/govulncheck coverage |
 | 1.1.2 | Threat modeling per design change | partial | No formal per-sprint threat model; threat analysis lives in ADRs (`docs/adrs/`) and the 14-finding security review that all findings were patched (see Security posture, `CLAUDE.md`). Gap: no standing threat-model step. |
 | 1.1.3 | User stories carry security constraints | satisfied | Issues carry explicit acceptance/security criteria, e.g. the "verified by" gates in this repo's security tickets (see e.g. T75/T26 records in `CLAUDE.md`). |
 | 1.1.4 | Trust boundaries documented | satisfied | `docs/deployment.md:17` (TLS at external reverse proxy, nginx→app loopback); Cookie/`COOKIE_SECURE` boundary in `.env.example:110-122`; CORS boundary `backend/main.go:191-209` |
