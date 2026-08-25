@@ -42,6 +42,30 @@ func safeGo(name string, fn func()) {
 	}()
 }
 
+// recoverJob wraps fn for a recurring gocron registration (s.Every(...).Do(...))
+// with the same panic recovery as safeGo. safeGo only covers each job's
+// *initial* unscheduled run (go safeGo("x-initial-run", fn)); gocron invokes
+// the function it's given directly and, in the pinned v1.37.0, does not
+// recover a job's own panics unless gocron.SetPanicHandler is set globally
+// (it isn't here). Without this, a panic on any scheduled invocation —
+// reminders, calendar sync, webhook retries, the T26 purge job, etc. —
+// would crash the whole process on its next scheduled tick, not just fail
+// that one run. Always pass the wrapped result to .Do(), never fn itself.
+func recoverJob(name string, fn func()) func() {
+	return func() {
+		defer func() {
+			if r := recover(); r != nil {
+				logger.Error().
+					Str("job", name).
+					Interface("panic", r).
+					Str("stack", string(debug.Stack())).
+					Msg("Scheduled job panicked — recovered")
+			}
+		}()
+		fn()
+	}
+}
+
 func main() {
 	// Initialize logger first
 	logLevel := os.Getenv("LOG_LEVEL")
@@ -108,48 +132,48 @@ func main() {
 			logger.Error().Err(err).Msg("Error sending reminders")
 		}
 	}
-	s.Every(1).Day().At(cfg.ReminderTime).Do(task)
+	s.Every(1).Day().At(cfg.ReminderTime).Do(recoverJob("reminder-scheduled-run", task))
 	go safeGo("reminder-initial-run", task)
-	s.Every(5).Minutes().Do(func() {
+	s.Every(5).Minutes().Do(recoverJob("webhook-retries-scheduled-run", func() {
 		services.ProcessWebhookRetries(db, *cfg)
-	})
+	}))
 	// Sync calendar subscriptions regularly (rate-limited via job lock)
 	calendarSyncTask := func() {
 		services.SyncCalendarsWithRateLimit(db, *cfg)
 	}
-	s.Every(cfg.CalDAVSyncIntervalHours).Hours().Do(calendarSyncTask)
+	s.Every(cfg.CalDAVSyncIntervalHours).Hours().Do(recoverJob("calendar-sync-scheduled-run", calendarSyncTask))
 	go safeGo("calendar-sync-initial-run", calendarSyncTask)
 
 	// Purge soft-deleted rows past their retention window (T26).
-	s.Every(24).Hours().Do(func() {
+	s.Every(24).Hours().Do(recoverJob("purge-scheduled-run", func() {
 		services.PurgeDeletedRows(db, *cfg)
-	})
+	}))
 	go safeGo("purge-initial-run", func() {
 		services.PurgeDeletedRows(db, *cfg)
 	})
 
 	// Purge expired audit events past their retention window (T18).
-	s.Every(24).Hours().Do(func() {
+	s.Every(24).Hours().Do(recoverJob("audit-purge-scheduled-run", func() {
 		services.PurgeExpiredAuditEventsScheduled(db, *cfg)
-	})
+	}))
 	go safeGo("audit-purge-initial-run", func() {
 		services.PurgeExpiredAuditEventsScheduled(db, *cfg)
 	})
 
 	// Emit overdue-cadence webhooks daily (T19). Job-lock guarded so a
 	// multi-instance deploy does not double-fire.
-	s.Every(24).Hours().Do(func() {
+	s.Every(24).Hours().Do(recoverJob("cadence-overdue-scheduled-run", func() {
 		services.ProcessOverdueCadences(db, *cfg)
-	})
+	}))
 	go safeGo("cadence-overdue-initial-run", func() {
 		services.ProcessOverdueCadences(db, *cfg)
 	})
 
 	// Detect event-driven reach-out suggestions daily (issue #177). Job-lock
 	// guarded so a multi-instance deploy does not double-fire.
-	s.Every(24).Hours().Do(func() {
+	s.Every(24).Hours().Do(recoverJob("reach-out-detection-scheduled-run", func() {
 		services.DetectReachOutSuggestions(db, *cfg)
-	})
+	}))
 	go safeGo("reach-out-detection-initial-run", func() {
 		services.DetectReachOutSuggestions(db, *cfg)
 	})
@@ -159,23 +183,23 @@ func main() {
 	immichSyncTask := func() {
 		services.SyncImmichWithRateLimit(db, *cfg)
 	}
-	s.Every(cfg.ImmichSyncIntervalHours).Hours().Do(immichSyncTask)
+	s.Every(cfg.ImmichSyncIntervalHours).Hours().Do(recoverJob("immich-sync-scheduled-run", immichSyncTask))
 	go safeGo("immich-sync-initial-run", immichSyncTask)
 
 	// Check the live database for corruption on a schedule (issue #273).
 	// Job-lock guarded, config-gated (DB_INTEGRITY_CHECK_ENABLED).
-	s.Every(cfg.DBIntegrityCheckIntervalHours).Hours().Do(func() {
+	s.Every(cfg.DBIntegrityCheckIntervalHours).Hours().Do(recoverJob("db-integrity-check-scheduled-run", func() {
 		services.CheckDBIntegrityScheduled(db, *cfg)
-	})
+	}))
 	go safeGo("db-integrity-check-initial-run", func() {
 		services.CheckDBIntegrityScheduled(db, *cfg)
 	})
 
 	// Periodically prove a backup actually restores (issue #275). Job-lock
 	// guarded, config-gated (DB_RESTORE_DRILL_ENABLED).
-	s.Every(cfg.DBRestoreDrillIntervalHours).Hours().Do(func() {
+	s.Every(cfg.DBRestoreDrillIntervalHours).Hours().Do(recoverJob("restore-drill-scheduled-run", func() {
 		services.RunRestoreDrillScheduled(db, *cfg)
-	})
+	}))
 	go safeGo("restore-drill-initial-run", func() {
 		services.RunRestoreDrillScheduled(db, *cfg)
 	})
