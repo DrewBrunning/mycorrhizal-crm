@@ -126,6 +126,12 @@ dependencies {
     androidTestImplementation(libs.androidx.test.core)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.ext.junit)
+    // Issue #385: the storage-layer instrumented tests (RoomCacheEncryptionTest)
+    // build Room + SQLCipher databases directly; `core:data`'s implementation
+    // deps are runtime-only, so Room/SQLCipher are declared here for the
+    // androidTest compile classpath.
+    androidTestImplementation(libs.room.runtime)
+    androidTestImplementation(libs.sqlcipher.android)
     // Explicit override of compose ui-test's transitive espresso 3.5.0: the
     // compose Android test environment syncs through Espresso.onIdle() on
     // device, and espresso < 3.7.0 uses InputManager.getInstance(), which was
