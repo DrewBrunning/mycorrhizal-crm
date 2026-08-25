@@ -302,6 +302,45 @@ func TestSendReminders_PrivateAddressPerPolicy(t *testing.T) {
 	require.Equal(t, 1, fake.count(), "the default (unfiltered) policy must reach a private ntfy server")
 }
 
+// TestSendReminders_PushPrivateAddressBlocked pins that the push channel's
+// reuse of clientFor is governed by the same SSRF policy as webhooks. Unlike
+// ntfy/gotify (whose postNotificationJSON does its own pre-flight),
+// sendPushMessage hands clientFor straight to webpush-go — the guarded dialer
+// is the only thing between a user-controlled push endpoint and the network,
+// so a loopback endpoint must be refused on the real send path and the
+// reminder stays due (a failed delivery, not a silent drop).
+func TestSendReminders_PushPrivateAddressBlocked(t *testing.T) {
+	db := setupNotificationTestDB(t)
+	fake := newFakeChannelServer(t, nil)
+	user := newNotificationUser(t, db, false, false, true, "", "")
+	reminder := newDueReminder(t, db, user, "SSRF push")
+
+	sub := models.PushSubscription{
+		UserID:   user.ID,
+		Endpoint: fake.URL() + "/push",
+		P256dh:   "BNNL5ZaTfK81qhXOx23-wewhigUeFb632jN6LvRWCFH1ubQr77FE_9qV1FuojuRmHP42zmf34rXgW80OvUVDgTk",
+		Auth:     "zqbxT6JKstKSY9JKibZLSQ",
+	}
+	require.NoError(t, db.Create(&sub).Error)
+
+	originalSender := sendReminderEmailFn
+	sendReminderEmailFn = func(u models.User, reminders []models.Reminder, cfg config.Config, db *gorm.DB) error { return nil }
+	defer func() { sendReminderEmailFn = originalSender }()
+
+	cfg := config.Config{ReminderTime: "12:00", WebhookBlockPrivateURLs: true}
+	require.NoError(t, SendReminders(db, cfg))
+
+	assert.Equal(t, 0, fake.count(), "the guarded push client must never reach a loopback endpoint")
+
+	var deliveries []models.NotificationDelivery
+	require.NoError(t, db.Where("reminder_id = ? AND channel = ?", reminder.ID, "push").Find(&deliveries).Error)
+	require.Len(t, deliveries, 1, "the push failure must be recorded, not silently dropped")
+	assert.Equal(t, "failed", deliveries[0].Status)
+	require.NotNil(t, deliveries[0].Error)
+	assert.Contains(t, *deliveries[0].Error, ErrWebhookPrivateAddress.Error(),
+		"the push delivery record must carry the SSRF reason surfaced by the guarded dialer")
+}
+
 // TestSendReminders_PushDeliversAndRecords verifies Web Push end to end
 // against a fake push service: a registered device gets one encrypted push per
 // due reminder, recorded as 'sent'.
