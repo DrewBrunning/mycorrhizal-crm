@@ -1,9 +1,34 @@
 import { describe, test, expect, vi, afterEach } from 'vitest';
-import { getAuditEvents, undoAuditEvent, AUDIT_ENTITY_TYPES } from './audit';
+import { getAuditEvents, undoAuditEvent, exportAuditLog, AUDIT_ENTITY_TYPES } from './audit';
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
+
+// Mirrors api/export.test.ts's stubDownloadEnvironment/fileResponse helpers --
+// exportAuditLog reuses export.ts's downloadFileFromResponse, so its tests
+// need the same DOM stubs.
+let capturedLink: HTMLAnchorElement | null = null;
+
+function stubDownloadEnvironment() {
+  capturedLink = null;
+  const createObjectURL = vi.fn(() => 'blob:http://localhost:7300/audit-export-123');
+  const revokeObjectURL = vi.fn();
+  vi.spyOn(HTMLElement.prototype, 'click').mockImplementation(function (this: HTMLElement) {
+    capturedLink = this as HTMLAnchorElement;
+  });
+  vi.stubGlobal('URL', { ...URL, createObjectURL, revokeObjectURL });
+  return { createObjectURL, revokeObjectURL };
+}
+
+function auditFileResponse(filename?: string) {
+  return {
+    ok: true,
+    headers: new Headers(filename ? { 'Content-Disposition': `attachment; filename="${filename}"` } : {}),
+    blob: async () => new Blob(['audit,csv,rows']),
+  };
+}
 
 describe('getAuditEvents', () => {
   test('requests /audit with the default limit and parses the response', async () => {
@@ -98,6 +123,54 @@ describe('undoAuditEvent', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     await expect(undoAuditEvent(7)).rejects.toMatchObject({ status: 410 });
+  });
+});
+
+describe('exportAuditLog', () => {
+  test('GETs /audit/export without include_snapshots by default', async () => {
+    stubDownloadEnvironment();
+    const fetchMock = vi.fn().mockResolvedValueOnce(auditFileResponse('audit-2026.csv'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await exportAuditLog();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain('/audit/export');
+    expect(url).not.toContain('include_snapshots');
+    expect(init.method).toBe('GET');
+    expect(capturedLink?.download).toBe('audit-2026.csv');
+  });
+
+  test('sends include_snapshots=true when explicitly requested', async () => {
+    stubDownloadEnvironment();
+    const fetchMock = vi.fn().mockResolvedValueOnce(auditFileResponse());
+    vi.stubGlobal('fetch', fetchMock);
+
+    await exportAuditLog(true);
+
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toContain('include_snapshots=true');
+  });
+
+  test('falls back to the default filename when Content-Disposition is missing', async () => {
+    stubDownloadEnvironment();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(auditFileResponse()));
+
+    await exportAuditLog();
+
+    expect(capturedLink?.download).toBe('mycorrhizal-audit-log.csv');
+  });
+
+  test('throws an ApiError when the response is not ok', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: async () => ({ error: { code: 'DATABASE_ERROR', message: 'Failed to fetch audit events' } }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(exportAuditLog()).rejects.toMatchObject({ status: 500 });
   });
 });
 

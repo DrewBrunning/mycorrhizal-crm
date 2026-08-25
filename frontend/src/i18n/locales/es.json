@@ -1975,6 +1975,11 @@
       "entityId": "ID de entidad",
       "clear": "Limpiar filtros"
     },
+    "export": {
+      "downloadButton": "Exportar CSV",
+      "exporting": "Exportando...",
+      "success": "Tu registro de auditoría se ha exportado correctamente."
+    },
     "columns": {
       "timestamp": "Cuándo",
       "entityType": "Entidad",

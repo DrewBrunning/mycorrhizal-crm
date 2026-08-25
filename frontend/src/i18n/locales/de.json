@@ -1975,6 +1975,11 @@
       "entityId": "Entitäts-ID",
       "clear": "Filter löschen"
     },
+    "export": {
+      "downloadButton": "CSV exportieren",
+      "exporting": "Wird exportiert...",
+      "success": "Ihr Audit-Protokoll wurde erfolgreich exportiert."
+    },
     "columns": {
       "timestamp": "Wann",
       "entityType": "Entität",

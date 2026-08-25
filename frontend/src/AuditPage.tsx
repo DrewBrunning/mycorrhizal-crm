@@ -12,6 +12,7 @@ import {
   InputLabel,
   Button,
   Chip,
+  CircularProgress,
   Table,
   TableBody,
   TableCell,
@@ -25,11 +26,12 @@ import {
 } from '@mui/material';
 import { SelectChangeEvent } from '@mui/material/Select';
 import UndoIcon from '@mui/icons-material/Undo';
+import DownloadIcon from '@mui/icons-material/Download';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import ClearIcon from '@mui/icons-material/Clear';
 import { useAudit } from './hooks/useAudit';
 import { useDebouncedValue } from './hooks/useDebounce';
-import { AuditEvent, AuditEntityType, AUDIT_ENTITY_TYPES } from './api/audit';
+import { AuditEvent, AuditEntityType, AUDIT_ENTITY_TYPES, exportAuditLog } from './api/audit';
 import { getContactsByUid } from './api/contacts';
 import { useSnackbar } from './context/SnackbarContext';
 import { ListSkeleton } from './components/LoadingSkeletons';
@@ -88,6 +90,7 @@ export default function AuditPage() {
 
   const [pendingUndo, setPendingUndo] = useState<AuditEvent | null>(null);
   const [undoing, setUndoing] = useState(false);
+  const [exportingAuditLog, setExportingAuditLog] = useState(false);
 
   // Resolve the event's contact vcard_uids to (numeric-ID, name) pairs so the
   // entity cell links to /contacts/:id when the contact still exists. The API
@@ -103,6 +106,22 @@ export default function AuditPage() {
   const handleClearFilters = () => {
     setEntityIdInput('');
     clearFilters();
+  };
+
+  // Issue #416. Unbounded CSV export of the caller's own full audit trail
+  // (unlike the paginated list above) -- before_snapshot is deliberately
+  // left out (see api/audit.ts's exportAuditLog doc comment), so this button
+  // never offers the sensitive-opt-in variant.
+  const handleExportAuditLog = async () => {
+    setExportingAuditLog(true);
+    try {
+      await exportAuditLog();
+      showSuccess(t('audit.export.success'));
+    } catch (err) {
+      showError(getErrorMessage(err));
+    } finally {
+      setExportingAuditLog(false);
+    }
   };
 
   const handleUndoConfirm = async () => {
@@ -169,6 +188,16 @@ export default function AuditPage() {
             disabled={!hasFilters}
           >
             {t('audit.filters.clear')}
+          </Button>
+          <Button
+            variant="outlined"
+            size="medium"
+            startIcon={exportingAuditLog ? <CircularProgress size={16} color="inherit" /> : <DownloadIcon />}
+            onClick={handleExportAuditLog}
+            disabled={exportingAuditLog}
+            sx={{ ml: 'auto' }}
+          >
+            {exportingAuditLog ? t('audit.export.exporting') : t('audit.export.downloadButton')}
           </Button>
         </Box>
       </Paper>

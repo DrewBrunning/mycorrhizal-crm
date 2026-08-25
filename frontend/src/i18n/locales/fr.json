@@ -1975,6 +1975,11 @@
       "entityId": "ID d'entité",
       "clear": "Effacer les filtres"
     },
+    "export": {
+      "downloadButton": "Exporter en CSV",
+      "exporting": "Exportation...",
+      "success": "Votre journal d'audit a été exporté avec succès."
+    },
     "columns": {
       "timestamp": "Quand",
       "entityType": "Entité",

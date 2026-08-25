@@ -2,6 +2,7 @@
 // the frontend half of T18's already-shipped backend (GET /audit, POST
 // /audit/:id/undo).
 import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
+import { downloadFileFromResponse } from './export';
 
 // Mirrors backend/models/audit.go's AuditEntity* tokens and backend/openapi.yaml's
 // AuditEvent.entity_type enum exactly. No dynamic type-list endpoint exists
@@ -107,4 +108,23 @@ export async function undoAuditEvent(id: number): Promise<{ message: string }> {
   });
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json();
+}
+
+// GET /audit/export -- issue #416. Unbounded CSV export of the caller's own
+// audit trail (unlike getAuditEvents, which caps at 500 rows for the list
+// view). before_snapshot is omitted unless includeSnapshots is explicitly
+// set: it is credential-redacted but not contact-field-sensitivity-filtered,
+// so it is gated behind its own opt-in rather than reusing a sensitivity flag
+// that means something narrower everywhere else in this app.
+export async function exportAuditLog(includeSnapshots = false): Promise<void> {
+  const params = new URLSearchParams();
+  if (includeSnapshots) {
+    params.set('include_snapshots', 'true');
+  }
+  const response = await apiFetch(`${API_BASE_URL}/audit/export?${params.toString()}`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) throw await parseErrorResponse(response);
+  await downloadFileFromResponse(response, 'mycorrhizal-audit-log.csv');
 }
