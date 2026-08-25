@@ -312,7 +312,7 @@ L3-only, out of scope: none in this chapter (5.4 is L2).
 | 6.3.1 | CSPRNG for secrets | satisfied | `crypto/rand` for API tokens (`api_token_controller.go:65-70`), reset tokens (`password_reset_service.go:22-25`), recovery codes (`twofactor.go:103-122`), GCM nonces |
 | 6.3.2 | UUID v4 via CSPRNG | satisfied | `google/uuid` v4 in `BeforeCreate` (e.g. `models/circle.go:31`, `models/contact.go:415`) |
 | 6.3.3 | Entropy under load | out-of-scope | L3 |
-| 6.4.1 | Secrets-management solution | satisfied | Env-var/file secrets with boot-time validation — `JWT_SECRET_KEY` length/placeholder/entropy gates (`config/config.go:351-389`), `DATA_ENCRYPTION_KEY`/`_FILE` base64-32-byte validation (`config/config.go:391-410`); at-rest master key + wrapped-DEK envelope with a rotation tool (`cmd/rotate-at-rest-key`, `atrest.RotateMasterKey`) and a documented "lost key = lost data, by design" posture (`atrest/atrest.go`); no vault (self-hosted; see P2). |
+| 6.4.1 | Secrets-management solution | satisfied | Env-var/file secrets with boot-time validation — `JWT_SECRET_KEY` length/placeholder/entropy gates (`config/config.go:351-389`), `DATA_ENCRYPTION_KEY`/`_FILE` base64-32-byte validation (`config/config.go:411-436`); at-rest master key + wrapped-DEK envelope with a rotation tool (`cmd/rotate-at-rest-key`, `atrest.RotateMasterKey`) and a documented "lost key = lost data, by design" posture (`atrest/atrest.go`); no vault (self-hosted; see P2). |
 | 6.4.2 | Key material isolated from app | not-applicable | Single process; the secret must live in the process env by design (self-hosted; see P2) |
 
 ## V7 — Error Handling and Logging
