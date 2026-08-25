@@ -136,12 +136,28 @@ func TestSavePaperlessConfig_RejectsSchemelessBaseURL(t *testing.T) {
 	assert.EqualValues(t, 0, count, "a rejected base URL must not be persisted")
 }
 
-func TestTestPaperlessConnection_NoConfigIs503(t *testing.T) {
+// TestListPaperlessDocuments_NoConfigIs400 covers issue #524: no Paperless
+// connection configured is the caller's own setup, not a server malfunction,
+// so it must be a 400 — Schemathesis's not_a_server_error check flags any 5xx
+// here.
+func TestListPaperlessDocuments_NoConfigIs400(t *testing.T) {
+	db := seedPaperlessControllerDB(t)
+	router := paperlessTestRouter(t, db)
+
+	w := paperlessDoJSON(t, router, "GET", "/paperless/documents?query=", nil)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+// TestTestPaperlessConnection_NoConfigIs400 covers issue #524: no Paperless
+// connection configured is the caller's own setup, not a server malfunction,
+// so it must be a 400 — Schemathesis's not_a_server_error check flags any 5xx
+// here.
+func TestTestPaperlessConnection_NoConfigIs400(t *testing.T) {
 	db := seedPaperlessControllerDB(t)
 	router := paperlessTestRouter(t, db)
 
 	w := paperlessDoJSON(t, router, "POST", "/paperless/test-connection", nil)
-	assert.Equal(t, http.StatusServiceUnavailable, w.Code)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
 func TestTestPaperlessConnection_SuccessAndFailure(t *testing.T) {

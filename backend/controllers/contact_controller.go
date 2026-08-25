@@ -577,7 +577,10 @@ func GetUpcomingBirthdays(c *gin.Context) {
 }
 
 func GetContact(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := requirePathUintID(c, "id")
+	if !ok {
+		return
+	}
 
 	userID, ok := currentUserID(c)
 	if !ok {
@@ -619,7 +622,10 @@ func GetContact(c *gin.Context) {
 }
 
 func UpdateContact(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := requirePathUintID(c, "id")
+	if !ok {
+		return
+	}
 	db := c.MustGet("db").(*gorm.DB)
 
 	userID, ok := currentUserID(c)
@@ -821,7 +827,10 @@ func deleteContactAssociations(tx *gorm.DB, contact models.Contact, userID uint)
 }
 
 func DeleteContact(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := requirePathUintID(c, "id")
+	if !ok {
+		return
+	}
 	db := c.MustGet("db").(*gorm.DB)
 
 	userID, ok := currentUserID(c)
@@ -969,7 +978,10 @@ func GetCircles(c *gin.Context) {
 
 // ArchiveContact archives a contact and deletes all its reminders
 func ArchiveContact(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := requirePathUintID(c, "id")
+	if !ok {
+		return
+	}
 	db := c.MustGet("db").(*gorm.DB)
 
 	userID, ok := currentUserID(c)
@@ -1018,7 +1030,10 @@ func ArchiveContact(c *gin.Context) {
 
 // UnarchiveContact restores an archived contact
 func UnarchiveContact(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := requirePathUintID(c, "id")
+	if !ok {
+		return
+	}
 	db := c.MustGet("db").(*gorm.DB)
 
 	userID, ok := currentUserID(c)
@@ -1051,7 +1066,10 @@ func UnarchiveContact(c *gin.Context) {
 // propagates through the T17 ?since= change feed and CardDAV sync — exactly
 // what ArchiveContact already relies on.
 func FavoriteContact(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := requirePathUintID(c, "id")
+	if !ok {
+		return
+	}
 	db := c.MustGet("db").(*gorm.DB)
 
 	userID, ok := currentUserID(c)
@@ -1081,7 +1099,10 @@ func FavoriteContact(c *gin.Context) {
 // UnfavoriteContact clears the favorite flag (issue #173). Same `Update`
 // (hooks firing) discipline as FavoriteContact.
 func UnfavoriteContact(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := requirePathUintID(c, "id")
+	if !ok {
+		return
+	}
 	db := c.MustGet("db").(*gorm.DB)
 
 	userID, ok := currentUserID(c)

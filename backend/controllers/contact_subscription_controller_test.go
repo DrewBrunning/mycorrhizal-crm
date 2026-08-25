@@ -485,7 +485,7 @@ func TestContactSyncError_AllSentinelsMapped(t *testing.T) {
 		{"PrivateAddress", services.ErrContactSyncPrivateAddress, http.StatusServiceUnavailable},
 		{"TooLarge", services.ErrContactSyncTooLarge, http.StatusServiceUnavailable},
 		{"InvalidData", services.ErrContactSyncInvalidData, http.StatusServiceUnavailable},
-		{"Unreachable", services.ErrContactSyncUnreachable, http.StatusServiceUnavailable},
+		{"Unreachable", services.ErrContactSyncUnreachable, http.StatusBadRequest},
 		{"UnknownError_FallsBackToOperationFailed", fmt.Errorf("some other failure"), http.StatusUnprocessableEntity},
 	}
 	for _, tc := range cases {

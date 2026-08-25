@@ -217,7 +217,11 @@ func calendarSyncError(err error) *apperrors.AppError {
 	case errors.Is(err, services.ErrCalendarInvalidData):
 		return apperrors.ErrExternal("Calendar", "calendar returned data that could not be parsed")
 	case errors.Is(err, services.ErrCalendarUnreachable):
-		return apperrors.ErrExternal("Calendar", "calendar could not be reached")
+		// issue #524: the subscription's own URL is what can't be reached —
+		// the caller's configuration, not a server malfunction — so this is a
+		// 400, not a 503 (Schemathesis's not_a_server_error check correctly
+		// refuses to accept a 5xx here).
+		return apperrors.ErrValidation("calendar could not be reached — check the subscription URL")
 	default:
 		return apperrors.ErrOperationFailed("Calendar sync", err.Error())
 	}

@@ -15,13 +15,15 @@ import (
 )
 
 // abortWebDAVServiceError maps a services-level WebDAV sentinel error to the
-// right HTTP status: an unreachable instance or expired app password is a 503;
-// a missing/not-found file or folder is a 404; everything else is the same 503
-// fallback.
+// right HTTP status: a missing/never-configured connection or an
+// invalid/expired app password is a 400 (issue #524 — the caller's own
+// credentials or setup, not a server malfunction); a missing/not-found file
+// or folder is a 404; everything else is the same 503 fallback (Nextcloud
+// genuinely unreachable — that IS a server-side/upstream failure).
 func abortWebDAVServiceError(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, services.ErrWebDAVUnauthorized):
-		apperrors.AbortWithError(c, apperrors.ErrExternal("Nextcloud", "Nextcloud app password is invalid, expired, or not configured").WithError(err))
+		apperrors.AbortWithError(c, apperrors.ErrValidation("Nextcloud app password is invalid, expired, or not configured").WithError(err))
 	case errors.Is(err, services.ErrWebDAVNotFound):
 		apperrors.AbortWithError(c, apperrors.ErrNotFound("Nextcloud file or folder").WithError(err))
 	case errors.Is(err, services.ErrWebDAVInvalidURL):

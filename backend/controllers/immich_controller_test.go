@@ -169,12 +169,16 @@ func TestSaveImmichConfig_TrimsTrailingAPISegment(t *testing.T) {
 	assert.Equal(t, "https://immich.example", resp.BaseURL)
 }
 
-func TestTestImmichConnection_NoConfigIs503(t *testing.T) {
+// TestTestImmichConnection_NoConfigIs400 covers issue #524: no Immich
+// connection configured is the caller's own setup, not a server malfunction,
+// so it must be a 400 — Schemathesis's not_a_server_error check flags any 5xx
+// here.
+func TestTestImmichConnection_NoConfigIs400(t *testing.T) {
 	db := seedImmichControllerDB(t)
 	router := immichTestRouter(t, db)
 
 	w := immichDoJSON(t, router, "POST", "/immich/test-connection", nil)
-	assert.Equal(t, http.StatusServiceUnavailable, w.Code)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
 func TestTestImmichConnection_SuccessAndFailure(t *testing.T) {
@@ -236,6 +240,17 @@ func TestListImmichPeople(t *testing.T) {
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 	require.Len(t, resp.People, 2)
 	assert.Equal(t, "sekret", fake.LastAPIKey, "the server must receive the user's API key")
+}
+
+// TestListImmichPeople_NoConfigIs400 covers issue #524: no Immich connection
+// configured is the caller's own setup, not a server malfunction, so it must
+// be a 400 — Schemathesis's not_a_server_error check flags any 5xx here.
+func TestListImmichPeople_NoConfigIs400(t *testing.T) {
+	db := seedImmichControllerDB(t)
+	router := immichTestRouter(t, db)
+
+	w := immichDoJSON(t, router, "GET", "/immich/people", nil)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
 // TestListImmichPeople_RequestFailedVsUnreachable pins T42: a stubbed 400
