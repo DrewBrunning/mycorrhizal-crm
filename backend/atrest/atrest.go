@@ -95,15 +95,6 @@ type Engine struct {
 
 var engine Engine
 
-// enabled reports whether at-rest encryption is active (Initialize ran with a
-// key). Serializers pass values through unchanged while disabled — that keeps
-// every pre-existing test (and pre-key deployments) behaving identically.
-func enabled() bool {
-	engine.mu.RLock()
-	defer engine.mu.RUnlock()
-	return engine.on
-}
-
 // DecodeMasterKey parses a base64 string into a 32-byte master key,
 // rejecting anything that does not decode to exactly keySize bytes.
 func DecodeMasterKey(raw string) ([]byte, error) {
@@ -140,7 +131,7 @@ func EncryptionKey() ([]byte, error) {
 	}
 
 	if path := os.Getenv("DATA_ENCRYPTION_KEY_FILE"); path != "" {
-		raw, err := os.ReadFile(path)
+		raw, err := os.ReadFile(path) // #nosec G304 G703 -- path is an operator-supplied config path (DATA_ENCRYPTION_KEY_FILE), not request input
 		if err != nil {
 			return nil, fmt.Errorf("DATA_ENCRYPTION_KEY_FILE: %w", err)
 		}
