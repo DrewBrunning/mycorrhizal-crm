@@ -22,7 +22,10 @@ import (
 func abortPaperlessServiceError(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, services.ErrPaperlessUnauthorized):
-		apperrors.AbortWithError(c, apperrors.ErrExternal("Paperless", "Paperless API token is invalid, expired, or not configured").WithError(err))
+		// issue #524: a missing/never-configured connection or an
+		// invalid/expired token is the caller's own credentials or setup, not
+		// a server malfunction — 400, not 503.
+		apperrors.AbortWithError(c, apperrors.ErrValidation("Paperless API token is invalid, expired, or not configured").WithError(err))
 	case errors.Is(err, services.ErrPaperlessNotFound):
 		apperrors.AbortWithError(c, apperrors.ErrNotFound("Paperless document").WithError(err))
 	case errors.Is(err, services.ErrPaperlessInvalidURL):

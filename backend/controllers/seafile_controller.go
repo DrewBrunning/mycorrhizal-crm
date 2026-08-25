@@ -21,7 +21,10 @@ import (
 func abortSeafileServiceError(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, services.ErrSeafileUnauthorized):
-		apperrors.AbortWithError(c, apperrors.ErrExternal("Seafile", "Seafile API token is invalid, expired, or not configured").WithError(err))
+		// issue #524: a missing/never-configured connection or an
+		// invalid/expired token is the caller's own credentials or setup, not
+		// a server malfunction — 400, not 503.
+		apperrors.AbortWithError(c, apperrors.ErrValidation("Seafile API token is invalid, expired, or not configured").WithError(err))
 	case errors.Is(err, services.ErrSeafileNotFound):
 		apperrors.AbortWithError(c, apperrors.ErrNotFound("Seafile library or file").WithError(err))
 	case errors.Is(err, services.ErrSeafileInvalidURL):

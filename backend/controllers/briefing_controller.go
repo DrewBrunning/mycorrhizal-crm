@@ -32,7 +32,10 @@ import (
 // own projection paths; this endpoint composes the non-sensitive contact data
 // the briefing is built from.
 func GetContactBriefing(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := requirePathUintID(c, "id")
+	if !ok {
+		return
+	}
 	db := c.MustGet("db").(*gorm.DB)
 	userID, ok := currentUserID(c)
 	if !ok {

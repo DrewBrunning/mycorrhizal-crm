@@ -614,7 +614,9 @@ func TestAddPhotoToContact_UnsupportedFormatFailsProcessing(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	// issue #524: an unsupported/corrupt upload is the caller's own bad
+	// input, not a server malfunction — 400, not 500.
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
 // --- ProxyImage ---
@@ -647,7 +649,9 @@ func TestProxyImage_BlockedSSRFTarget(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusServiceUnavailable, w.Code)
+	// issue #524: an unfetchable/blocked caller-supplied url is the caller's
+	// own bad input, not a server malfunction — 400, not 503.
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
 func TestProxyImage_RejectsNonHTTPScheme(t *testing.T) {
@@ -658,5 +662,7 @@ func TestProxyImage_RejectsNonHTTPScheme(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusServiceUnavailable, w.Code)
+	// issue #524: an unfetchable/blocked caller-supplied url is the caller's
+	// own bad input, not a server malfunction — 400, not 503.
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 }

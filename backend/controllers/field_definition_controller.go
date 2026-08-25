@@ -7,6 +7,7 @@ import (
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -409,6 +410,15 @@ func incomingDefIDs(incoming []models.FieldValueInput) []string {
 // aborted. This is the same contact-resolution idiom CreateNote uses
 // (note_controller.go) for /contacts/:id/<subresource> routes.
 func resolveOwnedContactByID(c *gin.Context, db *gorm.DB, userID uint, id string) (*models.Contact, bool) {
+	// A non-integer/out-of-range id (Schemathesis fuzzes "null,null", huge
+	// ints, strings) makes GORM's First(&contact, id) return a non-NotFound
+	// driver error, which the else-branch below turns into a 500 instead of
+	// the correct 400 (issue #524). Validate first so every caller of this
+	// shared resolver — detail, timeline, field-values GET/PUT — gets the fix.
+	if _, err := strconv.ParseUint(id, 10, 64); err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("id", "must be a positive integer").WithDetails("id", id))
+		return nil, false
+	}
 	var contact models.Contact
 	if err := db.Where("user_id = ?", userID).First(&contact, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

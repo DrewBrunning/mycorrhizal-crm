@@ -2539,13 +2539,11 @@ paths:
             image/*:
               schema: { type: string, format: binary }
         "400":
-          description: Missing url, or SVG images are not supported.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "502":
-          description: The upstream fetch failed or was blocked.
+          description: >
+            Missing url, SVG images are not supported, or the url could not
+            be fetched (unreachable, blocked by the SSRF guard, or not an
+            image) — issue #524: an unfetchable caller-supplied url is the
+            caller's own bad input, not a server malfunction.
           content:
             application/json:
               schema:
@@ -6389,7 +6387,10 @@ paths:
                   updated: { type: integer }
                   skipped: { type: integer }
         "400":
-          description: Non-integer id or invalid calendar URL.
+          description: >
+            Non-integer id, invalid calendar URL, or the subscription's
+            calendar could not be reached (issue #524 — the caller's own
+            subscription configuration, not a server malfunction).
           content:
             application/json:
               schema:
@@ -6408,9 +6409,8 @@ paths:
                 $ref: "#/components/schemas/Error"
         "503":
           description: >
-            The remote server rejected the request, was unreachable, returned
-            unparsable or oversized data, or resolved to a blocked private
-            address.
+            The remote server rejected the request, returned unparsable or
+            oversized data, or resolved to a blocked private address.
           content:
             application/json:
               schema:
@@ -6552,7 +6552,10 @@ paths:
                   archived: { type: integer }
                   skipped: { type: integer }
         "400":
-          description: Non-integer id or invalid subscription URL.
+          description: >
+            Non-integer id, invalid subscription URL, or the subscription's
+            CardDAV server could not be reached (issue #524 — the caller's
+            own subscription configuration, not a server malfunction).
           content:
             application/json:
               schema:
@@ -6571,9 +6574,9 @@ paths:
                 $ref: "#/components/schemas/Error"
         "503":
           description: >
-            The remote CardDAV server rejected the request, was unreachable,
-            returned unparsable or oversized data, or resolved to a blocked
-            private address.
+            The remote CardDAV server rejected the request, returned
+            unparsable or oversized data, or resolved to a blocked private
+            address.
           content:
             application/json:
               schema:
@@ -6976,8 +6979,17 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "400":
+          description: >
+            No Immich connection configured, or the saved API key is
+            invalid/expired (issue #524 — the caller's own setup, not a
+            server malfunction).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "503":
-          description: No Immich connection configured.
+          description: Immich is configured but genuinely unreachable, or returned an unparseable response.
           content:
             application/json:
               schema:
@@ -7007,8 +7019,17 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/ImmichPerson"
+        "400":
+          description: >
+            No Immich connection configured, or the saved API key is
+            invalid/expired (issue #524 — the caller's own setup, not a
+            server malfunction).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "503":
-          description: Immich unreachable, or the API key is invalid/expired.
+          description: Immich is configured but genuinely unreachable, or returned an unparseable response.
           content:
             application/json:
               schema:
@@ -7302,8 +7323,11 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-        "503":
-          description: No Paperless connection configured.
+        "400":
+          description: >
+            No Paperless connection configured, or the saved API token is
+            invalid/expired (issue #524 — the caller's own setup, not a
+            server malfunction).
           content:
             application/json:
               schema:
@@ -7332,8 +7356,17 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/PaperlessDocument"
+        "400":
+          description: >
+            No Paperless connection configured, or the saved API token is
+            invalid/expired (issue #524 — the caller's own setup, not a
+            server malfunction).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "503":
-          description: Paperless unreachable, or the API token is invalid/expired.
+          description: Paperless is configured but genuinely unreachable, or returned an unparseable response.
           content:
             application/json:
               schema:
@@ -7486,8 +7519,11 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-        "503":
-          description: No Seafile connection configured.
+        "400":
+          description: >
+            No Seafile connection configured, or the saved API token is
+            invalid/expired (issue #524 — the caller's own setup, not a
+            server malfunction).
           content:
             application/json:
               schema:
@@ -7509,8 +7545,17 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/SeafileLibrary"
+        "400":
+          description: >
+            No Seafile connection configured, or the saved API token is
+            invalid/expired (issue #524 — the caller's own setup, not a
+            server malfunction).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "503":
-          description: Seafile unreachable, or the API token is invalid/expired.
+          description: Seafile is configured but genuinely unreachable, or returned an unparseable response.
           content:
             application/json:
               schema:
@@ -7541,8 +7586,17 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/SeafileItem"
+        "400":
+          description: >
+            No Seafile connection configured, or the saved API token is
+            invalid/expired (issue #524 — the caller's own setup, not a
+            server malfunction).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "503":
-          description: Seafile unreachable, or the API token is invalid/expired.
+          description: Seafile is configured but genuinely unreachable, or returned an unparseable response.
           content:
             application/json:
               schema:
@@ -7704,8 +7758,11 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-        "503":
-          description: No Nextcloud connection configured.
+        "400":
+          description: >
+            No Nextcloud connection configured, or the saved app password is
+            invalid/expired (issue #524 — the caller's own setup, not a
+            server malfunction).
           content:
             application/json:
               schema:
@@ -7734,8 +7791,17 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/WebDAVItem"
+        "400":
+          description: >
+            No Nextcloud connection configured, or the saved app password is
+            invalid/expired (issue #524 — the caller's own setup, not a
+            server malfunction).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "503":
-          description: Nextcloud unreachable, or the app password is invalid/expired.
+          description: Nextcloud is configured but genuinely unreachable, or returned an unparseable response.
           content:
             application/json:
               schema:

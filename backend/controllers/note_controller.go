@@ -25,7 +25,10 @@ func CreateNote(c *gin.Context) {
 	}
 
 	// Get contact ID from the request URL
-	contactID := c.Param("id")
+	contactID, ok := requirePathUintID(c, "id")
+	if !ok {
+		return
+	}
 
 	// Find the contact by the ID
 	var contact models.Contact
@@ -108,7 +111,10 @@ func CreateUnassignedNote(c *gin.Context) {
 }
 
 func GetNote(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := requirePathUintID(c, "id")
+	if !ok {
+		return
+	}
 	var note models.Note
 	db := c.MustGet("db").(*gorm.DB)
 
@@ -273,7 +279,10 @@ func UpdateNote(c *gin.Context) {
 		return
 	}
 
-	id := c.Param("id")
+	id, ok := requirePathUintID(c, "id")
+	if !ok {
+		return
+	}
 	var note models.Note
 
 	// Retrieve the existing note from the database
@@ -320,7 +329,10 @@ func UpdateNote(c *gin.Context) {
 }
 
 func DeleteNote(c *gin.Context) {
-	id := c.Param("id")
+	id, ok := requirePathUintID(c, "id")
+	if !ok {
+		return
+	}
 	db := c.MustGet("db").(*gorm.DB)
 
 	userID, ok := currentUserID(c)
@@ -358,7 +370,10 @@ func DeleteNote(c *gin.Context) {
 // contract is preserved (checked before any note query).
 func GetNotesForContact(c *gin.Context) {
 	// Get contact ID from the request URL
-	contactID := c.Param("id")
+	contactID, ok := requirePathUintID(c, "id")
+	if !ok {
+		return
+	}
 
 	// Get the database instance from the context
 	db := c.MustGet("db").(*gorm.DB)
