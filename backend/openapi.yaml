@@ -9260,14 +9260,16 @@ components:
         address_key: { type: string }
     AuditEvent:
       type: object
-      description: One immutable create/update/delete record in the audit log (T18).
+      description: One immutable create/update/delete or auth/admin lifecycle record in the audit log (T18, issue #381).
       properties:
         id: { type: integer }
         created_at: { type: string, format: date-time }
-        entity_type: { type: string, enum: [contact, note, activity, life_event, gift, circle, tag, household, reminder] }
+        entity_type: { type: string, enum: [contact, note, activity, life_event, gift, circle, tag, household, reminder, user, auth, api_token] }
         entity_id: { type: string }
-        operation: { type: string, enum: [create, update, delete] }
+        operation: { type: string, enum: [create, update, delete, login, login_failed, register, password_change, password_reset, totp_enable, totp_disable, recovery_regenerate, revoke, role_change] }
         before_snapshot: { type: string, description: "Redacted JSON of the pre-update/pre-delete state (empty for creates)" }
+        hash: { type: string, description: "SHA-256 of (prev_hash || canonical content); the tamper-evident chain link (issue #381)" }
+        prev_hash: { type: string, description: "Hash of the preceding audit row (empty for the head of the chain)" }
     Attachment:
       type: object
       description: One file/document attached to a contact (N7). The bytes live on disk under a server-generated UUID name.

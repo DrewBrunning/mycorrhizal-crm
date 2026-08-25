@@ -1985,7 +1985,17 @@
     "operations": {
       "create": "Créé",
       "update": "Modifié",
-      "delete": "Supprimé"
+      "delete": "Supprimé",
+      "login": "Connecté",
+      "login_failed": "Échec de connexion",
+      "register": "Inscription",
+      "password_change": "Mot de passe modifié",
+      "password_reset": "Mot de passe réinitialisé",
+      "totp_enable": "2FA activée",
+      "totp_disable": "2FA désactivée",
+      "recovery_regenerate": "Codes de récupération régénérés",
+      "revoke": "Révoqué",
+      "role_change": "Rôle modifié"
     },
     "entityTypes": {
       "contact": "Contact",
@@ -1996,7 +2006,10 @@
       "circle": "Cercle",
       "tag": "Étiquette",
       "household": "Foyer",
-      "reminder": "Rappel"
+      "reminder": "Rappel",
+      "user": "Utilisateur",
+      "auth": "Authentification",
+      "api_token": "Jeton API"
     },
     "empty": "Aucun événement d'audit ne correspond à vos filtres.",
     "emptyNoFilters": "Aucun événement d'audit pour le moment. Les modifications apportées à vos contacts et autres enregistrements apparaîtront ici.",

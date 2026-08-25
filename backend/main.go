@@ -120,7 +120,10 @@ func main() {
 	// the master key, then encrypt any rows written before encryption was
 	// enabled (idempotent, row-count-preserving). A wrong DATA_ENCRYPTION_KEY
 	// fails closed here — the wrapped DEK cannot be unwrapped and boot aborts
-	// before any data is served. See backend/atrest/atrest.go.
+	// before any data is served. See backend/atrest/atrest.go. This must run
+	// before the audit hash chain backfill below: the chain hashes the
+	// logical (decrypted) audit_events.before_snapshot value via the GORM
+	// serializer, so encryption needs to be armed first.
 	{
 		kek, err := atrest.EncryptionKey()
 		if err != nil {
@@ -132,6 +135,14 @@ func main() {
 		if err := atrest.Backfill(db); err != nil {
 			logger.Fatal().Err(err).Msg("Failed to backfill at-rest encryption")
 		}
+	}
+
+	// T18 audit hash chain (issue #381): backfill hash/prev_hash for any rows
+	// written before migration 000034 and re-link after any purge. Idempotent
+	// and write-free once the chain is consistent; failing closed on error
+	// keeps the tamper-evidence property from silently degrading.
+	if err := models.RecomputeAuditChain(db); err != nil {
+		logger.Fatal().Err(err).Msg("Failed to backfill the audit hash chain")
 	}
 
 	logger.Info().Msg("Initializing i18n translations...")

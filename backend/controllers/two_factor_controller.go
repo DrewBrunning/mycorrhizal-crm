@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -182,6 +183,8 @@ func ConfirmTwoFactor(c *gin.Context) {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("query user").WithError(err))
 		return
 	}
+	// T18 audit: 2FA enabled (issue #381).
+	models.RecordAuditEvent(models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpTOTPEnable, user.ID)
 	reissueSessionToken(c, user)
 
 	c.JSON(http.StatusOK, gin.H{
@@ -251,6 +254,8 @@ func DisableTwoFactor(c *gin.Context) {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("query user").WithError(err))
 		return
 	}
+	// T18 audit: 2FA disabled (issue #381).
+	models.RecordAuditEvent(models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpTOTPDisable, user.ID)
 	reissueSessionToken(c, user)
 	c.JSON(http.StatusOK, gin.H{"message": "Two-factor authentication disabled"})
 }
@@ -310,6 +315,9 @@ func RegenerateRecoveryCodes(c *gin.Context) {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("update user").WithError(err))
 		return
 	}
+
+	// T18 audit: recovery codes regenerated — the old set is dead (issue #381).
+	models.RecordAuditEvent(models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpRecoveryRegen, user.ID)
 
 	c.JSON(http.StatusOK, gin.H{"recovery_codes": recoveryCodes})
 }
@@ -374,6 +382,8 @@ func Complete2FALogin(c *gin.Context, cfg *config.Config) {
 	}
 
 	if !valid2FAProof(db, &user, input.Code, currentConfig(c).JWTSecretKey) {
+		// T18 audit: failed 2FA step for a known account (issue #381).
+		models.RecordAuditEvent(models.AuditEntityAuth, user.Username, models.AuditOpLoginFailed, user.ID)
 		_, lockoutSecs := accountLimiter.RecordFailedAttempt(username)
 		if lockoutSecs > 0 {
 			c.JSON(http.StatusTooManyRequests, gin.H{
@@ -395,6 +405,10 @@ func Complete2FALogin(c *gin.Context, cfg *config.Config) {
 		apperrors.AbortWithError(c, apperrors.ErrInternal("Could not generate token").WithError(err))
 		return
 	}
+
+	// T18 audit: fully authenticated (password step + 2FA step) — only after
+	// the session token is actually minted (issue #381).
+	models.RecordAuditEvent(models.AuditEntityAuth, user.Username, models.AuditOpLogin, user.ID)
 
 	// Clear the one-time challenge and issue the real session.
 	c.SetSameSite(http.SameSiteLaxMode)

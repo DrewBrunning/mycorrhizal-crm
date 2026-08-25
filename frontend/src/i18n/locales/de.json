@@ -1985,7 +1985,17 @@
     "operations": {
       "create": "Erstellt",
       "update": "Aktualisiert",
-      "delete": "Gelöscht"
+      "delete": "Gelöscht",
+      "login": "Angemeldet",
+      "login_failed": "Anmeldung fehlgeschlagen",
+      "register": "Registriert",
+      "password_change": "Passwort geändert",
+      "password_reset": "Passwort zurückgesetzt",
+      "totp_enable": "2FA aktiviert",
+      "totp_disable": "2FA deaktiviert",
+      "recovery_regenerate": "Wiederherstellungscodes neu generiert",
+      "revoke": "Widerrufen",
+      "role_change": "Rolle geändert"
     },
     "entityTypes": {
       "contact": "Kontakt",
@@ -1996,7 +2006,10 @@
       "circle": "Kreis",
       "tag": "Tag",
       "household": "Haushalt",
-      "reminder": "Erinnerung"
+      "reminder": "Erinnerung",
+      "user": "Benutzer",
+      "auth": "Authentifizierung",
+      "api_token": "API-Token"
     },
     "empty": "Keine Audit-Ereignisse entsprechen Ihren Filtern.",
     "emptyNoFilters": "Noch keine Audit-Ereignisse. Änderungen an Ihren Kontakten und anderen Einträgen werden hier erscheinen.",

@@ -12,14 +12,31 @@ import (
 	"gorm.io/gorm"
 )
 
-// Audit operation tokens stored on AuditEvent.Operation.
+// Audit operation tokens stored on AuditEvent.Operation. The first three are
+// entity CRUD; the rest are the auth/admin lifecycle vocabulary added by issue
+// #381 (ASVS V7.3). The set is pinned by migration 000034's CHECK constraint —
+// a token added here without a migration is a silent INSERT failure.
 const (
-	AuditOpCreate = "create"
-	AuditOpUpdate = "update"
-	AuditOpDelete = "delete"
+	AuditOpCreate         = "create"
+	AuditOpUpdate         = "update"
+	AuditOpDelete         = "delete"
+	AuditOpLogin          = "login"
+	AuditOpLoginFailed    = "login_failed"
+	AuditOpRegister       = "register"
+	AuditOpPasswordChange = "password_change"
+	AuditOpPasswordReset  = "password_reset"
+	AuditOpTOTPEnable     = "totp_enable"
+	AuditOpTOTPDisable    = "totp_disable"
+	AuditOpRecoveryRegen  = "recovery_regenerate"
+	AuditOpRevoke         = "revoke"
+	AuditOpRoleChange     = "role_change"
 )
 
-// AuditEntityType tokens stored on AuditEvent.EntityType.
+// AuditEntityType tokens stored on AuditEvent.EntityType. The first group are
+// entity CRUD; the "user"/"auth"/"api_token" group are the auth/admin
+// lifecycle entities added by issue #381. Mirrored by hand in the frontend
+// (frontend/src/api/audit.ts) and openapi.yaml's AuditEvent enum — see
+// CLAUDE.md frontend trap #4.
 const (
 	AuditEntityContact   = "contact"
 	AuditEntityNote      = "note"
@@ -30,6 +47,10 @@ const (
 	AuditEntityTag       = "tag"
 	AuditEntityHousehold = "household"
 	AuditEntityReminder  = "reminder"
+
+	AuditEntityUser     = "user"
+	AuditEntityAuth     = "auth"
+	AuditEntityAPIToken = "api_token"
 )
 
 // AuditEvent is one immutable create/update/delete record for an audited
@@ -53,6 +74,17 @@ type AuditEvent struct {
 	// BeforeSnapshot is redacted JSON (auditDenyList applied). Empty for
 	// create events.
 	BeforeSnapshot string `gorm:"column:before_snapshot;type:text;serializer:encrypted" json:"before_snapshot,omitempty"`
+	// Hash is the SHA-256 of (prev_hash || canonical event content); PrevHash
+	// is the Hash of the preceding row ("" for the head of the chain). Together
+	// they make the log tamper-evident (issue #381): VerifyAuditChain
+	// recomputes the chain and flags any insert/delete/reorder/edit. Both are
+	// maintained by the recorder at insert and by RecomputeAuditChain (startup
+	// backfill + retention purge re-link). The hash is computed over the
+	// logical (decrypted) BeforeSnapshot value — GORM's serializer decrypts it
+	// transparently on read, so the chain stays valid whether or not at-rest
+	// encryption (issue #380) is armed.
+	Hash     string `gorm:"not null;default:''" json:"hash"`
+	PrevHash string `gorm:"not null;default:''" json:"prev_hash"`
 }
 
 // auditDenyList is the field-name deny-list applied to every audit snapshot:
@@ -90,10 +122,17 @@ type auditSnapshotProvider interface {
 // real write. The DB is registered at startup (RegisterAuditDB); until then —
 // e.g. AutoMigrate-based unit tests — hooks skip silently, which is what keeps
 // audit wiring out of every existing test.
+//
+// chainMu serializes the read-prev-hash + insert sequence so concurrent audit
+// writes (each hook spawns its own goroutine) append to the hash chain in a
+// deterministic id order instead of forking it. The standalone chain
+// maintenance operations (RecomputeAuditChain) take the same lock, so they can
+// never interleave with a live append.
 type auditLogger struct {
-	mu sync.RWMutex
-	db *gorm.DB
-	wg sync.WaitGroup
+	mu      sync.RWMutex
+	db      *gorm.DB
+	wg      sync.WaitGroup
+	chainMu sync.Mutex
 }
 
 var auditRecorder = &auditLogger{}
@@ -109,39 +148,90 @@ func RegisterAuditDB(db *gorm.DB) {
 
 // AuditFlush blocks until every in-flight audit write has completed. Used by
 // tests (to read audit rows deterministically) and safe to call at shutdown.
+//
+// It holds a.mu across the Wait so a concurrent record() can never Add to the
+// WaitGroup while Wait is running: the WaitGroup contract forbids an Add that
+// starts at a zero counter concurrently with Wait (a data race that can lose a
+// wakeup at shutdown). Serializing Add and Wait on a.mu makes every Add that
+// began before the flush happen-before the Wait, which is what makes the drain
+// total rather than best-effort.
 func AuditFlush() {
+	auditRecorder.mu.Lock()
+	defer auditRecorder.mu.Unlock()
 	auditRecorder.wg.Wait()
 }
 
 // record queues an audit event for async persistence. snapshotJSON is the
 // redacted before-state ("" for creates). Never returns an error and never
 // blocks the hook beyond launching the goroutine — see the package doc.
+//
+// The chain append (read previous row's hash, compute this row's, insert) is
+// serialized on chainMu so concurrent events chain in id order.
 func (a *auditLogger) record(entityType, entityID, operation string, userID uint, snapshotJSON string) {
-	a.mu.RLock()
+	// The db-nil check and wg.Add(1) run atomically under a.mu so an Add can
+	// never start while AuditFlush's Wait is in progress (see AuditFlush for
+	// the WaitGroup-contract reasoning). The goroutine it spawns only touches
+	// chainMu and the DB session, never a.mu, so holding the lock across the
+	// drain cannot deadlock.
+	a.mu.Lock()
 	db := a.db
-	a.mu.RUnlock()
 	if db == nil {
 		// Not registered (e.g. AutoMigrate test DBs). Skip silently so hooks
 		// never disturb writes in environments without an audit session.
+		a.mu.Unlock()
 		return
 	}
-
 	a.wg.Add(1)
+	a.mu.Unlock()
+
 	go func() {
 		defer a.wg.Done()
+
+		a.chainMu.Lock()
+		defer a.chainMu.Unlock()
+
 		event := AuditEvent{
 			EntityType:     entityType,
 			EntityID:       entityID,
 			Operation:      operation,
 			UserID:         userID,
 			BeforeSnapshot: snapshotJSON,
+			// Explicit UTC timestamp so the chain hash is deterministic at
+			// insert time (the row can never be updated afterwards — the
+			// immutability trigger and the chain would both reject it).
+			// Truncated to microseconds to match what SQLite round-trips and
+			// what chainContent hashes, so write-time and verify-time
+			// computations always agree.
+			CreatedAt: time.Now().UTC().Truncate(time.Microsecond),
 		}
+
+		prev := ""
+		var last struct{ Hash string }
+		if err := db.Model(&AuditEvent{}).Order("id desc").Limit(1).Scan(&last).Error; err != nil {
+			logger.Warn().Err(err).Msg("audit: failed to read last chain hash, appending from genesis")
+		} else {
+			prev = last.Hash
+		}
+		event.PrevHash = prev
+		event.Hash = AuditChainHash(prev, &event)
+
 		if err := db.Create(&event).Error; err != nil {
 			logger.Warn().Err(err).
 				Str("entity_type", entityType).Str("entity_id", entityID).Str("operation", operation).
 				Msg("audit: failed to persist audit event (real write is unaffected)")
 		}
 	}()
+}
+
+// RecordAuditEvent appends an auth/admin lifecycle event to the audit log
+// (issue #381): login success/failure, registration, password change/reset,
+// TOTP enable/disable, recovery-code regeneration, API-token create/revoke,
+// and admin user operations. These are pure append-only records — no
+// before-snapshot (undo only supports entity updates) and nothing secret, so
+// the deny-list has nothing to strip. entityID is the affected subject: a
+// username/email for auth events, a numeric user or token id for the rest.
+func RecordAuditEvent(entityType, entityID, operation string, userID uint) {
+	auditRecorder.record(entityType, entityID, operation, userID, "")
 }
 
 // auditState is carried across a single save's hook chain (BeforeSave →

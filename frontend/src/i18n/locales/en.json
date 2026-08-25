@@ -1985,7 +1985,17 @@
     "operations": {
       "create": "Created",
       "update": "Updated",
-      "delete": "Deleted"
+      "delete": "Deleted",
+      "login": "Signed in",
+      "login_failed": "Sign-in failed",
+      "register": "Registered",
+      "password_change": "Password changed",
+      "password_reset": "Password reset",
+      "totp_enable": "2FA enabled",
+      "totp_disable": "2FA disabled",
+      "recovery_regenerate": "Recovery codes regenerated",
+      "revoke": "Revoked",
+      "role_change": "Role changed"
     },
     "entityTypes": {
       "contact": "Contact",
@@ -1996,7 +2006,10 @@
       "circle": "Circle",
       "tag": "Tag",
       "household": "Household",
-      "reminder": "Reminder"
+      "reminder": "Reminder",
+      "user": "User",
+      "auth": "Authentication",
+      "api_token": "API token"
     },
     "empty": "No audit events match your filters.",
     "emptyNoFilters": "No audit events yet. Changes you make to your contacts and other records will appear here.",
