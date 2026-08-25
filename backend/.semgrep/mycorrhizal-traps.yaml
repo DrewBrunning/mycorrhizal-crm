@@ -1,0 +1,177 @@
+# Custom Semgrep rules encoding the "hard-won traps" documented in
+# CLAUDE.md's Backend traps section — bug classes that have shipped broken
+# more than once in this repo and that generic scanners (CodeQL, gosec,
+# eslint-plugin-security) cannot see because they are domain-specific to
+# this codebase's conventions, not generic vulnerability patterns.
+#
+# Issue #370. Each rule is hand-verified against a deliberately-broken
+# snippet (must match, annotated `// ruleid: <id>`) and the corresponding
+# clean snippet (must not match, annotated `// ok: <id>`) under
+# .semgrep/tests/. `semgrep --test` itself can't drive that verification here
+# — pointing it at a single multi-rule config file plus a directory of
+# per-rule test files hits a crash in the CLI's test-file-matching heuristic
+# (semgrep 1.172.0-1.174.0, tuple index out of range in
+# test.py:relatively_eq). Verify by hand instead, from backend/:
+#
+#   semgrep --config .semgrep/mycorrhizal-traps.yaml .semgrep/tests \
+#     --x-ignore-semgrepignore-files
+#
+# (--x-ignore-semgrepignore-files is required only for this manual check:
+# .semgrep/ is a dot-directory, which semgrep's default ignore patterns skip
+# — this is actually what we want in real runs, since it keeps the
+# deliberately-broken fixtures under .semgrep/tests/ from ever tripping the
+# real CI gate. The CI step below scans backend/ itself, not .semgrep/, and
+# needs no such flag.) Confirm every `ruleid` line is reported and no `ok`
+# line is.
+#
+# Scope: backend/ only (Go). Started small per the issue's guidance — expand
+# as each rule proves low-noise in CI.
+
+rules:
+  # CLAUDE.md backend trap #3: RecordForContact vs RecordFromContact.
+  # RecordFromContact rebuilds a Record from a Contact's flat legacy fields
+  # only, which silently drops any data with no flat-field home (SpeakToAs,
+  # PersonalInfo, and other projections — see contact_record.go's doc
+  # comments). Assigning its .Card straight onto a Contact bypasses the T75
+  # merge (models/contact_card_merge.go) that BeforeSave otherwise applies,
+  # and is the exact P1 bug that shipped and was fixed 2026-08-12 (T75).
+  # RecordFromContact itself has legitimate uses (building a fresh
+  # in-memory Record for a not-yet-persisted Contact, audit-snapshot
+  # diffing) — what's unsafe is using its .Card output to directly
+  # overwrite an existing Contact's Card field, which is what this rule
+  # targets.
+  - id: mycorrhizal-contact-card-merge-bypass
+    languages: [go]
+    severity: ERROR
+    message: >-
+      Assigning RecordFromContact(...).Card (or .Envelope/.Passthrough)
+      directly onto a Contact bypasses the T75 merge and silently drops any
+      data with no flat-field home (SpeakToAs, PersonalInfo, and other
+      projections — see models/contact_record.go). Go through the normal
+      save path (plain db.Save via Contact.BeforeSave, which calls
+      mergeRecordFromFlat in models/contact_card_merge.go) instead of
+      wiring RecordFromContact's output straight onto the struct. See
+      CLAUDE.md backend trap #3.
+    patterns:
+      - pattern-either:
+          - pattern: $C.Card = RecordFromContact(...).Card
+          - pattern: $C.Envelope = RecordFromContact(...).Envelope
+          - pattern: $C.Passthrough = RecordFromContact(...).Passthrough
+          - patterns:
+              - pattern: |
+                  $R := RecordFromContact(...)
+                  ...
+                  $C.Card = $R.Card
+          - patterns:
+              - pattern: |
+                  $R := RecordFromContact(...)
+                  ...
+                  $C.Envelope = $R.Envelope
+          - patterns:
+              - pattern: |
+                  $R := RecordFromContact(...)
+                  ...
+                  $C.Passthrough = $R.Passthrough
+    paths:
+      exclude:
+        - "*_test.go"
+
+  # CLAUDE.md backend trap #2: Card/CRM must be set through
+  # ApplyRecordToContact (models/contact_record_reverse.go), never by
+  # mutating a Contact's own CRM field directly — Contact.BeforeSave
+  # re-derives Card/CRM/Passthrough from the flat fields on every save
+  # unless ApplyRecordToContact's cardSetDirectly guard is set, so a direct
+  # field mutation is silently discarded. CRM is scoped to models.Contact
+  # specifically (contactmodel.Record's equivalent field is named
+  # Envelope), so this pattern has no legitimate match anywhere in the
+  # current codebase — every existing CRM.Kind touch is a read (`==`), and
+  # every write assigns the whole envelope (`c.CRM = record.Envelope`), not
+  # a single field.
+  - id: mycorrhizal-contact-crm-direct-field-mutation
+    languages: [go]
+    severity: ERROR
+    message: >-
+      Direct mutation of a Contact's CRM field (e.g. contact.CRM.Kind = ...)
+      is silently discarded by Contact.BeforeSave on the next save unless
+      routed through ApplyRecordToContact's cardSetDirectly guard. Build the
+      change on a contactmodel.Record (e.g. record.Envelope.Kind = ...) and
+      call models.ApplyRecordToContact instead. See CLAUDE.md backend trap #2.
+    pattern: $C.CRM.$FIELD = $VALUE
+    paths:
+      exclude:
+        - "*_test.go"
+
+  # CLAUDE.md backend trap #4: three sites silently swallowed a Save/Updates
+  # failure until audited. GORM returns a *gorm.DB from both, and the error
+  # lives on .Error — a bare `db.Save(&x)` (or an assignment that's never
+  # checked) discards it. Scoped to the `db`/`tx` receiver names this
+  # codebase uses for *gorm.DB throughout (controllers/services), so it
+  # doesn't fire on unrelated *.Save()/*.Updates() methods elsewhere (e.g.
+  # attachments.Save).
+  - id: mycorrhizal-gorm-save-updates-error-unchecked
+    languages: [go]
+    severity: ERROR
+    message: >-
+      This GORM Save/Updates call's result (and its .Error) isn't checked,
+      so a write failure is silently swallowed. Chain .Error and check it,
+      e.g. `if err := db.Save(&x).Error; err != nil { ... }`. See CLAUDE.md
+      backend trap #4.
+    patterns:
+      - pattern-either:
+          - pattern: db.Save(...)
+          - pattern: tx.Save(...)
+          - pattern: db.Updates(...)
+          - pattern: tx.Updates(...)
+      - pattern-not-inside: db.Save(...).Error
+      - pattern-not-inside: tx.Save(...).Error
+      - pattern-not-inside: db.Updates(...).Error
+      - pattern-not-inside: tx.Updates(...).Error
+      - pattern-not-inside: $VAR := db.Save(...)
+      - pattern-not-inside: $VAR := tx.Save(...)
+      - pattern-not-inside: $VAR := db.Updates(...)
+      - pattern-not-inside: $VAR := tx.Updates(...)
+      - pattern-not-inside: $VAR = db.Save(...)
+      - pattern-not-inside: $VAR = tx.Save(...)
+      - pattern-not-inside: $VAR = db.Updates(...)
+      - pattern-not-inside: $VAR = tx.Updates(...)
+    paths:
+      exclude:
+        - "*_test.go"
+
+  # Not a CLAUDE.md trap by name, but the same class of domain-specific
+  # footgun: reading auth material (an OIDC/OAuth code, an API token, a
+  # signing/session key, a shared secret) from the query string logs it
+  # verbatim into access logs, browser history, and Referer headers on any
+  # outbound link from that page. oidc_controller.go's `code := c.Query
+  # ("code")` is the one deliberate, spec-required exception (OAuth2
+  # authorization code callback, RFC 6749 4.1.2) and is suppressed inline.
+  - id: mycorrhizal-query-string-auth-material
+    languages: [go]
+    severity: WARNING
+    message: >-
+      Reading auth material from the query string (c.Query(...)) puts it in
+      access logs, shell/browser history, and any Referer header sent from
+      this page. Accept it in the request body or an Authorization header
+      instead. If this is an unavoidable spec-mandated callback (e.g. an
+      OAuth2 authorization code), suppress with a `// nosemgrep` comment
+      explaining why.
+    pattern-either:
+      - pattern: $C.Query("token")
+      - pattern: $C.Query("access_token")
+      - pattern: $C.Query("refresh_token")
+      - pattern: $C.Query("api_key")
+      - pattern: $C.Query("apikey")
+      - pattern: $C.Query("secret")
+      - pattern: $C.Query("password")
+      - pattern: $C.Query("code")
+      - pattern: $C.DefaultQuery("token", ...)
+      - pattern: $C.DefaultQuery("access_token", ...)
+      - pattern: $C.DefaultQuery("refresh_token", ...)
+      - pattern: $C.DefaultQuery("api_key", ...)
+      - pattern: $C.DefaultQuery("apikey", ...)
+      - pattern: $C.DefaultQuery("secret", ...)
+      - pattern: $C.DefaultQuery("password", ...)
+      - pattern: $C.DefaultQuery("code", ...)
+    paths:
+      exclude:
+        - "*_test.go"
