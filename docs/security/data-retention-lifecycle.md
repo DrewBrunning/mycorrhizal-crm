@@ -203,17 +203,23 @@ External DAV clients (phones, desktop DAV apps) sync against `backend/carddav`, 
   `backend/services/restore_drill_service.go` + issue #275 (scheduled restore-drill job that proves a
   backup actually restores, not just that the file exists).
 
-## 11. Exports (CSV / vCard3 / vCard4 / jSContact)
+## 11. Exports (CSV / vCard3 / vCard4 / jSContact / audit log)
 
 - **Where / who**: generated per-request and streamed directly to the HTTP response
   (`backend/controllers/export_controller.go`) — never written to disk server-side (no `os.WriteFile`
   anywhere in the export path). Once downloaded, the file is the requesting user's own device/browser —
   outside this app's retention control by definition (same boundary as any file a user saves from any
-  web app).
+  web app). Issue #416 added a fifth export in this same category: `GET /audit/export`
+  (`ExportAuditLog`), an unbounded CSV of the caller's own audit trail — same generation/no-server-copy
+  shape as the other four.
 - **Retention**: nothing server-side to retain.
 - **Deletion / propagation**: nothing to delete — there is no export artifact that outlives the request.
   Sensitive-above-`normal` fields and CSV-formula-injection payloads are filtered/neutralized *before*
-  the export leaves the server (`sensitivity` classification, ASVS 8.3.4).
+  the export leaves the server (`sensitivity` classification, ASVS 8.3.4). The audit-log export's
+  `before_snapshot` column is omitted unless the caller explicitly passes `?include_snapshots=true`: it
+  is already credential-redacted at write time (`auditDenyList`, `models/audit.go`) but is **not**
+  filtered by contact-field sensitivity the way the other four exports are, so it is gated behind its own
+  explicit opt-in rather than reusing `include_sensitive`.
 - **Backups**: not applicable.
 
 ## 12. Import wizard staging
