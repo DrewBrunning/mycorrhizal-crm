@@ -55,11 +55,11 @@ type Gift struct {
 	// Occasion is free text ("birthday", "holiday", "housewarming", "their
 	// 30th") — deliberately an open classifier rather than a closed enum: the
 	// point of a personal CRM is that occasions are not enumerable.
-	Occasion string `json:"occasion,omitempty" validate:"max=200"`
+	Occasion string `gorm:"serializer:encrypted" json:"occasion,omitempty" validate:"max=200"`
 
 	// Description is the core content: for an idea, what they mentioned they
 	// liked; for a given/received gift, what it actually was.
-	Description string `gorm:"not null" json:"description" validate:"required,min=1,max=2000"`
+	Description string `gorm:"not null;serializer:encrypted" json:"description" validate:"required,min=1,max=2000"`
 
 	// URL is an optional link to the thing itself — the product page for an
 	// idea captured as "she mentioned she liked this specific item" (T35).
@@ -76,7 +76,7 @@ type Gift struct {
 	// Notes is free-text context beyond what the gift is: sizing, where you
 	// saw it, "check they still want this before buying" (T35). Deliberately
 	// separate from Description, which stays the one-line "what it is".
-	Notes string `json:"notes,omitempty" validate:"omitempty,max=2000"`
+	Notes string `gorm:"serializer:encrypted" json:"notes,omitempty" validate:"omitempty,max=2000"`
 
 	// Date is when the gift was given or received. An idea may have no date; a
 	// given gift normally records its handover date.

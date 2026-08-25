@@ -5,6 +5,7 @@
 package config
 
 import (
+	"encoding/base64"
 	"fmt"
 	"log"
 	"math"
@@ -89,6 +90,14 @@ type Config struct {
 	DBRestoreDrillIntervalHours   int           // Interval in hours for the scheduled restore drill (default weekly)
 	HIBPCheckEnabled              bool          // Check new/changed passwords against HIBP's k-anonymity range API (issue #376). Off by default: an outbound call on a self-hosted app is a deliberate opt-in, not a safe default — see docs/security/asvs-l2.md's P3.
 	OIDC                          OIDCConfig
+
+	// DataEncryptionKey is the base64-encoded 32-byte master key for
+	// field-level at-rest encryption (issue #380, ASVS V6.4/V8.3). When unset,
+	// atrest falls back to DATA_ENCRYPTION_KEY_FILE, then to an HKDF-SHA256
+	// derivation from JWT_SECRET_KEY so existing deployments get encryption
+	// with zero config. See backend/atrest/atrest.go.
+	DataEncryptionKey     string // base64, 32 bytes
+	DataEncryptionKeyFile string // path to a file whose trimmed contents are the base64 key
 }
 
 // LoadConfig reads environment variables (with sensible defaults) into a
@@ -153,6 +162,8 @@ func LoadConfig() *Config {
 		DBRestoreDrillEnabled:         getBoolEnv("DB_RESTORE_DRILL_ENABLED", true),
 		DBRestoreDrillIntervalHours:   getIntEnv("DB_RESTORE_DRILL_INTERVAL_HOURS", 168),
 		HIBPCheckEnabled:              getBoolEnv("HIBP_CHECK_ENABLED", false),
+		DataEncryptionKey:             getEnv("DATA_ENCRYPTION_KEY", ""),
+		DataEncryptionKeyFile:         getEnv("DATA_ENCRYPTION_KEY_FILE", ""),
 	}
 
 	if cfg.CalDAVSyncIntervalHours < 1 {
@@ -342,6 +353,15 @@ type ValidationError struct {
 	Message string
 }
 
+// isValidBase64Key reports whether s is a base64 string that decodes to
+// exactly 32 bytes (the AES-256 master-key size atrest requires). It exists
+// so config.Validate can fail boot on a set-but-broken DATA_ENCRYPTION_KEY
+// without importing atrest (config must not create an import cycle).
+func isValidBase64Key(s string) bool {
+	raw, err := base64.StdEncoding.DecodeString(strings.TrimSpace(s))
+	return err == nil && len(raw) == 32
+}
+
 func (e ValidationError) Error() string {
 	return fmt.Sprintf("Configuration Error [%s]: %s", e.Field, e.Message)
 }
@@ -385,6 +405,34 @@ func (c *Config) Validate() []ValidationError {
 		errors = append(errors, ValidationError{
 			Field:   "SQLITE_DB_PATH",
 			Message: "Database path cannot be empty. Set SQLITE_DB_PATH environment variable.",
+		})
+	}
+
+	// Validate at-rest encryption master key, when one is explicitly set.
+	// Unset is fine (atrest falls back to DATA_ENCRYPTION_KEY_FILE, then to an
+	// HKDF derivation from JWT_SECRET_KEY), but a set-but-broken key must fail
+	// boot: an operator who thinks they configured a key and didn't would
+	// otherwise run with a weaker derivation than they believe.
+	if c.DataEncryptionKey != "" {
+		if !isValidBase64Key(c.DataEncryptionKey) {
+			errors = append(errors, ValidationError{
+				Field:   "DATA_ENCRYPTION_KEY",
+				Message: "DATA_ENCRYPTION_KEY must be base64-encoded 32 random bytes, e.g. `openssl rand -base64 32`. Unset it to use the JWT-derived key.",
+			})
+		}
+	}
+	if c.DataEncryptionKeyFile != "" {
+		if _, err := os.Stat(c.DataEncryptionKeyFile); err != nil {
+			errors = append(errors, ValidationError{
+				Field:   "DATA_ENCRYPTION_KEY_FILE",
+				Message: fmt.Sprintf("DATA_ENCRYPTION_KEY_FILE '%s' does not exist: %v", c.DataEncryptionKeyFile, err),
+			})
+		}
+	}
+	if c.DataEncryptionKey != "" && c.DataEncryptionKeyFile != "" {
+		errors = append(errors, ValidationError{
+			Field:   "DATA_ENCRYPTION_KEY",
+			Message: "Set only one of DATA_ENCRYPTION_KEY or DATA_ENCRYPTION_KEY_FILE, not both.",
 		})
 	}
 

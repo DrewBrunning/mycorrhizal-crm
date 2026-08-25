@@ -88,13 +88,13 @@ type Contact struct {
 	Email              string     `gorm:"type:text COLLATE NOCASE" json:"email" validate:"omitempty,email"`
 	Phone              string     `json:"phone" validate:"omitempty,phone"`
 	Birthday           string     `json:"birthday" validate:"omitempty,birthday"`
-	Photo              string     `json:"photo"`                                    // Path to the profile photo
-	PhotoThumbnail     string     `json:"-"`                                        // Base64 data URL of thumbnail (not exposed in JSON directly)
-	Address            string     `json:"address" validate:"max=500"`               // Full address as a string
-	HowWeMet           string     `json:"how_we_met" validate:"max=1000"`           // Text field
-	WorkInformation    string     `json:"work_information" validate:"max=1000"`     // Text field
-	ContactInformation string     `json:"contact_information" validate:"max=1000"`  // Additional contact information
-	Circles            []string   `gorm:"type:text;serializer:json" json:"circles"` // Serialize Circles properly
+	Photo              string     `json:"photo"`                                                               // Path to the profile photo
+	PhotoThumbnail     string     `json:"-"`                                                                   // Base64 data URL of thumbnail (not exposed in JSON directly)
+	Address            string     `json:"address" validate:"max=500"`                                          // Full address as a string
+	HowWeMet           string     `gorm:"serializer:encrypted" json:"how_we_met" validate:"max=1000"`          // Text field
+	WorkInformation    string     `gorm:"serializer:encrypted" json:"work_information" validate:"max=1000"`    // Text field
+	ContactInformation string     `gorm:"serializer:encrypted" json:"contact_information" validate:"max=1000"` // Additional contact information
+	Circles            []string   `gorm:"type:text;serializer:json" json:"circles"`                            // Serialize Circles properly
 	Activities         []Activity `gorm:"many2many:activity_contacts;foreignKey:ID;joinForeignKey:ContactID;References:ID;joinReferences:ActivityID" json:"activities,omitempty"`
 	Notes              []Note     `json:"notes,omitempty"`     // One-to-many relationship with notes
 	Reminders          []Reminder `json:"reminders,omitempty"` // One-to-many relationship with reminders
@@ -156,9 +156,9 @@ type Contact struct {
 	// Nothing else reads these fields yet (hence json:"-": exposing them on
 	// the wire is P2's job,  API/DTO rewrite), so adding them
 	// carries no compile or behavior risk to any other package.
-	Card        contactmodel.Card        `gorm:"column:card;type:text;serializer:json" json:"-"`
-	CRM         contactmodel.CRMEnvelope `gorm:"column:crm;type:text;serializer:json" json:"-"`
-	Passthrough contactmodel.Passthrough `gorm:"column:passthrough;type:text;serializer:json" json:"-"`
+	Card        contactmodel.Card        `gorm:"column:card;type:text;serializer:encryptedjson" json:"-"`
+	CRM         contactmodel.CRMEnvelope `gorm:"column:crm;type:text;serializer:encryptedjson" json:"-"`
+	Passthrough contactmodel.Passthrough `gorm:"column:passthrough;type:text;serializer:encryptedjson" json:"-"`
 
 	// Derived projection scalars with no existing legacy analog
 	// (contactmodel.Projection.FN / .Org). Populated the same way as

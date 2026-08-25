@@ -117,12 +117,12 @@ type Preference struct {
 	// key/value pair.
 	Category string `gorm:"not null" json:"category" validate:"required,max=100"`
 	Key      string `json:"key,omitempty" validate:"omitempty,max=100"`
-	Value    string `gorm:"not null" json:"value" validate:"required,max=1000"`
+	Value    string `gorm:"not null;serializer:encrypted" json:"value" validate:"required,max=1000"`
 
 	// Notes is free-text context beyond what Value already holds — e.g.
 	// value="Alcohol", notes="Doesn't drink alcohol" instead of cramming both
 	// into Value. Mirrors Gift.Notes (gift.go).
-	Notes string `json:"notes,omitempty" validate:"omitempty,max=2000"`
+	Notes string `gorm:"serializer:encrypted" json:"notes,omitempty" validate:"omitempty,max=2000"`
 
 	// Source is provenance. Confidence/
 	// LastConfirmed implement "preferences go stale; track when last
