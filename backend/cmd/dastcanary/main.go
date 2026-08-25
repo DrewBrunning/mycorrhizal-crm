@@ -26,6 +26,13 @@
 //     asserted by the ZAP self-test — it exists so a future access-control
 //     scan has a planted target, and so the Go tests below pin the intended
 //     (vulnerable) behavior.
+//
+// Because these are deliberate, the static analyzers that would flag them are
+// suppressed inline with a justification rather than "fixed": the reflected
+// sink carries a `// lgtm[go/reflected-xss]` (CodeQL) and `#nosec G705`
+// (gosec) comment, and the IDOR JSON body carries `#nosec G705`. Do not
+// "fix" these sinks — escaping them defeats the canary and the DAST gate goes
+// blind.
 package main
 
 import (
