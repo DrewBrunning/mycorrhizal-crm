@@ -1,0 +1,12 @@
+# Issue #376: accepted trivy findings, same ignore-list-with-justification
+# shape as docker/cis-hardening.ignore and android/.mobsf. Used by both the
+# `trivy config` (misconfig) and `trivy fs --scanners secret` steps in
+# .github/workflows/container-hardening.yml.
+#
+# Empty to start — add an entry only for a finding that's been reviewed and
+# deliberately accepted, one line per ID, with a comment above it naming the
+# finding and why it's safe:
+#
+#   # AVD-DS-0002: intentional — see docker/cis-hardening.ignore's note on
+#   # supervisord running as PID 1 for the same rationale.
+#   AVD-DS-0002
