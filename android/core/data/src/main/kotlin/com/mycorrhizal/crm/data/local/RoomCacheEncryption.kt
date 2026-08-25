@@ -101,6 +101,7 @@ object RoomCacheEncryption {
                     swapped = true
                     Log.e(TAG, "Recovered a failed swap by completing it", e)
                 } catch (recovery: Exception) {
+                    Log.e(TAG, "Recovery swap also failed after export succeeded", recovery)
                     encrypted.delete()
                     throw IllegalStateException("Failed to encrypt ${dbFile.name}; cache left untouched", e)
                 }
