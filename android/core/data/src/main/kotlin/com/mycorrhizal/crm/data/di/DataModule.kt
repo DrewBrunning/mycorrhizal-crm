@@ -18,7 +18,10 @@ import com.mycorrhizal.crm.data.local.CachedPreferenceDao
 import com.mycorrhizal.crm.data.local.CachedRelationshipEdgeDao
 import com.mycorrhizal.crm.data.local.CachedReminderDao
 import com.mycorrhizal.crm.data.local.CachedTagDao
+import com.mycorrhizal.crm.data.local.LocalDataCleaner
 import com.mycorrhizal.crm.data.local.PendingInteractionDao
+import com.mycorrhizal.crm.data.local.RoomCacheEncryption
+import com.mycorrhizal.crm.data.local.RoomPassphraseStore
 import com.mycorrhizal.crm.data.repository.ActivityRepositoryImpl
 import com.mycorrhizal.crm.data.repository.AuditRepositoryImpl
 import com.mycorrhizal.crm.data.repository.AuthRepositoryImpl
@@ -51,6 +54,7 @@ import com.mycorrhizal.crm.data.repository.AppSettingsRepositoryImpl
 import com.mycorrhizal.crm.data.repository.UserManagementRepositoryImpl
 import com.mycorrhizal.crm.data.repository.WebhookRepositoryImpl
 import com.mycorrhizal.crm.data.session.DefaultSessionManager
+import com.mycorrhizal.crm.data.session.SessionDataCleaner
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.data.session.SessionPrefsStorage
 import com.mycorrhizal.crm.data.session.TokenStorage
@@ -89,6 +93,7 @@ import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.BaseUrlProvider
 import com.mycorrhizal.crm.network.NetworkFactory
 import com.mycorrhizal.crm.network.TokenProvider
+import androidx.room.Room
 import com.squareup.moshi.Moshi
 import dagger.Binds
 import dagger.Module
@@ -100,6 +105,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 import javax.inject.Singleton
 
 /**
@@ -114,6 +120,9 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object DataModule {
 
+    /** Issue #385: the Room mirror file name (must match AppDatabase's builder). */
+    const val DB_NAME = "mycorrhizal-cache.db"
+
     @Provides
     @Singleton
     fun provideMoshi(): Moshi = NetworkFactory.moshi()
@@ -125,12 +134,23 @@ object DataModule {
 
     @Provides
     @Singleton
-    fun provideDatabase(@ApplicationContext context: android.content.Context): AppDatabase =
-        androidx.room.Room.databaseBuilder(
+    fun provideDatabase(
+        @ApplicationContext context: android.content.Context,
+        passphraseStore: RoomPassphraseStore,
+    ): AppDatabase {
+        // Issue #385: the Room mirror (offline PII) is SQLCipher-encrypted. On
+        // first launch of an encrypted build this also re-encrypts a
+        // pre-existing plaintext DB in place (header-checked; see
+        // RoomCacheEncryption) before Room opens it.
+        val dbFile = context.getDatabasePath(DB_NAME)
+        val passphrase = passphraseStore.getOrCreate()
+        RoomCacheEncryption.ensureEncrypted(dbFile, passphrase)
+        return Room.databaseBuilder(
             context,
             AppDatabase::class.java,
-            "mycorrhizal-cache.db",
+            DB_NAME,
         )
+            .openHelperFactory(SupportOpenHelperFactory(passphrase.toByteArray()))
             // T76: an explicit migration for 13->14 so pending_interactions (a real
             // not-yet-synced outbox) survives that specific version bump; the destructive
             // fallback remains for any other/unexpected version gap, per this cache's
@@ -142,6 +162,19 @@ object DataModule {
             )
             .fallbackToDestructiveMigration()
             .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideRoomPassphraseStore(@ApplicationContext context: android.content.Context): RoomPassphraseStore =
+        RoomPassphraseStore(context)
+
+    @Provides
+    @Singleton
+    fun provideSessionDataCleaner(
+        @ApplicationContext context: android.content.Context,
+        database: AppDatabase,
+    ): SessionDataCleaner = LocalDataCleaner(context, database)
 
     @Provides
     fun provideCachedContactDao(db: AppDatabase): CachedContactDao = db.cachedContactDao()
@@ -211,8 +244,9 @@ object DataModule {
     fun provideSessionManager(
         tokenStorage: TokenStorage,
         prefsStorage: SessionPrefsStorage,
+        localDataCleaner: SessionDataCleaner,
     ): DefaultSessionManager {
-        val manager = DefaultSessionManager(tokenStorage, prefsStorage)
+        val manager = DefaultSessionManager(tokenStorage, prefsStorage, localDataCleaner)
         // Hydrate the stored JWT/server URL into memory asynchronously so a
         // returning user is already logged in on launch (H3 review fix).
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch { manager.init() }

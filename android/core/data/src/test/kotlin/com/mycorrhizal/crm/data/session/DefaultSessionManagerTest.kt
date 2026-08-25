@@ -69,6 +69,35 @@ class DefaultSessionManagerTest {
     }
 
     @Test
+    fun `clearSession wipes cached user data through the session data cleaner`() = runTest {
+        val tokenStorage = FakeTokenStorage()
+        val cleaner = RecordingSessionDataCleaner()
+        val manager = DefaultSessionManager(tokenStorage, FakeSessionPrefsStorage(), cleaner)
+        manager.setSession("https://crm.example.com", "jwt-1", SessionState(userId = 7))
+
+        manager.clearSession()
+
+        assertEquals(1, cleaner.clearCount)
+    }
+
+    @Test
+    fun `clearSession does not require a session data cleaner`() = runTest {
+        val manager = DefaultSessionManager(FakeTokenStorage(), FakeSessionPrefsStorage())
+        manager.setSession("https://crm.example.com", "jwt-1", SessionState(userId = 7))
+
+        manager.clearSession()
+
+        assertNull(manager.bearerToken())
+    }
+
+    private class RecordingSessionDataCleaner : SessionDataCleaner {
+        var clearCount = 0
+        override suspend fun clear() {
+            clearCount++
+        }
+    }
+
+    @Test
     fun `setServerUrl persists the origin`() = runTest {
         val (manager, _) = manager()
         manager.setServerUrl("https://beta.example.com")
