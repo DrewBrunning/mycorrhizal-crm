@@ -77,6 +77,28 @@ keeps that key strong. TOTP/recovery secrets are generated at runtime from `cryp
 env-configurable default to guard), and the credential key is derived from `JWT_SECRET_KEY`, so the
 JWT checks cover every security-critical secret that can be configured (issue #393).
 
+### P3 — Breached-password check: opt-in HIBP, off by default (ASVS 2.1.7)
+
+Issue #376 asked for a k-anonymity breach check against Have I Been Pwned's range API at
+registration/password change/password reset. Shipped as **opt-in** (`HIBP_CHECK_ENABLED`, default
+`false`, `config/config.go`), not a default-on control — this is a deliberate position, not a gap:
+
+- **The tradeoff is real, not hypothetical.** Enabling it means every new/changed password makes an
+  outbound HTTP call (`services.CheckPasswordBreached`, `backend/services/hibp_service.go`) to a
+  third-party service, from a self-hosted app whose whole premise is not depending on one. Only a
+  5-character SHA-1 prefix of the password is ever sent (never the password or the full hash — HIBP's
+  own k-anonymity protocol design), but "an outbound call happens on every password" is still a
+  property an operator should choose, not one defaulted on them.
+- **Fails open by design.** A network/API failure is logged and treated as "not breached, check
+  skipped" (`CheckPasswordBreached`'s doc comment) — a third-party outage must never become an
+  availability dependency for registering or changing a password.
+- Local defense stays on regardless: the existing common-password blocklist
+  (`middleware/password_strength.go:168-198`, cited at 2.1.7 below) runs unconditionally, with no
+  network dependency and no opt-in required.
+- **Decision:** stays opt-in through pre-1.0. Revisit defaulting it on if/when this project takes on
+  a hosted-multi-tenant deployment mode, where the operator (not each self-hoster) already accepts
+  outbound-call tradeoffs on users' behalf.
+
 ---
 
 ## V1 — Architecture, Design and Threat Modeling
@@ -136,7 +158,7 @@ L3-only, out of scope: 2.2.4, 2.2.5, 2.2.6, 2.2.7.
 | 2.1.4 | Any printable Unicode permitted | satisfied | No charset restrictions; policy is entropy-based (`password_strength.go:33-45`) |
 | 2.1.5 | Users can change password | satisfied | `backend/controllers/user_controller.go:626-737` |
 | 2.1.6 | Change requires current + new | satisfied | Current verified at `user_controller.go:674`, new≠old at `:679` |
-| 2.1.7 | Breached-password check | partial | Local common-password blocklist incl. symbol-stripped variants (`backend/middleware/password_strength.go:168-198`); no external breach feed. Gap: blocklist is ~30 entries, not top-10k. |
+| 2.1.7 | Breached-password check | partial | Local common-password blocklist incl. symbol-stripped variants (`backend/middleware/password_strength.go:168-198`), always on. Plus an opt-in HIBP k-anonymity check (`HIBP_CHECK_ENABLED`, `backend/services/hibp_service.go`) at registration/change/reset — see P3 for why it's opt-in, not default-on. Gap: blocklist is ~30 entries, not top-10k; HIBP coverage only applies when an operator turns it on. |
 | 2.1.8 | Password strength meter | satisfied | `/check-password-strength` endpoint (`backend/controllers/user_controller.go:278-290`, route `routes/routes.go:45`); meter on `frontend/src/RegisterPage.tsx` |
 | 2.1.9 | No composition rules | satisfied | Entropy-based; no upper/lower/digit/symbol requirements (`password_strength.go:33-45`) |
 | 2.1.10 | No rotation/history requirements | satisfied | No password expiry or history anywhere |

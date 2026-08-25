@@ -2,9 +2,12 @@ package controllers
 
 import (
 	"bytes"
+	"crypto/sha1" //nolint:gosec // test double mirroring HIBP's own k-anonymity wire format, see newHIBPServer
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -347,7 +350,7 @@ func TestConfirmPasswordReset_Succeeds(t *testing.T) {
 
 	router.POST("/password-reset/confirm", func(c *gin.Context) {
 		c.Set("validated", &models.PasswordResetConfirmInput{Token: token, Password: strongPasswordAlt})
-		ConfirmPasswordReset(c)
+		ConfirmPasswordReset(c, &config.Config{})
 	})
 
 	req, _ := http.NewRequest("POST", "/password-reset/confirm", nil)
@@ -381,7 +384,7 @@ func TestChangePassword_Succeeds(t *testing.T) {
 			CurrentPassword: strongPassword,
 			NewPassword:     strongPasswordAnother,
 		})
-		ChangePassword(c)
+		ChangePassword(c, &config.Config{})
 	})
 
 	req, _ := http.NewRequest("POST", "/change-password", nil)
@@ -396,6 +399,163 @@ func TestChangePassword_Succeeds(t *testing.T) {
 	assert.Nil(t, updated.PasswordResetTokenHash)
 	assert.Nil(t, updated.PasswordResetExpiresAt)
 	assert.Nil(t, updated.PasswordResetRequestedAt)
+}
+
+// --- HIBP breach check gating (issue #376) -------------------------------
+//
+// newHIBPServer builds an httptest.Server standing in for the real HIBP
+// range API, reporting exactly one password as breached: whichever one the
+// caller names. It computes the k-anonymity prefix/suffix with the same
+// crypto/sha1 call hibp_service.go itself uses — hashing correctness is
+// already pinned independently by
+// TestCheckPasswordBreached_KnownBreachedPassword in
+// services/hibp_service_test.go; these tests are only about the
+// controller-level wiring (gating on cfg.HIBPCheckEnabled, 400 on breach,
+// pass-through otherwise).
+func newHIBPServer(t *testing.T, breachedPassword string) *httptest.Server {
+	t.Helper()
+	sum := sha1.Sum([]byte(breachedPassword)) //nolint:gosec // test double mirroring HIBP's own wire format
+	hex := strings.ToUpper(fmt.Sprintf("%x", sum))
+	prefix, suffix := hex[:5], hex[5:]
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.TrimPrefix(r.URL.Path, "/range/") == prefix {
+			fmt.Fprintf(w, "%s:1\r\n", suffix)
+			return
+		}
+		fmt.Fprint(w, "0000000000000000000000000000000000:1\r\n")
+	}))
+}
+
+func TestRegisterUser_HIBPCheckEnabled_RejectsBreachedPassword(t *testing.T) {
+	server := newHIBPServer(t, strongPassword)
+	defer server.Close()
+	t.Cleanup(services.SetHIBPAPIBaseURLForTest(server.URL))
+
+	_, router := setupRouter()
+	cfg := &config.Config{HIBPCheckEnabled: true}
+	router.POST("/register", middleware.ValidateJSONMiddleware(&models.UserRegistrationInput{}), RegisterUser(cfg))
+
+	newUser := models.UserRegistrationInput{Username: "breacheduser", Email: "breached@example.com", Password: strongPassword}
+	jsonValue, _ := json.Marshal(newUser)
+	req, _ := http.NewRequest("POST", "/register", bytes.NewBuffer(jsonValue))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestRegisterUser_HIBPCheckEnabled_AllowsCleanPassword(t *testing.T) {
+	// Server only reports strongPasswordAlt as breached; the registration
+	// below uses a different password, so it must succeed.
+	server := newHIBPServer(t, strongPasswordAlt)
+	defer server.Close()
+	t.Cleanup(services.SetHIBPAPIBaseURLForTest(server.URL))
+
+	_, router := setupRouter()
+	cfg := &config.Config{HIBPCheckEnabled: true}
+	router.POST("/register", middleware.ValidateJSONMiddleware(&models.UserRegistrationInput{}), RegisterUser(cfg))
+
+	newUser := models.UserRegistrationInput{Username: "cleanuser", Email: "clean@example.com", Password: strongPassword}
+	jsonValue, _ := json.Marshal(newUser)
+	req, _ := http.NewRequest("POST", "/register", bytes.NewBuffer(jsonValue))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusCreated, w.Code)
+}
+
+func TestRegisterUser_HIBPCheckDisabled_SkipsBreachedPassword(t *testing.T) {
+	// Default (HIBPCheckEnabled: false, the zero value): a known-breached
+	// password must still succeed, and no HIBP call is ever attempted —
+	// hibpAPIBaseURL is left at its real default, which would fail/hang if
+	// this test actually reached it. If registration returns 201 here, the
+	// check was skipped as intended.
+	_, router := setupRouter()
+	cfg := &config.Config{}
+	router.POST("/register", middleware.ValidateJSONMiddleware(&models.UserRegistrationInput{}), RegisterUser(cfg))
+
+	newUser := models.UserRegistrationInput{Username: "defaultuser", Email: "default@example.com", Password: strongPassword}
+	jsonValue, _ := json.Marshal(newUser)
+	req, _ := http.NewRequest("POST", "/register", bytes.NewBuffer(jsonValue))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusCreated, w.Code)
+}
+
+func TestChangePassword_HIBPCheckEnabled_RejectsBreachedPassword(t *testing.T) {
+	server := newHIBPServer(t, strongPasswordAnother)
+	defer server.Close()
+	t.Cleanup(services.SetHIBPAPIBaseURLForTest(server.URL))
+
+	db, router := setupRouter()
+	cfg := &config.Config{HIBPCheckEnabled: true}
+
+	initialPassword, _ := services.HashPassword(strongPassword)
+	user := models.User{Username: "changebreached", Email: "changebreached@example.com", Password: initialPassword}
+	db.Create(&user)
+
+	router.POST("/change-password", func(c *gin.Context) {
+		c.Set("username", "changebreached")
+		c.Set("validated", &models.ChangePasswordInput{
+			CurrentPassword: strongPassword,
+			NewPassword:     strongPasswordAnother,
+		})
+		ChangePassword(c, cfg)
+	})
+
+	req, _ := http.NewRequest("POST", "/change-password", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var updated models.User
+	db.Where("username = ?", "changebreached").First(&updated)
+	assert.NoError(t, bcrypt.CompareHashAndPassword([]byte(updated.Password), []byte(strongPassword)),
+		"password must be unchanged after a rejected breach check")
+}
+
+func TestConfirmPasswordReset_HIBPCheckEnabled_RejectsBreachedPassword(t *testing.T) {
+	server := newHIBPServer(t, strongPasswordAlt)
+	defer server.Close()
+	t.Cleanup(services.SetHIBPAPIBaseURLForTest(server.URL))
+
+	db, router := setupRouter()
+	cfg := &config.Config{HIBPCheckEnabled: true}
+
+	initialPassword, _ := services.HashPassword(strongPassword)
+	token, tokenHash, _ := services.GeneratePasswordResetToken()
+	expires := services.PasswordResetExpiry()
+	requested := time.Now()
+
+	user := models.User{
+		Username:                 "resetbreached",
+		Email:                    "resetbreached@example.com",
+		Password:                 initialPassword,
+		PasswordResetTokenHash:   &tokenHash,
+		PasswordResetExpiresAt:   &expires,
+		PasswordResetRequestedAt: &requested,
+	}
+	db.Create(&user)
+
+	router.POST("/password-reset/confirm", func(c *gin.Context) {
+		c.Set("validated", &models.PasswordResetConfirmInput{Token: token, Password: strongPasswordAlt})
+		ConfirmPasswordReset(c, cfg)
+	})
+
+	req, _ := http.NewRequest("POST", "/password-reset/confirm", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var updated models.User
+	db.Where("username = ?", "resetbreached").First(&updated)
+	assert.NotNil(t, updated.PasswordResetTokenHash, "reset token must survive a rejected breach check, not be consumed")
 }
 
 // TestEnabledContactFieldsNullVsEmpty verifies the GET/PATCH endpoints preserve the

@@ -87,6 +87,7 @@ type Config struct {
 	DBIntegrityCheckIntervalHours int           // Interval in hours for the scheduled DB integrity check
 	DBRestoreDrillEnabled         bool          // Enable the scheduled backup-restore drill job (issue #275)
 	DBRestoreDrillIntervalHours   int           // Interval in hours for the scheduled restore drill (default weekly)
+	HIBPCheckEnabled              bool          // Check new/changed passwords against HIBP's k-anonymity range API (issue #376). Off by default: an outbound call on a self-hosted app is a deliberate opt-in, not a safe default — see docs/security/asvs-l2.md's P3.
 	OIDC                          OIDCConfig
 }
 
@@ -151,6 +152,7 @@ func LoadConfig() *Config {
 		DBIntegrityCheckIntervalHours: getIntEnv("DB_INTEGRITY_CHECK_INTERVAL_HOURS", 24),
 		DBRestoreDrillEnabled:         getBoolEnv("DB_RESTORE_DRILL_ENABLED", true),
 		DBRestoreDrillIntervalHours:   getIntEnv("DB_RESTORE_DRILL_INTERVAL_HOURS", 168),
+		HIBPCheckEnabled:              getBoolEnv("HIBP_CHECK_ENABLED", false),
 	}
 
 	if cfg.CalDAVSyncIntervalHours < 1 {
