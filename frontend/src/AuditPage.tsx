@@ -47,6 +47,7 @@ const OPERATION_COLORS: Record<AuditEvent['operation'], 'success' | 'info' | 'er
   register: 'success',
   password_change: 'info',
   password_reset: 'info',
+  password_reset_requested: 'info',
   totp_enable: 'info',
   totp_disable: 'info',
   recovery_regenerate: 'info',

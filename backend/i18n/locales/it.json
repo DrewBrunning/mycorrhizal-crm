@@ -16,6 +16,11 @@
       "intro": "Abbiamo ricevuto una richiesta di reimpostazione della tua password di Mycorrhizal CRM.",
       "instruction": "Usa questo token per completare il ripristino entro 60 minuti:",
       "ignore": "Se non hai richiesto questo ripristino, puoi ignorare questa email."
+    },
+    "passwordChanged": {
+      "subject": "La tua password di Mycorrhizal CRM è stata modificata",
+      "intro": "La tua password di Mycorrhizal CRM è stata appena modificata.",
+      "warning": "Se hai effettuato tu questa modifica, puoi ignorare questa email. In caso contrario, il tuo account potrebbe essere stato compromesso -- reimposta immediatamente la password. Per precauzione, tutte le sessioni attive e i token API sono già stati revocati."
     }
   },
   "calendar": {

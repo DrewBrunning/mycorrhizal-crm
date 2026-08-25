@@ -39,7 +39,8 @@ export const AUDIT_ENTITY_TYPES: AuditEntityType[] = [
 ];
 
 // Mirrors models/audit.go's AuditOp* tokens (issue #381 widened the set from
-// entity CRUD to include the auth/admin lifecycle vocabulary).
+// entity CRUD to include the auth/admin lifecycle vocabulary; issue #411
+// added password_reset_requested).
 export type AuditOperation =
   | 'create'
   | 'update'
@@ -49,6 +50,7 @@ export type AuditOperation =
   | 'register'
   | 'password_change'
   | 'password_reset'
+  | 'password_reset_requested'
   | 'totp_enable'
   | 'totp_disable'
   | 'recovery_regenerate'

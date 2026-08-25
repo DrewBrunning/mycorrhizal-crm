@@ -10,13 +10,15 @@ import (
 var emailTemplatesFS embed.FS
 
 var (
-	reminderTmpl      *template.Template
-	passwordResetTmpl *template.Template
+	reminderTmpl        *template.Template
+	passwordResetTmpl   *template.Template
+	passwordChangedTmpl *template.Template
 )
 
 func init() {
 	reminderTmpl = template.Must(template.ParseFS(emailTemplatesFS, "templates/reminder.html"))
 	passwordResetTmpl = template.Must(template.ParseFS(emailTemplatesFS, "templates/password_reset.html"))
+	passwordChangedTmpl = template.Must(template.ParseFS(emailTemplatesFS, "templates/password_changed.html"))
 }
 
 // ReminderItem is a single reminder row in the email template.
@@ -64,6 +66,24 @@ func renderReminderEmail(data ReminderEmailData) (string, error) {
 func renderPasswordResetEmail(data PasswordResetEmailData) (string, error) {
 	var buf bytes.Buffer
 	if err := passwordResetTmpl.Execute(&buf, data); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
+// PasswordChangedEmailData holds all data passed to the password-changed
+// notification email template (issue #411 / ASVS 2.2.3) -- sent after a
+// password reset actually completes, so the account owner notices if it
+// wasn't them.
+type PasswordChangedEmailData struct {
+	Intro   string
+	Warning string
+	Footer  string
+}
+
+func renderPasswordChangedEmail(data PasswordChangedEmailData) (string, error) {
+	var buf bytes.Buffer
+	if err := passwordChangedTmpl.Execute(&buf, data); err != nil {
 		return "", err
 	}
 	return buf.String(), nil

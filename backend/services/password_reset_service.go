@@ -79,3 +79,43 @@ func SendPasswordResetEmail(email, token, lang string, cfg *config.Config) error
 	logger.Info().Str("email", email).Str("language", lang).Msg("Password reset email sent")
 	return nil
 }
+
+// SendPasswordChangedEmail notifies the account owner that their password
+// was just changed (issue #411 / ASVS 2.2.3), so they notice if a reset
+// wasn't initiated by them. Sent after ConfirmPasswordReset succeeds; the
+// caller treats a failure here as non-fatal -- the password change itself
+// has already happened and must not be undone by a notification error.
+func SendPasswordChangedEmail(email, lang string, cfg *config.Config) error {
+	if cfg == nil {
+		return fmt.Errorf("config is required")
+	}
+
+	if !cfg.EmailEnabled() {
+		logger.Warn().Str("email", email).Msg("No email channel configured; password-changed notification not sent")
+		return nil
+	}
+
+	if lang == "" {
+		lang = i18n.DefaultLanguage
+	}
+
+	htmlBody, err := renderPasswordChangedEmail(PasswordChangedEmailData{
+		Intro:   i18n.T(lang, "email.passwordChanged.intro"),
+		Warning: i18n.T(lang, "email.passwordChanged.warning"),
+		Footer:  i18n.T(lang, "email.footer"),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to render password-changed email: %w", err)
+	}
+
+	if err := SendEmail(*cfg, EmailMessage{
+		To:      email,
+		Subject: i18n.T(lang, "email.passwordChanged.subject"),
+		HTML:    htmlBody,
+	}); err != nil {
+		return err
+	}
+
+	logger.Info().Str("email", email).Str("language", lang).Msg("Password-changed notification email sent")
+	return nil
+}

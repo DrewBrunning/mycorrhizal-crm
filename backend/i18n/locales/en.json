@@ -16,6 +16,11 @@
       "intro": "We received a request to reset your Mycorrhizal CRM password.",
       "instruction": "Use this token to complete the reset within 60 minutes:",
       "ignore": "If you did not request this reset, you can ignore this email."
+    },
+    "passwordChanged": {
+      "subject": "Your Mycorrhizal CRM password was changed",
+      "intro": "Your Mycorrhizal CRM password was just changed.",
+      "warning": "If you made this change, you can safely ignore this email. If you didn't, your account may be compromised -- reset your password immediately. As a precaution, all signed-in sessions and API tokens have already been revoked."
     }
   },
   "calendar": {
