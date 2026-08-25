@@ -234,6 +234,57 @@ func TestSearchService_WorksWithEncryptionArmed(t *testing.T) {
 	require.Len(t, res.Activities, 1)
 }
 
+func TestModelRead_CorruptedPlainCiphertext_FailsClosed(t *testing.T) {
+	db, userID := setup(t)
+
+	contact := models.Contact{UserID: userID, Firstname: "Alice", HowWeMet: "met at a conference"}
+	require.NoError(t, db.Create(&contact).Error)
+
+	// Corrupt the "encrypted" (plain-string) serializer's stored ciphertext
+	// directly, bypassing the serializer — simulates DB corruption or a
+	// truncated write.
+	require.NoError(t, db.Exec(
+		"UPDATE contacts SET how_we_met = 'encv1:main:not-valid-base64!!!' WHERE id = ?", contact.ID).Error)
+
+	var loaded models.Contact
+	err := db.First(&loaded, contact.ID).Error
+	require.Error(t, err, "a corrupted encrypted column must fail the read closed, not surface garbage")
+}
+
+func TestModelRead_CorruptedJSONCiphertext_FailsClosed(t *testing.T) {
+	db, userID := setup(t)
+
+	contact := models.Contact{UserID: userID, Firstname: "Alice"}
+	require.NoError(t, db.Create(&contact).Error)
+
+	// Corrupt the "encryptedjson" (neutral card) serializer's stored
+	// ciphertext directly.
+	require.NoError(t, db.Exec(
+		"UPDATE contacts SET card = 'encv1:main:not-valid-base64!!!' WHERE id = ?", contact.ID).Error)
+
+	var loaded models.Contact
+	err := db.First(&loaded, contact.ID).Error
+	require.Error(t, err, "a corrupted encrypted JSON column must fail the read closed, not surface garbage")
+}
+
+func TestModelRead_CardDecryptsToInvalidJSON_FailsClosed(t *testing.T) {
+	db, userID := setup(t)
+
+	contact := models.Contact{UserID: userID, Firstname: "Alice"}
+	require.NoError(t, db.Create(&contact).Error)
+
+	// Valid ciphertext, but the plaintext it decrypts to is not valid JSON —
+	// a corruption one layer deeper than a malformed/tampered ciphertext
+	// (e.g. the card column pointed at the wrong logical row's bytes).
+	ct, err := atrest.Encrypt("not valid json{{{")
+	require.NoError(t, err)
+	require.NoError(t, db.Exec("UPDATE contacts SET card = ? WHERE id = ?", ct, contact.ID).Error)
+
+	var loaded models.Contact
+	err = db.First(&loaded, contact.ID).Error
+	require.Error(t, err, "a card column that decrypts to invalid JSON must fail the read, not silently zero out")
+}
+
 func TestNotesContentStaysPlaintext_FTSContract(t *testing.T) {
 	db, userID := setup(t)
 

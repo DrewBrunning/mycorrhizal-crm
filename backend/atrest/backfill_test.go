@@ -6,6 +6,7 @@ import (
 
 	"mycorrhizal/database"
 
+	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
@@ -148,6 +149,142 @@ func TestRotateMasterKey_WrongOldKeyFails(t *testing.T) {
 	wrong[0] = 0xFF
 	err := RotateMasterKey(db, wrong, oldKEK)
 	require.Error(t, err, "rotation with the wrong old key must fail closed")
+}
+
+func TestRotateMasterKey_MissingArgs(t *testing.T) {
+	db, kek := realDB(t)
+
+	require.Error(t, RotateMasterKey(nil, kek, kek), "nil db must be rejected")
+	require.Error(t, RotateMasterKey(db, nil, kek), "nil old key must be rejected")
+	require.Error(t, RotateMasterKey(db, kek, nil), "nil new key must be rejected")
+}
+
+func TestRotateMasterKey_NoDEKYet(t *testing.T) {
+	// A real migrated DB (so data_encryption_keys exists) that has never had
+	// Initialize called on it — the "rotate before the server has ever
+	// booted with a key" operator mistake.
+	dbPath := filepath.Join(t.TempDir(), "atrest.db")
+	db, err := database.InitDB(dbPath)
+	require.NoError(t, err)
+
+	kek := make([]byte, keySize)
+	for i := range kek {
+		kek[i] = byte(i)
+	}
+	err = RotateMasterKey(db, kek, kek)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "no wrapped DEK found")
+}
+
+func TestRotateMasterKey_MissingDEKTableFailsClosed(t *testing.T) {
+	// Same "never migrated" scenario as TestInitialize_MissingDEKTableFailsClosed,
+	// hitting RotateMasterKey's own read instead of loadOrCreateDEK's.
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+
+	kek := make([]byte, keySize)
+	for i := range kek {
+		kek[i] = byte(i)
+	}
+	err = RotateMasterKey(db, kek, kek)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "rotate read DEK")
+}
+
+func TestLoadOrCreateDEK_PersistFails(t *testing.T) {
+	// A real migrated (writable-schema) DB flipped read-only at the SQLite
+	// level — simulates a locked/read-only DB file, a real operator failure
+	// mode distinct from "table missing". query_only rejects the INSERT
+	// while still allowing the preceding SELECT to succeed.
+	dbPath := filepath.Join(t.TempDir(), "atrest.db")
+	db, err := database.InitDB(dbPath)
+	require.NoError(t, err)
+	require.NoError(t, db.Exec("PRAGMA query_only = ON").Error)
+
+	kek := make([]byte, keySize)
+	for i := range kek {
+		kek[i] = byte(i)
+	}
+	_, err = loadOrCreateDEK(db, kek)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "persist wrapped DEK")
+}
+
+func TestRotateMasterKey_PersistFails(t *testing.T) {
+	db, oldKEK := realDB(t)
+	require.NoError(t, db.Exec("PRAGMA query_only = ON").Error)
+
+	newKEK := make([]byte, keySize)
+	for i := range newKEK {
+		newKEK[i] = byte(i) ^ 0x5A
+	}
+	err := RotateMasterKey(db, oldKEK, newKEK)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "rotate persist")
+}
+
+func TestInitialize_MissingDEKTableFailsClosed(t *testing.T) {
+	// A DB with none of this project's hand-written migrations applied (no
+	// data_encryption_keys table at all) — Initialize must surface the read
+	// error rather than silently treating "table missing" as "no key yet".
+	t.Cleanup(ResetForTest)
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+
+	kek := make([]byte, keySize)
+	for i := range kek {
+		kek[i] = byte(i)
+	}
+	err = Initialize(db, kek)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "data_encryption_keys")
+}
+
+func TestBackfill_NilDBErrors(t *testing.T) {
+	err := Backfill(nil)
+	require.Error(t, err)
+}
+
+func TestBackfill_MalformedColumnSpecErrors(t *testing.T) {
+	db, _ := realDB(t)
+
+	// EncryptedColumns is always well-formed in real code (pinned by
+	// TestEncryptedColumns_MatchesSerializerTags), but Backfill must still
+	// fail loudly rather than skip silently if a future entry is ever
+	// malformed — restore the real list after.
+	orig := EncryptedColumns
+	EncryptedColumns = []string{"no-dot-here"}
+	t.Cleanup(func() { EncryptedColumns = orig })
+
+	err := Backfill(db)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "malformed encrypted-column spec")
+}
+
+func TestBackfillColumn_NoSuchTableIsNoOp(t *testing.T) {
+	db, _ := realDB(t)
+	// A table that genuinely doesn't exist in this schema — the "disabled
+	// feature / fresh DB" case the isNoSuchTable guard exists for.
+	require.NoError(t, backfillColumn(db, "no_such_table_at_all", "value"))
+}
+
+func TestBackfillColumn_OtherSQLErrorPropagates(t *testing.T) {
+	db, _ := realDB(t)
+	// contacts exists but this column doesn't — a real SQL error distinct
+	// from "no such table" must propagate, not be swallowed as a no-op.
+	err := backfillColumn(db, "contacts", "no_such_column_at_all")
+	require.Error(t, err)
+}
+
+func TestBackfillColumn_UpdateFailurePropagates(t *testing.T) {
+	db, _ := realDB(t)
+	require.NoError(t, db.Table("contacts").Create(map[string]interface{}{
+		"user_id": 1, "firstname": "Alice", "how_we_met": "plaintext",
+	}).Error)
+
+	require.NoError(t, db.Exec("PRAGMA query_only = ON").Error)
+	err := backfillColumn(db, "contacts", "how_we_met")
+	require.Error(t, err, "a write failure mid-backfill must surface, not be swallowed")
 }
 
 func TestBackfill_EncryptsPlaintextRows_PreservesRowCounts(t *testing.T) {

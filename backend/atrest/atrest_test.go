@@ -212,6 +212,36 @@ func TestEncryptionKey_InvalidBase64Rejected(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestEncryptionKey_FileDoesNotExist(t *testing.T) {
+	t.Setenv("DATA_ENCRYPTION_KEY", "")
+	t.Setenv("JWT_SECRET_KEY", "")
+	t.Setenv("DATA_ENCRYPTION_KEY_FILE", filepath.Join(t.TempDir(), "does-not-exist"))
+
+	_, err := EncryptionKey()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "DATA_ENCRYPTION_KEY_FILE")
+}
+
+func TestEncryptionKey_FileInvalidContent(t *testing.T) {
+	t.Setenv("DATA_ENCRYPTION_KEY", "")
+	t.Setenv("JWT_SECRET_KEY", "")
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "key")
+	require.NoError(t, os.WriteFile(path, []byte("not-a-valid-key"), 0o600))
+	t.Setenv("DATA_ENCRYPTION_KEY_FILE", path)
+
+	_, err := EncryptionKey()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "DATA_ENCRYPTION_KEY_FILE")
+}
+
+func TestInitialize_NilDBWithKeyErrors(t *testing.T) {
+	t.Cleanup(ResetForTest)
+	err := Initialize(nil, testKEK(t))
+	require.Error(t, err, "a configured key requires a db handle to load/seed the wrapped DEK")
+}
+
 func TestDecodeMasterKey(t *testing.T) {
 	kek, err := DecodeMasterKey(base64.StdEncoding.EncodeToString(testKEK(t)))
 	require.NoError(t, err)
