@@ -483,11 +483,10 @@ func ConfirmPasswordReset(context *gin.Context, cfg *config.Config) {
 	// standing API tokens must not survive it either -- TokenVersion above
 	// only covers JWTs, which carry no version of their own (see
 	// ChangePassword's comment on why *that* self-service path leaves them
-	// alone; here the threat model is different).
-	revokedAt := time.Now()
-	if err := db.Model(&models.ApiToken{}).
-		Where("user_id = ? AND revoked_at IS NULL", user.ID).
-		Update("revoked_at", revokedAt).Error; err != nil {
+	// alone; here the threat model is different). Issue #413 extracted this
+	// into services.RevokeAllAPITokens, now shared with UpdateUser's admin
+	// password reset and the self-service revoke-all endpoint.
+	if _, err := services.RevokeAllAPITokens(db, user.ID); err != nil {
 		// The password change already succeeded; a failure here would be
 		// misleading to report as a reset failure. Logged so it isn't silent.
 		log.Error().Err(err).Uint("user_id", user.ID).Msg("Failed to revoke API tokens after password reset")

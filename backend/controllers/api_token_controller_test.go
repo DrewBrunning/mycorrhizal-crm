@@ -152,6 +152,13 @@ func TestCreateApiToken_Success(t *testing.T) {
 	assert.Nil(t, resp.LastUsedAt)
 	assert.Nil(t, resp.RevokedAt)
 
+	// Issue #413: a new token always gets a bounded lifetime -- NULL is only
+	// for legacy rows predating the column, never for one just created.
+	require.NotNil(t, resp.ExpiresAt)
+	assert.WithinDuration(t,
+		time.Now().Add(time.Duration(models.DefaultApiTokenExpiryDays)*24*time.Hour),
+		*resp.ExpiresAt, 5*time.Second)
+
 	// Plaintext is never stored; only the SHA-256 hash is persisted
 	var stored models.ApiToken
 	require.NoError(t, db.First(&stored, resp.ID).Error)
@@ -314,6 +321,174 @@ func TestRevokeApiToken_InvalidID(t *testing.T) {
 	router.DELETE("/api-tokens/:id", RevokeApiToken)
 
 	req, _ := http.NewRequest("DELETE", "/api-tokens/not-a-number", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+// --- RevokeAllApiTokens (issue #413) ---
+
+func TestRevokeAllApiTokens_OnlyAffectsCallersOwnTokens(t *testing.T) {
+	db, router := setupRouter()
+	db.AutoMigrate(&models.ApiToken{})
+
+	var user models.User
+	db.First(&user)
+
+	other := models.User{Username: "other-revokeall", Email: "other-revokeall@example.com", Password: "x"}
+	db.Create(&other)
+
+	mine1 := models.ApiToken{UserID: user.ID, Name: "mine1", TokenHash: "h1"}
+	mine2 := models.ApiToken{UserID: user.ID, Name: "mine2", TokenHash: "h2"}
+	theirs := models.ApiToken{UserID: other.ID, Name: "theirs", TokenHash: "h3"}
+	require.NoError(t, db.Create(&mine1).Error)
+	require.NoError(t, db.Create(&mine2).Error)
+	require.NoError(t, db.Create(&theirs).Error)
+
+	router.POST("/api-tokens/revoke-all", RevokeAllApiTokens)
+
+	req, _ := http.NewRequest("POST", "/api-tokens/revoke-all", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var body struct {
+		Revoked int64 `json:"revoked"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	assert.EqualValues(t, 2, body.Revoked)
+
+	var reloadedMine1, reloadedMine2, reloadedTheirs models.ApiToken
+	db.First(&reloadedMine1, mine1.ID)
+	db.First(&reloadedMine2, mine2.ID)
+	db.First(&reloadedTheirs, theirs.ID)
+	assert.NotNil(t, reloadedMine1.RevokedAt)
+	assert.NotNil(t, reloadedMine2.RevokedAt)
+	assert.Nil(t, reloadedTheirs.RevokedAt, "another user's token must be untouched")
+}
+
+func TestRevokeAllApiTokens_AlreadyRevokedTokensUnaffectedAndUncounted(t *testing.T) {
+	db, router := setupRouter()
+	db.AutoMigrate(&models.ApiToken{})
+
+	var user models.User
+	db.First(&user)
+
+	priorRevoke := time.Now().Add(-24 * time.Hour)
+	alreadyRevoked := models.ApiToken{UserID: user.ID, Name: "already", TokenHash: "h1", RevokedAt: &priorRevoke}
+	active := models.ApiToken{UserID: user.ID, Name: "active", TokenHash: "h2"}
+	require.NoError(t, db.Create(&alreadyRevoked).Error)
+	require.NoError(t, db.Create(&active).Error)
+
+	router.POST("/api-tokens/revoke-all", RevokeAllApiTokens)
+
+	req, _ := http.NewRequest("POST", "/api-tokens/revoke-all", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var body struct {
+		Revoked int64 `json:"revoked"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	assert.EqualValues(t, 1, body.Revoked, "the already-revoked token must not be recounted")
+
+	var reloaded models.ApiToken
+	db.First(&reloaded, alreadyRevoked.ID)
+	assert.WithinDuration(t, priorRevoke, *reloaded.RevokedAt, time.Second, "revoked_at must not be overwritten")
+}
+
+// --- RotateApiToken (issue #413) ---
+
+func TestRotateApiToken_Success(t *testing.T) {
+	db, router := setupRouter()
+	db.AutoMigrate(&models.ApiToken{})
+
+	var user models.User
+	db.First(&user)
+
+	old := models.ApiToken{UserID: user.ID, Name: "sync-device", TokenHash: "oldhash", Scope: "carddav"}
+	require.NoError(t, db.Create(&old).Error)
+
+	router.POST("/api-tokens/:id/rotate", RotateApiToken)
+
+	req, _ := http.NewRequest("POST", "/api-tokens/"+strconv.Itoa(int(old.ID))+"/rotate", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+
+	var resp models.ApiTokenCreateResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.NotEqual(t, old.ID, resp.ID, "rotate must mint a new row, not reuse the old id")
+	assert.Equal(t, "sync-device", resp.Name, "name carries over")
+	assert.Equal(t, "carddav", resp.Scope, "scope carries over")
+	assert.Contains(t, resp.Token, "mycorrhizal_")
+	require.NotNil(t, resp.ExpiresAt)
+
+	var reloadedOld models.ApiToken
+	db.First(&reloadedOld, old.ID)
+	assert.NotNil(t, reloadedOld.RevokedAt, "the old token must be revoked")
+
+	var newRow models.ApiToken
+	require.NoError(t, db.First(&newRow, resp.ID).Error)
+	expectedHash := fmt.Sprintf("%x", sha256.Sum256([]byte(resp.Token)))
+	assert.Equal(t, expectedHash, newRow.TokenHash)
+}
+
+func TestRotateApiToken_WrongUser(t *testing.T) {
+	db, router := setupRouter()
+	db.AutoMigrate(&models.ApiToken{})
+
+	other := models.User{Username: "attacker-rotate", Email: "attacker-rotate@example.com", Password: "x"}
+	db.Create(&other)
+
+	token := models.ApiToken{UserID: other.ID, Name: "victim-token", TokenHash: "victimhash"}
+	db.Create(&token)
+
+	router.POST("/api-tokens/:id/rotate", RotateApiToken)
+
+	req, _ := http.NewRequest("POST", "/api-tokens/"+strconv.Itoa(int(token.ID))+"/rotate", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+
+	var unchanged models.ApiToken
+	db.First(&unchanged, token.ID)
+	assert.Nil(t, unchanged.RevokedAt, "a rotate attempt on someone else's token must not revoke it")
+}
+
+func TestRotateApiToken_AlreadyRevoked(t *testing.T) {
+	db, router := setupRouter()
+	db.AutoMigrate(&models.ApiToken{})
+
+	var user models.User
+	db.First(&user)
+
+	revokedAt := time.Now()
+	token := models.ApiToken{UserID: user.ID, Name: "dead", TokenHash: "deadhash", RevokedAt: &revokedAt}
+	require.NoError(t, db.Create(&token).Error)
+
+	router.POST("/api-tokens/:id/rotate", RotateApiToken)
+
+	req, _ := http.NewRequest("POST", "/api-tokens/"+strconv.Itoa(int(token.ID))+"/rotate", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusConflict, w.Code)
+}
+
+func TestRotateApiToken_InvalidID(t *testing.T) {
+	db, router := setupRouter()
+	db.AutoMigrate(&models.ApiToken{})
+
+	router.POST("/api-tokens/:id/rotate", RotateApiToken)
+
+	req, _ := http.NewRequest("POST", "/api-tokens/not-a-number/rotate", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 

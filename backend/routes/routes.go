@@ -361,7 +361,9 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// API token routes
 			protected.GET("/api-tokens", controllers.ListApiTokens)
 			protected.POST("/api-tokens", middleware.ValidateJSONMiddleware(&models.ApiTokenInput{}), controllers.CreateApiToken)
+			protected.POST("/api-tokens/revoke-all", controllers.RevokeAllApiTokens)
 			protected.DELETE("/api-tokens/:id", controllers.RevokeApiToken)
+			protected.POST("/api-tokens/:id/rotate", controllers.RotateApiToken)
 
 			// Webhook routes
 			protected.GET("/webhooks", controllers.ListWebhooks)

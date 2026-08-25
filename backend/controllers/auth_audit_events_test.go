@@ -65,7 +65,9 @@ func newAuthAuditRouter(t *testing.T) (*gorm.DB, *gin.Engine, models.User) {
 	// Protected routes (context-authenticated as `actor`).
 	router.POST("/users/change-password", middleware.ValidateJSONMiddleware(&models.ChangePasswordInput{}), func(c *gin.Context) { ChangePassword(c, &cfg) })
 	router.POST("/api-tokens", middleware.ValidateJSONMiddleware(&models.ApiTokenInput{}), CreateApiToken)
+	router.POST("/api-tokens/revoke-all", RevokeAllApiTokens)
 	router.DELETE("/api-tokens/:id", RevokeApiToken)
+	router.POST("/api-tokens/:id/rotate", RotateApiToken)
 	router.POST("/users/2fa/setup", SetupTwoFactor)
 	router.POST("/users/2fa/confirm", ConfirmTwoFactor)
 	router.POST("/users/2fa/disable", DisableTwoFactor)
@@ -246,6 +248,56 @@ func TestAuthAuditEvents_APITokenCreateAndRevoke(t *testing.T) {
 	assert.EqualValues(t, 1, countAudit(t, db, models.AuditEntityAPIToken, fmt.Sprintf("%d", created.ID), models.AuditOpCreate))
 	assert.EqualValues(t, 1, countAudit(t, db, models.AuditEntityAPIToken, fmt.Sprintf("%d", created.ID), models.AuditOpRevoke))
 	assert.NotEqual(t, 0, actor.ID)
+}
+
+// Issue #413: revoke-all fires one revoke event per token actually revoked,
+// named individually, not one opaque bulk event.
+func TestAuthAuditEvents_APITokenRevokeAll(t *testing.T) {
+	db, router, _ := newAuthAuditRouter(t)
+
+	var created1, created2 struct {
+		ID uint `json:"id"`
+	}
+	w := auditDoJSON(router, "POST", "/api-tokens", models.ApiTokenInput{Name: "one"})
+	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &created1))
+
+	w = auditDoJSON(router, "POST", "/api-tokens", models.ApiTokenInput{Name: "two"})
+	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &created2))
+
+	w = auditDoJSON(router, "POST", "/api-tokens/revoke-all", nil)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	models.AuditFlush()
+
+	assert.EqualValues(t, 1, countAudit(t, db, models.AuditEntityAPIToken, fmt.Sprintf("%d", created1.ID), models.AuditOpRevoke))
+	assert.EqualValues(t, 1, countAudit(t, db, models.AuditEntityAPIToken, fmt.Sprintf("%d", created2.ID), models.AuditOpRevoke))
+}
+
+// Issue #413: rotate fires a revoke event for the old token and a create
+// event for the new one -- the same two events CreateApiToken/RevokeApiToken
+// each fire individually.
+func TestAuthAuditEvents_APITokenRotate(t *testing.T) {
+	db, router, _ := newAuthAuditRouter(t)
+
+	w := auditDoJSON(router, "POST", "/api-tokens", models.ApiTokenInput{Name: "rotate-me"})
+	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+	var created struct {
+		ID uint `json:"id"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &created))
+
+	w = auditDoJSON(router, "POST", "/api-tokens/"+strconv.Itoa(int(created.ID))+"/rotate", nil)
+	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+	var rotated struct {
+		ID uint `json:"id"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &rotated))
+	require.NotEqual(t, created.ID, rotated.ID)
+	models.AuditFlush()
+
+	assert.EqualValues(t, 1, countAudit(t, db, models.AuditEntityAPIToken, fmt.Sprintf("%d", created.ID), models.AuditOpRevoke))
+	assert.EqualValues(t, 1, countAudit(t, db, models.AuditEntityAPIToken, fmt.Sprintf("%d", rotated.ID), models.AuditOpCreate))
 }
 
 func TestAuthAuditEvents_TwoFactorLifecycle(t *testing.T) {
