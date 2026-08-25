@@ -257,3 +257,9 @@ point at a row, it doesn't know what it is changing. N/A rows are written-down d
 process, self-hosted) — they flip to real statuses if the architecture changes. Two documented
 positions live there: NIST 800-63B password hashing (bcrypt cost 10, why not Argon2id yet) and
 cryptographic agility (direct bcrypt/JWT calls, deliberate pre-1.0).
+
+**Every data type's retention/deletion lifecycle is `docs/security/data-retention-lifecycle.md`**
+(issue #414) — where each copy of a piece of data lives, how long it survives, how deletion
+propagates (including CardDAV/CalDAV and the Android offline mirror), and whether it outlives a
+backup. Add a new persistent copy of user data (a new external sync target, a new client-side
+cache, a new export format) there in the same PR that introduces it.
