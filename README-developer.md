@@ -115,6 +115,16 @@
 - **PR annotations**: [test-report.yml](.github/workflows/test-report.yml) runs on `workflow_run` after the Unit Tests / Android Tests workflows, downloads each suite's JUnit XML artifact, and creates Check Runs with code annotations via `dorny/test-reporter`. It runs in the default-branch context so fork PRs (read-only token) still get annotated; the suite jobs remain the required checks and these reports are informational. A flaky test shows up as a failure in a report while its required check is green — that green-check-plus-failed-report combination *is* the flake-vs-regression distinction.
 - **Keep the Scorecard check green on changed workflow lines**: GitHub's Advanced Security Scorecard flags lines added by a PR with a top-level `checks: write` and with unpinned action versions. New/changed workflow steps therefore pin actions by commit SHA with a `# <tag>` comment (the one exception: `test-report.yml`'s job-scoped `checks: write`, which `dorny/test-reporter` genuinely needs to create Check Runs). Older, untouched workflow lines still use plain `@vN` tags; pin them when you touch them.
 
+**Client-side secret scanning (gitleaks, issue #376)**
+- GitHub's own secret scanning only sees a secret after it's pushed. To catch one before it ever leaves your machine, this repo ships an opt-in gitleaks pre-commit hook: [.githooks/pre-commit](.githooks/pre-commit) runs `gitleaks protect --staged` against exactly what's staged, using the rule config in [.gitleaks.toml](.gitleaks.toml) (extends gitleaks' default rule pack; no repo-specific rules yet).
+- **One-time setup per clone:**
+  ```bash
+  git config core.hooksPath .githooks
+  ```
+  Requires the `gitleaks` binary on `PATH` (`brew install gitleaks`, or a release binary from [github.com/gitleaks/gitleaks](https://github.com/gitleaks/gitleaks#installing)). Once configured, the hook is fail-closed: a missing `gitleaks` binary blocks the commit rather than silently skipping the scan. Bypass a single commit with `git commit --no-verify` (e.g. a deliberate false positive you've already reviewed).
+  - If a rule ever false-positives on deliberately-fake test material, add a scoped `[[allowlist]]` entry to `.gitleaks.toml` rather than disabling the rule globally.
+- This is local-only and doesn't replace server-side scanning — repo admins should also enable GitHub's **push protection** (Settings → Code security → Secret scanning → Push protection), which is a repo setting, not something this hook can turn on.
+
 **Data & Integrations**
 - SQLite lives at `SQLITE_DB_PATH` (default mycorrhizal.db); migrations in [backend/database/migrations](backend/database/migrations) are embedded into the binary and auto-run on startup.
 - JWT expiry, HTTP timeouts, trusted proxies, and Resend email settings are declared in [backend/config/config.go](backend/config/config.go) and loaded based on environment variables; use Config.Validate to catch misconfigurations.

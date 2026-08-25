@@ -39,6 +39,14 @@ func RegisterUser(cfg *config.Config) gin.HandlerFunc {
 			return
 		}
 
+		if cfg.HIBPCheckEnabled {
+			if breached, _ := services.CheckPasswordBreached(context.Request.Context(), input.Password); breached {
+				apperrors.AbortWithError(context, apperrors.ErrInvalidInput("password",
+					"This password has appeared in a known data breach; please choose a different one."))
+				return
+			}
+		}
+
 		hashedPassword, hashErr := services.HashPassword(input.Password)
 		if hashErr != nil {
 			if errors.Is(hashErr, services.ErrPasswordTooLong) {
@@ -359,7 +367,7 @@ func RequestPasswordReset(context *gin.Context, cfg *config.Config) {
 }
 
 // ConfirmPasswordReset validates the token and updates the password.
-func ConfirmPasswordReset(context *gin.Context) {
+func ConfirmPasswordReset(context *gin.Context, cfg *config.Config) {
 	// Check if demo mode is enabled - password changes are disabled in demo
 	if os.Getenv("DEMO_MODE") == "true" {
 		apperrors.AbortWithError(context, apperrors.ErrForbidden("Password changes are disabled in demo mode"))
@@ -406,6 +414,14 @@ func ConfirmPasswordReset(context *gin.Context) {
 		}
 		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("token", "Password reset token is invalid or expired"))
 		return
+	}
+
+	if cfg.HIBPCheckEnabled {
+		if breached, _ := services.CheckPasswordBreached(context.Request.Context(), input.Password); breached {
+			apperrors.AbortWithError(context, apperrors.ErrInvalidInput("password",
+				"This password has appeared in a known data breach; please choose a different one."))
+			return
+		}
 	}
 
 	hashedPassword, err := services.HashPassword(input.Password)
@@ -623,7 +639,7 @@ func GetEnabledContactFields(c *gin.Context) {
 	})
 }
 
-func ChangePassword(context *gin.Context) {
+func ChangePassword(context *gin.Context, cfg *config.Config) {
 	// Check if demo mode is enabled - password changes are disabled in demo
 	if os.Getenv("DEMO_MODE") == "true" {
 		apperrors.AbortWithError(context, apperrors.ErrForbidden("Password changes are disabled in demo mode"))
@@ -679,6 +695,14 @@ func ChangePassword(context *gin.Context) {
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.NewPassword)); err == nil {
 		apperrors.AbortWithError(context, apperrors.ErrInvalidInput("new_password", "New password must differ from current password"))
 		return
+	}
+
+	if cfg.HIBPCheckEnabled {
+		if breached, _ := services.CheckPasswordBreached(context.Request.Context(), input.NewPassword); breached {
+			apperrors.AbortWithError(context, apperrors.ErrInvalidInput("new_password",
+				"This password has appeared in a known data breach; please choose a different one."))
+			return
+		}
 	}
 
 	hashedPassword, err := services.HashPassword(input.NewPassword)

@@ -46,14 +46,18 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 		v1.POST("/password-reset/request", middleware.AuthRateLimitMiddleware(), middleware.ValidateJSONMiddleware(&models.PasswordResetRequestInput{}), func(c *gin.Context) {
 			controllers.RequestPasswordReset(c, cfg)
 		})
-		v1.POST("/password-reset/confirm", middleware.AuthRateLimitMiddleware(), middleware.ValidateJSONMiddleware(&models.PasswordResetConfirmInput{}), controllers.ConfirmPasswordReset)
+		v1.POST("/password-reset/confirm", middleware.AuthRateLimitMiddleware(), middleware.ValidateJSONMiddleware(&models.PasswordResetConfirmInput{}), func(c *gin.Context) {
+			controllers.ConfirmPasswordReset(c, cfg)
+		})
 
 		// Protected routes (authentication required, general rate limiting)
 		protected := v1.Group("/")
 		protected.Use(middleware.APIRateLimitMiddleware())
 		protected.Use(middleware.AuthMiddleware(cfg))
 		{
-			protected.POST("/users/change-password", middleware.ValidateJSONMiddleware(&models.ChangePasswordInput{}), controllers.ChangePassword)
+			protected.POST("/users/change-password", middleware.ValidateJSONMiddleware(&models.ChangePasswordInput{}), func(c *gin.Context) {
+				controllers.ChangePassword(c, cfg)
+			})
 			protected.PATCH("/users/language", controllers.UpdateLanguage)
 			protected.PATCH("/users/date-format", controllers.UpdateDateFormat)
 			protected.GET("/users/enabled-contact-fields", controllers.GetEnabledContactFields)

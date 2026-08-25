@@ -20,6 +20,20 @@ name: Container Hardening (CIS)
 # Path-gated on `infra` (Dockerfile, docker-compose*.yml, docker/**) and
 # `workflows` (issue #264 pattern); the scheduled run re-scans everything so
 # new rules are exercised even with no activity.
+#
+# Issue #376: two more trivy passes alongside the CIS scan, both cheap and
+# complementary — docker-publish.yml's own trivy step only scans the *built*
+# image for CVEs, at release time. These run here instead, on every PR that
+# touches infra, so problems surface before a tag is ever cut:
+#   - `trivy config` (misconfig) over the Dockerfiles/compose files
+#     themselves — catches e.g. a missing HEALTHCHECK or an added
+#     `privileged: true` at review time, not release time.
+#   - `trivy fs --scanners secret` over the checked-out workspace — a CI
+#     backstop for secrets that make it past the gitleaks pre-commit hook
+#     (#376, .githooks/pre-commit), e.g. a contributor who hasn't opted into
+#     it locally.
+# Accepted findings for either go in .trivyignore (repo root), the same
+# ignore-list-with-justification shape as docker/cis-hardening.ignore.
 
 on:
   push:
@@ -73,6 +87,7 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
+      security-events: write
     needs: changes
     if: github.event_name == 'schedule' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'
 
@@ -102,3 +117,59 @@ jobs:
 
       - name: Run CIS hardening scan
         run: docker/cis-hardening.sh mycorrhizal-crm-test:latest docker/cis-hardening.ignore
+
+      # Issue #376: misconfig scan over the Dockerfiles/compose files, not
+      # the built image — deliberately independent of the "Build all-in-one
+      # image" step above, so it still runs (and still catches e.g. a
+      # dropped HEALTHCHECK) even if that build were ever skipped.
+      # Same pin as docker-publish.yml's trivy step (pre-1.0, no stable
+      # major to float on; #269 tracks it via Dependabot).
+      #
+      # exit-code deliberately omitted (report-only) on first rollout: this
+      # repo's own CIS check already has a *known* documented exception for
+      # a real condition trivy's misconfig rules are likely to also flag —
+      # both Dockerfiles have no `USER` instruction at all, by design (see
+      # docker/cis-hardening.ignore's 4.1 note: docker/entrypoint.sh needs
+      # root to remap PUID/PGID, supervisord then drops the backend to
+      # appuser at runtime). Rather than guess at trivy's exact rule ID for
+      # that ahead of a real run, this ships informational-only; once the
+      # first run's findings are triaged into .trivyignore, add
+      # `exit-code: '1'` here to make it a real gate.
+      - name: Trivy misconfig scan (Dockerfiles/compose)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: 'config'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-config-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          trivyignores: '.trivyignore'
+
+      - name: Upload Trivy misconfig results to GitHub Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
+        with:
+          sarif_file: 'trivy-config-results.sarif'
+          category: 'trivy-config'
+
+      # Filesystem secret scan over the checked-out workspace — a CI
+      # backstop behind the gitleaks pre-commit hook, not a replacement for
+      # it (see the workflow header comment above). Also report-only for the
+      # same reason as the misconfig step: gate it once a first real run
+      # confirms there's nothing to triage.
+      - name: Trivy filesystem secret scan
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          scanners: 'secret'
+          format: 'sarif'
+          output: 'trivy-secret-results.sarif'
+          trivyignores: '.trivyignore'
+
+      - name: Upload Trivy secret-scan results to GitHub Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
+        with:
+          sarif_file: 'trivy-secret-results.sarif'
+          category: 'trivy-secret'

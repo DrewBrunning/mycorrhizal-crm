@@ -1,0 +1,13 @@
+# Issue #376: gitleaks config for the local pre-commit hook (.githooks/pre-commit)
+# and any future CI secret-scan step. Extends gitleaks' built-in default rule
+# pack rather than redefining it — this repo has no bespoke secret formats to
+# add rules for yet.
+#
+# No [[allowlist]] entries yet either. If a rule ever false-positives on
+# deliberately-fake test material (e.g. a placeholder PEM block in a _test.go
+# fixture), add a scoped allowlist regex here with a comment naming the file
+# and why it's safe, rather than disabling the rule globally.
+title = "mycorrhizal-crm gitleaks config"
+
+[extend]
+useDefault = true

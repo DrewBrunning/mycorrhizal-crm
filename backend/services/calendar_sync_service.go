@@ -410,7 +410,7 @@ func (s *CalendarSyncService) fetchICS(ctx context.Context, httpClient webdav.HT
 	var events []calendarEvent
 	decoder := ical.NewDecoder(resp.Body)
 	for {
-		cal, err := decoder.Decode()
+		evs, err := decodeCalendarSafely(decoder, windowStart, windowEnd)
 		if err == io.EOF {
 			break
 		}
@@ -424,9 +424,35 @@ func (s *CalendarSyncService) fetchICS(ctx context.Context, httpClient webdav.HT
 			}
 			return nil, fmt.Errorf("%w: %v", ErrCalendarInvalidData, err)
 		}
-		events = append(events, extractEvents(cal, windowStart, windowEnd)...)
+		events = append(events, evs...)
 	}
 	return events, nil
+}
+
+// decodeCalendarSafely decodes one calendar from decoder and extracts its
+// events, recovering from any panic in either step. go-ical is a
+// third-party parser over bytes fetched from a subscribed *remote* calendar
+// — untrusted input in exactly the sense issue #265/#376's fuzzing effort
+// targets. FuzzExtractICalEvents (calendar_ical_fuzz_test.go) found a real
+// panic in the decoder itself on malformed input (index-out-of-range on
+// `"0;0="`). Without this recover, that panic would propagate out of the
+// goroutine running this sync: main.go's safeGo() only wraps the *initial*
+// run of the calendar-sync job at startup, not the recurring
+// gocron-scheduled one, so an unrecovered panic here would crash the whole
+// process on every sync interval, not just fail one subscription. Turning
+// it into ErrCalendarInvalidData makes a malformed feed a normal, contained
+// sync failure instead.
+func decodeCalendarSafely(decoder *ical.Decoder, windowStart, windowEnd time.Time) (events []calendarEvent, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("%w: panic decoding calendar: %v", ErrCalendarInvalidData, r)
+		}
+	}()
+	cal, decErr := decoder.Decode()
+	if decErr != nil {
+		return nil, decErr
+	}
+	return extractEvents(cal, windowStart, windowEnd), nil
 }
 
 func isCalendarSentinel(err error) bool {

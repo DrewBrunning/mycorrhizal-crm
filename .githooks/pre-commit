@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Issue #376: client-side secret scanning. Runs gitleaks against exactly what's
+# staged, before it ever leaves the machine — GitHub's own secret scanning
+# (and push protection, if enabled on the repo) only sees a commit after it's
+# pushed. This is opt-in per clone: `git config core.hooksPath .githooks`
+# (see README-developer.md). Fail-closed once opted in — a missing gitleaks
+# binary blocks the commit with install instructions rather than silently
+# skipping the check.
+set -euo pipefail
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+	echo "pre-commit: gitleaks is not installed, refusing to commit." >&2
+	echo "" >&2
+	echo "Install it, then retry:" >&2
+	echo "  macOS:   brew install gitleaks" >&2
+	echo "  Linux:   see https://github.com/gitleaks/gitleaks#installing" >&2
+	echo "" >&2
+	echo "To bypass this one commit (not recommended): git commit --no-verify" >&2
+	exit 1
+fi
+
+gitleaks protect --staged --redact -v --config .gitleaks.toml
