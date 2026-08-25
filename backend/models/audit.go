@@ -52,7 +52,7 @@ type AuditEvent struct {
 	UserID     uint   `gorm:"not null;index" json:"-"`
 	// BeforeSnapshot is redacted JSON (auditDenyList applied). Empty for
 	// create events.
-	BeforeSnapshot string `gorm:"column:before_snapshot;type:text" json:"before_snapshot,omitempty"`
+	BeforeSnapshot string `gorm:"column:before_snapshot;type:text;serializer:encrypted" json:"before_snapshot,omitempty"`
 }
 
 // auditDenyList is the field-name deny-list applied to every audit snapshot:

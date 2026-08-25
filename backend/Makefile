@@ -1,4 +1,4 @@
-.PHONY: migrate-up migrate-down migrate-create migrate-status migrate-force migrate-version backup help
+.PHONY: migrate-up migrate-down migrate-create migrate-status migrate-force migrate-version backfill-at-rest rotate-at-rest-key backup help
 
 # Database path. The migration CLI reads SQLITE_DB_PATH (the same variable the
 # server reads), so every target below EXPORTS this rather than just echoing
@@ -21,6 +21,17 @@ help: ## Show this help message
 migrate-up: ## Run all pending migrations (the server also does this on startup)
 	@echo "Running migrations on $(DB_PATH)..."
 	@go run cmd/migrate/main.go up
+
+backfill-at-rest: ## Encrypt any rows still plaintext in the at-rest-encrypted columns (issue #380). The server also does this on startup; this is for `make migrate-up`-only workflows.
+	@echo "Backfilling at-rest encryption on $(DB_PATH)..."
+	@go run cmd/backfill-at-rest/main.go -db $(DB_PATH)
+
+rotate-at-rest-key: ## Rewrap the DEK under a new master key (usage: NEW=<base64-key> or OLD=<base64-key> NEW=<base64-key>). Payloads untouched.
+	@if [ -z "$(NEW)" ]; then \
+		echo "Error: NEW is required. Usage: make rotate-at-rest-key NEW=\$$(openssl rand -base64 32) [OLD=<base64-key>]"; \
+		exit 1; \
+	fi
+	@go run cmd/rotate-at-rest-key/main.go -new $(NEW) $(if $(OLD),-old $(OLD),) -db $(DB_PATH)
 
 migrate-down: ## Roll back exactly ONE migration -- destructive, see warning below
 	@echo "About to roll back ONE migration on $(DB_PATH)."

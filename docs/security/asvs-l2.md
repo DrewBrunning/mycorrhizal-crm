@@ -72,7 +72,7 @@ a swap-able algorithm interface. This is a **conscious pre-1.0 decision**, not a
 Related at-rest note: the TOTP secret and integration credentials are AES-256-GCM encrypted with a
 key HKDF-derived from `JWT_SECRET_KEY` (`backend/services/credential_crypto.go:22-29`). Rotating
 `JWT_SECRET_KEY` therefore invalidates those stored secrets (documented at `credential_crypto.go:20-21`);
-the ≥ 32-byte length plus placeholder/entropy rejection at boot (`config/config.go:351-379`) is what
+the ≥ 32-byte length plus placeholder/entropy rejection at boot (`config/config.go:351-389`) is what
 keeps that key strong. TOTP/recovery secrets are generated at runtime from `crypto/rand` (no
 env-configurable default to guard), and the credential key is derived from `JWT_SECRET_KEY`, so the
 JWT checks cover every security-critical secret that can be configured (issue #393).
@@ -98,6 +98,31 @@ registration/password change/password reset. Shipped as **opt-in** (`HIBP_CHECK_
 - **Decision:** stays opt-in through pre-1.0. Revisit defaulting it on if/when this project takes on
   a hosted-multi-tenant deployment mode, where the operator (not each self-hoster) already accepts
   outbound-call tradeoffs on users' behalf.
+
+Since #380, user-authored PII is additionally encrypted at rest by `backend/atrest` with its own
+master key — `DATA_ENCRYPTION_KEY`/`DATA_ENCRYPTION_KEY_FILE`, falling back to an HKDF-SHA256
+derivation from `JWT_SECRET_KEY` for zero-config deployments (see **P4**). A dedicated key is
+recommended so rotating `JWT_SECRET_KEY` never affects at-rest data.
+
+### P4 — At-rest field encryption: FTS-plaintext exception, single wrapped DEK, lost-key posture (#380)
+
+The at-rest layer (`backend/atrest`) is the issue #380 implementation. Three written-down positions:
+
+1. **FTS-indexed columns stay plaintext, by design.** `notes.content`, `activities.*`, and the flat
+   contact search fields are indexed by FTS5 via SQL triggers that read the base columns directly
+   (migrations `000007`/`000010`/`000020`, `services/search_service.go` `RebuildSearchIndex`). SQL
+   cannot decrypt, so those columns are deliberately NOT encrypted — encrypting them would silently
+   break search. They are the documented searchable-plaintext set; everything sensitive that is not
+   searched (contact free text, the neutral card, life-event/reminder/gift/preference/conversation
+   text, audit snapshots, sync-conflict copies) IS encrypted.
+2. **Single wrapped DEK, not per-row keys.** The issue recommends "envelope-encrypt per-row data
+   keys so rotation doesn't require re-writing the whole DB". A single deployment DEK wrapped by the
+   master key achieves the same rotation property strictly more cheaply: rotating the master key is
+   a one-row `data_encryption_keys` UPDATE (unwrap, rewrap), never a payload rewrite — and per-row
+   keys would add no extra security, since a master-key compromise unwraps every row's DEK anyway.
+3. **"Lost key = lost data, by design."** The DEK is stored only wrapped by the master key; there is
+   deliberately no escrow. Losing `DATA_ENCRYPTION_KEY` makes every encrypted column undecryptable.
+   Rotation (`cmd/rotate-at-rest-key`) rewraps the DEK under a new master key.
 
 ---
 
@@ -125,9 +150,9 @@ L3-only, out of scope: 1.11.3.
 | 1.5.2 | No serialization with untrusted clients | satisfied | Wire format is JSON DTOs only (`encoding/json`); no gob/pickle/object serialization anywhere |
 | 1.5.3 | Input validation on trusted layer | satisfied | `ValidateJSONMiddleware` runs server-side on every input route (`backend/middleware/validation.go:332-368`); client-side validation is UX only |
 | 1.5.4 | Output encoding near the interpreter | satisfied | React auto-escapes all rendering (no `dangerouslySetInnerHTML` in `frontend/src`); CSV formula injection neutralized at the export boundary (`backend/controllers/export_controller.go:41-57`) |
-| 1.6.1 | Cryptographic key management policy | partial | No formal key-lifecycle document; JWT secret validated at boot — ≥ 32 bytes, no known placeholder, minimum entropy (`backend/config/config.go:351-379`); TOTP/integration secrets AES-256-GCM at rest (`backend/services/credential_crypto.go`). Gap: rotation runbook is P2-referenced but not a doc. |
+| 1.6.1 | Cryptographic key management policy | partial | Key lifecycle documented: JWT secret validated at boot — ≥ 32 bytes, no known placeholder, minimum entropy (`backend/config/config.go:351-389`); TOTP/integration secrets AES-256-GCM at rest (`backend/services/credential_crypto.go`); at-rest master key + wrapped DEK with rotation runbook (`cmd/rotate-at-rest-key`, `atrest.RotateMasterKey`, **P4**). Gap: rotation runbook is a command + P4 position, not a standalone doc. |
 | 1.6.2 | Key vault / API-based key access | not-applicable | Self-hosted single process; secrets come from environment (`backend/.env.example`); see P2 (crypto agility position) |
-| 1.6.3 | Keys replaceable, re-encrypt path defined | partial | JWT rotation is clean (`TokenVersion`, `config/config.go:351-379`); re-encrypting TOTP/integration secrets after key rotation is not automated (`credential_crypto.go:20-21` documents the coupling) |
+| 1.6.3 | Keys replaceable, re-encrypt path defined | partial | JWT rotation is clean (`TokenVersion`, `config/config.go:351-389`); at-rest master-key rotation rewraps the single wrapped DEK without touching payloads (`cmd/rotate-at-rest-key`, `atrest.RotateMasterKey`); re-encrypting TOTP/integration secrets after JWT rotation is not automated (`credential_crypto.go:20-21` documents the coupling) |
 | 1.6.4 | Client-side secrets treated as insecure | satisfied | Session token is an httpOnly cookie, never JS-readable (`frontend/src/auth.ts:127-134`); no secrets in `localStorage` |
 | 1.7.1 | Common logging format | satisfied | zerolog JSON everywhere (`backend/logger/logger.go:26-63`) |
 | 1.7.2 | Logs shipped to remote system | not-applicable | Self-hosted; logs go to stdout → operator's docker log driver |
@@ -273,7 +298,7 @@ L3-only, out of scope: none in this chapter (5.4 is L2).
 
 | ID | Requirement (abbrev.) | Status | Evidence |
 |---|---|---|---|
-| 6.1.1 | Regulated private data encrypted at rest | partial | Secrets (TOTP, integration credentials) are AES-256-GCM encrypted (`backend/services/credential_crypto.go:33-54`); contact PII in SQLite is **not** encrypted at rest — filesystem/disk encryption is the operator's (self-hosted; file perms 0600/0700/0750, see V12.4.1). |
+| 6.1.1 | Regulated private data encrypted at rest | satisfied | Secrets (TOTP, integration credentials) AES-256-GCM encrypted (`backend/services/credential_crypto.go:33-54`); user-authored PII field-level AES-256-GCM encrypted at rest — `backend/atrest` (issue #380): contact free-text/neutral card/crm/passthrough, `life_events.description`, `reminders.message`, `reminder_completions.message`, `gifts`, `preferences`, `conversation_agenda`, `audit_events.before_snapshot`, sync-conflict copies. Wrapped-DEK envelope: master key from `DATA_ENCRYPTION_KEY`/`_FILE` (HKDF-JWT fallback), DEK AES-GCM-wrapped into `data_encryption_keys`, ciphertext `encv1:`-prefixed (migration `000033`, backfill `atrest/backfill.go`). **Deliberate exception:** FTS5-indexed columns (`notes.content`, `activities.*`, flat contact search fields) stay plaintext so search works — documented in the threat model (issue #377). |
 | 6.1.2 | Regulated health data at rest | not-applicable | Neutral contact model has no medical fields; no regulated health data by design |
 | 6.1.3 | Regulated financial data at rest | not-applicable | Gift records are non-sensitive user-authored notes (no account/credit/tax data) |
 | 6.2.1 | Crypto fails securely, no padding oracle | satisfied | AEAD (GCM) — no padding to oracle; failures are generic 500s (`errors/errors.go:273-283`) |
@@ -287,7 +312,7 @@ L3-only, out of scope: none in this chapter (5.4 is L2).
 | 6.3.1 | CSPRNG for secrets | satisfied | `crypto/rand` for API tokens (`api_token_controller.go:65-70`), reset tokens (`password_reset_service.go:22-25`), recovery codes (`twofactor.go:103-122`), GCM nonces |
 | 6.3.2 | UUID v4 via CSPRNG | satisfied | `google/uuid` v4 in `BeforeCreate` (e.g. `models/circle.go:31`, `models/contact.go:415`) |
 | 6.3.3 | Entropy under load | out-of-scope | L3 |
-| 6.4.1 | Secrets-management solution | partial | Env-var secrets with boot-time validation — length, placeholder, and entropy checks on `JWT_SECRET_KEY` (`config/config.go:351-379`); no vault (self-hosted; see P2). |
+| 6.4.1 | Secrets-management solution | satisfied | Env-var/file secrets with boot-time validation — `JWT_SECRET_KEY` length/placeholder/entropy gates (`config/config.go:351-389`), `DATA_ENCRYPTION_KEY`/`_FILE` base64-32-byte validation (`config/config.go:411-436`); at-rest master key + wrapped-DEK envelope with a rotation tool (`cmd/rotate-at-rest-key`, `atrest.RotateMasterKey`) and a documented "lost key = lost data, by design" posture (`atrest/atrest.go`); no vault (self-hosted; see P2). |
 | 6.4.2 | Key material isolated from app | not-applicable | Single process; the secret must live in the process env by design (self-hosted; see P2) |
 
 ## V7 — Error Handling and Logging
@@ -326,7 +351,7 @@ L3-only, out of scope: 8.1.5, 8.1.6.
 | 8.3.4 | Sensitive-data policy in place | satisfied | `sensitivity` classification enforced in exports/sync/graph (V1.8.2); ADRs document the model (`docs/adrs/`) |
 | 8.3.5 | Sensitive-data access audited | partial | Mutations of all major entities audited with redacted before-snapshots (`backend/models/audit.go:105-175`); **reads** are not audited. Gap: read-auditing would be a deliberate privacy/performance choice. |
 | 8.3.6 | Memory zeroization | not-applicable | Go runtime; no explicit zeroization (accepted; see P2's scope note) |
-| 8.3.7 | Encryption with confidentiality+integrity | satisfied | AES-256-GCM for at-rest secrets (`credential_crypto.go:33-54`); TLS for transport |
+| 8.3.7 | Encryption with confidentiality+integrity | satisfied | AES-256-GCM for at-rest secrets (`credential_crypto.go:33-54`) and for field-level PII (`atrest`, issue #380); TLS for transport |
 | 8.3.8 | Retention classification, auto-delete | satisfied | T26 purge jobs (feed/audit retention, `backend/services/purge_service.go`, `audit_purge_service.go`); 410 Gone past purge window (`controllers/helpers.go:348-360`); soft-delete is the retention buffer for user content |
 
 ## V9 — Communication
