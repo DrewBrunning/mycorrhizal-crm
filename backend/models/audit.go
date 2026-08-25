@@ -148,7 +148,16 @@ func RegisterAuditDB(db *gorm.DB) {
 
 // AuditFlush blocks until every in-flight audit write has completed. Used by
 // tests (to read audit rows deterministically) and safe to call at shutdown.
+//
+// It holds a.mu across the Wait so a concurrent record() can never Add to the
+// WaitGroup while Wait is running: the WaitGroup contract forbids an Add that
+// starts at a zero counter concurrently with Wait (a data race that can lose a
+// wakeup at shutdown). Serializing Add and Wait on a.mu makes every Add that
+// began before the flush happen-before the Wait, which is what makes the drain
+// total rather than best-effort.
 func AuditFlush() {
+	auditRecorder.mu.Lock()
+	defer auditRecorder.mu.Unlock()
 	auditRecorder.wg.Wait()
 }
 
@@ -159,16 +168,22 @@ func AuditFlush() {
 // The chain append (read previous row's hash, compute this row's, insert) is
 // serialized on chainMu so concurrent events chain in id order.
 func (a *auditLogger) record(entityType, entityID, operation string, userID uint, snapshotJSON string) {
-	a.mu.RLock()
+	// The db-nil check and wg.Add(1) run atomically under a.mu so an Add can
+	// never start while AuditFlush's Wait is in progress (see AuditFlush for
+	// the WaitGroup-contract reasoning). The goroutine it spawns only touches
+	// chainMu and the DB session, never a.mu, so holding the lock across the
+	// drain cannot deadlock.
+	a.mu.Lock()
 	db := a.db
-	a.mu.RUnlock()
 	if db == nil {
 		// Not registered (e.g. AutoMigrate test DBs). Skip silently so hooks
 		// never disturb writes in environments without an audit session.
+		a.mu.Unlock()
 		return
 	}
-
 	a.wg.Add(1)
+	a.mu.Unlock()
+
 	go func() {
 		defer a.wg.Done()
 

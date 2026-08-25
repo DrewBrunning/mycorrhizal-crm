@@ -12,7 +12,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	"mycorrhizal/database"
@@ -30,14 +29,23 @@ func dbPath() string {
 	return defaultDBPath
 }
 
-func main() {
-	path := dbPath()
+// run backfills the chain on the database at path. Split out of main so the
+// failure path is covered by tests.
+func run(path string) error {
 	db, err := database.InitDB(path)
 	if err != nil {
-		log.Fatalf("failed to open database %s: %v", path, err)
+		return fmt.Errorf("failed to open database %s: %w", path, err)
 	}
 	if err := models.RecomputeAuditChain(db); err != nil {
-		log.Fatalf("audit hash chain backfill failed: %v", err)
+		return fmt.Errorf("audit hash chain backfill failed: %w", err)
 	}
 	fmt.Printf("Audit hash chain is complete on %s\n", path)
+	return nil
+}
+
+func main() {
+	if err := run(dbPath()); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 }

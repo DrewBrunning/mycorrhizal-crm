@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -76,9 +77,20 @@ func TestAuditChain_ConcurrentAppendsDoNotFork(t *testing.T) {
 	db, user := newChainTestDB(t)
 
 	const n = 40
+	// Barrier: every RecordAuditEvent must have completed its synchronous
+	// wg.Add before AuditFlush runs. The WaitGroup contract forbids an Add
+	// starting from a zero counter while Wait is in progress, and the barrier
+	// keeps the row-count assertion deterministic instead of racing the
+	// recorder's goroutines.
+	var allQueued sync.WaitGroup
+	allQueued.Add(n)
 	for i := 0; i < n; i++ {
-		go RecordAuditEvent(AuditEntityAuth, fmt.Sprintf("u%d", i), AuditOpLogin, user.ID)
+		go func(seq int) {
+			defer allQueued.Done()
+			RecordAuditEvent(AuditEntityAuth, fmt.Sprintf("u%d", seq), AuditOpLogin, user.ID)
+		}(i)
 	}
+	allQueued.Wait()
 	AuditFlush()
 
 	var events []AuditEvent
@@ -241,4 +253,39 @@ func TestAuditChain_VerifyIsReadOnly(t *testing.T) {
 	gaps2, err := VerifyAuditChain(db)
 	require.NoError(t, err)
 	require.NotEmpty(t, gaps2, "verification must not launder a tampered chain")
+}
+
+// TestAuditChain_EmptyTableIsIntact pins the edge inputs to the chain
+// operations: an empty audit table is a trivially intact chain, and a nil
+// *gorm.DB is a clean no-op for both the verifier and the recompute path.
+func TestAuditChain_EmptyTableIsIntact(t *testing.T) {
+	db, _ := newChainTestDB(t)
+
+	gaps, err := VerifyAuditChain(db)
+	require.NoError(t, err)
+	assert.Empty(t, gaps, "an empty audit table is a trivially intact chain")
+
+	require.NoError(t, RecomputeAuditChain(db), "recompute on an empty table is a no-op")
+
+	gaps, err = VerifyAuditChain(nil)
+	require.NoError(t, err)
+	assert.Empty(t, gaps, "a nil DB is a no-op for the verifier")
+
+	require.NoError(t, RecomputeAuditChain(nil), "a nil DB is a no-op for recompute")
+}
+
+// TestAuditChain_ClosedDBErrors pins that a DB failure surfaces as an error
+// from both the verifier and the recompute path — never a panic and never a
+// silent "intact".
+func TestAuditChain_ClosedDBErrors(t *testing.T) {
+	db, _ := newChainTestDB(t)
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	require.NoError(t, sqlDB.Close())
+
+	_, err = VerifyAuditChain(db)
+	require.Error(t, err)
+
+	err = RecomputeAuditChain(db)
+	require.Error(t, err)
 }

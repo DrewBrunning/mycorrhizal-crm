@@ -8,7 +8,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	"mycorrhizal/database"
@@ -26,23 +25,30 @@ func dbPath() string {
 	return defaultDBPath
 }
 
-func main() {
-	path := dbPath()
+// run verifies the chain on the database at path and returns the process exit
+// code (0 intact / 1 gap / 2 check failed). Split out of main so the exit
+// paths are covered by tests.
+func run(path string) int {
 	db, err := database.InitDB(path)
 	if err != nil {
-		log.Fatalf("failed to open database %s: %v", path, err)
+		fmt.Fprintf(os.Stderr, "failed to open database %s: %v\n", path, err)
+		return 1
 	}
 
 	gaps, err := models.VerifyAuditChain(db)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "audit hash chain verification failed on %s: %v\n", path, err)
-		os.Exit(2)
+		return 2
 	}
 	if len(gaps) == 0 {
 		fmt.Printf("Audit hash chain is intact on %s\n", path)
-		return
+		return 0
 	}
 	gap := gaps[0]
 	fmt.Fprintf(os.Stderr, "Audit hash chain BROKEN on %s at event %d: %s\n", path, gap.EventID, gap.Message)
-	os.Exit(1)
+	return 1
+}
+
+func main() {
+	os.Exit(run(dbPath()))
 }

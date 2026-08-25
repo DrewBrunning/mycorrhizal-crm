@@ -95,3 +95,42 @@ func TestPurgeExpiredAuditEvents_RelinksHashChain(t *testing.T) {
 	require.NoError(t, db.Order("id asc").First(&head).Error)
 	assert.Empty(t, head.PrevHash, "the new head must restart the chain from genesis")
 }
+
+// TestPurgeExpiredAuditEvents_RecomputeFailureIsSwallowed pins that a failure
+// to re-link the hash chain after a purge is logged and swallowed, never a
+// panic: the retention delete already happened, so losing the re-link must not
+// take the whole purge down.
+func TestPurgeExpiredAuditEvents_RecomputeFailureIsSwallowed(t *testing.T) {
+	db, err := database.InitDB(filepath.Join(t.TempDir(), "audit-purge-fail.db"))
+	require.NoError(t, err)
+	models.RegisterAuditDB(db)
+	t.Cleanup(func() {
+		models.AuditFlush()
+		models.RegisterAuditDB(nil)
+	})
+
+	user := models.User{Username: "purgefail", Password: "password123!A", Email: "purgefail@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+	require.NoError(t, db.Create(&models.AuditEvent{
+		EntityType: models.AuditEntityAuth, EntityID: "alice", Operation: models.AuditOpLogin,
+		UserID: user.ID, CreatedAt: time.Now().AddDate(0, 0, -40).UTC(),
+	}).Error)
+	require.NoError(t, db.Create(&models.AuditEvent{
+		EntityType: models.AuditEntityAuth, EntityID: "bob", Operation: models.AuditOpLogin,
+		UserID: user.ID, CreatedAt: time.Now().UTC(),
+	}).Error)
+
+	// A second BEFORE UPDATE trigger makes the re-link fail: RecomputeAuditChain
+	// only drops its own audit_events_no_update trigger, so this one survives
+	// and rejects the hash/prev_hash UPDATE. The purge must still delete the
+	// aged-out row and continue without panicking.
+	require.NoError(t, db.Exec("CREATE TRIGGER audit_events_block_update "+
+		"BEFORE UPDATE ON audit_events BEGIN SELECT RAISE(ABORT, 'blocked'); END").Error)
+
+	PurgeExpiredAuditEvents(db, config.Config{AuditRetentionDays: 30})
+
+	var remaining []models.AuditEvent
+	require.NoError(t, db.Find(&remaining).Error)
+	require.Len(t, remaining, 1, "the aged-out row must still be purged even though re-linking failed")
+	assert.Equal(t, "bob", remaining[0].EntityID)
+}

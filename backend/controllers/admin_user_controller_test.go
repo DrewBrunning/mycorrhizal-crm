@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"mycorrhizal/config"
+	"mycorrhizal/database"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
@@ -648,6 +650,56 @@ func TestUpdateUser_PasswordReset_IncrementsTokenVersion(t *testing.T) {
 	require.NoError(t, db.First(&updated, target.ID).Error)
 	assert.NotEqual(t, originalHash, updated.Password, "password hash should change")
 	assert.Equal(t, uint(4), updated.TokenVersion, "resetting a password must bump TokenVersion to invalidate existing sessions")
+}
+
+// TestUpdateUser_RoleChange_RecordsAuditEvent pins issue #381's admin-edit
+// audit contract: an admin flipping a user's is_admin must produce both the
+// plain update event and a dedicated role_change event, attributed to the
+// acting admin.
+func TestUpdateUser_RoleChange_RecordsAuditEvent(t *testing.T) {
+	db, err := database.InitDB(filepath.Join(t.TempDir(), "admin-role-audit.db"))
+	require.NoError(t, err)
+	models.RegisterAuditDB(db)
+	t.Cleanup(func() {
+		models.AuditFlush()
+		models.RegisterAuditDB(nil)
+	})
+
+	actor := models.User{Username: "adminactor", Password: "password123!A", Email: "adminactor@example.com", IsAdmin: true}
+	require.NoError(t, db.Create(&actor).Error)
+	target := models.User{Username: "promotee", Password: "password123!A", Email: "promotee@example.com"}
+	require.NoError(t, db.Create(&target).Error)
+
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("db", db)
+		c.Set("userID", actor.ID)
+		c.Set("username", actor.Username)
+		c.Set("cfg", config.Config{})
+		c.Next()
+	})
+	router.PATCH("/users/:id", withValidated(func() any { return &models.AdminUserUpdateInput{} }), UpdateUser)
+
+	admin := true
+	payload := models.AdminUserUpdateInput{IsAdmin: &admin}
+	jsonValue, _ := json.Marshal(payload)
+
+	req, _ := http.NewRequest("PATCH", "/users/"+strconv.Itoa(int(target.ID)), bytes.NewBuffer(jsonValue))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	models.AuditFlush()
+
+	var ops []string
+	require.NoError(t, db.Model(&models.AuditEvent{}).
+		Where("entity_type = ? AND entity_id = ?", models.AuditEntityUser, strconv.Itoa(int(target.ID))).
+		Order("id asc").Pluck("operation", &ops).Error)
+	assert.Contains(t, ops, models.AuditOpUpdate, "an admin user edit must be audited")
+	assert.Contains(t, ops, models.AuditOpRoleChange, "a role change must be audited as its own event")
+	assert.NotContains(t, ops, models.AuditOpPasswordReset, "no password reset was requested")
 }
 
 func TestUpdateUser_NotFound(t *testing.T) {
