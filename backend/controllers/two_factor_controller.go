@@ -397,7 +397,8 @@ func Complete2FALogin(c *gin.Context, cfg *config.Config) {
 	}
 
 	// Clear the one-time challenge and issue the real session.
-	c.SetSameSite(http.SameSiteLaxMode)
+	// Issue #392: Strict — only ever read/set by same-origin XHR.
+	c.SetSameSite(http.SameSiteStrictMode)
 	c.SetCookie("2fa_pending", "", -1, "/", cfg.CookieDomain, cfg.CookieSecure, true)
 	c.SetCookie(
 		"auth_token",
@@ -447,7 +448,8 @@ func reissueSessionToken(c *gin.Context, user models.User) {
 		logger.FromContext(c).Error().Err(err).Uint("user_id", user.ID).Msg("Failed to re-issue token after 2FA change")
 		return
 	}
-	c.SetSameSite(http.SameSiteLaxMode)
+	// Issue #392: Strict, matching the cookie as set at login.
+	c.SetSameSite(http.SameSiteStrictMode)
 	c.SetCookie(
 		"auth_token",
 		tokenString,

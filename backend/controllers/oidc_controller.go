@@ -77,6 +77,12 @@ func OIDCLoginHandler(provider *services.OIDCProvider, cfg *config.Config) gin.H
 		}
 		pkceVerifier := services.GeneratePKCEVerifier()
 
+		// Issue #392: these cookies must stay Lax, not Strict, unlike the
+		// session cookies set below at the callback. The browser reaches
+		// /auth/oidc/callback via a cross-site top-level redirect *from the
+		// IdP* — a Strict cookie would never be attached to that request, so
+		// the callback would always see it missing and fail every OIDC
+		// login.
 		c.SetSameSite(http.SameSiteLaxMode)
 		c.SetCookie("oidc_state", state, 600, "/api/v1/auth/oidc/callback", cfg.CookieDomain, cfg.CookieSecure, true)
 		c.SetCookie("oidc_nonce", nonce, 600, "/api/v1/auth/oidc/callback", cfg.CookieDomain, cfg.CookieSecure, true)
@@ -231,7 +237,12 @@ func OIDCCallbackHandler(provider *services.OIDCProvider, cfg *config.Config) gi
 		}
 
 		maxAge := cfg.JWTExpiryHours * 3600
-		c.SetSameSite(http.SameSiteLaxMode)
+		// Issue #392: Strict, unlike the oidc_state/nonce/pkce cookies above.
+		// This redirect to "/" is same-origin (the callback is already on
+		// this app's own domain), and every read of this cookie afterward is
+		// a same-origin XHR/fetch from the loaded SPA — never a top-level
+		// cross-site navigation — so Strict costs nothing here.
+		c.SetSameSite(http.SameSiteStrictMode)
 		c.SetCookie("auth_token", tokenString, maxAge, "/", cfg.CookieDomain, cfg.CookieSecure, true)
 		// Retained for RP-Initiated Logout's id_token_hint (LogoutUser) — its
 		// presence is also how logout knows this session came via SSO at all.
