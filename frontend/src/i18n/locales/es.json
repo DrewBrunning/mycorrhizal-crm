@@ -1991,6 +1991,7 @@
       "register": "Registrado",
       "password_change": "Contraseña cambiada",
       "password_reset": "Contraseña restablecida",
+      "password_reset_requested": "Restablecimiento de contraseña solicitado",
       "totp_enable": "2FA activado",
       "totp_disable": "2FA desactivado",
       "recovery_regenerate": "Códigos de recuperación regenerados",

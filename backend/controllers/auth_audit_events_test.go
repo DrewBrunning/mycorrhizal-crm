@@ -59,6 +59,9 @@ func newAuthAuditRouter(t *testing.T) (*gorm.DB, *gin.Engine, models.User) {
 	router.POST("/register", middleware.ValidateJSONMiddleware(&models.UserRegistrationInput{}), RegisterUser(&cfg))
 	router.POST("/login", func(c *gin.Context) { LoginUser(c, &cfg) })
 
+	router.POST("/password-reset/request", middleware.ValidateJSONMiddleware(&models.PasswordResetRequestInput{}), func(c *gin.Context) { RequestPasswordReset(c, &cfg) })
+	router.POST("/password-reset/confirm", middleware.ValidateJSONMiddleware(&models.PasswordResetConfirmInput{}), func(c *gin.Context) { ConfirmPasswordReset(c, &cfg) })
+
 	// Protected routes (context-authenticated as `actor`).
 	router.POST("/users/change-password", middleware.ValidateJSONMiddleware(&models.ChangePasswordInput{}), func(c *gin.Context) { ChangePassword(c, &cfg) })
 	router.POST("/api-tokens", middleware.ValidateJSONMiddleware(&models.ApiTokenInput{}), CreateApiToken)
@@ -159,6 +162,70 @@ func TestAuthAuditEvents_PasswordChange(t *testing.T) {
 	models.AuditFlush()
 
 	assert.EqualValues(t, 1, countAudit(t, db, models.AuditEntityUser, fmt.Sprintf("%d", actor.ID), models.AuditOpPasswordChange))
+}
+
+// TestAuthAuditEvents_PasswordReset pins issue #411's audit requirement: both
+// the reset *request* and the successful *confirm* are audited, distinctly,
+// against the real migrated schema (the widened operation CHECK from
+// migration 000035 only exists there, not under AutoMigrate).
+func TestAuthAuditEvents_PasswordReset(t *testing.T) {
+	db, router, _ := newAuthAuditRouter(t)
+
+	hashed, err := services.HashPassword(strongPassword)
+	require.NoError(t, err)
+	user := models.User{Username: "resetsubject", Email: "resetsubject@example.com", Password: hashed}
+	require.NoError(t, db.Create(&user).Error)
+
+	w := auditDoJSON(router, "POST", "/password-reset/request", models.PasswordResetRequestInput{Email: user.Email})
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	models.AuditFlush()
+
+	assert.EqualValues(t, 1, countAudit(t, db, models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpPasswordResetRequested))
+
+	var withToken models.User
+	require.NoError(t, db.First(&withToken, user.ID).Error)
+	require.NotNil(t, withToken.PasswordResetTokenHash)
+
+	// The controller only ever sees the hashed token; recover the raw one the
+	// same way the confirm test helpers elsewhere in this package do -- by
+	// generating it ourselves and overwriting the stored hash, since the
+	// service never returns the raw token back out through a real HTTP call.
+	rawToken, tokenHash, err := services.GeneratePasswordResetToken()
+	require.NoError(t, err)
+	require.NoError(t, db.Model(&withToken).Update("password_reset_token_hash", tokenHash).Error)
+
+	w = auditDoJSON(router, "POST", "/password-reset/confirm", models.PasswordResetConfirmInput{
+		Token:    rawToken,
+		Password: strongPasswordAlt,
+	})
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	models.AuditFlush()
+
+	assert.EqualValues(t, 1, countAudit(t, db, models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpPasswordReset))
+
+	// The events chain up like every other audited operation.
+	models.RecomputeAuditChain(db)
+	gaps, err := models.VerifyAuditChain(db)
+	require.NoError(t, err)
+	assert.Empty(t, gaps, "password-reset events must form a valid hash chain")
+}
+
+// TestAuthAuditEvents_PasswordResetRequest_UnknownEmail_NotAudited pins the
+// other half of issue #411's enumeration-resistance requirement: the audit
+// trail itself must not become a side channel for testing which emails have
+// accounts, so a request for an unknown email must record nothing.
+func TestAuthAuditEvents_PasswordResetRequest_UnknownEmail_NotAudited(t *testing.T) {
+	db, router, _ := newAuthAuditRouter(t)
+
+	w := auditDoJSON(router, "POST", "/password-reset/request", models.PasswordResetRequestInput{Email: "nobody@example.com"})
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	models.AuditFlush()
+
+	var n int64
+	require.NoError(t, db.Model(&models.AuditEvent{}).
+		Where("operation = ?", models.AuditOpPasswordResetRequested).
+		Count(&n).Error)
+	assert.EqualValues(t, 0, n, "an unknown email must not produce any password_reset_requested audit row")
 }
 
 func TestAuthAuditEvents_APITokenCreateAndRevoke(t *testing.T) {

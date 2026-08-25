@@ -372,6 +372,11 @@ func RequestPasswordReset(context *gin.Context, cfg *config.Config) {
 		return
 	}
 
+	// T18/issue #411 audit: reset requested for a known account. Only reached
+	// for a known email -- the unknown-email branch above returns first -- so
+	// this can't itself be used to enumerate accounts.
+	models.RecordAuditEvent(models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpPasswordResetRequested, user.ID)
+
 	if err := services.SendPasswordResetEmail(user.Email, token, user.Language, cfg); err != nil {
 		log.Error().Err(err).Uint("user_id", user.ID).Msg("Failed to send password reset email")
 		apperrors.AbortWithError(context, apperrors.ErrExternal("email", "Failed to send password reset email").WithError(err))
@@ -466,6 +471,28 @@ func ConfirmPasswordReset(context *gin.Context, cfg *config.Config) {
 
 	// T18 audit: password changed via the recovery path (issue #381).
 	models.RecordAuditEvent(models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpPasswordReset, user.ID)
+
+	// Issue #411: a reset is the recovery path for a suspected compromise, so
+	// standing API tokens must not survive it either -- TokenVersion above
+	// only covers JWTs, which carry no version of their own (see
+	// ChangePassword's comment on why *that* self-service path leaves them
+	// alone; here the threat model is different).
+	revokedAt := time.Now()
+	if err := db.Model(&models.ApiToken{}).
+		Where("user_id = ? AND revoked_at IS NULL", user.ID).
+		Update("revoked_at", revokedAt).Error; err != nil {
+		// The password change already succeeded; a failure here would be
+		// misleading to report as a reset failure. Logged so it isn't silent.
+		log.Error().Err(err).Uint("user_id", user.ID).Msg("Failed to revoke API tokens after password reset")
+	}
+
+	// Issue #411 / ASVS 2.2.3: let the account owner know a reset happened,
+	// so they notice if it wasn't them. Best-effort -- the password is
+	// already changed and every session/token already revoked above, so a
+	// failed notification must not turn into a failed reset.
+	if err := services.SendPasswordChangedEmail(user.Email, user.Language, cfg); err != nil {
+		log.Warn().Err(err).Uint("user_id", user.ID).Msg("Failed to send password-changed notification email")
+	}
 
 	context.JSON(http.StatusOK, gin.H{"message": "Password reset successful"})
 }

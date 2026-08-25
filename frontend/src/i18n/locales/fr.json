@@ -1991,6 +1991,7 @@
       "register": "Inscription",
       "password_change": "Mot de passe modifié",
       "password_reset": "Mot de passe réinitialisé",
+      "password_reset_requested": "Réinitialisation du mot de passe demandée",
       "totp_enable": "2FA activée",
       "totp_disable": "2FA désactivée",
       "recovery_regenerate": "Codes de récupération régénérés",

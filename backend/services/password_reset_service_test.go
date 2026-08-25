@@ -169,3 +169,43 @@ func TestSendPasswordResetEmail(t *testing.T) {
 		assert.NoError(t, err)
 	})
 }
+
+// TestSendPasswordChangedEmail mirrors TestSendPasswordResetEmail's coverage
+// for the password-changed notification added by issue #411 / ASVS 2.2.3.
+func TestSendPasswordChangedEmail(t *testing.T) {
+	t.Run("returns error when config is nil", func(t *testing.T) {
+		err := SendPasswordChangedEmail("user@example.com", "en", nil)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "config is required")
+	})
+
+	t.Run("no-ops successfully when no email channel is configured", func(t *testing.T) {
+		cfg := &config.Config{}
+		err := SendPasswordChangedEmail("user@example.com", "en", cfg)
+		assert.NoError(t, err)
+	})
+
+	t.Run("defaults to English when lang is empty and no channel configured", func(t *testing.T) {
+		cfg := &config.Config{}
+		err := SendPasswordChangedEmail("user@example.com", "", cfg)
+		assert.NoError(t, err)
+	})
+
+	t.Run("propagates error when configured channel fails to send", func(t *testing.T) {
+		cfg := &config.Config{
+			UseSMTP:       true,
+			SMTPHost:      "127.0.0.1",
+			SMTPPort:      1,
+			SMTPFromEmail: "noreply@example.com",
+		}
+
+		err := SendPasswordChangedEmail("user@example.com", "en", cfg)
+		require.Error(t, err)
+	})
+
+	t.Run("unknown language falls back without erroring", func(t *testing.T) {
+		cfg := &config.Config{}
+		err := SendPasswordChangedEmail("user@example.com", "xx-not-a-real-lang", cfg)
+		assert.NoError(t, err)
+	})
+}

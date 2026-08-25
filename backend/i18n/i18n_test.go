@@ -221,6 +221,8 @@ func TestT_AllSupportedLanguagesHaveExpectedKeys(t *testing.T) {
 		"email.reminder.subject",
 		"email.reminder.inDays",
 		"email.passwordReset.subject",
+		"email.passwordChanged.subject",
+		"email.passwordChanged.warning",
 		"calendar.untitledEvent",
 	}
 
