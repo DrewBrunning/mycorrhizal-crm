@@ -1,0 +1,181 @@
+# Threat model + security architecture
+
+The answer to "what happens if an attacker gets X?" for every asset this app holds, and the record of
+every gating security decision this project has deliberately made rather than left implied. This doc is
+the ASVS V1.2 (threat modeling) and V1.14 (security architecture) artifact; `docs/security/asvs-l2.md`
+and `docs/security/masvs-l1.md` are the per-control checklists this doc's claims cite into — this doc
+does not re-derive `file:line` evidence that already lives there.
+
+| | |
+|---|---|
+| **Last updated** | 2026-08-25 (issue [#377](https://github.com/DrewBrunning/mycorrhizal-crm/issues/377)) |
+| **Scope** | Backend (Go/Gin + SQLite), frontend (React SPA), Android client, CardDAV/CalDAV sync, self-hosted deployment. |
+| **Companion docs** | `docs/security/asvs-l2.md` (backend/frontend/deployment controls, OWASP ASVS 4.0.3 + API Top 10), `docs/security/masvs-l1.md` (Android client controls, OWASP MASVS 1.5.0) |
+
+"Answered in the doc" means: pick any asset below, and this doc plus its two companions tells you what
+protects it, who could threaten it, and what happens if that control fails.
+
+## The self-hosted boundary, as a first-class assumption
+
+**The operator owns the host, the disk, the network, and the logs.** State it once here and every other
+section derives from it:
+
+- There is no multi-tenant cloud boundary to defend — a compromised host is a compromised deployment,
+  full stop. Controls in this doc therefore target *network* and *application* attackers (someone who
+  doesn't already have host access), not an operator attacking their own instance.
+- This is the same position `masvs-l1.md` P1 already argues for the Android client (no certificate
+  pinning against a self-hosted origin the operator controls) and that `asvs-l2.md` uses to mark
+  mTLS/KMS/centralized-log-shipping `not-applicable` (V1.2.2, V1.6.2, V1.7.2, V6.4.2) — this doc just
+  names the assumption instead of leaving five separate rows to each imply it.
+- It bounds what "at rest" protection means: field-level encryption (below) defends a *stolen disk or
+  backup*, not a *live, logged-in root shell on the box* — no software control defends against the
+  second, by definition, for a single-process self-hosted app.
+- It does **not** excuse anything reachable over the network without host access: authentication,
+  authorization, session handling, SSRF, and input validation are full-strength regardless of
+  self-hosting, and are covered like any other app (`asvs-l2.md` V2–V5, V9, V12, V13).
+
+## Assets
+
+| Asset | Where it lives | What "compromised" means |
+|---|---|---|
+| Contact/note/activity/life-event content (PII) | SQLite, field-level AES-256-GCM encrypted at rest (`backend/atrest`, issue #380) except FTS-indexed columns (plaintext by necessity — see Gating decision 1) | Disclosure of a user's personal relationship data; on a *live* DB this is scoped per-user by every query (`asvs-l2.md` V4/API1) |
+| Password hashes | `users.password_hash`, bcrypt cost 10 | Offline cracking attempt only — bcrypt cost 10 is the throttle (`asvs-l2.md` P1) |
+| JWT signing key (`JWT_SECRET_KEY`) | Operator env var/file | Forge any session for any user; boot-time strength validation is the only defense (`asvs-l2.md` P2, V1.6.1) |
+| TOTP seeds + recovery codes | AES-256-GCM encrypted, key HKDF-derived from `JWT_SECRET_KEY` (`backend/services/credential_crypto.go`) | Bypass a user's second factor |
+| API tokens (`full`/`carddav` scope) | Hashed at rest (`asvs-l2.md` V3.5.2) | Scoped account takeover — bounded by scope, see the persona gap in Gap 2 below |
+| Integration credentials (WebDAV/Immich/Seafile) | AES-256-GCM encrypted (`credential_crypto.go`) | Pivot into a user's external services |
+| Attachments/photos | Filesystem, UUID-named, 0700/0750 perms (`asvs-l2.md` V12.4.1) | Disclosure of uploaded files; traversal/SSRF guarded (V12.3) |
+| At-rest master key / wrapped DEK | `DATA_ENCRYPTION_KEY`/`_FILE`, `data_encryption_keys` table | Losing it makes every encrypted column undecryptable, **by design** (`asvs-l2.md` P4) — the flip side, gaining it, decrypts everything it wraps |
+| Android session token | `EncryptedSharedPreferences` behind a Keystore `MasterKey` (`masvs-l1.md` STORAGE-1) | Session takeover from a compromised/rooted device — accepted risk, see Gating decision 3 |
+| Android local mirror (Room DB) | SQLCipher whole-DB encrypted (`masvs-l1.md` P4, issue #385) | Offline PII disclosure from a lost/stolen device |
+| Backups | Operator-managed, outside this app's control today | Disclosure of everything the live DB holds — no backup-specific encryption/immutability yet (tracked: #420, #505) |
+
+## Trust boundaries
+
+The chain data crosses, narrowest to widest:
+
+```
+browser → API → database → filesystem → integrations → Android local DB → backups
+```
+
+| Hop | Enforced by |
+|---|---|
+| browser → API | TLS at the operator's reverse proxy (`docs/deployment.md:17`); CORS strict origin allowlist, `"*"` refused in release (`backend/main.go:191-209`, `backend/config/config.go:359-364`); CSP/HSTS/`nosniff`/frame-ancestors (`backend/middleware/security_headers.go`) |
+| API → database | Every query AND-scoped by `user_id`/`VCardUID` (`asvs-l2.md` V4, API1); parameterized SQL only (V5.3.4) |
+| API → filesystem | UUID filenames, traversal guards, 0700/0750 perms (`asvs-l2.md` V12.3–V12.4) |
+| API → integrations | Public-IP-only SSRF dialer with DNS-rebinding pinning, per-service opt-in (`backend/httputil/safedial.go:27-47`, `asvs-l2.md` V5.2.6/API7) |
+| API → Android local DB | Android is a thin client; the API is the only path to data, and everything it returns lands in the SQLCipher-encrypted Room mirror (`masvs-l1.md` V2, V4) |
+| database/filesystem → backups | Operator-managed today; no app-level backup encryption yet — see Assets table and #420/#505 |
+
+## Actors × trust boundaries
+
+Each actor sits on a boundary, is neutralized by a control, and is verified by a test or issue.
+
+| Actor | Boundary | Neutralizing control | Verification |
+|---|---|---|---|
+| Unauthenticated network attacker | browser→API | authz middleware, TLS, rate limiting, security headers | `asvs-l2.md` V2, V9, V14.4; issues #371/#551, #373, #374, #368, #369 |
+| Authenticated ordinary user (BOLA/IDOR) | API | `user_id`/`VCardUID` scoping | `asvs-l2.md` V4.2.1/API1; exhaustive route × six-persona matrix, issue #371/#551 |
+| Compromised authenticated session | browser→API | `TokenVersion` revocation, httpOnly cookie, CSRF mitigation | `asvs-l2.md` V3.3.3, V4.2.2; issues #372, #392, #419 |
+| Malicious/misconfigured CardDAV client | sync→API | CardDAV Basic auth, per-user collections | **gap** — the #371/#551 persona matrix covers cookie-JWT actors only, not a CardDAV Basic-auth credential or a `carddav`-scoped API token; tracked in issue [#566](https://github.com/DrewBrunning/mycorrhizal-crm/issues/566) |
+| Malicious imported vCard/JSContact | import parser→DB | parser validation, fuzzing, hostile-input neutralization | issues #375, #376, `controllers/hostile_input_e2e_test.go` |
+| Malicious attachment | →filesystem | magic-byte validation, randomized names, SSRF-safe proxy | issue #375, `asvs-l2.md` V12.2.1/V12.3.2 |
+| Malicious API client | →API | token scopes, rate limiting | issues #371/#551, #413, #415; scope-enforcement gap shares issue #566 |
+| Compromised external integration | →integrations | SSRF dialer, fail-secure | `asvs-l2.md` V5.2.6/API7; issues #373, #465, #366 |
+| Compromised host/container | →host | non-root, minimal caps, hardening | `asvs-l2.md` V1.2.1, V1.14.5; issues #362, #417 |
+| Filesystem access to deployment (stolen disk) | →filesystem | field-level at-rest encryption | `asvs-l2.md` V6.1.1/P4, issue #380 |
+| Obtains a backup | →backups | not yet: no backup encryption/immutability | issues #420, #505 (deferred to v0.5.0/beta per the release roadmap) |
+| Obtains JWT/API credentials | →session | secret strength validation, `TokenVersion`, token expiry/revocation | `asvs-l2.md` V1.6.1, V3.3.3; issues #393, #372, #413, #411 |
+| Malicious data via CardDAV/CalDAV sync (reconcile path) | integrations→DB | parser validation on reconcile, same bar as import | **gap** — tracked in open issue [#512](https://github.com/DrewBrunning/mycorrhizal-crm/issues/512); the import assistant (#375) neutralizes hostile input, the sync reconcile path does not yet have equivalent E2E coverage |
+| Lost/stolen Android device | device→local DB | SQLCipher-encrypted Room mirror, Keystore-backed session token, logout purge | `masvs-l1.md` STORAGE-1/P4, issue #385 |
+
+## Controls → threat mapping
+
+Rather than re-list individual `file:line`s (they're already cited row-by-row in the companion
+checklists), this maps each actor class above to the *chapter* that answers it in detail:
+
+- **Network/unauthenticated attackers** → `asvs-l2.md` V2 (Authentication), V9 (Communication), V14.4
+  (security headers).
+- **Authenticated-user BOLA/IDOR** → `asvs-l2.md` V4 (Access Control), API Top 10 → API1.
+- **Session/credential compromise** → `asvs-l2.md` V3 (Session Management), V1.6 (key management).
+- **Hostile input (import, upload, sync)** → `asvs-l2.md` V5 (Validation/Sanitization), V12 (Files and
+  Resources).
+- **SSRF / malicious integrations** → `asvs-l2.md` V5.2.6, API Top 10 → API7/API10.
+- **Data-at-rest (stolen disk/backup, lost device)** → `asvs-l2.md` V6 (Stored Cryptography), V8 (Data
+  Protection); `masvs-l1.md` V2 (Data Storage and Privacy), V3 (Cryptography).
+- **Misconfiguration / deployment** → `asvs-l2.md` V14 (Configuration), V1.14 (Architecture).
+
+## Gating decisions
+
+The five decisions #377 asked to be explicitly revisited. All five were already resolved by prior work
+(#380, #385, and the original security-hardening pass); this section is the written-down record the
+issue asked for, each with a **keep** or **reverse** and why.
+
+### 1. Data-at-rest encryption (ASVS V6.4/V8.3)
+
+**Keep — encrypted, not just "operator owns the disk."** SQLite stores user-authored PII plaintext
+by default; issue #380 added field-level AES-256-GCM encryption for everything sensitive that isn't
+searched (contact free text, the neutral card, life events, reminders, gifts, preferences, conversation
+notes, audit snapshots, sync-conflict copies), via a single wrapped-DEK envelope
+(`backend/atrest`, `asvs-l2.md` V6.1.1 + P4). **Deliberate exception:** FTS5-indexed columns
+(`notes.content`, `activities.*`, flat contact search fields) stay plaintext because SQL triggers can't
+decrypt for indexing — this is the searchable-plaintext set referenced throughout this doc as the one
+gap in an otherwise encrypted-at-rest dataset. The compensating control for that exception is still the
+self-hosted boundary: those columns are protected the same way the *whole* DB was before #380 (operator
+owns the disk), not left unprotected relative to some higher bar.
+
+### 2. JWT key management (ASVS V6.4.1)
+
+**Keep — env var + boot-time validation + revocation, not a vault.** `JWT_SECRET_KEY` is validated at
+boot for length (≥ 32 bytes), placeholder rejection, and minimum entropy (`backend/config/config.go:351-389`).
+There is no key-vault/KMS (`asvs-l2.md` V1.6.2 — not-applicable, self-hosted single process). Rotation
+works via `TokenVersion`: bumping it invalidates every existing session immediately
+(`backend/middleware/auth.go:141-154`); rotating the key itself is a restart with a new env var, at the
+cost of invalidating the TOTP/integration-credential encryption that's HKDF-derived from it
+(`credential_crypto.go:20-21`, `asvs-l2.md` P2). This coupling is accepted, not accidental: introducing
+a dedicated key-derivation abstraction is deferred to when a second algorithm is actually adopted (P2).
+
+### 3. MASVS-L2 resilience items (root detection, certificate pinning, screenshot prevention, tapjacking)
+
+**Keep the decline — the app claims MASVS-L1, not L2.** `android/.mobsf` ignore-list entries and
+`masvs-l1.md` P1/P3 already record this with full rationale: pinning a self-hosted origin the operator
+controls would break every cert rotation without answering a realistic MITM threat (P1); root/SafetyNet/
+screenshot/tapjacking hardening are L2/resilience controls that don't fit a single-user personal CRM,
+and SafetyNet itself is deprecated (P3). This doc's contribution is the explicit claim-level statement
+the issue asked for: **the Android client's assurance target is MASVS-L1**, and that's a deliberate
+scope decision, not an oversight — MASVS-L2 is not being claimed and none of its resilience rows are
+counted toward "satisfied" anywhere in `masvs-l1.md`.
+
+### 4. mTLS / KMS / centralized log anomaly detection
+
+**Keep not-applicable.** All three assume infrastructure this app doesn't have: mTLS assumes
+service-to-service traffic (`asvs-l2.md` V1.2.2 — single process, nginx→app is loopback), KMS assumes a
+cloud key-management API (V1.6.2/V6.4.2 — secrets are env vars by design, see Gating decision 2),
+centralized log shipping assumes a remote log pipeline (V1.7.2 — self-hosted, logs go to stdout → the
+operator's own docker log driver). Each row already states this as a decision, not a silent gap; this
+section exists so the *reason* — the self-hosted boundary — is stated once instead of implied five
+times.
+
+### 5. Session cookie flags (ASVS V3.4: HttpOnly/Secure/SameSite)
+
+**Keep, verified against the exact code.** `backend/controllers/user_controller.go:205-214` sets the
+session cookie `HttpOnly` (always), `Secure = cfg.CookieSecure`, and `SameSite=Lax`. Boot-time config
+validation refuses the insecure combination `FRONTEND_URL=https` + `COOKIE_SECURE=false`
+(`backend/config/config.go:375-380`), so a misconfigured deployment can't accidentally serve an
+HTTPS-fronted cookie without `Secure`. No `__Host-` prefix (`asvs-l2.md` V3.4.4, partial) — the cookie
+must remain host-only rather than prefix-locked while plain-HTTP LAN deployments are supported
+(`.env.example:110-122`); revisit if/when HTTP-only self-hosting is dropped.
+
+## How to keep this honest
+
+- A reviewer can answer "what happens if an attacker gets X?" for every asset in the Assets table by
+  reading this doc plus the two companion checklists it cites into.
+- Each of the five gating decisions above has an explicit **keep** and a recorded reason — none is left
+  as an implication.
+- `asvs-l2.md`'s V1.1.2, V1.1.4, and V6.1.1 rows cite this doc instead of re-deriving trust-boundary or
+  threat-modeling detail.
+- The two open gaps found while drafting this doc are tracked, not just noted: sync-path hostile input
+  (issue #512) and the CardDAV/API-token persona gap in the authorization matrix (issue #566). If either
+  closes, update its row in the Actors × trust boundaries table above.
+- A design change that adds a new trust boundary (a new integration, a new sync direction, a new client)
+  updates this doc in the same PR — the same "living document" convention `asvs-l2.md` already holds
+  itself to.

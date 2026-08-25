@@ -196,7 +196,11 @@ func LoginUser(context *gin.Context, cfg *config.Config) {
 			apperrors.AbortWithError(context, apperrors.ErrInternal("Could not generate two-factor challenge").WithError(err))
 			return
 		}
-		context.SetSameSite(http.SameSiteLaxMode)
+		// Issue #392: Strict, not Lax — this cookie is only ever read by a
+		// same-origin XHR from POST /login/2fa, never across a top-level
+		// cross-site navigation (unlike the OIDC state cookies in
+		// oidc_controller.go, which must stay Lax).
+		context.SetSameSite(http.SameSiteStrictMode)
 		context.SetCookie(
 			"2fa_pending",    // name
 			pendingToken,     // value
@@ -225,7 +229,9 @@ func LoginUser(context *gin.Context, cfg *config.Config) {
 
 	// Set httpOnly cookie with the JWT token
 	maxAge := cfg.JWTExpiryHours * 3600 // Convert hours to seconds
-	context.SetSameSite(http.SameSiteLaxMode)
+	// Issue #392: Strict — closes the residual sibling-subdomain/CSRF gap
+	// left by Lax. Only ever read by same-origin XHR from the SPA.
+	context.SetSameSite(http.SameSiteStrictMode)
 	context.SetCookie(
 		"auth_token",     // name
 		tokenString,      // value
@@ -252,7 +258,8 @@ func LoginUser(context *gin.Context, cfg *config.Config) {
 func LogoutUser(context *gin.Context, cfg *config.Config, oidcProvider *services.OIDCProvider) {
 	log := logger.FromContext(context)
 
-	context.SetSameSite(http.SameSiteLaxMode)
+	// Issue #392: Strict, matching the cookie as set at login.
+	context.SetSameSite(http.SameSiteStrictMode)
 	context.SetCookie("auth_token", "", -1, "/", cfg.CookieDomain, cfg.CookieSecure, true)
 
 	idTokenCookie, idTokenErr := context.Cookie("id_token")
@@ -793,7 +800,8 @@ func ChangePassword(context *gin.Context, cfg *config.Config) {
 			return
 		}
 
-		context.SetSameSite(http.SameSiteLaxMode)
+		// Issue #392: Strict, matching the cookie as set at login.
+		context.SetSameSite(http.SameSiteStrictMode)
 		context.SetCookie(
 			"auth_token",
 			tokenString,
