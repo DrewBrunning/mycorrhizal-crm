@@ -46,6 +46,14 @@ genuinely does not apply to a milestone, say so here rather than dropping it.
       merge commit, and any line added to `docs/security/citation-drift.ignore` carries a
       justification. Cite the run. (Standing criterion, issue #378. The job is unfiltered by
       path because moving code, not editing the doc, is what orphans a citation.)
+- [ ] No new *class* of security-relevant surface went unrecorded — if this milestone added
+      one (a new client, a new outbound integration, a new persistence target, a new
+      authentication path), §9 of `docs/security/asvs-l2-verification-report.md` has a row
+      for it naming either the mechanism that fails when the next instance is added, or the
+      issue that will build one. If the milestone added no new class, say so and check the
+      box. (Standing criterion, issue #378. This is deliberately a question for whoever
+      closes the gate — they know what the milestone contained — rather than a scheduled
+      audit, which fires on a calendar and lands on someone without that context.)
 
 <!--
 RELEASE gates only (0.8.0 / 0.9.0 / 1.0.0, and any future shipping milestone)

@@ -431,8 +431,14 @@ A re-pass is a diff against this file, not a rewrite. In order:
 5. Re-read the `not-applicable` rows against the current architecture. They are written-down
    decisions about a single-process, self-hosted, no-cloud, RP-only-OIDC system; an architecture
    change is what flips them, and nothing else will.
-6. Re-check every P1–P5 revisit trigger in §7.
-7. Update the header (pass number, date, commit), the census (from `citecheck`), §6 findings, and add
+6. **Re-examine §9's surface table for categories that did not exist last pass.** The enforced rows
+   take care of themselves; this step exists for the row that is not in the table yet. Ask what
+   kinds of security-relevant surface this release added — a new client, a new outbound integration,
+   a new persistence target, a new authentication path — and for each, either name the mechanism
+   that fails when the next one is added, or file the issue that will build it. A new category with
+   neither is the gap this whole section exists to prevent.
+7. Re-check every P1–P5 revisit trigger in §7.
+8. Update the header (pass number, date, commit), the census (from `citecheck`), §6 findings, and add
    a changelog row (§10). If a mechanism in §9 has been superseded — most likely by #608 folding this
    into the release workflow — update §9 to describe what actually runs, and delete what it replaced.
 
@@ -476,13 +482,33 @@ Two things about that model are worth being honest about:
 | A route | **Yes.** `routes/authorization_matrix_test.go` enumerates from the live router and fails when a new route has no declared authorization row. Self-maintaining. |
 | An outbound HTTP client | **No** — a client bypassing `SafeDialContext` is an unflagged SSRF regression. Issue **#609** (semgrep rule). |
 | A cookie | **No** — audit B was 18 call sites read by hand and would have to be redone every pass. Issue **#610** (pin it as a router-driven test). |
-| An entity or table | Partly — the manual cascade lists (`CLAUDE.md` trap 6) and the retention-doc convention, neither enforced. |
+| An entity or table | **No** — cascade completeness rests on a hand-written enumeration plus, for hard-deleted parents only, SQL `ON DELETE CASCADE`; nothing checks a new table is covered by either. Trap 6's own history is 14 tables already missed once. Issue **#611** (schema-driven coverage test). |
 | A crypto call site | gosec and CodeQL catch weak primitives; nothing ties a new call site to a row. |
 
 The pattern worth generalising from the one row that *is* enforced: the authorization matrix is strong
 evidence because it derives its subject list from the running system and **fails on an undeclared
 member**, in both directions. Every future "is this still true?" check here should be built that
-shape — #610 is written to that spec on purpose.
+shape — #609, #610 and #611 are all written to that spec on purpose.
+
+### Why not a recurring audit issue
+
+The obvious alternative — schedule a periodic "look for new surface" issue — was considered and
+rejected for the rows above, because it fires on a calendar rather than on the event that matters.
+It finds a new unguarded client weeks after merge, assigned to someone without the context, with no
+forcing function; a periodic issue can always be closed with "looked, seemed fine". Converting each
+row to a check that fails *at the moment of introduction* is strictly better, and is what #609/#610/
+#611 do.
+
+What a calendar genuinely cannot be replaced for is the row that does not exist yet: a surface
+*class* nobody has thought of — a new client platform, a new persistence target, a new auth path.
+No mechanical check can enumerate categories that have not been invented. That judgement is carried
+by the milestone gate instead of a schedule, because the person closing a gate knows what that
+milestone just added, and someone opening a quarterly reminder does not. It is the last standing
+criterion in `.github/ISSUE_TEMPLATE/milestone_gate.md`.
+
+The one case where a schedule *is* right — risk that changes with time rather than with code
+(dependency CVEs, expiring certificates) — is already covered by the nightly tier (Grype, Trivy,
+govulncheck).
 
 ## 10. Changelog
 
