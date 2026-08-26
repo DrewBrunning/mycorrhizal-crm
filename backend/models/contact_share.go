@@ -25,13 +25,15 @@ const (
 //
 // No soft delete: this ticket adds no delete/withdraw endpoint — declining
 // is the "soft" outcome (flips Status, the row survives so the sender's
-// offer isn't silently destroyed, per the ticket's own trap). The only place
-// a ContactShare is ever removed is DeleteUser's cascade sweep
-// (admin_user_controller.go), matching the Reminder/Note/Activity
-// hard-delete-on-account-removal precedent there. It is NOT part of
-// contact_controller.go's deleteContactAssociations: Payload has no FK to
-// contacts (it is a frozen snapshot, not a live reference), so deleting the
-// original Contact correctly leaves an already-shared copy untouched.
+// offer isn't silently destroyed, per the ticket's own trap). Rows are
+// removed by DeleteUser's cascade sweep (admin_user_controller.go) or, past
+// the CONTACT_SHARE_RETENTION_DAYS window, by the purge job's
+// PurgeExpiredContactShares (services/contact_share_purge_service.go, issue
+// #574) — matching the Reminder/Note/Activity hard-delete-on-account-removal
+// precedent there. It is NOT part of contact_controller.go's
+// deleteContactAssociations: Payload has no FK to contacts (it is a frozen
+// snapshot, not a live reference), so deleting the original Contact
+// correctly leaves an already-shared copy untouched.
 type ContactShare struct {
 	ID        string    `gorm:"primarykey" json:"id"`
 	CreatedAt time.Time `json:"created_at"`

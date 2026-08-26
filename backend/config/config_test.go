@@ -373,6 +373,8 @@ func TestLoadConfig_Defaults(t *testing.T) {
 
 	// Default retention
 	assert.Equal(t, 30, cfg.DeleteRetentionDays)
+	assert.Equal(t, 90, cfg.AuditRetentionDays)
+	assert.Equal(t, 30, cfg.ContactShareRetentionDays)
 
 	// Default reminder schedule. Pinned because this value is also stated in
 	// three places outside the code — .env.example, backend/.env.example and
@@ -391,6 +393,17 @@ func TestLoadConfig_DeleteRetentionDays(t *testing.T) {
 
 	cfg := LoadConfig()
 	assert.Equal(t, 14, cfg.DeleteRetentionDays)
+}
+
+func TestLoadConfig_ContactShareRetentionDays(t *testing.T) {
+	t.Setenv("JWT_SECRET_KEY", "test-secret-key-that-is-long-enough-32")
+	t.Setenv("PROFILE_PHOTO_DIR", "/tmp/photos")
+	t.Setenv("SQLITE_DB_PATH", "/tmp/test.db")
+	t.Setenv("FRONTEND_URL", "http://localhost:5173")
+	t.Setenv("CONTACT_SHARE_RETENTION_DAYS", "60")
+
+	cfg := LoadConfig()
+	assert.Equal(t, 60, cfg.ContactShareRetentionDays)
 }
 
 func TestLoadConfig_DBIntegrityCheckIntervalHoursClampedToMinimumOne(t *testing.T) {

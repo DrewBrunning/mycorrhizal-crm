@@ -34,41 +34,42 @@ type OIDCConfig struct {
 // Config is the fully-loaded application configuration, populated once by
 // LoadConfig from environment variables at process start.
 type Config struct {
-	DBPath                  string
-	ReminderTime            string
-	ReminderTimezone        string
-	FrontendURL             string
-	Port                    string
-	TrustedProxies          []string
-	UseResend               bool
-	ResendAPIKey            string
-	ResendFromEmail         string
-	ResendToEmail           string
-	UseSMTP                 bool
-	SMTPHost                string
-	SMTPPort                int
-	SMTPUsername            string
-	SMTPPassword            string
-	SMTPFromEmail           string
-	SMTPUseTLS              bool // implicit TLS (e.g. port 465); otherwise STARTTLS is used when available
-	JWTSecretKey            string
-	JWTExpiryHours          int
-	ReadTimeout             int    // HTTP server read timeout in seconds
-	WriteTimeout            int    // HTTP server write timeout in seconds
-	IdleTimeout             int    // HTTP server idle timeout in seconds
-	ProfilePhotoDir         string // Directory for storing profile photos (must be absolute path)
-	AttachmentsDir          string // Directory for storing contact attachments (N7; alongside the photo dir, must be absolute path)
-	CardDAVEnabled          bool   // Enable CardDAV server for contact sync
-	CalDAVEnabled           bool   // Enable CalDAV server for Interaction/LifeEvent sync (T12b)
-	CalDAVTwoWayEnabled     bool   // Allow calendar sync to push local edits back out (T13)
-	CookieSecure            bool   // Set Secure flag on auth cookie (requires HTTPS)
-	CookieDomain            string // Domain for auth cookie (empty = current domain only)
-	RegistrationDisabled    bool   // Disable new user registration
-	WebhookBlockPrivateURLs bool   // Block webhook deliveries to private/loopback addresses (useful for cloud deployments)
-	CalDAVSyncIntervalHours int    // Interval in hours for the scheduled calendar sync job
-	CalDAVBlockPrivateURLs  bool   // Block calendar sync requests to private/loopback addresses (useful for cloud deployments)
-	DeleteRetentionDays     int    // Days soft-deleted rows survive before the purge job hard-deletes them (T26)
-	AuditRetentionDays      int    // Days audit events survive before the retention purge removes them (T18, default 90)
+	DBPath                    string
+	ReminderTime              string
+	ReminderTimezone          string
+	FrontendURL               string
+	Port                      string
+	TrustedProxies            []string
+	UseResend                 bool
+	ResendAPIKey              string
+	ResendFromEmail           string
+	ResendToEmail             string
+	UseSMTP                   bool
+	SMTPHost                  string
+	SMTPPort                  int
+	SMTPUsername              string
+	SMTPPassword              string
+	SMTPFromEmail             string
+	SMTPUseTLS                bool // implicit TLS (e.g. port 465); otherwise STARTTLS is used when available
+	JWTSecretKey              string
+	JWTExpiryHours            int
+	ReadTimeout               int    // HTTP server read timeout in seconds
+	WriteTimeout              int    // HTTP server write timeout in seconds
+	IdleTimeout               int    // HTTP server idle timeout in seconds
+	ProfilePhotoDir           string // Directory for storing profile photos (must be absolute path)
+	AttachmentsDir            string // Directory for storing contact attachments (N7; alongside the photo dir, must be absolute path)
+	CardDAVEnabled            bool   // Enable CardDAV server for contact sync
+	CalDAVEnabled             bool   // Enable CalDAV server for Interaction/LifeEvent sync (T12b)
+	CalDAVTwoWayEnabled       bool   // Allow calendar sync to push local edits back out (T13)
+	CookieSecure              bool   // Set Secure flag on auth cookie (requires HTTPS)
+	CookieDomain              string // Domain for auth cookie (empty = current domain only)
+	RegistrationDisabled      bool   // Disable new user registration
+	WebhookBlockPrivateURLs   bool   // Block webhook deliveries to private/loopback addresses (useful for cloud deployments)
+	CalDAVSyncIntervalHours   int    // Interval in hours for the scheduled calendar sync job
+	CalDAVBlockPrivateURLs    bool   // Block calendar sync requests to private/loopback addresses (useful for cloud deployments)
+	DeleteRetentionDays       int    // Days soft-deleted rows survive before the purge job hard-deletes them (T26)
+	AuditRetentionDays        int    // Days audit events survive before the retention purge removes them (T18, default 90)
+	ContactShareRetentionDays int    // Days a ContactShare snapshot survives before the purge job hard-deletes it (issue #574, default 30)
 
 	// General-API rate limiting, per client IP. Configurable because the
 	// hardcoded values had already been raised once to stop a full Playwright
@@ -149,6 +150,7 @@ func LoadConfig() *Config {
 		CalDAVBlockPrivateURLs:        getBoolEnv("CALDAV_BLOCK_PRIVATE_URLS", false),
 		DeleteRetentionDays:           getIntEnv("DELETED_RETENTION_DAYS", 30),
 		AuditRetentionDays:            getIntEnv("AUDIT_RETENTION_DAYS", 90),
+		ContactShareRetentionDays:     getIntEnv("CONTACT_SHARE_RETENTION_DAYS", 30),
 		APIRateLimitInterval:          time.Duration(getIntEnv("API_RATE_LIMIT_INTERVAL_MS", 600)) * time.Millisecond,
 		APIRateLimitBurst:             getIntEnv("API_RATE_LIMIT_BURST", 1000),
 		ImmichSyncIntervalHours:       getIntEnv("IMMICH_SYNC_INTERVAL_HOURS", 6),
