@@ -2995,6 +2995,102 @@ class ApiClientTest {
         assertTrue(result.getOrThrow().isEmpty())
     }
 
+    // --- Issue #413 / #573: API token lifecycle ---
+
+    @Test
+    fun `list api tokens parses and unwraps the tokens array`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"tokens":[
+                    {"id":1,"name":"Sync script","created_at":"2026-08-01T00:00:00Z","last_used_at":null,"revoked_at":null,"expires_at":"2026-11-01T00:00:00Z","scope":"full"},
+                    {"id":2,"name":"Old token","created_at":"2026-07-01T00:00:00Z","last_used_at":"2026-08-01T00:00:00Z","revoked_at":"2026-08-02T00:00:00Z","expires_at":null,"scope":"carddav"}
+                ]}""",
+            ),
+        )
+
+        val result = client.listApiTokens()
+
+        assertTrue(result.isSuccess)
+        val tokens = result.getOrThrow()
+        assertEquals(2, tokens.size)
+        assertEquals("Sync script", tokens[0].name)
+        assertEquals("full", tokens[0].scope)
+        assertNotNull(tokens[1].revokedAt)
+        val request = server.takeRequest()
+        assertEquals("/api/v1/api-tokens", request.path)
+    }
+
+    @Test
+    fun `create api token posts the input and returns the plaintext once`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(201).setBody(
+                """{"id": 9, "name": "New token", "created_at": "2026-08-01T00:00:00Z",
+                    "last_used_at": null, "revoked_at": null, "expires_at": "2026-11-01T00:00:00Z",
+                    "scope": "full", "token": "mcrh_live_abc123"}""",
+            ),
+        )
+
+        val result = client.createApiToken(
+            com.mycorrhizal.crm.model.network.ApiTokenInput(name = "New token", expiresInDays = 90, scope = "full"),
+        )
+
+        assertTrue(result.isSuccess)
+        assertEquals(9, result.getOrThrow().id)
+        assertEquals("mcrh_live_abc123", result.getOrThrow().token)
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/api-tokens", request.path)
+        val body = request.body.readUtf8()
+        assertTrue(body.contains("\"name\":\"New token\""))
+        assertTrue(body.contains("\"expires_in_days\":90"))
+    }
+
+    @Test
+    fun `revoke api token sends a DELETE to the token route`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"message": "Token revoked successfully"}"""))
+
+        val result = client.revokeApiToken(9)
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("DELETE", request.method)
+        assertEquals("/api/v1/api-tokens/9", request.path)
+    }
+
+    @Test
+    fun `revoke all api tokens posts an empty body and returns the revoked count`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"revoked": 3}"""))
+
+        val result = client.revokeAllApiTokens()
+
+        assertTrue(result.isSuccess)
+        assertEquals(3, result.getOrThrow().revoked)
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/api-tokens/revoke-all", request.path)
+        assertEquals(0L, request.bodySize)
+    }
+
+    @Test
+    fun `rotate api token posts an empty body and returns the new plaintext once`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(201).setBody(
+                """{"id": 10, "name": "Sync script", "created_at": "2026-08-02T00:00:00Z",
+                    "last_used_at": null, "revoked_at": null, "expires_at": "2026-11-02T00:00:00Z",
+                    "scope": "full", "token": "mcrh_live_rotated456"}""",
+            ),
+        )
+
+        val result = client.rotateApiToken(9)
+
+        assertTrue(result.isSuccess)
+        assertEquals(10, result.getOrThrow().id)
+        assertEquals("mcrh_live_rotated456", result.getOrThrow().token)
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/api-tokens/9/rotate", request.path)
+        assertEquals(0L, request.bodySize)
+    }
 
     // --- M16: audit trail ---
 

@@ -1,8 +1,12 @@
 package com.mycorrhizal.crm.data.repository
 
+import com.mycorrhizal.crm.model.network.ApiToken
+import com.mycorrhizal.crm.model.network.ApiTokenCreateResponse
+import com.mycorrhizal.crm.model.network.ApiTokenInput
 import com.mycorrhizal.crm.model.network.NotificationConfig
 import com.mycorrhizal.crm.model.network.NotificationConfigInput
 import com.mycorrhizal.crm.model.network.NotificationTestResult
+import com.mycorrhizal.crm.model.network.RevokeAllApiTokensResponse
 import com.mycorrhizal.crm.model.network.Webhook
 import com.mycorrhizal.crm.model.network.WebhookCreateResponse
 import com.mycorrhizal.crm.model.network.WebhookDelivery
@@ -98,6 +102,89 @@ class WebhookRepositoryImplTest {
 
         assertTrue(result.isSuccess)
         assertEquals(1, result.getOrThrow().size)
+    }
+}
+
+class ApiTokenRepositoryImplTest {
+
+    private val apiClient = mockk<ApiClient>()
+    private val repository = ApiTokenRepositoryImpl(apiClient)
+
+    @Test
+    fun `list returns the tokens on success`() = runTest {
+        coEvery { apiClient.listApiTokens() } returns Result.success(
+            listOf(ApiToken(id = 1, name = "Sync script")),
+        )
+
+        val result = repository.list()
+
+        assertTrue(result.isSuccess)
+        assertEquals(listOf("Sync script"), result.getOrThrow().map { it.name })
+    }
+
+    @Test
+    fun `list failure is normalized through mapError`() = runTest {
+        coEvery { apiClient.listApiTokens() } returns Result.failure(ApiError.Server(500, "boom"))
+
+        val result = repository.list()
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is ApiError)
+    }
+
+    @Test
+    fun `create forwards the input and returns the plaintext once`() = runTest {
+        val input = ApiTokenInput(name = "New token", expiresInDays = 90, scope = "full")
+        coEvery { apiClient.createApiToken(input) } returns Result.success(
+            ApiTokenCreateResponse(id = 1, name = "New token", token = "s3cr3t"),
+        )
+
+        val result = repository.create(input)
+
+        assertTrue(result.isSuccess)
+        assertEquals("s3cr3t", result.getOrThrow().token)
+    }
+
+    @Test
+    fun `revoke delegates to the api client`() = runTest {
+        coEvery { apiClient.revokeApiToken(1) } returns Result.success(Unit)
+
+        val result = repository.revoke(1)
+
+        assertTrue(result.isSuccess)
+    }
+
+    @Test
+    fun `revoke failure is normalized through mapError`() = runTest {
+        coEvery { apiClient.revokeApiToken(1) } returns Result.failure(ApiError.Client(404, "not found"))
+
+        val result = repository.revoke(1)
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is ApiError)
+    }
+
+    @Test
+    fun `revokeAll returns the revoked count`() = runTest {
+        coEvery { apiClient.revokeAllApiTokens() } returns Result.success(RevokeAllApiTokensResponse(revoked = 2))
+
+        val result = repository.revokeAll()
+
+        assertTrue(result.isSuccess)
+        assertEquals(2, result.getOrThrow().revoked)
+    }
+
+    @Test
+    fun `rotate returns the reissued token with a fresh plaintext`() = runTest {
+        coEvery { apiClient.rotateApiToken(1) } returns Result.success(
+            ApiTokenCreateResponse(id = 8, name = "Sync script", token = "rotated456"),
+        )
+
+        val result = repository.rotate(1)
+
+        assertTrue(result.isSuccess)
+        assertEquals(8, result.getOrThrow().id)
+        assertEquals("rotated456", result.getOrThrow().token)
     }
 }
 
