@@ -1,10 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/stryker.json",
-  "mutate": [
-    "src/api/contacts.ts",
-    "src/api/relationshipEdges.ts",
-    "src/api/lifeEvents.ts"
-  ],
+  "mutate": ["src/api/contacts.ts", "src/api/relationshipEdges.ts", "src/api/lifeEvents.ts"],
   "testRunner": "vitest",
   "coverageAnalysis": "perTest",
   "reporters": ["clear-text", "html", "progress"],
