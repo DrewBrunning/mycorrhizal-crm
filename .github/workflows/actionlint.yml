@@ -1,0 +1,90 @@
+name: Workflow Lint (actionlint + shellcheck)
+
+# Issue #578: actionlint is the syntax/expression-level complement to zizmor.
+# zizmor catches semantic injection/permission bugs; actionlint catches
+# expression-syntax errors, undefined inputs, runner mismatches, and — via
+# shellcheck — the shell in every `run:` block. Both are PR-gated on the
+# `workflows` filter; a workflow change can break any check, so .github/**
+# changes re-run the whole stack (issue #264 pattern).
+#
+# Run via `go run ...@version` per the repo convention (tool via the module
+# proxy, not a raw release download — see unit-tests.yml's golangci-lint /
+# govulncheck steps). shellcheck is a C binary, so it comes from apt. A clean
+# baseline means the step exits non-zero on any finding — that is the gate.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    permissions:
+      contents: read
+      pull-requests: read
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      workflows: ${{ steps.filter.outputs.workflows }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Change detection on push needs the previous commit on main.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Detect changed areas
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: .github/filters.yaml
+
+      - name: Report gating decision
+        run: |
+          echo "workflows=$WORKFLOWS_CHANGED"
+        env:
+          # Boolean output only (the *_files outputs are the
+          # attacker-influenced ones on PRs); passed as an env var so zizmor's
+          # template-injection audit has nothing to flag in this workflow.
+          WORKFLOWS_CHANGED: ${{ steps.filter.outputs.workflows }}
+
+  actionlint:
+    name: Lint workflows (actionlint + shellcheck)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    needs: changes
+    if: needs.changes.outputs.workflows == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # shellcheck is a C binary, not a Go/npm tool — apt is the only
+      # practical install path on a GitHub runner.
+      - name: Install shellcheck
+        run: sudo apt-get install -y shellcheck
+
+      # actionlint itself is Go, so it comes from the module proxy pinned to a
+      # version, matching the repo's tooling convention. The Go version that
+      # builds it comes from the backend module, same as every other `go run`
+      # step in this repo.
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      # Lints every workflow under .github/workflows/ and, with shellcheck on
+      # PATH, every `run:` block too. Exits non-zero on any finding — the
+      # baseline is clean, so that is the gate.
+      - name: Run actionlint (with shellcheck)
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 -color

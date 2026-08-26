@@ -1,14 +1,14 @@
-import { useState, useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import {
-  getIncomingContactShares,
-  getOutgoingContactShares,
   acceptContactShare,
+  type ContactShare,
   confirmContactShare,
   declineContactShare,
-  ContactShare,
+  getIncomingContactShares,
+  getOutgoingContactShares,
 } from '../api/contactShares';
-import { ImportPreviewResponse, RowImportAction } from '../api/import';
-import { handleFetchError, handleError, ErrorNotifier } from '../utils/errorHandler';
+import type { ImportPreviewResponse, RowImportAction } from '../api/import';
+import { type ErrorNotifier, handleError, handleFetchError } from '../utils/errorHandler';
 
 export function useContactShares(notifier?: ErrorNotifier) {
   const [incoming, setIncoming] = useState<ContactShare[]>([]);
@@ -37,7 +37,9 @@ export function useContactShares(notifier?: ErrorNotifier) {
 
   // Preview-only step: parses the share's payload and returns what
   // handleConfirmShare needs. Does not change the share's status.
-  const handleAcceptPreview = async (shareId: string): Promise<ImportPreviewResponse | undefined> => {
+  const handleAcceptPreview = async (
+    shareId: string,
+  ): Promise<ImportPreviewResponse | undefined> => {
     try {
       return await acceptContactShare(shareId);
     } catch (err) {
@@ -46,7 +48,11 @@ export function useContactShares(notifier?: ErrorNotifier) {
     }
   };
 
-  const handleConfirmShare = async (shareId: string, sessionId: string, actions: RowImportAction[]) => {
+  const handleConfirmShare = async (
+    shareId: string,
+    sessionId: string,
+    actions: RowImportAction[],
+  ) => {
     try {
       const result = await confirmContactShare(shareId, sessionId, actions);
       await refresh();

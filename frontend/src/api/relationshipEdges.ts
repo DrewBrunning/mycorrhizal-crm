@@ -1,6 +1,6 @@
 // RelationshipEdge API calls -- ,
 // replaces api/relationships.ts's legacy models.Relationship-backed calls.
-import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
+import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 
 // Mirrors backend/models/relationship_type_registry.go's relationTypeRegistry
 // exactly (token -> Inverse/Symmetric). No dynamic "list valid types" endpoint
@@ -9,11 +9,29 @@ import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './cl
 // validators, and this follows the same convention. MUST be kept in sync by
 // hand with relationship_type_registry.go if that file changes.
 export type RelationshipEdgeType =
-  | 'parent_of' | 'child_of' | 'spouse_of' | 'sibling_of' | 'friend_of'
-  | 'roommate_of' | 'coworker_of' | 'partner_of' | 'co_parent_of' | 'mentor_of' | 'mentee_of'
-  | 'owned_by' | 'owns' | 'gets_along_with' | 'conflicts_with' | 'related_to';
+  | 'parent_of'
+  | 'child_of'
+  | 'spouse_of'
+  | 'sibling_of'
+  | 'friend_of'
+  | 'roommate_of'
+  | 'coworker_of'
+  | 'partner_of'
+  | 'co_parent_of'
+  | 'mentor_of'
+  | 'mentee_of'
+  | 'owned_by'
+  | 'owns'
+  | 'gets_along_with'
+  | 'conflicts_with'
+  | 'related_to';
 
-export type RelationshipEdgeSource = 'user-confirmed' | 'household-inferred' | 'imported' | 'ai-suggested' | 'graph-inferred';
+export type RelationshipEdgeSource =
+  | 'user-confirmed'
+  | 'household-inferred'
+  | 'imported'
+  | 'ai-suggested'
+  | 'graph-inferred';
 export type RelationshipEdgeStatus = 'confirmed' | 'suggested';
 export type RelationshipEdgeSensitivity = 'normal' | 'private' | 'secret';
 
@@ -23,25 +41,27 @@ interface RelationTypeMeta {
 }
 
 export const RELATIONSHIP_EDGE_TYPES: Record<RelationshipEdgeType, RelationTypeMeta> = {
-  parent_of:       { inverse: 'child_of',        symmetric: false },
-  child_of:        { inverse: 'parent_of',       symmetric: false },
-  spouse_of:       { inverse: 'spouse_of',       symmetric: true },
-  sibling_of:      { inverse: 'sibling_of',      symmetric: true },
-  friend_of:       { inverse: 'friend_of',       symmetric: true },
-  roommate_of:     { inverse: 'roommate_of',     symmetric: true },
-  coworker_of:     { inverse: 'coworker_of',     symmetric: true },
-  partner_of:      { inverse: 'partner_of',      symmetric: true },
-  co_parent_of:    { inverse: 'co_parent_of',    symmetric: true },
-  mentor_of:       { inverse: 'mentee_of',       symmetric: false },
-  mentee_of:       { inverse: 'mentor_of',       symmetric: false },
-  owned_by:        { inverse: 'owns',            symmetric: false },
-  owns:            { inverse: 'owned_by',        symmetric: false },
+  parent_of: { inverse: 'child_of', symmetric: false },
+  child_of: { inverse: 'parent_of', symmetric: false },
+  spouse_of: { inverse: 'spouse_of', symmetric: true },
+  sibling_of: { inverse: 'sibling_of', symmetric: true },
+  friend_of: { inverse: 'friend_of', symmetric: true },
+  roommate_of: { inverse: 'roommate_of', symmetric: true },
+  coworker_of: { inverse: 'coworker_of', symmetric: true },
+  partner_of: { inverse: 'partner_of', symmetric: true },
+  co_parent_of: { inverse: 'co_parent_of', symmetric: true },
+  mentor_of: { inverse: 'mentee_of', symmetric: false },
+  mentee_of: { inverse: 'mentor_of', symmetric: false },
+  owned_by: { inverse: 'owns', symmetric: false },
+  owns: { inverse: 'owned_by', symmetric: false },
   gets_along_with: { inverse: 'gets_along_with', symmetric: true },
-  conflicts_with:  { inverse: 'conflicts_with',  symmetric: true },
-  related_to:      { inverse: 'related_to',      symmetric: true },
+  conflicts_with: { inverse: 'conflicts_with', symmetric: true },
+  related_to: { inverse: 'related_to', symmetric: true },
 };
 
-export const RELATIONSHIP_EDGE_TYPE_TOKENS = Object.keys(RELATIONSHIP_EDGE_TYPES) as RelationshipEdgeType[];
+export const RELATIONSHIP_EDGE_TYPE_TOKENS = Object.keys(
+  RELATIONSHIP_EDGE_TYPES,
+) as RelationshipEdgeType[];
 
 export interface RelationshipEdge {
   id: string;
@@ -99,23 +119,31 @@ export interface SuggestRelationshipEdgesResponse {
   total: number;
 }
 
-export async function getRelationshipEdges(params: GetRelationshipEdgesParams): Promise<RelationshipEdgesResponse> {
+export async function getRelationshipEdges(
+  params: GetRelationshipEdgesParams,
+): Promise<RelationshipEdgesResponse> {
   const { contactId, status, type, cursor, limit = 100 } = params;
   const queryParams = new URLSearchParams({ contact_id: contactId, limit: limit.toString() });
   if (status) queryParams.append('status', status);
   if (type) queryParams.append('type', type);
   if (cursor) queryParams.append('cursor', cursor);
 
-  const response = await apiFetch(`${API_BASE_URL}/relationship-edges?${queryParams.toString()}`, { headers: getAuthHeaders() });
+  const response = await apiFetch(`${API_BASE_URL}/relationship-edges?${queryParams.toString()}`, {
+    headers: getAuthHeaders(),
+  });
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json();
 }
 
 // NOTE the response shape asymmetry vs update/accept below -- create is the
 // only one wrapped in {relationship_edge: ...}.
-export async function createRelationshipEdge(input: RelationshipEdgeInput): Promise<RelationshipEdge> {
+export async function createRelationshipEdge(
+  input: RelationshipEdgeInput,
+): Promise<RelationshipEdge> {
   const response = await apiFetch(`${API_BASE_URL}/relationship-edges`, {
-    method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(input),
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(input),
   });
   if (!response.ok) throw await parseErrorResponse(response);
   const result = await response.json();
@@ -127,9 +155,14 @@ export async function createRelationshipEdge(input: RelationshipEdgeInput): Prom
 // (backend) always inserts a new Contact for a non-nil *_thin input, even on
 // update, so resubmitting manual-entry fields would silently orphan a new
 // thin Contact on every edit.
-export async function updateRelationshipEdge(id: string, input: RelationshipEdgeInput): Promise<RelationshipEdge> {
+export async function updateRelationshipEdge(
+  id: string,
+  input: RelationshipEdgeInput,
+): Promise<RelationshipEdge> {
   const response = await apiFetch(`${API_BASE_URL}/relationship-edges/${id}`, {
-    method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify(input),
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(input),
   });
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json(); // raw edge, NOT wrapped -- unlike create
@@ -137,7 +170,8 @@ export async function updateRelationshipEdge(id: string, input: RelationshipEdge
 
 export async function deleteRelationshipEdge(id: string): Promise<void> {
   const response = await apiFetch(`${API_BASE_URL}/relationship-edges/${id}`, {
-    method: 'DELETE', headers: getAuthHeaders(),
+    method: 'DELETE',
+    headers: getAuthHeaders(),
   });
   if (!response.ok) throw await parseErrorResponse(response);
 }
@@ -146,7 +180,8 @@ export async function deleteRelationshipEdge(id: string): Promise<void> {
 // via parseErrorResponse/ApiError like any other backend error).
 export async function acceptRelationshipEdge(id: string): Promise<RelationshipEdge> {
   const response = await apiFetch(`${API_BASE_URL}/relationship-edges/${id}/accept`, {
-    method: 'PATCH', headers: getAuthHeaders(),
+    method: 'PATCH',
+    headers: getAuthHeaders(),
   });
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json(); // raw edge, NOT wrapped
@@ -168,7 +203,8 @@ export const rejectRelationshipEdge = deleteRelationshipEdge;
 // Returns the edges newly created by this call.
 export async function suggestRelationshipEdges(): Promise<SuggestRelationshipEdgesResponse> {
   const response = await apiFetch(`${API_BASE_URL}/relationship-edges/suggest`, {
-    method: 'POST', headers: getAuthHeaders(),
+    method: 'POST',
+    headers: getAuthHeaders(),
   });
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json();
@@ -208,7 +244,9 @@ export async function listSuggestedRelationshipEdges(params?: {
 // `edge.type` value not present in RELATIONSHIP_EDGE_TYPES (registry drift)
 // crashing the relationships tab instead of degrading to the generic label.
 function metaFor(type: string): RelationTypeMeta {
-  return RELATIONSHIP_EDGE_TYPES[type as RelationshipEdgeType] ?? RELATIONSHIP_EDGE_TYPES.related_to;
+  return (
+    RELATIONSHIP_EDGE_TYPES[type as RelationshipEdgeType] ?? RELATIONSHIP_EDGE_TYPES.related_to
+  );
 }
 
 // The relation token as it reads from viewedContactUid's perspective ("what
@@ -219,7 +257,10 @@ function metaFor(type: string): RelationTypeMeta {
 //     role is the INVERSE of `type` (e.g. type=parent_of, viewed=source
 //     means viewed is the parent, so the OTHER party -- target -- is my
 //     child -> inverse token child_of).
-export function getEffectiveType(edge: RelationshipEdge, viewedContactUid: string): RelationshipEdgeType {
+export function getEffectiveType(
+  edge: RelationshipEdge,
+  viewedContactUid: string,
+): RelationshipEdgeType {
   const isViewedSource = edge.source_id === viewedContactUid;
   if (isViewedSource) {
     return metaFor(edge.type).inverse;
@@ -227,7 +268,9 @@ export function getEffectiveType(edge: RelationshipEdge, viewedContactUid: strin
   // Viewed is target -> `type` already describes the other party (source)
   // directly. Falls back to 'related_to' if edge.type isn't a token this
   // frontend mirror knows about (registry drift).
-  return (RELATIONSHIP_EDGE_TYPES[edge.type as RelationshipEdgeType] ? edge.type : 'related_to') as RelationshipEdgeType;
+  return (
+    RELATIONSHIP_EDGE_TYPES[edge.type as RelationshipEdgeType] ? edge.type : 'related_to'
+  ) as RelationshipEdgeType;
 }
 
 // i18n KEY (not a translated string) for the label to show for this edge as
@@ -243,7 +286,10 @@ export function getDisplayLabel(edge: RelationshipEdge, viewedContactUid: string
 // always TargetID, so this is the identity function there. Only matters in
 // edit mode, when viewedContactUid may be SourceID (editing an edge
 // originally created from the OTHER party's page).
-export function toBackendType(dropdownToken: RelationshipEdgeType, viewedIsSource: boolean): RelationshipEdgeType {
+export function toBackendType(
+  dropdownToken: RelationshipEdgeType,
+  viewedIsSource: boolean,
+): RelationshipEdgeType {
   return viewedIsSource ? RELATIONSHIP_EDGE_TYPES[dropdownToken].inverse : dropdownToken;
 }
 

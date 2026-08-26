@@ -1,10 +1,10 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import OnlineServiceEditor from './OnlineServiceEditor';
-import { CardOnlineService } from '../api/contacts';
-import { LinkFieldType } from '../api/linkFieldTypes';
+import type { CardOnlineService } from '../api/contacts';
+import type { LinkFieldType } from '../api/linkFieldTypes';
 import { resolveLinkFieldTypeIcon } from '../linkFieldTypeIcons';
+import OnlineServiceEditor from './OnlineServiceEditor';
 
 afterEach(cleanup);
 
@@ -40,8 +40,11 @@ function renderEditor(props: Partial<React.ComponentProps<typeof OnlineServiceEd
 // T44 — the registry must reach the editor: the service field is a freeSolo
 // Autocomplete sourced from the user's LinkFieldType registry, with each
 // option rendering its icon.
-test('offers the user\'s LinkFieldType registry entries as service options with their icons', async () => {
-  renderEditor({ linkFieldTypes: [WHATSAPP, INSTAGRAM], value: [{ uri: 'https://example.com/u/alice' }] });
+test("offers the user's LinkFieldType registry entries as service options with their icons", async () => {
+  renderEditor({
+    linkFieldTypes: [WHATSAPP, INSTAGRAM],
+    value: [{ uri: 'https://example.com/u/alice' }],
+  });
 
   fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Service' }));
 
@@ -129,7 +132,9 @@ test('editing preserves the rest of the row (id/user/label/contexts/pref)', () =
   ];
   renderEditor({ uriOnly: true, value });
 
-  fireEvent.change(screen.getByLabelText('Address'), { target: { value: 'xmpp:robert@example.com' } });
+  fireEvent.change(screen.getByLabelText('Address'), {
+    target: { value: 'xmpp:robert@example.com' },
+  });
 
   expect(onChange).toHaveBeenCalledWith([
     {

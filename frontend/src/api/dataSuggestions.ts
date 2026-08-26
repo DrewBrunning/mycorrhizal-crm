@@ -2,7 +2,7 @@
 // households from shared address": here the relationship/household already
 // exists, and we propose the *address* the other party carries. Read-only
 // generate + explicit apply; nothing is written at generate time.
-import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
+import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 
 // A neutral AddressComponent pair, mirroring contactmodel.AddressComponent's
 // wire shape on the suggestion's address.
@@ -47,7 +47,7 @@ export function formatSuggestionAddress(address: ContactAddressSuggestion['addre
   }
   const parts = ['name', 'locality', 'region', 'postcode', 'country']
     .map((kind) => byKind[kind])
-    .filter((v) => v && v.trim());
+    .filter((v) => v?.trim());
   return parts.join(', ');
 }
 
@@ -56,7 +56,8 @@ export function formatSuggestionAddress(address: ContactAddressSuggestion['addre
 // households, skipping any the contact already has.
 export async function suggestContactAddresses(): Promise<ContactAddressSuggestionsResponse> {
   const response = await apiFetch(`${API_BASE_URL}/contacts/address-suggestions`, {
-    method: 'POST', headers: getAuthHeaders(),
+    method: 'POST',
+    headers: getAuthHeaders(),
   });
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json();
@@ -72,7 +73,9 @@ export async function applyContactAddressSuggestion(input: {
   address_key: string;
 }): Promise<void> {
   const response = await apiFetch(`${API_BASE_URL}/contacts/address-suggestions/apply`, {
-    method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(input),
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(input),
   });
   if (!response.ok) throw await parseErrorResponse(response);
 }

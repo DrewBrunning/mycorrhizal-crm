@@ -1,5 +1,11 @@
-import { test, expect } from './fixtures';
-import { createTestContact, deleteTestContact, waitForLoading, stableClick } from './fixtures';
+import {
+  createTestContact,
+  deleteTestContact,
+  expect,
+  stableClick,
+  test,
+  waitForLoading,
+} from './fixtures';
 import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 
 /**
@@ -21,8 +27,16 @@ test.describe('Duplicate scan', () => {
     // Merge pair: identical names + identical email -> matched by both the
     // email and name tiers, and (critically for the UI flow) no scalar
     // conflicts to resolve, so the merge commits immediately.
-    const keeper = await createTestContact(request, { firstname: mergeName, lastname: 'Scan', email: sharedEmail });
-    const loser = await createTestContact(request, { firstname: mergeName, lastname: 'Scan', email: sharedEmail });
+    const keeper = await createTestContact(request, {
+      firstname: mergeName,
+      lastname: 'Scan',
+      email: sharedEmail,
+    });
+    const loser = await createTestContact(request, {
+      firstname: mergeName,
+      lastname: 'Scan',
+      email: sharedEmail,
+    });
 
     // Dismiss pair: different names, same number in different formats (the
     // T68 country-code/punctuation case) -> matched by the phone tier only.
@@ -43,7 +57,9 @@ test.describe('Duplicate scan', () => {
       // through a stale WAL read snapshot, so poll until both pairs surface.
       const hasPair = (pairs: { a: { uid: string }; b: { uid: string } }[], uids: string[]) =>
         pairs.some(
-          (p) => (p.a.uid === uids[0] && p.b.uid === uids[1]) || (p.a.uid === uids[1] && p.b.uid === uids[0])
+          (p) =>
+            (p.a.uid === uids[0] && p.b.uid === uids[1]) ||
+            (p.a.uid === uids[1] && p.b.uid === uids[0]),
         );
       await expect
         .poll(
@@ -51,9 +67,14 @@ test.describe('Duplicate scan', () => {
             const res = await request.get(`${API_BASE_URL}/contacts/duplicates`);
             if (!res.ok()) throw new Error(`scan failed: ${await res.text()}`);
             const pairs = (await res.json()).pairs as { a: { uid: string }; b: { uid: string } }[];
-            return hasPair(pairs, [keeper.uid, loser.uid]) && hasPair(pairs, [phoneA.uid, phoneB.uid]);
+            return (
+              hasPair(pairs, [keeper.uid, loser.uid]) && hasPair(pairs, [phoneA.uid, phoneB.uid])
+            );
           },
-          { message: 'scan must detect the same-email and country-code phone pairs', timeout: 10000 }
+          {
+            message: 'scan must detect the same-email and country-code phone pairs',
+            timeout: 10000,
+          },
         )
         .toBe(true);
 
@@ -64,15 +85,23 @@ test.describe('Duplicate scan', () => {
       // The dialog sits over the contacts list, which contains the same
       // contact names — scope every assertion inside the dialog.
       const reviewDialog = page.getByRole('dialog').filter({ hasText: 'Review duplicates' });
-      await expect(reviewDialog.getByRole('heading', { name: 'Review duplicates' })).toBeVisible({ timeout: 10000 });
+      await expect(reviewDialog.getByRole('heading', { name: 'Review duplicates' })).toBeVisible({
+        timeout: 10000,
+      });
       await expect(reviewDialog.getByText(`${mergeName} Scan`).first()).toBeVisible();
-      await expect(reviewDialog.getByText(`${E2E_CONTACT_PREFIX}${runId}PhoneA Scan`)).toBeVisible();
+      await expect(
+        reviewDialog.getByText(`${E2E_CONTACT_PREFIX}${runId}PhoneA Scan`),
+      ).toBeVisible();
 
       // --- Dismiss the phone pair through the UI (accept the confirm dialog)
       const phoneRow = reviewDialog
         .locator('div')
-        .filter({ has: page.getByText(`${E2E_CONTACT_PREFIX}${runId}PhoneA Scan`, { exact: true }) })
-        .filter({ has: page.getByText(`${E2E_CONTACT_PREFIX}${runId}PhoneB Scan`, { exact: true }) })
+        .filter({
+          has: page.getByText(`${E2E_CONTACT_PREFIX}${runId}PhoneA Scan`, { exact: true }),
+        })
+        .filter({
+          has: page.getByText(`${E2E_CONTACT_PREFIX}${runId}PhoneB Scan`, { exact: true }),
+        })
         .filter({ has: page.getByRole('button', { name: 'Not a duplicate' }) })
         .last();
       const dismissPhone = phoneRow.getByRole('button', { name: 'Not a duplicate' });
@@ -85,7 +114,9 @@ test.describe('Duplicate scan', () => {
       await stableClick(dismissPhone);
       expect(dialogMessage).toContain('NOT duplicates');
 
-      await expect(reviewDialog.getByText(`${E2E_CONTACT_PREFIX}${runId}PhoneA Scan`)).not.toBeVisible({ timeout: 10000 });
+      await expect(
+        reviewDialog.getByText(`${E2E_CONTACT_PREFIX}${runId}PhoneA Scan`),
+      ).not.toBeVisible({ timeout: 10000 });
 
       // The dismissal is a server-side fact: the scan endpoint agrees. The
       // dismissal write and a follow-up scan can race through the WAL read
@@ -97,10 +128,12 @@ test.describe('Duplicate scan', () => {
             if (!res.ok()) throw new Error(`scan failed: ${await res.text()}`);
             const pairs = (await res.json()).pairs as { a: { uid: string }; b: { uid: string } }[];
             return pairs.some(
-              (p) => (p.a.uid === phoneA.uid && p.b.uid === phoneB.uid) || (p.a.uid === phoneB.uid && p.b.uid === phoneA.uid)
+              (p) =>
+                (p.a.uid === phoneA.uid && p.b.uid === phoneB.uid) ||
+                (p.a.uid === phoneB.uid && p.b.uid === phoneA.uid),
             );
           },
-          { message: 'a dismissed pair must not be offered again by the scan', timeout: 10000 }
+          { message: 'a dismissed pair must not be offered again by the scan', timeout: 10000 },
         )
         .toBe(false);
 
@@ -108,8 +141,12 @@ test.describe('Duplicate scan', () => {
       await reviewDialog.getByRole('button', { name: 'Close' }).click();
       await stableClick(page.getByRole('button', { name: 'Review duplicates' }));
       const reopenedDialog = page.getByRole('dialog').filter({ hasText: 'Review duplicates' });
-      await expect(reopenedDialog.getByText(`${mergeName} Scan`).first()).toBeVisible({ timeout: 10000 });
-      await expect(reopenedDialog.getByText(`${E2E_CONTACT_PREFIX}${runId}PhoneA Scan`)).not.toBeVisible();
+      await expect(reopenedDialog.getByText(`${mergeName} Scan`).first()).toBeVisible({
+        timeout: 10000,
+      });
+      await expect(
+        reopenedDialog.getByText(`${E2E_CONTACT_PREFIX}${runId}PhoneA Scan`),
+      ).not.toBeVisible();
 
       // --- Merge the same-name pair through the review dialog
       const mergeRow = reopenedDialog
@@ -133,7 +170,9 @@ test.describe('Duplicate scan', () => {
       // does the review list refetch — so the loser is gone from the list by
       // the time this resolves.
       await expect(mergeDialog).not.toBeVisible({ timeout: 10000 });
-      await expect(reopenedDialog.getByText(`${mergeName} Scan`).first()).not.toBeVisible({ timeout: 10000 });
+      await expect(reopenedDialog.getByText(`${mergeName} Scan`).first()).not.toBeVisible({
+        timeout: 10000,
+      });
 
       // The loser must no longer be retrievable. The merge commit and a
       // follow-up GET can race through SQLite's pooled connections (a WAL

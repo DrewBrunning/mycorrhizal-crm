@@ -1,13 +1,13 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
-  getCadencePolicies,
+  type CadencePolicy,
+  type CadencePolicyInput,
   createCadencePolicy,
-  updateCadencePolicy,
   deleteCadencePolicy,
-  CadencePolicy,
-  CadencePolicyInput,
+  getCadencePolicies,
+  updateCadencePolicy,
 } from '../api/cadencePolicies';
-import { handleFetchError, handleError, ErrorNotifier } from '../utils/errorHandler';
+import { type ErrorNotifier, handleError, handleFetchError } from '../utils/errorHandler';
 
 export function useCadencePolicy(entityId: string | undefined, notifier?: ErrorNotifier) {
   const [policy, setPolicy] = useState<CadencePolicy | null>(null);
@@ -30,7 +30,7 @@ export function useCadencePolicy(entityId: string | undefined, notifier?: ErrorN
         setLoading(false);
       }
     },
-    [entityId]
+    [entityId],
   );
 
   useEffect(() => {
@@ -46,7 +46,7 @@ export function useCadencePolicy(entityId: string | undefined, notifier?: ErrorN
       }
       await refresh(input.entity_id);
     },
-    [policy, refresh]
+    [policy, refresh],
   );
 
   const handleDelete = useCallback(async () => {

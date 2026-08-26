@@ -1,7 +1,7 @@
-import { Autocomplete, TextField, Tooltip } from '@mui/material';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import { Autocomplete, TextField, Tooltip } from '@mui/material';
 import { useTranslation } from 'react-i18next';
-import { LANGUAGE_OPTIONS, LanguageOption, languageLabel } from '../languages';
+import { LANGUAGE_OPTIONS, type LanguageOption, languageLabel } from '../languages';
 
 interface LanguageFieldProps {
   value: string;
@@ -16,7 +16,12 @@ interface LanguageFieldProps {
 // tooltip exists because this is card metadata, not the language the contact
 // speaks — a distinction that is easy to confuse with the spoken-language
 // fields (pronouns, grammatical gender, preferred languages).
-export default function LanguageField({ value, onChange, fullWidth, size = 'small' }: LanguageFieldProps) {
+export default function LanguageField({
+  value,
+  onChange,
+  fullWidth,
+  size = 'small',
+}: LanguageFieldProps) {
   const { t } = useTranslation();
 
   return (
@@ -25,7 +30,9 @@ export default function LanguageField({ value, onChange, fullWidth, size = 'smal
       size={size}
       fullWidth={fullWidth}
       options={LANGUAGE_OPTIONS}
-      getOptionLabel={(opt: LanguageOption | string) => (typeof opt === 'string' ? opt : languageLabel(opt))}
+      getOptionLabel={(opt: LanguageOption | string) =>
+        typeof opt === 'string' ? opt : languageLabel(opt)
+      }
       isOptionEqualToValue={(opt, val) => {
         const optCode = typeof opt === 'string' ? opt : opt.code;
         const otherCode = typeof val === 'string' ? val : (val as LanguageOption | null)?.code;
@@ -47,7 +54,9 @@ export default function LanguageField({ value, onChange, fullWidth, size = 'smal
               <>
                 {params.InputProps.endAdornment}
                 <Tooltip title={t('contacts.languageInfo')} placement="top">
-                  <InfoOutlinedIcon sx={{ fontSize: 18, color: 'text.secondary', cursor: 'help' }} />
+                  <InfoOutlinedIcon
+                    sx={{ fontSize: 18, color: 'text.secondary', cursor: 'help' }}
+                  />
                 </Tooltip>
               </>
             ),

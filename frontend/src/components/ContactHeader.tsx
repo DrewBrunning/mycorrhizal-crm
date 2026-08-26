@@ -1,28 +1,51 @@
-import { Box, Card, CardContent, Avatar, Typography, Chip, IconButton, Stack, TextField, Autocomplete, Button, SvgIcon, Menu, MenuItem, ListItemText, ListItemIcon, useTheme, useMediaQuery } from '@mui/material';
-import { useState } from 'react';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
-import StarIcon from '@mui/icons-material/Star';
-import StarBorderIcon from '@mui/icons-material/StarBorder';
-import GroupIcon from '@mui/icons-material/Group';
-import LocalOfferIcon from '@mui/icons-material/LocalOffer';
-import EditIcon from '@mui/icons-material/Edit';
-import SaveIcon from '@mui/icons-material/Save';
+import { mdiDownloadOutline, mdiNoteMultipleOutline } from '@mdi/js';
+import ArchiveIcon from '@mui/icons-material/Archive';
+import AutoModeIcon from '@mui/icons-material/AutoMode';
+import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
-import CameraAltIcon from '@mui/icons-material/CameraAlt';
-import AutoModeIcon from '@mui/icons-material/AutoMode';
-import ArchiveIcon from '@mui/icons-material/Archive';
-import UnarchiveIcon from '@mui/icons-material/Unarchive';
+import EditIcon from '@mui/icons-material/Edit';
+import GroupIcon from '@mui/icons-material/Group';
+import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import MergeIcon from '@mui/icons-material/MergeType';
-import ShareIcon from '@mui/icons-material/Share';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 import PersonIcon from '@mui/icons-material/Person';
-import { mdiDownloadOutline, mdiNoteMultipleOutline } from '@mdi/js';
+import SaveIcon from '@mui/icons-material/Save';
+import ShareIcon from '@mui/icons-material/Share';
+import StarIcon from '@mui/icons-material/Star';
+import StarBorderIcon from '@mui/icons-material/StarBorder';
+import UnarchiveIcon from '@mui/icons-material/Unarchive';
+import {
+  Autocomplete,
+  Avatar,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  IconButton,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem,
+  Stack,
+  SvgIcon,
+  TextField,
+  Typography,
+  useMediaQuery,
+  useTheme,
+} from '@mui/material';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ContactFieldKey, resolveEnabledFields } from '../contactFields';
-import { ContactRecordResponse, nameComponentValue, getContactDisplayName } from '../api/contacts';
+import type { Circle } from '../api/circles';
+import {
+  type ContactRecordResponse,
+  getContactDisplayName,
+  nameComponentValue,
+} from '../api/contacts';
+import type { Tag } from '../api/tags';
+import { type ContactFieldKey, resolveEnabledFields } from '../contactFields';
 import LanguageField from './LanguageField';
-import { Circle } from '../api/circles';
-import { Tag } from '../api/tags';
 
 export interface ProfileValues {
   prefix: string;
@@ -103,7 +126,7 @@ export default function ContactHeader({
   onShareContact,
   onExportContact,
   isMe,
-  onToggleMe
+  onToggleMe,
 }: ContactHeaderProps) {
   const { t } = useTranslation();
   const enabled = enabledFields ?? resolveEnabledFields(null);
@@ -147,8 +170,8 @@ export default function ContactHeader({
               // in the tab order, so without this a keyboard user tabbed onto
               // a control they could never see.
               '&:hover .camera-badge, &:focus-within .camera-badge': {
-                opacity: 1
-              }
+                opacity: 1,
+              },
             }}
           >
             <Avatar
@@ -159,14 +182,18 @@ export default function ContactHeader({
               // children only render once the <img> itself fails to load, so
               // this alt text is what's actually announced while the photo
               // is showing.
-              alt={firstname ? t('profilePicture.altText', { name: firstname }) : t('profilePicture.altTextGeneric')}
+              alt={
+                firstname
+                  ? t('profilePicture.altText', { name: firstname })
+                  : t('profilePicture.altTextGeneric')
+              }
               sx={{
                 width: 90,
                 height: 90,
                 cursor: 'pointer',
                 bgcolor: 'primary.main',
                 fontSize: '2rem',
-                '&:hover': { opacity: 0.8 }
+                '&:hover': { opacity: 0.8 },
               }}
               onClick={onUploadProfilePicture}
             >
@@ -188,7 +215,7 @@ export default function ContactHeader({
                 height: 24,
                 opacity: 0,
                 transition: 'opacity 0.2s',
-                '&:hover': { bgcolor: 'primary.dark' }
+                '&:hover': { bgcolor: 'primary.dark' },
               }}
             >
               <CameraAltIcon sx={{ fontSize: 14 }} />
@@ -202,14 +229,18 @@ export default function ContactHeader({
                   <TextField
                     label={t('contacts.prefix')}
                     value={profileValues.prefix}
-                    onChange={(e) => onProfileValueChange({ ...profileValues, prefix: e.target.value })}
+                    onChange={(e) =>
+                      onProfileValueChange({ ...profileValues, prefix: e.target.value })
+                    }
                     size="small"
                   />
                 )}
                 <TextField
                   label={t('contactDetail.firstname')}
                   value={profileValues.firstname}
-                  onChange={(e) => onProfileValueChange({ ...profileValues, firstname: e.target.value })}
+                  onChange={(e) =>
+                    onProfileValueChange({ ...profileValues, firstname: e.target.value })
+                  }
                   size="small"
                   required
                   autoFocus
@@ -218,32 +249,44 @@ export default function ContactHeader({
                   <TextField
                     label={t('contacts.middleName')}
                     value={profileValues.middle_name}
-                    onChange={(e) => onProfileValueChange({ ...profileValues, middle_name: e.target.value })}
+                    onChange={(e) =>
+                      onProfileValueChange({ ...profileValues, middle_name: e.target.value })
+                    }
                     size="small"
                   />
                 )}
                 <TextField
                   label={t('contactDetail.lastname')}
                   value={profileValues.lastname}
-                  onChange={(e) => onProfileValueChange({ ...profileValues, lastname: e.target.value })}
+                  onChange={(e) =>
+                    onProfileValueChange({ ...profileValues, lastname: e.target.value })
+                  }
                   size="small"
                 />
                 {isOn('suffix') && (
                   <TextField
                     label={t('contacts.suffix')}
                     value={profileValues.suffix}
-                    onChange={(e) => onProfileValueChange({ ...profileValues, suffix: e.target.value })}
+                    onChange={(e) =>
+                      onProfileValueChange({ ...profileValues, suffix: e.target.value })
+                    }
                     size="small"
                   />
                 )}
                 <TextField
                   label={t('contactDetail.nickname')}
                   value={profileValues.nickname}
-                  onChange={(e) => onProfileValueChange({ ...profileValues, nickname: e.target.value })}
+                  onChange={(e) =>
+                    onProfileValueChange({ ...profileValues, nickname: e.target.value })
+                  }
                   size="small"
                 />
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1 }}>
-                  <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 0.08, fontSize: '0.72rem' }}>
+                  <Typography
+                    variant="overline"
+                    color="text.secondary"
+                    sx={{ letterSpacing: 0.08, fontSize: '0.72rem' }}
+                  >
                     {t('contactDetail.section.metadata')}
                   </Typography>
                 </Box>
@@ -262,13 +305,17 @@ export default function ContactHeader({
                     select
                     label={t('contacts.cardKindLabel')}
                     value={profileValues.cardKind}
-                    onChange={(e) => onProfileValueChange({ ...profileValues, cardKind: e.target.value })}
+                    onChange={(e) =>
+                      onProfileValueChange({ ...profileValues, cardKind: e.target.value })
+                    }
                     size="small"
                   >
                     <MenuItem value="">
                       <em>{t('common.none')}</em>
                     </MenuItem>
-                    {(['individual', 'group', 'org', 'location', 'application', 'device'] as const).map((opt) => (
+                    {(
+                      ['individual', 'group', 'org', 'location', 'application', 'device'] as const
+                    ).map((opt) => (
                       <MenuItem key={opt} value={opt}>
                         {t(`contacts.cardKind.${opt}`)}
                       </MenuItem>
@@ -285,10 +332,19 @@ export default function ContactHeader({
                 )}
                 <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
                   <Box sx={{ display: 'flex', gap: 1 }}>
-                    <IconButton size="small" color="primary" onClick={onSaveProfile} aria-label={t('common.save')}>
+                    <IconButton
+                      size="small"
+                      color="primary"
+                      onClick={onSaveProfile}
+                      aria-label={t('common.save')}
+                    >
                       <SaveIcon />
                     </IconButton>
-                    <IconButton size="small" onClick={onCancelEditProfile} aria-label={t('common.cancel')}>
+                    <IconButton
+                      size="small"
+                      onClick={onCancelEditProfile}
+                      aria-label={t('common.cancel')}
+                    >
                       <CloseIcon />
                     </IconButton>
                   </Box>
@@ -316,12 +372,16 @@ export default function ContactHeader({
                       position: 'relative',
                       // #188: see the camera-badge focus-within comment above.
                       '&:hover .edit-icon, &:focus-within .edit-icon': {
-                        opacity: 1
-                      }
+                        opacity: 1,
+                      },
                     }}
                   >
                     <Box sx={{ display: 'flex', alignItems: 'center', pr: 5 }}>
-                      <Typography variant="h5" component="h1" sx={{ fontWeight: 500, lineHeight: 1.2, overflowWrap: 'anywhere' }}>
+                      <Typography
+                        variant="h5"
+                        component="h1"
+                        sx={{ fontWeight: 500, lineHeight: 1.2, overflowWrap: 'anywhere' }}
+                      >
                         {displayName}
                       </Typography>
                       {isMe && (
@@ -340,10 +400,18 @@ export default function ContactHeader({
                           size="small"
                           color="primary"
                           onClick={onToggleFavorite}
-                          aria-label={record.is_favorite ? t('contactDetail.unfavoriteContact') : t('contactDetail.favoriteContact')}
+                          aria-label={
+                            record.is_favorite
+                              ? t('contactDetail.unfavoriteContact')
+                              : t('contactDetail.favoriteContact')
+                          }
                           sx={{ ml: 0.5, flexShrink: 0 }}
                         >
-                          {record.is_favorite ? <StarIcon fontSize="small" /> : <StarBorderIcon fontSize="small" />}
+                          {record.is_favorite ? (
+                            <StarIcon fontSize="small" />
+                          ) : (
+                            <StarBorderIcon fontSize="small" />
+                          )}
                         </IconButton>
                       )}
                       <IconButton
@@ -385,71 +453,173 @@ export default function ContactHeader({
                         open={actionsMenuOpen}
                         onClose={() => setActionsMenuAnchor(null)}
                       >
-                        {archived ? (
-                          onUnarchiveContact && (
-                            <MenuItem key="unarchive" onClick={() => { setActionsMenuAnchor(null); onUnarchiveContact(); }}>
-                              <ListItemIcon><UnarchiveIcon fontSize="small" /></ListItemIcon>
-                              <ListItemText>{t('contactDetail.unarchive')}</ListItemText>
-                            </MenuItem>
-                          )
-                        ) : (
-                          [
-                            onToggleMe && (
-                              <MenuItem key="toggle-me" onClick={() => { setActionsMenuAnchor(null); onToggleMe(); }}>
-                                <ListItemIcon><PersonIcon fontSize="small" /></ListItemIcon>
-                                <ListItemText>{isMe ? t('contactDetail.unmarkAsMe') : t('contactDetail.markAsMe')}</ListItemText>
+                        {archived
+                          ? onUnarchiveContact && (
+                              <MenuItem
+                                key="unarchive"
+                                onClick={() => {
+                                  setActionsMenuAnchor(null);
+                                  onUnarchiveContact();
+                                }}
+                              >
+                                <ListItemIcon>
+                                  <UnarchiveIcon fontSize="small" />
+                                </ListItemIcon>
+                                <ListItemText>{t('contactDetail.unarchive')}</ListItemText>
                               </MenuItem>
-                            ),
-                            onStayInTouch && (
-                              <MenuItem key="stay-in-touch" onClick={() => { setActionsMenuAnchor(null); onStayInTouch(); }}>
-                                <ListItemIcon><AutoModeIcon fontSize="small" /></ListItemIcon>
-                                <ListItemText>{t('contactDetail.stayInTouch')}</ListItemText>
-                              </MenuItem>
-                            ),
-                            onMergeContact && (
-                              <MenuItem key="merge" onClick={() => { setActionsMenuAnchor(null); onMergeContact(); }}>
-                                <ListItemIcon><MergeIcon fontSize="small" /></ListItemIcon>
-                                <ListItemText>{t('contactMerge.mergeButton')}</ListItemText>
-                              </MenuItem>
-                            ),
-                            onPrepView && (
-                              <MenuItem key="prep" onClick={() => { setActionsMenuAnchor(null); onPrepView(); }}>
-                                <ListItemIcon><SvgIcon fontSize="small"><path d={mdiNoteMultipleOutline} /></SvgIcon></ListItemIcon>
-                                <ListItemText>{t('prep.title')}</ListItemText>
-                              </MenuItem>
-                            ),
-                            onShareContact && (
-                              <MenuItem key="share" onClick={() => { setActionsMenuAnchor(null); onShareContact(); }}>
-                                <ListItemIcon><ShareIcon fontSize="small" /></ListItemIcon>
-                                <ListItemText>{t('contactShares.shareDialog.title')}</ListItemText>
-                              </MenuItem>
-                            ),
-                            <MenuItem key="vcf4" onClick={() => { setActionsMenuAnchor(null); onExportContact('vcf4'); }}>
-                              <ListItemIcon><SvgIcon fontSize="small"><path d={mdiDownloadOutline} /></SvgIcon></ListItemIcon>
-                              <ListItemText>vCard 4.0</ListItemText>
-                            </MenuItem>,
-                            <MenuItem key="vcf3" onClick={() => { setActionsMenuAnchor(null); onExportContact('vcf3'); }}>
-                              <ListItemIcon><SvgIcon fontSize="small"><path d={mdiDownloadOutline} /></SvgIcon></ListItemIcon>
-                              <ListItemText>vCard 3.0</ListItemText>
-                            </MenuItem>,
-                            <MenuItem key="jscontact" onClick={() => { setActionsMenuAnchor(null); onExportContact('jscontact'); }}>
-                              <ListItemIcon><SvgIcon fontSize="small"><path d={mdiDownloadOutline} /></SvgIcon></ListItemIcon>
-                              <ListItemText>JSContact</ListItemText>
-                            </MenuItem>,
-                            onArchiveContact && (
-                              <MenuItem key="archive" onClick={() => { setActionsMenuAnchor(null); onArchiveContact(); }}>
-                                <ListItemIcon><ArchiveIcon fontSize="small" /></ListItemIcon>
-                                <ListItemText>{t('contactDetail.archive')}</ListItemText>
-                              </MenuItem>
-                            ),
-                            onDeleteContact && (
-                              <MenuItem key="delete" onClick={() => { setActionsMenuAnchor(null); onDeleteContact(); }}>
-                                <ListItemIcon><DeleteIcon fontSize="small" color="error" /></ListItemIcon>
-                                <ListItemText sx={{ color: 'error.main' }}>{t('contactDetail.deleteContact')}</ListItemText>
-                              </MenuItem>
-                            ),
-                          ]
-                        )}
+                            )
+                          : [
+                              onToggleMe && (
+                                <MenuItem
+                                  key="toggle-me"
+                                  onClick={() => {
+                                    setActionsMenuAnchor(null);
+                                    onToggleMe();
+                                  }}
+                                >
+                                  <ListItemIcon>
+                                    <PersonIcon fontSize="small" />
+                                  </ListItemIcon>
+                                  <ListItemText>
+                                    {isMe
+                                      ? t('contactDetail.unmarkAsMe')
+                                      : t('contactDetail.markAsMe')}
+                                  </ListItemText>
+                                </MenuItem>
+                              ),
+                              onStayInTouch && (
+                                <MenuItem
+                                  key="stay-in-touch"
+                                  onClick={() => {
+                                    setActionsMenuAnchor(null);
+                                    onStayInTouch();
+                                  }}
+                                >
+                                  <ListItemIcon>
+                                    <AutoModeIcon fontSize="small" />
+                                  </ListItemIcon>
+                                  <ListItemText>{t('contactDetail.stayInTouch')}</ListItemText>
+                                </MenuItem>
+                              ),
+                              onMergeContact && (
+                                <MenuItem
+                                  key="merge"
+                                  onClick={() => {
+                                    setActionsMenuAnchor(null);
+                                    onMergeContact();
+                                  }}
+                                >
+                                  <ListItemIcon>
+                                    <MergeIcon fontSize="small" />
+                                  </ListItemIcon>
+                                  <ListItemText>{t('contactMerge.mergeButton')}</ListItemText>
+                                </MenuItem>
+                              ),
+                              onPrepView && (
+                                <MenuItem
+                                  key="prep"
+                                  onClick={() => {
+                                    setActionsMenuAnchor(null);
+                                    onPrepView();
+                                  }}
+                                >
+                                  <ListItemIcon>
+                                    <SvgIcon fontSize="small">
+                                      <path d={mdiNoteMultipleOutline} />
+                                    </SvgIcon>
+                                  </ListItemIcon>
+                                  <ListItemText>{t('prep.title')}</ListItemText>
+                                </MenuItem>
+                              ),
+                              onShareContact && (
+                                <MenuItem
+                                  key="share"
+                                  onClick={() => {
+                                    setActionsMenuAnchor(null);
+                                    onShareContact();
+                                  }}
+                                >
+                                  <ListItemIcon>
+                                    <ShareIcon fontSize="small" />
+                                  </ListItemIcon>
+                                  <ListItemText>
+                                    {t('contactShares.shareDialog.title')}
+                                  </ListItemText>
+                                </MenuItem>
+                              ),
+                              <MenuItem
+                                key="vcf4"
+                                onClick={() => {
+                                  setActionsMenuAnchor(null);
+                                  onExportContact('vcf4');
+                                }}
+                              >
+                                <ListItemIcon>
+                                  <SvgIcon fontSize="small">
+                                    <path d={mdiDownloadOutline} />
+                                  </SvgIcon>
+                                </ListItemIcon>
+                                <ListItemText>vCard 4.0</ListItemText>
+                              </MenuItem>,
+                              <MenuItem
+                                key="vcf3"
+                                onClick={() => {
+                                  setActionsMenuAnchor(null);
+                                  onExportContact('vcf3');
+                                }}
+                              >
+                                <ListItemIcon>
+                                  <SvgIcon fontSize="small">
+                                    <path d={mdiDownloadOutline} />
+                                  </SvgIcon>
+                                </ListItemIcon>
+                                <ListItemText>vCard 3.0</ListItemText>
+                              </MenuItem>,
+                              <MenuItem
+                                key="jscontact"
+                                onClick={() => {
+                                  setActionsMenuAnchor(null);
+                                  onExportContact('jscontact');
+                                }}
+                              >
+                                <ListItemIcon>
+                                  <SvgIcon fontSize="small">
+                                    <path d={mdiDownloadOutline} />
+                                  </SvgIcon>
+                                </ListItemIcon>
+                                <ListItemText>JSContact</ListItemText>
+                              </MenuItem>,
+                              onArchiveContact && (
+                                <MenuItem
+                                  key="archive"
+                                  onClick={() => {
+                                    setActionsMenuAnchor(null);
+                                    onArchiveContact();
+                                  }}
+                                >
+                                  <ListItemIcon>
+                                    <ArchiveIcon fontSize="small" />
+                                  </ListItemIcon>
+                                  <ListItemText>{t('contactDetail.archive')}</ListItemText>
+                                </MenuItem>
+                              ),
+                              onDeleteContact && (
+                                <MenuItem
+                                  key="delete"
+                                  onClick={() => {
+                                    setActionsMenuAnchor(null);
+                                    onDeleteContact();
+                                  }}
+                                >
+                                  <ListItemIcon>
+                                    <DeleteIcon fontSize="small" color="error" />
+                                  </ListItemIcon>
+                                  <ListItemText sx={{ color: 'error.main' }}>
+                                    {t('contactDetail.deleteContact')}
+                                  </ListItemText>
+                                </MenuItem>
+                              ),
+                            ]}
                       </Menu>
                     </Box>
                   </Box>
@@ -468,12 +638,16 @@ export default function ContactHeader({
                       gap: 0.5,
                       // #188: see the camera-badge focus-within comment above.
                       '&:hover .edit-icon, &:focus-within .edit-icon': {
-                        opacity: 1
-                      }
+                        opacity: 1,
+                      },
                     }}
                   >
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Typography variant="h5" component="h1" sx={{ fontWeight: 500, lineHeight: 1.2, overflowWrap: 'anywhere' }}>
+                      <Typography
+                        variant="h5"
+                        component="h1"
+                        sx={{ fontWeight: 500, lineHeight: 1.2, overflowWrap: 'anywhere' }}
+                      >
                         {displayName}
                       </Typography>
                       {isMe && (
@@ -491,10 +665,18 @@ export default function ContactHeader({
                           size="small"
                           color="primary"
                           onClick={onToggleFavorite}
-                          aria-label={record.is_favorite ? t('contactDetail.unfavoriteContact') : t('contactDetail.favoriteContact')}
+                          aria-label={
+                            record.is_favorite
+                              ? t('contactDetail.unfavoriteContact')
+                              : t('contactDetail.favoriteContact')
+                          }
                           sx={{ ml: 0.5, flexShrink: 0 }}
                         >
-                          {record.is_favorite ? <StarIcon fontSize="small" /> : <StarBorderIcon fontSize="small" />}
+                          {record.is_favorite ? (
+                            <StarIcon fontSize="small" />
+                          ) : (
+                            <StarBorderIcon fontSize="small" />
+                          )}
                         </IconButton>
                       )}
                       <IconButton
@@ -559,7 +741,11 @@ export default function ContactHeader({
                             <Button
                               variant="outlined"
                               size="small"
-                              startIcon={<SvgIcon><path d={mdiNoteMultipleOutline} /></SvgIcon>}
+                              startIcon={
+                                <SvgIcon>
+                                  <path d={mdiNoteMultipleOutline} />
+                                </SvgIcon>
+                              }
                               onClick={onPrepView}
                             >
                               {t('prep.title')}
@@ -578,7 +764,11 @@ export default function ContactHeader({
                           <Button
                             variant="outlined"
                             size="small"
-                            startIcon={<SvgIcon><path d={mdiDownloadOutline} /></SvgIcon>}
+                            startIcon={
+                              <SvgIcon>
+                                <path d={mdiDownloadOutline} />
+                              </SvgIcon>
+                            }
                             onClick={(e) => setExportMenuAnchor(e.currentTarget)}
                           >
                             {t('contactDetail.exportVCard')}
@@ -588,13 +778,28 @@ export default function ContactHeader({
                             open={exportMenuOpen}
                             onClose={() => setExportMenuAnchor(null)}
                           >
-                            <MenuItem onClick={() => { setExportMenuAnchor(null); onExportContact('vcf4'); }}>
+                            <MenuItem
+                              onClick={() => {
+                                setExportMenuAnchor(null);
+                                onExportContact('vcf4');
+                              }}
+                            >
                               <ListItemText>vCard 4.0</ListItemText>
                             </MenuItem>
-                            <MenuItem onClick={() => { setExportMenuAnchor(null); onExportContact('vcf3'); }}>
+                            <MenuItem
+                              onClick={() => {
+                                setExportMenuAnchor(null);
+                                onExportContact('vcf3');
+                              }}
+                            >
                               <ListItemText>vCard 3.0</ListItemText>
                             </MenuItem>
-                            <MenuItem onClick={() => { setExportMenuAnchor(null); onExportContact('jscontact'); }}>
+                            <MenuItem
+                              onClick={() => {
+                                setExportMenuAnchor(null);
+                                onExportContact('jscontact');
+                              }}
+                            >
                               <ListItemText>JSContact</ListItemText>
                             </MenuItem>
                           </Menu>
@@ -643,9 +848,21 @@ export default function ContactHeader({
                     below -- ml:'auto' pushed this to the far right edge of the
                     header card, hundreds of px from the label and chips it
                     edits on a wide viewport. */}
-                <IconButton className="edit-icon" size="small" color="primary" onClick={() => setEditingCircles(!editingCircles)}
+                <IconButton
+                  className="edit-icon"
+                  size="small"
+                  color="primary"
+                  onClick={() => setEditingCircles(!editingCircles)}
                   aria-label={t('contactDetail.edit')}
-                  sx={{ ml: 1, flexShrink: 0, opacity: 0, transition: 'opacity 0.2s', minWidth: 24, minHeight: 24 }}>
+                  sx={{
+                    ml: 1,
+                    flexShrink: 0,
+                    opacity: 0,
+                    transition: 'opacity 0.2s',
+                    minWidth: 24,
+                    minHeight: 24,
+                  }}
+                >
                   <EditIcon fontSize="small" />
                 </IconButton>
               </Box>
@@ -655,32 +872,69 @@ export default function ContactHeader({
                   <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1, mb: 1 }}>
                     {contactCircles.length > 0 ? (
                       contactCircles.map((c) => (
-                        <Chip key={c.id} label={c.name} size="small" icon={<GroupIcon />}
-                          onDelete={() => onRemoveCircle(c)} />
+                        <Chip
+                          key={c.id}
+                          label={c.name}
+                          size="small"
+                          icon={<GroupIcon />}
+                          onDelete={() => onRemoveCircle(c)}
+                        />
                       ))
                     ) : (
-                      <Typography variant="caption" color="text.secondary">{t('contactDetail.noCircles')}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {t('contactDetail.noCircles')}
+                      </Typography>
                     )}
                   </Stack>
                   <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1, mt: 1 }}>
                     <Autocomplete
                       size="small"
-                      options={allCircles.filter(c => !contactCircles.find(cc => cc.id === c.id))}
+                      options={allCircles.filter(
+                        (c) => !contactCircles.find((cc) => cc.id === c.id),
+                      )}
                       getOptionLabel={(c) => c.name}
                       value={null}
-                      onChange={(_, value) => { if (value) onAddCircle(value); }}
+                      onChange={(_, value) => {
+                        if (value) onAddCircle(value);
+                      }}
                       blurOnSelect
                       sx={{ minWidth: { xs: '100%', sm: 200 } }}
                       renderInput={(params) => (
                         <TextField {...params} label={t('contacts.selectCircle')} size="small" />
                       )}
                     />
-                    <TextField size="small" placeholder={t('contactDetail.newCircle')}
-                      value={newCircleName} onChange={(e) => setNewCircleName(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter' && newCircleName.trim()) { onAddCircle({ id: '', created_at: '', updated_at: '', name: newCircleName.trim() }); setNewCircleName(''); }}}
-                      sx={{ flexGrow: 1, minWidth: 0 }} />
-                    <Button size="small" variant="contained" disabled={!newCircleName.trim()}
-                      onClick={() => { onAddCircle({ id: '', created_at: '', updated_at: '', name: newCircleName.trim() }); setNewCircleName(''); }}>
+                    <TextField
+                      size="small"
+                      placeholder={t('contactDetail.newCircle')}
+                      value={newCircleName}
+                      onChange={(e) => setNewCircleName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && newCircleName.trim()) {
+                          onAddCircle({
+                            id: '',
+                            created_at: '',
+                            updated_at: '',
+                            name: newCircleName.trim(),
+                          });
+                          setNewCircleName('');
+                        }
+                      }}
+                      sx={{ flexGrow: 1, minWidth: 0 }}
+                    />
+                    <Button
+                      size="small"
+                      variant="contained"
+                      disabled={!newCircleName.trim()}
+                      onClick={() => {
+                        onAddCircle({
+                          id: '',
+                          created_at: '',
+                          updated_at: '',
+                          name: newCircleName.trim(),
+                        });
+                        setNewCircleName('');
+                      }}
+                    >
                       {t('contactDetail.add')}
                     </Button>
                   </Stack>
@@ -692,7 +946,9 @@ export default function ContactHeader({
                       <Chip key={c.id} label={c.name} size="small" icon={<GroupIcon />} />
                     ))
                   ) : (
-                    <Typography variant="caption" color="text.secondary">{t('contactDetail.noCircles')}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {t('contactDetail.noCircles')}
+                    </Typography>
                   )}
                 </Stack>
               )}
@@ -707,9 +963,21 @@ export default function ContactHeader({
                   {t('contactDetail.tags')}
                 </Typography>
                 {/* T89: see the circles pencil above. */}
-                <IconButton className="edit-icon" size="small" color="primary" onClick={() => setEditingTags(!editingTags)}
+                <IconButton
+                  className="edit-icon"
+                  size="small"
+                  color="primary"
+                  onClick={() => setEditingTags(!editingTags)}
                   aria-label={t('contactDetail.edit')}
-                  sx={{ ml: 1, flexShrink: 0, opacity: 0, transition: 'opacity 0.2s', minWidth: 24, minHeight: 24 }}>
+                  sx={{
+                    ml: 1,
+                    flexShrink: 0,
+                    opacity: 0,
+                    transition: 'opacity 0.2s',
+                    minWidth: 24,
+                    minHeight: 24,
+                  }}
+                >
                   <EditIcon fontSize="small" />
                 </IconButton>
               </Box>
@@ -719,32 +987,67 @@ export default function ContactHeader({
                   <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1, mb: 1 }}>
                     {contactTags.length > 0 ? (
                       contactTags.map((t) => (
-                        <Chip key={t.id} label={t.name} size="small" icon={<LocalOfferIcon />}
-                          onDelete={() => onRemoveTag(t)} />
+                        <Chip
+                          key={t.id}
+                          label={t.name}
+                          size="small"
+                          icon={<LocalOfferIcon />}
+                          onDelete={() => onRemoveTag(t)}
+                        />
                       ))
                     ) : (
-                      <Typography variant="caption" color="text.secondary">{t('contactDetail.noTags')}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {t('contactDetail.noTags')}
+                      </Typography>
                     )}
                   </Stack>
                   <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1, mt: 1 }}>
                     <Autocomplete
                       size="small"
-                      options={allTags.filter(t => !contactTags.find(ct => ct.id === t.id))}
+                      options={allTags.filter((t) => !contactTags.find((ct) => ct.id === t.id))}
                       getOptionLabel={(t) => t.name}
                       value={null}
-                      onChange={(_, value) => { if (value) onAddTag(value); }}
+                      onChange={(_, value) => {
+                        if (value) onAddTag(value);
+                      }}
                       blurOnSelect
                       sx={{ minWidth: { xs: '100%', sm: 200 } }}
                       renderInput={(params) => (
                         <TextField {...params} label={t('contactDetail.selectTag')} size="small" />
                       )}
                     />
-                    <TextField size="small" placeholder={t('contactDetail.newTag')}
-                      value={newTagName} onChange={(e) => setNewTagName(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter' && newTagName.trim()) { onAddTag({ id: '', created_at: '', updated_at: '', name: newTagName.trim() }); setNewTagName(''); }}}
-                      sx={{ flexGrow: 1, minWidth: 0 }} />
-                    <Button size="small" variant="contained" disabled={!newTagName.trim()}
-                      onClick={() => { onAddTag({ id: '', created_at: '', updated_at: '', name: newTagName.trim() }); setNewTagName(''); }}>
+                    <TextField
+                      size="small"
+                      placeholder={t('contactDetail.newTag')}
+                      value={newTagName}
+                      onChange={(e) => setNewTagName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && newTagName.trim()) {
+                          onAddTag({
+                            id: '',
+                            created_at: '',
+                            updated_at: '',
+                            name: newTagName.trim(),
+                          });
+                          setNewTagName('');
+                        }
+                      }}
+                      sx={{ flexGrow: 1, minWidth: 0 }}
+                    />
+                    <Button
+                      size="small"
+                      variant="contained"
+                      disabled={!newTagName.trim()}
+                      onClick={() => {
+                        onAddTag({
+                          id: '',
+                          created_at: '',
+                          updated_at: '',
+                          name: newTagName.trim(),
+                        });
+                        setNewTagName('');
+                      }}
+                    >
                       {t('contactDetail.add')}
                     </Button>
                   </Stack>
@@ -756,7 +1059,9 @@ export default function ContactHeader({
                       <Chip key={t.id} label={t.name} size="small" icon={<LocalOfferIcon />} />
                     ))
                   ) : (
-                    <Typography variant="caption" color="text.secondary">{t('contactDetail.noTags')}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {t('contactDetail.noTags')}
+                    </Typography>
                   )}
                 </Stack>
               )}

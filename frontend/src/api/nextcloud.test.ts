@@ -1,11 +1,11 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
-  getNextcloudConfig,
-  saveNextcloudConfig,
   deleteNextcloudConfig,
-  testNextcloudConnection,
+  getNextcloudConfig,
   getNextcloudDir,
   linkNextcloudItem,
+  saveNextcloudConfig,
+  testNextcloudConnection,
   unlinkNextcloudItem,
 } from './nextcloud';
 
@@ -29,7 +29,11 @@ function errorResponse() {
   };
 }
 
-const configResponse = { base_url: 'https://nc.example.com', username: 'ada', has_app_password: true };
+const configResponse = {
+  base_url: 'https://nc.example.com',
+  username: 'ada',
+  has_app_password: true,
+};
 
 describe('getNextcloudConfig', () => {
   test('GETs /nextcloud/config and returns parsed data', async () => {
@@ -48,7 +52,10 @@ describe('getNextcloudConfig', () => {
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
 
-    await expect(getNextcloudConfig()).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    await expect(getNextcloudConfig()).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+    });
   });
 });
 
@@ -57,7 +64,11 @@ describe('saveNextcloudConfig', () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(okResponse(configResponse));
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await saveNextcloudConfig({ base_url: 'https://nc.example.com', username: 'ada', app_password: 'p' });
+    const result = await saveNextcloudConfig({
+      base_url: 'https://nc.example.com',
+      username: 'ada',
+      app_password: 'p',
+    });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0];
@@ -97,7 +108,10 @@ describe('deleteNextcloudConfig', () => {
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
 
-    await expect(deleteNextcloudConfig()).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    await expect(deleteNextcloudConfig()).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+    });
   });
 });
 
@@ -119,14 +133,23 @@ describe('testNextcloudConnection', () => {
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
 
-    await expect(testNextcloudConnection()).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    await expect(testNextcloudConnection()).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+    });
   });
 });
 
 describe('getNextcloudDir', () => {
   test('GETs /nextcloud/dir with an encoded path param', async () => {
     const items = [
-      { name: 'notes.md', path: '/docs/notes.md', type: 'file' as const, size: 2048, modified_at: '2026-01-01T00:00:00Z' },
+      {
+        name: 'notes.md',
+        path: '/docs/notes.md',
+        type: 'file' as const,
+        size: 2048,
+        modified_at: '2026-01-01T00:00:00Z',
+      },
     ];
     const fetchMock = vi.fn().mockResolvedValueOnce(okResponse({ items }));
     vi.stubGlobal('fetch', fetchMock);
@@ -154,7 +177,10 @@ describe('getNextcloudDir', () => {
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
 
-    await expect(getNextcloudDir('/')).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    await expect(getNextcloudDir('/')).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+    });
   });
 });
 
@@ -188,7 +214,9 @@ describe('linkNextcloudItem', () => {
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
 
-    await expect(linkNextcloudItem('alice-uid', { path: '/', name: 'x', type: 'dir' })).rejects.toMatchObject({
+    await expect(
+      linkNextcloudItem('alice-uid', { path: '/', name: 'x', type: 'dir' }),
+    ).rejects.toMatchObject({
       code: 'VALIDATION_ERROR',
       status: 400,
     });

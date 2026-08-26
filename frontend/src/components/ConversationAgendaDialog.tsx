@@ -1,17 +1,17 @@
-import { useState, useEffect } from 'react';
 import {
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Button,
   Box,
+  Button,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  TextField,
   Typography,
 } from '@mui/material';
-import AppDialog from './AppDialog';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ConversationAgenda } from '../api/conversationAgenda';
+import type { ConversationAgenda } from '../api/conversationAgenda';
 import { isHttpUrlString, looksLikeAbsoluteUri } from '../utils/linkResolution';
+import AppDialog from './AppDialog';
 
 export interface ConversationAgendaFormData {
   content: string;

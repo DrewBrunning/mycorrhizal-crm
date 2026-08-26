@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { createTestContact, deleteTestContact, waitForLoading } from './fixtures';
 import { API_BASE_URL } from './global-setup';
 
@@ -54,7 +54,9 @@ test.describe('Prep view', () => {
   // Pins the wire contract the crash came from, independently of how the page
   // happens to render it. `omitempty` returning to those fields would fail
   // here even if the frontend's own normalisation masked it.
-  test('the briefing endpoint always returns the collection blocks as arrays', async ({ request }) => {
+  test('the briefing endpoint always returns the collection blocks as arrays', async ({
+    request,
+  }) => {
     const contact = await createTestContact(request, { firstname: 'Prep', lastname: 'Wire' });
 
     try {
@@ -78,7 +80,10 @@ test.describe('Prep view', () => {
     }
   });
 
-  test('surfaces a note and reaches the prep view from the contact page', async ({ page, request }) => {
+  test('surfaces a note and reaches the prep view from the contact page', async ({
+    page,
+    request,
+  }) => {
     const contact = await createTestContact(request, { firstname: 'Prep', lastname: 'Populated' });
 
     try {

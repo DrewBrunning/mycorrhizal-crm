@@ -1,7 +1,6 @@
-import { test, expect } from './fixtures';
-import { createTestContact, deleteTestContact } from './fixtures';
-import { API_BASE_URL } from './global-setup';
 import { toContactRecordInput } from '../src/api/contacts';
+import { createTestContact, deleteTestContact, expect, test } from './fixtures';
+import { API_BASE_URL } from './global-setup';
 
 // T60 — the audit log page.
 //
@@ -12,7 +11,10 @@ import { toContactRecordInput } from '../src/api/contacts';
 // against a not-yet-written row would be testing the goroutine's timing, not
 // the page.
 test.describe('Audit log', () => {
-  test('reachable from navigation, filters by entity, and undoes a contact update end-to-end', async ({ page, request }) => {
+  test('reachable from navigation, filters by entity, and undoes a contact update end-to-end', async ({
+    page,
+    request,
+  }) => {
     const contact = await createTestContact(request, { lastname: 'Before' });
 
     try {
@@ -25,10 +27,12 @@ test.describe('Audit log', () => {
       // Wait for the async audit write to land.
       await expect(async () => {
         const res = await request.get(
-          `${API_BASE_URL}/audit?entity_type=contact&entity_id=${contact.uid}&limit=100`
+          `${API_BASE_URL}/audit?entity_type=contact&entity_id=${contact.uid}&limit=100`,
         );
         const body = res.ok() ? await res.json() : { audit_events: [] };
-        expect((body.audit_events || []).some((e: { operation: string }) => e.operation === 'update')).toBeTruthy();
+        expect(
+          (body.audit_events || []).some((e: { operation: string }) => e.operation === 'update'),
+        ).toBeTruthy();
       }).toPass({ timeout: 15000 });
 
       // The page is reachable from app navigation, not a dead URL.
@@ -60,11 +64,11 @@ test.describe('Audit log', () => {
       // Hand-verified revert: re-fetch the contact and confirm the field is
       // back to the pre-update value.
       const refetched = await request.get(
-        `${API_BASE_URL}/contacts?search=${encodeURIComponent(contact.firstname)}&limit=10`
+        `${API_BASE_URL}/contacts?search=${encodeURIComponent(contact.firstname)}&limit=10`,
       );
       expect(refetched.ok()).toBeTruthy();
       const found = (await refetched.json()).contacts.find(
-        (c: { id: number }) => c.id === contact.ID
+        (c: { id: number }) => c.id === contact.ID,
       );
       expect(found.lastname).toBe('Before');
     } finally {
@@ -91,10 +95,12 @@ test.describe('Audit log', () => {
       // Wait for the circle update event to land.
       await expect(async () => {
         const res = await request.get(
-          `${API_BASE_URL}/audit?entity_type=circle&entity_id=${circle.id}&limit=100`
+          `${API_BASE_URL}/audit?entity_type=circle&entity_id=${circle.id}&limit=100`,
         );
         const body = res.ok() ? await res.json() : { audit_events: [] };
-        expect((body.audit_events || []).some((e: { operation: string }) => e.operation === 'update')).toBeTruthy();
+        expect(
+          (body.audit_events || []).some((e: { operation: string }) => e.operation === 'update'),
+        ).toBeTruthy();
       }).toPass({ timeout: 15000 });
 
       await page.goto('/audit');
@@ -102,7 +108,9 @@ test.describe('Audit log', () => {
       // Sanity: the unfiltered list has contact-update rows that DO offer
       // undo, so the following assertions are about the filter, not a page
       // that never renders the button.
-      await expect(page.getByRole('button', { name: 'Undo' }).first()).toBeVisible({ timeout: 10000 });
+      await expect(page.getByRole('button', { name: 'Undo' }).first()).toBeVisible({
+        timeout: 10000,
+      });
 
       // Filter to circle events: the circle's row renders (its uuid is the
       // entity cell), but no row offers Undo -- the button is gated on
@@ -119,8 +127,8 @@ test.describe('Audit log', () => {
   test('shows an empty state when no events match the filters', async ({ page }) => {
     await page.goto('/audit');
     await page.getByLabel('Entity ID').fill('no-such-entity-id-12345');
-    await expect(
-      page.getByText('No audit events match your filters.')
-    ).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('No audit events match your filters.')).toBeVisible({
+      timeout: 10000,
+    });
   });
 });

@@ -1,4 +1,4 @@
-import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
+import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 
 export interface Tag {
   id: string;
@@ -44,10 +44,9 @@ export async function listTags(params?: {
   });
   if (cursor) queryParams.append('cursor', cursor);
   if (include_contacts) queryParams.append('include_contacts', 'true');
-  const response = await apiFetch(
-    `${API_BASE_URL}/tags?${queryParams.toString()}`,
-    { headers: getAuthHeaders() }
-  );
+  const response = await apiFetch(`${API_BASE_URL}/tags?${queryParams.toString()}`, {
+    headers: getAuthHeaders(),
+  });
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json();
 }
@@ -84,10 +83,7 @@ export async function deleteTag(id: string): Promise<void> {
 }
 
 // POST /tags/:id/contacts
-export async function addContactTag(
-  tagId: string,
-  contactVCardUid: string
-): Promise<ContactTag> {
+export async function addContactTag(tagId: string, contactVCardUid: string): Promise<ContactTag> {
   const response = await apiFetch(`${API_BASE_URL}/tags/${tagId}/contacts`, {
     method: 'POST',
     headers: getAuthHeaders(),
@@ -98,13 +94,10 @@ export async function addContactTag(
 }
 
 // DELETE /tags/:id/contacts/:vcard_uid
-export async function removeContactTag(
-  tagId: string,
-  contactVCardUid: string
-): Promise<void> {
-  const response = await apiFetch(
-    `${API_BASE_URL}/tags/${tagId}/contacts/${contactVCardUid}`,
-    { method: 'DELETE', headers: getAuthHeaders() }
-  );
+export async function removeContactTag(tagId: string, contactVCardUid: string): Promise<void> {
+  const response = await apiFetch(`${API_BASE_URL}/tags/${tagId}/contacts/${contactVCardUid}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
   if (!response.ok) throw await parseErrorResponse(response);
 }

@@ -1,12 +1,12 @@
 // Custom hook for fetching and managing activities
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { isAuthenticated } from '../auth';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  type Activity,
+  type GetActivitiesParams,
   getActivities,
   getContactActivities,
-  GetActivitiesParams,
-  Activity
 } from '../api/activities';
+import { isAuthenticated } from '../auth';
 import { handleFetchError } from '../utils/errorHandler';
 
 interface UseActivitiesResult {
@@ -22,7 +22,7 @@ interface UseActivitiesResult {
 
 export function useActivities(
   params: GetActivitiesParams = {},
-  contactId?: string | number
+  contactId?: string | number,
 ): UseActivitiesResult {
   // Destructure params to use primitive values as dependencies
   // This prevents re-fetches when callers pass new object references with identical values
@@ -55,7 +55,13 @@ export function useActivities(
         setNextCursor('');
         setLimit(paramLimit || data.activities?.length || 25);
       } else {
-        const data = await getActivities({ limit: paramLimit, includeContacts, search, fromDate, toDate });
+        const data = await getActivities({
+          limit: paramLimit,
+          includeContacts,
+          search,
+          fromDate,
+          toDate,
+        });
         if (requestRef.current !== requestId) {
           return;
         }
@@ -83,7 +89,14 @@ export function useActivities(
     setLoading(true);
     setError(null);
     try {
-      const data = await getActivities({ cursor: nextCursor, limit: paramLimit, includeContacts, search, fromDate, toDate });
+      const data = await getActivities({
+        cursor: nextCursor,
+        limit: paramLimit,
+        includeContacts,
+        search,
+        fromDate,
+        toDate,
+      });
       if (requestRef.current !== requestId) {
         return;
       }

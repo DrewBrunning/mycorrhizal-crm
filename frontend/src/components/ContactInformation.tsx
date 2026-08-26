@@ -1,79 +1,89 @@
-import { useMemo, useEffect, useState, ReactNode } from 'react';
-import { Card, CardContent, Divider, Stack, Box, Typography, SvgIcon, IconButton, Tooltip, Collapse, Button } from '@mui/material';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import EmailIcon from '@mui/icons-material/Email';
-import PhoneIcon from '@mui/icons-material/Phone';
-import SmsOutlinedIcon from '@mui/icons-material/SmsOutlined';
+import { mdiNoteMultipleOutline } from '@mdi/js';
+import BadgeIcon from '@mui/icons-material/Badge';
+import BusinessIcon from '@mui/icons-material/Business';
 import CakeIcon from '@mui/icons-material/Cake';
 import CelebrationIcon from '@mui/icons-material/Celebration';
-import HomeIcon from '@mui/icons-material/Home';
-import WorkIcon from '@mui/icons-material/Work';
-import BusinessIcon from '@mui/icons-material/Business';
-import BadgeIcon from '@mui/icons-material/Badge';
-import LanguageIcon from '@mui/icons-material/Language';
 import ChatIcon from '@mui/icons-material/Chat';
-import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
-import { mdiNoteMultipleOutline } from '@mdi/js';
+import EmailIcon from '@mui/icons-material/Email';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import HomeIcon from '@mui/icons-material/Home';
+import LanguageIcon from '@mui/icons-material/Language';
 import PeopleIcon from '@mui/icons-material/People';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
+import PhoneIcon from '@mui/icons-material/Phone';
+import SmsOutlinedIcon from '@mui/icons-material/SmsOutlined';
 import StarIcon from '@mui/icons-material/Star';
-import { useTranslation } from 'react-i18next';
-import EditableField from './EditableField';
-import EditableArrayField from './EditableArrayField';
-import MultiValueField from './MultiValueField';
-import AddressFields from './AddressFields';
-import CustomFieldValueRow from './CustomFieldValueRow';
-import { FieldDefinition } from '../api/fieldDefinitions';
+import WorkIcon from '@mui/icons-material/Work';
 import {
-  Card as CardModel,
-  CRMEnvelope,
-  ContactValue,
-  ContactAddress,
-  CardOnlineService,
-  CardPersonalInfo,
-  CardNote,
-  CardLanguagePref,
-  CardSpeakToAs,
-  CardAnniversary,
-  cardEmailsToValues,
-  valuesToCardEmails,
-  cardPhonesToValues,
-  valuesToCardPhones,
-  cardLinksToValues,
-  valuesToCardLinks,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Collapse,
+  Divider,
+  IconButton,
+  Stack,
+  SvgIcon,
+  Tooltip,
+  Typography,
+} from '@mui/material';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import {
+  type CardAnniversary,
+  type CardLanguagePref,
+  type Card as CardModel,
+  type CardNote,
+  type CardOnlineService,
+  type CardPersonalInfo,
+  type CardSpeakToAs,
+  type ContactAddress,
+  type ContactValue,
+  type CRMEnvelope,
   cardAddressesToValues,
-  valuesToCardAddresses,
-  getAnniversaryField,
+  cardEmailsToValues,
+  cardLinksToValues,
+  cardPhonesToValues,
   formatAnniversaryDate,
+  getAnniversaryField,
   getOrganizationFields,
   getTitleField,
+  valuesToCardAddresses,
+  valuesToCardEmails,
+  valuesToCardLinks,
+  valuesToCardPhones,
 } from '../api/contacts';
-import { ContactFieldKey, resolveEnabledFields, GENDER_OPTIONS } from '../contactFields';
+import type { FieldDefinition } from '../api/fieldDefinitions';
+import { type ContactFieldKey, GENDER_OPTIONS, resolveEnabledFields } from '../contactFields';
 import { hasVisibleFields } from '../contactSectionVisibility';
-import { hasImportedResources } from './ImportedResourcesSection';
-import { hasRelatedToOrMembers } from './RelatedToMembersSection';
 import { useDateFormat } from '../DateFormatProvider';
-import OnlineServiceEditor from './OnlineServiceEditor';
-import SpeakToAsEditor from './SpeakToAsEditor';
-import PersonalInfoEditor from './PersonalInfoEditor';
-import KeywordsEditor from './KeywordsEditor';
-import CardNotesEditor from './CardNotesEditor';
-import PreferredLanguagesEditor from './PreferredLanguagesEditor';
-import AnniversariesEditor from './AnniversariesEditor';
-import ImportedResourcesSection from './ImportedResourcesSection';
-import RelatedToMembersSection from './RelatedToMembersSection';
-import CopyButton from './CopyButton';
 import { useLinkFieldTypes } from '../hooks/useLinkFieldTypes';
+import { resolveLinkFieldTypeIcon } from '../linkFieldTypeIcons';
 import {
-  buildTelLink,
-  buildSmsLink,
-  buildMailtoLink,
   buildAddressLink,
+  buildMailtoLink,
+  buildSmsLink,
+  buildTelLink,
   formatAddressLine,
-  resolveOnlineServiceLink,
   isSafeUrlString,
   looksLikeAbsoluteUri,
+  resolveOnlineServiceLink,
 } from '../utils/linkResolution';
-import { resolveLinkFieldTypeIcon } from '../linkFieldTypeIcons';
+import AddressFields from './AddressFields';
+import AnniversariesEditor from './AnniversariesEditor';
+import CardNotesEditor from './CardNotesEditor';
+import CopyButton from './CopyButton';
+import CustomFieldValueRow from './CustomFieldValueRow';
+import EditableArrayField from './EditableArrayField';
+import EditableField from './EditableField';
+import ImportedResourcesSection, { hasImportedResources } from './ImportedResourcesSection';
+import KeywordsEditor from './KeywordsEditor';
+import MultiValueField from './MultiValueField';
+import OnlineServiceEditor from './OnlineServiceEditor';
+import PersonalInfoEditor from './PersonalInfoEditor';
+import PreferredLanguagesEditor from './PreferredLanguagesEditor';
+import RelatedToMembersSection, { hasRelatedToOrMembers } from './RelatedToMembersSection';
+import SpeakToAsEditor from './SpeakToAsEditor';
 
 interface ContactInformationProps {
   card: CardModel;
@@ -104,7 +114,11 @@ const cloneValues = <T extends object>(v: T[]): T[] => v.map((x) => ({ ...x }));
 // beside them. Harmless below lg, where the parent isn't a grid.
 const SectionHeading = ({ label }: { label: string }) => (
   <Box sx={{ pt: 1, gridColumn: { lg: '1 / -1' } }}>
-    <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 0.08, fontSize: '0.72rem' }}>
+    <Typography
+      variant="overline"
+      color="text.secondary"
+      sx={{ letterSpacing: 0.08, fontSize: '0.72rem' }}
+    >
       {label}
     </Typography>
     <Divider sx={{ mt: 0.5 }} />
@@ -228,21 +242,40 @@ export default function ContactInformation({
     r.features?.includes(token) || r.contexts?.includes(token) || r.type === token || false;
 
   const renderPhoneList = (rows: ContactValue[] | undefined) => {
-    if (!rows || rows.length === 0) return <Typography variant="body2" color="text.disabled">—</Typography>;
+    if (!rows || rows.length === 0)
+      return (
+        <Typography variant="body2" color="text.disabled">
+          —
+        </Typography>
+      );
     return (
       <Stack spacing={0.25}>
         {rows.map((r, i) => {
           const isFax = phoneHasToken(r, 'fax');
           const isCell = !isFax && phoneHasToken(r, 'cell');
           return (
-            <Box key={i} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+            <Box
+              // biome-ignore lint/suspicious/noArrayIndexKey: flat rows, no stable id; not reordered
+              key={i}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 1,
+              }}
+            >
               <Box sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
                   {r.pref === 1 && (
                     <StarIcon sx={{ fontSize: '0.85rem', color: 'primary.main', flexShrink: 0 }} />
                   )}
                   {!isFax ? (
-                    <Typography variant="body2" component="a" href={buildTelLink(r.value)} sx={{ color: 'inherit' }}>
+                    <Typography
+                      variant="body2"
+                      component="a"
+                      href={buildTelLink(r.value)}
+                      sx={{ color: 'inherit' }}
+                    >
                       {r.value}
                       {r.type ? ` (${t(`contacts.types.${r.type}`, r.type)})` : ''}
                     </Typography>
@@ -257,14 +290,26 @@ export default function ContactInformation({
               <Box sx={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 0.25 }}>
                 {!isFax && (
                   <Tooltip title={t('contactDetail.call')}>
-                    <IconButton size="small" color="primary" component="a" href={buildTelLink(r.value)} aria-label={`${t('contactDetail.call')} ${r.value}`}>
+                    <IconButton
+                      size="small"
+                      color="primary"
+                      component="a"
+                      href={buildTelLink(r.value)}
+                      aria-label={`${t('contactDetail.call')} ${r.value}`}
+                    >
                       <PhoneIcon fontSize="inherit" />
                     </IconButton>
                   </Tooltip>
                 )}
                 {isCell && (
                   <Tooltip title={t('contactDetail.text')}>
-                    <IconButton size="small" color="primary" component="a" href={buildSmsLink(r.value)} aria-label={`${t('contactDetail.text')} ${r.value}`}>
+                    <IconButton
+                      size="small"
+                      color="primary"
+                      component="a"
+                      href={buildSmsLink(r.value)}
+                      aria-label={`${t('contactDetail.text')} ${r.value}`}
+                    >
                       <SmsOutlinedIcon fontSize="inherit" />
                     </IconButton>
                   </Tooltip>
@@ -279,17 +324,31 @@ export default function ContactInformation({
   };
 
   const renderEmailList = (rows: ContactValue[] | undefined) => {
-    if (!rows || rows.length === 0) return <Typography variant="body2" color="text.disabled">—</Typography>;
+    if (!rows || rows.length === 0)
+      return (
+        <Typography variant="body2" color="text.disabled">
+          —
+        </Typography>
+      );
     return (
       <Stack spacing={0.25}>
         {rows.map((r, i) => (
-          <Box key={i} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+          <Box
+            // biome-ignore lint/suspicious/noArrayIndexKey: flat rows, no stable id; not reordered
+            key={i}
+            sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}
+          >
             <Box sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
                 {r.pref === 1 && (
                   <StarIcon sx={{ fontSize: '0.85rem', color: 'primary.main', flexShrink: 0 }} />
                 )}
-                <Typography variant="body2" component="a" href={buildMailtoLink(r.value)} sx={{ color: 'inherit' }}>
+                <Typography
+                  variant="body2"
+                  component="a"
+                  href={buildMailtoLink(r.value)}
+                  sx={{ color: 'inherit' }}
+                >
                   {r.value}
                   {r.type ? ` (${t(`contacts.types.${r.type}`, r.type)})` : ''}
                 </Typography>
@@ -309,13 +368,27 @@ export default function ContactInformation({
   // recognized absolute URI and passes the safe-scheme guard, else falls
   // back to plain text — always with a copy button.
   const renderUriValueList = (rows: ContactValue[] | undefined, copyLabel: string) => {
-    if (!rows || rows.length === 0) return <Typography variant="body2" color="text.disabled">—</Typography>;
+    if (!rows || rows.length === 0)
+      return (
+        <Typography variant="body2" color="text.disabled">
+          —
+        </Typography>
+      );
     return (
       <Stack spacing={0.25}>
         {rows.map((r, i) => {
           const tappable = looksLikeAbsoluteUri(r.value) && isSafeUrlString(r.value);
           return (
-            <Box key={i} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+            <Box
+              // biome-ignore lint/suspicious/noArrayIndexKey: flat rows, no stable id; not reordered
+              key={i}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 1,
+              }}
+            >
               <Box sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
                   {r.pref === 1 && (
@@ -352,7 +425,12 @@ export default function ContactInformation({
   };
 
   const renderAddressList = (rows: ContactAddress[] | undefined) => {
-    if (!rows || rows.length === 0) return <Typography variant="body2" color="text.disabled">—</Typography>;
+    if (!rows || rows.length === 0)
+      return (
+        <Typography variant="body2" color="text.disabled">
+          —
+        </Typography>
+      );
     return (
       <Stack spacing={0.25}>
         {rows.map((a, i) => {
@@ -360,18 +438,43 @@ export default function ContactInformation({
           const href = buildAddressLink(a);
           const suffix = a.type ? ` (${t(`contacts.types.${a.type}`, a.type)})` : '';
           return (
-            <Box key={i} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+            <Box
+              // biome-ignore lint/suspicious/noArrayIndexKey: flat rows, no stable id; not reordered
+              key={i}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 1,
+              }}
+            >
               <Box sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
                 {href ? (
-                  <Typography variant="body2" component="a" href={href} target="_blank" rel="noopener noreferrer" sx={{ color: 'inherit' }}>
-                    {formatted}{suffix}
+                  <Typography
+                    variant="body2"
+                    component="a"
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    sx={{ color: 'inherit' }}
+                  >
+                    {formatted}
+                    {suffix}
                   </Typography>
                 ) : (
-                  <Typography variant="body2">{formatted}{suffix}</Typography>
+                  <Typography variant="body2">
+                    {formatted}
+                    {suffix}
+                  </Typography>
                 )}
               </Box>
               <Box sx={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 0.25 }}>
-                {formatted && <CopyButton value={formatted} label={`${t('contactDetail.address')} ${formatted}`} />}
+                {formatted && (
+                  <CopyButton
+                    value={formatted}
+                    label={`${t('contactDetail.address')} ${formatted}`}
+                  />
+                )}
               </Box>
             </Box>
           );
@@ -386,7 +489,12 @@ export default function ContactInformation({
   // way the other two fields do). `copyLabel` is the field name used in the
   // copy button's aria-label.
   const renderOnlineServices = (rows: CardOnlineService[] | undefined, copyLabel: string) => {
-    if (!rows || rows.length === 0) return <Typography variant="body2" color="text.disabled">—</Typography>;
+    if (!rows || rows.length === 0)
+      return (
+        <Typography variant="body2" color="text.disabled">
+          —
+        </Typography>
+      );
     return (
       <Stack spacing={0.25}>
         {rows.map((s, i) => {
@@ -395,19 +503,49 @@ export default function ContactInformation({
           const suffix = s.contexts?.length ? ` (${s.contexts.join(', ')})` : '';
           const copyValue = s.uri || s.user || label;
           const matched = s.service
-            ? linkFieldTypes.find((lt) => lt.name.toLowerCase() === s.service!.toLowerCase())
+            ? linkFieldTypes.find((lt) => lt.name.toLowerCase() === s.service?.toLowerCase())
             : null;
           const iconPath = resolveLinkFieldTypeIcon(matched?.icon);
           return (
-            <Box key={i} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
-              <Box sx={{ minWidth: 0, overflowWrap: 'anywhere', display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <SvgIcon fontSize="small" sx={{ flexShrink: 0 }}><path d={iconPath} /></SvgIcon>
+            <Box
+              // biome-ignore lint/suspicious/noArrayIndexKey: flat rows, no stable id; not reordered
+              key={i}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 1,
+              }}
+            >
+              <Box
+                sx={{
+                  minWidth: 0,
+                  overflowWrap: 'anywhere',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                }}
+              >
+                <SvgIcon fontSize="small" sx={{ flexShrink: 0 }}>
+                  <path d={iconPath} />
+                </SvgIcon>
                 {href ? (
-                  <Typography variant="body2" component="a" href={href} target="_blank" rel="noopener noreferrer" sx={{ color: 'inherit', wordBreak: 'break-all' }}>
-                    {label}{suffix}
+                  <Typography
+                    variant="body2"
+                    component="a"
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    sx={{ color: 'inherit', wordBreak: 'break-all' }}
+                  >
+                    {label}
+                    {suffix}
                   </Typography>
                 ) : (
-                  <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>{label}{suffix}</Typography>
+                  <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
+                    {label}
+                    {suffix}
+                  </Typography>
                 )}
               </Box>
               <Box sx={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 0.25 }}>
@@ -421,11 +559,20 @@ export default function ContactInformation({
   };
 
   const renderPersonalInfo = (rows: CardPersonalInfo[] | undefined) => {
-    if (!rows || rows.length === 0) return <Typography variant="body2" color="text.disabled">—</Typography>;
+    if (!rows || rows.length === 0)
+      return (
+        <Typography variant="body2" color="text.disabled">
+          —
+        </Typography>
+      );
     return (
       <Stack spacing={0.25}>
         {rows.map((p, i) => (
-          <Box key={i} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+          <Box
+            // biome-ignore lint/suspicious/noArrayIndexKey: flat rows, no stable id; not reordered
+            key={i}
+            sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}
+          >
             <Box sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
               <Typography variant="body2">
                 {p.value}
@@ -443,10 +590,16 @@ export default function ContactInformation({
   };
 
   const renderKeywords = (rows: string[] | undefined) => {
-    if (!rows || rows.length === 0) return <Typography variant="body2" color="text.disabled">—</Typography>;
+    if (!rows || rows.length === 0)
+      return (
+        <Typography variant="body2" color="text.disabled">
+          —
+        </Typography>
+      );
     return (
       <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', alignItems: 'center', gap: 1 }}>
         {rows.map((k, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: flat rows, no stable id; not reordered
           <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
             <Typography variant="body2">#{k}</Typography>
             <CopyButton value={k} label={t('contacts.keywordsLabel')} />
@@ -457,13 +610,24 @@ export default function ContactInformation({
   };
 
   const renderCardNotes = (rows: CardNote[] | undefined) => {
-    if (!rows || rows.length === 0) return <Typography variant="body2" color="text.disabled">—</Typography>;
+    if (!rows || rows.length === 0)
+      return (
+        <Typography variant="body2" color="text.disabled">
+          —
+        </Typography>
+      );
     return (
       <Stack spacing={0.25}>
         {rows.map((n, i) => (
-          <Box key={i} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+          <Box
+            // biome-ignore lint/suspicious/noArrayIndexKey: flat rows, no stable id; not reordered
+            key={i}
+            sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}
+          >
             <Box sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-              <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{n.note}</Typography>
+              <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                {n.note}
+              </Typography>
             </Box>
             <Box sx={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 0.25 }}>
               {n.note && <CopyButton value={n.note} label={t('contacts.cardNotesLabel')} />}
@@ -475,11 +639,20 @@ export default function ContactInformation({
   };
 
   const renderPreferredLanguages = (rows: CardLanguagePref[] | undefined) => {
-    if (!rows || rows.length === 0) return <Typography variant="body2" color="text.disabled">—</Typography>;
+    if (!rows || rows.length === 0)
+      return (
+        <Typography variant="body2" color="text.disabled">
+          —
+        </Typography>
+      );
     return (
       <Stack spacing={0.25}>
         {rows.map((l, i) => (
-          <Box key={i} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+          <Box
+            // biome-ignore lint/suspicious/noArrayIndexKey: flat rows, no stable id; not reordered
+            key={i}
+            sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}
+          >
             <Box sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
               <Typography variant="body2">
                 {l.language}
@@ -487,7 +660,9 @@ export default function ContactInformation({
               </Typography>
             </Box>
             <Box sx={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 0.25 }}>
-              {l.language && <CopyButton value={l.language} label={t('contacts.preferredLanguagesLabel')} />}
+              {l.language && (
+                <CopyButton value={l.language} label={t('contacts.preferredLanguagesLabel')} />
+              )}
             </Box>
           </Box>
         ))}
@@ -497,12 +672,20 @@ export default function ContactInformation({
 
   const renderSpeakToAs = (s: CardSpeakToAs | undefined) => {
     if (!s || (!s.pronouns?.length && !s.grammaticalGenders?.length)) {
-      return <Typography variant="body2" color="text.disabled">—</Typography>;
+      return (
+        <Typography variant="body2" color="text.disabled">
+          —
+        </Typography>
+      );
     }
     const parts: string[] = [];
     if (s.pronouns?.length) parts.push(s.pronouns.map((p) => p.pronouns).join(', '));
     if (s.grammaticalGenders?.length) {
-      parts.push(s.grammaticalGenders.map((g) => t(`contacts.speakToAs.gramGender.${g.value}`, g.value)).join(', '));
+      parts.push(
+        s.grammaticalGenders
+          .map((g) => t(`contacts.speakToAs.gramGender.${g.value}`, g.value))
+          .join(', '),
+      );
     }
     const combined = parts.join(' · ');
     return (
@@ -518,7 +701,12 @@ export default function ContactInformation({
   };
 
   const renderAnniversaries = (rows: CardAnniversary[] | undefined) => {
-    if (!rows || rows.length === 0) return <Typography variant="body2" color="text.disabled">—</Typography>;
+    if (!rows || rows.length === 0)
+      return (
+        <Typography variant="body2" color="text.disabled">
+          —
+        </Typography>
+      );
     return (
       <Stack spacing={0.25}>
         {rows.map((a, i) => {
@@ -527,7 +715,16 @@ export default function ContactInformation({
           const iso = formatAnniversaryDate(a.date);
           const date = iso ? formatBirthday(iso) : undefined;
           return (
-            <Box key={i} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+            <Box
+              // biome-ignore lint/suspicious/noArrayIndexKey: flat rows, no stable id; not reordered
+              key={i}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 1,
+              }}
+            >
               <Box sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
                 <Typography variant="body2">
                   {date ? date : '—'}
@@ -610,10 +807,19 @@ export default function ContactInformation({
               icon={<CelebrationIcon sx={iconSx} />}
               label={t('contacts.anniversaries')}
               value={card.anniversaries || []}
-              cloneValue={(v) => v.map((x) => ({ ...x, date: { ...x.date, partial: x.date.partial ? { ...x.date.partial } : undefined } }))}
+              cloneValue={(v) =>
+                v.map((x) => ({
+                  ...x,
+                  date: { ...x.date, partial: x.date.partial ? { ...x.date.partial } : undefined },
+                }))
+              }
               renderDisplay={renderAnniversaries}
               renderEditor={(draft, setDraft) => (
-                <AnniversariesEditor label={t('contacts.anniversaries')} value={draft} onChange={setDraft} />
+                <AnniversariesEditor
+                  label={t('contacts.anniversaries')}
+                  value={draft}
+                  onChange={setDraft}
+                />
               )}
               onSave={(draft) => onUpdateCard({ anniversaries: draft.length ? draft : undefined })}
             />
@@ -627,7 +833,11 @@ export default function ContactInformation({
               cloneValue={(v) => v.map((x) => ({ ...x }))}
               renderDisplay={renderPersonalInfo}
               renderEditor={(draft, setDraft) => (
-                <PersonalInfoEditor label={t('contacts.personalInfoLabel')} value={draft} onChange={setDraft} />
+                <PersonalInfoEditor
+                  label={t('contacts.personalInfoLabel')}
+                  value={draft}
+                  onChange={setDraft}
+                />
               )}
               onSave={(draft) => onUpdateCard({ personalInfo: draft.length ? draft : undefined })}
             />
@@ -641,9 +851,15 @@ export default function ContactInformation({
               cloneValue={(v) => v.map((x) => ({ ...x }))}
               renderDisplay={renderPreferredLanguages}
               renderEditor={(draft, setDraft) => (
-                <PreferredLanguagesEditor label={t('contacts.preferredLanguagesLabel')} value={draft} onChange={setDraft} />
+                <PreferredLanguagesEditor
+                  label={t('contacts.preferredLanguagesLabel')}
+                  value={draft}
+                  onChange={setDraft}
+                />
               )}
-              onSave={(draft) => onUpdateCard({ preferredLanguages: draft.length ? draft : undefined })}
+              onSave={(draft) =>
+                onUpdateCard({ preferredLanguages: draft.length ? draft : undefined })
+              }
             />
           )}
 
@@ -655,7 +871,11 @@ export default function ContactInformation({
               cloneValue={(v) => [...v]}
               renderDisplay={renderKeywords}
               renderEditor={(draft, setDraft) => (
-                <KeywordsEditor label={t('contacts.keywordsLabel')} value={draft} onChange={setDraft} />
+                <KeywordsEditor
+                  label={t('contacts.keywordsLabel')}
+                  value={draft}
+                  onChange={setDraft}
+                />
               )}
               onSave={(draft) => onUpdateCard({ keywords: draft.length ? draft : undefined })}
             />
@@ -671,7 +891,13 @@ export default function ContactInformation({
               cloneValue={cloneValues}
               renderDisplay={renderPhoneList}
               renderEditor={(draft, setDraft) => (
-                <MultiValueField label={t('contacts.phone')} value={draft} onChange={setDraft} valueType="tel" defaultType="cell" />
+                <MultiValueField
+                  label={t('contacts.phone')}
+                  value={draft}
+                  onChange={setDraft}
+                  valueType="tel"
+                  defaultType="cell"
+                />
               )}
               onSave={(draft) => onUpdateCard({ phones: valuesToCardPhones(draft) })}
             />
@@ -699,7 +925,13 @@ export default function ContactInformation({
               cloneValue={cloneValues}
               renderDisplay={renderEmailList}
               renderEditor={(draft, setDraft) => (
-                <MultiValueField label={t('contacts.email')} value={draft} onChange={setDraft} valueType="email" defaultType="home" />
+                <MultiValueField
+                  label={t('contacts.email')}
+                  value={draft}
+                  onChange={setDraft}
+                  valueType="email"
+                  defaultType="home"
+                />
               )}
               onSave={(draft) => onUpdateCard({ emails: valuesToCardEmails(draft) })}
             />
@@ -731,7 +963,9 @@ export default function ContactInformation({
               label={t('contacts.otherOnlineServices')}
               value={card.otherOnlineServices || []}
               cloneValue={(v) => v.map((x) => ({ ...x }))}
-              renderDisplay={(rows) => renderOnlineServices(rows, t('contacts.otherOnlineServices'))}
+              renderDisplay={(rows) =>
+                renderOnlineServices(rows, t('contacts.otherOnlineServices'))
+              }
               renderEditor={(draft, setDraft) => (
                 <OnlineServiceEditor
                   label={t('contacts.otherOnlineServices')}
@@ -741,7 +975,9 @@ export default function ContactInformation({
                   linkFieldTypes={linkFieldTypes.filter((lt) => lt.category === 'other')}
                 />
               )}
-              onSave={(draft) => onUpdateCard({ otherOnlineServices: draft.length ? draft : undefined })}
+              onSave={(draft) =>
+                onUpdateCard({ otherOnlineServices: draft.length ? draft : undefined })
+              }
             />
           )}
 
@@ -773,13 +1009,21 @@ export default function ContactInformation({
               cloneValue={cloneValues}
               renderDisplay={(rows) => renderUriValueList(rows, t('contacts.urls'))}
               renderEditor={(draft, setDraft) => (
-                <MultiValueField label={t('contacts.urls')} value={draft} onChange={setDraft} valueType="url" defaultType="home" />
+                <MultiValueField
+                  label={t('contacts.urls')}
+                  value={draft}
+                  onChange={setDraft}
+                  valueType="url"
+                  defaultType="home"
+                />
               )}
               onSave={(draft) => onUpdateCard({ links: valuesToCardLinks(draft) })}
             />
           )}
 
-          {showAddressThem && <SectionHeading label={t('contactDetail.section.genderAndPronouns')} />}
+          {showAddressThem && (
+            <SectionHeading label={t('contactDetail.section.genderAndPronouns')} />
+          )}
 
           {isOn('gender') && (
             <EditableField
@@ -796,7 +1040,11 @@ export default function ContactInformation({
               onEditSave={onEditSave}
               onEditValueChange={onEditValueChange}
               options={[...GENDER_OPTIONS]}
-              getOptionLabel={(v) => (GENDER_OPTIONS.includes(v as (typeof GENDER_OPTIONS)[number]) ? t(`contacts.${v}`) : v)}
+              getOptionLabel={(v) =>
+                GENDER_OPTIONS.includes(v as (typeof GENDER_OPTIONS)[number])
+                  ? t(`contacts.${v}`)
+                  : v
+              }
               placeholder={t('contacts.selectGender')}
             />
           )}
@@ -822,9 +1070,14 @@ export default function ContactInformation({
                 renderEditor={(draft, setDraft) => (
                   <SpeakToAsEditor value={draft} onChange={setDraft} />
                 )}
-                onSave={(draft) => onUpdateCard({
-                  speakToAs: draft.pronouns?.length || draft.grammaticalGenders?.length ? draft : undefined,
-                })}
+                onSave={(draft) =>
+                  onUpdateCard({
+                    speakToAs:
+                      draft.pronouns?.length || draft.grammaticalGenders?.length
+                        ? draft
+                        : undefined,
+                  })
+                }
                 onEditingChange={setSpeakToAsEditing}
               />
             </FullSpanField>
@@ -918,13 +1171,23 @@ export default function ContactInformation({
           {isOn('cardNotes') && (
             <FullSpanField>
               <EditableArrayField<CardNote[]>
-                icon={<SvgIcon sx={iconSx}><path d={mdiNoteMultipleOutline} /></SvgIcon>}
+                icon={
+                  <SvgIcon sx={iconSx}>
+                    <path d={mdiNoteMultipleOutline} />
+                  </SvgIcon>
+                }
                 label={t('contacts.cardNotesLabel')}
                 value={card.notes || []}
-                cloneValue={(v) => v.map((x) => ({ ...x, author: x.author ? { ...x.author } : undefined }))}
+                cloneValue={(v) =>
+                  v.map((x) => ({ ...x, author: x.author ? { ...x.author } : undefined }))
+                }
                 renderDisplay={renderCardNotes}
                 renderEditor={(draft, setDraft) => (
-                  <CardNotesEditor label={t('contacts.cardNotesLabel')} value={draft} onChange={setDraft} />
+                  <CardNotesEditor
+                    label={t('contacts.cardNotesLabel')}
+                    value={draft}
+                    onChange={setDraft}
+                  />
                 )}
                 onSave={(draft) => onUpdateCard({ notes: draft.length ? draft : undefined })}
               />
@@ -956,7 +1219,11 @@ export default function ContactInformation({
 
           {isOn('contact_information') && (
             <EditableField
-              icon={<SvgIcon sx={{ ...iconSx, mt: 0.5 }}><path d={mdiNoteMultipleOutline} /></SvgIcon>}
+              icon={
+                <SvgIcon sx={{ ...iconSx, mt: 0.5 }}>
+                  <path d={mdiNoteMultipleOutline} />
+                </SvgIcon>
+              }
               label={t('contactDetail.additionalInfo')}
               field="contact_information"
               value={crm.contact_information || ''}
@@ -1001,7 +1268,10 @@ export default function ContactInformation({
                 }
                 endIcon={
                   <ExpandMoreIcon
-                    sx={{ transform: metadataExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}
+                    sx={{
+                      transform: metadataExpanded ? 'rotate(180deg)' : 'none',
+                      transition: 'transform 0.2s',
+                    }}
                   />
                 }
                 sx={{

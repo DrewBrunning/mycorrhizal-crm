@@ -1,22 +1,22 @@
-import { useState, useEffect } from 'react';
 import {
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Button,
+  Alert,
   Box,
+  Button,
+  CircularProgress,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   List,
   ListItemButton,
   ListItemText,
+  TextField,
   Typography,
-  CircularProgress,
-  Alert,
 } from '@mui/material';
-import AppDialog from './AppDialog';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PaperlessDocument } from '../api/paperless';
+import type { PaperlessDocument } from '../api/paperless';
 import { getErrorMessage } from '../utils/errorHandler';
+import AppDialog from './AppDialog';
 
 interface PaperlessDocumentSearchDialogProps {
   open: boolean;

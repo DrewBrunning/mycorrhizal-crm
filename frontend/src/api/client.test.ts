@@ -1,4 +1,4 @@
-import { describe, test, expect } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import { ApiError, parseErrorResponse } from './client';
 
 describe('ApiError.getDisplayMessage', () => {
@@ -35,7 +35,7 @@ describe('parseErrorResponse', () => {
         error: { code: 'NOT_FOUND', message: 'Contact not found', details: { id: '42' } },
         request_id: 'req-123',
       }),
-      { status: 404 }
+      { status: 404 },
     );
 
     const err = await parseErrorResponse(response);

@@ -1,10 +1,10 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import FileLinksPanel from './FileLinksPanel';
+import type { ExternalIdentity } from '../api/externalLinks';
+import type { PaperlessDocument } from '../api/paperless';
 import { DateFormatProvider } from '../DateFormatProvider';
-import { ExternalIdentity } from '../api/externalLinks';
-import { PaperlessDocument } from '../api/paperless';
+import FileLinksPanel from './FileLinksPanel';
 
 afterEach(() => {
   cleanup();
@@ -37,7 +37,7 @@ function renderPanel(overrides: Partial<React.ComponentProps<typeof FileLinksPan
   return render(
     <DateFormatProvider>
       <FileLinksPanel {...defaults} />
-    </DateFormatProvider>
+    </DateFormatProvider>,
   );
 }
 
@@ -80,7 +80,7 @@ test('a paperless identity renders with its cached title and a safe deep link', 
   expect(screen.getByText('Signed Contract')).toBeInTheDocument();
   expect(screen.getByRole('link', { name: /Open in Paperless-ngx/ })).toHaveAttribute(
     'href',
-    'https://paperless.example/documents/42/details'
+    'https://paperless.example/documents/42/details',
   );
 });
 
@@ -93,7 +93,10 @@ test('an unsafe file-link URL is shown as text, never as an href', () => {
 });
 
 test('unlink asks for confirmation then fires onUnlink', async () => {
-  vi.stubGlobal('confirm', vi.fn(() => true));
+  vi.stubGlobal(
+    'confirm',
+    vi.fn(() => true),
+  );
   const onUnlink = vi.fn().mockResolvedValue(undefined);
   renderPanel({ identities: [identity], onUnlink });
 

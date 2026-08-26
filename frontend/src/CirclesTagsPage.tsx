@@ -1,12 +1,12 @@
-import { useMemo, SyntheticEvent } from 'react';
+import { Alert, Box, LinearProgress, Tab, Tabs, Typography } from '@mui/material';
+import { type SyntheticEvent, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
-import { Box, Typography, Tabs, Tab, Alert, LinearProgress } from '@mui/material';
 import CircleTagEntityList from './components/CircleTagEntityList';
-import { useDocumentTitle } from './hooks/useDocumentTitle';
-import { useCircles } from './hooks/useCircles';
-import { useTags } from './hooks/useTags';
 import { useSnackbar } from './context/SnackbarContext';
+import { useCircles } from './hooks/useCircles';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
+import { useTags } from './hooks/useTags';
 
 // T65: the backend, API client and hooks (useCircles/useTags) already had
 // full rename/delete support — no page called it. This is the missing
@@ -77,7 +77,11 @@ export default function CirclesTagsPage() {
 
       {tab === 'circles' ? (
         <>
-          {circlesError && <Alert severity="error" sx={{ mb: 2 }}>{circlesError}</Alert>}
+          {circlesError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {circlesError}
+            </Alert>
+          )}
           {circlesLoading && <LinearProgress sx={{ mb: 2 }} />}
           <CircleTagEntityList
             items={circleItems}
@@ -106,7 +110,11 @@ export default function CirclesTagsPage() {
         </>
       ) : (
         <>
-          {tagsError && <Alert severity="error" sx={{ mb: 2 }}>{tagsError}</Alert>}
+          {tagsError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {tagsError}
+            </Alert>
+          )}
           {tagsLoading && <LinearProgress sx={{ mb: 2 }} />}
           <CircleTagEntityList
             items={tagItems}

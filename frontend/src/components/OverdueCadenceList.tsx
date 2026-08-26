@@ -1,8 +1,17 @@
-import { Box, Typography, Card, CardContent, Avatar, Chip, Alert, CircularProgress } from '@mui/material';
 import WarningIcon from '@mui/icons-material/Warning';
-import { Link } from 'react-router';
+import {
+  Alert,
+  Avatar,
+  Box,
+  Card,
+  CardContent,
+  Chip,
+  CircularProgress,
+  Typography,
+} from '@mui/material';
 import { useTranslation } from 'react-i18next';
-import { OverdueCadence } from '../api/cadencePolicies';
+import { Link } from 'react-router';
+import type { OverdueCadence } from '../api/cadencePolicies';
 import { useDateFormat } from '../DateFormatProvider';
 
 interface OverdueCadenceListProps {

@@ -1,22 +1,22 @@
-import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import CloseIcon from '@mui/icons-material/Close';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import SaveIcon from '@mui/icons-material/Save';
 import {
-  Paper,
+  Box,
+  Button,
+  CircularProgress,
+  IconButton,
   List,
   ListItem,
   ListItemText,
-  IconButton,
-  TextField,
-  Button,
-  Box,
-  Typography,
+  Paper,
   Stack,
-  CircularProgress,
+  TextField,
+  Typography,
 } from '@mui/material';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
-import SaveIcon from '@mui/icons-material/Save';
-import CloseIcon from '@mui/icons-material/Close';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 // T65: circles and tags are structurally identical (id + name + a member
 // count) and get the exact same rename/delete/create UI — one shared list
@@ -134,20 +134,50 @@ export default function CircleTagEntityList({
                   secondaryAction={
                     isEditing ? (
                       <Stack direction="row" spacing={0.5}>
-                        <IconButton size="small" color="primary" onClick={() => saveEdit(item.id)} disabled={isSaving} aria-label={t('common.save')}>
-                          {isSaving ? <CircularProgress size={16} /> : <SaveIcon fontSize="small" />}
+                        <IconButton
+                          size="small"
+                          color="primary"
+                          onClick={() => saveEdit(item.id)}
+                          disabled={isSaving}
+                          aria-label={t('common.save')}
+                        >
+                          {isSaving ? (
+                            <CircularProgress size={16} />
+                          ) : (
+                            <SaveIcon fontSize="small" />
+                          )}
                         </IconButton>
-                        <IconButton size="small" onClick={cancelEdit} disabled={isSaving} aria-label={t('common.cancel')}>
+                        <IconButton
+                          size="small"
+                          onClick={cancelEdit}
+                          disabled={isSaving}
+                          aria-label={t('common.cancel')}
+                        >
                           <CloseIcon fontSize="small" />
                         </IconButton>
                       </Stack>
                     ) : (
                       <Stack direction="row" spacing={0.5}>
-                        <IconButton size="small" onClick={() => startEdit(item)} disabled={isDeleting} aria-label={t('common.edit')}>
+                        <IconButton
+                          size="small"
+                          onClick={() => startEdit(item)}
+                          disabled={isDeleting}
+                          aria-label={t('common.edit')}
+                        >
                           <EditIcon fontSize="small" />
                         </IconButton>
-                        <IconButton size="small" color="error" onClick={() => handleDeleteClick(item)} disabled={isDeleting} aria-label={t('common.delete')}>
-                          {isDeleting ? <CircularProgress size={16} /> : <DeleteIcon fontSize="small" />}
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => handleDeleteClick(item)}
+                          disabled={isDeleting}
+                          aria-label={t('common.delete')}
+                        >
+                          {isDeleting ? (
+                            <CircularProgress size={16} />
+                          ) : (
+                            <DeleteIcon fontSize="small" />
+                          )}
                         </IconButton>
                       </Stack>
                     )
@@ -167,7 +197,10 @@ export default function CircleTagEntityList({
                       sx={{ maxWidth: 320 }}
                     />
                   ) : (
-                    <ListItemText primary={item.name} secondary={memberCountLabel(item.memberCount)} />
+                    <ListItemText
+                      primary={item.name}
+                      secondary={memberCountLabel(item.memberCount)}
+                    />
                   )}
                 </ListItem>
               );

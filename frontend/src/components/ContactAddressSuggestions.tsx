@@ -1,12 +1,12 @@
+import CheckIcon from '@mui/icons-material/Check';
+import { Alert, Box, Button, Chip, Divider, Paper, Stack, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Box, Stack, Typography, Paper, Alert, Divider, Button, Chip } from '@mui/material';
-import CheckIcon from '@mui/icons-material/Check';
 import {
-  ContactAddressSuggestion,
-  suggestContactAddresses,
   applyContactAddressSuggestion,
+  type ContactAddressSuggestion,
   formatSuggestionAddress,
+  suggestContactAddresses,
 } from '../api/dataSuggestions';
 import { handleFetchError } from '../utils/errorHandler';
 
@@ -53,7 +53,7 @@ export default function ContactAddressSuggestions({ loadKey }: ContactAddressSug
   }, [loadKey, t]);
 
   const handleApply = async (suggestion: ContactAddressSuggestion) => {
-    setBusyKey(suggestion.contact_vcard_uid + '|' + suggestion.address_key);
+    setBusyKey(`${suggestion.contact_vcard_uid}|${suggestion.address_key}`);
     try {
       await applyContactAddressSuggestion({
         contact_vcard_uid: suggestion.contact_vcard_uid,
@@ -63,8 +63,12 @@ export default function ContactAddressSuggestions({ loadKey }: ContactAddressSug
       });
       setSuggestions((prev) =>
         prev.filter(
-          (s) => !(s.contact_vcard_uid === suggestion.contact_vcard_uid && s.address_key === suggestion.address_key)
-        )
+          (s) =>
+            !(
+              s.contact_vcard_uid === suggestion.contact_vcard_uid &&
+              s.address_key === suggestion.address_key
+            ),
+        ),
       );
       setSuccess(true);
     } catch (err) {
@@ -99,18 +103,33 @@ export default function ContactAddressSuggestions({ loadKey }: ContactAddressSug
           {t('settings.data.propose.addressApplied')}
         </Alert>
       )}
-      {error && <Alert severity="error" sx={{ mb: 1 }}>{error}</Alert>}
-      {loading && <Alert severity="info" sx={{ mb: 1 }}>{t('settings.data.propose.loadingSuggestions')}</Alert>}
+      {error && (
+        <Alert severity="error" sx={{ mb: 1 }}>
+          {error}
+        </Alert>
+      )}
+      {loading && (
+        <Alert severity="info" sx={{ mb: 1 }}>
+          {t('settings.data.propose.loadingSuggestions')}
+        </Alert>
+      )}
       {suggestions.length === 0 && !loading && (
         <Alert severity="info">{t('settings.data.propose.noAddressSuggestions')}</Alert>
       )}
       <Stack spacing={1}>
         {suggestions.map((suggestion) => {
-          const key = suggestion.contact_vcard_uid + '|' + suggestion.address_key;
+          const key = `${suggestion.contact_vcard_uid}|${suggestion.address_key}`;
           const busy = busyKey === key;
           return (
             <Paper key={key} variant="outlined" sx={{ p: 1.5 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: 1,
+                }}
+              >
                 <Box sx={{ minWidth: 0 }}>
                   <Typography variant="body2" noWrap>
                     {suggestion.contact_name}
@@ -118,7 +137,11 @@ export default function ContactAddressSuggestions({ loadKey }: ContactAddressSug
                   <Typography variant="body2" color="text.secondary" noWrap>
                     {formatSuggestionAddress(suggestion.address)}
                   </Typography>
-                  <Chip label={reasonLabel(suggestion)} size="small" sx={{ height: 18, mt: 0.5, maxWidth: '100%' }} />
+                  <Chip
+                    label={reasonLabel(suggestion)}
+                    size="small"
+                    sx={{ height: 18, mt: 0.5, maxWidth: '100%' }}
+                  />
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Button
@@ -139,4 +162,3 @@ export default function ContactAddressSuggestions({ loadKey }: ContactAddressSug
     </Box>
   );
 }
-

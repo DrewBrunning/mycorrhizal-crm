@@ -1,15 +1,15 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
-  FieldDefinition,
-  FieldType,
-  emptyEditorValue,
-  isEditorValueEmpty,
-  wireToEditorValue,
+  createFieldDefinition,
   editorToWireValue,
+  emptyEditorValue,
+  type FieldDefinition,
+  type FieldType,
   fieldValueToDisplay,
   getFieldDefinitions,
-  createFieldDefinition,
+  isEditorValueEmpty,
   replaceContactFieldValues,
+  wireToEditorValue,
 } from './fieldDefinitions';
 
 afterEach(() => {
@@ -112,7 +112,7 @@ describe('field definition API calls', () => {
       vi.fn().mockResolvedValueOnce({
         ok: true,
         json: async () => ({ field_definitions: [created], total: 1, page: 1, limit: 100 }),
-      })
+      }),
     );
     const response = await getFieldDefinitions(100);
     expect(response.field_definitions[0]).toEqual(created);
@@ -149,7 +149,9 @@ describe('field definition API calls', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await replaceContactFieldValues(42, [{ field_definition_id: 'def-1', value: 'x' }]);
+    const result = await replaceContactFieldValues(42, [
+      { field_definition_id: 'def-1', value: 'x' },
+    ]);
 
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toContain('/contacts/42/field-values');

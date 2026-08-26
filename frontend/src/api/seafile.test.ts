@@ -1,12 +1,12 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
-  getSeafileConfig,
-  saveSeafileConfig,
   deleteSeafileConfig,
-  testSeafileConnection,
-  getSeafileLibraries,
+  getSeafileConfig,
   getSeafileDir,
+  getSeafileLibraries,
   linkSeafileItem,
+  saveSeafileConfig,
+  testSeafileConnection,
   unlinkSeafileItem,
 } from './seafile';
 
@@ -49,7 +49,10 @@ describe('getSeafileConfig', () => {
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
 
-    await expect(getSeafileConfig()).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    await expect(getSeafileConfig()).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+    });
   });
 });
 
@@ -58,20 +61,29 @@ describe('saveSeafileConfig', () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(okResponse(configResponse));
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await saveSeafileConfig({ base_url: 'https://seafile.example.com', api_token: 'secret' });
+    const result = await saveSeafileConfig({
+      base_url: 'https://seafile.example.com',
+      api_token: 'secret',
+    });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toContain('/seafile/config');
     expect(init.method).toBe('PUT');
-    expect(JSON.parse(init.body)).toEqual({ base_url: 'https://seafile.example.com', api_token: 'secret' });
+    expect(JSON.parse(init.body)).toEqual({
+      base_url: 'https://seafile.example.com',
+      api_token: 'secret',
+    });
     expect(result).toEqual(configResponse);
   });
 
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
 
-    await expect(saveSeafileConfig({ base_url: 'x' })).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    await expect(saveSeafileConfig({ base_url: 'x' })).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+    });
   });
 });
 
@@ -91,7 +103,10 @@ describe('deleteSeafileConfig', () => {
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
 
-    await expect(deleteSeafileConfig()).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    await expect(deleteSeafileConfig()).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+    });
   });
 });
 
@@ -113,7 +128,10 @@ describe('testSeafileConnection', () => {
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
 
-    await expect(testSeafileConnection()).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    await expect(testSeafileConnection()).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+    });
   });
 });
 
@@ -142,14 +160,24 @@ describe('getSeafileLibraries', () => {
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
 
-    await expect(getSeafileLibraries()).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    await expect(getSeafileLibraries()).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+    });
   });
 });
 
 describe('getSeafileDir', () => {
   test('GETs the repo dir with the encoded repo id and path', async () => {
     const items = [
-      { id: 'item-1', name: 'report.pdf', type: 'file' as const, size: 1024, mtime: 1700000000, parent_dir: '/' },
+      {
+        id: 'item-1',
+        name: 'report.pdf',
+        type: 'file' as const,
+        size: 1024,
+        mtime: 1700000000,
+        parent_dir: '/',
+      },
     ];
     const fetchMock = vi.fn().mockResolvedValueOnce(okResponse({ items }));
     vi.stubGlobal('fetch', fetchMock);
@@ -166,7 +194,10 @@ describe('getSeafileDir', () => {
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
 
-    await expect(getSeafileDir('repo-1', '/')).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    await expect(getSeafileDir('repo-1', '/')).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+    });
   });
 });
 
@@ -201,7 +232,7 @@ describe('linkSeafileItem', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
 
     await expect(
-      linkSeafileItem('alice-uid', { repo_id: 'r', path: '/', name: 'x', type: 'file' })
+      linkSeafileItem('alice-uid', { repo_id: 'r', path: '/', name: 'x', type: 'file' }),
     ).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
   });
 });

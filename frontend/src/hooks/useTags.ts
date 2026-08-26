@@ -1,13 +1,6 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
-import {
-  listTags,
-  createTag,
-  updateTag,
-  deleteTag,
-  Tag,
-  ContactTag,
-} from '../api/tags';
-import { handleFetchError, handleError, ErrorNotifier } from '../utils/errorHandler';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { type ContactTag, createTag, deleteTag, listTags, type Tag, updateTag } from '../api/tags';
+import { type ErrorNotifier, handleError, handleFetchError } from '../utils/errorHandler';
 
 export function useTags(notifier?: ErrorNotifier) {
   const [tags, setTags] = useState<Tag[]>([]);
@@ -62,7 +55,7 @@ export function useTags(notifier?: ErrorNotifier) {
         throw err;
       }
     },
-    [notifier]
+    [notifier],
   );
 
   const handleUpdate = useCallback(
@@ -78,7 +71,7 @@ export function useTags(notifier?: ErrorNotifier) {
         throw err;
       }
     },
-    [refresh, notifier]
+    [refresh, notifier],
   );
 
   const handleDelete = useCallback(
@@ -91,8 +84,18 @@ export function useTags(notifier?: ErrorNotifier) {
         throw err;
       }
     },
-    [refresh, notifier]
+    [refresh, notifier],
   );
 
-  return { tags, contacts, tagNamesByUid, loading, error, refresh, handleCreate, handleUpdate, handleDelete };
+  return {
+    tags,
+    contacts,
+    tagNamesByUid,
+    loading,
+    error,
+    refresh,
+    handleCreate,
+    handleUpdate,
+    handleDelete,
+  };
 }

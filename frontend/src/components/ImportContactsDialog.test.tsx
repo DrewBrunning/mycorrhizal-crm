@@ -1,17 +1,17 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import ImportContactsDialog from './ImportContactsDialog';
-import { SnackbarProvider } from '../context/SnackbarContext';
 import {
-  uploadCSVForImport,
-  uploadVCFForImport,
-  getImportPreview,
   confirmImport,
   confirmVCFImport,
-  ImportRowPreview,
-  DuplicateMatch,
+  type DuplicateMatch,
+  getImportPreview,
+  type ImportRowPreview,
+  uploadCSVForImport,
+  uploadVCFForImport,
 } from '../api/import';
+import { SnackbarProvider } from '../context/SnackbarContext';
+import ImportContactsDialog from './ImportContactsDialog';
 
 // This codebase's vitest setup has no auto-cleanup and no globals: true.
 afterEach(cleanup);
@@ -46,7 +46,7 @@ function renderDialog(props: Partial<React.ComponentProps<typeof ImportContactsD
   return render(
     <SnackbarProvider>
       <ImportContactsDialog {...defaults} />
-    </SnackbarProvider>
+    </SnackbarProvider>,
   );
 }
 
@@ -62,7 +62,9 @@ function selectFile(file: File) {
 // T96: the backend always emits merge_diff/batch_duplicate_of on preview rows
 // (the Go struct has no omitempty on them), so every fixture carries them —
 // mirroring what a real ImportPreviewResponse looks like on the wire.
-function row(overrides: Partial<ImportRowPreview> & { parsed_contact: ImportRowPreview['parsed_contact'] }): ImportRowPreview {
+function row(
+  overrides: Partial<ImportRowPreview> & { parsed_contact: ImportRowPreview['parsed_contact'] },
+): ImportRowPreview {
   return {
     row_index: 0,
     validation_errors: [],
@@ -111,7 +113,9 @@ test('rejects an unsupported file extension before calling the API', async () =>
   const file = new File(['not a contact'], 'notes.txt', { type: 'text/plain' });
   selectFile(file);
 
-  await waitFor(() => expect(screen.getByText(/please select a valid csv file/i)).toBeInTheDocument());
+  await waitFor(() =>
+    expect(screen.getByText(/please select a valid csv file/i)).toBeInTheDocument(),
+  );
   expect(uploadCSVForImport).not.toHaveBeenCalled();
   expect(uploadVCFForImport).not.toHaveBeenCalled();
 });
@@ -129,9 +133,7 @@ test('CSV upload walks through mapping, preview, and confirm', async () => {
   });
   vi.mocked(getImportPreview).mockResolvedValue({
     session_id: 'sess-1',
-    rows: [
-      row({ parsed_contact: { firstname: 'Ada', lastname: '', email: 'ada@example.com' } }),
-    ],
+    rows: [row({ parsed_contact: { firstname: 'Ada', lastname: '', email: 'ada@example.com' } })],
     total_rows: 1,
     valid_rows: 1,
     duplicate_count: 0,
@@ -148,7 +150,9 @@ test('CSV upload walks through mapping, preview, and confirm', async () => {
   const onImportComplete = vi.fn();
   renderDialog({ onImportComplete });
 
-  selectFile(new File(['Name,Email\nAda Lovelace,ada@example.com'], 'contacts.csv', { type: 'text/csv' }));
+  selectFile(
+    new File(['Name,Email\nAda Lovelace,ada@example.com'], 'contacts.csv', { type: 'text/csv' }),
+  );
 
   // Mapping step: the CSV column headers and suggested mappings render.
   await waitFor(() => expect(screen.getByText('Name')).toBeInTheDocument());
@@ -187,7 +191,9 @@ test('mapping step blocks Continue until at least one column is mapped', async (
   await waitFor(() => expect(screen.getByText('Col A')).toBeInTheDocument());
   fireEvent.click(screen.getByRole('button', { name: /continue/i }));
 
-  await waitFor(() => expect(screen.getByText(/please map at least one column/i)).toBeInTheDocument());
+  await waitFor(() =>
+    expect(screen.getByText(/please map at least one column/i)).toBeInTheDocument(),
+  );
   expect(getImportPreview).not.toHaveBeenCalled();
 });
 
@@ -215,10 +221,16 @@ test('a duplicate row defaults to Merge, shows the match, and renders the diff',
   await loadPreview([
     row({
       parsed_contact: { firstname: 'Bob', lastname: 'Smith', email: 'bob@example.com' },
-      duplicate_match: dupMatch({ existing_firstname: 'Bob', existing_lastname: 'Smith', existing_email: 'bob@example.com' }),
+      duplicate_match: dupMatch({
+        existing_firstname: 'Bob',
+        existing_lastname: 'Smith',
+        existing_email: 'bob@example.com',
+      }),
       suggested_action: 'update',
       merge_diff: {
-        updated: [{ field: 'job_title', label: 'Job Title', old: 'Engineer', new: 'Staff Engineer' }],
+        updated: [
+          { field: 'job_title', label: 'Job Title', old: 'Engineer', new: 'Staff Engineer' },
+        ],
         added: [{ kind: 'phone', value: '+15559998888' }],
       },
     }),
@@ -241,7 +253,11 @@ test('resolving every conflict zeroes the remaining count', async () => {
   await loadPreview([
     row({
       parsed_contact: { firstname: 'Bob', lastname: 'Smith', email: 'bob@example.com' },
-      duplicate_match: dupMatch({ existing_firstname: 'Bob', existing_lastname: 'Smith', existing_email: 'bob@example.com' }),
+      duplicate_match: dupMatch({
+        existing_firstname: 'Bob',
+        existing_lastname: 'Smith',
+        existing_email: 'bob@example.com',
+      }),
       suggested_action: 'update',
       merge_diff: { updated: [], added: [] },
     }),
@@ -279,7 +295,9 @@ test('within-batch duplicates are flagged, default to Discard, and cannot merge'
   // Row 1 (batch dup) has no mergeable target; row 0 (new) also has none —
   // both Merge buttons must be disabled.
   expect(mergeButtons.length).toBeGreaterThan(0);
-  mergeButtons.forEach((b) => expect(b).toBeDisabled());
+  mergeButtons.forEach((b) => {
+    expect(b).toBeDisabled();
+  });
 });
 
 test('an upload failure surfaces the error without advancing the step', async () => {
@@ -305,7 +323,11 @@ test('resolve all as merged applies each row suggested action', async () => {
       row({
         row_index: 1,
         parsed_contact: { firstname: 'Dup', lastname: 'Two', email: '' },
-        duplicate_match: dupMatch({ existing_firstname: 'Dup', existing_lastname: 'Two', match_reason: 'name' }),
+        duplicate_match: dupMatch({
+          existing_firstname: 'Dup',
+          existing_lastname: 'Two',
+          match_reason: 'name',
+        }),
         suggested_action: 'update',
       }),
       row({
@@ -320,7 +342,13 @@ test('resolve all as merged applies each row suggested action', async () => {
     duplicate_count: 1,
     error_count: 1,
   });
-  vi.mocked(confirmVCFImport).mockResolvedValue({ total_processed: 2, created: 1, updated: 1, skipped: 0, errors: [] });
+  vi.mocked(confirmVCFImport).mockResolvedValue({
+    total_processed: 2,
+    created: 1,
+    updated: 1,
+    skipped: 0,
+    errors: [],
+  });
 
   renderDialog();
   selectFile(new File(['BEGIN:VCARD\nEND:VCARD'], 'contact.vcf', { type: 'text/vcard' }));
@@ -355,7 +383,13 @@ test('skip all marks every valid row as skip', async () => {
     duplicate_count: 0,
     error_count: 0,
   });
-  vi.mocked(confirmVCFImport).mockResolvedValue({ total_processed: 2, created: 0, updated: 0, skipped: 2, errors: [] });
+  vi.mocked(confirmVCFImport).mockResolvedValue({
+    total_processed: 2,
+    created: 0,
+    updated: 0,
+    skipped: 2,
+    errors: [],
+  });
 
   renderDialog();
   selectFile(new File(['BEGIN:VCARD\nEND:VCARD'], 'contact.vcf', { type: 'text/vcard' }));
@@ -376,7 +410,7 @@ test('skip all marks every valid row as skip', async () => {
 // mounts only one page of decision cards at a time.
 test('paginates a preview larger than one page', async () => {
   const rows = Array.from({ length: 45 }, (_, i) =>
-    row({ row_index: i, parsed_contact: { firstname: `C${i}`, lastname: '', email: '' } })
+    row({ row_index: i, parsed_contact: { firstname: `C${i}`, lastname: '', email: '' } }),
   );
   vi.mocked(uploadVCFForImport).mockResolvedValue({
     session_id: 'sess-page',

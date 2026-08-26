@@ -1,8 +1,8 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import ReviewDuplicatesDialog from './ReviewDuplicatesDialog';
 import { SnackbarProvider } from '../context/SnackbarContext';
+import ReviewDuplicatesDialog from './ReviewDuplicatesDialog';
 
 // CLAUDE.md frontend trap #1 (explicit cleanup) plus mock hygiene: the
 // window.confirm spy below must not leak into later tests in this file.
@@ -12,15 +12,34 @@ afterEach(() => {
 });
 
 const emptyAssociationCounts = {
-  notes: 0, activities: 0, reminders: 0, reminder_completions: 0, relationship_edges: 0,
-  household_memberships: 0, circle_memberships: 0, tags: 0, life_events: 0,
-  life_event_references: 0, field_values: 0, contact_sync_links: 0,
+  notes: 0,
+  activities: 0,
+  reminders: 0,
+  reminder_completions: 0,
+  relationship_edges: 0,
+  household_memberships: 0,
+  circle_memberships: 0,
+  tags: 0,
+  life_events: 0,
+  life_event_references: 0,
+  field_values: 0,
+  contact_sync_links: 0,
 };
 
 const summary = (id: number, uid: string, firstname: string, lastname: string, email = '') => ({
-  id, uid, firstname, lastname, nickname: '', fn: `${firstname} ${lastname}`,
-  primary_email: email, primary_phone: '', birthday: '', org: '', photo: '',
-  photo_thumbnail: '', archived: false,
+  id,
+  uid,
+  firstname,
+  lastname,
+  nickname: '',
+  fn: `${firstname} ${lastname}`,
+  primary_email: email,
+  primary_phone: '',
+  birthday: '',
+  org: '',
+  photo: '',
+  photo_thumbnail: '',
+  archived: false,
 });
 
 const pairsResponse = (pairs: unknown[]) => ({
@@ -30,11 +49,7 @@ const pairsResponse = (pairs: unknown[]) => ({
   limit: 100,
 });
 
-function mockFetch(handlers: {
-  pairs?: () => unknown;
-  onDismiss?: () => void;
-  preview?: boolean;
-}) {
+function mockFetch(handlers: { pairs?: () => unknown; onDismiss?: () => void; preview?: boolean }) {
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: string, init?: RequestInit) => {
@@ -43,7 +58,11 @@ function mockFetch(handlers: {
         return { ok: true, status: 200, json: async () => ({ message: 'Pair dismissed' }) };
       }
       if (url.includes('/contacts/duplicates')) {
-        return { ok: true, status: 200, json: async () => (handlers.pairs ? handlers.pairs() : pairsResponse([])) };
+        return {
+          ok: true,
+          status: 200,
+          json: async () => (handlers.pairs ? handlers.pairs() : pairsResponse([])),
+        };
       }
       if (handlers.preview && url.includes('/contacts/merge/preview')) {
         const body = JSON.parse(String(init?.body));
@@ -58,7 +77,7 @@ function mockFetch(handlers: {
         };
       }
       throw new Error(`unexpected fetch: ${url}`);
-    })
+    }),
   );
 }
 
@@ -71,7 +90,7 @@ function renderDialog(props: Partial<React.ComponentProps<typeof ReviewDuplicate
   return render(
     <SnackbarProvider>
       <ReviewDuplicatesDialog {...defaults} />
-    </SnackbarProvider>
+    </SnackbarProvider>,
   );
 }
 

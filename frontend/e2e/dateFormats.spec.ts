@@ -1,7 +1,13 @@
-import { test, expect } from './fixtures';
-import { createTestContact, deleteTestContact, waitForLoading, withExclusiveUserSettings } from './fixtures';
-import { API_BASE_URL } from './global-setup';
 import { DEFAULT_ENABLED_CONTACT_FIELDS } from '../src/contactFields';
+import {
+  createTestContact,
+  deleteTestContact,
+  expect,
+  test,
+  waitForLoading,
+  withExclusiveUserSettings,
+} from './fixtures';
+import { API_BASE_URL } from './global-setup';
 
 // v0.4.1: the date format preference is built out (more than eu/us/iso), and
 // every date surface -- including the anniversary rows, which used to render
@@ -21,7 +27,10 @@ import { DEFAULT_ENABLED_CONTACT_FIELDS } from '../src/contactFields';
 // see that helper's doc comment in fixtures.ts for why describe.configure's
 // serial mode alone doesn't close this gap across files.
 test.describe('Date format selection (v0.4.1)', () => {
-  test('lists the built-out formats and renders birthdays + anniversaries in the chosen one', async ({ page, request }) => {
+  test('lists the built-out formats and renders birthdays + anniversaries in the chosen one', async ({
+    page,
+    request,
+  }) => {
     await withExclusiveUserSettings(async () => {
       // Enable the (default-off) anniversary array field so the fixed
       // renderAnniversaries path is exercised, not just the birthday scalar.
@@ -46,8 +55,12 @@ test.describe('Date format selection (v0.4.1)', () => {
         await formatSelect.click();
 
         await expect(page.getByRole('option', { name: 'Canada (DD/MM/YYYY)' })).toBeVisible();
-        await expect(page.getByRole('option', { name: 'European with hyphens (DD-MM-YYYY)' })).toBeVisible();
-        await expect(page.getByRole('option', { name: 'US abbreviated (MMM D, YYYY)' })).toBeVisible();
+        await expect(
+          page.getByRole('option', { name: 'European with hyphens (DD-MM-YYYY)' }),
+        ).toBeVisible();
+        await expect(
+          page.getByRole('option', { name: 'US abbreviated (MMM D, YYYY)' }),
+        ).toBeVisible();
         await expect(page.getByRole('option', { name: 'US full (MMMM D, YYYY)' })).toBeVisible();
 
         await page.getByRole('option', { name: 'Canada (DD/MM/YYYY)' }).click();
@@ -84,12 +97,16 @@ test.describe('Date format selection (v0.4.1)', () => {
       } finally {
         await deleteTestContact(page.request, contact.ID);
         // Restore the shared test user's defaults so other specs aren't affected.
-        await request.patch(`${API_BASE_URL}/users/date-format`, {
-          data: { date_format: 'eu' },
-        }).catch(() => {});
-        await request.patch(`${API_BASE_URL}/users/enabled-contact-fields`, {
-          data: { fields: DEFAULT_ENABLED_CONTACT_FIELDS },
-        }).catch(() => {});
+        await request
+          .patch(`${API_BASE_URL}/users/date-format`, {
+            data: { date_format: 'eu' },
+          })
+          .catch(() => {});
+        await request
+          .patch(`${API_BASE_URL}/users/enabled-contact-fields`, {
+            data: { fields: DEFAULT_ENABLED_CONTACT_FIELDS },
+          })
+          .catch(() => {});
       }
     });
   });

@@ -1,7 +1,15 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { renderHook, cleanup, waitFor, act } from '@testing-library/react';
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import {
+  type ContactTag,
+  createTag,
+  deleteTag,
+  listTags,
+  type Tag,
+  type TagListResponse,
+  updateTag,
+} from '../api/tags';
 import { useTags } from './useTags';
-import { listTags, createTag, updateTag, deleteTag, Tag, ContactTag, TagListResponse } from '../api/tags';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
 afterEach(() => {
@@ -58,8 +66,8 @@ test('maps contact uids to their tag names', async () => {
   vi.mocked(listTags).mockResolvedValue(
     listResponse(
       [tag, secondTag],
-      [contactTag, { id: 2, tag_id: 'tag-2', contact_vcard_uid: 'uid-1' }]
-    )
+      [contactTag, { id: 2, tag_id: 'tag-2', contact_vcard_uid: 'uid-1' }],
+    ),
   );
 
   const { result } = renderHook(() => useTags());

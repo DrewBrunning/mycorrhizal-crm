@@ -61,6 +61,13 @@ RUN chmod +x /app/entrypoint.sh
 # Expose the port
 EXPOSE 8080
 
+# Issue #578: the split backend image is a published artifact (docker-publish
+# matrix) and must carry a HEALTHCHECK like the all-in-one does — trivy's
+# DS-0026 flagged its absence once the misconfig gate hard-gated. The Go
+# server serves /health directly on 8080 (backend/routes/routes.go), no auth.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD ["wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8080/health"]
+
 # Run as root initially; entrypoint drops to appuser after adjusting UID/GID
 ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["./mycorrhizal"]

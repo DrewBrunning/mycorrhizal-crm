@@ -1,5 +1,13 @@
-import { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
 import Box from '@mui/material/Box';
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 
 const AnnouncerContext = createContext<{ announce: (msg: string) => void } | undefined>(undefined);
 
@@ -10,9 +18,12 @@ export function AnnouncerProvider({ children }: { children: ReactNode }) {
   // announce() arriving inside the window replaces rather than stacks.
   const timeoutRef = useRef<number | null>(null);
 
-  useEffect(() => () => {
-    if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current);
+    },
+    [],
+  );
 
   const announce = useCallback((msg: string) => {
     if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current);
@@ -28,8 +39,13 @@ export function AnnouncerProvider({ children }: { children: ReactNode }) {
         aria-live="polite"
         aria-atomic="true"
         sx={{
-          position: 'absolute', width: 1, height: 1, overflow: 'hidden',
-          clip: 'rect(0 0 0 0)', clipPath: 'inset(50%)', whiteSpace: 'nowrap',
+          position: 'absolute',
+          width: 1,
+          height: 1,
+          overflow: 'hidden',
+          clip: 'rect(0 0 0 0)',
+          clipPath: 'inset(50%)',
+          whiteSpace: 'nowrap',
         }}
       >
         {message}

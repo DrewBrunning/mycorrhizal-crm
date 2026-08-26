@@ -1,15 +1,15 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
-  getLifeEvents,
   createLifeEvent,
-  updateLifeEvent,
   deleteLifeEvent,
+  getLifeEvents,
   isKnownLifeEventCategory,
+  LIFE_EVENT_CATEGORIES,
+  LIFE_EVENT_TYPES_BY_CATEGORY,
   partialDateDisplay,
   partialDateHasMonthDay,
   partialDateIsYearOnly,
-  LIFE_EVENT_CATEGORIES,
-  LIFE_EVENT_TYPES_BY_CATEGORY,
+  updateLifeEvent,
 } from './lifeEvents';
 
 afterEach(() => {
@@ -143,7 +143,9 @@ describe('updateLifeEvent', () => {
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
 
-    await expect(updateLifeEvent('event-1', { entity_id: 'contact-1', type: 'moved' })).rejects.toMatchObject({
+    await expect(
+      updateLifeEvent('event-1', { entity_id: 'contact-1', type: 'moved' }),
+    ).rejects.toMatchObject({
       code: 'VALIDATION_ERROR',
       status: 400,
     });
@@ -166,7 +168,10 @@ describe('deleteLifeEvent', () => {
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
 
-    await expect(deleteLifeEvent('event-1')).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 400 });
+    await expect(deleteLifeEvent('event-1')).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400,
+    });
   });
 });
 

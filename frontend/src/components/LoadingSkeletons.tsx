@@ -1,4 +1,4 @@
-import { Box, Card, Stack, Skeleton, Paper } from '@mui/material';
+import { Box, Card, Paper, Skeleton, Stack } from '@mui/material';
 
 /**
  * Skeleton loader for contact cards in the contacts list
@@ -22,6 +22,7 @@ export const ContactListSkeleton = ({ count = 5 }: { count?: number }) => {
   return (
     <Stack spacing={2}>
       {Array.from({ length: count }).map((_, index) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: static placeholders, no data identity
         <ContactCardSkeleton key={index} />
       ))}
     </Stack>
@@ -80,6 +81,7 @@ export const TimelineSkeleton = ({ count = 3 }: { count?: number }) => {
   return (
     <Box>
       {Array.from({ length: count }).map((_, index) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: static placeholders, no data identity
         <TimelineItemSkeleton key={index} />
       ))}
     </Box>
@@ -113,6 +115,7 @@ export const ListSkeleton = ({ count = 5 }: { count?: number }) => {
   return (
     <Box>
       {Array.from({ length: count }).map((_, index) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: static placeholders, no data identity
         <ListItemSkeleton key={index} />
       ))}
     </Box>
@@ -124,8 +127,11 @@ export const ListSkeleton = ({ count = 5 }: { count?: number }) => {
  */
 export const PhotoGallerySkeleton = () => {
   return (
-    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 2 }}>
+    <Box
+      sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 2 }}
+    >
       {Array.from({ length: 6 }).map((_, index) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: static placeholders, no data identity
         <Skeleton key={index} variant="rectangular" height={150} sx={{ borderRadius: 1 }} />
       ))}
     </Box>
@@ -139,12 +145,25 @@ export const FormSkeleton = ({ fields = 4 }: { fields?: number }) => {
   return (
     <Stack spacing={3}>
       {Array.from({ length: fields }).map((_, index) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: static placeholders, no data identity
         <Box key={index}>
           <Skeleton animation="wave" variant="text" width="30%" height={20} sx={{ mb: 1 }} />
-          <Skeleton animation="wave" variant="rectangular" width="100%" height={56} sx={{ borderRadius: 1 }} />
+          <Skeleton
+            animation="wave"
+            variant="rectangular"
+            width="100%"
+            height={56}
+            sx={{ borderRadius: 1 }}
+          />
         </Box>
       ))}
-      <Skeleton animation="wave" variant="rectangular" width="100%" height={42} sx={{ borderRadius: 1, mt: 2 }} />
+      <Skeleton
+        animation="wave"
+        variant="rectangular"
+        width="100%"
+        height={42}
+        sx={{ borderRadius: 1, mt: 2 }}
+      />
     </Stack>
   );
 };
@@ -155,7 +174,13 @@ export const FormSkeleton = ({ fields = 4 }: { fields?: number }) => {
 export const AuthFormSkeleton = () => {
   return (
     <Box sx={{ maxWidth: 400, mx: 'auto', p: 3 }}>
-      <Skeleton animation="wave" variant="text" width="60%" height={48} sx={{ mb: 3, mx: 'auto' }} />
+      <Skeleton
+        animation="wave"
+        variant="text"
+        width="60%"
+        height={48}
+        sx={{ mb: 3, mx: 'auto' }}
+      />
       <FormSkeleton fields={3} />
       <Box sx={{ mt: 2, textAlign: 'center' }}>
         <Skeleton animation="wave" variant="text" width="40%" height={20} sx={{ mx: 'auto' }} />
@@ -171,6 +196,7 @@ export const TableRowSkeleton = ({ columns = 4 }: { columns?: number }) => {
   return (
     <Box sx={{ display: 'flex', gap: 2, p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
       {Array.from({ length: columns }).map((_, index) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: static placeholders, no data identity
         <Box key={index} sx={{ flex: index === 0 ? 2 : 1 }}>
           <Skeleton animation="wave" variant="text" width="80%" height={20} />
         </Box>
@@ -188,6 +214,7 @@ export const TableSkeleton = ({ rows = 5, columns = 4 }: { rows?: number; column
       {/* Table Header */}
       <Box sx={{ display: 'flex', gap: 2, p: 2, bgcolor: 'action.hover' }}>
         {Array.from({ length: columns }).map((_, index) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: static placeholders, no data identity
           <Box key={index} sx={{ flex: index === 0 ? 2 : 1 }}>
             <Skeleton animation="wave" variant="text" width="60%" height={24} />
           </Box>
@@ -195,6 +222,7 @@ export const TableSkeleton = ({ rows = 5, columns = 4 }: { rows?: number; column
       </Box>
       {/* Table Rows */}
       {Array.from({ length: rows }).map((_, index) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: static placeholders, no data identity
         <TableRowSkeleton key={index} columns={columns} />
       ))}
     </Paper>
@@ -220,10 +248,17 @@ export const GridItemSkeleton = () => {
 /**
  * Skeleton loader for grid layouts
  */
-export const GridSkeleton = ({ items = 6, columns = 3 }: { items?: number; columns?: 2 | 3 | 4 }) => {
+export const GridSkeleton = ({
+  items = 6,
+  columns = 3,
+}: {
+  items?: number;
+  columns?: 2 | 3 | 4;
+}) => {
   return (
     <Box sx={{ display: 'grid', gridTemplateColumns: `repeat(${columns}, 1fr)`, gap: 3 }}>
       {Array.from({ length: items }).map((_, index) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: static placeholders, no data identity
         <GridItemSkeleton key={index} />
       ))}
     </Box>
@@ -236,7 +271,9 @@ export const GridSkeleton = ({ items = 6, columns = 3 }: { items?: number; colum
 export const StatCardSkeleton = () => {
   return (
     <Card sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+      <Box
+        sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}
+      >
         <Box sx={{ flex: 1 }}>
           <Skeleton animation="wave" variant="text" width="60%" height={20} />
           <Skeleton animation="wave" variant="text" width="40%" height={48} sx={{ mt: 1 }} />
@@ -255,8 +292,15 @@ export const DashboardSkeleton = () => {
   return (
     <Box>
       <Skeleton animation="wave" variant="text" width="40%" height={48} sx={{ mb: 3 }} />
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 3 }}>
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+          gap: 3,
+        }}
+      >
         {Array.from({ length: 4 }).map((_, index) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: static placeholders, no data identity
           <StatCardSkeleton key={index} />
         ))}
       </Box>
@@ -296,8 +340,18 @@ export const ProfileSkeleton = () => {
 export const SearchBarSkeleton = () => {
   return (
     <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-      <Skeleton animation="wave" variant="rectangular" sx={{ flex: 1, height: 56, borderRadius: 1 }} />
-      <Skeleton animation="wave" variant="rectangular" width={120} height={56} sx={{ borderRadius: 1 }} />
+      <Skeleton
+        animation="wave"
+        variant="rectangular"
+        sx={{ flex: 1, height: 56, borderRadius: 1 }}
+      />
+      <Skeleton
+        animation="wave"
+        variant="rectangular"
+        width={120}
+        height={56}
+        sx={{ borderRadius: 1 }}
+      />
     </Box>
   );
 };
@@ -310,8 +364,20 @@ export const PageHeaderSkeleton = () => {
     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
       <Skeleton animation="wave" variant="text" width="30%" height={48} />
       <Box sx={{ display: 'flex', gap: 2 }}>
-        <Skeleton animation="wave" variant="rectangular" width={100} height={40} sx={{ borderRadius: 1 }} />
-        <Skeleton animation="wave" variant="rectangular" width={120} height={40} sx={{ borderRadius: 1 }} />
+        <Skeleton
+          animation="wave"
+          variant="rectangular"
+          width={100}
+          height={40}
+          sx={{ borderRadius: 1 }}
+        />
+        <Skeleton
+          animation="wave"
+          variant="rectangular"
+          width={120}
+          height={40}
+          sx={{ borderRadius: 1 }}
+        />
       </Box>
     </Box>
   );
@@ -320,7 +386,11 @@ export const PageHeaderSkeleton = () => {
 /**
  * Full page skeleton with header and content
  */
-export const PageSkeleton = ({ contentType = 'list' }: { contentType?: 'list' | 'grid' | 'table' | 'form' }) => {
+export const PageSkeleton = ({
+  contentType = 'list',
+}: {
+  contentType?: 'list' | 'grid' | 'table' | 'form';
+}) => {
   return (
     <Box>
       <PageHeaderSkeleton />

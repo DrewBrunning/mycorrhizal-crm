@@ -1,8 +1,8 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import {
+  applyUpdate,
   notifyUpdateAvailable,
   onUpdateAvailable,
-  applyUpdate,
   resetServiceWorkerUpdatesForTest,
 } from './serviceWorkerUpdates';
 
@@ -31,7 +31,10 @@ function stubServiceWorkerContainer() {
 
   return {
     reload,
-    fireControllerChange: () => listeners.forEach((fn) => fn()),
+    fireControllerChange: () =>
+      listeners.forEach((fn) => {
+        fn();
+      }),
     listenerCount: () => listeners.length,
   };
 }

@@ -1,10 +1,10 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import TimelineExplorerDialog from './TimelineExplorerDialog';
+import { getTimeline, type TimelineItem } from '../api/timeline';
 import { DateFormatProvider } from '../DateFormatProvider';
-import { getTimeline, TimelineItem } from '../api/timeline';
+import TimelineExplorerDialog from './TimelineExplorerDialog';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
 afterEach(cleanup);
@@ -48,7 +48,9 @@ const giftItem = (overrides: Partial<TimelineItem> = {}): TimelineItem => ({
   ...overrides,
 });
 
-function renderDialog(overrides: Partial<React.ComponentProps<typeof TimelineExplorerDialog>> = {}) {
+function renderDialog(
+  overrides: Partial<React.ComponentProps<typeof TimelineExplorerDialog>> = {},
+) {
   return render(
     <MemoryRouter>
       <DateFormatProvider>
@@ -62,7 +64,7 @@ function renderDialog(overrides: Partial<React.ComponentProps<typeof TimelineExp
           {...overrides}
         />
       </DateFormatProvider>
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 }
 
@@ -80,7 +82,11 @@ test('fetches the timeline when opened and renders the rows', async () => {
   });
   expect(screen.getByText('The scarf')).toBeInTheDocument();
   expect(vi.mocked(getTimeline)).toHaveBeenCalledTimes(1);
-  expect(vi.mocked(getTimeline)).toHaveBeenCalledWith({ contactId: 42, types: expect.any(Array), bucket: 'all' });
+  expect(vi.mocked(getTimeline)).toHaveBeenCalledWith({
+    contactId: 42,
+    types: expect.any(Array),
+    bucket: 'all',
+  });
 });
 
 test('renders an empty state (not a crash) when the endpoint returns no items', async () => {
@@ -108,7 +114,13 @@ test('changing the type filter refetches with the new subset', async () => {
 
   await waitFor(() => {
     const lastCall = vi.mocked(getTimeline).mock.calls.at(-1)![0];
-    expect(lastCall.types).toEqual(['note', 'activity', 'completion', 'life_event', 'external_activity']);
+    expect(lastCall.types).toEqual([
+      'note',
+      'activity',
+      'completion',
+      'life_event',
+      'external_activity',
+    ]);
   });
 });
 
@@ -141,7 +153,7 @@ test('loads the next cursor page via "Load more" instead of refetching from scra
   await waitFor(() => expect(screen.getByText('The scarf')).toBeInTheDocument());
   expect(vi.mocked(getTimeline)).toHaveBeenNthCalledWith(
     2,
-    expect.objectContaining({ cursor: 'cursor-1' })
+    expect.objectContaining({ cursor: 'cursor-1' }),
   );
   // No "Load more" once the cursor is exhausted.
   expect(screen.queryByRole('button', { name: /Load more/ })).not.toBeInTheDocument();
@@ -149,7 +161,13 @@ test('loads the next cursor page via "Load more" instead of refetching from scra
 
 test('routes edit/delete through the page-level handlers', async () => {
   vi.mocked(getTimeline).mockResolvedValue({
-    items: [noteItem({ type: 'completion', id: '5', data: { ID: 5, contact_id: 42, message: 'Call back', completed_at: '2026-08-12T10:00:00Z' } })],
+    items: [
+      noteItem({
+        type: 'completion',
+        id: '5',
+        data: { ID: 5, contact_id: 42, message: 'Call back', completed_at: '2026-08-12T10:00:00Z' },
+      }),
+    ],
     next_cursor: '',
     limit: 25,
   });

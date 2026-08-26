@@ -1,5 +1,5 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
-import { searchAll, rebuildSearchIndex } from './search';
+import { afterEach, describe, expect, test, vi } from 'vitest';
+import { rebuildSearchIndex, searchAll } from './search';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -43,7 +43,9 @@ describe('searchAll', () => {
 
 describe('rebuildSearchIndex', () => {
   test('POSTs to the admin rebuild endpoint', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ message: 'Search index rebuilt' }) });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ message: 'Search index rebuilt' }) });
     vi.stubGlobal('fetch', fetchMock);
 
     await rebuildSearchIndex();

@@ -1,13 +1,13 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react';
-import { MemoryRouter, Routes, Route } from 'react-router';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { MemoryRouter, Route, Routes } from 'react-router';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import './i18n/config';
 import AuditPage from './AuditPage';
+import { type AuditEvent, getAuditEvents, undoAuditEvent } from './api/audit';
+import { ApiError } from './api/client';
+import { type Contact, getContactsByUid } from './api/contacts';
 import { SnackbarProvider } from './context/SnackbarContext';
 import { DateFormatProvider } from './DateFormatProvider';
-import { getAuditEvents, undoAuditEvent, AuditEvent } from './api/audit';
-import { getContactsByUid, Contact } from './api/contacts';
-import { ApiError } from './api/client';
 
 // T60. This codebase's vitest
 // has no auto-cleanup, so it must be done explicitly (CLAUDE.md frontend trap #1).
@@ -63,7 +63,7 @@ function renderPage() {
           </Routes>
         </SnackbarProvider>
       </DateFormatProvider>
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 }
 
@@ -72,7 +72,9 @@ test('renders the empty state when there are no events', async () => {
   renderPage();
 
   expect(
-    await screen.findByText('No audit events yet. Changes you make to your contacts and other records will appear here.')
+    await screen.findByText(
+      'No audit events yet. Changes you make to your contacts and other records will appear here.',
+    ),
   ).toBeDefined();
 });
 
@@ -161,7 +163,7 @@ test('the clear filters button resets both filters', async () => {
     () => {
       expect(auditGetMock).toHaveBeenCalledWith(expect.objectContaining({ entity_id: 'abc' }));
     },
-    { timeout: 2000 }
+    { timeout: 2000 },
   );
 
   fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
@@ -209,7 +211,7 @@ test('a 410 from undo shows the retention-window message', async () => {
   fireEvent.click(within(dialog).getByRole('button', { name: 'Undo' }));
 
   expect(
-    await screen.findByText('This event is past its retention window and can no longer be undone')
+    await screen.findByText('This event is past its retention window and can no longer be undone'),
   ).toBeDefined();
 });
 

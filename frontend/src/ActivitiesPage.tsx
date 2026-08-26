@@ -1,40 +1,40 @@
-import { useState, useMemo, useEffect, MouseEvent } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Link as RouterLink } from 'react-router';
-import {
-  Box,
-  Typography,
-  Paper,
-  TextField,
-  Button,
-  IconButton,
-  Chip,
-  Popover,
-  SvgIcon,
-} from '@mui/material';
+import { mdiCalendarPlus } from '@mdi/js';
+import EditIcon from '@mui/icons-material/Edit';
+import EventIcon from '@mui/icons-material/Event';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import {
   Timeline,
-  TimelineItem,
-  TimelineSeparator,
   TimelineConnector,
   TimelineContent,
   TimelineDot,
+  TimelineItem,
   TimelineOppositeContent,
+  TimelineSeparator,
 } from '@mui/lab';
-import { mdiCalendarPlus } from '@mdi/js';
-import EventIcon from '@mui/icons-material/Event';
-import EditIcon from '@mui/icons-material/Edit';
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import { useActivities } from './hooks/useActivities';
-import { useDebouncedValue } from './hooks/useDebounce';
-import { createActivity, updateActivity, deleteActivity, Activity } from './api/activities';
-import { Contact, getAllContacts } from './api/contacts';
+import {
+  Box,
+  Button,
+  Chip,
+  IconButton,
+  Paper,
+  Popover,
+  SvgIcon,
+  TextField,
+  Typography,
+} from '@mui/material';
+import { type MouseEvent, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link as RouterLink } from 'react-router';
+import { type Activity, createActivity, deleteActivity, updateActivity } from './api/activities';
+import { type Contact, getAllContacts } from './api/contacts';
 import AddActivityDialog from './components/AddActivityDialog';
 import EditTimelineItemDialog from './components/EditTimelineItemDialog';
 import { ListSkeleton } from './components/LoadingSkeletons';
-import { useDateFormat } from './DateFormatProvider';
-import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useAnnouncer } from './context/AnnouncerContext';
+import { useDateFormat } from './DateFormatProvider';
+import { useActivities } from './hooks/useActivities';
+import { useDebouncedValue } from './hooks/useDebounce';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
 
 const ActivitiesPage: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -59,16 +59,10 @@ const ActivitiesPage: React.FC = () => {
       fromDate: fromDate || undefined,
       toDate: toDate || undefined,
     }),
-    [debouncedSearch, fromDate, toDate]
+    [debouncedSearch, fromDate, toDate],
   );
 
-  const {
-    activities,
-    nextCursor,
-    loading,
-    refetch,
-    loadMore,
-  } = useActivities(activityParams);
+  const { activities, nextCursor, loading, refetch, loadMore } = useActivities(activityParams);
 
   // #211: result-count announcement, once per settled fetch.
   useEffect(() => {
@@ -114,7 +108,7 @@ const ActivitiesPage: React.FC = () => {
     try {
       await createActivity({
         ...activity,
-        date: new Date(activity.date).toISOString()
+        date: new Date(activity.date).toISOString(),
       });
       setAddDialogOpen(false);
       refetch();
@@ -126,7 +120,7 @@ const ActivitiesPage: React.FC = () => {
 
   const handleEditClick = async (activity: Activity) => {
     setEditingActivity(activity);
-    
+
     // Fetch all contacts if not already loaded
     if (allContacts.length === 0) {
       try {
@@ -136,7 +130,7 @@ const ActivitiesPage: React.FC = () => {
         console.error('Failed to fetch contacts:', err);
       }
     }
-    
+
     setEditValues({
       activityTitle: activity.title || '',
       activityDescription: activity.description || '',
@@ -154,8 +148,10 @@ const ActivitiesPage: React.FC = () => {
         title: editValues.activityTitle,
         description: editValues.activityDescription || '',
         location: editValues.activityLocation || '',
-        date: editValues.activityDate ? new Date(editValues.activityDate).toISOString() : new Date().toISOString(),
-        contact_ids: editValues.activityContacts?.map(c => c.ID) || [],
+        date: editValues.activityDate
+          ? new Date(editValues.activityDate).toISOString()
+          : new Date().toISOString(),
+        contact_ids: editValues.activityContacts?.map((c) => c.ID) || [],
       });
       setEditingActivity(null);
       setEditValues({});
@@ -191,7 +187,6 @@ const ActivitiesPage: React.FC = () => {
     setInfoAnchorEl(null);
   };
 
-
   const isInitialLoading = loading && activities.length === 0;
   const hasFilters = searchInput.trim().length > 0 || fromDate || toDate;
 
@@ -199,7 +194,9 @@ const ActivitiesPage: React.FC = () => {
     <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 2, p: 2 }}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
         <Box display="flex" alignItems="center" gap={1}>
-          <Typography variant="h5" component="h1">{t('activities.title')}</Typography>
+          <Typography variant="h5" component="h1">
+            {t('activities.title')}
+          </Typography>
           <IconButton
             size="small"
             aria-describedby={infoPopoverId}
@@ -209,7 +206,16 @@ const ActivitiesPage: React.FC = () => {
             <InfoOutlinedIcon fontSize="small" />
           </IconButton>
         </Box>
-        <Button variant="contained" color="primary" startIcon={<SvgIcon><path d={mdiCalendarPlus} /></SvgIcon>} onClick={handleAddActivity}>
+        <Button
+          variant="contained"
+          color="primary"
+          startIcon={
+            <SvgIcon>
+              <path d={mdiCalendarPlus} />
+            </SvgIcon>
+          }
+          onClick={handleAddActivity}
+        >
           {t('activities.addActivity')}
         </Button>
       </Box>
@@ -243,7 +249,10 @@ const ActivitiesPage: React.FC = () => {
             value={fromDate}
             onChange={(e) => handleFromDateChange(e.target.value)}
             variant="outlined"
-            slotProps={{ inputLabel: { shrink: true }, input: { placeholder: getDatePlaceholder(), lang: i18n.language } }}
+            slotProps={{
+              inputLabel: { shrink: true },
+              input: { placeholder: getDatePlaceholder(), lang: i18n.language },
+            }}
             sx={{ width: 160 }}
           />
           <TextField
@@ -253,7 +262,10 @@ const ActivitiesPage: React.FC = () => {
             value={toDate}
             onChange={(e) => handleToDateChange(e.target.value)}
             variant="outlined"
-            slotProps={{ inputLabel: { shrink: true }, input: { placeholder: getDatePlaceholder(), lang: i18n.language } }}
+            slotProps={{
+              inputLabel: { shrink: true },
+              input: { placeholder: getDatePlaceholder(), lang: i18n.language },
+            }}
             sx={{ width: 160 }}
           />
         </Box>
@@ -272,9 +284,7 @@ const ActivitiesPage: React.FC = () => {
           {activities.map((activity, index) => (
             <TimelineItem key={activity.ID}>
               <TimelineOppositeContent color="text.secondary" sx={{ flex: 0.2 }}>
-                <Typography variant="body2">
-                  {formatDate(activity.date)}
-                </Typography>
+                <Typography variant="body2">{formatDate(activity.date)}</Typography>
               </TimelineOppositeContent>
               <TimelineSeparator>
                 <TimelineDot color="primary">
@@ -310,11 +320,18 @@ const ActivitiesPage: React.FC = () => {
                             {activity.title}
                           </Typography>
                         )}
-                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', mt: activity.title ? 0.5 : 0 }}>
+                        <Typography
+                          variant="body2"
+                          sx={{ whiteSpace: 'pre-wrap', mt: activity.title ? 0.5 : 0 }}
+                        >
                           {activity.description}
                         </Typography>
                         {activity.location && (
-                          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ mt: 1, display: 'block' }}
+                          >
                             📍 {activity.location}
                           </Typography>
                         )}
@@ -323,7 +340,11 @@ const ActivitiesPage: React.FC = () => {
                         className="edit-actions"
                         sx={{ opacity: 0, transition: 'opacity 0.2s', display: 'flex', gap: 1 }}
                       >
-                        <IconButton size="small" onClick={() => handleEditClick(activity)} aria-label={t('contactDetail.editActivity')}>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleEditClick(activity)}
+                          aria-label={t('contactDetail.editActivity')}
+                        >
                           <EditIcon fontSize="small" />
                         </IconButton>
                       </Box>

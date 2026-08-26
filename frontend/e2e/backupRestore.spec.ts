@@ -1,10 +1,10 @@
-import { test, expect, request as playwrightRequest } from '@playwright/test';
-import { spawn, execSync, ChildProcess } from 'child_process';
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
-import * as net from 'net';
-import { fileURLToPath } from 'url';
+import { type ChildProcess, execSync, spawn } from 'node:child_process';
+import * as fs from 'node:fs';
+import * as net from 'node:net';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { expect, request as playwrightRequest, test } from '@playwright/test';
 import { toContactRecordInput } from '../src/api/contacts';
 
 // N6: full backup/restore.
@@ -44,7 +44,7 @@ const TEST_USER = {
 // A 1x1 PNG: the photo upload path validates that uploads are real images.
 const PNG_1x1 = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
-  'base64'
+  'base64',
 );
 
 function freePort(): Promise<number> {
@@ -70,7 +70,11 @@ function backendIsUsable(): boolean {
 
 function buildServer(buildDir: string): string {
   const bin = path.join(buildDir, 'mycorrhizal-server');
-  execSync(`go build -o ${JSON.stringify(bin)} .`, { cwd: BACKEND_DIR, stdio: 'pipe', timeout: 240_000 });
+  execSync(`go build -o ${JSON.stringify(bin)} .`, {
+    cwd: BACKEND_DIR,
+    stdio: 'pipe',
+    timeout: 240_000,
+  });
   return bin;
 }
 
@@ -148,7 +152,11 @@ function stopServer(srv: RunningServer): Promise<void> {
 // before becoming healthy. freePort() picks a port whose listener is already
 // released, so a fast-closing process can grab it first; the retry makes that
 // race harmless instead of flaky.
-async function startServerWithRetry(bin: string, dataDir: string, attempts = 3): Promise<RunningServer> {
+async function startServerWithRetry(
+  bin: string,
+  dataDir: string,
+  attempts = 3,
+): Promise<RunningServer> {
   let lastErr: Error | undefined;
   for (let i = 0; i < attempts; i++) {
     const port = await freePort();
@@ -178,7 +186,9 @@ test.describe('Full backup/restore (N6)', () => {
     test.setTimeout(300_000);
 
     if (!backendIsUsable()) {
-      test.skip('go/make toolchain not available on this host; cannot compile and drive the backend');
+      test.skip(
+        'go/make toolchain not available on this host; cannot compile and drive the backend',
+      );
     }
 
     let dataDir: string | undefined;
@@ -258,7 +268,11 @@ test.describe('Full backup/restore (N6)', () => {
 
       const attachment = await api.post(`/api/v1/contacts/${contact.id}/attachments`, {
         multipart: {
-          file: { name: 'contract.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 backup-restore contract') },
+          file: {
+            name: 'contract.pdf',
+            mimeType: 'application/pdf',
+            buffer: Buffer.from('%PDF-1.4 backup-restore contract'),
+          },
         },
       });
       expect(attachment.ok(), `attachment upload failed: ${attachment.status()}`).toBeTruthy();
@@ -313,7 +327,7 @@ test.describe('Full backup/restore (N6)', () => {
       expect(login2.ok(), `login after restore failed: ${login2.status()}`).toBeTruthy();
 
       const search = await api2.get(
-        `/api/v1/contacts?search=${encodeURIComponent('BackupRestore')}&limit=10`
+        `/api/v1/contacts?search=${encodeURIComponent('BackupRestore')}&limit=10`,
       );
       expect(search.ok()).toBeTruthy();
       const searchBody = await search.json();
@@ -334,7 +348,7 @@ test.describe('Full backup/restore (N6)', () => {
       expect(await activities.text()).toContain(activityTitle);
 
       const edges = await api2.get(
-        `/api/v1/relationship-edges?contact_id=${encodeURIComponent(contact.uid)}&limit=100`
+        `/api/v1/relationship-edges?contact_id=${encodeURIComponent(contact.uid)}&limit=100`,
       );
       expect(edges.ok()).toBeTruthy();
       expect(await edges.text()).toContain(second.uid);

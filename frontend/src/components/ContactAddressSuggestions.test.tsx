@@ -1,8 +1,8 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
+import type { ContactAddressSuggestion } from '../api/dataSuggestions';
 import ContactAddressSuggestions from './ContactAddressSuggestions';
-import { ContactAddressSuggestion } from '../api/dataSuggestions';
 
 afterEach(cleanup);
 
@@ -24,7 +24,10 @@ const suggestion: ContactAddressSuggestion = {
   address_key: '123 main st|springfield|il|62704',
 };
 
-function stubFetch(initial: ContactAddressSuggestion[], applyCalls: { method: string; url: string }[] = []) {
+function stubFetch(
+  initial: ContactAddressSuggestion[],
+  applyCalls: { method: string; url: string }[] = [],
+) {
   vi.stubGlobal(
     'fetch',
     vi.fn().mockImplementation((url: string, init?: RequestInit) => {
@@ -40,7 +43,7 @@ function stubFetch(initial: ContactAddressSuggestion[], applyCalls: { method: st
         ok: true,
         json: async () => ({ suggestions: initial, total: initial.length }),
       });
-    })
+    }),
   );
 }
 

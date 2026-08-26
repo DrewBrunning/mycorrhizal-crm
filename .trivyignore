@@ -3,10 +3,16 @@
 # `trivy config` (misconfig) and `trivy fs --scanners secret` steps in
 # .github/workflows/container-hardening.yml.
 #
-# Empty to start — add an entry only for a finding that's been reviewed and
-# deliberately accepted, one line per ID, with a comment above it naming the
-# finding and why it's safe:
-#
-#   # AVD-DS-0002: intentional — see docker/cis-hardening.ignore's note on
-#   # supervisord running as PID 1 for the same rationale.
-#   AVD-DS-0002
+# Add an entry only for a finding that's been reviewed and deliberately
+# accepted, one ID per line, with a comment above it naming the finding and
+# why it's safe.
+
+# DS-0002 (HIGH) — "Specify at least 1 USER command in Dockerfile": no
+# Dockerfile in this repo has a USER instruction, by design. The container
+# runs as root at PID 1 so docker/entrypoint.sh can remap PUID/PGID
+# (usermod/groupmod need root), then supervisord drops the backend to
+# appuser (docker/supervisord.conf:20). Mirrors the 4.1 WARN acceptance in
+# docker/cis-hardening.ignore; an explicit `USER root` would still fail the
+# CIS check. This was triaged from the first real run before hard-gating
+# the misconfig step (issue #578).
+DS-0002

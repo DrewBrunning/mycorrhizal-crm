@@ -1,12 +1,23 @@
-import { ElementType } from 'react';
-import { Box, Typography, Card, CardContent, Avatar, Chip, Alert, CircularProgress, IconButton, Tooltip } from '@mui/material';
-import BusinessIcon from '@mui/icons-material/Business';
 import BadgeIcon from '@mui/icons-material/Badge';
-import HomeIcon from '@mui/icons-material/Home';
+import BusinessIcon from '@mui/icons-material/Business';
 import CloseIcon from '@mui/icons-material/Close';
-import { Link } from 'react-router';
+import HomeIcon from '@mui/icons-material/Home';
+import {
+  Alert,
+  Avatar,
+  Box,
+  Card,
+  CardContent,
+  Chip,
+  CircularProgress,
+  IconButton,
+  Tooltip,
+  Typography,
+} from '@mui/material';
+import type { ElementType } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReachOutSuggestion, ReachOutSuggestionKind } from '../api/reachOutSuggestions';
+import { Link } from 'react-router';
+import type { ReachOutSuggestion, ReachOutSuggestionKind } from '../api/reachOutSuggestions';
 
 interface ReachOutSuggestionsListProps {
   suggestions: ReachOutSuggestion[];
@@ -26,7 +37,12 @@ const kindIcon: Record<ReachOutSuggestionKind, ElementType> = {
 // generic "it's been a while." Same dashboard-section shape as
 // OverdueCadenceList -- each row links to the contact -- plus a dismiss
 // action, since these are propose-then-approve suggestions, not facts.
-export default function ReachOutSuggestionsList({ suggestions, loading, error, onDismiss }: ReachOutSuggestionsListProps) {
+export default function ReachOutSuggestionsList({
+  suggestions,
+  loading,
+  error,
+  onDismiss,
+}: ReachOutSuggestionsListProps) {
   const { t } = useTranslation();
 
   if (error) {
@@ -87,7 +103,9 @@ export default function ReachOutSuggestionsList({ suggestions, loading, error, o
                         {s.contact_name || t('cadence.unknownContact')}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        {s.old_value ? t('reachOut.changedFromTo', { old: s.old_value, new: s.new_value }) : t('reachOut.changedTo', { new: s.new_value })}
+                        {s.old_value
+                          ? t('reachOut.changedFromTo', { old: s.old_value, new: s.new_value })
+                          : t('reachOut.changedTo', { new: s.new_value })}
                       </Typography>
                     </Box>
                     <Chip

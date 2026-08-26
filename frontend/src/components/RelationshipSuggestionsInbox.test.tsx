@@ -1,5 +1,5 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import RelationshipSuggestionsInbox from './RelationshipSuggestionsInbox';
 
@@ -37,7 +37,12 @@ function stubFetch(edges: unknown[], acceptCalls: { method: string; url: string 
       const acceptResult = { ok: true, json: async () => ({}) };
       const listResult = {
         ok: true,
-        json: async () => ({ relationship_edges: edges, total: edges.length, next_cursor: '', limit: 100 }),
+        json: async () => ({
+          relationship_edges: edges,
+          total: edges.length,
+          next_cursor: '',
+          limit: 100,
+        }),
       };
       if (method === 'GET' && String(url).includes('/relationship-edges')) {
         return Promise.resolve(listResult);
@@ -50,7 +55,7 @@ function stubFetch(edges: unknown[], acceptCalls: { method: string; url: string 
         return Promise.resolve(acceptResult);
       }
       return Promise.resolve(listResult);
-    })
+    }),
   );
 }
 
@@ -80,7 +85,10 @@ test('accept calls the accept endpoint', async () => {
   acceptButton.click();
 
   await waitFor(() => {
-    expect(acceptCalls).toContainEqual({ method: 'PATCH', url: expect.stringContaining('/relationship-edges/edge-1/accept') });
+    expect(acceptCalls).toContainEqual({
+      method: 'PATCH',
+      url: expect.stringContaining('/relationship-edges/edge-1/accept'),
+    });
   });
   vi.unstubAllGlobals();
 });
@@ -94,7 +102,10 @@ test('reject calls the delete endpoint (reject is DELETE)', async () => {
   rejectButton.click();
 
   await waitFor(() => {
-    expect(rejectCalls).toContainEqual({ method: 'DELETE', url: expect.stringContaining('/relationship-edges/edge-1') });
+    expect(rejectCalls).toContainEqual({
+      method: 'DELETE',
+      url: expect.stringContaining('/relationship-edges/edge-1'),
+    });
   });
   vi.unstubAllGlobals();
 });

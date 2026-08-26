@@ -1,37 +1,35 @@
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  MenuItem,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { addCircleMember, type Circle, createCircle } from '../api/circles';
 import {
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  TextField,
-  MenuItem,
-  Chip,
-  Box,
-  Typography,
-  Stack,
-  Divider,
-  Alert,
-} from '@mui/material';
-import AppDialog from './AppDialog';
-import MultiValueField from './MultiValueField';
-import LanguageField from './LanguageField';
-import {
+  type ContactValue,
   createContactRecord,
-  ContactValue,
-  NameComponent,
+  type NameComponent,
   valuesToCardEmails,
   valuesToCardPhones,
 } from '../api/contacts';
-import { Circle } from '../api/circles';
-import { addCircleMember, createCircle } from '../api/circles';
-import { Tag } from '../api/tags';
-import { createTag, addContactTag } from '../api/tags';
+import { addContactTag, createTag, type Tag } from '../api/tags';
+import { type ContactFieldKey, resolveEnabledFields } from '../contactFields';
 import { useSnackbar } from '../context/SnackbarContext';
-import { handleError, getErrorMessage } from '../utils/errorHandler';
-import { ContactFieldKey, resolveEnabledFields } from '../contactFields';
 import i18n from '../i18n/config';
+import { getErrorMessage, handleError } from '../utils/errorHandler';
+import AppDialog from './AppDialog';
+import LanguageField from './LanguageField';
+import MultiValueField from './MultiValueField';
 
 interface AddContactDialogProps {
   open: boolean;
@@ -59,7 +57,7 @@ export default function AddContactDialog({
   onContactAdded,
   availableCircles,
   availableTags,
-  enabledFields
+  enabledFields,
 }: AddContactDialogProps) {
   const { t } = useTranslation();
   const { showError, showSuccess } = useSnackbar();
@@ -72,7 +70,11 @@ export default function AddContactDialog({
   // by the General Info tab on the contact detail page.
   const SectionHeading = ({ label }: { label: string }) => (
     <Box>
-      <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 0.08, fontSize: '0.72rem' }}>
+      <Typography
+        variant="overline"
+        color="text.secondary"
+        sx={{ letterSpacing: 0.08, fontSize: '0.72rem' }}
+      >
         {label}
       </Typography>
       <Divider sx={{ mt: 0.5 }} />
@@ -101,26 +103,29 @@ export default function AddContactDialog({
 
   const handleAddCircle = () => {
     const trimmed = newCircle.trim();
-    if (trimmed && !selectedCircles.find(sc => sc.name === trimmed)) {
-      setSelectedCircles([...selectedCircles, { id: '', created_at: '', updated_at: '', name: trimmed }]);
+    if (trimmed && !selectedCircles.find((sc) => sc.name === trimmed)) {
+      setSelectedCircles([
+        ...selectedCircles,
+        { id: '', created_at: '', updated_at: '', name: trimmed },
+      ]);
       setNewCircle('');
     }
   };
 
   const handleRemoveCircle = (circle: Circle) => {
-    setSelectedCircles(selectedCircles.filter(c => c.id !== circle.id && c.name !== circle.name));
+    setSelectedCircles(selectedCircles.filter((c) => c.id !== circle.id && c.name !== circle.name));
   };
 
   const handleAddTag = () => {
     const trimmed = newTag.trim();
-    if (trimmed && !selectedTags.find(t => t.name === trimmed)) {
+    if (trimmed && !selectedTags.find((t) => t.name === trimmed)) {
       setSelectedTags([...selectedTags, { id: '', created_at: '', updated_at: '', name: trimmed }]);
       setNewTag('');
     }
   };
 
   const handleRemoveTag = (tag: Tag) => {
-    setSelectedTags(selectedTags.filter(t => t.id !== tag.id && t.name !== tag.name));
+    setSelectedTags(selectedTags.filter((t) => t.id !== tag.id && t.name !== tag.name));
   };
 
   const handleSubmit = async () => {
@@ -135,11 +140,15 @@ export default function AddContactDialog({
 
     try {
       const nameComponents: NameComponent[] = [];
-      if (formData.prefix.trim()) nameComponents.push({ kind: 'title', value: formData.prefix.trim() });
+      if (formData.prefix.trim())
+        nameComponents.push({ kind: 'title', value: formData.prefix.trim() });
       nameComponents.push({ kind: 'given', value: formData.firstname.trim() });
-      if (formData.middle_name.trim()) nameComponents.push({ kind: 'given2', value: formData.middle_name.trim() });
-      if (formData.lastname.trim()) nameComponents.push({ kind: 'surname', value: formData.lastname.trim() });
-      if (formData.suffix.trim()) nameComponents.push({ kind: 'generation', value: formData.suffix.trim() });
+      if (formData.middle_name.trim())
+        nameComponents.push({ kind: 'given2', value: formData.middle_name.trim() });
+      if (formData.lastname.trim())
+        nameComponents.push({ kind: 'surname', value: formData.lastname.trim() });
+      if (formData.suffix.trim())
+        nameComponents.push({ kind: 'generation', value: formData.suffix.trim() });
 
       const cardEmails = valuesToCardEmails(emails);
       const cardPhones = valuesToCardPhones(phones);
@@ -223,14 +232,24 @@ export default function AddContactDialog({
         sx={{ pb: 6 }}
       >
         {error && (
-          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')} closeText={t('common.close')}>
+          <Alert
+            severity="error"
+            sx={{ mb: 2 }}
+            onClose={() => setError('')}
+            closeText={t('common.close')}
+          >
             {error}
           </Alert>
         )}
         <Stack spacing={2} sx={{ mt: 1 }}>
           <SectionHeading label={t('contactDetail.section.name')} />
           {isOn('prefix') && (
-            <TextField label={t('contacts.prefix')} fullWidth value={formData.prefix} onChange={handleChange('prefix')} />
+            <TextField
+              label={t('contacts.prefix')}
+              fullWidth
+              value={formData.prefix}
+              onChange={handleChange('prefix')}
+            />
           )}
           <Stack direction="row" spacing={2}>
             <TextField
@@ -243,7 +262,12 @@ export default function AddContactDialog({
               helperText={firstNameInvalid ? t('contacts.add.firstNameRequired') : undefined}
             />
             {isOn('middle_name') && (
-              <TextField label={t('contacts.middleName')} fullWidth value={formData.middle_name} onChange={handleChange('middle_name')} />
+              <TextField
+                label={t('contacts.middleName')}
+                fullWidth
+                value={formData.middle_name}
+                onChange={handleChange('middle_name')}
+              />
             )}
             <TextField
               label={t('contacts.lastname')}
@@ -253,10 +277,20 @@ export default function AddContactDialog({
             />
           </Stack>
           {isOn('suffix') && (
-            <TextField label={t('contacts.suffix')} fullWidth value={formData.suffix} onChange={handleChange('suffix')} />
+            <TextField
+              label={t('contacts.suffix')}
+              fullWidth
+              value={formData.suffix}
+              onChange={handleChange('suffix')}
+            />
           )}
           {isOn('nickname') && (
-            <TextField label={t('contacts.nickname')} fullWidth value={formData.nickname} onChange={handleChange('nickname')} />
+            <TextField
+              label={t('contacts.nickname')}
+              fullWidth
+              value={formData.nickname}
+              onChange={handleChange('nickname')}
+            />
           )}
 
           <TextField
@@ -279,10 +313,22 @@ export default function AddContactDialog({
 
           <SectionHeading label={t('contactDetail.section.contact')} />
           {isOn('phones') && (
-            <MultiValueField label={t('contacts.phone')} value={phones} onChange={setPhones} valueType="tel" defaultType="cell" />
+            <MultiValueField
+              label={t('contacts.phone')}
+              value={phones}
+              onChange={setPhones}
+              valueType="tel"
+              defaultType="cell"
+            />
           )}
           {isOn('emails') && (
-            <MultiValueField label={t('contacts.email')} value={emails} onChange={setEmails} valueType="email" defaultType="home" />
+            <MultiValueField
+              label={t('contacts.email')}
+              value={emails}
+              onChange={setEmails}
+              valueType="email"
+              defaultType="home"
+            />
           )}
 
           <Box>
@@ -290,7 +336,7 @@ export default function AddContactDialog({
               {t('contacts.circles')}
             </Typography>
             <Box sx={{ display: 'flex', gap: 1, mb: 1, flexWrap: 'wrap' }}>
-              {selectedCircles.map(c => (
+              {selectedCircles.map((c) => (
                 <Chip
                   key={c.id || c.name}
                   label={c.name}
@@ -308,8 +354,11 @@ export default function AddContactDialog({
                 onChange={(e) => {
                   const value = e.target.value;
                   if (value) {
-                    const circle = availableCircles.find(c => c.name === value);
-                    if (circle && !selectedCircles.find(sc => sc.id === circle.id || sc.name === circle.name)) {
+                    const circle = availableCircles.find((c) => c.name === value);
+                    if (
+                      circle &&
+                      !selectedCircles.find((sc) => sc.id === circle.id || sc.name === circle.name)
+                    ) {
                       setSelectedCircles([...selectedCircles, circle]);
                     }
                   }
@@ -317,8 +366,10 @@ export default function AddContactDialog({
               >
                 <MenuItem value="">{t('contacts.selectCircle')}</MenuItem>
                 {availableCircles
-                  .filter(c => !selectedCircles.find(sc => sc.id === c.id || sc.name === c.name))
-                  .map(c => (
+                  .filter(
+                    (c) => !selectedCircles.find((sc) => sc.id === c.id || sc.name === c.name),
+                  )
+                  .map((c) => (
                     <MenuItem key={c.id || c.name} value={c.name}>
                       {c.name}
                     </MenuItem>
@@ -346,7 +397,7 @@ export default function AddContactDialog({
               {t('contacts.tags')}
             </Typography>
             <Box sx={{ display: 'flex', gap: 1, mb: 1, flexWrap: 'wrap' }}>
-              {selectedTags.map(t => (
+              {selectedTags.map((t) => (
                 <Chip
                   key={t.id || t.name}
                   label={t.name}
@@ -364,8 +415,11 @@ export default function AddContactDialog({
                 onChange={(e) => {
                   const value = e.target.value;
                   if (value) {
-                    const tag = availableTags.find(t => t.name === value);
-                    if (tag && !selectedTags.find(st => st.id === tag.id || st.name === tag.name)) {
+                    const tag = availableTags.find((t) => t.name === value);
+                    if (
+                      tag &&
+                      !selectedTags.find((st) => st.id === tag.id || st.name === tag.name)
+                    ) {
                       setSelectedTags([...selectedTags, tag]);
                     }
                   }
@@ -373,8 +427,8 @@ export default function AddContactDialog({
               >
                 <MenuItem value="">{t('contacts.selectTag')}</MenuItem>
                 {availableTags
-                  .filter(t => !selectedTags.find(st => st.id === t.id || st.name === t.name))
-                  .map(t => (
+                  .filter((t) => !selectedTags.find((st) => st.id === t.id || st.name === t.name))
+                  .map((t) => (
                     <MenuItem key={t.id || t.name} value={t.name}>
                       {t.name}
                     </MenuItem>

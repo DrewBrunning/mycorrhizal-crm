@@ -1,5 +1,4 @@
-import { test, expect } from './fixtures';
-import { createTestContact, deleteTestContact, waitForLoading } from './fixtures';
+import { createTestContact, deleteTestContact, expect, test, waitForLoading } from './fixtures';
 
 // T31: the contact detail page is one scrollable page grouped into a handful
 // of anchor sections (Overview, People, Timeline, Cadence & follow-up, Gifts,
@@ -17,7 +16,14 @@ test.describe('Contact detail layout (T31)', () => {
 
       const nav = page.getByRole('navigation', { name: /jump to section/i });
       await expect(nav).toBeVisible();
-      for (const label of ['Overview', 'People', 'Timeline', 'Cadence & follow-up', 'Gifts', 'External Links']) {
+      for (const label of [
+        'Overview',
+        'People',
+        'Timeline',
+        'Cadence & follow-up',
+        'Gifts',
+        'External Links',
+      ]) {
         await expect(nav.getByRole('link', { name: label, exact: true })).toBeVisible();
       }
 
@@ -68,7 +74,10 @@ test.describe('Contact detail layout (T31)', () => {
       await page.waitForTimeout(2000);
       const whileIdle = userFetches - afterLoad;
 
-      expect(whileIdle, `contact detail page kept re-fetching while idle (${whileIdle} /users/me requests in 2s)`).toBeLessThan(3);
+      expect(
+        whileIdle,
+        `contact detail page kept re-fetching while idle (${whileIdle} /users/me requests in 2s)`,
+      ).toBeLessThan(3);
     } finally {
       await deleteTestContact(page.request, contact.ID);
     }
@@ -101,9 +110,13 @@ test.describe('Contact detail at phone width (T31)', () => {
 
     try {
       await page.goto(`/contacts/${contact.ID}`);
-      await expect(page.getByRole('heading', { name: new RegExp(contact.firstname) })).toBeVisible();
+      await expect(
+        page.getByRole('heading', { name: new RegExp(contact.firstname) }),
+      ).toBeVisible();
 
-      const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth > window.innerWidth,
+      );
       expect(overflow).toBe(false);
     } finally {
       await deleteTestContact(page.request, contact.ID);

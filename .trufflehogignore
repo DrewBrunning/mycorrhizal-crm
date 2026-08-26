@@ -1,0 +1,17 @@
+# Issue #578: accepted TruffleHog findings, same ignore-list-with-
+# justification shape as .trivyignore, docker/cis-hardening.ignore, and
+# android/.mobsf.
+#
+# IMPORTANT: TruffleHog OSS (this workflow) has no native ignore-file
+# support, and the gate only fails on VERIFIED findings — a credential the
+# detector confirmed as live against the API. A verified finding is a real,
+# active leak: the correct response is to rotate the credential, not to
+# silence the check. The only legitimate entries here are non-secret false
+# positives that verification somehow passed.
+#
+# Empty to start. If such a finding ever needs documenting, add one line per
+# finding with a comment above it naming the finding and why it is safe:
+#
+#   # Playground fixture API key in docs/golden-fixtures; the account is
+#   # deleted and the key rotated, verification is stale.
+#   <finding-identifier-or-regex>

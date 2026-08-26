@@ -1,5 +1,4 @@
-import { test, expect } from './fixtures';
-import { waitForLoading, createTestContact, deleteTestContact } from './fixtures';
+import { createTestContact, deleteTestContact, expect, test, waitForLoading } from './fixtures';
 import { API_BASE_URL } from './global-setup';
 
 // Issue #173: favorite contacts.
@@ -16,7 +15,9 @@ test.describe('Favorites', () => {
     try {
       await page.goto(`/contacts/${contact.ID}`);
       await waitForLoading(page);
-      await expect(page.getByRole('heading', { name: `${contact.firstname} FavToggle` })).toBeVisible();
+      await expect(
+        page.getByRole('heading', { name: `${contact.firstname} FavToggle` }),
+      ).toBeVisible();
 
       // Non-favorite: the header star reads "Mark as favorite".
       const mark = page.getByRole('button', { name: 'Mark as favorite' });
@@ -44,8 +45,14 @@ test.describe('Favorites', () => {
     // The Contacts page defaults to the contactable-only filter (T103), so
     // both contacts must carry an email or they would be hidden before the
     // favorites switch even matters.
-    const favorite = await createTestContact(page.request, { lastname: 'FavFilter', email: 'favfilter@example.com' });
-    const plain = await createTestContact(page.request, { lastname: 'FavPlain', email: 'favplain@example.com' });
+    const favorite = await createTestContact(page.request, {
+      lastname: 'FavFilter',
+      email: 'favfilter@example.com',
+    });
+    const plain = await createTestContact(page.request, {
+      lastname: 'FavPlain',
+      email: 'favplain@example.com',
+    });
     try {
       // Favorite one contact via the API (the endpoint's wire shape is
       // covered by the detail-page test above).
@@ -82,7 +89,9 @@ test.describe('Favorites', () => {
 
       // The Favorites block renders the favorited contact's name.
       await expect(page.getByText('Favorites').first()).toBeVisible();
-      await expect(page.getByText(`${contact.firstname} FavDash`).first()).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText(`${contact.firstname} FavDash`).first()).toBeVisible({
+        timeout: 10000,
+      });
     } finally {
       await deleteTestContact(request, contact.ID);
     }

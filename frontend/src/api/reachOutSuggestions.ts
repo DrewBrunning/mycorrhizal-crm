@@ -1,7 +1,7 @@
 // ReachOutSuggestion API calls -- issue #177, the event-driven counterpart
 // to cadence.overdue: a detected organization/title/address change on a
 // contact, surfaced as a dismissible dashboard suggestion.
-import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
+import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 
 // Kind tokens -- MUST be kept in sync by hand with
 // backend/models/reach_out_suggestion.go's ReachOutKind* constants (this

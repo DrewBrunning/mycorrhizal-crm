@@ -1,13 +1,14 @@
-import { test, expect } from './fixtures';
 import { request } from '@playwright/test';
+import { expect, stableClick, test, waitForLoading } from './fixtures';
 import { API_BASE_URL } from './global-setup';
-import { stableClick, waitForLoading } from './fixtures';
 
 // T39: Add new users from User Management. The shared storageState user
 // ("testuser") is the first registered account and therefore auto-admin —
 // see mobileLayout.spec.ts's note on the same fact.
 test.describe('User Management: Add User (T39)', () => {
-  test('an admin creates a new user, who can then log in with the set password', async ({ page }) => {
+  test('an admin creates a new user, who can then log in with the set password', async ({
+    page,
+  }) => {
     const suffix = Date.now();
     const newUser = {
       username: `e2e_created_${suffix}`,
@@ -51,7 +52,10 @@ test.describe('User Management: Add User (T39)', () => {
       const loginResponse = await newUserCtx.post(`${API_BASE_URL}/login`, {
         data: { identifier: newUser.username, password: newUser.password },
       });
-      expect(loginResponse.ok(), `login as newly created user failed: ${await loginResponse.text()}`).toBeTruthy();
+      expect(
+        loginResponse.ok(),
+        `login as newly created user failed: ${await loginResponse.text()}`,
+      ).toBeTruthy();
     } finally {
       await newUserCtx.dispose();
       // Clean up via the admin API, still on the original (admin) session.
@@ -59,7 +63,9 @@ test.describe('User Management: Add User (T39)', () => {
     }
   });
 
-  test('creating a user with a duplicate username surfaces the conflict and keeps the dialog open', async ({ page }) => {
+  test('creating a user with a duplicate username surfaces the conflict and keeps the dialog open', async ({
+    page,
+  }) => {
     await page.goto('/users');
     await waitForLoading(page);
     await expect(page.getByRole('heading', { name: /user management/i })).toBeVisible();

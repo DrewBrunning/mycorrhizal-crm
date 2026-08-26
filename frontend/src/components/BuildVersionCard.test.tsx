@@ -1,9 +1,9 @@
-import { test, expect, vi, afterEach, describe } from 'vitest';
-import { render, screen, cleanup, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import BuildVersionCard from './BuildVersionCard';
-import { SnackbarProvider } from '../context/SnackbarContext';
 import { formatBuildVersion } from '../api/health';
+import { SnackbarProvider } from '../context/SnackbarContext';
+import BuildVersionCard from './BuildVersionCard';
 
 afterEach(() => {
   cleanup();
@@ -14,14 +14,14 @@ function renderCard() {
   return render(
     <SnackbarProvider>
       <BuildVersionCard />
-    </SnackbarProvider>
+    </SnackbarProvider>,
   );
 }
 
 function mockHealth(data: unknown, ok = true) {
   vi.stubGlobal(
     'fetch',
-    vi.fn(async () => ({ ok, json: async () => data, status: ok ? 200 : 500 }))
+    vi.fn(async () => ({ ok, json: async () => data, status: ok ? 200 : 500 })),
   );
 }
 
@@ -55,7 +55,12 @@ test('falls back to the bare version when no commit is stamped', async () => {
 // The version display is informational — a failed lookup must not take over
 // the settings page it renders on.
 test('renders a dash rather than throwing when /health fails', async () => {
-  vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('network down'); }));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => {
+      throw new Error('network down');
+    }),
+  );
   renderCard();
 
   await waitFor(() => expect(screen.getByText('—')).toBeInTheDocument());
@@ -74,6 +79,8 @@ describe('formatBuildVersion', () => {
   // A dirty tree means the commit alone does not identify the source; the
   // suffix must survive to the display so a report says so.
   test('preserves the dirty marker', () => {
-    expect(formatBuildVersion({ version: 'dev', commit: 'abc123-dirty' })).toBe('dev (abc123-dirty)');
+    expect(formatBuildVersion({ version: 'dev', commit: 'abc123-dirty' })).toBe(
+      'dev (abc123-dirty)',
+    );
   });
 });

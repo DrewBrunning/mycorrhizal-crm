@@ -1,23 +1,23 @@
-import { useState } from 'react';
+import AddIcon from '@mui/icons-material/Add';
+import CheckIcon from '@mui/icons-material/Check';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import ForumIcon from '@mui/icons-material/Forum';
 import {
   Box,
-  Typography,
-  IconButton,
-  Stack,
-  Paper,
-  TextField,
-  InputAdornment,
   Chip,
   Divider,
+  IconButton,
+  InputAdornment,
   Link,
+  Paper,
+  Stack,
+  TextField,
+  Typography,
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
-import CheckIcon from '@mui/icons-material/Check';
-import ForumIcon from '@mui/icons-material/Forum';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ConversationAgenda } from '../api/conversationAgenda';
+import type { ConversationAgenda } from '../api/conversationAgenda';
 import { useDateFormat } from '../DateFormatProvider';
 import { isHttpUrlString } from '../utils/linkResolution';
 
@@ -127,7 +127,12 @@ export default function ConversationAgendaList({
                   validator or arrived without one is shown as plain text
                   rather than turned into an unsafe href. */}
               {isHttpUrlString(item.reference_url) ? (
-                <Link href={item.reference_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+                <Link
+                  href={item.reference_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   {item.reference_url}
                 </Link>
               ) : (

@@ -1,11 +1,11 @@
-import { describe, test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import './i18n/config';
-import LoginPage from './LoginPage';
 import { AppThemeProvider } from './AppThemeProvider';
-import { loginUser, login2FA, isAuthenticated } from './auth';
+import { isAuthenticated, login2FA, loginUser } from './auth';
 import { useOIDCConfig } from './hooks/useOIDCConfig';
+import LoginPage from './LoginPage';
 
 vi.mock('./auth', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./auth')>();
@@ -20,7 +20,11 @@ const isAuthenticatedMock = vi.mocked(isAuthenticated);
 const useOIDCConfigMock = vi.mocked(useOIDCConfig);
 
 beforeEach(() => {
-  useOIDCConfigMock.mockReturnValue({ enabled: false, provider_name: 'SSO', registration_disabled: false });
+  useOIDCConfigMock.mockReturnValue({
+    enabled: false,
+    provider_name: 'SSO',
+    registration_disabled: false,
+  });
 });
 
 afterEach(() => {
@@ -34,7 +38,7 @@ function renderLogin() {
       <AppThemeProvider>
         <LoginPage setToken={() => {}} />
       </AppThemeProvider>
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 }
 
@@ -48,9 +52,7 @@ describe('LoginPage two-factor step', () => {
     fireEvent.change(screen.getByLabelText(/password/i), { target: { value: 'secret123' } });
     fireEvent.click(screen.getByRole('button', { name: 'Login' }));
 
-    await waitFor(() =>
-      expect(screen.getByText('Two-factor authentication')).toBeInTheDocument()
-    );
+    await waitFor(() => expect(screen.getByText('Two-factor authentication')).toBeInTheDocument());
     expect(screen.getByLabelText(/verification code/i)).toBeInTheDocument();
     // No session must be considered authenticated yet.
     expect(isAuthenticatedMock).not.toHaveBeenCalled();
@@ -91,7 +93,9 @@ describe('LoginPage two-factor step', () => {
     fireEvent.change(screen.getByLabelText(/verification code/i), { target: { value: '000000' } });
     fireEvent.click(screen.getByRole('button', { name: 'Login' }));
 
-    await waitFor(() => expect(screen.getByText('Invalid code. Please try again.')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText('Invalid code. Please try again.')).toBeInTheDocument(),
+    );
     expect(screen.getByLabelText(/verification code/i)).toBeInTheDocument();
   });
 
@@ -163,7 +167,11 @@ describe('LoginPage registration gate', () => {
   });
 
   test('hides the register link when the server has registration disabled', () => {
-    useOIDCConfigMock.mockReturnValue({ enabled: false, provider_name: 'SSO', registration_disabled: true });
+    useOIDCConfigMock.mockReturnValue({
+      enabled: false,
+      provider_name: 'SSO',
+      registration_disabled: true,
+    });
     renderLogin();
     expect(screen.queryByRole('link', { name: /don't have an account/i })).not.toBeInTheDocument();
   });

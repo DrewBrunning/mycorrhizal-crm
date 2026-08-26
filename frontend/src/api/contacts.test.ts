@@ -1,29 +1,29 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import {
-  cardEmailsToValues,
-  valuesToCardEmails,
-  cardPhonesToValues,
-  valuesToCardPhones,
+  type CardAddress,
   cardAddressesToValues,
-  valuesToCardAddresses,
-  CardAddress,
-  getAnniversaryField,
-  withAnniversary,
-  getOrganizationFields,
-  withOrganization,
-  getTitleField,
-  withTitles,
+  cardEmailsToValues,
+  cardPhonesToValues,
+  favoriteContact,
   formatAnniversaryDate,
-  parseAnniversaryDate,
-  toContactRecordInput,
-  getContactsByUid,
-  getContacts,
   getAllContacts,
+  getAnniversaryField,
+  getContacts,
+  getContactsByUid,
+  getOrganizationFields,
+  getTitleField,
   onlineServicesToRows,
+  parseAnniversaryDate,
   rowsToOnlineServices,
   summaryToLegacyContact,
-  favoriteContact,
+  toContactRecordInput,
   unfavoriteContact,
+  valuesToCardAddresses,
+  valuesToCardEmails,
+  valuesToCardPhones,
+  withAnniversary,
+  withOrganization,
+  withTitles,
 } from './contacts';
 
 describe('email conversion', () => {
@@ -43,9 +43,12 @@ describe('email conversion', () => {
   });
 
   test('drops rows with an empty value when converting back', () => {
-    expect(valuesToCardEmails([{ type: 'home', value: '  ' }, { type: '', value: 'a@b.com' }])).toEqual([
-      { address: 'a@b.com', contexts: undefined },
-    ]);
+    expect(
+      valuesToCardEmails([
+        { type: 'home', value: '  ' },
+        { type: '', value: 'a@b.com' },
+      ]),
+    ).toEqual([{ address: 'a@b.com', contexts: undefined }]);
   });
 
   test('handles an empty/undefined array', () => {
@@ -53,7 +56,9 @@ describe('email conversion', () => {
   });
 
   test('preserves pref and label through the round trip', () => {
-    const card = [{ address: 'work@example.com', contexts: ['work', 'private'], pref: 1, label: 'Main' }];
+    const card = [
+      { address: 'work@example.com', contexts: ['work', 'private'], pref: 1, label: 'Main' },
+    ];
     const values = cardEmailsToValues(card);
     expect(values[0].pref).toBe(1);
     expect(values[0].label).toBe('Main');
@@ -64,9 +69,9 @@ describe('email conversion', () => {
 
 describe('phone conversion', () => {
   test('display prefers features over contexts (vCard feature tokens like cell/fax)', () => {
-    expect(cardPhonesToValues([{ number: '555-1234', features: ['cell'], contexts: ['work'] }])).toEqual([
-      { type: 'cell', value: '555-1234', features: ['cell'], contexts: ['work'] },
-    ]);
+    expect(
+      cardPhonesToValues([{ number: '555-1234', features: ['cell'], contexts: ['work'] }]),
+    ).toEqual([{ type: 'cell', value: '555-1234', features: ['cell'], contexts: ['work'] }]);
   });
 
   test('falls back to contexts when no features are set', () => {
@@ -82,7 +87,15 @@ describe('phone conversion', () => {
   });
 
   test('preserves features and pref through the round trip', () => {
-    const card = [{ number: '555-1234', features: ['cell', 'text'], contexts: ['work'], pref: 2, label: 'Work cell' }];
+    const card = [
+      {
+        number: '555-1234',
+        features: ['cell', 'text'],
+        contexts: ['work'],
+        pref: 2,
+        label: 'Work cell',
+      },
+    ];
     const values = cardPhonesToValues(card);
     expect(values[0].features).toEqual(['cell', 'text']);
     expect(values[0].pref).toBe(2);
@@ -107,7 +120,14 @@ describe('address conversion', () => {
     ];
     const values = cardAddressesToValues(card);
     expect(values).toEqual([
-      { type: 'home', street: '123 Main St', city: 'Springfield', region: 'IL', postal: '62704', country: 'USA' },
+      {
+        type: 'home',
+        street: '123 Main St',
+        city: 'Springfield',
+        region: 'IL',
+        postal: '62704',
+        country: 'USA',
+      },
     ]);
     expect(valuesToCardAddresses(values)).toEqual(card);
   });
@@ -128,7 +148,9 @@ describe('address conversion', () => {
     // allows into contexts, so it must be shown rather than blanked.
     expect(cardAddressesToValues(mk('cabin'))[0].type).toBe('cabin');
     // No contexts at all stays empty, not undefined-mapped.
-    expect(cardAddressesToValues([{ components: [{ kind: 'name', value: 'x' }] }])[0].type).toBe('');
+    expect(cardAddressesToValues([{ components: [{ kind: 'name', value: 'x' }] }])[0].type).toBe(
+      '',
+    );
   });
 
   test('preserves unknown address component kinds through round-trip (T25)', () => {
@@ -155,15 +177,17 @@ describe('address conversion', () => {
     // Full round-trip preserves non-standard components (order may differ).
     const result = valuesToCardAddresses(values);
     const resultComps = result[0].components || [];
-    expect(resultComps).toEqual(expect.arrayContaining([
-      { kind: 'name', value: '123 Main St' },
-      { kind: 'room', value: 'Loft' },
-      { kind: 'building', value: 'North Tower' },
-      { kind: 'locality', value: 'Springfield' },
-      { kind: 'region', value: 'IL' },
-      { kind: 'postcode', value: '62704' },
-      { kind: 'country', value: 'USA' },
-    ]));
+    expect(resultComps).toEqual(
+      expect.arrayContaining([
+        { kind: 'name', value: '123 Main St' },
+        { kind: 'room', value: 'Loft' },
+        { kind: 'building', value: 'North Tower' },
+        { kind: 'locality', value: 'Springfield' },
+        { kind: 'region', value: 'IL' },
+        { kind: 'postcode', value: '62704' },
+        { kind: 'country', value: 'USA' },
+      ]),
+    );
     expect(result[0].contexts).toEqual(['home']);
   });
 
@@ -192,29 +216,45 @@ describe('address conversion', () => {
     expect(values[0].passthrough).toBeUndefined();
     const result = valuesToCardAddresses(values);
     const resultComps = result[0].components || [];
-    expect(resultComps).toEqual(expect.arrayContaining([
-      { kind: 'name', value: '123 Main St' },
-      { kind: 'postOfficeBox', value: 'PO Box 42' },
-      { kind: 'apartment', value: '3B' },
-      { kind: 'floor', value: '4' },
-      { kind: 'locality', value: 'Springfield' },
-      { kind: 'region', value: 'IL' },
-      { kind: 'postcode', value: '62704' },
-      { kind: 'country', value: 'USA' },
-    ]));
+    expect(resultComps).toEqual(
+      expect.arrayContaining([
+        { kind: 'name', value: '123 Main St' },
+        { kind: 'postOfficeBox', value: 'PO Box 42' },
+        { kind: 'apartment', value: '3B' },
+        { kind: 'floor', value: '4' },
+        { kind: 'locality', value: 'Springfield' },
+        { kind: 'region', value: 'IL' },
+        { kind: 'postcode', value: '62704' },
+        { kind: 'country', value: 'USA' },
+      ]),
+    );
     expect(result[0].contexts).toEqual(['home']);
   });
 
   test('keeps an address whose only non-blank part is a sub-street field (T79)', () => {
     expect(
-      valuesToCardAddresses([{ type: 'home', street: '', city: '', region: '', postal: '', country: '', pobox: 'PO Box 42' }])
+      valuesToCardAddresses([
+        {
+          type: 'home',
+          street: '',
+          city: '',
+          region: '',
+          postal: '',
+          country: '',
+          pobox: 'PO Box 42',
+        },
+      ]),
     ).toEqual([
       { components: [{ kind: 'postOfficeBox', value: 'PO Box 42' }], contexts: ['home'] },
     ]);
   });
 
   test('drops an address with every field blank', () => {
-    expect(valuesToCardAddresses([{ type: 'home', street: '', city: '', region: '', postal: '', country: '' }])).toEqual([]);
+    expect(
+      valuesToCardAddresses([
+        { type: 'home', street: '', city: '', region: '', postal: '', country: '' },
+      ]),
+    ).toEqual([]);
   });
 
   test('preserves coordinates, timeZone, pref and full through the round trip', () => {
@@ -242,30 +282,55 @@ describe('address conversion', () => {
 describe('online service conversion', () => {
   test('round-trips social profile rows with service/uri/user', () => {
     const rows = onlineServicesToRows([
-      { service: 'Mastodon', uri: 'https://mastodon.social/@ada', user: '@ada', contexts: ['work'], pref: 1, label: 'Work' },
+      {
+        service: 'Mastodon',
+        uri: 'https://mastodon.social/@ada',
+        user: '@ada',
+        contexts: ['work'],
+        pref: 1,
+        label: 'Work',
+      },
     ]);
     expect(rows).toEqual([
-      { service: 'Mastodon', uri: 'https://mastodon.social/@ada', user: '@ada', contexts: ['work'], pref: 1, label: 'Work' },
+      {
+        service: 'Mastodon',
+        uri: 'https://mastodon.social/@ada',
+        user: '@ada',
+        contexts: ['work'],
+        pref: 1,
+        label: 'Work',
+      },
     ]);
     expect(rowsToOnlineServices(rows)).toEqual([
-      { service: 'Mastodon', uri: 'https://mastodon.social/@ada', user: '@ada', contexts: ['work'], pref: 1, label: 'Work' },
+      {
+        service: 'Mastodon',
+        uri: 'https://mastodon.social/@ada',
+        user: '@ada',
+        contexts: ['work'],
+        pref: 1,
+        label: 'Work',
+      },
     ]);
   });
 
   test('drops empty rows', () => {
-    expect(rowsToOnlineServices([{ service: '', uri: '', user: '', label: '', contexts: [] }])).toEqual([]);
+    expect(
+      rowsToOnlineServices([{ service: '', uri: '', user: '', label: '', contexts: [] }]),
+    ).toEqual([]);
   });
 
   test('omits blank fields', () => {
-    expect(rowsToOnlineServices([{ service: 'GitHub', uri: '', user: '', label: '', contexts: [] }])).toEqual([
-      { service: 'GitHub' },
-    ]);
+    expect(
+      rowsToOnlineServices([{ service: 'GitHub', uri: '', user: '', label: '', contexts: [] }]),
+    ).toEqual([{ service: 'GitHub' }]);
   });
 });
 
 describe('anniversary date formatting', () => {
   test('formats a full date', () => {
-    expect(formatAnniversaryDate({ partial: { year: 1990, month: 3, day: 15 } })).toBe('1990-03-15');
+    expect(formatAnniversaryDate({ partial: { year: 1990, month: 3, day: 15 } })).toBe(
+      '1990-03-15',
+    );
   });
 
   test('formats a year-less date', () => {
@@ -273,7 +338,9 @@ describe('anniversary date formatting', () => {
   });
 
   test('parses both formats back losslessly', () => {
-    expect(parseAnniversaryDate('1990-03-15')).toEqual({ partial: { year: 1990, month: 3, day: 15 } });
+    expect(parseAnniversaryDate('1990-03-15')).toEqual({
+      partial: { year: 1990, month: 3, day: 15 },
+    });
     expect(parseAnniversaryDate('--03-15')).toEqual({ partial: { month: 3, day: 15 } });
   });
 });
@@ -299,7 +366,9 @@ describe('getAnniversaryField / withAnniversary', () => {
   });
 
   test('withAnniversary drops the entry when given an empty value', () => {
-    const anniversaries = [{ kind: 'birth' as const, date: { partial: { year: 1990, month: 3, day: 15 } } }];
+    const anniversaries = [
+      { kind: 'birth' as const, date: { partial: { year: 1990, month: 3, day: 15 } } },
+    ];
     expect(withAnniversary(anniversaries, 'birth', '')).toEqual([]);
   });
 });
@@ -327,7 +396,10 @@ describe('organization fields', () => {
 
 describe('title fields', () => {
   test('getTitleField distinguishes title from role by kind', () => {
-    const titles = [{ name: 'Engineer', kind: 'title' as const }, { name: 'Lead', kind: 'role' as const }];
+    const titles = [
+      { name: 'Engineer', kind: 'title' as const },
+      { name: 'Lead', kind: 'role' as const },
+    ];
     expect(getTitleField(titles, 'title')).toBe('Engineer');
     expect(getTitleField(titles, 'role')).toBe('Lead');
   });
@@ -374,9 +446,16 @@ describe('toContactRecordInput', () => {
     expect(input.card.nicknames).toEqual([{ name: 'Manya' }]);
     expect(input.card.emails).toEqual([{ address: 'marie@sorbonne.fr', contexts: ['work'] }]);
     expect(input.card.phones).toEqual([{ number: '555-0100', contexts: ['cell'] }]);
-    expect(input.card.organizations).toEqual([{ name: 'Sorbonne University', units: [{ name: 'Physics' }] }]);
-    expect(input.card.titles).toEqual([{ name: 'Professor', kind: 'title' }, { name: 'Nobel Laureate', kind: 'role' }]);
-    expect(input.card.anniversaries).toEqual([{ kind: 'birth', date: { partial: { year: 1867, month: 11, day: 7 } } }]);
+    expect(input.card.organizations).toEqual([
+      { name: 'Sorbonne University', units: [{ name: 'Physics' }] },
+    ]);
+    expect(input.card.titles).toEqual([
+      { name: 'Professor', kind: 'title' },
+      { name: 'Nobel Laureate', kind: 'role' },
+    ]);
+    expect(input.card.anniversaries).toEqual([
+      { kind: 'birth', date: { partial: { year: 1867, month: 11, day: 7 } } },
+    ]);
   });
 
   test('maps kind (T27) into crm.kind when set', () => {
@@ -409,8 +488,38 @@ describe('getContactsByUid', () => {
       ok: true,
       json: async () => ({
         contacts: [
-          { id: 1, uid: 'alice-uid', firstname: 'Alice', lastname: 'Anderson', nickname: '', fn: '', primary_email: '', primary_phone: '', birthday: '', org: '', photo: '', photo_thumbnail: '', circles: [], archived: false },
-          { id: 2, uid: 'bob-uid', firstname: 'Bob', lastname: 'Brown', nickname: '', fn: '', primary_email: '', primary_phone: '', birthday: '', org: '', photo: '', photo_thumbnail: '', circles: [], archived: false },
+          {
+            id: 1,
+            uid: 'alice-uid',
+            firstname: 'Alice',
+            lastname: 'Anderson',
+            nickname: '',
+            fn: '',
+            primary_email: '',
+            primary_phone: '',
+            birthday: '',
+            org: '',
+            photo: '',
+            photo_thumbnail: '',
+            circles: [],
+            archived: false,
+          },
+          {
+            id: 2,
+            uid: 'bob-uid',
+            firstname: 'Bob',
+            lastname: 'Brown',
+            nickname: '',
+            fn: '',
+            primary_email: '',
+            primary_phone: '',
+            birthday: '',
+            org: '',
+            photo: '',
+            photo_thumbnail: '',
+            circles: [],
+            archived: false,
+          },
         ],
         total: 2,
         page: 1,
@@ -454,9 +563,20 @@ describe('getContacts cursor pagination (T17)', () => {
   });
 
   const summary = (id: number, firstname: string) => ({
-    id, uid: `uid-${id}`, firstname, lastname: '', nickname: '', fn: firstname,
-    primary_email: '', primary_phone: '', birthday: '', org: '',
-    photo: '', photo_thumbnail: '', circles: [], archived: false,
+    id,
+    uid: `uid-${id}`,
+    firstname,
+    lastname: '',
+    nickname: '',
+    fn: firstname,
+    primary_email: '',
+    primary_phone: '',
+    birthday: '',
+    org: '',
+    photo: '',
+    photo_thumbnail: '',
+    circles: [],
+    archived: false,
   });
 
   test('sends limit/cursor/order params and reads next_cursor (no page/total)', async () => {
@@ -469,7 +589,13 @@ describe('getContacts cursor pagination (T17)', () => {
       }),
     });
 
-    const result = await getContacts({ cursor: 'PREV', limit: 10, order: 'asc', search: 'ali', includeArchived: true });
+    const result = await getContacts({
+      cursor: 'PREV',
+      limit: 10,
+      order: 'asc',
+      search: 'ali',
+      includeArchived: true,
+    });
 
     const calledUrl = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
     expect(calledUrl).toContain('limit=10');
@@ -498,7 +624,7 @@ describe('getContacts cursor pagination (T17)', () => {
     const all = await getAllContacts({ limit: 25 });
 
     expect(all.map((c) => c.firstname)).toEqual(['Alice', 'Bob']);
-    expect((fetch as unknown as ReturnType<typeof vi.fn>)).toHaveBeenCalledTimes(2);
+    expect(fetch as unknown as ReturnType<typeof vi.fn>).toHaveBeenCalledTimes(2);
     const secondUrl = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[1][0] as string;
     expect(secondUrl).toContain('cursor=CURSOR-2');
   });
@@ -526,16 +652,38 @@ describe('favorites', () => {
 
   test('is_favorite maps through summaryToLegacyContact', () => {
     const contact = summaryToLegacyContact({
-      id: 1, uid: 'u', firstname: 'Alice', lastname: '', nickname: '', fn: 'Alice',
-      primary_email: '', primary_phone: '', birthday: '', org: '', photo: '',
-      photo_thumbnail: '', archived: false, is_favorite: true,
+      id: 1,
+      uid: 'u',
+      firstname: 'Alice',
+      lastname: '',
+      nickname: '',
+      fn: 'Alice',
+      primary_email: '',
+      primary_phone: '',
+      birthday: '',
+      org: '',
+      photo: '',
+      photo_thumbnail: '',
+      archived: false,
+      is_favorite: true,
     });
     expect(contact.is_favorite).toBe(true);
 
     const plain = summaryToLegacyContact({
-      id: 2, uid: 'v', firstname: 'Bob', lastname: '', nickname: '', fn: 'Bob',
-      primary_email: '', primary_phone: '', birthday: '', org: '', photo: '',
-      photo_thumbnail: '', archived: false, is_favorite: false,
+      id: 2,
+      uid: 'v',
+      firstname: 'Bob',
+      lastname: '',
+      nickname: '',
+      fn: 'Bob',
+      primary_email: '',
+      primary_phone: '',
+      birthday: '',
+      org: '',
+      photo: '',
+      photo_thumbnail: '',
+      archived: false,
+      is_favorite: false,
     });
     expect(plain.is_favorite).toBe(false);
   });

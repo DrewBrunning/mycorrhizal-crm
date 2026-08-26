@@ -1,8 +1,8 @@
-import { test, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import MergeContactsDialog from './MergeContactsDialog';
 import { SnackbarProvider } from '../context/SnackbarContext';
+import MergeContactsDialog from './MergeContactsDialog';
 
 afterEach(cleanup);
 
@@ -13,13 +13,19 @@ function renderDialog(props: Partial<React.ComponentProps<typeof MergeContactsDi
     open: true,
     onClose: vi.fn(),
     onMerged: vi.fn(),
-    ...(props.pair ? {} : { currentContactId: 1, currentContactUid: 'alice-uid', currentContactName: 'Alice Anderson' }),
+    ...(props.pair
+      ? {}
+      : {
+          currentContactId: 1,
+          currentContactUid: 'alice-uid',
+          currentContactName: 'Alice Anderson',
+        }),
     ...props,
   } as React.ComponentProps<typeof MergeContactsDialog>;
   return render(
     <SnackbarProvider>
       <MergeContactsDialog {...merged} />
-    </SnackbarProvider>
+    </SnackbarProvider>,
   );
 }
 
@@ -33,7 +39,7 @@ function mockFetchByUrl(handlers: Record<string, () => unknown>) {
         }
       }
       throw new Error(`unexpected fetch: ${url}`);
-    })
+    }),
   );
 }
 
@@ -59,9 +65,18 @@ const carolAndDanaContactsResponse = () => ({
 });
 
 const emptyAssociationCounts = {
-  notes: 0, activities: 0, reminders: 0, reminder_completions: 0, relationship_edges: 0,
-  household_memberships: 0, circle_memberships: 0, tags: 0, life_events: 0,
-  life_event_references: 0, field_values: 0, contact_sync_links: 0,
+  notes: 0,
+  activities: 0,
+  reminders: 0,
+  reminder_completions: 0,
+  relationship_edges: 0,
+  household_memberships: 0,
+  circle_memberships: 0,
+  tags: 0,
+  life_events: 0,
+  life_event_references: 0,
+  field_values: 0,
+  contact_sync_links: 0,
 };
 
 async function selectBob() {
@@ -106,7 +121,12 @@ test('selecting a target with no conflicts shows the no-conflicts message and en
       keep_id: 2,
       merge_id: 1,
       resolution: {
-        emails: [], phones: [], addresses: [], urls: [], impps: [], circles: [],
+        emails: [],
+        phones: [],
+        addresses: [],
+        urls: [],
+        impps: [],
+        circles: [],
       },
       association_counts: emptyAssociationCounts,
     }),
@@ -132,7 +152,12 @@ test('handles a real backend response where empty Go slices serialize as null, n
       keep_id: 2,
       merge_id: 1,
       resolution: {
-        emails: null, phones: null, addresses: null, urls: null, impps: null, circles: null,
+        emails: null,
+        phones: null,
+        addresses: null,
+        urls: null,
+        impps: null,
+        circles: null,
       },
       association_counts: emptyAssociationCounts,
     }),
@@ -194,7 +219,7 @@ test('a failed merge leaves the dialog open with the selection intact', async ()
         return { ok: false, status: 500, json: async () => ({ error: { message: 'boom' } }) };
       }
       return { ok: true, json: async () => bobContactsResponse() };
-    })
+    }),
   );
 
   const onClose = vi.fn();
@@ -217,8 +242,15 @@ test('a scalar conflict keeps merge disabled until resolved', async () => {
       keep_id: 2,
       merge_id: 1,
       resolution: {
-        emails: [], phones: [], addresses: [], urls: [], impps: [], circles: [],
-        conflicts: [{ field: 'firstname', label: 'First Name', keeper_value: 'Bob', loser_value: 'Robert' }],
+        emails: [],
+        phones: [],
+        addresses: [],
+        urls: [],
+        impps: [],
+        circles: [],
+        conflicts: [
+          { field: 'firstname', label: 'First Name', keeper_value: 'Bob', loser_value: 'Robert' },
+        ],
         field_value_conflicts: [],
       },
       association_counts: emptyAssociationCounts,
@@ -332,7 +364,7 @@ function mockPairFetch(overrides: { mergeBody?: (body: unknown) => void } = {}) 
         return { ok: true, json: async () => ({ message: 'merged', contact: { id: 2 } }) };
       }
       throw new Error(`unexpected fetch: ${url}`);
-    })
+    }),
   );
 }
 
@@ -367,4 +399,3 @@ test('pair mode swap reloads the preview with the swapped keeper and merges it',
   expect(onClose).toHaveBeenCalled();
   await waitFor(() => expect(mergeBodies).toEqual([{ keep_id: 2, merge_id: 1, resolutions: {} }]));
 });
-

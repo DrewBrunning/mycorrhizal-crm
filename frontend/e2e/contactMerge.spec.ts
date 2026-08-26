@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { createTestContact, deleteTestContact, waitForLoading } from './fixtures';
 import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 
@@ -35,7 +35,10 @@ test.describe('Contact merge', () => {
       });
       expect(preview.ok(), `preview failed: ${await preview.text()}`).toBeTruthy();
       const previewBody = await preview.json();
-      expect(previewBody.association_counts.notes, 'the preview must count the note that will move').toBe(1);
+      expect(
+        previewBody.association_counts.notes,
+        'the preview must count the note that will move',
+      ).toBe(1);
 
       // The two contacts have different firstnames, so the merge reports a
       // conflict and REFUSES to commit until the caller resolves it. That
@@ -52,7 +55,9 @@ test.describe('Contact merge', () => {
       for (const conflict of previewBody.resolution?.conflicts ?? []) {
         resolutions[conflict.field] = conflict.keeper_value;
       }
-      expect(Object.keys(resolutions), 'the preview must report the firstname conflict').toContain('firstname');
+      expect(Object.keys(resolutions), 'the preview must report the firstname conflict').toContain(
+        'firstname',
+      );
 
       const commit = await request.post(`${API_BASE_URL}/contacts/merge`, {
         data: { keep_id: keeper.ID, merge_id: loser.ID, resolutions },
@@ -81,7 +86,7 @@ test.describe('Contact merge', () => {
       // An audit note records what happened -- the only record of the merge.
       expect(
         contents.some((c: string) => c.includes('Merged contact')),
-        'the merge must leave an audit note on the keeper'
+        'the merge must leave an audit note on the keeper',
       ).toBeTruthy();
     } finally {
       await deleteTestContact(request, keeper.ID);
@@ -98,8 +103,12 @@ test.describe('Contact merge', () => {
 
     const sharedName = `SharedCircle${Date.now()}`;
     const soloName = `SoloCircle${Date.now()}`;
-    const shared = await (await request.post(`${API_BASE_URL}/circles`, { data: { name: sharedName } })).json();
-    const solo = await (await request.post(`${API_BASE_URL}/circles`, { data: { name: soloName } })).json();
+    const shared = await (
+      await request.post(`${API_BASE_URL}/circles`, { data: { name: sharedName } })
+    ).json();
+    const solo = await (
+      await request.post(`${API_BASE_URL}/circles`, { data: { name: soloName } })
+    ).json();
     const sharedId = shared.circle?.id ?? shared.id;
     const soloId = solo.circle?.id ?? solo.id;
 
@@ -131,11 +140,19 @@ test.describe('Contact merge', () => {
         const res = await request.get(`${API_BASE_URL}/circles/${circleId}`);
         expect(res.ok()).toBeTruthy();
         const { members } = await res.json();
-        return (members ?? []).filter((m: { member_vcard_uid: string }) => m.member_vcard_uid === keeper.uid).length;
+        return (members ?? []).filter(
+          (m: { member_vcard_uid: string }) => m.member_vcard_uid === keeper.uid,
+        ).length;
       };
 
-      expect(await keeperMembershipCount(sharedId), 'the keeper must be in the shared circle exactly once, not duplicated').toBe(1);
-      expect(await keeperMembershipCount(soloId), 'the keeper must have inherited the loser-only circle exactly once').toBe(1);
+      expect(
+        await keeperMembershipCount(sharedId),
+        'the keeper must be in the shared circle exactly once, not duplicated',
+      ).toBe(1);
+      expect(
+        await keeperMembershipCount(soloId),
+        'the keeper must have inherited the loser-only circle exactly once',
+      ).toBe(1);
     } finally {
       await deleteTestContact(request, keeper.ID);
       await deleteTestContact(request, loser.ID);

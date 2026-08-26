@@ -1,16 +1,16 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import WebhooksSettings from './WebhooksSettings';
 import {
-  getWebhooks,
   createWebhook,
-  updateWebhook,
   deleteWebhook,
-  testWebhook,
   getWebhookDeliveries,
-  Webhook,
+  getWebhooks,
+  testWebhook,
+  updateWebhook,
+  type Webhook,
 } from '../api/webhooks';
+import WebhooksSettings from './WebhooksSettings';
 
 // This codebase's vitest setup has no auto-cleanup and no globals: true.
 afterEach(cleanup);
@@ -58,7 +58,11 @@ test('shows the empty state when no webhooks are configured', async () => {
 
 test('lists a webhook with its active status and event count', async () => {
   vi.mocked(getWebhooks).mockResolvedValue([
-    webhook({ name: 'Inactive hook', is_active: false, events: ['contact.created', 'note.created'] }),
+    webhook({
+      name: 'Inactive hook',
+      is_active: false,
+      events: ['contact.created', 'note.created'],
+    }),
   ]);
   render(<WebhooksSettings />);
 
@@ -69,7 +73,15 @@ test('lists a webhook with its active status and event count', async () => {
 
 test('creating a webhook posts the form and reveals the secret exactly once', async () => {
   vi.mocked(getWebhooks).mockResolvedValue([]);
-  const created = { ...webhook({ id: 9, name: 'New Hook', url: 'https://example.com/new', events: ['contact.created'] }), secret: 'whsec_abc123' };
+  const created = {
+    ...webhook({
+      id: 9,
+      name: 'New Hook',
+      url: 'https://example.com/new',
+      events: ['contact.created'],
+    }),
+    secret: 'whsec_abc123',
+  };
   vi.mocked(createWebhook).mockResolvedValue(created);
 
   render(<WebhooksSettings />);
@@ -77,7 +89,9 @@ test('creating a webhook posts the form and reveals the secret exactly once', as
 
   fireEvent.click(screen.getByRole('button', { name: /add webhook/i }));
   fireEvent.change(screen.getByLabelText('Name *'), { target: { value: 'New Hook' } });
-  fireEvent.change(screen.getByLabelText('URL *'), { target: { value: 'https://example.com/new' } });
+  fireEvent.change(screen.getByLabelText('URL *'), {
+    target: { value: 'https://example.com/new' },
+  });
 
   fireEvent.mouseDown(screen.getByLabelText(/events \*/i));
   fireEvent.click(await screen.findByRole('option', { name: 'Contact Created' }));
@@ -86,8 +100,12 @@ test('creating a webhook posts the form and reveals the secret exactly once', as
 
   await waitFor(() =>
     expect(createWebhook).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'New Hook', url: 'https://example.com/new', events: ['contact.created'] })
-    )
+      expect.objectContaining({
+        name: 'New Hook',
+        url: 'https://example.com/new',
+        events: ['contact.created'],
+      }),
+    ),
   );
 
   // The secret is shown once, right after creation.
@@ -110,7 +128,7 @@ test('editing a webhook prefills the form and saves via update', async () => {
   fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
   await waitFor(() =>
-    expect(updateWebhook).toHaveBeenCalledWith(4, expect.objectContaining({ name: 'Renamed' }))
+    expect(updateWebhook).toHaveBeenCalledWith(4, expect.objectContaining({ name: 'Renamed' })),
   );
 });
 
@@ -134,7 +152,14 @@ test('deleting a webhook requires confirmation', async () => {
 test('testing a webhook reports a successful delivery', async () => {
   vi.mocked(getWebhooks).mockResolvedValue([webhook({ id: 2, name: 'Live Hook' })]);
   vi.mocked(testWebhook).mockResolvedValue({
-    delivery: { id: 1, event_type: 'contact.created', status_code: 200, error: null, attempts: 1, created_at: '2026-01-01T00:00:00Z' },
+    delivery: {
+      id: 1,
+      event_type: 'contact.created',
+      status_code: 200,
+      error: null,
+      attempts: 1,
+      created_at: '2026-01-01T00:00:00Z',
+    },
   });
 
   render(<WebhooksSettings />);
@@ -148,7 +173,14 @@ test('testing a webhook reports a successful delivery', async () => {
 test('testing a webhook reports a failed delivery without throwing', async () => {
   vi.mocked(getWebhooks).mockResolvedValue([webhook({ id: 3, name: 'Flaky Hook' })]);
   vi.mocked(testWebhook).mockResolvedValue({
-    delivery: { id: 2, event_type: 'contact.created', status_code: 500, error: 'connection refused', attempts: 1, created_at: '2026-01-01T00:00:00Z' },
+    delivery: {
+      id: 2,
+      event_type: 'contact.created',
+      status_code: 500,
+      error: 'connection refused',
+      attempts: 1,
+      created_at: '2026-01-01T00:00:00Z',
+    },
   });
 
   render(<WebhooksSettings />);
@@ -156,13 +188,22 @@ test('testing a webhook reports a failed delivery without throwing', async () =>
 
   fireEvent.click(screen.getByRole('button', { name: 'Test' }));
 
-  await waitFor(() => expect(screen.getByText(/test failed: connection refused/i)).toBeInTheDocument());
+  await waitFor(() =>
+    expect(screen.getByText(/test failed: connection refused/i)).toBeInTheDocument(),
+  );
 });
 
 test('expanding deliveries fetches them once and shows recent attempts', async () => {
   vi.mocked(getWebhooks).mockResolvedValue([webhook({ id: 8, name: 'Hook With History' })]);
   vi.mocked(getWebhookDeliveries).mockResolvedValue([
-    { id: 1, event_type: 'contact.created', status_code: 200, error: null, attempts: 1, created_at: '2026-01-01T00:00:00Z' },
+    {
+      id: 1,
+      event_type: 'contact.created',
+      status_code: 200,
+      error: null,
+      attempts: 1,
+      created_at: '2026-01-01T00:00:00Z',
+    },
   ]);
 
   render(<WebhooksSettings />);

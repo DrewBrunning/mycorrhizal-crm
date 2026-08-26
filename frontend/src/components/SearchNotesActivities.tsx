@@ -1,18 +1,9 @@
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { Alert, Box, Card, CardContent, Chip, Collapse, Stack, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Box,
-  Typography,
-  Alert,
-  Chip,
-  Card,
-  CardContent,
-  Stack,
-  Collapse,
-} from '@mui/material';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
-import { SearchResult } from '../api/search';
+import type { SearchResult } from '../api/search';
 import { useDateFormat } from '../DateFormatProvider';
 
 interface SearchNotesActivitiesProps {
@@ -27,7 +18,11 @@ interface SearchNotesActivitiesProps {
 // the contacts list endpoint is the authority for contacts (it is the one
 // that owns the filters, the sort and the cursor). Two disjoint contact lists
 // on one page would disagree.
-export default function SearchNotesActivities({ query, result, onOpenContact }: SearchNotesActivitiesProps) {
+export default function SearchNotesActivities({
+  query,
+  result,
+  onOpenContact,
+}: SearchNotesActivitiesProps) {
   const { t } = useTranslation();
   const { formatDate } = useDateFormat();
   const [expanded, setExpanded] = useState(false);
@@ -95,7 +90,12 @@ export default function SearchNotesActivities({ query, result, onOpenContact }: 
             <CardContent sx={{ pt: 0, '&:last-child': { pb: 2 } }}>
               {notes.length > 0 && (
                 <>
-                  <Typography variant="subtitle2" component="h3" color="text.secondary" sx={{ mb: 0.5 }}>
+                  <Typography
+                    variant="subtitle2"
+                    component="h3"
+                    color="text.secondary"
+                    sx={{ mb: 0.5 }}
+                  >
                     {t('contacts.searchNotesGroup')}
                   </Typography>
                   <Stack spacing={1} sx={{ mb: 1.5 }}>
@@ -104,7 +104,15 @@ export default function SearchNotesActivities({ query, result, onOpenContact }: 
                         <Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>
                           {n.content}
                         </Typography>
-                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap', mt: 0.5 }}>
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            gap: 1,
+                            alignItems: 'center',
+                            flexWrap: 'wrap',
+                            mt: 0.5,
+                          }}
+                        >
                           {n.contact_name ? (
                             <Chip
                               size="small"
@@ -125,7 +133,12 @@ export default function SearchNotesActivities({ query, result, onOpenContact }: 
               )}
               {activities.length > 0 && (
                 <>
-                  <Typography variant="subtitle2" component="h3" color="text.secondary" sx={{ mb: 0.5 }}>
+                  <Typography
+                    variant="subtitle2"
+                    component="h3"
+                    color="text.secondary"
+                    sx={{ mb: 0.5 }}
+                  >
                     {t('contacts.searchActivitiesGroup')}
                   </Typography>
                   <Stack spacing={0.5}>

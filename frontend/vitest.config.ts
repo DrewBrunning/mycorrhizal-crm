@@ -1,5 +1,5 @@
-import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   plugins: [react()],
@@ -31,11 +31,7 @@ export default defineConfig({
     // catching genuine hangs reasonably fast.
     testTimeout: 10000,
     reporters: process.env.CI
-      ? [
-          'default',
-          ['junit', { outputFile: './junit.xml' }],
-          'github-actions',
-        ]
+      ? ['default', ['junit', { outputFile: './junit.xml' }], 'github-actions']
       : 'default',
     // Issue #251: visibility only, no thresholds/gate — a separate ticket
     // tracks enforcing coverage. `text` for the CI log, `html` for a

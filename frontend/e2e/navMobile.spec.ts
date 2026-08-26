@@ -1,5 +1,5 @@
-import { test, expect } from './fixtures';
 import type { Page } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 // T33: the global nav bar had accumulated ten destinations and was "incredibly
 // crowded" at phone widths. At <sm the AppBar now shows only the primary
@@ -7,7 +7,9 @@ import type { Page } from '@playwright/test';
 // in the hamburger drawer, and account-level items collapse into the account
 // menu. These specs pin that structure and that nothing overflows at 360-414px.
 async function noHorizontalOverflow(page: Page): Promise<void> {
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > window.innerWidth,
+  );
   expect(overflow, 'the nav bar must not push the page wider than the viewport').toBe(false);
 }
 
@@ -29,7 +31,9 @@ test.describe('Mobile navigation (T33)', () => {
     await expect(page).toHaveURL(/\/notes$/);
   });
 
-  test('secondary destinations are reachable via the hamburger drawer in one tap', async ({ page }) => {
+  test('secondary destinations are reachable via the hamburger drawer in one tap', async ({
+    page,
+  }) => {
     await page.goto('/network');
     await page.getByRole('button', { name: 'menu' }).click();
     for (const name of [/dashboard/i, /households/i, /activities/i, /network/i, /shares/i]) {

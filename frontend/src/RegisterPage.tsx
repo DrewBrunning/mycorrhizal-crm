@@ -1,18 +1,10 @@
+import { Alert, Box, Button, Paper, Stack, TextField, Typography } from '@mui/material';
 import { useState } from 'react';
-import { API_BASE_URL } from './auth';
-import { Link, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import {
-  Box,
-  TextField,
-  Button,
-  Typography,
-  Alert,
-  Paper,
-  Stack
-} from '@mui/material';
-import { useErrorAlertFocus } from './hooks/useErrorAlertFocus';
+import { Link, useNavigate } from 'react-router';
+import { API_BASE_URL } from './auth';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
+import { useErrorAlertFocus } from './hooks/useErrorAlertFocus';
 import { useOIDCConfig } from './hooks/useOIDCConfig';
 
 export default function RegisterPage() {
@@ -52,14 +44,12 @@ export default function RegisterPage() {
           if (apiError.details && Object.keys(apiError.details).length > 0) {
             // Flatten detail values into a human-readable string.
             detailMessages = Object.values(apiError.details)
-              .flatMap(value => (Array.isArray(value) ? value : [value]))
+              .flatMap((value) => (Array.isArray(value) ? value : [value]))
               .filter(Boolean)
               .join('. ');
           }
 
-          const combinedMessage = [baseMessage, detailMessages]
-            .filter(Boolean)
-            .join(': ');
+          const combinedMessage = [baseMessage, detailMessages].filter(Boolean).join(': ');
 
           throw new Error(combinedMessage || t('register.registrationFailed'));
         }
@@ -84,7 +74,9 @@ export default function RegisterPage() {
     return (
       <Box sx={{ maxWidth: 400, mx: 'auto', mt: 8 }}>
         <Paper sx={{ p: 4 }}>
-          <Typography variant="h5" component="h1" mb={2}>{t('register.title')}</Typography>
+          <Typography variant="h5" component="h1" mb={2}>
+            {t('register.title')}
+          </Typography>
           <Alert severity="info">{t('register.registrationDisabled')}</Alert>
           <Button component={Link} to="/login" color="primary" variant="text" sx={{ mt: 2 }}>
             {t('register.backToLogin')}
@@ -97,13 +89,15 @@ export default function RegisterPage() {
   return (
     <Box sx={{ maxWidth: 400, mx: 'auto', mt: 8 }}>
       <Paper sx={{ p: 4 }}>
-        <Typography variant="h5" component="h1" mb={2}>{t('register.title')}</Typography>
+        <Typography variant="h5" component="h1" mb={2}>
+          {t('register.title')}
+        </Typography>
         <form onSubmit={handleSubmit}>
           <Stack spacing={2}>
             <TextField
               label={t('register.username')}
               value={username}
-              onChange={e => setUsername(e.target.value)}
+              onChange={(e) => setUsername(e.target.value)}
               required
               fullWidth
               error={Boolean(error)}
@@ -113,7 +107,7 @@ export default function RegisterPage() {
               label={t('register.email')}
               type="email"
               value={email}
-              onChange={e => setEmail(e.target.value)}
+              onChange={(e) => setEmail(e.target.value)}
               required
               fullWidth
               error={Boolean(error)}
@@ -123,7 +117,7 @@ export default function RegisterPage() {
               label={t('register.password')}
               type="password"
               value={password}
-              onChange={e => setPassword(e.target.value)}
+              onChange={(e) => setPassword(e.target.value)}
               required
               fullWidth
               error={Boolean(error)}

@@ -1,10 +1,5 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
-import {
-  getGifts,
-  createGift,
-  updateGift,
-  deleteGift,
-} from './gifts';
+import { afterEach, describe, expect, test, vi } from 'vitest';
+import { createGift, deleteGift, getGifts, updateGift } from './gifts';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -16,7 +11,12 @@ describe('getGifts', () => {
       ok: true,
       json: async () => ({
         gifts: [
-          { id: 'g1', entity_id: 'alice-uid', description: 'She liked the ceramics shop', status: 'idea' },
+          {
+            id: 'g1',
+            entity_id: 'alice-uid',
+            description: 'She liked the ceramics shop',
+            status: 'idea',
+          },
         ],
         next_cursor: '',
         limit: 100,

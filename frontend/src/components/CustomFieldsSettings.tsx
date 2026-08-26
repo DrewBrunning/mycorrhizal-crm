@@ -1,31 +1,31 @@
-import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import TuneIcon from '@mui/icons-material/Tune';
 import {
+  Alert,
   Box,
+  Button,
   Card,
   CardContent,
-  Typography,
-  Divider,
-  Button,
-  Stack,
-  Alert,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Divider,
   List,
   ListItem,
   ListItemText,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogContentText,
-  DialogActions,
+  Stack,
+  Typography,
 } from '@mui/material';
-import TuneIcon from '@mui/icons-material/Tune';
-import AddIcon from '@mui/icons-material/Add';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { FieldDefinition, FieldDefinitionInput } from '../api/fieldDefinitions';
 import { useSnackbar } from '../context/SnackbarContext';
 import { useFieldDefinitions } from '../hooks/useFieldDefinitions';
-import { FieldDefinition, FieldDefinitionInput } from '../api/fieldDefinitions';
 import FieldDefinitionDialog from './FieldDefinitionDialog';
 
 // T7's replacement for the v1 CustomFieldsSettings (which edited a plain list
@@ -35,7 +35,8 @@ import FieldDefinitionDialog from './FieldDefinitionDialog';
 export default function CustomFieldsSettings() {
   const { t } = useTranslation();
   const { showSuccess } = useSnackbar();
-  const { definitions, loading, error, handleCreate, handleUpdate, handleDelete } = useFieldDefinitions();
+  const { definitions, loading, error, handleCreate, handleUpdate, handleDelete } =
+    useFieldDefinitions();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingDefinition, setEditingDefinition] = useState<FieldDefinition | null>(null);
@@ -77,7 +78,8 @@ export default function CustomFieldsSettings() {
     }
   };
 
-  const sensitivityColor = (s: string) => (s === 'secret' ? 'error' : s === 'private' ? 'warning' : 'default');
+  const sensitivityColor = (s: string) =>
+    s === 'secret' ? 'error' : s === 'private' ? 'warning' : 'default';
 
   return (
     <>
@@ -96,7 +98,11 @@ export default function CustomFieldsSettings() {
               {t('settings.customFields.description')}
             </Typography>
 
-            {error && <Alert severity="error" sx={{ py: 0 }}>{error}</Alert>}
+            {error && (
+              <Alert severity="error" sx={{ py: 0 }}>
+                {error}
+              </Alert>
+            )}
 
             {loading ? (
               <Typography variant="body2" color="text.secondary">
@@ -134,12 +140,22 @@ export default function CustomFieldsSettings() {
                           primary={def.label}
                           secondary={
                             <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mt: 0.5 }}>
-                              <Chip label={t(`customFields.types.${def.type}`)} size="small" variant="outlined" />
+                              <Chip
+                                label={t(`customFields.types.${def.type}`)}
+                                size="small"
+                                variant="outlined"
+                              />
                               {def.constraints?.multi && (
-                                <Chip label={t('customFields.multiShort')} size="small" variant="outlined" />
+                                <Chip
+                                  label={t('customFields.multiShort')}
+                                  size="small"
+                                  variant="outlined"
+                                />
                               )}
                               <Chip
-                                label={t(`customFields.sensitivity${def.sensitivity.charAt(0).toUpperCase()}${def.sensitivity.slice(1)}`)}
+                                label={t(
+                                  `customFields.sensitivity${def.sensitivity.charAt(0).toUpperCase()}${def.sensitivity.slice(1)}`,
+                                )}
                                 size="small"
                                 color={sensitivityColor(def.sensitivity)}
                                 variant="outlined"
@@ -160,7 +176,13 @@ export default function CustomFieldsSettings() {
                 )}
 
                 <Box>
-                  <Button variant="contained" color="primary" size="small" startIcon={<AddIcon />} onClick={openCreate}>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    size="small"
+                    startIcon={<AddIcon />}
+                    onClick={openCreate}
+                  >
                     {t('settings.customFields.add')}
                   </Button>
                 </Box>

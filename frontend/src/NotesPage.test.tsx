@@ -1,13 +1,16 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, waitFor, fireEvent } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import './i18n/config';
-import NotesPage from './NotesPage';
-import { SnackbarProvider } from './context/SnackbarContext';
 import { AnnouncerProvider } from './context/AnnouncerContext';
+import { SnackbarProvider } from './context/SnackbarContext';
 import { DateFormatProvider } from './DateFormatProvider';
+import NotesPage from './NotesPage';
 
 beforeEach(() => {
-  localStorage.setItem('user_info', JSON.stringify({ user_id: 1, username: 'test', is_admin: false }));
+  localStorage.setItem(
+    'user_info',
+    JSON.stringify({ user_id: 1, username: 'test', is_admin: false }),
+  );
 });
 
 afterEach(() => {
@@ -26,7 +29,7 @@ function mockFetchByUrl(handlers: Record<string, () => unknown>) {
         }
       }
       throw new Error(`unexpected fetch: ${url}`);
-    })
+    }),
   );
 }
 
@@ -38,8 +41,22 @@ const emptyNotesResponse = () => ({
 
 const twoUnfiledNotesResponse = () => ({
   notes: [
-    { ID: 1, content: 'First note', date: '2026-01-01T00:00:00Z', contact_id: null, CreatedAt: '2026-01-01T00:00:00Z', UpdatedAt: '2026-01-01T00:00:00Z' },
-    { ID: 2, content: 'Second note', date: '2026-01-02T00:00:00Z', contact_id: null, CreatedAt: '2026-01-02T00:00:00Z', UpdatedAt: '2026-01-02T00:00:00Z' },
+    {
+      ID: 1,
+      content: 'First note',
+      date: '2026-01-01T00:00:00Z',
+      contact_id: null,
+      CreatedAt: '2026-01-01T00:00:00Z',
+      UpdatedAt: '2026-01-01T00:00:00Z',
+    },
+    {
+      ID: 2,
+      content: 'Second note',
+      date: '2026-01-02T00:00:00Z',
+      contact_id: null,
+      CreatedAt: '2026-01-02T00:00:00Z',
+      UpdatedAt: '2026-01-02T00:00:00Z',
+    },
   ],
   next_cursor: '',
   limit: 25,
@@ -53,7 +70,7 @@ function renderPage() {
           <NotesPage />
         </DateFormatProvider>
       </AnnouncerProvider>
-    </SnackbarProvider>
+    </SnackbarProvider>,
   );
 }
 
@@ -106,12 +123,30 @@ test('inbox is empty when all notes are filed', async () => {
 // the next cursor page; once next_cursor is empty it disappears.
 test('renders Load more and appends the next cursor page', async () => {
   const pageOne = () => ({
-    notes: [{ ID: 1, content: 'First note', date: '2026-01-01T00:00:00Z', contact_id: null, CreatedAt: '2026-01-01T00:00:00Z', UpdatedAt: '2026-01-01T00:00:00Z' }],
+    notes: [
+      {
+        ID: 1,
+        content: 'First note',
+        date: '2026-01-01T00:00:00Z',
+        contact_id: null,
+        CreatedAt: '2026-01-01T00:00:00Z',
+        UpdatedAt: '2026-01-01T00:00:00Z',
+      },
+    ],
     next_cursor: 'CURSOR-1',
     limit: 25,
   });
   const pageTwo = () => ({
-    notes: [{ ID: 2, content: 'Second note', date: '2026-01-02T00:00:00Z', contact_id: null, CreatedAt: '2026-01-02T00:00:00Z', UpdatedAt: '2026-01-02T00:00:00Z' }],
+    notes: [
+      {
+        ID: 2,
+        content: 'Second note',
+        date: '2026-01-02T00:00:00Z',
+        contact_id: null,
+        CreatedAt: '2026-01-02T00:00:00Z',
+        UpdatedAt: '2026-01-02T00:00:00Z',
+      },
+    ],
     next_cursor: '',
     limit: 25,
   });
@@ -220,7 +255,7 @@ test('assigning a contact files the note and removes it from the inbox', async (
         };
       }
       throw new Error(`unexpected fetch: ${url}`);
-    })
+    }),
   );
 
   renderPage();
@@ -260,8 +295,22 @@ test('unfiled count shows the server total, not the loaded page length', async (
   mockFetchByUrl({
     '/notes?': () => ({
       notes: [
-        { ID: 1, content: 'First note', date: '2026-01-01T00:00:00Z', contact_id: null, CreatedAt: '2026-01-01T00:00:00Z', UpdatedAt: '2026-01-01T00:00:00Z' },
-        { ID: 2, content: 'Second note', date: '2026-01-02T00:00:00Z', contact_id: null, CreatedAt: '2026-01-02T00:00:00Z', UpdatedAt: '2026-01-02T00:00:00Z' },
+        {
+          ID: 1,
+          content: 'First note',
+          date: '2026-01-01T00:00:00Z',
+          contact_id: null,
+          CreatedAt: '2026-01-01T00:00:00Z',
+          UpdatedAt: '2026-01-01T00:00:00Z',
+        },
+        {
+          ID: 2,
+          content: 'Second note',
+          date: '2026-01-02T00:00:00Z',
+          contact_id: null,
+          CreatedAt: '2026-01-02T00:00:00Z',
+          UpdatedAt: '2026-01-02T00:00:00Z',
+        },
       ],
       next_cursor: 'more-pages-exist',
       limit: 2,
