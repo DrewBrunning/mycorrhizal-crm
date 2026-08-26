@@ -298,9 +298,7 @@ test('rotating a token shows the new secret exactly once and refreshes the list'
   fireEvent.click(screen.getByRole('button', { name: /^rotate$/i }));
 
   await waitFor(() => expect(rotateApiToken).toHaveBeenCalledWith(4));
-  await waitFor(() =>
-    expect(screen.getByDisplayValue('mcrh_live_rotated456')).toBeInTheDocument(),
-  );
+  await waitFor(() => expect(screen.getByDisplayValue('mcrh_live_rotated456')).toBeInTheDocument());
   // "Token Rotated" (dialog heading) vs. the "Token rotated successfully"
   // snackbar -- match the heading specifically to avoid ambiguity.
   expect(screen.getByRole('heading', { name: 'Token Rotated' })).toBeInTheDocument();
