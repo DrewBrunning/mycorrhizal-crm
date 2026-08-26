@@ -21,4 +21,5 @@ The name comes from mycorrhiza, the symbiotic network fungi form with plant root
 
 - [GitHub Repository](https://github.com/DrewBrunning/mycorrhizal-crm)
 - [Security checklist (OWASP ASVS L2 + API Security Top 10)](security/asvs-l2.md)
+- [Deployment security baseline (operator security boundary)](security/deployment-baseline.md)
 

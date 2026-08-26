@@ -8,7 +8,7 @@ does not re-derive `file:line` evidence that already lives there.
 
 | | |
 |---|---|
-| **Last updated** | 2026-08-25 (issue [#377](https://github.com/DrewBrunning/mycorrhizal-crm/issues/377); gating decision 3 revised by issue [#507](https://github.com/DrewBrunning/mycorrhizal-crm/issues/507)) |
+| **Last updated** | 2026-08-26 (issue [#377](https://github.com/DrewBrunning/mycorrhizal-crm/issues/377); gating decision 3 revised by issue [#507](https://github.com/DrewBrunning/mycorrhizal-crm/issues/507); self-hosted boundary given a concrete operator checklist by issue [#417](https://github.com/DrewBrunning/mycorrhizal-crm/issues/417)) |
 | **Scope** | Backend (Go/Gin + SQLite), frontend (React SPA), Android client, CardDAV/CalDAV sync, self-hosted deployment. |
 | **Companion docs** | `docs/security/asvs-l2.md` (backend/frontend/deployment controls, OWASP ASVS 4.0.3 + API Top 10), `docs/security/masvs-l1.md` (Android client controls, OWASP MASVS 1.5.0) |
 
@@ -33,6 +33,12 @@ section derives from it:
 - It does **not** excuse anything reachable over the network without host access: authentication,
   authorization, session handling, SSRF, and input validation are full-strength regardless of
   self-hosting, and are covered like any other app (`asvs-l2.md` V2–V5, V9, V12, V13).
+- `docs/security/deployment-baseline.md` (issue #417) is this assumption's concrete, operator-facing
+  form: the reference topology, a recommended baseline (TLS/HSTS, secure cookies, no Docker-socket
+  mount, minimal capabilities, resource limits, encrypted backups, …), and the explicit list of what
+  the application does not secure (host OS, Docker daemon, reverse proxy, TLS certs, DNS, firewall,
+  host filesystem, external backup storage, host admins, host compromise) — this section states the
+  assumption once; that doc is the checklist an operator actually runs against.
 
 ## Assets
 
