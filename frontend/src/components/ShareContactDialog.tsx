@@ -33,6 +33,15 @@ interface ShareContactDialogProps {
 // sensitivity foot-gun guard ExportFieldPickerDialog uses), swapping the
 // format radio group for a recipient picker since JSContact is the only wire
 // format a share round-trips through.
+//
+// Issue #555 (frozen-snapshot semantics, a decision recorded but never
+// surfaced in the UI): the backend serializes the payload once, at
+// share-creation time, and never re-derives it (models/contact_share.go's
+// Payload doc comment) -- so a later edit to this contact, or a later
+// re-classification of a field's sensitivity, does not reach an
+// already-created share. frozenNotice below is the sender-facing statement
+// of that fact, so "why doesn't my edit show up over there" isn't a support
+// question.
 export default function ShareContactDialog({
   open,
   onClose,
@@ -111,6 +120,10 @@ export default function ShareContactDialog({
           <Typography variant="body2" color="text.secondary">
             {t('contactShares.shareDialog.description')}
           </Typography>
+
+          <Alert severity="info" sx={{ py: 0 }}>
+            {t('contactShares.shareDialog.frozenNotice')}
+          </Alert>
 
           <TextField
             select

@@ -281,6 +281,18 @@ func AcceptContactShare(c *gin.Context) {
 // or "update" (merge via the existing, already-tested MergeImportedContact
 // policy) per row via the returned preview's duplicate_match — never
 // automatic. Only on success does the share flip to accepted.
+//
+// Issue #555 recipient-capability rule: the landed Contact (add) or merged
+// Contact (update) is, from this point on, an ORDINARY contact the
+// recipient owns outright — identical in every respect to one they created
+// or imported themselves. There is no provenance flag, no residual
+// restriction, and no trace of "this arrived via a share" carried forward:
+// the recipient's own sensitivity classifications govern it from here, and
+// they may re-share it onward, export it, or edit it exactly as they could
+// any other contact (TestConfirmContactShare_AcceptedContactBecomesOrdinaryAndCanBeReShared,
+// contact_share_matrix_test.go). This is deliberate, not an oversight:
+// ContactShare's whole design point is that the payload becomes the
+// recipient's data at accept-time, not a live, sender-controlled reference.
 func ConfirmContactShare(c *gin.Context, cfg *config.Config) {
 	db := c.MustGet("db").(*gorm.DB)
 	log := logger.FromContext(c)
