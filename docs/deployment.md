@@ -88,6 +88,15 @@ docker compose up -d
 
 Database migrations run automatically on startup.
 
+## Verifying release artifacts
+
+Every published Docker image is signed and carries SBOM + SLSA provenance attestations; the
+Android release APK is additionally cosign co-signed and carries its own build provenance. Before
+deploying a new release, or any time you want to confirm a downloaded binary/container actually
+came from this project's official build pipeline unmodified, see
+`docs/security/release-verification.md` for exact commands (`cosign`, `gh attestation verify`) —
+no supply-chain background required.
+
 ## Backups
 
 A backup is two (or three) independent pieces, and missing any of them means the backup is not a

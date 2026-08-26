@@ -150,5 +150,4 @@
 - Push the tag to GitHub: `git push origin v1.5.3`
 - This triggers a GitHub Actions workflow that automatically builds and publishes Docker images to GHCR
 - Users can then deploy the new version by setting `IMAGE_TAG=v1.5.3` (or by just using `:latest`) in their `.env` and running `docker compose up -d`
-- Each published image now carries an SBOM and SLSA provenance attestation, and is keylessly signed with `cosign` via the workflow's GitHub Actions OIDC identity — verify with `cosign verify ghcr.io/drewbrunning/mycorrhizal-crm@<digest> --certificate-identity-regexp 'https://github.com/DrewBrunning/mycorrhizal-crm/.*' --certificate-oidc-issuer https://token.actions.githubusercontent.com`
-- The images and the release APK also carry GitHub-native SLSA build provenance (`actions/attest-build-provenance`): the Release page shows a "Verified" badge on the APK asset, and both verify with `gh attestation verify` (an APK directly, an image as `oci://ghcr.io/drewbrunning/mycorrhizal-crm@<digest> -R DrewBrunning/mycorrhizal-crm`)
+- Each published image carries an SBOM and SLSA provenance attestation and is keylessly signed with `cosign`; the release APK carries GitHub-native SLSA build provenance plus an additive cosign co-signature. Full operator-facing verification steps (exact commands, what expires and when): `docs/security/release-verification.md`.
