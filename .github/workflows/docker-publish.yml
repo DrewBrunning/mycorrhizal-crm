@@ -232,16 +232,20 @@ jobs:
       # Issue #578, B3: cosign co-signature on the release APK — additive
       # ONLY. It does NOT replace the SIGNING_* keystore signing above, which
       # is what makes the APK installable; cosign gives an independent
-      # keyless (Sigstore) verifier on top of the GH attestation. Verify with
-      # cosign verify-blob --certificate ... --signature ... <apk>.
+      # keyless (Sigstore) verifier on top of the GH attestation. cosign v3
+      # made the standardized bundle format (--bundle, a single file with the
+      # cert + signature + transparency log entry) the default and required
+      # it, retiring --output-certificate/--output-signature (they're now
+      # silently ignored, so cosign wrote to an empty path and errored: "create
+      # bundle file: open : no such file or directory"). Verify with
+      # cosign verify-blob --bundle mycorrhizal-apk.sigstore.json <apk>.
       - name: Install cosign
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
 
       - name: Cosign-sign the release APK (keyless, additive)
         run: |
           cosign sign-blob --yes \
-            --output-certificate "$RUNNER_TEMP/mycorrhizal-apk.crt" \
-            --output-signature "$RUNNER_TEMP/mycorrhizal-apk.sig" \
+            --bundle "$RUNNER_TEMP/mycorrhizal-apk.sigstore.json" \
             android/app/build/outputs/apk/release/app-release.apk
 
       - name: Upload APK cosign signature + certificate
@@ -249,8 +253,7 @@ jobs:
         with:
           name: apk-cosign-signature
           path: |
-            ${{ runner.temp }}/mycorrhizal-apk.crt
-            ${{ runner.temp }}/mycorrhizal-apk.sig
+            ${{ runner.temp }}/mycorrhizal-apk.sigstore.json
           retention-days: 30
 
   build-and-push:
@@ -453,20 +456,20 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # Keyless blob signing, same OIDC pattern as the "Sign the published
-      # image" step (the cosign-installer above is reused). The cert +
-      # signature files ride along as artifacts so a consumer can verify:
-      # cosign verify-blob --certificate ... --signature ... <sbom>
+      # image" step (the cosign-installer above is reused). cosign v3 made
+      # the standardized bundle format the default and --bundle required in
+      # place of --output-certificate/--output-signature (see the APK-signing
+      # step above for why). The bundle rides along as an artifact so a
+      # consumer can verify: cosign verify-blob --bundle <sbom>.sigstore.json <sbom>
       - name: Sign the image SBOMs (keyless)
         env:
           SUFFIX: ${{ matrix.suffix }}
         run: |
           cosign sign-blob --yes \
-            --output-certificate "sbom${SUFFIX}.spdx.json.crt" \
-            --output-signature "sbom${SUFFIX}.spdx.json.sig" \
+            --bundle "sbom${SUFFIX}.spdx.json.sigstore.json" \
             "sbom${SUFFIX}.spdx.json"
           cosign sign-blob --yes \
-            --output-certificate "sbom${SUFFIX}.cdx.json.crt" \
-            --output-signature "sbom${SUFFIX}.cdx.json.sig" \
+            --bundle "sbom${SUFFIX}.cdx.json.sigstore.json" \
             "sbom${SUFFIX}.cdx.json"
 
       - name: Upload image SBOM signatures
@@ -474,10 +477,8 @@ jobs:
         with:
           name: sbom-signatures${{ matrix.suffix }}
           path: |
-            sbom${{ matrix.suffix }}.spdx.json.crt
-            sbom${{ matrix.suffix }}.spdx.json.sig
-            sbom${{ matrix.suffix }}.cdx.json.crt
-            sbom${{ matrix.suffix }}.cdx.json.sig
+            sbom${{ matrix.suffix }}.spdx.json.sigstore.json
+            sbom${{ matrix.suffix }}.cdx.json.sigstore.json
           retention-days: 30
 
   scan:

@@ -2,7 +2,14 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import './i18n/config';
-import { createUser, deleteUser, getUsers, triggerReminders, updateUser } from './api/admin';
+import {
+  createUser,
+  deleteUser,
+  getUsers,
+  resetUserTwoFactor,
+  triggerReminders,
+  updateUser,
+} from './api/admin';
 import { isAdmin } from './auth';
 import { SnackbarProvider } from './context/SnackbarContext';
 import type { User } from './types';
@@ -19,6 +26,7 @@ vi.mock('./api/admin', async (importOriginal) => {
     createUser: vi.fn(),
     updateUser: vi.fn(),
     deleteUser: vi.fn(),
+    resetUserTwoFactor: vi.fn(),
     triggerReminders: vi.fn(),
   };
 });
@@ -62,6 +70,7 @@ beforeEach(() => {
   vi.mocked(createUser).mockReset();
   vi.mocked(updateUser).mockReset();
   vi.mocked(deleteUser).mockReset();
+  vi.mocked(resetUserTwoFactor).mockReset();
   vi.mocked(triggerReminders).mockReset();
   vi.mocked(isAdmin).mockReset();
   vi.mocked(isAdmin).mockReturnValue(true);
@@ -131,11 +140,12 @@ test('reflows to stacked user cards below the sm breakpoint (T32)', async () => 
   renderPage();
 
   await waitFor(() => expect(screen.getByText('card-admin')).toBeInTheDocument());
-  // No table at phone width — each user is a card, and both the edit and
-  // delete actions remain reachable.
+  // No table at phone width — each user is a card, and the edit, reset-2FA,
+  // and delete actions all remain reachable.
   expect(screen.queryByRole('table')).toBeNull();
   expect(screen.getByText('admin@example.com')).toBeInTheDocument();
   expect(screen.getAllByTitle('Edit')).toHaveLength(2);
+  expect(screen.getAllByTitle('Reset 2FA')).toHaveLength(2);
   expect(screen.getAllByTitle('Delete')).toHaveLength(2);
 });
 
@@ -379,6 +389,58 @@ test('a failed delete surfaces the error and keeps the user listed', async () =>
 
   await waitFor(() => expect(screen.getByText('cannot delete the last admin')).toBeInTheDocument());
   expect(screen.getByText('stubborn')).toBeInTheDocument();
+});
+
+test('resetting 2FA requires confirmation, warns what it does, and shows success (issue #592)', async () => {
+  vi.mocked(getUsers).mockResolvedValue({
+    users: [user({ id: 6, username: 'locked-out' })],
+    total: 1,
+    page: 1,
+    limit: 25,
+    total_pages: 1,
+  });
+  vi.mocked(resetUserTwoFactor).mockResolvedValue(user({ id: 6, username: 'locked-out' }));
+
+  renderPage();
+  await waitFor(() => expect(screen.getByText('locked-out')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByTitle('Reset 2FA'));
+  expect(resetUserTwoFactor).not.toHaveBeenCalled();
+  expect(
+    screen.getByText(/disables their authenticator app and deletes their recovery codes/i),
+  ).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: /^reset 2fa$/i }));
+
+  await waitFor(() => expect(resetUserTwoFactor).toHaveBeenCalledWith(6));
+  await waitFor(() =>
+    expect(
+      screen.getByText('Two-factor authentication reset for "locked-out"'),
+    ).toBeInTheDocument(),
+  );
+  // Unlike delete, the row itself is untouched -- the user still exists.
+  expect(screen.getByText('locked-out')).toBeInTheDocument();
+});
+
+test('a failed 2FA reset surfaces the error in the dialog and keeps it open', async () => {
+  vi.mocked(getUsers).mockResolvedValue({
+    users: [user({ id: 8, username: 'stubborn-lockout' })],
+    total: 1,
+    page: 1,
+    limit: 25,
+    total_pages: 1,
+  });
+  vi.mocked(resetUserTwoFactor).mockRejectedValue(new Error('User not found'));
+
+  renderPage();
+  await waitFor(() => expect(screen.getByText('stubborn-lockout')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByTitle('Reset 2FA'));
+  fireEvent.click(screen.getByRole('button', { name: /^reset 2fa$/i }));
+
+  await waitFor(() => expect(screen.getByText('User not found')).toBeInTheDocument());
+  // The confirmation dialog itself stays open, ready to retry or cancel.
+  expect(screen.getByRole('button', { name: /^reset 2fa$/i })).toBeInTheDocument();
 });
 
 test('triggering reminder emails calls the endpoint', async () => {

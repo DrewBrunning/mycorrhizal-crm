@@ -91,3 +91,25 @@ export async function deleteUser(id: number): Promise<void> {
     throw await parseErrorResponse(response);
   }
 }
+
+/**
+ * Reset a user's two-factor authentication (admin only, issue #592).
+ * Operator-side recovery for a user locked out of their own account (TOTP
+ * device and recovery codes both lost): disables TOTP and hard-deletes
+ * their recovery codes. No proof is required from the target -- the
+ * caller's own authenticated admin session is the trust boundary, same as
+ * the existing admin password reset above. Idempotent: safe to call on a
+ * user with no 2FA enabled.
+ */
+export async function resetUserTwoFactor(id: number): Promise<User> {
+  const response = await apiFetch(`${API_BASE_URL}/admin/users/${id}/reset-2fa`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    throw await parseErrorResponse(response);
+  }
+
+  return response.json();
+}

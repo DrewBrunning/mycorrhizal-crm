@@ -1528,9 +1528,17 @@
       "message": "Are you sure you want to delete user \"{{username}}\"?",
       "warning": "This will permanently delete the user and all their data including contacts, activities, notes, and reminders."
     },
+    "resetTwoFactor": "Reset 2FA",
+    "resetTwoFactorDialog": {
+      "title": "Reset Two-Factor Authentication",
+      "message": "Are you sure you want to reset two-factor authentication for \"{{username}}\"?",
+      "warning": "This disables their authenticator app and deletes their recovery codes, and ends their current sessions. Use this only when a user is locked out and cannot verify with their existing 2FA."
+    },
     "updateError": "Failed to update user",
     "createError": "Failed to create user",
     "deleteError": "Failed to delete user",
+    "resetTwoFactorSuccess": "Two-factor authentication reset for \"{{username}}\"",
+    "resetTwoFactorError": "Failed to reset two-factor authentication",
     "triggerReminders": "Send Reminder Emails",
     "triggerRemindersSuccess": "Reminder emails sent successfully",
     "triggerRemindersError": "Failed to send reminder emails"
