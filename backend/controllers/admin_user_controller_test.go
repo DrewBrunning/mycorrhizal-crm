@@ -989,18 +989,58 @@ func TestTriggerReminders_DatabaseError(t *testing.T) {
 
 // M5/T26: TriggerPurge endpoint executes the purge without error.
 func TestTriggerPurge(t *testing.T) {
-	_, router := setupRouter()
+	db, router := setupRouter()
 
-	cfg := config.Config{DeleteRetentionDays: 30}
+	cfg := config.Config{DeleteRetentionDays: 30, ContactShareRetentionDays: 30}
 	router.POST("/trigger-purge", func(c *gin.Context) {
 		TriggerPurge(c, cfg)
 	})
+
+	// Issue #574: the endpoint must also reach the ContactShare purge. A
+	// pending share created 60 days ago and an accepted share responded to
+	// 60 days ago are past the 30-day window; a pending share created 5 days
+	// ago must survive.
+	var user models.User
+	db.First(&user)
+
+	old := time.Now().AddDate(0, 0, -60)
+
+	stalePending := models.ContactShare{
+		FromUserID: user.ID, ToUserID: user.ID,
+		ContactDisplayName: "Alice", Payload: `[{"@type":"Card","uid":"a"}]`,
+		Status: models.ContactShareStatusPending,
+	}
+	require.NoError(t, db.Create(&stalePending).Error)
+	require.NoError(t, db.Model(&models.ContactShare{}).Where("id = ?", stalePending.ID).
+		Update("created_at", old).Error)
+
+	staleAccepted := models.ContactShare{
+		FromUserID: user.ID, ToUserID: user.ID,
+		ContactDisplayName: "Bob", Payload: `[{"@type":"Card","uid":"b"}]`,
+		Status: models.ContactShareStatusAccepted,
+	}
+	require.NoError(t, db.Create(&staleAccepted).Error)
+	require.NoError(t, db.Model(&models.ContactShare{}).Where("id = ?", staleAccepted.ID).
+		Update("responded_at", old).Error)
+
+	freshPending := models.ContactShare{
+		FromUserID: user.ID, ToUserID: user.ID,
+		ContactDisplayName: "Carol", Payload: `[{"@type":"Card","uid":"c"}]`,
+		Status: models.ContactShareStatusPending,
+	}
+	require.NoError(t, db.Create(&freshPending).Error)
 
 	req, _ := http.NewRequest("POST", "/trigger-purge", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
+
+	var count int64
+	db.Model(&models.ContactShare{}).Where("id IN ?", []string{stalePending.ID, staleAccepted.ID}).Count(&count)
+	assert.Zero(t, count, "shares past the retention window must be purged by the admin trigger")
+	db.Model(&models.ContactShare{}).Where("id = ?", freshPending.ID).Count(&count)
+	assert.Equal(t, int64(1), count, "a pending share inside the window must survive the admin trigger")
 }
 
 // M1/T26: PurgeSoftDeletedRows hard-deletes rows past the retention window.

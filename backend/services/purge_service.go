@@ -135,7 +135,10 @@ func PurgeSoftDeletedRows(db *gorm.DB, cfg config.Config) {
 }
 
 // PurgeDeletedRows is the scheduled cron entry point. It acquires a job lock
-// to prevent concurrent purges across multiple instances.
+// to prevent concurrent purges across multiple instances, then hard-deletes
+// both soft-deleted rows past retention (PurgeSoftDeletedRows, T26) and
+// expired ContactShare snapshots (PurgeExpiredContactShares, issue #574) —
+// both under the same lock so the two hard-delete passes share one cadence.
 func PurgeDeletedRows(db *gorm.DB, cfg config.Config) {
 	acquired, err := acquireJobLock(db, models.JobNamePurgeDeleted, purgeMinInterval)
 	if err != nil {
@@ -152,4 +155,5 @@ func PurgeDeletedRows(db *gorm.DB, cfg config.Config) {
 	}()
 
 	PurgeSoftDeletedRows(db, cfg)
+	PurgeExpiredContactShares(db, cfg)
 }

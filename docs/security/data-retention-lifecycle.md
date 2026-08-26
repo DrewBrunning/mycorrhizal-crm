@@ -50,6 +50,32 @@ doc; a handful of genuine gaps are called out explicitly in [Known gaps](#known-
   including idempotency and "never touches live rows"); `admin_user_controller_test.go` M1/M1b/M5
   (window-pinned purge, live rows untouched, `TriggerPurge` executes).
 
+### ContactShare snapshots (issue #574)
+
+`ContactShare` (`backend/models/contact_share.go`) is a **frozen, independent copy** of a filtered
+JSContact export of a contact, serialized once at share-creation time — no `deleted_at`, no FK back to
+the original `Contact` (by design: the snapshot must survive the original being edited or deleted).
+It sits outside the soft-delete model above precisely because it is a copy, not the live row.
+
+- **Where / who**: `contact_shares` table, scoped to `from_user_id`/`to_user_id`. Reachable only via the
+  authenticated sender's or recipient's API session.
+- **Retention**: `CONTACT_SHARE_RETENTION_DAYS` (default 30, `config/config.go:72,153`) for **every
+  status**, anchored on the moment the share stopped being actionable: `pending` ages from `created_at`
+  (an abandoned invite cannot materialize years later); `accepted`/`declined` age from `responded_at`
+  (the recipient has already imported or rejected the snapshot).
+- **Deletion / propagation**: `PurgeExpiredContactShares`
+  (`backend/services/contact_share_purge_service.go`) hard-deletes rows past the window, run under the
+  same daily cron + job lock as the T26 purge (`PurgeDeletedRows`, `backend/services/purge_service.go`)
+  and via the admin `TriggerPurge` endpoint. Deleting the snapshot destroys no one's real data: the
+  sender's original `Contact` is untouched (no FK, by design), and an accepted share's payload was
+  already imported into the recipient's account. `CONTACT_SHARE_RETENTION_DAYS<=0` is treated as
+  "disabled", never "delete everything".
+- **Backups**: yes — a share sits in every backup taken before the purge removes it; restoring such a
+  backup resurrects a share whose purpose (and both parties' copy of it) is long since served.
+- **Verification**: `backend/services/contact_share_purge_service_test.go`
+  (`TestPurgeExpiredContactShares_*` — window-pinned per status, ages-responded-from-responded-at,
+  `NULL responded_at` never purged, disabled-when-zero, idempotent).
+
 ## 2. Edge- and join-shaped rows
 
 `RelationshipEdge`, `CircleMember`, `ContactTag`, `HouseholdMember`, `ContactSyncLink`,
@@ -250,22 +276,11 @@ External DAV clients (phones, desktop DAV apps) sync against `backend/carddav`, 
 
 ## Known gaps
 
-Two items surfaced by walking every data type through the four questions above. Neither blocks this
+One item surfaced by walking every data type through the four questions above. It does not block this
 ticket's "at minimum" bullets (T26 purge + CardDAV/CalDAV + Android propagation are all already correct,
-per §1/§7/§8), but both are genuine, named gaps rather than silently-accepted ones.
+per §1/§7/§8), but it is a genuine, named gap rather than a silently-accepted one.
 
-1. **`ContactShare` has no retention window at all.** A `ContactShare` (issue P1/P1) is a **frozen,
-   independent copy** of a filtered JSContact export, serialized once at share-creation time
-   (`backend/models/contact_share.go:17-34`) — it has no `deleted_at`, no FK back to the original
-   `Contact` (by design: the snapshot must survive the original being edited or deleted), and the *only*
-   thing that ever removes it is `DeleteUser`'s cascade. A `pending`/`declined`/`accepted` share sits in
-   the DB (and therefore in every subsequent backup) indefinitely. This is exactly the kind of
-   independent PII copy this doc's four questions exist to catch, and per CLAUDE.md's standing rule ("the
-   window is a real product decision... when in doubt, ask; don't default to 'just drop it'"), this isn't
-   this doc's call to make unilaterally. Filed as a follow-up:
-   [#574](https://github.com/DrewBrunning/mycorrhizal-crm/issues/574) — "decide and implement a
-   retention window for `ContactShare` snapshots."
-2. **API responses carry no `Cache-Control: no-store`.** Already tracked and accepted as `partial` at
+1. **API responses carry no `Cache-Control: no-store`.** Already tracked and accepted as `partial` at
    ASVS 8.1.1/8.2.1 (`docs/security/asvs-l2.md`) — noted here only because it's the one place a stale
    *cached* copy of contact PII could theoretically outlive a delete, on a shared/proxied browser. Not
    re-litigated here; that row already owns the gap and its own fix.
@@ -275,6 +290,7 @@ per §1/§7/§8), but both are genuine, named gaps rather than silently-accepted
 | Data type | Retention pinned by test? |
 |---|---|
 | Soft-deleted rows / purge window | `backend/services/purge_service_test.go` (8 cases) |
+| ContactShare snapshot purge window | `backend/services/contact_share_purge_service_test.go` (9 cases) |
 | Audit retention + re-link | `backend/services/audit_purge_service_test.go` (3 cases) |
 | Admin purge trigger + window | `backend/controllers/admin_user_controller_test.go` M1/M1b/M5 |
 | Sync-horizon 410 Gone matches purge window | `backend/controllers/cursor_feed_test.go` |
