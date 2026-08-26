@@ -16,6 +16,11 @@ Rate limiters (auth, API, CardDAV, account lockout) are in-memory and per-proces
 
 You only need an external reverse proxy for TLS termination. Point it at the published port (default `7300`):
 
+See [Deployment security baseline](security/deployment-baseline.md) for the full recommended
+hardening checklist (HSTS, secure cookies, container capabilities, resource limits, firewall/DNS)
+and an explicit statement of what this application does not secure (host OS, Docker daemon, reverse
+proxy, TLS certs, DNS, firewall, host admins).
+
 ```nginx
 server {
     listen 443 ssl;
