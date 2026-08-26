@@ -5,6 +5,13 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Issue #578, B4: the nightly run is the full-length fuzz pass — the PR
+  # path keeps the short smoke, the schedule event runs the same targets at
+  # -fuzztime=2m (see the fuzz step's FUZZTIME env). The schedule also
+  # re-runs the whole suite nightly (Tier 3 "full suite"), which is why the
+  # suite jobs exempt the schedule event from path-gating below.
+  schedule:
+    - cron: '5 2 * * *' # 02:05 UTC nightly
 
 permissions:
   contents: read
@@ -73,7 +80,9 @@ jobs:
     # unbounded.
     timeout-minutes: 30
     needs: changes
-    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.workflows == 'true'
+    # Scheduled runs must always run the full suite (there is no diff to gate
+    # on) — same exemption pattern as zizmor.yml/sast.yml.
+    if: github.event_name == 'schedule' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.workflows == 'true'
 
     steps:
       - name: Checkout repository
@@ -164,15 +173,20 @@ jobs:
       # is not a substitute for.
       - name: Run fuzz targets (issues #265, #376)
         working-directory: backend
+        # Issue #578, B4: the PR/push path is the short smoke (15s — the
+        # regression tripwire); the nightly schedule event runs the same
+        # targets at 2m each. -fuzztime comes in via env, never inline.
+        env:
+          FUZZTIME: ${{ github.event_name == 'schedule' && '2m' || '15s' }}
         run: |
-          go test ./vcard4/ -run '^$' -fuzz='^FuzzImportVCard4$' -fuzztime=15s
-          go test ./vcard4/ -run '^$' -fuzz='^FuzzExportVCard4$' -fuzztime=15s
-          go test ./vcard3/ -run '^$' -fuzz='^FuzzImportVCard3$' -fuzztime=15s
-          go test ./vcard3/ -run '^$' -fuzz='^FuzzExportVCard3$' -fuzztime=15s
-          go test ./jscontact/ -run '^$' -fuzz='^FuzzImportJSContact$' -fuzztime=15s
-          go test ./jscontact/ -run '^$' -fuzz='^FuzzExportJSContact$' -fuzztime=15s
-          go test ./services/ -run '^$' -fuzz='^FuzzExtractICalEvents$' -fuzztime=15s
-          go test ./services/ -run '^$' -fuzz='^FuzzParseCSV$' -fuzztime=15s
+          go test ./vcard4/ -run '^$' -fuzz='^FuzzImportVCard4$' -fuzztime="$FUZZTIME"
+          go test ./vcard4/ -run '^$' -fuzz='^FuzzExportVCard4$' -fuzztime="$FUZZTIME"
+          go test ./vcard3/ -run '^$' -fuzz='^FuzzImportVCard3$' -fuzztime="$FUZZTIME"
+          go test ./vcard3/ -run '^$' -fuzz='^FuzzExportVCard3$' -fuzztime="$FUZZTIME"
+          go test ./jscontact/ -run '^$' -fuzz='^FuzzImportJSContact$' -fuzztime="$FUZZTIME"
+          go test ./jscontact/ -run '^$' -fuzz='^FuzzExportJSContact$' -fuzztime="$FUZZTIME"
+          go test ./services/ -run '^$' -fuzz='^FuzzExtractICalEvents$' -fuzztime="$FUZZTIME"
+          go test ./services/ -run '^$' -fuzz='^FuzzParseCSV$' -fuzztime="$FUZZTIME"
 
       # Issue #251: visibility only, no threshold/gate — printed to the log
       # and uploaded below for anyone who wants the per-func breakdown.
@@ -230,7 +244,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: changes
-    if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.workflows == 'true'
+    # Scheduled runs must always run the full suite (there is no diff to gate
+    # on) — same exemption pattern as zizmor.yml/sast.yml.
+    if: github.event_name == 'schedule' || needs.changes.outputs.frontend == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.workflows == 'true'
 
     steps:
       - name: Checkout repository
