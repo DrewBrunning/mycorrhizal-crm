@@ -271,8 +271,12 @@ re-verification adds a changelog row there rather than silently editing statuses
 Citations in those docs are gated, not trusted: `cd backend && go run ./cmd/citecheck` proves every
 `file:line` and test-name citation in `asvs-l2.md`/`masvs-l1.md`/`threat-model.md` still resolves and
 that no row is `satisfied` citing nothing. It runs on every PR (unfiltered by path — moving code is
-what orphans a citation). `go run ./cmd/citecheck -drift` is the advisory queue for citations whose
-line range is still in bounds but whose target moved; the #378 pass found 74 of those.
+what orphans a citation). It also gates the harder class — a citation whose line range is still in
+bounds but whose target moved (74 of those before #378) — against `docs/security/citation-drift.ignore`,
+an ignore-list-with-justification like `.trivyignore`: an unlisted candidate fails the build, and so
+does a listed one that no longer matches anything, so dead suppressions can't pile up. Accepting a
+candidate means writing down *why* it is a false positive. `go run ./cmd/citecheck -drift` prints the
+unfiltered listing (accepted entries included) — that's the view a verification pass wants.
 
 **Every data type's retention/deletion lifecycle is `docs/security/data-retention-lifecycle.md`**
 (issue #414) — where each copy of a piece of data lives, how long it survives, how deletion

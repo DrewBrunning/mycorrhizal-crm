@@ -93,17 +93,19 @@ jobs:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
 
-      - name: Verify every security-doc citation resolves
+      # Two gates in one command. (1) Every citation resolves to a real file
+      # with an in-range line, every cited test identifier exists, and no row
+      # is `satisfied` citing nothing. (2) No line-range citation has drifted
+      # off its target beyond what docs/security/citation-drift.ignore
+      # accepts — the class (1) structurally cannot see, and the one that
+      # actually accumulated (74 of them before issue #378).
+      #
+      # `go run ./cmd/citecheck -drift` is the human tool, not a CI step: it
+      # lists every candidate including the accepted ones, which is what a
+      # verification pass wants and what CI does not.
+      - name: Verify security-doc citations (resolution + drift)
         working-directory: backend
         run: go run ./cmd/citecheck
-
-      # Advisory, never gating: lists citations whose target has moved but
-      # whose line range is still in bounds (the class the gate above cannot
-      # see). Reviewed by hand during a verification pass — see
-      # docs/security/asvs-l2-verification-report.md.
-      - name: Drift triage (advisory)
-        working-directory: backend
-        run: go run ./cmd/citecheck -drift
 
   backend:
     permissions:

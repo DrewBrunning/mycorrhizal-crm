@@ -83,12 +83,17 @@ evidence *is*. Five classes, five methods:
 
 Two method notes worth writing down, because they bound how much this pass proves:
 
-- **Resolution is exact; content is heuristic plus human.** `citecheck` can prove a citation points
-  *somewhere real*; only a reader can confirm it points at the *right* thing. The `-drift` heuristic
-  narrows 360 line-range citations to a few dozen candidates by asking whether the prose leading up
-  to a citation shares any vocabulary with the lines it cites. It has false positives by design
-  (negative claims and pure-structure citations legitimately share no words with their target), so
-  its output is a review queue, never a gate.
+- **Resolution is exact; content is heuristic plus human — but both now gate.** `citecheck` can
+  prove a citation points *somewhere real*; only a reader can confirm it points at the *right*
+  thing. The drift heuristic narrows the line-range citations to a few dozen candidates by asking
+  whether the prose leading up to a citation shares any vocabulary with the lines it cites. It has
+  false positives by design (negative claims and pure-structure citations legitimately share no
+  words with their target), so the accepted ones are written down with a reason in
+  `docs/security/citation-drift.ignore` and CI fails on anything *not* in that file — and equally on
+  a baseline entry that no longer matches, so dead suppressions cannot accumulate. Same
+  ignore-list-with-justification shape as `.trivyignore`, `.grype.yml`, `zap/dast.ignore` and
+  `schemathesis/schemathesis.ignore`. `citecheck -drift` remains the unfiltered human listing for a
+  verification pass, which is exactly when an accepted suppression should be re-examined.
 - **Your own edits are a drift source.** The gate proves in-bounds-ness, which survives almost any
   edit; the content check does not. Any change to a cited file — including the workflow that carries
   the gate, and including a merge from `main` — invalidates line numbers below the edit point
@@ -101,14 +106,19 @@ Two method notes worth writing down, because they bound how much this pass prove
 ### Reproducing the automated half
 
 ```bash
-cd backend && go run ./cmd/citecheck && go run ./cmd/citecheck -drift
+cd backend && go run ./cmd/citecheck        # the gate — this is what CI runs
+cd backend && go run ./cmd/citecheck -drift # the human listing, for a verification pass
 ```
 
-The first command is the gate (exit 1 on any unresolvable citation, out-of-range line, off-legend
-status, empty evidence cell, `satisfied` row with no citation, or vanished test identifier). The
-second prints the drift review queue. Both run on every PR as the `Security-doc citations` job in
+The gate exits 1 on any unresolvable citation, out-of-range line, off-legend status, empty evidence
+cell, `satisfied` row with no citation, vanished test identifier, unaccepted drift candidate, or
+stale entry in `citation-drift.ignore`. It runs on every PR as the `Security-doc citations` job in
 `.github/workflows/unit-tests.yml`, deliberately without a path filter: a citation is orphaned by
 *moving code*, not by editing the doc, and `.github/filters.yaml` maps `docs/**` to nothing.
+
+`-drift` lists **every** candidate, baseline included, and always exits 0. Use it during a pass:
+re-reading the accepted suppressions is part of re-verifying, and the gate by construction stays
+silent about them.
 
 ---
 
@@ -398,8 +408,10 @@ A re-pass is a diff against this file, not a rewrite. In order:
 
 1. `cd backend && go run ./cmd/citecheck` — must exit 0. Any failure is a citation to fix before
    anything else; the rest of the report means little on top of broken citations.
-2. `cd backend && go run ./cmd/citecheck -drift` — read every candidate. Correct the range, or
-   satisfy yourself it is a false positive. This is the step that found F-1.
+2. `cd backend && go run ./cmd/citecheck -drift` — read every candidate, **including the ones
+   `citation-drift.ignore` already accepts**: a verification pass is exactly when a standing
+   suppression should be re-justified or deleted. Correct the range, or accept it with a reason.
+   This is the step that found F-1.
 
    **Run this step last, after every other edit in the pass, and then run it again.** Your own
    changes move lines too. In this pass, the `unit-tests.yml:175-177` → `:201-203` correction for

@@ -331,3 +331,128 @@ func TestDriftFlagsAMovedTargetAndNotAMatchingOne(t *testing.T) {
 		t.Fatalf("expected a matching citation to stay quiet, got:\n%s", matching)
 	}
 }
+
+// baselineFixture writes a fixture repo whose asvs-l2.md cites backend/main.go
+// with a range that no longer mentions the row's own words, optionally with a
+// drift baseline, and returns the gate's exit code and output.
+func baselineFixture(t *testing.T, doc, baseline string) (int, string) {
+	t.Helper()
+	extra := map[string]string{"backend/main.go": "corsConfig := cors.Config{}\n// scheduler\ns.Every(24).Hours()\n"}
+	if baseline != "" {
+		extra["docs/security/citation-drift.ignore"] = baseline
+	}
+	root := fixtureRoot(t, doc, extra)
+	idx, err := buildIndex(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out strings.Builder
+	docs := []string{"docs/security/asvs-l2.md"}
+	code, err := check(&out, root, idx, docs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	driftCode, err := reportDrift(&out, root, idx, docs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if driftCode != 0 {
+		code = driftCode
+	}
+	return code, out.String()
+}
+
+const driftRow = "| 1.1.4 | Boundaries | satisfied | CORS boundary `backend/main.go:2-3` |\n"
+
+// driftKey is the baseline key for driftRow's citation.
+const driftKey = "docs/security/asvs-l2.md | `backend/main.go:2-3` | backend/main.go"
+
+func TestDriftIsGatedAgainstTheBaseline(t *testing.T) {
+	t.Run("an unlisted drift candidate fails the gate", func(t *testing.T) {
+		code, out := baselineFixture(t, header+driftRow, "")
+		if code == 0 {
+			t.Fatalf("expected the gate to fail on unaccepted drift, got a clean pass:\n%s", out)
+		}
+		if !strings.Contains(out, "no longer mentions anything the row says it shows") {
+			t.Fatalf("expected the drift explanation, got:\n%s", out)
+		}
+		// The message must hand the reader the exact line to paste.
+		if !strings.Contains(out, driftKey) {
+			t.Fatalf("expected the baseline key %q in the output, got:\n%s", driftKey, out)
+		}
+	})
+
+	t.Run("a listed candidate is suppressed", func(t *testing.T) {
+		code, out := baselineFixture(t, header+driftRow, driftKey+"  # reviewed, cites the right code\n")
+		if code != 0 {
+			t.Fatalf("expected the baseline to suppress the candidate, got:\n%s", out)
+		}
+	})
+
+	t.Run("comments and blank lines in the baseline are ignored", func(t *testing.T) {
+		bl := "# a header comment\n\n   \n" + driftKey + "  # why\n"
+		if code, out := baselineFixture(t, header+driftRow, bl); code != 0 {
+			t.Fatalf("expected comments/blanks to parse away, got:\n%s", out)
+		}
+	})
+
+	t.Run("a baseline entry matching nothing fails, so dead suppressions cannot accumulate", func(t *testing.T) {
+		bl := "docs/security/asvs-l2.md | `backend/gone.go:1-2` | backend/gone.go  # stale\n"
+		code, out := baselineFixture(t, header+driftRow, bl)
+		if code == 0 {
+			t.Fatalf("expected a stale baseline entry to fail, got a clean pass:\n%s", out)
+		}
+		if !strings.Contains(out, "no longer matches any citation — delete it") {
+			t.Fatalf("expected the stale-entry message, got:\n%s", out)
+		}
+	})
+
+	t.Run("the key ignores the citation's line number inside the doc", func(t *testing.T) {
+		// Prose added above the row must not invalidate its suppression:
+		// the key is (doc, citation, target), never the doc's own line number.
+		moved := header + "| 0.0.1 | Filler | partial | pushes the row down |\n" + driftRow
+		if code, out := baselineFixture(t, moved, driftKey+"  # why\n"); code != 0 {
+			t.Fatalf("expected the suppression to survive the row moving, got:\n%s", out)
+		}
+	})
+
+	t.Run("changing the citation re-surfaces it for review", func(t *testing.T) {
+		// The inverse property: an edited citation is a new decision, so the
+		// old suppression must stop applying rather than silently covering it.
+		edited := header + "| 1.1.4 | Boundaries | satisfied | CORS boundary `backend/main.go:2-2` |\n"
+		code, out := baselineFixture(t, edited, driftKey+"  # why\n")
+		if code == 0 {
+			t.Fatalf("expected an edited citation to escape its old suppression, got a clean pass:\n%s", out)
+		}
+	})
+}
+
+func TestRealDriftBaselineIsCurrent(t *testing.T) {
+	// The real baseline must exactly cover the real candidate set: no
+	// unaccepted drift, and no dead entries. TestRealSecurityDocs asserts the
+	// same thing via run(); this names the reason so a failure is legible.
+	root, err := findRepoRoot(mustGetwd(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	idx, err := buildIndex(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found, err := checkDrift(root, idx, securityDocs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range found {
+		t.Errorf("%s:%d  %s", f.doc, f.line, f.msg)
+	}
+}
+
+func mustGetwd(t *testing.T) string {
+	t.Helper()
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return cwd
+}

@@ -1,0 +1,69 @@
+# Accepted citation-drift candidates (issue #378).
+#
+# `citecheck -drift` flags a line-range citation when the prose introducing it
+# shares no vocabulary with the lines it cites. That heuristic is what found the
+# 74 citations that had silently moved out from under their rows — but it has a
+# known false-positive class: a row often names the *property* ("no IDOR",
+# "duplicate add is a 409") while the cited lines are the *implementation*, and
+# the two legitimately share no words.
+#
+# Every line below is a candidate that was read by a human, confirmed to cite
+# the right code, and accepted. Same ignore-list-with-justification shape as
+# .trivyignore, .grype.yml, zap/dast.ignore and schemathesis/schemathesis.ignore:
+# an entry is a written-down decision, not a mute button. A candidate that is not
+# listed here FAILS the gate, and an entry here that no longer matches any
+# citation ALSO fails — so this file cannot quietly accumulate dead suppressions.
+#
+# Format:  <doc> | <citation> | <resolved target>  # why it is a false positive
+#
+# The key deliberately excludes the line number *within the doc*, so editing
+# prose above a citation does not churn this file. It does include the citation
+# text, so changing the citation itself stops matching and correctly re-surfaces
+# it for review.
+
+# --- Rows that name a property; the cited lines are its implementation --------
+docs/security/asvs-l2.md | `backend/services/user_service.go:25` | backend/services/user_service.go  # cites the bcrypt.GenerateFromPassword call inside HashPassword; row says "the single shared services.HashPassword"
+docs/security/asvs-l2.md | `backend/middleware/auth.go:66-98` | backend/middleware/auth.go  # jwt.Parse + the SigningMethodHMAC pin; row talks about P2 crypto agility
+docs/security/asvs-l2.md | `middleware/auth.go:66-98` | backend/middleware/auth.go  # same lines, row 3.2.4; prose is "HS256, explicit algorithm pinning"
+docs/security/asvs-l2.md | `routes/routes.go:52-55` | backend/routes/routes.go  # the `protected` group where AuthMiddleware is applied; row says "authorization is server-side"
+docs/security/asvs-l2.md | `backend/controllers/circle_controller.go:49` | backend/controllers/circle_controller.go  # the canonical `WHERE id = ? AND user_id = ?`; row calls it the canonical server-side scope
+docs/security/asvs-l2.md | `contact_share_controller.go:50` | backend/controllers/contact_share_controller.go  # the deliberately unscoped recipient lookup the row is pointing out as the one cross-account surface
+docs/security/asvs-l2.md | `backend/services/graph_traversal.go:113-115` | backend/services/graph_traversal.go  # `AND e.sensitivity != ?` in the CTE; row says "filtered in the projection query"
+docs/security/asvs-l2.md | `backend/controllers/briefing_controller.go:236-244` | backend/controllers/briefing_controller.go  # the briefing sensitivity carve-out comment + filter
+docs/security/asvs-l2.md | `httputil/fetch.go:94-119` | backend/httputil/fetch.go  # buildImageClient and its DNS-rebinding pin; row says "Go's standard TLS certificate verification"
+docs/security/asvs-l2.md | `fetch.go:17-58` | backend/httputil/fetch.go  # validateURLForSSRF; row says "pre-flight checks"
+docs/security/asvs-l2.md | `models/user.go:16` | backend/models/user.go  # the IsAdmin field; row 4.3.1 says 2FA is "available but not enforced for admins"
+docs/security/asvs-l2.md | `life_event_controller.go:346-353` | backend/controllers/life_event_controller.go  # the field-by-field update copies (BOPLA); rows 5.1.x and API3
+docs/security/asvs-l2.md | `export_controller.go:105-128` | backend/controllers/export_controller.go  # groupingNamesByContact — the interpolated values are compile-time table/column constants
+docs/security/asvs-l2.md | `export_controller.go:105-119` | backend/controllers/export_controller.go  # same function, cited from row 5.3.4 as the parameterized raw-SQL export path
+docs/security/asvs-l2.md | `attachments.go:27-35` | backend/attachments/attachments.go  # StoredPath's traversal guard; rows 5.3.x and 12.3.x
+docs/security/asvs-l2.md | `attachment_controller.go:212-238` | backend/controllers/attachment_controller.go  # DownloadAttachment, which sets Content-Disposition + nosniff
+docs/security/asvs-l2.md | `photo_controller.go:147-151` | backend/controllers/photo_controller.go  # the 10 MB maxFileSize cap; row says "photo cap"
+docs/security/asvs-l2.md | `photostore/photostore.go:39-72` | backend/photostore/photostore.go  # maxImagePixels, the decompression-bomb cap
+docs/security/asvs-l2.md | `circle_controller.go:242` | backend/controllers/circle_controller.go  # the duplicate-member lookup behind the checked 409; row says "duplicate add"
+docs/security/asvs-l2.md | `household_controller.go:245` | backend/controllers/household_controller.go  # same pattern, household members
+docs/security/asvs-l2.md | `tag_controller.go:242` | backend/controllers/tag_controller.go  # same pattern, contact tags
+docs/security/asvs-l2.md | `relationship_edge_controller.go:104-106` | backend/controllers/relationship_edge_controller.go  # the self-edge rejection; row lists it after the gift currency rule
+docs/security/asvs-l2.md | `models/import.go:126` | backend/models/import.go  # the `max=500` bulk-import row cap
+docs/security/asvs-l2.md | `config/config.go:56-57` | backend/config/config.go  # the ReadTimeout/WriteTimeout struct fields; row cites them beside main.go's http.Server
+docs/security/asvs-l2.md | `backend/middleware/security_headers.go:23` | backend/middleware/security_headers.go  # the contentSecurityPolicy const, cited for "the CSP admits no external origin"
+docs/security/asvs-l2.md | `docker/nginx.conf:19` | docker/nginx.conf  # the nosniff add_header
+docs/security/asvs-l2.md | `docker/nginx.conf:21` | docker/nginx.conf  # the CSP add_header, cited for frame-ancestors 'none'
+docs/security/asvs-l2.md | `RegisterPage.tsx:118` | frontend/src/RegisterPage.tsx  # the type="password" input; row says "masked inputs"
+docs/security/asvs-l2.md | `docs/deployment.md:17` | docs/deployment.md  # the TLS-at-the-reverse-proxy sentence; row is about trust boundaries
+docs/security/masvs-l1.md | `docs/deployment.md:17` | docs/deployment.md  # same sentence, cited from the Android threat-model context
+
+# --- Rows whose keywords are sibling test filenames, not the cited test -------
+docs/security/asvs-l2.md | `circle_controller_test.go:182` | backend/controllers/circle_controller_test.go  # lands on TestAddCircleMemberRejectsContactFromAnotherUser; the row's other words are sibling test filenames
+docs/security/asvs-l2.md | `two_factor_controller_test.go:413` | backend/controllers/two_factor_controller_test.go  # lands on TestTwoFactor_CrossUserRecoveryCodeRejected, same reason
+docs/security/asvs-l2.md | `sync_conflict_controller_test.go:109` | backend/controllers/sync_conflict_controller_test.go  # lands on TestRestoreContactSyncConflict_ScopedToOwner, same reason
+
+# --- Android rows ------------------------------------------------------------
+docs/security/masvs-l1.md | `app/src/main/AndroidManifest.xml:38-39` | android/app/src/main/AndroidManifest.xml  # allowBackup="false" + dataExtractionRules; row's word is "domain", from the sentence about excluded backup domains
+docs/security/masvs-l1.md | `AndroidManifest.xml:98-105` | android/app/src/main/AndroidManifest.xml  # the Firebase messaging service block the row describes as inert without google-services.json
+docs/security/masvs-l1.md | `app/src/debug/res/xml/network_security_config.xml:19-28` | android/app/src/debug/res/xml/network_security_config.xml  # the debug-only cleartext domain-config (P2)
+docs/security/masvs-l1.md | `feature/settings/.../SettingsScreen.kt:268` | android/feature/settings/src/main/kotlin/com/mycorrhizal/crm/feature/settings/SettingsScreen.kt  # the KeyboardType.Password field; row's words come from the neighbouring screens it lists
+docs/security/masvs-l1.md | `docker-publish.yml:200` | .github/workflows/docker-publish.yml  # the ./gradlew assembleRelease gate; the row's "signing secrets required, fail-fast" refers to the *other* cited workflow, android-apk-build.yml
+
+# --- Threat model ------------------------------------------------------------
+docs/security/threat-model.md | `backend/controllers/user_controller.go:234-243` | backend/controllers/user_controller.go  # the auth_token SetCookie block with all three flags; the row's lead-in is "Keep, verified against the exact code"

@@ -49,6 +49,14 @@ var securityDocs = []string{
 	"docs/security/threat-model.md",
 }
 
+// driftBaselineFile records the drift candidates that have been reviewed and
+// accepted — the heuristic's known false positives (negative claims and
+// pure-structure citations legitimately share no vocabulary with their
+// target). Same ignore-list-with-justification shape as .trivyignore,
+// .grype.yml, zap/dast.ignore and schemathesis/schemathesis.ignore: an entry
+// is a decision someone wrote down, not a mute button.
+const driftBaselineFile = "docs/security/citation-drift.ignore"
+
 // searchPrefixes are tried in order when a citation is written relative to a
 // tree rather than to the repo root — the checklists cite `config/config.go`
 // (backend-relative), `unit-tests.yml` (workflow-relative), `asvs-l2.md`
@@ -183,7 +191,44 @@ func run(w io.Writer) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	return check(w, root, idx, securityDocs)
+	code, err := check(w, root, idx, securityDocs)
+	if err != nil {
+		return 0, err
+	}
+	driftCode, err := reportDrift(w, root, idx, securityDocs)
+	if err != nil {
+		return 0, err
+	}
+	if driftCode != 0 {
+		code = driftCode
+	}
+	return code, nil
+}
+
+// reportDrift is the second gate: drift candidates measured against the
+// accepted-drift baseline. Reported separately from check's output because the
+// two fail for different reasons and are fixed differently — a citation that
+// does not resolve is always wrong, whereas a drift candidate is either a
+// moved target (correct the range) or a false positive (accept it in the
+// baseline, with a reason).
+func reportDrift(w io.Writer, root string, idx *treeIndex, docs []string) (int, error) {
+	found, err := checkDrift(root, idx, docs)
+	if err != nil {
+		return 0, err
+	}
+	if len(found) == 0 {
+		fmt.Fprintln(w, "No new citation drift.")
+		return 0, nil
+	}
+	fmt.Fprintf(w, "\n%d drift problem(s) — see %s:\n", len(found), driftBaselineFile)
+	for _, f := range found {
+		if f.line == 0 {
+			fmt.Fprintf(w, "  %s  %s\n", f.doc, f.msg)
+			continue
+		}
+		fmt.Fprintf(w, "  %s:%d  %s\n", f.doc, f.line, f.msg)
+	}
+	return 1, nil
 }
 
 // check runs every check over docs and writes the summary to w.
@@ -667,12 +712,33 @@ func runDrift(w io.Writer) error {
 
 // driftReport is runDrift's body, with the root and document list injected so
 // tests can drive it against a fixture tree.
-func driftReport(w io.Writer, root string, idx *treeIndex, docs []string) error {
-	total, flagged := 0, 0
+// driftHit is one line-range citation whose cited lines no longer share any
+// vocabulary with the prose introducing them.
+type driftHit struct {
+	doc    string
+	line   int
+	span   string
+	target string
+	words  []string
+}
+
+// key identifies a drift candidate for baseline matching. Deliberately built
+// from the document, the citation text and the resolved target — never the
+// line number in the doc, so ordinary editing above a suppressed citation does
+// not churn the baseline, and *changing the citation itself* correctly stops
+// matching and re-surfaces it for review.
+func (h driftHit) key() string {
+	return fmt.Sprintf("%s | %s | %s", h.doc, h.span, h.target)
+}
+
+// driftCandidates finds every line-range citation whose cited lines no longer
+// look like what the row claims. total is the number of line-range citations
+// examined.
+func driftCandidates(root string, idx *treeIndex, docs []string) (hits []driftHit, total int, err error) {
 	for _, doc := range docs {
 		body, err := os.ReadFile(filepath.Join(root, doc))
 		if err != nil {
-			return fmt.Errorf("reading %s: %w", doc, err)
+			return nil, 0, fmt.Errorf("reading %s: %w", doc, err)
 		}
 		for i, line := range strings.Split(string(body), "\n") {
 			for _, m := range driftCiteRe.FindAllStringSubmatchIndex(line, -1) {
@@ -696,7 +762,7 @@ func driftReport(w io.Writer, root string, idx *treeIndex, docs []string) error 
 				for _, cand := range cands {
 					ok, err := citedRangeMentions(idx, cand, from, to, words)
 					if err != nil {
-						return err
+						return nil, 0, err
 					}
 					if ok {
 						hit = true
@@ -704,15 +770,29 @@ func driftReport(w io.Writer, root string, idx *treeIndex, docs []string) error 
 					}
 				}
 				if !hit {
-					flagged++
-					fmt.Fprintf(w, "%s:%d  %s -> %s  (looked for: %s)\n",
-						doc, i+1, span, cands[0], strings.Join(words, ", "))
+					hits = append(hits, driftHit{doc: doc, line: i + 1, span: span, target: cands[0], words: words})
 				}
 			}
 		}
 	}
-	fmt.Fprintf(w, "\n%d line-range citations, %d for review.\n", total, flagged)
-	fmt.Fprintln(w, "Advisory only: confirm each by eye, then correct the range or leave it.")
+	return hits, total, nil
+}
+
+// driftReport is the advisory listing: every candidate, baseline ignored,
+// always exit 0. This is the view a human wants during a verification pass —
+// including the already-accepted ones, since a pass is exactly when an
+// accepted suppression should be re-examined.
+func driftReport(w io.Writer, root string, idx *treeIndex, docs []string) error {
+	hits, total, err := driftCandidates(root, idx, docs)
+	if err != nil {
+		return err
+	}
+	for _, h := range hits {
+		fmt.Fprintf(w, "%s:%d  %s -> %s  (looked for: %s)\n",
+			h.doc, h.line, h.span, h.target, strings.Join(h.words, ", "))
+	}
+	fmt.Fprintf(w, "\n%d line-range citations, %d for review.\n", total, len(hits))
+	fmt.Fprintln(w, "Advisory listing (baseline ignored, never gating): confirm each by eye.")
 	return nil
 }
 
@@ -764,4 +844,63 @@ func citedRangeMentions(idx *treeIndex, rel string, from, to int, words []string
 		}
 	}
 	return false, nil
+}
+
+// loadDriftBaseline reads the accepted-drift file into a set of keys. A
+// missing file is not an error — it means nothing has been accepted yet.
+func loadDriftBaseline(root string) (map[string]bool, error) {
+	body, err := os.ReadFile(filepath.Join(root, driftBaselineFile))
+	if os.IsNotExist(err) {
+		return map[string]bool{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]bool{}
+	for _, line := range strings.Split(string(body), "\n") {
+		if i := strings.Index(line, "#"); i >= 0 {
+			line = line[:i] // trailing justification
+		}
+		if line = strings.TrimSpace(line); line != "" {
+			out[line] = true
+		}
+	}
+	return out, nil
+}
+
+// checkDrift gates on drift *relative to the baseline*: a candidate nobody has
+// accepted is a finding, and so is a baseline entry that no longer matches
+// anything. The second direction is what keeps the file from silently
+// accumulating dead suppressions — the same discipline the checklists apply to
+// their own not-applicable rows.
+func checkDrift(root string, idx *treeIndex, docs []string) ([]finding, error) {
+	hits, _, err := driftCandidates(root, idx, docs)
+	if err != nil {
+		return nil, err
+	}
+	baseline, err := loadDriftBaseline(root)
+	if err != nil {
+		return nil, err
+	}
+
+	var out []finding
+	matched := map[string]bool{}
+	for _, h := range hits {
+		key := h.key()
+		if baseline[key] {
+			matched[key] = true
+			continue
+		}
+		out = append(out, finding{h.doc, h.line, fmt.Sprintf(
+			"citation %s resolves, but %s no longer mentions anything the row says it shows (looked for: %s). "+
+				"Correct the range, or accept it by adding this line to %s:\n      %s  # why this is a false positive",
+			h.span, h.target, strings.Join(h.words, ", "), driftBaselineFile, key)})
+	}
+	for key := range baseline {
+		if !matched[key] {
+			out = append(out, finding{driftBaselineFile, 0, fmt.Sprintf(
+				"accepted-drift entry no longer matches any citation — delete it:\n      %s", key)})
+		}
+	}
+	return out, nil
 }

@@ -585,11 +585,14 @@ self-hosted, and bounding per-operation work is cheaper than bounding concurrenc
   with an empty or citation-free evidence cell. It runs on every PR as the `Security-doc
   citations` job in `.github/workflows/unit-tests.yml`, unfiltered by path — a citation is
   orphaned by *moving code*, not by editing this file.
-- **Drift is a review queue, not a gate:** `go run ./cmd/citecheck -drift` lists citations whose
-  line range is still in bounds but whose target looks like it moved. The gate cannot see that
-  class, and it is the class that actually accumulates — the #378 pass found 74 of them. Read the
-  queue during a verification pass; do not let it become a gate (it has false positives by
-  design).
+- **Drift gates against a written-down baseline:** a citation whose line range is still in bounds
+  but whose target has moved is the class the resolution gate structurally cannot see, and the one
+  that actually accumulates — the #378 pass found 74 of them. `citecheck` therefore fails on any
+  drift candidate not accepted in `docs/security/citation-drift.ignore`, and equally on an entry
+  there that no longer matches anything, so the file cannot fill up with dead suppressions. Adding
+  a line to it is a decision with a reason attached, the same as `.trivyignore` or
+  `zap/dast.ignore` — not a mute button. `go run ./cmd/citecheck -drift` prints the unfiltered
+  listing (accepted entries included), which is what you want during a verification pass.
 - **A verification pass, not just a mapping edit:** when the status of many rows could have moved
   at once (a release, a security review, a re-verification), do a full pass and add a dated row to
   `asvs-l2-verification-report.md`'s changelog rather than editing statuses in place. That report
