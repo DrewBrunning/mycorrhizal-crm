@@ -65,18 +65,21 @@ jobs:
       # Keyless blob signing via cosign's ambient GitHub Actions OIDC detection
       # (id-token: write above), same pattern as docker-publish.yml's image
       # signing — no --certificate-identity flags on sign, and no key material.
-      # The certificate + signature files are uploaded alongside the SBOMs so
-      # anyone can verify: cosign verify-blob --certificate sbom.spdx.json.crt
-      # --signature sbom.spdx.json.sig sbom.spdx.json
+      # cosign v3 moved the standardized bundle format from opt-in to the
+      # default, and --bundle (a single file with the cert + signature +
+      # transparency log entry) from optional to required — the old
+      # --output-certificate/--output-signature pair is ignored under it, so
+      # without --bundle cosign tried to write to an empty path and failed
+      # ("create bundle file: open : no such file or directory"). The bundle
+      # is uploaded alongside the SBOMs so anyone can verify:
+      # cosign verify-blob --bundle sbom.spdx.json.sigstore.json sbom.spdx.json
       - name: Sign the SBOMs (keyless)
         run: |
           cosign sign-blob --yes \
-            --output-certificate sbom.spdx.json.crt \
-            --output-signature sbom.spdx.json.sig \
+            --bundle sbom.spdx.json.sigstore.json \
             sbom.spdx.json
           cosign sign-blob --yes \
-            --output-certificate sbom.cdx.json.crt \
-            --output-signature sbom.cdx.json.sig \
+            --bundle sbom.cdx.json.sigstore.json \
             sbom.cdx.json
 
       - name: Upload cosign signature + certificate
@@ -84,8 +87,6 @@ jobs:
         with:
           name: sbom-signatures
           path: |
-            sbom.spdx.json.crt
-            sbom.spdx.json.sig
-            sbom.cdx.json.crt
-            sbom.cdx.json.sig
+            sbom.spdx.json.sigstore.json
+            sbom.cdx.json.sigstore.json
           retention-days: 30
