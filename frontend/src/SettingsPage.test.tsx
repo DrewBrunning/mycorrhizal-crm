@@ -1,9 +1,16 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import './i18n/config';
 import { AppThemeProvider } from './AppThemeProvider';
 import { getCurrentUser } from './api/admin';
-import { type ApiToken, createApiToken, getApiTokens, revokeApiToken } from './api/apiTokens';
+import {
+  type ApiToken,
+  createApiToken,
+  getApiTokens,
+  revokeAllApiTokens,
+  revokeApiToken,
+  rotateApiToken,
+} from './api/apiTokens';
 import { changePassword } from './api/auth';
 import { type Contact, getContacts, getContactsByUid } from './api/contacts';
 import { updateSelfContact } from './api/users';
@@ -34,6 +41,8 @@ vi.mock('./api/apiTokens', async (importOriginal) => {
     getApiTokens: vi.fn(),
     createApiToken: vi.fn(),
     revokeApiToken: vi.fn(),
+    revokeAllApiTokens: vi.fn(),
+    rotateApiToken: vi.fn(),
   };
 });
 // T90 self-contact picker: these modules fire on mount / on interaction.
@@ -72,6 +81,8 @@ beforeEach(() => {
   vi.mocked(getApiTokens).mockReset();
   vi.mocked(createApiToken).mockReset();
   vi.mocked(revokeApiToken).mockReset();
+  vi.mocked(revokeAllApiTokens).mockReset();
+  vi.mocked(rotateApiToken).mockReset();
   vi.mocked(getApiTokens).mockResolvedValue({ tokens: [] });
 
   // T90: reset the picker mocks. Default /users/me has no self contact and
@@ -202,7 +213,10 @@ test('a revoked token is labeled and has no revoke action', async () => {
 
   await waitFor(() => expect(screen.getByText('Old token')).toBeInTheDocument());
   expect(screen.getByText('Revoked')).toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: /revoke/i })).not.toBeInTheDocument();
+  // /revoke/i alone would also match the page-level "Revoke All" button, so
+  // scope to the per-row action's own accessible name.
+  expect(screen.queryByRole('button', { name: /revoke token/i })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /rotate token/i })).not.toBeInTheDocument();
 });
 
 test('creating a token shows the secret exactly once and refreshes the list', async () => {
@@ -228,13 +242,67 @@ test('revoking a token requires confirmation before calling the API', async () =
   renderPage();
   await waitFor(() => expect(screen.getByText('To Revoke')).toBeInTheDocument());
 
-  fireEvent.click(screen.getByRole('button', { name: /revoke/i }));
+  fireEvent.click(screen.getByRole('button', { name: /revoke token/i }));
   expect(revokeApiToken).not.toHaveBeenCalled();
   expect(screen.getByText(/revoke token/i)).toBeInTheDocument();
 
   fireEvent.click(screen.getByRole('button', { name: /^revoke$/i }));
 
   await waitFor(() => expect(revokeApiToken).toHaveBeenCalledWith(3));
+});
+
+test('revoke-all is disabled with no active tokens and requires confirmation once enabled', async () => {
+  vi.mocked(getApiTokens).mockResolvedValue({
+    tokens: [apiToken({ id: 9, name: 'Revoked already', revoked_at: '2026-01-02T00:00:00Z' })],
+  });
+  renderPage();
+  await waitFor(() => expect(screen.getByText('Revoked already')).toBeInTheDocument());
+
+  expect(screen.getByRole('button', { name: /revoke all/i })).toBeDisabled();
+});
+
+test('revoke-all confirms before calling the API and shows the revoked count', async () => {
+  vi.mocked(getApiTokens).mockResolvedValue({
+    tokens: [apiToken({ id: 1, name: 'One' }), apiToken({ id: 2, name: 'Two' })],
+  });
+  vi.mocked(revokeAllApiTokens).mockResolvedValue({ revoked: 2 });
+
+  renderPage();
+  await waitFor(() => expect(screen.getByText('One')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: /^revoke all$/i }));
+  expect(revokeAllApiTokens).not.toHaveBeenCalled();
+  const dialog = screen.getByRole('dialog');
+  expect(within(dialog).getByText(/revoke all tokens/i)).toBeInTheDocument();
+
+  fireEvent.click(within(dialog).getByRole('button', { name: /^revoke all$/i }));
+
+  await waitFor(() => expect(revokeAllApiTokens).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(screen.getByText(/2 tokens revoked/i)).toBeInTheDocument());
+});
+
+test('rotating a token shows the new secret exactly once and refreshes the list', async () => {
+  vi.mocked(getApiTokens).mockResolvedValue({
+    tokens: [apiToken({ id: 4, name: 'Long runner' })],
+  });
+  const rotated = { ...apiToken({ id: 8, name: 'Long runner' }), token: 'mcrh_live_rotated456' };
+  vi.mocked(rotateApiToken).mockResolvedValue(rotated);
+
+  renderPage();
+  await waitFor(() => expect(screen.getByText('Long runner')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: /rotate token/i }));
+  expect(rotateApiToken).not.toHaveBeenCalled();
+  expect(screen.getByText(/rotating "long runner"/i)).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: /^rotate$/i }));
+
+  await waitFor(() => expect(rotateApiToken).toHaveBeenCalledWith(4));
+  await waitFor(() => expect(screen.getByDisplayValue('mcrh_live_rotated456')).toBeInTheDocument());
+  // "Token Rotated" (dialog heading) vs. the "Token rotated successfully"
+  // snackbar -- match the heading specifically to avoid ambiguity.
+  expect(screen.getByRole('heading', { name: 'Token Rotated' })).toBeInTheDocument();
+  await waitFor(() => expect(getApiTokens).toHaveBeenCalledTimes(2));
 });
 
 // --- Self contact picker (T90) ----------------------------------------------

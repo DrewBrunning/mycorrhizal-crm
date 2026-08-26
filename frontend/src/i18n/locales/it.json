@@ -1408,6 +1408,12 @@
     "createError": "Creazione token API fallita",
     "revokeError": "Revoca token API fallita",
     "revokeSuccess": "Token revocato con successo",
+    "revokeAllButton": "Revoca tutti",
+    "revokeAllError": "Impossibile revocare tutti i token API",
+    "revokeAllSuccess_one": "{{count}} token revocato",
+    "revokeAllSuccess_other": "{{count}} token revocati",
+    "rotateError": "Impossibile ruotare il token API",
+    "rotateSuccess": "Token ruotato correttamente",
     "columns": {
       "name": "Nome",
       "scope": "Accesso",
@@ -1440,6 +1446,21 @@
       "title": "Revoca Token",
       "message": "Sei sicuro di voler revocare \"{{name}}\"? Questo non può essere annullato.",
       "confirm": "Revoca"
+    },
+    "revokeAllDialog": {
+      "title": "Revoca tutti i token",
+      "message_one": "Vuoi davvero revocare {{count}} token API attivo? L'operazione non può essere annullata e interromperà immediatamente tutto ciò che lo utilizza.",
+      "message_other": "Vuoi davvero revocare tutti i {{count}} token API attivi? L'operazione non può essere annullata e interromperà immediatamente tutto ciò che li utilizza.",
+      "confirm": "Revoca tutti"
+    },
+    "rotateDialog": {
+      "title": "Ruota token",
+      "message": "Ruotare \"{{name}}\" lo revoca immediatamente ed emette un nuovo token con lo stesso nome e ambito. Il nuovo token verrà mostrato solo una volta.",
+      "confirm": "Ruota"
+    },
+    "rotatedDialog": {
+      "title": "Token ruotato",
+      "warning": "Il vecchio token è ora revocato. Questo nuovo token non verrà mostrato di nuovo: copialo ora e conservalo in modo sicuro."
     },
     "expired": "Scaduto"
   },
