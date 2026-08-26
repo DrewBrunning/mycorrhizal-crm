@@ -48,7 +48,12 @@ jobs:
         uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
         with:
           path: '.'
-          severity-cutoff: 'critical,high'
+          # Single value, not a list — anchore/scan-action rejects
+          # 'critical,high' ("Invalid severity-cutoff value ... must be one
+          # of negligible, low, medium, high, critical"). The cutoff is a
+          # floor: 'high' already gates on high AND critical, which is the
+          # critical+high coverage this job intends.
+          severity-cutoff: 'high'
           fail-build: true
           output-format: sarif
           output-file: 'grype-results.sarif'

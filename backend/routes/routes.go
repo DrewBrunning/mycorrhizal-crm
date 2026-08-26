@@ -516,6 +516,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			admin.GET("/users/:id", controllers.GetUser)
 			admin.PATCH("/users/:id", middleware.ValidateJSONMiddleware(&models.AdminUserUpdateInput{}), controllers.UpdateUser)
 			admin.DELETE("/users/:id", controllers.DeleteUser)
+			admin.POST("/users/:id/reset-2fa", controllers.ResetUserTwoFactor)
 			admin.POST("/trigger-reminders", func(c *gin.Context) {
 				controllers.TriggerReminders(c, *cfg)
 			})
