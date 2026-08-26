@@ -264,7 +264,14 @@ per §1/§7/§8), but both are genuine, named gaps rather than silently-accepted
    window is a real product decision... when in doubt, ask; don't default to 'just drop it'"), this isn't
    this doc's call to make unilaterally. Filed as a follow-up:
    [#574](https://github.com/DrewBrunning/mycorrhizal-crm/issues/574) — "decide and implement a
-   retention window for `ContactShare` snapshots."
+   retention window for `ContactShare` snapshots." Issue #555 (the cross-user contact-share matrix)
+   confirmed this is the deliberate frozen-snapshot design working as intended, not a bug found in
+   passing — `backend/controllers/contact_share_matrix_test.go`'s
+   `TestCreateContactShare_PayloadFrozenAtCreation` and
+   `TestContactShare_PayloadUnchangedAcrossLifecycleTransitions` now pin that behavior, and
+   `frontend/src/components/ShareContactDialog.tsx`'s `frozenNotice` tells the sender up front that a
+   share can't be recalled once sent. The retention *window* question stays #574's — #555 doesn't
+   re-decide it.
 2. **API responses carry no `Cache-Control: no-store`.** Already tracked and accepted as `partial` at
    ASVS 8.1.1/8.2.1 (`docs/security/asvs-l2.md`) — noted here only because it's the one place a stale
    *cached* copy of contact PII could theoretically outlive a delete, on a shared/proxied browser. Not

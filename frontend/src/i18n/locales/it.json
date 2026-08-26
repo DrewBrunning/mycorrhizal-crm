@@ -1879,6 +1879,7 @@
     "shareDialog": {
       "title": "Condividi contatto",
       "description": "Invia una copia filtrata e monouso di questo contatto a un altro utente di questa istanza. Sarà quella persona a decidere se accettare la condivisione.",
+      "frozenNotice": "Una volta inviata, questa condivisione non può essere richiamata — il destinatario vede un'istantanea di questo momento, e qualsiasi modifica successiva a questo contatto non raggiungerà una condivisione in sospeso o già accettata.",
       "recipient": "Destinatario",
       "selectRecipient": "Scegli un destinatario…",
       "sharing": "Condivisione in corso…",

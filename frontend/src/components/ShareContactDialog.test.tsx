@@ -57,6 +57,16 @@ test('share button is disabled until a recipient is chosen', async () => {
   expect(screen.getByRole('button', { name: 'Share' })).toBeDisabled();
 });
 
+test('warns the sender the share is frozen and cannot be recalled once sent', async () => {
+  mockFetchByUrl({ '/users/directory': directoryResponse });
+  renderDialog();
+
+  await waitFor(() => expect(fetch).toHaveBeenCalled());
+  expect(
+    screen.getByText(/can't be recalled once sent/i)
+  ).toBeInTheDocument();
+});
+
 test('sensitive sections stay locked by default, same guard as export', async () => {
   mockFetchByUrl({ '/users/directory': directoryResponse });
   renderDialog();

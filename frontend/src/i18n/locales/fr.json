@@ -1879,6 +1879,7 @@
     "shareDialog": {
       "title": "Partager le contact",
       "description": "Envoyez une copie filtrée et à usage unique de ce contact à un autre utilisateur de cette instance. Il ou elle décide d'accepter ou non le partage.",
+      "frozenNotice": "Ce partage ne peut pas être rappelé une fois envoyé — le destinataire voit un instantané pris à l'instant, et toute modification ultérieure de ce contact n'atteindra pas un partage en attente ou déjà accepté.",
       "recipient": "Destinataire",
       "selectRecipient": "Choisir un destinataire…",
       "sharing": "Partage en cours…",

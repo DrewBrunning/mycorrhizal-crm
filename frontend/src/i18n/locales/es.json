@@ -1879,6 +1879,7 @@
     "shareDialog": {
       "title": "Compartir contacto",
       "description": "Envía una copia filtrada y de un solo uso de este contacto a otro usuario de esta instancia. Esa persona decide si acepta la compartición.",
+      "frozenNotice": "Una vez enviada, esta compartición no se puede retirar — el destinatario ve una instantánea del momento actual, y cualquier edición posterior a este contacto no llegará a una compartición pendiente o ya aceptada.",
       "recipient": "Destinatario",
       "selectRecipient": "Elige un destinatario…",
       "sharing": "Compartiendo…",

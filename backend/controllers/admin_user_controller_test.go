@@ -145,6 +145,22 @@ func TestDeleteUser_CleansUpAllOwnedRows(t *testing.T) {
 	assertGone("Contact", &models.Contact{}, "user_id = ?", target.ID)
 	assertGone("ContactShare (target as sender)", &models.ContactShare{}, "id = ?", shareAsSender.ID)
 	assertGone("ContactShare (target as recipient)", &models.ContactShare{}, "id = ?", shareAsRecipient.ID)
+
+	// Issue #555 action item 8: ContactShare has no deleted_at column at all
+	// (models/contact_share.go's own doc comment — it is a hard-delete-only
+	// entity, unlike the config tables below), so a plain Count() above
+	// already can't distinguish "gone" from "merely hidden" the way
+	// CLAUDE.md's trap #6 warns about for soft-deletable models. Asserted
+	// with Unscoped() anyway, explicitly, matching this test's own
+	// convention for every other hard-delete-on-account-removal entity below
+	// — future-proofing against ContactShare ever gaining a DeletedAt field
+	// without this assertion being updated to match.
+	for _, share := range []models.ContactShare{shareAsSender, shareAsRecipient} {
+		var unscopedShareCount int64
+		require.NoError(t, db.Unscoped().Model(&models.ContactShare{}).Where("id = ?", share.ID).Count(&unscopedShareCount).Error)
+		assert.Zero(t, unscopedShareCount, "ContactShare rows must be hard-deleted, not merely hidden")
+	}
+
 	assertGone("LinkFieldType", &models.LinkFieldType{}, "user_id = ?", target.ID)
 	assertGone("RecoveryCode", &models.RecoveryCode{}, "user_id = ?", target.ID)
 	assertGone("PaperlessConfig", &models.PaperlessConfig{}, "user_id = ?", target.ID)

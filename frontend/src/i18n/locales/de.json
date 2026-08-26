@@ -1879,6 +1879,7 @@
     "shareDialog": {
       "title": "Kontakt teilen",
       "description": "Sende eine gefilterte, einmalige Kopie dieses Kontakts an einen anderen Benutzer dieser Instanz. Er oder sie entscheidet, ob die Freigabe angenommen wird.",
+      "frozenNotice": "Einmal gesendet, kann diese Freigabe nicht zurückgerufen werden — der Empfänger sieht einen Schnappschuss vom aktuellen Zeitpunkt, und spätere Änderungen an diesem Kontakt erreichen eine ausstehende oder bereits angenommene Freigabe nicht mehr.",
       "recipient": "Empfänger",
       "selectRecipient": "Empfänger auswählen…",
       "sharing": "Wird geteilt…",
