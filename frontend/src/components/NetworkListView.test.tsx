@@ -1,9 +1,9 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import NetworkListView from './NetworkListView';
+import type { GraphData } from '../types/graph';
 import { computeFilteredGraphData } from '../utils/networkGraphData';
-import { GraphData } from '../types/graph';
+import NetworkListView from './NetworkListView';
 
 // This codebase's vitest setup does not auto-cleanup between tests -- see
 // RelationshipEdgeList.test.tsx's matching comment.
@@ -16,9 +16,7 @@ function sampleData(): GraphData {
       { id: 'c-2', type: 'contact', label: 'Bob' },
       { id: 'c-3', type: 'contact', label: 'Carol' },
     ],
-    edges: [
-      { id: 'e-1', source: 'c-1', target: 'c-2', type: 'relationship', label: 'friend_of' },
-    ],
+    edges: [{ id: 'e-1', source: 'c-1', target: 'c-2', type: 'relationship', label: 'friend_of' }],
   };
 }
 
@@ -29,7 +27,9 @@ test('renders one entry per contact node, with connection text derived from the 
     showCircles: false,
   });
 
-  render(<NetworkListView nodes={filtered.nodes} links={filtered.links} onContactClick={vi.fn()} />);
+  render(
+    <NetworkListView nodes={filtered.nodes} links={filtered.links} onContactClick={vi.fn()} />,
+  );
 
   expect(screen.getByRole('button', { name: 'Alice' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Bob' })).toBeInTheDocument();
@@ -55,7 +55,9 @@ test('honours selectedCircle: only contacts in the selected circle are listed', 
     circleNamesByUid,
   });
 
-  render(<NetworkListView nodes={filtered.nodes} links={filtered.links} onContactClick={vi.fn()} />);
+  render(
+    <NetworkListView nodes={filtered.nodes} links={filtered.links} onContactClick={vi.fn()} />,
+  );
 
   expect(screen.getByRole('button', { name: 'Alice' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Bob' })).toBeInTheDocument();
@@ -70,8 +72,16 @@ test('clicking a contact entry invokes onContactClick with that node', () => {
   });
   const onContactClick = vi.fn();
 
-  render(<NetworkListView nodes={filtered.nodes} links={filtered.links} onContactClick={onContactClick} />);
+  render(
+    <NetworkListView
+      nodes={filtered.nodes}
+      links={filtered.links}
+      onContactClick={onContactClick}
+    />,
+  );
   screen.getByRole('button', { name: 'Alice' }).click();
 
-  expect(onContactClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'c-1', label: 'Alice' }));
+  expect(onContactClick).toHaveBeenCalledWith(
+    expect.objectContaining({ id: 'c-1', label: 'Alice' }),
+  );
 });

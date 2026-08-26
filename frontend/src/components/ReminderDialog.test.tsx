@@ -1,8 +1,8 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
+import type { Reminder } from '../api/reminders';
 import ReminderDialog from './ReminderDialog';
-import { Reminder } from '../api/reminders';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
 afterEach(cleanup);
@@ -45,13 +45,17 @@ test('shows the add form with sensible defaults when no reminder is provided', (
   expect(screen.getByText('Once')).toBeInTheDocument();
   expect(screen.getByLabelText('Date *')).toHaveValue(new Date().toISOString().split('T')[0]);
   expect(screen.getByRole('checkbox', { name: 'Send email notification' })).toBeChecked();
-  expect(screen.queryByRole('checkbox', { name: 'Reschedule from completion date' })).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('checkbox', { name: 'Reschedule from completion date' }),
+  ).not.toBeInTheDocument();
 });
 
 test('saving a new reminder posts the form data and closes', async () => {
   const { onSave, onClose } = renderDialog();
 
-  fireEvent.change(screen.getByLabelText('Message *'), { target: { value: '  Water the plants  ' } });
+  fireEvent.change(screen.getByLabelText('Message *'), {
+    target: { value: '  Water the plants  ' },
+  });
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
   await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
@@ -95,7 +99,9 @@ test('pre-fills the form when editing an existing reminder', async () => {
   expect(screen.getByLabelText('Date *')).toHaveValue('2026-08-01');
   expect(screen.getByText('Monthly')).toBeInTheDocument();
   expect(screen.getByRole('checkbox', { name: 'Send email notification' })).toBeChecked();
-  expect(screen.getByRole('checkbox', { name: 'Reschedule from completion date' })).not.toBeChecked();
+  expect(
+    screen.getByRole('checkbox', { name: 'Reschedule from completion date' }),
+  ).not.toBeChecked();
 
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
@@ -117,7 +123,9 @@ test('changing the recurrence re-schedules the date for a new reminder', async (
   const d = new Date();
   d.setDate(d.getDate() + 7);
   expect(screen.getByLabelText('Date *')).toHaveValue(d.toISOString().split('T')[0]);
-  expect(screen.getByRole('checkbox', { name: 'Reschedule from completion date' })).toBeInTheDocument();
+  expect(
+    screen.getByRole('checkbox', { name: 'Reschedule from completion date' }),
+  ).toBeInTheDocument();
 });
 
 test('a failed save surfaces the error and keeps the dialog open', async () => {

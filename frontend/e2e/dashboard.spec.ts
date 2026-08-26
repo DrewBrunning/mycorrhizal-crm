@@ -1,5 +1,4 @@
-import { test, expect } from './fixtures';
-import { waitForLoading } from './fixtures';
+import { expect, test, waitForLoading } from './fixtures';
 
 // Authenticated via the shared storageState (see playwright.config.ts).
 test.describe('Dashboard', () => {

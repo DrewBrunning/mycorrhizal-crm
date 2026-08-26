@@ -10,7 +10,7 @@ here; if it cannot point at a row, it does not know what it is changing.
 |---|---|
 | **Standards pinned** | OWASP MASVS 1.5.0, chapters V2–V7 (the `MSTG-*` control IDs). MASVS 2.0 renamed these one-to-one to `MASVS-*` (V2–V7); the L1 rows below are the same either way. |
 | **Level** | **MASVS-L1** (rows marked `x` in the L1 column). L2- and R-only rows are listed per chapter as out of scope. |
-| **Last full pass** | 2026-08-25 (issue #385: Room-mirror encryption + logout purge) |
+| **Last full pass** | 2026-08-25 (issue #507: MASVS-L2 resilience re-evaluation — see Documented positions) |
 | **Scope** | The Android client (`android/`): Kotlin + Jetpack Compose, Hilt, OkHttp, Room, DataStore, `androidx.security:crypto`. The server it talks to is covered by `asvs-l2.md`; MSTG-AUTH rows therefore cite the *client-side* contract and point at the backend for enforcement. |
 
 ## Status legend
@@ -31,16 +31,27 @@ The `android/.mobsf` config already records a set of deliberate scanner findings
 entries with one-line rationales. These are positions, not code changes — they are promoted here
 with their full rationale so the audit is self-contained.
 
-### P1 — No certificate pinning (MSTG-NETWORK-4 is L2 anyway)
+### P1 — No certificate pinning (MSTG-NETWORK-4 is L2 anyway; re-evaluated, kept declined, issue #507)
 
 Certificate pinning / transparency (`android_certificate_pinning`, `android_certificate_transparency`,
 `android_ssl_pinning`) is deliberately not done. MSTG-NETWORK-4 is an L2 control, so it is out of
-scope for L1 — but the ignore-list is explicit rather than silent. Rationale: the app talks to a
-**self-hosted** server behind an operator-managed reverse proxy (`docs/deployment.md:17`), the same
-trust model the backend itself uses (standard TLS, no pinning — see `asvs-l2.md` V9). Pinning a
-self-hosted origin would break every cert rotation without a realistic MITM threat to answer to.
-Self-signed server certs are handled via the **KeyChain import flow** (`installCustomCertificate`),
-never by disabling TLS verification — see the production `network_security_config.xml` comment.
+scope for L1 — but the ignore-list is explicit rather than silent.
+
+**Defends against:** an on-path attacker (rogue Wi-Fi AP, compromised router, malicious CA) presenting
+a valid-but-wrong certificate for the operator's domain. **Costs:** every user runs their own
+**self-hosted** server (`docs/deployment.md:17`) with a certificate the app cannot know in advance —
+frequently self-signed or issued by an internal/private CA the user set up themselves, rotated on
+whatever schedule that user chooses. A pin the app ships with would be wrong for essentially every
+install on day one, and a pin computed from the first-seen cert (trust-on-first-use) is a materially
+different feature — a pin store, a UI to review/clear it, and a break-glass path for legitimate
+rotation — not a checkbox toggle on the naive pinning MSTG-NETWORK-4 describes. **In scope per #377:**
+yes, MITM is a real actor (`threat-model.md` "Unauthenticated network attacker" row) — but it's
+neutralized today by standard TLS + system CA trust (`asvs-l2.md` V9, `masvs-l1.md` NETWORK-1/NETWORK-3),
+which holds for a self-signed cert too once the user has explicitly trusted it via the **KeyChain
+import flow** (`installCustomCertificate`) — never by disabling TLS verification (see the production
+`network_security_config.xml` comment). **Decision: keep declined.** Naive pinning is actively wrong
+for this app's threat model, and TOFU/user-managed pinning is a distinct, uncosted feature this issue
+does not adopt — see `threat-model.md` gating decision 3.
 
 ### P2 — Debug-only cleartext to the emulator loopback
 
@@ -50,16 +61,31 @@ file **never ships in a release build** — the production config forbids cleart
 (`app/src/main/res/xml/network_security_config.xml:18`). Ignored at INFO (`android_manifest_domain_config_cleartext`)
 so it stays visible in the source comment rather than adding CI noise.
 
-### P3 — No root/SafetyNet/screenshot/tapjacking/anti-task-hijacking hardening
+### P3 — No root/SafetyNet detection, anti-task-hijacking by design (re-evaluated, kept declined, issue #507)
 
-`android_root_detection`, `android_safetynet`/`android_safetynet_api`, `android_prevent_screenshot`,
-`android_detect_tapjacking`, `android_tapjacking`, and the task-hijacking rules
-(`android_task_hijacking1/2`) are ignored. Rationale: these are L2/R (resilience) or
-defense-in-depth controls that do not fit a single-user personal CRM, and several (SafetyNet) are
-deprecated platform services. The one task-hijacking adjacent risk that *is* real is addressed by
-design: the exported `MainActivity` uses `launchMode="singleTask"` specifically so the OIDC deep
+`android_root_detection` and `android_safetynet`/`android_safetynet_api` are ignored.
+
+**Defends against:** the app running on a rooted/compromised device where the OS sandbox itself can no
+longer be trusted — a malicious app with root could read another app's memory or storage regardless of
+what this app does. **Costs:** self-hosted users are disproportionately likely to root their devices
+*deliberately* (custom ROMs, ad blocking, backup tooling, the same self-reliance that led them to
+self-host a CRM in the first place); blocking or degrading the app on root would punish exactly the
+audience this project serves, for a threat model where the attacker already has the device. SafetyNet
+Attestation is additionally a **deprecated** platform service (superseded by Play Integrity, which
+itself assumes a Play-Store-distributed app — this project also ships a direct-download APK, see
+`android-apk-build.yml`). **In scope per #377:** the "lost/stolen Android device" actor
+(`threat-model.md`) is real, but it's answered by data-at-rest controls (SQLCipher Room mirror,
+Keystore-backed session token — P4/STORAGE-1) that hold regardless of root status, not by refusing to
+run. A rooted-but-not-stolen device run by its own owner is not a threat this app has an asset to
+protect against. **Decision: keep declined** — this is the control the issue named as the one to weigh
+"honestly" against the audience, and the audience-cost argument holds without qualification. See
+`threat-model.md` gating decision 3.
+
+The one task-hijacking-adjacent risk that *is* real is addressed by design, not by a detection
+control: the exported `MainActivity` uses `launchMode="singleTask"` specifically so the OIDC deep
 link is delivered via `onNewIntent` rather than stacking a second instance
-(`app/src/main/AndroidManifest.xml:57`, comment at `:66-68`).
+(`app/src/main/AndroidManifest.xml:57`, comment at `:66-68`); `android_task_hijacking1/2` are ignored
+for that reason, unrelated to the two resilience controls above.
 
 ### P4 — Room cache encryption carve-outs (resolved 2026-08-25, issue #385)
 
@@ -87,13 +113,47 @@ the real app, which opens the encrypted DB through `DataModule`.
 (`core/data/.../Migrations.kt`, `Migration13To14Test.kt`) — compile-time SQL with no injection
 surface.
 
+### P6 — Screenshot prevention + tapjacking protection (resolved 2026-08-25, issue #507)
+
+The other two of the four MASVS-L2 resilience items issue #507 asked to re-evaluate — **reversed**,
+not kept declined.
+
+**MSTG-STORAGE-9** ("the app removes sensitive data from views when moved to the background"):
+every screen in this single-Activity app renders relationship PII (contact records, personal notes,
+`secret`-sensitivity fields), so the concrete threat is the recent-apps thumbnail — anyone with brief
+physical access to an unlocked-but-idle phone can open the app switcher and read a contact's data
+without ever unlocking the app itself, no attacker sophistication required. **Cost:** the user can no
+longer screenshot or screen-record their own contact data — a real but narrow loss (sharing a contact
+card is already a first-class feature via the vCard share sheet, `AndroidManifest.xml:76-86`, so
+screenshotting isn't the only way to get data out). `MainActivity.onCreate` sets
+`WindowManager.LayoutParams.FLAG_SECURE` unconditionally (`MainActivity.kt`), which also blocks
+screenshots and screen recording as a side effect of blanking the thumbnail — the same primitive
+covers both. **MSTG-PLATFORM-9** ("the app protects itself against screen overlay attacks"): a
+malicious overlay app could tapjack a user into confirming a destructive action (e.g. contact/account
+deletion) they can't see underneath the overlay. **Cost:** effectively none — `filterTouchesWhenObscured`
+only changes behavior when another window is actually drawn on top, which never happens during normal
+single-window use. `MainActivity.onCreate` sets `window.decorView.filterTouchesWhenObscured = true`
+(`MainActivity.kt`), which gates touch dispatch to the whole view tree from the decor view down — no
+per-screen wiring needed. Both reversed the earlier positions recorded in `.mobsf`/P3 above (mobsf's
+`android_prevent_screenshot` and `android_detect_tapjacking`/`android_tapjacking` ignore-rules were
+removed in the same change, so mobsfscan now asserts their presence rather than staying silent on
+them). Verified by the instrumented `ScreenResilienceTest`
+(`app/src/androidTest/.../security/ScreenResilienceTest.kt`, issue #238's suite) — a Robolectric JVM
+test's shadow `Window` doesn't model `FLAG_SECURE` or touch filtering, so this can only be verified on
+a real device/emulator. See `threat-model.md` gating decision 3 for the assurance-level consequence:
+this does **not** make MASVS-L2 claimable (root detection and certificate pinning above stay declined,
+and several other L2 rows — STORAGE-10/11/13/14/15, the entire V8 Resiliency chapter — remain
+out of scope) — the client's claimed target is still MASVS-L1, now with two L2 controls satisfied
+as a documented bonus rather than a level claim.
+
 ---
 
 ## V2 — Data Storage and Privacy (MSTG-STORAGE)
 
-L2-only, out of scope: STORAGE-8, STORAGE-9, STORAGE-10, STORAGE-11, STORAGE-13, STORAGE-14, STORAGE-15.
+L2-only, out of scope: STORAGE-8, STORAGE-10, STORAGE-11, STORAGE-13, STORAGE-14, STORAGE-15.
 (STORAGE-8 is met anyway — backups are disabled: `allowBackup="false"` and `data_extraction_rules` exclude
-every domain, `app/src/main/AndroidManifest.xml:38-39`, `res/xml/data_extraction_rules.xml`.)
+every domain, `app/src/main/AndroidManifest.xml:38-39`, `res/xml/data_extraction_rules.xml`. STORAGE-9 is
+L2 but satisfied — see the row below and P6.)
 
 | ID | Requirement (abbrev.) | Status | Evidence |
 |---|---|---|---|
@@ -104,6 +164,7 @@ every domain, `app/src/main/AndroidManifest.xml:38-39`, `res/xml/data_extraction
 | STORAGE-5 | Keyboard cache disabled on sensitive inputs | partial | Register / forgot-password / settings / users secret fields use `KeyboardType.Password` (the Android signal that disables IME personalized learning) alongside `PasswordVisualTransformation` — `feature/auth/.../RegisterScreen.kt:151-152`, `ForgotPasswordScreen.kt:147-148,156-157`, `feature/settings/.../SettingsScreen.kt:263-264`. **Gap:** the login screen's password field (`feature/auth/.../LoginScreen.kt:193-199`) masks via `PasswordVisualTransformation` + autofill `ContentType.Password` but keeps default keyboard options — no `KeyboardType.Password` on the one field where a password is typed most often. |
 | STORAGE-6 | No sensitive data exposed via IPC | satisfied | The only exported components are system-driven: `MainActivity` (launcher + OIDC deep link) and the `PHONE_STATE`/`SMS_RECEIVED` receivers (the latter guarded by `android.permission.BROADCAST_SMS`); everything else is `exported="false"` (`AndroidManifest.xml:78-129`). The FileProvider is `exported="false"` with per-URI grants (`:80-81`). |
 | STORAGE-7 | No sensitive data exposed via UI | satisfied | Passwords are masked via `PasswordVisualTransformation` on all secret fields (see STORAGE-5 citations); no secret is rendered readably. |
+| STORAGE-9 (L2) | App removes sensitive data from views when backgrounded | satisfied | `MainActivity.onCreate` sets `WindowManager.LayoutParams.FLAG_SECURE` unconditionally, blanking the recent-apps thumbnail and blocking screenshots/screen recording across every screen (`MainActivity.kt`) — issue #507, see P6. Verified by `ScreenResilienceTest.mainActivityWindowIsFlaggedSecure` (`app/src/androidTest/.../security/ScreenResilienceTest.kt`). |
 | STORAGE-12 | App educates user on PII handling | satisfied | Self-hosted personal CRM: the privacy stance (data stays on the operator's server) is documented in `docs/deployment.md` and `CLAUDE.md`; no third-party collection exists to disclose. |
 
 ## V3 — Cryptography (MSTG-CRYPTO)
@@ -149,7 +210,9 @@ L2-only, out of scope: NETWORK-4, NETWORK-5, NETWORK-6.
 
 ## V6 — Platform Interaction (MSTG-PLATFORM)
 
-L2-only, out of scope: PLATFORM-9, PLATFORM-10, PLATFORM-11.
+L2-only, out of scope: PLATFORM-10 (WebView cleanup — not-applicable, no WebView anywhere, see
+PLATFORM-5/6/7), PLATFORM-11 (iOS-only third-party keyboard restriction — not-applicable, this is the
+Android client). PLATFORM-9 is L2 but satisfied — see the row below and P6.
 
 | ID | Requirement (abbrev.) | Status | Evidence |
 |---|---|---|---|
@@ -161,6 +224,7 @@ L2-only, out of scope: PLATFORM-9, PLATFORM-10, PLATFORM-11.
 | PLATFORM-6 | WebView protocol handlers minimized | not-applicable | No WebView (see PLATFORM-5). |
 | PLATFORM-7 | Native bridges only render in-package JS | not-applicable | No WebView / `addJavascriptInterface` anywhere. |
 | PLATFORM-8 | Safe deserialization | satisfied | Moshi (`NetworkFactory.kt:21,27-42`) with codegen (`@JsonClass`) — reflection-free, no `ObjectInputStream`/`Parcelable`-of-untrusted-data, no pickle/Java serialization. |
+| PLATFORM-9 (L2) | App protects itself against screen overlay attacks | satisfied | `MainActivity.onCreate` sets `window.decorView.filterTouchesWhenObscured = true` unconditionally (`MainActivity.kt`), gating touch dispatch to the whole view tree so a tapjacking overlay can't tap through it — issue #507, see P6. Verified by `ScreenResilienceTest.mainActivityDecorViewFiltersTouchesWhenObscured` (`app/src/androidTest/.../security/ScreenResilienceTest.kt`). |
 
 ## V7 — Code Quality and Build Settings (MSTG-CODE)
 

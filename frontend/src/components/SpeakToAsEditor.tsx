@@ -1,20 +1,20 @@
-import { useTranslation } from 'react-i18next';
+import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
 import {
+  Autocomplete,
   Box,
-  Typography,
+  Button,
+  IconButton,
+  MenuItem,
+  Paper,
   Stack,
   TextField,
-  IconButton,
-  Button,
-  Paper,
-  Autocomplete,
-  MenuItem,
+  Typography,
 } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import AddIcon from '@mui/icons-material/Add';
-import { CardSpeakToAs, CardGrammaticalGender, CardPronouns } from '../api/contacts';
-import { useRowKeys } from '../hooks/useRowKeys';
+import { useTranslation } from 'react-i18next';
+import type { CardGrammaticalGender, CardPronouns, CardSpeakToAs } from '../api/contacts';
 import { CONTEXT_OPTIONS, GRAMMATICAL_GENDER_OPTIONS } from '../contactFields';
+import { useRowKeys } from '../hooks/useRowKeys';
 
 interface SpeakToAsEditorProps {
   value: CardSpeakToAs;

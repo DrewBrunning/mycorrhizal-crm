@@ -1,6 +1,5 @@
-import { test, expect } from './fixtures';
-import { waitForLoading, createTestContact, deleteTestContact } from './fixtures';
 import type { Page } from '@playwright/test';
+import { createTestContact, deleteTestContact, expect, test, waitForLoading } from './fixtures';
 import { API_BASE_URL } from './global-setup';
 
 // The settings page carries several connection cards (Immich, Paperless,
@@ -43,15 +42,17 @@ test.describe('Immich integration', () => {
     await expect(immichCard(page).getByRole('button', { name: /Save connection/i })).toBeVisible();
   });
 
-  test('rejects a non-http base URL client-side with a readable message', async ({
-    page,
-  }) => {
+  test('rejects a non-http base URL client-side with a readable message', async ({ page }) => {
     await page.goto('/settings');
     await waitForLoading(page);
 
-    await immichCard(page).getByLabel(/Base URL$/i).fill('ftp://immich.example');
+    await immichCard(page)
+      .getByLabel(/Base URL$/i)
+      .fill('ftp://immich.example');
     await page.getByLabel(/API Key/i).fill('test-key-123');
-    await immichCard(page).getByRole('button', { name: /Save connection/i }).click();
+    await immichCard(page)
+      .getByRole('button', { name: /Save connection/i })
+      .click();
 
     await expect(page.getByText(/http:\/\/ or https:\/\//i)).toBeVisible({ timeout: 5000 });
   });
@@ -60,9 +61,13 @@ test.describe('Immich integration', () => {
     await page.goto('/settings');
     await waitForLoading(page);
 
-    await immichCard(page).getByLabel(/Base URL$/i).fill('https://immich.example');
+    await immichCard(page)
+      .getByLabel(/Base URL$/i)
+      .fill('https://immich.example');
     await page.getByLabel(/API Key/i).fill('test-api-key-abc');
-    await immichCard(page).getByRole('button', { name: /Save connection/i }).click();
+    await immichCard(page)
+      .getByRole('button', { name: /Save connection/i })
+      .click();
 
     await expect(immichCard(page).getByRole('button', { name: /Remove connection/i })).toBeVisible({
       timeout: 5000,
@@ -81,10 +86,7 @@ test.describe('Immich integration', () => {
     });
   });
 
-  test('shows sync toggle and remove button after configuration', async ({
-    page,
-    request,
-  }) => {
+  test('shows sync toggle and remove button after configuration', async ({ page, request }) => {
     await request.put(`${API_BASE_URL}/immich/config`, {
       data: { base_url: 'https://immich.example', api_key: 'key' },
     });
@@ -92,10 +94,10 @@ test.describe('Immich integration', () => {
     await page.goto('/settings');
     await waitForLoading(page);
 
-    await expect(immichCard(page).getByRole('button', { name: /Remove connection/i })).toBeVisible();
     await expect(
-      page.getByText(/Automatically sync photo appearances/i),
+      immichCard(page).getByRole('button', { name: /Remove connection/i }),
     ).toBeVisible();
+    await expect(page.getByText(/Automatically sync photo appearances/i)).toBeVisible();
   });
 
   test('test connection button is present and clickable when configured', async ({
@@ -120,10 +122,7 @@ test.describe('Immich integration', () => {
     await waitForLoading(page);
   });
 
-  test('removes the connection and returns to the connect form', async ({
-    page,
-    request,
-  }) => {
+  test('removes the connection and returns to the connect form', async ({ page, request }) => {
     await request.put(`${API_BASE_URL}/immich/config`, {
       data: { base_url: 'https://immich.example', api_key: 'key' },
     });
@@ -133,7 +132,9 @@ test.describe('Immich integration', () => {
 
     page.once('dialog', (dialog) => dialog.accept());
 
-    await immichCard(page).getByRole('button', { name: /Remove connection/i }).click();
+    await immichCard(page)
+      .getByRole('button', { name: /Remove connection/i })
+      .click();
 
     await expect(page.getByLabel(/API Key/i)).toBeVisible({ timeout: 5000 });
     await expect(immichCard(page).getByRole('button', { name: /Save connection/i })).toBeVisible();
@@ -159,9 +160,9 @@ test.describe('Immich integration', () => {
 
     // The Immich config fetch runs in a useEffect on the contact page —
     // wait for the "Link a person" button to appear after the async fetch.
-    await expect(
-      page.getByRole('button', { name: /Link a person/i }),
-    ).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('button', { name: /Link a person/i })).toBeVisible({
+      timeout: 10000,
+    });
 
     await deleteTestContact(request, contact.ID);
   });
@@ -187,10 +188,9 @@ test.describe('Immich integration', () => {
 
     // Link without browsing: the link endpoint only persists the
     // ExternalIdentity, it never calls Immich (which is unreachable here).
-    const link = await request.post(
-      `${API_BASE_URL}/immich/contacts/${contact.uid}/link`,
-      { data: { person_id: 'person-linked', person_name: 'Linked Person Name' } }
-    );
+    const link = await request.post(`${API_BASE_URL}/immich/contacts/${contact.uid}/link`, {
+      data: { person_id: 'person-linked', person_name: 'Linked Person Name' },
+    });
     expect(link.ok(), await link.text()).toBeTruthy();
 
     await page.goto(`/contacts/${contact.ID}`);
@@ -218,10 +218,7 @@ test.describe('Immich integration', () => {
 
   // ── Error states ────────────────────────────────────────────────
 
-  test('contact page does not crash when Immich is unreachable', async ({
-    page,
-    request,
-  }) => {
+  test('contact page does not crash when Immich is unreachable', async ({ page, request }) => {
     await request.put(`${API_BASE_URL}/immich/config`, {
       data: { base_url: 'https://immich.example', api_key: 'key' },
     });
@@ -237,9 +234,9 @@ test.describe('Immich integration', () => {
     // The page must render the contact name heading even when the Immich
     // summary fetch fails (T15/T16 trap: an unavailable instance must
     // degrade, not crash the entire contact page).
-    await expect(
-      page.getByRole('heading', { name: new RegExp(contact.firstname) }),
-    ).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('heading', { name: new RegExp(contact.firstname) })).toBeVisible({
+      timeout: 10000,
+    });
 
     await deleteTestContact(request, contact.ID);
   });
@@ -251,9 +248,13 @@ test.describe('Immich integration', () => {
     await page.goto('/settings');
     await waitForLoading(page);
 
-    await immichCard(page).getByLabel(/Base URL$/i).fill('http://127.0.0.1:54321');
+    await immichCard(page)
+      .getByLabel(/Base URL$/i)
+      .fill('http://127.0.0.1:54321');
     await page.getByLabel(/API Key/i).fill('any-key');
-    await immichCard(page).getByRole('button', { name: /Save connection/i }).click();
+    await immichCard(page)
+      .getByRole('button', { name: /Save connection/i })
+      .click();
     await expect(immichCard(page).getByRole('button', { name: /Remove connection/i })).toBeVisible({
       timeout: 5000,
     });
@@ -274,9 +275,9 @@ test.describe('Immich integration', () => {
     await expect(linkButton).toBeVisible({ timeout: 10000 });
     await linkButton.click();
 
-    await expect(
-      page.getByText(/could not reach|not be reached|is the instance up/i),
-    ).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/could not reach|not be reached|is the instance up/i)).toBeVisible({
+      timeout: 15000,
+    });
 
     await deleteTestContact(request, contact.ID);
   });

@@ -1,21 +1,12 @@
-import {
-  Box,
-  Typography,
-  IconButton,
-  Stack,
-  Paper,
-  Link,
-  Divider,
-  Chip,
-} from '@mui/material';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import { Box, Chip, Divider, IconButton, Link, Paper, Stack, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
-import { RelationshipEdge, getDisplayLabel, getOtherPartyId } from '../api/relationshipEdges';
-import { Contact } from '../api/contacts';
+import type { Contact } from '../api/contacts';
+import { getDisplayLabel, getOtherPartyId, type RelationshipEdge } from '../api/relationshipEdges';
 
 interface RelationshipEdgeListProps {
   confirmedEdges: RelationshipEdge[];
@@ -59,7 +50,12 @@ export default function RelationshipEdgeList({
 
   const otherPartyName = (edge: RelationshipEdge): { name: string; contact?: Contact } => {
     const contact = contactsByUid.get(getOtherPartyId(edge, viewedContactUid));
-    return { name: contact ? `${contact.firstname} ${contact.lastname}` : t('relationships.unknownContact'), contact };
+    return {
+      name: contact
+        ? `${contact.firstname} ${contact.lastname}`
+        : t('relationships.unknownContact'),
+      contact,
+    };
   };
 
   const hasNoRelationships = confirmedEdges.length === 0 && suggestedEdges.length === 0;
@@ -87,7 +83,9 @@ export default function RelationshipEdgeList({
               },
             }}
           >
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <Box
+              sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}
+            >
               <Box sx={{ flex: 1 }}>
                 {contact ? (
                   <Link
@@ -110,7 +108,9 @@ export default function RelationshipEdgeList({
                   </Typography>
                   {edge.sensitivity !== 'normal' && (
                     <Chip
-                      label={t(`relationships.sensitivity${edge.sensitivity.charAt(0).toUpperCase()}${edge.sensitivity.slice(1)}`)}
+                      label={t(
+                        `relationships.sensitivity${edge.sensitivity.charAt(0).toUpperCase()}${edge.sensitivity.slice(1)}`,
+                      )}
                       size="small"
                       sx={{ height: 18 }}
                     />
@@ -153,7 +153,13 @@ export default function RelationshipEdgeList({
             const { name, contact } = otherPartyName(edge);
             return (
               <Paper key={edge.id} variant="outlined" sx={{ p: 2, bgcolor: 'action.hover' }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                  }}
+                >
                   <Box sx={{ flex: 1 }}>
                     {contact ? (
                       <Link
@@ -174,7 +180,12 @@ export default function RelationshipEdgeList({
                       <Typography variant="body2" color="text.secondary">
                         {t(getDisplayLabel(edge, viewedContactUid))}
                       </Typography>
-                      <Chip label={t('relationships.suggested')} color="warning" size="small" sx={{ height: 18 }} />
+                      <Chip
+                        label={t('relationships.suggested')}
+                        color="warning"
+                        size="small"
+                        sx={{ height: 18 }}
+                      />
                     </Box>
                   </Box>
                   {/* Always visible, not hover-gated -- a review inbox needs a

@@ -1,11 +1,8 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, act } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
+import { notifyUpdateAvailable, resetServiceWorkerUpdatesForTest } from '../serviceWorkerUpdates';
 import ServiceWorkerUpdatePrompt from './ServiceWorkerUpdatePrompt';
-import {
-  notifyUpdateAvailable,
-  resetServiceWorkerUpdatesForTest,
-} from '../serviceWorkerUpdates';
 
 const applyUpdate = vi.hoisted(() => vi.fn());
 

@@ -8,14 +8,14 @@ name: DAST (OWASP ZAP)
 # gates on High/Medium findings via backend/cmd/zapgate's ignore-list-with-
 # justification (zap/dast.ignore), uploading SARIF to the Security tab.
 #
-# Scheduled (weekly) + manual dispatch only — deliberately NOT on push/PR:
+# Scheduled (nightly) + manual dispatch only — deliberately NOT on push/PR:
 # DAST is slow and flaky (the issue calls this out), so it is a periodic
 # regression sweep, not a per-PR gate. The scan runs against a throwaway
 # test database only; it must never point at real data.
 
 on:
   schedule:
-    - cron: '0 4 * * 0' # Sunday 04:00 UTC (weekly)
+    - cron: '50 1 * * *' # 01:50 UTC nightly (issue #578: moved off the weekly cadence)
   workflow_dispatch:
 
 permissions:

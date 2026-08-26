@@ -1,14 +1,14 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { renderHook, cleanup, waitFor, act } from '@testing-library/react';
-import { usePreferences } from './usePreferences';
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import {
-  getPreferences,
   createPreference,
-  updatePreference,
   deletePreference,
-  Preference,
-  PreferenceInput,
+  getPreferences,
+  type Preference,
+  type PreferenceInput,
+  updatePreference,
 } from '../api/preferences';
+import { usePreferences } from './usePreferences';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
 afterEach(() => {
@@ -144,7 +144,7 @@ test('save errors notify through the notifier and rethrow', async () => {
   await waitFor(() => expect(result.current.loading).toBe(false));
 
   await expect(
-    result.current.handleSave(null, { entity_id: 'uid-1', category: 'food', value: 'x' })
+    result.current.handleSave(null, { entity_id: 'uid-1', category: 'food', value: 'x' }),
   ).rejects.toThrow('boom');
   expect(showError).toHaveBeenCalledWith('boom');
 });

@@ -20,6 +20,30 @@ import (
 // HTTP input and delegate to the manager.
 var importSessions = services.NewImportSessionManager()
 
+// rejectImportSessionOverLimit aborts with 429 when the caller already holds
+// MaxImportSessionsPerUser live import sessions (issue #415) and returns
+// true; callers return immediately on true. Sessions are in-memory and can
+// each carry up to 20k rows/contacts, so this is the per-user bound on the
+// largest unauthenticated-by-quota memory surface. 429 (not 400) matches the
+// "too many in-flight operations" semantics: confirming or letting an
+// existing session expire frees the slot, so a retry can legitimately
+// succeed.
+func rejectImportSessionOverLimit(c *gin.Context) bool {
+	userID, ok := currentUserID(c)
+	if !ok {
+		return true
+	}
+	if importSessions.CountActive(userID) >= services.MaxImportSessionsPerUser {
+		apperrors.AbortWithError(c, apperrors.NewError(
+			apperrors.ErrCodeRateLimitExceeded,
+			fmt.Sprintf("Too many in-progress imports. Maximum is %d concurrent import sessions; confirm or wait for an existing one to expire before starting another.", services.MaxImportSessionsPerUser),
+			http.StatusTooManyRequests,
+		))
+		return true
+	}
+	return false
+}
+
 // UploadCSVForImport handles CSV file upload and returns headers with suggested mappings
 func UploadCSVForImport(c *gin.Context) {
 	log := logger.FromContext(c)
@@ -30,6 +54,9 @@ func UploadCSVForImport(c *gin.Context) {
 	}
 
 	go importSessions.CleanupExpired()
+	if rejectImportSessionOverLimit(c) {
+		return
+	}
 
 	// Get uploaded file
 	file, err := c.FormFile("file")
@@ -102,6 +129,9 @@ func UploadVCFForImport(c *gin.Context, cfg *config.Config) {
 	}
 
 	go importSessions.CleanupExpired()
+	if rejectImportSessionOverLimit(c) {
+		return
+	}
 
 	file, err := c.FormFile("file")
 	if err != nil {
@@ -177,6 +207,9 @@ func UploadJSContactForImport(c *gin.Context) {
 	db := c.MustGet("db").(*gorm.DB)
 
 	go importSessions.CleanupExpired()
+	if rejectImportSessionOverLimit(c) {
+		return
+	}
 
 	file, err := c.FormFile("file")
 	if err != nil {
@@ -282,6 +315,9 @@ func UploadImportRecords(c *gin.Context) {
 	}
 
 	go importSessions.CleanupExpired()
+	if rejectImportSessionOverLimit(c) {
+		return
+	}
 
 	request, err := middleware.GetValidated[models.ImportRecordsRequest](c)
 	if err != nil {

@@ -74,7 +74,11 @@ It sits outside the soft-delete model above precisely because it is a copy, not 
   backup resurrects a share whose purpose (and both parties' copy of it) is long since served.
 - **Verification**: `backend/services/contact_share_purge_service_test.go`
   (`TestPurgeExpiredContactShares_*` — window-pinned per status, ages-responded-from-responded-at,
-  `NULL responded_at` never purged, disabled-when-zero, idempotent).
+  `NULL responded_at` never purged, disabled-when-zero, idempotent). The frozen-snapshot design itself
+  (as opposed to its retention window) is pinned separately by issue #555's
+  `backend/controllers/contact_share_matrix_test.go` (`TestCreateContactShare_PayloadFrozenAtCreation`,
+  `TestContactShare_PayloadUnchangedAcrossLifecycleTransitions`) and surfaced to the sender by
+  `frontend/src/components/ShareContactDialog.tsx`'s `frozenNotice`.
 
 ## 2. Edge- and join-shaped rows
 

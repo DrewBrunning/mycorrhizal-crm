@@ -1,25 +1,25 @@
-import { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import {
-  Box,
-  Stack,
-  Typography,
-  Paper,
-  Chip,
-  IconButton,
-  Alert,
-  Divider,
-  Button,
-} from '@mui/material';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import {
-  RelationshipEdge,
-  listSuggestedRelationshipEdges,
+  Alert,
+  Box,
+  Button,
+  Chip,
+  Divider,
+  IconButton,
+  Paper,
+  Stack,
+  Typography,
+} from '@mui/material';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { type Contact, getContactsByUid } from '../api/contacts';
+import {
   acceptRelationshipEdge,
   deleteRelationshipEdge,
+  listSuggestedRelationshipEdges,
+  type RelationshipEdge,
 } from '../api/relationshipEdges';
-import { getContactsByUid, Contact } from '../api/contacts';
 import { handleFetchError } from '../utils/errorHandler';
 
 // T104: the global relationship-suggestion review surface. The per-contact
@@ -32,7 +32,9 @@ interface RelationshipSuggestionsInboxProps {
   loadKey: number;
 }
 
-export default function RelationshipSuggestionsInbox({ loadKey }: RelationshipSuggestionsInboxProps) {
+export default function RelationshipSuggestionsInbox({
+  loadKey,
+}: RelationshipSuggestionsInboxProps) {
   const { t } = useTranslation();
   const [edges, setEdges] = useState<RelationshipEdge[]>([]);
   const [contactsByUid, setContactsByUid] = useState<Map<string, Contact>>(new Map());
@@ -121,8 +123,16 @@ export default function RelationshipSuggestionsInbox({ loadKey }: RelationshipSu
       <Typography variant="subtitle2" component="h3" color="text.secondary" sx={{ mb: 1 }}>
         {t('relationships.suggestedRelationships')}
       </Typography>
-      {error && <Alert severity="error" sx={{ mb: 1 }}>{error}</Alert>}
-      {loading && <Alert severity="info" sx={{ mb: 1 }}>{t('settings.data.propose.loadingSuggestions')}</Alert>}
+      {error && (
+        <Alert severity="error" sx={{ mb: 1 }}>
+          {error}
+        </Alert>
+      )}
+      {loading && (
+        <Alert severity="info" sx={{ mb: 1 }}>
+          {t('settings.data.propose.loadingSuggestions')}
+        </Alert>
+      )}
       {edges.length === 0 && !loading && (
         <Alert severity="info">{t('settings.data.propose.noRelationshipSuggestions')}</Alert>
       )}
@@ -132,12 +142,24 @@ export default function RelationshipSuggestionsInbox({ loadKey }: RelationshipSu
           const busy = busyId === edge.id;
           return (
             <Paper key={edge.id} variant="outlined" sx={{ p: 1.5, bgcolor: 'action.hover' }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: 1,
+                }}
+              >
                 <Box sx={{ minWidth: 0 }}>
                   <Typography variant="body2" noWrap>
                     {nameFor(edge.source_id)} · {label} · {nameFor(edge.target_id)}
                   </Typography>
-                  <Chip label={t('relationships.suggested')} color="warning" size="small" sx={{ height: 18, mt: 0.5 }} />
+                  <Chip
+                    label={t('relationships.suggested')}
+                    color="warning"
+                    size="small"
+                    sx={{ height: 18, mt: 0.5 }}
+                  />
                 </Box>
                 <Box sx={{ display: 'flex', gap: 0.5 }}>
                   <IconButton
@@ -166,7 +188,9 @@ export default function RelationshipSuggestionsInbox({ loadKey }: RelationshipSu
       </Stack>
       {edges.length > 0 && (
         <Box sx={{ mt: 1 }}>
-          <Button size="small" onClick={reload}>{t('settings.data.propose.refreshSuggestions')}</Button>
+          <Button size="small" onClick={reload}>
+            {t('settings.data.propose.refreshSuggestions')}
+          </Button>
         </Box>
       )}
     </Box>

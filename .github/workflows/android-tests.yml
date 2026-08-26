@@ -5,6 +5,13 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Issue #578, B5: the instrumented E2E job (android-e2e) moved OFF the PR
+  # path — it stays on push:main and now also sweeps every night + on demand.
+  # The `test` job (Robolectric + detekt + lint + assembleDebug) remains the
+  # fast PR gate. See the android-e2e job's header for the trade-off.
+  schedule:
+    - cron: '0 4 * * *' # 04:00 UTC nightly
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -172,6 +179,16 @@ jobs:
   # driven against the real docker-compose.test.yml backend on an emulator.
   # The web Playwright suite cannot drive Android; this is its Android
   # equivalent. Local runbook: README-developer.md → "Android E2E".
+  #
+  # Issue #578, B5 (tiering): this is deliberately NOT on pull_request
+  # anymore. Per CLAUDE.md it replaced the manual on-device Pixel 8a gate,
+  # and it was the single heaviest PR check in the repo (~60 min: emulator +
+  # all-in-one image build + compose). Moving it to push:main + nightly
+  # means an Android PR is gated by Robolectric only (the `test` job, fast);
+  # the emulator signal lands post-merge and every night. That is the
+  # intended trade-off — called out explicitly in the issue's PR notes.
+  # test-report.yml reports on the workflow via workflow_run, unchanged; it
+  # will simply report these (now main/nightly) results the same way.
   android-e2e:
     permissions:
       contents: read
@@ -180,11 +197,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     needs: changes
-    # Builds the all-in-one image + starts docker-compose.test.yml (infra),
-    # so it re-runs when those change, plus android/** and the openapi
-    # contract the app consumes. Pure backend/** changes are covered by the
-    # Go checks in unit-tests.yml and don't re-run the emulator suite.
-    if: needs.changes.outputs.android == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'
+    # Runs on the nightly schedule and manual dispatch unconditionally; on
+    # push:main it's path-gated (builds the all-in-one image + starts
+    # docker-compose.test.yml (infra), plus android/** and the openapi
+    # contract the app consumes). Pure backend/** changes are covered by the
+    # Go checks in unit-tests.yml and don't re-run the emulator suite. The
+    # pull_request event matches none of these branches, so a PR never
+    # triggers it.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (needs.changes.outputs.android == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'))
 
     steps:
       - name: Checkout repository

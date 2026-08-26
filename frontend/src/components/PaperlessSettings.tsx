@@ -1,21 +1,21 @@
-import { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
+import { mdiFileDocumentOutline } from '@mdi/js';
 import {
+  Alert,
   Box,
+  Button,
   Card,
   CardContent,
-  Typography,
-  Divider,
-  TextField,
-  Button,
-  Stack,
-  Alert,
   CircularProgress,
+  Divider,
+  Stack,
+  SvgIcon,
+  TextField,
+  Typography,
 } from '@mui/material';
-import { mdiFileDocumentOutline } from '@mdi/js';
-import { SvgIcon } from '@mui/material';
-import { usePaperless } from '../hooks/usePaperless';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSnackbar } from '../context/SnackbarContext';
+import { usePaperless } from '../hooks/usePaperless';
 import { isHttpUrlString } from '../utils/linkResolution';
 
 // PaperlessSettings is the settings-page card for the Paperless-ngx connection
@@ -171,7 +171,9 @@ export default function PaperlessSettings() {
                   }}
                   disabled={paperless.testing}
                 >
-                  {paperless.testing ? t('paperless.settings.testingConnection') : t('paperless.settings.testConnectionButton')}
+                  {paperless.testing
+                    ? t('paperless.settings.testingConnection')
+                    : t('paperless.settings.testConnectionButton')}
                 </Button>
               )}
               {paperless.config && (

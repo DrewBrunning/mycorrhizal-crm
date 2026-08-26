@@ -1,7 +1,7 @@
 // CadencePolicy API calls -- T19,
 // relationship-maintenance rules ("stay in touch every N days") with
 // DERIVED health (never stored).
-import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
+import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 
 // Interaction types that can be opted into a cadence -- the pick-list for a
 // policy's qualifying_types. MUST be kept in sync by hand with
@@ -92,16 +92,23 @@ export async function getOverdueCadences(): Promise<OverdueCadencesResponse> {
 // {message, cadence_policy: ...}, update returns the policy raw.
 export async function createCadencePolicy(input: CadencePolicyInput): Promise<CadencePolicy> {
   const response = await apiFetch(`${API_BASE_URL}/cadence-policies`, {
-    method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(input),
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(input),
   });
   if (!response.ok) throw await parseErrorResponse(response);
   const result = await response.json();
   return result.cadence_policy;
 }
 
-export async function updateCadencePolicy(id: string, input: CadencePolicyInput): Promise<CadencePolicy> {
+export async function updateCadencePolicy(
+  id: string,
+  input: CadencePolicyInput,
+): Promise<CadencePolicy> {
   const response = await apiFetch(`${API_BASE_URL}/cadence-policies/${id}`, {
-    method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify(input),
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(input),
   });
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json(); // raw policy, NOT wrapped -- unlike create
@@ -109,7 +116,8 @@ export async function updateCadencePolicy(id: string, input: CadencePolicyInput)
 
 export async function deleteCadencePolicy(id: string): Promise<void> {
   const response = await apiFetch(`${API_BASE_URL}/cadence-policies/${id}`, {
-    method: 'DELETE', headers: getAuthHeaders(),
+    method: 'DELETE',
+    headers: getAuthHeaders(),
   });
   if (!response.ok) throw await parseErrorResponse(response);
 }

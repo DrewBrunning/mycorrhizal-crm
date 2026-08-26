@@ -1,24 +1,20 @@
-import { useTranslation } from 'react-i18next';
+import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
 import {
   Box,
-  Typography,
-  Stack,
-  TextField,
-  MenuItem,
-  FormControlLabel,
-  Switch,
-  IconButton,
   Button,
+  FormControlLabel,
+  IconButton,
+  MenuItem,
+  Stack,
+  Switch,
+  TextField,
+  Typography,
 } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import AddIcon from '@mui/icons-material/Add';
-import {
-  FieldDefinition,
-  FieldValueEditorState,
-  isMulti,
-} from '../api/fieldDefinitions';
-import { useRowKeys } from '../hooks/useRowKeys';
+import { useTranslation } from 'react-i18next';
+import { type FieldDefinition, type FieldValueEditorState, isMulti } from '../api/fieldDefinitions';
 import { useDateFormat } from '../DateFormatProvider';
+import { useRowKeys } from '../hooks/useRowKeys';
 
 interface FieldValueEditorProps {
   definition: FieldDefinition;
@@ -56,16 +52,16 @@ export default function FieldValueEditor({ definition, value, onChange }: FieldV
     onChange([...list, '']);
   };
 
-  const renderScalar = (draft: string | boolean, onScalarChange: (next: string | boolean) => void) => {
+  const renderScalar = (
+    draft: string | boolean,
+    onScalarChange: (next: string | boolean) => void,
+  ) => {
     switch (definition.type) {
       case 'boolean':
         return (
           <FormControlLabel
             control={
-              <Switch
-                checked={draft === true}
-                onChange={(e) => onScalarChange(e.target.checked)}
-              />
+              <Switch checked={draft === true} onChange={(e) => onScalarChange(e.target.checked)} />
             }
             label={t('customFields.booleanValue')}
           />
@@ -192,7 +188,9 @@ export default function FieldValueEditor({ definition, value, onChange }: FieldV
       <Stack spacing={1}>
         {(Array.isArray(value) ? value : []).map((row, index) => (
           <Stack key={rowKeys.keyAt(index)} direction="row" spacing={1} alignItems="center">
-            <Box sx={{ flexGrow: 1 }}>{renderScalar(row, (next) => updateRow(index, String(next)))}</Box>
+            <Box sx={{ flexGrow: 1 }}>
+              {renderScalar(row, (next) => updateRow(index, String(next)))}
+            </Box>
             <IconButton
               size="small"
               color="error"

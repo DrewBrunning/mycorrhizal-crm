@@ -1,12 +1,12 @@
-import { Box, Button, Chip, Paper, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
-import WarningIcon from '@mui/icons-material/Warning';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
 import ScheduleIcon from '@mui/icons-material/Schedule';
+import WarningIcon from '@mui/icons-material/Warning';
+import { Box, Button, Chip, Paper, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
-import { CadencePolicy } from '../api/cadencePolicies';
+import type { CadencePolicy } from '../api/cadencePolicies';
 import { useDateFormat } from '../DateFormatProvider';
 
 interface CadencePanelProps {
@@ -20,14 +20,22 @@ interface CadencePanelProps {
 // The contact-page cadence surface: the derived health read-out ("next due",
 // "X days overdue") plus edit/delete, or an empty state that invites setting
 // the first cadence. Pure presentation -- all data comes in via props.
-export default function CadencePanel({ policy, loading, onAdd, onEdit, onDelete }: CadencePanelProps) {
+export default function CadencePanel({
+  policy,
+  loading,
+  onAdd,
+  onEdit,
+  onDelete,
+}: CadencePanelProps) {
   const { t } = useTranslation();
   const { formatDate } = useDateFormat();
 
   if (loading) {
     return (
       <Paper sx={{ p: 3, textAlign: 'center' }}>
-        <Typography variant="body2" color="text.secondary">{t('cadence.loading')}</Typography>
+        <Typography variant="body2" color="text.secondary">
+          {t('cadence.loading')}
+        </Typography>
       </Paper>
     );
   }
@@ -38,7 +46,13 @@ export default function CadencePanel({ policy, loading, onAdd, onEdit, onDelete 
         <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
           {t('cadence.noPolicy')}
         </Typography>
-        <Button startIcon={<AddIcon />} onClick={onAdd} variant="contained" color="primary" size="small">
+        <Button
+          startIcon={<AddIcon />}
+          onClick={onAdd}
+          variant="contained"
+          color="primary"
+          size="small"
+        >
           {t('cadence.add')}
         </Button>
       </Paper>
@@ -57,8 +71,13 @@ export default function CadencePanel({ policy, loading, onAdd, onEdit, onDelete 
         <Box>
           <Box display="flex" alignItems="center" gap={1} mb={1}>
             {/* #211: a field label next to the Chip value, not a section heading. */}
-            <Typography variant="subtitle2" component="span">{t('cadence.interval')}</Typography>
-            <Chip label={t('cadence.intervalValue', { days: policy.target_interval_days })} size="small" />
+            <Typography variant="subtitle2" component="span">
+              {t('cadence.interval')}
+            </Typography>
+            <Chip
+              label={t('cadence.intervalValue', { days: policy.target_interval_days })}
+              size="small"
+            />
           </Box>
 
           {hasInteraction ? (
@@ -114,11 +133,7 @@ export default function CadencePanel({ policy, loading, onAdd, onEdit, onDelete 
         </Box>
 
         <Box display="flex" gap={1}>
-          <Button
-            startIcon={<EditIcon />}
-            size="small"
-            onClick={() => onEdit(policy)}
-          >
+          <Button startIcon={<EditIcon />} size="small" onClick={() => onEdit(policy)}>
             {t('common.edit')}
           </Button>
           <Button

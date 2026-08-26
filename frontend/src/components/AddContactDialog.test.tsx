@@ -1,12 +1,12 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import i18n from '../i18n/config';
 import '../i18n/config';
-import AddContactDialog from './AddContactDialog';
-import { SnackbarProvider } from '../context/SnackbarContext';
-import { DateFormatProvider } from '../DateFormatProvider';
 import { createContactRecord } from '../api/contacts';
 import { resolveEnabledFields } from '../contactFields';
+import { SnackbarProvider } from '../context/SnackbarContext';
+import { DateFormatProvider } from '../DateFormatProvider';
+import AddContactDialog from './AddContactDialog';
 
 vi.mock('../api/contacts', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api/contacts')>();
@@ -31,7 +31,7 @@ function renderDialog() {
           availableTags={[]}
         />
       </SnackbarProvider>
-    </DateFormatProvider>
+    </DateFormatProvider>,
   );
 }
 
@@ -107,7 +107,7 @@ test('submits card.language when set', async () => {
           enabledFields={resolveEnabledFields(['language'])}
         />
       </SnackbarProvider>
-    </DateFormatProvider>
+    </DateFormatProvider>,
   );
 
   fireEvent.change(screen.getByLabelText('First Name *'), { target: { value: 'Orchestra' } });
@@ -140,7 +140,7 @@ test('defaults the card language to the UI language when not touched', async () 
           enabledFields={resolveEnabledFields(['language'])}
         />
       </SnackbarProvider>
-    </DateFormatProvider>
+    </DateFormatProvider>,
   );
 
   fireEvent.change(screen.getByLabelText('First Name *'), { target: { value: 'Ada' } });
@@ -219,6 +219,10 @@ test('submits with just first name', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Create' }));
 
   await waitFor(() => expect(mocked).toHaveBeenCalled());
-  const components = mocked.mock.calls[0]![0].card.name!.components!;
-  expect(components.some((c: { kind: string; value: string }) => c.kind === 'given' && c.value === 'Test')).toBe(true);
+  const components = mocked.mock.calls[0]?.[0].card.name?.components;
+  expect(
+    components?.some(
+      (c: { kind: string; value: string }) => c.kind === 'given' && c.value === 'Test',
+    ),
+  ).toBe(true);
 });

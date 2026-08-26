@@ -1,6 +1,6 @@
 // Full-text search API (T11): search across contacts, notes, and
 // interactions. Backed by backend FTS5; user-scoped server-side.
-import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
+import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 
 export interface SearchContactHit {
   id: number;
@@ -61,7 +61,8 @@ export async function searchAll(query: string, limit?: number): Promise<SearchRe
 
 export async function rebuildSearchIndex(): Promise<void> {
   const response = await apiFetch(`${API_BASE_URL}/admin/search/rebuild`, {
-    method: 'POST', headers: getAuthHeaders(),
+    method: 'POST',
+    headers: getAuthHeaders(),
   });
   if (!response.ok) throw await parseErrorResponse(response);
 }

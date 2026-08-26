@@ -1,28 +1,33 @@
-import { useState, useEffect, useCallback } from 'react';
-import {
-  Box,
-  Typography,
-  Paper,
-  Chip,
-  IconButton,
-  Button,
-  Stack,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Autocomplete,
-  TextField,
-  CircularProgress,
-  Tooltip,
-} from '@mui/material';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
-import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import {
+  Autocomplete,
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  FormControl,
+  IconButton,
+  InputLabel,
+  MenuItem,
+  Paper,
+  Select,
+  Stack,
+  TextField,
+  Tooltip,
+  Typography,
+} from '@mui/material';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Household, HouseholdMember, HouseholdRole, HOUSEHOLD_ROLES } from '../api/households';
-import { Contact, getContacts } from '../api/contacts';
+import { type Contact, getContacts } from '../api/contacts';
+import {
+  HOUSEHOLD_ROLES,
+  type Household,
+  type HouseholdMember,
+  type HouseholdRole,
+} from '../api/households';
 import { handleFetchError } from '../utils/errorHandler';
 
 interface ContactBrief {
@@ -70,7 +75,7 @@ function ContactAutocomplete({
         setContacts(
           (response.contacts || [])
             .map(toContactBrief)
-            .filter((c): c is ContactBrief => c !== null && !excludeUids.has(c.uid))
+            .filter((c): c is ContactBrief => c !== null && !excludeUids.has(c.uid)),
         );
       } catch (err) {
         handleFetchError(err, 'searching contacts');
@@ -147,7 +152,7 @@ export default function HouseholdList({
   const membersFor = useCallback(
     (householdId: string): HouseholdMember[] =>
       members.filter((m) => m.household_id === householdId),
-    [members]
+    [members],
   );
 
   const memberName = (member: HouseholdMember): string => {
@@ -179,7 +184,15 @@ export default function HouseholdList({
                 a few characters wide. Below sm, drop the actions to their own
                 row instead (same idea as ContactsPage's card layout) so the
                 name gets the full card width. */}
-            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'flex-start' }, gap: 1 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: { xs: 'column', sm: 'row' },
+                justifyContent: 'space-between',
+                alignItems: { xs: 'stretch', sm: 'flex-start' },
+                gap: 1,
+              }}
+            >
               <Box sx={{ minWidth: 0 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                   <Typography variant="h6" component="span">
@@ -195,7 +208,13 @@ export default function HouseholdList({
                   {t('household.members', { count: householdMembers.length })}
                 </Typography>
               </Box>
-              <Box sx={{ display: 'flex', gap: 0.5, justifyContent: { xs: 'flex-end', sm: 'flex-start' } }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  gap: 0.5,
+                  justifyContent: { xs: 'flex-end', sm: 'flex-start' },
+                }}
+              >
                 <Tooltip title={t('household.suggestRelationships')}>
                   <span>
                     <IconButton
@@ -238,10 +257,7 @@ export default function HouseholdList({
                 </Typography>
               )}
               {householdMembers.map((member) => (
-                <Box
-                  key={member.id}
-                  sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
-                >
+                <Box key={member.id} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Typography variant="body2" sx={{ flex: 1 }}>
                     {memberName(member)}
                   </Typography>

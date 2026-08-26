@@ -1435,6 +1435,12 @@
     "createError": "Failed to create API token",
     "revokeError": "Failed to revoke API token",
     "revokeSuccess": "Token revoked successfully",
+    "revokeAllButton": "Revoke All",
+    "revokeAllError": "Failed to revoke all API tokens",
+    "revokeAllSuccess_one": "{{count}} token revoked",
+    "revokeAllSuccess_other": "{{count}} tokens revoked",
+    "rotateError": "Failed to rotate API token",
+    "rotateSuccess": "Token rotated successfully",
     "columns": {
       "name": "Name",
       "scope": "Scope",
@@ -1467,6 +1473,21 @@
       "title": "Revoke Token",
       "message": "Are you sure you want to revoke \"{{name}}\"? This cannot be undone.",
       "confirm": "Revoke"
+    },
+    "revokeAllDialog": {
+      "title": "Revoke All Tokens",
+      "message_one": "Are you sure you want to revoke {{count}} active API token? This cannot be undone and will immediately break anything using it.",
+      "message_other": "Are you sure you want to revoke all {{count}} active API tokens? This cannot be undone and will immediately break anything using them.",
+      "confirm": "Revoke All"
+    },
+    "rotateDialog": {
+      "title": "Rotate Token",
+      "message": "Rotating \"{{name}}\" immediately revokes it and issues a new token with the same name and scope. The new token will only be shown once.",
+      "confirm": "Rotate"
+    },
+    "rotatedDialog": {
+      "title": "Token Rotated",
+      "warning": "The old token is now revoked. This new token will not be shown again — copy it now and store it securely."
     },
     "expired": "Expired"
   },
@@ -1879,6 +1900,7 @@
     "shareDialog": {
       "title": "Share Contact",
       "description": "Send a filtered, one-time copy of this contact to another user on this instance. They choose whether to accept it.",
+      "frozenNotice": "This can't be recalled once sent — the recipient sees a snapshot from right now, and any edits you make to this contact afterward won't reach a pending or already-accepted share.",
       "recipient": "Recipient",
       "selectRecipient": "Choose a recipient…",
       "sharing": "Sharing…",

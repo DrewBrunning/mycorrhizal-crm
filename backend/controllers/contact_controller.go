@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"errors"
+	"fmt"
 	"mycorrhizal/attachments"
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/logger"
@@ -376,8 +377,15 @@ func GetContacts(c *gin.Context) {
 		query = query.Where("is_favorite = ?", true)
 	}
 
-	// Apply search filter using parameterization
+	// Apply search filter using parameterization. The term is length-bounded
+	// (issue #415): applyContactSearch wraps it in %...% LIKE clauses and an
+	// FTS5 MATCH, so an unbounded term is a per-request cost an attacker can
+	// drive, not a search.
 	if searchTerm := c.Query("search"); searchTerm != "" {
+		if len([]rune(searchTerm)) > services.MaxSearchTermLen {
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("search", fmt.Sprintf("search must be at most %d characters", services.MaxSearchTermLen)))
+			return
+		}
 		query = applyContactSearch(query, userID, searchTerm)
 	}
 

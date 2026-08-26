@@ -1,11 +1,11 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
-  getConversationAgenda,
+  type ConversationAgenda,
   createConversationAgenda,
-  updateConversationAgenda,
-  discussConversationAgenda,
   deleteConversationAgenda,
-  ConversationAgenda,
+  discussConversationAgenda,
+  getConversationAgenda,
+  updateConversationAgenda,
 } from '../api/conversationAgenda';
 import { handleFetchError } from '../utils/errorHandler';
 
@@ -33,7 +33,7 @@ export function useConversationAgenda(entityId: string | undefined) {
         setLoading(false);
       }
     },
-    [entityId]
+    [entityId],
   );
 
   const openItems = useMemo(() => items.filter((i) => i.discussed_at == null), [items]);
@@ -44,7 +44,7 @@ export function useConversationAgenda(entityId: string | undefined) {
       await createConversationAgenda(data);
       await refresh();
     },
-    [refresh]
+    [refresh],
   );
 
   const handleUpdate = useCallback(
@@ -52,7 +52,7 @@ export function useConversationAgenda(entityId: string | undefined) {
       await updateConversationAgenda(id, data);
       await refresh();
     },
-    [refresh]
+    [refresh],
   );
 
   const handleDiscuss = useCallback(
@@ -60,7 +60,7 @@ export function useConversationAgenda(entityId: string | undefined) {
       await discussConversationAgenda(id, activityId);
       await refresh();
     },
-    [refresh]
+    [refresh],
   );
 
   const handleDelete = useCallback(
@@ -68,7 +68,7 @@ export function useConversationAgenda(entityId: string | undefined) {
       await deleteConversationAgenda(id);
       await refresh();
     },
-    [refresh]
+    [refresh],
   );
 
   return {

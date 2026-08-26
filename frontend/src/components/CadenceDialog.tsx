@@ -1,10 +1,25 @@
-import { useState, useEffect } from 'react';
-import { DialogTitle, DialogContent, DialogActions, TextField, Button, Box, FormGroup, FormControlLabel, Checkbox, Typography } from '@mui/material';
-import AppDialog from './AppDialog';
+import {
+  Box,
+  Button,
+  Checkbox,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControlLabel,
+  FormGroup,
+  TextField,
+  Typography,
+} from '@mui/material';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CadencePolicy, CadencePolicyInput, QUALIFYING_INTERACTION_TYPE_TOKENS } from '../api/cadencePolicies';
+import {
+  type CadencePolicy,
+  type CadencePolicyInput,
+  QUALIFYING_INTERACTION_TYPE_TOKENS,
+} from '../api/cadencePolicies';
 import { useSnackbar } from '../context/SnackbarContext';
-import { handleError, getErrorMessage } from '../utils/errorHandler';
+import { getErrorMessage, handleError } from '../utils/errorHandler';
+import AppDialog from './AppDialog';
 
 interface CadenceDialogProps {
   open: boolean;
@@ -14,7 +29,13 @@ interface CadenceDialogProps {
   policy?: CadencePolicy | null; // undefined/null = create mode
 }
 
-export default function CadenceDialog({ open, onClose, onSave, entityId, policy }: CadenceDialogProps) {
+export default function CadenceDialog({
+  open,
+  onClose,
+  onSave,
+  entityId,
+  policy,
+}: CadenceDialogProps) {
   const { t } = useTranslation();
   const { showError } = useSnackbar();
   const [intervalDays, setIntervalDays] = useState<number>(30);
@@ -34,7 +55,7 @@ export default function CadenceDialog({ open, onClose, onSave, entityId, policy 
 
   const toggleType = (token: string) => {
     setQualifyingTypes((prev) =>
-      prev.includes(token) ? prev.filter((t) => t !== token) : [...prev, token]
+      prev.includes(token) ? prev.filter((t) => t !== token) : [...prev, token],
     );
   };
 
@@ -51,7 +72,11 @@ export default function CadenceDialog({ open, onClose, onSave, entityId, policy 
     }
     setSaving(true);
     try {
-      await onSave({ entity_id: entityId, target_interval_days: intervalDays, qualifying_types: qualifyingTypes });
+      await onSave({
+        entity_id: entityId,
+        target_interval_days: intervalDays,
+        qualifying_types: qualifyingTypes,
+      });
       handleClose();
     } catch (err) {
       handleError(err, { operation: 'saving cadence' }, { showError });
@@ -63,9 +88,7 @@ export default function CadenceDialog({ open, onClose, onSave, entityId, policy 
 
   return (
     <AppDialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-      <DialogTitle>
-        {isEditing ? t('cadence.editTitle') : t('cadence.createTitle')}
-      </DialogTitle>
+      <DialogTitle>{isEditing ? t('cadence.editTitle') : t('cadence.createTitle')}</DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
           <TextField
@@ -104,9 +127,7 @@ export default function CadenceDialog({ open, onClose, onSave, entityId, policy 
               ))}
             </FormGroup>
           </Box>
-          {error && (
-            <Box sx={{ color: 'error.main', fontSize: '0.875rem' }}>{error}</Box>
-          )}
+          {error && <Box sx={{ color: 'error.main', fontSize: '0.875rem' }}>{error}</Box>}
         </Box>
       </DialogContent>
       <DialogActions>

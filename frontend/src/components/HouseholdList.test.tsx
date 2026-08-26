@@ -1,9 +1,9 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
+import type { Contact } from '../api/contacts';
+import type { Household, HouseholdMember } from '../api/households';
 import HouseholdList from './HouseholdList';
-import { Household, HouseholdMember } from '../api/households';
-import { Contact } from '../api/contacts';
 
 afterEach(cleanup);
 
@@ -79,7 +79,7 @@ test('Add Member reveals the contact search autocomplete', () => {
     vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ contacts: [], total: 0, page: 1, limit: 40 }),
-    })
+    }),
   );
 
   renderList();
@@ -104,5 +104,9 @@ test('changing a member role calls onRoleChange', async () => {
 
 test('shows the empty state when there are no households', () => {
   renderList({ households: [], members: [] });
-  expect(screen.getByText('No households yet. Create one to start suggesting relationships between the people who live together.')).toBeInTheDocument();
+  expect(
+    screen.getByText(
+      'No households yet. Create one to start suggesting relationships between the people who live together.',
+    ),
+  ).toBeInTheDocument();
 });

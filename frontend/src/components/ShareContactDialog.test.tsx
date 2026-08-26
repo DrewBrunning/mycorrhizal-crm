@@ -1,8 +1,8 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import ShareContactDialog from './ShareContactDialog';
 import { EXPORT_FIELD_SECTIONS } from '../api/export';
+import ShareContactDialog from './ShareContactDialog';
 
 afterEach(cleanup);
 afterEach(() => vi.unstubAllGlobals());
@@ -27,7 +27,7 @@ function mockFetchByUrl(handlers: Record<string, (url: string, init?: RequestIni
         }
       }
       throw new Error(`unexpected fetch: ${url}`);
-    })
+    }),
   );
 }
 
@@ -57,6 +57,14 @@ test('share button is disabled until a recipient is chosen', async () => {
   expect(screen.getByRole('button', { name: 'Share' })).toBeDisabled();
 });
 
+test('warns the sender the share is frozen and cannot be recalled once sent', async () => {
+  mockFetchByUrl({ '/users/directory': directoryResponse });
+  renderDialog();
+
+  await waitFor(() => expect(fetch).toHaveBeenCalled());
+  expect(screen.getByText(/can't be recalled once sent/i)).toBeInTheDocument();
+});
+
 test('sensitive sections stay locked by default, same guard as export', async () => {
   mockFetchByUrl({ '/users/directory': directoryResponse });
   renderDialog();
@@ -72,7 +80,7 @@ test('sharing sends the selected recipient, sections, and includeSensitive=false
   mockFetchByUrl({
     '/users/directory': directoryResponse,
     '/contact-shares': (_url, init) => {
-      sentBody = JSON.parse(init!.body as string);
+      sentBody = JSON.parse(init?.body as string);
       return { message: 'Share created', contact_share: { id: 'share-1' } };
     },
   });
@@ -95,7 +103,7 @@ test('sharing sends the selected recipient, sections, and includeSensitive=false
   expect(sentBody?.vcard_uid).toBe('alice-uid');
   expect(sentBody?.include_sensitive).toBe(false);
   expect(sentBody?.sections).toEqual(
-    expect.arrayContaining(EXPORT_FIELD_SECTIONS.filter((s) => !s.sensitive).map((s) => s.token))
+    expect.arrayContaining(EXPORT_FIELD_SECTIONS.filter((s) => !s.sensitive).map((s) => s.token)),
   );
 });
 
@@ -104,7 +112,7 @@ test('revealing and selecting a sensitive section sends the explicit opt-in', as
   mockFetchByUrl({
     '/users/directory': directoryResponse,
     '/contact-shares': (_url, init) => {
-      sentBody = JSON.parse(init!.body as string);
+      sentBody = JSON.parse(init?.body as string);
       return { message: 'Share created', contact_share: { id: 'share-1' } };
     },
   });

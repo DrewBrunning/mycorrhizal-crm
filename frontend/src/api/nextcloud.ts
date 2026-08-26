@@ -3,7 +3,7 @@
 // links are written as ExternalIdentity (system: "nextcloud"). All of these go
 // through the backend, never straight to the instance (the app password stays
 // server-side, encrypted at rest).
-import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
+import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 
 export interface WebDAVConfigResponse {
   base_url: string;
@@ -36,14 +36,18 @@ export interface WebDAVItem {
 }
 
 export async function getNextcloudConfig(): Promise<WebDAVConfigResponse> {
-  const response = await apiFetch(`${API_BASE_URL}/nextcloud/config`, { headers: getAuthHeaders() });
+  const response = await apiFetch(`${API_BASE_URL}/nextcloud/config`, {
+    headers: getAuthHeaders(),
+  });
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json();
 }
 
 export async function saveNextcloudConfig(input: WebDAVConfigInput): Promise<WebDAVConfigResponse> {
   const response = await apiFetch(`${API_BASE_URL}/nextcloud/config`, {
-    method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify(input),
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(input),
   });
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json();
@@ -51,14 +55,16 @@ export async function saveNextcloudConfig(input: WebDAVConfigInput): Promise<Web
 
 export async function deleteNextcloudConfig(): Promise<void> {
   const response = await apiFetch(`${API_BASE_URL}/nextcloud/config`, {
-    method: 'DELETE', headers: getAuthHeaders(),
+    method: 'DELETE',
+    headers: getAuthHeaders(),
   });
   if (!response.ok) throw await parseErrorResponse(response);
 }
 
 export async function testNextcloudConnection(): Promise<WebDAVConnectionTestResult> {
   const response = await apiFetch(`${API_BASE_URL}/nextcloud/test-connection`, {
-    method: 'POST', headers: getAuthHeaders(),
+    method: 'POST',
+    headers: getAuthHeaders(),
   });
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json();
@@ -76,18 +82,30 @@ export async function getNextcloudDir(path?: string): Promise<WebDAVItem[]> {
 
 export async function linkNextcloudItem(
   contactUid: string,
-  item: { path: string; name: string; type: 'file' | 'dir'; size?: number; modified_at?: string; file_id?: string }
+  item: {
+    path: string;
+    name: string;
+    type: 'file' | 'dir';
+    size?: number;
+    modified_at?: string;
+    file_id?: string;
+  },
 ): Promise<void> {
   const response = await apiFetch(`${API_BASE_URL}/nextcloud/contacts/${contactUid}/link`, {
-    method: 'POST', headers: getAuthHeaders(),
+    method: 'POST',
+    headers: getAuthHeaders(),
     body: JSON.stringify(item),
   });
   if (!response.ok) throw await parseErrorResponse(response);
 }
 
 export async function unlinkNextcloudItem(contactUid: string, identityId: string): Promise<void> {
-  const response = await apiFetch(`${API_BASE_URL}/nextcloud/contacts/${contactUid}/links/${identityId}`, {
-    method: 'DELETE', headers: getAuthHeaders(),
-  });
+  const response = await apiFetch(
+    `${API_BASE_URL}/nextcloud/contacts/${contactUid}/links/${identityId}`,
+    {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    },
+  );
   if (!response.ok) throw await parseErrorResponse(response);
 }

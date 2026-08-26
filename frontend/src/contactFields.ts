@@ -65,8 +65,18 @@ export const CONTACT_FIELDS: ContactFieldDef[] = [
   { key: 'addresses', labelKey: 'contacts.address', group: 'communication', multiValue: true },
   { key: 'links', labelKey: 'contacts.urls', group: 'communication', multiValue: true },
   { key: 'imppAddresses', labelKey: 'contacts.impps', group: 'communication', multiValue: true },
-  { key: 'socialProfiles', labelKey: 'contacts.socialProfiles', group: 'communication', multiValue: true },
-  { key: 'otherOnlineServices', labelKey: 'contacts.otherOnlineServices', group: 'communication', multiValue: true },
+  {
+    key: 'socialProfiles',
+    labelKey: 'contacts.socialProfiles',
+    group: 'communication',
+    multiValue: true,
+  },
+  {
+    key: 'otherOnlineServices',
+    labelKey: 'contacts.otherOnlineServices',
+    group: 'communication',
+    multiValue: true,
+  },
 
   { key: 'prefix', labelKey: 'contacts.prefix', group: 'name', multiValue: false },
   { key: 'middle_name', labelKey: 'contacts.middleName', group: 'name', multiValue: false },
@@ -75,22 +85,42 @@ export const CONTACT_FIELDS: ContactFieldDef[] = [
 
   { key: 'organizations', labelKey: 'contacts.organization', group: 'work', multiValue: true },
   { key: 'titles', labelKey: 'contacts.titles', group: 'work', multiValue: true },
-  { key: 'work_information', labelKey: 'contacts.workInformation', group: 'work', multiValue: false },
+  {
+    key: 'work_information',
+    labelKey: 'contacts.workInformation',
+    group: 'work',
+    multiValue: false,
+  },
 
   { key: 'gender', labelKey: 'contacts.gender', group: 'personal', multiValue: false },
   { key: 'birthday', labelKey: 'contacts.birthday', group: 'personal', multiValue: false },
   { key: 'anniversary', labelKey: 'contacts.anniversary', group: 'personal', multiValue: false },
   { key: 'anniversaries', labelKey: 'contacts.anniversaries', group: 'personal', multiValue: true },
   { key: 'speakToAs', labelKey: 'contacts.speakToAsLabel', group: 'personal', multiValue: true },
-  { key: 'personalInfo', labelKey: 'contacts.personalInfoLabel', group: 'personal', multiValue: true },
+  {
+    key: 'personalInfo',
+    labelKey: 'contacts.personalInfoLabel',
+    group: 'personal',
+    multiValue: true,
+  },
   { key: 'keywords', labelKey: 'contacts.keywordsLabel', group: 'personal', multiValue: true },
   { key: 'cardNotes', labelKey: 'contacts.cardNotesLabel', group: 'personal', multiValue: true },
-  { key: 'preferredLanguages', labelKey: 'contacts.preferredLanguagesLabel', group: 'personal', multiValue: true },
+  {
+    key: 'preferredLanguages',
+    labelKey: 'contacts.preferredLanguagesLabel',
+    group: 'personal',
+    multiValue: true,
+  },
   { key: 'cardKind', labelKey: 'contacts.cardKindLabel', group: 'personal', multiValue: false },
   { key: 'language', labelKey: 'contacts.language', group: 'personal', multiValue: false },
 
   { key: 'how_we_met', labelKey: 'contacts.howWeMet', group: 'mycorrhizal', multiValue: false },
-  { key: 'contact_information', labelKey: 'contacts.contactInformation', group: 'mycorrhizal', multiValue: false },
+  {
+    key: 'contact_information',
+    labelKey: 'contacts.contactInformation',
+    group: 'mycorrhizal',
+    multiValue: false,
+  },
 ];
 
 export const CONTACT_FIELD_GROUPS: ContactFieldDef['group'][] = [
@@ -130,7 +160,14 @@ export const CONTACT_TYPE_OPTIONS = ['home', 'work', 'cell', 'fax', 'other'] as 
 // these are convenience suggestions for the free-solo Autocomplete, not a
 // constrained set. The i18n keys are t(`contacts.${value}`); unrecognized
 // free-text values are stored and displayed verbatim.
-export const GENDER_OPTIONS = ['male', 'female', 'non_binary', 'genderfluid', 'other', 'prefer_not_to_say'] as const;
+export const GENDER_OPTIONS = [
+  'male',
+  'female',
+  'non_binary',
+  'genderfluid',
+  'other',
+  'prefer_not_to_say',
+] as const;
 
 // vCard CONTEXT options (RFC 9554 §4.1.2): the standard usage contexts shared
 // by the neutral model's contexts arrays on emails/phones/addresses/online

@@ -1,6 +1,6 @@
-import { useState, useCallback } from 'react';
-import { getDuplicatePairs, dismissDuplicatePair, DuplicatePair } from '../api/duplicates';
-import { handleFetchError, handleError, ErrorNotifier } from '../utils/errorHandler';
+import { useCallback, useState } from 'react';
+import { type DuplicatePair, dismissDuplicatePair, getDuplicatePairs } from '../api/duplicates';
+import { type ErrorNotifier, handleError, handleFetchError } from '../utils/errorHandler';
 
 // Page size for the scan's offset pagination (backend caps at 100).
 const DUPLICATES_PAGE_SIZE = 100;
@@ -60,7 +60,7 @@ export function useDuplicatePairs(notifier?: ErrorNotifier) {
         throw err;
       }
     },
-    [refresh, notifier]
+    [refresh, notifier],
   );
 
   return { pairs, total, loading, error, refresh, dismiss };

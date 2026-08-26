@@ -528,9 +528,13 @@ type ApiTokenCreateResponse struct {
 
 // WebhookInput is the DTO for creating/updating a webhook
 type WebhookInput struct {
-	Name     string   `json:"name" validate:"required,min=1,max=200"`
-	URL      string   `json:"url" validate:"required,http_url"`
-	Events   []string `json:"events" validate:"required,min=1,dive,oneof=contact.created contact.updated contact.deleted note.created note.updated note.deleted activity.created activity.updated activity.deleted reminder.triggered birthday.occurred"`
+	Name string `json:"name" validate:"required,min=1,max=200"`
+	URL  string `json:"url" validate:"required,http_url"`
+	// max=12 matches the number of oneof tokens below: the array-length bound
+	// (issue #415) exists because dive/oneof alone lets a client send
+	// thousands of *duplicate* valid tokens, turning one webhook into a
+	// thousands-wide fan-out target on every matching event.
+	Events   []string `json:"events" validate:"required,min=1,max=12,dive,oneof=contact.created contact.updated contact.deleted note.created note.updated note.deleted activity.created activity.updated activity.deleted reminder.triggered birthday.occurred"`
 	IsActive bool     `json:"is_active"`
 }
 

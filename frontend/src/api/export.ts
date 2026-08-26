@@ -6,7 +6,10 @@ import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './cl
  * other export-shaped API modules (e.g. api/audit.ts's exportAuditLog) can
  * reuse the same download mechanics instead of duplicating them.
  */
-export async function downloadFileFromResponse(response: Response, defaultFilename: string): Promise<void> {
+export async function downloadFileFromResponse(
+  response: Response,
+  defaultFilename: string,
+): Promise<void> {
   // Get the filename from Content-Disposition header or use default
   const contentDisposition = response.headers.get('Content-Disposition');
   let filename = defaultFilename;
@@ -94,7 +97,10 @@ export interface ExportSelection {
  * filtered to the chosen field sections. Identity data (name/UID) is always
  * included by the backend regardless of selection.
  */
-export async function exportContacts(format: ExportFormat, selection: ExportSelection): Promise<void> {
+export async function exportContacts(
+  format: ExportFormat,
+  selection: ExportSelection,
+): Promise<void> {
   const params = new URLSearchParams();
   params.set('sections', selection.sections.join(','));
   if (selection.includeSensitive) {
@@ -133,13 +139,19 @@ export async function exportContacts(format: ExportFormat, selection: ExportSele
  * Export a single contact in the given format. Adds ?vcard_uid= to scope the
  * export to one contact, then delegates to the existing export endpoint.
  */
-export async function exportContact(format: ExportFormat, vcardUID: string, selection?: ExportSelection): Promise<void> {
+export async function exportContact(
+  format: ExportFormat,
+  vcardUID: string,
+  selection?: ExportSelection,
+): Promise<void> {
   const sections = selection?.sections ?? EXPORT_FIELD_SECTIONS.map((s) => s.token);
   const includeSensitive = selection?.includeSensitive ?? false;
 
   const params = new URLSearchParams();
   params.set('vcard_uid', vcardUID);
-  sections.forEach((s) => params.append('sections', s));
+  sections.forEach((s) => {
+    params.append('sections', s);
+  });
   if (includeSensitive) {
     params.set('include_sensitive', 'true');
   }

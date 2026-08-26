@@ -1,23 +1,23 @@
-import { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
+  Alert,
   Box,
-  Typography,
-  Tabs,
-  Tab,
+  Button,
+  Chip,
+  LinearProgress,
   List,
   ListItem,
   ListItemText,
-  Chip,
-  Button,
-  LinearProgress,
-  Alert,
+  Tab,
+  Tabs,
+  Typography,
 } from '@mui/material';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { ContactShare, ContactShareStatus } from './api/contactShares';
+import AcceptContactShareDialog from './components/AcceptContactShareDialog';
 import { useSnackbar } from './context/SnackbarContext';
 import { useContactShares } from './hooks/useContactShares';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
-import AcceptContactShareDialog from './components/AcceptContactShareDialog';
-import { ContactShare, ContactShareStatus } from './api/contactShares';
 
 function statusColor(status: ContactShareStatus): 'success' | 'error' | 'warning' {
   switch (status) {
@@ -71,52 +71,61 @@ export default function ContactSharesPage() {
       </Tabs>
 
       {loading && <LinearProgress sx={{ mb: 2 }} />}
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
 
-      {tab === 'incoming' && (
+      {tab === 'incoming' &&
         // T93/#192: keep the empty state OUT of the <List> — a <p> directly
         // inside a <ul> is invalid HTML that the axe `list` rule flags.
-        incoming.length === 0 && !loading ? (
+        (incoming.length === 0 && !loading ? (
           <Typography variant="body2" color="text.secondary">
             {t('contactShares.incoming.empty')}
           </Typography>
         ) : (
           <List>
             {incoming.map((share) => (
-            <ListItem
-              key={share.id}
-              divider
-              secondaryAction={
-                share.status === 'pending' && (
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button size="small" variant="contained" onClick={() => setAcceptingShare(share)}>
-                      {t('contactShares.incoming.accept')}
-                    </Button>
-                    <Button size="small" onClick={() => handleDeclineClick(share)}>
-                      {t('contactShares.incoming.decline')}
-                    </Button>
-                  </Box>
-                )
-              }
-            >
-              <ListItemText
-                primary={share.contact_display_name}
-                secondary={t('contactShares.incoming.from', { username: usernames[String(share.from_user_id)] || share.from_user_id })}
-              />
-              <Chip
-                size="small"
-                label={t(`contactShares.status.${share.status}`)}
-                color={statusColor(share.status)}
-                sx={{ mr: 2 }}
-              />
-            </ListItem>
+              <ListItem
+                key={share.id}
+                divider
+                secondaryAction={
+                  share.status === 'pending' && (
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        onClick={() => setAcceptingShare(share)}
+                      >
+                        {t('contactShares.incoming.accept')}
+                      </Button>
+                      <Button size="small" onClick={() => handleDeclineClick(share)}>
+                        {t('contactShares.incoming.decline')}
+                      </Button>
+                    </Box>
+                  )
+                }
+              >
+                <ListItemText
+                  primary={share.contact_display_name}
+                  secondary={t('contactShares.incoming.from', {
+                    username: usernames[String(share.from_user_id)] || share.from_user_id,
+                  })}
+                />
+                <Chip
+                  size="small"
+                  label={t(`contactShares.status.${share.status}`)}
+                  color={statusColor(share.status)}
+                  sx={{ mr: 2 }}
+                />
+              </ListItem>
             ))}
           </List>
-        )
-      )}
+        ))}
 
-      {tab === 'outgoing' && (
-        outgoing.length === 0 && !loading ? (
+      {tab === 'outgoing' &&
+        (outgoing.length === 0 && !loading ? (
           <Typography variant="body2" color="text.secondary">
             {t('contactShares.outgoing.empty')}
           </Typography>
@@ -126,14 +135,19 @@ export default function ContactSharesPage() {
               <ListItem key={share.id} divider>
                 <ListItemText
                   primary={share.contact_display_name}
-                  secondary={t('contactShares.outgoing.to', { username: usernames[String(share.to_user_id)] || share.to_user_id })}
+                  secondary={t('contactShares.outgoing.to', {
+                    username: usernames[String(share.to_user_id)] || share.to_user_id,
+                  })}
                 />
-                <Chip size="small" label={t(`contactShares.status.${share.status}`)} color={statusColor(share.status)} />
+                <Chip
+                  size="small"
+                  label={t(`contactShares.status.${share.status}`)}
+                  color={statusColor(share.status)}
+                />
               </ListItem>
             ))}
           </List>
-        )
-      )}
+        ))}
 
       {acceptingShare && (
         <AcceptContactShareDialog

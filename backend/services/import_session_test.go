@@ -110,6 +110,33 @@ func TestCreateVCFSession_DistinctWellFormedIDs(t *testing.T) {
 	assert.True(t, sd.session.PreviewCached)
 }
 
+// TestCountActive pins issue #415's per-user import-session bound: CountActive
+// must see only live, own sessions — other users' sessions and expired ones
+// don't count toward a user's quota.
+func TestCountActive(t *testing.T) {
+	m := NewImportSessionManager()
+
+	// Two sessions for user 1, one for user 2.
+	m.CreateCSVSession(1, []string{"First"}, [][]string{{"Alice"}})
+	m.CreateVCFSession(1, []VCFContactData{{Contact: &models.Contact{Firstname: "Bob"}}}, []models.ImportRowPreview{{RowIndex: 0}})
+	m.CreateCSVSession(2, []string{"First"}, [][]string{{"Carol"}})
+	assert.Equal(t, 2, m.CountActive(1))
+	assert.Equal(t, 1, m.CountActive(2))
+
+	// An expired session stops counting toward the quota (a user whose
+	// sessions aged out can upload again without deleting anything).
+	expiredID := m.CreateCSVSession(1, []string{"First"}, [][]string{{"Dan"}})
+	m.mu.Lock()
+	m.sessions[expiredID].session.ExpiresAt = time.Now().Add(-time.Minute)
+	m.mu.Unlock()
+	assert.Equal(t, 2, m.CountActive(1), "expired sessions must not count toward the quota")
+
+	// A consumed (deleted) session stops counting too.
+	m.CreateCSVSession(1, []string{"First"}, [][]string{{"Eve"}})
+	assert.Equal(t, 3, m.CountActive(1))
+	require.Positive(t, MaxImportSessionsPerUser, "the per-user session cap must be a positive number")
+}
+
 // --- get -----------------------------------------------------------------------
 
 func TestGet_HappyPath(t *testing.T) {

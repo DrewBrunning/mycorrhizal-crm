@@ -1,8 +1,8 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
+import type { CardNote } from '../api/contacts';
 import CardNotesEditor from './CardNotesEditor';
-import { CardNote } from '../api/contacts';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
 afterEach(cleanup);

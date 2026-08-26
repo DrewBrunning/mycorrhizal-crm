@@ -1,5 +1,5 @@
-import { test, expect } from '@playwright/test';
-import { createTestContact, deleteTestContact, waitForLoading, uniqueDigits } from './fixtures';
+import { expect, test } from '@playwright/test';
+import { createTestContact, deleteTestContact, uniqueDigits, waitForLoading } from './fixtures';
 import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 
 /**
@@ -58,7 +58,9 @@ test.describe('Search (folded into Contacts)', () => {
       // The notes/activities section is collapsed by default; expand it and
       // assert the note body is reachable — the whole point of the fold is
       // that a note-only match is still findable from the merged page.
-      await expect(page.getByText(/matches in notes and activities/)).toBeVisible({ timeout: 15000 });
+      await expect(page.getByText(/matches in notes and activities/)).toBeVisible({
+        timeout: 15000,
+      });
       await page.getByText(/matches in notes and activities/).click();
       await expect(page.getByText(new RegExp(token))).toBeVisible();
     } finally {
@@ -104,7 +106,9 @@ test.describe('Search (folded into Contacts)', () => {
     }
   });
 
-  test('finds a contact by address via the legacy contacts list search (T38)', async ({ request }) => {
+  test('finds a contact by address via the legacy contacts list search (T38)', async ({
+    request,
+  }) => {
     // T38's other half: the legacy /contacts?search= LIKE fallback
     // (applyContactSearch) must also match address text. The token is
     // absent from every name/email/phone field so the match can only
@@ -114,19 +118,26 @@ test.describe('Search (folded into Contacts)', () => {
     const contact = await createTestContact(request, {
       firstname,
       lastname: 'Target',
-      addresses: [{ type: 'home', street: `${streetToken} Lane`, city: 'Westwood', region: '', postal: '', country: '' }],
+      addresses: [
+        {
+          type: 'home',
+          street: `${streetToken} Lane`,
+          city: 'Westwood',
+          region: '',
+          postal: '',
+          country: '',
+        },
+      ],
     });
 
     try {
       const response = await request.get(
-        `${API_BASE_URL}/contacts?search=${encodeURIComponent(streetToken)}`
+        `${API_BASE_URL}/contacts?search=${encodeURIComponent(streetToken)}`,
       );
       expect(response.ok()).toBeTruthy();
       const body = await response.json();
       expect(body.contacts).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ firstname }),
-        ])
+        expect.arrayContaining([expect.objectContaining({ firstname })]),
       );
       expect(body.contacts.length).toBe(1);
     } finally {
@@ -146,7 +157,16 @@ test.describe('Search (folded into Contacts)', () => {
     const contact = await createTestContact(request, {
       firstname,
       lastname: 'Target',
-      addresses: [{ type: 'home', street: `${streetToken} Court`, city: 'Meadowview', region: '', postal: '', country: '' }],
+      addresses: [
+        {
+          type: 'home',
+          street: `${streetToken} Court`,
+          city: 'Meadowview',
+          region: '',
+          postal: '',
+          country: '',
+        },
+      ],
     });
 
     try {
@@ -171,7 +191,10 @@ test.describe('Search (folded into Contacts)', () => {
     }
   });
 
-  test('finds a contact by phone across formats via the merged search (T69)', async ({ page, request }) => {
+  test('finds a contact by phone across formats via the merged search (T69)', async ({
+    page,
+    request,
+  }) => {
     // T69: the FTS index previously indexed phone numbers only as the raw
     // `phone` scalar with the punctuation-splitting unicode61 tokenizer, so
     // "(800) 555-1234" became tokens 800/555/1234 and a query typed as
@@ -209,7 +232,9 @@ test.describe('Search (folded into Contacts)', () => {
     }
   });
 
-  test('finds a contact by phone across formats via the legacy contacts list search (T69)', async ({ request }) => {
+  test('finds a contact by phone across formats via the legacy contacts list search (T69)', async ({
+    request,
+  }) => {
     // T69's other half: the legacy /contacts?search= LIKE fallback
     // (applyContactSearch) must also match a phone across formats, via the
     // denormalized phones_normalized column. The digits are absent from every
@@ -220,19 +245,22 @@ test.describe('Search (folded into Contacts)', () => {
     const contact = await createTestContact(request, {
       firstname,
       lastname: 'Target',
-      phones: [{ type: 'cell', value: `(${tenDigits.slice(0, 3)}) ${tenDigits.slice(3, 6)}-${tenDigits.slice(6)}` }],
+      phones: [
+        {
+          type: 'cell',
+          value: `(${tenDigits.slice(0, 3)}) ${tenDigits.slice(3, 6)}-${tenDigits.slice(6)}`,
+        },
+      ],
     });
 
     try {
       const response = await request.get(
-        `${API_BASE_URL}/contacts?search=${encodeURIComponent(tenDigits)}`
+        `${API_BASE_URL}/contacts?search=${encodeURIComponent(tenDigits)}`,
       );
       expect(response.ok()).toBeTruthy();
       const body = await response.json();
       expect(body.contacts).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ firstname }),
-        ])
+        expect.arrayContaining([expect.objectContaining({ firstname })]),
       );
       expect(body.contacts.length).toBe(1);
     } finally {
@@ -240,7 +268,10 @@ test.describe('Search (folded into Contacts)', () => {
     }
   });
 
-  test('finds a contact by a non-primary phone via the merged search (T69)', async ({ page, request }) => {
+  test('finds a contact by a non-primary phone via the merged search (T69)', async ({
+    page,
+    request,
+  }) => {
     // T69's fourth gap: contacts_fts previously indexed only the flat primary
     // `phone` scalar, so a contact could not be found by their second or third
     // number even when typed perfectly. phones_normalized is built from every
@@ -304,7 +335,9 @@ test.describe('Search (folded into Contacts)', () => {
     const response = await request.get(`${API_BASE_URL}/search?q=brother`);
     expect(response.ok()).toBeTruthy();
     const body = await response.json();
-    expect(body.resolved_relation, '"brother" must resolve to the sibling_of token').toBe('sibling_of');
+    expect(body.resolved_relation, '"brother" must resolve to the sibling_of token').toBe(
+      'sibling_of',
+    );
   });
 
   // T11's synonym half is the only visible proof the registry works, and it

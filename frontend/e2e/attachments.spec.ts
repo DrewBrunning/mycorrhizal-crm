@@ -1,12 +1,14 @@
-import { test, expect } from './fixtures';
-import { createTestContact, deleteTestContact } from './fixtures';
+import { createTestContact, deleteTestContact, expect, test } from './fixtures';
 import { API_BASE_URL } from './global-setup';
 
 // N7: a contact's attachments
 // section supports upload, list, and delete through the real UI.
 test.describe('Contact attachments', () => {
   test('uploads an attachment and deletes it', async ({ page, request }) => {
-    const contact = await createTestContact(page.request, { firstname: 'E2E-Attach', lastname: `N7${Date.now()}` });
+    const contact = await createTestContact(page.request, {
+      firstname: 'E2E-Attach',
+      lastname: `N7${Date.now()}`,
+    });
 
     try {
       // Stub confirm to true (before navigation) so the delete confirmation

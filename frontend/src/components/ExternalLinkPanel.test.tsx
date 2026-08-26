@@ -1,10 +1,10 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import ExternalLinkPanel from './ExternalLinkPanel';
+import type { ExternalIdentity } from '../api/externalLinks';
+import type { ImmichPerson, ImmichPersonSummary } from '../api/immich';
 import { DateFormatProvider } from '../DateFormatProvider';
-import { ExternalIdentity } from '../api/externalLinks';
-import { ImmichPerson, ImmichPersonSummary } from '../api/immich';
+import ExternalLinkPanel from './ExternalLinkPanel';
 
 afterEach(() => {
   cleanup();
@@ -46,7 +46,7 @@ function renderPanel(overrides: Partial<React.ComponentProps<typeof ExternalLink
   return render(
     <DateFormatProvider>
       <ExternalLinkPanel {...defaults} />
-    </DateFormatProvider>
+    </DateFormatProvider>,
   );
 }
 
@@ -73,12 +73,15 @@ test('linked contact shows the live summary and the deep link', () => {
   expect(screen.getByText(/Last appearance/)).toBeInTheDocument();
   expect(screen.getByRole('link', { name: /Open in Immich/ })).toHaveAttribute(
     'href',
-    'https://immich.example/people/p-alice'
+    'https://immich.example/people/p-alice',
   );
 });
 
 test('unlink asks for confirmation then fires the handler', async () => {
-  vi.stubGlobal('confirm', vi.fn(() => true));
+  vi.stubGlobal(
+    'confirm',
+    vi.fn(() => true),
+  );
   const onUnlinkImmich = vi.fn().mockResolvedValue(undefined);
   renderPanel({ identities: [identity], immichSummary: summary, onUnlinkImmich });
 
@@ -87,7 +90,10 @@ test('unlink asks for confirmation then fires the handler', async () => {
 });
 
 test('a cancelled unlink does not fire the handler', async () => {
-  vi.stubGlobal('confirm', vi.fn(() => false));
+  vi.stubGlobal(
+    'confirm',
+    vi.fn(() => false),
+  );
   const onUnlinkImmich = vi.fn().mockResolvedValue(undefined);
   renderPanel({ identities: [identity], immichSummary: summary, onUnlinkImmich });
 
@@ -193,6 +199,6 @@ test('a file-system identity renders in the file links surface with its metadata
   expect(screen.queryByText('Other integrations')).not.toBeInTheDocument();
   expect(screen.getByRole('link', { name: /Open in Paperless-ngx/ })).toHaveAttribute(
     'href',
-    'https://paperless.example/documents/42/details'
+    'https://paperless.example/documents/42/details',
   );
 });

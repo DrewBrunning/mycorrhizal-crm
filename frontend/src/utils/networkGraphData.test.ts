@@ -1,10 +1,10 @@
-import { test, expect } from 'vitest';
+import { expect, test } from 'vitest';
+import type { GraphData, GraphEdge, GraphNode } from '../types/graph';
 import {
   computeFilteredGraphData,
   edgeEndpointId,
-  NetworkGraphFilters,
+  type NetworkGraphFilters,
 } from './networkGraphData';
-import { GraphData, GraphNode, GraphEdge } from '../types/graph';
 
 function contact(id: string, label = id): GraphNode {
   return { id, type: 'contact', label };
@@ -15,7 +15,13 @@ function activity(id: string, label = id): GraphNode {
 }
 
 function rel(source: string, target: string): GraphEdge {
-  return { id: `rel-${source}-${target}`, source, target, type: 'relationship', label: 'related to' };
+  return {
+    id: `rel-${source}-${target}`,
+    source,
+    target,
+    type: 'relationship',
+    label: 'related to',
+  };
 }
 
 function actEdge(source: string, target: string): GraphEdge {
@@ -74,7 +80,10 @@ test('edges whose endpoints were filtered out are dropped too', () => {
 // --- circle selection ---
 
 test('selectedCircle keeps contacts in the circle', () => {
-  const circleNamesByUid = new Map<string, string[]>([['1', ['Family']], ['2', ['Family']]]);
+  const circleNamesByUid = new Map<string, string[]>([
+    ['1', ['Family']],
+    ['2', ['Family']],
+  ]);
   const out = computeFilteredGraphData(base, {
     ...noFilters,
     selectedCircle: 'Family',
@@ -107,7 +116,10 @@ test('selectedCircle requires circleNamesByUid to make any contact eligible', ()
 // --- circle node synthesis ---
 
 test('synthesizes circle nodes for circles with 2+ visible contacts', () => {
-  const circleNamesByUid = new Map<string, string[]>([['1', ['Family']], ['2', ['Family']]]);
+  const circleNamesByUid = new Map<string, string[]>([
+    ['1', ['Family']],
+    ['2', ['Family']],
+  ]);
   const out = computeFilteredGraphData(base, {
     ...noFilters,
     showCircles: true,
@@ -139,7 +151,10 @@ test('circle synthesis only counts visible contacts', () => {
   // Only c-1 is in "Family" (c-2 is in "Work"); selecting Family drops the
   // activity (it connects just one circle contact), leaving a single visible
   // circle contact — so no circle node may be synthesized from it.
-  const circleNamesByUid = new Map<string, string[]>([['1', ['Family']], ['2', ['Work']]]);
+  const circleNamesByUid = new Map<string, string[]>([
+    ['1', ['Family']],
+    ['2', ['Work']],
+  ]);
   const out = computeFilteredGraphData(base, {
     ...noFilters,
     showCircles: true,

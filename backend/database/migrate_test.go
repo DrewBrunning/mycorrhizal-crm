@@ -4,8 +4,10 @@ import (
 	"database/sql"
 	"fmt"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1004,6 +1006,36 @@ func TestOpenDSN_PragmasArePresent(t *testing.T) {
 		"openDSN must include the foreign_keys pragma")
 	assert.True(t, strings.HasPrefix(dsn, "/path/to/db.sqlite?"),
 		"openDSN must preserve the db path as the DSN prefix")
+}
+
+// TestInitDBDoesNotLeakMigratorGoroutines pins a real leak found while
+// investigating a CI timeout: newMigrator's golang-migrate instance parks a
+// goroutine forever waiting to hand off the next migration until Close()
+// runs, and InitDB never closed it. Every real-DB test (CLAUDE.md's "test
+// against the real migrated schema" trap) calls InitDB, so one leaked
+// goroutine per call piled up across the suite into exhausted file
+// descriptors and a 20-minute CI job timeout. RunMigrations must close its
+// migrator when done.
+func TestInitDBDoesNotLeakMigratorGoroutines(t *testing.T) {
+	before := runtime.NumGoroutine()
+
+	const calls = 20
+	for i := 0; i < calls; i++ {
+		db, err := InitDB(filepath.Join(t.TempDir(), fmt.Sprintf("leak-%d.db", i)))
+		require.NoError(t, err)
+		sqlDB, err := db.DB()
+		require.NoError(t, err)
+		require.NoError(t, sqlDB.Close())
+	}
+
+	// Give any genuinely-exiting goroutines a moment to unwind before
+	// counting, so this isn't racy against normal scheduling jitter.
+	time.Sleep(100 * time.Millisecond)
+	runtime.GC()
+	after := runtime.NumGoroutine()
+
+	assert.LessOrEqual(t, after, before+5,
+		"InitDB leaked goroutines: before=%d after=%d over %d calls", before, after, calls)
 }
 
 // TestNotificationChannelsMigration pins the N9 migration's shape AND its

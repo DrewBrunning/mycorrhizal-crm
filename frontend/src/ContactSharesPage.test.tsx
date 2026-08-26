@@ -1,5 +1,5 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import './i18n/config';
 import ContactSharesPage from './ContactSharesPage';
 import { SnackbarProvider } from './context/SnackbarContext';
@@ -11,7 +11,7 @@ function renderPage() {
   return render(
     <SnackbarProvider>
       <ContactSharesPage />
-    </SnackbarProvider>
+    </SnackbarProvider>,
   );
 }
 
@@ -25,7 +25,7 @@ function mockFetchByUrl(handlers: Record<string, (url: string, init?: RequestIni
         }
       }
       throw new Error(`unexpected fetch: ${url}`);
-    })
+    }),
   );
 }
 
@@ -52,10 +52,18 @@ const outgoingShare = {
 function baseHandlers() {
   return {
     '/contact-shares/incoming': () => ({
-      contact_shares: [pendingShare], usernames: { '2': 'sender_bob' }, total: 1, next_cursor: '', limit: 25,
+      contact_shares: [pendingShare],
+      usernames: { '2': 'sender_bob' },
+      total: 1,
+      next_cursor: '',
+      limit: 25,
     }),
     '/contact-shares/outgoing': () => ({
-      contact_shares: [outgoingShare], usernames: { '3': 'carol' }, total: 1, next_cursor: '', limit: 25,
+      contact_shares: [outgoingShare],
+      usernames: { '3': 'carol' },
+      total: 1,
+      next_cursor: '',
+      limit: 25,
     }),
   };
 }
@@ -87,7 +95,9 @@ test('switching to the outgoing tab shows sent shares without accept/decline act
 // would never run -- assert on the fetch call itself instead.
 function wasDeclineRequested(): boolean {
   const calls = (fetch as unknown as { mock: { calls: [string, RequestInit?][] } }).mock.calls;
-  return calls.some(([url, init]) => url.includes('/contact-shares/share-1/decline') && init?.method === 'POST');
+  return calls.some(
+    ([url, init]) => url.includes('/contact-shares/share-1/decline') && init?.method === 'POST',
+  );
 }
 
 test('declining prompts for confirmation and, once confirmed, calls decline and refreshes', async () => {
@@ -141,7 +151,7 @@ test('accepting opens the preview dialog and confirming completes the import', a
       error_count: 0,
     }),
     '/contact-shares/share-1/confirm': (_url, init) => {
-      confirmedActions = JSON.parse(init!.body as string).actions;
+      confirmedActions = JSON.parse(init?.body as string).actions;
       return { total_processed: 1, created: 1, updated: 0, skipped: 0, errors: [] };
     },
   });

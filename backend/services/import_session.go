@@ -18,6 +18,15 @@ import (
 // sessionExpiry is how long an in-progress import wizard session is kept server-side.
 const sessionExpiry = 15 * time.Minute
 
+// MaxImportSessionsPerUser bounds how many in-progress import sessions one
+// user may hold at once (issue #415). Sessions are held in memory and each
+// can carry up to MaxVCFContacts contacts or MaxCSVRows rows (plus embedded
+// photos), so an unbounded count would let a single authenticated user push
+// the server's RAM without limit. 5 is more than any legitimate multi-tab
+// import needs; an upload beyond the cap is rejected with a 429 until an
+// existing session expires or is confirmed.
+const MaxImportSessionsPerUser = 5
+
 // importSessionData holds the server-side state for an in-progress import wizard.
 // Sessions are kept in memory only (not persisted) and are lost on restart.
 type importSessionData struct {
@@ -161,6 +170,28 @@ func (m *ImportSessionManager) Delete(sessionID string) {
 	m.mu.Lock()
 	delete(m.sessions, sessionID)
 	m.mu.Unlock()
+}
+
+// CountActive returns the number of live (non-expired) sessions owned by
+// userID. Upload handlers call this before creating a new session to enforce
+// MaxImportSessionsPerUser (issue #415). Expired sessions are counted as
+// gone rather than as consuming quota — a user whose sessions aged out can
+// upload again without deleting anything. The check is not atomic with the
+// subsequent create (a burst of concurrent uploads can briefly exceed the
+// cap by the concurrency of that burst); this is a memory bound, not a
+// transaction — each session is capped in size and expires in 15 minutes, so
+// overshoot is bounded and self-healing.
+func (m *ImportSessionManager) CountActive(userID uint) int {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	now := time.Now()
+	count := 0
+	for _, data := range m.sessions {
+		if data.session.UserID == userID && now.Before(data.session.ExpiresAt) {
+			count++
+		}
+	}
+	return count
 }
 
 // CreateCSVSession stores a freshly parsed CSV upload and returns its session ID.

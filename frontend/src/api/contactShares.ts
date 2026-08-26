@@ -2,8 +2,8 @@
 // one-time filtered copy of a contact between two users on the same instance.
 // Accept/confirm reuse the existing VCF/JSContact import types (api/import.ts)
 // since the backend delegates straight to the same import-session pipeline.
-import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
-import { ImportPreviewResponse, ImportResult, RowImportAction } from './import';
+import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
+import type { ImportPreviewResponse, ImportResult, RowImportAction } from './import';
 
 export type ContactShareStatus = 'pending' | 'accepted' | 'declined';
 
@@ -49,7 +49,9 @@ export async function getUserDirectory(): Promise<UserDirectoryEntry[]> {
 
 export async function createContactShare(input: ContactShareInput): Promise<ContactShare> {
   const response = await apiFetch(`${API_BASE_URL}/contact-shares`, {
-    method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(input),
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(input),
   });
   if (!response.ok) throw await parseErrorResponse(response);
   const result = await response.json();
@@ -61,20 +63,30 @@ export interface GetContactSharesParams {
   limit?: number;
 }
 
-export async function getIncomingContactShares(params: GetContactSharesParams = {}): Promise<ContactShareListResponse> {
+export async function getIncomingContactShares(
+  params: GetContactSharesParams = {},
+): Promise<ContactShareListResponse> {
   const queryParams = new URLSearchParams();
   if (params.cursor) queryParams.append('cursor', params.cursor);
   if (params.limit) queryParams.append('limit', params.limit.toString());
-  const response = await apiFetch(`${API_BASE_URL}/contact-shares/incoming?${queryParams.toString()}`, { headers: getAuthHeaders() });
+  const response = await apiFetch(
+    `${API_BASE_URL}/contact-shares/incoming?${queryParams.toString()}`,
+    { headers: getAuthHeaders() },
+  );
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json();
 }
 
-export async function getOutgoingContactShares(params: GetContactSharesParams = {}): Promise<ContactShareListResponse> {
+export async function getOutgoingContactShares(
+  params: GetContactSharesParams = {},
+): Promise<ContactShareListResponse> {
   const queryParams = new URLSearchParams();
   if (params.cursor) queryParams.append('cursor', params.cursor);
   if (params.limit) queryParams.append('limit', params.limit.toString());
-  const response = await apiFetch(`${API_BASE_URL}/contact-shares/outgoing?${queryParams.toString()}`, { headers: getAuthHeaders() });
+  const response = await apiFetch(
+    `${API_BASE_URL}/contact-shares/outgoing?${queryParams.toString()}`,
+    { headers: getAuthHeaders() },
+  );
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json();
 }
@@ -84,7 +96,8 @@ export async function getOutgoingContactShares(params: GetContactSharesParams = 
 // the share's status.
 export async function acceptContactShare(id: string): Promise<ImportPreviewResponse> {
   const response = await apiFetch(`${API_BASE_URL}/contact-shares/${id}/accept`, {
-    method: 'POST', headers: getAuthHeaders(),
+    method: 'POST',
+    headers: getAuthHeaders(),
   });
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json();
@@ -93,9 +106,14 @@ export async function acceptContactShare(id: string): Promise<ImportPreviewRespo
 // Finalizes an accepted share using the recipient's chosen per-row actions
 // (same add/update/skip contract as confirmVCFImport). Only on success does
 // the share flip to accepted.
-export async function confirmContactShare(id: string, sessionId: string, actions: RowImportAction[]): Promise<ImportResult> {
+export async function confirmContactShare(
+  id: string,
+  sessionId: string,
+  actions: RowImportAction[],
+): Promise<ImportResult> {
   const response = await apiFetch(`${API_BASE_URL}/contact-shares/${id}/confirm`, {
-    method: 'POST', headers: getAuthHeaders(),
+    method: 'POST',
+    headers: getAuthHeaders(),
     body: JSON.stringify({ session_id: sessionId, actions }),
   });
   if (!response.ok) throw await parseErrorResponse(response);
@@ -104,7 +122,8 @@ export async function confirmContactShare(id: string, sessionId: string, actions
 
 export async function declineContactShare(id: string): Promise<void> {
   const response = await apiFetch(`${API_BASE_URL}/contact-shares/${id}/decline`, {
-    method: 'POST', headers: getAuthHeaders(),
+    method: 'POST',
+    headers: getAuthHeaders(),
   });
   if (!response.ok) throw await parseErrorResponse(response);
 }

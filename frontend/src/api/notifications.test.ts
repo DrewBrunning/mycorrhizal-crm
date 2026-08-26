@@ -1,11 +1,11 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
-  getNotificationConfig,
-  saveNotificationConfig,
-  testNotificationChannel,
-  getPushSubscriptions,
   createPushSubscription,
   deletePushSubscription,
+  getNotificationConfig,
+  getPushSubscriptions,
+  saveNotificationConfig,
+  testNotificationChannel,
 } from './notifications';
 
 afterEach(() => {
@@ -43,15 +43,33 @@ describe('saveNotificationConfig', () => {
   test('PUTs the input and returns the saved config', async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ ntfy_url: 'https://ntfy.example.com', ntfy_topic: 'alerts', gotify_url: '', gotify_has_token: true, notify_ntfy: true, notify_gotify: false, notify_push: false, vapid_public_key: 'pk' }),
+      json: async () => ({
+        ntfy_url: 'https://ntfy.example.com',
+        ntfy_topic: 'alerts',
+        gotify_url: '',
+        gotify_has_token: true,
+        notify_ntfy: true,
+        notify_gotify: false,
+        notify_push: false,
+        vapid_public_key: 'pk',
+      }),
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    await saveNotificationConfig({ ntfy_url: 'https://ntfy.example.com', ntfy_topic: 'alerts', gotify_token: 'tok', notify_ntfy: true });
+    await saveNotificationConfig({
+      ntfy_url: 'https://ntfy.example.com',
+      ntfy_topic: 'alerts',
+      gotify_token: 'tok',
+      notify_ntfy: true,
+    });
 
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(init.method).toBe('PUT');
-    expect(JSON.parse(String(init.body))).toMatchObject({ ntfy_url: 'https://ntfy.example.com', gotify_token: 'tok', notify_ntfy: true });
+    expect(JSON.parse(String(init.body))).toMatchObject({
+      ntfy_url: 'https://ntfy.example.com',
+      gotify_token: 'tok',
+      notify_ntfy: true,
+    });
   });
 });
 
@@ -78,7 +96,16 @@ describe('getPushSubscriptions', () => {
     const fetchMock = vi.fn().mockResolvedValueOnce({
       ok: true,
       json: async () => ({
-        subscriptions: [{ id: 1, endpoint: 'https://push.example.com/x', p256dh: 'k', auth: 'a', device_label: 'Chrome', created_at: '2026-01-01T00:00:00Z' }],
+        subscriptions: [
+          {
+            id: 1,
+            endpoint: 'https://push.example.com/x',
+            p256dh: 'k',
+            auth: 'a',
+            device_label: 'Chrome',
+            created_at: '2026-01-01T00:00:00Z',
+          },
+        ],
       }),
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -106,15 +133,30 @@ describe('createPushSubscription', () => {
   test('POSTs the subscription input', async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ id: 5, endpoint: 'https://push.example.com/x', p256dh: 'k', auth: 'a', device_label: 'Chrome', created_at: '2026-01-01T00:00:00Z' }),
+      json: async () => ({
+        id: 5,
+        endpoint: 'https://push.example.com/x',
+        p256dh: 'k',
+        auth: 'a',
+        device_label: 'Chrome',
+        created_at: '2026-01-01T00:00:00Z',
+      }),
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    const created = await createPushSubscription({ endpoint: 'https://push.example.com/x', p256dh: 'k', auth: 'a', device_label: 'Chrome' });
+    const created = await createPushSubscription({
+      endpoint: 'https://push.example.com/x',
+      p256dh: 'k',
+      auth: 'a',
+      device_label: 'Chrome',
+    });
 
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(init.method).toBe('POST');
-    expect(JSON.parse(String(init.body))).toMatchObject({ endpoint: 'https://push.example.com/x', auth: 'a' });
+    expect(JSON.parse(String(init.body))).toMatchObject({
+      endpoint: 'https://push.example.com/x',
+      auth: 'a',
+    });
     expect(created.id).toBe(5);
   });
 });

@@ -1,6 +1,6 @@
+import { Box, Divider, Stack, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
-import { Box, Typography, Stack, Divider } from '@mui/material';
-import { Card } from '../api/contacts';
+import type { Card } from '../api/contacts';
 
 interface RelatedToMembersSectionProps {
   card: Card;
@@ -34,7 +34,12 @@ export default function RelatedToMembersSection({ card }: RelatedToMembersSectio
               {t('contacts.relatedToMembers.relatedTo')}
             </Typography>
             {relatedTo.map((r, i) => (
-              <Typography key={i} variant="body2" sx={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
+              <Typography
+                // biome-ignore lint/suspicious/noArrayIndexKey: names may repeat, no stable id
+                key={i}
+                variant="body2"
+                sx={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
+              >
                 {r.target}
                 {r.relations?.length ? ` (${r.relations.join(', ')})` : ''}
               </Typography>
@@ -47,7 +52,12 @@ export default function RelatedToMembersSection({ card }: RelatedToMembersSectio
               {t('contacts.relatedToMembers.members')}
             </Typography>
             {members.map((m, i) => (
-              <Typography key={i} variant="body2" sx={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
+              <Typography
+                // biome-ignore lint/suspicious/noArrayIndexKey: names may repeat, no stable id
+                key={i}
+                variant="body2"
+                sx={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
+              >
                 {m}
               </Typography>
             ))}

@@ -1,5 +1,5 @@
 // User settings and preferences API calls
-import { apiFetch, API_BASE_URL, getAuthHeaders } from './client';
+import { API_BASE_URL, apiFetch, getAuthHeaders } from './client';
 import { handleResponse } from './errorHandling';
 
 export async function updateLanguage(language: string): Promise<string> {

@@ -1,21 +1,25 @@
-import { useState, useEffect, useMemo } from 'react';
+import {
+  Alert,
+  Box,
+  Button,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  MenuItem,
+  TextField,
+  Typography,
+} from '@mui/material';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  Box,
-  Typography,
-  TextField,
-  MenuItem,
-  Alert,
-} from '@mui/material';
+  createContactShare,
+  getUserDirectory,
+  type UserDirectoryEntry,
+} from '../api/contactShares';
+import { EXPORT_FIELD_SECTIONS } from '../api/export';
+import { getErrorMessage } from '../utils/errorHandler';
 import AppDialog from './AppDialog';
 import FieldSectionPicker from './FieldSectionPicker';
-import { EXPORT_FIELD_SECTIONS } from '../api/export';
-import { createContactShare, getUserDirectory, UserDirectoryEntry } from '../api/contactShares';
-import { getErrorMessage } from '../utils/errorHandler';
 
 interface ShareContactDialogProps {
   open: boolean;
@@ -29,7 +33,21 @@ interface ShareContactDialogProps {
 // sensitivity foot-gun guard ExportFieldPickerDialog uses), swapping the
 // format radio group for a recipient picker since JSContact is the only wire
 // format a share round-trips through.
-export default function ShareContactDialog({ open, onClose, vcardUID, onShared }: ShareContactDialogProps) {
+//
+// Issue #555 (frozen-snapshot semantics, a decision recorded but never
+// surfaced in the UI): the backend serializes the payload once, at
+// share-creation time, and never re-derives it (models/contact_share.go's
+// Payload doc comment) -- so a later edit to this contact, or a later
+// re-classification of a field's sensitivity, does not reach an
+// already-created share. frozenNotice below is the sender-facing statement
+// of that fact, so "why doesn't my edit show up over there" isn't a support
+// question.
+export default function ShareContactDialog({
+  open,
+  onClose,
+  vcardUID,
+  onShared,
+}: ShareContactDialogProps) {
   const { t } = useTranslation();
   const [recipients, setRecipients] = useState<UserDirectoryEntry[]>([]);
   const [toUserID, setToUserID] = useState<number | ''>('');
@@ -40,7 +58,7 @@ export default function ShareContactDialog({ open, onClose, vcardUID, onShared }
 
   const defaultSelection = useMemo(
     () => new Set(EXPORT_FIELD_SECTIONS.filter((s) => !s.sensitive).map((s) => s.token)),
-    []
+    [],
   );
 
   useEffect(() => {
@@ -103,6 +121,10 @@ export default function ShareContactDialog({ open, onClose, vcardUID, onShared }
             {t('contactShares.shareDialog.description')}
           </Typography>
 
+          <Alert severity="info" sx={{ py: 0 }}>
+            {t('contactShares.shareDialog.frozenNotice')}
+          </Alert>
+
           <TextField
             select
             label={t('contactShares.shareDialog.recipient')}
@@ -127,15 +149,25 @@ export default function ShareContactDialog({ open, onClose, vcardUID, onShared }
             onReveal={() => setSensitiveRevealed(true)}
           />
 
-          {error && <Alert severity="error" sx={{ py: 0 }}>{error}</Alert>}
+          {error && (
+            <Alert severity="error" sx={{ py: 0 }}>
+              {error}
+            </Alert>
+          )}
         </Box>
       </DialogContent>
       <DialogActions>
         <Button onClick={handleClose} disabled={sharing}>
           {t('common.cancel')}
         </Button>
-        <Button onClick={handleShare} variant="contained" disabled={sharing || toUserID === '' || selected.size === 0}>
-          {sharing ? t('contactShares.shareDialog.sharing') : t('contactShares.shareDialog.shareButton')}
+        <Button
+          onClick={handleShare}
+          variant="contained"
+          disabled={sharing || toUserID === '' || selected.size === 0}
+        >
+          {sharing
+            ? t('contactShares.shareDialog.sharing')
+            : t('contactShares.shareDialog.shareButton')}
         </Button>
       </DialogActions>
     </AppDialog>

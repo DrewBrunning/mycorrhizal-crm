@@ -1,5 +1,5 @@
-import { test, expect } from './fixtures';
 import type { Page } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 // T32: Network, Settings and User Management were found broken at phone widths
 // during real-world testing — the same class of fix T28 applied to the contact
@@ -7,7 +7,9 @@ import type { Page } from '@playwright/test';
 // pages overflows the page horizontally at phone widths, and User Management's
 // user list stays readable and actionable (stacked cards, not a clipped table).
 async function noHorizontalOverflow(page: Page): Promise<void> {
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > window.innerWidth,
+  );
   expect(overflow, 'the page must not scroll horizontally').toBe(false);
 }
 

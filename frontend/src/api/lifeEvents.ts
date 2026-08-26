@@ -1,4 +1,4 @@
-import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
+import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 
 // LifeEvent category tokens — T36. Hardcoded mirror of backend/models/life_event.go's
 // LifeEventCategory* constants (frontend-trap-4 in CLAUDE.md: there is no
@@ -123,7 +123,7 @@ export interface GetLifeEventsParams {
 }
 
 export async function getLifeEvents(
-  params: GetLifeEventsParams = {}
+  params: GetLifeEventsParams = {},
 ): Promise<LifeEventListResponse> {
   const { entity_id, cursor, limit = 25 } = params;
   const queryParams = new URLSearchParams({
@@ -132,10 +132,9 @@ export async function getLifeEvents(
   if (cursor) queryParams.append('cursor', cursor);
   if (entity_id) queryParams.append('entity_id', entity_id);
 
-  const response = await apiFetch(
-    `${API_BASE_URL}/life-events?${queryParams.toString()}`,
-    { headers: getAuthHeaders() }
-  );
+  const response = await apiFetch(`${API_BASE_URL}/life-events?${queryParams.toString()}`, {
+    headers: getAuthHeaders(),
+  });
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json();
 }
@@ -151,9 +150,7 @@ export interface LifeEventInputData {
   remind?: boolean;
 }
 
-export async function createLifeEvent(
-  data: LifeEventInputData
-): Promise<LifeEventCreateResponse> {
+export async function createLifeEvent(data: LifeEventInputData): Promise<LifeEventCreateResponse> {
   const response = await apiFetch(`${API_BASE_URL}/life-events`, {
     method: 'POST',
     headers: getAuthHeaders(),
@@ -163,10 +160,7 @@ export async function createLifeEvent(
   return response.json();
 }
 
-export async function updateLifeEvent(
-  id: string,
-  data: LifeEventInputData
-): Promise<LifeEvent> {
+export async function updateLifeEvent(id: string, data: LifeEventInputData): Promise<LifeEvent> {
   const response = await apiFetch(`${API_BASE_URL}/life-events/${id}`, {
     method: 'PUT',
     headers: getAuthHeaders(),

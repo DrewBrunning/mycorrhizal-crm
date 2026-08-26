@@ -1,9 +1,9 @@
 // Types for the network graph visualization
 
 export interface GraphNode {
-  id: string;           // "c-{contactID}" for contacts, "a-{activityID}" for activities, "circle-{name}" for circles
+  id: string; // "c-{contactID}" for contacts, "a-{activityID}" for activities, "circle-{name}" for circles
   type: 'contact' | 'activity' | 'circle';
-  label: string;        // Contact name, activity title, or circle name
+  label: string; // Contact name, activity title, or circle name
   photo_thumbnail?: string;
   // Properties added by force-graph during rendering
   x?: number;
@@ -14,7 +14,7 @@ export interface GraphNode {
 
 export interface GraphEdge {
   id: string;
-  source: string | GraphNode;  // Can be ID string or resolved node object
+  source: string | GraphNode; // Can be ID string or resolved node object
   target: string | GraphNode;
   type: 'relationship' | 'activity' | 'circle';
   label: string;

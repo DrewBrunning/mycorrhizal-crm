@@ -1,16 +1,8 @@
-import { Component, ErrorInfo, ReactNode } from 'react';
-import {
-  Box,
-  Container,
-  Typography,
-  Button,
-  Paper,
-  Alert,
-  AlertTitle,
-} from '@mui/material';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
-import RefreshIcon from '@mui/icons-material/Refresh';
 import HomeIcon from '@mui/icons-material/Home';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import { Alert, AlertTitle, Box, Button, Container, Paper, Typography } from '@mui/material';
+import { Component, type ErrorInfo, type ReactNode } from 'react';
 
 /**
  * Props for ErrorBoundary component
@@ -40,11 +32,11 @@ interface ErrorBoundaryState {
 
 /**
  * ErrorBoundary component
- * 
+ *
  * Catches JavaScript errors anywhere in the child component tree,
  * logs those errors, and displays a fallback UI instead of the component
  * tree that crashed.
- * 
+ *
  * @example
  * ```tsx
  * <ErrorBoundary name="ContactsList">
@@ -152,37 +144,25 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
                   mb: 2,
                 }}
               />
-              
+
               <Typography variant="h4" gutterBottom>
                 Oops! Something went wrong
               </Typography>
-              
+
               <Typography variant="body1" color="text.secondary" paragraph>
-                {errorMessage || 
+                {errorMessage ||
                   `We encountered an unexpected error${name ? ` in ${name}` : ''}. ` +
-                  'Please try refreshing the page or return to the home page.'}
+                    'Please try refreshing the page or return to the home page.'}
               </Typography>
 
               <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'center' }}>
-                <Button
-                  variant="contained"
-                  startIcon={<RefreshIcon />}
-                  onClick={this.handleReset}
-                >
+                <Button variant="contained" startIcon={<RefreshIcon />} onClick={this.handleReset}>
                   Try Again
                 </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<RefreshIcon />}
-                  onClick={this.handleReload}
-                >
+                <Button variant="outlined" startIcon={<RefreshIcon />} onClick={this.handleReload}>
                   Reload Page
                 </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<HomeIcon />}
-                  onClick={this.handleGoHome}
-                >
+                <Button variant="outlined" startIcon={<HomeIcon />} onClick={this.handleGoHome}>
                   Go Home
                 </Button>
               </Box>
@@ -191,7 +171,11 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
               {showDetails && error && (
                 <Alert severity="error" sx={{ mt: 3, textAlign: 'left' }}>
                   <AlertTitle>Error Details (Development Only)</AlertTitle>
-                  <Typography variant="body2" component="pre" sx={{ whiteSpace: 'pre-wrap', fontSize: '0.75rem' }}>
+                  <Typography
+                    variant="body2"
+                    component="pre"
+                    sx={{ whiteSpace: 'pre-wrap', fontSize: '0.75rem' }}
+                  >
                     <strong>Error:</strong> {error.toString()}
                     {'\n\n'}
                     <strong>Component Stack:</strong>

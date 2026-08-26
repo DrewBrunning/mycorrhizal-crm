@@ -1,6 +1,5 @@
-import { test, expect } from './fixtures';
-import { createTestContact, deleteTestContact, waitForLoading } from './fixtures';
-import type { Page, Locator } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
+import { createTestContact, deleteTestContact, expect, test, waitForLoading } from './fixtures';
 
 // T74: field action buttons (edit/call/copy) sit too far from their field on
 // wide desktop screens. The fix is two levels, both gated to lg (1200px)+:
@@ -51,12 +50,15 @@ test.describe('T74 field action distance — Level 1, field grid', () => {
 
       const [valueBox, editBox] = await Promise.all([value.boundingBox(), edit.boundingBox()]);
       expect(valueBox && editBox, 'phone value and edit button both on screen').toBeTruthy();
-      const gap = editBox!.x - valueBox!.x;
+      const gap = editBox?.x - valueBox?.x;
       console.log(`T74: phone value→edit gap at 1440px = ${Math.round(gap)}px`);
       // Pre-fix this gap was ~1100px (a full-width ~1136px row); two columns
       // put it under ~570px. 700px is a comfortable halfway-ish bound that
       // fails loudly if the grid ever stops being applied.
-      expect(gap, `phone action cluster should sit near its value (gap ${Math.round(gap)}px)`).toBeLessThan(700);
+      expect(
+        gap,
+        `phone action cluster should sit near its value (gap ${Math.round(gap)}px)`,
+      ).toBeLessThan(700);
     } finally {
       await deleteTestContact(page.request, contact.ID);
     }
@@ -76,9 +78,9 @@ test.describe('T74 field action distance — Level 1, field grid', () => {
       const personalInfo = fieldRow(page, /^Personal Info/);
       const [bBox, pBox] = await Promise.all([birthday.boundingBox(), personalInfo.boundingBox()]);
       expect(bBox && pBox).toBeTruthy();
-      expect(pBox!.x).toBeGreaterThan(bBox!.x + bBox!.width);
+      expect(pBox?.x).toBeGreaterThan(bBox?.x + bBox?.width);
       // Same grid row: tops align (alignItems: 'start').
-      expect(pBox!.y).toBeCloseTo(bBox!.y, 0);
+      expect(pBox?.y).toBeCloseTo(bBox?.y, 0);
     } finally {
       await deleteTestContact(page.request, contact.ID);
     }
@@ -97,16 +99,19 @@ test.describe('T74 field action distance — Level 1, field grid', () => {
 
         const birthday = fieldRow(page, 'Birthday');
         const personalInfo = fieldRow(page, /^Personal Info/);
-        const [bBox, pBox] = await Promise.all([birthday.boundingBox(), personalInfo.boundingBox()]);
+        const [bBox, pBox] = await Promise.all([
+          birthday.boundingBox(),
+          personalInfo.boundingBox(),
+        ]);
         expect(bBox && pBox).toBeTruthy();
 
         if (width === 1280) {
           // lg (1200) is crossed at 1280 — two columns, same as 1440.
-          expect(pBox!.x).toBeGreaterThan(bBox!.x + bBox!.width);
+          expect(pBox?.x).toBeGreaterThan(bBox?.x + bBox?.width);
         } else {
           // 1024 is below lg — single column, rows stacked at the same left edge.
-          expect(pBox!.x).toBeCloseTo(bBox!.x, 0);
-          expect(pBox!.y).toBeGreaterThan(bBox!.y);
+          expect(pBox?.x).toBeCloseTo(bBox?.x, 0);
+          expect(pBox?.y).toBeGreaterThan(bBox?.y);
 
           // Below lg the field grid is a single column, so a field row spans
           // the full card width. T109 moved the edit pencil next to the field
@@ -118,7 +123,7 @@ test.describe('T74 field action distance — Level 1, field grid', () => {
           const row = fieldRow(page, 'Phone');
           const rowBox = await row.boundingBox();
           expect(rowBox, 'phone field row must be present').toBeTruthy();
-          expect(rowBox!.width).toBeGreaterThan(500);
+          expect(rowBox?.width).toBeGreaterThan(500);
         }
       }
     } finally {
@@ -126,7 +131,9 @@ test.describe('T74 field action distance — Level 1, field grid', () => {
     }
   });
 
-  test('multi-line / wide fields still span the full card width (not half a column)', async ({ page }) => {
+  test('multi-line / wide fields still span the full card width (not half a column)', async ({
+    page,
+  }) => {
     const contact = await createTestContact(page.request, {
       crm: { work_information: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.' },
     });
@@ -142,7 +149,7 @@ test.describe('T74 field action distance — Level 1, field grid', () => {
       const personalInfo = fieldRow(page, /^Personal Info/);
       const [wBox, pBox] = await Promise.all([workInfo.boundingBox(), personalInfo.boundingBox()]);
       expect(wBox && pBox).toBeTruthy();
-      expect(wBox!.width).toBeGreaterThan(pBox!.width * 1.5);
+      expect(wBox?.width).toBeGreaterThan(pBox?.width * 1.5);
     } finally {
       await deleteTestContact(page.request, contact.ID);
     }
@@ -160,8 +167,8 @@ async function expectSideBySide(page: Page, leftLabel: string, rightLabel: strin
   await expect(right).toBeVisible();
   const [lBox, rBox] = await Promise.all([left.boundingBox(), right.boundingBox()]);
   expect(lBox && rBox, `${leftLabel} and ${rightLabel} both on screen`).toBeTruthy();
-  expect(rBox!.x).toBeGreaterThan(lBox!.x + lBox!.width);
-  expect(Math.abs(rBox!.y - lBox!.y)).toBeLessThan(8);
+  expect(rBox?.x).toBeGreaterThan(lBox?.x + lBox?.width);
+  expect(Math.abs(rBox?.y - lBox?.y)).toBeLessThan(8);
 }
 
 async function expectStacked(page: Page, topLabel: string, bottomLabel: string) {
@@ -169,8 +176,8 @@ async function expectStacked(page: Page, topLabel: string, bottomLabel: string) 
   const bottom = page.getByRole('heading', { name: bottomLabel, exact: true });
   const [tBox, bBox] = await Promise.all([top.boundingBox(), bottom.boundingBox()]);
   expect(tBox && bBox, `${topLabel} and ${bottomLabel} both on screen`).toBeTruthy();
-  expect(bBox!.x).toBeCloseTo(tBox!.x, 0);
-  expect(bBox!.y).toBeGreaterThan(tBox!.y);
+  expect(bBox?.x).toBeCloseTo(tBox?.x, 0);
+  expect(bBox?.y).toBeGreaterThan(tBox?.y);
 }
 
 test.describe('T74 section cards — Level 2, 2-up PanelCards', () => {
@@ -188,7 +195,9 @@ test.describe('T74 section cards — Level 2, 2-up PanelCards', () => {
     }
   });
 
-  test('Relationships and Connections sit side by side as equal half-columns (people)', async ({ page }) => {
+  test('Relationships and Connections sit side by side as equal half-columns (people)', async ({
+    page,
+  }) => {
     const contact = await createTestContact(page.request);
 
     try {
@@ -203,17 +212,22 @@ test.describe('T74 section cards — Level 2, 2-up PanelCards', () => {
       const relationships = page.getByRole('heading', { name: 'Relationships', exact: true });
       const connections = page.getByRole('heading', { name: 'Connections', exact: true });
       const card = (heading: Locator) => heading.locator('..').locator('..').locator('..');
-      const [relBox, conBox] = await Promise.all([card(relationships).boundingBox(), card(connections).boundingBox()]);
+      const [relBox, conBox] = await Promise.all([
+        card(relationships).boundingBox(),
+        card(connections).boundingBox(),
+      ]);
       expect(relBox && conBox).toBeTruthy();
       // Both are half columns (~556px each) — equal width, not the old
       // full-width Connections (~1168px) the pre-issue-8 layout produced.
-      expect(Math.abs(conBox!.width - relBox!.width)).toBeLessThan(40);
+      expect(Math.abs(conBox?.width - relBox?.width)).toBeLessThan(40);
     } finally {
       await deleteTestContact(page.request, contact.ID);
     }
   });
 
-  test('Life Events and Conversation Agenda sit side by side at lg+ (timeline)', async ({ page }) => {
+  test('Life Events and Conversation Agenda sit side by side at lg+ (timeline)', async ({
+    page,
+  }) => {
     const contact = await createTestContact(page.request);
 
     try {
@@ -259,8 +273,8 @@ test.describe('T74 section cards — Level 2, 2-up PanelCards', () => {
       expect(box).toBeTruthy();
       // A non-fullWidth card would be confined to one ~570px column; it must
       // span the section's full ~1168px width.
-      expect(box!.width).toBeGreaterThan(900);
-      expect(box!.width).toBeLessThan(pageWidth);
+      expect(box?.width).toBeGreaterThan(900);
+      expect(box?.width).toBeLessThan(pageWidth);
     } finally {
       await deleteTestContact(page.request, contact.ID);
     }
@@ -280,7 +294,9 @@ test.describe('T74 regression guards', () => {
         await page.goto(`/contacts/${contact.ID}`);
         await waitForLoading(page);
 
-        const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+        const overflow = await page.evaluate(
+          () => document.documentElement.scrollWidth > window.innerWidth,
+        );
         expect(overflow).toBe(false);
 
         // The field row must be single column (one caption left-aligned at the
@@ -288,14 +304,16 @@ test.describe('T74 regression guards', () => {
         const personalInfo = fieldRow(page, /^Personal Info/);
         const pBox = await personalInfo.boundingBox();
         expect(pBox).toBeTruthy();
-        expect(pBox!.x).toBeLessThan(60);
+        expect(pBox?.x).toBeLessThan(60);
       } finally {
         await deleteTestContact(page.request, contact.ID);
       }
     });
   });
 
-  test('jump-nav still scrolls a section into view with the section grids in place', async ({ page }) => {
+  test('jump-nav still scrolls a section into view with the section grids in place', async ({
+    page,
+  }) => {
     const contact = await createTestContact(page.request);
 
     try {

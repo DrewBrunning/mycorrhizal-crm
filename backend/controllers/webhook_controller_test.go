@@ -3,6 +3,7 @@ package controllers
 import (
 	"bytes"
 	"encoding/json"
+	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
@@ -92,6 +93,45 @@ func TestCreateWebhook(t *testing.T) {
 	var count int64
 	db.Model(&models.Webhook{}).Where("user_id = ?", user.ID).Count(&count)
 	assert.Equal(t, int64(1), count)
+}
+
+// TestCreateWebhook_TooManyEventTokens pins issue #415's Events-array bound:
+// dive/oneof alone would let a client repeat a valid token (e.g.
+// "contact.created") hundreds of times, turning one webhook into a
+// hundreds-wide fan-out target on every matching event. The max=12 tag
+// (exactly the number of oneof tokens) rejects such a payload with a 400.
+func TestCreateWebhook_TooManyEventTokens(t *testing.T) {
+	db, _ := setupRouter()
+	var user models.User
+	db.First(&user)
+
+	router := routerForUser(db, user.ID)
+	// The real ValidateJSONMiddleware (not withValidated) so the max=12
+	// Events bound is actually enforced, matching how routes.go registers the
+	// webhook routes.
+	router.POST("/webhooks", middleware.ValidateJSONMiddleware(&models.WebhookInput{}), CreateWebhook)
+
+	events := make([]string, 13)
+	for i := range events {
+		events[i] = "contact.created"
+	}
+	input := models.WebhookInput{
+		Name:   "Overfull Hook",
+		URL:    "https://example.com/hook",
+		Events: events,
+	}
+	body, _ := json.Marshal(input)
+
+	req, _ := http.NewRequest("POST", "/webhooks", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code, "an Events array beyond the token count must be rejected")
+
+	var count int64
+	db.Model(&models.Webhook{}).Where("user_id = ?", user.ID).Count(&count)
+	assert.Zero(t, count, "the over-limit webhook must not be persisted")
 }
 
 // TestCreateWebhookInactive is the regression test for a bug found while

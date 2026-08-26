@@ -34,7 +34,7 @@ on:
   pull_request:
     branches: [main]
   schedule:
-    - cron: '15 4 * * 1' # Monday 04:15 UTC
+    - cron: '10 2 * * *' # 02:10 UTC nightly (issue #578: consolidated nightly suite)
 
 permissions:
   contents: read

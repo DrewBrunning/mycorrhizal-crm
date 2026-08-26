@@ -6,11 +6,13 @@ import (
 	"mycorrhizal/contactmodel"
 	"mycorrhizal/database"
 	"mycorrhizal/models"
+	"mycorrhizal/services"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -92,6 +94,30 @@ func TestGetContacts(t *testing.T) {
 
 	assert.Len(t, seen, 5, "all contacts should be returned across pages")
 	assert.ElementsMatch(t, []float64{1, 2, 3, 4, 5}, seen, "no dropped or duplicated contacts")
+}
+
+// TestGetContacts_RejectsOversizedSearchTerm pins issue #415's search-term
+// bound on the contacts list path: applyContactSearch wraps the term in
+// %...% LIKE clauses and an FTS5 MATCH, so a term longer than
+// services.MaxSearchTermLen must be rejected with a 400 before any query
+// work, and a term at the exact boundary must pass.
+func TestGetContacts_RejectsOversizedSearchTerm(t *testing.T) {
+	db, router := setupRouter()
+	var user models.User
+	db.First(&user)
+	router.GET("/contacts", GetContacts)
+
+	long := strings.Repeat("a", services.MaxSearchTermLen+1)
+	req, _ := http.NewRequest("GET", "/contacts?search="+long, nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	exact := strings.Repeat("a", services.MaxSearchTermLen)
+	req2, _ := http.NewRequest("GET", "/contacts?search="+exact, nil)
+	w2 := httptest.NewRecorder()
+	router.ServeHTTP(w2, req2)
+	assert.Equal(t, http.StatusOK, w2.Code)
 }
 
 // TestGetContacts_SummaryHasNicknameNoCircles is T108's regression test

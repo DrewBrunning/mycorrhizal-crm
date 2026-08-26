@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.net.Uri
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -80,6 +81,27 @@ class MainActivity : ComponentActivity() {
         // T106: must precede super.onCreate() -- required by the library, not stylistic.
         installSplashScreen()
         super.onCreate(savedInstanceState)
+
+        // Issue #507 (MASVS-L2 resilience re-evaluation): every screen in this
+        // single-Activity app renders relationship PII, so both are applied
+        // unconditionally rather than per-screen.
+        //
+        // FLAG_SECURE blocks screenshots/screen recording and blanks the
+        // recent-apps thumbnail — the thumbnail case is the concrete threat
+        // (anyone with a moment's physical access to an unlocked phone can
+        // open the app switcher without unlocking the app itself). Reverses
+        // masvs-l1.md P3 for android_prevent_screenshot; see that file and
+        // threat-model.md gating decision 3 for the full cost/benefit writeup.
+        window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
+
+        // filterTouchesWhenObscured rejects touches while another app's window
+        // overlays this one (a tapjacking/overlay attack tricking the user into
+        // tapping something they can't see, e.g. a "grant permission" or
+        // "confirm delete" control). Set on the decor view so it gates
+        // dispatch before it reaches any child — no per-screen wiring needed,
+        // and it has zero effect on normal single-window use. Reverses
+        // masvs-l1.md P3 for android_detect_tapjacking/android_tapjacking.
+        window.decorView.filterTouchesWhenObscured = true
 
         // M5 §5: handle a cold-start OIDC deep link before the first frame so
         // the session is already present when the app tree composes.

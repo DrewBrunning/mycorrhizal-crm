@@ -1,7 +1,7 @@
-import { useState, useCallback } from 'react';
+import type { DialogProps } from '@mui/material';
 import { Dialog } from '@mui/material';
 import { keyframes } from '@mui/system';
-import type { DialogProps } from '@mui/material';
+import { useCallback, useState } from 'react';
 
 const shake = keyframes`
   0%, 100% { transform: translateX(0); }
@@ -29,7 +29,7 @@ export default function AppDialog({ onClose, slotProps, ...props }: AppDialogPro
       }
       onClose?.();
     },
-    [onClose, shaking]
+    [onClose, shaking],
   );
 
   return (
@@ -41,7 +41,7 @@ export default function AppDialog({ onClose, slotProps, ...props }: AppDialogPro
         paper: {
           ...(slotProps?.paper as object | undefined),
           sx: {
-            ...((slotProps?.paper as { sx?: object } | undefined)?.sx),
+            ...(slotProps?.paper as { sx?: object } | undefined)?.sx,
             animation: shaking ? `${shake} 0.4s ease-in-out` : 'none',
           },
         },

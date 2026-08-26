@@ -1,6 +1,6 @@
-import { chromium } from 'playwright';
 import { register } from 'node:module';
 import { pathToFileURL } from 'node:url';
+import { chromium } from 'playwright';
 
 register('ts-node/esm', pathToFileURL('./'));
 
@@ -10,7 +10,17 @@ const BASE = 'http://localhost:7300';
 
 const runOnce = async (context, iter) => {
   const createResp = await context.request.post(`${BASE}/api/v1/contacts`, {
-    data: { card: { name: { components: [{ kind: 'given', value: `D8-${iter}` }, { kind: 'surname', value: 'X' }] } }, crm: {} },
+    data: {
+      card: {
+        name: {
+          components: [
+            { kind: 'given', value: `D8-${iter}` },
+            { kind: 'surname', value: 'X' },
+          ],
+        },
+      },
+      crm: {},
+    },
   });
   const created = await createResp.json();
   const contact = created.contact || created;
@@ -19,9 +29,17 @@ const runOnce = async (context, iter) => {
   await page.addInitScript(() => {
     window.__events = [];
     for (const type of ['mousedown', 'mouseup', 'click']) {
-      document.addEventListener(type, (e) => {
-        window.__events.push({ type, tag: e.target.tagName, cls: (e.target.className || '').toString().slice(0, 60) });
-      }, true);
+      document.addEventListener(
+        type,
+        (e) => {
+          window.__events.push({
+            type,
+            tag: e.target.tagName,
+            cls: (e.target.className || '').toString().slice(0, 60),
+          });
+        },
+        true,
+      );
     }
   });
 
@@ -39,7 +57,9 @@ const runOnce = async (context, iter) => {
   const dialogCount = await page.locator('[role="dialog"]').count();
   const events = await page.evaluate(() => window.__events || []);
   const ok = dialogCount > 0 && !clickError;
-  console.log(`iter ${iter}: ok=${ok} clickError=${clickError ? 'YES' : 'no'} events=${JSON.stringify(events)}`);
+  console.log(
+    `iter ${iter}: ok=${ok} clickError=${clickError ? 'YES' : 'no'} events=${JSON.stringify(events)}`,
+  );
 
   await page.close();
   return ok;
@@ -48,7 +68,9 @@ const runOnce = async (context, iter) => {
 const run = async () => {
   const browser = await chromium.launch();
   const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
-  await context.request.post(`${BASE}/api/v1/login`, { data: { identifier: 'testuser', password: 'TestPassword123!' } });
+  await context.request.post(`${BASE}/api/v1/login`, {
+    data: { identifier: 'testuser', password: 'TestPassword123!' },
+  });
 
   let fail = 0;
   const N = 10;
@@ -60,4 +82,7 @@ const run = async () => {
   await browser.close();
 };
 
-run().catch((e) => { console.error(e); process.exit(1); });
+run().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

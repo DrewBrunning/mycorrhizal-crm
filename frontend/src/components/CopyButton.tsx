@@ -1,5 +1,5 @@
-import { IconButton, Tooltip } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import { IconButton, Tooltip } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { useSnackbar } from '../context/SnackbarContext';
 import { copyToClipboard } from '../utils/clipboard';
@@ -39,7 +39,13 @@ export default function CopyButton({ value, label, className }: CopyButtonProps)
 
   return (
     <Tooltip title={t('common.copy')}>
-      <IconButton size="small" color="primary" onClick={handleCopy} aria-label={ariaLabel} className={className}>
+      <IconButton
+        size="small"
+        color="primary"
+        onClick={handleCopy}
+        aria-label={ariaLabel}
+        className={className}
+      >
         <ContentCopyIcon fontSize="inherit" />
       </IconButton>
     </Tooltip>

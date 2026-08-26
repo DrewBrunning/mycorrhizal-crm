@@ -1,9 +1,9 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import ConversationAgendaList from './ConversationAgendaList';
-import { ConversationAgenda } from '../api/conversationAgenda';
+import type { ConversationAgenda } from '../api/conversationAgenda';
 import { DateFormatProvider } from '../DateFormatProvider';
+import ConversationAgendaList from './ConversationAgendaList';
 
 // This codebase's vitest setup does not auto-cleanup between tests (no
 // `globals: true`, setupTests.ts doesn't register it) -- without this, each
@@ -33,7 +33,7 @@ function renderList(props: Partial<React.ComponentProps<typeof ConversationAgend
   return render(
     <DateFormatProvider>
       <ConversationAgendaList {...defaults} />
-    </DateFormatProvider>
+    </DateFormatProvider>,
   );
 }
 
@@ -97,7 +97,10 @@ test('discussed items render resolved: no mark-discussed action, discussed date 
 });
 
 test('delete asks for confirmation before calling onDelete', () => {
-  vi.stubGlobal('confirm', vi.fn(() => true));
+  vi.stubGlobal(
+    'confirm',
+    vi.fn(() => true),
+  );
   const onDelete = vi.fn();
   renderList({ items: [item()], onDelete });
 
@@ -108,7 +111,10 @@ test('delete asks for confirmation before calling onDelete', () => {
 });
 
 test('a declining delete confirmation does not call onDelete', () => {
-  vi.stubGlobal('confirm', vi.fn(() => false));
+  vi.stubGlobal(
+    'confirm',
+    vi.fn(() => false),
+  );
   const onDelete = vi.fn();
   renderList({ items: [item()], onDelete });
 

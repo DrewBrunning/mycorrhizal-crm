@@ -11,20 +11,45 @@
 // `gender` is passed separately because it is a top-level record field (not a
 // Card/CRMEnvelope member) — see ContactInformation.
 
-import { Card, CRMEnvelope, getAnniversaryField } from './api/contacts';
-import { ContactFieldKey } from './contactFields';
+import { type Card, type CRMEnvelope, getAnniversaryField } from './api/contacts';
+import type { ContactFieldKey } from './contactFields';
 
-export type ContactSectionKey = 'about' | 'contact' | 'genderAndPronouns' | 'professional' | 'notes';
+export type ContactSectionKey =
+  | 'about'
+  | 'contact'
+  | 'genderAndPronouns'
+  | 'professional'
+  | 'notes';
 
 export const CONTACT_SECTION_FIELDS: Record<ContactSectionKey, ContactFieldKey[]> = {
-  about: ['birthday', 'anniversary', 'anniversaries', 'personalInfo', 'keywords', 'preferredLanguages'],
-  contact: ['phones', 'addresses', 'emails', 'socialProfiles', 'otherOnlineServices', 'imppAddresses', 'links'],
+  about: [
+    'birthday',
+    'anniversary',
+    'anniversaries',
+    'personalInfo',
+    'keywords',
+    'preferredLanguages',
+  ],
+  contact: [
+    'phones',
+    'addresses',
+    'emails',
+    'socialProfiles',
+    'otherOnlineServices',
+    'imppAddresses',
+    'links',
+  ],
   genderAndPronouns: ['gender', 'speakToAs'],
   professional: ['organizations', 'titles', 'work_information'],
   notes: ['cardNotes', 'how_we_met', 'contact_information'],
 };
 
-function fieldHasValue(card: Card, crm: CRMEnvelope, gender: string | undefined, key: ContactFieldKey): boolean {
+function fieldHasValue(
+  card: Card,
+  crm: CRMEnvelope,
+  gender: string | undefined,
+  key: ContactFieldKey,
+): boolean {
   switch (key) {
     case 'gender':
       return !!gender;
@@ -84,6 +109,6 @@ interface SectionOpts {
 
 export function hasVisibleFields(section: ContactSectionKey, opts: SectionOpts): boolean {
   return CONTACT_SECTION_FIELDS[section].some(
-    (key) => opts.enabled.has(key) && fieldHasValue(opts.card, opts.crm, opts.gender, key)
+    (key) => opts.enabled.has(key) && fieldHasValue(opts.card, opts.crm, opts.gender, key),
   );
 }

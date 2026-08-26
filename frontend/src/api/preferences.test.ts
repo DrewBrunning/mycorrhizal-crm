@@ -1,11 +1,11 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
-  getPreferences,
   createPreference,
-  PREFERENCE_CATEGORY_CONFIG,
   GIFTS_TAB_SECTIONS,
-  OVERVIEW_TAB_SECTIONS,
+  getPreferences,
   isGiftsTabCategory,
+  OVERVIEW_TAB_SECTIONS,
+  PREFERENCE_CATEGORY_CONFIG,
 } from './preferences';
 
 afterEach(() => {
@@ -20,7 +20,7 @@ describe('tab section taxonomy', () => {
       const inOverview = OVERVIEW_TAB_SECTIONS.includes(section);
       expect(
         inGifts !== inOverview,
-        `section "${section}" must appear in exactly one of GIFTS_TAB_SECTIONS/OVERVIEW_TAB_SECTIONS (got gifts=${inGifts}, overview=${inOverview})`
+        `section "${section}" must appear in exactly one of GIFTS_TAB_SECTIONS/OVERVIEW_TAB_SECTIONS (got gifts=${inGifts}, overview=${inOverview})`,
       ).toBe(true);
     }
   });
@@ -74,7 +74,13 @@ describe('createPreference', () => {
       ok: true,
       json: async () => ({
         message: 'Preference created successfully',
-        preference: { id: 'p1', entity_id: 'alice-uid', category: 'food', value: 'Vegan', sensitivity: 'normal' },
+        preference: {
+          id: 'p1',
+          entity_id: 'alice-uid',
+          category: 'food',
+          value: 'Vegan',
+          sensitivity: 'normal',
+        },
       }),
     });
     vi.stubGlobal('fetch', fetchMock);

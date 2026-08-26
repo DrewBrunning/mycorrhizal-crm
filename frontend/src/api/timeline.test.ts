@@ -1,5 +1,5 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
-import { getTimeline, TIMELINE_TYPES, TIMELINE_BUCKETS } from './timeline';
+import { afterEach, describe, expect, test, vi } from 'vitest';
+import { getTimeline, TIMELINE_BUCKETS, TIMELINE_TYPES } from './timeline';
 
 // The T66 timeline endpoint's query contract is the part worth pinning
 // client-side: the comma-joined type filter, the bucket token, and the
@@ -86,10 +86,7 @@ describe('getTimeline', () => {
       next_cursor: 'next',
       limit: 25,
     };
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValueOnce({ ok: true, json: async () => page })
-    );
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: true, json: async () => page }));
 
     const result = await getTimeline({ contactId: 42 });
     expect(result).toEqual(page);
@@ -104,11 +101,11 @@ describe('getTimeline', () => {
         json: async () => ({
           error: { code: 'INVALID_INPUT', message: 'unknown timeline type "banana"' },
         }),
-      })
+      }),
     );
 
     await expect(getTimeline({ contactId: 42, types: ['banana' as never] })).rejects.toThrow(
-      /unknown timeline type/
+      /unknown timeline type/,
     );
   });
 });
@@ -116,13 +113,22 @@ describe('getTimeline', () => {
 describe('registry mirrors', () => {
   test('TIMELINE_TYPES has the six backend tokens, in canonical order', () => {
     expect(TIMELINE_TYPES).toEqual([
-      'note', 'activity', 'completion', 'life_event', 'external_activity', 'gift',
+      'note',
+      'activity',
+      'completion',
+      'life_event',
+      'external_activity',
+      'gift',
     ]);
   });
 
   test('TIMELINE_BUCKETS matches the backend vocabulary', () => {
     expect(TIMELINE_BUCKETS).toEqual([
-      'last_7_days', 'last_30_days', 'last_90_days', 'this_year', 'all',
+      'last_7_days',
+      'last_30_days',
+      'last_90_days',
+      'this_year',
+      'all',
     ]);
   });
 });

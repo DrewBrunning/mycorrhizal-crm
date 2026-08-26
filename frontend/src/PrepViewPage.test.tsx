@@ -1,10 +1,10 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, waitFor } from '@testing-library/react';
-import { MemoryRouter, Routes, Route } from 'react-router';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter, Route, Routes } from 'react-router';
+import { afterEach, expect, test, vi } from 'vitest';
 import './i18n/config';
-import PrepViewPage from './PrepViewPage';
 import { SnackbarProvider } from './context/SnackbarContext';
 import { DateFormatProvider } from './DateFormatProvider';
+import PrepViewPage from './PrepViewPage';
 
 afterEach(() => {
   cleanup();
@@ -19,7 +19,7 @@ function mockBriefingFetch(data: unknown) {
         return { ok: true, json: async () => data };
       }
       throw new Error(`unexpected fetch: ${url}`);
-    })
+    }),
   );
 }
 
@@ -33,7 +33,7 @@ function renderPage() {
           </Routes>
         </DateFormatProvider>
       </SnackbarProvider>
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 }
 
@@ -43,18 +43,34 @@ const fullBriefing = {
   name: 'Alice Wonder',
   kind: 'human',
   photo_thumbnail: '',
-  last_activity: { id: 9, title: 'Coffee', type: 'visit', description: 'Talked about her garden plans', date: '2026-08-02T10:00:00Z' },
+  last_activity: {
+    id: 9,
+    title: 'Coffee',
+    type: 'visit',
+    description: 'Talked about her garden plans',
+    date: '2026-08-02T10:00:00Z',
+  },
   recent_notes: [{ ID: 3, content: 'Talks about her garden', date: '2026-07-30T00:00:00Z' }],
   open_agenda_items: [{ id: 'a1', entity_id: 'alice-uid', content: 'Ask about the surgery' }],
   relationships: [
-    { edge: { id: 'e1', source_id: 'bob-uid', target_id: 'alice-uid', type: 'spouse_of' }, other_party_contact_id: 2, other_party_name: 'Bob Marley', display_token: 'spouse_of' },
+    {
+      edge: { id: 'e1', source_id: 'bob-uid', target_id: 'alice-uid', type: 'spouse_of' },
+      other_party_contact_id: 2,
+      other_party_name: 'Bob Marley',
+      display_token: 'spouse_of',
+    },
   ],
   life_events: [{ id: 'le1', entity_id: 'alice-uid', type: 'graduated', description: 'PhD' }],
   upcoming_reminders: [{ ID: 5, message: 'Send card', remind_at: '2026-08-10T09:00:00Z' }],
   upcoming_dates: [{ label: 'birthday', date: '--01-15', days_until: 10 }],
   cadence: {
     policy: { id: 'p1', entity_id: 'alice-uid', target_interval_days: 30 },
-    health: { has_qualifying_interaction: true, last_interaction: '2026-08-02T10:00:00Z', next_due: '2026-09-01T00:00:00Z', overdue_by: 3 },
+    health: {
+      has_qualifying_interaction: true,
+      last_interaction: '2026-08-02T10:00:00Z',
+      next_due: '2026-09-01T00:00:00Z',
+      overdue_by: 3,
+    },
   },
 };
 
@@ -147,7 +163,12 @@ test('cadence card shows on-track when overdue_by is zero', async () => {
     ...fullBriefing,
     cadence: {
       policy: { id: 'p1', entity_id: 'alice-uid', target_interval_days: 30 },
-      health: { has_qualifying_interaction: true, last_interaction: '2026-08-01T10:00:00Z', next_due: '2026-08-31T00:00:00Z', overdue_by: 0 },
+      health: {
+        has_qualifying_interaction: true,
+        last_interaction: '2026-08-01T10:00:00Z',
+        next_due: '2026-08-31T00:00:00Z',
+        overdue_by: 0,
+      },
     },
   });
   renderPage();
@@ -177,7 +198,12 @@ test('relationship row renders a link chip pointing at the other contact', async
   mockBriefingFetch({
     ...fullBriefing,
     relationships: [
-      { edge: { id: 'e1', source_id: 'bob-uid', target_id: 'alice-uid', type: 'friend_of' }, other_party_contact_id: 42, other_party_name: 'Bob Marley', display_token: 'friend_of' },
+      {
+        edge: { id: 'e1', source_id: 'bob-uid', target_id: 'alice-uid', type: 'friend_of' },
+        other_party_contact_id: 42,
+        other_party_name: 'Bob Marley',
+        display_token: 'friend_of',
+      },
     ],
   });
   renderPage();
@@ -194,7 +220,12 @@ test('relationship row renders a link chip pointing at the other contact', async
 test('shows an error state when the fetch fails', async () => {
   vi.stubGlobal(
     'fetch',
-    vi.fn(async () => ({ ok: false, status: 500, statusText: 'Internal Server Error', json: async () => ({ error: 'boom' }) }))
+    vi.fn(async () => ({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+      json: async () => ({ error: 'boom' }),
+    })),
   );
   renderPage();
 

@@ -1,0 +1,91 @@
+name: SBOM (Syft)
+
+# Issue #578: a portable, cosign-signed SBOM on every main merge — not just
+# at release time. Buildkit's `sbom: true` on docker-publish.yml only emits an
+# in-toto SBOM referrer into the registry at release; this produces
+# standalone SPDX + CycloneDX files from the source tree, signs them keyless,
+# and uploads them as build artifacts (30-day retention). These are the
+# documents Grype (grype.yml) consumes for its second-opinion CVE scan.
+#
+# Tier 2: push to main + manual dispatch. No PR trigger (redundant on every
+# diff) and no path-gating (the SBOM must always describe the full tree).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  # id-token: write is what lets cosign request a short-lived OIDC identity
+  # token from GitHub's Sigstore-federated issuer for keyless blob signing —
+  # no key material to generate, rotate, or store.
+  id-token: write
+
+jobs:
+  sbom:
+    name: Generate and sign SBOM (SPDX + CycloneDX)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # One sbom-action invocation per format; syft-version pinned so the SBOM
+      # contents are reproducible run-to-run until the action is bumped.
+      - name: Generate SPDX SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          path: .
+          format: 'spdx-json'
+          output-file: 'sbom.spdx.json'
+          syft-version: 'v1.51.0'
+          artifact-name: 'sbom-spdx'
+          upload-artifact-retention: 30
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate CycloneDX SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          path: .
+          format: 'cyclonedx-json'
+          output-file: 'sbom.cdx.json'
+          syft-version: 'v1.51.0'
+          artifact-name: 'sbom-cdx'
+          upload-artifact-retention: 30
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      # Keyless blob signing via cosign's ambient GitHub Actions OIDC detection
+      # (id-token: write above), same pattern as docker-publish.yml's image
+      # signing — no --certificate-identity flags on sign, and no key material.
+      # The certificate + signature files are uploaded alongside the SBOMs so
+      # anyone can verify: cosign verify-blob --certificate sbom.spdx.json.crt
+      # --signature sbom.spdx.json.sig sbom.spdx.json
+      - name: Sign the SBOMs (keyless)
+        run: |
+          cosign sign-blob --yes \
+            --output-certificate sbom.spdx.json.crt \
+            --output-signature sbom.spdx.json.sig \
+            sbom.spdx.json
+          cosign sign-blob --yes \
+            --output-certificate sbom.cdx.json.crt \
+            --output-signature sbom.cdx.json.sig \
+            sbom.cdx.json
+
+      - name: Upload cosign signature + certificate
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: sbom-signatures
+          path: |
+            sbom.spdx.json.crt
+            sbom.spdx.json.sig
+            sbom.cdx.json.crt
+            sbom.cdx.json.sig
+          retention-days: 30

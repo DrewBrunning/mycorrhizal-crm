@@ -1,12 +1,15 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import EditTimelineItemDialog from './EditTimelineItemDialog';
 import { SnackbarProvider } from '../context/SnackbarContext';
 import { DateFormatProvider } from '../DateFormatProvider';
+import EditTimelineItemDialog from './EditTimelineItemDialog';
 
 beforeEach(() => {
-  localStorage.setItem('user_info', JSON.stringify({ user_id: 1, username: 'test', is_admin: false }));
+  localStorage.setItem(
+    'user_info',
+    JSON.stringify({ user_id: 1, username: 'test', is_admin: false }),
+  );
 });
 
 afterEach(() => {
@@ -25,7 +28,7 @@ function mockFetchByUrl(handlers: Record<string, () => unknown>) {
         }
       }
       throw new Error(`unexpected fetch: ${url}`);
-    })
+    }),
   );
 }
 
@@ -64,7 +67,7 @@ test('renders assigned contact name when opened with noteContactId and noteConta
           allContacts={[]}
         />
       </DateFormatProvider>
-    </SnackbarProvider>
+    </SnackbarProvider>,
   );
 
   await waitFor(() => {
@@ -98,7 +101,7 @@ test('shows no contact chip when note has no assignment', async () => {
           allContacts={[]}
         />
       </DateFormatProvider>
-    </SnackbarProvider>
+    </SnackbarProvider>,
   );
 
   await waitFor(() => {

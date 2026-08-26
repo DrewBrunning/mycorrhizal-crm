@@ -1,49 +1,49 @@
-import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
-import { useTranslation } from 'react-i18next';
-import { useContacts } from './hooks/useContacts';
-import { useCircles } from './hooks/useCircles';
-import { useTags } from './hooks/useTags';
-import { useSearch } from './hooks/useSearch';
-import { getCurrentUser } from './api/admin';
-import { resolveEnabledFields, ContactFieldKey } from './contactFields';
-import { BulkAction, runBulkOperation } from './api/bulkOperations';
-import { Contact, favoriteContact, unfavoriteContact } from './api/contacts';
-import AddContactDialog from './components/AddContactDialog';
-import ImportContactsDialog from './components/ImportContactsDialog';
-import BulkActionsBar from './components/BulkActionsBar';
-import SearchNotesActivities from './components/SearchNotesActivities';
-import ReviewDuplicatesDialog from './components/ReviewDuplicatesDialog';
-import MergeContactsDialog from './components/MergeContactsDialog';
-import { useDocumentTitle } from './hooks/useDocumentTitle';
-import { useAnnouncer } from './context/AnnouncerContext';
-import {
-  Box,
-  Card,
-  Avatar,
-  Typography,
-  Chip,
-  Stack,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Button,
-  FormControlLabel,
-  Switch,
-  Checkbox,
-  TextField,
-  InputAdornment,
-  IconButton
-} from '@mui/material';
-import PersonAddIcon from '@mui/icons-material/PersonAdd';
-import FileUploadIcon from '@mui/icons-material/FileUpload';
-import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
 import DifferenceIcon from '@mui/icons-material/Difference';
+import FileUploadIcon from '@mui/icons-material/FileUpload';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import SearchIcon from '@mui/icons-material/Search';
 import StarIcon from '@mui/icons-material/Star';
 import StarBorderIcon from '@mui/icons-material/StarBorder';
+import {
+  Avatar,
+  Box,
+  Button,
+  Card,
+  Checkbox,
+  Chip,
+  FormControl,
+  FormControlLabel,
+  IconButton,
+  InputAdornment,
+  InputLabel,
+  MenuItem,
+  Select,
+  Stack,
+  Switch,
+  TextField,
+  Typography,
+} from '@mui/material';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate, useSearchParams } from 'react-router';
+import { getCurrentUser } from './api/admin';
+import { type BulkAction, runBulkOperation } from './api/bulkOperations';
+import { type Contact, favoriteContact, unfavoriteContact } from './api/contacts';
+import AddContactDialog from './components/AddContactDialog';
+import BulkActionsBar from './components/BulkActionsBar';
+import ImportContactsDialog from './components/ImportContactsDialog';
 import { ContactListSkeleton } from './components/LoadingSkeletons';
+import MergeContactsDialog from './components/MergeContactsDialog';
+import ReviewDuplicatesDialog from './components/ReviewDuplicatesDialog';
+import SearchNotesActivities from './components/SearchNotesActivities';
+import { type ContactFieldKey, resolveEnabledFields } from './contactFields';
+import { useAnnouncer } from './context/AnnouncerContext';
+import { useCircles } from './hooks/useCircles';
+import { useContacts } from './hooks/useContacts';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
+import { useSearch } from './hooks/useSearch';
+import { useTags } from './hooks/useTags';
 
 export default function ContactsPage() {
   const { t } = useTranslation();
@@ -81,12 +81,15 @@ export default function ContactsPage() {
       const next = searchInput.trim().length >= 2 ? searchInput.trim() : '';
       ownWriteRef.current = next;
       if (next === searchQuery) return;
-      setSearchParams((prev) => {
-        const nextParams = new URLSearchParams(prev);
-        if (next) nextParams.set('search', next);
-        else nextParams.delete('search');
-        return nextParams;
-      }, { replace: true });
+      setSearchParams(
+        (prev) => {
+          const nextParams = new URLSearchParams(prev);
+          if (next) nextParams.set('search', next);
+          else nextParams.delete('search');
+          return nextParams;
+        },
+        { replace: true },
+      );
     }, 300);
     return () => clearTimeout(timer);
   }, [searchInput, searchQuery, setSearchParams]);
@@ -105,7 +108,9 @@ export default function ContactsPage() {
   // the loaded page rather than a fresh lookup, since selection is keyed by
   // VCardUID but the merge endpoint takes numeric IDs (Contact.ID).
   const [mergePair, setMergePair] = useState<{ a: Contact; b: Contact } | null>(null);
-  const [enabledFields, setEnabledFields] = useState<Set<ContactFieldKey>>(() => resolveEnabledFields(null));
+  const [enabledFields, setEnabledFields] = useState<Set<ContactFieldKey>>(() =>
+    resolveEnabledFields(null),
+  );
   const [showArchived, setShowArchived] = useState(false);
   // Issue #173: "Favorites only" — a quick filter toggle beside the archived
   // switch. Local state like showArchived (both are transient list lenses,
@@ -124,11 +129,14 @@ export default function ContactsPage() {
   const hasContactInfo = !showAll;
 
   const toggleShowAll = (checked: boolean) => {
-    setSearchParams((prev) => {
-      const nextParams = new URLSearchParams(prev);
-      nextParams.set('has_contact_info', checked ? 'false' : 'true');
-      return nextParams;
-    }, { replace: true });
+    setSearchParams(
+      (prev) => {
+        const nextParams = new URLSearchParams(prev);
+        nextParams.set('has_contact_info', checked ? 'false' : 'true');
+        return nextParams;
+      },
+      { replace: true },
+    );
   };
 
   // N5 multi-select: keyed by Contact.VCardUID so it survives pagination —
@@ -167,37 +175,43 @@ export default function ContactsPage() {
   // default) — only relevant for a hand-crafted URL, since the Select below
   // always writes both params together.
   const orderParam = searchParams.get('order');
-  const order = orderParam === 'desc' || orderParam === 'asc'
-    ? orderParam
-    : (sort === 'name' ? 'asc' : 'desc');
+  const order =
+    orderParam === 'desc' || orderParam === 'asc' ? orderParam : sort === 'name' ? 'asc' : 'desc';
 
   const setSortSelection = (value: string) => {
     const [nextSort, nextOrder] = value.split(':');
-    setSearchParams((prev) => {
-      const nextParams = new URLSearchParams(prev);
-      nextParams.set('sort', nextSort);
-      nextParams.set('order', nextOrder);
-      return nextParams;
-    }, { replace: true });
+    setSearchParams(
+      (prev) => {
+        const nextParams = new URLSearchParams(prev);
+        nextParams.set('sort', nextSort);
+        nextParams.set('order', nextOrder);
+        return nextParams;
+      },
+      { replace: true },
+    );
   };
 
   // T17/T73: cursor pagination — the list pages by the chosen sort's cursor
   // key ((updated_at, id) DESC by default, or (sort_name, id) under
   // ?sort=name) and the "load more" button appends the next_cursor page.
   // There is no page number or exact total anymore.
-  const contactParams = useMemo(() => ({
-    limit: pageSize,
-    search: searchQuery,
-    circle: selectedCircle,
-    sort: sort as 'updated_at' | 'name',
-    order: order as 'asc' | 'desc',
-    includeArchived: showArchived,
-    favorites: showFavorites,
-    hasContactInfo,
-  }), [searchQuery, selectedCircle, showArchived, showFavorites, sort, order, hasContactInfo]);
+  const contactParams = useMemo(
+    () => ({
+      limit: pageSize,
+      search: searchQuery,
+      circle: selectedCircle,
+      sort: sort as 'updated_at' | 'name',
+      order: order as 'asc' | 'desc',
+      includeArchived: showArchived,
+      favorites: showFavorites,
+      hasContactInfo,
+    }),
+    [searchQuery, selectedCircle, showArchived, showFavorites, sort, order, hasContactInfo],
+  );
 
   // Use custom hook for fetching contacts
-  const { contacts, nextCursor, hiddenCount, loading, refetch, loadMore, setContacts } = useContacts(contactParams);
+  const { contacts, nextCursor, hiddenCount, loading, refetch, loadMore, setContacts } =
+    useContacts(contactParams);
 
   // #211: result-count announcement, once per settled fetch (not per
   // keystroke -- `loading` only flips false after the debounced search in
@@ -212,9 +226,10 @@ export default function ContactsPage() {
   // result until the new one lands, so without this the notes/activities
   // section would render the old query's hits against the new query's cards.
   const crossResultMatches = searchResult !== null && searchResult.query === searchQuery;
-  const crossEmpty = crossResultMatches
-    && (searchResult.notes || []).length === 0
-    && (searchResult.activities || []).length === 0;
+  const crossEmpty =
+    crossResultMatches &&
+    (searchResult.notes || []).length === 0 &&
+    (searchResult.activities || []).length === 0;
   const showNoResults = searchActive && !loading && contacts.length === 0 && crossEmpty;
 
   // Fetch enabled contact fields
@@ -244,7 +259,10 @@ export default function ContactsPage() {
 
   // --- N5 selection --------------------------------------------------------
 
-  const isSelected = useCallback((uid: string | undefined) => !!uid && selectedUids.has(uid), [selectedUids]);
+  const isSelected = useCallback(
+    (uid: string | undefined) => !!uid && selectedUids.has(uid),
+    [selectedUids],
+  );
   const allSelected = contacts.length > 0 && contacts.every((c) => isSelected(c.uid));
 
   const toggleSelect = (uid: string | undefined) => {
@@ -277,13 +295,19 @@ export default function ContactsPage() {
   // longer matches the filter) rather than leaving an empty star behind.
   const handleToggleFavorite = async (contact: Contact) => {
     const wasFavorite = !!contact.is_favorite;
-    setContacts((prev) => prev.map((c) => (c.uid === contact.uid ? { ...c, is_favorite: !wasFavorite } : c)));
+    setContacts((prev) =>
+      prev.map((c) => (c.uid === contact.uid ? { ...c, is_favorite: !wasFavorite } : c)),
+    );
     try {
-      const updated = wasFavorite ? await unfavoriteContact(contact.ID) : await favoriteContact(contact.ID);
+      const updated = wasFavorite
+        ? await unfavoriteContact(contact.ID)
+        : await favoriteContact(contact.ID);
       if (showFavorites && !updated.is_favorite) {
         setContacts((prev) => prev.filter((c) => c.uid !== contact.uid));
       } else {
-        setContacts((prev) => prev.map((c) => (c.uid === contact.uid ? { ...c, is_favorite: updated.is_favorite } : c)));
+        setContacts((prev) =>
+          prev.map((c) => (c.uid === contact.uid ? { ...c, is_favorite: updated.is_favorite } : c)),
+        );
       }
     } catch {
       window.alert(t('contacts.favoriteError'));
@@ -305,7 +329,13 @@ export default function ContactsPage() {
       });
       if (result.failed > 0) {
         // Partial success: surface the counts so nothing failed silently.
-        window.alert(t('bulk.resultFailure', { total: result.total, succeeded: result.succeeded, failed: result.failed }));
+        window.alert(
+          t('bulk.resultFailure', {
+            total: result.total,
+            succeeded: result.succeeded,
+            failed: result.failed,
+          }),
+        );
       }
       setSelectedUids(new Set());
       await Promise.all([refetch(), refreshCircles(), refreshTags()]);
@@ -320,7 +350,8 @@ export default function ContactsPage() {
     if (selectedUids.size === 0) return Promise.resolve();
     // Bulk delete is the most destructive action in the app — require a real
     // confirmation naming the count before anything happens.
-    if (!window.confirm(t('bulk.deleteConfirm', { count: selectedUids.size }))) return Promise.resolve();
+    if (!window.confirm(t('bulk.deleteConfirm', { count: selectedUids.size })))
+      return Promise.resolve();
     return handleBulk('delete');
   };
 
@@ -389,7 +420,9 @@ export default function ContactsPage() {
           fullWidth
           size="small"
           sx={{ mb: 1.5 }}
-          helperText={searchInput.trim().length === 1 ? t('contacts.searchMinLengthHint') : undefined}
+          helperText={
+            searchInput.trim().length === 1 ? t('contacts.searchMinLengthHint') : undefined
+          }
           slotProps={{
             input: {
               startAdornment: (
@@ -399,7 +432,11 @@ export default function ContactsPage() {
               ),
               endAdornment: searchInput ? (
                 <InputAdornment position="end">
-                  <IconButton size="small" onClick={() => setSearchInput('')} aria-label={t('contacts.searchClear')}>
+                  <IconButton
+                    size="small"
+                    onClick={() => setSearchInput('')}
+                    aria-label={t('contacts.searchClear')}
+                  >
                     <ClearIcon fontSize="small" />
                   </IconButton>
                 </InputAdornment>
@@ -427,11 +464,13 @@ export default function ContactsPage() {
               labelId="circle-select-label"
               value={selectedCircle}
               label={t('contacts.filterByCircle')}
-              onChange={e => setSelectedCircle(e.target.value)}
+              onChange={(e) => setSelectedCircle(e.target.value)}
             >
               <MenuItem value="">{t('contacts.allCircles')}</MenuItem>
-              {circles.map(c => (
-                <MenuItem key={c.id} value={c.name}>{c.name}</MenuItem>
+              {circles.map((c) => (
+                <MenuItem key={c.id} value={c.name}>
+                  {c.name}
+                </MenuItem>
               ))}
             </Select>
           </FormControl>
@@ -441,7 +480,7 @@ export default function ContactsPage() {
               labelId="sort-select-label"
               value={`${sort}:${order}`}
               label={t('contacts.sortBy')}
-              onChange={e => setSortSelection(e.target.value)}
+              onChange={(e) => setSortSelection(e.target.value)}
             >
               <MenuItem value="name:asc">{t('contacts.sortNameAsc')}</MenuItem>
               <MenuItem value="name:desc">{t('contacts.sortNameDesc')}</MenuItem>
@@ -521,12 +560,19 @@ export default function ContactsPage() {
           </Typography>
         )}
         {selectedCircle && (
-          <Box sx={{ mb: 1.5, p: 1.5, bgcolor: 'action.hover', borderRadius: 1, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-            <Chip
-              label={selectedCircle}
-              size="small"
-              onDelete={clearCircle}
-            />
+          <Box
+            sx={{
+              mb: 1.5,
+              p: 1.5,
+              bgcolor: 'action.hover',
+              borderRadius: 1,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              flexWrap: 'wrap',
+            }}
+          >
+            <Chip label={selectedCircle} size="small" onDelete={clearCircle} />
           </Box>
         )}
         <BulkActionsBar
@@ -553,7 +599,7 @@ export default function ContactsPage() {
       ) : (
         <>
           <Stack spacing={2}>
-            {contacts.map(contact => (
+            {contacts.map((contact) => (
               <Card
                 key={contact.ID}
                 onClick={() => navigate(`/contacts/${contact.ID}`)}
@@ -566,34 +612,65 @@ export default function ContactsPage() {
                   color: 'inherit',
                   bgcolor: contact.archived ? 'action.disabledBackground' : undefined,
                   '&:hover': {
-                    bgcolor: 'action.hover'
-                  }
+                    bgcolor: 'action.hover',
+                  },
                 }}
               >
                 <Checkbox
                   checked={isSelected(contact.uid)}
                   onClick={(e) => e.stopPropagation()}
-                  onChange={(e) => { e.stopPropagation(); toggleSelect(contact.uid); }}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    toggleSelect(contact.uid);
+                  }}
                   disabled={bulkBusy}
-                  inputProps={{ 'aria-label': t('bulk.selectContact', { name: `${contact.firstname} ${contact.lastname}`.trim() }) }}
+                  inputProps={{
+                    'aria-label': t('bulk.selectContact', {
+                      name: `${contact.firstname} ${contact.lastname}`.trim(),
+                    }),
+                  }}
                 />
                 {/* Issue #173: per-row favorite toggle. stopPropagation so the
                     star click never navigates into the detail page. */}
                 <IconButton
                   size="small"
-                  aria-label={contact.is_favorite ? t('contacts.unfavoriteContact', { name: `${contact.firstname} ${contact.lastname}`.trim() }) : t('contacts.favoriteContact', { name: `${contact.firstname} ${contact.lastname}`.trim() })}
-                  onClick={(e) => { e.stopPropagation(); handleToggleFavorite(contact); }}
+                  aria-label={
+                    contact.is_favorite
+                      ? t('contacts.unfavoriteContact', {
+                          name: `${contact.firstname} ${contact.lastname}`.trim(),
+                        })
+                      : t('contacts.favoriteContact', {
+                          name: `${contact.firstname} ${contact.lastname}`.trim(),
+                        })
+                  }
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleToggleFavorite(contact);
+                  }}
                   sx={{ mr: 0.5 }}
                 >
-                  {contact.is_favorite ? <StarIcon fontSize="small" sx={{ color: 'warning.main' }} /> : <StarBorderIcon fontSize="small" />}
+                  {contact.is_favorite ? (
+                    <StarIcon fontSize="small" sx={{ color: 'warning.main' }} />
+                  ) : (
+                    <StarBorderIcon fontSize="small" />
+                  )}
                 </IconButton>
-                <Avatar src={contact.photo_thumbnail || undefined} sx={{ width: 48, height: 48, mr: 1.5, bgcolor: 'primary.main' }}>
+                <Avatar
+                  src={contact.photo_thumbnail || undefined}
+                  sx={{ width: 48, height: 48, mr: 1.5, bgcolor: 'primary.main' }}
+                >
                   {contact.firstname.charAt(0)}
                 </Avatar>
                 <Box sx={{ flex: 1 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                      {[contact.firstname, contact.nickname && `"${contact.nickname}"`, contact.lastname].filter(Boolean).join(' ')}
+                      {[
+                        contact.firstname,
+                        contact.nickname && `"${contact.nickname}"`,
+                        contact.lastname,
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
                     </Typography>
                     {contact.archived && (
                       <Chip
@@ -612,7 +689,11 @@ export default function ContactsPage() {
                         size="small"
                         variant="outlined"
                         clickable
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedCircle(name); }}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setSelectedCircle(name);
+                        }}
                         sx={{ height: 20, fontSize: '0.75rem' }}
                       />
                     ))}

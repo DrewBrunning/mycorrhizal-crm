@@ -1,0 +1,60 @@
+name: Mutation Testing (Stryker)
+
+# Issue #578: mutation testing measures whether the test suite would notice a
+# planted bug — a mutant that survives means a behavior the tests don't pin.
+# Complementary to coverage (a line can be covered without any assertion
+# noticing it changed).
+#
+# Tier 3 (nightly) + manual dispatch only — deliberately NOT on PR or push:
+# mutation testing is O(test suite × mutant count), too slow to gate every
+# diff. The scope (stryker.conf.json's `mutate`) is the core domain modules
+# only — the contact model, relationship graph, and life events — not the
+# whole tree, and the vitest-runner's `related` mode narrows each mutant to
+# the tests that touch it.
+#
+# Report-only for now: the HTML report is uploaded as an artifact and the
+# mutation score is printed to the log, but nothing fails on it. Gate on a
+# score threshold once a stable baseline settles.
+
+on:
+  schedule:
+    - cron: '30 2 * * *' # 02:30 UTC nightly
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  stryker:
+    name: Mutation test (core modules)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: 'yarn'
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: yarn install --frozen-lockfile
+
+      - name: Run Stryker (report-only)
+        working-directory: frontend
+        run: npx stryker run
+
+      - name: Upload mutation report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: stryker-mutation-report
+          path: frontend/reports/mutation/
+          retention-days: 30

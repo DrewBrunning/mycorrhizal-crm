@@ -1,8 +1,8 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
+import type { LifeEvent } from '../api/lifeEvents';
 import LifeEventList from './LifeEventList';
-import { LifeEvent } from '../api/lifeEvents';
 
 afterEach(cleanup);
 
@@ -19,12 +19,7 @@ function baseEvent(overrides: Partial<LifeEvent> = {}): LifeEvent {
 
 function renderList(events: LifeEvent[]) {
   return render(
-    <LifeEventList
-      events={events}
-      contactsByUid={new Map()}
-      onEdit={vi.fn()}
-      onDelete={vi.fn()}
-    />
+    <LifeEventList events={events} contactsByUid={new Map()} onEdit={vi.fn()} onDelete={vi.fn()} />,
   );
 }
 

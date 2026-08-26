@@ -1,137 +1,158 @@
-import { useEffect, useMemo, useState, useCallback, type ReactNode } from 'react';
-import { useParams, useNavigate } from 'react-router';
-import { useTranslation } from 'react-i18next';
-import {
-  Card as CardModel,
-  CRMEnvelope,
-  NameComponent,
-  ContactRecordResponse,
-  getContactRecord,
-  updateContactRecord,
-  nameComponentValue,
-  getContactDisplayName,
-  withAnniversary,
-  getOrganizationFields,
-  withOrganization,
-  getTitleField,
-  withTitles,
-  getContactProfilePicture,
-  deleteContact,
-  uploadProfilePicture,
-  archiveContact,
-  unarchiveContact,
-  favoriteContact,
-  unfavoriteContact
-} from './api/contacts';
-import { getCurrentUser } from './api/admin';
-import { updateSelfContact } from './api/users';
-import { fetchAndCacheUserInfo, getCachedSelfContactVCardUID } from './auth';
-import { resolveEnabledFields, ContactFieldKey } from './contactFields';
-import { useDocumentTitle } from './hooks/useDocumentTitle';
-import { 
-  getContactNotes, 
-  Note 
-} from './api/notes';
-import {
-  getContactActivities,
-  Activity
-} from './api/activities';
-import {
-  ReminderCompletion,
-  getCompletionsForContact,
-  deleteCompletion
-} from './api/reminders';
+import { mdiCalendarPlus, mdiNotePlusOutline } from '@mdi/js';
+import AddIcon from '@mui/icons-material/Add';
+import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import {
   Box,
+  Button,
   Card,
   CardContent,
   Divider,
-  Button,
-  Typography,
   SvgIcon,
-  useTheme,
+  Typography,
   useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
-import AddIcon from '@mui/icons-material/Add';
-import { ContactDetailHeaderSkeleton, TimelineSkeleton } from './components/LoadingSkeletons';
-import { mdiNotePlusOutline, mdiCalendarPlus } from '@mdi/js';
-import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
-import AddNoteDialog from './components/AddNoteDialog';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate, useParams } from 'react-router';
+import { type Activity, getContactActivities } from './api/activities';
+import { getCurrentUser } from './api/admin';
+import type { CadencePolicy, CadencePolicyInput } from './api/cadencePolicies';
+import { addCircleMember, type Circle, removeCircleMember } from './api/circles';
+import { ApiError } from './api/client';
+import {
+  archiveContact,
+  type Card as CardModel,
+  type ContactRecordResponse,
+  type CRMEnvelope,
+  deleteContact,
+  favoriteContact,
+  getContactDisplayName,
+  getContactProfilePicture,
+  getContactRecord,
+  getOrganizationFields,
+  getTitleField,
+  type NameComponent,
+  nameComponentValue,
+  unarchiveContact,
+  unfavoriteContact,
+  updateContactRecord,
+  uploadProfilePicture,
+  withAnniversary,
+  withOrganization,
+  withTitles,
+} from './api/contacts';
+import type { ConversationAgenda } from './api/conversationAgenda';
+import { suggestContactAddresses } from './api/dataSuggestions';
+import { exportContact } from './api/export';
+import type { ExternalActivity } from './api/externalLinks';
+import type { FieldValueInput } from './api/fieldDefinitions';
+import type { Gift, GiftInput, GiftStatus } from './api/gifts';
+import {
+  getImmichConfig,
+  getImmichContactSummary,
+  getImmichPeople,
+  type ImmichPerson,
+  type ImmichPersonSummary,
+  linkImmichPerson,
+  syncImmich,
+  unlinkImmichPerson,
+} from './api/immich';
+import type { LifeEvent, PartialDate } from './api/lifeEvents';
+import {
+  getNextcloudConfig,
+  getNextcloudDir,
+  linkNextcloudItem,
+  unlinkNextcloudItem,
+  type WebDAVItem,
+} from './api/nextcloud';
+import { getContactNotes, type Note } from './api/notes';
+import {
+  getPaperlessConfig,
+  getPaperlessDocuments,
+  linkPaperlessDocument,
+  type PaperlessDocument,
+  unlinkPaperlessDocument,
+} from './api/paperless';
+import {
+  GIFTS_TAB_SECTIONS,
+  isGiftsTabCategory,
+  OVERVIEW_TAB_SECTIONS,
+  PREFERENCE_CLOTHING_SIZE,
+  type Preference,
+} from './api/preferences';
+import { getOtherPartyId, type RelationshipEdgeInput } from './api/relationshipEdges';
+import {
+  deleteCompletion,
+  getCompletionsForContact,
+  type ReminderCompletion,
+} from './api/reminders';
+import {
+  getSeafileConfig,
+  getSeafileDir,
+  getSeafileLibraries,
+  linkSeafileItem,
+  unlinkSeafileItem,
+} from './api/seafile';
+import { addContactTag, removeContactTag, type Tag } from './api/tags';
+import { updateSelfContact } from './api/users';
+import { fetchAndCacheUserInfo, getCachedSelfContactVCardUID } from './auth';
 import AddActivityDialog from './components/AddActivityDialog';
-import ReminderDialog from './components/ReminderDialog';
-import ReminderList from './components/ReminderList';
-import EditTimelineItemDialog from './components/EditTimelineItemDialog';
+import AddNoteDialog from './components/AddNoteDialog';
+import AttachmentsSection from './components/AttachmentsSection';
+import CadenceDialog from './components/CadenceDialog';
+import CadencePanel from './components/CadencePanel';
+import ClothingSizesPanel from './components/ClothingSizesPanel';
+import ConnectionsPanel from './components/ConnectionsPanel';
 import ContactHeader from './components/ContactHeader';
-import MergeContactsDialog from './components/MergeContactsDialog';
-import ShareContactDialog from './components/ShareContactDialog';
 import ContactInformation from './components/ContactInformation';
 import ContactTimeline from './components/ContactTimeline';
-import TimelineExplorerDialog from './components/TimelineExplorerDialog';
-import RelationshipEdgeList from './components/RelationshipEdgeList';
-import LifeEventList from './components/LifeEventList';
-import PreferenceList from './components/PreferenceList';
-import CadencePanel from './components/CadencePanel';
+import ConversationAgendaDialog, {
+  type ConversationAgendaFormData,
+} from './components/ConversationAgendaDialog';
 import ConversationAgendaList from './components/ConversationAgendaList';
-import GiftList from './components/GiftList';
-import ClothingSizesPanel from './components/ClothingSizesPanel';
+import EditTimelineItemDialog from './components/EditTimelineItemDialog';
 import ExternalLinkPanel from './components/ExternalLinkPanel';
-import AttachmentsSection from './components/AttachmentsSection';
-import ConnectionsPanel from './components/ConnectionsPanel';
+import GiftDialog, { type GiftFormData } from './components/GiftDialog';
+import GiftList from './components/GiftList';
+import LifeEventDialog, { type LifeEventFormData } from './components/LifeEventDialog';
+import LifeEventList from './components/LifeEventList';
+import { ContactDetailHeaderSkeleton, TimelineSkeleton } from './components/LoadingSkeletons';
+import MarkDiscussedDialog from './components/MarkDiscussedDialog';
+import MergeContactsDialog from './components/MergeContactsDialog';
+import PreferenceDialog, {
+  type PreferenceFormData,
+  toPreferenceInput,
+} from './components/PreferenceDialog';
+import PreferenceList from './components/PreferenceList';
 import ProfilePictureUploadDialog from './components/ProfilePictureUploadDialog';
+import RelationshipEdgeDialog from './components/RelationshipEdgeDialog';
+import RelationshipEdgeList from './components/RelationshipEdgeList';
+import ReminderDialog from './components/ReminderDialog';
+import ReminderList from './components/ReminderList';
+import type { SeafileLinkTarget } from './components/SeafileFilePickerDialog';
+import ShareContactDialog from './components/ShareContactDialog';
+import TimelineExplorerDialog from './components/TimelineExplorerDialog';
+import { type ContactFieldKey, resolveEnabledFields } from './contactFields';
+import { useSnackbar } from './context/SnackbarContext';
+import { useDateFormat } from './DateFormatProvider';
+import { useCadencePolicy } from './hooks/useCadencePolicy';
+import { useCircles } from './hooks/useCircles';
 import { useContactDialogs } from './hooks/useContactDialogs';
-import { exportContact } from './api/export';
-import { useTimelineEditing } from './hooks/useTimelineEditing';
-import { useReminderManagement } from './hooks/useReminderManagement';
-import { useRelationshipEdges } from './hooks/useRelationshipEdges';
+import { useConversationAgenda } from './hooks/useConversationAgenda';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
+import { useExternalLinks } from './hooks/useExternalLinks';
+import { useContactFieldValues, useFieldDefinitions } from './hooks/useFieldDefinitions';
+import { useGifts } from './hooks/useGifts';
 import { useLifeEvents } from './hooks/useLifeEvents';
 import { usePreferences } from './hooks/usePreferences';
-import { useCadencePolicy } from './hooks/useCadencePolicy';
-import { useConversationAgenda } from './hooks/useConversationAgenda';
-import { useGifts } from './hooks/useGifts';
-import { useExternalLinks } from './hooks/useExternalLinks';
-import { useCircles } from './hooks/useCircles';
+import { useRelationshipEdges } from './hooks/useRelationshipEdges';
+import { useReminderManagement } from './hooks/useReminderManagement';
 import { useTags } from './hooks/useTags';
-import { useFieldDefinitions } from './hooks/useFieldDefinitions';
-import { useContactFieldValues } from './hooks/useFieldDefinitions';
-import { FieldValueInput } from './api/fieldDefinitions';
-import { ExternalActivity } from './api/externalLinks';
-import { ImmichPerson, ImmichPersonSummary, getImmichConfig, getImmichContactSummary, linkImmichPerson, unlinkImmichPerson, syncImmich, getImmichPeople } from './api/immich';
-import { getPaperlessConfig, getPaperlessDocuments, linkPaperlessDocument, unlinkPaperlessDocument, PaperlessDocument } from './api/paperless';
-import { getSeafileConfig, getSeafileLibraries, getSeafileDir, linkSeafileItem, unlinkSeafileItem } from './api/seafile';
-import { getNextcloudConfig, getNextcloudDir, linkNextcloudItem, unlinkNextcloudItem, WebDAVItem } from './api/nextcloud';
-import { SeafileLinkTarget } from './components/SeafileFilePickerDialog';
-import { addCircleMember, removeCircleMember } from './api/circles';
-import { addContactTag, removeContactTag } from './api/tags';
-import { Circle } from './api/circles';
-import { Tag } from './api/tags';
-import RelationshipEdgeDialog from './components/RelationshipEdgeDialog';
-import LifeEventDialog from './components/LifeEventDialog';
-import PreferenceDialog, { toPreferenceInput, PreferenceFormData } from './components/PreferenceDialog';
-import CadenceDialog from './components/CadenceDialog';
-import ConversationAgendaDialog, { ConversationAgendaFormData } from './components/ConversationAgendaDialog';
-import MarkDiscussedDialog from './components/MarkDiscussedDialog';
-import GiftDialog, { GiftFormData } from './components/GiftDialog';
-import { CadencePolicy, CadencePolicyInput } from './api/cadencePolicies';
-import {
-  Preference,
-  PREFERENCE_CLOTHING_SIZE,
-  GIFTS_TAB_SECTIONS,
-  OVERVIEW_TAB_SECTIONS,
-  isGiftsTabCategory,
-} from './api/preferences';
-import { LifeEventFormData } from './components/LifeEventDialog';
-import { getOtherPartyId, RelationshipEdgeInput } from './api/relationshipEdges';
-import { suggestContactAddresses } from './api/dataSuggestions';
-import { LifeEvent } from './api/lifeEvents';
-import { PartialDate } from './api/lifeEvents';
-import { ConversationAgenda } from './api/conversationAgenda';
-import { Gift, GiftInput, GiftStatus } from './api/gifts';
-import { useSnackbar } from './context/SnackbarContext';
-import { ApiError } from './api/client';
+import { useTimelineEditing } from './hooks/useTimelineEditing';
 import { handleFetchError } from './utils/errorHandler';
-import { useDateFormat } from './DateFormatProvider';
 
 function fullDateFromPartial(d: PartialDate): string | undefined {
   if (d.year != null && d.month != null && d.day != null) {
@@ -158,7 +179,15 @@ function fullDateFromPartial(d: PartialDate): string | undefined {
 // a full-width block and T31's anchor targets / scrollMarginTop keep working
 // unchanged. Sections that omit it (overview, gifts, external-links,
 // attachments) stay exactly as they render today.
-function SectionGroup({ id, twoColumn, children }: { id: string; twoColumn?: boolean; children: ReactNode }) {
+function SectionGroup({
+  id,
+  twoColumn,
+  children,
+}: {
+  id: string;
+  twoColumn?: boolean;
+  children: ReactNode;
+}) {
   return (
     // scrollMarginTop must clear the AppBar (64) plus the sticky jump nav (~40)
     // so an anchor click lands a section's title below the nav, not under it.
@@ -200,7 +229,16 @@ function PanelCard({
   return (
     <Card sx={{ mb: 2, ...(fullWidth && { gridColumn: { lg: '1 / -1' } }) }}>
       <CardContent sx={{ py: 2 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 1,
+            flexWrap: 'wrap',
+            mb: 1,
+          }}
+        >
           <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 600 }}>
             {title}
           </Typography>
@@ -213,7 +251,13 @@ function PanelCard({
   );
 }
 
-function ContactJumpNav({ ariaLabel, sections }: { ariaLabel: string; sections: Array<{ id: string; label: string }> }) {
+function ContactJumpNav({
+  ariaLabel,
+  sections,
+}: {
+  ariaLabel: string;
+  sections: Array<{ id: string; label: string }>;
+}) {
   const theme = useTheme();
   const isNarrow = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -315,7 +359,9 @@ export default function ContactDetailPage() {
   // cache (written at login / after a Settings picker change) so a fresh page
   // shows the badge immediately, then corrected from this page's own
   // /users/me fetch below when it lands.
-  const [selfContactUid, setSelfContactUid] = useState<string | null>(() => getCachedSelfContactVCardUID());
+  const [selfContactUid, setSelfContactUid] = useState<string | null>(() =>
+    getCachedSelfContactVCardUID(),
+  );
   const isMe = !!record && !!selfContactUid && record.uid === selfContactUid;
   useDocumentTitle(record ? getContactDisplayName(record) : t('nav.contacts'));
   const firstname = record ? nameComponentValue(record.card?.name?.components, 'given') || '' : '';
@@ -333,7 +379,7 @@ export default function ContactDetailPage() {
   // (which the page-level edit dialogs can't touch) refreshes to match.
   const [timelineExplorerOpen, setTimelineExplorerOpen] = useState(false);
   const [timelineRevision, setTimelineRevision] = useState(0);
-  
+
   // Profile editing state
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileValues, setProfileValues] = useState({
@@ -388,7 +434,9 @@ export default function ContactDetailPage() {
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
   // Enabled extended contact fields (UI visibility)
-  const [enabledFields, setEnabledFields] = useState<Set<ContactFieldKey>>(() => resolveEnabledFields(null));
+  const [enabledFields, setEnabledFields] = useState<Set<ContactFieldKey>>(() =>
+    resolveEnabledFields(null),
+  );
 
   // Unified refresh function for notes, activities, and completions
   const refreshNotesAndActivities = async () => {
@@ -398,7 +446,7 @@ export default function ContactDetailPage() {
       const [notesData, activitiesData, completionsData] = await Promise.all([
         getContactNotes(id),
         getContactActivities(id),
-        getCompletionsForContact(parseInt(id))
+        getCompletionsForContact(parseInt(id, 10)),
       ]);
       setNotes(notesData.notes || []);
       setActivities(activitiesData.activities || []);
@@ -418,7 +466,7 @@ export default function ContactDetailPage() {
     setNoteDialogOpen,
     setActivityDialogOpen,
     handleSaveNote,
-    handleSaveActivity
+    handleSaveActivity,
   } = useContactDialogs(id, refreshNotesAndActivities, { showError });
 
   const {
@@ -431,7 +479,7 @@ export default function ContactDetailPage() {
     handleUpdateActivity,
     handleDeleteNote,
     handleDeleteActivity,
-    setEditTimelineValues
+    setEditTimelineValues,
   } = useTimelineEditing(record?.id, refreshNotesAndActivities, { showError });
 
   const {
@@ -445,14 +493,17 @@ export default function ContactDetailPage() {
     handleDeleteReminder,
     handleAddReminder,
     setReminderDialogOpen,
-    setEditingReminder
+    setEditingReminder,
   } = useReminderManagement(id, { showError });
 
   // State for pre-filled reminder values (used by Stay in Touch)
-  const [reminderInitialValues, setReminderInitialValues] = useState<{
-    message?: string;
-    recurrence?: 'once' | 'weekly' | 'monthly' | 'quarterly' | 'six-months' | 'yearly';
-  } | undefined>(undefined);
+  const [reminderInitialValues, setReminderInitialValues] = useState<
+    | {
+        message?: string;
+        recurrence?: 'once' | 'weekly' | 'monthly' | 'quarterly' | 'six-months' | 'yearly';
+      }
+    | undefined
+  >(undefined);
 
   const {
     confirmedEdges,
@@ -622,13 +673,15 @@ export default function ContactDetailPage() {
   }>({ paperless: false, seafile: false, nextcloud: false });
 
   useEffect(() => {
-    Promise.allSettled([getPaperlessConfig(), getSeafileConfig(), getNextcloudConfig()]).then(([p, s, n]) => {
-      setFileSystemsConfigured({
-        paperless: p.status === 'fulfilled' && p.value.has_api_token,
-        seafile: s.status === 'fulfilled' && s.value.has_api_token,
-        nextcloud: n.status === 'fulfilled' && n.value.has_app_password,
-      });
-    });
+    Promise.allSettled([getPaperlessConfig(), getSeafileConfig(), getNextcloudConfig()]).then(
+      ([p, s, n]) => {
+        setFileSystemsConfigured({
+          paperless: p.status === 'fulfilled' && p.value.has_api_token,
+          seafile: s.status === 'fulfilled' && s.value.has_api_token,
+          nextcloud: n.status === 'fulfilled' && n.value.has_app_password,
+        });
+      },
+    );
   }, []);
 
   // File link handlers: link/unlink go through the integration endpoints,
@@ -639,7 +692,7 @@ export default function ContactDetailPage() {
       await linkPaperlessDocument(record.uid, doc.id);
       await refreshExternalLinks(record.uid);
     },
-    [record?.uid, refreshExternalLinks]
+    [record?.uid, refreshExternalLinks],
   );
 
   const handleLinkSeafile = useCallback(
@@ -655,7 +708,7 @@ export default function ContactDetailPage() {
       });
       await refreshExternalLinks(record.uid);
     },
-    [record?.uid, refreshExternalLinks]
+    [record?.uid, refreshExternalLinks],
   );
 
   const handleLinkNextcloud = useCallback(
@@ -671,7 +724,7 @@ export default function ContactDetailPage() {
       });
       await refreshExternalLinks(record.uid);
     },
-    [record?.uid, refreshExternalLinks]
+    [record?.uid, refreshExternalLinks],
   );
 
   const handleUnlinkFileSystem = useCallback(
@@ -682,7 +735,7 @@ export default function ContactDetailPage() {
       if (system === 'nextcloud') await unlinkNextcloudItem(record.uid, identityId);
       await refreshExternalLinks(record.uid);
     },
-    [record?.uid, refreshExternalLinks]
+    [record?.uid, refreshExternalLinks],
   );
 
   // T31's sticky ContactJumpNav sits above every SectionGroup at zIndex 10.
@@ -706,25 +759,31 @@ export default function ContactDetailPage() {
     };
   }, []);
 
-  const refreshImmichSummary = useCallback(async (overrideUid?: string) => {
-    const uid = overrideUid ?? record?.uid;
-    if (!uid) return;
-    setImmichSummaryLoading(true);
-    try {
-      const s = await getImmichContactSummary(uid);
-      setImmichSummary(s);
-    } catch {
-      setImmichSummary(null);
-    } finally {
-      setImmichSummaryLoading(false);
-    }
-  }, [record?.uid]);
+  const refreshImmichSummary = useCallback(
+    async (overrideUid?: string) => {
+      const uid = overrideUid ?? record?.uid;
+      if (!uid) return;
+      setImmichSummaryLoading(true);
+      try {
+        const s = await getImmichContactSummary(uid);
+        setImmichSummary(s);
+      } catch {
+        setImmichSummary(null);
+      } finally {
+        setImmichSummaryLoading(false);
+      }
+    },
+    [record?.uid],
+  );
 
-  const handleLinkImmich = useCallback(async (person: ImmichPerson) => {
-    if (!record?.uid) return;
-    await linkImmichPerson(record.uid, person.id, person.name);
-    await Promise.all([refreshExternalLinks(record.uid), refreshImmichSummary(record.uid)]);
-  }, [record?.uid, refreshExternalLinks, refreshImmichSummary]);
+  const handleLinkImmich = useCallback(
+    async (person: ImmichPerson) => {
+      if (!record?.uid) return;
+      await linkImmichPerson(record.uid, person.id, person.name);
+      await Promise.all([refreshExternalLinks(record.uid), refreshImmichSummary(record.uid)]);
+    },
+    [record?.uid, refreshExternalLinks, refreshImmichSummary],
+  );
 
   const handleUnlinkImmich = useCallback(async () => {
     if (!record?.uid) return;
@@ -886,23 +945,29 @@ export default function ContactDetailPage() {
   // disposition — sizing is a fact, not a taste.
   const handleAddClothingSize = async (key: string, value: string) => {
     if (!record?.uid) return;
-    await handleSavePreference(null, toPreferenceInput(record.uid, {
-      category: PREFERENCE_CLOTHING_SIZE,
-      key: key || undefined,
-      value,
-      sensitivity: 'normal',
-    }));
+    await handleSavePreference(
+      null,
+      toPreferenceInput(record.uid, {
+        category: PREFERENCE_CLOTHING_SIZE,
+        key: key || undefined,
+        value,
+        sensitivity: 'normal',
+      }),
+    );
   };
 
   const handleEditClothingSize = async (pref: Preference, key: string, value: string) => {
     if (!record?.uid) return;
-    await handleSavePreference(pref, toPreferenceInput(record.uid, {
-      category: pref.category,
-      key: key || undefined,
-      value,
-      notes: pref.notes,
-      sensitivity: pref.sensitivity,
-    }));
+    await handleSavePreference(
+      pref,
+      toPreferenceInput(record.uid, {
+        category: pref.category,
+        key: key || undefined,
+        value,
+        notes: pref.notes,
+        sensitivity: pref.sensitivity,
+      }),
+    );
   };
 
   const handleDeleteClothingSize = async (id: string) => {
@@ -935,7 +1000,7 @@ export default function ContactDetailPage() {
             remind: editingLifeEvent.remind,
           }
         : undefined,
-    [editingLifeEvent]
+    [editingLifeEvent],
   );
 
   const handleAddLifeEvent = () => {
@@ -1043,7 +1108,6 @@ export default function ContactDetailPage() {
     }
   };
 
-
   // Fetch contact details, notes, and activities
   useEffect(() => {
     if (!id) return;
@@ -1057,11 +1121,11 @@ export default function ContactDetailPage() {
           getContactRecord(id),
           getContactNotes(id),
           getContactActivities(id),
-          getCompletionsForContact(parseInt(id)),
-          getCurrentUser().catch(err => {
+          getCompletionsForContact(parseInt(id, 10)),
+          getCurrentUser().catch((err) => {
             console.error('Error fetching current user preferences:', err);
             return null;
-          })
+          }),
         ]);
 
         setRecord(recordData);
@@ -1125,7 +1189,17 @@ export default function ContactDetailPage() {
         URL.revokeObjectURL(currentBlobUrl);
       }
     };
-  }, [id, refreshReminders, refreshRelationshipEdges, refreshLifeEvents, refreshAgenda, refreshGifts, refreshFieldValues, refreshExternalLinks, refreshImmichSummary]);
+  }, [
+    id,
+    refreshReminders,
+    refreshRelationshipEdges,
+    refreshLifeEvents,
+    refreshAgenda,
+    refreshGifts,
+    refreshFieldValues,
+    refreshExternalLinks,
+    refreshImmichSummary,
+  ]);
 
   // Combine and sort notes, activities, completions, life events, and
   // external activities for the timeline.
@@ -1134,38 +1208,42 @@ export default function ContactDetailPage() {
     data: Note | Activity | ReminderCompletion | LifeEvent | ExternalActivity | Gift;
     date: string;
   }> = [
-    ...notes.map(note => ({
+    ...notes.map((note) => ({
       type: 'note' as const,
       data: note,
-      date: note.date || note.CreatedAt
+      date: note.date || note.CreatedAt,
     })),
-    ...activities.map(activity => ({
+    ...activities.map((activity) => ({
       type: 'activity' as const,
       data: activity,
-      date: activity.date || activity.CreatedAt
+      date: activity.date || activity.CreatedAt,
     })),
-    ...completions.map(completion => ({
+    ...completions.map((completion) => ({
       type: 'completion' as const,
       data: completion,
-      date: completion.completed_at
+      date: completion.completed_at,
     })),
-    ...lifeEvents.filter(e => e.date != null).map(event => ({
-      type: 'life_event' as const,
-      data: event,
-      date: fullDateFromPartial(event.date!) || event.created_at
-    })),
-    ...externalActivities.map(activity => ({
+    ...lifeEvents
+      .filter((e) => e.date != null)
+      .map((event) => ({
+        type: 'life_event' as const,
+        data: event,
+        date: fullDateFromPartial(event.date!) || event.created_at,
+      })),
+    ...externalActivities.map((activity) => ({
       type: 'external_activity' as const,
       data: activity,
-      date: activity.occurred_at || activity.created_at
+      date: activity.occurred_at || activity.created_at,
     })),
     // Gifts that actually happened (given/received with a date) are timeline
     // events; undated ideas stay off the timeline.
-    ...gifts.filter(g => g.date && (g.status === 'given' || g.status === 'received')).map(g => ({
-      type: 'gift' as const,
-      data: g,
-      date: g.date!,
-    }))
+    ...gifts
+      .filter((g) => g.date && (g.status === 'given' || g.status === 'received'))
+      .map((g) => ({
+        type: 'gift' as const,
+        data: g,
+        date: g.date!,
+      })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const handleDeleteCompletion = async (completionId: number) => {
@@ -1209,7 +1287,10 @@ export default function ContactDetailPage() {
   // building an organization/title patch needs to know the *other* half of
   // the pair (department when editing organization, and vice versa) --
   // which only the current `record` has.
-  const buildRecordPatch = (field: string, value: string): { card?: Partial<CardModel>; crm?: Partial<CRMEnvelope>; gender?: string } => {
+  const buildRecordPatch = (
+    field: string,
+    value: string,
+  ): { card?: Partial<CardModel>; crm?: Partial<CRMEnvelope>; gender?: string } => {
     const card = record?.card || {};
     switch (field) {
       case 'gender':
@@ -1321,7 +1402,6 @@ export default function ContactDetailPage() {
     }
   };
 
-
   const handleStartEditProfile = () => {
     if (!record) return;
     const components = record.card?.name?.components;
@@ -1341,7 +1421,17 @@ export default function ContactDetailPage() {
 
   const handleCancelEditProfile = () => {
     setEditingProfile(false);
-    setProfileValues({ prefix: '', firstname: '', middle_name: '', lastname: '', suffix: '', nickname: '', kind: 'human', cardKind: '', language: '' });
+    setProfileValues({
+      prefix: '',
+      firstname: '',
+      middle_name: '',
+      lastname: '',
+      suffix: '',
+      nickname: '',
+      kind: 'human',
+      cardKind: '',
+      language: '',
+    });
   };
 
   const handleSaveProfile = async () => {
@@ -1359,7 +1449,8 @@ export default function ContactDetailPage() {
 
     const nameComponents: NameComponent[] = [];
     const push = (kind: NameComponent['kind'], value: string) => {
-      if (value.trim()) nameComponents.push({ kind, value: value.trim(), phonetic: phoneticFor(kind) });
+      if (value.trim())
+        nameComponents.push({ kind, value: value.trim(), phonetic: phoneticFor(kind) });
     };
     push('title', profileValues.prefix);
     push('given', profileValues.firstname);
@@ -1376,7 +1467,9 @@ export default function ContactDetailPage() {
             ...(existingName || {}),
             components: nameComponents,
           },
-          nicknames: profileValues.nickname.trim() ? [{ name: profileValues.nickname.trim() }] : undefined,
+          nicknames: profileValues.nickname.trim()
+            ? [{ name: profileValues.nickname.trim() }]
+            : undefined,
           kind: profileValues.cardKind || undefined,
           language: profileValues.language || undefined,
         },
@@ -1401,7 +1494,7 @@ export default function ContactDetailPage() {
     if (!record || !id) return;
 
     const confirmMessage = t('contactDetail.confirmDeleteContact', {
-      name: `${firstname} ${lastname}`
+      name: `${firstname} ${lastname}`,
     });
 
     if (!window.confirm(confirmMessage)) {
@@ -1479,10 +1572,10 @@ export default function ContactDetailPage() {
 
   const handleStayInTouch = () => {
     if (!record) return;
-    const contactName = `${firstname}${lastname ? ' ' + lastname : ''}`;
+    const contactName = `${firstname}${lastname ? ` ${lastname}` : ''}`;
     setReminderInitialValues({
       message: t('contactDetail.catchUpWith', { name: contactName }),
-      recurrence: 'quarterly'
+      recurrence: 'quarterly',
     });
     setEditingReminder(null);
     setReminderDialogOpen(true);
@@ -1503,7 +1596,9 @@ export default function ContactDetailPage() {
       await updateSelfContact(newUid);
       setSelfContactUid(newUid);
       await fetchAndCacheUserInfo();
-      showSuccess(willBeMe ? t('settings.selfContact.saveSuccess') : t('settings.selfContact.clearSuccess'));
+      showSuccess(
+        willBeMe ? t('settings.selfContact.saveSuccess') : t('settings.selfContact.clearSuccess'),
+      );
     } catch (err) {
       console.error('Error updating self contact:', err);
       showError(t('settings.selfContact.saveError'));
@@ -1526,7 +1621,6 @@ export default function ContactDetailPage() {
     }
   };
 
-
   if (loading) {
     return (
       <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 1, px: 2, pb: 2 }}>
@@ -1541,14 +1635,15 @@ export default function ContactDetailPage() {
   if (!record) {
     return (
       <Box sx={{ maxWidth: 800, mx: 'auto', mt: 2, p: 2 }}>
-        <Typography variant="h6" component="h1">{t('contactDetail.notFound')}</Typography>
+        <Typography variant="h6" component="h1">
+          {t('contactDetail.notFound')}
+        </Typography>
       </Box>
     );
   }
 
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 1, px: 2, pb: 2 }}>
-
       {/* Contact Header Card */}
       <ContactHeader
         record={record}
@@ -1581,7 +1676,9 @@ export default function ContactDetailPage() {
         onToggleMe={handleToggleMe}
         onExportContact={(format) => {
           if (record?.uid) {
-            exportContact(format as 'vcf3' | 'vcf4' | 'jscontact', record.uid).catch(() => showError(t('contactDetail.deleteContactError')));
+            exportContact(format as 'vcf3' | 'vcf4' | 'jscontact', record.uid).catch(() =>
+              showError(t('contactDetail.deleteContactError')),
+            );
           }
         }}
       />
@@ -1649,7 +1746,7 @@ export default function ContactDetailPage() {
             setEditValue(
               editingField === 'birthday' || editingField === 'anniversary'
                 ? autoFormatBirthdayInput(value, editValue)
-                : value
+                : value,
             );
             setValidationError('');
           }}
@@ -1662,7 +1759,13 @@ export default function ContactDetailPage() {
         <PanelCard
           title={t('preference.title')}
           actions={
-            <Button startIcon={<AddIcon />} onClick={handleAddPreference} variant="contained" color="primary" size="small">
+            <Button
+              startIcon={<AddIcon />}
+              onClick={handleAddPreference}
+              variant="contained"
+              color="primary"
+              size="small"
+            >
               {t('preference.add')}
             </Button>
           }
@@ -1673,7 +1776,7 @@ export default function ContactDetailPage() {
             // own dedicated home in the Gifts tab below -- showing them here
             // too would duplicate every one as a second, redundant row.
             preferences={preferences.filter(
-              (p) => p.category !== PREFERENCE_CLOTHING_SIZE && !isGiftsTabCategory(p.category)
+              (p) => p.category !== PREFERENCE_CLOTHING_SIZE && !isGiftsTabCategory(p.category),
             )}
             onEdit={handleEditPreference}
             onDelete={handlePreferenceDelete}
@@ -1686,7 +1789,13 @@ export default function ContactDetailPage() {
         <PanelCard
           title={t('relationships.title')}
           actions={
-            <Button startIcon={<AddIcon />} onClick={handleAddRelationshipEdge} variant="contained" color="primary" size="small">
+            <Button
+              startIcon={<AddIcon />}
+              onClick={handleAddRelationshipEdge}
+              variant="contained"
+              color="primary"
+              size="small"
+            >
               {t('relationships.addRelationship')}
             </Button>
           }
@@ -1737,7 +1846,11 @@ export default function ContactDetailPage() {
                 {t('timeline.viewAll')}
               </Button>
               <Button
-                startIcon={<SvgIcon><path d={mdiNotePlusOutline} /></SvgIcon>}
+                startIcon={
+                  <SvgIcon>
+                    <path d={mdiNotePlusOutline} />
+                  </SvgIcon>
+                }
                 onClick={() => setNoteDialogOpen(true)}
                 variant="contained"
                 color="primary"
@@ -1746,7 +1859,11 @@ export default function ContactDetailPage() {
                 {t('contactDetail.addNote')}
               </Button>
               <Button
-                startIcon={<SvgIcon><path d={mdiCalendarPlus} /></SvgIcon>}
+                startIcon={
+                  <SvgIcon>
+                    <path d={mdiCalendarPlus} />
+                  </SvgIcon>
+                }
                 onClick={() => setActivityDialogOpen(true)}
                 variant="contained"
                 color="primary"
@@ -1766,7 +1883,13 @@ export default function ContactDetailPage() {
         <PanelCard
           title={t('lifeEvent.title')}
           actions={
-            <Button startIcon={<AddIcon />} onClick={handleAddLifeEvent} variant="contained" color="primary" size="small">
+            <Button
+              startIcon={<AddIcon />}
+              onClick={handleAddLifeEvent}
+              variant="contained"
+              color="primary"
+              size="small"
+            >
               {t('lifeEvent.add')}
             </Button>
           }
@@ -1803,7 +1926,13 @@ export default function ContactDetailPage() {
         <PanelCard
           title={t('reminders.title')}
           actions={
-            <Button startIcon={<NotificationsActiveIcon />} onClick={handleAddReminder} variant="contained" color="primary" size="small">
+            <Button
+              startIcon={<NotificationsActiveIcon />}
+              onClick={handleAddReminder}
+              variant="contained"
+              color="primary"
+              size="small"
+            >
               {t('reminders.add')}
             </Button>
           }
@@ -1827,7 +1956,9 @@ export default function ContactDetailPage() {
             onDelete={handleDeleteClothingSize}
           />
           <Divider sx={{ my: 1.5 }} />
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+          <Box
+            sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}
+          >
             <Typography variant="subtitle2">{t('gifts.preferencesHeading')}</Typography>
             <Button
               startIcon={<AddIcon />}
@@ -1900,10 +2031,10 @@ export default function ContactDetailPage() {
         open={noteDialogOpen}
         onClose={() => setNoteDialogOpen(false)}
         onSave={handleSaveNote}
-        noteContactId={id ? parseInt(id) : undefined}
-        noteContactName={`${firstname}${lastname ? ' ' + lastname : ''}`}
+        noteContactId={id ? parseInt(id, 10) : undefined}
+        noteContactName={`${firstname}${lastname ? ` ${lastname}` : ''}`}
       />
-      
+
       <AddActivityDialog
         open={activityDialogOpen}
         onClose={() => setActivityDialogOpen(false)}

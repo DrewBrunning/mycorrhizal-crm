@@ -1,11 +1,11 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
-  updateSelfContact,
-  getTwoFactorStatus,
-  setupTwoFactor,
   confirmTwoFactor,
   disableTwoFactor,
+  getTwoFactorStatus,
   regenerateRecoveryCodes,
+  setupTwoFactor,
+  updateSelfContact,
 } from './users';
 
 afterEach(() => {
@@ -21,9 +21,11 @@ function responseBody(body: unknown) {
 
 describe('updateSelfContact', () => {
   test('PATCHes the chosen uid to /users/me/self-contact', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(
-      responseBody({ message: 'Self contact updated', self_contact_vcard_uid: 'uid-1' })
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        responseBody({ message: 'Self contact updated', self_contact_vcard_uid: 'uid-1' }),
+      );
     vi.stubGlobal('fetch', fetchMock);
 
     await updateSelfContact('uid-1');
@@ -36,7 +38,9 @@ describe('updateSelfContact', () => {
   });
 
   test('sends a null vcard_uid to clear the link', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(responseBody({ message: 'Self contact cleared' }));
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(responseBody({ message: 'Self contact cleared' }));
     vi.stubGlobal('fetch', fetchMock);
 
     await updateSelfContact(null);
@@ -47,7 +51,9 @@ describe('updateSelfContact', () => {
   });
 
   test('throws the backend reason on a failed request', async () => {
-    const body = { error: { code: 'NOT_FOUND', message: 'Contact not found', details: { reason: 'not yours' } } };
+    const body = {
+      error: { code: 'NOT_FOUND', message: 'Contact not found', details: { reason: 'not yours' } },
+    };
     const fetchMock = vi.fn().mockResolvedValueOnce({
       ok: false,
       status: 404,
@@ -74,9 +80,11 @@ describe('two-factor API', () => {
   });
 
   test('setupTwoFactor POSTs /users/2fa/setup and returns secret + otpauth url', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(
-      responseBody({ secret: 'JBSWY3DPEHPK3PXP', otpauth_url: 'otpauth://totp/...' })
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        responseBody({ secret: 'JBSWY3DPEHPK3PXP', otpauth_url: 'otpauth://totp/...' }),
+      );
     vi.stubGlobal('fetch', fetchMock);
 
     const result = await setupTwoFactor();
@@ -89,9 +97,9 @@ describe('two-factor API', () => {
 
   test('confirmTwoFactor POSTs the code and returns the recovery codes', async () => {
     const codes = ['AAAAA-BBBBB-CCCCC', 'DDDDD-EEEEE-FFFFF'];
-    const fetchMock = vi.fn().mockResolvedValueOnce(
-      responseBody({ message: 'enabled', recovery_codes: codes })
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(responseBody({ message: 'enabled', recovery_codes: codes }));
     vi.stubGlobal('fetch', fetchMock);
 
     const result = await confirmTwoFactor('123456');
@@ -124,7 +132,13 @@ describe('two-factor API', () => {
   });
 
   test('a failed 2FA call surfaces the backend message', async () => {
-    const body = { error: { code: 'INVALID_INPUT', message: 'x', details: { reason: 'Invalid code. Please try again.' } } };
+    const body = {
+      error: {
+        code: 'INVALID_INPUT',
+        message: 'x',
+        details: { reason: 'Invalid code. Please try again.' },
+      },
+    };
     const fetchMock = vi.fn().mockResolvedValueOnce({
       ok: false,
       status: 400,

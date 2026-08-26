@@ -135,3 +135,56 @@ func TestExportAuditLog_CSVFormulaInjectionNeutralized(t *testing.T) {
 	entityIDCol := record[2]
 	assert.True(t, strings.HasPrefix(entityIDCol, "'"), "a formula-leading entity_id must be neutralized: %q", entityIDCol)
 }
+
+// TestExportAuditLog_RejectsOverCap pins issue #415's audit-export bound: a
+// log larger than the cap must be rejected with a 400 (not loaded into
+// memory and OOM'd), and a log at exactly the cap must still export.
+//
+// The cap is exercised through the auditExportLimit seam lowered to a tiny
+// value: proving the boundary against the real 100k would mean inserting
+// 200k rows per run, which under CI's -race -covermode=atomic instrumentation
+// blew the controllers package's 20-minute go test timeout on this PR. The
+// seam's default is pinned to the real constant below, and the seam itself is
+// what the handler reads, so the mechanism tested here is exactly the
+// mechanism production runs.
+func TestExportAuditLog_RejectsOverCap(t *testing.T) {
+	require.Equal(t, 100000, MaxAuditExportRows, "the production audit-export cap must stay 100k")
+	original := auditExportLimit
+	auditExportLimit = 10
+	defer func() { auditExportLimit = original }()
+
+	db, router, user := setupAuditRouter(t, config.Config{AuditRetentionDays: 90})
+	registerAuditExportRoute(router)
+	models.AuditFlush()
+
+	makeEvents := func(n int) []models.AuditEvent {
+		rows := make([]models.AuditEvent, n)
+		for i := range rows {
+			rows[i] = models.AuditEvent{
+				EntityType: models.AuditEntityContact,
+				EntityID:   "cap-fixture",
+				Operation:  models.AuditOpCreate,
+				UserID:     user.ID,
+			}
+		}
+		return rows
+	}
+
+	// cap+1 events.
+	require.NoError(t, db.CreateInBatches(makeEvents(auditExportLimit+1), 1000).Error)
+
+	req, _ := http.NewRequest("GET", "/audit/export", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusBadRequest, w.Code, "an over-cap audit log must be rejected, not loaded")
+
+	// At exactly the cap it exports. Reset the user's events and insert
+	// exactly the cap.
+	require.NoError(t, db.Where("user_id = ?", user.ID).Delete(&models.AuditEvent{}).Error)
+	require.NoError(t, db.CreateInBatches(makeEvents(auditExportLimit), 1000).Error)
+
+	req2, _ := http.NewRequest("GET", "/audit/export", nil)
+	w2 := httptest.NewRecorder()
+	router.ServeHTTP(w2, req2)
+	assert.Equal(t, http.StatusOK, w2.Code, "an audit log at exactly the cap must still export")
+}

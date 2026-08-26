@@ -1408,6 +1408,12 @@
     "createError": "Échec de la création du jeton API",
     "revokeError": "Échec de la révocation du jeton API",
     "revokeSuccess": "Jeton révoqué avec succès",
+    "revokeAllButton": "Tout révoquer",
+    "revokeAllError": "Échec de la révocation de tous les jetons API",
+    "revokeAllSuccess_one": "{{count}} jeton révoqué",
+    "revokeAllSuccess_other": "{{count}} jetons révoqués",
+    "rotateError": "Échec de la rotation du jeton API",
+    "rotateSuccess": "Jeton pivoté avec succès",
     "columns": {
       "name": "Nom",
       "scope": "Accès",
@@ -1440,6 +1446,21 @@
       "title": "Révoquer le jeton",
       "message": "Êtes-vous sûr de vouloir révoquer \"{{name}}\" ? Cette action est irréversible.",
       "confirm": "Révoquer"
+    },
+    "revokeAllDialog": {
+      "title": "Révoquer tous les jetons",
+      "message_one": "Voulez-vous vraiment révoquer {{count}} jeton API actif ? Cette action est irréversible et interrompra immédiatement tout ce qui l'utilise.",
+      "message_other": "Voulez-vous vraiment révoquer les {{count}} jetons API actifs ? Cette action est irréversible et interrompra immédiatement tout ce qui les utilise.",
+      "confirm": "Tout révoquer"
+    },
+    "rotateDialog": {
+      "title": "Faire pivoter le jeton",
+      "message": "Faire pivoter « {{name}} » le révoque immédiatement et émet un nouveau jeton avec le même nom et la même portée. Le nouveau jeton ne sera affiché qu'une seule fois.",
+      "confirm": "Pivoter"
+    },
+    "rotatedDialog": {
+      "title": "Jeton pivoté",
+      "warning": "L'ancien jeton est désormais révoqué. Ce nouveau jeton ne sera plus affiché — copiez-le maintenant et conservez-le en lieu sûr."
     },
     "expired": "Expiré"
   },
@@ -1879,6 +1900,7 @@
     "shareDialog": {
       "title": "Partager le contact",
       "description": "Envoyez une copie filtrée et à usage unique de ce contact à un autre utilisateur de cette instance. Il ou elle décide d'accepter ou non le partage.",
+      "frozenNotice": "Ce partage ne peut pas être rappelé une fois envoyé — le destinataire voit un instantané pris à l'instant, et toute modification ultérieure de ce contact n'atteindra pas un partage en attente ou déjà accepté.",
       "recipient": "Destinataire",
       "selectRecipient": "Choisir un destinataire…",
       "sharing": "Partage en cours…",

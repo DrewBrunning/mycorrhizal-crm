@@ -1,25 +1,24 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
-  suggestHouseholdRelationships,
-  listHouseholds,
-  createHousehold,
-  updateHousehold,
-  deleteHousehold,
-  addHouseholdMember,
-  removeHouseholdMember,
-  updateHouseholdMember,
-  suggestAddressHouseholds,
+  type AddressHouseholdSuggestion,
   acceptAddressHouseholdSuggestion,
+  addHouseholdMember,
+  createHousehold,
+  deleteHousehold,
   dismissAddressHouseholdSuggestion,
   formatSuggestionAddress,
-  Household,
-  HouseholdMember,
-  AddressHouseholdSuggestion,
-  HOUSEHOLD_TYPES,
   HOUSEHOLD_ROLES,
+  HOUSEHOLD_TYPES,
+  type Household,
+  type HouseholdMember,
+  listHouseholds,
+  removeHouseholdMember,
+  suggestAddressHouseholds,
+  suggestHouseholdRelationships,
+  updateHousehold,
+  updateHouseholdMember,
 } from './households';
-import { getRelationshipEdges } from './relationshipEdges';
-import { RelationshipEdge } from './relationshipEdges';
+import { getRelationshipEdges, type RelationshipEdge } from './relationshipEdges';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -81,7 +80,7 @@ describe('review loop', () => {
           page: 1,
           limit: 100,
         }),
-      })
+      }),
     );
 
     const response = await getRelationshipEdges({ contactId: 'alice-uid', status: 'suggested' });
@@ -133,7 +132,7 @@ describe('listHouseholds', () => {
         next_cursor: '',
         limit: 100,
         members: [memberFixture],
-      })
+      }),
     );
     vi.stubGlobal('fetch', fetchMock);
 
@@ -150,9 +149,11 @@ describe('listHouseholds', () => {
   });
 
   test('defaults to limit=100 and appends cursor when present', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(
-      okResponse({ households: [], total: 0, next_cursor: 'c2', limit: 100 })
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        okResponse({ households: [], total: 0, next_cursor: 'c2', limit: 100 }),
+      );
     vi.stubGlobal('fetch', fetchMock);
 
     await listHouseholds({ cursor: 'c1' });
@@ -267,10 +268,12 @@ describe('addHouseholdMember', () => {
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
 
-    await expect(addHouseholdMember('h1', { member_vcard_uid: 'alice-uid' })).rejects.toMatchObject({
-      code: 'NOT_FOUND',
-      status: 404,
-    });
+    await expect(addHouseholdMember('h1', { member_vcard_uid: 'alice-uid' })).rejects.toMatchObject(
+      {
+        code: 'NOT_FOUND',
+        status: 404,
+      },
+    );
   });
 });
 
@@ -347,7 +350,10 @@ describe('suggestAddressHouseholds', () => {
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
 
-    await expect(suggestAddressHouseholds()).rejects.toMatchObject({ code: 'NOT_FOUND', status: 404 });
+    await expect(suggestAddressHouseholds()).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+      status: 404,
+    });
   });
 });
 
@@ -423,7 +429,7 @@ describe('formatSuggestionAddress', () => {
       formatSuggestionAddress({
         full: '123 Main St, Springfield IL 62704',
         components: [{ kind: 'locality', value: 'Other' }],
-      })
+      }),
     ).toBe('123 Main St, Springfield IL 62704');
   });
 
@@ -437,7 +443,7 @@ describe('formatSuggestionAddress', () => {
           { kind: 'region', value: 'IL' },
           { kind: 'name', value: '123 Main St' },
         ],
-      })
+      }),
     ).toBe('123 Main St, Springfield, IL, 62704, USA');
   });
 
@@ -450,7 +456,7 @@ describe('formatSuggestionAddress', () => {
           { kind: 'region', value: '   ' },
           { kind: 'country', value: 'USA' },
         ],
-      })
+      }),
     ).toBe('123 Main St, USA');
   });
 
@@ -461,12 +467,14 @@ describe('formatSuggestionAddress', () => {
           { kind: 'name', value: 'First St' },
           { kind: 'name', value: 'Second St' },
         ],
-      })
+      }),
     ).toBe('First St');
   });
 
   test('returns an empty string for an empty address', () => {
-    expect(formatSuggestionAddress(undefined as unknown as AddressHouseholdSuggestion['address'])).toBe('');
+    expect(
+      formatSuggestionAddress(undefined as unknown as AddressHouseholdSuggestion['address']),
+    ).toBe('');
     expect(formatSuggestionAddress({})).toBe('');
   });
 });

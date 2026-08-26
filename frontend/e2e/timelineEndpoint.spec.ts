@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { createTestContact, deleteTestContact } from './fixtures';
 import { API_BASE_URL } from './global-setup';
 
@@ -21,19 +21,22 @@ async function createNote(
   request: import('@playwright/test').APIRequestContext,
   contactId: number,
   content: string,
-  date: string
+  date: string,
 ): Promise<void> {
   const response = await request.post(`${API_BASE_URL}/contacts/${contactId}/notes`, {
     data: { content, date },
   });
-  expect(response.ok(), `failed to create note: ${response.status()} ${await response.text()}`).toBeTruthy();
+  expect(
+    response.ok(),
+    `failed to create note: ${response.status()} ${await response.text()}`,
+  ).toBeTruthy();
 }
 
 async function createExternalActivity(
   request: import('@playwright/test').APIRequestContext,
   entityId: string,
   extId: string,
-  occurredAt: string
+  occurredAt: string,
 ): Promise<void> {
   const response = await request.post(`${API_BASE_URL}/external-activities`, {
     data: {
@@ -44,7 +47,10 @@ async function createExternalActivity(
       occurred_at: occurredAt,
     },
   });
-  expect(response.ok(), `failed to create external activity: ${response.status()} ${await response.text()}`).toBeTruthy();
+  expect(
+    response.ok(),
+    `failed to create external activity: ${response.status()} ${await response.text()}`,
+  ).toBeTruthy();
 }
 
 interface TimelineItem {
@@ -54,7 +60,9 @@ interface TimelineItem {
 }
 
 test.describe('Contact timeline endpoint (T66)', () => {
-  test('merges notes and external activities in date order and pages every item exactly once', async ({ request }) => {
+  test('merges notes and external activities in date order and pages every item exactly once', async ({
+    request,
+  }) => {
     const ts = Date.now();
     const contact = await createTestContact(request, { firstname: `E2EFixtureT66Merge${ts}` });
     const base = new Date();
@@ -81,7 +89,9 @@ test.describe('Contact timeline endpoint (T66)', () => {
       let cursor = '';
       for (let page = 0; page < 10; page++) {
         const query = `limit=2${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`;
-        const response = await request.get(`${API_BASE_URL}/contacts/${contact.ID}/timeline?${query}`);
+        const response = await request.get(
+          `${API_BASE_URL}/contacts/${contact.ID}/timeline?${query}`,
+        );
         expect(response.ok(), await response.text()).toBeTruthy();
         const body = await response.json();
         walked.push(...(body.items as TimelineItem[]));
@@ -121,12 +131,19 @@ test.describe('Contact timeline endpoint (T66)', () => {
       expect(typedBody.items.length).toBe(2);
       expect(typedBody.items.every((it: TimelineItem) => it.type === 'note')).toBeTruthy();
 
-      const recentBucket = await request.get(`${API_BASE_URL}/contacts/${contact.ID}/timeline?bucket=last_7_days`);
+      const recentBucket = await request.get(
+        `${API_BASE_URL}/contacts/${contact.ID}/timeline?bucket=last_7_days`,
+      );
       expect(recentBucket.ok()).toBeTruthy();
       const recentBody = await recentBucket.json();
-      expect(recentBody.items.length).toBe(2, 'the 20-day-old note must be excluded by last_7_days');
+      expect(recentBody.items.length).toBe(
+        2,
+        'the 20-day-old note must be excluded by last_7_days',
+      );
 
-      const allBucket = await request.get(`${API_BASE_URL}/contacts/${contact.ID}/timeline?bucket=all`);
+      const allBucket = await request.get(
+        `${API_BASE_URL}/contacts/${contact.ID}/timeline?bucket=all`,
+      );
       const allBody = await allBucket.json();
       expect(allBody.items.length).toBe(3);
     } finally {
@@ -135,16 +152,22 @@ test.describe('Contact timeline endpoint (T66)', () => {
   });
 
   test('rejects an unknown type with 400', async ({ request }) => {
-    const contact = await createTestContact(request, { firstname: `E2EFixtureT66Bad${Date.now()}` });
+    const contact = await createTestContact(request, {
+      firstname: `E2EFixtureT66Bad${Date.now()}`,
+    });
     try {
-      const response = await request.get(`${API_BASE_URL}/contacts/${contact.ID}/timeline?type=banana`);
+      const response = await request.get(
+        `${API_BASE_URL}/contacts/${contact.ID}/timeline?type=banana`,
+      );
       expect(response.status()).toBe(400);
     } finally {
       await deleteTestContact(request, contact.ID);
     }
   });
 
-  test('bounds the M4 composite timeline blocks for a long-history contact', async ({ request }) => {
+  test('bounds the M4 composite timeline blocks for a long-history contact', async ({
+    request,
+  }) => {
     const ts = Date.now();
     const contact = await createTestContact(request, { firstname: `E2EFixtureT66Bound${ts}` });
 
@@ -156,11 +179,16 @@ test.describe('Contact timeline endpoint (T66)', () => {
           request,
           contact.uid,
           `t66-bound-ext-${ts}-${i}`,
-          new Date(now.getTime() - i * 60 * 1000).toISOString()
+          new Date(now.getTime() - i * 60 * 1000).toISOString(),
         );
       }
       for (let i = 0; i < 6; i++) {
-        await createNote(request, contact.ID, `bound note ${i}`, new Date(now.getTime() - i * 60 * 1000).toISOString());
+        await createNote(
+          request,
+          contact.ID,
+          `bound note ${i}`,
+          new Date(now.getTime() - i * 60 * 1000).toISOString(),
+        );
       }
 
       const response = await request.get(`${API_BASE_URL}/contacts/${contact.ID}/detail`);

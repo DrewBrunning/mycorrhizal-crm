@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { createTestContact, deleteTestContact } from './fixtures';
 import { API_BASE_URL } from './global-setup';
 
@@ -37,20 +37,25 @@ test.describe('Contacts list name sort (T73)', () => {
 
       expect(asc.map((c) => byKey(c))).toEqual(
         created.map((c) => byKey(c)).sort(),
-        'ascending name sort must order by lower(trim(lastname)) else lower(trim(firstname))'
+        'ascending name sort must order by lower(trim(lastname)) else lower(trim(firstname))',
       );
 
       const desc = await fetchNameSorted(request, 'desc', 'E2EFixtureT73Sort');
       expect(desc.map((c) => byKey(c))).toEqual(
-        created.map((c) => byKey(c)).sort().reverse(),
-        'descending name sort must reverse the ascending order'
+        created
+          .map((c) => byKey(c))
+          .sort()
+          .reverse(),
+        'descending name sort must reverse the ascending order',
       );
     } finally {
       for (const c of created) await deleteTestContact(request, c.ID);
     }
   });
 
-  test('pages through a name-sorted list returning every contact exactly once', async ({ request }) => {
+  test('pages through a name-sorted list returning every contact exactly once', async ({
+    request,
+  }) => {
     const ts = Date.now();
     // Two contacts share a lastname (a sort_name tie — the case the id
     // tiebreak exists for); one has no lastname at all. limit=3 makes the
@@ -109,11 +114,15 @@ test.describe('Contacts list name sort (T73)', () => {
       expect(body.next_cursor).toBeTruthy();
 
       // sort=name + since is a 400.
-      const since = await request.get(`${API_BASE_URL}/contacts?sort=name&since=${body.next_cursor}`);
+      const since = await request.get(
+        `${API_BASE_URL}/contacts?sort=name&since=${body.next_cursor}`,
+      );
       expect(since.status()).toBe(400);
 
       // The same since cursor with the default sort stays a normal feed.
-      const feed = await request.get(`${API_BASE_URL}/contacts?sort=updated_at&since=${body.next_cursor}`);
+      const feed = await request.get(
+        `${API_BASE_URL}/contacts?sort=updated_at&since=${body.next_cursor}`,
+      );
       expect(feed.ok()).toBeTruthy();
     } finally {
       await deleteTestContact(request, contact.ID);
@@ -124,10 +133,10 @@ test.describe('Contacts list name sort (T73)', () => {
 async function fetchNameSorted(
   request: import('@playwright/test').APIRequestContext,
   order: 'asc' | 'desc',
-  search: string
+  search: string,
 ): Promise<Array<{ id: number; firstname: string; lastname?: string }>> {
   const response = await request.get(
-    `${API_BASE_URL}/contacts?sort=name&order=${order}&limit=100&search=${encodeURIComponent(search)}`
+    `${API_BASE_URL}/contacts?sort=name&order=${order}&limit=100&search=${encodeURIComponent(search)}`,
   );
   expect(response.ok()).toBeTruthy();
   const body = await response.json();
@@ -138,7 +147,7 @@ async function walkNameSortedPages(
   request: import('@playwright/test').APIRequestContext,
   order: 'asc' | 'desc',
   limit: number,
-  search: string
+  search: string,
 ): Promise<Array<{ id: number; firstname: string; lastname?: string }>> {
   const all: Array<{ id: number; firstname: string; lastname?: string }> = [];
   let cursor = '';

@@ -1,26 +1,26 @@
-import { useState, useEffect } from 'react';
 import {
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Button,
-  Box,
-  MenuItem,
-  ListSubheader,
-  Typography,
   Autocomplete,
+  Box,
+  Button,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  ListSubheader,
+  MenuItem,
+  TextField,
+  Typography,
 } from '@mui/material';
-import AppDialog from './AppDialog';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   PREFERENCE_CATEGORY_CONFIG,
   PREFERENCE_DEFAULT_KEYS,
-  PreferenceSection,
-  Preference,
-  PreferenceInput,
-  PreferenceSensitivity,
+  type Preference,
+  type PreferenceInput,
+  type PreferenceSection,
+  type PreferenceSensitivity,
 } from '../api/preferences';
+import AppDialog from './AppDialog';
 
 export interface PreferenceFormData {
   category: string;
@@ -34,7 +34,14 @@ export interface PreferenceFormData {
 // Hobbies, Jewelry & Style, Gift Preferences, Gift Avoid) for the dialog's
 // ListSubheader-grouped select — same order PREFERENCE_CATEGORY_CONFIG
 // declares them in.
-const SECTION_ORDER: PreferenceSection[] = ['foodDrink', 'media', 'hobby', 'jewelry', 'giftPreferences', 'giftAvoid'];
+const SECTION_ORDER: PreferenceSection[] = [
+  'foodDrink',
+  'media',
+  'hobby',
+  'jewelry',
+  'giftPreferences',
+  'giftAvoid',
+];
 
 interface PreferenceDialogProps {
   open: boolean;
@@ -59,7 +66,9 @@ export default function PreferenceDialog({
   const { t } = useTranslation();
   const isEditing = !!preference;
 
-  const availableCategories = PREFERENCE_CATEGORY_CONFIG.filter((c) => sections.includes(c.section));
+  const availableCategories = PREFERENCE_CATEGORY_CONFIG.filter((c) =>
+    sections.includes(c.section),
+  );
   const defaultCategory = availableCategories[0]?.category ?? 'food';
 
   const [category, setCategory] = useState(defaultCategory);
@@ -116,7 +125,10 @@ export default function PreferenceDialog({
             select
             label={t('preference.category')}
             value={category}
-            onChange={(e) => { setCategory(e.target.value); setError(''); }}
+            onChange={(e) => {
+              setCategory(e.target.value);
+              setError('');
+            }}
             fullWidth
             required
           >
@@ -124,7 +136,9 @@ export default function PreferenceDialog({
               const categories = availableCategories.filter((c) => c.section === section);
               if (categories.length === 0) return [];
               return [
-                <ListSubheader key={`header-${section}`}>{t(`preference.sections.${section}`)}</ListSubheader>,
+                <ListSubheader key={`header-${section}`}>
+                  {t(`preference.sections.${section}`)}
+                </ListSubheader>,
                 ...categories.map((c) => (
                   <MenuItem key={c.category} value={c.category}>
                     {t(`preference.categories.${c.category}`, c.category)}
@@ -136,7 +150,10 @@ export default function PreferenceDialog({
           <TextField
             label={t('preference.value')}
             value={value}
-            onChange={(e) => { setValue(e.target.value); setError(''); }}
+            onChange={(e) => {
+              setValue(e.target.value);
+              setError('');
+            }}
             fullWidth
             required
           />

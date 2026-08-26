@@ -35,6 +35,13 @@ const testPNGBase64ImportCtrl = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAA
 // take *config.Config directly (UploadVCFForImport/ConfirmVCFImport) rather
 // than through currentConfig(c).
 func registerImportRoutes(router *gin.Engine, cfg *config.Config) {
+	// The upload/confirm handlers read the package-global importSessions
+	// manager, which accumulates sessions across the tests in this package.
+	// Issue #415 made the session count a per-user bound, so a session left
+	// behind by an earlier test would trip a later test's cap. Reset to a
+	// fresh manager per test so each starts clean.
+	importSessions = services.NewImportSessionManager()
+
 	router.POST("/contacts/import/upload", UploadCSVForImport)
 	router.POST("/contacts/import/preview", middleware.ValidateJSONMiddleware(&models.ImportPreviewRequest{}), PreviewImport)
 	router.POST("/contacts/import/confirm", middleware.ValidateJSONMiddleware(&models.ImportConfirmRequest{}), ConfirmImport)
@@ -290,6 +297,51 @@ func TestUploadCSVForImport_MalformedCSV_Returns400NotPanic(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	env := decodeError(t, w)
 	assert.Equal(t, "INVALID_INPUT", env.Error.Code)
+}
+
+// TestUploadCSVForImport_SessionOverLimit pins issue #415's per-user
+// import-session bound: once a user holds MaxImportSessionsPerUser live
+// sessions, the next upload is rejected with 429 (not processed, not a 500),
+// and another user's quota is independent. registerImportRoutes resets the
+// package-global session manager, so this test starts empty.
+func TestUploadCSVForImport_SessionOverLimit(t *testing.T) {
+	db, router := setupRouter()
+	registerImportRoutes(router, &config.Config{})
+	var user models.User
+	db.First(&user)
+
+	otherUser := models.User{Username: "other-import", Password: "password123!A", Email: "other-import@example.com"}
+	require.NoError(t, db.Create(&otherUser).Error)
+
+	content := csvFixture([3]string{"Alice", "Smith", "alice@example.com"})
+
+	// Fill the cap.
+	for i := 0; i < services.MaxImportSessionsPerUser; i++ {
+		req := newFileUploadRequest(t, "/contacts/import/upload", "contacts.csv", content)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		require.Equal(t, http.StatusOK, w.Code, "uploads up to the cap must succeed")
+	}
+
+	// One more for the same user → 429.
+	req := newFileUploadRequest(t, "/contacts/import/upload", "contacts.csv", content)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusTooManyRequests, w.Code, w.Body.String())
+
+	// Another user, on their own session context, is unaffected.
+	otherRouter := gin.New()
+	otherRouter.Use(func(c *gin.Context) {
+		c.Set("db", db)
+		c.Set("userID", otherUser.ID)
+		c.Set("cfg", config.Config{})
+		c.Next()
+	})
+	registerImportRoutes(otherRouter, &config.Config{})
+	req2 := newFileUploadRequest(t, "/contacts/import/upload", "contacts.csv", content)
+	w2 := httptest.NewRecorder()
+	otherRouter.ServeHTTP(w2, req2)
+	assert.Equal(t, http.StatusOK, w2.Code, "the import-session quota must be per user")
 }
 
 // =====================================================================================
@@ -567,9 +619,12 @@ func TestPreviewImport_WrongUser_Unauthorized(t *testing.T) {
 	var uploadResp models.ImportUploadResponse
 	require.NoError(t, json.Unmarshal(uploadW.Body.Bytes(), &uploadResp))
 
-	// Second router, same db, but authenticated as the other user.
+	// Second router, same db, but authenticated as the other user. Only the
+	// preview route is registered here (NOT registerImportRoutes, which resets
+	// the package-global session manager and would wipe the session created
+	// above).
 	otherRouter := routerForUser(db, otherUser.ID)
-	registerImportRoutes(otherRouter, &config.Config{})
+	otherRouter.POST("/contacts/import/preview", middleware.ValidateJSONMiddleware(&models.ImportPreviewRequest{}), PreviewImport)
 
 	previewReq := newJSONRequest(t, "/contacts/import/preview", models.ImportPreviewRequest{
 		SessionID: uploadResp.SessionID,

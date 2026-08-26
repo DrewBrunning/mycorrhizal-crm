@@ -1,10 +1,21 @@
-import { Box, Typography, Card, CardContent, Avatar, Chip, Alert, CircularProgress, IconButton, Tooltip } from '@mui/material';
-import SyncProblemIcon from '@mui/icons-material/SyncProblem';
-import RestoreIcon from '@mui/icons-material/Restore';
 import CloseIcon from '@mui/icons-material/Close';
-import { Link } from 'react-router';
+import RestoreIcon from '@mui/icons-material/Restore';
+import SyncProblemIcon from '@mui/icons-material/SyncProblem';
+import {
+  Alert,
+  Avatar,
+  Box,
+  Card,
+  CardContent,
+  Chip,
+  CircularProgress,
+  IconButton,
+  Tooltip,
+  Typography,
+} from '@mui/material';
 import { useTranslation } from 'react-i18next';
-import { ContactSyncConflict } from '../api/contactSyncConflicts';
+import { Link } from 'react-router';
+import type { ContactSyncConflict } from '../api/contactSyncConflicts';
 
 interface SyncConflictListProps {
   conflicts: ContactSyncConflict[];
@@ -42,7 +53,13 @@ function valueToLabel(value: string): string {
 // Each row names the field and offers the local value back via restore, or
 // lets the user accept the remote value via dismiss. Same dashboard-section
 // shape as ReachOutSuggestionsList; rows link to the contact.
-export default function SyncConflictList({ conflicts, loading, error, onRestore, onDismiss }: SyncConflictListProps) {
+export default function SyncConflictList({
+  conflicts,
+  loading,
+  error,
+  onRestore,
+  onDismiss,
+}: SyncConflictListProps) {
   const { t } = useTranslation();
 
   if (error) {

@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import { getContactDetail } from './contactDetail';
 
 afterEach(() => {
@@ -28,10 +28,19 @@ describe('getContactDetail', () => {
     expect(detail.contact.uid).toBe('alice-uid');
     expect(detail.user.enabled_contact_fields).toEqual(['organization']);
     for (const key of [
-      'notes', 'activities', 'completions', 'reminders',
-      'relationship_edges', 'life_events', 'agenda', 'gifts',
-      'field_values', 'external_identities', 'external_activities',
-      'circles', 'tags',
+      'notes',
+      'activities',
+      'completions',
+      'reminders',
+      'relationship_edges',
+      'life_events',
+      'agenda',
+      'gifts',
+      'field_values',
+      'external_identities',
+      'external_activities',
+      'circles',
+      'tags',
     ] as const) {
       expect(detail[key]).toEqual([]);
     }
@@ -49,10 +58,19 @@ describe('getContactDetail', () => {
         completions: [],
         reminders: [],
         relationship_edges: [
-          { edge: { id: 'e1', source_id: 'alice-uid', target_id: 'bob-uid', type: 'spouse_of' }, other_party_name: 'Bob Marley' },
+          {
+            edge: { id: 'e1', source_id: 'alice-uid', target_id: 'bob-uid', type: 'spouse_of' },
+            other_party_name: 'Bob Marley',
+          },
         ],
         life_events: [
-          { id: 'le1', entity_id: 'alice-uid', type: 'moved', related_entity_ids: ['bob-uid'], related_entity_names: { 'bob-uid': 'Bob Marley' } },
+          {
+            id: 'le1',
+            entity_id: 'alice-uid',
+            type: 'moved',
+            related_entity_ids: ['bob-uid'],
+            related_entity_names: { 'bob-uid': 'Bob Marley' },
+          },
         ],
         agenda: [],
         gifts: [],

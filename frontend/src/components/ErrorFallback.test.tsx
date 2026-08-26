@@ -1,5 +1,5 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import ErrorFallback, { SectionErrorFallback } from './ErrorFallback';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -13,7 +13,9 @@ test('renders the default title and message', () => {
 });
 
 test('renders custom title and message when provided', () => {
-  render(<ErrorFallback title="Failed to load contacts" message="The contacts list is unavailable." />);
+  render(
+    <ErrorFallback title="Failed to load contacts" message="The contacts list is unavailable." />,
+  );
 
   expect(screen.getByText('Failed to load contacts')).toBeInTheDocument();
   expect(screen.getByText('The contacts list is unavailable.')).toBeInTheDocument();
@@ -51,7 +53,13 @@ test('omits technical details when there is no error', () => {
 test('SectionErrorFallback renders its title and message with a Retry action', () => {
   const onReset = vi.fn();
 
-  render(<SectionErrorFallback title="Error loading section" error={new Error('fetch failed')} onReset={onReset} />);
+  render(
+    <SectionErrorFallback
+      title="Error loading section"
+      error={new Error('fetch failed')}
+      onReset={onReset}
+    />,
+  );
 
   expect(screen.getByText('Error loading section')).toBeInTheDocument();
   expect(screen.getByText('fetch failed')).toBeInTheDocument();

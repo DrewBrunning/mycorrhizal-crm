@@ -1,8 +1,8 @@
-import { test, expect, afterEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, expect, test } from 'vitest';
 import '../i18n/config';
+import type { Card } from '../api/contacts';
 import RelatedToMembersSection, { hasRelatedToOrMembers } from './RelatedToMembersSection';
-import { Card } from '../api/contacts';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
 afterEach(cleanup);
@@ -15,21 +15,25 @@ test('renders related entities with their relation list', () => {
   render(
     <RelatedToMembersSection
       card={card({
-        relatedTo: [{ target: 'https://example.com/urn:uuid:alice', relations: ['friend', 'colleague'] }],
+        relatedTo: [
+          { target: 'https://example.com/urn:uuid:alice', relations: ['friend', 'colleague'] },
+        ],
       })}
-    />
+    />,
   );
 
   expect(screen.getByText('Related Entities')).toBeInTheDocument();
   expect(screen.getByText('Related to')).toBeInTheDocument();
-  expect(screen.getByText('https://example.com/urn:uuid:alice (friend, colleague)')).toBeInTheDocument();
+  expect(
+    screen.getByText('https://example.com/urn:uuid:alice (friend, colleague)'),
+  ).toBeInTheDocument();
 });
 
 test('a related entity without relations renders without parentheses', () => {
   render(
     <RelatedToMembersSection
       card={card({ relatedTo: [{ target: 'https://example.com/urn:uuid:bob' }] })}
-    />
+    />,
   );
 
   expect(screen.getByText('https://example.com/urn:uuid:bob')).toBeInTheDocument();
@@ -38,8 +42,10 @@ test('a related entity without relations renders without parentheses', () => {
 test('renders members under the Members caption', () => {
   render(
     <RelatedToMembersSection
-      card={card({ members: ['https://example.com/urn:uuid:carol', 'https://example.com/urn:uuid:dave'] })}
-    />
+      card={card({
+        members: ['https://example.com/urn:uuid:carol', 'https://example.com/urn:uuid:dave'],
+      })}
+    />,
   );
 
   expect(screen.getByText('Members')).toBeInTheDocument();

@@ -3,13 +3,14 @@
 // /contacts/:id/timeline returns a cursor-paginated page of a contact's
 // merged timeline across all six event types, filterable by ?type=
 // (comma-separated subset) and ?bucket= (recency).
-import { apiFetch, API_BASE_URL, getAuthHeaders, parseErrorResponse } from './client';
-import { Note } from './notes';
-import { Activity } from './activities';
-import { ReminderCompletion } from './reminders';
-import { LifeEvent } from './lifeEvents';
-import { ExternalActivity } from './externalLinks';
-import { Gift } from './gifts';
+
+import type { Activity } from './activities';
+import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
+import type { ExternalActivity } from './externalLinks';
+import type { Gift } from './gifts';
+import type { LifeEvent } from './lifeEvents';
+import type { Note } from './notes';
+import type { ReminderCompletion } from './reminders';
 
 // The six raw timeline event types, in the canonical order backend
 // models/timeline.go uses for its sort tiebreak. Hardcoded mirror of that
@@ -81,7 +82,7 @@ export async function getTimeline(params: GetTimelineParams): Promise<TimelineRe
 
   const response = await apiFetch(
     `${API_BASE_URL}/contacts/${contactId}/timeline?${queryParams.toString()}`,
-    { headers: getAuthHeaders() }
+    { headers: getAuthHeaders() },
   );
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json();

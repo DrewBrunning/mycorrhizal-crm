@@ -1,5 +1,5 @@
-import { test, expect, afterEach, vi } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import PersonalInfoEditor from './PersonalInfoEditor';
 
@@ -12,7 +12,7 @@ function renderEditor() {
       label="Personal Info"
       value={[{ kind: 'hobby', value: 'Gardening', level: 'high', label: '' }]}
       onChange={vi.fn()}
-    />
+    />,
   );
 }
 

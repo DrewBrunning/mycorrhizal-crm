@@ -1,43 +1,43 @@
-import { test, expect, vi, afterEach, beforeEach } from 'vitest';
+import { act, cleanup, renderHook } from '@testing-library/react';
 import type { Mock } from 'vitest';
-import { renderHook, cleanup, act } from '@testing-library/react';
-import { useSeafile } from './useSeafile';
-import { usePaperless } from './usePaperless';
-import { useNextcloud } from './useNextcloud';
-import { useImmich } from './useImmich';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import {
-  getSeafileConfig,
-  saveSeafileConfig,
-  deleteSeafileConfig,
-  testSeafileConnection,
-  getSeafileLibraries,
-  getSeafileDir,
-} from '../api/seafile';
+  deleteImmichConfig,
+  getImmichConfig,
+  getImmichContactSummary,
+  getImmichPeople,
+  linkImmichPerson,
+  saveImmichConfig,
+  syncImmich,
+  testImmichConnection,
+  unlinkImmichPerson,
+} from '../api/immich';
 import {
-  getPaperlessConfig,
-  savePaperlessConfig,
-  deletePaperlessConfig,
-  testPaperlessConnection,
-  getPaperlessDocuments,
-} from '../api/paperless';
-import {
-  getNextcloudConfig,
-  saveNextcloudConfig,
   deleteNextcloudConfig,
-  testNextcloudConnection,
+  getNextcloudConfig,
   getNextcloudDir,
+  saveNextcloudConfig,
+  testNextcloudConnection,
 } from '../api/nextcloud';
 import {
-  getImmichConfig,
-  saveImmichConfig,
-  deleteImmichConfig,
-  testImmichConnection,
-  getImmichPeople,
-  getImmichContactSummary,
-  linkImmichPerson,
-  unlinkImmichPerson,
-  syncImmich,
-} from '../api/immich';
+  deletePaperlessConfig,
+  getPaperlessConfig,
+  getPaperlessDocuments,
+  savePaperlessConfig,
+  testPaperlessConnection,
+} from '../api/paperless';
+import {
+  deleteSeafileConfig,
+  getSeafileConfig,
+  getSeafileDir,
+  getSeafileLibraries,
+  saveSeafileConfig,
+  testSeafileConnection,
+} from '../api/seafile';
+import { useImmich } from './useImmich';
+import { useNextcloud } from './useNextcloud';
+import { usePaperless } from './usePaperless';
+import { useSeafile } from './useSeafile';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
 afterEach(() => {
@@ -210,7 +210,7 @@ test('saveConfig persists, stores and returns the config', async () => {
     vi.mocked(s.saveConfigApi).mockResolvedValue(s.configFixture);
 
     const { result } = renderHook(() => s.use());
-    let saved;
+    let saved: unknown;
     await act(async () => {
       saved = await result.current.saveConfig(s.saveInput);
     });
@@ -230,7 +230,7 @@ test('saveConfig notifies and rethrows on failure', async () => {
     await expect(
       act(async () => {
         await result.current.saveConfig(s.saveInput);
-      })
+      }),
     ).rejects.toThrow('save failed');
 
     expect(notifier.showError).toHaveBeenCalledWith('save failed');
@@ -262,7 +262,7 @@ test('testConnection stores and returns the diagnostic result', async () => {
     vi.mocked(s.testConnectionApi).mockResolvedValue(s.testFixture);
 
     const { result } = renderHook(() => s.use());
-    let tested;
+    let tested: unknown;
     await act(async () => {
       tested = await result.current.testConnection();
     });
@@ -283,7 +283,7 @@ test('testConnection notifies and rethrows when the check cannot run', async () 
     await expect(
       act(async () => {
         await result.current.testConnection();
-      })
+      }),
     ).rejects.toThrow('no connection saved');
 
     expect(notifier.showError).toHaveBeenCalledWith('no connection saved');
@@ -314,7 +314,7 @@ test('seafile browseLibraries rethrows on failure', async () => {
   await expect(
     act(async () => {
       await result.current.browseLibraries();
-    })
+    }),
   ).rejects.toThrow('browse failed');
   expect(result.current.browsing).toBe(false);
 });
@@ -404,7 +404,13 @@ test('immich browsePeople loads people', async () => {
 
 test('immich loadSummary loads and stores the per-contact summary', async () => {
   const summary = {
-    identity: { id: 'i-1', entity_id: 'c-1', system: 'immich', external_id: 'p-1', sync_status: 'ok' },
+    identity: {
+      id: 'i-1',
+      entity_id: 'c-1',
+      system: 'immich',
+      external_id: 'p-1',
+      sync_status: 'ok',
+    },
     person_name: 'Ada',
     photo_count: 3,
   };
@@ -423,7 +429,7 @@ test('immich loadSummary returns null (not a throw) when no link exists', async 
   vi.mocked(getImmichContactSummary).mockRejectedValue(new Error('not linked'));
 
   const { result } = renderHook(() => useImmich());
-  let loaded;
+  let loaded: unknown;
   await act(async () => {
     loaded = await result.current.loadSummary('c-1');
   });
@@ -445,7 +451,13 @@ test('immich linkPerson and unlinkPerson update the summary state', async () => 
   expect(linkImmichPerson).toHaveBeenCalledWith('c-1', 'p-1', 'Ada');
 
   const summary = {
-    identity: { id: 'i-1', entity_id: 'c-1', system: 'immich', external_id: 'p-1', sync_status: 'ok' },
+    identity: {
+      id: 'i-1',
+      entity_id: 'c-1',
+      system: 'immich',
+      external_id: 'p-1',
+      sync_status: 'ok',
+    },
     person_name: 'Ada',
     photo_count: 3,
   };
@@ -496,7 +508,7 @@ test('immich runSync rethrows on failure', async () => {
   await expect(
     act(async () => {
       await result.current.runSync();
-    })
+    }),
   ).rejects.toThrow('sync failed');
   expect(result.current.syncing).toBe(false);
 });

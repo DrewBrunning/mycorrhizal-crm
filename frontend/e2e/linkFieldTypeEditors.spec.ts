@@ -1,7 +1,16 @@
-import { test, expect, Page, Locator } from './fixtures';
-import { createTestContact, deleteTestContact, waitForLoading, stableClick, withExclusiveUserSettings } from './fixtures';
-import { API_BASE_URL } from './global-setup';
 import { DEFAULT_ENABLED_CONTACT_FIELDS } from '../src/contactFields';
+import {
+  createTestContact,
+  deleteTestContact,
+  expect,
+  type Locator,
+  type Page,
+  stableClick,
+  test,
+  waitForLoading,
+  withExclusiveUserSettings,
+} from './fixtures';
+import { API_BASE_URL } from './global-setup';
 
 // T44
 // — the LinkFieldType registry must reach the editors, not just the display
@@ -41,9 +50,7 @@ async function setEnabledFields(page: Page, fields: string[] | null): Promise<vo
 // finally-block callback that restores the user's original setting. The base
 // must be the *default* set when the user has never configured it, not [] —
 // an empty array would hide every default field (emails/phones/...) too.
-async function withRegistryFieldsEnabled(
-  page: Page
-): Promise<() => Promise<void>> {
+async function withRegistryFieldsEnabled(page: Page): Promise<() => Promise<void>> {
   const original = await getEnabledFields(page);
   const base = original ?? (DEFAULT_ENABLED_CONTACT_FIELDS as unknown as string[]);
   await setEnabledFields(page, [...base, ...EXTRA_FIELDS]);
@@ -75,7 +82,9 @@ test.describe('T44 — the LinkFieldType registry reaches the editors', () => {
   // setting. Serialize the file so only one toggle is ever in flight.
   test.describe.configure({ mode: 'serial' });
 
-  test('Social Profiles editor suggests the registry entry with its icon and saves a working link', async ({ page }) => {
+  test('Social Profiles editor suggests the registry entry with its icon and saves a working link', async ({
+    page,
+  }) => {
     await withExclusiveUserSettings(async () => {
       const restore = await withRegistryFieldsEnabled(page);
       const typeName = `E2E44Type${Date.now()}`;
@@ -115,7 +124,7 @@ test.describe('T44 — the LinkFieldType registry reaches the editors', () => {
         // The saved entry resolves through the registry to a working link,
         // exactly as it did before this ticket (T34 display path unchanged).
         await expect(
-          page.locator(`a[href="https://example.com/u/15551234567"]`).first()
+          page.locator(`a[href="https://example.com/u/15551234567"]`).first(),
         ).toBeVisible();
         await expect(page.getByText('Save').first()).toBeHidden();
       } finally {
@@ -164,7 +173,9 @@ test.describe('T44 — the LinkFieldType registry reaches the editors', () => {
     });
   });
 
-  test('Instant Messaging uses the registry-aware editor and preserves a pre-existing entry with no service', async ({ page }) => {
+  test('Instant Messaging uses the registry-aware editor and preserves a pre-existing entry with no service', async ({
+    page,
+  }) => {
     await withExclusiveUserSettings(async () => {
       const restore = await withRegistryFieldsEnabled(page);
       let contact: { id: number; ID?: number } | undefined;
@@ -215,9 +226,7 @@ test.describe('T44 — the LinkFieldType registry reaches the editors', () => {
         await page.getByRole('button', { name: 'Save' }).click();
         await expect(page.getByText('Save').first()).toBeHidden();
 
-        await expect(
-          page.getByText(/WhatsApp: xmpp:alice@example\.com/)
-        ).toBeVisible();
+        await expect(page.getByText(/WhatsApp: xmpp:alice@example\.com/)).toBeVisible();
         await expect(page.locator('a[href="xmpp:alice@example.com"]').first()).toBeVisible();
       } finally {
         if (contact) await deleteTestContact(page.request, contact.id ?? contact.ID);

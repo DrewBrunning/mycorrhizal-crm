@@ -1,9 +1,9 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import '../i18n/config';
-import ForgotPasswordDialog from './ForgotPasswordDialog';
 import { AppThemeProvider } from '../AppThemeProvider';
 import { requestPasswordReset } from '../api/auth';
+import ForgotPasswordDialog from './ForgotPasswordDialog';
 
 vi.mock('../api/auth', () => ({
   requestPasswordReset: vi.fn(),
@@ -21,7 +21,7 @@ function renderDialog() {
   return render(
     <AppThemeProvider>
       <ForgotPasswordDialog open onClose={() => {}} />
-    </AppThemeProvider>
+    </AppThemeProvider>,
   );
 }
 
@@ -66,8 +66,12 @@ describe('ForgotPasswordDialog failed-request focus and error association', () =
 
     const fillMismatch = () => {
       fireEvent.change(screen.getByLabelText(/reset token/i), { target: { value: 'tok123' } });
-      fireEvent.change(screen.getByLabelText(/^new password/i), { target: { value: 'NewPassword1!' } });
-      fireEvent.change(screen.getByLabelText(/confirm new password/i), { target: { value: 'Different1!' } });
+      fireEvent.change(screen.getByLabelText(/^new password/i), {
+        target: { value: 'NewPassword1!' },
+      });
+      fireEvent.change(screen.getByLabelText(/confirm new password/i), {
+        target: { value: 'Different1!' },
+      });
     };
     const submit = () => screen.getByRole('button', { name: /reset password/i });
 

@@ -1,0 +1,16 @@
+# Issue #578: accepted Grype findings, same ignore-list-with-justification
+# shape as .trivyignore, docker/cis-hardening.ignore, and android/.mobsf.
+# Consumed by anchore/scan-action via the `config` input in grype.yml.
+#
+# Empty to start — add an entry only for a finding that's been reviewed and
+# deliberately accepted, with a comment above it naming the vulnerability and
+# why it's safe. Example:
+#
+#   ignore:
+#     # GHSA-xxxx-yyyy-zzzz: advisory applies to the library's CLI mode, which
+#     # this repo never invokes; the embedded API surface is not reachable.
+#     - vulnerability: GHSA-xxxx-yyyy-zzzz
+#
+# Grype only gates on CRITICAL + HIGH (severity-cutoff in grype.yml), so
+# anything below that is already report-only and needs no entry here.
+ignore: []
