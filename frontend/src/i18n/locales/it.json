@@ -1501,9 +1501,17 @@
       "message": "Sei sicuro di voler eliminare l'utente \"{{username}}\"?",
       "warning": "Questo eliminerà permanentemente l'utente e tutti i suoi dati inclusi contatti, attività, note e promemoria."
     },
+    "resetTwoFactor": "Reimposta 2FA",
+    "resetTwoFactorDialog": {
+      "title": "Reimposta Autenticazione a Due Fattori",
+      "message": "Sei sicuro di voler reimpostare l'autenticazione a due fattori per \"{{username}}\"?",
+      "warning": "Questo disattiva la sua app di autenticazione ed elimina i suoi codici di recupero, e termina le sue sessioni attuali. Usalo solo quando un utente è bloccato e non può verificarsi con la sua 2FA esistente."
+    },
     "updateError": "Impossibile aggiornare l'utente",
     "createError": "Impossibile creare l'utente",
     "deleteError": "Impossibile eliminare l'utente",
+    "resetTwoFactorSuccess": "Autenticazione a due fattori reimpostata per \"{{username}}\"",
+    "resetTwoFactorError": "Impossibile reimpostare l'autenticazione a due fattori",
     "triggerReminders": "Invia Email Promemoria",
     "triggerRemindersSuccess": "Email di promemoria inviate con successo",
     "triggerRemindersError": "Invio email di promemoria fallito"

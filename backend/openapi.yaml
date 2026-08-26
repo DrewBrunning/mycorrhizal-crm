@@ -8137,6 +8137,55 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /admin/users/{id}/reset-2fa:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    post:
+      summary: Reset a user's two-factor authentication (admin)
+      operationId: adminResetUserTwoFactor
+      description: >
+        Operator-side recovery for a user locked out of their own account
+        (TOTP device and recovery codes both lost). Disables TOTP and
+        hard-deletes all recovery codes for the target user, and bumps their
+        token_version (kills their sessions). Unlike the self-service
+        disable-2FA endpoint, requires no proof from the target — the acting
+        admin's own authenticated session is the trust boundary. Idempotent:
+        calling this on a user with no 2FA enabled is a no-op that still
+        returns 200.
+      responses:
+        "200":
+          description: The updated user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUserResponse"
+        "400":
+          description: Non-integer id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Not an admin.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: User not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /admin/trigger-reminders:
     post:
       summary: Trigger the reminder email job now (admin)

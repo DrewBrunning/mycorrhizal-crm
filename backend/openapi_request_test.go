@@ -254,6 +254,7 @@ var noBodyMutatingRoutes = map[string]bool{
 	"POST /paperless/test-connection":             true,
 	"POST /seafile/test-connection":               true,
 	"POST /nextcloud/test-connection":             true,
+	"POST /admin/users/{id}/reset-2fa":            true,
 	"POST /admin/trigger-reminders":               true,
 	"POST /admin/trigger-purge":                   true,
 	"POST /admin/search/rebuild":                  true,

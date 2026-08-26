@@ -235,14 +235,15 @@ func buildTable(s seeded) map[string]authzRow {
 		"POST /api/v1/password-reset/confirm":  {class: classPublic},
 
 		// --- admin routes --------------------------------------------------
-		"GET /api/v1/admin/users":              {class: classAdmin},
-		"POST /api/v1/admin/users":             {class: classAdmin},
-		"GET /api/v1/admin/users/:id":          {class: classAdmin},
-		"PATCH /api/v1/admin/users/:id":        {class: classAdmin},
-		"DELETE /api/v1/admin/users/:id":       {class: classAdmin},
-		"POST /api/v1/admin/trigger-reminders": {class: classAdmin},
-		"POST /api/v1/admin/trigger-purge":     {class: classAdmin},
-		"POST /api/v1/admin/search/rebuild":    {class: classAdmin},
+		"GET /api/v1/admin/users":                {class: classAdmin},
+		"POST /api/v1/admin/users":               {class: classAdmin},
+		"GET /api/v1/admin/users/:id":            {class: classAdmin},
+		"PATCH /api/v1/admin/users/:id":          {class: classAdmin},
+		"DELETE /api/v1/admin/users/:id":         {class: classAdmin},
+		"POST /api/v1/admin/users/:id/reset-2fa": {class: classAdmin},
+		"POST /api/v1/admin/trigger-reminders":   {class: classAdmin},
+		"POST /api/v1/admin/trigger-purge":       {class: classAdmin},
+		"POST /api/v1/admin/search/rebuild":      {class: classAdmin},
 
 		// --- user / dashboard ----------------------------------------------
 		"POST /api/v1/users/change-password":               {class: classProtected},
