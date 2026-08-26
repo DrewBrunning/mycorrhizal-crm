@@ -456,3 +456,36 @@ func mustGetwd(t *testing.T) string {
 	}
 	return cwd
 }
+
+func TestReadRepoFileRefusesEscapingPaths(t *testing.T) {
+	root := t.TempDir()
+	inside := filepath.Join(root, "docs", "security")
+	if err := os.MkdirAll(inside, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(inside, "ok.md"), []byte("hi\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// A secret one directory above the "repository", the thing the bounds
+	// check exists to keep unreadable.
+	outside := filepath.Join(filepath.Dir(root), "citecheck-outside-probe")
+	if err := os.WriteFile(outside, []byte("secret\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(outside)
+
+	if got, err := readRepoFile(root, "docs/security/ok.md"); err != nil || string(got) != "hi\n" {
+		t.Fatalf("expected to read the in-repo file, got %q / %v", got, err)
+	}
+
+	for _, rel := range []string{
+		"../" + filepath.Base(outside),
+		"docs/../../" + filepath.Base(outside),
+		"..",
+		filepath.Join(filepath.Dir(root), filepath.Base(outside)), // absolute
+	} {
+		if _, err := readRepoFile(root, rel); err == nil {
+			t.Errorf("readRepoFile(%q) succeeded; it must refuse paths outside the root", rel)
+		}
+	}
+}

@@ -235,7 +235,7 @@ func reportDrift(w io.Writer, root string, idx *treeIndex, docs []string) (int, 
 func check(w io.Writer, root string, idx *treeIndex, docs []string) (int, error) {
 	var all []finding
 	for _, doc := range docs {
-		body, err := os.ReadFile(filepath.Join(root, doc))
+		body, err := readRepoFile(root, doc)
 		if err != nil {
 			return 0, fmt.Errorf("reading %s: %w", doc, err)
 		}
@@ -287,6 +287,25 @@ func findRepoRoot(start string) (string, error) {
 		}
 		dir = parent
 	}
+}
+
+// readRepoFile reads a repository-relative file, refusing anything that would
+// escape root. Every read in this command already comes from either the fixed
+// securityDocs list or a path the command discovered by walking the repository
+// itself — there is no request input anywhere near it — but funnelling all six
+// call sites through one bounds-checked helper means the gosec suppression is
+// attached to an actual check instead of being asserted six times, and there is
+// a single place to audit if that ever stops being true.
+func readRepoFile(root, rel string) ([]byte, error) {
+	clean := filepath.Clean(rel)
+	if filepath.IsAbs(clean) || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
+		return nil, fmt.Errorf("citecheck: refusing to read %q — outside the repository root", rel)
+	}
+	// #nosec G304 -- clean is repo-relative and traversal-checked immediately
+	// above; root comes from findRepoRoot walking up from the working
+	// directory, never from request input. Same posture as cmd/zapgate and
+	// cmd/schemagate's operator-supplied report paths.
+	return os.ReadFile(filepath.Join(root, clean))
 }
 
 // buildIndex walks the tree once and records every citable file.
@@ -497,7 +516,7 @@ func (idx *treeIndex) lineCount(rel string) (int, error) {
 	if n, ok := idx.lineCounts[rel]; ok {
 		return n, nil
 	}
-	body, err := os.ReadFile(filepath.Join(idx.root, rel))
+	body, err := readRepoFile(idx.root, rel)
 	if err != nil {
 		return 0, err
 	}
@@ -519,7 +538,7 @@ func (idx *treeIndex) symbolSet() (map[string]bool, error) {
 		if !sourceExts[filepath.Ext(rel)] {
 			continue
 		}
-		body, err := os.ReadFile(filepath.Join(idx.root, rel))
+		body, err := readRepoFile(idx.root, rel)
 		if err != nil {
 			return nil, err
 		}
@@ -736,7 +755,7 @@ func (h driftHit) key() string {
 // examined.
 func driftCandidates(root string, idx *treeIndex, docs []string) (hits []driftHit, total int, err error) {
 	for _, doc := range docs {
-		body, err := os.ReadFile(filepath.Join(root, doc))
+		body, err := readRepoFile(root, doc)
 		if err != nil {
 			return nil, 0, fmt.Errorf("reading %s: %w", doc, err)
 		}
@@ -823,7 +842,7 @@ func driftKeywords(before, path string) []string {
 
 // citedRangeMentions reports whether the cited lines contain any of words.
 func citedRangeMentions(idx *treeIndex, rel string, from, to int, words []string) (bool, error) {
-	body, err := os.ReadFile(filepath.Join(idx.root, rel))
+	body, err := readRepoFile(idx.root, rel)
 	if err != nil {
 		return false, err
 	}
@@ -849,7 +868,7 @@ func citedRangeMentions(idx *treeIndex, rel string, from, to int, words []string
 // loadDriftBaseline reads the accepted-drift file into a set of keys. A
 // missing file is not an error — it means nothing has been accepted yet.
 func loadDriftBaseline(root string) (map[string]bool, error) {
-	body, err := os.ReadFile(filepath.Join(root, driftBaselineFile))
+	body, err := readRepoFile(root, driftBaselineFile)
 	if os.IsNotExist(err) {
 		return map[string]bool{}, nil
 	}
