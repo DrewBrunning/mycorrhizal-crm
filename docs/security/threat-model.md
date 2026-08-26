@@ -48,7 +48,7 @@ section derives from it:
 | At-rest master key / wrapped DEK | `DATA_ENCRYPTION_KEY`/`_FILE`, `data_encryption_keys` table | Losing it makes every encrypted column undecryptable, **by design** (`asvs-l2.md` P4) — the flip side, gaining it, decrypts everything it wraps |
 | Android session token | `EncryptedSharedPreferences` behind a Keystore `MasterKey` (`masvs-l1.md` STORAGE-1) | Session takeover from a compromised/rooted device — accepted risk, see Gating decision 3 |
 | Android local mirror (Room DB) | SQLCipher whole-DB encrypted (`masvs-l1.md` P4, issue #385) | Offline PII disclosure from a lost/stolen device |
-| Backups | Operator-managed, outside this app's control today | Disclosure of everything the live DB holds — no backup-specific encryption/immutability yet (tracked: #420, #505) |
+| Backups | Operator-managed storage the operator chooses (`make backup` → `VACUUM INTO` snapshot + `rsync`'d photos/attachments, `docs/deployment.md`) | Disclosure of everything the live DB holds. Confidentiality (issue #420): the snapshot inherits the DB's field-level at-rest encryption — encrypted columns travel as ciphertext, the master key that unwraps the DEK is operator env and never in the backup, so a stolen backup alone yields ciphertext + hashes + the FTS-plaintext set. Retention is operator-owned by design (an app-side expirer would hand an attacker running as the app the same power). Immutability (app-level, so a compromised host can't delete/encrypt them): not yet — tracked #505 |
 
 ## Trust boundaries
 
@@ -65,7 +65,7 @@ browser → API → database → filesystem → integrations → Android local D
 | API → filesystem | UUID filenames, traversal guards, 0700/0750 perms (`asvs-l2.md` V12.3–V12.4) |
 | API → integrations | Public-IP-only SSRF dialer with DNS-rebinding pinning, per-service opt-in (`backend/httputil/safedial.go:27-47`, `asvs-l2.md` V5.2.6/API7) |
 | API → Android local DB | Android is a thin client; the API is the only path to data, and everything it returns lands in the SQLCipher-encrypted Room mirror (`masvs-l1.md` V2, V4) |
-| database/filesystem → backups | Operator-managed today; no app-level backup encryption yet — see Assets table and #420/#505 |
+| database/filesystem → backups | `make backup` snapshot is operator-owned storage; the snapshot inherits field-level at-rest encryption but the unwrap key is operator env, never in the backup — confidentiality/retention documented (issue #420, `docs/deployment.md` "Backup confidentiality & retention"); app-level immutability still open (#505) — see Assets table |
 
 ## Actors × trust boundaries
 
@@ -83,7 +83,7 @@ Each actor sits on a boundary, is neutralized by a control, and is verified by a
 | Compromised external integration | →integrations | SSRF dialer, fail-secure | `asvs-l2.md` V5.2.6/API7; issues #373, #465, #366 |
 | Compromised host/container | →host | non-root, minimal caps, hardening | `asvs-l2.md` V1.2.1, V1.14.5; issues #362, #417 |
 | Filesystem access to deployment (stolen disk) | →filesystem | field-level at-rest encryption | `asvs-l2.md` V6.1.1/P4, issue #380 |
-| Obtains a backup | →backups | not yet: no backup encryption/immutability | issues #420, #505 (deferred to v0.5.0/beta per the release roadmap) |
+| Obtains a backup | →backups | encrypted columns are field-level AES-256-GCM (the unwrap key is operator env, never in the backup), so a stolen backup alone yields only ciphertext + hashes + the FTS-plaintext set; restore security + retention documented (issue #420) | issue #420 (confidentiality/retention documented and verified by the restore drill); #505 (app-level immutability, milestone v0.6.6) |
 | Obtains JWT/API credentials | →session | secret strength validation, `TokenVersion`, token expiry/revocation | `asvs-l2.md` V1.6.1, V3.3.3; issues #393, #372, #413, #411 |
 | Malicious data via CardDAV/CalDAV sync (reconcile path) | integrations→DB | parser validation on reconcile, same bar as import | **gap** — tracked in open issue [#512](https://github.com/DrewBrunning/mycorrhizal-crm/issues/512); the import assistant (#375) neutralizes hostile input, the sync reconcile path does not yet have equivalent E2E coverage |
 | Lost/stolen Android device | device→local DB | SQLCipher-encrypted Room mirror, Keystore-backed session token, logout purge | `masvs-l1.md` STORAGE-1/P4, issue #385 |

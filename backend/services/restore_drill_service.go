@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"mycorrhizal/atrest"
 	"mycorrhizal/config"
 	"mycorrhizal/database"
 	"mycorrhizal/logger"
@@ -143,6 +144,20 @@ func runRestoreDrill(db *gorm.DB, cfg config.Config) (ok bool, detail string, er
 			}
 		}
 	}()
+
+	// A row-count match proves the snapshot boots and holds the same rows,
+	// but not that a real restore could *decrypt* it — the encrypted columns
+	// count the same regardless of key. Verify the restored snapshot's
+	// wrapped DEK unwraps under the current master key, so a rotated or lost
+	// key is caught here (weekly, in a throwaway scratch DB) instead of at
+	// the moment of need during a real disaster (issue #420).
+	kek, err := atrest.EncryptionKey()
+	if err != nil {
+		return false, "", fmt.Errorf("resolve at-rest master key: %w", err)
+	}
+	if err := atrest.VerifyBackupDecryptable(scratchDB, kek); err != nil {
+		return false, "", fmt.Errorf("restored snapshot is not decryptable under the current master key: %w", err)
+	}
 
 	return compareTableCounts(liveCounts, scratchDB)
 }

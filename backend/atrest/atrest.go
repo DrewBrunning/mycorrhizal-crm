@@ -258,6 +258,47 @@ func loadOrCreateDEK(db *gorm.DB, kek []byte) ([]byte, error) {
 	}
 }
 
+// VerifyBackupDecryptable reports whether a (restored) database's wrapped DEK
+// unwraps under the given master key, without arming the global engine or
+// creating anything. It is the restore-side counterpart to Initialize: a
+// restore succeeds only if the snapshot's encrypted columns are actually
+// readable under the current key, and a wrong/lost key must fail a restore as
+// loudly as it would fail a real boot — not silently pass a row-count
+// comparison (issue #420, wired into the restore drill in
+// services/restore_drill_service.go).
+//
+// Semantics mirror Initialize's boot-time behavior:
+//
+//   - kek == nil (encryption not configured): pass — a pass-through
+//     deployment has nothing to verify;
+//   - no data_encryption_keys row: pass — a legacy/pre-encryption database has
+//     no wrapped DEK, and a real boot with a configured key would create one
+//     on first Initialize;
+//   - row present: unwrap it under kek; a failure is an error (the master key
+//     was rotated or lost since the snapshot was taken).
+func VerifyBackupDecryptable(db *gorm.DB, kek []byte) error {
+	if kek == nil {
+		return nil
+	}
+	if db == nil {
+		return errors.New("atrest: verify requires a db handle")
+	}
+	type keyRow struct {
+		WrappedDEK []byte `gorm:"column:wrapped_dek"`
+	}
+	var row keyRow
+	if err := db.Table("data_encryption_keys").Select("wrapped_dek").Where("key_id = ?", keyID).Limit(1).Scan(&row).Error; err != nil {
+		return fmt.Errorf("atrest: read data_encryption_keys for restore verification: %w", err)
+	}
+	if len(row.WrappedDEK) == 0 {
+		return nil
+	}
+	if _, err := unwrap(kek, row.WrappedDEK); err != nil {
+		return fmt.Errorf("atrest: restored database's data-encryption key does not unwrap under the current master key (key rotated or lost since the backup? a real restore would fail closed at boot): %w", err)
+	}
+	return nil
+}
+
 // RotateMasterKey swaps the master key that wraps the deployment DEK:
 // unwrap with the old key, rewrap with the new, update the single row. No
 // payload bytes are read or rewritten — rotation never requires re-encrypting

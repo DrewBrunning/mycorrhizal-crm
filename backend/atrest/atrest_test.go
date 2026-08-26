@@ -6,6 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"mycorrhizal/database"
+
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -147,6 +150,71 @@ func TestDecrypt_EncryptedValueWhenUninitializedFailsClosed(t *testing.T) {
 	ResetForTest()
 	_, err = Decrypt(ct)
 	require.Error(t, err)
+}
+
+func TestVerifyBackupDecryptable_NoKeyConfiguredPasses(t *testing.T) {
+	db, err := database.InitDB(filepath.Join(t.TempDir(), "verify-nokey.db"))
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if sqlDB, err := db.DB(); err == nil {
+			sqlDB.Close()
+		}
+	})
+
+	require.NoError(t, VerifyBackupDecryptable(db, nil), "no master key configured → nothing to verify")
+}
+
+func TestVerifyBackupDecryptable_MissingDEKRowPasses(t *testing.T) {
+	db, err := database.InitDB(filepath.Join(t.TempDir(), "verify-norow.db"))
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if sqlDB, err := db.DB(); err == nil {
+			sqlDB.Close()
+		}
+	})
+
+	// A legacy/pre-encryption database has the table (migration 000033) but no
+	// wrapped DEK row — a real boot with a key would create one on first
+	// Initialize, so there is nothing here that could fail to unwrap.
+	require.NoError(t, VerifyBackupDecryptable(db, testKEK(t)))
+}
+
+func TestVerifyBackupDecryptable_CorrectKeyPasses(t *testing.T) {
+	db, err := database.InitDB(filepath.Join(t.TempDir(), "verify-correct.db"))
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if sqlDB, err := db.DB(); err == nil {
+			sqlDB.Close()
+		}
+	})
+
+	kek := testKEK(t)
+	require.NoError(t, Initialize(db, kek))
+
+	require.NoError(t, VerifyBackupDecryptable(db, kek))
+}
+
+func TestVerifyBackupDecryptable_WrongKeyFailsClosed(t *testing.T) {
+	db, err := database.InitDB(filepath.Join(t.TempDir(), "verify-wrong.db"))
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if sqlDB, err := db.DB(); err == nil {
+			sqlDB.Close()
+		}
+	})
+
+	kek := testKEK(t)
+	require.NoError(t, Initialize(db, kek))
+
+	wrong := make([]byte, keySize)
+	wrong[0] = 0xFF
+	err = VerifyBackupDecryptable(db, wrong)
+	require.Error(t, err, "a backup keyed under a different master key must fail restore verification")
+	assert.Contains(t, err.Error(), "does not unwrap under the current master key")
+}
+
+func TestVerifyBackupDecryptable_NilDBWithKeyErrors(t *testing.T) {
+	require.Error(t, VerifyBackupDecryptable(nil, testKEK(t)))
 }
 
 func TestEncrypt_NonceUniqueness(t *testing.T) {

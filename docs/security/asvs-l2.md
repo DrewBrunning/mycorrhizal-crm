@@ -26,7 +26,7 @@ grep for it below, and get a status + citation. No row is left `satisfied` witho
 
 ## Documented positions
 
-Two deliberate, written-down decisions the issue asks to fold in. They are positions, not code
+Five deliberate, written-down decisions this project has made. They are positions, not code
 changes; revisit each pre-1.0 or when the cited trigger happens.
 
 ### P1 — Password hashing: bcrypt, not Argon2id (NIST 800-63B §5.1.1.2)
@@ -124,6 +124,39 @@ The at-rest layer (`backend/atrest`) is the issue #380 implementation. Three wri
    deliberately no escrow. Losing `DATA_ENCRYPTION_KEY` makes every encrypted column undecryptable.
    Rotation (`cmd/rotate-at-rest-key`) rewraps the DEK under a new master key.
 
+### P5 — Backup confidentiality & retention: operator-owned boundary (#420)
+
+Backups are a **complete copy of the CRM's sensitive data** (the DB snapshot at full sensitivity plus
+the photos/attachments directories), so the confidentiality bar for a backup is the same as for the
+database itself. Issue #420's statement of where that bar sits:
+
+- **Encryption is inherited, not added.** A `make backup` snapshot carries the DB's field-level
+  at-rest encryption with it (`encv1:` ciphertext + the wrapped DEK in `data_encryption_keys`),
+  which is exactly why `VACUUM INTO` remains a plain-file backup even though the live DB is
+  encrypted. The snapshot is *not* wrapped in a further layer: the FTS-plaintext columns (the same
+  set as P4) and the photos/attachments directories are unencrypted by the app, and protecting those
+  at rest (`age`/`gpg`/encrypted volume) is the operator's job — identical to the pre-#380 posture.
+- **The key is never in the backup.** The master key that unwraps the DEK (`DATA_ENCRYPTION_KEY`,
+  else HKDF-derived from `JWT_SECRET_KEY`) lives in the operator's environment. A stolen backup
+  alone yields ciphertext + hashes + the FTS-plaintext set; restoring under a different key fails
+  closed at boot. A JWT-derived master key means rotating `JWT_SECRET_KEY` changes the derived key,
+  failing the live boot and making old snapshots undecryptable — one more reason for a dedicated
+  `DATA_ENCRYPTION_KEY` (P2/P4).
+- **Retention and deletion are deliberately out of the app's reach.** No backup rotation/expiry in
+  this app — an app-side expirer is the same capability an attacker running as the app would
+  inherit, so expiry belongs to the destination's lifecycle policy or the pull-side host (issue
+  #505, same position). Retention guidance is operator-facing: `docs/deployment.md`.
+- **Restore security is verified, not assumed.** The restore drill (issue #275) restores a fresh
+  snapshot into a scratch DB and compares every table's row count against live — and since #420 also
+  verifies the snapshot's wrapped DEK unwraps under the current master key
+  (`services/restore_drill_service.go` → `atrest.VerifyBackupDecryptable`), so a rotated/lost key is
+  caught weekly, not at the moment of need. A real restore is a point-in-time rollback that
+  resurrects soft-deleted rows (`docs/security/data-retention-lifecycle.md` §10).
+
+The operator runbook — where backups live, retention schedule, soft-deleted data and age-out — is
+`docs/deployment.md`'s "Backup confidentiality & retention" section; `data-retention-lifecycle.md`
+§10 is the per-data-type view.
+
 ---
 
 ## V1 — Architecture, Design and Threat Modeling
@@ -150,7 +183,7 @@ L3-only, out of scope: 1.11.3.
 | 1.5.2 | No serialization with untrusted clients | satisfied | Wire format is JSON DTOs only (`encoding/json`); no gob/pickle/object serialization anywhere |
 | 1.5.3 | Input validation on trusted layer | satisfied | `ValidateJSONMiddleware` runs server-side on every input route (`backend/middleware/validation.go:332-368`); client-side validation is UX only |
 | 1.5.4 | Output encoding near the interpreter | satisfied | React auto-escapes all rendering (no `dangerouslySetInnerHTML` in `frontend/src`); CSV formula injection neutralized at the export boundary (`backend/controllers/export_controller.go:41-57`) |
-| 1.6.1 | Cryptographic key management policy | partial | Key lifecycle documented: JWT secret validated at boot — ≥ 32 bytes, no known placeholder, minimum entropy (`backend/config/config.go:351-389`); TOTP/integration secrets AES-256-GCM at rest (`backend/services/credential_crypto.go`); at-rest master key + wrapped DEK with rotation runbook (`cmd/rotate-at-rest-key`, `atrest.RotateMasterKey`, **P4**). Gap: rotation runbook is a command + P4 position, not a standalone doc. |
+| 1.6.1 | Cryptographic key management policy | partial | Key lifecycle documented: JWT secret validated at boot — ≥ 32 bytes, no known placeholder, minimum entropy (`backend/config/config.go:351-389`); TOTP/integration secrets AES-256-GCM at rest (`backend/services/credential_crypto.go`); at-rest master key + wrapped DEK with rotation runbook (`cmd/rotate-at-rest-key`, `atrest.RotateMasterKey`, **P4**); backup key implications documented — a snapshot carries the wrapped DEK but never the master key, so restore requires the same key and fails closed otherwise (**P5**, issue #420). Gap: rotation runbook is a command + P4 position, not a standalone doc. |
 | 1.6.2 | Key vault / API-based key access | not-applicable | Self-hosted single process; secrets come from environment (`backend/.env.example`); see P2 (crypto agility position) |
 | 1.6.3 | Keys replaceable, re-encrypt path defined | partial | JWT rotation is clean (`TokenVersion`, `config/config.go:351-389`); at-rest master-key rotation rewraps the single wrapped DEK without touching payloads (`cmd/rotate-at-rest-key`, `atrest.RotateMasterKey`); re-encrypting TOTP/integration secrets after JWT rotation is not automated (`credential_crypto.go:20-21` documents the coupling) |
 | 1.6.4 | Client-side secrets treated as insecure | satisfied | Session token is an httpOnly cookie, never JS-readable (`frontend/src/auth.ts:127-134`); no secrets in `localStorage` |
@@ -298,7 +331,7 @@ L3-only, out of scope: none in this chapter (5.4 is L2).
 
 | ID | Requirement (abbrev.) | Status | Evidence |
 |---|---|---|---|
-| 6.1.1 | Regulated private data encrypted at rest | satisfied | Secrets (TOTP, integration credentials) AES-256-GCM encrypted (`backend/services/credential_crypto.go:33-54`); user-authored PII field-level AES-256-GCM encrypted at rest — `backend/atrest` (issue #380): contact free-text/neutral card/crm/passthrough, `life_events.description`, `reminders.message`, `reminder_completions.message`, `gifts`, `preferences`, `conversation_agenda`, `audit_events.before_snapshot`, sync-conflict copies. Wrapped-DEK envelope: master key from `DATA_ENCRYPTION_KEY`/`_FILE` (HKDF-JWT fallback), DEK AES-GCM-wrapped into `data_encryption_keys`, ciphertext `encv1:`-prefixed (migration `000033`, backfill `atrest/backfill.go`). **Deliberate exception:** FTS5-indexed columns (`notes.content`, `activities.*`, flat contact search fields) stay plaintext so search works — documented in `docs/security/threat-model.md` (Gating decision 1). |
+| 6.1.1 | Regulated private data encrypted at rest | satisfied | Secrets (TOTP, integration credentials) AES-256-GCM encrypted (`backend/services/credential_crypto.go:33-54`); user-authored PII field-level AES-256-GCM encrypted at rest — `backend/atrest` (issue #380): contact free-text/neutral card/crm/passthrough, `life_events.description`, `reminders.message`, `reminder_completions.message`, `gifts`, `preferences`, `conversation_agenda`, `audit_events.before_snapshot`, sync-conflict copies. Wrapped-DEK envelope: master key from `DATA_ENCRYPTION_KEY`/`_FILE` (HKDF-JWT fallback), DEK AES-GCM-wrapped into `data_encryption_keys`, ciphertext `encv1:`-prefixed (migration `000033`, backfill `atrest/backfill.go`). **Deliberate exception:** FTS5-indexed columns (`notes.content`, `activities.*`, flat contact search fields) stay plaintext so search works — documented in `docs/security/threat-model.md` (Gating decision 1). Backups inherit this same encryption: a `VACUUM INTO` snapshot carries the ciphertext + wrapped DEK, and the master key is never in the backup (issue #420, **P5**). |
 | 6.1.2 | Regulated health data at rest | not-applicable | Neutral contact model has no medical fields; no regulated health data by design |
 | 6.1.3 | Regulated financial data at rest | not-applicable | Gift records are non-sensitive user-authored notes (no account/credit/tax data) |
 | 6.2.1 | Crypto fails securely, no padding oracle | satisfied | AEAD (GCM) — no padding to oracle; failures are generic 500s (`errors/errors.go:273-283`) |
@@ -352,7 +385,7 @@ L3-only, out of scope: 8.1.5, 8.1.6.
 | 8.3.5 | Sensitive-data access audited | partial | Mutations of all major entities audited with redacted before-snapshots (`backend/models/audit.go:105-175`); **reads** are not audited. Gap: read-auditing would be a deliberate privacy/performance choice. |
 | 8.3.6 | Memory zeroization | not-applicable | Go runtime; no explicit zeroization (accepted; see P2's scope note) |
 | 8.3.7 | Encryption with confidentiality+integrity | satisfied | AES-256-GCM for at-rest secrets (`credential_crypto.go:33-54`) and for field-level PII (`atrest`, issue #380); TLS for transport |
-| 8.3.8 | Retention classification, auto-delete | satisfied | T26 purge jobs (feed/audit/ContactShare retention, `backend/services/purge_service.go`, `audit_purge_service.go`, `contact_share_purge_service.go`); 410 Gone past purge window (`controllers/helpers.go:348-360`); soft-delete is the retention buffer for user content. Every data type's retention/deletion statement (including attachments, FTS index, backups, exports, CardDAV/CalDAV, Android mirror) is now documented in `docs/security/data-retention-lifecycle.md` (issue #414); the `ContactShare`-has-no-purge-window gap surfaced there was closed by issue #574 (`CONTACT_SHARE_RETENTION_DAYS`, default 30, pinned by `services/contact_share_purge_service_test.go`). |
+| 8.3.8 | Retention classification, auto-delete | satisfied | T26 purge jobs (feed/audit/ContactShare retention, `backend/services/purge_service.go`, `audit_purge_service.go`, `contact_share_purge_service.go`); 410 Gone past purge window (`controllers/helpers.go:348-360`); soft-delete is the retention buffer for user content. Every data type's retention/deletion statement (including attachments, FTS index, backups, exports, CardDAV/CalDAV, Android mirror) is now documented in `docs/security/data-retention-lifecycle.md` (issue #414); the `ContactShare`-has-no-purge-window gap surfaced there was closed by issue #574 (`CONTACT_SHARE_RETENTION_DAYS`, default 30, pinned by `services/contact_share_purge_service_test.go`). Backup confidentiality/retention/restore-security (operator-owned boundary: inherited field-level encryption, master key never in the backup, operator-owned retention, restore-drill decryptability check) documented in `docs/deployment.md`'s "Backup confidentiality & retention" + **P5** (issue #420). |
 
 ## V9 — Communication
 
