@@ -469,6 +469,92 @@ func UpdateUser(c *gin.Context) {
 	})
 }
 
+// ResetUserTwoFactor is the operator-side recovery path for a user locked
+// out of their own account: TOTP device and recovery codes both lost, and
+// (per issue #592's design pass) email delivery is optional in this
+// self-hosted app, so the self-service password/2FA recovery flows cannot be
+// relied on either. Unlike DisableTwoFactor (self-service, requires a live
+// TOTP/recovery-code proof), this is admin-only and requires no proof from
+// the target -- the acting admin's own authenticated, admin-scoped session is
+// the trust boundary, same as the existing admin password reset.
+//
+// Disables TOTP and hard-deletes all recovery codes for the target user,
+// mirroring DisableTwoFactor's own update (two_factor_controller.go). Bumps
+// TokenVersion the same way an admin password reset does, so the reset
+// itself can't be silently undone by a session minted before it. Idempotent:
+// calling this on a user with no 2FA enabled is a no-op that still returns
+// 200, not an error.
+func ResetUserTwoFactor(c *gin.Context) {
+	log := logger.FromContext(c)
+	db := c.MustGet("db").(*gorm.DB)
+
+	currentUserID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("id", "Invalid user ID"))
+		return
+	}
+
+	var user models.User
+	if err := db.First(&user, uint(id)).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			apperrors.AbortWithError(c, apperrors.ErrNotFound("User"))
+			return
+		}
+		log.Error().Err(err).Uint64("user_id", id).Msg("Failed to get user for 2FA reset")
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("get user").WithError(err))
+		return
+	}
+
+	err = db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&user).Updates(map[string]any{
+			"totp_enabled":          false,
+			"totp_confirmed_at":     nil,
+			"totp_secret_encrypted": nil,
+			"token_version":         gorm.Expr("token_version + 1"),
+		}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("user_id = ?", user.ID).Delete(&models.RecoveryCode{}).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		log.Error().Err(err).Uint("user_id", user.ID).Msg("Failed to reset user's 2FA")
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("reset two-factor authentication").WithError(err))
+		return
+	}
+
+	// TokenVersion went through a SQL expression, so the in-memory struct is
+	// stale -- reload before using it in the response.
+	if err := db.First(&user, id).Error; err != nil {
+		log.Error().Err(err).Uint64("user_id", id).Msg("Failed to reload user after 2FA reset")
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("get user").WithError(err))
+		return
+	}
+
+	// Issue #592 audit: admin-initiated 2FA reset, attributed to the acting
+	// admin, distinct from the self-service AuditOpTOTPDisable.
+	models.RecordAuditEvent(models.AuditEntityUser, fmt.Sprintf("%d", user.ID), models.AuditOpTwoFactorAdminReset, currentUserID)
+
+	c.JSON(http.StatusOK, models.AdminUserResponse{
+		ID:         user.ID,
+		Username:   user.Username,
+		Email:      user.Email,
+		Language:   user.Language,
+		DateFormat: user.DateFormat,
+		IsAdmin:    user.IsAdmin,
+		CreatedAt:  user.CreatedAt,
+		UpdatedAt:  user.UpdatedAt,
+	})
+}
+
 // DeleteUser deletes a user and all their data (admin only)
 func DeleteUser(c *gin.Context) {
 	// DeleteUser is the single deliberate call-site exception to the

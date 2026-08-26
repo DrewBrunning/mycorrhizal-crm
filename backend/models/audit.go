@@ -37,6 +37,12 @@ const (
 	AuditOpRecoveryRegen          = "recovery_regenerate"
 	AuditOpRevoke                 = "revoke"
 	AuditOpRoleChange             = "role_change"
+	// AuditOpTwoFactorAdminReset fires when an admin resets another user's
+	// second factor (issue #592) -- distinct from AuditOpTOTPDisable, which
+	// fires only on the self-service path where the caller proves they still
+	// have a live code. This is the operator-side response to a user locked
+	// out of their own account (TOTP device and recovery codes both lost).
+	AuditOpTwoFactorAdminReset = "two_factor_admin_reset"
 )
 
 // AuditEntityType tokens stored on AuditEvent.EntityType. The first group are
