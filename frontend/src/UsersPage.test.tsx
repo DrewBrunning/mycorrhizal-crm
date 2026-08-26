@@ -414,7 +414,9 @@ test('resetting 2FA requires confirmation, warns what it does, and shows success
 
   await waitFor(() => expect(resetUserTwoFactor).toHaveBeenCalledWith(6));
   await waitFor(() =>
-    expect(screen.getByText('Two-factor authentication reset for "locked-out"')).toBeInTheDocument(),
+    expect(
+      screen.getByText('Two-factor authentication reset for "locked-out"'),
+    ).toBeInTheDocument(),
   );
   // Unlike delete, the row itself is untouched -- the user still exists.
   expect(screen.getByText('locked-out')).toBeInTheDocument();

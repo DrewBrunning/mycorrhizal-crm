@@ -685,9 +685,7 @@ export default function UsersPage() {
             variant="contained"
             disabled={resetTwoFactorLoading}
           >
-            {resetTwoFactorLoading
-              ? `${t('users.resetTwoFactor')}...`
-              : t('users.resetTwoFactor')}
+            {resetTwoFactorLoading ? `${t('users.resetTwoFactor')}...` : t('users.resetTwoFactor')}
           </Button>
         </DialogActions>
       </Dialog>
