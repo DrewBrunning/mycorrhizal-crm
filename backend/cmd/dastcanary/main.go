@@ -78,14 +78,46 @@ func addrFromEnv(getenv func(string) string) string {
 	return defaultAddr
 }
 
-// newMux wires the three canary routes. Split out of main so the handlers are
+// newMux wires the canary routes. Split out of main so the handlers are
 // testable via httptest without binding a real socket.
 func newMux() http.Handler {
 	mux := http.NewServeMux()
+	mux.HandleFunc("/", indexHandler)
 	mux.HandleFunc("/health", healthHandler)
 	mux.HandleFunc("/reflected", reflectedHandler)
 	mux.HandleFunc("/idor/", idorHandler)
 	return mux
+}
+
+// indexHandler serves the canary's root. It exists because ZAP's spider job
+// starts at the site root and reports a non-200 there as a plan warning:
+//
+//	Job spider error accessing URL http://localhost:7301 status code
+//	returned : 404 expected 200
+//
+// which makes zap.sh exit 2 and fails the workflow step before zapgate — the
+// actual gate — ever runs. Go's ServeMux has no root pattern by default, so
+// "/" 404'd.
+//
+// It also does the spider's job properly: linking the two planted endpoints
+// gives the crawl something to follow, rather than relying solely on the
+// requestor job's seed URLs. Deliberately boring — no user input reaches it,
+// so it plants nothing and adds no finding of its own.
+func indexHandler(w http.ResponseWriter, r *http.Request) {
+	// "/" is ServeMux's catch-all, so anything unmatched lands here. Keep a
+	// real 404 for those; only the root itself is the index.
+	if r.URL.Path != "/" {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	fmt.Fprint(w, `<!doctype html><html><head><title>dastcanary</title></head><body>`+
+		`<h1>dastcanary</h1>`+
+		`<ul>`+
+		`<li><a href="/reflected?q=hello">reflected</a></li>`+
+		`<li><a href="/idor/1">idor 1</a></li>`+
+		`<li><a href="/idor/2">idor 2</a></li>`+
+		`</ul></body></html>`)
 }
 
 // healthHandler lets the workflow (and a human) wait for the canary to be up
