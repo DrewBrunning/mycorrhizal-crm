@@ -139,8 +139,12 @@ jobs:
       #
       # Issue #578: hard gate (exit-code: '1'). The first rollout shipped
       # informational-only pending triage; the first real run's single
-      # finding (DS-0002, the documented no-USER-instruction design) is now
-      # triaged into .trivyignore, so a NEW misconfig finding fails the job.
+      # CRITICAL/HIGH finding (DS-0002, the documented no-USER-instruction
+      # design) is now triaged into .trivyignore. limit-severities-for-sarif
+      # is set so the exit code and the SARIF both respect the declared
+      # severity (CRITICAL,HIGH): without it the trivy-action unsets
+      # TRIVY_SEVERITY for SARIF mode and a LOW finding (DS-0026, fixed by
+      # adding HEALTHCHECKs to the split Dockerfiles) hard-failed the gate.
       - name: Trivy misconfig scan (Dockerfiles/compose)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -149,6 +153,7 @@ jobs:
           format: 'sarif'
           output: 'trivy-config-results.sarif'
           severity: 'CRITICAL,HIGH'
+          limit-severities-for-sarif: 'true'
           exit-code: '1'
           trivyignores: '.trivyignore'
 
