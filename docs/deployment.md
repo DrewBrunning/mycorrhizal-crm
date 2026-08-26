@@ -199,7 +199,9 @@ than discovered during a real disaster:
   database on a schedule (`DB_INTEGRITY_CHECK_ENABLED`, default on; `DB_INTEGRITY_CHECK_INTERVAL_HOURS`,
   default `24`).
 - **Restore drill** (issue #275) — takes a fresh backup snapshot, restores it into a scratch
-  database, and compares every table's row count against the live database
+  database, compares every table's row count against the live database, and — since issue #420 —
+  verifies the snapshot's wrapped DEK unwraps under the current master key, so a rotated/lost
+  at-rest key is caught here rather than at the moment of need
   (`DB_RESTORE_DRILL_ENABLED`, default on; `DB_RESTORE_DRILL_INTERVAL_HOURS`, default `168`, i.e.
   weekly).
 
@@ -207,10 +209,67 @@ Either job logs and fires a webhook (`db.integrity_check_failed` / `db.restore_d
 Settings → Webhooks) on failure, so "test restores regularly" above is now something the app does
 for you rather than a manual chore.
 
-### Security notes
+### Backup confidentiality & retention
 
-- The backup file contains **all** user data at its full sensitivity (including `private`/`secret`
-  fields, email addresses, and anything attached). Treat it like a copy of the database: protect it
-  in transit and at rest (e.g. `age`/`gpg`/encrypted volume) and rotate it off the server.
-- Test restores regularly. The cheapest way is the restore procedure above against a throwaway
-  instance or copy of the data.
+A backup is a **complete copy of the CRM's sensitive data** — not a sanitized extract — so the rules
+below are the same ones that apply to the database itself. This section is the confidentiality,
+retention, and access statement for backups (issue #420); the per-data-type retention/deletion story,
+including whether each type survives in backups, is §10 of `docs/security/data-retention-lifecycle.md`.
+
+**What a backup actually contains.** The DB snapshot holds every user's data at full sensitivity:
+`private`/`secret` contact fields, email addresses, notes, lifecycle data, attachment metadata, the
+audit trail, password hashes, API-token hashes, and TOTP recovery-code hashes — plus soft-deleted
+rows still inside their undo window (see below). The two plaintext directories (photos, attachments)
+complete the backup. The snapshot does **not** contain the secrets that unlock it: `JWT_SECRET_KEY`
+and `DATA_ENCRYPTION_KEY` live in the operator's environment, never in the database. Access to a
+backup is operator access — whoever can read the filesystem or backup store it lands in can read the
+backup, and the app itself never re-reads one (only the restore drill creates its own fresh
+snapshot, into a scratch directory it deletes afterwards).
+
+**Encryption & key management.** The DB snapshot inherits the database's field-level at-rest
+encryption (issue #380): encrypted columns travel as `encv1:` ciphertext, and the wrapped data
+encryption key (DEK) travels inside the snapshot (`data_encryption_keys`). Restoring therefore
+requires the **same master key** the live instance uses — a restore under a different key fails
+closed at boot (GCM authentication rejects the unwrap) instead of serving garbage. Two operator
+consequences:
+
+- Prefer a dedicated `DATA_ENCRYPTION_KEY` over the `JWT_SECRET_KEY` fallback. If the at-rest master
+  key is derived from `JWT_SECRET_KEY` (the zero-config fallback), rotating that secret changes the
+  derived key, so the stored wrapped DEK — in the live database *and* in every snapshot taken under
+  the old key — can no longer be unwrapped: the server fails closed at boot, and restoring an old
+  snapshot fails the same way. With a dedicated key, rotating the JWT secret never affects at-rest
+  data or backups.
+- Encrypted columns are only part of the story. The FTS-indexed columns (`notes.content`,
+  `activities.*`, flat contact search fields) are plaintext by design — they must be, for FTS5
+  indexing (`docs/security/asvs-l2.md` P4) — and the photos/attachments directories are plain files.
+  **Protecting those at rest is the operator's job** (`age`/`gpg`/encrypted volume), exactly as it
+  was before #380, and off-host movement should use the same protection in transit (`rsync` over SSH,
+  TLS to object storage).
+
+**Retention & deletion.** Retention is entirely operator-owned: this app has no backup rotation,
+expiry, or auto-deletion — and deliberately won't, because an app that can expire backups gives an
+attacker running as the app the same power (issue #505). A cron-scheduled `make backup` accumulates
+snapshots until the operator imposes a lifecycle, e.g.:
+
+```sh
+find /backups -name 'mycorrhizal-*.db' -mtime +30 -delete   # keep 30 days of daily snapshots
+```
+
+**Deleting live data never deletes backups.** Purging contacts, notes, or any other data has no
+effect on already-taken backup files. A restore is a point-in-time rollback: anything soft-deleted
+(but not yet purged, T26) as of the snapshot is resurrected, and anything created or edited after
+the snapshot is lost. Soft-deleted data therefore ages out of backups in two steps: it stops
+appearing in *new* snapshots once the purge window (default 30 days, `DELETE_RETENTION_DAYS`) passes,
+but it survives in every snapshot that predates that purge until the operator deletes the snapshot.
+There is no partial/selective restore.
+
+**Restore-environment security.** A restore is a real, destructive change, so the safe order is:
+(1) let the automated restore drill (issue #275) do it into a throwaway first — it restores a fresh
+snapshot into a scratch database weekly by default, compares every table's row count with the live
+database, and since issue #420 also verifies the snapshot's wrapped DEK unwraps under the current
+master key, so a rotated/lost key is caught weekly instead of at the moment of need; (2) for a real
+restore, stop the server, replace the three pieces, and verify a known contact/note/reminder plus a
+photo and an attachment (or run the `frontend/e2e/backupRestore.spec.ts` round trip on a throwaway
+copy first). Restoring into an environment whose master key differs from the snapshot's fails closed
+at boot — that is the intended signal to check keys before touching the live instance. The audit
+trail in a restored database is only as fresh as the snapshot.

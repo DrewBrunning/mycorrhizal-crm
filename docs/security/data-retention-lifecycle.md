@@ -7,7 +7,7 @@ each asset, not how long it survives.
 
 | | |
 |---|---|
-| **Last updated** | 2026-08-25 (issue [#414](https://github.com/DrewBrunning/mycorrhizal-crm/issues/414)) |
+| **Last updated** | 2026-08-25 (issues [#414](https://github.com/DrewBrunning/mycorrhizal-crm/issues/414), [#420](https://github.com/DrewBrunning/mycorrhizal-crm/issues/420)) |
 | **Scope** | Backend (Go/Gin + SQLite), CardDAV/CalDAV (server role), Android client, browser/frontend, operator backups. |
 | **Companion docs** | `docs/security/asvs-l2.md` V8 (Data Protection), `docs/deployment.md` (Backups section — the authoritative backup/restore runbook), `docs/security/masvs-l1.md` (Android storage controls). |
 
@@ -214,20 +214,47 @@ External DAV clients (phones, desktop DAV apps) sync against `backend/carddav`, 
   Backups section). `make backup` (`backend/cmd/backup/main.go` → `database.BackupSnapshot`,
   `backend/database/backup.go`) takes a live `VACUUM INTO` snapshot — safe under WAL, verified with
   `PRAGMA integrity_check` before it's considered valid — of the SQLite file; photos/attachments are
-  backed up separately (`rsync`, since they're plain files, not DB rows).
+  backed up separately (`rsync`, since they're plain files, not DB rows). Access is operator access:
+  whoever can read the filesystem/backup store the snapshot lands in can read it, and the app itself
+  never re-reads a backup file (the restore drill only ever creates its own fresh snapshot, in a
+  scratch directory it deletes afterwards).
+- **Confidentiality / encryption**: a snapshot is a **complete copy of sensitive data at full
+  sensitivity** (issue #420) — `private`/`secret` fields, email addresses, password/API-token
+  hashes, TOTP recovery-code hashes, the audit trail, and still-in-window soft-deleted rows. It
+  inherits the DB's field-level at-rest encryption: encrypted columns travel as `encv1:` ciphertext
+  and the wrapped DEK (`data_encryption_keys`) travels with them, but it carries the same
+  FTS-plaintext exception as the live DB, and the photos/attachments directories are plaintext
+  files. The master key (`DATA_ENCRYPTION_KEY`, else HKDF-derived from `JWT_SECRET_KEY`) is **never
+  in the backup** — a stolen backup alone yields ciphertext + hashes + the FTS-plaintext set, and a
+  restore under a different key fails closed at boot. A JWT-derived master key means rotating
+  `JWT_SECRET_KEY` makes old snapshots undecryptable; a dedicated `DATA_ENCRYPTION_KEY` decouples
+  them. Full operator statement: `docs/deployment.md`'s "Backup confidentiality & retention".
 - **Retention**: **entirely operator-owned** — this app has no built-in backup rotation, expiry, or
-  auto-deletion of old backup files. A cron-scheduled `make backup` will accumulate snapshots forever
-  unless the operator adds their own retention (e.g. a `find -mtime +N -delete` outside this app).
+  auto-deletion of old backup files, and deliberately won't (an app that can expire backups gives an
+  attacker running as the app the same power — issue #505). A cron-scheduled `make backup` will
+  accumulate snapshots forever unless the operator adds their own retention (e.g. a
+  `find -mtime +N -delete` outside this app).
 - **Deletion / propagation**: **does not happen automatically, ever** — deleting/purging live data has no
   effect on already-taken backup files. This is the one place in the whole lifecycle where "deletion
   propagates" is false by design, and `docs/deployment.md:165-167` already documents the direct
   consequence: restoring a backup **resurrects** anything that was soft-deleted (but not yet purged) as
   of that snapshot, since a file-level restore has no concept of "these rows were mid-undo-window".
-  There is no partial/selective restore.
+  Soft-deleted data ages out of backups in two steps: it stops appearing in *new* snapshots once the
+  purge window (default 30 days, `DELETE_RETENTION_DAYS`) passes, but it survives in every snapshot
+  that predates that purge until the operator deletes the snapshot. There is no partial/selective
+  restore.
+- **Restore-environment security**: a restore is a point-in-time rollback; the automated restore
+  drill (`backend/services/restore_drill_service.go`, issue #275) proves a snapshot restores into a
+  scratch DB with matching row counts — and, since issue #420, that the snapshot's wrapped DEK
+  unwraps under the current master key (`atrest.VerifyBackupDecryptable`), so a rotated/lost key is
+  caught weekly in a throwaway DB rather than during a real disaster. The audit trail in a restored
+  database is only as fresh as the snapshot.
 - **Backups of backups**: N/A — recursion stops here by definition.
 - **Verification**: `frontend/e2e/backupRestore.spec.ts` (full backup → destroy → restore round trip);
   `backend/services/restore_drill_service.go` + issue #275 (scheduled restore-drill job that proves a
-  backup actually restores, not just that the file exists).
+  backup actually restores, not just that the file exists); `atrest.VerifyBackupDecryptable` +
+  `restore_drill_service_test.go` (`TestRestoreDrillFailsWhenSnapshotNotDecryptable`,
+  `TestRestoreDrillPassesWithEncryptedDatabase`, issue #420).
 
 ## 11. Exports (CSV / vCard3 / vCard4 / jSContact / audit log)
 
