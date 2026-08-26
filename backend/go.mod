@@ -47,6 +47,8 @@ require (
 	github.com/tetratelabs/wazero v1.12.0 // indirect
 	go.mongodb.org/mongo-driver/v2 v2.8.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
+	golang.org/x/mod v0.40.0 // indirect
+	golang.org/x/tools v0.49.0 // indirect
 	modernc.org/libc v1.74.1 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
@@ -83,7 +85,7 @@ require (
 	github.com/ugorji/go/codec v1.3.1 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	golang.org/x/arch v0.29.0 // indirect
-	golang.org/x/net v0.57.0 // indirect
+	golang.org/x/net v0.58.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
