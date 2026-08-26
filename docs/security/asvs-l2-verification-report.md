@@ -332,6 +332,11 @@ No finding in this pass required flipping a control from `satisfied` to `fail`. 
 F-6 were failures of the *documentation* to remain true; F-4 and F-5 are real code findings, both
 low-severity and both failing closed.
 
+Three further issues came out of asking what keeps this report true rather than out of the audit
+itself, and are tracked in §9: **#608** (fold the gate and the re-verification obligation into the
+release workflow), **#609** (semgrep rule for an outbound client bypassing the SSRF dialer), and
+**#610** (pin audit B's cookie-flag enumeration as a test).
+
 ### What this pass could not verify
 
 Stated so the claim is not read as stronger than it is:
@@ -428,9 +433,58 @@ A re-pass is a diff against this file, not a rewrite. In order:
    change is what flips them, and nothing else will.
 6. Re-check every P1–P5 revisit trigger in §7.
 7. Update the header (pass number, date, commit), the census (from `citecheck`), §6 findings, and add
-   a changelog row.
+   a changelog row (§10). If a mechanism in §9 has been superseded — most likely by #608 folding this
+   into the release workflow — update §9 to describe what actually runs, and delete what it replaced.
 
-## 9. Changelog
+## 9. Keeping this true between passes
+
+A verification report is a photograph. What stops it becoming a *historical* photograph is three
+mechanisms at three different cadences, deliberately unequal in cost.
+
+**Every PR — automated, no human in the loop.** The `Security-doc citations` job
+(`.github/workflows/unit-tests.yml`) runs `citecheck`, unfiltered by path. It fails on a citation
+that stops resolving, a line that falls out of range, a vanished test identifier, a `satisfied` row
+that cites nothing, an unaccepted drift candidate, or a stale entry in
+`docs/security/citation-drift.ignore`. This is what keeps §2 true continuously rather than at
+audit time, and it is the reason a re-pass is an hour instead of a rebuild.
+
+**Every milestone — one citable checkbox.** All 16 gate issues (#531–#543 plus #500/#503/#525) carry
+a standing criterion: the citation job is green on the merge commit and no unjustified suppression
+was added. `.github/ISSUE_TEMPLATE/milestone_gate.md` carries it forward so a future gate inherits it
+rather than depending on someone remembering this issue existed.
+
+**Every release — a full re-pass.** The three release gates (#500 `0.8.0`, #503 `0.9.0`, #525
+`1.0.0`) additionally require the ASVS/MASVS claim to be re-verified against the *shipped* code, with
+a dated changelog row below as the citation. Re-running the whole pass every milestone would be
+disproportionate and would get skipped; letting a published claim go unverified from v0.6.1 through
+1.0.0 is the failure this tier exists to prevent. #525 had no security criterion at all before this
+pass — it would have shipped the 1.0.0 stability contract on a claim last checked thousands of
+commits earlier.
+
+Two things about that model are worth being honest about:
+
+- **The middle tier is scaffolding.** Sixteen hand-maintained checkboxes are exactly the kind of
+  duplication this report criticises elsewhere. It is the right thing *now* — waiting for a release
+  process to exist would let several milestones ship with no check — but it should be superseded by
+  the automated release workflow (#499), which is issue **#608**. That issue's explicit instruction
+  is to end with *fewer* homes for the obligation, not more.
+- **None of the three sees genuinely new surface.** They prove existing claims still hold; they
+  cannot notice that something was added that *deserves* a row. What covers what today:
+
+| New surface | Enforced today? |
+|---|---|
+| A route | **Yes.** `routes/authorization_matrix_test.go` enumerates from the live router and fails when a new route has no declared authorization row. Self-maintaining. |
+| An outbound HTTP client | **No** — a client bypassing `SafeDialContext` is an unflagged SSRF regression. Issue **#609** (semgrep rule). |
+| A cookie | **No** — audit B was 18 call sites read by hand and would have to be redone every pass. Issue **#610** (pin it as a router-driven test). |
+| An entity or table | Partly — the manual cascade lists (`CLAUDE.md` trap 6) and the retention-doc convention, neither enforced. |
+| A crypto call site | gosec and CodeQL catch weak primitives; nothing ties a new call site to a row. |
+
+The pattern worth generalising from the one row that *is* enforced: the authorization matrix is strong
+evidence because it derives its subject list from the running system and **fails on an undeclared
+member**, in both directions. Every future "is this still true?" check here should be built that
+shape — #610 is written to that spec on purpose.
+
+## 10. Changelog
 
 | Pass | Date | Commit | Claim | Findings |
 |---|---|---|---|---|
