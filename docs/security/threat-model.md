@@ -66,7 +66,7 @@ browser → API → database → filesystem → integrations → Android local D
 
 | Hop | Enforced by |
 |---|---|
-| browser → API | TLS at the operator's reverse proxy (`docs/deployment.md:17`); CORS strict origin allowlist, `"*"` refused in release (`backend/main.go:191-209`, `backend/config/config.go:359-364`); CSP/HSTS/`nosniff`/frame-ancestors (`backend/middleware/security_headers.go`) |
+| browser → API | TLS at the operator's reverse proxy (`docs/deployment.md:17`); CORS strict origin allowlist, `"*"` refused in release (`backend/main.go:245-263`, `backend/config/config.go:511-516`); CSP/HSTS/`nosniff`/frame-ancestors (`backend/middleware/security_headers.go`) |
 | API → database | Every query AND-scoped by `user_id`/`VCardUID` (`asvs-l2.md` V4, API1); parameterized SQL only (V5.3.4) |
 | API → filesystem | UUID filenames, traversal guards, 0700/0750 perms (`asvs-l2.md` V12.3–V12.4) |
 | API → integrations | Public-IP-only SSRF dialer with DNS-rebinding pinning, per-service opt-in (`backend/httputil/safedial.go:27-47`, `asvs-l2.md` V5.2.6/API7) |
@@ -132,7 +132,7 @@ owns the disk), not left unprotected relative to some higher bar.
 ### 2. JWT key management (ASVS V6.4.1)
 
 **Keep — env var + boot-time validation + revocation, not a vault.** `JWT_SECRET_KEY` is validated at
-boot for length (≥ 32 bytes), placeholder rejection, and minimum entropy (`backend/config/config.go:351-389`).
+boot for length (≥ 32 bytes), placeholder rejection, and minimum entropy (`backend/config/config.go:375-403`).
 There is no key-vault/KMS (`asvs-l2.md` V1.6.2 — not-applicable, self-hosted single process). Rotation
 works via `TokenVersion`: bumping it invalidates every existing session immediately
 (`backend/middleware/auth.go:141-154`); rotating the key itself is a restart with a new env var, at the
@@ -187,13 +187,17 @@ times.
 
 ### 5. Session cookie flags (ASVS V3.4: HttpOnly/Secure/SameSite)
 
-**Keep, verified against the exact code.** `backend/controllers/user_controller.go:205-214` sets the
-session cookie `HttpOnly` (always), `Secure = cfg.CookieSecure`, and `SameSite=Lax`. Boot-time config
+**Keep, verified against the exact code.** `backend/controllers/user_controller.go:234-243` sets the
+session cookie `HttpOnly` (always), `Secure = cfg.CookieSecure`, and `SameSite=Strict` — tightened
+from `Lax` by issue #392, which closed the residual sibling-subdomain/CSRF gap `Lax` left open. The
+only cookies still deliberately `Lax` are the transient OIDC `oidc_state`/`oidc_nonce`/`oidc_pkce`
+handshake cookies, which must survive the cross-site redirect back from the provider
+(`backend/controllers/oidc_controller.go:87-90`). Boot-time config
 validation refuses the insecure combination `FRONTEND_URL=https` + `COOKIE_SECURE=false`
-(`backend/config/config.go:375-380`), so a misconfigured deployment can't accidentally serve an
+(`backend/config/config.go:527-532`), so a misconfigured deployment can't accidentally serve an
 HTTPS-fronted cookie without `Secure`. No `__Host-` prefix (`asvs-l2.md` V3.4.4, partial) — the cookie
 must remain host-only rather than prefix-locked while plain-HTTP LAN deployments are supported
-(`.env.example:110-122`); revisit if/when HTTP-only self-hosting is dropped.
+(`.env.example:131-145`); revisit if/when HTTP-only self-hosting is dropped.
 
 ## How to keep this honest
 

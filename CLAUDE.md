@@ -260,6 +260,24 @@ cryptographic agility (direct bcrypt/JWT calls, deliberate pre-1.0), opt-in HIBP
 at-rest field-encryption envelope (P4, #380), and the operator-owned backup confidentiality/
 retention boundary (P5, #420).
 
+**What the project actually claims, and when it was last checked, is
+`docs/security/asvs-l2-verification-report.md`** (issue #378) — the dated verification pass over both
+checklists: the level claim (**ASVS L2 with 31 documented exceptions**, **MASVS-L1 with 1**), the
+method used per class of control, the four manual audits (handler scoping/IDOR, cookie flags, crypto
++ unauthenticated routes, error-path leakage), the enumerated exception register, and what each pass
+found. The checklists say *what* the status is; the report says *how it was verified and when*. A
+re-verification adds a changelog row there rather than silently editing statuses.
+
+Citations in those docs are gated, not trusted: `cd backend && go run ./cmd/citecheck` proves every
+`file:line` and test-name citation in `asvs-l2.md`/`masvs-l1.md`/`threat-model.md` still resolves and
+that no row is `satisfied` citing nothing. It runs on every PR (unfiltered by path — moving code is
+what orphans a citation). It also gates the harder class — a citation whose line range is still in
+bounds but whose target moved (74 of those before #378) — against `docs/security/citation-drift.ignore`,
+an ignore-list-with-justification like `.trivyignore`: an unlisted candidate fails the build, and so
+does a listed one that no longer matches anything, so dead suppressions can't pile up. Accepting a
+candidate means writing down *why* it is a false positive. `go run ./cmd/citecheck -drift` prints the
+unfiltered listing (accepted entries included) — that's the view a verification pass wants.
+
 **Every data type's retention/deletion lifecycle is `docs/security/data-retention-lifecycle.md`**
 (issue #414) — where each copy of a piece of data lives, how long it survives, how deletion
 propagates (including CardDAV/CalDAV and the Android offline mirror), and whether it outlives a

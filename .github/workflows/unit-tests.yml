@@ -65,6 +65,48 @@ jobs:
           OPENAPI_CHANGED: ${{ steps.filter.outputs.openapi }}
           WORKFLOWS_CHANGED: ${{ steps.filter.outputs.workflows }}
 
+  # Issue #378: the security checklists (docs/security/asvs-l2.md,
+  # masvs-l1.md, threat-model.md) claim a `file:line` or test citation behind
+  # every control. Those citations rot when *code moves*, not when the doc is
+  # edited — the 2026-08-26 ASVS L2 verification pass found 74 line ranges
+  # that had drifted out from under their rows. So this job is deliberately
+  # NOT path-gated: a PR that touches only backend/ or only android/ can
+  # orphan a citation just as easily as one that edits the doc, and
+  # .github/filters.yaml maps docs/** to nothing. It is a few seconds of pure
+  # Go with no services, so running it unconditionally is cheaper than
+  # reasoning about which paths could invalidate a citation.
+  docs-citations:
+    permissions:
+      contents: read
+    name: Security-doc citations
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      # Two gates in one command. (1) Every citation resolves to a real file
+      # with an in-range line, every cited test identifier exists, and no row
+      # is `satisfied` citing nothing. (2) No line-range citation has drifted
+      # off its target beyond what docs/security/citation-drift.ignore
+      # accepts — the class (1) structurally cannot see, and the one that
+      # actually accumulated (74 of them before issue #378).
+      #
+      # `go run ./cmd/citecheck -drift` is the human tool, not a CI step: it
+      # lists every candidate including the accepted ones, which is what a
+      # verification pass wants and what CI does not.
+      - name: Verify security-doc citations (resolution + drift)
+        working-directory: backend
+        run: go run ./cmd/citecheck
+
   backend:
     permissions:
       contents: read
